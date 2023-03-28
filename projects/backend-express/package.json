@@ -1,0 +1,25 @@
+{
+  "name": "backend-express",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "rushx build && node dist/index.js",
+    "build": "npx tsc",
+    "clean": "rimraf dist .build .output"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "~4.18.2",
+    "dotenv": "~16.0.3"
+  },
+  "devDependencies": {
+    "@types/express": "~4.17.17",
+    "@types/node": "~18.15.10",
+    "rimraf": "~4.4.1",
+    "typescript": "4.8.4"
+  }
+}
