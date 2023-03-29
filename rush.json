@@ -339,8 +339,8 @@
       "shouldPublish": false
     },
     {
-      "packageName": "frontend-react",
-      "projectFolder": "projects/frontend-react",
+      "packageName": "dcm-app",
+      "projectFolder": "projects/dcm-app",
       "reviewCategory": "production",
       "shouldPublish": false
     }
