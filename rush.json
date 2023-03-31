@@ -42,7 +42,7 @@
    * LTS schedule: https://nodejs.org/en/about/releases/
    * LTS versions: https://nodejs.org/en/download/releases/
    */
-  "nodeSupportedVersionRange": ">=12.13.0 <13.0.0 || >=14.15.0 <15.0.0 || >=16.13.0 <17.0.0 || >=17.0.0",
+  "nodeSupportedVersionRange": ">=12.13.0 <13.0.0 || >=14.15.0 <15.0.0 || >=16.13.0 <17.0.0 || >=18.0.0",
 
   /**
    * If the version check above fails, Rush will display a message showing the current
@@ -336,7 +336,7 @@
       "packageName": "backend-express",
       "projectFolder": "projects/backend-express",
       "reviewCategory": "production",
-      "shouldPublish": true
+      "shouldPublish": false
     },
     {
       "packageName": "dcm-app",
