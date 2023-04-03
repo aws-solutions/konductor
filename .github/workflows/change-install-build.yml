@@ -1,0 +1,19 @@
+name: change-install-build
+on: ['pull_request']
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - name: Verify Change Logs
+        run: node common/scripts/install-run-rush.js change --verify
+      - name: Rush Install
+        run: node common/scripts/install-run-rush.js install
+      - name: Rush rebuild
+        run: node common/scripts/install-run-rush.js rebuild --verbose
