@@ -1,0 +1,17 @@
+{
+  "cacheVersion": "8.7.0_53971fda8ce0936f3840b8229b7a24941721d6d7",
+  "fileVersions": [
+    [
+      "rules/import-convention.ts",
+      ""
+    ],
+    [
+      "custom-eslint.ts",
+      ""
+    ],
+    [
+      "index.ts",
+      ""
+    ]
+  ]
+}

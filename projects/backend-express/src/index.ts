@@ -1,6 +1,7 @@
-const express = require ( 'express' ) ;
-import { Response } from 'express';
 import dotenv from 'dotenv' ;
+import { Response } from 'express';
+
+const express = require ( 'express' ) ;
 
 dotenv.config();
 

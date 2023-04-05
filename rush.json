@@ -342,6 +342,12 @@
       "projectFolder": "projects/dcm-app",
       "reviewCategory": "production",
       "shouldPublish": true
+    },
+    {
+      "packageName": "@aws/eslint-config-projects-eslint-custom",
+      "projectFolder": "core/eslint-custom",
+      "reviewCategory": "tools",
+      "shouldPublish": false
     }
     
     // {

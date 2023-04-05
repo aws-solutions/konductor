@@ -17,6 +17,36 @@
       "summary": "This command cleans the build directory from typescript",
       "ignoreMissingScript": true,
       "enableParallelism": true
+    },
+    {
+      "name": "lint-fix",
+      "commandKind": "bulk",
+      "summary": "lint fix",
+      "safeForSimultaneousRushProcesses": true,
+      "enableParallelism": true
+    },
+    {
+      "name": "prettier",
+      "commandKind": "global",
+      "summary": "Used by the pre-commit Git hook. This command invokes Prettier to reformat staged changes.",
+      "safeForSimultaneousRushProcesses": true,
+      "autoinstallerName": "rush-prettier",
+      // This will invoke common/autoinstallers/rush-prettier/node_modules/.bin/pretty-quick
+      "shellCommand": "pretty-quick --staged"
+    },
+    {
+      "name": "cinstall",
+      "commandKind": "global",
+      "summary": "Run rush install with bypass-policy and perform custom git-hook install",
+      "safeForSimultaneousRushProcesses": true,
+      "shellCommand": "node common/scripts/install-run-rush.js install --bypass-policy --max-install-attempts 1 && node common/scripts/install-hooks"
+    },
+    {
+      "name": "cupdate",
+      "commandKind": "global",
+      "summary": "Run rush update with bypass-policy and perform custom git-hook install",
+      "safeForSimultaneousRushProcesses": true,
+      "shellCommand": "node common/scripts/install-run-rush.js update --bypass-policy --max-install-attempts 1 && node common/scripts/install-hooks"
     }
     // {
     //   /**
