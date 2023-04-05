@@ -1,4 +1,4 @@
-# FWoA Core ESLint Config Custom
+# Core ESLint Config Custom
 
 ⚠️ $\textcolor{red}{\text{Experimental}}$ ⚠️ : Not for use in any critical, production, or otherwise important deployments
 
@@ -14,7 +14,7 @@ Custom ESLint rules
 "devDependencies": {
     .
     .
-    "@aws/eslint-config-fwoa-core-eslint-custom": "workspace:*"
+    "@aws/eslint-config-projects-eslint-custom": "workspace:*"
   }
 ```
 
