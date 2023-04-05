@@ -1,0 +1,10 @@
+{
+  "changes": [
+    {
+      "packageName": "dcm-app",
+      "comment": "https://github.com/aws-solutions/dynamic-consent-management-on-aws",
+      "type": "patch"
+    }
+  ],
+  "packageName": "dcm-app"
+}
