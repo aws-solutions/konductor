@@ -1,0 +1,10 @@
+{
+  "changes": [
+    {
+      "packageName": "dcm-app",
+      "comment": "chore: added npmpackagejsonlintrc",
+      "type": "patch"
+    }
+  ],
+  "packageName": "dcm-app"
+}
