@@ -2,9 +2,28 @@
 require('@rushstack/eslint-config/patch/modern-module-resolution');
 
 module.exports = {
+  plugins: ['security', 'import'],
   extends: [
-    '@aws/eslint-config-projects-eslint-custom'
+    '@rushstack/eslint-config/profile/node',
+    '@rushstack/eslint-config/mixins/tsdoc',
+    'plugin:security/recommended',
+    'plugin:import/recommended'
   ],
+  rules: {
+    'import/no-unresolved': ['off'],
+    'import/named': ['off'],
+    'import/order': [
+      'error',
+      {
+        alphabetize: {
+          order: 'asc',
+          caseInsensitive: true
+        },
+        groups: ['builtin', 'external', 'parent', 'sibling']
+      }
+    ],
+    'import/newline-after-import': ['error']
+  },
   parserOptions: { tsconfigRootDir: __dirname },
   overrides: [
     {

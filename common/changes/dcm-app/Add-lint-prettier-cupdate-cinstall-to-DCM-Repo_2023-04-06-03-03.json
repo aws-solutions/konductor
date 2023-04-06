@@ -1,0 +1,10 @@
+{
+  "changes": [
+    {
+      "packageName": "dcm-app",
+      "comment": "Removed custom lint",
+      "type": "patch"
+    }
+  ],
+  "packageName": "dcm-app"
+}

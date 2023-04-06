@@ -1,1 +1,0 @@
-{"version":3,"file":"index.js","sourceRoot":"","sources":["../src/index.ts"],"names":[],"mappings":";AAAA;;;GAGG;AAEH,mDAA+C;AAE/C,iBAAS,4BAAY,CAAC","sourcesContent":["/*\n *  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.\n *  SPDX-License-Identifier: Apache-2.0\n */\n\nimport { customESLint } from './custom-eslint';\n\nexport = customESLint;\n"]}
