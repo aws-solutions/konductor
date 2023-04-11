@@ -36,9 +36,7 @@ phases:
 artifacts:
   files:
     - common/**/*
-#    - solutions/**/*
-    - fwoa-core/**/*
-    - core/**/*
+    - projects/**/*
     - deployment/**/*
     - .gitignore
     - sonar-project.properties
