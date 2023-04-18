@@ -1,0 +1,12 @@
+permit (
+    principal == User::"alice",
+    action == Action::"view",
+    resource == Photo::"VacationPhoto94.jpg"
+);
+
+permit (
+    principal == User::"stacey",
+    action == Action::"view",
+    resource
+)
+when { resource in Account::"stacey" };
