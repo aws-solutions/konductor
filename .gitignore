@@ -46,6 +46,9 @@ jspm_packages/
 # Output of 'npm pack'
 *.tgz
 
+# including aws sdk for github actions
+!aws-sdk-2.1337.0.tgz
+
 # Yarn Integrity file
 .yarn-integrity
 
