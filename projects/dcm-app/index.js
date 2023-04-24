@@ -8,7 +8,6 @@ const client = new AWS.VerifiedPermissions({ region: 'us-east-1' });
 
     // List Policy Stores
     const listPolicyStores = await client.listPolicyStores().promise();
-    console.log(listPolicyStores);
 
     // Create Policy Store if there are no Policy Stores
     if (listPolicyStores.PolicyStores.length === 0) {
@@ -24,7 +23,7 @@ const client = new AWS.VerifiedPermissions({ region: 'us-east-1' });
 
     // Read a list of policies from a file
     const fs = require('fs');
-    const policyStrings = fs.readFileSync('example.txt', 'utf8').split(';');
+    const policyStrings = fs.readFileSync('avpPolicies.txt', 'utf8').split(';');
     const policies = [];
     for (let i = 0; i < policyStrings.length-1; i++) {
         const policyString = policyStrings[i].trim() + ';\n';
