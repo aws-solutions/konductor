@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Validate PR 
+
+on:
+  pull_request_target:
+    branches: [main]
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  pull-request-job:
+    name: Status Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Konductor Synth
+        run: |
+          echo "Konductor synth coming soon..."

@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Pipeline Workflow
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  id-token: write
+
+jobs:
+  dispatch:
+    name: Dispatch to CodeBuild
+    if: github.repository == 'aws-solutions/konductor'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.DISPATCHER_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-duration-seconds: 3600
+          role-session-name: OIDCSession
+
+      - name: Run CodeBuild GitHubDispatcher
+        uses: aws-actions/aws-codebuild-run-build@v1
+        with:
+          project-name: ${{ secrets.DISPATCHER_CODEBUILD_PROJECT_NAME }}
