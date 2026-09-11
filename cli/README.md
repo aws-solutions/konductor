@@ -35,8 +35,12 @@ of failing.
 
 `install` accepts:
 - `--from <repo-root>` — SOURCE: a local repo root to install previously-built (synthed)
-  content from. Currently required: installing from a published release is not yet
-  available.
+  content from. Optional: omitting it tries a real GitHub Release fetch→verify→install
+  first (against `aws-solutions/konductor`'s latest release), falling back to fetching
+  `dist/`'s tarball straight from the `main` branch when the release path fails with a
+  missing-asset error — see
+  [Installing without `--from`: the GitHub-release / main-branch-`dist/` fallback chain](#installing-without---from-the-github-release--main-branch-dist-fallback-chain)
+  below for why the release path does not yet succeed against a real release.
 - `--target <dir>` — DESTINATION: directory to install into. Defaults to `$HOME` when
   omitted.
 - `--harness <kiro-cli-v2|kiro-v3|claude>` — REQUIRED: which synthed harness output to
@@ -193,18 +197,15 @@ run from.
 `--harness <kiro-cli-v2|kiro-v3|claude>` is **required** — which of `synth`'s harness
 outputs to install (see [`synth`](#synth) above; the three values are the same
 `synth::registry::TRANSFORMERS` names that `dist/<name>/` is staged under). There is no
-default and no destination-marker auto-detection: every `install` invocation must say
-explicitly which harness it means, even if the destination directory already has an
-existing `.kiro` or `.claude` marker. This is deliberate — a destination that happens to
-carry both markers at once used to be resolved silently by strategy registration order;
-requiring `--harness` removes that ambiguity entirely. This also applies to a target
-`install` has never tracked before: a lone foreign marker (e.g. a `.kiro/` directory left
-over from separate, unrelated Kiro CLI use) is no longer consulted either — `--harness
-claude` installs Claude Code content there instead of the marker steering it toward Kiro,
-a real behavior change from the old auto-detection. `kiro-v3` is a real, registered
-`synth` harness, but `install` has no strategy that reads `dist/kiro-v3/` yet — passing
-it exits `64` with a message explaining the gap, rather than installing anything or
-crashing.
+default, and no auto-detection from an existing `.kiro`/`.claude` marker at the
+destination — every invocation must say explicitly which harness it means. This is
+deliberate: a destination carrying both markers at once used to be resolved silently by
+registration order; requiring `--harness` removes that ambiguity. It's a real behavior
+change too — even a lone foreign marker (e.g. a `.kiro/` directory left over from
+unrelated Kiro CLI use) no longer steers selection, so `--harness claude` installs
+Claude Code content there regardless. `kiro-v3` is a real, registered `synth` harness,
+but `install` has no strategy that reads `dist/kiro-v3/` yet — passing it exits `64`
+with a message explaining the gap, rather than installing anything or crashing.
 
 **`kiro-cli-v2` vs `kiro-v3` is not an IDE-vs-CLI split.** In Kiro v2, the CLI and IDE
 are separate products: `kiro-cli-v2` installs CLI-only content and will not work in the
@@ -225,9 +226,78 @@ install merges into `<target>/.konductor/skills/`: a skill directory this instal
 not emit (e.g. hand-authored) is left untouched, but a skill directory it does own is
 fully replaced so a file removed from the source doesn't linger in the destination.
 
-Installing from a published release (bare `konductor install`, no `--from`) is not yet
-available and exits `64` with an explanatory message. Omitting `--harness` entirely is a
-usage error too (clap's own missing-required-argument message, remapped to exit `64`).
+### Installing without `--from`: the GitHub-release / main-branch-`dist/` fallback chain
+
+```bash
+konductor install --harness kiro-cli-v2   # tries GitHub Release, falls back to main's
+                                            # dist/ tarball automatically if needed
+```
+
+Omitting `--from` tries the GitHub Release source first. If that fails with nothing
+usable — a missing per-platform asset on an existing release, or a 404 meaning no
+release has ever been published — it automatically falls back to fetching the same
+tarball straight from `main`'s `dist/` directory. Both sources read the same repository
+(`aws-solutions/konductor`), just a different ref: a tagged release's assets, or the
+`main` branch's `dist/` directory. There's no separate opt-in for the fallback — it
+crosses the same trust boundary the release path already does. Any other release
+failure (network error, non-404 status, invalid response, or a verify/unpack/install
+failure once bytes were in hand) is never fallback-eligible: trying a second source on
+top of a real failure risks hiding it. On success, the report names which source
+produced the install (a `source` field in `--json` mode, an inline clause in the
+plain-text summary), so the two are never blended together.
+
+1. **GitHub Release (primary).** Hits GitHub's `GET
+   /repos/aws-solutions/konductor/releases/latest` API, looks for a release asset
+   matching this host's exact expected filename (`synth::artifact_filename()`'s
+   convention — a versioned, per-platform tarball) plus that filename's `.sha256`
+   sidecar, downloads both, verifies the checksum against that maintainer-published
+   sidecar, and installs through the same unpack/copy pipeline `--from` uses.
+
+   **This does not yet succeed against a real release.** The live
+   `.github/workflows/release.yml` doesn't publish assets in that shape yet — today it
+   zips all of `dist/` into one fixed-name `konductor-release.zip`, with no per-platform
+   tarball and no `.sha256` sidecar. Until that pipeline is fixed separately, this
+   source fails with an `install.remote_asset_missing`-class error.
+
+2. **`main` branch's `dist/` directory (automatic fallback).** `main`'s `dist/`
+   directory carries the same pre-built tarball `synth` produces — at the same
+   `<artifact_filename>` the release path expects — plus its `.sha256` sidecar, as two
+   named files sitting directly under `dist/`. This source fetches each one, by exact
+   filename, via one GitHub Contents API request apiece (`GET
+   /repos/aws-solutions/konductor/contents/dist/{filename}?ref=main`) — two requests
+   total, well under GitHub's unauthenticated rate limit — then verifies the fetched
+   tarball against the fetched sidecar and installs through the same pipeline. No file
+   listing, no per-file download loop, and no repackaging: the tarball is already
+   packaged exactly as `synth` would produce it, so this source returns it unchanged.
+
+   **This source has the same verification strength as the release path.** The only
+   difference is WHERE the tarball+sidecar pair comes from — a release asset vs.
+   `main`'s `dist/` directory — not how strongly the result is checked: both verify
+   downloaded bytes against a real, independently-published sidecar. `dist/` is
+   `.gitignore`d in this repo's own working tree, so this path needs a publishing step
+   to place both files under `dist/` on `main`; until then, a missing tarball or
+   sidecar cleanly fails with an
+   `install.main_branch_dist_artifact_missing`/`install.main_branch_dist_sidecar_missing`-class
+   error rather than installing something unverified — the same kind of gap the release
+   path's own asset-shape gap already documents above. Once the `release.yml` fix
+   lands, both sources will name the identical pair of published files — the same
+   tarball and sidecar, just reachable from two different paths (a repo path vs. a
+   release asset URL).
+
+Omitting `--harness` entirely is a usage error too (clap's own missing-required-argument
+message, remapped to exit `64`), independent of either source above.
+
+**No provenance/signing check on either source.** Verification everywhere here is
+SHA-256 transport-integrity only — proving the downloaded bytes match a digest published
+alongside them. It does not prove the content itself is authentic (no GPG signature, no
+sigstore attestation); an attacker able to replace both an artifact and its sidecar on
+GitHub's side is not caught by this check.
+
+A checksum-verification failure on either source maps to exit `65` (`EXIT_VERIFY_FAILED`);
+every other failure (network error, missing asset/sidecar, unpack/install failure) maps
+to exit `64` (`EXIT_USAGE_ERROR`), consistent with every other install failure in this
+doc. If BOTH sources fail, the reported error names both underlying failures distinctly
+— never collapsed into one message that can't be attributed to a specific source.
 
 Verify a `--target <dir>` install:
 
@@ -597,7 +667,16 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
 
 ## Current limitations
 
-- No remote/published-release install — `--from <repo-root>` is required.
+- No **working** remote/published-release install yet — the CLI-side fetch→verify→install
+  wiring exists (`install::github`, `install::remote_orchestrate`) and is wired into
+  `konductor install`'s no-`--from` path, but it won't succeed against a real release
+  until a separate, already-in-progress fix to `.github/workflows/release.yml` lands to
+  publish assets in the shape this fetcher expects (a per-platform, versioned tarball plus
+  a `.sha256` sidecar) instead of today's single fixed-name `konductor-release.zip`. See
+  [Installing without `--from`: the GitHub-release / main-branch-`dist/` fallback chain](#installing-without---from-the-github-release--main-branch-dist-fallback-chain)
+  for the exact failure mode and two further caveats (GitHub API rate limiting; no
+  GPG/sigstore provenance check — SHA-256 transport-integrity only). `--from <repo-root>`
+  remains the only way to install today.
 - SOPs are synthed into `dist/kiro-cli-v2/sops/` but are not installed anywhere; there is
   no runtime discovery path for them yet.
 - `metrics` is a stub (see above).

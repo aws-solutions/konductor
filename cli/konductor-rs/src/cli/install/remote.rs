@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// install/remote.rs — bytes-in-hand remote install: verify → unpack →
-// reuse `InstallStrategy::install_from_local` unchanged. Per the design
-// doc (`.konductor/handoff/architect-remote-install-design.md`), the real
-// HTTP fetch step is out of scope here -- `RemoteArtifactFetcher` names
-// that seam without implementing it.
+// install/remote.rs — bytes-in-hand remote install: verify -> unpack
+// -> reuse `InstallStrategy::install_from_local`. Reached from
+// `dispatch_install_with`'s no-`--from` branch via
+// `install::remote_orchestrate::install_from_latest_github_release`,
+// which does the real HTTP fetch (`install::github`) before handing
+// off here. This still won't work end-to-end against a real release
+// until `.github/workflows/release.yml` (fixed separately) publishes
+// the tarball+sidecar pair as real release assets -- see
+// `install::github`'s own module doc for that caveat.
 
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -16,34 +20,28 @@ use super::{InstallError, InstallStrategy};
 /// streaming (see `CappedReader`). The real `dist/` tree this archives
 /// (agents/skills/agent-sops) is a few MB; 256MB is over 100x that,
 /// generous for growth while still bounding decompressed output.
-///
-/// Hardcoded, no config override. Revisit once the real fetch step
-/// lands and this becomes a live production call path -- today it's
-/// reachable only from this module's own tests (see the `#[allow(dead_code)]`
-/// scoping throughout this file).
+/// Hardcoded, no config override -- this is the live cap on every
+/// real GitHub-release install, once the separate `release.yml` fix
+/// lands to actually publish the expected assets.
 const MAX_UNPACKED_BYTES: u64 = 256 * 1024 * 1024;
 
 /// Hard ceiling on total archive entry COUNT, enforced during the same
-/// per-entry iteration loop that already applies `MAX_UNPACKED_BYTES`
-/// to total bytes. This is a separate cap from the byte cap: many
-/// zero-byte entries cost memory and inodes per entry (`PathBuf`
-/// allocation, `tar`'s own iterator state) without approaching the
-/// byte cap, so entry count needs its own bound. A real `dist/` tree
-/// (agents/skills/agent-sops) this archives today has on the order of
-/// a hundred files (123, measured directly against this repo's own
-/// `agents/`+`skills/`+`agent-sops/` trees); 50,000 is ~400x that,
-/// generous for growth while still keeping rejection cheap and bounded.
+/// per-entry loop that already applies `MAX_UNPACKED_BYTES` to total
+/// bytes. A separate cap from the byte cap: many zero-byte entries
+/// cost memory and inodes per entry without ever approaching the byte
+/// cap, so entry count needs its own bound. A real `dist/` tree this
+/// archives today has on the order of a hundred files (123, measured
+/// against this repo's own `agents/`+`skills/`+`agent-sops/` trees);
+/// 50,000 is ~400x that -- generous for growth while keeping rejection
+/// cheap and bounded.
 const MAX_ENTRY_COUNT: usize = 50_000;
 
 /// What `install_from_remote_bytes` can fail with. `VerifySidecar`/
 /// `VerifyChecksum` are split so a caller can map each to its own exit
 /// code (64 vs 65; see design doc §7). `Unpack` covers a corrupt/unsafe
 /// archive or disk I/O. `Install` passes `install_from_local`'s error
-/// through unchanged. Not yet reachable from `dispatch_install_with`
-/// (only the fetch stub is wired in), so exercised directly by this
-/// module's own tests for now.
+/// through unchanged.
 #[derive(Debug)]
-#[allow(dead_code)]
 pub enum RemoteInstallError {
     VerifySidecar(SidecarError),
     VerifyChecksum(VerificationError),
@@ -64,12 +62,11 @@ impl std::fmt::Display for RemoteInstallError {
 
 impl std::error::Error for RemoteInstallError {}
 
-/// Verifies `sidecar_bytes` against `artifact_bytes`, sequencing the
-/// existing, unmodified `parse_sidecar`/`verify_sha256` -- adds no new
-/// verification logic of its own. `expected_filename` is the artifact's
-/// own filename, the same value `write_sidecar` embedded when the
-/// sidecar was produced.
-#[allow(dead_code)]
+/// Verifies `sidecar_bytes` against `artifact_bytes` by sequencing the
+/// existing `parse_sidecar`/`verify_sha256` -- adds no verification
+/// logic of its own. `expected_filename` is the artifact's own
+/// filename, the same value `write_sidecar` embedded when the sidecar
+/// was produced.
 fn verify_artifact_pair(
     artifact_bytes: Vec<u8>,
     sidecar_bytes: &[u8],
@@ -83,11 +80,10 @@ fn verify_artifact_pair(
 
 /// Rejects an archive entry path that would escape `dest_root` --
 /// absolute paths and any `..` component -- or that names `dest_root`
-/// itself rather than something inside it. Mirrors the defensive
-/// posture `synth/path_safety.rs` already applies to untrusted relative
-/// paths elsewhere in this codebase (a different concrete check, same
-/// discipline: never trust an archive-supplied path to stay put).
-#[allow(dead_code)]
+/// itself rather than something inside it. Same discipline
+/// `synth/path_safety.rs` already applies to untrusted relative paths
+/// elsewhere in this codebase: never trust an archive-supplied path to
+/// stay put.
 fn is_safe_entry_path(path: &Path) -> bool {
     use std::path::Component;
     if path.is_absolute() {
@@ -163,11 +159,11 @@ impl<R: Read> Read for CappedReader<R> {
 /// checked mid-stream/mid-iteration rather than after the archive is
 /// fully consumed.
 ///
-/// Thin wrapper around `unpack_dist_archive_with_limit` fixed to the
-/// real `MAX_UNPACKED_BYTES` cap -- the only production call path.
-/// `unpack_dist_archive_with_limit` exists so tests can exercise the
-/// cap-enforcement logic against a small limit instead of allocating a
-/// real 256 MiB+ payload (see that function's own doc comment).
+/// Thin, test-only wrapper around `unpack_dist_archive_with_limit`
+/// fixed to the real `MAX_UNPACKED_BYTES`/`MAX_ENTRY_COUNT` caps --
+/// lets tests invoke those caps by name instead of repeating them at
+/// every call site. Production calls `unpack_dist_archive_with_limit`
+/// directly instead (see that function's own doc for why).
 #[allow(dead_code)]
 fn unpack_dist_archive(archive_bytes: &[u8], dest_root: &Path) -> Result<(), RemoteInstallError> {
     unpack_dist_archive_with_limit(
@@ -178,19 +174,19 @@ fn unpack_dist_archive(archive_bytes: &[u8], dest_root: &Path) -> Result<(), Rem
     )
 }
 
-/// Same as `unpack_dist_archive`, but with the decompressed-size cap and
-/// the entry-count cap both parameterized instead of fixed to
-/// `MAX_UNPACKED_BYTES`/`MAX_ENTRY_COUNT`. Exists so tests can exercise
-/// `CappedReader`'s mid-stream rejection, and the entry-count cap's
-/// mid-iteration rejection, against tiny limits and correspondingly
-/// tiny payloads/entry counts, instead of allocating/streaming a real
-/// 256 MiB+ buffer or building 50,000+ real tar entries per test --
-/// multiple such tests running in parallel (the default for Rust's test
-/// harness) would otherwise multiply peak memory/temp-disk usage and
-/// risk flakiness on constrained CI runners. Not `pub`: the real caps
-/// are fixed constants for every actual caller, so only
-/// `unpack_dist_archive` and this module's own tests need to name them.
-#[allow(dead_code)]
+/// Same as `unpack_dist_archive`, but with the decompressed-size cap
+/// and entry-count cap both parameterized instead of fixed. Lets tests
+/// exercise `CappedReader`'s mid-stream rejection and the entry-count
+/// cap's mid-iteration rejection against tiny limits and correspondingly
+/// tiny payloads, instead of allocating a real 256 MiB+ buffer or
+/// building 50,000+ real tar entries per test -- expensive to repeat
+/// across the parallel test runs Rust's harness runs by default, and a
+/// source of flakiness on constrained CI runners. This is the real
+/// production function despite not being `pub`:
+/// `install_from_remote_bytes_named_with_limit` calls it directly with
+/// the real fixed caps on every GitHub-release install.
+/// `unpack_dist_archive` above only exists so tests can name those caps
+/// by their constants.
 fn unpack_dist_archive_with_limit(
     archive_bytes: &[u8],
     dest_root: &Path,
@@ -252,13 +248,11 @@ fn unpack_dist_archive_with_limit(
 /// unpacks into: removes it (best-effort) on drop, so cleanup runs on
 /// every exit path -- verify failure, unpack failure, install failure,
 /// or success -- without a manual `remove_dir_all` at each return.
-#[allow(dead_code)]
 struct RemoteTempDir {
     path: PathBuf,
 }
 
 impl RemoteTempDir {
-    #[allow(dead_code)]
     fn create(name: &str) -> std::io::Result<Self> {
         static COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
         let path = std::env::temp_dir().join(format!(
@@ -284,16 +278,14 @@ impl RemoteTempDir {
 
 /// Returns a per-call random `u64` for folding into `RemoteTempDir`'s
 /// scratch path name, on top of the existing timestamp+counter. Not
-/// cryptographically secure and does not need to be: the actual
+/// cryptographically secure and doesn't need to be: the actual
 /// exclusivity guarantee is `create_dir`'s `AlreadyExists` check, not
-/// this value's secrecy. This only needs to be hard to predict, so a
+/// this value's secrecy -- it only needs to be hard to predict, so a
 /// std-only source is used instead of pulling in a dedicated RNG
 /// crate. `RandomState::new()` seeds from the OS's own random source
 /// once per call (the same per-process-unpredictable seeding
-/// `HashMap`/`HashSet`'s DoS-hardening already relies on) and hashing a
-/// fixed byte pattern with it yields a value an outside observer cannot
-/// predict from the timestamp/counter alone.
-#[allow(dead_code)]
+/// `HashMap`/`HashSet`'s DoS-hardening already relies on), so the
+/// resulting value can't be predicted from the timestamp/counter alone.
 fn random_entropy_tag() -> u64 {
     use std::collections::hash_map::RandomState;
     use std::hash::{BuildHasher, Hasher};
@@ -308,37 +300,22 @@ impl Drop for RemoteTempDir {
 
 /// Fetches a release artifact and its sidecar as raw bytes. Return
 /// shape (`(artifact_bytes, sidecar_bytes)`) matches exactly what
-/// `install_from_remote_bytes` consumes.
-///
-/// NOT IMPLEMENTED. This type only names the seam a future HTTP fetch
-/// task must satisfy -- no production implementation exists yet, and
-/// none is added here. Modeled directly on `artifact::ArtifactFetcher`.
-#[allow(dead_code)]
+/// `install_from_remote_bytes` consumes. In production this is
+/// implemented by `install::github::fetch_latest_github_release_artifact`
+/// (a real GitHub Release fetch, wired into `dispatch_install_with` via
+/// `install::remote_orchestrate`); this type alias still exists as the
+/// closure shape tests use to inject a fake fetcher instead of a real
+/// network call. Modeled directly on `artifact::ArtifactFetcher`.
 pub type RemoteArtifactFetcher<'a> = Box<dyn Fn() -> std::io::Result<(Vec<u8>, Vec<u8>)> + 'a>;
-
-/// Stub for the not-yet-built HTTP fetch step. Always returns an
-/// "unimplemented" I/O error, distinguishable from a verify/unpack
-/// failure by kind (`ErrorKind::Unsupported`) and message. Exists so a
-/// `--from`-less install can attempt the remote path today and fail
-/// with a clear, specific message instead of a bare usage error --
-/// callers must not implement real fetch logic in this function.
-#[allow(dead_code)]
-pub fn fetch_release_artifact_stub() -> std::io::Result<(Vec<u8>, Vec<u8>)> {
-    Err(std::io::Error::new(
-        std::io::ErrorKind::Unsupported,
-        "remote release fetch is not yet implemented",
-    ))
-}
 
 /// Verifies the pair, unpacks into a fresh temp directory, hands that
 /// directory's path to `strategy.install_from_local` UNCHANGED, then
 /// removes the temp directory before returning -- success or failure.
 /// `artifact_filename` is the sidecar-recorded filename passed through
-/// to verification (e.g. "konductor-dist.tar.gz"). Not yet wired into
-/// `dispatch_install_with` (only the fetch stub is, since no real fetch
-/// exists to hand it real bytes) -- exercised directly by this module's
-/// own tests at this milestone.
-#[allow(dead_code)]
+/// to verification (e.g. "konductor-dist.tar.gz"). Wired into
+/// `dispatch_install_with`'s no-`--from` branch via
+/// `install::remote_orchestrate::install_from_latest_github_release`,
+/// which does the real GitHub Release fetch before calling this.
 pub fn install_from_remote_bytes(
     strategy: &dyn InstallStrategy,
     target_dir: &Path,
@@ -431,28 +408,26 @@ fn install_from_remote_bytes_named_with_limit(
 
     // `install_from_local` unconditionally records its `from` argument
     // (canonicalized) as the manifest's `source` field, for `doctor`'s
-    // `check_source`/`check_config` to resolve against later (see
-    // manifest.rs's own doc comment). Here that value is `temp_dir`,
-    // which `RemoteTempDir::drop` deletes the instant this function
-    // returns, so it is overwritten with a stable, synthetic
-    // `remote:<artifact_filename>` marker instead -- `doctor` treats an
-    // unresolvable synthetic source the same as any other source it
-    // cannot resolve on disk (an explicit fallback note), rather than
-    // reporting a false "missing" for a path that was never meant to
-    // persist.
+    // `check_source`/`check_config` to resolve against later. Here
+    // that value is `temp_dir`, which `RemoteTempDir::drop` deletes
+    // the instant this function returns -- so it gets overwritten with
+    // a stable, synthetic `remote:<artifact_filename>` marker instead.
+    // `doctor` treats an unresolvable synthetic source the same as any
+    // other source it can't resolve on disk, rather than reporting a
+    // false "missing" for a path that was never meant to persist.
     //
     // Best-effort: the install itself already succeeded above, so a
-    // failure here (freshly-written manifest unreadable/unwritable)
-    // must not fail the whole call and unwind a completed install.
+    // failure here (the freshly-written manifest being unreadable or
+    // unwritable) must not fail the whole call and unwind a completed
+    // install.
     if let Ok(Some(mut manifest)) = super::manifest::read_manifest(target_dir) {
         manifest.source = Some(format!("remote:{artifact_filename}"));
         let _ = super::manifest::write_manifest(target_dir, &manifest);
     } else {
-        // Non-fatal by design (see above), but not silent: the
-        // manifest's `source` field is left as whatever
-        // `install_from_local` wrote (the now-deleted temp path), so
-        // `doctor` will report it missing later. Surface that here so
-        // it's discoverable in practice.
+        // Non-fatal by design (see above), but not silent: the source
+        // field is left pointing at the now-deleted temp path, so
+        // `doctor` will report it missing later -- surfaced here so
+        // it's discoverable.
         eprintln!(
             "konductor install: warning: could not read back the manifest at {} to record a stable remote source; source will point at a deleted temp path",
             target_dir.display()
@@ -1003,13 +978,6 @@ mod tests {
         );
 
         fs::remove_dir_all(&target_dir).ok();
-    }
-
-    #[test]
-    fn fetch_release_artifact_stub_returns_unimplemented_error() {
-        let err = fetch_release_artifact_stub().expect_err("stub must not succeed");
-        assert_eq!(err.kind(), std::io::ErrorKind::Unsupported);
-        assert!(err.to_string().contains("not yet implemented"));
     }
 
     #[test]

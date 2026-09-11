@@ -58,7 +58,12 @@ const EXIT_USAGE_ERROR: u8 = 64;
 ///
 /// Takes `os` as a parameter (not read from `std::env::consts::OS`
 /// directly) so tests can exercise all branches on one OS.
-fn target_triple_suffix(os: &str) -> String {
+///
+/// `pub(crate)` because `install::github` reuses this same OS/arch ->
+/// triple mapping (through `artifact_filename` below) to figure out
+/// the release-asset filename it expects for the current host, instead
+/// of duplicating this logic.
+pub(crate) fn target_triple_suffix(os: &str) -> String {
     match os {
         "linux" => "unknown-linux-gnu".to_string(),
         "macos" => "apple-darwin".to_string(),
@@ -72,7 +77,13 @@ fn target_triple_suffix(os: &str) -> String {
 /// Cargo.toml's `version` field. The target triple is composed from
 /// `std::env::consts::{ARCH, OS}` at runtime (this crate has no
 /// `build.rs`, so `env!("TARGET")` isn't available).
-fn artifact_filename() -> String {
+///
+/// `pub(crate)` because `install::github` calls this directly to work
+/// out the exact filename a GitHub Release asset needs for the current
+/// host. This is the one place that naming convention is defined, so
+/// packaging (this module) and install (`install::github`) can't drift
+/// apart.
+pub(crate) fn artifact_filename() -> String {
     format!(
         "konductor-v{}-{}-{}.tar.gz",
         env!("CARGO_PKG_VERSION"),
@@ -83,17 +94,17 @@ fn artifact_filename() -> String {
 
 /// Directory the packaged artifact and its checksum sidecar are written
 /// to: `<source_dir>/target/konductor-artifacts/`. Reuses this repo's
-/// existing `target/` convention (already the build-output directory
-/// CargoBrazil/`cargo build` writes to, and already covered by
-/// `cli/.gitignore`'s `konductor-rs/target/` entry) rather than
-/// introducing a new gitignored location. Deliberately a sibling of
-/// `output_root` (`<source_dir>/dist/`), not a descendant of it: the
-/// artifact packages `output_root`'s contents, so writing the artifact
-/// inside `output_root` would risk a later re-run's `package_dist` call
-/// archiving the previous run's own artifact/sidecar into the new one.
-/// Named `konductor-artifacts` (not bare `target/`) so a future
-/// non-artifact use of `target/` (e.g. `cargo build`'s own output, when
-/// `--from` targets this very crate's checkout) can't collide with it.
+/// existing `target/` convention (already CargoBrazil/`cargo build`'s
+/// own output directory, and already covered by `cli/.gitignore`'s
+/// `konductor-rs/target/` entry) instead of adding a new gitignored
+/// location. Deliberately a sibling of `output_root`
+/// (`<source_dir>/dist/`), never a descendant: the artifact packages
+/// `output_root`'s contents, so writing it inside `output_root` would
+/// risk a later re-run archiving the previous run's own
+/// artifact/sidecar into the new one. Named `konductor-artifacts`, not
+/// bare `target/`, so a future non-artifact use of `target/` (e.g.
+/// `cargo build`'s own output, when `--from` targets this crate's own
+/// checkout) can't collide with it.
 fn artifact_output_dir(source_dir: &Path) -> PathBuf {
     source_dir.join("target").join("konductor-artifacts")
 }
@@ -133,34 +144,29 @@ pub trait HarnessTransformer: Sync {
 /// `install::dispatch_install_with` uses).
 ///
 /// ── Cross-transformer failure is NOT rolled back ─────────────────────
-/// The loop below is fail-fast with no rollback ACROSS transformers: if
-/// an earlier-registered transformer (e.g. `kiro-cli-v2`) completes all
-/// four of its own `stage_content_type` swaps successfully, and a
-/// LATER-registered transformer (e.g. `claude`) then fails partway
-/// through its own four, this function still returns `EXIT_USAGE_ERROR`
-/// for the call as a whole -- but the earlier transformer's output is
-/// left on disk, fully and correctly updated to the new model (each
-/// `stage_content_type` call is independently atomic; see
-/// `staging.rs`), while the later transformer's own output tree may be
-/// a mix of freshly-updated and stale content types, split at whichever
-/// content type it failed on. A caller that treats a non-zero exit code
-/// as "nothing under `dist/` changed" is wrong in that window: part of
-/// `dist/` is ahead of the source tree that produced this run, while
-/// another part lags behind it. This state is self-healing -- the next
-/// successful `synth` run swaps every content type into a consistent
-/// state again (see `synth_run_twice_produces_byte_identical_dist_output`)
-/// -- but there is a real window, proportional to the number of
-/// registered transformers, where `dist/` is torn between two
-/// generations of the model. See
-/// `second_transformer_failure_leaves_first_transformers_output_intact`
-/// below for a test asserting this exact, accepted behavior rather than
-/// silently regressing it into something worse (e.g. a rollback that
-/// only sometimes runs). Not fixed by staging the whole `dist/` tree in
-/// one shared temp root with one final atomic swap: that would be a
-/// materially larger change to this function's contract than the
-/// two-more-transformers scope this diff is otherwise limited to, and is
-/// left as a follow-up if the torn-state window above proves unacceptable
-/// in practice.
+/// The loop below is fail-fast with no rollback ACROSS transformers.
+/// Say `kiro-cli-v2` finishes all four of its own `stage_content_type`
+/// swaps, then `claude` (registered later) fails partway through its
+/// own four: this function still returns `EXIT_USAGE_ERROR` for the
+/// call as a whole, but `kiro-cli-v2`'s output stays on disk, fully
+/// and correctly updated (each `stage_content_type` call is
+/// independently atomic -- see `staging.rs`), while `claude`'s own
+/// output tree is now a mix of updated and stale content types, split
+/// at whichever one it failed on. So a non-zero exit code does NOT
+/// mean "nothing under `dist/` changed" -- part of the tree can be
+/// ahead of the source that produced this run, another part behind
+/// it. This is self-healing: the next successful `synth` run brings
+/// every content type back to a consistent state (see
+/// `synth_run_twice_produces_byte_identical_dist_output`), but there is
+/// a real window, proportional to the number of registered
+/// transformers, where `dist/` is torn between two generations of the
+/// model. `second_transformer_failure_leaves_first_transformers_output_intact`
+/// below asserts this exact, accepted behavior so it can't silently
+/// regress into something worse (e.g. a rollback that only sometimes
+/// runs). The alternative -- staging all of `dist/` in one shared temp
+/// root with a single final atomic swap -- would be a materially
+/// larger change than this diff's scope, so it's left as a follow-up
+/// if the torn-state window above proves unacceptable in practice.
 pub fn dispatch_synth_with(
     target_dir: &Path,
     from: Option<String>,

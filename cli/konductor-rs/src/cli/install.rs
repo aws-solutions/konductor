@@ -3,41 +3,33 @@
 // install.rs — `konductor install` dispatch (Rust implementation).
 // Artifact fetch+verify lives in `install::artifact`; runtime
 // auto-detection in `install::runtime`; manifest read/write in
-// `install::manifest`; strategy registration (task 3.2) and local-source
-// installation (task 3.4) in `install::kiro_cli`.
+// `install::manifest`; strategy registration in `install::registry`;
+// local-source installation in `install::kiro_cli`.
 //
-// `dispatch_install` performs real work: it resolves the install
-// DESTINATION (`--target <dir>` if given, else `$HOME`), selects the
-// first registered `InstallStrategy` whose `matches()` accepts that
-// destination, and runs its `install_from_local()`, which copies
-// synthed agent files from the SOURCE (`--from <repo-root>`'s synth
-// output) and writes `<destination>/.konductor/manifest`. Without
-// `--from`, remote (GitHub Release) installation is not yet
-// implemented -- this fails with a clear message rather than silently
-// succeeding. No install failure at this milestone maps to
-// `EXIT_VERIFY_FAILED` (65, reserved for a future real checksum
-// mismatch); every failure here -- unresolvable destination, no
-// matching strategy, missing `--from`, empty/missing source, or a
-// write failure -- maps to `EXIT_USAGE_ERROR` (64), never exit code 2.
+// `dispatch_install_with` resolves the DESTINATION (`--target <dir>`
+// or `$HOME`), picks the `InstallStrategy` matching `--harness`, and
+// runs its `install_from_local()` against the SOURCE (`--from
+// <repo-root>`'s synth output). Without `--from`, it tries the remote
+// fallback chain instead (`install::remote_orchestrate`): GitHub
+// Release first, then `main`'s `dist/` tree if the release has
+// nothing to install -- see
+// `remote_orchestrate::install_from_remote_with_fallback` for the
+// eligibility rule. A checksum-mismatch failure maps to
+// `EXIT_VERIFY_FAILED` (65); every other failure maps to
+// `EXIT_USAGE_ERROR` (64), never exit code 2.
 //
-// ── Output reporting ────────────────────────────────────────────────────
-// `dispatch_install` used to print exactly one fixed line
-// ("installed via '<strategy>'") regardless of what happened. It now
-// re-reads the manifest `install_from_local` just wrote (the sole
-// on-disk record of what was installed -- see manifest.rs's module
-// docstring) and reports: the destination, a per-content-type count
-// derived from each file's `.kiro/`/`.konductor/` path prefix, the
-// manifest path, how many SOPs were skipped (synth stages them under
-// `dist/<harness>/sops/`, but no strategy has a runtime discovery path
-// for them yet -- see kiro_cli.rs's module docstring), and how many
-// installed files had `Provenance::ReplacedForeign` (a pre-existing,
-// non-Konductor file this run overwrote).
+// On success, `dispatch_install` re-reads the manifest
+// `install_from_local` just wrote and reports the destination,
+// per-content-type counts, the manifest path, and how many files it
+// skipped or overwrote.
 
 use std::path::{Path, PathBuf};
 
 pub mod artifact;
 pub mod bin_link;
 pub mod claude;
+pub mod github;
+pub mod github_branch;
 pub mod index;
 pub mod kiro_cli;
 pub mod kiro_cli_v3;
@@ -46,26 +38,17 @@ pub mod mcp_server;
 pub mod phases;
 pub mod registry;
 pub mod remote;
+pub mod remote_orchestrate;
 pub mod resource_rewrite;
 pub mod runtime;
 
 use manifest::Provenance;
 
-/// Counts the `*.sop.md` files `konductor synth` staged under
-/// `<from>/dist/<harness_dir>/sops/` -- the SOPs this install
-/// intentionally skips (no runtime discovery path yet; see
-/// kiro_cli.rs's module docstring for why). `harness_dir` is the
-/// harness directory name of whichever strategy actually ran this
-/// install (`InstallStrategy::harness_dir()`), not a fixed constant --
-/// each registered strategy stages synth output under its own harness
-/// name (`kiro-cli-v2` for `KiroCliInstallStrategy`, `claude` for
-/// `ClaudeInstallStrategy`), so a single hardcoded name would report
-/// the wrong strategy's staged-SOP count once more than one strategy
-/// is registered. Derived from the actual staged source rather than a
-/// hand-counted constant, so the reported figure always matches
-/// whatever was installed `--from` and can never drift from
-/// `agent-sops/`. Returns 0 when the directory is absent (a source
-/// that staged no SOPs for this harness).
+/// Counts the `*.sop.md` files staged under
+/// `<from>/dist/<harness_dir>/sops/` -- the SOPs this install skips.
+/// Reads the actual staged directory rather than a constant, so the
+/// count can never drift from what synth produced. Returns 0 when
+/// absent.
 fn count_staged_sops(from: &str, harness_dir: &str) -> usize {
     use crate::cli::synth::kiro_cli_v2::SOPS_CONTENT_TYPE_DIR;
     let sops_dir = Path::new(from)
@@ -132,12 +115,185 @@ pub(super) fn install_error_exit_code(err: &InstallError) -> u8 {
     }
 }
 
-/// The single wording for "no `--from <repo-root>` was given, and
-/// remote (GitHub Release) installation is not yet implemented" --
-/// shared by every call site that needs to fail with this exact
-/// message (`kiro_cli.rs`'s `would_fail_as_noop` and
-/// `install_from_local`, `phases.rs`'s `McpInstallPhase::check_preconditions`)
-/// so a future wording change only touches this one constant.
+/// Maps a `remote_orchestrate::RemoteOrchestrationError` to an exit
+/// code: `EXIT_VERIFY_FAILED` (65) for a checksum-verification failure
+/// (`RemoteInstallError::VerifyChecksum`), `EXIT_USAGE_ERROR` (64) for
+/// everything else. Mirrors `install_error_exit_code`'s existing split,
+/// applied to the remote path.
+fn remote_orchestration_error_exit_code(err: &remote_orchestrate::RemoteOrchestrationError) -> u8 {
+    match err {
+        remote_orchestrate::RemoteOrchestrationError::Install(
+            remote::RemoteInstallError::VerifyChecksum(_),
+        ) => EXIT_VERIFY_FAILED,
+        _ => EXIT_USAGE_ERROR,
+    }
+}
+
+/// A stable, closed error-category string (design doc D.11) for a
+/// `remote_orchestrate::RemoteOrchestrationError`, following
+/// `install_error_code`'s `"install.<category>"` convention. Never
+/// this error's own `Display` text, which can embed a URL, filename,
+/// or filesystem path.
+fn remote_orchestration_error_code(
+    err: &remote_orchestrate::RemoteOrchestrationError,
+) -> &'static str {
+    match err {
+        remote_orchestrate::RemoteOrchestrationError::Fetch(github::GithubFetchError::Network(
+            _,
+        )) => "install.remote_network_error",
+        remote_orchestrate::RemoteOrchestrationError::Fetch(
+            github::GithubFetchError::MissingAsset(_),
+        ) => "install.remote_asset_missing",
+        remote_orchestrate::RemoteOrchestrationError::Fetch(
+            github::GithubFetchError::MetadataHttp(_),
+        ) => "install.remote_metadata_http_error",
+        remote_orchestrate::RemoteOrchestrationError::Fetch(
+            github::GithubFetchError::DownloadHttp(_),
+        ) => "install.remote_download_http_error",
+        remote_orchestrate::RemoteOrchestrationError::Fetch(
+            github::GithubFetchError::InvalidResponse(_),
+        ) => "install.remote_invalid_response",
+        remote_orchestrate::RemoteOrchestrationError::Fetch(
+            github::GithubFetchError::ResponseTooLarge { .. },
+        ) => "install.remote_response_too_large",
+        remote_orchestrate::RemoteOrchestrationError::Install(
+            remote::RemoteInstallError::VerifyChecksum(_),
+        ) => "install.remote_checksum_mismatch",
+        remote_orchestrate::RemoteOrchestrationError::Install(
+            remote::RemoteInstallError::VerifySidecar(_),
+        ) => "install.remote_sidecar_invalid",
+        remote_orchestrate::RemoteOrchestrationError::Install(
+            remote::RemoteInstallError::Unpack(_),
+        ) => "install.remote_unpack_failed",
+        remote_orchestrate::RemoteOrchestrationError::Install(
+            remote::RemoteInstallError::Install(_),
+        ) => "install.remote_install_failed",
+    }
+}
+
+/// Maps a `remote_orchestrate::MainBranchDistOrchestrationError` to an
+/// exit code -- the same checksum-vs-everything-else split
+/// `remote_orchestration_error_exit_code` applies to the release path.
+/// A `VerifyChecksum` failure here means the fetched tarball's hash
+/// doesn't match the real sidecar also fetched from `dist/` on the
+/// branch -- mapped the same way as the release path's own check.
+fn main_branch_dist_orchestration_error_exit_code(
+    err: &remote_orchestrate::MainBranchDistOrchestrationError,
+) -> u8 {
+    match err {
+        remote_orchestrate::MainBranchDistOrchestrationError::Install(
+            remote::RemoteInstallError::VerifyChecksum(_),
+        ) => EXIT_VERIFY_FAILED,
+        _ => EXIT_USAGE_ERROR,
+    }
+}
+
+/// A stable, closed error-category string for a
+/// `remote_orchestrate::MainBranchDistOrchestrationError`, following
+/// `remote_orchestration_error_code`'s naming convention. Prefixed
+/// `install.main_branch_dist_*` so a `--json` consumer can always tell
+/// which of the two sources an error came from without inspecting the
+/// message text.
+fn main_branch_dist_orchestration_error_code(
+    err: &remote_orchestrate::MainBranchDistOrchestrationError,
+) -> &'static str {
+    match err {
+        remote_orchestrate::MainBranchDistOrchestrationError::Fetch(
+            github_branch::GithubBranchFetchError::Network(_),
+        ) => "install.main_branch_dist_network_error",
+        remote_orchestrate::MainBranchDistOrchestrationError::Fetch(
+            github_branch::GithubBranchFetchError::MissingArtifact(_),
+        ) => "install.main_branch_dist_artifact_missing",
+        remote_orchestrate::MainBranchDistOrchestrationError::Fetch(
+            github_branch::GithubBranchFetchError::MissingSidecar(_),
+        ) => "install.main_branch_dist_sidecar_missing",
+        remote_orchestrate::MainBranchDistOrchestrationError::Fetch(
+            github_branch::GithubBranchFetchError::Http(_),
+        ) => "install.main_branch_dist_http_error",
+        remote_orchestrate::MainBranchDistOrchestrationError::Fetch(
+            github_branch::GithubBranchFetchError::InvalidResponse(_),
+        ) => "install.main_branch_dist_invalid_response",
+        remote_orchestrate::MainBranchDistOrchestrationError::Fetch(
+            github_branch::GithubBranchFetchError::ResponseTooLarge { .. },
+        ) => "install.main_branch_dist_response_too_large",
+        remote_orchestrate::MainBranchDistOrchestrationError::Install(
+            remote::RemoteInstallError::VerifyChecksum(_),
+        ) => "install.main_branch_dist_checksum_mismatch",
+        remote_orchestrate::MainBranchDistOrchestrationError::Install(
+            remote::RemoteInstallError::VerifySidecar(_),
+        ) => "install.main_branch_dist_sidecar_invalid",
+        remote_orchestrate::MainBranchDistOrchestrationError::Install(
+            remote::RemoteInstallError::Unpack(_),
+        ) => "install.main_branch_dist_unpack_failed",
+        remote_orchestrate::MainBranchDistOrchestrationError::Install(
+            remote::RemoteInstallError::Install(_),
+        ) => "install.main_branch_dist_install_failed",
+    }
+}
+
+/// Maps a `remote_orchestrate::FallbackChainError` (both no-`--from`
+/// sources having been tried, or the release source having failed with
+/// something other than a fallback-eligible error) to an exit code.
+/// `ReleaseOnly` delegates to `remote_orchestration_error_exit_code` --
+/// the fallback was never attempted. `BothFailed` maps to
+/// `EXIT_VERIFY_FAILED` (65) if either underlying error is a
+/// checksum-verification failure, `EXIT_USAGE_ERROR` (64) otherwise.
+/// This is deliberate: a checksum failure is confirmed corruption,
+/// while an unreachable-source failure on the other side could just be
+/// transient, so when both sides fail the exit code reflects the more
+/// serious of the two rather than whichever happened to fail.
+fn fallback_chain_error_exit_code(err: &remote_orchestrate::FallbackChainError) -> u8 {
+    match err {
+        remote_orchestrate::FallbackChainError::ReleaseOnly(release_error) => {
+            remote_orchestration_error_exit_code(release_error)
+        }
+        remote_orchestrate::FallbackChainError::BothFailed {
+            release_error,
+            main_branch_dist_error,
+        } => {
+            let release_is_checksum_failure =
+                remote_orchestration_error_exit_code(release_error) == EXIT_VERIFY_FAILED;
+            let main_branch_dist_is_checksum_failure =
+                main_branch_dist_orchestration_error_exit_code(main_branch_dist_error)
+                    == EXIT_VERIFY_FAILED;
+            if release_is_checksum_failure || main_branch_dist_is_checksum_failure {
+                EXIT_VERIFY_FAILED
+            } else {
+                EXIT_USAGE_ERROR
+            }
+        }
+    }
+}
+
+/// A stable, closed error-category string for a
+/// `remote_orchestrate::FallbackChainError`. `ReleaseOnly` reuses
+/// `remote_orchestration_error_code` unchanged. `BothFailed` gets its
+/// own dedicated code -- `install.remote_and_main_branch_dist_both_failed`
+/// -- since neither underlying category alone would tell a `--json`
+/// consumer that two independent sources were tried and both failed.
+fn fallback_chain_error_code(err: &remote_orchestrate::FallbackChainError) -> &'static str {
+    match err {
+        remote_orchestrate::FallbackChainError::ReleaseOnly(release_error) => {
+            remote_orchestration_error_code(release_error)
+        }
+        remote_orchestrate::FallbackChainError::BothFailed { .. } => {
+            "install.remote_and_main_branch_dist_both_failed"
+        }
+    }
+}
+
+/// The single wording for "no `--from <repo-root>` was given" at the
+/// `InstallStrategy` trait level -- shared by every call site that
+/// needs this exact message, so a future wording change only touches
+/// this one constant.
+///
+/// `dispatch_install_with`'s own no-`--from` branch does not return
+/// this message: it tries the real remote fallback chain instead (see
+/// `install::remote_orchestrate::install_from_remote_with_fallback`
+/// for the current caveats). This constant still applies wherever a
+/// strategy's `install_from_local`/`would_fail_as_noop` is invoked
+/// directly with `from: None` (e.g. from `update.rs`, or tests), which
+/// has no remote-fetch fallback of its own.
 pub(super) const NO_REMOTE_RELEASE_MESSAGE: &str =
     "remote release installation is not yet available; pass --from <repo-root>";
 
@@ -214,16 +370,14 @@ pub trait InstallStrategy: Sync {
     /// Stable identifier for this strategy, used for selection and logs.
     fn name(&self) -> &'static str;
 
-    /// The harness directory name this strategy reads synthed output
-    /// from under `<from>/dist/<harness_dir>/` -- e.g. `kiro-cli-v2`
-    /// for `KiroCliInstallStrategy`, `claude` for
-    /// `ClaudeInstallStrategy`. Distinct from `name()` (this strategy's
-    /// own registry/log identifier, e.g. `"claude-code"`): `harness_dir`
-    /// is the on-disk synth-output directory name a HARNESS
-    /// TRANSFORMER stages under, which need not match the strategy's
-    /// own identifier. Exists so strategy-agnostic reporting code
-    /// (`count_staged_sops`) can read the right harness directory for
-    /// whichever strategy actually ran, instead of hardcoding one.
+    /// The harness directory this strategy reads synthed output from
+    /// under `<from>/dist/<harness_dir>/` -- e.g. `kiro-cli-v2` for
+    /// `KiroCliInstallStrategy`, `claude` for `ClaudeInstallStrategy`.
+    /// Distinct from `name()` (e.g. `"claude-code"`): this is the
+    /// on-disk directory a synth transformer writes to, which need not
+    /// match the strategy's own identifier. Lets strategy-agnostic
+    /// reporting code (`count_staged_sops`) read the right directory
+    /// for whichever strategy actually ran.
     fn harness_dir(&self) -> &'static str;
 
     /// Whether this strategy applies to the given install target
@@ -240,30 +394,21 @@ pub trait InstallStrategy: Sync {
 
     /// Installs from `from`'s resolved synth output (`--from
     /// <repo-root>`). `from` is `None` when the user omitted `--from`
-    /// -- a strategy must fail clearly in that case (remote release
-    /// installation is not yet available) rather than silently
-    /// succeed. `installed_at` is the single timestamp string the
-    /// caller (`dispatch_install_with`/`update.rs`) already computed
-    /// for this run's index entry -- the strategy must write it
-    /// verbatim into the manifest's own `installed_at` rather than
-    /// capturing a second, independent clock read, so the index entry
-    /// and the manifest agree on one instant (design doc
-    /// `konductor-cli-install-index.md` §1). `no_telemetry` carries
-    /// `install`'s own `--no-telemetry` flag (`false` from `update.rs`,
-    /// which has no such flag of its own -- see that call site's own
-    /// comment) -- a strategy must thread it through to any phase that
-    /// may fire a telemetry side effect (today, only
-    /// `AgentInstallPhase`'s Claude Code telemetry-hook wiring; see
-    /// `phases.rs`'s own doc comment), so the opt-out holds for
-    /// EVERYTHING an install run does, not only the top-level
-    /// `report_package_installed`/`report_cli_error` calls
-    /// `dispatch_install_with` itself already gated on it. Returns
-    /// `Ok(())` on success, or an `InstallError` on failure --
-    /// `InstallError::Manifest` when the failure traces back to reading
-    /// an existing target manifest (so a caller can map an unsupported
-    /// `schema_version` to `EXIT_VERIFY_FAILED` rather than the generic
-    /// `EXIT_USAGE_ERROR`), `InstallError::Message` for every other
-    /// failure.
+    /// -- a strategy must fail clearly in that case, not silently
+    /// succeed. `installed_at` is the one timestamp string the caller
+    /// already computed for this run's index entry; the strategy must
+    /// write it verbatim into the manifest's own `installed_at` so the
+    /// index and manifest always agree on the same instant. `no_telemetry`
+    /// is `install`'s `--no-telemetry` flag (always `false` from
+    /// `update.rs`, which has no such flag); a strategy must thread it
+    /// through to every phase that can fire a telemetry side effect
+    /// (today only `AgentInstallPhase`'s Claude Code hook), so the
+    /// opt-out covers the whole run, not just the top-level report
+    /// calls. Returns `Ok(())` on success, or an `InstallError` on
+    /// failure -- `InstallError::Manifest` when the failure came from
+    /// reading an existing target manifest (so an unsupported
+    /// `schema_version` can map to `EXIT_VERIFY_FAILED` instead of the
+    /// generic `EXIT_USAGE_ERROR`), `InstallError::Message` otherwise.
     fn install_from_local(
         &self,
         target_dir: &Path,
@@ -372,33 +517,28 @@ fn report_no_strategy_for_harness(
 /// [--link-bin]`: resolves the install destination
 /// (`resolve_destination`), selects the registered `InstallStrategy`
 /// whose `harness_dir()` matches the REQUIRED `--harness` argument, and
-/// runs its `install_from_local(destination, from)`. `from` is the
-/// SOURCE repo root a strategy reads synthed agent files from; without
-/// it, no strategy has a source to install from, so the selected
-/// strategy is expected to fail with a clear "remote release
-/// installation is not yet available" message.
+/// installs from `from` -- the SOURCE repo root a strategy reads
+/// synthed agent files from. Without `--from`, it tries the real
+/// remote fallback chain instead (GitHub Release, then `main`'s
+/// `dist/` tree -- see `remote_orchestrate::install_from_remote_with_fallback`).
 ///
-/// `link_bin`, when true and the core install above succeeds, also
-/// symlinks the currently-running `konductor` binary to
-/// `$HOME/.local/bin/konductor` via `bin_link::ensure_bin_link` -- see
-/// that module's own doc comment for the design (opt-in, home-scoped
-/// sidecar, self-heal, ownership proof). Computed and reported as part
-/// of the SAME success report `report_install_success` prints -- never
-/// a second, separate top-level `--json` document for one invocation --
-/// and deliberately non-fatal to this function's own return value: a
-/// `--link-bin` failure is reported clearly but never flips an
-/// otherwise-successful install's exit code, since by the time it runs
-/// the core `--target`-scoped install (what `--target` actually asked
-/// for) has already succeeded.
+/// `link_bin`, when true and the install succeeds, also symlinks the
+/// running `konductor` binary to `$HOME/.local/bin/konductor` via
+/// `bin_link::ensure_bin_link` (see that module's own doc for the
+/// design). Its outcome is folded into the same success report
+/// `report_install_success` prints, never a second `--json` document,
+/// and it never flips an otherwise-successful install's exit code --
+/// by the time it runs, the actual install `--target` asked for has
+/// already succeeded.
 ///
-/// `verbose`/`json` are `cli.verbose`/`cli.json` (the global `-v`/
-/// `--json` flags): `verbose` appends a per-file detail listing after
-/// the summary line; `json` replaces the whole human-readable report
-/// with one structured line instead.
+/// `verbose`/`json` are `cli.verbose`/`cli.json`: `verbose` appends a
+/// per-file detail listing after the summary line; `json` replaces the
+/// whole report with one structured line instead.
 ///
 /// Returns 0 on success, `EXIT_USAGE_ERROR` (64) on an unresolvable
 /// destination, no matching strategy, or any install failure -- never
 /// exit code 2.
+#[allow(clippy::too_many_arguments)]
 pub fn dispatch_install_with(
     from: Option<String>,
     target: Option<String>,
@@ -407,6 +547,60 @@ pub fn dispatch_install_with(
     no_telemetry: bool,
     verbose: bool,
     json: bool,
+) -> u8 {
+    dispatch_install_with_remote_installer(
+        from,
+        target,
+        harness,
+        link_bin,
+        no_telemetry,
+        verbose,
+        json,
+        // owner/repo are the confirmed real values for this project,
+        // hardcoded ONLY at this one call site.
+        //
+        // Tries the GitHub-release path first, falling back to
+        // `main`'s `dist/` tree on a fallback-eligible release failure
+        // -- see `remote_orchestrate::install_from_remote_with_fallback`
+        // for the exact selection rule.
+        move |strategy, destination, installed_at, no_telemetry| {
+            remote_orchestrate::install_from_remote_with_fallback(
+                "aws-solutions",
+                "konductor",
+                github_branch::DEFAULT_BRANCH,
+                strategy,
+                destination,
+                installed_at,
+                no_telemetry,
+            )
+        },
+    )
+}
+
+/// The full `dispatch_install_with` implementation, parameterized by
+/// `remote_installer` -- the no-`--from` remote-install attempt. In
+/// production, `dispatch_install_with` passes a closure that reaches
+/// the real GitHub API; this module's own tests pass a closure that
+/// fails right away with a fixed, fake `FallbackChainError` -- no real
+/// network call -- exercising every other code path unchanged.
+#[allow(clippy::too_many_arguments)]
+fn dispatch_install_with_remote_installer(
+    from: Option<String>,
+    target: Option<String>,
+    harness: String,
+    link_bin: bool,
+    no_telemetry: bool,
+    verbose: bool,
+    json: bool,
+    remote_installer: impl FnOnce(
+        &dyn InstallStrategy,
+        &Path,
+        &str,
+        bool,
+    ) -> Result<
+        remote_orchestrate::RemoteInstallSource,
+        remote_orchestrate::FallbackChainError,
+    >,
 ) -> u8 {
     let destination = match resolve_destination(target.as_deref()) {
         Ok(dir) => dir,
@@ -453,68 +647,30 @@ pub fn dispatch_install_with(
         ),
     );
 
-    // No `--from`: attempt the bytes-in-hand remote path instead of the
-    // bare usage error below. The fetch step isn't implemented yet, so
-    // this always fails today with a distinct error, never a silent
-    // no-op. Runs before any index write, so a failed attempt never
-    // mutates a target's index entry.
-    if from.is_none() {
-        return match remote::fetch_release_artifact_stub() {
-            Ok(_) => {
-                // Unreachable today (the stub always returns `Err`), but
-                // not a panic: if the stub is later changed to return
-                // `Ok` without this call site being updated, we want a
-                // failed command, not a crashed process.
-                super::report::report_error(
-                    "install",
-                    "install.remote_fetch_returned_ok_unexpectedly",
-                    &destination,
-                    no_telemetry,
-                    "internal error: remote release fetch returned Ok unexpectedly (no \
-                     Ok-handling is implemented yet)",
-                    Vec::new(),
-                    json,
-                );
-                EXIT_USAGE_ERROR
-            }
-            Err(_) => {
-                // Reuse NO_REMOTE_RELEASE_MESSAGE (not the stub's own
-                // "not yet implemented" message) so the user gets the
-                // same "pass --from <repo-root>" guidance as every other
-                // no-`--from` call site. Routed through report_error like
-                // every other failure path, so this also gets the
-                // --json envelope and telemetry.
-                super::report::report_error(
-                    "install",
-                    "install.no_remote_release",
-                    &destination,
-                    no_telemetry,
-                    NO_REMOTE_RELEASE_MESSAGE,
-                    Vec::new(),
-                    json,
-                );
-                EXIT_USAGE_ERROR
-            }
-        };
-    }
-
-    // Pure, side-effect-free check for a no-op usage failure (missing
-    // --from, or a source with nothing to install) -- must run BEFORE
-    // any index write below, so a run that never touches the
-    // filesystem never mutates a target's index entry either. Mirrors
-    // update.rs's unregistered-strategy check, which runs before its
-    // own write-ahead for the identical reason.
-    if let Some(message) = strategy.would_fail_as_noop(&destination, from.as_deref()) {
-        super::report::report_error(
-            "install",
-            "install.would_fail_as_noop",
-            &destination,
-            no_telemetry,
-            &message,
-            Vec::new(),
-            json,
-        );
-        return EXIT_USAGE_ERROR;
+    // A missing `--from` has no local source to check with
+    // `would_fail_as_noop` -- the no-`--from` case tries the real
+    // remote install below instead, sharing every guard from this
+    // point on with the `--from` path, so a remote-sourced install
+    // gets tracked in `~/.konductor/installs` exactly like a local one.
+    if from.is_some() {
+        // Pure, side-effect-free check for a no-op usage failure (missing
+        // --from, or a source with nothing to install) -- must run BEFORE
+        // any index write below, so a run that never touches the
+        // filesystem never mutates a target's index entry either. Mirrors
+        // update.rs's unregistered-strategy check, which runs before its
+        // own write-ahead for the identical reason.
+        if let Some(message) = strategy.would_fail_as_noop(&destination, from.as_deref()) {
+            super::report::report_error(
+                "install",
+                "install.would_fail_as_noop",
+                &destination,
+                no_telemetry,
+                &message,
+                Vec::new(),
+                json,
+            );
+            return EXIT_USAGE_ERROR;
+        }
     }
 
     // Refuse to silently switch strategies on a target already tracked
@@ -700,7 +856,75 @@ pub fn dispatch_install_with(
         return index_error_exit_code(&err);
     }
 
-    match strategy.install_from_local(&destination, from.as_deref(), &installed_at, no_telemetry) {
+    // The actual install step: `--from` reads and copies synthed local
+    // The actual install step: `--from` reads and copies synthed local
+    // content through the selected strategy; no `--from` instead tries
+    // the real remote fallback chain through the caller-supplied
+    // `remote_installer` (production's real GitHub-backed closure, or
+    // this module's tests' fake, network-free one). Both arms land on
+    // the same `Result<(), InstallError>` shape below, so every guard
+    // and index write from this point on runs the same way regardless
+    // of source. Only the remote arm has a `RemoteInstallSource` to
+    // report; capture it here as `remote_source`.
+    let mut remote_source = None;
+    let install_result: Result<(), InstallError> = if let Some(from_path) = from.as_deref() {
+        strategy.install_from_local(&destination, Some(from_path), &installed_at, no_telemetry)
+    } else {
+        match remote_installer(*strategy, &destination, &installed_at, no_telemetry) {
+            Ok(source) => {
+                remote_source = Some(source);
+                Ok(())
+            }
+            Err(err) => {
+                let message = err.to_string();
+                // `BothFailed` also names each source's own category
+                // code as extra `--json` fields (JSON-only, never
+                // plain text) -- `fallback_chain_error_code` collapses
+                // `BothFailed` into one shared category, so without
+                // this a `--json` consumer loses which failure each
+                // source hit.
+                let extra = match &err {
+                    remote_orchestrate::FallbackChainError::BothFailed {
+                        release_error,
+                        main_branch_dist_error,
+                    } => vec![
+                        (
+                            "release_error_code",
+                            serde_json::Value::String(
+                                remote_orchestration_error_code(release_error).to_string(),
+                            ),
+                        ),
+                        (
+                            "main_branch_dist_error_code",
+                            serde_json::Value::String(
+                                main_branch_dist_orchestration_error_code(main_branch_dist_error)
+                                    .to_string(),
+                            ),
+                        ),
+                    ],
+                    remote_orchestrate::FallbackChainError::ReleaseOnly(_) => Vec::new(),
+                };
+                super::report::report_error(
+                    "install",
+                    fallback_chain_error_code(&err),
+                    &destination,
+                    no_telemetry,
+                    &message,
+                    extra,
+                    json,
+                );
+                // The index write-ahead entry above stays `InProgress`
+                // after a remote-fetch failure, exactly like a
+                // `--from` failure leaves it -- it self-heals through
+                // the target's own manifest state on a later
+                // successful install, per the design doc's
+                // self-healing rule; we never roll it back here.
+                return fallback_chain_error_exit_code(&err);
+            }
+        }
+    };
+
+    match install_result {
         Ok(()) => {
             // Computed BEFORE `canonical_target_dir` is moved into the
             // index-finalize write below -- reuses the SAME
@@ -766,6 +990,7 @@ pub fn dispatch_install_with(
                 verbose,
                 json,
                 link_bin_result,
+                remote_source,
             );
             0
         }
@@ -787,23 +1012,20 @@ pub fn dispatch_install_with(
 
 /// Prints the success-path report: re-reads the manifest
 /// `install_from_local` just wrote at `destination` (the sole on-disk
-/// record of what was installed -- see manifest.rs's module docstring)
-/// and formats it per `json`/`verbose`. A missing/unreadable manifest
-/// after a strategy reported success would be an internal
-/// inconsistency, not a normal failure mode -- falls back to the old
-/// fixed line in that case rather than panicking, so a future strategy
-/// that doesn't yet write a manifest still gets SOME success output.
-/// `harness_dir` is the harness directory name of whichever strategy
-/// actually ran (`InstallStrategy::harness_dir()`), threaded through to
-/// `count_staged_sops` so the reported SOP-skip count reads the correct
-/// strategy's staged source rather than a fixed one.
+/// record of what was installed) and formats it per `json`/`verbose`.
+/// A missing/unreadable manifest after a reported success would be an
+/// internal inconsistency, not a normal failure -- falls back to a
+/// fixed line in that case rather than panicking. `harness_dir` is the
+/// harness directory of whichever strategy actually ran, threaded
+/// through to `count_staged_sops` so the SOP-skip count reads that
+/// strategy's own staged source.
 ///
-/// `link_bin_result` is `Some(..)` only when `--link-bin` was requested
-/// for this install. Its outcome is folded into the SAME report (a
-/// `"link_bin"` field in `--json` mode, an extra line in plain-text
-/// mode) rather than printed as its own separate document -- printing
-/// two independent top-level JSON objects for one invocation broke
-/// single-document `--json` consumers.
+/// `link_bin_result` is `Some(..)` only when `--link-bin` was
+/// requested; its outcome is folded into this same report (see
+/// `dispatch_install_with`'s doc comment for why it's never a second
+/// document). `remote_source` is `Some(..)` only on the no-`--from`
+/// fallback-chain path, naming which of the two remote sources
+/// produced the install -- `None` for a `--from` local install.
 fn report_install_success(
     destination: &Path,
     from: Option<&str>,
@@ -811,6 +1033,7 @@ fn report_install_success(
     verbose: bool,
     json: bool,
     link_bin_result: Option<Result<(PathBuf, bin_link::BinLinkOutcome), bin_link::BinLinkError>>,
+    remote_source: Option<remote_orchestrate::RemoteInstallSource>,
 ) {
     let manifest = match manifest::read_manifest(destination) {
         Ok(Some(manifest)) => manifest,
@@ -838,9 +1061,17 @@ fn report_install_success(
                 if let Some(result) = &link_bin_result {
                     merge_link_bin_json(&mut value, result);
                 }
+                if let Some(source) = remote_source {
+                    if let Some(object) = value.as_object_mut() {
+                        object.insert("source".to_string(), serde_json::json!(source.to_string()));
+                    }
+                }
                 println!("{value}");
             } else {
-                println!("konductor install: installed");
+                let source_note = remote_source
+                    .map(|source| format!(" (source: {source})"))
+                    .unwrap_or_default();
+                println!("konductor install: installed{source_note}");
                 if let Some(result) = &link_bin_result {
                     println!("{}", link_bin_report_line(result));
                 }
@@ -862,14 +1093,23 @@ fn report_install_success(
         if let Some(result) = &link_bin_result {
             merge_link_bin_json(&mut value, result);
         }
+        if let Some(source) = remote_source {
+            if let Some(object) = value.as_object_mut() {
+                object.insert("source".to_string(), serde_json::json!(source.to_string()));
+            }
+        }
         println!("{value}");
         return;
     }
 
-    println!(
-        "{}",
-        format_install_summary(destination, &manifest_path, &counts, sops_skipped)
-    );
+    let summary_line = match remote_source {
+        Some(source) => format!(
+            "{} (source: {source})",
+            format_install_summary(destination, &manifest_path, &counts, sops_skipped)
+        ),
+        None => format_install_summary(destination, &manifest_path, &counts, sops_skipped),
+    };
+    println!("{summary_line}");
     if let Some(result) = &link_bin_result {
         println!("{}", link_bin_report_line(result));
     }
@@ -1173,73 +1413,194 @@ mod tests {
         }
     }
 
+    /// Same role as `dispatch_install_with_fake_remote_installer`, but
+    /// this fake `remote_installer` closure SUCCEEDS: it runs a real
+    /// `install_from_local` against `synth_source` (standing in for a
+    /// successful remote fetch) and reports
+    /// `RemoteInstallSource::MainBranchDist`, proving the success path
+    /// routes through the same production sequencing.
+    fn dispatch_install_with_fake_successful_remote_installer(
+        target: Option<String>,
+        harness: String,
+        synth_source: &Path,
+    ) -> u8 {
+        let synth_source = synth_source.to_path_buf();
+        dispatch_install_with_remote_installer(
+            None,
+            target,
+            harness,
+            false,
+            false,
+            false,
+            false,
+            move |strategy, destination, installed_at, no_telemetry| {
+                strategy
+                    .install_from_local(
+                        destination,
+                        Some(synth_source.to_str().unwrap()),
+                        installed_at,
+                        no_telemetry,
+                    )
+                    .map(|()| remote_orchestrate::RemoteInstallSource::MainBranchDist)
+                    .map_err(|err| {
+                        remote_orchestrate::FallbackChainError::ReleaseOnly(
+                            remote_orchestrate::RemoteOrchestrationError::Install(
+                                remote::RemoteInstallError::Install(err),
+                            ),
+                        )
+                    })
+            },
+        )
+    }
+
+    /// Test-only stand-in for `dispatch_install_with`: calls the same
+    /// production `dispatch_install_with_remote_installer`, but with a
+    /// fake `remote_installer` closure that fails right away with a
+    /// fixed `FallbackChainError` -- no real network call. Every other
+    /// code path runs exactly as it does in production; only the
+    /// remote fetch/install step is replaced. `link_bin`/`verbose`/
+    /// `json`/`no_telemetry` are fixed to `false`, matching every
+    /// other `dispatch_install_with` call in this test module.
+    fn dispatch_install_with_fake_remote_installer(
+        from: Option<String>,
+        target: Option<String>,
+        harness: String,
+    ) -> u8 {
+        dispatch_install_with_remote_installer(
+            from,
+            target,
+            harness,
+            false,
+            false,
+            false,
+            false,
+            |_strategy, _destination, _installed_at, _no_telemetry| {
+                Err(remote_orchestrate::FallbackChainError::ReleaseOnly(
+                    remote_orchestrate::RemoteOrchestrationError::Fetch(
+                        github::GithubFetchError::Network(
+                            "fake network error injected by a test -- no real network call was made"
+                                .to_string(),
+                        ),
+                    ),
+                ))
+            },
+        )
+    }
+
     #[test]
     fn dispatch_install_without_local_fails_with_usage_error() {
         let _home = HomeGuard::new("no-local-home");
         let dir = scratch_dir("no-local");
-        let code = dispatch_install_with(
+        let code = dispatch_install_with_fake_remote_installer(
             None,
             Some(dir.to_str().unwrap().to_string()),
             "kiro-cli-v2".to_string(),
-            false,
-            false,
-            false,
-            false,
         );
         assert_eq!(code, EXIT_USAGE_ERROR);
         assert!(manifest::read_manifest(&dir).unwrap().is_none());
         fs::remove_dir_all(&dir).ok();
     }
 
-    /// A missing `--from` is a pure no-op usage error -- `install`
-    /// must never write ANY index entry for this target, and must
-    /// never even create the target directory, since no filesystem
-    /// work was ever going to happen. Confirms both: no entry exists
-    /// in the index at all, and the target directory itself was never
-    /// created.
-    ///
-    /// Falsifiability: confirmed this test fails against the pre-fix
-    /// ordering (index write-ahead before the no-op check) -- the
-    /// target directory gets created by `create_dir_all`, and an
-    /// `InProgress` index entry is written for it before
-    /// `install_from_local` ever runs its own `--from` validation and
-    /// fails. Restored immediately after confirming the failure.
+    /// A missing `--from` tries the real remote install path (GitHub
+    /// Release, then main-branch-`dist/` if that fails in a
+    /// fallback-eligible way) instead of a pure no-op -- so, like a
+    /// `--from` attempt, it creates the target directory and writes an
+    /// `InProgress` index entry before the attempt runs, and leaves
+    /// that entry `InProgress` on failure instead of rolling it back.
+    /// That's what makes a remote install trackable by
+    /// `update`/`uninstall`/`doctor --all` once it succeeds; leaving a
+    /// target directory and an `InProgress` entry behind on a failed
+    /// attempt is the same self-healable state a `--from` failure
+    /// after `install_from_local` starts already leaves.
     #[test]
-    fn dispatch_install_missing_from_leaves_no_index_entry_and_no_target_dir() {
-        let _home = HomeGuard::new("missing-from-no-index-home");
-        let parent = scratch_dir("missing-from-no-index-parent");
+    fn dispatch_install_missing_from_writes_in_progress_index_entry_and_creates_target_dir() {
+        let _home = HomeGuard::new("missing-from-in-progress-home");
+        let parent = scratch_dir("missing-from-in-progress-parent");
         let target = parent.join("not-yet-created-target");
         assert!(!target.exists());
 
-        let code = dispatch_install_with(
+        let code = dispatch_install_with_fake_remote_installer(
             None,
             Some(target.to_str().unwrap().to_string()),
             "kiro-cli-v2".to_string(),
-            false,
-            false,
-            false,
-            false,
         );
         assert_eq!(code, EXIT_USAGE_ERROR);
 
         assert!(
-            !target.exists(),
-            "a pure no-op failure must never create the target directory"
+            target.is_dir(),
+            "a real remote-install attempt must create the target directory, \
+             exactly like a --from attempt does"
         );
-        let index = index::read_index().unwrap();
-        let has_entry = index
-            .map(|i| {
-                i.installs
-                    .iter()
-                    .any(|e| e.target_dir.contains("not-yet-created-target"))
-            })
-            .unwrap_or(false);
-        assert!(
-            !has_entry,
-            "a missing --from must never write an index entry for this target"
+        let canonical = index::canonicalize_target_dir(&target).unwrap();
+        let idx = index::read_index().unwrap().unwrap();
+        let entry = idx
+            .installs
+            .iter()
+            .find(|e| e.target_dir == canonical)
+            .expect(
+                "a failed remote-install attempt must still leave an index entry, \
+                 so the target is trackable once a later attempt succeeds",
+            );
+        assert_eq!(
+            entry.status,
+            index::IndexEntryStatus::InProgress,
+            "a failed remote-install attempt must leave the index entry InProgress, \
+             not roll it back"
         );
 
         fs::remove_dir_all(&parent).ok();
+    }
+
+    /// A successful no-`--from` (remote/fallback) install must get
+    /// tracked in `~/.konductor/installs` -- the same index
+    /// `update`/`uninstall --all`/`doctor --all` read to discover
+    /// installed targets -- exactly like a `--from` install does. This
+    /// exercises the real production sequencing through
+    /// `dispatch_install_with_fake_successful_remote_installer` (a
+    /// fake remote fetch that still does a REAL `install_from_local`
+    /// write, standing in for "the remote fetch succeeded"), and
+    /// confirms the resulting index entry is present and `Complete`,
+    /// with the same `installed_at` the manifest itself recorded.
+    #[test]
+    fn dispatch_install_successful_remote_install_is_tracked_complete_in_index() {
+        let _home = HomeGuard::new("remote-install-tracked-home");
+        let target = scratch_dir("remote-install-tracked-target");
+        let repo_root = scratch_dir("remote-install-tracked-repo");
+        seed_synthed_agent(&repo_root, "k-example");
+
+        let code = dispatch_install_with_fake_successful_remote_installer(
+            Some(target.to_str().unwrap().to_string()),
+            "kiro-cli-v2".to_string(),
+            &repo_root,
+        );
+        assert_eq!(code, 0);
+
+        let canonical = index::canonicalize_target_dir(&target).unwrap();
+        let idx = index::read_index().unwrap().unwrap();
+        let entry = idx
+            .installs
+            .iter()
+            .find(|e| e.target_dir == canonical)
+            .expect(
+                "a successful remote install must be tracked in the install index, \
+                 just like a --from install is",
+            );
+        assert_eq!(
+            entry.status,
+            index::IndexEntryStatus::Complete,
+            "a successful remote install's index entry must reach Complete"
+        );
+
+        let manifest = manifest::read_manifest(&target)
+            .unwrap()
+            .expect("manifest must exist after a successful remote install");
+        assert_eq!(
+            entry.installed_at, manifest.installed_at,
+            "the index entry and manifest must share the same installed_at clock read"
+        );
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
     }
 
     /// Writes a raw `~/.konductor/installs` file under `home`'s
@@ -1258,12 +1619,6 @@ mod tests {
     /// must run before `create_dir_all`, so the rejection never leaves
     /// an empty target directory on disk, exactly like the
     /// `would_fail_as_noop` no-op case above.
-    ///
-    /// Falsifiability: confirmed this test fails against the pre-fix
-    /// ordering (create_dir_all before the index corruption check) --
-    /// the target directory gets created before `read_index()` ever
-    /// runs its duplicate check and fails. Restored immediately after
-    /// confirming the failure.
     #[test]
     fn dispatch_install_duplicate_index_leaves_no_target_dir() {
         let _home = HomeGuard::new("duplicate-index-no-target-dir-home");
@@ -1320,11 +1675,6 @@ mod tests {
     /// by the same `read_index()` guard, mapped to `EXIT_VERIFY_FAILED`
     /// (65) via `index_error_exit_code`. Like the duplicate-entry case
     /// above, this rejection must never create the target directory.
-    ///
-    /// Falsifiability: confirmed this test fails against the pre-fix
-    /// ordering for the same reason as the duplicate-entry case above
-    /// -- `create_dir_all` runs before `read_index()`'s schema check.
-    /// Restored immediately after confirming the failure.
     #[test]
     fn dispatch_install_unsupported_schema_version_leaves_no_target_dir() {
         let _home = HomeGuard::new("bad-schema-no-target-dir-home");
@@ -1674,12 +2024,12 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// Finding f-3e8df55d: the index entry's `installed_at` and the
-    /// manifest's own `installed_at` must be captured from the SAME
-    /// clock read, not two independent `utc_now_iso()` calls moments
-    /// apart -- per `designs/konductor-cli-install-index.md` §1. Runs a
-    /// real `dispatch_install_with`, then reads BOTH records back and
-    /// asserts the two `installed_at` strings are byte-identical.
+    /// The index entry's `installed_at` and the manifest's own
+    /// `installed_at` must be captured from the SAME clock read, not two
+    /// independent `utc_now_iso()` calls moments apart -- per
+    /// `designs/konductor-cli-install-index.md` §1. Runs a real
+    /// `dispatch_install_with`, then reads BOTH records back and asserts
+    /// the two `installed_at` strings are byte-identical.
     #[test]
     fn dispatch_install_index_entry_and_manifest_installed_at_are_byte_identical() {
         let _home = HomeGuard::new("installed-at-identical-home");
@@ -1732,7 +2082,7 @@ mod tests {
                 false,
                 false,
                 false,
-                false,
+                false
             ),
             2
         );
@@ -1763,8 +2113,10 @@ mod tests {
         .unwrap();
 
         let dir = scratch_dir("install-duplicate-target-dir");
+        let repo_root = scratch_dir("install-duplicate-target-dir-repo");
+        seed_synthed_agent(&repo_root, "k-example");
         let code = dispatch_install_with(
-            None,
+            Some(repo_root.to_str().unwrap().to_string()),
             Some(dir.to_str().unwrap().to_string()),
             "kiro-cli-v2".to_string(),
             false,
@@ -1776,6 +2128,7 @@ mod tests {
         // Must refuse before ever writing a manifest for this target.
         assert!(manifest::read_manifest(&dir).unwrap().is_none());
         fs::remove_dir_all(&dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
     }
 
     #[test]

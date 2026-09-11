@@ -102,12 +102,12 @@ Once the public repo ships, fetch the script from GitHub, verify the download ag
 
 ```bash
 REPO="aws-solutions/konductor"
-REF="main"
+BRANCH="main"
 SCRIPT_PATH="scripts/konductor-clone-install.sh"
 
-curl -fsSL "https://raw.githubusercontent.com/${REPO}/${REF}/${SCRIPT_PATH}" -o /tmp/konductor-clone-install.sh
+curl -fsSL "https://raw.githubusercontent.com/${REPO}/refs/heads/${BRANCH}/${SCRIPT_PATH}" -o /tmp/konductor-clone-install.sh
 
-expected_sha="$(curl -fsSL "https://api.github.com/repos/${REPO}/contents/${SCRIPT_PATH}?ref=${REF}" | jq -r .sha)"
+expected_sha="$(curl -fsSL "https://api.github.com/repos/${REPO}/contents/${SCRIPT_PATH}?ref=${BRANCH}" | jq -r .sha)"
 actual_sha="$(git hash-object /tmp/konductor-clone-install.sh)"
 
 if [ "$expected_sha" != "$actual_sha" ]; then
@@ -118,7 +118,7 @@ fi
 bash /tmp/konductor-clone-install.sh
 ```
 
-`expected_sha` is the git blob SHA GitHub's Contents API reports for the file at `REF`; `git hash-object` computes the same hash locally over what was actually downloaded. This catches network corruption or a truncated download — it does not catch a compromise of GitHub itself, since both the file and the hash it's checked against come from the same source. Confirming the download against a checksum obtained independently of GitHub would require a separate attestation, which this repo does not yet publish.
+`expected_sha` is the git blob SHA GitHub's Contents API reports for the file at `BRANCH`; `git hash-object` computes the same hash locally over what was actually downloaded. This catches network corruption or a truncated download — it does not catch a compromise of GitHub itself, since both the file and the hash it's checked against come from the same source. Confirming the download against a checksum obtained independently of GitHub would require a separate attestation, which this repo does not yet publish.
 
 Once it's live, the script clones this repo's public `main` branch over HTTPS into `~/.konductor/git/konductor`, builds it, symlinks the resulting `konductor` binary into `~/.local/bin`, then runs `synth`/`install` against `$HOME` (or wherever `HOME` points for the invocation) — no additional authentication or access beyond a normal `git clone` of a public GitHub repo, so anyone will be able to run it as-is.
 
