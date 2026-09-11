@@ -106,7 +106,7 @@ telemetry-net = { path = "../../mcp/lib/telemetry-net" }
 # Archive layout for konductor synth's packaging step (dist/ tree -> single
 # blob for write_sidecar to hash). Layout-only by design -- does not bundle
 # compression, hence flate2 below.
-tar = "=0.4.45"
+tar = "=0.4.46"
 # Gzip compression paired with tar above -- the standard Rust-ecosystem
 # combination (e.g. `cargo package` itself uses this same pairing).
 # Exact-pinned per repo convention; verify fetchable via `cargo brazil
