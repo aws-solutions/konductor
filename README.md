@@ -1,1 +1,340 @@
-READMEEEE.md
+# Konductor
+
+| **[🚧 Feature request](https://github.com/aws-solutions/konductor/issues/new?labels=enhancement&template=feature_request.md)** | **[🐛 Bug Report](https://github.com/aws-solutions/konductor/issues/new?labels=bug&template=bug_report.md)** |
+
+_Package name today: `ASDLCCoreAICapabilities`. See [Naming](#naming) for why these differ._
+
+Konductor is an open-source AI agent framework that automates the software development lifecycle (SDLC). It ships a coordinated team of specialist agents — product manager, architect, developer, QA, researcher, TPM, browser, media analyzer, plus three orchestrators — each with scoped tools, skills, and standard operating procedures (SOPs). Agents hand work to each other through a structured delegation protocol, so a request can move from requirements to reviewed, working code with minimal manual handoff.
+
+The package ships as static agent configuration compatible with [Kiro](https://kiro.dev) and [Claude Code](https://claude.ai/download). No runtime infrastructure is required beyond the AI runtime itself.
+
+## Naming
+
+Konductor is the name of the project. The distributable package is `ASDLCCoreAICapabilities`. Orchestrators are named `konductor`, `konductor-mux-orchestrator`, and `konductor-cmux-orchestrator`; every specialist uses a `k-*` name (e.g. `k-developer`, `k-architect`). See [Roadmap](#roadmap-the-konductor-cli) for what's still planned for the package name and CLI.
+
+---
+
+## Table of Contents
+
+1. [Why Konductor](#why-konductor)
+2. [Quick Start](#quick-start)
+3. [Agents](#agents)
+4. [Skills](#skills)
+5. [Persistent Memory](#persistent-memory)
+6. [SOPs](#sops-standard-operating-procedures)
+7. [Usage Examples](#usage-examples)
+8. [Optional Integrations](#optional-integrations)
+9. [Roadmap: The Konductor CLI](#roadmap-the-konductor-cli)
+10. [Project Structure](#project-structure)
+11. [Contributing](#contributing)
+12. [Security](#security)
+13. [License](#license)
+14. [Data Collection](#data-collection)
+
+---
+
+## Why Konductor
+
+Most AI coding agents are single-purpose: one agent, one conversation, one task. Konductor instead installs a small team of agents that already know how to hand work to each other — a product manager who writes requirements, an architect who turns them into a design, a developer who implements it, a QA agent who plans the test coverage — coordinated by an orchestrator that tracks progress and enforces a maker-checker quality gate on every deliverable.
+
+You get this by installing one package. No servers to run, no infrastructure to provision — the agents are configuration (system prompts, skills, SOPs) that your existing Kiro or Claude Code runtime executes directly.
+
+## Quick Start
+
+### How installing Konductor works
+
+Getting Konductor running is two steps against your own checkout: `synth`, then `install`.
+
+`konductor synth --from <repo-root>` reads this repo's agent/skill/SOP source and renders it into a runtime-ready output tree. `konductor install --from <repo-root>` then copies the agent, skill, and SOP output into your runtime's config directories and records a manifest so a later `konductor update` or `konductor uninstall` knows what it's responsible for. SOPs land differently per runtime: Kiro CLI gets the rendered `.sop.md` files copied as-is into `.konductor/sops/`, while Claude Code gets each one converted into its own `sop-<name>/SKILL.md` under `.claude/skills/`.
+
+Both commands work today for Kiro CLI and Claude Code. `install` requires an explicit `--harness <kiro-cli-v2|kiro-v3|claude>` flag naming which runtime's synthed output to install — there is no destination-marker auto-detection and no default; omitting `--harness` is a usage error. `--harness kiro-cli-v2` installs agents under `.kiro/agents/` and skills under `.konductor/skills/<name>/` (kept separate from `.kiro/skills/` so Kiro CLI doesn't expose every installed skill to every agent); `--harness claude` installs agents and skills under `.claude/agents/` and `.claude/skills/`. Every one of these paths is relative to the install target — `--target <dir>` if given, else `$HOME` — not hardcoded to your home directory. `kiro-v3` is a real, registered `synth` harness but has no `install` strategy yet, so passing it exits with a clear scope-gap error rather than installing anything; `kiro-ide` and `codex` are reserved runtime names not yet supported either (see [Roadmap](#roadmap-the-konductor-cli)).
+
+A target directory tracks a single strategy once installed: re-running `install` with a different `--harness` value against an already-tracked target is refused rather than silently switching strategies, since that would overwrite the manifest and drop the original strategy's files from tracking. Install a second harness into a separate target directory instead.
+
+There's no published release yet, and the public repo hasn't shipped either — the checkout the example below assumes is, today, one available only to Amazon employees. The only way to run `konductor` right now is to build it from whatever checkout you have and point `synth`/`install` at it with `--from`; running `konductor install` with no `--from` — installing from a release — exits immediately with a "not yet available" error.
+
+### From source
+
+The CLI itself has no dependency that only runs inside Amazon to build or run — once you have a checkout, it's a plain `cargo build`, nothing else required. Getting that checkout is the part that isn't public yet (see above): this sequence works today for anyone who already has one, and will work from a plain `git clone` once the public repo ships. Build and `synth` are the same regardless of which runtime you're targeting; `install` and the verification step differ, so they're split out below.
+
+```bash
+git clone https://github.com/aws-solutions/konductor.git
+cd konductor
+make build
+make link
+konductor synth --from .
+```
+
+**Kiro CLI** — no `--target` is needed against a fresh, empty target:
+
+```bash
+konductor install --from . --harness kiro-cli-v2
+kiro-cli chat --agent konductor
+```
+
+**Claude Code** — pass `--target` at a directory that already has a `.claude/` marker (Claude Code itself creates one on first run in a project):
+
+```bash
+konductor install --from . --harness claude --target <dir-with-.claude-marker>
+claude --agent konductor
+```
+
+> This is the short version. For prerequisites, the PATH-setup check, and a fully
+> spelled-out numbered walkthrough (build → link → verify → synth → install → chat),
+> see [`cli/README.md`](cli/README.md#getting-started). That doc also covers installing
+> into a directory other than `$HOME` via `--target`.
+
+### First run
+
+**Full SDLC pass, via the orchestrator (Kiro CLI).** The install paths above leave you at the `konductor` prompt. A full pass starts from a plain-language request typed there:
+
+```text
+Design and implement a service that ingests IoT sensor events and alerts on anomalies.
+```
+
+The orchestrator delegates to `k-architect` for the design, `k-developer` for implementation, and `k-quality-assurance` for test coverage — verifying each handoff before moving on.
+
+### Quick install (single command)
+
+Until `konductor` ships via `brew` or `npm`, [`scripts/konductor-clone-install.sh`](scripts/konductor-clone-install.sh) is a convenience one-liner that will do what the [From source](#from-source) walkthrough above does by hand — clone, build, link the binary onto your `PATH`, `synth`, `install` — in a single command. **It isn't runnable yet:** the script clones this repo's public GitHub mirror, and that mirror hasn't shipped (see [How installing Konductor works](#how-installing-konductor-works) above) — fetching the script itself from GitHub fails the same 404 the repo clone would, since there's nothing published there yet either.
+
+Once the public repo ships, fetch the script from GitHub, verify the download against the checksum GitHub's own API reports for that file, then run it:
+
+```bash
+REPO="aws-solutions/konductor"
+REF="main"
+SCRIPT_PATH="scripts/konductor-clone-install.sh"
+
+curl -fsSL "https://raw.githubusercontent.com/${REPO}/${REF}/${SCRIPT_PATH}" -o /tmp/konductor-clone-install.sh
+
+expected_sha="$(curl -fsSL "https://api.github.com/repos/${REPO}/contents/${SCRIPT_PATH}?ref=${REF}" | jq -r .sha)"
+actual_sha="$(git hash-object /tmp/konductor-clone-install.sh)"
+
+if [ "$expected_sha" != "$actual_sha" ]; then
+  echo "checksum mismatch: expected ${expected_sha}, got ${actual_sha}" >&2
+  exit 1
+fi
+
+bash /tmp/konductor-clone-install.sh
+```
+
+`expected_sha` is the git blob SHA GitHub's Contents API reports for the file at `REF`; `git hash-object` computes the same hash locally over what was actually downloaded. This catches network corruption or a truncated download — it does not catch a compromise of GitHub itself, since both the file and the hash it's checked against come from the same source. Confirming the download against a checksum obtained independently of GitHub would require a separate attestation, which this repo does not yet publish.
+
+Once it's live, the script clones this repo's public `main` branch over HTTPS into `~/.konductor/git/konductor`, builds it, symlinks the resulting `konductor` binary into `~/.local/bin`, then runs `synth`/`install` against `$HOME` (or wherever `HOME` points for the invocation) — no additional authentication or access beyond a normal `git clone` of a public GitHub repo, so anyone will be able to run it as-is.
+
+Because the clone lives under `~/.konductor/git` rather than a throwaway `/tmp` directory, re-running the script later reuses it: it fetches and fast-forwards the existing checkout to `origin/main` instead of cloning from scratch, and refuses to touch the directory if it can't fast-forward cleanly or doesn't look like the expected checkout. The binary symlink means a later re-run's rebuild is picked up automatically — no separate step to re-link it.
+
+If `~/.local/bin` isn't already on your `PATH`, the script prints a note at the end telling you to add it (e.g. `export PATH="$HOME/.local/bin:$PATH"` in your shell profile) — otherwise the `konductor` command it just linked won't resolve.
+
+---
+
+## Agents
+
+> **Naming note:** the table below uses each agent's current name — the three orchestrators are `konductor`, `konductor-mux-orchestrator`, and `konductor-cmux-orchestrator`, and every specialist uses a `k-*` name (e.g. `k-developer`).
+
+`konductor` is the primary entry point — it never implements directly. It delegates to the right specialist, verifies the output, and re-delegates if a quality gate fails (up to 2 fix cycles).
+
+| Agent                         | Role                                                                                                                                         |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `k-product-manager`           | Produces user stories, requirements summaries, and decision research. Validates each artifact before handoff.                                |
+| `k-architect`                 | Creates system designs, API specs, data models, and threat models. Validates each artifact before handoff to implementation.                 |
+| `k-developer`                 | Breaks features into tasks, implements backend and frontend code, reviews changes, validates infrastructure-as-code, and tracks progress.    |
+| `k-quality-assurance`         | Analyzes test coverage, plans E2E test strategies, generates security tests, and tracks Cypress implementation.                              |
+| `k-researcher`                | Searches external documentation, web resources, and AWS docs; optional Slack search via a user-configured Slack MCP server.                  |
+| `k-tpm`                       | Manages program plans, status reports, risk tracking, and program-level decision documents.                                                  |
+| `k-browser`                   | Browser automation via Playwright — navigates sites, fills forms, takes screenshots, runs E2E tests.                                         |
+| `k-media-analyzer`            | Interprets PDFs, images, and diagrams that need analysis beyond raw text extraction.                                                         |
+| `konductor`                   | Coordinates all specialist agents across the SDLC, delegates tasks, tracks progress, and enforces quality gates.                             |
+| `konductor-mux-orchestrator`  | Same coordination as the orchestrator, dispatched to specialists running in parallel tmux/zellij panes. Auto-detects the active multiplexer. |
+| `konductor-cmux-orchestrator` | Same coordination as the orchestrator, dispatched to specialists running in parallel [cmux](https://github.com/manaflow-ai/cmux) surfaces.   |
+
+## Skills
+
+Skills are modular knowledge packages. For this package's Claude Code agents, every skill listed in an agent's `skills:` frontmatter is injected in full at session start — not just its name and description (see [Getting Started with Claude Code](docs/guides/getting-started-claude.md#skills-how-they-load-and-who-can-invoke-them) for the loading mechanics). A skill not preloaded into an agent this way — e.g. a project skill under `.claude/skills/` — instead loads on demand: only its name and description are available at session start, with full content loading when it is invoked. The package ships **75 skills** across 8 capability areas:
+
+| Category                          | Count | Representative skills                                                                                                                       | Covers                                                                                                                                                                |
+| --------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Architecture & Design             | 21    | `system-design-patterns`, `threat-modeling`, `dynamodb-design`, `iam-policy-design`, `smithy-modeling`, `cost-estimation`, `adr-generator`  | System design docs, STRIDE threat models, data models, least-privilege IAM, Smithy API models, AWS cost scenarios, trade-off scoring, ADRs, adversarial design review |
+| Planning & Tracking               | 12    | `user-story-writing`, `task-decomposition`, `sprint-planning`, `risk-management`, `program-planning`, `progress-tracking`                   | Requirements → user stories → task/sprint breakdown, program plans, RAID logs, status reports, legacy-to-agentic effort re-estimation                                 |
+| Architecture & Development Review | 10    | `backend-development`, `frontend-development`, `infra-validation`, `code-review`, `git-workflow`, `adversarial-code-review`                 | Backend/frontend implementation, CDK/CloudFormation validation, standard and adversarial code review, git workflow                                                    |
+| Testing & QA                      | 8     | `test-coverage-analysis`, `e2e-test-strategy`, `cypress-test-implementation`, `security-test-generation`                                    | Coverage gap analysis, prioritized E2E test matrices, Cypress planning, OWASP-based security test plans, web app/DOM discovery                                        |
+| Orchestration & Delegation        | 14    | `delegation-protocol`, `sdlc-navigator`, `pre-planning-analysis`, `persistent-memory`, `workspace-skills`, `mux-dispatch` / `cmux-dispatch` | Agent routing and the 7-section delegation format, ambiguous-request triage, cross-session memory, reusable workspace skills, parallel dispatch                       |
+| Kiro Spec Generation              | 3     | `kiro-requirements-generation`, `kiro-design-generation`, `kiro-task-generation`                                                            | Chained skills that turn PM/architecture artifacts into a Kiro IDE `requirements.md` / `design.md` / `tasks.md` spec                                                  |
+| Documentation & Writing           | 4     | `document-formats`, `doc-accuracy-analyzer`, `humanize-writing`, `agents-md-authoring`                                                      | Reading/writing `.docx`, fact-checking technical documents against primary sources, rewriting AI-sounding text, authoring AGENTS.md files                             |
+| Research & Security               | 3     | `external-research`, `security-remediation`, `find-aws-skills`                                                                              | External documentation/web research, security-finding remediation planning, discovering additional AWS skills                                                         |
+
+## Persistent Memory
+
+Agents that load the `persistent-memory` skill (see the Orchestration & Delegation row in [Skills](#skills) above) keep a small local scratchpad across sessions. It needs **no setup** — the skill creates the directory on first write and appends it to `.gitignore` itself.
+
+Two files, split by what they hold:
+
+| File                          | Holds                                    |
+| ----------------------------- | ---------------------------------------- |
+| `.konductor/memory/MEMORY.md` | Project, codebase, and environment facts |
+| `.konductor/memory/USER.md`   | Personal preferences and working style   |
+
+An optional `.konductor/memory-config.json` lets you tune two things: the per-file character limits and a URL allowlist restricting which external domains can appear in an entry. Copy the template to get started:
+
+```bash
+mkdir -p .konductor && cp skills/persistent-memory/memory-config.json.template .konductor/memory-config.json
+```
+
+Every write is checked by a validator script — an entry that exceeds a limit or fails the allowlist is rejected and reported back to you, never silently dropped.
+
+## SOPs (Standard Operating Procedures)
+
+The user-facing SOPs below are available as slash-command-style workflows in Kiro CLI (`/prompts`) and as `/sop-<name>` in Claude Code — AIM prefixes converted SOPs with `sop-` so they stay distinct from skills. Also present: `k-delegate`, which handles orchestrator-internal delegation and isn't meant to be invoked directly.
+
+| SOP                                  | What it does                                                                                                                                      |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `k-plan`                             | Work breakdown with success criteria, task dependencies, agent assignments, and timeline estimates                                                |
+| `k-context-gathering`                | Pre-implementation context gathering for unfamiliar code, complex multi-system changes, or after repeated debugging failures                      |
+| `k-comprehensive-search`             | Exhaustive codebase and documentation search, delegating in parallel to the developer and researcher agents                                       |
+| `k-verify`                           | Comprehensive completion verification with collected evidence — run before declaring any task done                                                |
+| `k-design-doc-creation`              | Five-phase workflow producing a PE-ready design document: requirements grilling, outside-in structure, quality gates, adversarial review loop     |
+| `k-existing-design-review`           | 10-dimension evaluation of _existing_ design artifacts before implementation (superseded for new docs by `k-design-doc-creation`)                 |
+| `k-principal-engineer-design-review` | Pre-submission quality gate on a design doc — slop detection, architecture principles evaluation, and an adversarial review loop before PE review |
+| `k-test-coverage-review`             | Test gap identification, E2E test planning, and security test plan generation in sequence                                                         |
+| `k-e2e-test-generation`              | Deployed-app discovery via browser automation, generating unit test prompts or executable Cypress/Playwright specs                                |
+| `k-light-ui-testing`                 | Live discovery and prompt-driven UI testing for pages not yet ready for full functional test generation                                           |
+| `k-code-review-workflow`             | Multi-skill review across backend, frontend, and infrastructure files with false-positive critique and a consolidated report                      |
+| `k-pre-cr-critique`                  | Lightweight, strictly read-only pre-submission critique of local changes                                                                          |
+| `k-code-cleanup`                     | Removes AI-generated slop from code before review submission                                                                                      |
+| `k-codebase-analysis`                | Deep-dive architecture, design-pattern, and technical-debt assessment for onboarding or refactor planning                                         |
+| `kiro-spec-workflow`                 | Chains the three `kiro-*-generation` skills into a complete Kiro IDE spec (`requirements.md` + `design.md` + `tasks.md`)                          |
+| `k-adversarial-pull-request-review`  | Adversarial review of a pull request/CR diff — classifies findings as CRITICAL/IMPORTANT/MINOR before merge                                       |
+| `k-full-sdlc`                        | End-to-end SDLC pass — codebase analysis through documentation — chaining the SOPs above per feature                                              |
+
+## Usage Examples
+
+**Review a diff before opening a PR, via the orchestrator (Kiro CLI):**
+
+```bash
+kiro-cli chat --agent konductor
+> "Run the k-code-review-workflow SOP against my current branch."
+```
+
+The orchestrator routes this to `k-developer`, which owns the `k-code-review-workflow` SOP.
+
+**Targeted request, via the orchestrator (Claude Code):**
+
+```bash
+claude --agent ASDLCCoreAICapabilities-konductor -p "Create a threat model for a public REST API backed by DynamoDB."
+```
+
+The orchestrator routes threat-modeling requests to `k-architect` and returns the validated artifact.
+
+**Run the full-SDLC SOP directly, via the orchestrator (Kiro CLI):**
+
+```bash
+kiro-cli chat --agent konductor
+> /prompts
+> /agent-sop:k-full-sdlc <project_description> [codebase_path] [skip_phases] [output_dir] [elicitation_depth] [max_fix_cycles] [deployed_url] [credentials_file] [feature_isolation]
+```
+
+`<>` = required, `[]` = optional:
+
+| Parameter             | Required? | Default           | Notes                                                                                                                                                                                     |
+| --------------------- | --------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `project_description` | required  | —                 | the project or feature to build                                                                                                                                                           |
+| `codebase_path`       | optional  | current directory |                                                                                                                                                                                           |
+| `skip_phases`         | optional  | none              | comma-separated: `elicitation`, `codebase-analysis`, `requirements`, `design`, `design-review`, `feature-splitting`, `specs`, `implementation`, `code-review`, `testing`, `documentation` |
+| `output_dir`          | optional  | `.konductor/`     |                                                                                                                                                                                           |
+| `elicitation_depth`   | optional  | `standard`        | `quick`, `standard`, `deep`                                                                                                                                                               |
+| `max_fix_cycles`      | optional  | `2`               |                                                                                                                                                                                           |
+| `deployed_url`        | optional  | none              | only used by the UI/functional test phase                                                                                                                                                 |
+| `credentials_file`    | optional  | none              | same phase                                                                                                                                                                                |
+| `feature_isolation`   | optional  | `branch`          | `branch`, `worktree`                                                                                                                                                                      |
+
+`/prompts` lists the SOPs available to invoke; asking for one in prose does not work here — Agent SOPs load only when invoked through `/agent-sop:`, never from a description alone. A bare positional string is parsed positionally and can land words in the wrong slot (`output_dir: parser`, `skip_phases: json` — a real failure mode); use named parameters instead:
+
+```bash
+> /agent-sop:k-full-sdlc project_description: "JSON parser" max_fix_cycles: 5
+```
+
+**Run the full-SDLC SOP directly, via the orchestrator (Claude Code):**
+
+```bash
+claude --agent ASDLCCoreAICapabilities-konductor -p "/sop-k-full-sdlc project_description: 'a CLI tool that tails a log file and alerts on error spikes'"
+```
+
+Here the SOP ships as a native Claude Code skill invoked via `/sop-k-full-sdlc` — AIM's `sop-` prefix keeps it distinct from regular skills. The same named-parameter syntax as the Kiro CLI form above applies.
+
+The orchestrator runs the SOP through every phase — codebase analysis through documentation — writing artifacts under `.konductor/`.
+
+## Optional Integrations
+
+Two MCP servers ship pre-wired — AWS MCP on the architect and developer agents, Playwright on the browser agent. Two more agents support opt-in servers you configure yourself.
+
+| Agent                        | Integration                                                                                                    | Setup                                                                                                                                                             |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `k-architect`, `k-developer` | [AWS MCP Server](https://aws.amazon.com/blogs/aws/aws-mcp-server/) — AWS documentation, region/service lookups | Install `uvx` and configure AWS credentials (`~/.aws/credentials` or environment variables). The agent degrades gracefully if credentials are absent.             |
+| `k-browser`                  | [`@playwright/mcp`](https://github.com/microsoft/playwright-mcp) — browser automation                          | Pre-wired, no separate install. Requires the Chromium binary: `npx playwright install chromium`.                                                                  |
+| `k-researcher`               | Slack search                                                                                                   | Opt-in — requires registering your own Slack app against the official Slack MCP server. See [docs/guides/slack-integration.md](docs/guides/slack-integration.md). |
+| `k-product-manager`          | Asana sprint planning (`asana-sprint-planning` skill)                                                          | Opt-in — requires an Asana MCP server (`https://mcp.asana.com/v2/mcp`). See [docs/guides/asana-integration.md](docs/guides/asana-integration.md).                 |
+
+## Roadmap: The Konductor CLI
+
+Konductor's engineering design defines a standalone `konductor` CLI — a thin orchestration wrapper with no model dependency of its own — as the external-facing install path.
+
+7 of its 8 commands do real work today; `metrics` is still a stub (parses its arguments, prints a "not yet implemented" message, exits 0):
+
+| Command               | Purpose                                                                                                                           | Status                                     |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| `konductor install`   | Copy a local `synth` output tree's agents/skills into the detected runtime (`.kiro/` or `.claude/`)                               | Implemented                                |
+| `konductor update`    | Overwrite a tracked install in place from a fresh `synth` source                                                                  | Implemented                                |
+| `konductor uninstall` | Remove a tracked install's files and its entry from `~/.konductor/installs`                                                       | Implemented                                |
+| `konductor synth`     | Transform source agent specs into per-runtime output (`kiro-cli-v2`, `claude` today; `kiro-ide`, `codex` reserved, not yet built) | Implemented for `kiro-cli-v2` and `claude` |
+| `konductor init`      | Scaffold `.konductor/` and a starter `config.yml` from a preset (`solo`, `team`, `org`)                                           | Implemented                                |
+| `konductor doctor`    | Inspect an install/checkout for problems and report remediation guidance                                                          | Implemented                                |
+| `konductor config`    | Get/set/list configuration values                                                                                                 | Implemented                                |
+| `konductor metrics`   | Show quality trends from recent runs                                                                                              | Stub — not yet implemented                 |
+
+Agents already use their `k-*` / `konductor` names today (see [Naming](#naming)). Build the CLI from source today and run it against your own checkout with an explicit `konductor install --harness <kiro-cli-v2|kiro-v3|claude>` (see [From source](#from-source) above) — `--harness` is required, naming which runtime's output to install, rather than auto-detecting it from the destination. The one thing still missing is running `konductor install` with no `--from <repo-root>`, i.e. installing directly from a published release, which needs the not-yet-built release pipeline (see [How installing Konductor works](#how-installing-konductor-works) above). Amazon employees will continue to use `aim agents install`.
+
+## Project Structure
+
+```text
+ASDLCCoreAICapabilities/
+├── agents/                # 11 agent specs (.agent-spec.json)
+├── agent-sops/            # 18 SOPs (.sop.md)
+├── skills/                # 75 skills (skills/<name>/SKILL.md)
+├── context/               # Context loaded at agent startup (e.g. orchestrator routing rules)
+├── docs/guides/           # Getting-started and integration guides
+├── cli/                   # Konductor CLI — in development, not yet released
+├── .github/               # Issue and PR templates
+├── CHANGELOG.md
+├── CODE_OF_CONDUCT.md
+├── CONTRIBUTING.md
+├── LICENSE.txt            # Apache-2.0
+├── NOTICE.txt
+├── SECURITY.md
+├── THIRD_PARTY_LICENSES.txt
+├── aim.json                # Agent/plugin registration for AIM
+└── README.md
+```
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how to report bugs, request features, and submit pull requests. See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community standards.
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for how to report a security vulnerability.
+
+## License
+
+Licensed under the Apache License, Version 2.0 — see [LICENSE.txt](LICENSE.txt) and [NOTICE.txt](NOTICE.txt). Third-party license notices are in [THIRD_PARTY_LICENSES.txt](THIRD_PARTY_LICENSES.txt).
+
+## Data Collection
+
+This solution sends operational metrics to AWS (the "Data") about the use of this solution. We use this Data to better understand how customers use this solution and related services and products. AWS's collection of this Data is subject to the [AWS Privacy Notice](https://aws.amazon.com/privacy/).
+
+---
+
+Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at <http://www.apache.org/licenses/LICENSE-2.0>
+
+Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.

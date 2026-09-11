@@ -1,0 +1,57 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# config.yml — the PRESET DEFAULT configuration shipped with the Konductor
+# CLI. This is the "preset defaults" the config loader (cli/konductor-rs/
+# src/config.rs, cli/konductor/konductor/config.py) merges a project's own
+# `.konductor/config.yml` against: any field the project omits falls back
+# to the value here.
+#
+# `konductor init` copies/derives a project's starter `.konductor/config.yml`
+# from this same file (see the `init` command in cli.rs / cli.py).
+#
+# ── Field reference ─────────────────────────────────────────────────────────
+#   version               Config schema version. Loader rejects a config
+#                          whose `version` it does not recognize (usage
+#                          error, exit 64 — see exit_codes.py / cli.rs).
+#   severities_source      Relative path (from this file's own directory)
+#                          to the severity-schema.yml this config's
+#                          severity ids are drawn from.
+#   tiers_source           Relative path (from this file's own directory)
+#                          to the scope-table.yml this config's tier ids
+#                          are drawn from.
+#   tier                   The single active tier (one of scope-table.yml's
+#                          tier ids: trivial/bugfix/minor/major/full) for
+#                          this run. A run has exactly one active tier, not
+#                          a set — see scope-table.yml for the phases each
+#                          tier gates. Default: `minor`, a middle-ground
+#                          tier (gates design/tasks/code/tests/devil-advocate)
+#                          chosen so neither trivial nor large changes are
+#                          the out-of-the-box assumption.
+#   default_severity        Fallback severity (must be one of
+#                          severity-schema.yml's ids) applied to a finding
+#                          that does not specify its own severity.
+#   fail_on_severity_at_or_above
+#                          The lowest severity RANK (see
+#                          severity-schema.yml's `rank` field) that should
+#                          be treated as blocking. Defaults to CRITICAL's
+#                          rank (4) — i.e. only CRITICAL findings block by
+#                          default; a project may lower this to be
+#                          stricter. This is a CONFIG VALUE the future
+#                          run-engine will read — it does not, by itself,
+#                          cause this M1 code to emit any particular exit
+#                          code.
+#
+# Per the exit-code note in severity-schema.yml: nothing in this file or
+# the M1 loader/init code emits or reasons about process exit code 2. This
+# file only carries the declarative policy the (not-yet-implemented)
+# run-engine will later consult.
+version: 1
+
+severities_source: severity-schema.yml
+tiers_source: scope-table.yml
+
+tier: minor
+
+default_severity: MEDIUM
+
+fail_on_severity_at_or_above: CRITICAL

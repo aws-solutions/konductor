@@ -1,0 +1,38 @@
+build
+
+# pytest-coverage byproduct
+.coverage
+
+.kiro/skills/*
+# Local runtime state. The internal slash anchors this to the repo root,
+# which is the only place it can appear: memory-validator.sh resolves its
+# write target via `git rev-parse --show-toplevel`. memory-config.json is
+# re-included because it is shared configuration, not per-developer state.
+.konductor/*
+!.konductor/memory-config.json
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# `konductor synth` output, written under the source tree being
+# synthesized (this repo, when run with --local pointing here or as the
+# default target_dir) -- never committed.
+dist/
+
+# `scripts/generate-agent-files.js` output, rendered from
+# agents/*.agent-spec.json + skills/*/SKILL.md. Regenerate with
+# `npm run generate-agents` -- never committed.
+agents/claude/
+
+# Transient handoff/audit artifacts written by agent sessions (e.g.
+# audit-findings-ledger*.md). These are session-scratch, not package
+# deliverables, and must never be committed to this public package --
+# they can contain internal-only terms (see AGENTS.md forbidden list)
+# that fail the public-artifact safety scan enforced in CI.
+.konductor/handoff/
+
+# k-browser's playwright-mcp --output-dir target (see its
+# mcpRegistry entry and k-light-ui-testing.sop.md Step 6). Persisted
+# screenshots are run-scratch, not package deliverables.
+browser-output/

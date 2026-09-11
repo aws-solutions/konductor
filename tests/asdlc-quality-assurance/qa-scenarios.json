@@ -1,0 +1,77 @@
+{
+  "scenarios": [
+    {
+      "taskId": "qa-test-coverage-analysis - Level 1",
+      "input": [
+        "Use your test-coverage-analysis skill to analyze test coverage for our task management API. Here is the actual code and existing test (this is the complete, real content -- not a placeholder):\n\n--- taskRepository.ts ---\nexport class TaskRepository {\n  private store = new Map<string, any>();\n\n  async save(task: any): Promise<string> {\n    const id = task.id || `task-${this.store.size + 1}`;\n    this.store.set(id, { ...task, id });\n    return id;\n  }\n\n  async find(id: string) {\n    return this.store.get(id) || null;\n  }\n\n  async delete(id: string): Promise<boolean> {\n    return this.store.delete(id);\n  }\n}\n\n--- taskService.ts ---\nimport { TaskRepository } from './taskRepository';\n\nexport class TaskService {\n  constructor(private repo: TaskRepository) {}\n\n  async createTask(title: string): Promise<{ id: string }> {\n    if (!title || title.trim().length === 0) {\n      throw new Error('Task title is required');\n    }\n    const id = await this.repo.save({ title, done: false });\n    return { id };\n  }\n\n  async getTask(id: string) {\n    const task = await this.repo.find(id);\n    if (!task) {\n      throw new Error(`Task ${id} not found`);\n    }\n    return task;\n  }\n\n  async completeTask(id: string) {\n    const task = await this.getTask(id);\n    task.done = true;\n    await this.repo.save(task);\n    return task;\n  }\n}\n\n--- taskService.test.ts (the ONLY existing test file) ---\nimport { TaskService } from './taskService';\nimport { TaskRepository } from './taskRepository';\n\ndescribe('TaskService', () => {\n  it('creates a task', async () => {\n    const repo = new TaskRepository();\n    const service = new TaskService(repo);\n    const result = await service.createTask('Write report');\n    expect(result.id).toBeDefined();\n  });\n});\n\nThat is the full source and the full existing test suite -- there are no other files. Analyze the gap between what taskService.ts / taskRepository.ts do and what taskService.test.ts actually covers, then save the report to coverage-report.md."
+      ],
+      "expectedOutput": "Agent invokes the test-coverage-analysis skill and produces a gap analysis report against the embedded taskService.ts/taskRepository.ts code, identifying untested branches: createTask's empty-title validation error, getTask's not-found error path, completeTask (entirely untested), and taskRepository.find's not-found path plus delete (entirely untested). Flags these as CRITICAL/high-severity gaps and provides recommendations. May save to coverage-report.md if a workspace is available.",
+      "expectedStrings": ["CRITICAL", "taskService", "taskRepository"],
+      "expectedTools": {
+        "required": [],
+        "alternatives": {}
+      },
+      "expectedSkillMarkers": ["CRITICAL", "zero coverage", "untested"],
+      "metadata": {
+        "category": "Test",
+        "difficulty": "Easy",
+        "official": false,
+        "useCase": ["Testfailuredebugging"]
+      }
+    },
+    {
+      "taskId": "qa-security-test-generation - Level 1",
+      "input": [
+        "Use your security-test-generation skill to generate security test plans for our task management API. The system uses Cognito for authentication, API Gateway, Lambda handlers, and DynamoDB. The API handles user PII including email and full name and supports full CRUD operations on tasks. Proceed directly to generating the security-test-plans/ directory without asking clarifying questions."
+      ],
+      "expectedOutput": "Agent invokes the security-test-generation skill and produces a security-test-plans/ directory with per-category markdown files covering authentication, authorization, input validation, PII handling, and API security.",
+      "expectedTools": {
+        "required": [],
+        "alternatives": {}
+      },
+      "expectedSkillMarkers": ["Authentication & Authorization", "Input Validation", "OWASP Top 10"],
+      "metadata": {
+        "category": "Test",
+        "difficulty": "Easy",
+        "official": false,
+        "useCase": ["Testfailuredebugging"]
+      }
+    },
+    {
+      "taskId": "qa-e2e-test-strategy - Level 3",
+      "input": [
+        "Create an E2E test strategy for a task management web app with a task assignment flow. The app uses React frontend, API Gateway, Lambda, and DynamoDB. This is a feature release adding task assignment. Produce a prioritized strategy with P0/P1/P2/P3 scored test scenarios."
+      ],
+      "expectedOutput": "Agent invokes the e2e-test-strategy skill and produces a prioritized E2E test strategy. The strategy includes P0/P1/P2/P3 scored test scenarios covering the task assignment flow, test environment requirements, and data setup/teardown approach.",
+      "expectedTools": {
+        "required": [],
+        "alternatives": {}
+      },
+      "expectedSkillMarkers": ["P0", "P1", "P2", "P3"],
+      "metadata": {
+        "category": "Test",
+        "difficulty": "Medium",
+        "official": false,
+        "useCase": ["Testfailuredebugging"]
+      }
+    },
+    {
+      "taskId": "qa-cypress-test-implementation - Level 3",
+      "input": [
+        "Write a Cypress test implementation plan for the task creation flow: user navigates to /tasks/new, fills in title and assignee, clicks Save, and sees the new task appear in the list. Produce a task breakdown covering page objects, custom commands, test data fixtures, and the full test flow."
+      ],
+      "expectedOutput": "Agent invokes the cypress-test-implementation skill and produces a task breakdown including: page object for the task creation form, custom commands for common interactions, test data fixtures, and an implementation roadmap covering the full flow from navigation through assertion on the task list.",
+      "expectedTools": {
+        "required": [],
+        "alternatives": {}
+      },
+      "expectedSkillMarkers": ["Test Data", "CYPRESS-", "Foundation"],
+      "metadata": {
+        "category": "Test",
+        "difficulty": "Medium",
+        "official": false,
+        "useCase": ["Testfailuredebugging"]
+      }
+    }
+  ]
+}

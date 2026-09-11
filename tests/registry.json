@@ -1,0 +1,25 @@
+{
+  "name": "ASDLCCoreAICapabilities-1.0",
+  "modelPolicyNote": "This is the public, aim-free benchmark registry (MVP subset — see docs/guides/benchmarking.md). subjectModel is forwarded to the claude CLI via --model by scripts/run-claude-subset.js. datasetPath names the subset's scenario directory under tests/ and is resolved independently of the subset name, so a directory may keep its pre-rename name while name carries the current agent identifier. requiredMcpServer (only set for MCP-bearing agents, e.g. k-developer's aws-mcp) is forwarded to tests/judges/claude-code-agent-runner.js so it knows which MCP server's readiness to gate the scored turn on; it defaults to skipped when omitted. defaultJudge is always \"claude-code\" here — the public harness has no Kiro-CLI-backed judge yet (see docs/guides/benchmarking.md's phased-plan note).",
+  "subsets": [
+    {
+      "name": "k-quality-assurance",
+      "version": "2026-08-12",
+      "judgeVersion": "2026-08-12",
+      "description": "Benchmark tests for the Quality Assurance agent: test coverage gap analysis, security test generation, E2E test strategy, Cypress test planning, and UI text validation",
+      "datasetPath": "./asdlc-quality-assurance",
+      "defaultJudge": "claude-code",
+      "subjectModel": "claude-sonnet-5"
+    },
+    {
+      "name": "k-developer",
+      "version": "2026-08-12",
+      "judgeVersion": "2026-08-12",
+      "description": "Benchmark tests for the Software Development Engineer agent: code review, task decomposition, backend development, git workflow, code-review triage, persistent memory, and workspace skill capture",
+      "datasetPath": "./asdlc-developer",
+      "defaultJudge": "claude-code",
+      "subjectModel": "claude-sonnet-5",
+      "requiredMcpServer": "aws-mcp"
+    }
+  ]
+}

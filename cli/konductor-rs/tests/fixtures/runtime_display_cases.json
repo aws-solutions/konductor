@@ -1,0 +1,7 @@
+{
+  "$schema_note": "Runtime string-representation test fixtures (Rust). Each case names a Runtime variant and the exact string the Rust Display impl must return for it. SPDX-License-Identifier: Apache-2.0 -- JSON has no native comment syntax; this $schema_note field carries the required license header.",
+  "cases": [
+    {"variant": "KiroCli", "expected": "kiro-cli"},
+    {"variant": "ClaudeCode", "expected": "claude-code"}
+  ]
+}

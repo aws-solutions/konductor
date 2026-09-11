@@ -1,0 +1,114 @@
+[package]
+name = "konductor"
+version = "0.1.0"
+edition = "2021"
+description = "Konductor CLI — placeholder skeleton for build pipeline validation"
+license = "Apache-2.0"
+
+[[bin]]
+name = "konductor"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "=4.6.2", features = ["derive"] }
+# Exact-pinned (repo convention: no open ranges). Used by the hidden
+# `__dump_schema` command (see src/cli.rs) and by synth's transformers.
+# `preserve_order` keeps JSON object key order as parsed/inserted (backed
+# by `indexmap` instead of `BTreeMap`, which alphabetizes) -- required so
+# raw-JSON-passthrough fields (e.g. KiroCliConfig::tools_settings) round-
+# trip through synth in source key order rather than sorted order.
+# `arbitrary_precision` keeps a parsed `Number`'s exact source digit text
+# internally instead of collapsing anything past i64::MIN/u64::MAX to an
+# f64 approximation -- required so PARSING an out-of-range integer
+# literal in a source spec does not fail. Without it, both parse paths
+# that build a `serde_json::Value` -- `serde_json::from_str` on an
+# agent-spec (parser.rs) and `serde_yaml::from_str` on skill frontmatter
+# for the name/description presence check (parse_canonical.rs) -- fail
+# outright on such a literal ("JSON number out of range") rather than
+# accepting it; with it, the exact source digits are preserved
+# internally. (`serde_yaml`'s own `Number` wraps `serde_json::Number`,
+# so this crate-global `serde_json` feature governs the YAML path too.)
+#
+# This is a crate-global `Number` change, not scoped to frontmatter: it
+# also changes how `Number` SERIALIZES everywhere, preserving a parsed
+# value's exact source digit text (e.g. `1.50`, `1e3`) instead of
+# normalizing it through `f64` on the way back out. `write_agent_file`
+# (kiro_cli_v2.rs) normalizes `Number` leaves in the agent JSON it emits
+# before serializing, to keep that output's numeric formatting
+# independent of this feature.
+serde_json = { version = "=1.0.150", features = ["preserve_order", "arbitrary_precision"] }
+# Exact-pinned per repo convention. Already resolved transitively via
+# serde_json's `preserve_order` feature (same crate, same version) --
+# promoted to a direct dependency so typed map fields (e.g.
+# KiroCliConfig::mcp_servers/hooks) can use IndexMap directly instead of
+# BTreeMap, keeping source JSON key order like tools_settings already
+# does. `serde` feature enables Serialize/Deserialize on IndexMap itself
+# (distinct from serde_json's preserve_order, which only affects
+# serde_json::Value::Object). Verified mirror-fetchable: already present
+# in Cargo.lock.
+indexmap = { version = "=2.14.0", features = ["serde"] }
+# Added for M1 (declarative contract): the config loader (src/config.rs)
+# derives Serialize/Deserialize on its Config struct to parse
+# `.konductor/config.yml` / the preset `cli/gate-config/config.yml`.
+# Exact-pinned per repo convention. Version bumped past serde_json's own
+# `^1.0.220` transitive requirement (1.0.215 conflicts; verified against
+# the internal crates.io mirror via `cargo brazil fetch --target all`).
+serde = { version = "=1.0.228", features = ["derive"] }
+# YAML (de)serialization for the config loader. `serde_yaml` is
+# unmaintained upstream (archived by its author in 2024) but is still the
+# most mirror-compatible/widely-used option and has no known advisories;
+# newer forks (`serde_yml`, `serde_norway`) were not yet confirmed present
+# on the internal crates.io mirror at time of writing, so this stays with
+# the well-known crate rather than risking a mirror-fetch failure. Revisit
+# if a maintained fork becomes mirror-available and the team wants to
+# migrate. Exact-pinned per repo convention; verified fetchable via
+# `cargo brazil fetch --target all`.
+serde_yaml = "=0.9.34"
+# Advisory exclusive file lock used to serialize `config set`'s
+# read-merge-write cycle across concurrent CLI invocations (see
+# src/cli/config_lock.rs). `fs2` is unmaintained upstream (like
+# `serde_yaml` above) but is confirmed present on the internal crates.io
+# mirror (observed in a real `cargo brazil fetch --target all` run
+# unpacking `fs2 v0.4.3`), and its `FileExt::try_lock_exclusive` /
+# `unlock` API is exactly the small, stable surface this needs. Exact-
+# pinned per repo convention.
+fs2 = "=0.4.3"
+# SHA-256 artifact-checksum verification for `konductor install` (task
+# 3.1). Exact-pinned per repo convention; verified fetchable via `cargo
+# brazil fetch --target all`.
+sha2 = "=0.10.8"
+# Unicode canonical (NFC) normalization for the case-insensitive
+# collision-detection fold shared by `parse_canonical.rs`/`path_safety.rs`
+# (see `path_safety::case_insensitive_fold_key`). `str::to_lowercase`
+# alone performs Unicode case-mapping but not normalization, so two
+# differently-composed but visually-identical names (e.g. NFC-precomposed
+# vs. NFD-decomposed) fold to different strings and bypass the collision
+# check outright. Exact-pinned per repo convention; verified fetchable
+# via `cargo add --dry-run` against the mirror-backed registry.
+unicode-normalization = "=0.1.25"
+# Host-allowlist DNS classification, DNS-rebinding pin construction, and
+# the timeout-vs-failure resolution decision (`telemetry/report.rs`),
+# shared via a plain path dependency with `mcp/lib/skill-lookup-core`'s
+# own telemetry module -- this crate and `mcp/` are not otherwise
+# workspace-linked (this crate has no `[workspace]` of its own; `mcp/`
+# is a separate Cargo workspace this crate is not part of), so a path
+# dependency, not shared workspace membership, is the mechanism that
+# lets both depend on ONE implementation. The crate itself lives under
+# `mcp/lib/` (matching that workspace's own member glob -- Cargo
+# requires a member to be hierarchically below its workspace root, so
+# it cannot sit in a directory sibling to both `cli/` and `mcp/`); this
+# dependency's path reaches into that tree accordingly. No `async`
+# feature here: this crate has no async runtime, so it bounds its own
+# resolution via the shared crate's synchronous `run_with_timeout`/
+# `resolve_host_addrs_bounded`, never the tokio-based path that feature
+# gates.
+telemetry-net = { path = "../../mcp/lib/telemetry-net" }
+# Archive layout for konductor synth's packaging step (dist/ tree -> single
+# blob for write_sidecar to hash). Layout-only by design -- does not bundle
+# compression, hence flate2 below.
+tar = "=0.4.45"
+# Gzip compression paired with tar above -- the standard Rust-ecosystem
+# combination (e.g. `cargo package` itself uses this same pairing).
+# Exact-pinned per repo convention; verify fetchable via `cargo brazil
+# fetch --target all` before merging.
+flate2 = "=1.1.5"

@@ -1,0 +1,54 @@
+[package]
+name = "skill-lookup-mcp"
+version = "0.1.0"
+edition = "2021"
+description = "skill-lookup-mcp -- stdio MCP server scaffold for Konductor skill lookup"
+license.workspace = true
+
+[[bin]]
+name = "skill-lookup-mcp"
+path = "src/main.rs"
+
+[dependencies]
+# Reusable scanning/index/frontmatter core, extracted into its own crate
+# (mcp/lib/skill-lookup-core) so a second MCP server can depend on it
+# without a third copy of frontmatter parsing. Path dependency within
+# this Cargo workspace -- not published, no version to pin.
+skill-lookup-core = { path = "../../lib/skill-lookup-core" }
+# Exact-pinned per repo convention (see cli/konductor-rs/Cargo.toml). "server"
+# enables ServerHandler/ServiceExt; "transport-io" enables the stdio
+# transport helper (rmcp::transport::stdio) this binary uses to answer the
+# MCP `initialize` handshake.
+rmcp = { version = "=0.1.5", features = ["server", "transport-io"] }
+tokio = { version = "=1.44.2", features = ["rt-multi-thread", "macros", "io-std", "io-util"] }
+schemars = "=0.8.22"
+# Same version as cli/konductor-rs/Cargo.toml's clap pin, for consistency
+# across this repo's Rust CLIs. Used for --skills-dir arg parsing.
+clap = { version = "=4.6.2", features = ["derive"] }
+# Exact-pinned per repo convention. Already resolved transitively at this
+# exact version via schemars/rmcp's own dependency graph (see Cargo.lock);
+# promoted to a direct dependency because the frontmatter reader
+# (now in skill-lookup-core) deserializes into serde_json::Value directly,
+# matching the same target type cli/konductor-rs's own frontmatter reader
+# uses (see cli/konductor-rs/src/cli/synth/parse_canonical.rs) -- kept as
+# an independent duplicate, not a shared dependency; see
+# skill-lookup-core's frontmatter.rs module doc comment for why. This
+# binary also uses serde_json::json! directly in main.rs (tool schemas),
+# so it stays a direct dependency here too, not solely a transitive one
+# via skill-lookup-core.
+serde_json = "=1.0.150"
+# Wire-format DTOs for the find_skills/get_skill/reload_skills tool
+# responses (main.rs). Already resolved transitively at this exact
+# version via rmcp/schemars/serde_yaml's own dependency graph (see
+# Cargo.lock); promoted to a direct dependency because main.rs derives
+# Serialize on its own response structs. Exact-pinned per repo convention.
+serde = { version = "=1.0.229", features = ["derive"] }
+
+[dev-dependencies]
+# Used by tests/initialize_handshake.rs to spawn the built binary as a
+# child process and exercise the stdio initialize handshake end-to-end.
+tokio = { version = "=1.44.2", features = ["process", "io-util", "time"] }
+# serde_json is already a direct [dependencies] entry above (used by
+# frontmatter.rs); tests/initialize_handshake.rs uses that same
+# dependency to build/parse the raw JSON-RPC initialize request/response,
+# so no separate dev-dependency entry is needed here.

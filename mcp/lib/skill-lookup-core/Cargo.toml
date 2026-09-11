@@ -1,0 +1,47 @@
+[package]
+name = "skill-lookup-core"
+version = "0.1.0"
+edition = "2021"
+description = "Reusable scanning/index/frontmatter core shared by skill-lookup-mcp and future MCP servers that scan a directory tree of frontmatter-carrying files"
+license.workspace = true
+
+[lib]
+name = "skill_lookup_core"
+path = "src/lib.rs"
+
+[dependencies]
+# Exact-pinned per repo convention (see cli/konductor-rs/Cargo.toml and
+# servers/skill-lookup/Cargo.toml). serde_json::Value is the frontmatter
+# parse target (see frontmatter.rs's module doc comment for why an
+# untyped intermediate is required).
+serde_json = "=1.0.150"
+# YAML deserialization for SKILL.md-style frontmatter. Same pin as
+# servers/skill-lookup/Cargo.toml's serde_yaml dependency.
+serde_yaml = "=0.9.34"
+# Telemetry module (design doc D.5/D.6): deserializing
+# .konductor/telemetry-id.json's identity record. Same pin as
+# servers/skill-lookup/Cargo.toml's own serde dependency (1.0.229, not
+# cli/konductor-rs's 1.0.228 -- the two differ; matching the sibling
+# crate this one is actually linked into avoids a version conflict).
+serde = { version = "=1.0.229", features = ["derive"] }
+# Telemetry module: sha256_hex()'s own shape validation
+# (^[a-f0-9]{64}$) needs no hashing here (this crate never generates a
+# UUID, only reads one), but sha2 IS needed for eventId's own hash --
+# same pin as cli/konductor-rs/Cargo.toml.
+sha2 = "=0.10.8"
+# Telemetry module (D.5/D.7): the flush task's own tokio::time::interval
+# and tokio::process::Command (for zombie-free detached spawns of the
+# curl-wrapping script) -- same pin as servers/skill-lookup/Cargo.toml's
+# existing tokio dependency.
+tokio = { version = "=1.44.2", features = ["process", "time", "rt-multi-thread", "macros", "io-util"] }
+# Host-allowlist DNS classification, DNS-rebinding pin construction, and
+# the timeout-vs-failure resolution decision (telemetry.rs) -- a
+# sibling member of this same workspace (mcp/lib/telemetry-net,
+# matching the "lib/*" glob in mcp/Cargo.toml), also depended on via a
+# plain path dependency by cli/konductor-rs (see that crate's own
+# Cargo.toml comment for why a path dependency, not shared workspace
+# membership, is that crate's own sharing mechanism). `async` enables
+# `resolve_host_addrs_bounded_async`, which this crate's telemetry.rs
+# uses to bound its own resolution via `tokio::task::spawn_blocking` +
+# `tokio::time::timeout` instead of a dedicated OS thread per call.
+telemetry-net = { path = "../telemetry-net", features = ["async"] }
