@@ -166,17 +166,34 @@ konductor synth --from <repo-root>
 ```
 
 Reads the repo's source content (`agents/`, `skills/`, `agent-sops/`) and
-writes runtime-native output to `<repo-root>/dist/kiro-cli-v2/`:
+writes runtime-native output to `<repo-root>/dist/kiro-cli-v2/`, plus a
+packaged `.tar.gz` archive of the whole `dist/` tree and its `.sha256`
+checksum sidecar at `dist/`'s own top level:
 
 ```
-dist/kiro-cli-v2/
-├── agents/    # one JSON file per agent
-├── skills/    # one directory per skill (SKILL.md + any scripts)
-└── sops/      # one file per SOP
+dist/
+├── konductor-v<version>.tar.gz         # packaged dist/ contents
+├── konductor-v<version>.tar.gz.sha256   # its checksum sidecar
+└── kiro-cli-v2/
+    ├── agents/    # one JSON file per agent
+    ├── skills/    # one directory per skill (SKILL.md + any scripts)
+    └── sops/      # one file per SOP
 ```
 
-`synth` is silent on success and exits `0`. `dist/` is gitignored — inspect the output
-with a plain directory listing, e.g. `find dist -maxdepth 3`.
+The filename carries no architecture or OS: the packaged content (agent/skill/SOP
+markdown and JSON config, no compiled code) is architecture- and OS-independent within
+the Unix family, so there's nothing to disambiguate by encoding a target triple in the
+name.
+
+The archive and sidecar are what the main-branch-`dist/`-fallback install
+source (see
+[Installing without `--from`](#installing-without---from-the-github-release--main-branch-dist-fallback-chain)
+below) expects to fetch from a published `main` branch's `dist/` directory.
+
+On success, `synth` prints two summary lines to stdout: what was written
+(agent/skill/SOP/context counts and the output root) and the packaged
+artifact's filename. `dist/` is gitignored — inspect the output with a
+plain directory listing, e.g. `find dist -maxdepth 3`.
 
 ---
 
@@ -298,6 +315,24 @@ every other failure (network error, missing asset/sidecar, unpack/install failur
 to exit `64` (`EXIT_USAGE_ERROR`), consistent with every other install failure in this
 doc. If BOTH sources fail, the reported error names both underlying failures distinctly
 — never collapsed into one message that can't be attributed to a specific source.
+
+### `GITHUB_TOKEN`: optional authenticated access to the GitHub API
+
+Pass `--use-github-token` to have `konductor install` (no `--from`) read `GITHUB_TOKEN`
+from the environment and send `Authorization: Bearer $GITHUB_TOKEN` on its
+`api.github.com` requests — the release path's metadata lookup and the
+main-branch-`dist/` fallback's two Contents API requests. Without this flag,
+`GITHUB_TOKEN` is never read, even if it's set in your shell: the environment variable
+is opt-in, not ambient. It is never sent on the release path's asset-download requests
+regardless of the flag: those follow a redirect off `api.github.com` to a short-lived,
+pre-signed storage host that already carries its own auth and must never receive the
+GitHub token. This is an access option, not a rate-limit workaround: unauthenticated
+requests already comfortably fit under GitHub's rate limits at this codebase's request
+volume (2-3 requests per install), and that stays true once the target repository is
+public. Its actual use case is testing `install` against a currently-private
+repository before it's published; omitting `--use-github-token` produces byte-for-byte
+identical requests to a build with no token support at all, regardless of whether
+`GITHUB_TOKEN` happens to be set.
 
 Verify a `--target <dir>` install:
 
@@ -631,9 +666,9 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
   argument exits **64** (`EX_USAGE`), not the more common default of 2 — exit code 2 is
   reserved by the exit-code contract for "unresolved CRITICAL gate" (the CI-failing
   signal), so a malformed invocation is never mistaken for a gate failure.
-- **Exit-code contract** (per Engineering Design §6; the conductor that emits these for
-  its own paused-verdict workflow is post-launch — but two codes are already reused, each
-  for its own distinct local meaning, by real commands ahead of that conductor existing):
+- **Exit-code contract** (the conductor that emits these for its own paused-verdict
+  workflow is post-launch — but two codes are already reused, each for its own distinct
+  local meaning, by real commands ahead of that conductor existing):
   | Code | Meaning |
   |------|---------|
   | 0 | All passed |
@@ -686,5 +721,3 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
 - `doctor` does not check Claude Code-specific environment state, compare installed
   vs. available versions, or validate metrics/gate-tier data (no supporting mechanism
   exists in-repo yet for the latter two).
-
-See `docs/design/konductor-cli-engineering-design.md` for the full design.

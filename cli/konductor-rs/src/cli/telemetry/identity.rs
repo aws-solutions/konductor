@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // telemetry/identity.rs — `.konductor/telemetry-id.json` schema,
-// generation, and write mechanics (design doc D.1/D.2).
+// generation, and write mechanics.
 //
-// ── Write mechanics (D.2) ──────────────────────────────────────────────────
+// ── Write mechanics ──────────────────────────────────────────────────
 // Never `write_atomic`'s rename: `rename(2)` unconditionally replaces
 // whatever is at the destination, so two concurrent installs against the
 // same target could both generate a UUID and race to publish, with the
@@ -64,12 +64,12 @@ const IDENTITY_FILE_NAME: &str = "telemetry-id.json";
 /// `0o644`: owner read/write, group/other read -- same deterministic,
 /// umask-independent mode `write_atomic` uses for every file it
 /// produces (see atomic_write.rs's module docstring). Not tightened to
-/// `0o600` in this revision (design doc §6 open item).
+/// `0o600` in this revision -- left as an open follow-up.
 const FILE_MODE: u32 = 0o644;
 
 /// A 64-character lowercase hex `sha256_hex()` digest -- the shape a
 /// well-formed `UUID` must match. Shared by the identity file's own
-/// validation and `skill-lookup-core`'s independent mirror (D.5).
+/// validation and `skill-lookup-core`'s independent mirror.
 pub(crate) fn is_valid_uuid_shape(value: &str) -> bool {
     value.len() == 64
         && value
@@ -77,7 +77,7 @@ pub(crate) fn is_valid_uuid_shape(value: &str) -> bool {
             .all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase())
 }
 
-/// `.konductor/telemetry-id.json`'s on-disk shape (D.2).
+/// `.konductor/telemetry-id.json`'s on-disk shape.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct IdentityRecord {
     pub schema_version: u64,
@@ -112,16 +112,15 @@ pub(crate) fn identity_path(target_dir: &Path) -> PathBuf {
 /// failed to survive -- as one that opted out. Used by `update`'s own
 /// opt-out carry-forward: on a target that already has an install
 /// manifest, this file's total absence is the durable signal that
-/// `install --no-telemetry` was passed for that target (design doc
-/// D.8/D.10).
+/// `install --no-telemetry` was passed for that target.
 pub(crate) fn identity_file_exists(target_dir: &Path) -> bool {
     identity_path(target_dir).exists()
 }
 
-/// Generates a fresh `UUID` per D.2: `sha256_hex()` over
+/// Generates a fresh `UUID`: `sha256_hex()` over
 /// `SystemTime::now()` + `process::id()` + `target_dir`. Mixing in a
 /// moment of entropy (now, this process's own pid) plus the target path
-/// is what a stateless re-derivation could never reconstruct later (D.1).
+/// is what a stateless re-derivation could never reconstruct later.
 fn generate_uuid(target_dir: &Path) -> String {
     let nanos = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -214,8 +213,8 @@ fn read_identity_raw(target_dir: &Path) -> ReadOutcome {
 /// Reads `<target_dir>/.konductor/telemetry-id.json`. Returns `None` for
 /// every "absent" case: the file doesn't exist, isn't readable, isn't
 /// valid JSON, doesn't match the expected shape, or has a `UUID` failing
-/// `^[a-f0-9]{64}$` -- never an `Err`, matching D.6's cached-lookup
-/// contract (missing/malformed both mean "treat as absent").
+/// `^[a-f0-9]{64}$` -- never an `Err` (missing/malformed both mean
+/// "treat as absent").
 ///
 /// A recognized-but-newer `schema_version` is NOT "absent" (see this
 /// module's docstring) and is intentionally NOT surfaced by this
@@ -231,11 +230,11 @@ pub(crate) fn read_identity(target_dir: &Path) -> Option<IdentityRecord> {
 }
 
 /// A unique temp-file suffix: current time in nanoseconds is NOT used
-/// here (unlike `atomic_write.rs`'s `unique_suffix`) -- D.2 specifies
-/// the temp name is `.tmp-<pid>` specifically so two concurrent
+/// here (unlike `atomic_write.rs`'s `unique_suffix`) -- the temp name is
+/// `.tmp-<pid>` specifically so two concurrent
 /// processes never pick the same name (a single process only ever
 /// writes one identity file per invocation, so pid alone is sufficient
-/// and matches the design doc's own stated naming exactly).
+/// and matches the exact naming this identity file uses).
 fn temp_path(target_dir: &Path) -> PathBuf {
     let dir = target_dir.join(KONDUCTOR_DIR_NAME);
     dir.join(format!("{IDENTITY_FILE_NAME}.tmp-{}", std::process::id()))
@@ -333,7 +332,7 @@ const O_NOFOLLOW: i32 = 0o400_000;
 const O_NOFOLLOW: i32 = 0o400;
 
 /// Ensures the identity record exists at `target_dir`, creating one if
-/// absent, per D.2's write mechanics. Idempotent: a second call against
+/// absent. Idempotent: a second call against
 /// an already-populated target reads and reuses the existing `UUID`
 /// rather than generating a new one. Returns the record now on disk
 /// (either freshly written, or another writer's already-published one).
@@ -412,14 +411,14 @@ pub(crate) fn ensure_identity(target_dir: &Path, harness: &str) -> IdentityRecor
     }
 }
 
-/// Handles the losing side of a `hard_link` race per D.2's recovery
-/// rules: read the winner's file; if malformed, remove it and retry the
+/// Handles the losing side of a `hard_link` race: read the winner's
+/// file; if malformed, remove it and retry the
 /// `hard_link` exactly once (republishing this caller's own already-
 /// generated `UUID` from its still-intact temp file); if that retry also
 /// loses, read once more and either use that value or fall back to the
 /// nil-UUID sentinel path (by returning `own_record` unpersisted, which
 /// the report module's identity cache treats as "no identity" the same
-/// way a missing file would be -- see D.6).
+/// way a missing file would be).
 ///
 /// A `NewerSchema` destination is NOT "malformed" -- it's a real
 /// identity a newer binary already published, mid-write or otherwise.

@@ -3,19 +3,16 @@
 // report.rs — shared `--json` error-envelope construction and
 // reporting, used by every command that emits the
 // `{"command": ..., "error": ..., ...extra}` shape on stdout, plus the
-// telemetry side effect (design doc D.6/D.11) every such error also
-// carries.
+// telemetry side effect every such error also carries.
 //
 // Shared by install.rs, synth/mod.rs, doctor.rs, uninstall.rs,
 // update.rs, and dispatch.rs -- centralized here rather than owned by
 // any one command module, since every command follows this same
-// `--json` error-envelope convention (see
-// konductor-cli-engineering-design.md's "Logging and Diagnostics"
-// §Decision 3) AND the same telemetry `cli_error` reporting convention
-// (konductor-usage-analytics-design.md D.6/D.11). `report_error` is
-// the single place both conventions meet, so every call site gets
-// both for free rather than needing to remember to wire telemetry in
-// separately.
+// `--json` error-envelope convention AND the same telemetry `cli_error`
+// reporting convention.
+// `report_error` is the single place both conventions meet, so every
+// call site gets both for free rather than needing to remember to wire
+// telemetry in separately.
 //
 // The envelope invariant: under `--json`, every non-zero exit emits
 // this shape to stdout, and an invocation emits exactly one JSON
@@ -69,23 +66,23 @@ pub(crate) fn build_error_json(
 /// `install`/`synth`/`update`/`uninstall`/`doctor`/`dispatch`: prints
 /// the `--json` envelope to stdout when `json` is true, or the
 /// plain-text `konductor {command}: {message}` line to stderr
-/// otherwise, AND reports a telemetry `cli_error` event (design doc
-/// D.6/D.11) via `crate::cli::telemetry::report_cli_error` -- folded
+/// otherwise, AND reports a telemetry `cli_error` event via
+/// `crate::cli::telemetry::report_cli_error` -- folded
 /// in here so every call site gets both the envelope/plain-text
 /// report and the telemetry side effect from one call, rather than
 /// needing to remember to wire telemetry in separately at each site.
 ///
-/// `error_code` is a stable, closed error-category string (D.11) --
+/// `error_code` is a stable, closed error-category string --
 /// never `message`/an error's own `Display` text, which routinely
 /// embeds a local filesystem path. `target_dir` is the target this
 /// error occurred against, needed to resolve telemetry's cached
-/// identity lookup (D.6/D.11); callers with no single target in scope
+/// identity lookup; callers with no single target in scope
 /// yet (e.g. a global index read) pass their best scope-agnostic
 /// fallback (typically `$HOME`). `no_telemetry` carries `--no-telemetry`'s
 /// parsed value through to `report_cli_error` -- `install`'s call
 /// sites are the only ones that ever have a real flag value to pass;
 /// every other command passes `false` literally, a value
-/// `report_cli_error` never inspects for those commands (D.8).
+/// `report_cli_error` never inspects for those commands.
 ///
 /// `message` is the plain-text wording each call site already used --
 /// when `json` is true, the same string becomes the envelope's

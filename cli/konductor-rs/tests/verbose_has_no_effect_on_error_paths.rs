@@ -1,19 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// verbose_has_no_effect_on_error_paths.rs — end-to-end confirmation of
-// konductor-cli-engineering-design.md's "Logging and Diagnostics"
-// §Decision 5: `--verbose`/`-v` stays scoped to success-detail output
-// only, with zero effect on any error path.
+// verbose_has_no_effect_on_error_paths.rs — end-to-end confirmation
+// that `--verbose`/`-v` stays scoped to success-detail output only,
+// with zero effect on any error path.
 //
-// This does not refactor `--verbose` itself (Decision 5 explicitly
-// forbids that) -- it is a behavioral pin confirming the property
-// already holds after this change set's Decision 1-3 edits (KONDUCTOR_LOG
+// This test does not refactor `--verbose` itself; it is a
+// behavioral pin confirming the property already holds after this
+// change set's earlier logging/error-handling edits (KONDUCTOR_LOG
 // tracing, error-prefix unification, the --json error envelope).
 //
 // Approach: run the REAL compiled binary against a failing invocation
 // on each of `install`/`synth`/`doctor` (the three commands with a
-// `--verbose` success-detail branch, per the design doc's "Current
-// state" survey: `format_install_verbose_lines`,
+// `--verbose` success-detail branch: `format_install_verbose_lines`,
 // `format_verbose_lines`, `doctor::print_report`'s verbose branch),
 // once with `--verbose`/`-v` and once without, and assert BYTE-IDENTICAL
 // stdout, stderr, and exit code between the two runs. A subprocess
@@ -135,7 +133,8 @@ fn doctor_verbose_has_no_effect_on_a_failing_invocation() {
     // echoes back the invoking command line verbatim, so appending -v
     // to a CLAP-rejected invocation (e.g. --target/--all together)
     // legitimately changes clap's own rendered text -- that would be a
-    // false positive for this test, not a real Decision 5 violation.
+    // false positive for this test, not a real violation of `--verbose`
+    // staying scoped to success-only output.
     let mut cmd = Command::new(bin());
     cmd.args(["doctor"]).current_dir(&home);
     cmd.env_remove("HOME");
@@ -169,8 +168,8 @@ fn doctor_verbose_has_no_effect_on_a_failing_invocation() {
 /// Companion positive control: `--verbose` DOES change output on a
 /// SUCCESSFUL `doctor` run (append the per-file detail listing) --
 /// without this, the three tests above would also pass if `-v` were
-/// silently ignored everywhere, which is not the property Decision 5
-/// actually states (scoped to error paths only, not a no-op flag).
+/// silently ignored everywhere, which is not the property
+/// `--verbose` actually guarantees (scoped to error paths only, not a no-op flag).
 #[test]
 fn doctor_verbose_does_affect_a_successful_invocation() {
     let home = scratch_home("doctor-success-control");

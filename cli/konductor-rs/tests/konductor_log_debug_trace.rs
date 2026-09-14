@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // kondutor_log_debug_trace.rs — end-to-end coverage for
-// KONDUCTOR_LOG=debug (konductor-cli-engineering-design.md's "Logging
-// and Diagnostics" §Decision 1), driving the REAL compiled binary in a
+// KONDUCTOR_LOG=debug, driving the REAL compiled binary in a
 // subprocess.
 //
 // A subprocess is required, not an in-process call into `cli::trace`:
@@ -165,7 +164,7 @@ fn konductor_log_debug_never_mixes_into_json_stdout() {
 }
 
 /// `KONDUCTOR_LOG=debug` traces both a successful AND a failing
-/// invocation -- Decision 1 states tracing is independent of outcome.
+/// invocation -- tracing is independent of outcome.
 /// Uses an invocation that fails for a reason unrelated to tracing
 /// itself (an unresolvable doctor destination has no bearing on
 /// whether trace lines fire).

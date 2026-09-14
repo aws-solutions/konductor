@@ -235,7 +235,7 @@ pub struct CollisionEntry {
 ///
 /// Backs the "no silent drop" guarantee at three points: an immediate
 /// `emit_to_stderr()` at startup/reload (which also persists the same
-/// lines to `~/.konductor/mcp/logs/`, per §4.9 — see that method's doc
+/// lines to `~/.konductor/mcp/logs/` — see that method's doc
 /// comment), translation into a wire-level diagnostic returned from an
 /// explicit `reload_skills` call (the consuming server's job, not this
 /// crate's), and the persistent log file itself as a channel a human
@@ -255,7 +255,7 @@ pub struct ScanDiagnostic {
     /// denied, vanished between validation and scan, etc.) — distinct
     /// from `skipped`, which covers failures for individual files
     /// *within* a root that opened successfully. Each entry is `(root
-    /// path, underlying I/O error text)`. Per §4.9's level table, an
+    /// path, underlying I/O error text)`. An
     /// unreadable scan root logs at `error`, not `warn`.
     pub root_errors: Vec<(PathBuf, String)>,
 }
@@ -270,7 +270,7 @@ impl ScanDiagnostic {
     /// at startup so "no silent drop" has an always-on channel.
     ///
     /// Kept deliberately alongside the persistent log rather than
-    /// replaced by it (§4.9's own reconciliation decision): stderr is
+    /// replaced by it: stderr is
     /// invisible to an end user in an agent runtime (kiro-cli, Claude
     /// Code capture and discard MCP child-process stderr) — which is why
     /// the persistent file exists at all — but it remains the fastest
@@ -281,7 +281,7 @@ impl ScanDiagnostic {
     /// nothing the persistent file doesn't already cover.
     ///
     /// Each line is also written to the persistent log
-    /// (`crate::logging::log_file_only`, per §4.9: skips/collisions at
+    /// (`crate::logging::log_file_only`: skips/collisions at
     /// `warn`, the summary at `info`) using the exact same message text
     /// as the stderr line — this is the file-logging half of the same
     /// event, not a second, independently-worded copy. Deliberately
@@ -344,8 +344,8 @@ impl ScanDiagnostic {
 
         // A root_error means the whole `--skills-dir` root never opened at
         // all — a different, more severe case than any entry in `skipped`
-        // (which are all failures *within* a root that DID open). Per
-        // §4.9's level table this logs at `error`, not `warn`, and is
+        // (which are all failures *within* a root that DID open). An
+        // unreadable root logs at `error`, not `warn`, and is
         // written as its own separate call rather than folded into the
         // skip block above.
         let mut root_error_messages = Vec::with_capacity(self.root_errors.len());

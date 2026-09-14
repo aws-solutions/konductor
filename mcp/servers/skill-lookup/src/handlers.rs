@@ -241,7 +241,7 @@ fn json_result<T: Serialize>(value: &T) -> CallToolResult {
     CallToolResult::success(vec![content])
 }
 
-/// Builds the `find_skills` tool's advertised schema (§3.1): three
+/// Builds the `find_skills` tool's advertised schema: three
 /// optional string filters, no other properties accepted.
 fn find_skills_tool() -> Tool {
     Tool::new(
@@ -273,7 +273,7 @@ fn find_skills_tool() -> Tool {
     )
 }
 
-/// Builds the `get_skill` tool's advertised schema (§3.2): a single
+/// Builds the `get_skill` tool's advertised schema: a single
 /// required `name`, exact match, no other properties accepted.
 fn get_skill_tool() -> Tool {
     Tool::new(
@@ -296,7 +296,7 @@ fn get_skill_tool() -> Tool {
     )
 }
 
-/// Builds the `reload_skills` tool's advertised schema (§3.3): no
+/// Builds the `reload_skills` tool's advertised schema: no
 /// arguments at all.
 fn reload_skills_tool() -> Tool {
     Tool::new(
@@ -333,9 +333,9 @@ pub(crate) struct SkillLookupServer {
     /// flag isn't passed, in which case `prompts/list` returns an empty
     /// list and every `prompts/get` reports "prompt not found".
     pub(crate) sops: SopIndex,
-    /// In-process tool-call counters (design doc D.5/D.14), shared with
+    /// In-process tool-call counters, shared with
     /// the periodic flush task spawned in `main.rs`. `None` when
-    /// `--telemetry off` was passed -- structural opt-out (D.8): the
+    /// `--telemetry off` was passed -- structural opt-out: the
     /// increment call is simply skipped, never invoked-then-discarded.
     pub(crate) tool_call_counters: Option<skill_lookup_core::telemetry::ToolCallCounters>,
 }
@@ -369,8 +369,8 @@ impl SkillLookupServer {
                 provenance: provenance_str(r.provenance),
             })
             .collect();
-        // §4.9 debug row: "Individual find_skills calls (query params,
-        // result count)." Guarded on `debug_enabled()` here (not just
+        // Debug detail: query params and result count for each
+        // find_skills call. Guarded on `debug_enabled()` here (not just
         // inside `logging::log`) so the `format!` allocation below is
         // skipped entirely when debug logging is off, since this runs on
         // every call, not just at startup/reload.
@@ -387,7 +387,8 @@ impl SkillLookupServer {
     }
 
     /// Handles `get_skill`: exact-name lookup, then a fresh disk read of
-    /// the body (never cached — see §3.2's rationale, mirrored in the
+    /// the body (never cached — every `get_skill` call re-reads the
+    /// file fresh from disk, mirrored in the
     /// doc comment on this tool's schema). Three distinct,
     /// non-overlapping failure signals:
     ///   - unknown name: `InvalidParams`, `"skill not found: <name>"`.
@@ -411,8 +412,8 @@ impl SkillLookupServer {
         let name = required_str_arg(args, "name")?;
 
         let found = self.index.get(name);
-        // §4.9 debug row: "Individual get_skill calls (requested name,
-        // hit/miss)." Logged from the lookup itself, not from whichever
+        // Debug detail: the requested name and hit/miss for each
+        // get_skill call. Logged from the lookup itself, not from whichever
         // branch runs after it, so "hit" always means "the index had
         // this name" — independent of whether the subsequent read/size
         // check below then succeeds.
@@ -461,8 +462,8 @@ impl SkillLookupServer {
     /// Handles `reload_skills`: forces `SkillIndex::reload` and reports
     /// the resulting `ScanDiagnostic` (plus the filtered-out count) as
     /// the tool's response, so the calling agent — not just an operator
-    /// watching stderr — sees what the reload did. No arguments to
-    /// parse; §3.3 takes none.
+    /// watching stderr — sees what the reload did. `reload_skills`
+    /// takes no arguments.
     ///
     /// Also emits the diagnostic to stderr, same as startup — without
     /// this, reloading regressed operator visibility relative to boot,
@@ -600,7 +601,7 @@ impl SkillLookupServer {
 }
 
 /// Derives the `(tool_name, skill_name, errorCode)` counter key for one
-/// `call_tool` invocation, per design doc D.5/D.14.
+/// `call_tool` invocation.
 ///
 /// - A successful call: `errorCode: None`, `tool_name`/`skill_name` used
 ///   verbatim (both are closed/resolved values for a successful call --
@@ -672,8 +673,8 @@ fn record_tool_call(
             // or became unreadable after `self.index.get(name)` already
             // succeeded) and "too large" (ditto, caught by the stat or
             // post-read size guard) both occur strictly after a
-            // successful lookup -- the name WAS resolved. Design doc
-            // D.14's sentinel rationale exists specifically for the
+            // successful lookup -- the name WAS resolved. The sentinel
+            // exists specifically for the
             // pre-lookup, attacker-arbitrary case above; it never
             // intended to hide real diagnostic signal (which skill has
             // the problem) for a name the lookup already confirmed
@@ -697,8 +698,8 @@ fn record_tool_call(
     }
 }
 
-/// A stable, closed error-category string for an `McpError` (design doc
-/// D.11/D.14) -- never the error's own `Display`/message text, which
+/// A stable, closed error-category string for an `McpError` -- never
+/// the error's own `Display`/message text, which
 /// routinely carries a caller-supplied argument (an oversized/malformed
 /// skill name, an unknown key) verbatim.
 ///
@@ -762,12 +763,10 @@ impl ServerHandler for SkillLookupServer {
         let empty = serde_json::Map::new();
         let args = request.arguments.as_ref().unwrap_or(&empty);
         let tool_name = request.name.as_ref();
-        // No generic per-call line here: §4.9 asks for the debug detail
-        // (query params/result count for find_skills, requested
-        // name/hit-miss for get_skill) each tool handler already logs
-        // for itself, not a name-only line ahead of it — see
-        // `find_skills`/`get_skill`'s own `logging::log(Level::Debug,
-        // ...)` calls above.
+        // No generic per-call line here: each tool handler already logs
+        // its own debug detail via its own `logging::log(Level::Debug,
+        // ...)` calls above (query params/result count for find_skills,
+        // requested name/hit-miss for get_skill).
         let result = match tool_name {
             "find_skills" => self.find_skills(args),
             "get_skill" => self.get_skill(args),
@@ -783,11 +782,11 @@ impl ServerHandler for SkillLookupServer {
             logging::log(Level::Warn, &format!("tool rejected: {tool_name}: {e}"));
         }
 
-        // Telemetry (design doc D.5/D.14): in-process counter increment
+        // Telemetry: in-process counter increment
         // only -- take the lock, bump one entry, release the lock; no
         // `.await` held across the critical section, no network call, no
         // process spawn on this hot path. Structurally skipped when
-        // `--telemetry off` (D.8): `tool_call_counters` is `None`, so the
+        // `--telemetry off`: `tool_call_counters` is `None`, so the
         // increment call is never invoked.
         if let Some(counters) = &self.tool_call_counters {
             record_tool_call(counters, tool_name, args, &result);
@@ -811,7 +810,7 @@ impl ServerHandler for SkillLookupServer {
     ) -> Result<GetPromptResult, McpError> {
         let name = request.name.as_str();
         // Mirrors `find_skills`/`get_skill`'s own per-call debug line
-        // (§4.9 debug row) and `call_tool`'s rejection line above: routed
+        // and `call_tool`'s rejection line above: routed
         // through `logging::log` — not a raw `eprintln!` — so both the
         // request and any rejection reach the durable log, the same as
         // every tool call already does.
@@ -1173,7 +1172,7 @@ mod tool_handlers {
 
     #[test]
     fn find_skills_no_match_is_an_empty_array_not_an_error() {
-        // Distinguishable empty vs. error (§3): "no skill matched" must
+        // Distinguishable empty vs. error: "no skill matched" must
         // not look like a failure.
         let dir = temp_dir("find-empty-not-error");
         write_skill(&dir, "alpha", "d", &[]);
@@ -1249,7 +1248,7 @@ mod tool_handlers {
 
     #[test]
     fn get_skill_unknown_name_is_invalid_params_not_internal_error() {
-        // Distinguishable empty vs. error (§3): an unknown skill is a
+        // Distinguishable empty vs. error: an unknown skill is a
         // client-input problem (`InvalidParams`), never conflated with
         // an index/I-O failure (`InternalError`).
         let dir = temp_dir("get-skill-unknown");
@@ -1843,8 +1842,8 @@ mod tool_handlers {
     }
 }
 
-/// Tests for `record_tool_call`'s counter-key derivation (design doc
-/// D.5/D.14) end to end through real `call_tool` invocations.
+/// Tests for `record_tool_call`'s counter-key derivation end to end
+/// through real `call_tool` invocations.
 #[cfg(test)]
 mod telemetry_counters {
     use super::*;

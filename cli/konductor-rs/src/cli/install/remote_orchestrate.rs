@@ -158,9 +158,10 @@ pub(crate) fn install_from_latest_github_release(
     target_dir: &Path,
     installed_at: &str,
     no_telemetry: bool,
+    use_github_token: bool,
 ) -> Result<(), RemoteOrchestrationError> {
     install_from_latest_release_with_fetcher(
-        || github::fetch_latest_github_release_artifact(owner, repo),
+        || github::fetch_latest_github_release_artifact(owner, repo, use_github_token),
         strategy,
         target_dir,
         installed_at,
@@ -215,6 +216,7 @@ pub(crate) fn main_branch_dist_archive_filename() -> String {
 /// from. A missing tarball or sidecar fails cleanly with
 /// `MissingArtifact`/`MissingSidecar`, never by falling back to a
 /// self-computed hash.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn install_from_main_branch_dist(
     owner: &str,
     repo: &str,
@@ -223,9 +225,17 @@ pub(crate) fn install_from_main_branch_dist(
     target_dir: &Path,
     installed_at: &str,
     no_telemetry: bool,
+    use_github_token: bool,
 ) -> Result<(), MainBranchDistOrchestrationError> {
     install_from_main_branch_dist_with_fetcher(
-        || github_branch::fetch_branch_dist_artifact_and_sidecar(owner, repo, branch),
+        || {
+            github_branch::fetch_branch_dist_artifact_and_sidecar(
+                owner,
+                repo,
+                branch,
+                use_github_token,
+            )
+        },
         strategy,
         target_dir,
         installed_at,
@@ -306,6 +316,7 @@ fn install_from_remote_with_fallback_using(
 /// main-branch-`dist/` fetch when eligible (see
 /// `install_from_remote_with_fallback_using`). `owner`/`repo` are
 /// shared across both sources; `branch` only scopes the fallback.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn install_from_remote_with_fallback(
     owner: &str,
     repo: &str,
@@ -314,6 +325,7 @@ pub(crate) fn install_from_remote_with_fallback(
     target_dir: &Path,
     installed_at: &str,
     no_telemetry: bool,
+    use_github_token: bool,
 ) -> Result<RemoteInstallSource, FallbackChainError> {
     install_from_remote_with_fallback_using(
         || {
@@ -324,6 +336,7 @@ pub(crate) fn install_from_remote_with_fallback(
                 target_dir,
                 installed_at,
                 no_telemetry,
+                use_github_token,
             )
         },
         || {
@@ -335,6 +348,7 @@ pub(crate) fn install_from_remote_with_fallback(
                 target_dir,
                 installed_at,
                 no_telemetry,
+                use_github_token,
             )
         },
     )

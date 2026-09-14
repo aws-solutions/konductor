@@ -3223,7 +3223,7 @@ mod tests {
             ])
         );
 
-        // The telemetry hook wiring (usage-analytics design D.13) lands
+        // The telemetry hook wiring lands
         // in the SAME write, gated on the grant above having just
         // succeeded (`phases.rs`'s `AgentInstallPhase::run`) -- asserts
         // the real hook entries, not just that SOME hooks key exists.

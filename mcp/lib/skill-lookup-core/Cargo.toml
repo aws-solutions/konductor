@@ -18,7 +18,7 @@ serde_json = "=1.0.150"
 # YAML deserialization for SKILL.md-style frontmatter. Same pin as
 # servers/skill-lookup/Cargo.toml's serde_yaml dependency.
 serde_yaml = "=0.9.34"
-# Telemetry module (design doc D.5/D.6): deserializing
+# Telemetry module: deserializing
 # .konductor/telemetry-id.json's identity record. Same pin as
 # servers/skill-lookup/Cargo.toml's own serde dependency (1.0.229, not
 # cli/konductor-rs's 1.0.228 -- the two differ; matching the sibling
@@ -29,7 +29,7 @@ serde = { version = "=1.0.229", features = ["derive"] }
 # UUID, only reads one), but sha2 IS needed for eventId's own hash --
 # same pin as cli/konductor-rs/Cargo.toml.
 sha2 = "=0.10.8"
-# Telemetry module (D.5/D.7): the flush task's own tokio::time::interval
+# Telemetry module: the flush task's own tokio::time::interval
 # and tokio::process::Command (for zombie-free detached spawns of the
 # curl-wrapping script) -- same pin as servers/skill-lookup/Cargo.toml's
 # existing tokio dependency.

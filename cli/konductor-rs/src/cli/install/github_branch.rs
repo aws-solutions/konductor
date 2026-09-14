@@ -79,6 +79,20 @@ pub enum GithubBranchFetchError {
     ResponseTooLarge { limit_bytes: u64 },
 }
 
+/// Self-diagnosis suffix appended to an HTTP-status error message when
+/// `status` is specifically 401 or 403 -- the exact codes a private
+/// repository without a token produces. Names the `--use-github-token`
+/// flag directly, so a caller hitting one of these two hard-to-diagnose
+/// statuses sees a concrete next step rather than a bare status code.
+/// Empty for every other status, so an unrelated failure (404, 500,
+/// etc) stays exactly as plain as it always has been.
+fn private_repo_hint(status: u16) -> &'static str {
+    match status {
+        401 | 403 => " -- if this repository is private, consider passing --use-github-token",
+        _ => "",
+    }
+}
+
 impl std::fmt::Display for GithubBranchFetchError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -96,7 +110,11 @@ impl std::fmt::Display for GithubBranchFetchError {
                  verify against"
             ),
             GithubBranchFetchError::Http(status) => {
-                write!(f, "GitHub API responded with HTTP status {status}")
+                write!(
+                    f,
+                    "GitHub API responded with HTTP status {status}{}",
+                    private_repo_hint(*status)
+                )
             }
             GithubBranchFetchError::InvalidResponse(message) => {
                 write!(f, "could not read GitHub API response: {message}")
@@ -232,23 +250,25 @@ fn download_dist_file_bytes(
     repo: &str,
     branch: &str,
     filename: &str,
+    use_github_token: bool,
 ) -> Result<Vec<u8>, GithubBranchFetchError> {
     let encoded_filename = encode_path_segment(filename);
     let encoded_branch = encode_path_segment(branch);
     let url = format!(
         "https://api.github.com/repos/{owner}/{repo}/contents/dist/{encoded_filename}?ref={encoded_branch}"
     );
-    let response = http_agent()
+    let request = http_agent()
         .get(&url)
         .set("User-Agent", USER_AGENT)
-        .set("Accept", "application/vnd.github.raw+json")
-        .call()
-        .map_err(|err| match err {
-            ureq::Error::Status(code, _response) => GithubBranchFetchError::Http(code),
-            ureq::Error::Transport(transport) => {
-                GithubBranchFetchError::Network(transport.to_string())
-            }
-        })?;
+        .set("Accept", "application/vnd.github.raw+json");
+    let request = super::github::apply_github_token(
+        request,
+        super::github::github_token_from_env(use_github_token).as_deref(),
+    );
+    let response = request.call().map_err(|err| match err {
+        ureq::Error::Status(code, _response) => GithubBranchFetchError::Http(code),
+        ureq::Error::Transport(transport) => GithubBranchFetchError::Network(transport.to_string()),
+    })?;
     let content_length = parse_content_length(&response);
     read_capped_body(
         response.into_reader(),
@@ -269,25 +289,28 @@ pub(crate) fn fetch_branch_dist_artifact_and_sidecar(
     owner: &str,
     repo: &str,
     branch: &str,
+    use_github_token: bool,
 ) -> Result<(Vec<u8>, Vec<u8>), GithubBranchFetchError> {
     let artifact_filename = super::github::expected_artifact_filename();
     let sidecar_filename = super::github::expected_sidecar_filename();
 
-    let artifact_bytes = match download_dist_file_bytes(owner, repo, branch, &artifact_filename) {
-        Ok(bytes) => bytes,
-        Err(GithubBranchFetchError::Http(404)) => {
-            return Err(GithubBranchFetchError::MissingArtifact(artifact_filename))
-        }
-        Err(other) => return Err(other),
-    };
+    let artifact_bytes =
+        match download_dist_file_bytes(owner, repo, branch, &artifact_filename, use_github_token) {
+            Ok(bytes) => bytes,
+            Err(GithubBranchFetchError::Http(404)) => {
+                return Err(GithubBranchFetchError::MissingArtifact(artifact_filename))
+            }
+            Err(other) => return Err(other),
+        };
 
-    let sidecar_bytes = match download_dist_file_bytes(owner, repo, branch, &sidecar_filename) {
-        Ok(bytes) => bytes,
-        Err(GithubBranchFetchError::Http(404)) => {
-            return Err(GithubBranchFetchError::MissingSidecar(sidecar_filename))
-        }
-        Err(other) => return Err(other),
-    };
+    let sidecar_bytes =
+        match download_dist_file_bytes(owner, repo, branch, &sidecar_filename, use_github_token) {
+            Ok(bytes) => bytes,
+            Err(GithubBranchFetchError::Http(404)) => {
+                return Err(GithubBranchFetchError::MissingSidecar(sidecar_filename))
+            }
+            Err(other) => return Err(other),
+        };
 
     Ok((artifact_bytes, sidecar_bytes))
 }
@@ -348,6 +371,29 @@ mod tests {
         assert!(debug.contains(&format!("timeout_connect: Some({CONNECT_TIMEOUT:?})")));
         assert!(debug.contains(&format!("timeout_read: Some({READ_IDLE_TIMEOUT:?})")));
         assert!(debug.contains("timeout: None"));
+    }
+
+    /// `download_dist_file_bytes` (the single function backing both the
+    /// tarball and sidecar fetch) attaches its `Authorization` header
+    /// through `super::github::apply_github_token` -- reusing that
+    /// module's own tested header-application logic directly, with no
+    /// real env var read or set.
+    #[test]
+    fn apply_github_token_attaches_bearer_header_when_token_is_some() {
+        let request = http_agent().get("https://api.github.com/repos/example/example");
+        let request = super::super::github::apply_github_token(request, Some("secret-token-value"));
+        let debug = format!("{request:?}");
+        assert!(debug.contains("Authorization: Bearer secret-token-value"));
+    }
+
+    /// No `Authorization` header at all when no token is supplied --
+    /// identical to a build with no token support.
+    #[test]
+    fn apply_github_token_adds_no_header_when_token_is_none() {
+        let request = http_agent().get("https://api.github.com/repos/example/example");
+        let request = super::super::github::apply_github_token(request, None);
+        let debug = format!("{request:?}");
+        assert!(!debug.contains("Authorization"));
     }
 
     #[test]
@@ -551,5 +597,32 @@ mod tests {
             DIST_FILE_DOWNLOAD_CAP_BYTES, EXPECTED_RELEASE_ASSET_CAP_BYTES,
             "both modules cap the same kind of payload and must agree on the value"
         );
+    }
+
+    /// A 401 or 403 -- the exact codes a private repository without a
+    /// token produces -- must name `--use-github-token` in the
+    /// rendered message.
+    #[test]
+    fn http_401_and_403_display_names_the_token_flag() {
+        for status in [401u16, 403u16] {
+            let message = GithubBranchFetchError::Http(status).to_string();
+            assert!(
+                message.contains("--use-github-token"),
+                "status {status} must hint at --use-github-token, got: {message}"
+            );
+        }
+    }
+
+    /// Any OTHER status code must NOT carry the hint -- it would be
+    /// noise for a failure that has nothing to do with authentication.
+    #[test]
+    fn http_other_statuses_omit_the_token_flag_hint() {
+        for status in [404u16, 429u16, 500u16, 503u16] {
+            let message = GithubBranchFetchError::Http(status).to_string();
+            assert!(
+                !message.contains("--use-github-token"),
+                "status {status} must not carry the token hint, got: {message}"
+            );
+        }
     }
 }

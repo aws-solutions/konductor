@@ -92,7 +92,7 @@ impl std::fmt::Display for InitError {
 }
 
 impl InitError {
-    /// A stable, closed error-category string (design doc D.11) --
+    /// A stable, closed error-category string --
     /// never this error's own `Display` text, which routinely embeds a
     /// local filesystem path.
     pub(crate) fn error_code(&self) -> &'static str {

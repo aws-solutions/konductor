@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // telemetry.rs — skill-lookup-core's own mirror of konductor-rs's
-// telemetry module (design doc D.5/D.6/D.7).
+// telemetry module.
 //
-// Duplicated between crates by design (D.6/§6 open item), not shared:
+// Duplicated between crates by design, not shared:
 // the two crates are not workspace-linked in a way that lets either
 // depend on the other. Differences from konductor-rs's mirror:
 //   - This module reads (never writes) the identity file -- it has no
-//     `konductor install`-managed target of its own (D.5).
+//     `konductor install`-managed target of its own.
 //   - Its detached spawn uses `tokio::process::Command`, not
 //     `std::process::Command`, so tokio's own orphan-reaping queue
-//     reaps the long-lived flush task's detached children (D.7).
+//     reaps the long-lived flush task's detached children.
 //   - It emits exactly one event type: `report_mcp_tool_call`.
 
 use std::collections::HashMap;
@@ -22,7 +22,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde::Deserialize;
 use tokio::io::AsyncWriteExt as _;
 
-/// Compile-time placeholder Solution ID (D.12) -- real value pending
+/// Compile-time placeholder Solution ID -- real value pending
 /// AWS Solutions onboarding, same placeholder `konductor-rs` uses.
 const SOLUTION_ID: &str = "SO0169";
 
@@ -30,16 +30,16 @@ const SOLUTION_ID: &str = "SO0169";
 /// `konductor-rs`'s mirror uses.
 const DEFAULT_TELEMETRY_ENDPOINT: &str = "https://example.invalid/konductor-telemetry";
 
-/// The checked-in transport script's text, embedded at compile time
-/// (D.6) -- the SAME checked-in file `konductor-rs` embeds, via this
+/// The checked-in transport script's text, embedded at compile time --
+/// the SAME checked-in file `konductor-rs` embeds, via this
 /// crate's own independent `include_str!` (its own manifest-relative
-/// path, per D.6's own note that each crate embeds it independently).
+/// path -- each crate embeds it independently).
 const TELEMETRY_REPORT_SCRIPT: &str =
     include_str!("../../../../scripts/konductor-telemetry-report.sh");
 
 const MATERIALIZED_SCRIPT_NAME: &str = "konductor-telemetry-report-mcp.sh";
 
-/// The nil-UUID sentinel (D.5/D.12): used unconditionally by this
+/// The nil-UUID sentinel: used unconditionally by this
 /// crate's own `report_mcp_tool_call` when no identity file is
 /// discoverable -- a legitimate, tolerated state (unmanaged
 /// `skill-lookup-mcp` instance), never an error.
@@ -73,7 +73,7 @@ struct IdentityRecord {
 /// sibling of that root's own parent directory
 /// (`<target_dir>/.konductor/telemetry-id.json`) -- this function
 /// checks exactly that one path per configured root, never an
-/// open-ended directory walk (D.5).
+/// open-ended directory walk.
 ///
 /// This crate never writes the identity file (see this module's own
 /// docstring), so a recognized-but-newer `schema_version` can never
@@ -120,7 +120,7 @@ fn read_identity_near_skills_dir(skills_dir: &Path) -> Option<String> {
 
 /// This process's cached identity lookup: resolved at most once, over
 /// every configured `--skills-dir` root, at startup, before the flush
-/// task is spawned (D.5) -- never per flush.
+/// task is spawned -- never per flush.
 static IDENTITY_CACHE: OnceLock<Option<String>> = OnceLock::new();
 
 /// Resolves and caches the `UUID` for this process, checking each of
@@ -330,9 +330,8 @@ fn verify_regular_file(path: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
-/// Fleet-wide opt-out env var (published §Telemetry section's own
-/// "Opt-out" row: "`KONDUCTOR_TELEMETRY=off` + managed config for
-/// fleet") -- same name and semantics as `konductor-rs`'s own mirror
+/// Fleet-wide opt-out env var (`KONDUCTOR_TELEMETRY=off` + managed
+/// config for fleet) -- same name and semantics as `konductor-rs`'s own mirror
 /// (`cli/telemetry/report.rs`'s `TELEMETRY_OFF_ENV_VAR`), checked here
 /// too since this crate resolves telemetry-enabled state independently
 /// (alongside `main.rs`'s own `--telemetry <on|off>` CLI-flag check,
@@ -344,8 +343,8 @@ const TELEMETRY_OFF_VALUE: &str = "off";
 
 /// Whether the fleet-wide `KONDUCTOR_TELEMETRY=off` opt-out is set in
 /// this process's environment. Exposed (`pub`) so `main.rs` can gate
-/// spawning the counters/flush task on it structurally -- matching
-/// D.8's "omitted, not invoked-then-checked" principle for
+/// spawning the counters/flush task on it structurally -- an
+/// omitted-not-invoked-then-checked structural opt-out for
 /// `--telemetry off` -- rather than spawning the task anyway and
 /// relying solely on `resolve_endpoint`'s own per-flush check (below)
 /// to silently drop every accumulated count.
@@ -539,8 +538,8 @@ fn build_event_id(uuid: &str) -> String {
 fn wire_timestamp_now() -> String {
     // Same shape konductor-rs's mirror produces
     // ("YYYY-MM-DD HH:MM:SS.f"), computed independently here since this
-    // crate has no shared `civil_from_days` helper of its own (D.6's
-    // accepted per-crate duplication).
+    // crate has no shared `civil_from_days` helper of its own (each
+    // crate accepts this per-crate duplication).
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default();
@@ -572,7 +571,7 @@ fn iso8601_now() -> String {
 /// Howard Hinnant's civil-from-days algorithm -- same algorithm
 /// `cli/konductor-rs/src/cli/time.rs`'s `civil_from_days` implements,
 /// duplicated here for the identical "no shared crate" reason as the
-/// rest of this module (D.6's accepted per-crate duplication).
+/// rest of this module (each crate accepts this per-crate duplication).
 fn civil_from_days(z: i64) -> (i64, u32, u32) {
     let z = z + 719468;
     let era = if z >= 0 { z } else { z - 146096 } / 146097;
@@ -589,7 +588,7 @@ fn civil_from_days(z: i64) -> (i64, u32, u32) {
 
 /// Spawns the materialized transport script detached via
 /// `tokio::process::Command` -- so tokio's own orphan-reaping queue
-/// reaps this long-lived flush task's detached children (D.7), rather
+/// reaps this long-lived flush task's detached children, rather
 /// than `std::process::Command`, which does not reap on `Child` drop.
 ///
 /// `pinned_ip`, when `Some`, is passed to the script as a second
@@ -628,10 +627,10 @@ async fn spawn_and_send(endpoint: &str, pinned_ip: Option<std::net::IpAddr>, bod
         let _ = stdin.write_all(body.as_bytes()).await;
     }
     // `child` is dropped here without `.wait()` -- tokio's own
-    // background orphan-reaping queue still reaps it (D.7).
+    // background orphan-reaping queue still reaps it.
 }
 
-/// `report_mcp_tool_call` (D.5/D.14): called once per accumulated
+/// `report_mcp_tool_call`: called once per accumulated
 /// `(tool_name, skill_name, error_code)` key per flush cycle. Returns
 /// `()`, never `Result` -- telemetry failure never propagates. Fires
 /// unconditionally under the nil-UUID sentinel when no identity file
@@ -667,18 +666,18 @@ pub async fn report_mcp_tool_call(
         "errorCode": error_code,
         "harness": null,
         "TimeStamp": iso8601_now(),
-        // Not part of D.3's schema proper -- an implementation-visible
+        // Not part of the core per-invocation schema every other
+        // eventType shares -- an implementation-visible
         // count for this flush cycle's accumulated calls under this
-        // key, folded into Data since D.12's own worked examples show
-        // Data as a flexible, solution-defined object. The flush
+        // key, folded into Data since the outer envelope's Data field is
+        // a flexible, solution-defined object. The flush
         // interval and batch shape this field reflects (60s, one event
         // per accumulated key, see `main.rs`'s own decision comment
-        // above its `tokio::spawn`) are DECIDED for this revision
-        // (§6/§7 task 11, closed) -- this field's own PRESENCE stays
+        // above its `tokio::spawn`) are DECIDED for this revision --
+        // this field's own PRESENCE stays
         // optional in the schema (`docs/telemetry-schema.json`) rather
         // than required, since a future eventType has no reason to
-        // carry it; that schema-optionality is the only part of task
-        // 11 still deliberately left open-ended.
+        // carry it.
         "count": count,
     });
     let outer = serde_json::json!({
@@ -694,19 +693,19 @@ pub async fn report_mcp_tool_call(
     spawn_and_send(endpoint, pinned_ip, body).await;
 }
 
-/// In-process counters, keyed by `(tool_name, skill_name, error_code)`
-/// (D.5/D.14). `errorCode: None` for a successful call. Shared between
+/// In-process counters, keyed by `(tool_name, skill_name, error_code)`.
+/// `errorCode: None` for a successful call. Shared between
 /// the server struct (cloned into whatever holds `call_tool`) and the
 /// flush task.
 pub type ToolCallCounters =
     std::sync::Arc<Mutex<HashMap<(String, Option<String>, Option<&'static str>), u64>>>;
 
-/// Fixed sentinel for an unrecognized `tool_name`/`skill_name` (D.14) --
+/// Fixed sentinel for an unrecognized `tool_name`/`skill_name` --
 /// bounds cardinality to one entry regardless of how many distinct
 /// unrecognized values a caller sends.
 pub const UNKNOWN_SENTINEL: &str = "<unknown>";
 /// taking the lock only for the duration of the increment -- no
-/// `.await` held across the critical section (D.5).
+/// `.await` held across the critical section.
 pub fn increment_counter(
     counters: &ToolCallCounters,
     tool_name: impl Into<String>,
@@ -722,7 +721,7 @@ pub fn increment_counter(
 
 /// Atomically swaps the counter map (`std::mem::take` under the lock)
 /// so any increment landing during or immediately after a flush is
-/// captured in the new map, never lost to a read-then-clear race (D.5).
+/// captured in the new map, never lost to a read-then-clear race.
 pub fn take_counters(
     counters: &ToolCallCounters,
 ) -> HashMap<(String, Option<String>, Option<&'static str>), u64> {
@@ -1304,7 +1303,8 @@ mod tests {
 
     #[tokio::test]
     async fn zombie_process_absence_after_many_spawns() {
-        // D.7's own validation criterion: spawn many short-lived
+        // Detached children of the tokio-based spawn must never
+        // linger as zombies: spawn many short-lived
         // children in a loop via the tokio-based spawn_and_send path
         // and confirm none linger as zombies. We can't directly
         // enumerate this process's own zombie children portably from a

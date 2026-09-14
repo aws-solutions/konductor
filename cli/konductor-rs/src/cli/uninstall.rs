@@ -235,7 +235,7 @@ pub struct UninstallCounts {
 /// declined -- never exit code 2.
 pub fn dispatch_uninstall(target: Option<String>, all: bool, yes: bool, json: bool) -> u8 {
     // No single target is in scope yet at this point in dispatch --
-    // `report_error`'s `target_dir` param (added for telemetry, D.11)
+    // `report_error`'s `target_dir` param
     // falls back to $HOME here, the closest thing to a scope-agnostic
     // identity lookup this global index read has.
     let home_dir_fallback = std::env::var_os("HOME")
@@ -795,7 +795,7 @@ fn uninstall_one(target_dir: &str) -> Result<UninstallCounts, UninstallError> {
 
 /// Same as `uninstall_one`, but resolves telemetry identity per-target
 /// via `read_identity_uncached` instead of the process-global cache
-/// (D.9 batch-attribution fix, finding f-c144d780) -- `dispatch_all`
+/// (finding f-c144d780) -- `dispatch_all`
 /// visits several distinct `target_dir`s in one process, and the cache
 /// only ever resolves the first one's UUID.
 fn uninstall_one_for_batch(target_dir: &str) -> Result<UninstallCounts, UninstallError> {
@@ -889,14 +889,14 @@ fn uninstall_one_impl(
     index::remove_index_entry(target_dir)
         .map_err(|err| UninstallError::from_index(target_dir, err))?;
 
-    // Telemetry (design doc D.9): report only AFTER every fallible
+    // Telemetry: report only AFTER every fallible
     // operation above has already succeeded (manifest read, eligible-file
     // deletion, manifest removal, index-entry removal) -- reporting
     // success telemetry for an uninstall that goes on to fail with an
     // `UninstallError` would be a false success signal. Still fires
     // BEFORE the identity file is deleted below, while
-    // `.konductor/telemetry-id.json` still exists to read (design doc
-    // D.9's original ordering constraint). Every failure mode this call
+    // `.konductor/telemetry-id.json` still exists to read (this call's
+    // ordering constraint). Every failure mode this call
     // itself can hit (missing/unreadable/malformed identity file, spawn
     // error, or a later network failure this process never observes) is
     // folded into report_package_uninstalled's own best-effort tolerance
@@ -907,7 +907,7 @@ fn uninstall_one_impl(
         crate::cli::telemetry::report_package_uninstalled(target_path);
     }
 
-    // Telemetry (design doc D.9): delete the identity file only AFTER
+    // Telemetry: delete the identity file only AFTER
     // existing cleanup completes -- deliberately the LAST step, so a
     // crash/interruption before this point leaves the identity file in
     // place and a retried uninstall re-reports (accepted at-least-once

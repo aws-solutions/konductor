@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// telemetry/envelope.rs — per-invocation event schema (D.3) and the real
-// ingestion API's outer envelope (D.12).
+// telemetry/envelope.rs — per-invocation event schema and the real
+// ingestion API's outer envelope.
 //
 // `Data`'s own seven fields have no wiki-documented counterpart to match
-// by name, so they are camelCase by adopted convention (D.3). The outer
+// by name, so they are camelCase by adopted convention. The outer
 // four fields (`Solution`/`Version`/`UUID`/`TimeStamp`) match the real
-// API's own documented casing exactly (D.12).
+// API's own documented casing exactly.
 
 use serde::Serialize;
 
 use super::super::time::utc_now_iso_millis;
 
-/// D.3's closed, additive `eventType` enum -- seven values today.
+/// This crate's closed, additive `eventType` enum -- seven values today.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum EventType {
     AgentInvocation,
@@ -20,8 +20,8 @@ pub(crate) enum EventType {
     // Never constructed in konductor-rs: mcp_tool_call events are only
     // ever built by skill-lookup-core's own independent copy of this
     // enum (mcp/lib/skill-lookup-core/src/telemetry.rs), since the two
-    // crates aren't workspace-linked (D.6). Kept here anyway so this
-    // enum still represents the full 7-value D.3 schema it documents.
+    // crates aren't workspace-linked. Kept here anyway so this
+    // enum still represents the full 7-value schema it documents.
     #[allow(dead_code)]
     McpToolCall,
     CliError,
@@ -44,9 +44,9 @@ impl EventType {
     }
 }
 
-/// D.3's per-invocation event schema, nested under the outer envelope's
+/// The per-invocation event schema, nested under the outer envelope's
 /// `Data` field. No `UUID`, no `version`, no `schemaVersion` -- all three
-/// removed per D.3/D.12 (the identity join and version are carried only
+/// omitted: the identity join and version are carried only
 /// by the outer envelope; `schemaVersion` is dropped outright, nothing
 /// reads it back).
 #[derive(Debug, Clone, Serialize)]
@@ -70,7 +70,7 @@ pub(crate) struct EventEnvelope {
 
 impl EventEnvelope {
     /// Builds an event envelope for `event_type`/`target_name`, filling
-    /// `eventId` (D.3: UUID + nanosecond timestamp + this process's own
+    /// `eventId` (UUID + nanosecond timestamp + this process's own
     /// PID, hashed via `sha256_hex()`) and `TimeStamp` (ISO 8601, UTC,
     /// millisecond precision -- matching `docs/telemetry-schema.json`'s
     /// own worked examples, and the MCP-side producer's `iso8601_now()`)
@@ -108,7 +108,7 @@ fn build_event_id(uuid: &str) -> String {
     super::super::install::artifact::sha256_hex(input.as_bytes())
 }
 
-/// D.12's outer envelope: `Solution`/`Version`/`UUID`/`TimeStamp`
+/// The real ingestion API's outer envelope: `Solution`/`Version`/`UUID`/`TimeStamp`
 /// wrapping a `Data` object holding the built `EventEnvelope`.
 #[derive(Debug, Clone, Serialize)]
 pub(crate) struct OuterEnvelope {
@@ -127,9 +127,9 @@ pub(crate) struct OuterEnvelope {
 impl OuterEnvelope {
     /// Wraps `data` in the outer envelope. `version` is read live from
     /// `env!("CARGO_PKG_VERSION")` at the call site, never from the
-    /// cached identity record's own frozen `version` field (D.12).
+    /// cached identity record's own frozen `version` field.
     /// `Solution` is `super::report::SOLUTION_ID`, the compile-time
-    /// placeholder constant (D.12, §7 task 12).
+    /// placeholder constant.
     pub(crate) fn wrap(data: EventEnvelope, uuid: String) -> Self {
         OuterEnvelope {
             solution: super::report::SOLUTION_ID,
@@ -143,8 +143,7 @@ impl OuterEnvelope {
 
 /// Formats "now" as the outer envelope's documented
 /// `"YYYY-MM-DD HH:MM:SS.f"` shape -- a second, independently-formatted
-/// value from the same "now" as `Data.TimeStamp`, never derived from it
-/// (D.12).
+/// value from the same "now" as `Data.TimeStamp`, never derived from it.
 fn wire_timestamp_now() -> String {
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -160,7 +159,7 @@ fn wire_timestamp_now() -> String {
     )
 }
 
-/// The nil-UUID sentinel (D.5/D.12): a fixed all-zero 64-character hex
+/// The nil-UUID sentinel: a fixed all-zero 64-character hex
 /// value, used as the outer envelope's `UUID` for unattributed usage --
 /// never a freshly-generated random value, so every unattributed event
 /// groups together rather than each looking like a distinct deployment.

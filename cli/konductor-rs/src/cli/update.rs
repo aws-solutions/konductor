@@ -750,7 +750,7 @@ fn run_update_one_target(
         });
     }
 
-    // Durable opt-out carry-forward (design doc D.8/D.10): `update`'s
+    // Durable opt-out carry-forward: `update`'s
     // own `--no-telemetry` flag is re-specified per invocation, same as
     // `--from`/`--target` (see `Commands::Update`'s own doc comment),
     // and when passed it always suppresses telemetry for this run
@@ -803,12 +803,12 @@ fn run_update_one_target(
     .err()
     .map(|err| format!("could not finalize install index: {err}"));
 
-    // Telemetry (design doc D.10/D.15): fires once install_from_local
+    // Telemetry: fires once install_from_local
     // has already succeeded, before the trailing manifest re-read below
     // -- reached by both the single-target/plain-`--all` path and the
     // `--all --json` batch path, since both funnel through this one
-    // shared core. `uncached_identity` (D.10/D.15 batch-attribution
-    // fix, finding f-c144d780) resolves THIS target's own identity
+    // shared core. `uncached_identity`
+    // (finding f-c144d780) resolves THIS target's own identity
     // directly instead of via the process-global cache whenever more
     // than one target may run in this process (every `--all` path,
     // JSON or not) -- the cache only ever resolves the first target's
@@ -1067,6 +1067,7 @@ mod tests {
             false,
             false,
             false,
+            false,
         );
         assert_eq!(code, 0, "install fixture must succeed");
     }
@@ -1112,6 +1113,7 @@ mod tests {
             "kiro-cli-v2".to_string(),
             false, // no --link-bin
             true,  // --no-telemetry
+            false,
             false,
             false,
         );
@@ -1196,6 +1198,7 @@ mod tests {
             true,  // --no-telemetry
             false,
             false,
+            false,
         );
         assert_eq!(install_out_code, 0, "opted-out install must succeed");
         let install_in_code = super::super::install::dispatch_install_with(
@@ -1204,6 +1207,7 @@ mod tests {
             "kiro-cli-v2".to_string(),
             false, // no --link-bin
             false, // no --no-telemetry
+            false,
             false,
             false,
         );
@@ -1287,6 +1291,7 @@ mod tests {
             "kiro-cli-v2".to_string(),
             false, // no --link-bin
             false, // no --no-telemetry
+            false,
             false,
             false,
         );
@@ -1483,6 +1488,7 @@ mod tests {
             false,
             false,
             false,
+            false,
         );
         assert_eq!(install_code, 0);
         fs::write(
@@ -1506,6 +1512,7 @@ mod tests {
             Some(repo_root.to_str().unwrap().to_string()),
             Some(fresh_target.to_str().unwrap().to_string()),
             "kiro-cli-v2".to_string(),
+            false,
             false,
             false,
             false,
@@ -2023,6 +2030,7 @@ mod tests {
                 Some(repo_root.to_str().unwrap().to_string()),
                 Some(target.to_str().unwrap().to_string()),
                 "kiro-cli-v2".to_string(),
+                false,
                 false,
                 false,
                 false,

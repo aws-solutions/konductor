@@ -82,6 +82,20 @@ pub enum GithubFetchError {
     ResponseTooLarge { limit_bytes: u64 },
 }
 
+/// Self-diagnosis suffix appended to an HTTP-status error message when
+/// `status` is specifically 401 or 403 -- the exact codes a private
+/// repository without a token produces. Names the `--use-github-token`
+/// flag directly, so a caller hitting one of these two hard-to-diagnose
+/// statuses sees a concrete next step rather than a bare status code.
+/// Empty for every other status, so an unrelated failure (404, 500,
+/// etc) stays exactly as plain as it always has been.
+fn private_repo_hint(status: u16) -> &'static str {
+    match status {
+        401 | 403 => " -- if this repository is private, consider passing --use-github-token",
+        _ => "",
+    }
+}
+
 impl std::fmt::Display for GithubFetchError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -95,13 +109,15 @@ impl std::fmt::Display for GithubFetchError {
             GithubFetchError::MetadataHttp(status) => {
                 write!(
                     f,
-                    "GitHub API responded with HTTP status {status} while fetching release metadata"
+                    "GitHub API responded with HTTP status {status} while fetching release metadata{}",
+                    private_repo_hint(*status)
                 )
             }
             GithubFetchError::DownloadHttp(status) => {
                 write!(
                     f,
-                    "GitHub API responded with HTTP status {status} while downloading a release asset"
+                    "GitHub API responded with HTTP status {status} while downloading a release asset{}",
+                    private_repo_hint(*status)
                 )
             }
             GithubFetchError::InvalidResponse(message) => {
@@ -147,6 +163,57 @@ fn http_agent() -> ureq::Agent {
         .timeout_connect(CONNECT_TIMEOUT)
         .timeout_read(READ_IDLE_TIMEOUT)
         .build()
+}
+
+/// Conditionally attaches a GitHub API bearer token to an
+/// already-built request. When `token` is `Some`, adds
+/// `Authorization: Bearer <token>`; when `None`, returns `request`
+/// unchanged -- no header, byte-for-byte identical to an unauthenticated
+/// call.
+///
+/// This is an ACCESS mechanism, not a rate-limit workaround: it exists
+/// so `konductor install` can reach a currently-private repository
+/// during development/testing. It is unrelated to GitHub's
+/// unauthenticated rate limits, which this codebase's request volume
+/// (2-3 requests per install) already comfortably fits under.
+///
+/// Takes the token as a parameter rather than reading
+/// `std::env::var` itself, so tests can exercise both branches
+/// (`Some`/`None`) directly without touching real process environment
+/// state. See `github_token_from_env` for the thin wrapper that reads
+/// the actual environment at the real call sites.
+pub(crate) fn apply_github_token(request: ureq::Request, token: Option<&str>) -> ureq::Request {
+    match token {
+        Some(token) => request.set("Authorization", &format!("Bearer {token}")),
+        None => request,
+    }
+}
+
+/// Reads `GITHUB_TOKEN` fresh from the process environment (never
+/// cached) when `use_token` is `true`, treating an unset or empty
+/// value as "no token" -- the same outcome as if the variable didn't
+/// exist at all. Called at each real GitHub API call site immediately
+/// before the request is sent, so a change to the environment between
+/// calls is always picked up.
+///
+/// `use_token` gates this at the source: `GITHUB_TOKEN` is an opt-in
+/// mechanism (`konductor install --use-github-token`), not something
+/// read just because it happens to be set in the caller's shell. When
+/// `false`, this returns `None` immediately WITHOUT calling
+/// `std::env::var` at all -- the short-circuit happens before any
+/// environment access, not after, so "the flag is off" and "the
+/// variable doesn't exist" are indistinguishable all the way down to
+/// the syscall level.
+///
+/// `pub(crate)` so `install::github_branch`'s own call site reuses
+/// this exact read instead of duplicating it.
+pub(crate) fn github_token_from_env(use_token: bool) -> Option<String> {
+    if !use_token {
+        return None;
+    }
+    std::env::var("GITHUB_TOKEN")
+        .ok()
+        .filter(|token| !token.is_empty())
 }
 
 /// Hard ceiling on the release-metadata JSON response
@@ -278,17 +345,18 @@ pub(crate) fn expected_sidecar_filename() -> String {
 fn fetch_latest_release_metadata(
     owner: &str,
     repo: &str,
+    use_github_token: bool,
 ) -> Result<api::Release, GithubFetchError> {
     let url = format!("https://api.github.com/repos/{owner}/{repo}/releases/latest");
-    let response = http_agent()
+    let request = http_agent()
         .get(&url)
         .set("User-Agent", USER_AGENT)
-        .set("Accept", "application/vnd.github+json")
-        .call()
-        .map_err(|err| match err {
-            ureq::Error::Status(code, _response) => GithubFetchError::MetadataHttp(code),
-            ureq::Error::Transport(transport) => GithubFetchError::Network(transport.to_string()),
-        })?;
+        .set("Accept", "application/vnd.github+json");
+    let request = apply_github_token(request, github_token_from_env(use_github_token).as_deref());
+    let response = request.call().map_err(|err| match err {
+        ureq::Error::Status(code, _response) => GithubFetchError::MetadataHttp(code),
+        ureq::Error::Transport(transport) => GithubFetchError::Network(transport.to_string()),
+    })?;
     let content_length = parse_content_length(&response);
     let bytes = read_capped_body(
         response.into_reader(),
@@ -316,20 +384,24 @@ fn find_asset_url<'a>(release: &'a api::Release, exact_filename: &str) -> Option
 }
 
 /// Downloads the raw bytes at `url` (a `browser_download_url` we
-/// resolved from release metadata). No headers beyond `User-Agent` --
-/// GitHub's asset-download URLs redirect to short-lived, pre-signed
-/// storage URLs that `ureq` follows automatically, and they don't need
+/// resolved from release metadata). No `Accept` header -- GitHub's
+/// asset-download URLs redirect to short-lived, pre-signed storage
+/// URLs that `ureq` follows automatically, and they don't need
 /// `Accept: application/vnd.github+json` (that header is for the JSON
-/// API, not asset bytes).
+/// API, not asset bytes). Never carries `Authorization`, even when
+/// `GITHUB_TOKEN` is set: `ureq` resends request headers across
+/// redirects, and this URL redirects from `api.github.com` to a
+/// short-lived, pre-signed storage host (S3/Azure blob) that doesn't
+/// need -- and must never receive -- the GitHub token. The pre-signed
+/// URL carries its own auth, so omitting the token here costs nothing;
+/// `fetch_latest_release_metadata` already applies the token where a
+/// private repo's release actually requires it.
 fn download_asset_bytes(url: &str) -> Result<Vec<u8>, GithubFetchError> {
-    let response = http_agent()
-        .get(url)
-        .set("User-Agent", USER_AGENT)
-        .call()
-        .map_err(|err| match err {
-            ureq::Error::Status(code, _response) => GithubFetchError::DownloadHttp(code),
-            ureq::Error::Transport(transport) => GithubFetchError::Network(transport.to_string()),
-        })?;
+    let request = http_agent().get(url).set("User-Agent", USER_AGENT);
+    let response = request.call().map_err(|err| match err {
+        ureq::Error::Status(code, _response) => GithubFetchError::DownloadHttp(code),
+        ureq::Error::Transport(transport) => GithubFetchError::Network(transport.to_string()),
+    })?;
     let content_length = parse_content_length(&response);
     read_capped_body(
         response.into_reader(),
@@ -349,8 +421,9 @@ fn download_asset_bytes(url: &str) -> Result<Vec<u8>, GithubFetchError> {
 pub(crate) fn fetch_latest_github_release_artifact(
     owner: &str,
     repo: &str,
+    use_github_token: bool,
 ) -> Result<(Vec<u8>, Vec<u8>), GithubFetchError> {
-    let release = fetch_latest_release_metadata(owner, repo)?;
+    let release = fetch_latest_release_metadata(owner, repo, use_github_token)?;
 
     let artifact_filename = expected_artifact_filename();
     let sidecar_filename = expected_sidecar_filename();
@@ -377,9 +450,10 @@ pub(crate) fn fetch_latest_github_release_artifact(
 pub(crate) fn github_artifact_fetcher(
     owner: String,
     repo: String,
+    use_github_token: bool,
 ) -> RemoteArtifactFetcher<'static> {
     Box::new(move || {
-        fetch_latest_github_release_artifact(&owner, &repo)
+        fetch_latest_github_release_artifact(&owner, &repo, use_github_token)
             .map_err(|err| std::io::Error::other(err.to_string()))
     })
 }
@@ -387,6 +461,31 @@ pub(crate) fn github_artifact_fetcher(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::{Mutex, MutexGuard};
+
+    /// Test-only shared lock for every test below that mutates the
+    /// process-global `GITHUB_TOKEN` env var -- `std::env::set_var`/
+    /// `remove_var` have no per-thread scoping, so two of these tests
+    /// running concurrently under `cargo test`'s default multi-threaded
+    /// harness could each mutate the same process-wide var at once and
+    /// observe a torn or unrelated value. Mirrors
+    /// `telemetry::report`'s own `TELEMETRY_ENV_LOCK` and
+    /// `test_home_lock::HOME_ENV_LOCK` for `HOME` -- a SEPARATE lock
+    /// from both, since no test anywhere in this crate mutates
+    /// `GITHUB_TOKEN` alongside `HOME` or the telemetry vars in the
+    /// same test.
+    static GITHUB_TOKEN_ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    /// Acquires `GITHUB_TOKEN_ENV_LOCK`, recovering the guard even if a
+    /// previous holder panicked while it was held -- same
+    /// poison-recovery rationale as `test_home_lock::lock_home`, so one
+    /// failing assertion here never cascades into every later test in
+    /// this module also failing with `PoisonError`.
+    fn lock_github_token_env() -> MutexGuard<'static, ()> {
+        GITHUB_TOKEN_ENV_LOCK
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
 
     /// A `Read` impl that yields exactly `total_len` non-zero bytes,
     /// in small chunks, so `CappedBodyReader`'s mid-stream counting
@@ -457,6 +556,138 @@ mod tests {
     #[test]
     fn connect_timeout_is_shorter_than_read_idle_timeout() {
         assert!(CONNECT_TIMEOUT < READ_IDLE_TIMEOUT);
+    }
+
+    /// `apply_github_token` must attach a literal `Authorization:
+    /// Bearer <token>` header when given `Some` -- confirmed via
+    /// `Debug`-formatting the resulting `ureq::Request`, this
+    /// module's own existing precedent for verifying header/config
+    /// state (see `http_agent_uses_connect_and_read_idle_timeouts_not_whole_request_timeout`
+    /// above). No real env var is read or set here.
+    #[test]
+    fn apply_github_token_attaches_bearer_header_when_token_is_some() {
+        let request = http_agent().get("https://api.github.com/repos/example/example");
+        let request = apply_github_token(request, Some("secret-token-value"));
+        let debug = format!("{request:?}");
+        assert!(debug.contains("Authorization: Bearer secret-token-value"));
+    }
+
+    /// `apply_github_token` must leave the request byte-for-byte
+    /// unchanged (no `Authorization` header at all) when given `None`
+    /// -- the "GITHUB_TOKEN unset" case must be indistinguishable from
+    /// a build with no token support.
+    #[test]
+    fn apply_github_token_adds_no_header_when_token_is_none() {
+        let request = http_agent().get("https://api.github.com/repos/example/example");
+        let request = apply_github_token(request, None);
+        let debug = format!("{request:?}");
+        assert!(!debug.contains("Authorization"));
+    }
+
+    /// The actual safety property `--use-github-token` exists to
+    /// guarantee: with `use_token = false`, `github_token_from_env`
+    /// returns `None` even when a REAL, non-empty `GITHUB_TOKEN` is set
+    /// in this test process's real environment -- and the resulting
+    /// request built through `apply_github_token` carries zero
+    /// `Authorization` header, proven the same Debug-formatting way
+    /// `apply_github_token_attaches_bearer_header_when_token_is_some`/
+    /// `_adds_no_header_when_token_is_none` already do.
+    ///
+    /// Sets a real env var rather than only calling
+    /// `github_token_from_env(false)` in isolation, specifically to
+    /// prove the flag being off overrides a genuinely-present
+    /// `GITHUB_TOKEN` -- not just that passing `None` downstream works,
+    /// which the two tests above already cover.
+    ///
+    /// Guarded by `GITHUB_TOKEN_ENV_LOCK`: `std::env::set_var`/
+    /// `remove_var` have no per-thread scoping (mutate one process-wide
+    /// table), so this test and its sibling `github_token_from_env_*`
+    /// tests below -- all of which mutate the same `GITHUB_TOKEN`
+    /// var -- must be serialized against each other, mirroring
+    /// `telemetry::report`'s own `TELEMETRY_ENV_LOCK` pattern for its
+    /// own env vars and `test_home_lock::HOME_ENV_LOCK` for `HOME`. A
+    /// SEPARATE lock from both: no test anywhere in this crate mutates
+    /// `GITHUB_TOKEN` alongside `HOME` or the telemetry vars in the same
+    /// test, so there is no cross-set race to guard against, only the
+    /// same-set race among this module's own `GITHUB_TOKEN` tests.
+    #[test]
+    fn github_token_from_env_false_ignores_a_genuinely_set_token_end_to_end() {
+        let _lock = lock_github_token_env();
+        std::env::set_var("GITHUB_TOKEN", "a-real-non-empty-token-value");
+        let token = github_token_from_env(false);
+        std::env::remove_var("GITHUB_TOKEN");
+
+        assert_eq!(
+            token, None,
+            "github_token_from_env(false) must ignore a genuinely-set GITHUB_TOKEN"
+        );
+
+        let request = http_agent().get("https://api.github.com/repos/example/example");
+        let request = apply_github_token(request, token.as_deref());
+        let debug = format!("{request:?}");
+        assert!(
+            !debug.contains("Authorization"),
+            "with use_token=false, the request must carry zero Authorization header, \
+             even though a real GITHUB_TOKEN was genuinely set in the environment"
+        );
+    }
+
+    /// `github_token_from_env(false)` must short-circuit before ever
+    /// calling `std::env::var` -- not read-then-discard. Proven
+    /// indirectly: with NO `GITHUB_TOKEN` set at all, `true` and
+    /// `false` must both yield `None` (nothing to read either way);
+    /// the genuinely-set-token test above is what actually
+    /// distinguishes "never read" from "read and discarded," since a
+    /// read-then-discard implementation would also pass this one.
+    #[test]
+    fn github_token_from_env_true_and_false_both_none_when_unset() {
+        let _lock = lock_github_token_env();
+        std::env::remove_var("GITHUB_TOKEN");
+        assert_eq!(github_token_from_env(true), None);
+        assert_eq!(github_token_from_env(false), None);
+    }
+
+    /// `github_token_from_env(true)` preserves the pre-existing
+    /// behavior: a genuinely-set, non-empty token is read back.
+    #[test]
+    fn github_token_from_env_true_reads_a_genuinely_set_token() {
+        let _lock = lock_github_token_env();
+        std::env::set_var("GITHUB_TOKEN", "another-real-token-value");
+        let token = github_token_from_env(true);
+        std::env::remove_var("GITHUB_TOKEN");
+        assert_eq!(token, Some("another-real-token-value".to_string()));
+    }
+
+    /// `github_token_from_env(true)` still filters an empty value to
+    /// `None`, same as before this parameter was added.
+    #[test]
+    fn github_token_from_env_true_filters_empty_string_to_none() {
+        let _lock = lock_github_token_env();
+        std::env::set_var("GITHUB_TOKEN", "");
+        let token = github_token_from_env(true);
+        std::env::remove_var("GITHUB_TOKEN");
+        assert_eq!(token, None);
+    }
+
+    /// Regression: the asset-download request built inside
+    /// `download_asset_bytes` must never carry `Authorization`, even
+    /// with a token available -- `ureq` resends request headers
+    /// across redirects, and a `browser_download_url` redirects from
+    /// `api.github.com` to a short-lived, pre-signed storage host that
+    /// must never receive the GitHub token. Exercised directly against
+    /// the same construction `download_asset_bytes` uses (not through
+    /// a real network call), since the function itself intentionally
+    /// takes no token parameter.
+    #[test]
+    fn asset_download_request_never_carries_authorization_header() {
+        let request = http_agent()
+            .get("https://example.com/release-asset.tar.gz")
+            .set("User-Agent", USER_AGENT);
+        let debug = format!("{request:?}");
+        assert!(
+            !debug.contains("Authorization"),
+            "asset-download request must never carry Authorization, regardless of GITHUB_TOKEN"
+        );
     }
 
     #[test]
@@ -608,7 +839,7 @@ mod tests {
     #[test]
     fn github_artifact_fetcher_produces_a_remote_artifact_fetcher_shaped_closure() {
         let _fetcher: RemoteArtifactFetcher =
-            github_artifact_fetcher("aws-solutions".to_string(), "konductor".to_string());
+            github_artifact_fetcher("aws-solutions".to_string(), "konductor".to_string(), false);
     }
 
     // ── Response-size cap enforcement (no real network) ────────────────
@@ -708,5 +939,49 @@ mod tests {
             METADATA_RESPONSE_CAP_BYTES < ASSET_DOWNLOAD_CAP_BYTES,
             "the metadata cap must stay far smaller than the asset-download cap"
         );
+    }
+
+    /// A 401 or 403 on the metadata call -- the exact codes a private
+    /// repository without a token produces -- must name
+    /// `--use-github-token` in the rendered message, for both variants
+    /// that carry an HTTP status.
+    #[test]
+    fn metadata_http_401_and_403_display_names_the_token_flag() {
+        for status in [401u16, 403u16] {
+            let message = GithubFetchError::MetadataHttp(status).to_string();
+            assert!(
+                message.contains("--use-github-token"),
+                "status {status} must hint at --use-github-token, got: {message}"
+            );
+        }
+    }
+
+    #[test]
+    fn download_http_401_and_403_display_names_the_token_flag() {
+        for status in [401u16, 403u16] {
+            let message = GithubFetchError::DownloadHttp(status).to_string();
+            assert!(
+                message.contains("--use-github-token"),
+                "status {status} must hint at --use-github-token, got: {message}"
+            );
+        }
+    }
+
+    /// Any OTHER status code must NOT carry the hint -- it would be
+    /// noise for a failure that has nothing to do with authentication.
+    #[test]
+    fn metadata_and_download_http_other_statuses_omit_the_token_flag_hint() {
+        for status in [404u16, 429u16, 500u16, 503u16] {
+            let metadata_message = GithubFetchError::MetadataHttp(status).to_string();
+            let download_message = GithubFetchError::DownloadHttp(status).to_string();
+            assert!(
+                !metadata_message.contains("--use-github-token"),
+                "status {status} must not carry the token hint, got: {metadata_message}"
+            );
+            assert!(
+                !download_message.contains("--use-github-token"),
+                "status {status} must not carry the token hint, got: {download_message}"
+            );
+        }
     }
 }

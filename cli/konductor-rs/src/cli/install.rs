@@ -129,7 +129,7 @@ fn remote_orchestration_error_exit_code(err: &remote_orchestrate::RemoteOrchestr
     }
 }
 
-/// A stable, closed error-category string (design doc D.11) for a
+/// A stable, closed error-category string for a
 /// `remote_orchestrate::RemoteOrchestrationError`, following
 /// `install_error_code`'s `"install.<category>"` convention. Never
 /// this error's own `Display` text, which can embed a URL, filename,
@@ -346,7 +346,7 @@ impl From<String> for InstallError {
     }
 }
 
-/// A stable, closed error-category string (design doc D.11) -- never
+/// A stable, closed error-category string -- never
 /// this error's own `Display` text, which routinely embeds a local
 /// filesystem path. `InstallError::Message` has no structured variant
 /// of its own (it wraps arbitrary free text from `install_from_local`'s
@@ -545,6 +545,7 @@ pub fn dispatch_install_with(
     harness: String,
     link_bin: bool,
     no_telemetry: bool,
+    use_github_token: bool,
     verbose: bool,
     json: bool,
 ) -> u8 {
@@ -572,6 +573,7 @@ pub fn dispatch_install_with(
                 destination,
                 installed_at,
                 no_telemetry,
+                use_github_token,
             )
         },
     )
@@ -941,7 +943,7 @@ fn dispatch_install_with_remote_installer(
                 None
             };
 
-            // Telemetry identity (design doc D.2/D.8/D.15): ensured here,
+            // Telemetry identity: ensured here,
             // before the index finalize write below, so the identity file
             // is always on disk before any `report_cli_error` call in this
             // branch can populate the process-global identity cache. A
@@ -1659,6 +1661,7 @@ mod tests {
             false,
             false,
             false,
+            false,
         );
         assert_eq!(code, EXIT_USAGE_ERROR);
 
@@ -1702,6 +1705,7 @@ mod tests {
             false,
             false,
             false,
+            false,
         );
         assert_eq!(
             code, EXIT_VERIFY_FAILED,
@@ -1729,6 +1733,7 @@ mod tests {
             Some(repo_root.to_str().unwrap().to_string()),
             Some(dir.to_str().unwrap().to_string()),
             "kiro-cli-v2".to_string(),
+            false,
             false,
             false,
             false,
@@ -1771,6 +1776,7 @@ mod tests {
             false,
             false,
             false,
+            false,
         );
         assert_eq!(first_code, 0);
         let manifest_after_first = manifest::read_manifest(&dir).unwrap().unwrap();
@@ -1788,6 +1794,7 @@ mod tests {
             Some(kiro_repo_root.to_str().unwrap().to_string()),
             Some(dir.to_str().unwrap().to_string()),
             "kiro-cli-v2".to_string(),
+            false,
             false,
             false,
             false,
@@ -1838,6 +1845,7 @@ mod tests {
             false,
             false,
             false,
+            false,
         );
         assert_eq!(code, 0);
         let manifest = manifest::read_manifest(&dir).unwrap().unwrap();
@@ -1867,6 +1875,7 @@ mod tests {
             Some(repo_root.to_str().unwrap().to_string()),
             Some(dir.to_str().unwrap().to_string()),
             "claude".to_string(),
+            false,
             false,
             false,
             false,
@@ -1909,6 +1918,7 @@ mod tests {
             false,
             false,
             false,
+            false,
         );
         assert_eq!(
             code, 0,
@@ -1946,6 +1956,7 @@ mod tests {
             false,
             false,
             false,
+            false,
         );
         assert_eq!(first_code, 0);
 
@@ -1953,6 +1964,7 @@ mod tests {
             Some(v3_repo_root.to_str().unwrap().to_string()),
             Some(dir.to_str().unwrap().to_string()),
             "kiro-v3".to_string(),
+            false,
             false,
             false,
             false,
@@ -1994,6 +2006,7 @@ mod tests {
             Some(repo_root.to_str().unwrap().to_string()),
             Some(fresh_target.to_str().unwrap().to_string()),
             "kiro-cli-v2".to_string(),
+            false,
             false,
             false,
             false,
@@ -2045,6 +2058,7 @@ mod tests {
             false,
             false,
             false,
+            false,
         );
         assert_eq!(code, 0);
 
@@ -2079,6 +2093,7 @@ mod tests {
                 None,
                 Some(dir.to_str().unwrap().to_string()),
                 "kiro-cli-v2".to_string(),
+                false,
                 false,
                 false,
                 false,
@@ -2119,6 +2134,7 @@ mod tests {
             Some(repo_root.to_str().unwrap().to_string()),
             Some(dir.to_str().unwrap().to_string()),
             "kiro-cli-v2".to_string(),
+            false,
             false,
             false,
             false,
@@ -2218,6 +2234,7 @@ mod tests {
             false,
             false,
             false,
+            false,
         );
         assert_eq!(
             code, EXIT_VERIFY_FAILED,
@@ -2250,6 +2267,7 @@ mod tests {
             Some(repo_root.to_str().unwrap().to_string()),
             Some(dir.to_str().unwrap().to_string()),
             "kiro-cli-v2".to_string(),
+            false,
             false,
             false,
             false,
@@ -2361,6 +2379,7 @@ mod tests {
             false,
             false,
             false,
+            false,
         );
         assert_eq!(
             code, EXIT_VERIFY_FAILED,
@@ -2392,6 +2411,7 @@ mod tests {
             Some(repo_root.to_str().unwrap().to_string()),
             Some(dir.to_str().unwrap().to_string()),
             "kiro-cli-v2".to_string(),
+            false,
             false,
             false,
             false,

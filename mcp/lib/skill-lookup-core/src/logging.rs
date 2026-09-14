@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // logging.rs — persistent, leveled file logging for Konductor MCP
-// servers, per docs/design/konductor-skill-lookup-design.md §4.9.
+// servers.
 //
 // Path: `~/.konductor/mcp/logs/mcp-YYYYMMDD.log` (date-based, one file
 // per UTC calendar day, appended across sessions on the same day).
@@ -11,21 +11,20 @@
 // external logrotate dependency.
 //
 // Format: one line per event, `YYYY-MM-DDTHH:MM:SS LEVEL message`, plain
-// text, no JSON wrapping (per §4.9's explicit format preference — easy
-// to grep).
+// text, no JSON wrapping — easy to grep.
 //
 // Level gating: `info`/`warn`/`error` are always logged; `debug` is
 // logged only when `KONDUCTOR_LOG=debug` is set in the environment
 // (checked fresh on every call, not cached, so tests — and a running
 // process, via `reload_skills` — can toggle it without a restart).
 //
-// Design choice — hand-rolled, not `tracing`/`tracing-subscriber`: the
-// design doc's own stated format is a single flat `TIMESTAMP LEVEL
+// Design choice — hand-rolled, not `tracing`/`tracing-subscriber`: this
+// module's own format is a single flat `TIMESTAMP LEVEL
 // message` text line with no JSON wrapping and no span/target/
 // thread-name metadata. `tracing-subscriber`'s built-in formatters all
 // carry that extra structure by default and would need a fully custom
-// `FormatEvent` implementation to strip it back down to the doc's exact
-// shape — at which point most of the crate's value (its ecosystem of
+// `FormatEvent` implementation to strip it back down to this
+// exact shape — at which point most of the crate's value (its ecosystem of
 // subscribers/layers) goes unused, for the cost of three new
 // exact-pinned dependencies (`tracing`, `tracing-subscriber`,
 // `tracing-appender`) in a workspace that currently pulls in none. This
@@ -40,7 +39,7 @@
 // for two reasons. First, and sufficient on its own: `ScanDiagnostic`
 // (`model.rs`) needs to log its own events at specific levels, which is
 // only possible without a core-crate-depends-on-binary cycle if the
-// writer lives here. Second: the log filename this design specifies is
+// writer lives here. Second: this module's log filename is
 // generic (`mcp-*.log`, not `skill-lookup-mcp-*.log`), so IF a second
 // MCP server is ever built on this same core crate, its file-writing/
 // retention/line-format half (`log_file_only`, `log_file_only_lines`,
@@ -95,12 +94,12 @@ const KONDUCTOR_DIR_NAME: &str = ".konductor";
 const LOG_SUBDIR_COMPONENTS: [&str; 2] = ["mcp", "logs"];
 
 /// Files under the log directory older (by filename date) than this many
-/// days are deleted at startup. See §4.9: "Files older than 7 days are
-/// deleted at startup ... combined with the date-based naming, this
-/// bounds disk usage to at most 7 days of logs."
+/// days are deleted at startup: files older than 7 days are
+/// deleted at startup, which -- combined with the date-based naming --
+/// bounds disk usage to at most 7 days of logs.
 const RETENTION_DAYS: i64 = 7;
 
-/// Log severity, matching §4.9's four-level table.
+/// Log severity: info, warn, error, and debug.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Level {
     Info,
@@ -110,8 +109,8 @@ pub enum Level {
 }
 
 impl Level {
-    /// Uppercase name as it appears in a log line, matching §4.9's
-    /// format (`YYYY-MM-DDTHH:MM:SS LEVEL message`).
+    /// Uppercase name as it appears in a log line: `YYYY-MM-DDTHH:MM:SS
+    /// LEVEL message`.
     fn as_str(self) -> &'static str {
         match self {
             Level::Info => "INFO",
@@ -129,7 +128,7 @@ impl fmt::Display for Level {
 }
 
 /// Whether `debug`-level events should be logged: `KONDUCTOR_LOG=debug`
-/// (case-insensitive), per §4.9. Re-read on every call rather than
+/// (case-insensitive). Re-read on every call rather than
 /// cached — this module's own tests exercise every value without
 /// mutating the real process environment (see `debug_enabled_with`), and
 /// a long-lived server process should see a change to this env var take
@@ -245,7 +244,7 @@ fn days_from_civil(y: i32, m: u32, d: u32) -> i64 {
 }
 
 /// Renders one log line's leading date+time, `YYYY-MM-DDTHH:MM:SS`,
-/// matching §4.9's format exactly (no trailing `Z`, unlike
+/// this module's own format exactly (no trailing `Z`, unlike
 /// `cli/konductor-rs`'s own timestamp helper — this is a deliberate,
 /// doc-specified difference, not an oversight).
 fn format_timestamp(y: i32, mo: u32, d: u32, h: u32, mi: u32, s: u32) -> String {
@@ -254,8 +253,8 @@ fn format_timestamp(y: i32, mo: u32, d: u32, h: u32, mi: u32, s: u32) -> String 
 
 /// This log file's name for a given calendar date: `mcp-YYYYMMDD.log`.
 ///
-/// Deliberately generic, not `skill-lookup-mcp-YYYYMMDD.log` — matching
-/// §4.9's own filename. Consequence: the per-line format itself
+/// Deliberately generic, not `skill-lookup-mcp-YYYYMMDD.log` --
+/// this module's own filename. Consequence: the per-line format itself
 /// (`format_timestamp` + `Level` + message, no source/server field) has
 /// no way to attribute a line to which server wrote it if a second MCP
 /// server is ever built on this crate and shares this same file. Not
@@ -347,8 +346,7 @@ fn run_retention(dir: &Path, today: (i32, u32, u32)) {
 ///
 /// Day-keyed, not a one-shot `std::sync::Once`: a long-lived server
 /// process that crosses a UTC day boundary must still re-run retention
-/// on the first write of the new day (per §4.9's day-based retention
-/// contract) — a plain one-shot would run retention once at process
+/// on the first write of the new day -- a plain one-shot would run retention once at process
 /// start and then silently never again for the rest of that process's
 /// lifetime.
 ///
@@ -401,8 +399,8 @@ fn ensure_log_dir(dir: &Path, today: (i32, u32, u32)) -> bool {
 
 /// Runs 7-day retention once against the real `~/.konductor/mcp/logs/`.
 /// Call this exactly once, at process startup, before any other logging
-/// in this process — see §4.9: "the server checks the log directory
-/// before writing its first entry." A no-op (fails open) if `HOME` can't
+/// in this process — the server checks the log directory
+/// before writing its first entry. A no-op (fails open) if `HOME` can't
 /// be resolved.
 ///
 /// Not required for `log`/`log_file_only` to work correctly on their
@@ -573,7 +571,7 @@ fn log_file_only_lines_at(
 /// (missing `HOME`, permissions, disk full, ...): a logging failure must
 /// never surface as a tool error or change this server's behavior.
 ///
-/// **Security (§4.9):** `message` must never contain secrets, tokens,
+/// **Security:** `message` must never contain secrets, tokens,
 /// file contents, or environment variable values — only skill paths,
 /// skill names, diagnostic reasons, and query parameters. This is a
 /// caller contract this function cannot itself enforce; every call site
@@ -640,14 +638,14 @@ pub fn log(level: Level, message: &str) {
     }
 }
 
-/// Logs each name in `excluded_names` at `debug`, per §4.9's debug row:
-/// "Skills excluded by `--skill-name-filter` (name + filter pattern)".
+/// Logs each name in `excluded_names` at `debug`: skills excluded by
+/// `--skill-name-filter` (name + filter pattern).
 /// `filter` is the whole configured `--skill-name-filter` value (not
 /// whichever comma-separated sub-pattern happened to reject a given
 /// name): a name is excluded when it matches *none* of the configured
 /// patterns, so there is no single pattern responsible for excluding
-/// it — the full filter string is what §4.9 means by "filter pattern"
-/// here.
+/// it — the full filter string is what this debug line means by
+/// "filter pattern" here.
 ///
 /// Shared by both callers that apply a name filter (`main` at startup,
 /// `reload_skills` on reload) so the debug-row wording and the
@@ -853,7 +851,7 @@ mod tests {
 
     #[test]
     fn format_timestamp_matches_the_design_docs_exact_shape() {
-        // §4.9: `YYYY-MM-DDTHH:MM:SS LEVEL message` — no trailing `Z`,
+        // `YYYY-MM-DDTHH:MM:SS LEVEL message` — no trailing `Z`,
         // unlike cli/konductor-rs's own timestamp helper.
         let ts = format_timestamp(2026, 3, 4, 5, 6, 7);
         assert_eq!(ts, "2026-03-04T05:06:07");
@@ -1156,7 +1154,7 @@ mod tests {
 
     #[test]
     fn log_file_only_at_runs_retention_before_writing() {
-        // §4.9: retention runs "before writing its first entry" -- prove
+        // Retention runs before writing its first entry -- prove
         // an old file present in the target dir is gone once a new entry
         // has been written on a later date.
         let dir = temp_dir("retention-on-write");

@@ -696,8 +696,7 @@ impl InstallPhase for AgentInstallPhase {
                 Ok((claude_path, claude_sha256)) => {
                     claude_settings = Some((claude_path, claude_sha256));
 
-                    // Telemetry hook wiring (usage-analytics design
-                    // D.13): deliberately gated on the GRANT above
+                    // Telemetry hook wiring: deliberately gated on the GRANT above
                     // having just succeeded, not attempted
                     // independently. `apply_claude_settings_grant`'s
                     // own failure modes (symlink, `permissions.deny`
