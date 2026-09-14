@@ -1,7 +1,0 @@
-{
-  "limits": {
-    "memory_max_chars": 2200,
-    "user_max_chars": 1375
-  },
-  "allowlist_patterns": []
-}
