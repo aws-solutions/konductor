@@ -19,7 +19,7 @@ skill-lookup-core = { path = "../../lib/skill-lookup-core" }
 # enables ServerHandler/ServiceExt; "transport-io" enables the stdio
 # transport helper (rmcp::transport::stdio) this binary uses to answer the
 # MCP `initialize` handshake.
-rmcp = { version = "=0.1.5", features = ["server", "transport-io"] }
+rmcp = { version = "=1.4.0", features = ["server", "transport-io"] }
 tokio = { version = "=1.44.2", features = ["rt-multi-thread", "macros", "io-std", "io-util"] }
 schemars = "=0.8.22"
 # Same version as cli/konductor-rs/Cargo.toml's clap pin, for consistency
