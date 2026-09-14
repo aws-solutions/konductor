@@ -13,13 +13,12 @@
 // is genuinely reusable: directory traversal (`scanner`), tolerant
 // frontmatter parsing (`frontmatter`), the data model
 // (`model`), the query/reload index built on top of them (`index`), and
-// persistent leveled logging (`logging`, per
-// docs/design/konductor-skill-lookup-design.md §4.9) — the log file this
-// design specifies is a generic `mcp-*.log`, not per-server, so a second
-// MCP server built on this crate could share `logging`'s file-writing/
-// retention/line-format half as-is; see that module's own doc comment
-// for the one function (`log`'s stderr prefix) that is not yet
-// server-agnostic, since only one consumer exists today.
+// persistent leveled logging (`logging`) — the log file is a generic
+// `mcp-*.log`, not per-server, so a second MCP server built on this
+// crate could share `logging`'s file-writing/retention/line-format half
+// as-is; see that module's own doc comment for the one function
+// (`log`'s stderr prefix) that is not yet server-agnostic, since only
+// one consumer exists today.
 
 pub mod frontmatter;
 pub mod index;

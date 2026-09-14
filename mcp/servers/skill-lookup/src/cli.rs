@@ -8,8 +8,7 @@
 //   - installed skills:       ~/.konductor/skills/
 //   - workspace-local skills: <workspace>/.konductor/skills/
 //   - this server's logs:     ~/.konductor/mcp/logs/mcp-YYYYMMDD.log
-//     (per docs/design/konductor-skill-lookup-design.md §4.9; owned by
-//     `skill_lookup_core::logging`, not by this file)
+//     (owned by `skill_lookup_core::logging`, not by this file)
 //
 // Split out of main.rs (which originally held all server-specific code
 // alongside the MCP protocol/handler wiring in `handlers.rs`) so each
@@ -75,7 +74,7 @@ pub(crate) struct Cli {
     pub(crate) agent_sop_filter: Option<String>,
 
     /// Enable or disable usage-analytics telemetry for this server
-    /// process (design doc D.8). A `ValueEnum`, not a bare `String`: an
+    /// process. A `ValueEnum`, not a bare `String`: an
     /// unrecognized value is rejected at parse time rather than silently
     /// leaving telemetry on. Structural: when `off`, the periodic flush
     /// task is never started at all.
@@ -83,7 +82,7 @@ pub(crate) struct Cli {
     pub(crate) telemetry: TelemetryMode,
 }
 
-/// `--telemetry`'s accepted values (design doc §5.4).
+/// `--telemetry`'s accepted values.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, clap::ValueEnum)]
 pub(crate) enum TelemetryMode {
     On,
@@ -331,8 +330,8 @@ fn validate_dir(path: &Path, label: &str) -> Result<(), String> {
 /// startup warning, not a fatal error, so the server still starts with an
 /// empty catalog.
 ///
-/// Each message carries the `Level` its caller should log it at, per
-/// §4.9's table: an individual bad path (tilde-expansion failure, or a
+/// Each message carries the `Level` its caller should log it at: an
+/// individual bad path (tilde-expansion failure, or a
 /// `--skills-dir` that doesn't exist or isn't a directory) is `Warn`;
 /// the "every configured path was invalid" summary — the only case where
 /// the server ends up scanning nothing at all — is `Error`.
@@ -843,7 +842,7 @@ mod tests {
             .any(|(_, m)| m.contains("--skills-dir /definitely/does/not/exist/anywhere")));
     }
 
-    /// §4.9's level table: an individual bad `--skills-dir` path is a
+    /// An individual bad `--skills-dir` path is a
     /// `warn`, not an `error` — only the "every path was invalid"
     /// summary (see the next test) rises to `error`.
     #[test]
@@ -868,7 +867,7 @@ mod tests {
             .any(|(_, m)| m.contains("all --skills-dir paths invalid")));
     }
 
-    /// §4.9's level table: "ALL configured --skills-dir paths invalid
+    /// "ALL configured --skills-dir paths invalid
     /// (server starts with empty catalog)" is explicitly an `error`.
     #[test]
     fn all_paths_invalid_summary_is_logged_at_error_level() {

@@ -32,6 +32,34 @@ pub fn package_dist(dist_root: &Path) -> std::io::Result<Vec<u8>> {
             let metadata = fs::metadata(&entry.absolute_path)?;
             let mut header = tar::Header::new_gnu();
             header.set_metadata(&metadata);
+            // `set_metadata` copies the real filesystem mtime, uid, and
+            // gid into the header (and, on a GNU header, the numeric
+            // uid/gid double as the username/groupname fields). None of
+            // these are logical properties of the packaged content --
+            // two `synth` runs over identical source, on different
+            // machines or under different builder accounts, would
+            // otherwise produce different archive bytes (and a
+            // different sidecar hash) despite nothing having logically
+            // changed. All four are pinned so archive bytes depend only
+            // on entry paths, order, and content -- the byte-identity
+            // property `artifact_filename`'s docstring documents.
+            header.set_mtime(0);
+            header.set_uid(0);
+            header.set_gid(0);
+            header.set_username("")?;
+            header.set_groupname("")?;
+            // `set_metadata` also copies the real filesystem mode bits,
+            // which `std::fs::write` derives from the process umask
+            // (e.g. 0644 under umask 022, 0664 under umask 002) --
+            // not a logical property of the packaged content either.
+            // Canonicalized to 0755 for directories, 0755 for a file
+            // with any owner/group/other executable bit set (preserving
+            // the one permission distinction that actually matters:
+            // whether a script is runnable), and 0644 for every other
+            // file, so archive bytes depend only on paths, order,
+            // content, and the executable bit -- never the builder's
+            // umask.
+            header.set_mode(canonical_mode(entry.is_dir, &metadata));
             // `append_data` sets the path (with GNU long-name support for
             // paths over the 100-byte fixed name field), size, and
             // checksum -- setting them here too would be redundant, and
@@ -48,6 +76,26 @@ pub fn package_dist(dist_root: &Path) -> std::io::Result<Vec<u8>> {
         builder.into_inner()?.finish()?;
     }
     Ok(buf)
+}
+
+/// The mode bits to write into a packaged entry's tar header, in place
+/// of `metadata`'s real (umask-derived) mode: `0o755` for a directory or
+/// a file with any owner/group/other executable bit set, `0o644` for
+/// every other file. `is_dir` is `DistEntry::is_dir` rather than
+/// `metadata.is_dir()` so a caller need not re-derive it.
+fn canonical_mode(is_dir: bool, metadata: &fs::Metadata) -> u32 {
+    if is_dir {
+        return 0o755;
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        if metadata.permissions().mode() & 0o111 != 0 {
+            return 0o755;
+        }
+    }
+    let _ = metadata;
+    0o644
 }
 
 /// One archive entry collected by `collect_entries`: `relative_path` is a
@@ -263,6 +311,136 @@ mod tests {
             first_run, second_run,
             "package_dist must produce byte-identical archives across repeated runs \
              over the same input tree"
+        );
+
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    /// Regression: `package_dist` must ignore filesystem mtimes, not
+    /// just re-reads of untouched files. Rewrites the same content to
+    /// disk between the two runs -- as `stage_content_type`'s
+    /// rename-swap does on every real `synth` rerun -- which gives every
+    /// file a fresh mtime even though its bytes are identical. Without
+    /// pinning `header.set_mtime`, this produces a different tarball
+    /// (and a different sidecar hash) despite nothing having logically
+    /// changed.
+    #[test]
+    fn package_dist_ignores_mtime_across_a_rewrite_of_identical_content() {
+        let dir = scratch_dir("mtime-rewrite");
+        fs::create_dir_all(dir.join("kiro-cli-v2/agents")).unwrap();
+        let agent_path = dir.join("kiro-cli-v2/agents/example.json");
+        fs::write(&agent_path, b"agent bytes").unwrap();
+
+        let first_run = package_dist(&dir).expect("first package_dist run must succeed");
+
+        // Rewrite the same bytes, forcing a fresh mtime on the file --
+        // mirrors what a real synth rerun's rename-swap does even when
+        // the written content is unchanged.
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        fs::write(&agent_path, b"agent bytes").unwrap();
+
+        let second_run = package_dist(&dir).expect("second package_dist run must succeed");
+
+        assert_eq!(
+            first_run, second_run,
+            "package_dist must produce byte-identical archives even when unchanged \
+             content was rewritten to disk with a fresh mtime in between"
+        );
+
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    /// Regression: every entry's tar header must carry pinned mtime,
+    /// uid, gid, username, and groupname (0/0/""/"" respectively) --
+    /// never the real filesystem owner running the build. Parses the
+    /// packaged archive back with the `tar` crate rather than
+    /// byte-matching, so this asserts the field values directly and
+    /// fails clearly if any one of the five is left unpinned, instead of
+    /// only detecting a difference when two builds happen to run under
+    /// different owners.
+    #[test]
+    fn package_dist_pins_ownership_and_mtime_fields_to_the_same_values_for_every_entry() {
+        let dir = scratch_dir("pinned-ownership");
+        fs::create_dir_all(dir.join("kiro-cli-v2/agents")).unwrap();
+        fs::write(dir.join("kiro-cli-v2/agents/example.json"), b"agent bytes").unwrap();
+
+        let archive_bytes = package_dist(&dir).expect("package_dist must succeed");
+
+        let decoder = flate2::read::GzDecoder::new(archive_bytes.as_slice());
+        let mut archive = tar::Archive::new(decoder);
+        let mut checked_at_least_one_entry = false;
+        for entry in archive.entries().unwrap() {
+            let entry = entry.unwrap();
+            let header = entry.header();
+            assert_eq!(header.mtime().unwrap(), 0, "mtime must be pinned to 0");
+            assert_eq!(header.uid().unwrap(), 0, "uid must be pinned to 0");
+            assert_eq!(header.gid().unwrap(), 0, "gid must be pinned to 0");
+            assert_eq!(
+                header.username().unwrap(),
+                Some(""),
+                "username must be pinned to empty"
+            );
+            assert_eq!(
+                header.groupname().unwrap(),
+                Some(""),
+                "groupname must be pinned to empty"
+            );
+            checked_at_least_one_entry = true;
+        }
+        assert!(
+            checked_at_least_one_entry,
+            "test fixture must produce at least one archive entry to check"
+        );
+
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    /// Regression: a non-executable file's packaged mode must be
+    /// `0o644` regardless of the umask its real on-disk mode happened
+    /// to be created under (`std::fs::write` derives mode from the
+    /// process umask, e.g. `0o644` under umask `022` but `0o664` under
+    /// umask `002`), and a directory's must be `0o755` -- otherwise the
+    /// same source tree packaged under two different umasks produces
+    /// different archive bytes and a different sidecar hash despite
+    /// identical logical content.
+    #[cfg(unix)]
+    #[test]
+    fn package_dist_canonicalizes_mode_independent_of_the_creating_umask() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let dir = scratch_dir("canonical-mode");
+        fs::create_dir_all(dir.join("kiro-cli-v2/agents")).unwrap();
+        let file_path = dir.join("kiro-cli-v2/agents/example.json");
+        fs::write(&file_path, b"agent bytes").unwrap();
+        // Simulates a permissive umask (e.g. 002) producing 0o664 on a
+        // non-executable file -- the packaged mode must not carry this
+        // through.
+        fs::set_permissions(&file_path, fs::Permissions::from_mode(0o664)).unwrap();
+
+        let archive_bytes = package_dist(&dir).expect("package_dist must succeed");
+        let decoder = flate2::read::GzDecoder::new(archive_bytes.as_slice());
+        let mut archive = tar::Archive::new(decoder);
+        let mut checked_file = false;
+        let mut checked_dir = false;
+        for entry in archive.entries().unwrap() {
+            let entry = entry.unwrap();
+            let path = entry.path().unwrap().to_string_lossy().into_owned();
+            let mode = entry.header().mode().unwrap();
+            if path == "kiro-cli-v2/agents/example.json" {
+                assert_eq!(
+                    mode, 0o644,
+                    "non-executable file mode must be canonicalized to 0o644"
+                );
+                checked_file = true;
+            } else if path == "kiro-cli-v2/agents" {
+                assert_eq!(mode, 0o755, "directory mode must be canonicalized to 0o755");
+                checked_dir = true;
+            }
+        }
+        assert!(checked_file, "archive must contain the example.json entry");
+        assert!(
+            checked_dir,
+            "archive must contain the kiro-cli-v2/agents directory entry"
         );
 
         fs::remove_dir_all(&dir).ok();

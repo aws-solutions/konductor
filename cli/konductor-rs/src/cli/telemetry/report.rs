@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// telemetry/report.rs — the `telemetry::report_*` call-site API (D.6).
+// telemetry/report.rs — the `telemetry::report_*` call-site API.
 //
 // Every function here returns `()`, never `Result` -- telemetry failure
 // must never propagate to a caller. Internally: a missing/malformed
@@ -8,7 +8,7 @@
 // network failure are all discarded, never escalated.
 //
 // Naming: `telemetry`, not `metrics` -- `Commands::Metrics` already
-// names a distinct, unrelated stub command (D.6).
+// names a distinct, unrelated stub command.
 
 use std::io::Write as _;
 use std::process::{Command, Stdio};
@@ -17,8 +17,8 @@ use std::sync::OnceLock;
 use super::envelope::{EventEnvelope, EventType, OuterEnvelope, NIL_UUID_SENTINEL};
 use super::identity::{self, IdentityRecord};
 
-/// Compile-time placeholder Solution ID (D.12) -- real value pending
-/// AWS Solutions onboarding (§6/§7 task 12), not a blocker for this
+/// Compile-time placeholder Solution ID -- real value pending
+/// AWS Solutions onboarding, not a blocker for this
 /// revision.
 pub(super) const SOLUTION_ID: &str = "SO0169";
 
@@ -27,19 +27,17 @@ pub(super) const SOLUTION_ID: &str = "SO0169";
 const DEFAULT_TELEMETRY_ENDPOINT: &str = "https://example.invalid/konductor-telemetry";
 
 /// Environment variable overriding the endpoint (tier 2 of the
-/// three-tier resolution order, published §Telemetry section:
-/// `konductor-cli-engineering-design.md`'s own "Endpoint configuration"
-/// row -- `KONDUCTOR_METRICS_ENDPOINT` env var -> `.konductor/config.yml`
-/// `telemetry.endpoint` -> compile-time default). Named
-/// `KONDUCTOR_METRICS_ENDPOINT`, not `KONDUCTOR_TELEMETRY_ENDPOINT` --
-/// must match that published section's literal name exactly, since it
+/// three-tier resolution order -- `KONDUCTOR_METRICS_ENDPOINT` env var
+/// -> `.konductor/config.yml` `telemetry.endpoint` -> compile-time
+/// default). Named `KONDUCTOR_METRICS_ENDPOINT`, not
+/// `KONDUCTOR_TELEMETRY_ENDPOINT` --
+/// must match that literal name exactly, since it
 /// is the one already-documented, externally-visible override an
 /// operator would set.
 const TELEMETRY_ENDPOINT_ENV_VAR: &str = "KONDUCTOR_METRICS_ENDPOINT";
 
-/// Fleet-wide opt-out env var (published §Telemetry section's own
-/// "Opt-out" row: "`KONDUCTOR_TELEMETRY=off` + managed config for
-/// fleet"). Checked FIRST in `resolve_endpoint`, ahead of
+/// Fleet-wide opt-out env var ("`KONDUCTOR_TELEMETRY=off` + managed
+/// config for fleet"). Checked FIRST in `resolve_endpoint`, ahead of
 /// `.konductor/config.yml`'s own per-repo `telemetry.enabled: false` --
 /// a fleet-level override set in the process environment is meant to be
 /// unconditional, not something an individual repo's checked-in config
@@ -47,13 +45,13 @@ const TELEMETRY_ENDPOINT_ENV_VAR: &str = "KONDUCTOR_METRICS_ENDPOINT";
 const TELEMETRY_OFF_ENV_VAR: &str = "KONDUCTOR_TELEMETRY";
 
 /// The exact value `TELEMETRY_OFF_ENV_VAR` must equal to disable
-/// telemetry -- matches the published section's own literal example
+/// telemetry -- matches the documented literal example
 /// (`KONDUCTOR_TELEMETRY=off`) exactly; any other value (including
 /// empty) leaves telemetry enabled per the other resolution tiers.
 const TELEMETRY_OFF_VALUE: &str = "off";
 
 /// The checked-in transport script's text, embedded at compile time
-/// (D.6) -- never read from a source-tree path at runtime.
+/// -- never read from a source-tree path at runtime.
 const TELEMETRY_REPORT_SCRIPT: &str =
     include_str!("../../../../../scripts/konductor-telemetry-report.sh");
 
@@ -62,7 +60,7 @@ const MATERIALIZED_SCRIPT_NAME: &str = "konductor-telemetry-report.sh";
 
 /// This process's cached identity lookup: resolved at most once,
 /// regardless of how many `report_*` calls happen in this process's
-/// lifetime (D.6). Test-only escape hatch (`reset_identity_cache_for_test`)
+/// lifetime. Test-only escape hatch (`reset_identity_cache_for_test`)
 /// exists because `cargo test` runs every test in this module in one
 /// shared process -- without it, the first test to populate the cache
 /// would poison every later test in the same run.
@@ -72,8 +70,8 @@ static IDENTITY_CACHE: OnceLock<Option<IdentityRecord>> = OnceLock::new();
 /// this process. `target_dir`'s value only matters on the FIRST call in
 /// a process -- subsequent calls (even with a different `target_dir`,
 /// which no real call site ever does across process lifetime) return
-/// the cached value, matching D.6's "resolved once, reused for the rest
-/// of the process" contract.
+/// the cached value: identity is resolved once and reused for the rest
+/// of the process.
 ///
 /// NOT SAFE for a `--all` batch loop that iterates several distinct
 /// `target_dir`s in one process -- each has its OWN
@@ -93,7 +91,7 @@ fn cached_identity(target_dir: &std::path::Path) -> Option<IdentityRecord> {
 /// against more than one `target_dir` within a single process (the
 /// `--all` batch paths in `uninstall.rs`/`update.rs`) -- the process-
 /// global cache's "resolved once" contract only holds for a
-/// single-target invocation (D.6).
+/// single-target invocation.
 pub(crate) fn read_identity_uncached(target_dir: &std::path::Path) -> Option<IdentityRecord> {
     identity::read_identity(target_dir)
 }
@@ -110,15 +108,15 @@ const TELEMETRY_ALLOW_LOCAL_ENDPOINT_ENV_VAR: &str = "KONDUCTOR_TELEMETRY_ALLOW_
 /// Whether telemetry is disabled (fleet-wide env var or per-repo
 /// config), or no endpoint resolves. Checks, in order:
 /// 1. `KONDUCTOR_TELEMETRY=off` (`TELEMETRY_OFF_ENV_VAR`) -- the
-///    fleet-wide opt-out (published §Telemetry section's "Opt-out" row).
-///    Checked FIRST and unconditionally: a fleet-managed environment
+///    fleet-wide opt-out. Checked FIRST and unconditionally: a
+///    fleet-managed environment
 ///    variable is meant to win over whatever an individual repo's
 ///    checked-in `.konductor/config.yml` says.
 /// 2. `.konductor/config.yml`'s `telemetry.enabled: false` -- the
-///    per-repo opt-out (published section's own "Exclusion list" row).
+///    per-repo opt-out.
 ///
 /// If neither disables telemetry, resolves the endpoint per the
-/// published section's own three-tier order: `KONDUCTOR_METRICS_ENDPOINT`
+/// three-tier order: `KONDUCTOR_METRICS_ENDPOINT`
 /// env var -> `.konductor/config.yml`'s `telemetry.endpoint` ->
 /// compile-time `DEFAULT_TELEMETRY_ENDPOINT`. Returns `None` if
 /// telemetry is disabled by either mechanism above, OR if the resolved
@@ -131,7 +129,7 @@ const TELEMETRY_ALLOW_LOCAL_ENDPOINT_ENV_VAR: &str = "KONDUCTOR_TELEMETRY_ALLOW_
 /// Reads `.konductor/config.yml` directly via `serde_yaml` for just the
 /// `telemetry` top-level key -- deliberately NOT threaded through the
 /// existing `cli::config::Config`/`load_config` machinery, which models
-/// an unrelated severity/tier gate-config schema (D.6 only requires
+/// an unrelated severity/tier gate-config schema (this only requires
 /// "the YAML parsing already available to the crate", i.e. `serde_yaml`
 /// itself, not that specific struct).
 /// `#[cfg(test)]`: production code now calls `resolve_endpoint_with_pin`
@@ -365,7 +363,7 @@ fn read_telemetry_config(target_dir: &std::path::Path) -> Option<RawTelemetrySec
 /// directory (never the shared, world-writable `std::env::temp_dir()`)
 /// and makes it executable.
 ///
-/// Security (D.6 follow-up): writing a fixed, predictable name into a
+/// Security follow-up: writing a fixed, predictable name into a
 /// shared temp dir is a local code-execution vector on multi-user
 /// hosts -- a local attacker can pre-place a symlink at that path
 /// (`std::fs::write` follows symlinks) or swap the file's contents
@@ -380,7 +378,7 @@ fn read_telemetry_config(target_dir: &std::path::Path) -> Option<RawTelemetrySec
 ///      open and the `spawn()` below.
 ///
 /// Self-healing: a deleted or stale (post-upgrade) copy is simply
-/// rewritten, with no separate upgrade step (D.6).
+/// rewritten, with no separate upgrade step.
 fn materialize_script() -> std::io::Result<std::path::PathBuf> {
     let dir = private_script_dir()?;
     let path = dir.join(MATERIALIZED_SCRIPT_NAME);
@@ -592,7 +590,7 @@ fn set_executable(_path: &std::path::Path) -> std::io::Result<()> {
 /// interposed), an optional `host:port:address` pin as its second
 /// (adversarial finding: DNS-rebinding TOCTOU -- see
 /// `build_resolve_arg`'s own doc comment), the JSON body written to its
-/// stdin and the handle closed. Never `.wait()`-ed (D.6/D.7) -- any
+/// stdin and the handle closed. Never `.wait()`-ed -- any
 /// spawn error, and any later network failure this Rust code never
 /// observes, is discarded.
 ///
@@ -630,7 +628,7 @@ fn spawn_and_send(endpoint: &str, pinned_ip: Option<std::net::IpAddr>, body: &st
     if let Some(mut stdin) = child.stdin.take() {
         let _ = stdin.write_all(body.as_bytes());
         // Dropping `stdin` here closes the pipe; the child is left
-        // detached and never `.wait()`-ed, matching D.6/D.7's
+        // detached and never `.wait()`-ed -- a deliberate
         // fire-and-forget shape.
     }
 }
@@ -711,7 +709,7 @@ fn resolve_endpoint_with_pin_uncached(
 /// Shared core for `send_event`/`send_event_for_target`: given an
 /// ALREADY-resolved `(endpoint, pinned_ip)` pair, builds and sends one
 /// event. `harness` is only populated on the wire for `cli_error` events
-/// (D.3/D.11) -- callers pass `None` for every other event type. Kept as
+/// -- callers pass `None` for every other event type. Kept as
 /// one function so the two callers' identical envelope-building and
 /// serialization logic can never drift apart -- only how the endpoint
 /// is resolved (cached vs. uncached) differs between them.
@@ -810,7 +808,7 @@ fn send_event_for_target(
     );
 }
 
-/// Hashes a runtime-provided session identifier per D.3:
+/// Hashes a runtime-provided session identifier:
 /// `sha256_hex(UUID + the runtime's own session identifier)`. This is
 /// the ONE place `sessionId`/`parentSessionId` get their final wire
 /// value -- the raw runtime session id (e.g. Claude Code's own
@@ -844,9 +842,9 @@ fn hash_present_session_id(uuid: &str, raw_session_id: Option<&str>) -> Option<S
         .map(|raw| hash_session_id(uuid, raw))
 }
 
-/// `report_agent_invocation` (D.4/D.7/D.13): fired from the hidden
+/// `report_agent_invocation`: fired from the hidden
 /// `__telemetry-hook` subcommand at `SessionStart`/`agentSpawn`. Skips
-/// entirely if the identity cache is `None` (D.6 -- most plausibly means
+/// entirely if the identity cache is `None` (most plausibly means
 /// `--no-telemetry` was passed at install).
 pub(crate) fn report_agent_invocation(
     target_dir: &std::path::Path,
@@ -869,10 +867,10 @@ pub(crate) fn report_agent_invocation(
     );
 }
 
-/// `report_subagent_invocation` (D.3/D.4/D.7): fired from the hidden
+/// `report_subagent_invocation`: fired from the hidden
 /// `__telemetry-hook` subcommand at `SubagentStart`. `parent_session_id`
 /// is set from the SAME hook payload's own `sessionId` as `session_id`
-/// (D.3/D.4) -- both parameters carry the identical raw value by
+/// -- both parameters carry the identical raw value by
 /// construction; kept as two parameters so the call site stays
 /// self-describing rather than the function silently duplicating one
 /// into the other. Each is hashed independently (rather than hashing
@@ -905,9 +903,9 @@ pub(crate) fn report_subagent_invocation(
     );
 }
 
-/// `report_cli_error` (D.6/D.11): the one exception to the skip-on-
+/// `report_cli_error`: the one exception to the skip-on-
 /// `None` rule. `no_telemetry` carries `--no-telemetry`'s parsed value
-/// (D.8) into the one call site (`command == "install"`) where the
+/// into the one call site (`command == "install"`) where the
 /// identity cache alone cannot disambiguate "opted out" from "hasn't
 /// installed yet". Every non-`install` call site passes `false`, a value
 /// never inspected for those commands.
@@ -921,7 +919,7 @@ pub(crate) fn report_subagent_invocation(
 /// report the error regardless of `no_telemetry`, silently ignoring the
 /// opt-out on every invocation that happens to already have an
 /// identity on disk. Checking it here, before the match, makes the
-/// opt-out unconditional the way D.8 describes it -- "structural", not
+/// opt-out unconditional and structural -- never
 /// "invoked then checked" -- for every caller, identity present or not.
 pub(crate) fn report_cli_error(
     target_dir: &std::path::Path,
@@ -994,7 +992,7 @@ fn report_cli_error_with_identity(
             // nil-UUID sentinel pre-identity.
             if command == "install" {
                 // Install failed before identity existed -- fire under
-                // the nil-UUID sentinel rather than skipping (D.6).
+                // the nil-UUID sentinel rather than skipping.
                 send_event(
                     target_dir,
                     EventType::CliError,
@@ -1054,7 +1052,7 @@ fn report_cli_error_with_identity_for_target(
     }
 }
 
-/// `report_package_uninstalled` (D.9): fired by `uninstall_one_impl`
+/// `report_package_uninstalled`: fired by `uninstall_one_impl`
 /// only AFTER every fallible step of that uninstall has already
 /// succeeded (manifest read, eligible-file deletion, manifest removal,
 /// index-entry removal) -- so a success event is never sent for an
@@ -1088,7 +1086,7 @@ pub(crate) fn report_package_uninstalled(target_dir: &std::path::Path) {
 
 /// Same event as `report_package_uninstalled`, but resolves `target_dir`'s
 /// identity directly via `read_identity_uncached` instead of the
-/// process-global cache (D.9 batch-attribution fix). Use this from a
+/// process-global cache. Use this from a
 /// `--all` loop that visits more than one `target_dir` in one process --
 /// each target's own UUID is read fresh, rather than every target after
 /// the first inheriting whichever UUID the cache happened to resolve
@@ -1109,7 +1107,7 @@ pub(crate) fn report_package_uninstalled_for_target(target_dir: &std::path::Path
     );
 }
 
-/// `report_package_installed` (D.15): fired once `install_from_local`
+/// `report_package_installed`: fired once `install_from_local`
 /// and index finalize have both already succeeded, alongside the
 /// existing `report_install_success` call.
 pub(crate) fn report_package_installed(target_dir: &std::path::Path, harness: &str) {
@@ -1128,7 +1126,7 @@ pub(crate) fn report_package_installed(target_dir: &std::path::Path, harness: &s
     );
 }
 
-/// `report_package_version_updated` (D.15): fired once
+/// `report_package_version_updated`: fired once
 /// `strategy.install_from_local` has already succeeded, before
 /// `run_update_one_target`'s trailing `match manifest::read_manifest`.
 ///
@@ -1154,10 +1152,10 @@ pub(crate) fn report_package_version_updated(target_dir: &std::path::Path, harne
 
 /// Same event as `report_package_version_updated`, but resolves
 /// `target_dir`'s identity directly via `read_identity_uncached`
-/// instead of the process-global cache (D.10/D.15 batch-attribution
-/// fix -- every target in an `update --all` run has its own
+/// instead of the process-global cache -- every target in an `update
+/// --all` run has its own
 /// `.konductor/telemetry-id.json` and its own UUID; the cache only
-/// ever resolves the first target's).
+/// ever resolves the first target's.
 pub(crate) fn report_package_version_updated_for_target(
     target_dir: &std::path::Path,
     harness: &str,
@@ -1275,7 +1273,7 @@ mod tests {
 
     #[test]
     fn hash_session_id_is_deterministic_and_uuid_scoped() {
-        // Same UUID + same raw session id -> identical hash (D.3's join
+        // Same UUID + same raw session id -> identical hash (the join
         // key must be reproducible across independent report_* calls in
         // the same process/session).
         assert_eq!(
@@ -1371,8 +1369,8 @@ mod tests {
         let _lock = lock_telemetry_env();
         let dir = scratch_dir("endpoint-fleet-off");
         // Even a repo that explicitly opts BACK IN via its own checked-in
-        // config must not override the fleet-wide env var -- D.8/the
-        // published section's own "Opt-out" row: the env var is the
+        // config must not override the fleet-wide env var -- the
+        // env var is the
         // fleet-managed override, checked ahead of a per-repo config.
         let config_dir = dir.join(super::super::super::config::KONDUCTOR_DIR_NAME);
         fs::create_dir_all(&config_dir).unwrap();
@@ -1748,7 +1746,7 @@ mod tests {
 
     /// RAII guard for the two tests above, which call `materialize_script`
     /// and therefore transitively read the process-global `$HOME` (via
-    /// `private_script_dir`, D.6's TOCTOU/symlink fix). Acquires the
+    /// `private_script_dir`'s TOCTOU/symlink fix). Acquires the
     /// crate-wide `test_home_lock::HOME_ENV_LOCK` for its entire
     /// lifetime and points `HOME` at a fresh scratch dir -- without
     /// this, a concurrently-running test elsewhere in the crate that
@@ -1811,7 +1809,8 @@ mod tests {
     // interaction is exercised instead by
     // `tests/telemetry_report_process.rs`, which spawns the real
     // `konductor` binary as a fresh subprocess per case -- the same
-    // process-boundary guarantee the design itself relies on (D.6). The
+    // process-boundary guarantee this module's own design relies on.
+    // The
     // OTHER `report_*` functions' own skip-on-missing-identity behavior
     // (`report_package_installed`/`report_agent_invocation`/etc.) is not
     // separately covered by that file today -- it shares the same

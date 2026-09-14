@@ -81,7 +81,7 @@ impl SkillIndex {
     /// filtering is a separate concept from a skip, so it isn't folded
     /// into `ScanDiagnostic`. The caller needs both the count (for the
     /// aggregate `info` line) and the names (for the per-skill `debug`
-    /// line §4.9 requires); see `apply_name_filter`.
+    /// line this module's own logging requires); see `apply_name_filter`.
     pub fn build(
         skills_dirs: Vec<ResolvedDir>,
         skill_name_filter: Option<String>,

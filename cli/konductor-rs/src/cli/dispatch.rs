@@ -50,12 +50,14 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool) -> u8 {
             harness,
             link_bin,
             no_telemetry,
+            use_github_token,
         } => crate::cli::install::dispatch_install_with(
             from,
             target,
             harness,
             link_bin,
             no_telemetry,
+            use_github_token,
             verbose,
             json,
         ),
@@ -142,10 +144,10 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool) -> u8 {
 /// Resolves the current working directory, shared by every dispatch arm
 /// that needs a `target_dir` to pass into a real (non-stub) command
 /// handler. On failure, prints the same error message every call site
-/// used before this was extracted (decision 2's bare `konductor:
+/// used before this was extracted (the bare `konductor:
 /// <message>` prefix -- this path is command-agnostic, so it never
 /// gets the `konductor {command}: ` form other errors use), fires a
-/// `dispatch.cwd_unavailable` telemetry event (design doc D.11) against
+/// `dispatch.cwd_unavailable` telemetry event against
 /// `$HOME` -- the closest scope-agnostic identity lookup available when
 /// cwd itself cannot be resolved -- and returns `EXIT_USAGE_ERROR`.
 ///
@@ -162,7 +164,7 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool) -> u8 {
 /// real subcommand name here keeps this shared helper's own error
 /// event attributed to whichever command actually failed -- this is
 /// deliberately NOT the same value the plain-text prefix above uses
-/// (which stays command-agnostic per decision 2); see
+/// (which stays command-agnostic); see
 /// `resolve_cwd_reporting_json`'s own doc comment for why its `--json`
 /// envelope's `command` field diverges from this telemetry attribution
 /// the same way.
@@ -200,10 +202,9 @@ fn resolve_cwd(command: &str) -> Result<PathBuf, u8> {
 /// through to the non-`--json` branch's `resolve_cwd(command)` call
 /// unchanged. The `--json` branch below does NOT reuse that same value
 /// for the envelope: `resolve_cwd()` failing is one of the
-/// command-agnostic paths `konductor-cli-engineering-design.md`'s
-/// "Logging and Diagnostics" §Decision 3 names explicitly, so the
-/// envelope's own `"command"` field stays the literal string
-/// `"konductor"`, mirroring decision 2's bare `konductor: <message>`
+/// command-agnostic paths, so the envelope's own `"command"`
+/// field stays the literal string
+/// `"konductor"`, matching the same bare `konductor: <message>`
 /// prefix for the same path -- NOT `command`, which is reserved for
 /// telemetry attribution here (see below). This is exactly why this
 /// branch calls `crate::cli::telemetry::report_cli_error` directly
@@ -941,6 +942,7 @@ mod tests {
                 harness: "kiro-cli-v2".to_string(),
                 link_bin: true,
                 no_telemetry: false,
+                use_github_token: false,
             },
             false,
             false,
@@ -977,6 +979,7 @@ mod tests {
                 harness: "kiro-cli-v2".to_string(),
                 link_bin: false,
                 no_telemetry: false,
+                use_github_token: false,
             },
             false,
             false,
@@ -1009,6 +1012,7 @@ mod tests {
                 harness: "kiro-cli-v2".to_string(),
                 link_bin: true,
                 no_telemetry: false,
+                use_github_token: false,
             },
             false,
             false,

@@ -258,7 +258,7 @@ fn should_replace(existing: &SkillRecord, candidate: &SkillRecord) -> bool {
 /// `dir`'s own `read_dir` fails (permission denied, vanished between
 /// validation and scan, etc.) — kept separate from `skipped` because
 /// it's a whole scan root that could not be read at all, not a single
-/// file within an otherwise-readable root. Per §4.9's level table, this
+/// file within an otherwise-readable root. An unreadable scan root
 /// is what logs at `error` ("I/O failures and permission errors on
 /// individual scan roots that prevent reading"); every other failure in
 /// `skipped` — one file within a root that DID open, a
@@ -665,9 +665,9 @@ fn resolve_symlink(path: &Path) -> Result<PathBuf, SkipReason> {
 /// removed. Filtered-out is a distinct concept from a `SkipReason`:
 /// these entries parsed fine and were excluded by the operator's own
 /// filter choice, not because they couldn't be indexed — the caller
-/// logs each returned name separately, at `debug` level (per §4.9's
-/// debug row: "Skills excluded by `--skill-name-filter` (name + filter
-/// pattern)"), and none of them are counted as a skip. The count a
+/// logs each returned name separately, at `debug` level -- skills
+/// excluded by `--skill-name-filter` are logged by name and filter
+/// pattern -- and none of them are counted as a skip. The count a
 /// caller needs for the existing aggregate `info` line is just
 /// `excluded_names.len()`.
 ///

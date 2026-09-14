@@ -2,13 +2,12 @@
 //
 // resolve_cwd_json_envelope.rs — end-to-end confirmation that a
 // `resolve_cwd()` failure on the `synth`/`doctor` dispatch arms goes
-// through the `--json` error envelope
-// (konductor-cli-engineering-design.md's "Logging and Diagnostics"
-// §Decision 3) rather than the plain-text `konductor: <message>` line.
+// through the `--json` error envelope rather than the
+// plain-text `konductor: <message>` line.
 // `command` holds the literal string `"konductor"` on this envelope,
-// per Decision 3's own text: `resolve_cwd()` called before dispatch is
-// one of the command-agnostic paths, not attributed to `synth` or
-// `doctor` specifically.
+// because `resolve_cwd()` called before
+// dispatch is one of the command-agnostic paths, not attributed to
+// `synth` or `doctor` specifically.
 //
 // Approach: `std::env::current_dir()` cannot be forced to fail from an
 // in-process `cargo test` thread (dispatch.rs's own

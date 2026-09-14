@@ -13,12 +13,12 @@ use std::process::{Command, Output};
 
 const CMD_SYNTH: &str = "synth";
 
-/// The dedicated, never-packaged artifact output directory
-/// `dispatch_synth_with` writes the artifact/sidecar to, relative to
-/// the repo root -- mirrors `synth::artifact_output_dir` (not exported
+/// The artifact/sidecar output directory `dispatch_synth_with` writes
+/// to: `dist/` itself, at its top level, alongside the per-harness
+/// subdirectories -- mirrors `synth::artifact_output_dir` (not exported
 /// from this bin-only crate, so restated here rather than imported).
 fn artifact_dir(repo_root: &Path) -> PathBuf {
-    repo_root.join("target").join("konductor-artifacts")
+    repo_root.join("dist")
 }
 
 fn bin() -> &'static str {
@@ -74,8 +74,7 @@ fn seed_agent_spec_source(repo_root: &Path) {
 
 /// Finds every top-level file directly under `dir` whose name ends with
 /// `suffix` -- used to discover the packaged artifact/sidecar without
-/// hand-computing the exact filename (which embeds the crate version
-/// and host target triple).
+/// hand-computing the exact filename (which embeds the crate version).
 fn find_files_with_suffix(dir: &Path, suffix: &str) -> Vec<PathBuf> {
     let mut found = Vec::new();
     for entry in std::fs::read_dir(dir).unwrap().flatten() {
@@ -94,10 +93,10 @@ fn find_files_with_suffix(dir: &Path, suffix: &str) -> Vec<PathBuf> {
 }
 
 /// End-to-end proof: a real `synth --from <repo>` run must produce a
-/// packaged `.tar.gz` artifact and its `.sha256` sidecar under the
-/// dedicated `target/konductor-artifacts/` directory (never under the
-/// repo root, and never inside `dist/`), and the sidecar must round-trip
-/// through the real, unmodified `parse_sidecar`/`sha256_hex`.
+/// packaged `.tar.gz` artifact and its `.sha256` sidecar inside `dist/`
+/// itself, at its top level (never under the repo root outside `dist/`),
+/// and the sidecar must round-trip through the real, unmodified
+/// `parse_sidecar`/`sha256_hex`.
 #[test]
 fn real_synth_produces_packaged_artifact_and_sidecar_on_disk() {
     let repo_root = scratch_dir("repo");
@@ -132,7 +131,7 @@ fn real_synth_produces_packaged_artifact_and_sidecar_on_disk() {
     let artifact_filename = artifact_path.file_name().unwrap().to_str().unwrap();
     assert!(
         artifact_filename.starts_with("konductor-v"),
-        "artifact filename must follow the konductor-v<version>-<triple>.tar.gz shape, got: {artifact_filename}"
+        "artifact filename must follow the konductor-v<version>.tar.gz shape, got: {artifact_filename}"
     );
 
     let sidecar_files = find_files_with_suffix(&artifact_output_dir, ".sha256");
@@ -217,31 +216,91 @@ fn real_synth_produces_packaged_artifact_and_sidecar_on_disk() {
 /// still succeed and still leave exactly one artifact/sidecar pair on
 /// disk (overwritten in place), not a stale-plus-fresh accumulation --
 /// consistent with `dispatch_synth_with`'s own documented idempotency.
+/// Since the artifact/sidecar now live inside `dist/` itself, this also
+/// proves the real invariant that matters now that they share a
+/// directory with the tree being packaged: the second run's packaged
+/// archive must NOT contain the first run's own tarball/sidecar as
+/// entries inside it -- if it did, a third run's archive would contain
+/// the second run's archive (which itself contains the first run's),
+/// and the artifact would grow without bound across repeated runs.
 #[test]
 fn real_synth_run_twice_leaves_exactly_one_artifact_and_sidecar() {
     let repo_root = scratch_dir("repo-twice");
     seed_agent_spec_source(&repo_root);
 
-    for _ in 0..2 {
-        let synth_result = run_konductor(
-            &repo_root,
-            &[CMD_SYNTH, "--from", &repo_root.display().to_string()],
-        );
-        assert!(
-            synth_result.status.success(),
-            "real `synth --from <repo>` must succeed: stderr={}",
-            String::from_utf8_lossy(&synth_result.stderr)
-        );
-    }
+    let first_synth_result = run_konductor(
+        &repo_root,
+        &[CMD_SYNTH, "--from", &repo_root.display().to_string()],
+    );
+    assert!(
+        first_synth_result.status.success(),
+        "real `synth --from <repo>` must succeed on the first run: stderr={}",
+        String::from_utf8_lossy(&first_synth_result.stderr)
+    );
 
+    let first_artifact_files = find_files_with_suffix(&artifact_dir(&repo_root), ".tar.gz");
+    assert_eq!(first_artifact_files.len(), 1);
+    let first_sidecar_files = find_files_with_suffix(&artifact_dir(&repo_root), ".sha256");
+    assert_eq!(first_sidecar_files.len(), 1);
+    let first_artifact_filename = first_artifact_files[0]
+        .file_name()
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_string();
+    let first_sidecar_filename = first_sidecar_files[0]
+        .file_name()
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_string();
+
+    let second_synth_result = run_konductor(
+        &repo_root,
+        &[CMD_SYNTH, "--from", &repo_root.display().to_string()],
+    );
+    assert!(
+        second_synth_result.status.success(),
+        "real `synth --from <repo>` must succeed on the second run: stderr={}",
+        String::from_utf8_lossy(&second_synth_result.stderr)
+    );
+
+    // (i) exactly one artifact + one sidecar exist in dist/ after both
+    // runs -- not two, not growing.
     assert_eq!(
         find_files_with_suffix(&artifact_dir(&repo_root), ".tar.gz").len(),
-        1
+        1,
+        "must be exactly one .tar.gz artifact after two runs, not accumulating"
     );
     assert_eq!(
         find_files_with_suffix(&artifact_dir(&repo_root), ".sha256").len(),
-        1
+        1,
+        "must be exactly one .sha256 sidecar after two runs, not accumulating"
     );
+
+    // (ii) the second run's packaged archive does NOT contain the first
+    // run's own tarball/sidecar as entries inside it -- proving no
+    // self-referential growth. This is only meaningful because the
+    // artifact/sidecar now live inside dist/, the very tree package_dist
+    // archives.
+    let second_artifact_path = &find_files_with_suffix(&artifact_dir(&repo_root), ".tar.gz")[0];
+    let second_artifact_bytes = std::fs::read(second_artifact_path).unwrap();
+    let decoder = flate2::read::GzDecoder::new(&second_artifact_bytes[..]);
+    let mut archive = tar::Archive::new(decoder);
+    for entry in archive.entries().unwrap() {
+        let entry = entry.unwrap();
+        let path = entry.path().unwrap().to_string_lossy().into_owned();
+        assert_ne!(
+            path, first_artifact_filename,
+            "second run's packaged archive must not contain the first run's own artifact \
+             as an entry -- that would mean the artifact grows every run"
+        );
+        assert_ne!(
+            path, first_sidecar_filename,
+            "second run's packaged archive must not contain the first run's own sidecar \
+             as an entry -- that would mean the artifact grows every run"
+        );
+    }
 
     std::fs::remove_dir_all(&repo_root).ok();
 }

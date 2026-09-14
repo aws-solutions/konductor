@@ -20,15 +20,14 @@ use std::path::Path;
 
 use sha2::{Digest, Sha256};
 
-/// Raised when a fetched artifact's SHA-256 does not match the expected
-/// checksum. A RUNTIME failure, not a usage error -- callers must map
-/// this to `EXIT_VERIFY_FAILED` (65), never `EXIT_USAGE_ERROR` (64) or
-/// exit code 2. Reserved for a future real GitHub Release fetch --
-/// `--from` installs currently verify nothing (no committed sidecar
-/// exists to check against), so this is currently only exercised
-/// directly by this module's own unit tests.
+/// Raised when a fetched artifact's SHA-256 doesn't match what we
+/// expected. A runtime failure, not a usage error -- callers must map
+/// it to `EXIT_VERIFY_FAILED` (65), never `EXIT_USAGE_ERROR` (64) or
+/// exit code 2. Returned wrapped in `RemoteInstallError::VerifyChecksum`
+/// by `remote::verify_artifact_pair`, reached in production from
+/// `dispatch_install_with`'s no-`--from` branch. `--from` installs
+/// still verify nothing (no committed sidecar to check against).
 #[derive(Debug)]
-#[allow(dead_code)]
 pub struct VerificationError {
     pub expected: String,
     pub actual: String,
@@ -46,13 +45,16 @@ impl std::fmt::Display for VerificationError {
 
 impl std::error::Error for VerificationError {}
 
-/// A downloaded (or locally-supplied) dist tarball's bytes plus the
-/// checksum it was verified against. Reserved for a future real GitHub
-/// Release fetch -- see `VerificationError`'s doc comment above.
+/// A downloaded (or locally-supplied) dist tarball's bytes, plus the
+/// checksum it was verified against. Built by `verify_sha256`/
+/// `remote::verify_artifact_pair` -- see `VerificationError`'s doc
+/// comment above for the call path. `sha256` is always filled in but
+/// only read by this module's own tests, since the live call path only
+/// needs `data`.
 #[derive(Debug)]
-#[allow(dead_code)]
 pub struct FetchedArtifact {
     pub data: Vec<u8>,
+    #[allow(dead_code)]
     pub sha256: String,
 }
 
@@ -65,14 +67,15 @@ pub fn sha256_hex(data: &[u8]) -> String {
     format!("{:x}", hasher.finalize())
 }
 
-/// Verifies `data` against `expected_sha256` (case-insensitive
-/// comparison; a lowercase hex digest is always what's stored/reported).
-/// Pure function, no I/O -- independently unit-testable against a local
-/// file's bytes with no network access. Reserved for a future real
-/// GitHub Release fetch -- see `VerificationError`'s doc comment above.
+/// Verifies `data` against `expected_sha256` (case-insensitive; we
+/// always store/report a lowercase hex digest). Pure function, no I/O
+/// -- testable directly against a local file's bytes with no network
+/// access needed. `remote::verify_artifact_pair` calls this directly,
+/// and it's reached in production from `dispatch_install_with`'s
+/// no-`--from` branch -- see `VerificationError`'s doc comment above
+/// for the full path.
 ///
 /// Returns `Err(VerificationError)` on mismatch.
-#[allow(dead_code)]
 pub fn verify_sha256(
     data: Vec<u8>,
     expected_sha256: &str,
@@ -90,29 +93,34 @@ pub fn verify_sha256(
     })
 }
 
-/// Seam for the network fetch: a boxed closure returning the artifact's
-/// raw bytes (or an I/O error). Production code supplies
-/// `fetch_local_file`/a real GitHub Release client; tests supply a fake
-/// returning fixed bytes -- no test depends on network access. Reserved
-/// for a future real GitHub Release fetch -- see `VerificationError`'s
-/// doc comment above.
+/// Seam for the network fetch: a boxed closure returning the
+/// artifact's raw bytes (or an I/O error). Tests supply a fake with
+/// fixed bytes; no network access needed. The real production fetch
+/// (`github::fetch_latest_github_release_artifact`) doesn't use this
+/// seam -- it fetches over HTTP directly, and verification happens in
+/// `remote::verify_artifact_pair`, which calls `verify_sha256`/
+/// `parse_sidecar` directly rather than going through
+/// `fetch_and_verify` below. This alias and `fetch_and_verify` exist
+/// only to test `verify_sha256` against an injected fetch closure.
 #[allow(dead_code)]
 pub type ArtifactFetcher<'a> = Box<dyn Fn() -> std::io::Result<Vec<u8>> + 'a>;
 
-/// Reads a local dist tarball's bytes. Reserved for a future real
-/// GitHub Release fetch -- see `VerificationError`'s doc comment above;
-/// exercised directly by this module's own tests at this milestone.
+/// Reads a local dist tarball's bytes. Test-only: this module's own
+/// tests use it as a fake `ArtifactFetcher`. The real production fetch
+/// (`github::fetch_latest_github_release_artifact`) reads bytes over
+/// HTTP, not from a local file.
 #[allow(dead_code)]
 pub fn fetch_local_file(path: &Path) -> std::io::Result<Vec<u8>> {
     std::fs::read(path)
 }
 
-/// Runs `fetcher()` to obtain the artifact's bytes, then verifies them
+/// Runs `fetcher()` to get the artifact's bytes, then verifies them
 /// against `expected_sha256`. Returns `Err(FetchAndVerifyError::Fetch)`
-/// if the fetcher itself fails (distinct from a verification failure);
-/// `Err(FetchAndVerifyError::Verify)` on a checksum mismatch. Reserved
-/// for a future real GitHub Release fetch -- see `VerificationError`'s
-/// doc comment above.
+/// if the fetcher itself fails (different from a verification
+/// failure); `Err(FetchAndVerifyError::Verify)` on a checksum mismatch.
+/// Test-only helper that pairs `ArtifactFetcher` with `verify_sha256`
+/// -- the real production call path (`remote::verify_artifact_pair`)
+/// calls `verify_sha256`/`parse_sidecar` directly instead.
 #[allow(dead_code)]
 pub fn fetch_and_verify(
     fetcher: &ArtifactFetcher,
@@ -125,8 +133,11 @@ pub fn fetch_and_verify(
 /// Distinguishes a fetch failure (I/O/network) from a verification
 /// failure (checksum mismatch) -- callers map only `Verify` to
 /// `EXIT_VERIFY_FAILED` (65); `Fetch` maps to `EXIT_USAGE_ERROR` (64).
-/// Reserved for a future real GitHub Release fetch -- see
-/// `VerificationError`'s doc comment above.
+/// Test-only: the real production fetch/verify path
+/// (`remote_orchestrate`/`remote::verify_artifact_pair`) uses its own
+/// `RemoteOrchestrationError`/`RemoteInstallError` enums instead,
+/// because the real fetch failure type is `github::GithubFetchError`,
+/// not `std::io::Error`.
 #[derive(Debug)]
 #[allow(dead_code)]
 pub enum FetchAndVerifyError {
@@ -147,18 +158,22 @@ impl std::error::Error for FetchAndVerifyError {}
 
 /// A parsed `sha256sum`-format sidecar line: `<hash>  <filename>` (two
 /// spaces). `hash` is the raw hex text as found -- callers compare it
-/// case-insensitively, as `verify_sha256` already does.
+/// case-insensitively, same as `verify_sha256` does. `parse_sidecar`
+/// builds and returns this, and `remote::verify_artifact_pair` calls it
+/// directly in production -- see `VerificationError`'s doc comment
+/// above for the call path.
 #[derive(Debug, PartialEq, Eq)]
-#[allow(dead_code)]
 pub struct SidecarEntry {
     pub hash: String,
     pub filename: String,
 }
 
-/// Why a sidecar's content could not be parsed or did not match the
-/// artifact it accompanies.
+/// Why a sidecar's content couldn't be parsed, or didn't match the
+/// artifact it's supposed to accompany. `remote::verify_artifact_pair`
+/// returns this wrapped in `RemoteInstallError::VerifySidecar`, reached
+/// in production from `dispatch_install_with`'s no-`--from` branch via
+/// `remote_orchestrate::install_from_latest_github_release`.
 #[derive(Debug, PartialEq, Eq)]
-#[allow(dead_code)]
 pub enum SidecarError {
     Empty,
     Malformed,
@@ -189,8 +204,10 @@ const SHA256_HEX_LEN: usize = 64;
 
 /// Parses a `sha256sum`-format sidecar's contents (`<hash>  <filename>`,
 /// two spaces, one line) and checks it names `expected_filename`. Pure
-/// function, no I/O.
-#[allow(dead_code)]
+/// function, no I/O. `remote::verify_artifact_pair` calls this
+/// directly, and it's reached in production from
+/// `dispatch_install_with`'s no-`--from` branch -- see
+/// `VerificationError`'s doc comment above for the full call path.
 pub fn parse_sidecar(
     contents: &str,
     expected_filename: &str,

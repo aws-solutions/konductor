@@ -112,3 +112,20 @@ tar = "=0.4.45"
 # Exact-pinned per repo convention; verify fetchable via `cargo brazil
 # fetch --target all` before merging.
 flate2 = "=1.1.5"
+# Sync HTTP client for `install::github`'s GitHub Release fetch/download.
+# Deliberately not `reqwest` -- no async runtime in this crate, and `ureq`
+# fits the existing sync I/O style (see `install/remote.rs`). Exact-pinned
+# per repo convention; verified fetchable via `cargo brazil fetch --target
+# all`.
+ureq = "=2.10.1"
+# Direct dependency pinning `ureq`'s transitive `rustls` (open range) to
+# the newest patch confirmed on the internal mirror, so both resolve to
+# one build instead of two. Features match what `ureq` itself requests.
+# Exact-pinned per repo convention; verified fetchable via `cargo brazil
+# fetch --target all`.
+rustls = { version = "=0.23.43", default-features = false, features = ["ring", "logging", "std", "tls12"] }
+# Percent-encoding for path segments in `install::github_branch`'s GitHub
+# Contents API URLs. Already resolved transitively via `url`; promoted to
+# a direct dependency rather than hand-rolling escaping. Exact-pinned per
+# repo convention.
+percent-encoding = "=2.3.2"

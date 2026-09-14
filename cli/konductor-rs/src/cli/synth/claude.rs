@@ -15,10 +15,8 @@
 // Deliberate scope boundaries below (not oversights) -- implement each
 // once a real spec actually needs it, rather than guessing at an
 // unverified shape:
-// - No `# System Prompt` heading in the body, contradicting
-//   `docs/design/konductor-cli-engineering-design.md` §7 -- that
-//   invariant doesn't match the one real live artifact available to
-//   verify it against.
+// - No `# System Prompt` heading in the body: the one real live
+//   artifact available to verify this shape against has none.
 // - `allowedTools`/`hooks`/`mcpServers` each render as their own
 //   frontmatter key (see `ClaudeAgentFrontmatter`), grounded against the
 //   same live materialization cited above: an agent whose spec sets

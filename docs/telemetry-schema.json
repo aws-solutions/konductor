@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Konductor usage-analytics telemetry event envelope",
-  "description": "Per-invocation event schema (design doc: docs/design/konductor-usage-analytics-design.md, D.3). This is the shape of the outer envelope's 'Data' field (D.12), not the full wire-level request -- see the design doc's D.12 for the full outer envelope (Solution/Version/UUID/TimeStamp wrapping this object).",
+  "description": "Per-invocation event schema. This is the shape of the outer envelope's 'Data' field, not the full wire-level request -- the outer envelope wraps this object with Solution/Version/UUID/TimeStamp.",
   "type": "object",
   "required": [
     "eventId",
@@ -34,7 +34,7 @@
         "null"
       ],
       "pattern": "^[a-f0-9]{64}$",
-      "description": "sha256_hex(UUID + the runtime's own session identifier). Present on agent_invocation/subagent_invocation events on harnesses that expose a session identifier (Claude Code); null on mcp_tool_call, cli_error, package_uninstalled, package_installed, and package_version_updated (no runtime session), and null on every event type for harnesses with no session identifier in their hook payload (Kiro CLI, confirmed absent -- D.13)."
+      "description": "sha256_hex(UUID + the runtime's own session identifier). Present on agent_invocation/subagent_invocation events on harnesses that expose a session identifier (Claude Code); null on mcp_tool_call, cli_error, package_uninstalled, package_installed, and package_version_updated (no runtime session), and null on every event type for harnesses with no session identifier in their hook payload (Kiro CLI, confirmed absent)."
     },
     "parentSessionId": {
       "type": [
@@ -42,14 +42,14 @@
         "null"
       ],
       "pattern": "^[a-f0-9]{64}$",
-      "description": "Null unless a sub-agent event. Holds the same value as that event's own sessionId (the parent's sessionId, not its eventId) -- see D.3/D.4 for why."
+      "description": "Null unless a sub-agent event. Holds the same value as that event's own sessionId (the parent's sessionId, not its eventId) -- a sub-agent event's parentSessionId is the delegating session's own sessionId, computed the same way."
     },
     "errorCode": {
       "type": [
         "string",
         "null"
       ],
-      "description": "Null on every eventType except cli_error (always) and a failed mcp_tool_call (D.14). A stable, closed error-category string -- never the underlying error's own Display/message text, which can contain a local filesystem path or caller-supplied argument."
+      "description": "Null on every eventType except cli_error (always) and a failed mcp_tool_call. A stable, closed error-category string -- never the underlying error's own Display/message text, which can contain a local filesystem path or caller-supplied argument."
     },
     "harness": {
       "type": [
@@ -61,7 +61,7 @@
     "TimeStamp": {
       "type": "string",
       "format": "date-time",
-      "description": "ISO 8601, UTC. Matches the outer envelope's own TimeStamp field by name only (D.12) -- this field keeps ISO 8601 format; the outer field uses a different, space-separated format."
+      "description": "ISO 8601, UTC. Matches the outer envelope's own TimeStamp field by name only -- this field keeps ISO 8601 format; the outer field uses a different, space-separated format."
     },
     "count": {
       "type": "integer",

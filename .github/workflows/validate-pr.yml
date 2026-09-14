@@ -1,14 +1,24 @@
 # SPDX-License-Identifier: Apache-2.0
-name: Validate PR 
+#
+# PR-time validation (ADR-9 / TD-19, docs/design/github-first-release-pipeline-design.md
+# in SolNexusAICapabilities): runs `konductor synth` directly on a GitHub-hosted runner
+# and rejects any PR that hand-modifies dist/ (populated only by the release process).
+#
+# Triggers on `pull_request`, NOT `pull_request_target`: this job checks out and builds
+# PR-head content (`make synth` compiles and runs contributor code), so it must run with
+# a read-only, secret-free token even for fork PRs -- the standard mitigation for the
+# "pwn request" pattern GitHub's docs warn against for `pull_request_target` jobs that
+# execute PR content. `pull_request` gives exactly that: GITHUB_TOKEN is read-only and no
+# repo secrets are exposed, regardless of the PR's origin.
+name: Validate PR
 
 on:
-  pull_request_target:
+  pull_request:
     branches: [main]
     types: [opened, edited, reopened, synchronize]
 
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
   pull-request-job:
@@ -16,7 +26,44 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
-      - name: Konductor Synth
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
+        with:
+          fetch-depth: 0
+
+      - name: Reject PRs that modify dist/
+        # dist/ is committed but populated only by the release process (design doc §2) --
+        # contributor PRs must never touch it directly.
+        #
+        # Three-dot diff against the merge-base (fetch-depth: 0 above makes it available),
+        # not a direct two-ref (two-dot) comparison: base.sha is the tip of the base branch
+        # at event time, not the merge-base with the PR, so a two-dot diff can pick up
+        # unrelated dist/ changes that landed on the base branch after this PR's branch
+        # point (e.g. the release process regenerating dist/ elsewhere) and fail closed on
+        # a PR that never touched dist/ itself.
         run: |
-          echo "Konductor synth coming soon..."
+          set -e
+          CHANGED_DIST_FILES="$(git diff --name-only "${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}" -- dist/)"
+          if [ -n "$CHANGED_DIST_FILES" ]; then
+            echo "FATAL: this PR modifies dist/, which is generated only by the release process. Revert these changes and let the release pipeline regenerate dist/ instead:" >&2
+            echo "$CHANGED_DIST_FILES" >&2
+            exit 1
+          fi
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+
+      - name: Build konductor and run synth (produces dist/)
+        run: make synth
+
+      - name: Verify synth produced output for all harnesses
+        # Enumerate every harness dist/ subdirectory here explicitly (kept in sync with
+        # cli/konductor-rs/src/cli/synth/registry.rs's TRANSFORMERS table), mirroring the
+        # equivalent check in .github/workflows/release.yml.
+        run: |
+          set -e
+          for d in "dist/kiro-cli-v2/agents" "dist/kiro-v3/agents" "dist/claude/agents"; do
+            if [ -z "$(ls -A "$d" 2>/dev/null)" ]; then
+              echo "FATAL: $d is empty or missing after konductor synth. Failing closed." >&2
+              exit 1
+            fi
+          done

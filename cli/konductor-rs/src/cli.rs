@@ -214,9 +214,20 @@ pub enum Commands {
         /// Opt out of usage-analytics telemetry for this install.
         /// Structural: when passed, the identity-file write and
         /// hook-injection steps are never reached at all -- there is no
-        /// disabled artifact left behind to inspect (design doc D.8).
+        /// disabled artifact left behind to inspect.
         #[arg(long)]
         no_telemetry: bool,
+
+        /// Opt in to reading `GITHUB_TOKEN` from the environment for
+        /// the no-`--from` remote install path (GitHub Release
+        /// metadata lookup, and the main-branch-`dist/` fallback's
+        /// Contents API requests). Without this flag, `GITHUB_TOKEN`
+        /// is never read, even if it's set in the shell -- the
+        /// environment variable is opt-in, not ambient. Has no effect
+        /// on a `--from <repo-root>` install, which never touches
+        /// GitHub's API at all.
+        #[arg(long = "use-github-token", action = ArgAction::SetTrue)]
+        use_github_token: bool,
     },
 
     /// Update an existing Konductor installation: unconditionally
@@ -368,7 +379,7 @@ pub enum Commands {
     DumpSchema,
 
     /// Parses a runtime hook's stdin payload and reports an
-    /// agent/sub-agent invocation event (design doc D.4/D.7).
+    /// agent/sub-agent invocation event.
     ///
     /// NOT one of the public commands. Hidden from normal --help; this
     /// is the one call site that genuinely needs a hook to be reached
@@ -584,6 +595,7 @@ mod tests {
                 harness,
                 link_bin,
                 no_telemetry,
+                use_github_token,
             }) => {
                 assert_eq!(from, Some("/tmp/repo".to_string()));
                 assert_eq!(target, None);
@@ -592,6 +604,10 @@ mod tests {
                 assert!(
                     !no_telemetry,
                     "--no-telemetry must default to false when omitted"
+                );
+                assert!(
+                    !use_github_token,
+                    "--use-github-token must default to false when omitted"
                 );
             }
             other => panic!("expected Install, got {other:?}"),
@@ -638,6 +654,7 @@ mod tests {
                 harness,
                 link_bin,
                 no_telemetry,
+                use_github_token,
             }) => {
                 assert_eq!(from, Some("/tmp/repo".to_string()));
                 assert_eq!(target, Some("/tmp/dest".to_string()));
@@ -646,6 +663,10 @@ mod tests {
                 assert!(
                     !no_telemetry,
                     "--no-telemetry must default to false when omitted"
+                );
+                assert!(
+                    !use_github_token,
+                    "--use-github-token must default to false when omitted"
                 );
             }
             other => panic!("expected Install, got {other:?}"),

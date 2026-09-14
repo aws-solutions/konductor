@@ -44,7 +44,7 @@ use skill_lookup_core::frontmatter::MAX_SKILL_FILE_BYTES as MAX_SKILL_BODY_BYTES
 
 #[tokio::main]
 async fn main() -> std::process::ExitCode {
-    // Runs 7-day log retention "before writing its first entry" (§4.9),
+    // Runs 7-day log retention before writing its first entry,
     // ahead of every other line in this function.
     logging::init();
 
@@ -100,13 +100,12 @@ async fn main() -> std::process::ExitCode {
     eprintln!("skill-lookup-mcp: {sop_summary}");
     logging::log_file_only(Level::Info, &sop_summary);
 
-    // Telemetry (design doc D.5/D.8): resolve the cached identity once,
+    // Telemetry: resolve the cached identity once,
     // before the flush task is spawned -- never per flush. Structural
     // opt-out: `--telemetry off` OR the fleet-wide `KONDUCTOR_TELEMETRY=off`
-    // env var (published §Telemetry section's own "Opt-out" row) means
+    // env var means
     // `tool_call_counters` stays `None` and the flush task is never
-    // started at all, matching D.8's "omitted, not invoked-then-checked"
-    // principle -- checked alongside the CLI flag here, not only inside
+    // started at all -- checked alongside the CLI flag here, not only inside
     // `resolve_endpoint`'s own later, per-flush check.
     let tool_call_counters = match cli.telemetry {
         cli::TelemetryMode::On if skill_lookup_core::telemetry::fleet_opted_out() => None,
@@ -115,7 +114,7 @@ async fn main() -> std::process::ExitCode {
             let counters: skill_lookup_core::telemetry::ToolCallCounters =
                 std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new()));
             let flush_counters = counters.clone();
-            // Decision (§6/§7 task 11, closed for this revision): a
+            // Decision (closed for this revision): a
             // fixed 60-second flush interval, batched one event PER
             // accumulated `(tool_name, skill_name, errorCode)` key per
             // cycle (see `report_mcp_tool_call`'s own `count` field) --
@@ -123,9 +122,8 @@ async fn main() -> std::process::ExitCode {
             // or per-call reporting because `skill-lookup-mcp` is a
             // long-lived process serving many calls per session; a
             // per-call report would multiply outbound spawns by call
-            // volume for no attribution benefit this design needs (D.5
-            // already only requires tool/skill/error attribution, not
-            // per-call timing), while 60s keeps the accumulated-count
+            // volume for no attribution benefit tool/skill/error
+            // attribution alone needs, not per-call timing, while 60s keeps the accumulated-count
             // cardinality bounded and the reporting overhead
             // proportional to distinct KEYS touched, not calls made.
             // Not re-litigated as an open item elsewhere in this
@@ -170,7 +168,7 @@ async fn main() -> std::process::ExitCode {
     // the specific cause.
     match service.waiting().await {
         Ok(_quit_reason) => {
-            // Telemetry (design doc D.5): flush any counts accumulated
+            // Telemetry: flush any counts accumulated
             // in the last (partial) window -- the periodic flush task
             // above only fires every 60s, so a clean exit between ticks
             // would otherwise silently drop up to a minute of counts.
@@ -180,7 +178,7 @@ async fn main() -> std::process::ExitCode {
             std::process::ExitCode::SUCCESS
         }
         Err(e) => {
-            // Telemetry (design doc D.5): flush any counts accumulated
+            // Telemetry: flush any counts accumulated
             // in the last (partial) window here too -- this branch
             // covers ordinary protocol events (malformed stdin JSON,
             // the peer disconnecting before

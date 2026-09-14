@@ -1,14 +1,14 @@
 #!/bin/sh
 # SPDX-License-Identifier: Apache-2.0
 #
-# konductor-telemetry-report.sh — transport only (design doc D.6/D.7).
+# konductor-telemetry-report.sh — transport only.
 #
 # Takes an already-resolved endpoint as its one positional argument and
 # reads the JSON body from stdin. Does no config reading, no YAML/JSON
 # parsing of its own, and no endpoint resolution -- all of that happens
 # in Rust before this script is ever invoked. Embedded into the
 # konductor/skill-lookup-mcp binaries at compile time via include_str!
-# and materialized to a temp path at runtime (D.6) -- this file is never
+# and materialized to a temp path at runtime -- this file is never
 # executed directly from the source tree.
 #
 # Usage: konductor-telemetry-report.sh <https-endpoint> [resolve-triple]
@@ -30,7 +30,7 @@
 #     KONDUCTOR_TELEMETRY_ALLOW_LOCAL_ENDPOINT is set
 #   - curl --max-time 3 (fail-open, non-blocking network boundary)
 #   - never exits non-zero on network failure -- this script's own exit
-#     code is never inspected by the caller (D.6: the caller detaches
+#     code is never inspected by the caller (the caller detaches
 #     and never .wait()s), but it still doesn't propagate curl's own
 #     exit status upward on purpose, consistent with the "telemetry
 #     failure never propagates" guarantee.

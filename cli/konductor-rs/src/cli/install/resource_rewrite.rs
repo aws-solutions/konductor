@@ -934,19 +934,17 @@ pub(super) fn apply_claude_settings_grant(
     ))
 }
 
-// ── V3/Claude Code telemetry hook wiring (usage-analytics design D.13) ──
+// ── V3/Claude Code telemetry hook wiring ──
 //
 // Wires `konductor __telemetry-hook <event-type>` into
 // `<target_dir>/.claude/settings.json`'s `"hooks"` key so the runtime
 // itself invokes the hidden `__telemetry-hook` subcommand at
 // `SessionStart` (agent invocation) and `SubagentStart` (sub-agent
-// delegation) -- see `docs/design/konductor-usage-analytics-design.md`
-// D.13 for why these two events, not `SubagentStop` (the DIFFERENT,
-// already-published workflow-level hook the base
-// `konductor-cli-engineering-design.md` uses, which fires at delegation
-// END, not START -- both are real, distinct hooks legitimately in play
-// in the same file for two different purposes; D.13's own closing note
-// spells this out).
+// delegation) -- `SessionStart`/`SubagentStart` fire at the START of an
+// agent/sub-agent invocation, distinct from `SubagentStop` (a DIFFERENT,
+// already-published workflow-level hook that fires at delegation END,
+// not START -- both are real, distinct hooks legitimately in play in
+// the same file for two different purposes).
 //
 // Scope boundary (disclosed, not silent), reachable path: this pass is
 // wired ONLY into `KiroCliInstallStrategy`'s own `AgentInstallPhase`
@@ -990,13 +988,13 @@ pub(super) fn apply_claude_settings_grant(
 // install-time-mutated `settings.json`. Wiring Kiro CLI hooks would
 // mean adding a NEW resource-rewrite pass that mutates
 // `hooks.agentSpawn`/`hooks.stop` on every installed Kiro agent JSON --
-// a real, larger change with its own open design questions (D.13's own
-// "no confirmed `invokeSubAgent` re-fire" finding for `agentSpawn`, and
+// a real, larger change with its own open design questions (whether
+// `agentSpawn` re-fires on `invokeSubAgent` is not confirmed, and
 // whether a per-agent single-entry or append semantics is right).
 // Kiro CLI hook wiring is explicitly OUT OF SCOPE for this revision.
 
 /// One konductor-owned hook entry this pass ensures exists under
-/// `.claude/settings.json`'s `"hooks"` key -- one per D.13 row that has
+/// `.claude/settings.json`'s `"hooks"` key -- one per event type that has
 /// a real Claude Code hook to fire from. `event_type_arg` is the
 /// `__telemetry-hook <event_type>` argument this entry's command
 /// invokes -- imported directly from `telemetry_hook.rs`'s own
@@ -1022,9 +1020,7 @@ struct TelemetryHookEntry {
 const TELEMETRY_HOOK_ENTRIES: &[TelemetryHookEntry] = &[
     TelemetryHookEntry {
         event: "SessionStart",
-        // Same source-type alternation `metrics-collection-design.md`'s
-        // own D.1 SessionStart hook uses (`startup|clear`) -- a genuine
-        // session start or a `/clear` both count as a fresh
+        // A genuine session start or a `/clear` both count as a fresh
         // `agent_invocation`.
         matcher: "startup|clear",
         event_type_arg: crate::cli::telemetry_hook::AGENT_INVOCATION,

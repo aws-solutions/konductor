@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// telemetry_hook.rs — `konductor __telemetry-hook <event-type>` (design
-// doc D.4/D.6/D.7): parses a runtime hook's stdin payload and calls
+// telemetry_hook.rs — `konductor __telemetry-hook <event-type>`: parses
+// a runtime hook's stdin payload and calls
 // straight into `telemetry::report_agent_invocation`/
 // `report_subagent_invocation`.
 //
@@ -32,7 +32,7 @@ pub(crate) const SUBAGENT_INVOCATION: &str = "subagent-invocation";
 /// Every other field the real payload carries (cwd, transcript_path,
 /// assistant_response, ...) is ignored -- this subcommand extracts
 /// exactly `sessionId`/`agent_id`/`agent_type` and nothing else,
-/// consistent with D.3's "every field is a name or a one-way hash,
+/// consistent with the "every field is a name or a one-way hash,
 /// never file contents" principle applied one level up: it never even
 /// reads the fields that WOULD carry file contents/paths.
 ///
@@ -45,10 +45,9 @@ struct HookPayload {
     #[serde(default, alias = "sessionId")]
     session_id: Option<String>,
     /// The specialist/agent name for a `SubagentStart`-shaped payload.
-    /// Field name is not fully confirmed for either harness (design
-    /// doc D.13's own open item) -- `agent_type` is Claude Code's
-    /// documented field for this; `agent_name` is accepted as a
-    /// fallback.
+    /// Field name is not fully confirmed for either harness -- `agent_type`
+    /// is Claude Code's documented field for this; `agent_name` is
+    /// accepted as a fallback.
     #[serde(default, alias = "agent_name")]
     agent_type: Option<String>,
 }
@@ -121,7 +120,7 @@ pub(crate) fn dispatch_telemetry_hook(target_dir: &std::path::Path, event_type: 
         }
         SUBAGENT_INVOCATION => {
             let specialist_name = resolve_agent_name(payload.agent_type);
-            // D.3/D.4: parentSessionId is derived from THIS hook's own
+            // parentSessionId is derived from THIS hook's own
             // sessionId, the same value as this event's own sessionId --
             // never a lookup of the orchestrator's own agent_invocation
             // event, which fires independently in a different,
@@ -171,7 +170,7 @@ mod tests {
     fn hook_payload_defaults_gracefully_on_kiro_cli_shaped_payload() {
         // Kiro CLI's `stop` payload is exactly
         // {hook_event_name, cwd, assistant_response} -- no session id
-        // field at all (D.13). Must parse without error, with both
+        // field at all. Must parse without error, with both
         // fields defaulting to None.
         let payload: HookPayload = serde_json::from_str(
             r#"{"hook_event_name":"stop","cwd":"/tmp","assistant_response":"done"}"#,

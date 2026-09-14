@@ -55,12 +55,21 @@ jobs:
         # harness must be added to this list, not just registered in Rust.
         run: |
           set -e
-          for d in "dist/kiro-cli-v2/agents" "dist/kiro-cli-v3/agents" "dist/claude/agents"; do
+          for d in "dist/kiro-cli-v2/agents" "dist/kiro-v3/agents" "dist/claude/agents"; do
             if [ -z "$(ls -A "$d" 2>/dev/null)" ]; then
               echo "FATAL: $d is empty or missing after konductor synth. Failing closed." >&2
               exit 1
             fi
           done
+
+      - name: Build MCP servers (skill-lookup-mcp)
+        # mcp/ is deliberately NOT part of `make synth` (see the root
+        # Makefile's own synth-target comment: "mcp/ is not part of what
+        # gets synthesized") -- it has to be built as its own step so its
+        # binary exists for the release-asset publish step below. Stages
+        # to mcp/target/release/skill-lookup-mcp (see mcp/Makefile's build
+        # target and its BINARY_NAMES list).
+        run: make -C mcp build
 
       - name: Assemble release staging directory (allowlist copy)
         # Mandatory, fail-closed: dist/ and the packaged release artifact
@@ -70,7 +79,11 @@ jobs:
         # release. Everything else copied here is best-effort only.
         # Everything NOT named below (docs/design/, aim.json, Config,
         # build-tools/, cli/, mcp/, .kiro/, .github/, scripts/, .git/) is
-        # excluded structurally by simply never being copied.
+        # excluded structurally by simply never being copied INTO THIS ZIP.
+        # The compiled `build/cli/konductor` and `mcp/target/release/
+        # skill-lookup-mcp` binaries are still published, just as their own
+        # separate release assets rather than zip contents -- see the
+        # "Package and publish GitHub Release" step below.
         run: |
           set -e
           STAGING_DIR="$RUNNER_TEMP/konductor-release-staging"
@@ -151,6 +164,63 @@ jobs:
           RELEASE_ZIP="$RUNNER_TEMP/konductor-release.zip"
           (cd "$STAGING_DIR" && zip -r "$RELEASE_ZIP" .)
 
+          # Individually-named assets, published alongside the bundled zip
+          # above (not instead of it). `install/github.rs`'s own top-of-file
+          # comment documents that `konductor install`'s GitHub-release path
+          # reliably fails with `GithubFetchError::MissingAsset` against
+          # today's zip-only release, because it looks for a release asset
+          # named exactly `synth::artifact_filename()` plus its `.sha256`
+          # sidecar -- never a zip. Publishing those two files individually
+          # (rather than only inside the zip) is what makes that install
+          # path actually work.
+          CLI_TARBALL_PATH="$(find target/konductor-artifacts -maxdepth 1 -name '*.tar.gz' -print -quit)"
+          if [ -z "$CLI_TARBALL_PATH" ] || [ ! -f "$CLI_TARBALL_PATH" ]; then
+            echo "FATAL: no packaged .tar.gz artifact found under target/konductor-artifacts/. Failing closed." >&2
+            exit 1
+          fi
+          CLI_TARBALL_SIDECAR_PATH="${CLI_TARBALL_PATH}.sha256"
+          if [ ! -f "$CLI_TARBALL_SIDECAR_PATH" ]; then
+            echo "FATAL: expected sidecar $CLI_TARBALL_SIDECAR_PATH not found. Failing closed." >&2
+            exit 1
+          fi
+
+          # Raw, standalone binaries (the compiled `konductor` CLI and the
+          # `skill-lookup-mcp` MCP server), published as their own assets
+          # too -- distinct from the fix above: `konductor install`'s
+          # GitHub-release path never consumes these, this is purely for a
+          # direct binary download outside that installer flow. Named off
+          # the packaged tarball's own stem (version + target-triple
+          # suffix) rather than re-deriving the arch/OS mapping here, so
+          # naming can't drift from the single source of truth
+          # (`synth::artifact_filename()`) that produced the tarball.
+          RELEASE_BIN_DIR="$RUNNER_TEMP/konductor-release-binaries"
+          mkdir -p "$RELEASE_BIN_DIR"
+
+          CLI_TARBALL_BASENAME="$(basename "$CLI_TARBALL_PATH")"
+          CLI_TARBALL_STEM="${CLI_TARBALL_BASENAME%.tar.gz}"
+          CLI_TARBALL_SUFFIX="${CLI_TARBALL_STEM#konductor}"
+
+          if [ ! -x build/cli/konductor ]; then
+            echo "FATAL: build/cli/konductor not found or not executable. Failing closed." >&2
+            exit 1
+          fi
+          CLI_BIN_ASSET_NAME="$CLI_TARBALL_STEM"
+          cp build/cli/konductor "$RELEASE_BIN_DIR/$CLI_BIN_ASSET_NAME"
+
+          if [ ! -x mcp/target/release/skill-lookup-mcp ]; then
+            echo "FATAL: mcp/target/release/skill-lookup-mcp not found or not executable -- did the 'Build MCP servers' step run? Failing closed." >&2
+            exit 1
+          fi
+          MCP_BIN_ASSET_NAME="skill-lookup-mcp${CLI_TARBALL_SUFFIX}"
+          cp mcp/target/release/skill-lookup-mcp "$RELEASE_BIN_DIR/$MCP_BIN_ASSET_NAME"
+
+          # sha256sum's own output ("<hash>  <filename>\n") already matches
+          # sidecar::write_sidecar's format exactly; run from within
+          # RELEASE_BIN_DIR so each sidecar records its sibling's bare
+          # filename, not a path.
+          (cd "$RELEASE_BIN_DIR" && sha256sum "$CLI_BIN_ASSET_NAME" > "$CLI_BIN_ASSET_NAME.sha256")
+          (cd "$RELEASE_BIN_DIR" && sha256sum "$MCP_BIN_ASSET_NAME" > "$MCP_BIN_ASSET_NAME.sha256")
+
           KONDUCTOR_VERSION="$(build/cli/konductor --version)"
           BUILD_TIMESTAMP="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           # --target pins the new tag to the exact commit this run checked
@@ -161,6 +231,9 @@ jobs:
           # step executes, leaving the tag on a different commit than the
           # artifact and notes describe.
           gh release create "$RELEASE_VERSION" "$RELEASE_ZIP" \
+            "$CLI_TARBALL_PATH" "$CLI_TARBALL_SIDECAR_PATH" \
+            "$RELEASE_BIN_DIR/$CLI_BIN_ASSET_NAME" "$RELEASE_BIN_DIR/$CLI_BIN_ASSET_NAME.sha256" \
+            "$RELEASE_BIN_DIR/$MCP_BIN_ASSET_NAME" "$RELEASE_BIN_DIR/$MCP_BIN_ASSET_NAME.sha256" \
             --target "${{ github.sha }}" \
             --title "konductor $RELEASE_VERSION" \
             --notes "Synthesized by konductor ${KONDUCTOR_VERSION} from ${{ github.sha }} at ${BUILD_TIMESTAMP}."

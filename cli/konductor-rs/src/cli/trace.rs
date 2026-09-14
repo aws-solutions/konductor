@@ -3,31 +3,32 @@
 // trace.rs — KONDUCTOR_LOG=debug diagnostic trace stream (Rust
 // implementation).
 //
-// Per konductor-cli-engineering-design.md's "Logging and Diagnostics"
-// §Decision 1: `KONDUCTOR_LOG=debug` turns on a stream of diagnostic
-// trace lines to stderr for the current invocation only. Unset, or set
+// `KONDUCTOR_LOG=debug` turns on a stream of diagnostic trace lines to
+// stderr for the current invocation only. Unset, or set
 // to anything other than `debug`, produces no additional output. This
-// is a single on/off switch, not a leveled log -- see Decision 1's own
-// reasoning for why one level is enough here (unlike the skill-lookup
-// MCP server's four tiers, gated by the same env var name for a
-// different reason: konductor-skill-lookup-design.md §4.9).
+// is a single on/off switch, not a leveled log -- one level is enough
+// here because this module only ever emits provenance/trace-level
+// detail, with no separate warn/error tier to distinguish (unlike the
+// skill-lookup MCP server, which gates its own `debug`/`info`/`warn`/
+// `error` tiers by the same env var name for a different reason).
 //
 // Independent of `--json`: trace lines always go to stderr, never
 // mixed into the stdout JSON document a `--json` consumer parses, and
-// independent of the exit-code contract (§6) -- this module never
+// independent of the exit-code contract -- this module never
 // returns or influences an exit code.
 //
 // Provenance only: a trace line names which config layer supplied a
 // value, which install strategy matched, what path was resolved --
-// never the resolved value of anything flagged sensitive. Same
-// boundary §4.9 states for the MCP server's own `debug` level, adapted
-// for this module's stderr sink instead of a log file.
+// never the resolved value of anything flagged sensitive. The
+// skill-lookup MCP server's own `debug` level applies the identical
+// boundary, adapted here for this module's stderr sink instead of a
+// log file.
 //
-// Line format, matching §4.9's own: `YYYY-MM-DDTHH:MM:SS LEVEL
-// message`, plain text, one event per line, no JSON wrapping. Note
-// this is deliberately NOT `time::utc_now_iso()`'s format (which ends
-// in `Z` for the invocation log's own convention) -- §4.9 pins the
-// exact shape trace output must match, without the trailing `Z`.
+// Line format: `YYYY-MM-DDTHH:MM:SS LEVEL message`, plain text, one
+// event per line, no JSON wrapping. Note this is deliberately NOT
+// `time::utc_now_iso()`'s format (which ends in `Z` for the invocation
+// log's own convention) -- this module's trace output always omits the
+// trailing `Z`.
 
 use std::sync::OnceLock;
 
@@ -36,10 +37,9 @@ use super::time::civil_from_days;
 /// Whether `KONDUCTOR_LOG` is set to exactly `debug`, memoized for the
 /// life of the process. Read once via `std::env::var` (not
 /// `var_os`/case-insensitive matching -- an exact byte match against
-/// `"debug"`, matching §4.9's own "gates only its `debug` level"
-/// wording) since the env var does not change during a single
-/// invocation and every call site would otherwise re-read it on every
-/// trace call.
+/// `"debug"`, this module gates only its `debug` level) since the env
+/// var does not change during a single invocation and every call site
+/// would otherwise re-read it on every trace call.
 fn debug_enabled() -> bool {
     static ENABLED: OnceLock<bool> = OnceLock::new();
     *ENABLED.get_or_init(|| std::env::var("KONDUCTOR_LOG").as_deref() == Ok("debug"))
@@ -54,8 +54,8 @@ fn debug_enabled() -> bool {
 ///
 /// Formats and writes directly via `eprintln!` rather than buffering:
 /// each call is a complete, independent line, and the CLI's own
-/// lifetime (one process per invocation, per the design doc's
-/// comparison table) means there is no cross-call state to batch.
+/// lifetime (one process per invocation) means there is no cross-call
+/// state to batch.
 pub(crate) fn trace(level: &str, message: &str) {
     if !debug_enabled() {
         return;
@@ -64,7 +64,7 @@ pub(crate) fn trace(level: &str, message: &str) {
 }
 
 /// Formats the current time as `YYYY-MM-DDTHH:MM:SS` (no trailing
-/// `Z`), matching §4.9's line-format spec exactly. Shares
+/// `Z`), this module's own line-format shape. Shares
 /// `civil_from_days` with `time::utc_now_iso` (the invocation log's own
 /// timestamp helper) to avoid a second civil-calendar implementation,
 /// but does not call `utc_now_iso` itself since that function's format
@@ -89,8 +89,8 @@ fn trace_timestamp() -> String {
 mod tests {
     use super::*;
 
-    /// The trace line format spec (§4.9, adopted verbatim for this
-    /// module): `YYYY-MM-DDTHH:MM:SS`, no trailing `Z`, 19 characters.
+    /// This module's own trace line format: `YYYY-MM-DDTHH:MM:SS`, no
+    /// trailing `Z`, 19 characters.
     #[test]
     fn trace_timestamp_matches_spec_shape_without_trailing_z() {
         let ts = trace_timestamp();

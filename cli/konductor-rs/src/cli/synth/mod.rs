@@ -13,17 +13,19 @@
 // there.
 //
 // ── Output reporting ──────────────────────────────────────────────────────
-// `dispatch_synth` prints one terse summary line to stdout on success:
+// `dispatch_synth` prints two terse summary lines to stdout on success:
 // the output root written and a per-content-type count
-// (agents/skills/SOPs/context). The count reflects
-// what synth actually WROTE, not merely what it parsed. Skills, SOPs and
-// context files are emitted unconditionally, so their model count equals
-// what was written; but an agent is written only if it targets a
-// registered harness (see `agent_is_written`) -- an agent with no
-// `clientConfig` section for any registered harness is parsed into the
-// model yet skipped by every transformer, so it must not be counted (or
-// listed under `-v`) as written. An empty model (nothing to build) gets
-// its own explicit message rather than silent success.
+// (agents/skills/SOPs/context), followed by a second line naming the
+// packaged artifact + sidecar synth writes into that same output root
+// (see `package::package_dist` and `artifact_output_dir` below). The
+// count reflects what synth actually WROTE, not merely what it parsed.
+// Skills, SOPs and context files are emitted unconditionally, so their
+// model count equals what was written; but an agent is written only if
+// it targets a registered harness (see `agent_is_written`) -- an agent
+// with no `clientConfig` section for any registered harness is parsed
+// into the model yet skipped by every transformer, so it must not be
+// counted (or listed under `-v`) as written. An empty model (nothing to
+// build) gets its own explicit message rather than silent success.
 
 use std::path::{Path, PathBuf};
 
@@ -51,51 +53,63 @@ pub use parse_canonical::parse_canonical;
 /// signal (see dispatch.rs's module docstring).
 const EXIT_USAGE_ERROR: u8 = 64;
 
-/// Maps a `std::env::consts::OS` value to its Rust target-triple
-/// vendor/environment suffix (e.g. `"linux"` -> `"unknown-linux-gnu"`),
-/// covering the three CI-runner OSes. Falls back to `"unknown-{os}"`
-/// for anything else rather than guessing.
-///
-/// Takes `os` as a parameter (not read from `std::env::consts::OS`
-/// directly) so tests can exercise all branches on one OS.
-fn target_triple_suffix(os: &str) -> String {
-    match os {
-        "linux" => "unknown-linux-gnu".to_string(),
-        "macos" => "apple-darwin".to_string(),
-        "windows" => "pc-windows-msvc".to_string(),
-        other => format!("unknown-{other}"),
-    }
-}
-
 /// Deterministic packaged-artifact filename:
-/// `konductor-v<CARGO_PKG_VERSION>-<target-triple>.tar.gz`. Reuses
-/// Cargo.toml's `version` field. The target triple is composed from
-/// `std::env::consts::{ARCH, OS}` at runtime (this crate has no
-/// `build.rs`, so `env!("TARGET")` isn't available).
-fn artifact_filename() -> String {
-    format!(
-        "konductor-v{}-{}-{}.tar.gz",
-        env!("CARGO_PKG_VERSION"),
-        std::env::consts::ARCH,
-        target_triple_suffix(std::env::consts::OS)
-    )
+/// `konductor-v<CARGO_PKG_VERSION>.tar.gz`. Reuses Cargo.toml's
+/// `version` field only -- no architecture or OS in the name. The
+/// packaged content (agent/skill/SOP markdown and JSON config, no
+/// compiled code) is architecture- and OS-independent within the Unix
+/// family, so the filename does not encode either: a tarball built on
+/// Linux and one built on macOS from the same source tree are
+/// byte-for-byte identical apart from irrelevant packaging metadata
+/// (tar uid/gid, mtime). `synth` never generates artifacts for any
+/// host other than the one it's actually running on, so there is
+/// nothing here to disambiguate by triple. Windows is the one platform
+/// known to differ (executable-bit metadata doesn't survive there) and
+/// is out of scope for this naming scheme for now.
+///
+/// `pub(crate)` because `install::github` calls this directly to work
+/// out the exact filename a GitHub Release asset needs. This is the
+/// one place that naming convention is defined, so packaging (this
+/// module) and install (`install::github`) can't drift apart.
+pub(crate) fn artifact_filename() -> String {
+    format!("konductor-v{}.tar.gz", env!("CARGO_PKG_VERSION"))
 }
 
-/// Directory the packaged artifact and its checksum sidecar are written
-/// to: `<source_dir>/target/konductor-artifacts/`. Reuses this repo's
-/// existing `target/` convention (already the build-output directory
-/// CargoBrazil/`cargo build` writes to, and already covered by
-/// `cli/.gitignore`'s `konductor-rs/target/` entry) rather than
-/// introducing a new gitignored location. Deliberately a sibling of
-/// `output_root` (`<source_dir>/dist/`), not a descendant of it: the
-/// artifact packages `output_root`'s contents, so writing the artifact
-/// inside `output_root` would risk a later re-run's `package_dist` call
-/// archiving the previous run's own artifact/sidecar into the new one.
-/// Named `konductor-artifacts` (not bare `target/`) so a future
-/// non-artifact use of `target/` (e.g. `cargo build`'s own output, when
-/// `--from` targets this very crate's checkout) can't collide with it.
-fn artifact_output_dir(source_dir: &Path) -> PathBuf {
-    source_dir.join("target").join("konductor-artifacts")
+/// Whether `file_name` (a bare filename, no directory components) is a
+/// packaged-artifact or sidecar file from ANY prior run -- the current
+/// version's exact `artifact_filename()`, an older/newer version's, or
+/// a legacy per-arch/OS-suffixed variant this binary no longer
+/// produces. Matches the stable, naming-convention-independent shape
+/// `konductor-v*.tar.gz`/`konductor-v*.tar.gz.sha256`: the `konductor-v`
+/// prefix and `.tar.gz`/`.tar.gz.sha256` extension are the only parts of
+/// the filename guaranteed stable across every naming convention this
+/// project has used or will use, so matching on those two ends (a
+/// simple `starts_with`/`ends_with` check, no glob crate needed) is
+/// enough to catch a leftover regardless of what the middle segment
+/// looks like. Used by `dispatch_synth_with`'s pre-packaging cleanup so
+/// no artifact of any vintage ever survives into a freshly packaged
+/// archive.
+fn is_stale_artifact_entry(file_name: &str) -> bool {
+    file_name.starts_with("konductor-v")
+        && (file_name.ends_with(".tar.gz") || file_name.ends_with(".tar.gz.sha256"))
+}
+
+/// The packaged artifact and its checksum sidecar are written directly
+/// into `output_root` (`<source_dir>/dist/`), alongside the per-harness
+/// subdirectories `registry::TRANSFORMERS` writes there. This is safe
+/// against self-referential archive growth because `package::package_dist`
+/// captures `output_root`'s contents into an in-memory byte buffer
+/// *before* the artifact/sidecar are written to disk (see
+/// `dispatch_synth_with` below): the archive being packaged can never
+/// contain a copy of itself, and since the artifact filename is
+/// deterministic (`artifact_filename`), a later run overwrites the same
+/// two files in place rather than accumulating new ones. The
+/// main-branch-`dist/` install fallback (`install::github_branch`)
+/// depends on finding both files at `dist/`'s top level on `main`, so
+/// this is also where a real repository checkout's published `dist/`
+/// tree needs them to live.
+fn artifact_output_dir(output_root: &Path) -> PathBuf {
+    output_root.to_path_buf()
 }
 
 /// Transforms a `CanonicalModel` into a specific harness's output.
@@ -133,34 +147,29 @@ pub trait HarnessTransformer: Sync {
 /// `install::dispatch_install_with` uses).
 ///
 /// ── Cross-transformer failure is NOT rolled back ─────────────────────
-/// The loop below is fail-fast with no rollback ACROSS transformers: if
-/// an earlier-registered transformer (e.g. `kiro-cli-v2`) completes all
-/// four of its own `stage_content_type` swaps successfully, and a
-/// LATER-registered transformer (e.g. `claude`) then fails partway
-/// through its own four, this function still returns `EXIT_USAGE_ERROR`
-/// for the call as a whole -- but the earlier transformer's output is
-/// left on disk, fully and correctly updated to the new model (each
-/// `stage_content_type` call is independently atomic; see
-/// `staging.rs`), while the later transformer's own output tree may be
-/// a mix of freshly-updated and stale content types, split at whichever
-/// content type it failed on. A caller that treats a non-zero exit code
-/// as "nothing under `dist/` changed" is wrong in that window: part of
-/// `dist/` is ahead of the source tree that produced this run, while
-/// another part lags behind it. This state is self-healing -- the next
-/// successful `synth` run swaps every content type into a consistent
-/// state again (see `synth_run_twice_produces_byte_identical_dist_output`)
-/// -- but there is a real window, proportional to the number of
-/// registered transformers, where `dist/` is torn between two
-/// generations of the model. See
-/// `second_transformer_failure_leaves_first_transformers_output_intact`
-/// below for a test asserting this exact, accepted behavior rather than
-/// silently regressing it into something worse (e.g. a rollback that
-/// only sometimes runs). Not fixed by staging the whole `dist/` tree in
-/// one shared temp root with one final atomic swap: that would be a
-/// materially larger change to this function's contract than the
-/// two-more-transformers scope this diff is otherwise limited to, and is
-/// left as a follow-up if the torn-state window above proves unacceptable
-/// in practice.
+/// The loop below is fail-fast with no rollback ACROSS transformers.
+/// Say `kiro-cli-v2` finishes all four of its own `stage_content_type`
+/// swaps, then `claude` (registered later) fails partway through its
+/// own four: this function still returns `EXIT_USAGE_ERROR` for the
+/// call as a whole, but `kiro-cli-v2`'s output stays on disk, fully
+/// and correctly updated (each `stage_content_type` call is
+/// independently atomic -- see `staging.rs`), while `claude`'s own
+/// output tree is now a mix of updated and stale content types, split
+/// at whichever one it failed on. So a non-zero exit code does NOT
+/// mean "nothing under `dist/` changed" -- part of the tree can be
+/// ahead of the source that produced this run, another part behind
+/// it. This is self-healing: the next successful `synth` run brings
+/// every content type back to a consistent state (see
+/// `synth_run_twice_produces_byte_identical_dist_output`), but there is
+/// a real window, proportional to the number of registered
+/// transformers, where `dist/` is torn between two generations of the
+/// model. `second_transformer_failure_leaves_first_transformers_output_intact`
+/// below asserts this exact, accepted behavior so it can't silently
+/// regress into something worse (e.g. a rollback that only sometimes
+/// runs). The alternative -- staging all of `dist/` in one shared temp
+/// root with a single final atomic swap -- would be a materially
+/// larger change than this diff's scope, so it's left as a follow-up
+/// if the torn-state window above proves unacceptable in practice.
 pub fn dispatch_synth_with(
     target_dir: &Path,
     from: Option<String>,
@@ -245,6 +254,69 @@ pub fn dispatch_synth_with(
     // guaranteed consistent. Routed through `report_error` like the
     // arms above, so failures here also get the --json envelope and
     // telemetry.
+    //
+    // Any packaged artifact/sidecar already sitting at `output_root`'s
+    // top level is removed FIRST -- before `package_dist` reads that
+    // tree -- since the artifact lives inside the very tree being
+    // packaged. This matches on the stable `konductor-v*.tar.gz`/
+    // `konductor-v*.tar.gz.sha256` shape (see `is_stale_artifact_entry`)
+    // rather than the current run's exact filename, so it also catches
+    // a leftover from a naming convention this binary no longer
+    // produces (e.g. an old per-arch/OS-suffixed tarball from a prior
+    // build), not only today's universal filename. Without this, any
+    // such leftover -- current-format or legacy -- would be archived as
+    // an entry inside the newly packaged tarball, and a later run would
+    // archive that copy again, and so on indefinitely.
+    let artifact_dir = artifact_output_dir(&output_root);
+    match std::fs::read_dir(&artifact_dir) {
+        Ok(entries) => {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                let is_match = path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .is_some_and(is_stale_artifact_entry);
+                if !is_match {
+                    continue;
+                }
+                if let Err(err) = std::fs::remove_file(&path) {
+                    if err.kind() != std::io::ErrorKind::NotFound {
+                        crate::cli::report::report_error(
+                            "synth",
+                            "synth.stale_artifact_remove_failed",
+                            target_dir,
+                            false,
+                            &format!(
+                                "failed to remove previous artifact/sidecar at {}: {err}",
+                                path.display()
+                            ),
+                            Vec::new(),
+                            json,
+                        );
+                        return EXIT_USAGE_ERROR;
+                    }
+                }
+            }
+        }
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
+        Err(err) => {
+            crate::cli::report::report_error(
+                "synth",
+                "synth.stale_artifact_remove_failed",
+                target_dir,
+                false,
+                &format!(
+                    "failed to scan {} for previous artifact/sidecar: {err}",
+                    artifact_dir.display()
+                ),
+                Vec::new(),
+                json,
+            );
+            return EXIT_USAGE_ERROR;
+        }
+    }
+    let artifact_path = artifact_dir.join(artifact_filename());
+
     let artifact_bytes = match package::package_dist(&output_root) {
         Ok(bytes) => bytes,
         Err(err) => {
@@ -260,7 +332,6 @@ pub fn dispatch_synth_with(
             return EXIT_USAGE_ERROR;
         }
     };
-    let artifact_dir = artifact_output_dir(&source_dir);
     if let Err(err) = std::fs::create_dir_all(&artifact_dir) {
         crate::cli::report::report_error(
             "synth",
@@ -276,7 +347,6 @@ pub fn dispatch_synth_with(
         );
         return EXIT_USAGE_ERROR;
     }
-    let artifact_path = artifact_dir.join(artifact_filename());
     if let Err(err) = std::fs::write(&artifact_path, &artifact_bytes) {
         crate::cli::report::report_error(
             "synth",
@@ -312,6 +382,10 @@ pub fn dispatch_synth_with(
         );
     } else {
         println!("{}", format_summary(&model, &output_root));
+        println!(
+            "{}",
+            format_artifact_summary_line(&output_root, &artifact_path)
+        );
         if verbose {
             for line in format_verbose_lines(&model) {
                 println!("{line}");
@@ -417,6 +491,26 @@ fn format_summary(model: &CanonicalModel, output_root: &Path) -> String {
     )
 }
 
+/// Builds the plain-text-mode second summary line, printed
+/// unconditionally right after `format_summary`'s line: names the
+/// packaged artifact (by filename, not full path -- the directory is
+/// already stated on the line above) sitting inside `output_root`
+/// alongside its `.sha256` sidecar. Kept as its own line, separate from
+/// `format_summary`, so that function's exact-text assertions stay
+/// unaffected by this one. The `--json` path already carries the same
+/// information via `artifact_path`/`sidecar_path` (see
+/// `format_summary_json`), so this only closes the plain-text gap.
+fn format_artifact_summary_line(output_root: &Path, artifact_path: &Path) -> String {
+    let artifact_name = artifact_path
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_else(|| artifact_path.display().to_string());
+    format!(
+        "konductor synth: packaged {} as {artifact_name} (+ .sha256 sidecar)",
+        output_root.display()
+    )
+}
+
 /// Builds the additional per-file detail lines `-v`/`--verbose` prints
 /// after the summary: one line per WRITTEN agent, then per skill, SOP,
 /// and context file name, each prefixed with its content type. An agent
@@ -472,47 +566,13 @@ mod tests {
     use super::*;
     use std::fs;
 
-    /// `target_triple_suffix` must map each of the three CI-runner OSes to
-    /// its real Rust target-triple suffix, never the Linux-only
-    /// `unknown-...-gnu` shape regardless of `OS`, which would produce an
-    /// invalid triple on macOS/Windows. Uses the `os` parameter so all
-    /// three branches run on any build host.
+    /// `artifact_output_dir` must resolve to exactly `output_root` itself
+    /// (`<source_dir>/dist/`) -- the artifact/sidecar live at `dist/`'s
+    /// top level, alongside the per-harness subdirectories.
     #[test]
-    fn target_triple_suffix_maps_each_known_os_to_its_real_triple() {
-        assert_eq!(target_triple_suffix("linux"), "unknown-linux-gnu");
-        assert_eq!(target_triple_suffix("macos"), "apple-darwin");
-        assert_eq!(target_triple_suffix("windows"), "pc-windows-msvc");
-    }
-
-    /// An unrecognized OS falls back to `"unknown-{os}"` rather than
-    /// guessing a vendor/environment that would likely be wrong.
-    #[test]
-    fn target_triple_suffix_falls_back_for_unknown_os() {
-        assert_eq!(target_triple_suffix("freebsd"), "unknown-freebsd");
-    }
-
-    /// `artifact_output_dir` must resolve to `<source_dir>/target/
-    /// konductor-artifacts/`, which is a sibling of `<source_dir>/dist/`
-    /// (`output_root`), never a descendant of it -- so a later
-    /// `package_dist(&output_root)` call can never archive a
-    /// previously-written artifact/sidecar into a new one.
-    #[test]
-    fn artifact_output_dir_is_a_sibling_of_dist_not_a_descendant() {
-        let source_dir = Path::new("/tmp/example-repo");
-        let dir = artifact_output_dir(source_dir);
-        assert_eq!(
-            dir,
-            Path::new("/tmp/example-repo/target/konductor-artifacts")
-        );
-
-        let output_root = source_dir.join("dist");
-        assert!(
-            !dir.starts_with(&output_root),
-            "artifact_output_dir ({}) must not be inside output_root ({}) -- that is exactly the \
-             self-referential-archiving risk this directory exists to avoid",
-            dir.display(),
-            output_root.display()
-        );
+    fn artifact_output_dir_is_output_root_itself() {
+        let output_root = Path::new("/tmp/example-repo/dist");
+        assert_eq!(artifact_output_dir(output_root), output_root);
     }
 
     fn scratch_dir(name: &str) -> PathBuf {
@@ -676,6 +736,23 @@ mod tests {
         assert_eq!(
             summary,
             "konductor synth: nothing to build (no agents, skills, SOPs, or context files found)"
+        );
+    }
+
+    /// The second, artifact-naming summary line names the artifact's
+    /// filename (not its full path -- `format_summary`'s line already
+    /// states the directory) and mentions the sidecar, printed as its
+    /// own standalone line.
+    #[test]
+    fn format_artifact_summary_line_names_artifact_filename_and_sidecar() {
+        let line = format_artifact_summary_line(
+            Path::new("/tmp/example/dist"),
+            Path::new("/tmp/example/dist/konductor-v0.1.0.tar.gz"),
+        );
+        assert_eq!(
+            line,
+            "konductor synth: packaged /tmp/example/dist as \
+             konductor-v0.1.0.tar.gz (+ .sha256 sidecar)"
         );
     }
 
@@ -853,7 +930,13 @@ mod tests {
     /// `kiro_cli_v2.rs`'s docstring). Exercises every content type
     /// (agent, skill + executable auxiliary file, SOP, context) in one
     /// source tree so a regression in any one of the four staged
-    /// directories is caught, not just the agent path.
+    /// directories is caught, not just the agent path. Since the
+    /// snapshot walk covers all of `dist/`, it also picks up the
+    /// packaged artifact and `.sha256` sidecar synth writes at `dist/`'s
+    /// top level -- these must be byte-identical across the two runs
+    /// too (guaranteed by `package_dist`'s own determinism, see
+    /// `package_dist_produces_byte_identical_archives_across_repeated_runs`),
+    /// not just the per-harness subdirectories.
     ///
     /// This test's whole reason to exist is to catch a non-idempotent
     /// `stage_content_type` (e.g. one that merges into a stale staging
@@ -1112,5 +1195,96 @@ mod tests {
         );
 
         fs::remove_dir_all(&dir).ok();
+    }
+
+    /// `is_stale_artifact_entry` matches the current run's exact
+    /// filename, a different version's filename, and a legacy
+    /// per-arch/OS-suffixed variant this binary no longer produces --
+    /// both as a `.tar.gz` and as its `.tar.gz.sha256` sidecar. It must
+    /// NOT match an unrelated file that merely shares the `.tar.gz`
+    /// extension or the `konductor-v` text without both anchors.
+    #[test]
+    fn is_stale_artifact_entry_matches_any_vintage_and_rejects_unrelated_files() {
+        assert!(is_stale_artifact_entry("konductor-v0.1.0.tar.gz"));
+        assert!(is_stale_artifact_entry("konductor-v0.1.0.tar.gz.sha256"));
+        assert!(is_stale_artifact_entry("konductor-v9.9.9.tar.gz"));
+        assert!(is_stale_artifact_entry(
+            "konductor-v0.1.0-x86_64-unknown-linux-gnu.tar.gz"
+        ));
+        assert!(is_stale_artifact_entry(
+            "konductor-v0.1.0-x86_64-unknown-linux-gnu.tar.gz.sha256"
+        ));
+        assert!(is_stale_artifact_entry(
+            "konductor-v0.1.0-aarch64-apple-darwin.tar.gz"
+        ));
+
+        assert!(!is_stale_artifact_entry("other-tool-v0.1.0.tar.gz"));
+        assert!(!is_stale_artifact_entry("konductor-v0.1.0.zip"));
+        assert!(!is_stale_artifact_entry("README.md"));
+    }
+
+    /// Lists the entry names inside an in-memory gzip tar archive, for
+    /// asserting what did/didn't get packaged. Mirrors
+    /// `package::package_dist`'s own encoder pair
+    /// (`flate2::read::GzDecoder` + `tar::Archive`) in reverse.
+    fn list_tar_entries(archive_bytes: &[u8]) -> Vec<String> {
+        let decoder = flate2::read::GzDecoder::new(archive_bytes);
+        let mut archive = tar::Archive::new(decoder);
+        archive
+            .entries()
+            .unwrap()
+            .map(|entry| {
+                entry
+                    .unwrap()
+                    .path()
+                    .unwrap()
+                    .to_string_lossy()
+                    .into_owned()
+            })
+            .collect()
+    }
+
+    /// Regression guard for the stale-leftover gap: a `dist/` directory
+    /// carrying a LEGACY, per-arch/OS-suffixed artifact + sidecar (the
+    /// naming convention this binary no longer produces) left over from
+    /// a prior build must not survive a `synth` run, and must not be
+    /// swept into the freshly packaged tarball as a stale entry.
+    #[test]
+    fn stale_legacy_artifact_is_removed_and_never_archived() {
+        let root = scratch_dir("stale-legacy-artifact");
+        let dist_dir = root.join("dist");
+        fs::create_dir_all(&dist_dir).unwrap();
+
+        let legacy_artifact = dist_dir.join("konductor-v0.1.0-x86_64-unknown-linux-gnu.tar.gz");
+        let legacy_sidecar =
+            dist_dir.join("konductor-v0.1.0-x86_64-unknown-linux-gnu.tar.gz.sha256");
+        fs::write(&legacy_artifact, b"leftover legacy artifact bytes").unwrap();
+        fs::write(&legacy_sidecar, b"leftover legacy sidecar bytes").unwrap();
+
+        let code = dispatch_synth_with(&root, None, false, false);
+        assert_eq!(code, 0, "synth must succeed against an empty source tree");
+
+        assert!(
+            !legacy_artifact.exists(),
+            "legacy-format leftover artifact must be removed by cleanup"
+        );
+        assert!(
+            !legacy_sidecar.exists(),
+            "legacy-format leftover sidecar must be removed by cleanup"
+        );
+
+        let current_artifact = dist_dir.join(artifact_filename());
+        let packaged_bytes = fs::read(&current_artifact)
+            .expect("current-format artifact must have been written by this run");
+        let entries = list_tar_entries(&packaged_bytes);
+        assert!(
+            !entries
+                .iter()
+                .any(|e| e.contains("x86_64-unknown-linux-gnu")),
+            "the legacy leftover must never appear as an entry inside the freshly \
+             packaged tarball, got entries: {entries:?}"
+        );
+
+        fs::remove_dir_all(&root).ok();
     }
 }

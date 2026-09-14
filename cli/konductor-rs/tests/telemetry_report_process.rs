@@ -200,7 +200,7 @@ fn cli_error_report_fires_and_materializes_the_script_without_no_telemetry() {
 /// Same suppression, but for the OTHER branch `report_cli_error`
 /// serves: no pre-existing identity at all (a genuinely first-ever
 /// invocation). `--no-telemetry` must suppress the nil-UUID-sentinel
-/// report this branch would otherwise fire (D.6) just as completely as
+/// report this branch would otherwise fire just as completely as
 /// it suppresses the pre-existing-identity branch above.
 #[test]
 fn no_telemetry_suppresses_cli_error_report_with_no_preexisting_identity() {
@@ -226,7 +226,7 @@ fn no_telemetry_suppresses_cli_error_report_with_no_preexisting_identity() {
 }
 
 /// Positive control for the test above, and the missing case this fix
-/// adds: the documented nil-UUID-sentinel branch (D.6) -- telemetry ON,
+/// adds: the documented nil-UUID-sentinel branch -- telemetry ON,
 /// error occurs before ANY identity file exists at the target -- is
 /// arguably the most common real-world scenario (a genuinely
 /// first-ever invocation against a target that has never been
@@ -234,7 +234,7 @@ fn no_telemetry_suppresses_cli_error_report_with_no_preexisting_identity() {
 /// existing positive control in this file seeds a pre-existing
 /// identity first (`cli_error_report_fires_and_materializes_the_script_without_no_telemetry`);
 /// this test deliberately does NOT, confirming `report_cli_error`
-/// still fires (under the nil-UUID sentinel, per D.6) and materializes
+/// still fires (under the nil-UUID sentinel) and materializes
 /// the transport script even with no identity on disk at all --
 /// without `--no-telemetry`, unlike `no_telemetry_suppresses_cli_error_report_with_no_preexisting_identity`
 /// above, which covers the identical no-identity setup but asserts the
