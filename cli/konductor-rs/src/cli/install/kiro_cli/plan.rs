@@ -10,7 +10,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use super::super::manifest::{classify_provenance, Manifest, ManifestFile, Provenance};
+use super::super::manifest::{classify_provenance, ManifestFile, Provenance, StrategyManifest};
 use super::super::runtime::{detect_runtimes, Runtime};
 use super::{
     list_agent_files, list_agent_files_like, list_skill_dirs, CONTEXT_RESOURCE_PREFIX,
@@ -125,7 +125,7 @@ pub(in crate::cli::install) fn read_skill_scopes_sidecar(
 pub(in crate::cli::install) fn plan_all_files(
     harness_dir: &Path,
     target_dir: &Path,
-    prior_manifest: Option<&Manifest>,
+    prior_manifest: Option<&StrategyManifest>,
 ) -> Result<Vec<PlannedFile>, String> {
     let mut plan = Vec::new();
     plan.extend(plan_context_files(harness_dir, target_dir, prior_manifest)?);
@@ -142,7 +142,7 @@ pub(in crate::cli::install) fn plan_all_files(
 fn plan_sop_files(
     harness_dir: &Path,
     target_dir: &Path,
-    prior_manifest: Option<&Manifest>,
+    prior_manifest: Option<&StrategyManifest>,
 ) -> Result<Vec<PlannedFile>, String> {
     let source_dir = harness_dir.join(SOPS_CONTENT_TYPE_DIR);
     let entries = list_agent_files_like(&source_dir)?;
@@ -175,7 +175,7 @@ fn plan_sop_files(
 fn plan_context_files(
     harness_dir: &Path,
     target_dir: &Path,
-    prior_manifest: Option<&Manifest>,
+    prior_manifest: Option<&StrategyManifest>,
 ) -> Result<Vec<PlannedFile>, String> {
     let source_dir = harness_dir.join(CONTEXT_CONTENT_TYPE_DIR);
     let entries = list_agent_files_like(&source_dir)?;
@@ -206,7 +206,7 @@ fn plan_context_files(
 fn plan_agent_files(
     harness_dir: &Path,
     target_dir: &Path,
-    prior_manifest: Option<&Manifest>,
+    prior_manifest: Option<&StrategyManifest>,
 ) -> Result<Vec<PlannedFile>, String> {
     let source_dir = harness_dir.join(AGENTS_CONTENT_TYPE_DIR);
     let entries = list_agent_files(&source_dir)?;
@@ -270,7 +270,7 @@ pub(in crate::cli::install) fn plan_claude_settings_grant(
     harness_dir: &Path,
     target_dir: &Path,
     already_planned: &[PlannedFile],
-    prior_manifest: Option<&Manifest>,
+    prior_manifest: Option<&StrategyManifest>,
 ) -> Result<Vec<PlannedFile>, String> {
     if !detect_runtimes(target_dir).has(Runtime::ClaudeCode) {
         return Ok(Vec::new());
@@ -417,7 +417,7 @@ pub(in crate::cli::install) fn plan_claude_settings_grant(
 pub(in crate::cli::install) fn plan_additive_claude_sop_skill_files(
     repo_root: &Path,
     target_dir: &Path,
-    prior_manifest: Option<&Manifest>,
+    prior_manifest: Option<&StrategyManifest>,
 ) -> Result<Vec<PlannedFile>, String> {
     if !detect_runtimes(target_dir).has(Runtime::ClaudeCode) {
         return Ok(Vec::new());
@@ -435,7 +435,7 @@ pub(in crate::cli::install) fn plan_additive_claude_sop_skill_files(
 fn plan_skill_files(
     harness_dir: &Path,
     target_dir: &Path,
-    prior_manifest: Option<&Manifest>,
+    prior_manifest: Option<&StrategyManifest>,
 ) -> Result<Vec<PlannedFile>, String> {
     let source_root = harness_dir.join(SKILLS_CONTENT_TYPE_DIR);
     let skill_names = list_skill_dirs(&source_root)?;
@@ -476,7 +476,7 @@ pub(in crate::cli::install) fn plan_skill_dir_recursive(
     source: &Path,
     destination: &Path,
     manifest_prefix: &str,
-    prior_manifest: Option<&Manifest>,
+    prior_manifest: Option<&StrategyManifest>,
     plan: &mut Vec<PlannedFile>,
 ) -> Result<(), String> {
     let entries = std::fs::read_dir(source)

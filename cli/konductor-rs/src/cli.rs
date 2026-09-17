@@ -35,6 +35,7 @@
 // and `--version` (clap's own "DisplayHelp"/"DisplayVersion" outcomes) are
 // NOT usage errors and keep clap's normal exit-0 behavior.
 
+use clap::builder::Styles;
 use clap::{ArgAction, Parser, Subcommand};
 use std::process::ExitCode;
 
@@ -43,9 +44,11 @@ pub(crate) mod config;
 pub(crate) mod config_lock;
 mod dispatch;
 pub(crate) mod doctor;
+pub(crate) mod harness_select;
 pub(crate) mod init;
 pub(crate) mod install;
 mod logging;
+pub(crate) mod output;
 pub(crate) mod report;
 pub(crate) mod schema;
 pub(crate) mod synth;
@@ -104,18 +107,57 @@ const EXIT_USAGE_ERROR: u8 = 64;
 /// failure (corrupt/tampered download), not a usage error -- distinct
 /// from `EXIT_USAGE_ERROR` (64) and never one of the reserved 0-4
 /// workflow codes. BSD sysexits.h EX_DATAERR: "input data was incorrect
-/// in some way".
+/// in some way". Also reused by `uninstall`/`update` (see `uninstall.rs`)
+/// for their own `ManifestError`/`IndexError`/`BinLinkError`
+/// `UnsupportedSchemaVersion`/`RollbackAlsoFailed` cases, which are the
+/// same "state/verification failure" kind of thing this code names, not
+/// an unrelated reuse.
 #[allow(dead_code)]
 const EXIT_VERIFY_FAILED: u8 = 65;
 
+/// Exit code for an otherwise-successful lifecycle command that hit a
+/// non-fatal warning-level failure -- e.g. `uninstall`'s own
+/// `--link-bin` symlink-removal failure (see `uninstall.rs`'s
+/// `UninstallCounts.bin_link_error`/`exit_code_for_counts`), where every
+/// file the command was responsible for was still handled correctly,
+/// but the caller should know one non-critical step did not fully
+/// succeed. Distinct from 0 (no warnings) and from
+/// `EXIT_USAGE_ERROR`/`EXIT_VERIFY_FAILED` (a real failure, not a
+/// warning on top of a success). Reservation documented in
+/// `cli/README.md`'s exit-code contract table alongside this file's own
+/// codes -- CR comment r1p10's fix: this constant used to live in
+/// `uninstall.rs`, a private module, even though the contract it
+/// belongs to sits here beside `EXIT_CRITICAL_GATE`/`EXIT_USAGE_ERROR`/
+/// `EXIT_VERIFY_FAILED` -- nothing there stopped a future command from
+/// claiming 6 for something unrelated.
+pub(crate) const EXIT_SUCCESS_WITH_WARNINGS: u8 = 6;
+
 const EXIT_HALTED: u8 = 1;
+
+/// `--help` text styling (clap's own `Command::styles()`). Independent
+/// of `ColorMode`/`--no-color`/`NO_COLOR`: clap's styled-output writer
+/// does its own TTY/`NO_COLOR` detection, and this crate's own
+/// `--no-color` wiring only applies to its own `println!`/`eprintln!`
+/// call sites, not clap's `--help`/`--version` output.
+fn help_styles() -> Styles {
+    use clap::builder::styling::{AnsiColor, Effects};
+    Styles::styled()
+        .header(AnsiColor::Yellow.on_default() | Effects::BOLD)
+        .usage(AnsiColor::Yellow.on_default() | Effects::BOLD)
+        .literal(AnsiColor::Green.on_default() | Effects::BOLD)
+        .placeholder(AnsiColor::Cyan.on_default())
+        .error(AnsiColor::Red.on_default() | Effects::BOLD)
+        .valid(AnsiColor::Green.on_default())
+        .invalid(AnsiColor::Yellow.on_default())
+}
 
 #[derive(Parser, Debug)]
 #[command(
     name = "konductor",
     version,
     about = "Konductor CLI",
-    disable_version_flag = true
+    disable_version_flag = true,
+    styles = help_styles()
 )]
 pub struct Cli {
     /// Path to the Konductor config file.
@@ -164,21 +206,6 @@ fn harness_value_parser() -> clap::builder::PossibleValuesParser {
 pub enum Commands {
     /// Install Konductor into a repository.
     Install {
-        /// SOURCE: path to a local repo root to install previously-built
-        /// (synthed) content from. Currently required: installing from a
-        /// published release is not yet available. Distinct from
-        /// `--target`, which is the install DESTINATION.
-        #[arg(long)]
-        from: Option<String>,
-
-        /// DESTINATION: directory to install into (agents/context under
-        /// `<dir>/.kiro/`, skills under `<dir>/.konductor/skills/`).
-        /// Defaults to `$HOME` when omitted. Pass `.` to install into the
-        /// current working directory. Distinct from `--from`, which is
-        /// the install SOURCE.
-        #[arg(long)]
-        target: Option<String>,
-
         /// REQUIRED: which synthed harness output to install. Accepts
         /// the same harness identifier `konductor synth` registers each
         /// transformer under (`synth::registry::TRANSFORMERS`'s
@@ -192,8 +219,29 @@ pub enum Commands {
         /// destination that happens to carry both a `.kiro` and a
         /// `.claude` marker (see `runtime.rs`'s own `detects_both` test)
         /// is never silently resolved by registration order.
-        #[arg(long, value_parser = harness_value_parser())]
+        ///
+        /// `display_order = 0`: the only clap-required field on this
+        /// command, so it is pinned first in `install --help`'s
+        /// Options: list rather than left to clap's default
+        /// alphabetical ordering, which would otherwise bury it
+        /// between `--from` and `--link-bin`.
+        #[arg(long, value_parser = harness_value_parser(), display_order = 0)]
         harness: String,
+
+        /// SOURCE: path to a local repo root to install previously-built
+        /// (synthed) content from. Currently required: installing from a
+        /// published release is not yet available. Distinct from
+        /// `--target`, which is the install DESTINATION.
+        #[arg(long, display_order = 1)]
+        from: Option<String>,
+
+        /// DESTINATION: directory to install into (agents/context under
+        /// `<dir>/.kiro/`, skills under `<dir>/.konductor/skills/`).
+        /// Defaults to `$HOME` when omitted. Pass `.` to install into the
+        /// current working directory. Distinct from `--from`, which is
+        /// the install SOURCE.
+        #[arg(long, display_order = 2)]
+        target: Option<String>,
 
         /// Also symlink the currently-running `konductor` binary to
         /// `$HOME/.local/bin/konductor`, so `konductor` is callable from
@@ -208,14 +256,14 @@ pub enum Commands {
         /// one; a foreign non-symlink file at that path is never
         /// overwritten. `konductor uninstall` removes a symlink this
         /// flag created when the target it belongs to is uninstalled.
-        #[arg(long = "link-bin", action = ArgAction::SetTrue)]
+        #[arg(long = "link-bin", action = ArgAction::SetTrue, display_order = 3)]
         link_bin: bool,
 
         /// Opt out of usage-analytics telemetry for this install.
         /// Structural: when passed, the identity-file write and
         /// hook-injection steps are never reached at all -- there is no
         /// disabled artifact left behind to inspect.
-        #[arg(long)]
+        #[arg(long, display_order = 4)]
         no_telemetry: bool,
 
         /// Opt in to reading `GITHUB_TOKEN` from the environment for
@@ -226,7 +274,7 @@ pub enum Commands {
         /// environment variable is opt-in, not ambient. Has no effect
         /// on a `--from <repo-root>` install, which never touches
         /// GitHub's API at all.
-        #[arg(long = "use-github-token", action = ArgAction::SetTrue)]
+        #[arg(long = "use-github-token", action = ArgAction::SetTrue, display_order = 5)]
         use_github_token: bool,
     },
 
@@ -254,6 +302,22 @@ pub enum Commands {
         /// at a time. Mutually exclusive with `--target`.
         #[arg(long, action = ArgAction::SetTrue, conflicts_with = "target")]
         all: bool,
+
+        /// Which tracked strategy to update, when the resolved target
+        /// tracks 2+. Same values and meaning as
+        /// `install --harness <name>` -- selects exactly ONE tracked
+        /// strategy per run; there is no `all` value. Validated against
+        /// the resolved target's tracked strategy name(s) even when only
+        /// one is tracked -- a `--harness` value that does not match is
+        /// a usage error, not a silent no-op (see
+        /// `harness_select::select_harness`). With `--all`, a target
+        /// that does not track the requested harness is skipped for
+        /// that one target rather than failing the whole batch. Has no
+        /// effect when the resolved target tracks 0 strategies. Required
+        /// non-interactively (no TTY, or `--json`) when 2+ are tracked;
+        /// otherwise an interactive picker lists them.
+        #[arg(long, value_parser = harness_value_parser())]
+        harness: Option<String>,
 
         /// Opt out of usage-analytics telemetry for this update run.
         /// Passing it always suppresses telemetry for this run,
@@ -284,9 +348,12 @@ pub enum Commands {
     /// Remove Konductor from a repository.
     Uninstall {
         /// Uninstall exactly this target directory (canonicalized the
-        /// same way `install --target` is). Defaults to `$HOME` when
-        /// omitted (mirrors `install --target`). Mutually exclusive
-        /// with `--all`.
+        /// same way `install --target` is). Required when 2+ installs
+        /// are tracked in `~/.konductor/installs` -- omitting it in
+        /// that case is a usage error naming every tracked install,
+        /// rather than defaulting to `$HOME`. With exactly one tracked
+        /// install, omitting `--target` acts on that one directly.
+        /// Mutually exclusive with `--all`.
         #[arg(long, conflicts_with = "all")]
         target: Option<String>,
 
@@ -297,16 +364,24 @@ pub enum Commands {
         #[arg(long, action = ArgAction::SetTrue, conflicts_with = "target")]
         all: bool,
 
-        /// Skip the interactive confirmation prompt that a bare
-        /// invocation (neither `--target` nor `--all`) shows when it
-        /// resolves to `$HOME` and 2+ installs are tracked. Has no
-        /// effect on `--target`/`--all`, which never prompt. Also
-        /// required to proceed non-interactively (no TTY attached to
-        /// stdin, or `--json`) for that same bare, 2+-tracked-installs
-        /// case -- without it, that combination aborts rather than
-        /// risking an unconfirmed destructive delete.
-        #[arg(long, short = 'y', action = ArgAction::SetTrue)]
-        yes: bool,
+        /// Which tracked strategy to uninstall, when the resolved
+        /// target tracks 2+. Same values and meaning
+        /// as `install --harness <name>` -- selects exactly ONE tracked
+        /// strategy per run; there is no `all` value (unaffected: the
+        /// existing `--all` flag above still means "every tracked
+        /// TARGET", not "every tracked strategy"). Validated against the
+        /// resolved target's tracked strategy name(s) even when only one
+        /// is tracked -- a `--harness` value that does not match is a
+        /// usage error, not a silent no-op (see
+        /// `harness_select::select_harness`). With `--all`, a target
+        /// that does not track the requested harness is skipped for
+        /// that one target rather than failing the whole batch (see
+        /// `dispatch_all`). Has no effect when the resolved target
+        /// tracks 0 strategies. Required non-interactively (no TTY, or
+        /// `--json`) when 2+ are tracked; otherwise an interactive
+        /// picker lists them.
+        #[arg(long, value_parser = harness_value_parser())]
+        harness: Option<String>,
     },
 
     /// Synthesize Konductor pipeline/config artifacts.
@@ -547,16 +622,21 @@ fn run_inner(cli: Cli) -> u8 {
         return 0;
     }
 
+    let color = output::ColorMode::resolve_from_env(cli.no_color);
+
     let Some(command) = cli.command else {
         // No subcommand and no --version: this mirrors clap's "missing
         // subcommand" usage error, but since `command` is Optional we
         // handle it explicitly here rather than relying on clap's
         // arg_required_else_help, to keep the remap centralized.
-        eprintln!("konductor: no command given. Run `konductor --help` for usage.");
+        eprintln!(
+            "{} no command given. Run `konductor --help` for usage.",
+            output::error_prefix(color, "konductor:")
+        );
         return EXIT_USAGE_ERROR;
     };
 
-    dispatch::dispatch(command, cli.verbose, cli.json)
+    dispatch::dispatch(command, cli.verbose, cli.json, color)
 }
 
 // Silence an unused-constant warning: EXIT_HALTED and EXIT_CRITICAL_GATE are
@@ -768,10 +848,9 @@ mod tests {
         let cli = Cli::try_parse_from(["konductor", Commands::UNINSTALL, "--target", "/tmp/dest"])
             .unwrap();
         match cli.command {
-            Some(Commands::Uninstall { target, all, yes }) => {
+            Some(Commands::Uninstall { target, all, .. }) => {
                 assert_eq!(target, Some("/tmp/dest".to_string()));
                 assert!(!all);
-                assert!(!yes);
             }
             other => panic!("expected Uninstall, got {other:?}"),
         }
@@ -822,39 +901,9 @@ mod tests {
     fn parses_uninstall_with_all_flag() {
         let cli = Cli::try_parse_from(["konductor", Commands::UNINSTALL, "--all"]).unwrap();
         match cli.command {
-            Some(Commands::Uninstall { target, all, yes }) => {
+            Some(Commands::Uninstall { target, all, .. }) => {
                 assert_eq!(target, None);
                 assert!(all);
-                assert!(!yes);
-            }
-            other => panic!("expected Uninstall, got {other:?}"),
-        }
-    }
-
-    /// `--yes`/`-y` parses standalone and sets the flag without
-    /// requiring `--target`/`--all` -- it is meaningful on its own for
-    /// the bare, 2+-tracked-installs case (see `Commands::Uninstall`'s
-    /// own doc comment).
-    #[test]
-    fn parses_uninstall_with_yes_flag() {
-        let cli = Cli::try_parse_from(["konductor", Commands::UNINSTALL, "--yes"]).unwrap();
-        match cli.command {
-            Some(Commands::Uninstall { target, all, yes }) => {
-                assert_eq!(target, None);
-                assert!(!all);
-                assert!(yes);
-            }
-            other => panic!("expected Uninstall, got {other:?}"),
-        }
-    }
-
-    /// `-y` is the short form of `--yes`.
-    #[test]
-    fn parses_uninstall_with_short_y_flag() {
-        let cli = Cli::try_parse_from(["konductor", Commands::UNINSTALL, "-y"]).unwrap();
-        match cli.command {
-            Some(Commands::Uninstall { yes, .. }) => {
-                assert!(yes);
             }
             other => panic!("expected Uninstall, got {other:?}"),
         }
@@ -894,6 +943,89 @@ mod tests {
         ]);
         let err = result.expect_err("--all and --target together must be a usage error");
         assert_eq!(err.kind(), clap::error::ErrorKind::ArgumentConflict);
+    }
+
+    /// `update --harness <name>` accepts the exact same
+    /// values `install --harness` does (same `harness_value_parser()`).
+    #[test]
+    fn parses_update_with_harness_flag() {
+        let cli =
+            Cli::try_parse_from(["konductor", Commands::UPDATE, "--harness", "claude"]).unwrap();
+        match cli.command {
+            Some(Commands::Update { harness, .. }) => {
+                assert_eq!(harness, Some("claude".to_string()));
+            }
+            other => panic!("expected Update, got {other:?}"),
+        }
+    }
+
+    /// An unsupported `--harness` value on `update` is rejected at parse
+    /// time, exactly like `install --harness`'s own rejection.
+    #[test]
+    fn rejects_update_with_unsupported_harness_value() {
+        let result = Cli::try_parse_from([
+            "konductor",
+            Commands::UPDATE,
+            "--harness",
+            "not-a-real-harness",
+        ]);
+        assert!(
+            result.is_err(),
+            "an unsupported --harness value must be rejected at parse time"
+        );
+    }
+
+    /// `uninstall --harness <name>` accepts the exact
+    /// same values `install --harness` does.
+    #[test]
+    fn parses_uninstall_with_harness_flag() {
+        let cli = Cli::try_parse_from(["konductor", Commands::UNINSTALL, "--harness", "kiro-v3"])
+            .unwrap();
+        match cli.command {
+            Some(Commands::Uninstall { harness, .. }) => {
+                assert_eq!(harness, Some("kiro-v3".to_string()));
+            }
+            other => panic!("expected Uninstall, got {other:?}"),
+        }
+    }
+
+    /// An unsupported `--harness` value on `uninstall` is rejected at
+    /// parse time, exactly like `install --harness`'s own rejection.
+    #[test]
+    fn rejects_uninstall_with_unsupported_harness_value() {
+        let result = Cli::try_parse_from([
+            "konductor",
+            Commands::UNINSTALL,
+            "--harness",
+            "not-a-real-harness",
+        ]);
+        assert!(
+            result.is_err(),
+            "an unsupported --harness value must be rejected at parse time"
+        );
+    }
+
+    /// `--harness` is orthogonal to `--target`/`--all` (it selects
+    /// WHICH STRATEGY within a resolved target, not
+    /// WHICH TARGET) -- combining it with either must parse cleanly,
+    /// never conflict.
+    #[test]
+    fn parses_uninstall_with_harness_and_all_together() {
+        let cli = Cli::try_parse_from([
+            "konductor",
+            Commands::UNINSTALL,
+            "--all",
+            "--harness",
+            "claude",
+        ])
+        .unwrap();
+        match cli.command {
+            Some(Commands::Uninstall { all, harness, .. }) => {
+                assert!(all);
+                assert_eq!(harness, Some("claude".to_string()));
+            }
+            other => panic!("expected Uninstall, got {other:?}"),
+        }
     }
 
     /// Same conflict, `uninstall` variant.
@@ -1024,10 +1156,9 @@ mod tests {
     fn parses_bare_uninstall_with_no_flags() {
         let cli = Cli::try_parse_from(["konductor", Commands::UNINSTALL]).unwrap();
         match cli.command {
-            Some(Commands::Uninstall { target, all, yes }) => {
+            Some(Commands::Uninstall { target, all, .. }) => {
                 assert_eq!(target, None);
                 assert!(!all);
-                assert!(!yes);
             }
             other => panic!("expected Uninstall, got {other:?}"),
         }
@@ -1212,5 +1343,40 @@ mod tests {
             help_text.contains("default_severity"),
             "config get --help must show a real config field as its example key, got: {help_text}"
         );
+    }
+
+    // ── display_order regression: --harness first in install --help ────
+
+    /// `--harness` is the only clap-required field on `Install`, and
+    /// `display_order` attributes on its fields put it first --
+    /// regression test pinning that `install --help`'s Options: list
+    /// shows `--harness` before every other Install flag, rather than
+    /// clap's default alphabetical ordering (which would place
+    /// `--from` first).
+    #[test]
+    fn install_help_shows_harness_before_every_other_flag() {
+        let mut cmd = Cli::command();
+        let install_cmd = cmd
+            .find_subcommand_mut(Commands::INSTALL)
+            .expect("install subcommand must exist");
+        let help_text = install_cmd.render_help().to_string();
+        let harness_pos = help_text
+            .find("--harness")
+            .expect("--harness must appear in install --help");
+        for other_flag in [
+            "--from",
+            "--target",
+            "--link-bin",
+            "--no-telemetry",
+            "--use-github-token",
+        ] {
+            let other_pos = help_text
+                .find(other_flag)
+                .unwrap_or_else(|| panic!("{other_flag} must appear in install --help"));
+            assert!(
+                harness_pos < other_pos,
+                "--harness must appear before {other_flag} in install --help, got:\n{help_text}"
+            );
+        }
     }
 }

@@ -429,7 +429,7 @@ mod tests {
         let manifest = manifest::read_manifest(&target_dir)
             .unwrap()
             .expect("manifest must exist after successful install");
-        assert_eq!(manifest.strategy, "kiro-cli");
+        assert_eq!(manifest.strategy_names(), vec!["kiro-cli-v2"]);
 
         fs::remove_dir_all(&dist_root).ok();
         fs::remove_dir_all(&target_dir).ok();
@@ -519,7 +519,7 @@ mod tests {
         let manifest = manifest::read_manifest(&target_dir)
             .unwrap()
             .expect("manifest must exist after a successful install via the fetcher seam");
-        assert_eq!(manifest.strategy, "kiro-cli");
+        assert_eq!(manifest.strategy_names(), vec!["kiro-cli-v2"]);
 
         fs::remove_dir_all(&dist_root).ok();
         fs::remove_dir_all(&target_dir).ok();
@@ -587,7 +587,7 @@ mod tests {
         let manifest = manifest::read_manifest(&target_dir)
             .unwrap()
             .expect("manifest must exist after a successful main-branch-dist install");
-        assert_eq!(manifest.strategy, "kiro-cli");
+        assert_eq!(manifest.strategy_names(), vec!["kiro-cli-v2"]);
 
         fs::remove_dir_all(&target_dir).ok();
     }

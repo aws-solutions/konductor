@@ -55,7 +55,7 @@
 // `(staged_root, target_dir, repo_root)` signature cannot express, so
 // both are threaded through explicitly:
 //
-// 1. `prior_manifest: Option<&Manifest>` -- `install_skills`'s
+// 1. `prior_manifest: Option<&StrategyManifest>` -- `install_skills`'s
 //    dropped-file cleanup and every phase's eventual provenance
 //    classification need the manifest as it existed BEFORE this
 //    install run touched anything. It is read exactly once, in
@@ -130,8 +130,7 @@
 use std::collections::HashSet;
 use std::path::Path;
 
-use super::manifest::{Manifest, ManifestFile, Provenance};
-use super::resource_rewrite::ClaudeGrantError;
+use super::manifest::{ManifestFile, StrategyManifest};
 use super::runtime::{detect_runtimes, Runtime};
 use super::InstallError;
 
@@ -206,7 +205,7 @@ pub(super) trait InstallPhase {
         staged_root: &Path,
         target_dir: &Path,
         repo_root: Option<&Path>,
-        prior_manifest: Option<&Manifest>,
+        prior_manifest: Option<&StrategyManifest>,
         phase_outputs: &PhaseOutputs,
         no_telemetry: bool,
     ) -> Result<Vec<ManifestFile>, InstallError>;
@@ -318,7 +317,7 @@ pub(super) fn run_all_phases(
     staged_root: &Path,
     target_dir: &Path,
     repo_root: Option<&Path>,
-    prior_manifest: Option<&Manifest>,
+    prior_manifest: Option<&StrategyManifest>,
     no_telemetry: bool,
 ) -> Result<Vec<ManifestFile>, InstallError> {
     let mut seen_names = HashSet::with_capacity(phases.len());
@@ -407,7 +406,7 @@ impl InstallPhase for SkillInstallPhase {
         staged_root: &Path,
         target_dir: &Path,
         _repo_root: Option<&Path>,
-        prior_manifest: Option<&Manifest>,
+        prior_manifest: Option<&StrategyManifest>,
         _phase_outputs: &PhaseOutputs,
         _no_telemetry: bool,
     ) -> Result<Vec<ManifestFile>, InstallError> {
@@ -460,7 +459,7 @@ impl InstallPhase for McpInstallPhase {
         _staged_root: &Path,
         target_dir: &Path,
         repo_root: Option<&Path>,
-        _prior_manifest: Option<&Manifest>,
+        _prior_manifest: Option<&StrategyManifest>,
         _phase_outputs: &PhaseOutputs,
         _no_telemetry: bool,
     ) -> Result<Vec<ManifestFile>, InstallError> {
@@ -539,7 +538,7 @@ impl InstallPhase for SopInstallPhase {
         staged_root: &Path,
         target_dir: &Path,
         repo_root: Option<&Path>,
-        _prior_manifest: Option<&Manifest>,
+        _prior_manifest: Option<&StrategyManifest>,
         _phase_outputs: &PhaseOutputs,
         _no_telemetry: bool,
     ) -> Result<Vec<ManifestFile>, InstallError> {
@@ -597,7 +596,7 @@ impl InstallPhase for ContextInstallPhase {
         staged_root: &Path,
         target_dir: &Path,
         _repo_root: Option<&Path>,
-        _prior_manifest: Option<&Manifest>,
+        _prior_manifest: Option<&StrategyManifest>,
         _phase_outputs: &PhaseOutputs,
         _no_telemetry: bool,
     ) -> Result<Vec<ManifestFile>, InstallError> {
@@ -652,7 +651,7 @@ impl InstallPhase for AgentInstallPhase {
         staged_root: &Path,
         target_dir: &Path,
         _repo_root: Option<&Path>,
-        _prior_manifest: Option<&Manifest>,
+        _prior_manifest: Option<&StrategyManifest>,
         phase_outputs: &PhaseOutputs,
         no_telemetry: bool,
     ) -> Result<Vec<ManifestFile>, InstallError> {
@@ -684,106 +683,23 @@ impl InstallPhase for AgentInstallPhase {
         // `konductor install` at all) already succeeded by the time this
         // block runs -- `install_agents` above already propagated its
         // own error via `?` before control ever reaches here.
+        //
+        // Telemetry hook wiring (usage-analytics design D.13): folded
+        // into the same shared call below, deliberately gated on the
+        // GRANT having just succeeded, not attempted independently, and
+        // ALSO gated on `!no_telemetry` -- see
+        // `apply_claude_settings_grant_and_hooks`'s own doc comment
+        // (`resource_rewrite.rs`) for the full rationale, shared
+        // verbatim with `KiroCliV3InstallStrategy::install_from_local`'s
+        // identical call. `apply_claude_settings_grant`'s own failure
+        // modes (symlink, `permissions.deny` shadow, malformed
+        // pre-existing settings.json) leave that foreign file completely
+        // untouched when the grant is skipped for one of those reasons
+        // (verified by
+        // `install_from_local_does_not_abort_when_claude_grant_fails_on_foreign_content`
+        // in `kiro_cli.rs`) rather than partially writing it via a
+        // second, independent mutation.
         if any_mcp_server_injected && detect_runtimes(target_dir).has(Runtime::ClaudeCode) {
-            // Tracks the LATEST successful mutation's own (path, sha256)
-            // pair across both calls below -- both target the exact
-            // SAME manifest path (`.claude/settings.json`), and exactly
-            // ONE `ManifestFile` entry must be pushed for it (pushing
-            // two would duplicate that path in the final manifest).
-            let mut claude_settings: Option<(String, String)> = None;
-
-            match super::resource_rewrite::apply_claude_settings_grant(target_dir) {
-                Ok((claude_path, claude_sha256)) => {
-                    claude_settings = Some((claude_path, claude_sha256));
-
-                    // Telemetry hook wiring: deliberately gated on the GRANT above
-                    // having just succeeded, not attempted
-                    // independently. `apply_claude_settings_grant`'s
-                    // own failure modes (symlink, `permissions.deny`
-                    // shadow, malformed pre-existing settings.json) are
-                    // about PRE-EXISTING, user-owned content this
-                    // install did not create; when the grant is
-                    // skipped for one of those reasons, this install
-                    // must leave that foreign file completely
-                    // untouched (verified by
-                    // `install_from_local_does_not_abort_when_claude_grant_fails_on_foreign_content`
-                    // in `kiro_cli.rs`) rather than partially writing
-                    // it via a second, independent mutation. See
-                    // `resource_rewrite.rs`'s own "V3/Claude Code
-                    // telemetry hook wiring" section for the disclosed
-                    // scope boundary this reuses the grant's own gate
-                    // to stay inside. `apply_claude_settings_hooks`
-                    // reads the file fresh from disk, so its own
-                    // returned bytes already reflect the grant's own
-                    // just-completed write.
-                    //
-                    // ALSO gated on `!no_telemetry`: the permission
-                    // grant above is about MCP tool authorization, not
-                    // telemetry, so it fires unconditionally -- but
-                    // wiring the `SessionStart`/`SubagentStart` hooks
-                    // that invoke `__telemetry-hook` is itself a
-                    // telemetry side effect, and `--no-telemetry` must
-                    // suppress EVERY telemetry side effect an install
-                    // run has, not only the top-level
-                    // `report_package_installed`/`report_cli_error`
-                    // calls `dispatch_install_with` already gates on
-                    // this same flag.
-                    if !no_telemetry {
-                        match super::resource_rewrite::apply_claude_settings_hooks(target_dir) {
-                            Ok((hooks_path, hooks_sha256)) => {
-                                claude_settings = Some((hooks_path, hooks_sha256));
-                            }
-                            // `apply_claude_settings_hooks` never
-                            // constructs `DenyShadowed` (hooks have no
-                            // "deny" concept of their own) -- matched here
-                            // only for exhaustiveness, and never expected
-                            // to fire.
-                            Err(ClaudeGrantError::DenyShadowed(message)) => {
-                                eprintln!(
-                                    "warning: Claude Code telemetry hook wiring intentionally \
-                                     skipped ({message})"
-                                );
-                            }
-                            Err(ClaudeGrantError::Other(message)) => {
-                                eprintln!(
-                                    "warning: Claude Code telemetry hook wiring skipped \
-                                     ({message}) -- the Kiro CLI portion of this install is \
-                                     unaffected"
-                                );
-                            }
-                        }
-                    }
-                }
-                // Matched by variant, NOT by sniffing the rendered
-                // message for a substring: the "not a JSON array"
-                // malformed-settings error also happens to contain the
-                // literal substring `"permissions.deny"`, so a
-                // substring check could not reliably distinguish real
-                // corruption from a deliberately-respected policy
-                // decision. See `ClaudeGrantError`'s own doc comment.
-                Err(ClaudeGrantError::DenyShadowed(message)) => {
-                    // Security-relevant in a way the other failure
-                    // modes are not: it means the target owner
-                    // deliberately denied this exact tool, and this
-                    // install is correctly respecting that rather than
-                    // silently overriding it -- so it gets its own,
-                    // clearly-labeled wording instead of the generic
-                    // one below.
-                    eprintln!(
-                        "warning: Claude Code permission grant intentionally skipped -- \
-                         an existing \"permissions.deny\" rule already blocks it \
-                         ({message}). This is respected, not an error to fix; the Kiro \
-                         CLI portion of this install is unaffected."
-                    );
-                }
-                Err(ClaudeGrantError::Other(message)) => {
-                    eprintln!(
-                        "warning: Claude Code permission grant skipped ({message}) -- \
-                         the Kiro CLI portion of this install is unaffected"
-                    );
-                }
-            }
-
             // Placeholder provenance (`Provenance::Created`), like every
             // other file this phase (and every other phase) returns --
             // see `InstallPhase::run`'s own doc comment: the real
@@ -797,12 +713,14 @@ impl InstallPhase for AgentInstallPhase {
             // there (this fires but planning predicted it wouldn't)
             // fails loudly via `attach_provenance`'s own internal-error
             // check rather than silently mis-tracking.
-            if let Some((claude_path, claude_sha256)) = claude_settings {
-                files.push(ManifestFile {
-                    path: claude_path,
-                    sha256: Some(claude_sha256),
-                    provenance: Provenance::Created,
-                });
+            if let Some(claude_settings_file) =
+                super::resource_rewrite::apply_claude_settings_grant_and_hooks(
+                    target_dir,
+                    no_telemetry,
+                    "Kiro CLI",
+                )
+            {
+                files.push(claude_settings_file);
             }
         }
 
@@ -843,7 +761,7 @@ mod tests {
             _staged_root: &Path,
             _target_dir: &Path,
             _repo_root: Option<&Path>,
-            _prior_manifest: Option<&Manifest>,
+            _prior_manifest: Option<&StrategyManifest>,
             _phase_outputs: &PhaseOutputs,
             _no_telemetry: bool,
         ) -> Result<Vec<ManifestFile>, InstallError> {

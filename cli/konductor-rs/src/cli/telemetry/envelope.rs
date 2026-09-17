@@ -128,8 +128,8 @@ impl OuterEnvelope {
     /// Wraps `data` in the outer envelope. `version` is read live from
     /// `env!("CARGO_PKG_VERSION")` at the call site, never from the
     /// cached identity record's own frozen `version` field.
-    /// `Solution` is `super::report::SOLUTION_ID`, the compile-time
-    /// placeholder constant.
+    /// `Solution` is `super::report::SOLUTION_ID`, the AWS Solutions
+    /// Library identifier assigned to Konductor.
     pub(crate) fn wrap(data: EventEnvelope, uuid: String) -> Self {
         OuterEnvelope {
             solution: super::report::SOLUTION_ID,

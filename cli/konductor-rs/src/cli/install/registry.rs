@@ -35,18 +35,22 @@ mod tests {
 
     #[test]
     fn strategies_contains_registered_kiro_cli_strategy() {
-        assert!(STRATEGIES.iter().any(|s| s.name() == "kiro-cli"));
+        assert!(STRATEGIES.iter().any(|s| s.name() == "kiro-cli-v2"));
     }
 
     #[test]
     fn strategies_contains_registered_kiro_cli_v3_strategy() {
-        assert!(STRATEGIES.iter().any(|s| s.name() == "kiro-cli-v3"));
+        // `name()` and `harness_dir()` are identical by construction
+        // after the rename (see `KiroCliV3InstallStrategy`'s own doc
+        // comment) -- both assertions still hold, now for the same
+        // reason rather than two independently-registered values.
+        assert!(STRATEGIES.iter().any(|s| s.name() == "kiro-v3"));
         assert!(STRATEGIES.iter().any(|s| s.harness_dir() == "kiro-v3"));
     }
 
     #[test]
     fn strategies_contains_registered_claude_code_strategy() {
-        assert!(STRATEGIES.iter().any(|s| s.name() == "claude-code"));
+        assert!(STRATEGIES.iter().any(|s| s.name() == "claude"));
     }
 
     /// Regression pin on `InstallStrategy::matches()`'s ordering-sensitive
@@ -55,11 +59,11 @@ mod tests {
     #[test]
     fn kiro_cli_is_registered_before_claude_code() {
         let names: Vec<&str> = STRATEGIES.iter().map(|s| s.name()).collect();
-        let kiro_index = names.iter().position(|n| *n == "kiro-cli").unwrap();
-        let claude_index = names.iter().position(|n| *n == "claude-code").unwrap();
+        let kiro_index = names.iter().position(|n| *n == "kiro-cli-v2").unwrap();
+        let claude_index = names.iter().position(|n| *n == "claude").unwrap();
         assert!(
             kiro_index < claude_index,
-            "kiro-cli must stay registered first, matching matches()'s own \
+            "kiro-cli-v2 must stay registered first, matching matches()'s own \
              registration-order test below"
         );
     }

@@ -46,6 +46,8 @@ struct KiroAgentFile<'a> {
     description: &'a str,
     prompt: &'a str,
     model: &'a str,
+    #[serde(rename = "welcomeMessage", skip_serializing_if = "Option::is_none")]
+    welcome_message: Option<&'a str>,
     tools: &'a [String],
     #[serde(rename = "allowedTools")]
     allowed_tools: &'a [String],
@@ -192,6 +194,7 @@ fn render_agent_file<'a>(
         description: &config.description,
         prompt: &config.system_prompt,
         model: &config.model,
+        welcome_message: kiro.welcome_message.as_deref(),
         tools: &kiro.tools,
         allowed_tools: &kiro.allowed_tools,
         tools_settings: &kiro.tools_settings,
@@ -663,6 +666,7 @@ mod tests {
             hooks: IndexMap::new(),
             mcp_servers,
             resources: vec!["file://AGENTS.md".to_string()],
+            welcome_message: None,
         };
         let agent = agent_with_kiro("k-example", kiro);
         let kiro_cfg = agent.client_config.kiro_cli.as_ref().unwrap();
@@ -679,6 +683,38 @@ mod tests {
         assert_eq!(
             file.mcp_servers["example-mcp"]["command"],
             serde_json::Value::String("uvx".to_string())
+        );
+    }
+
+    #[test]
+    fn render_agent_file_emits_welcome_message_when_present() {
+        let kiro = KiroCliConfig {
+            welcome_message: Some("Ready to help.".to_string()),
+            ..Default::default()
+        };
+        let agent = agent_with_kiro("asdlc-example", kiro);
+        let kiro_cfg = agent.client_config.kiro_cli.as_ref().unwrap();
+        let file =
+            render_agent_file(&agent.name, &agent.config, kiro_cfg, &[], &HashSet::new()).unwrap();
+
+        assert_eq!(file.welcome_message, Some("Ready to help."));
+        let json = serde_json::to_value(&file).unwrap();
+        assert_eq!(json["welcomeMessage"], "Ready to help.");
+    }
+
+    #[test]
+    fn render_agent_file_omits_welcome_message_key_when_absent() {
+        let kiro = KiroCliConfig::default();
+        let agent = agent_with_kiro("asdlc-example", kiro);
+        let kiro_cfg = agent.client_config.kiro_cli.as_ref().unwrap();
+        let file =
+            render_agent_file(&agent.name, &agent.config, kiro_cfg, &[], &HashSet::new()).unwrap();
+
+        assert_eq!(file.welcome_message, None);
+        let json = serde_json::to_value(&file).unwrap();
+        assert!(
+            json.get("welcomeMessage").is_none(),
+            "welcomeMessage key must be omitted when unset"
         );
     }
 
@@ -1040,12 +1076,14 @@ mod tests {
     fn transform_preserves_non_alphabetical_tools_settings_key_order() {
         let dir = temp_dir("key-order");
 
-        let mut kiro = KiroCliConfig::default();
-        kiro.tools_settings = serde_json::json!({
-            "zebra": 1,
-            "apple": 2,
-            "middle": 3
-        });
+        let kiro = KiroCliConfig {
+            tools_settings: serde_json::json!({
+                "zebra": 1,
+                "apple": 2,
+                "middle": 3
+            }),
+            ..Default::default()
+        };
         let agent = agent_with_kiro("k-example", kiro);
         let kiro_cfg = agent.client_config.kiro_cli.as_ref().unwrap();
         let file =
@@ -1077,8 +1115,10 @@ mod tests {
         mcp_servers.insert("zebra-mcp".to_string(), McpServerDef::default());
         mcp_servers.insert("apple-mcp".to_string(), McpServerDef::default());
         mcp_servers.insert("middle-mcp".to_string(), McpServerDef::default());
-        let mut kiro = KiroCliConfig::default();
-        kiro.mcp_servers = mcp_servers;
+        let kiro = KiroCliConfig {
+            mcp_servers,
+            ..Default::default()
+        };
         let agent = agent_with_kiro("k-example", kiro);
         let kiro_cfg = agent.client_config.kiro_cli.as_ref().unwrap();
         let file =
@@ -1110,8 +1150,10 @@ mod tests {
         hooks.insert("zebra-hook".to_string(), serde_json::json!([]));
         hooks.insert("apple-hook".to_string(), serde_json::json!([]));
         hooks.insert("middle-hook".to_string(), serde_json::json!([]));
-        let mut kiro = KiroCliConfig::default();
-        kiro.hooks = hooks;
+        let kiro = KiroCliConfig {
+            hooks,
+            ..Default::default()
+        };
         let agent = agent_with_kiro("k-example", kiro);
         let kiro_cfg = agent.client_config.kiro_cli.as_ref().unwrap();
         let file =
@@ -1140,8 +1182,10 @@ mod tests {
     fn transform_writes_non_ascii_as_raw_utf8_not_u_escapes() {
         let dir = temp_dir("non-ascii");
 
-        let mut kiro = KiroCliConfig::default();
-        kiro.tools_settings = serde_json::json!({});
+        let kiro = KiroCliConfig {
+            tools_settings: serde_json::json!({}),
+            ..Default::default()
+        };
         let agent = agent_with_kiro("k-example", kiro);
         let mut config = agent.config.clone();
         config.system_prompt = "Skills — they load \u{2192} automatically \u{a7}1.".to_string();

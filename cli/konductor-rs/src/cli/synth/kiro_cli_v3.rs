@@ -95,21 +95,29 @@ use super::HarnessTransformer;
 /// unified permissions block"), replaced by `permissions`.
 ///
 /// V3-only fields the agent-config page's New Fields Reference Table
-/// documents (`excludedTools`, `includeMcpJson`, `includePowers`,
-/// `welcomeMessage`) are deliberately NOT emitted here: the source
-/// agent-spec schema (`KiroCliConfig`) has no corresponding field to
-/// derive them from today, and inventing a default would violate the
-/// "implement only what's confirmed" contract this module is built
-/// under. A future agent-spec schema change adding one of these would
-/// need a corresponding `KiroCliConfig` field and a matching addition
-/// here, not a fabricated default. This mirrors the existing project
-/// stance already on record for these same four fields.
+/// documents (`excludedTools`, `includeMcpJson`, `includePowers`) are
+/// deliberately NOT emitted here: the source agent-spec schema
+/// (`KiroCliConfig`) has no corresponding field to derive them from
+/// today, and inventing a default would violate the "implement only
+/// what's confirmed" contract this module is built under. A future
+/// agent-spec schema change adding one of these would need a
+/// corresponding `KiroCliConfig` field and a matching addition here, not
+/// a fabricated default. This mirrors the existing project stance already
+/// on record for these three fields.
+///
+/// `welcomeMessage` is emitted when the source spec's `clientConfig.kiroCli`
+/// supplies it (`KiroCliConfig::welcome_message`), and omitted when absent.
+/// It is a Kiro-only field, so it lives in the Kiro client config -- exactly
+/// the "corresponding `KiroCliConfig` field plus a matching addition here"
+/// the note above calls for.
 #[derive(Serialize)]
 struct KiroV3AgentFile<'a> {
     name: &'a str,
     description: &'a str,
     prompt: &'a str,
     model: &'a str,
+    #[serde(rename = "welcomeMessage", skip_serializing_if = "Option::is_none")]
+    welcome_message: Option<&'a str>,
     tools: Vec<String>,
     permissions: PermissionsBlock,
     #[serde(rename = "mcpServers")]
@@ -1215,6 +1223,7 @@ fn render_agent_file<'a>(
         description: &config.description,
         prompt: &config.system_prompt,
         model: &config.model,
+        welcome_message: kiro.welcome_message.as_deref(),
         tools,
         permissions: PermissionsBlock { rules },
         mcp_servers,
@@ -1406,6 +1415,38 @@ mod tests {
         assert_eq!(map_tool_tag("shell"), "shell");
         assert_eq!(map_tool_tag("*"), "*");
         assert_eq!(map_tool_tag("agentCrew"), "agentCrew");
+    }
+
+    #[test]
+    fn render_agent_file_emits_welcome_message_when_present() {
+        let kiro = KiroCliConfig {
+            welcome_message: Some("Ready to help.".to_string()),
+            ..Default::default()
+        };
+        let agent = agent_with_kiro("k-example", kiro);
+        let kiro_cfg = agent.client_config.kiro_cli.as_ref().unwrap();
+        let file =
+            render_agent_file(&agent.name, &agent.config, kiro_cfg, &[], &HashSet::new()).unwrap();
+
+        assert_eq!(file.welcome_message, Some("Ready to help."));
+        let json = serde_json::to_value(&file).unwrap();
+        assert_eq!(json["welcomeMessage"], "Ready to help.");
+    }
+
+    #[test]
+    fn render_agent_file_omits_welcome_message_key_when_absent() {
+        let kiro = KiroCliConfig::default();
+        let agent = agent_with_kiro("k-example", kiro);
+        let kiro_cfg = agent.client_config.kiro_cli.as_ref().unwrap();
+        let file =
+            render_agent_file(&agent.name, &agent.config, kiro_cfg, &[], &HashSet::new()).unwrap();
+
+        assert_eq!(file.welcome_message, None);
+        let json = serde_json::to_value(&file).unwrap();
+        assert!(
+            json.get("welcomeMessage").is_none(),
+            "welcomeMessage key must be omitted when unset"
+        );
     }
 
     #[test]

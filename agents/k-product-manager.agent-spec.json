@@ -36,6 +36,7 @@
   },
   "clientConfig": {
     "kiroCli": {
+      "welcomeMessage": "I'm your product manager. I turn ideas into user stories, requirements summaries, and decision research, validating each artifact before handoff. Tell me the problem you're solving and who it's for.",
       "tools": ["@builtin", "subagent"],
       "allowedTools": ["fs_read", "fs_write"],
       "toolsSettings": {

@@ -29,6 +29,8 @@
 
 use std::path::{Path, PathBuf};
 
+use crate::cli::output::ColorMode;
+
 pub mod claude;
 pub mod kiro_cli_v2;
 pub mod kiro_cli_v3;
@@ -175,6 +177,7 @@ pub fn dispatch_synth_with(
     from: Option<String>,
     verbose: bool,
     json: bool,
+    color: ColorMode,
 ) -> u8 {
     let source_dir: PathBuf = match &from {
         Some(v) => PathBuf::from(v),
@@ -193,6 +196,7 @@ pub fn dispatch_synth_with(
                 &err.to_string(),
                 Vec::new(),
                 json,
+                color,
             );
             return EXIT_USAGE_ERROR;
         }
@@ -219,6 +223,7 @@ pub fn dispatch_synth_with(
             &err.to_string(),
             Vec::new(),
             json,
+            color,
         );
         return EXIT_USAGE_ERROR;
     }
@@ -242,6 +247,7 @@ pub fn dispatch_synth_with(
                 &message,
                 Vec::new(),
                 json,
+                color,
             );
             return EXIT_USAGE_ERROR;
         }
@@ -292,6 +298,7 @@ pub fn dispatch_synth_with(
                             ),
                             Vec::new(),
                             json,
+                            color,
                         );
                         return EXIT_USAGE_ERROR;
                     }
@@ -311,6 +318,7 @@ pub fn dispatch_synth_with(
                 ),
                 Vec::new(),
                 json,
+                color,
             );
             return EXIT_USAGE_ERROR;
         }
@@ -328,6 +336,7 @@ pub fn dispatch_synth_with(
                 &format!("failed to package dist/ tree: {err}"),
                 Vec::new(),
                 json,
+                color,
             );
             return EXIT_USAGE_ERROR;
         }
@@ -344,6 +353,7 @@ pub fn dispatch_synth_with(
             ),
             Vec::new(),
             json,
+            color,
         );
         return EXIT_USAGE_ERROR;
     }
@@ -356,6 +366,7 @@ pub fn dispatch_synth_with(
             &format!("failed to write packaged artifact: {err}"),
             Vec::new(),
             json,
+            color,
         );
         return EXIT_USAGE_ERROR;
     }
@@ -370,6 +381,7 @@ pub fn dispatch_synth_with(
                 &format!("failed to write checksum sidecar: {err}"),
                 Vec::new(),
                 json,
+                color,
             );
             return EXIT_USAGE_ERROR;
         }
@@ -381,7 +393,7 @@ pub fn dispatch_synth_with(
             format_summary_json(&model, &output_root, &artifact_path, &sidecar_path)
         );
     } else {
-        println!("{}", format_summary(&model, &output_root));
+        println!("{}", format_summary(&model, &output_root, color));
         println!(
             "{}",
             format_artifact_summary_line(&output_root, &artifact_path)
@@ -476,13 +488,17 @@ impl ContentCounts {
 /// "nothing to build" message when the parsed model is entirely empty.
 /// Exit code is untouched either way (still 0) -- this only changes what
 /// is printed.
-fn format_summary(model: &CanonicalModel, output_root: &Path) -> String {
+fn format_summary(model: &CanonicalModel, output_root: &Path, color: ColorMode) -> String {
     let counts = ContentCounts::from_model(model);
     if counts.total() == 0 {
-        return "konductor synth: nothing to build (no agents, skills, SOPs, or context files found)".to_string();
+        return format!(
+            "{} nothing to build (no agents, skills, SOPs, or context files found)",
+            crate::cli::output::success_prefix(color, "konductor synth:")
+        );
     }
     format!(
-        "konductor synth: wrote {} agent(s), {} skill(s), {} SOP(s), {} context file(s) to {}",
+        "{} wrote {} agent(s), {} skill(s), {} SOP(s), {} context file(s) to {}",
+        crate::cli::output::success_prefix(color, "konductor synth:"),
         counts.agents,
         counts.skills,
         counts.sops,
@@ -593,7 +609,7 @@ mod tests {
     #[test]
     fn dispatch_synth_returns_zero_on_empty_source_tree() {
         let root = scratch_dir("empty-ok");
-        let code = dispatch_synth_with(&root, None, false, false);
+        let code = dispatch_synth_with(&root, None, false, false, ColorMode::disabled());
         assert_eq!(code, 0);
         fs::remove_dir_all(&root).ok();
     }
@@ -624,6 +640,7 @@ mod tests {
             Some(local_root.display().to_string()),
             false,
             false,
+            ColorMode::disabled(),
         );
 
         assert_eq!(code, 0);
@@ -650,6 +667,7 @@ mod tests {
             Some(root.display().to_string()),
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(code, 0);
         fs::remove_dir_all(&root).ok();
@@ -662,7 +680,7 @@ mod tests {
         let root = scratch_dir("source-is-file");
         let file_path = root.join("not-a-dir");
         fs::write(&file_path, b"not a directory").unwrap();
-        let code = dispatch_synth_with(&file_path, None, false, false);
+        let code = dispatch_synth_with(&file_path, None, false, false, ColorMode::disabled());
         assert_eq!(code, EXIT_USAGE_ERROR);
         fs::remove_dir_all(&root).ok();
     }
@@ -721,7 +739,11 @@ mod tests {
     #[test]
     fn format_summary_reports_exact_per_content_type_counts() {
         let model = populated_model();
-        let summary = format_summary(&model, Path::new("/tmp/example/dist"));
+        let summary = format_summary(
+            &model,
+            Path::new("/tmp/example/dist"),
+            ColorMode::disabled(),
+        );
         assert_eq!(
             summary,
             "konductor synth: wrote 1 agent(s), 1 skill(s), 2 SOP(s), 1 context file(s) to /tmp/example/dist"
@@ -732,7 +754,11 @@ mod tests {
     /// message, not a summary line claiming zero of everything.
     #[test]
     fn format_summary_reports_nothing_to_build_on_empty_model() {
-        let summary = format_summary(&CanonicalModel::default(), Path::new("/tmp/example/dist"));
+        let summary = format_summary(
+            &CanonicalModel::default(),
+            Path::new("/tmp/example/dist"),
+            ColorMode::disabled(),
+        );
         assert_eq!(
             summary,
             "konductor synth: nothing to build (no agents, skills, SOPs, or context files found)"
@@ -1004,7 +1030,7 @@ mod tests {
         fs::create_dir_all(root.join("context")).unwrap();
         fs::write(root.join("context/notes.md"), b"# Notes\n").unwrap();
 
-        let first_code = dispatch_synth_with(&root, None, false, false);
+        let first_code = dispatch_synth_with(&root, None, false, false, ColorMode::disabled());
         assert_eq!(first_code, 0, "first synth run must succeed");
         let first_snapshot = snapshot_dir(&root.join("dist"));
         assert!(
@@ -1012,7 +1038,7 @@ mod tests {
             "expected the first run to write something under dist/"
         );
 
-        let second_code = dispatch_synth_with(&root, None, false, false);
+        let second_code = dispatch_synth_with(&root, None, false, false, ColorMode::disabled());
         assert_eq!(second_code, 0, "second synth run must succeed");
         let second_snapshot = snapshot_dir(&root.join("dist"));
 
@@ -1045,7 +1071,7 @@ mod tests {
 
         // Plain summary: 1 written agent, not 2.
         assert_eq!(
-            format_summary(&model, Path::new("/tmp/example/dist")),
+            format_summary(&model, Path::new("/tmp/example/dist"), ColorMode::disabled()),
             "konductor synth: wrote 1 agent(s), 1 skill(s), 2 SOP(s), 1 context file(s) to /tmp/example/dist"
         );
         // JSON: agents == 1.
@@ -1092,7 +1118,7 @@ mod tests {
         };
 
         assert_eq!(
-            format_summary(&model, Path::new("/tmp/example/dist")),
+            format_summary(&model, Path::new("/tmp/example/dist"), ColorMode::disabled()),
             "konductor synth: wrote 1 agent(s), 0 skill(s), 0 SOP(s), 0 context file(s) to /tmp/example/dist"
         );
         let lines = format_verbose_lines(&model);
@@ -1261,7 +1287,7 @@ mod tests {
         fs::write(&legacy_artifact, b"leftover legacy artifact bytes").unwrap();
         fs::write(&legacy_sidecar, b"leftover legacy sidecar bytes").unwrap();
 
-        let code = dispatch_synth_with(&root, None, false, false);
+        let code = dispatch_synth_with(&root, None, false, false, ColorMode::disabled());
         assert_eq!(code, 0, "synth must succeed against an empty source tree");
 
         assert!(

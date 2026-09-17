@@ -32,6 +32,7 @@
   },
   "clientConfig": {
     "kiroCli": {
+      "welcomeMessage": "I'm your QA engineer. I analyze test coverage, plan end-to-end test strategies, generate security tests, and validate UI text. Point me at the code or feature you want tested.\n\nBuilt-in workflows — type any to run it:\n  /k-test-coverage-review — review test coverage and plan E2E and security tests\n  /k-code-review-workflow — run a full multi-skill code review consolidated into one report",
       "tools": ["@builtin", "subagent"],
       "allowedTools": ["fs_read", "fs_write", "shell"],
       "toolsSettings": {

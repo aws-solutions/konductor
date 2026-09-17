@@ -935,10 +935,12 @@ mod tests {
     fn cap_constants_have_the_expected_relative_sizes() {
         assert_eq!(METADATA_RESPONSE_CAP_BYTES, 8 * 1024 * 1024);
         assert_eq!(ASSET_DOWNLOAD_CAP_BYTES, 256 * 1024 * 1024);
-        assert!(
-            METADATA_RESPONSE_CAP_BYTES < ASSET_DOWNLOAD_CAP_BYTES,
-            "the metadata cap must stay far smaller than the asset-download cap"
-        );
+        const {
+            assert!(
+                METADATA_RESPONSE_CAP_BYTES < ASSET_DOWNLOAD_CAP_BYTES,
+                "the metadata cap must stay far smaller than the asset-download cap"
+            );
+        }
     }
 
     /// A 401 or 403 on the metadata call -- the exact codes a private

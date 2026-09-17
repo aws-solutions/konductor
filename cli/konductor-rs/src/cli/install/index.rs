@@ -7,9 +7,8 @@
 // Home-level pointer table: one entry per distinct canonicalized
 // `target_dir` this machine has ever installed Konductor to, so a future
 // `update`/`uninstall` can discover targets without the caller already
-// knowing where they are. See
-// `designs/konductor-cli-install-index.md` (§1/§2) for the full design;
-// this module implements exactly that schema and write-ahead ordering.
+// knowing where they are. This module implements that schema and
+// write-ahead ordering, detailed in the sections below.
 //
 // ── Location is fixed, not `target_dir`-relative ─────────────────────────
 // `index_path()` always resolves under the invoking user's real `$HOME`,
@@ -33,9 +32,14 @@ use serde::{Deserialize, Serialize};
 use crate::cli::atomic_write::write_atomic;
 use crate::cli::config::KONDUCTOR_DIR_NAME;
 
+use super::manifest::legacy_strategy_name_to_current;
+
 /// Index document schema version. Bump when the shape changes
-/// incompatibly.
-pub(crate) const INDEX_SCHEMA_VERSION: u64 = 1;
+/// incompatibly. `1` was `IndexEntry.strategy: String` (singular); `2`
+/// generalizes to `strategies: Vec<String>`,
+/// mirroring `Manifest.strategies`' own keys -- see `read_index`'s
+/// migration path.
+pub(crate) const INDEX_SCHEMA_VERSION: u64 = 2;
 
 /// File name within `KONDUCTOR_DIR_NAME`, under `$HOME`. No `.json`
 /// suffix -- mirrors `manifest.rs`'s `MANIFEST_FILE_NAME` naming.
@@ -57,16 +61,34 @@ pub enum IndexEntryStatus {
     Complete,
 }
 
-/// One tracked install target: where, which strategy, when, and
-/// whether that install/update run finished. `status` is a CACHE of
-/// that target's own manifest `status` (refreshed on every
-/// install/update write) -- never authoritative on its own; a consumer
-/// that finds `InProgress` here must re-read the target's manifest and
-/// trust it instead (see the design doc's self-healing rule). `status`
-/// is `#[serde(default)]` so an index predating this field still reads
-/// back (defaulting to `Complete`).
+/// One tracked install target: where, which strategies, when, and
+/// whether that install/update run finished. `strategies` mirrors
+/// `Manifest.strategies`' own keys (names only) -- one
+/// name per currently-tracked strategy at this target, letting
+/// `update`/`uninstall`'s selection UX render the list without opening
+/// every target's manifest just to know how many strategies it has.
+/// `status` is a CACHE of that target's own manifest `status`
+/// (refreshed on every install/update write) -- never authoritative on
+/// its own; a consumer that finds `InProgress` here must re-read the
+/// target's manifest and trust it instead. `status` is `#[serde(default)]`
+/// so an index predating this field still reads back (defaulting to `Complete`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IndexEntry {
+    pub target_dir: String,
+    pub strategies: Vec<String>,
+    pub installed_at: String,
+    #[serde(default)]
+    pub status: IndexEntryStatus,
+}
+
+/// Exactly `INDEX_SCHEMA_VERSION`'s predecessor shape (v1): `strategy:
+/// String` (singular), one strategy per entry. Used only by
+/// `read_index`'s migration path to deserialize an old on-disk index
+/// before repackaging each entry in memory as a single-entry
+/// `strategies` list -- never written, and never referenced outside
+/// this module.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+struct LegacyIndexEntryV1 {
     pub target_dir: String,
     pub strategy: String,
     pub installed_at: String,
@@ -89,6 +111,33 @@ impl Index {
         Index {
             schema_version: INDEX_SCHEMA_VERSION,
             installs,
+        }
+    }
+}
+
+/// Exactly `INDEX_SCHEMA_VERSION`'s predecessor shape (v1): a flat
+/// document with each entry's `strategy: String` singular. Used only by
+/// `read_index`'s migration path.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+struct LegacyIndexV1 {
+    pub schema_version: u64,
+    pub installs: Vec<LegacyIndexEntryV1>,
+}
+
+impl From<LegacyIndexV1> for Index {
+    fn from(legacy: LegacyIndexV1) -> Self {
+        Index {
+            schema_version: INDEX_SCHEMA_VERSION,
+            installs: legacy
+                .installs
+                .into_iter()
+                .map(|entry| IndexEntry {
+                    target_dir: entry.target_dir,
+                    strategies: vec![legacy_strategy_name_to_current(&entry.strategy)],
+                    installed_at: entry.installed_at,
+                    status: entry.status,
+                })
+                .collect(),
         }
     }
 }
@@ -320,6 +369,14 @@ fn read_index_at_home(home_dir: Option<&Path>) -> Result<Option<Index>, IndexErr
     let found_version = raw
         .get("schema_version")
         .and_then(serde_json::Value::as_i64);
+    if found_version == Some(1) {
+        let legacy: LegacyIndexV1 =
+            serde_json::from_str(&contents).map_err(|source| IndexError::Malformed {
+                path: path.clone(),
+                source,
+            })?;
+        return Ok(Some(Index::from(legacy)));
+    }
     if found_version != Some(INDEX_SCHEMA_VERSION as i64) {
         if let Some(found) = found_version {
             return Err(IndexError::UnsupportedSchemaVersion {
@@ -414,11 +471,37 @@ fn write_index_at_home(home_dir: Option<&Path>, entry: IndexEntry) -> Result<Pat
 /// missing entry at that point means nothing more to do, not a usage
 /// error. Read-modify-write via `write_atomic`, mirroring `write_index`'s
 /// own shape; the resulting file persists (with a possibly-empty
-/// `installs` list) rather than being deleted, per the design doc's
-/// §8 rule that `~/.konductor/installs` is never removed by any
-/// operation.
+/// `installs` list) rather than being deleted -- `~/.konductor/installs`
+/// is never removed by any operation.
 pub fn remove_index_entry(target_dir: &str) -> Result<PathBuf, IndexError> {
     remove_index_entry_at_home(env_home_dir().as_deref(), target_dir)
+}
+
+/// Removes `strategy_name` from the tracked entry matching `target_dir`'s
+/// own `strategies` list -- `uninstall` now acts on
+/// exactly one tracked strategy per run, not necessarily a target's
+/// whole tracking. A no-op (not an error) if no entry matches
+/// `target_dir`, or `strategy_name` isn't in that entry's list --
+/// `uninstall` calls this once it has already succeeded at removing
+/// that one strategy's own files/manifest slot, so nothing further to
+/// do at that point is not a usage error, mirroring
+/// `remove_index_entry`'s own "already gone" contract.
+///
+/// If removing `strategy_name` empties the entry's `strategies` list,
+/// the WHOLE entry is removed (mirrors `remove_index_entry`) -- an
+/// index entry tracking zero strategies is meaningless, since there is
+/// nothing left for a future `update`/`uninstall` to select among. In
+/// practice `uninstall_one_impl` never reaches this function for that
+/// case (it calls `remove_index_entry` directly instead once it already
+/// knows removing the selected strategy empties the manifest), but this
+/// function keeps the same invariant on its own so a future caller
+/// cannot produce a meaningless zero-strategy entry through this path
+/// either.
+pub fn remove_strategy_from_index(
+    target_dir: &str,
+    strategy_name: &str,
+) -> Result<PathBuf, IndexError> {
+    remove_strategy_from_index_at_home(env_home_dir().as_deref(), target_dir, strategy_name)
 }
 
 /// Returns every `target_dir` value that appears more than once in
@@ -477,6 +560,49 @@ fn remove_index_entry_at_home(
     Ok(path)
 }
 
+/// Same as `remove_strategy_from_index`, but with the home directory
+/// passed in explicitly -- see `read_index_at_home`'s docstring for
+/// why.
+fn remove_strategy_from_index_at_home(
+    home_dir: Option<&Path>,
+    target_dir: &str,
+    strategy_name: &str,
+) -> Result<PathBuf, IndexError> {
+    let path = index_path(home_dir).ok_or_else(|| IndexError::WriteFailed {
+        path: PathBuf::from("$HOME/.konductor/installs"),
+        source: std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "could not resolve $HOME to locate the install index",
+        ),
+    })?;
+    let parent = path.parent().expect("index path always has a parent");
+    std::fs::create_dir_all(parent).map_err(|source| IndexError::CreateDirFailed {
+        path: parent.to_path_buf(),
+        source,
+    })?;
+
+    let mut index = read_index_at_home(home_dir)?.unwrap_or_else(|| Index::new(Vec::new()));
+    if let Some(entry) = index
+        .installs
+        .iter_mut()
+        .find(|entry| entry.target_dir == target_dir)
+    {
+        entry.strategies.retain(|s| s != strategy_name);
+    }
+    // Mirrors `remove_index_entry`'s own "zero strategies is meaningless"
+    // invariant -- see this function's own doc comment.
+    index
+        .installs
+        .retain(|entry| entry.target_dir != target_dir || !entry.strategies.is_empty());
+
+    let bytes = serialize(&index).expect("Index must always serialize");
+    write_atomic(&path, &bytes).map_err(|source| IndexError::WriteFailed {
+        path: path.clone(),
+        source,
+    })?;
+    Ok(path)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -499,7 +625,7 @@ mod tests {
     fn sample_entry(target_dir: &str) -> IndexEntry {
         IndexEntry {
             target_dir: target_dir.to_string(),
-            strategy: "kiro-cli".to_string(),
+            strategies: vec!["kiro-cli-v2".to_string()],
             installed_at: "2026-01-15T09:30:00Z".to_string(),
             status: IndexEntryStatus::Complete,
         }
@@ -651,12 +777,17 @@ mod tests {
         fs::remove_dir_all(&home).ok();
     }
 
-    /// An index predating the `status` field (schema_version 1, no
-    /// `status` key on an entry) must still read back, defaulting that
-    /// entry's status to `Complete` -- the same back-compat contract
-    /// `manifest::Status` provides.
+    /// A legacy v1 index entry (no `status` key, singular `strategy`
+    /// field, no `strategies` list at all) must still read back,
+    /// migrated in memory into a single-entry `strategies` list
+    /// with its status defaulted to `Complete` -- the
+    /// same back-compat contract `manifest::Status` provides. Uses the
+    /// OLD `kiro-cli` name a real v1 binary would have recorded (see
+    /// `manifest::legacy_strategy_name_to_current`'s own doc comment for
+    /// why `kiro-cli-v2` could never appear in a genuine v1 document),
+    /// and asserts the migrated entry carries the CURRENT name.
     #[test]
-    fn read_defaults_status_for_legacy_entry_without_status_field() {
+    fn read_migrates_legacy_v1_entry_into_single_entry_strategies_list() {
         let home = scratch_dir("legacy-no-status");
         let path = index_path(Some(&home)).unwrap();
         fs::create_dir_all(path.parent().unwrap()).unwrap();
@@ -666,8 +797,33 @@ mod tests {
         )
         .unwrap();
         let loaded = read_index_at_home(Some(&home)).unwrap().unwrap();
+        assert_eq!(loaded.schema_version, INDEX_SCHEMA_VERSION);
         assert_eq!(loaded.installs.len(), 1);
+        assert_eq!(
+            loaded.installs[0].strategies,
+            vec!["kiro-cli-v2".to_string()]
+        );
         assert_eq!(loaded.installs[0].status, IndexEntryStatus::Complete);
+        fs::remove_dir_all(&home).ok();
+    }
+
+    /// The remaining two old-to-new mappings (`kiro-cli-v3` -> `kiro-v3`,
+    /// `claude-code` -> `claude`), exercised through the real index
+    /// migration path -- the test above only covers `kiro-cli`.
+    #[test]
+    fn read_migrates_legacy_v1_entry_remaining_old_names() {
+        let home = scratch_dir("legacy-remaining-names");
+        let path = index_path(Some(&home)).unwrap();
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(
+            &path,
+            br#"{"schema_version":1,"installs":[{"target_dir":"/home/alice/v3","strategy":"kiro-cli-v3","installed_at":"2026-01-15T09:30:00Z"},{"target_dir":"/home/alice/claude","strategy":"claude-code","installed_at":"2026-01-15T09:30:00Z"}]}"#,
+        )
+        .unwrap();
+        let loaded = read_index_at_home(Some(&home)).unwrap().unwrap();
+        assert_eq!(loaded.installs.len(), 2);
+        assert_eq!(loaded.installs[0].strategies, vec!["kiro-v3".to_string()]);
+        assert_eq!(loaded.installs[1].strategies, vec!["claude".to_string()]);
         fs::remove_dir_all(&home).ok();
     }
 
@@ -748,12 +904,27 @@ mod tests {
     }
 
     #[test]
-    fn schema_version_is_present_and_equals_one() {
+    fn schema_version_is_present_and_equals_two() {
         let home = scratch_dir("schema-version");
         let path = write_index_at_home(Some(&home), sample_entry("/home/alice/proj")).unwrap();
         let contents = fs::read_to_string(&path).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&contents).unwrap();
-        assert_eq!(parsed["schema_version"], 1);
+        assert_eq!(parsed["schema_version"], 2);
+        fs::remove_dir_all(&home).ok();
+    }
+
+    /// A target tracking two strategies (a Kiro variant and
+    /// `claude`) renders `strategies` with both names, in insertion
+    /// order (see `sample_entry_with_strategies`) -- the index's own
+    /// list mirrors `Manifest.strategies`' keys.
+    #[test]
+    fn write_then_read_round_trips_multi_strategy_entry() {
+        let home = scratch_dir("multi-strategy");
+        let mut entry = sample_entry("/home/alice/multi");
+        entry.strategies = vec!["kiro-cli-v2".to_string(), "claude".to_string()];
+        write_index_at_home(Some(&home), entry.clone()).unwrap();
+        let loaded = read_index_at_home(Some(&home)).unwrap().unwrap();
+        assert_eq!(loaded.installs[0].strategies, entry.strategies);
         fs::remove_dir_all(&home).ok();
     }
 
@@ -904,7 +1075,7 @@ mod tests {
 
     #[test]
     fn remove_index_entry_leaves_index_file_present_when_list_becomes_empty() {
-        // Design doc §8: an empty `installs` list is a valid, normal
+        // An empty `installs` list is a valid, normal
         // state -- the index file itself must persist, never be deleted,
         // even when removing the last entry leaves the list empty.
         let home = scratch_dir("remove-last-entry-keeps-file");

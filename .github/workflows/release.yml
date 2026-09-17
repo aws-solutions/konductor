@@ -5,15 +5,21 @@ name: Release
 # GitHub-hosted infrastructure -- unlike the Pipeline Workflow (see
 # pipeline-dispatch.yml), this workflow never leaves GitHub, so it needs no
 # AWS credentials, no OIDC role, and no Secrets Manager-backed token: the
-# built-in GITHUB_TOKEN with `contents: write` (below) is sufficient to
-# create a release in this same repo.
+# built-in GITHUB_TOKEN (scoped per-job below) is sufficient to create a
+# release in this same repo.
+#
+# Three jobs: `check-version` decides whether a release is needed; `build`
+# compiles konductor and skill-lookup-mcp natively for both linux/x86_64 and
+# linux/aarch64 (no cross-compilation target configured) and uploads each
+# leg's assets; `publish` downloads both legs and creates the release
+# exactly once.
 
 on:
   push:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 # Serializes releases per ref so two pushes to main can't both observe a 404
 # on the release-exists check below and both attempt `gh release create` for
@@ -23,26 +29,160 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
+env:
+  # 2 arch legs x 4 per-arch files (raw binary + sidecar, for both konductor
+  # and skill-lookup-mcp) + 4 x86_64-only shared files (bundled zip, zip
+  # sidecar, packaged tarball, tarball sidecar). Used only by publish's own
+  # exact-count assertion below -- check-version uses a separate name-based
+  # completeness check and doesn't reference this variable.
+  #
+  # This count (and check-version's own name list below) only run after a
+  # merge to main. validate-pr.yml's "Verify packaged tarball asset count
+  # and version" step covers the narrower slice of this that's reproducible
+  # at PR time -- the packaged tarball and its sidecar, which `konductor
+  # synth` writes without needing the per-arch/per-tool binaries the rest of
+  # this count depends on.
+  EXPECTED_ASSET_COUNT: 12
+
 jobs:
-  release:
-    name: Synthesize and Publish Release
-    # Mirrors the same repository guard the Pipeline Workflow uses
-    # (pipeline-dispatch.yml) -- a fork of this repo must not attempt to
-    # publish a release under its own push-to-main events.
+  check-version:
+    name: Check release version
+    # Mirrors the fork guard in pipeline-dispatch.yml. Downstream jobs need
+    # no copy: a skipped job's outputs are empty, so their
+    # `needs.check-version.outputs.should_publish` checks already resolve false.
     if: github.repository == 'aws-solutions/konductor'
     runs-on: ubuntu-latest
+    outputs:
+      should_publish: ${{ steps.check.outputs.should_publish }}
+      release_version: ${{ steps.check.outputs.release_version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
+
+      - name: Determine release version and whether it needs publishing
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          if [ ! -f VERSION ]; then
+            echo "FATAL: VERSION file not found at repo root. Failing closed -- a released build must bump VERSION." >&2
+            exit 1
+          fi
+          RAW_VERSION="$(cat VERSION)"
+          # Shared with validate-pr.yml (and mirrored on the CDK pipeline
+          # side by versionSemverValidationSnippet()) so the regex and FATAL
+          # message live in one place.
+          scripts/validate-version-semver.sh "$RAW_VERSION"
+          RELEASE_VERSION="v${RAW_VERSION}"
+          echo "release_version=${RELEASE_VERSION}" >> "$GITHUB_OUTPUT"
+
+          # Idempotency: not every push bumps VERSION, so without this check a
+          # push that doesn't would run the full build matrix only to fail at
+          # `gh release create` with "already exists". Reads the REST API's
+          # documented HTTP status line (200/404) rather than `gh release
+          # view`'s free-text error, which isn't a stable contract.
+          RELEASE_LOOKUP_STDERR="$(mktemp)"
+          # `bash -eo pipefail` would abort on gh api's non-2xx exit (expected
+          # for 404) before the status line is inspected, so suspend pipefail
+          # only for this lookup; the branching below still fails closed on
+          # anything unexpected.
+          set +o pipefail
+          RELEASE_LOOKUP_STATUS_LINE="$(gh api -i "repos/${{ github.repository }}/releases/tags/${RELEASE_VERSION}" 2>"$RELEASE_LOOKUP_STDERR" | head -n 1)"
+          set -o pipefail
+          if printf '%s' "$RELEASE_LOOKUP_STATUS_LINE" | grep -qE '^HTTP/[0-9.]+ 200 '; then
+            # Tag existence isn't proof publishing finished -- a prior run
+            # could die mid-`publish` after creating the release but before
+            # every asset attached. Name-based, not count-based: a release
+            # with the right COUNT but wrong names (e.g. left over from an
+            # aborted VERSION-mismatch run) must not short-circuit here and
+            # skip `build`+`publish` entirely -- that would prevent
+            # `publish`'s own more accurate name+content re-check from ever
+            # running. `publish` re-checks independently anyway, since a
+            # long build can make this answer stale.
+            #
+            # Target triples are hardcoded here (matching the matrix's own
+            # `ubuntu-latest` / `ubuntu-24.04-arm` runners) rather than
+            # derived from `rustc -vV` like `build` does, since this job
+            # runs before any build. If a runner image ever changes its
+            # host triple, this only degrades to an unnecessary rebuild --
+            # `publish`'s own name+content check still derives triples from
+            # the real build output and remains correct regardless.
+            X86_64_TARGET_TRIPLE="x86_64-unknown-linux-gnu"
+            AARCH64_TARGET_TRIPLE="aarch64-unknown-linux-gnu"
+            EXPECTED_STATIC_ASSET_NAMES="$(cat <<STATIC_NAMES_EOF
+          konductor-release.zip
+          konductor-release.zip.sha256
+          konductor-${RELEASE_VERSION}-${X86_64_TARGET_TRIPLE}
+          konductor-${RELEASE_VERSION}-${X86_64_TARGET_TRIPLE}.sha256
+          skill-lookup-mcp-${RELEASE_VERSION}-${X86_64_TARGET_TRIPLE}
+          skill-lookup-mcp-${RELEASE_VERSION}-${X86_64_TARGET_TRIPLE}.sha256
+          konductor-${RELEASE_VERSION}-${AARCH64_TARGET_TRIPLE}
+          konductor-${RELEASE_VERSION}-${AARCH64_TARGET_TRIPLE}.sha256
+          skill-lookup-mcp-${RELEASE_VERSION}-${AARCH64_TARGET_TRIPLE}
+          skill-lookup-mcp-${RELEASE_VERSION}-${AARCH64_TARGET_TRIPLE}.sha256
+          STATIC_NAMES_EOF
+          )"
+            ACTUAL_ASSET_NAMES="$(gh release view "$RELEASE_VERSION" --json assets --jq '.assets[].name' | sort)"
+            MISSING_STATIC_NAMES="$(comm -23 <(printf '%s\n' "$EXPECTED_STATIC_ASSET_NAMES" | sort) <(printf '%s\n' "$ACTUAL_ASSET_NAMES"))"
+            # The packaged tarball/sidecar's version segment comes from
+            # `artifact_filename()` (Cargo.toml's version), not necessarily
+            # RELEASE_VERSION (see this repo's own open follow-up on that
+            # drift) -- matched by pattern, same as `publish`'s glob search
+            # over dist/, not by an exact name built from RELEASE_VERSION.
+            TARBALL_MATCH_COUNT="$(printf '%s\n' "$ACTUAL_ASSET_NAMES" | grep -cE '^konductor-v[0-9]+\.[0-9]+\.[0-9]+\.tar\.gz$' || true)"
+            TARBALL_SIDECAR_MATCH_COUNT="$(printf '%s\n' "$ACTUAL_ASSET_NAMES" | grep -cE '^konductor-v[0-9]+\.[0-9]+\.[0-9]+\.tar\.gz\.sha256$' || true)"
+            if [ -z "$MISSING_STATIC_NAMES" ] && [ "$TARBALL_MATCH_COUNT" -eq 1 ] && [ "$TARBALL_SIDECAR_MATCH_COUNT" -eq 1 ]; then
+              echo "Release ${RELEASE_VERSION} already exists with every expected asset name; nothing to publish for this push."
+              rm -f "$RELEASE_LOOKUP_STDERR"
+              echo "should_publish=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "Release ${RELEASE_VERSION} exists but is missing expected asset name(s); treating as incomplete and republishing."
+            [ -n "$MISSING_STATIC_NAMES" ] && printf '%s\n' "$MISSING_STATIC_NAMES"
+          elif printf '%s' "$RELEASE_LOOKUP_STATUS_LINE" | grep -qE '^HTTP/[0-9.]+ 404 '; then
+            echo "Release ${RELEASE_VERSION} does not exist yet; proceeding to build and publish it."
+          else
+            echo "FATAL: release lookup returned an unexpected HTTP status. Failing closed." >&2
+            echo "Status line: ${RELEASE_LOOKUP_STATUS_LINE}" >&2
+            head -c 500 "$RELEASE_LOOKUP_STDERR" >&2
+            rm -f "$RELEASE_LOOKUP_STDERR"
+            exit 1
+          fi
+          rm -f "$RELEASE_LOOKUP_STDERR"
+          echo "should_publish=true" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build (${{ matrix.arch }})
+    needs: check-version
+    if: needs.check-version.outputs.should_publish == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # linux/x86_64 is the primary leg: it stages the shared,
+          # architecture-independent assets so exactly one leg publishes them.
+          - arch: x86_64
+            runner: ubuntu-latest
+            primary: true
+          # Free GitHub-hosted Linux ARM64 runner, public repos only:
+          # https://github.blog/changelog/2025-01-16-linux-arm64-hosted-runners-now-available-for-free-in-public-repositories-public-preview/
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+            primary: false
+    runs-on: ${{ matrix.runner }}
+    env:
+      RELEASE_VERSION: ${{ needs.check-version.outputs.release_version }}
     steps:
       - name: Checkout
         uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
 
       - name: Set up Rust toolchain
-        # No existing Rust-toolchain-setup convention exists elsewhere in
-        # this repo's workflows to match -- cli/konductor-rs pins no MSRV
-        # (Cargo.toml sets only `edition = "2021"`), so `stable` is used.
-        # Pinned to a commit SHA on the `stable` branch (rather than the
-        # mutable branch ref) since this is a release-publishing workflow
-        # with `contents: write` -- an unpinned third-party action here is a
-        # supply-chain risk to what the workflow publishes.
+        # No repo convention to match -- cli/konductor-rs pins no MSRV, so
+        # `stable` is used. Pinned to a commit SHA (not the mutable branch
+        # ref) since this is a release-publishing workflow -- an unpinned
+        # action here is a supply-chain risk to what gets published.
+        # Installs natively for whichever arch `runs-on` resolved to.
         uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
 
       - name: Build konductor and run synth (produces dist/)
@@ -71,36 +211,78 @@ jobs:
         # target and its BINARY_NAMES list).
         run: make -C mcp build
 
-      - name: Assemble release staging directory (allowlist copy)
-        # Mandatory, fail-closed: dist/ and the packaged release artifact
-        # (target/konductor-artifacts/*.tar.gz + its .sha256 sidecar, written
-        # by `konductor synth` -- see artifact_output_dir's own doc comment in
-        # cli/konductor-rs/src/cli/synth/mod.rs) are the entire point of the
-        # release. Everything else copied here is best-effort only.
-        # Everything NOT named below (docs/design/, aim.json, Config,
-        # build-tools/, cli/, mcp/, .kiro/, .github/, scripts/, .git/) is
-        # excluded structurally by simply never being copied INTO THIS ZIP.
-        # The compiled `build/cli/konductor` and `mcp/target/release/
-        # skill-lookup-mcp` binaries are still published, just as their own
-        # separate release assets rather than zip contents -- see the
-        # "Package and publish GitHub Release" step below.
+      - name: Determine this leg's target triple
+        id: triple
         run: |
           set -e
+          TARGET_TRIPLE="$(rustc -vV | sed -n 's/^host: //p')"
+          if [ -z "$TARGET_TRIPLE" ]; then
+            echo "FATAL: could not determine target triple from 'rustc -vV'. Failing closed." >&2
+            exit 1
+          fi
+          echo "target_triple=$TARGET_TRIPLE" >> "$GITHUB_OUTPUT"
+
+      - name: Stage this leg's per-architecture release assets
+        # The raw binaries (the compiled `konductor` CLI and `skill-lookup-mcp`)
+        # genuinely differ per architecture, unlike the packaged content
+        # tarball below, so each leg's copy is renamed with its own target
+        # triple before upload -- otherwise both legs would produce a
+        # same-named asset and `gh release create` would collide attaching
+        # them. Named on the standard Rust release-asset convention
+        # (<name>-<version>-<target-triple>), not derived from the tarball's
+        # own filename: that filename is deliberately architecture-independent
+        # (see synth::artifact_filename's doc comment) and stays that way.
+        run: |
+          set -e
+          TARGET_TRIPLE="${{ steps.triple.outputs.target_triple }}"
+          ASSET_DIR="$RUNNER_TEMP/release-assets"
+          mkdir -p "$ASSET_DIR"
+
+          if [ ! -x build/cli/konductor ]; then
+            echo "FATAL: build/cli/konductor not found or not executable. Failing closed." >&2
+            exit 1
+          fi
+          CLI_BIN_ASSET_NAME="konductor-${RELEASE_VERSION}-${TARGET_TRIPLE}"
+          cp build/cli/konductor "$ASSET_DIR/$CLI_BIN_ASSET_NAME"
+
+          if [ ! -x mcp/target/release/skill-lookup-mcp ]; then
+            echo "FATAL: mcp/target/release/skill-lookup-mcp not found or not executable -- did the 'Build MCP servers' step run? Failing closed." >&2
+            exit 1
+          fi
+          MCP_BIN_ASSET_NAME="skill-lookup-mcp-${RELEASE_VERSION}-${TARGET_TRIPLE}"
+          cp mcp/target/release/skill-lookup-mcp "$ASSET_DIR/$MCP_BIN_ASSET_NAME"
+
+          # sha256sum's own output ("<hash>  <filename>\n") already matches
+          # sidecar::write_sidecar's format; run from within ASSET_DIR so
+          # each sidecar records its sibling's bare filename, not a path.
+          (cd "$ASSET_DIR" && sha256sum "$CLI_BIN_ASSET_NAME" > "$CLI_BIN_ASSET_NAME.sha256")
+          (cd "$ASSET_DIR" && sha256sum "$MCP_BIN_ASSET_NAME" > "$MCP_BIN_ASSET_NAME.sha256")
+
+      - name: Stage the shared (architecture-independent) release assets
+        # Only the primary leg stages these: the packaged content tarball and
+        # the allowlist-copy zip are byte-for-byte identical regardless of
+        # which architecture built them (see synth::artifact_filename's doc
+        # comment), so a second copy from the other leg would only collide
+        # on `gh release create` for no benefit.
+        if: ${{ matrix.primary == true }}
+        run: |
+          set -e
+          ASSET_DIR="$RUNNER_TEMP/release-assets"
+          mkdir -p "$ASSET_DIR"
+
           STAGING_DIR="$RUNNER_TEMP/konductor-release-staging"
           mkdir -p "$STAGING_DIR"
 
+          # Mandatory, fail-closed: dist/ is the entire point of the release.
           cp -r dist "$STAGING_DIR/dist"
           if [ -z "$(ls -A "$STAGING_DIR/dist" 2>/dev/null)" ]; then
             echo "FATAL: dist/ copied empty. Failing closed." >&2
             exit 1
           fi
 
-          cp -r target/konductor-artifacts "$STAGING_DIR/konductor-artifacts"
-          if [ -z "$(ls -A "$STAGING_DIR/konductor-artifacts" 2>/dev/null)" ]; then
-            echo "FATAL: konductor-artifacts/ copied empty. Failing closed." >&2
-            exit 1
-          fi
-
+          # Best-effort only -- never fail-closed on these. Everything else
+          # (cli/, mcp/, .git/, etc.) is excluded structurally by simply
+          # never being copied here.
           for f in LICENSE README.md CHANGELOG.md; do
             [ -f "$f" ] && cp "$f" "$STAGING_DIR/" || true
           done
@@ -109,131 +291,239 @@ jobs:
             cp -r docs/guides "$STAGING_DIR/docs/guides"
           fi
 
-          echo "STAGING_DIR=$STAGING_DIR" >> "$GITHUB_ENV"
-
-      - name: Package and publish GitHub Release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -e
-          if [ ! -f VERSION ]; then
-            echo "FATAL: VERSION file not found at repo root. Failing closed -- a released build must bump VERSION." >&2
-            exit 1
-          fi
-          RELEASE_VERSION="v$(cat VERSION)"
-
-          # Idempotency: this workflow runs on every push to main, but not
-          # every push bumps VERSION (docs-only changes, refactors, etc.). A
-          # push that doesn't change VERSION would otherwise run the full
-          # build pipeline and only then fail at `gh release create`
-          # with a "release already exists" error -- red on the common case,
-          # not just on an actual re-run of the same version. Detection reads
-          # the GitHub REST API's documented, versioned HTTP status line
-          # (200 found / 404 not found) rather than `gh release view`'s
-          # free-text CLI error string, which is not part of any documented
-          # contract and can change on a future `gh` release -- same
-          # mechanism this repo's internal release pipeline used for the
-          # equivalent check.
-          RELEASE_LOOKUP_STDERR="$(mktemp)"
-          # GitHub Actions runs this step with `bash -eo pipefail`, so a
-          # non-2xx `gh api` exit (expected on 404) would otherwise abort
-          # the pipeline before the status line is ever inspected --
-          # defeating the 404 branch below, which is the primary path for
-          # every release that hasn't been published yet. Suspend pipefail
-          # only for this lookup; `head`'s own exit status (0) then governs
-          # the assignment, and the explicit 200/404/else branching still
-          # handles detection and fails closed on anything unexpected.
-          set +o pipefail
-          RELEASE_LOOKUP_STATUS_LINE="$(gh api -i "repos/${{ github.repository }}/releases/tags/${RELEASE_VERSION}" 2>"$RELEASE_LOOKUP_STDERR" | head -n 1)"
-          set -o pipefail
-          if printf '%s' "$RELEASE_LOOKUP_STATUS_LINE" | grep -qE '^HTTP/[0-9.]+ 200 '; then
-            echo "Release ${RELEASE_VERSION} already exists; nothing to publish for this push."
-            rm -f "$RELEASE_LOOKUP_STDERR"
-            exit 0
-          elif printf '%s' "$RELEASE_LOOKUP_STATUS_LINE" | grep -qE '^HTTP/[0-9.]+ 404 '; then
-            echo "Release ${RELEASE_VERSION} does not exist yet; proceeding to create it."
-          else
-            echo "FATAL: release lookup returned an unexpected HTTP status. Failing closed." >&2
-            echo "Status line: ${RELEASE_LOOKUP_STATUS_LINE}" >&2
-            cat "$RELEASE_LOOKUP_STDERR" >&2
-            rm -f "$RELEASE_LOOKUP_STDERR"
-            exit 1
-          fi
-          rm -f "$RELEASE_LOOKUP_STDERR"
-
-          RELEASE_ZIP="$RUNNER_TEMP/konductor-release.zip"
-          (cd "$STAGING_DIR" && zip -r "$RELEASE_ZIP" .)
+          (cd "$STAGING_DIR" && zip -r "$ASSET_DIR/konductor-release.zip" .)
+          # Matches every other asset's checksum-sidecar convention, so
+          # publish's content-verification pass below can cover the zip too
+          # instead of trusting a correct name with unverified content.
+          (cd "$ASSET_DIR" && sha256sum konductor-release.zip > konductor-release.zip.sha256)
 
           # Individually-named assets, published alongside the bundled zip
-          # above (not instead of it). `install/github.rs`'s own top-of-file
-          # comment documents that `konductor install`'s GitHub-release path
-          # reliably fails with `GithubFetchError::MissingAsset` against
-          # today's zip-only release, because it looks for a release asset
-          # named exactly `synth::artifact_filename()` plus its `.sha256`
-          # sidecar -- never a zip. Publishing those two files individually
-          # (rather than only inside the zip) is what makes that install
-          # path actually work.
-          CLI_TARBALL_PATH="$(find target/konductor-artifacts -maxdepth 1 -name '*.tar.gz' -print -quit)"
-          if [ -z "$CLI_TARBALL_PATH" ] || [ ! -f "$CLI_TARBALL_PATH" ]; then
-            echo "FATAL: no packaged .tar.gz artifact found under target/konductor-artifacts/. Failing closed." >&2
+          # above (not instead of it): `install/github.rs` documents that
+          # `konductor install`'s GitHub-release path fails against a
+          # zip-only release, since it looks for an asset named exactly
+          # `synth::artifact_filename()` plus its `.sha256` sidecar, never a
+          # zip. `konductor synth` writes both into dist/'s top level.
+          # Exactly one match, not "at least one" -- a second stray tarball
+          # (e.g. a leftover local build) would otherwise corrupt this path.
+          CLI_TARBALL_MATCHES="$(find dist -maxdepth 1 -name 'konductor-v*.tar.gz')"
+          CLI_TARBALL_COUNT="$(printf '%s\n' "$CLI_TARBALL_MATCHES" | grep -c . || true)"
+          if [ "$CLI_TARBALL_COUNT" -eq 0 ]; then
+            echo "FATAL: no packaged .tar.gz artifact found at dist/'s top level. Failing closed." >&2
+            exit 1
+          elif [ "$CLI_TARBALL_COUNT" -gt 1 ]; then
+            echo "FATAL: expected exactly one packaged .tar.gz artifact at dist/'s top level, found ${CLI_TARBALL_COUNT}. Failing closed." >&2
+            printf '%s\n' "$CLI_TARBALL_MATCHES" >&2
             exit 1
           fi
+          CLI_TARBALL_PATH="$CLI_TARBALL_MATCHES"
           CLI_TARBALL_SIDECAR_PATH="${CLI_TARBALL_PATH}.sha256"
           if [ ! -f "$CLI_TARBALL_SIDECAR_PATH" ]; then
             echo "FATAL: expected sidecar $CLI_TARBALL_SIDECAR_PATH not found. Failing closed." >&2
             exit 1
           fi
 
-          # Raw, standalone binaries (the compiled `konductor` CLI and the
-          # `skill-lookup-mcp` MCP server), published as their own assets
-          # too -- distinct from the fix above: `konductor install`'s
-          # GitHub-release path never consumes these, this is purely for a
-          # direct binary download outside that installer flow. Named off
-          # the packaged tarball's own stem (version + target-triple
-          # suffix) rather than re-deriving the arch/OS mapping here, so
-          # naming can't drift from the single source of truth
-          # (`synth::artifact_filename()`) that produced the tarball.
-          RELEASE_BIN_DIR="$RUNNER_TEMP/konductor-release-binaries"
-          mkdir -p "$RELEASE_BIN_DIR"
-
-          CLI_TARBALL_BASENAME="$(basename "$CLI_TARBALL_PATH")"
-          CLI_TARBALL_STEM="${CLI_TARBALL_BASENAME%.tar.gz}"
-          CLI_TARBALL_SUFFIX="${CLI_TARBALL_STEM#konductor}"
-
-          if [ ! -x build/cli/konductor ]; then
-            echo "FATAL: build/cli/konductor not found or not executable. Failing closed." >&2
+          # artifact_filename()'s version segment comes from Cargo.toml, not
+          # RELEASE_VERSION (the root VERSION file) -- see check-version's own
+          # TARBALL_MATCH_COUNT comment above. Nothing enforces the two stay in
+          # sync, so fail closed here rather than publish a tarball whose name
+          # silently disagrees with the release tag and the binary's own
+          # --version output.
+          TARBALL_VERSION="$(basename "$CLI_TARBALL_PATH" | sed -nE 's/^konductor-(v[0-9]+\.[0-9]+\.[0-9]+)\.tar\.gz$/\1/p')"
+          if [ -z "$TARBALL_VERSION" ]; then
+            echo "FATAL: could not parse a version segment from tarball filename $(basename "$CLI_TARBALL_PATH"). Failing closed." >&2
             exit 1
           fi
-          CLI_BIN_ASSET_NAME="$CLI_TARBALL_STEM"
-          cp build/cli/konductor "$RELEASE_BIN_DIR/$CLI_BIN_ASSET_NAME"
-
-          if [ ! -x mcp/target/release/skill-lookup-mcp ]; then
-            echo "FATAL: mcp/target/release/skill-lookup-mcp not found or not executable -- did the 'Build MCP servers' step run? Failing closed." >&2
+          if [ "$TARBALL_VERSION" != "$RELEASE_VERSION" ]; then
+            echo "FATAL: packaged tarball's version segment ($TARBALL_VERSION, from Cargo.toml) does not match this release's RELEASE_VERSION ($RELEASE_VERSION, from the root VERSION file). Bump Cargo.toml's version to match VERSION before releasing. Failing closed." >&2
             exit 1
           fi
-          MCP_BIN_ASSET_NAME="skill-lookup-mcp${CLI_TARBALL_SUFFIX}"
-          cp mcp/target/release/skill-lookup-mcp "$RELEASE_BIN_DIR/$MCP_BIN_ASSET_NAME"
 
-          # sha256sum's own output ("<hash>  <filename>\n") already matches
-          # sidecar::write_sidecar's format exactly; run from within
-          # RELEASE_BIN_DIR so each sidecar records its sibling's bare
-          # filename, not a path.
-          (cd "$RELEASE_BIN_DIR" && sha256sum "$CLI_BIN_ASSET_NAME" > "$CLI_BIN_ASSET_NAME.sha256")
-          (cd "$RELEASE_BIN_DIR" && sha256sum "$MCP_BIN_ASSET_NAME" > "$MCP_BIN_ASSET_NAME.sha256")
+          cp "$CLI_TARBALL_PATH" "$CLI_TARBALL_SIDECAR_PATH" "$ASSET_DIR/"
 
-          KONDUCTOR_VERSION="$(build/cli/konductor --version)"
+      - name: Upload this leg's release assets
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-assets-${{ matrix.arch }}
+          path: ${{ runner.temp }}/release-assets
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    name: Publish GitHub Release
+    needs: [check-version, build]
+    # `needs.build.result` (not just `should_publish`) so one matrix leg
+    # failing (permitted by `fail-fast: false`) can never let this job start
+    # and publish a partial asset set.
+    if: needs.check-version.outputs.should_publish == 'true' && needs.build.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      RELEASE_VERSION: ${{ needs.check-version.outputs.release_version }}
+      # No Checkout step in this job, so `gh` has no git remote to auto-detect from.
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Download x86_64 release assets
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: release-assets-x86_64
+          path: release-assets/release-assets-x86_64
+
+      - name: Download aarch64 release assets
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: release-assets-aarch64
+          path: release-assets/release-assets-aarch64
+
+      - name: Package and publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          shopt -s nullglob
           BUILD_TIMESTAMP="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          # --target pins the new tag to the exact commit this run checked
-          # out and built. Without it, `gh release create` on a not-yet-
-          # existing tag creates the tag against the default branch's
-          # current tip -- and since `cancel-in-progress: false` above lets
-          # runs queue, main can advance past ${{ github.sha }} before this
-          # step executes, leaving the tag on a different commit than the
-          # artifact and notes describe.
-          gh release create "$RELEASE_VERSION" "$RELEASE_ZIP" \
-            "$CLI_TARBALL_PATH" "$CLI_TARBALL_SIDECAR_PATH" \
-            "$RELEASE_BIN_DIR/$CLI_BIN_ASSET_NAME" "$RELEASE_BIN_DIR/$CLI_BIN_ASSET_NAME.sha256" \
-            "$RELEASE_BIN_DIR/$MCP_BIN_ASSET_NAME" "$RELEASE_BIN_DIR/$MCP_BIN_ASSET_NAME.sha256" \
+
+          ASSETS=()
+          for dir in release-assets/release-assets-*; do
+            [ -d "$dir" ] || continue
+            for f in "$dir"/*; do
+              ASSETS+=("$f")
+            done
+          done
+          shopt -u nullglob
+          if [ "${#ASSETS[@]}" -ne "$EXPECTED_ASSET_COUNT" ]; then
+            echo "FATAL: expected exactly $EXPECTED_ASSET_COUNT release assets (2 arch legs x 4 per-arch files + 4 x86_64-only shared files), found ${#ASSETS[@]}. Failing closed." >&2
+            printf '%s\n' "${ASSETS[@]}" >&2
+            exit 1
+          fi
+
+          # Re-check independently of check-version's own result -- a long
+          # build, or a re-run after a partial prior failure, can leave that
+          # earlier answer stale. `gh release create` below must not blindly
+          # assume it still holds.
+          RELEASE_LOOKUP_STDERR="$(mktemp)"
+          set +o pipefail
+          RELEASE_LOOKUP_STATUS_LINE="$(gh api -i "repos/${{ github.repository }}/releases/tags/${RELEASE_VERSION}" 2>"$RELEASE_LOOKUP_STDERR" | head -n 1)"
+          set -o pipefail
+          if printf '%s' "$RELEASE_LOOKUP_STATUS_LINE" | grep -qE '^HTTP/[0-9.]+ 200 '; then
+            # Name-based, not count-based: a stale $EXPECTED_ASSET_COUNT or a
+            # human-attached extra asset must not trigger delete+recreate.
+            EXPECTED_ASSET_NAMES="$(for f in "${ASSETS[@]}"; do basename "$f"; done | sort)"
+            ACTUAL_ASSET_NAMES="$(gh release view "$RELEASE_VERSION" --json assets --jq '.assets[].name' | sort)"
+            MISSING_ASSET_NAMES="$(comm -23 <(printf '%s\n' "$EXPECTED_ASSET_NAMES") <(printf '%s\n' "$ACTUAL_ASSET_NAMES"))"
+            if [ -z "$MISSING_ASSET_NAMES" ]; then
+              # A correct name is not proof of correct content -- a partial
+              # upload can leave an asset present under the right name with
+              # corrupted bytes. Download each already-published asset that
+              # ships with a checksum sidecar (every raw binary, the packaged
+              # tarball, and the bundled zip) and verify it against its own
+              # sidecar before trusting this release, the same integrity
+              # principle the CDK S3 upload path already applies to its own
+              # idempotency check.
+              CONTENT_VERIFY_DIR="$(mktemp -d)"
+              CORRUPTED_ASSET_NAMES=""
+              DOWNLOAD_FAILED_ASSET_NAMES=""
+              for f in "${ASSETS[@]}"; do
+                NAME="$(basename "$f")"
+                case "$NAME" in
+                  *.sha256) continue ;;
+                esac
+                SIDECAR_NAME="${NAME}.sha256"
+                if ! gh release download "$RELEASE_VERSION" -p "$NAME" -p "$SIDECAR_NAME" -D "$CONTENT_VERIFY_DIR" --clobber >/dev/null 2>&1; then
+                  DOWNLOAD_FAILED_ASSET_NAMES="$DOWNLOAD_FAILED_ASSET_NAMES $NAME"
+                  continue
+                fi
+                DOWNLOADED_HASH="$(sha256sum "$CONTENT_VERIFY_DIR/$NAME" | cut -d' ' -f1)"
+                RECORDED_HASH="$(cut -d' ' -f1 "$CONTENT_VERIFY_DIR/$SIDECAR_NAME")"
+                if [ "$DOWNLOADED_HASH" != "$RECORDED_HASH" ]; then
+                  echo "Content mismatch for already-published asset $NAME (downloaded hash $DOWNLOADED_HASH does not match its own recorded checksum $RECORDED_HASH); treating as corrupted."
+                  CORRUPTED_ASSET_NAMES="$CORRUPTED_ASSET_NAMES $NAME"
+                fi
+                rm -f "$CONTENT_VERIFY_DIR/$NAME" "$CONTENT_VERIFY_DIR/$SIDECAR_NAME"
+              done
+              rm -rf "$CONTENT_VERIFY_DIR"
+
+              # A download failure here is inconclusive (transient network/API
+              # error), not confirmed corruption. Fail closed instead of
+              # deleting the existing release, the same approach the CDK
+              # head-object checks use for a non-404 error.
+              if [ -n "$DOWNLOAD_FAILED_ASSET_NAMES" ]; then
+                echo "FATAL: could not download the following already-published asset(s)/sidecar(s) from the existing release for content verification:" >&2
+                printf '%s\n' "$DOWNLOAD_FAILED_ASSET_NAMES" >&2
+                echo "Failing closed rather than treat an inconclusive download as confirmed corruption." >&2
+                rm -f "$RELEASE_LOOKUP_STDERR"
+                exit 1
+              fi
+
+              if [ -z "$CORRUPTED_ASSET_NAMES" ]; then
+                echo "Release ${RELEASE_VERSION} already has every expected asset name (created by a prior run of this job), each verified against its own checksum sidecar -- nothing left to publish."
+                rm -f "$RELEASE_LOOKUP_STDERR"
+                exit 0
+              fi
+              echo "Release ${RELEASE_VERSION} has every expected asset name, but the following failed content verification against their own checksum sidecar:"
+              printf '%s\n' "$CORRUPTED_ASSET_NAMES"
+              echo "Re-uploading the corrected asset(s) onto the existing release in place (no delete)."
+              gh release upload "$RELEASE_VERSION" "${ASSETS[@]}" --clobber
+              echo "Release ${RELEASE_VERSION} updated with corrected asset content."
+              rm -f "$RELEASE_LOOKUP_STDERR"
+              exit 0
+            else
+              echo "Release ${RELEASE_VERSION} exists but is missing expected asset(s) (left over from a partially-failed prior run):"
+              printf '%s\n' "$MISSING_ASSET_NAMES"
+              echo "Uploading the missing asset(s) onto the existing release in place (no delete)."
+              gh release upload "$RELEASE_VERSION" "${ASSETS[@]}" --clobber
+              echo "Release ${RELEASE_VERSION} updated with the missing asset(s)."
+              rm -f "$RELEASE_LOOKUP_STDERR"
+              exit 0
+            fi
+          elif printf '%s' "$RELEASE_LOOKUP_STATUS_LINE" | grep -qE '^HTTP/[0-9.]+ 404 '; then
+            : # Does not exist yet -- the common case; proceed to create below.
+          else
+            echo "FATAL: release lookup returned an unexpected HTTP status. Failing closed." >&2
+            echo "Status line: ${RELEASE_LOOKUP_STATUS_LINE}" >&2
+            head -c 500 "$RELEASE_LOOKUP_STDERR" >&2
+            rm -f "$RELEASE_LOOKUP_STDERR"
+            exit 1
+          fi
+          rm -f "$RELEASE_LOOKUP_STDERR"
+
+          # The binary's own self-reported `--version` output, for the release
+          # notes below. Read directly from the x86_64 leg's already-downloaded
+          # binary asset (this job runs on ubuntu-latest, i.e. x86_64, so it can
+          # execute it) rather than through a `needs.build.outputs` value:
+          # GitHub Actions aggregates a matrix job's same-named output
+          # non-deterministically whenever more than one matrix instance
+          # defines it, so a version captured on only one leg (the binary's
+          # `--version` is architecture-independent -- it reads Cargo.toml's
+          # version at compile time, so one leg's reading is enough) can
+          # silently resolve to an empty or wrong leg's value depending on
+          # completion order. Matched by glob (not a hardcoded target triple),
+          # the same convention `publish`'s other checks above use. Extracted
+          # here, immediately before the only step that consumes it, rather
+          # than unconditionally at the top of this job's script: several
+          # branches above exit before ever needing it, and a legitimate
+          # idempotent no-op re-run should never depend on the binary
+          # executing successfully.
+          X86_64_CLI_BINARY_MATCHES="$(find release-assets/release-assets-x86_64 -maxdepth 1 -name "konductor-${RELEASE_VERSION}-*" ! -name '*.sha256')"
+          X86_64_CLI_BINARY_COUNT="$(printf '%s\n' "$X86_64_CLI_BINARY_MATCHES" | grep -c . || true)"
+          if [ "$X86_64_CLI_BINARY_COUNT" -ne 1 ]; then
+            echo "FATAL: expected exactly one x86_64 konductor binary asset matching 'konductor-${RELEASE_VERSION}-*', found ${X86_64_CLI_BINARY_COUNT}. Failing closed." >&2
+            printf '%s\n' "$X86_64_CLI_BINARY_MATCHES" >&2
+            exit 1
+          fi
+          chmod +x "$X86_64_CLI_BINARY_MATCHES"
+          BINARY_VERSION="$("$X86_64_CLI_BINARY_MATCHES" --version)"
+          if [ -z "$BINARY_VERSION" ]; then
+            echo "FATAL: '$X86_64_CLI_BINARY_MATCHES --version' produced no output. Failing closed." >&2
+            exit 1
+          fi
+
+          # --target pins the new tag to the exact commit this run built.
+          # Without it, a not-yet-existing tag is created against main's
+          # current tip -- and since `cancel-in-progress: false` lets runs
+          # queue, main can advance past ${{ github.sha }} before this step
+          # runs, leaving the tag on the wrong commit.
+          gh release create "$RELEASE_VERSION" "${ASSETS[@]}" \
             --target "${{ github.sha }}" \
             --title "konductor $RELEASE_VERSION" \
-            --notes "Synthesized by konductor ${KONDUCTOR_VERSION} from ${{ github.sha }} at ${BUILD_TIMESTAMP}."
+            --notes "Synthesized by $BINARY_VERSION (release $RELEASE_VERSION) from ${{ github.sha }} at ${BUILD_TIMESTAMP}."

@@ -1,45 +1,62 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// update.rs — `konductor update` dispatch (Rust implementation).
+// update.rs -- `konductor update` dispatch (Rust implementation).
 //
-// ── Scope (design doc §4 -- unconditional overwrite) ───────────────────
-// Implements the overwrite semantics specified in
-// `designs/konductor-cli-install-index.md` §4: `update` resolves which
-// tracked target(s) to act on (unchanged target-resolution logic,
-// below), then for each one calls the exact same
-// `InstallStrategy::install_from_local(target_dir, from)` `install.rs`'s
-// `dispatch_install_with` calls on its own selected strategy. No hash
-// comparison, no divergence classification, no filtering, no
-// reconciliation -- the manifest `install_from_local` writes as a side
-// effect of that call IS the final manifest for this run, verbatim.
-// Reuses `manifest::read_manifest`, `index::{read_index, write_index,
+// Unconditional overwrite: `update` resolves which tracked target(s) to
+// act on, then for each one calls the exact same
+// `InstallStrategy::install_from_local(target_dir, from)`
+// `install.rs`'s `dispatch_install_with` calls. No hash comparison, no
+// divergence classification, no reconciliation -- the manifest
+// `install_from_local` writes as a side effect of that call is the
+// final manifest for this run, verbatim. Reuses
+// `manifest::read_manifest`, `index::{read_index, write_index,
 // canonicalize_target_dir}`, and `registry::STRATEGIES` exactly as
-// install does; never re-runs `matches()` selection against the target
-// (design doc §7 -- out of scope for this milestone).
+// install does; never re-runs `matches()` selection against the target.
 //
-// ── KNOWN LIMITATION: no same-target concurrency protection ───────────────
-// Running two `konductor` invocations (any mix of install/update/
-// uninstall) against the SAME target directory at once is unsupported
-// and can corrupt the manifest, index, or on-disk files -- e.g. this
-// module's `install_from_local` call can race a concurrent writer's own
-// output. No locking exists or is planned; callers must serialize their
-// own invocations per target. Same accepted-risk posture as the
-// cross-target index race (design doc §2).
+// Manifest and index writes are locked and fresh-read; file copies are
+// not. Every manifest write here is serialized through the same
+// `config_lock`-backed advisory lock `install.rs`/`uninstall.rs` use,
+// and the finalize index write re-reads the manifest fresh rather than
+// reusing a pre-`install_from_local` snapshot -- a concurrent
+// install/uninstall of a different, coexisting strategy can no longer
+// have its slot silently dropped from either the manifest or the
+// index. What remains unsupported: two invocations racing on the exact
+// same strategy slot at the same target -- `install_from_local`'s
+// file-copy phase has no mutex of its own, so concurrent runs against
+// that one slot can still interleave their copies. Callers must still
+// serialize same-slot invocations themselves.
 //
-// ── KNOWN LIMITATION: no transactional rollback on a mid-copy failure ────
+// Known limitation: no transactional rollback on a mid-copy failure.
 // `update_one_target` calls `install_from_local` with no transactional
 // wrapper. A mid-copy failure (disk full, permission error) can leave
 // the target with a mix of fresh and stale files, the manifest never
 // gets rewritten to reflect the failure, and the index entry can stay
-// `InProgress` until a future read self-heals it against the target's
-// real manifest state. No rollback exists or is planned.
+// `InProgress` until a future read self-heals it. No rollback exists or
+// is planned.
 
 use std::path::{Path, PathBuf};
 
 use super::install::artifact::sha256_hex;
 use super::install::index::{self, IndexEntry, IndexEntryStatus};
-use super::install::manifest::{self, Manifest, ManifestError, Status};
+use super::install::manifest::{self, ManifestError, Status, StrategyManifest};
 use super::install::registry;
+use crate::cli::output::ColorMode;
+
+// Test-only synchronization point, compiled only under `#[cfg(test)]`:
+// lets a test deterministically block `run_update_one_target` between
+// `install_from_local` completing and the finalize fresh-read, instead
+// of relying on a timing assumption about which of two racing threads
+// finishes first. The sole caller,
+// `update_finalize_index_reflects_a_concurrently_installed_other_strategy`,
+// uses it to guarantee its concurrent installer thread's write has
+// already committed before the fresh read runs -- without this, the
+// read's outcome depends on thread-scheduling speed, which made that
+// test flaky on a different build platform.
+#[cfg(test)]
+thread_local! {
+    static MID_UPDATE_SYNC_HOOK: std::cell::RefCell<Option<Box<dyn FnOnce()>>> =
+        std::cell::RefCell::new(None);
+}
 
 /// Remapped exit code for CLI usage errors, matching cli.rs's own
 /// `EXIT_USAGE_ERROR` constant. Duplicated here per install.rs's own
@@ -49,33 +66,30 @@ const EXIT_USAGE_ERROR: u8 = 64;
 
 /// The `--harness <value>` fragment every "re-run `konductor install`"
 /// remediation string in this file embeds when no recorded strategy is
-/// available to name a specific one -- kept in exactly one place so
-/// these remediation strings can't independently drift from the three
-/// values `cli.rs`'s `--harness` clap `value_parser` actually accepts
-/// (the same "hardcoded, can drift" risk CR-303697675 already flagged
-/// for that allowlist itself). `doctor.rs` duplicates this constant
-/// under the same name rather than importing it from here -- `update`
-/// is a private (non-`pub`) module in `cli.rs`, so `doctor.rs` cannot
-/// reference it without widening that visibility, which is out of scope
-/// for a remediation-text fix.
+/// available to name a specific one -- kept in one place so these
+/// strings can't drift from the three values `cli.rs`'s `--harness`
+/// clap `value_parser` actually accepts. `doctor.rs` duplicates this
+/// constant rather than importing it, since `update` is a private
+/// module in `cli.rs`.
 const HARNESS_PLACEHOLDER: &str = "--harness <kiro-cli-v2|kiro-v3|claude>";
 
-/// Best-effort `--harness <value>` remediation fragment for a manifest's
-/// recorded `strategy` (an `InstallStrategy::name()`, e.g. `"kiro-cli"`)
-/// -- looks up that strategy's own `harness_dir()` (e.g. `"kiro-cli-v2"`)
-/// in `registry::STRATEGIES` so a "re-run `konductor install`"
-/// remediation for an already-tracked target can name the harness that
-/// installed it, instead of the generic `HARNESS_PLACEHOLDER`. Falls
-/// back to `HARNESS_PLACEHOLDER` when `strategy_name` is not registered
-/// (e.g. a manifest written by a newer `konductor` build this binary
-/// doesn't know about).
+/// Best-effort `--harness <value>` remediation fragment for a
+/// manifest's recorded `strategy` name, so a "re-run `konductor
+/// install`" remediation can name the harness that installed it
+/// instead of the generic `HARNESS_PLACEHOLDER`. `name()` and
+/// `harness_dir()` are identical by construction, so this only checks
+/// whether `strategy_name` is still a registered strategy, falling
+/// back to `HARNESS_PLACEHOLDER` when it isn't (e.g. a manifest
+/// written by a newer `konductor` build this binary doesn't know
+/// about).
 fn harness_hint(strategy_name: &str) -> String {
-    match registry::STRATEGIES
+    if registry::STRATEGIES
         .iter()
-        .find(|s| s.name() == strategy_name)
+        .any(|s| s.name() == strategy_name)
     {
-        Some(strategy) => format!("--harness {}", strategy.harness_dir()),
-        None => HARNESS_PLACEHOLDER.to_string(),
+        format!("--harness {strategy_name}")
+    } else {
+        HARNESS_PLACEHOLDER.to_string()
     }
 }
 
@@ -107,20 +121,29 @@ fn index_error_exit_code(err: &index::IndexError) -> u8 {
     }
 }
 
-/// `konductor update [--from ...] [--target ...] [--all]`: resolves
-/// which tracked install(s) to update (design doc §4 step 1, mirroring
-/// uninstall's §3 selection surface), then
-/// runs `update_one_target` on each. Returns 0 on success (including
-/// "nothing tracked, nothing to do"), `EXIT_USAGE_ERROR` (64) on any
-/// usage failure, `EXIT_VERIFY_FAILED` (65) on an unsupported schema
-/// version -- never exit code 2.
+/// `konductor update [--from ...] [--target ...] [--all] [--harness
+/// <name>]`: resolves which tracked install(s) to update, mirroring
+/// uninstall's selection surface, then runs `update_one_target` on
+/// each. `harness` selects which of a resolved target's tracked
+/// strategies to act on when it tracks 2+; `harness_select::select_harness`
+/// validates an explicit `--harness` even at a single tracked slot, so
+/// a mismatch is a usage error, not a silent no-op (it has no effect
+/// only when the target tracks 0 strategies). With `--all`, a target
+/// that doesn't track the requested harness is skipped rather than
+/// counted as a batch failure, mirroring `uninstall.rs`'s skip bucket.
+/// Returns 0 on success, `EXIT_USAGE_ERROR` on any usage failure,
+/// `EXIT_VERIFY_FAILED` on an unsupported schema version -- never exit
+/// code 2.
+#[allow(clippy::too_many_arguments)]
 pub fn dispatch_update_with(
     from: Option<String>,
     target: Option<String>,
     all: bool,
+    harness: Option<String>,
     no_telemetry: bool,
     verbose: bool,
     json: bool,
+    color: ColorMode,
 ) -> u8 {
     let home_dir_fallback = std::env::var_os("HOME")
         .map(std::path::PathBuf::from)
@@ -136,6 +159,7 @@ pub fn dispatch_update_with(
                 &format!("could not read install index: {err}"),
                 Vec::new(),
                 json,
+                color,
             );
             return index_error_exit_code(&err);
         }
@@ -151,7 +175,7 @@ pub fn dispatch_update_with(
     // matters for scripts that check `$?`. `--all` on an empty index
     // has nothing to iterate either way, so it stays a 0 no-op.
     if entries.is_empty() && target.is_none() && !all {
-        super::report::report_no_tracked_installs("update", json);
+        super::report::report_no_tracked_installs("update", json, color);
         return 0;
     }
 
@@ -162,7 +186,7 @@ pub fn dispatch_update_with(
     // authoritative.
     let duplicates = index::duplicate_target_dirs(&entries);
     if !duplicates.is_empty() {
-        report_corrupted_index(&duplicates, json);
+        report_corrupted_index(&duplicates, json, color);
         return EXIT_USAGE_ERROR;
     }
 
@@ -233,6 +257,7 @@ pub fn dispatch_update_with(
                         ),
                     ],
                     json,
+                    color,
                 );
                 return EXIT_USAGE_ERROR;
             }
@@ -240,7 +265,7 @@ pub fn dispatch_update_with(
     } else if entries.len() == 1 {
         entries
     } else {
-        report_ambiguous_targets(&entries, json);
+        report_ambiguous_targets(&entries, json, color);
         return EXIT_USAGE_ERROR;
     };
 
@@ -254,7 +279,13 @@ pub fn dispatch_update_with(
     // line per target) and the single-target `--json` path (already
     // exactly one document) are both unchanged below.
     if all && json {
-        return dispatch_update_all_json(targets, from.as_deref(), verbose, no_telemetry);
+        return dispatch_update_all_json(
+            targets,
+            from.as_deref(),
+            harness.as_deref(),
+            verbose,
+            no_telemetry,
+        );
     }
 
     // Deterministic tie-break across a `--all` batch: `EXIT_USAGE_ERROR`
@@ -268,10 +299,12 @@ pub fn dispatch_update_with(
         let code = update_one_target(
             &target_dir,
             from.as_deref(),
+            harness.as_deref(),
             verbose,
             json,
             all,
             no_telemetry,
+            color,
         );
         if code != 0 && (exit_code == 0 || code == EXIT_USAGE_ERROR) {
             exit_code = code;
@@ -287,14 +320,13 @@ pub fn dispatch_update_with(
 /// overall exit code can still apply `update`'s own
 /// usage-error-wins-the-tie-break rule).
 ///
-/// `finalize_index_warning` (finding f-6e118a1c): `run_update_one_target`
-/// itself never prints -- a finalize-index failure (the `write_index`
-/// call that flips the entry to `Complete`, AFTER `install_from_local`
-/// has already succeeded) is carried back here instead, so each caller
+/// `finalize_index_warning`: `run_update_one_target` itself never
+/// prints -- a finalize-index failure (the `write_index` call that
+/// flips the entry to `Complete`, after `install_from_local` has
+/// already succeeded) is carried back here instead, so each caller
 /// renders it in its own mode: `update_one_target` folds it into
-/// `report_update_success`'s plain-text/`--json` output,
-/// `dispatch_update_all_json` folds it into this target's entry in the
-/// single batched JSON document via `report_update_batch`. `None` on
+/// `report_update_success`'s output, `dispatch_update_all_json` folds
+/// it into this target's entry via `report_update_batch`. `None` on
 /// the ordinary path where the finalize write succeeded.
 enum UpdateOutcome {
     Success {
@@ -302,45 +334,80 @@ enum UpdateOutcome {
         edited_files_overwritten: usize,
         manifest_path: String,
         finalize_index_warning: Option<String>,
+        /// The single strategy slot this run acted on (`current.strategy`
+        /// in `run_update_one_target`). Lets `report_update_success`
+        /// scope its own verbose per-file listing to this slot alone
+        /// when the target tracks more than one strategy, instead of
+        /// listing every tracked slot's files.
+        strategy_name: String,
     },
     Failure {
         message: String,
         exit_code: u8,
+        /// Whether this is specifically the "target doesn't track the
+        /// requested `--harness`" case
+        /// (`harness_select::HarnessSelectionError::NotTracked`), as
+        /// opposed to every other failure. Only `dispatch_update_all_json`
+        /// and the plain-text `--all` loop read this field, treating it
+        /// as a per-target skip that doesn't affect the batch's exit
+        /// code, mirroring `uninstall.rs`'s
+        /// `UninstallError::harness_not_tracked`. The single-target
+        /// path ignores this and reports an ordinary usage error --
+        /// there's no sibling target to skip past.
+        harness_not_tracked: bool,
     },
 }
 
 /// `--all` + `json=true` path: runs every target exactly as the
-/// existing per-target loop does, but collects each outcome instead of
-/// printing it immediately, then emits ONE JSON document summarizing
-/// the whole run via `report_update_batch` -- mirroring
-/// `uninstall.rs`'s `report_batch` field-naming (`succeeded`/`failed`
-/// arrays) rather than inventing a different shape. Returns the same
-/// deterministic tie-break exit code the plain per-target loop above
+/// per-target loop does, but collects each outcome instead of printing
+/// it immediately, then emits one JSON document via
+/// `report_update_batch`, mirroring `uninstall.rs`'s `report_batch`
+/// field naming (`succeeded`/`failed` arrays). Returns the same
+/// deterministic tie-break exit code the plain per-target loop
 /// computes (`EXIT_USAGE_ERROR` wins over any other non-zero code).
 fn dispatch_update_all_json(
     targets: Vec<IndexEntry>,
     from: Option<&str>,
+    harness: Option<&str>,
     verbose: bool,
     no_telemetry: bool,
 ) -> u8 {
-    let _ = verbose; // batched --json output has no verbose per-file listing, matching the single-target --json path's own shape (verbose only affects plain-text output there too).
+    let _ = verbose; // Batched --json output has no verbose per-file listing.
     let mut succeeded: Vec<(String, UpdateOutcome)> = Vec::new();
+    let mut skipped: Vec<(String, String)> = Vec::new();
     let mut failed: Vec<(String, UpdateOutcome)> = Vec::new();
     let mut exit_code = 0u8;
 
     for entry in targets {
         let target_dir = PathBuf::from(&entry.target_dir);
-        let outcome = match run_update_one_target(&target_dir, from, true, no_telemetry) {
-            Ok(outcome) => outcome,
-            Err(outcome) => outcome,
-        };
-        match &outcome {
+        // `uncached_identity: true`, `json: true` -- this path only ever
+        // runs for `--all --json`, so harness selection must never
+        // prompt (see `harness_select::select_harness`'s own `json`/
+        // `allow_interactive` gating).
+        let outcome =
+            match run_update_one_target(&target_dir, from, harness, true, true, no_telemetry) {
+                Ok(outcome) => outcome,
+                Err(outcome) => outcome,
+            };
+        match outcome {
             UpdateOutcome::Success { .. } => succeeded.push((entry.target_dir, outcome)),
+            // A target that does not track the requested `--harness`
+            // (design decision, mirroring `uninstall.rs`'s `dispatch_all`):
+            // skipped, not failed. Informational, does not affect
+            // `exit_code`, and is not reported to telemetry as an error --
+            // there is nothing broken about this target.
+            UpdateOutcome::Failure {
+                harness_not_tracked: true,
+                message,
+                ..
+            } => {
+                skipped.push((entry.target_dir, message));
+            }
             UpdateOutcome::Failure {
                 exit_code: code, ..
             } => {
-                if *code != 0 && (exit_code == 0 || *code == EXIT_USAGE_ERROR) {
-                    exit_code = *code;
+                if code != 0 && (exit_code == 0 || code == EXIT_USAGE_ERROR) {
+                    exit_code = code;
                 }
                 // Telemetry parity with the plain single-target/`--all`
                 // path: mirrors `update_one_target`'s own `report_error`
@@ -368,28 +435,41 @@ fn dispatch_update_all_json(
         }
     }
 
-    report_update_batch(&succeeded, &failed);
+    report_update_batch(&succeeded, &skipped, &failed);
     exit_code
 }
 
 /// Emits ONE JSON document summarizing a `--all --json` update run --
-/// mirroring `uninstall.rs`'s `report_batch` shape exactly:
-/// `{"command": "update", "succeeded": [...], "failed": [...]}`, each
-/// array entry carrying `target_dir` plus that target's own fields
-/// (`report_update_success`'s success fields, or an `error` string for
-/// a failure). Unlike `uninstall`'s batch report, `update` has no
-/// `stale_skipped`-style secondary bucket to track (a stale target is
-/// simply a failure here -- see `update_one_target`'s own doc comment
-/// on why `update`, unlike `uninstall`, cannot treat a missing manifest
-/// as a non-fatal prune).
-fn report_update_batch(succeeded: &[(String, UpdateOutcome)], failed: &[(String, UpdateOutcome)]) {
+/// mirroring `uninstall.rs`'s `report_batch` shape:
+/// `{"command": "update", "succeeded": [...], "skipped": [...],
+/// "failed": [...]}`, each `succeeded`/`failed` array entry carrying
+/// `target_dir` plus that target's own fields (`report_update_success`'s
+/// success fields, or an `error` string for a failure), and each
+/// `skipped` entry carrying `target_dir` plus a `reason` string.
+///
+/// `skipped` is a SEPARATE bucket from both `succeeded` and `failed`:
+/// targets that do not track the requested `--harness`
+/// (`UpdateOutcome::Failure::harness_not_tracked`, see that field's own
+/// doc comment). A stale target (missing manifest) is still, unlike
+/// `uninstall`'s own stale case, simply a `failed` entry here -- see
+/// `update_one_target`'s own doc comment on why `update`, unlike
+/// `uninstall`, cannot treat a missing manifest as a non-fatal prune.
+/// The two are distinct: a stale/missing target is a genuine failure
+/// (nothing for `update` to act on); a harness mismatch is a skip
+/// (there is something to act on, it is simply not the strategy this
+/// run asked for).
+fn report_update_batch(
+    succeeded: &[(String, UpdateOutcome)],
+    skipped: &[(String, String)],
+    failed: &[(String, UpdateOutcome)],
+) {
     println!(
         "{}",
         serde_json::json!({
             "command": "update",
             "succeeded": succeeded.iter().map(|(dir, outcome)| {
                 match outcome {
-                    UpdateOutcome::Success { files, edited_files_overwritten, manifest_path, finalize_index_warning } => {
+                    UpdateOutcome::Success { files, edited_files_overwritten, manifest_path, finalize_index_warning, strategy_name: _ } => {
                         let mut entry = serde_json::json!({
                             "target_dir": dir,
                             "manifest_path": manifest_path,
@@ -404,6 +484,10 @@ fn report_update_batch(succeeded: &[(String, UpdateOutcome)], failed: &[(String,
                     UpdateOutcome::Failure { .. } => unreachable!("succeeded only ever holds UpdateOutcome::Success"),
                 }
             }).collect::<Vec<_>>(),
+            "skipped": skipped.iter().map(|(dir, reason)| serde_json::json!({
+                "target_dir": dir,
+                "reason": reason,
+            })).collect::<Vec<_>>(),
             "failed": failed.iter().map(|(dir, outcome)| {
                 match outcome {
                     UpdateOutcome::Failure { message, .. } => serde_json::json!({
@@ -418,12 +502,14 @@ fn report_update_batch(succeeded: &[(String, UpdateOutcome)], failed: &[(String,
 }
 
 /// Reports the 2+-entries-no-flag ambiguity error, listing every
-/// tracked `target_dir` so the user knows what `--target <dir>` values
+/// tracked install so the user knows what `--target <dir>` values
 /// are valid. `--json` mode emits a structured `tracked_targets` field
 /// instead of embedding the list in the message string, matching this
 /// module's (and `report_update_success`'s) existing
-/// `serde_json::json!` error/report shape convention.
-fn report_ambiguous_targets(entries: &[IndexEntry], json: bool) {
+/// `serde_json::json!` error/report shape convention. The plain-text
+/// line is styled via `error_prefix` (red), matching every other usage
+/// error this module reports through `report_error`.
+fn report_ambiguous_targets(entries: &[IndexEntry], json: bool, color: ColorMode) {
     let message = "multiple installs are tracked; pass --target <dir> or --all";
     if json {
         println!(
@@ -441,16 +527,20 @@ fn report_ambiguous_targets(entries: &[IndexEntry], json: bool) {
         .map(|e| format!("  - {}", e.target_dir))
         .collect::<Vec<_>>()
         .join("\n");
-    eprintln!("konductor update: {message}. Tracked installs:\n{listed}");
+    eprintln!(
+        "{} {message}. Tracked install(s):\n{listed}",
+        crate::cli::output::error_prefix(color, "konductor update:")
+    );
 }
 
 /// Reports a corrupted index (duplicate `target_dir` entries) and
-/// refuses to proceed with any operation, naming exactly which
-/// target_dir(s) are duplicated. Mirrors `report_ambiguous_targets`'s
-/// plain-text/`--json` shape split.
-fn report_corrupted_index(duplicates: &[String], json: bool) {
-    let message = "install index is corrupted: duplicate target_dir entries found; \
-                    fix ~/.konductor/installs by hand before running update";
+/// refuses to proceed with any operation, naming exactly which tracked
+/// install(s) are duplicated. Mirrors `report_ambiguous_targets`'s
+/// plain-text/`--json` shape split, including its `error_prefix`
+/// styling.
+fn report_corrupted_index(duplicates: &[String], json: bool, color: ColorMode) {
+    let message = "the tracked-install index is corrupted: duplicate tracked install \
+                    entries found; fix ~/.konductor/installs by hand before running update";
     if json {
         println!(
             "{}",
@@ -467,7 +557,10 @@ fn report_corrupted_index(duplicates: &[String], json: bool) {
         .map(|d| format!("  - {d}"))
         .collect::<Vec<_>>()
         .join("\n");
-    eprintln!("konductor update: {message}. Duplicated target_dir(s):\n{listed}");
+    eprintln!(
+        "{} {message}. Duplicated tracked install(s):\n{listed}",
+        crate::cli::output::error_prefix(color, "konductor update:")
+    );
 }
 
 /// Counts how many of `manifest`'s recorded files have local edits, by
@@ -487,7 +580,7 @@ fn report_corrupted_index(duplicates: &[String], json: bool) {
 /// consistent with this function's own missing-file/no-hash skip
 /// rules -- there is no `Result` to propagate an error through here,
 /// since this function is advisory only and never gates a write.
-fn count_diverged_files(target_dir: &Path, manifest: &Manifest) -> usize {
+fn count_diverged_files(target_dir: &Path, manifest: &StrategyManifest) -> usize {
     let mut diverged = 0usize;
     for file in &manifest.files {
         let Some(expected) = &file.sha256 else {
@@ -510,9 +603,7 @@ fn count_diverged_files(target_dir: &Path, manifest: &Manifest) -> usize {
     diverged
 }
 
-/// One tracked target's full update run (design doc §4, step 2): looks
-/// up the target's currently-recorded strategy from its existing
-/// One tracked target's full update run (design doc §4, step 2): looks
+/// One tracked target's full update run: looks
 /// up the target's currently-recorded strategy from its existing
 /// manifest, then calls `install_from_local` on it exactly as a fresh
 /// `install --target <dir>` would -- no filtering, no classification,
@@ -543,20 +634,31 @@ fn count_diverged_files(target_dir: &Path, manifest: &Manifest) -> usize {
 /// copies -- a fix to one copy could otherwise silently leave the other
 /// wrong, and the `--all --json` path would be the copy least likely to
 /// be noticed drifting.
+#[allow(clippy::too_many_arguments)]
 fn update_one_target(
     target_dir: &Path,
     from: Option<&str>,
+    harness: Option<&str>,
     verbose: bool,
     json: bool,
     uncached_identity: bool,
     no_telemetry: bool,
+    color: ColorMode,
 ) -> u8 {
-    match run_update_one_target(target_dir, from, uncached_identity, no_telemetry) {
+    match run_update_one_target(
+        target_dir,
+        from,
+        harness,
+        uncached_identity,
+        json,
+        no_telemetry,
+    ) {
         Ok(UpdateOutcome::Success {
             files,
             edited_files_overwritten,
             manifest_path,
             finalize_index_warning,
+            strategy_name,
         }) => {
             report_update_success(
                 target_dir,
@@ -564,26 +666,52 @@ fn update_one_target(
                 files,
                 edited_files_overwritten,
                 finalize_index_warning.as_deref(),
+                &strategy_name,
                 verbose,
                 json,
+                color,
             );
             0
         }
         Ok(UpdateOutcome::Failure { .. }) => {
             unreachable!("run_update_one_target's Ok variant always holds UpdateOutcome::Success")
         }
-        Err(UpdateOutcome::Failure { message, exit_code }) => {
-            // `uncached_identity` selects
-            // `report_error_for_target` whenever this call may be one
-            // of several distinct targets visited in this process (this
-            // function's own caller passes `all` for exactly that
-            // reason -- see this function's own doc comment) -- the
-            // plain-`report_error` (process-global-cache) variant would
-            // otherwise misattribute every target after the first to
-            // whichever target's identity the cache resolved first,
-            // mirroring the identical fix this parameter already
-            // applies to the SUCCESS path a few lines below in
-            // `run_update_one_target`.
+        Err(UpdateOutcome::Failure {
+            message,
+            exit_code,
+            harness_not_tracked,
+        }) => {
+            // A target that does not track the requested `--harness`,
+            // reached specifically via the plain-text `--all` loop
+            // (`uncached_identity` doubles as "this call is part of an
+            // `--all` batch" -- see this function's own doc comment;
+            // the `--all --json` combination never reaches this arm at
+            // all, since `dispatch_update_with` routes it to
+            // `dispatch_update_all_json` before this function is ever
+            // called): skipped, not failed. Informational, printed on
+            // stdout, and does not contribute to the batch's exit-code
+            // tie-break -- mirroring `uninstall.rs`'s `dispatch_all`/
+            // `report_batch` skip bucket. A single explicit `--target
+            // <dir>` (or a bare invocation with exactly one tracked
+            // install) has no sibling target to skip past, so this
+            // branch never fires there (`uncached_identity` is `false`
+            // on that path) -- the mismatch is reported as an ordinary
+            // usage error below, matching `uninstall.rs`'s
+            // `dispatch_target`'s identical choice.
+            if uncached_identity && harness_not_tracked {
+                println!(
+                    "konductor update: skipped {}: {message}",
+                    target_dir.display()
+                );
+                return 0;
+            }
+            // `uncached_identity` selects `report_error_for_target`
+            // whenever this call may be one of several distinct
+            // targets visited in this process -- the plain-`report_error`
+            // (process-global-cache) variant would otherwise
+            // misattribute every target after the first to whichever
+            // identity the cache resolved first, mirroring the
+            // identical fix on the success path below.
             let extra = vec![(
                 "target_dir",
                 serde_json::Value::String(target_dir.display().to_string()),
@@ -597,6 +725,7 @@ fn update_one_target(
                     &message,
                     extra,
                     json,
+                    color,
                 );
             } else {
                 super::report::report_error(
@@ -607,6 +736,7 @@ fn update_one_target(
                     &message,
                     extra,
                     json,
+                    color,
                 );
             }
             exit_code
@@ -643,10 +773,12 @@ fn update_one_target(
 fn run_update_one_target(
     target_dir: &Path,
     from: Option<&str>,
+    harness: Option<&str>,
     uncached_identity: bool,
+    json: bool,
     no_telemetry: bool,
 ) -> Result<UpdateOutcome, UpdateOutcome> {
-    let current = match manifest::read_manifest(target_dir) {
+    let full_manifest = match manifest::read_manifest(target_dir) {
         Ok(Some(manifest)) => manifest,
         Ok(None) => {
             return Err(UpdateOutcome::Failure {
@@ -656,12 +788,80 @@ fn run_update_one_target(
                     target_dir.display()
                 ),
                 exit_code: EXIT_USAGE_ERROR,
+                harness_not_tracked: false,
             });
         }
         Err(err) => {
             return Err(UpdateOutcome::Failure {
                 message: format!("could not read manifest at {}: {err}", target_dir.display()),
                 exit_code: manifest_error_exit_code(&err),
+                harness_not_tracked: false,
+            });
+        }
+    };
+    // A target's manifest can now track more than
+    // one strategy (a Kiro variant coexisting with `claude`).
+    // `update` acts on exactly one slot per run -- 0 slots is treated
+    // the same as no manifest at all; 1 slot acts directly (unchanged
+    // behavior); 2+ slots resolves via `harness_select::select_harness`
+    // -- an explicit `--harness <name>` (applying the same
+    // 0/1/2+-tracked-entries selection pattern one
+    // level down, from "which target" to "which strategy"), an
+    // interactive picker when this call is not part of an `--all` batch
+    // and stdin is a real TTY, or a usage error naming every tracked
+    // strategy otherwise. `uncached_identity` doubles as this call's own
+    // "is this potentially one of several targets visited in this
+    // process" signal (see this function's own callers) -- exactly the
+    // condition that also means "do not prompt interactively", so no
+    // separate parameter is introduced for it.
+    if full_manifest.strategies.is_empty() {
+        return Err(UpdateOutcome::Failure {
+            message: format!(
+                "{} is stale (no manifest found); run `konductor install \
+                 {HARNESS_PLACEHOLDER}` first",
+                target_dir.display()
+            ),
+            exit_code: EXIT_USAGE_ERROR,
+            harness_not_tracked: false,
+        });
+    }
+    // Every other already-tracked strategy's name must survive both
+    // index writes below unchanged -- `update` never adds or removes a
+    // slot for any strategy other than the one it resolves to act on
+    // (this is a refresh, not an override-switch), so the full set of
+    // tracked names computed here, before selection, is what the
+    // write-ahead write uses directly, and is also the fallback the
+    // finalize write below uses if its fresh re-read fails or finds
+    // nothing. Overwriting the index entry with only the resolved
+    // strategy would silently drop every other tracked strategy's name
+    // from the index while its manifest slot remains untouched on
+    // disk, orphaning it from future listings even though nothing was
+    // actually removed.
+    let tracked_strategy_names: Vec<String> = full_manifest
+        .strategy_names()
+        .into_iter()
+        .map(str::to_string)
+        .collect();
+    let current = match super::harness_select::select_harness(
+        &target_dir.display().to_string(),
+        &full_manifest.strategies,
+        harness,
+        !uncached_identity,
+        json,
+    ) {
+        Ok(slot) => slot,
+        Err(err) => {
+            // `NotTracked` is the one case the `--all` batch path
+            // (`dispatch_update_all_json`, and the plain-text `--all`
+            // loop via `update_one_target`) treats as a per-target skip
+            // rather than a failure -- see `UpdateOutcome::Failure`'s
+            // own doc comment. Every other `select_harness` failure
+            // (ambiguous selection, invalid prompt response) stays an
+            // ordinary usage error.
+            return Err(UpdateOutcome::Failure {
+                harness_not_tracked: err.is_not_tracked(),
+                message: err.to_string(),
+                exit_code: EXIT_USAGE_ERROR,
             });
         }
     };
@@ -675,6 +875,7 @@ fn run_update_one_target(
                 harness_hint(&current.strategy)
             ),
             exit_code: EXIT_USAGE_ERROR,
+            harness_not_tracked: false,
         });
     }
 
@@ -683,11 +884,11 @@ fn run_update_one_target(
     // edits (on-disk hash no longer matches the manifest's recorded
     // hash). Purely observational -- never blocks or alters the
     // unconditional overwrite that follows.
-    let diverged_before_overwrite = count_diverged_files(target_dir, &current);
+    let diverged_before_overwrite = count_diverged_files(target_dir, current);
 
-    // Design doc §4 step 2: reuse the ORIGINAL strategy's
+    // Reuses the ORIGINAL strategy's
     // install_from_local unmodified, unconditionally -- never re-runs
-    // registry selection/matches() (design doc §7). Fails clearly if
+    // registry selection/matches(). Fails clearly if
     // the originally-recorded strategy is no longer registered, rather
     // than silently picking a different one.
     //
@@ -708,6 +909,7 @@ fn run_update_one_target(
                 target_dir.display()
             ),
             exit_code: EXIT_USAGE_ERROR,
+            harness_not_tracked: false,
         });
     };
 
@@ -723,10 +925,11 @@ fn run_update_one_target(
         return Err(UpdateOutcome::Failure {
             message,
             exit_code: EXIT_USAGE_ERROR,
+            harness_not_tracked: false,
         });
     }
 
-    // Index write-ahead (design doc §2/§4 step 3): InProgress before
+    // Index write-ahead: InProgress before
     // the copy, mirroring install's own bracketing.
     let canonical_target_dir = match index::canonicalize_target_dir(target_dir) {
         Ok(path) => path,
@@ -734,19 +937,21 @@ fn run_update_one_target(
             return Err(UpdateOutcome::Failure {
                 message: format!("could not resolve {}: {err}", target_dir.display()),
                 exit_code: EXIT_USAGE_ERROR,
+                harness_not_tracked: false,
             });
         }
     };
     let updated_at = crate::cli::time::utc_now_iso();
     if let Err(err) = index::write_index(IndexEntry {
         target_dir: canonical_target_dir.clone(),
-        strategy: current.strategy.clone(),
+        strategies: tracked_strategy_names.clone(),
         installed_at: updated_at.clone(),
         status: IndexEntryStatus::InProgress,
     }) {
         return Err(UpdateOutcome::Failure {
             message: format!("could not write install index: {err}"),
             exit_code: index_error_exit_code(&err),
+            harness_not_tracked: false,
         });
     }
 
@@ -783,7 +988,16 @@ fn run_update_one_target(
         return Err(UpdateOutcome::Failure {
             message: err.to_string(),
             exit_code: super::install::install_error_exit_code(&err),
+            harness_not_tracked: false,
         });
+    }
+
+    // Test-only: see `MID_UPDATE_SYNC_HOOK`'s own doc comment. A no-op
+    // in every real build, and a no-op in every test that never sets
+    // the hook.
+    #[cfg(test)]
+    if let Some(hook) = MID_UPDATE_SYNC_HOOK.with(|h| h.borrow_mut().take()) {
+        hook();
     }
 
     // Index complete: the manifest install_from_local just wrote IS the
@@ -794,9 +1008,34 @@ fn run_update_one_target(
     // into its own plain-text/`--json` report, `dispatch_update_all_json`
     // folds it into this target's entry in the single batched JSON
     // document, via `report_update_batch`.
+    //
+    // The `strategies` list itself is resolved the SAME way
+    // `install.rs`'s own finalize write resolves it
+    // (`install::resolve_final_strategies`): re-read the manifest FRESH
+    // here, after `install_from_local` has already run, rather than
+    // reusing `tracked_strategy_names` -- the snapshot captured at the
+    // TOP of this function, before `install_from_local` (and therefore
+    // before any concurrent install/uninstall of a DIFFERENT, coexisting
+    // strategy at this same target could have run to completion). Bounded
+    // by the same invariant this function's own doc comment already
+    // states above (`update` never adds or removes a slot for any
+    // strategy other than the one it resolves to act on): under a
+    // concurrent process modifying a coexisting strategy during this
+    // run, the pre-computed snapshot could go stale by the time this
+    // write actually happens, silently dropping that strategy's name
+    // from the index even though its manifest slot survives on disk --
+    // exactly the gap `resolve_final_strategies` already closes for
+    // `install`. Falls back to `tracked_strategy_names` (never a
+    // single-element vec naming only the resolved strategy) if the fresh
+    // read fails or finds nothing, for the identical reason
+    // `resolve_final_strategies`'s own doc comment gives.
+    let final_strategies = super::install::resolve_final_strategies(
+        manifest::read_manifest(target_dir),
+        &tracked_strategy_names,
+    );
     let finalize_index_warning = index::write_index(IndexEntry {
         target_dir: canonical_target_dir,
-        strategy: current.strategy.clone(),
+        strategies: final_strategies,
         installed_at: updated_at,
         status: IndexEntryStatus::Complete,
     })
@@ -840,10 +1079,14 @@ fn run_update_one_target(
 
     match manifest::read_manifest(target_dir) {
         Ok(Some(manifest)) => Ok(UpdateOutcome::Success {
-            files: manifest.files.len(),
+            files: manifest
+                .get(current.strategy.as_str())
+                .map(|slot| slot.files.len())
+                .unwrap_or(0),
             edited_files_overwritten: diverged_before_overwrite,
             manifest_path: manifest::manifest_path(target_dir).display().to_string(),
             finalize_index_warning,
+            strategy_name: current.strategy.clone(),
         }),
         // Internal inconsistency (install_from_local reported success
         // but no manifest is readable) -- still a success from this
@@ -855,14 +1098,14 @@ fn run_update_one_target(
             edited_files_overwritten: diverged_before_overwrite,
             manifest_path: manifest::manifest_path(target_dir).display().to_string(),
             finalize_index_warning,
+            strategy_name: current.strategy.clone(),
         }),
     }
 }
 
 /// Prints the update summary: mirrors `install.rs`'s
 /// `report_install_success`/`format_install_summary` conventions for
-/// tone and `--json` shape (design doc §4 item 4 of the "what this
-/// removes" list) -- every file `install_from_local` wrote this run is
+/// tone and `--json` shape -- every file `install_from_local` wrote this run is
 /// simply "re-copied," with no blocked/force-overwritten/backup-failed
 /// states left to report. `edited_files_overwritten` is the read-only
 /// divergence count `update_one_target` computed before the overwrite
@@ -879,7 +1122,8 @@ fn run_update_one_target(
 /// success path from three manifest reads down to one. The per-file
 /// `-v`/`--verbose` listing below is a separate concern (per-file
 /// path/provenance detail no earlier step computed) and still reads
-/// the manifest itself, but only when `verbose` is set.
+/// the manifest itself, but only when `verbose` is set, and only for
+/// the `strategy_name` slot -- see that parameter's own doc comment.
 ///
 /// `warning` (finding f-6e118a1c) is `run_update_one_target`'s
 /// `finalize_index_warning` -- `None` on the ordinary path, or the
@@ -888,14 +1132,25 @@ fn run_update_one_target(
 /// Rendered as an extra plain-text line / `--json` `warning` field
 /// rather than to stderr, so a `--json` consumer never needs to also
 /// read stderr for this module's own single-target success path either.
+///
+/// `strategy_name` is the slot this run actually acted on
+/// (`UpdateOutcome::Success`'s own field of the same name, threaded
+/// through by `update_one_target`). A target's manifest can track more
+/// than one strategy (a Kiro variant coexisting
+/// with `claude`), and `--harness` lets a single run resolve to and
+/// refresh just one of them, so the verbose listing below scopes to
+/// this one slot rather than every tracked slot.
+#[allow(clippy::too_many_arguments)]
 fn report_update_success(
     target_dir: &Path,
     manifest_path: &str,
     files: usize,
     edited_files_overwritten: usize,
     warning: Option<&str>,
+    strategy_name: &str,
     verbose: bool,
     json: bool,
+    color: ColorMode,
 ) {
     if json {
         let mut value = serde_json::json!({
@@ -913,20 +1168,34 @@ fn report_update_success(
     }
 
     println!(
-        "konductor update: updated {} ({} file(s) re-copied; manifest: {}); \
+        "{} updated {} ({} file(s) re-copied; manifest: {}); \
          {} file(s) had local edits that were overwritten",
+        crate::cli::output::success_prefix(color, "konductor update:"),
         target_dir.display(),
         files,
         manifest_path,
         edited_files_overwritten,
     );
     if let Some(warning) = warning {
-        println!("konductor update: warning: {warning}");
+        println!(
+            "{} {warning}",
+            crate::cli::output::status::warn(color, "konductor update: warning:")
+        );
     }
     if verbose {
+        // `update` only ever acts on a single tracked strategy per run
+        // (see `run_update_one_target`'s own
+        // multi-strategy guard), so the listing is scoped to that one
+        // slot (`strategy_name`) via `manifest.get`, not every
+        // currently-tracked slot -- a target tracking a coexisting
+        // strategy (e.g. `claude` alongside a Kiro variant) can reach a
+        // successful update via `--harness`, and that other slot's
+        // files were never touched by this run.
         if let Ok(Some(manifest)) = manifest::read_manifest(target_dir) {
-            for file in &manifest.files {
-                println!("  {} ({:?})", file.path, file.provenance);
+            if let Some(slot) = manifest.get(strategy_name) {
+                for file in &slot.files {
+                    println!("  {} ({:?})", file.path, file.provenance);
+                }
             }
         }
     }
@@ -935,7 +1204,7 @@ fn report_update_success(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use manifest::{Manifest, ManifestFile, Provenance};
+    use manifest::{ManifestFile, Provenance};
     use std::fs;
 
     use crate::cli::test_home_lock::lock_home;
@@ -1068,8 +1337,411 @@ mod tests {
             false,
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(code, 0, "install fixture must succeed");
+    }
+
+    // ── Harness selection ─────────────────────────────────────────────────
+
+    /// `update --harness <name>` at a target tracking 2+ strategies
+    /// refreshes only the SELECTED strategy's own slot, and both (a)
+    /// leaves the OTHER already-tracked strategy's own manifest slot
+    /// untouched, and (b) keeps that other strategy's own name in the
+    /// INDEX entry's `strategies` list -- the exact bug this
+    /// implementation's own `tracked_strategy_names` fix closes: naively
+    /// writing `strategies: vec![current.strategy.clone()]` back to the
+    /// index would otherwise silently drop the untouched strategy's name
+    /// from the index even though its manifest slot survives on disk.
+    #[test]
+    fn update_one_target_with_harness_refreshes_only_selected_strategy() {
+        let _home = HomeGuard::new("harness-select-update-home");
+        let target = scratch_dir("harness-select-update-target");
+        let repo_root = scratch_dir("harness-select-update-repo");
+        install_fixture(&target, &repo_root);
+
+        // A second, independently-tracked strategy at the SAME target
+        // (`claude` shares no path with Kiro, so
+        // it coexists rather than overriding). Hand-crafted directly via
+        // `upsert_strategy` rather than a real Claude Code install --
+        // `update`, once it resolves to the `kiro-cli-v2` slot via
+        // `--harness kiro-cli-v2`, never reads or writes this OTHER
+        // slot's own content, so a real install for it isn't needed to
+        // exercise the behavior under test.
+        manifest::upsert_strategy(
+            &target,
+            StrategyManifest::new(
+                "claude",
+                "2026-01-15T09:30:00Z",
+                ".",
+                None,
+                Status::Complete,
+                vec![manifest::ManifestFile {
+                    path: ".claude/agents/k-example.md".to_string(),
+                    sha256: Some(hash(b"claude content\n")),
+                    provenance: manifest::Provenance::Created,
+                }],
+            ),
+        )
+        .unwrap();
+        let canonical = index::canonicalize_target_dir(&target).unwrap();
+        index::write_index(IndexEntry {
+            target_dir: canonical.clone(),
+            strategies: vec!["kiro-cli-v2".to_string(), "claude".to_string()],
+            installed_at: "2026-01-15T09:30:00Z".to_string(),
+            status: IndexEntryStatus::Complete,
+        })
+        .unwrap();
+
+        // "kiro-cli-v2" is `KiroCliInstallStrategy::name()`/`harness_dir()`
+        // -- the two are identical after the harness/strategy name
+        // unification, so this is both the `--harness` value a user
+        // would type and the manifest-internal name.
+        let code = update_one_target(
+            &target,
+            Some(repo_root.to_str().unwrap()),
+            Some("kiro-cli-v2"),
+            false,
+            false,
+            false,
+            false,
+            ColorMode::disabled(),
+        );
+        assert_eq!(code, 0);
+
+        let after = manifest::read_manifest(&target).unwrap().unwrap();
+        let mut names = after.strategy_names();
+        names.sort_unstable();
+        assert_eq!(
+            names,
+            vec!["claude", "kiro-cli-v2"],
+            "the untouched claude slot must survive the update"
+        );
+        let claude_slot = after.get("claude").unwrap();
+        assert_eq!(claude_slot.files.len(), 1);
+        assert_eq!(
+            claude_slot.files[0].sha256,
+            Some(hash(b"claude content\n")),
+            "the untouched claude slot's own file entry must be byte-identical, never re-hashed by this run"
+        );
+
+        // The bug this fix closes: the INDEX entry for this target must
+        // still name BOTH strategies, not just the one `update` acted
+        // on.
+        let index_after = index::read_index().unwrap().unwrap();
+        let entry = index_after
+            .installs
+            .iter()
+            .find(|e| e.target_dir == canonical)
+            .expect("target_dir entry must still exist");
+        let mut index_names = entry.strategies.clone();
+        index_names.sort_unstable();
+        assert_eq!(
+            index_names,
+            vec!["claude".to_string(), "kiro-cli-v2".to_string()],
+            "update must never drop an untouched strategy's name from the index entry"
+        );
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// The fix this file's own `run_update_one_target` doc comment now
+    /// describes: the finalize INDEX write re-reads the manifest FRESH
+    /// (`install::resolve_final_strategies`) instead of reusing
+    /// `tracked_strategy_names` -- a snapshot captured before
+    /// `install_from_local` runs. Races a REAL concurrent `claude`
+    /// install (`manifest::upsert_strategy`, which takes the same lock
+    /// `install_from_local`'s own manifest write does) against
+    /// `update_one_target` refreshing the ALREADY-tracked `kiro-cli-v2`
+    /// slot. The manifest itself is always correct either way
+    /// (`manifest.rs`'s own locking already guarantees that,
+    /// independent of this fix) -- what this test proves is that the
+    /// INDEX now agrees with that same, correct, post-race manifest
+    /// state, rather than the stale pre-`install_from_local` snapshot
+    /// the old code would have written regardless of how the race
+    /// landed.
+    ///
+    /// Ordering between the installer thread's write and this
+    /// function's own finalize fresh-read is enforced via
+    /// `MID_UPDATE_SYNC_HOOK` (a channel `recv()`, a real synchronization
+    /// primitive) rather than left to relative thread-scheduling speed --
+    /// `manifest.rs`'s sibling race tests
+    /// (`remove_strategy_locked_never_drops_a_concurrently_installed_other_strategy`
+    /// et al.) get away without one because they join BOTH racing
+    /// threads before asserting on the post-race state; this test
+    /// instead asserts on what a THIRD, synchronous call
+    /// (`update_one_target`, running on this test's own thread) observed
+    /// DURING the race, which is exactly the kind of assertion that
+    /// needs an explicit ordering guarantee to be deterministic.
+    #[test]
+    fn update_finalize_index_reflects_a_concurrently_installed_other_strategy() {
+        const ITERATIONS: usize = 20;
+        for i in 0..ITERATIONS {
+            let _home = HomeGuard::new(&format!("update-finalize-race-home-{i}"));
+            let target = scratch_dir(&format!("update-finalize-race-target-{i}"));
+            let repo_root = scratch_dir(&format!("update-finalize-race-repo-{i}"));
+            install_fixture(&target, &repo_root);
+
+            let (installer_done_tx, installer_done_rx) = std::sync::mpsc::channel::<()>();
+            let target_for_installer = target.clone();
+            let installer = std::thread::spawn(move || {
+                let result = manifest::upsert_strategy(
+                    &target_for_installer,
+                    StrategyManifest::new(
+                        "claude",
+                        "2026-01-15T09:30:00Z",
+                        ".",
+                        None,
+                        Status::Complete,
+                        vec![manifest::ManifestFile {
+                            path: ".claude/agents/k-example.md".to_string(),
+                            sha256: Some(hash(b"claude content\n")),
+                            provenance: manifest::Provenance::Created,
+                        }],
+                    ),
+                );
+                // Signal unconditionally, even on failure -- the hook
+                // below must still unblock so a genuine
+                // `upsert_strategy` regression surfaces through
+                // `installer.join()`'s own assertion below, rather than
+                // hanging this test forever.
+                let _ = installer_done_tx.send(());
+                result
+            });
+
+            // Deterministically guarantees the installer's write has
+            // already committed by the time `run_update_one_target`'s
+            // finalize fresh-read executes -- see this test's own doc
+            // comment above for why a bare `thread::spawn` + late
+            // `join()` (this test's own prior shape) cannot guarantee
+            // that ordering.
+            MID_UPDATE_SYNC_HOOK.with(|hook| {
+                *hook.borrow_mut() = Some(Box::new(move || {
+                    installer_done_rx
+                        .recv()
+                        .expect("installer thread must signal completion before the finalize read");
+                }));
+            });
+
+            let code = update_one_target(
+                &target,
+                Some(repo_root.to_str().unwrap()),
+                None,
+                false,
+                false,
+                false,
+                false,
+                ColorMode::disabled(),
+            );
+            assert_eq!(code, 0, "round {i}: update must succeed");
+
+            installer
+                .join()
+                .unwrap_or_else(|_| panic!("round {i}: installer thread must not panic"))
+                .unwrap_or_else(|_| panic!("round {i}: upsert_strategy must succeed"));
+
+            // The manifest is always correct regardless of interleaving
+            // (manifest.rs's own locking guarantees this) -- the INDEX
+            // must now agree with it.
+            let manifest = manifest::read_manifest(&target).unwrap().unwrap();
+            let mut manifest_names = manifest.strategy_names();
+            manifest_names.sort_unstable();
+            assert_eq!(
+                manifest_names,
+                vec!["claude", "kiro-cli-v2"],
+                "round {i}: the manifest must track both strategies regardless of interleaving"
+            );
+
+            let canonical = index::canonicalize_target_dir(&target).unwrap();
+            let idx = index::read_index().unwrap().unwrap();
+            let entry = idx
+                .installs
+                .iter()
+                .find(|e| e.target_dir == canonical)
+                .unwrap_or_else(|| panic!("round {i}: target_dir entry must still exist"));
+            let mut index_names = entry.strategies.clone();
+            index_names.sort_unstable();
+            assert_eq!(
+                index_names,
+                vec!["claude".to_string(), "kiro-cli-v2".to_string()],
+                "round {i}: update's finalize write must re-read the manifest fresh, not \
+                 reuse the pre-install tracked_strategy_names snapshot -- otherwise a \
+                 concurrently-installed claude slot would be silently dropped from the \
+                 index even though its manifest slot survives on disk"
+            );
+
+            fs::remove_dir_all(&target).ok();
+            fs::remove_dir_all(&repo_root).ok();
+        }
+    }
+
+    /// A non-matching `--harness` value at a 2+-strategy target is a
+    /// usage error, and never touches either strategy's slot.
+    #[test]
+    fn update_one_target_with_unmatched_harness_is_usage_error_and_touches_nothing() {
+        let _home = HomeGuard::new("harness-select-update-unmatched-home");
+        let target = scratch_dir("harness-select-update-unmatched-target");
+        let repo_root = scratch_dir("harness-select-update-unmatched-repo");
+        install_fixture(&target, &repo_root);
+        manifest::upsert_strategy(
+            &target,
+            StrategyManifest::new(
+                "claude",
+                "2026-01-15T09:30:00Z",
+                ".",
+                None,
+                Status::Complete,
+                vec![manifest::ManifestFile {
+                    path: ".claude/agents/k-example.md".to_string(),
+                    sha256: Some(hash(b"claude content\n")),
+                    provenance: manifest::Provenance::Created,
+                }],
+            ),
+        )
+        .unwrap();
+        let before = manifest::read_manifest(&target).unwrap().unwrap();
+
+        let code = update_one_target(
+            &target,
+            Some(repo_root.to_str().unwrap()),
+            Some("kiro-v3"),
+            false,
+            false,
+            false,
+            false,
+            ColorMode::disabled(),
+        );
+        assert_eq!(code, EXIT_USAGE_ERROR);
+
+        let after = manifest::read_manifest(&target).unwrap().unwrap();
+        assert_eq!(before, after, "an unmatched --harness must touch nothing");
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// The design decision this fix implements, mirroring `uninstall.rs`'s
+    /// `dispatch_all_skips_targets_that_do_not_track_the_requested_harness`:
+    /// with `--harness <name>` given to an `update --all` batch, a
+    /// target that does not track that harness is SKIPPED, not failed --
+    /// the batch still succeeds (exit 0) and the skipped target's
+    /// manifest is left byte-identical, while a target that DOES track
+    /// the requested harness is genuinely updated (a hand-edited file is
+    /// unconditionally overwritten with fresh content, matching
+    /// `update_one_target_unconditionally_overwrites_hand_edited_file`'s
+    /// own proof of a genuine update). Before this fix,
+    /// `run_update_one_target` folded EVERY `select_harness` failure --
+    /// including `HarnessSelectionError::NotTracked` -- into the same
+    /// `UpdateOutcome::Failure` bucket as a genuine usage error, driving
+    /// the whole batch to a non-zero exit code for a target that was
+    /// never actually broken.
+    #[test]
+    fn dispatch_update_with_all_flag_skips_targets_that_do_not_track_the_requested_harness() {
+        let _home = HomeGuard::new("update-all-skip-harness-not-tracked-home");
+
+        let matching_target = scratch_dir("update-all-skip-matching-target");
+        let matching_repo = scratch_dir("update-all-skip-matching-repo");
+        install_fixture(&matching_target, &matching_repo);
+
+        // Hand-edit the matching target's installed file, then re-synth
+        // different fresh content -- an unconditional overwrite (proof
+        // of a genuine update, not a skip) is only observable if the
+        // post-run content differs from BOTH the hand-edit and matches
+        // the fresh source exactly.
+        let matching_agent_path = matching_target.join(".kiro/agents/k-example.json");
+        fs::write(&matching_agent_path, b"{\"handEdited\":true}\n").unwrap();
+        fs::write(
+            matching_repo.join("dist/kiro-cli-v2/agents/k-example.json"),
+            b"{\"fresh\":true}\n",
+        )
+        .unwrap();
+
+        // Tracks a DIFFERENT harness ("claude") than the one this batch
+        // requests ("kiro-cli-v2") -- must be skipped, not updated or
+        // failed.
+        let mismatched_target = scratch_dir("update-all-skip-mismatched-target");
+        fs::create_dir_all(&mismatched_target).unwrap();
+        manifest::upsert_strategy(
+            &mismatched_target,
+            StrategyManifest::new(
+                "claude",
+                "2026-01-15T09:30:00Z",
+                ".",
+                None,
+                Status::Complete,
+                vec![manifest::ManifestFile {
+                    path: ".claude/agents/k-example.md".to_string(),
+                    sha256: Some(hash(b"claude content\n")),
+                    provenance: manifest::Provenance::Created,
+                }],
+            ),
+        )
+        .unwrap();
+        let mismatched_canonical = index::canonicalize_target_dir(&mismatched_target).unwrap();
+        index::write_index(IndexEntry {
+            target_dir: mismatched_canonical,
+            strategies: vec!["claude".to_string()],
+            installed_at: "2026-01-15T09:30:00Z".to_string(),
+            status: IndexEntryStatus::Complete,
+        })
+        .unwrap();
+        let before_mismatched = manifest::read_manifest(&mismatched_target)
+            .unwrap()
+            .unwrap();
+
+        let code = dispatch_update_with(
+            Some(matching_repo.to_str().unwrap().to_string()),
+            None,
+            true,
+            Some("kiro-cli-v2".to_string()),
+            false,
+            false,
+            false,
+            ColorMode::disabled(),
+        );
+
+        // A skip is not a failure -- the batch succeeds overall.
+        assert_eq!(code, 0);
+
+        // The hand-edit is GONE -- the target tracking the requested
+        // harness must have been genuinely updated with fresh content.
+        assert_eq!(
+            fs::read(&matching_agent_path).unwrap(),
+            b"{\"fresh\":true}\n"
+        );
+
+        let after_mismatched = manifest::read_manifest(&mismatched_target)
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            before_mismatched, after_mismatched,
+            "the target that does not track the requested harness must be left untouched, \
+             not updated"
+        );
+
+        fs::remove_dir_all(&matching_target).ok();
+        fs::remove_dir_all(&matching_repo).ok();
+        fs::remove_dir_all(&mismatched_target).ok();
+    }
+
+    /// `report_update_batch` itself, in isolation: a `skipped` entry
+    /// lands in its own bucket, distinct from `succeeded`/`failed`, in
+    /// both plain-text and `--json` mode -- guards against a future
+    /// change silently dropping the skip bucket or panicking on it.
+    /// Mirrors `uninstall.rs`'s
+    /// `report_batch_does_not_panic_with_a_skipped_entry_present`.
+    #[test]
+    fn report_update_batch_does_not_panic_with_a_skipped_entry_present() {
+        report_update_batch(
+            &[],
+            &[(
+                "/proj/b".to_string(),
+                "/proj/b does not track harness 'kiro-cli-v2'; tracked harness(es): claude"
+                    .to_string(),
+            )],
+            &[],
+        );
     }
 
     // ── Regression: `update` honors a target's persisted opt-out ────────
@@ -1116,6 +1788,7 @@ mod tests {
             false,
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(install_code, 0, "initial install must succeed");
         assert!(
@@ -1137,9 +1810,11 @@ mod tests {
             Some(repo_root.to_str().unwrap().to_string()),
             Some(target_dir.to_str().unwrap().to_string()),
             false,
+            None,
             false, // no --no-telemetry on THIS invocation
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(update_code, 0, "update must succeed");
         let after_update: serde_json::Value =
@@ -1199,6 +1874,7 @@ mod tests {
             false,
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(install_out_code, 0, "opted-out install must succeed");
         let install_in_code = super::super::install::dispatch_install_with(
@@ -1210,6 +1886,7 @@ mod tests {
             false,
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(install_in_code, 0, "opted-in install must succeed");
 
@@ -1227,10 +1904,12 @@ mod tests {
         let update_code = dispatch_update_with(
             Some(repo_root.to_str().unwrap().to_string()),
             None,
-            true,  // --all
+            true, // --all
+            None,
             false, // no --no-telemetry
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(update_code, 0, "update --all must succeed");
 
@@ -1294,6 +1973,7 @@ mod tests {
             false,
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(install_code, 0, "initial install must succeed");
         assert!(
@@ -1323,9 +2003,11 @@ mod tests {
             Some(repo_root.to_str().unwrap().to_string()),
             Some(target.to_str().unwrap().to_string()),
             false,
+            None,
             true, // --no-telemetry
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(update_code, 0, "update --no-telemetry must succeed");
         let after_explicit_opt_out: serde_json::Value =
@@ -1344,9 +2026,11 @@ mod tests {
             Some(repo_root.to_str().unwrap().to_string()),
             Some(target.to_str().unwrap().to_string()),
             false,
+            None,
             false,
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(update_code_without_flag, 0);
         let after_plain_update: serde_json::Value =
@@ -1388,10 +2072,12 @@ mod tests {
         let code = update_one_target(
             &target,
             Some(repo_root.to_str().unwrap()),
+            None,
             false,
             false,
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(code, 0);
 
@@ -1410,7 +2096,7 @@ mod tests {
 
         // The manifest records the FRESH hash for this path.
         let final_manifest = manifest::read_manifest(&target).unwrap().unwrap();
-        let entry = final_manifest
+        let entry = final_manifest.strategies[0]
             .files
             .iter()
             .find(|f| f.path == ".kiro/agents/k-example.json")
@@ -1437,17 +2123,19 @@ mod tests {
         let code = update_one_target(
             &target,
             Some(repo_root.to_str().unwrap()),
+            None,
             false,
             false,
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(code, 0);
         assert!(agent_path.is_file());
 
         let real_hash = hash(&fs::read(&agent_path).unwrap());
         let final_manifest = manifest::read_manifest(&target).unwrap().unwrap();
-        let entry = final_manifest
+        let entry = final_manifest.strategies[0]
             .files
             .iter()
             .find(|f| f.path == ".kiro/agents/k-example.json")
@@ -1489,6 +2177,7 @@ mod tests {
             false,
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(install_code, 0);
         fs::write(
@@ -1499,10 +2188,12 @@ mod tests {
         let update_code = update_one_target(
             &updated_target,
             Some(repo_root.to_str().unwrap()),
+            None,
             false,
             false,
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(update_code, 0);
 
@@ -1517,20 +2208,27 @@ mod tests {
             false,
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(fresh_install_code, 0);
 
         let updated_manifest = manifest::read_manifest(&updated_target).unwrap().unwrap();
         let fresh_manifest = manifest::read_manifest(&fresh_target).unwrap().unwrap();
 
-        assert_eq!(updated_manifest.strategy, fresh_manifest.strategy);
-        assert_eq!(updated_manifest.status, fresh_manifest.status);
-        let updated_paths_and_hashes: Vec<(&str, &Option<String>)> = updated_manifest
+        assert_eq!(
+            updated_manifest.strategies[0].strategy,
+            fresh_manifest.strategies[0].strategy
+        );
+        assert_eq!(
+            updated_manifest.strategies[0].status,
+            fresh_manifest.strategies[0].status
+        );
+        let updated_paths_and_hashes: Vec<(&str, &Option<String>)> = updated_manifest.strategies[0]
             .files
             .iter()
             .map(|f| (f.path.as_str(), &f.sha256))
             .collect();
-        let fresh_paths_and_hashes: Vec<(&str, &Option<String>)> = fresh_manifest
+        let fresh_paths_and_hashes: Vec<(&str, &Option<String>)> = fresh_manifest.strategies[0]
             .files
             .iter()
             .map(|f| (f.path.as_str(), &f.sha256))
@@ -1562,10 +2260,12 @@ mod tests {
         let update_code = update_one_target(
             &target,
             Some(repo_root.to_str().unwrap()),
+            None,
             false,
             false,
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(update_code, 0);
 
@@ -1582,7 +2282,7 @@ mod tests {
             .expect("manifest must exist after a successful update");
 
         assert_eq!(
-            entry.installed_at, manifest.installed_at,
+            entry.installed_at, manifest.strategies[0].installed_at,
             "update's index entry installed_at and the manifest's installed_at must be the \
              SAME string -- update.rs's own updated_at reused for both, not a second \
              independent clock read inside install_from_local"
@@ -1597,16 +2297,25 @@ mod tests {
     #[test]
     fn update_one_target_rejects_in_progress_manifest() {
         let dir = scratch_dir("in-progress-guard");
-        let manifest = Manifest::new(
-            "kiro-cli",
+        let manifest = StrategyManifest::new(
+            "kiro-cli-v2",
             "2026-01-01T00:00:00Z",
             ".",
             None,
             Status::InProgress,
             vec![],
         );
-        manifest::write_manifest(&dir, &manifest).unwrap();
-        let code = update_one_target(&dir, None, false, false, false, false);
+        manifest::upsert_strategy(&dir, manifest).unwrap();
+        let code = update_one_target(
+            &dir,
+            None,
+            None,
+            false,
+            false,
+            false,
+            false,
+            ColorMode::disabled(),
+        );
         assert_eq!(code, EXIT_USAGE_ERROR);
         fs::remove_dir_all(&dir).ok();
     }
@@ -1614,7 +2323,16 @@ mod tests {
     #[test]
     fn update_one_target_rejects_missing_manifest() {
         let dir = scratch_dir("no-manifest");
-        let code = update_one_target(&dir, None, false, false, false, false);
+        let code = update_one_target(
+            &dir,
+            None,
+            None,
+            false,
+            false,
+            false,
+            false,
+            ColorMode::disabled(),
+        );
         assert_eq!(code, EXIT_USAGE_ERROR);
         fs::remove_dir_all(&dir).ok();
     }
@@ -1622,7 +2340,16 @@ mod tests {
     #[test]
     fn update_one_target_missing_manifest_is_usage_error_and_worded_stale() {
         let dir = scratch_dir("missing-manifest-stale-wording");
-        let code = update_one_target(&dir, None, false, false, false, false);
+        let code = update_one_target(
+            &dir,
+            None,
+            None,
+            false,
+            false,
+            false,
+            false,
+            ColorMode::disabled(),
+        );
         assert_eq!(code, EXIT_USAGE_ERROR);
         fs::remove_dir_all(&dir).ok();
     }
@@ -1630,16 +2357,28 @@ mod tests {
     #[test]
     fn update_one_target_never_returns_reserved_exit_code_2() {
         let dir = scratch_dir("never-code-2");
-        let manifest = Manifest::new(
-            "kiro-cli",
+        let manifest = StrategyManifest::new(
+            "kiro-cli-v2",
             "2026-01-01T00:00:00Z",
             ".",
             None,
             Status::InProgress,
             vec![],
         );
-        manifest::write_manifest(&dir, &manifest).unwrap();
-        assert_ne!(update_one_target(&dir, None, false, false, false, false), 2);
+        manifest::upsert_strategy(&dir, manifest).unwrap();
+        assert_ne!(
+            update_one_target(
+                &dir,
+                None,
+                None,
+                false,
+                false,
+                false,
+                false,
+                ColorMode::disabled()
+            ),
+            2
+        );
         fs::remove_dir_all(&dir).ok();
     }
 
@@ -1702,7 +2441,7 @@ mod tests {
 
         let err = index::write_index(IndexEntry {
             target_dir: "/tmp/whatever-update-one-target".to_string(),
-            strategy: "kiro-cli".to_string(),
+            strategies: vec!["kiro-cli-v2".to_string()],
             installed_at: "2026-01-01T00:00:00Z".to_string(),
             status: IndexEntryStatus::InProgress,
         })
@@ -1729,7 +2468,7 @@ mod tests {
 
         let err = index::write_index(IndexEntry {
             target_dir: "/tmp/whatever-batch".to_string(),
-            strategy: "kiro-cli".to_string(),
+            strategies: vec!["kiro-cli-v2".to_string()],
             installed_at: "2026-01-01T00:00:00Z".to_string(),
             status: IndexEntryStatus::InProgress,
         })
@@ -1750,10 +2489,19 @@ mod tests {
         fs::create_dir_all(manifest_path.parent().unwrap()).unwrap();
         fs::write(
             &manifest_path,
-            br#"{"schema_version":99,"strategy":"kiro-cli","installed_at":"2026-01-15T09:30:00Z","destination":".","status":"complete","files":[]}"#,
+            br#"{"schema_version":99,"strategy":"kiro-cli-v2","installed_at":"2026-01-15T09:30:00Z","destination":".","status":"complete","files":[]}"#,
         )
         .unwrap();
-        let code = update_one_target(&dir, None, false, false, false, false);
+        let code = update_one_target(
+            &dir,
+            None,
+            None,
+            false,
+            false,
+            false,
+            false,
+            ColorMode::disabled(),
+        );
         assert_eq!(code, EXIT_VERIFY_FAILED);
         fs::remove_dir_all(&dir).ok();
     }
@@ -1761,7 +2509,7 @@ mod tests {
     #[test]
     fn update_one_target_fails_when_recorded_strategy_is_not_registered() {
         let dir = scratch_dir("unregistered-strategy");
-        let manifest = Manifest::new(
+        let manifest = StrategyManifest::new(
             "not-a-real-strategy",
             "2026-01-01T00:00:00Z",
             ".",
@@ -1769,8 +2517,17 @@ mod tests {
             Status::Complete,
             vec![],
         );
-        manifest::write_manifest(&dir, &manifest).unwrap();
-        let code = update_one_target(&dir, None, false, false, false, false);
+        manifest::upsert_strategy(&dir, manifest).unwrap();
+        let code = update_one_target(
+            &dir,
+            None,
+            None,
+            false,
+            false,
+            false,
+            false,
+            ColorMode::disabled(),
+        );
         assert_eq!(code, EXIT_USAGE_ERROR);
         fs::remove_dir_all(&dir).ok();
     }
@@ -1787,7 +2544,7 @@ mod tests {
     fn update_one_target_unregistered_strategy_does_not_mutate_index_status() {
         let _home = HomeGuard::new("unregistered-strategy-index-home");
         let dir = scratch_dir("unregistered-strategy-index-target");
-        let manifest = Manifest::new(
+        let manifest = StrategyManifest::new(
             "not-a-real-strategy",
             "2026-01-01T00:00:00Z",
             ".",
@@ -1795,7 +2552,7 @@ mod tests {
             Status::Complete,
             vec![],
         );
-        manifest::write_manifest(&dir, &manifest).unwrap();
+        manifest::upsert_strategy(&dir, manifest).unwrap();
 
         // Seed the index with a Complete entry for this target, exactly
         // as a previously-successful, fully-healthy install would have
@@ -1804,13 +2561,22 @@ mod tests {
         let canonical = index::canonicalize_target_dir(&dir).unwrap();
         index::write_index(IndexEntry {
             target_dir: canonical.clone(),
-            strategy: "not-a-real-strategy".to_string(),
+            strategies: vec!["not-a-real-strategy".to_string()],
             installed_at: "2026-01-01T00:00:00Z".to_string(),
             status: IndexEntryStatus::Complete,
         })
         .unwrap();
 
-        let code = update_one_target(&dir, None, false, false, false, false);
+        let code = update_one_target(
+            &dir,
+            None,
+            None,
+            false,
+            false,
+            false,
+            false,
+            ColorMode::disabled(),
+        );
         assert_eq!(code, EXIT_USAGE_ERROR);
 
         // The index entry must be UNCHANGED -- still Complete, never
@@ -1851,15 +2617,15 @@ mod tests {
     fn update_one_target_missing_from_does_not_mutate_healthy_index_status() {
         let _home = HomeGuard::new("missing-from-index-home");
         let dir = scratch_dir("missing-from-index-target");
-        let manifest = Manifest::new(
-            "kiro-cli",
+        let manifest = StrategyManifest::new(
+            "kiro-cli-v2",
             "2026-01-01T00:00:00Z",
             ".",
             None,
             Status::Complete,
             vec![],
         );
-        manifest::write_manifest(&dir, &manifest).unwrap();
+        manifest::upsert_strategy(&dir, manifest).unwrap();
 
         // Seed the index with a Complete entry, exactly as a
         // previously-successful, fully-healthy install would have left
@@ -1867,7 +2633,7 @@ mod tests {
         let canonical = index::canonicalize_target_dir(&dir).unwrap();
         index::write_index(IndexEntry {
             target_dir: canonical.clone(),
-            strategy: "kiro-cli".to_string(),
+            strategies: vec!["kiro-cli-v2".to_string()],
             installed_at: "2026-01-01T00:00:00Z".to_string(),
             status: IndexEntryStatus::Complete,
         })
@@ -1876,7 +2642,16 @@ mod tests {
         // No --from given: install_from_local's own first check would
         // reject this as a no-op, but the pre-check must catch it
         // BEFORE any index write.
-        let code = update_one_target(&dir, None, false, false, false, false);
+        let code = update_one_target(
+            &dir,
+            None,
+            None,
+            false,
+            false,
+            false,
+            false,
+            ColorMode::disabled(),
+        );
         assert_eq!(code, EXIT_USAGE_ERROR);
 
         let index_after = index::read_index().unwrap().unwrap();
@@ -1906,7 +2681,16 @@ mod tests {
         unsafe {
             std::env::set_var("HOME", &home);
         }
-        let code = dispatch_update_with(None, None, false, false, false, false);
+        let code = dispatch_update_with(
+            None,
+            None,
+            false,
+            None,
+            false,
+            false,
+            false,
+            ColorMode::disabled(),
+        );
         unsafe {
             match &original {
                 Some(value) => std::env::set_var("HOME", value),
@@ -1932,7 +2716,16 @@ mod tests {
         unsafe {
             std::env::remove_var("HOME");
         }
-        let code = dispatch_update_with(None, None, false, false, false, false);
+        let code = dispatch_update_with(
+            None,
+            None,
+            false,
+            None,
+            false,
+            false,
+            false,
+            ColorMode::disabled(),
+        );
         unsafe {
             match &original {
                 Some(value) => std::env::set_var("HOME", value),
@@ -1966,7 +2759,16 @@ mod tests {
         unsafe {
             std::env::set_var("HOME", &home);
         }
-        let code = dispatch_update_with(None, None, false, false, false, true);
+        let code = dispatch_update_with(
+            None,
+            None,
+            false,
+            None,
+            false,
+            false,
+            true,
+            ColorMode::disabled(),
+        );
         unsafe {
             match &original {
                 Some(value) => std::env::set_var("HOME", value),
@@ -1987,19 +2789,28 @@ mod tests {
         }
         index::write_index(IndexEntry {
             target_dir: "/tmp/does-not-matter-a".to_string(),
-            strategy: "kiro-cli".to_string(),
+            strategies: vec!["kiro-cli-v2".to_string()],
             installed_at: "2026-01-15T09:30:00Z".to_string(),
             status: IndexEntryStatus::Complete,
         })
         .unwrap();
         index::write_index(IndexEntry {
             target_dir: "/tmp/does-not-matter-b".to_string(),
-            strategy: "kiro-cli".to_string(),
+            strategies: vec!["kiro-cli-v2".to_string()],
             installed_at: "2026-01-15T09:30:00Z".to_string(),
             status: IndexEntryStatus::Complete,
         })
         .unwrap();
-        let code = dispatch_update_with(None, None, false, false, false, false);
+        let code = dispatch_update_with(
+            None,
+            None,
+            false,
+            None,
+            false,
+            false,
+            false,
+            ColorMode::disabled(),
+        );
         unsafe {
             match &original {
                 Some(value) => std::env::set_var("HOME", value),
@@ -2035,6 +2846,7 @@ mod tests {
                 false,
                 false,
                 false,
+                ColorMode::disabled(),
             );
             assert_eq!(code, 0, "install fixture must succeed");
         }
@@ -2043,9 +2855,11 @@ mod tests {
             Some(repo_root.to_str().unwrap().to_string()),
             None,
             true,
+            None,
             false,
             false,
             false,
+            ColorMode::disabled(),
         );
         unsafe {
             match &original {
@@ -2060,7 +2874,7 @@ mod tests {
                 "{} must still have a manifest after --all",
                 target.display()
             );
-            assert_eq!(manifest.unwrap().status, Status::Complete);
+            assert_eq!(manifest.unwrap().strategies[0].status, Status::Complete);
         }
 
         fs::remove_dir_all(&home).ok();
@@ -2105,7 +2919,7 @@ mod tests {
         // the batch a guaranteed failure entry.
         index::write_index(IndexEntry {
             target_dir: index::canonicalize_target_dir(&stale_target).unwrap(),
-            strategy: "kiro-cli".to_string(),
+            strategies: vec!["kiro-cli-v2".to_string()],
             installed_at: "2026-01-15T09:30:00Z".to_string(),
             status: IndexEntryStatus::Complete,
         })
@@ -2115,9 +2929,11 @@ mod tests {
             Some(repo_root.to_str().unwrap().to_string()),
             None,
             true,
+            None,
             false,
             false,
             true,
+            ColorMode::disabled(),
         );
         unsafe {
             match &original {
@@ -2138,7 +2954,7 @@ mod tests {
         // --json consumer actually depends on.
         let healthy_canonical = index::canonicalize_target_dir(&healthy_target).unwrap();
         let stale_canonical = index::canonicalize_target_dir(&stale_target).unwrap();
-        let succeeded = vec![(
+        let succeeded = [(
             healthy_canonical.clone(),
             UpdateOutcome::Success {
                 files: 1,
@@ -2147,9 +2963,10 @@ mod tests {
                     .display()
                     .to_string(),
                 finalize_index_warning: None,
+                strategy_name: "kiro-cli-v2".to_string(),
             },
         )];
-        let failed = vec![(
+        let failed = [(
             stale_canonical.clone(),
             UpdateOutcome::Failure {
                 message: format!(
@@ -2158,6 +2975,7 @@ mod tests {
                     stale_target.display()
                 ),
                 exit_code: EXIT_USAGE_ERROR,
+                harness_not_tracked: false,
             },
         )];
 
@@ -2230,6 +3048,7 @@ mod tests {
                 finalize_index_warning: Some(
                     "could not finalize install index: disk full".to_string(),
                 ),
+                strategy_name: "kiro-cli-v2".to_string(),
             },
         )];
         let failed = vec![(
@@ -2237,6 +3056,7 @@ mod tests {
             UpdateOutcome::Failure {
                 message: "some failure".to_string(),
                 exit_code: EXIT_USAGE_ERROR,
+                harness_not_tracked: false,
             },
         )];
         // report_update_batch itself only ever calls println! once;
@@ -2280,7 +3100,7 @@ mod tests {
         // completes without panicking, per this module's established
         // no-capture-mechanism precedent used throughout this file for
         // other `report_*` functions).
-        report_update_batch(&succeeded, &failed);
+        report_update_batch(&succeeded, &[], &failed);
     }
 
     fn run_all_tie_break_case(home: &Path, usage_error_name: &str, verify_failed_name: &str) -> u8 {
@@ -2291,7 +3111,7 @@ mod tests {
 
         index::write_index(IndexEntry {
             target_dir: index::canonicalize_target_dir(&usage_error_target).unwrap(),
-            strategy: "kiro-cli".to_string(),
+            strategies: vec!["kiro-cli-v2".to_string()],
             installed_at: "2026-01-15T09:30:00Z".to_string(),
             status: IndexEntryStatus::Complete,
         })
@@ -2301,18 +3121,27 @@ mod tests {
         fs::create_dir_all(manifest_path.parent().unwrap()).unwrap();
         fs::write(
             &manifest_path,
-            br#"{"schema_version":99,"strategy":"kiro-cli","installed_at":"2026-01-15T09:30:00Z","destination":".","status":"complete","files":[]}"#,
+            br#"{"schema_version":99,"strategy":"kiro-cli-v2","installed_at":"2026-01-15T09:30:00Z","destination":".","status":"complete","files":[]}"#,
         )
         .unwrap();
         index::write_index(IndexEntry {
             target_dir: index::canonicalize_target_dir(&verify_failed_target).unwrap(),
-            strategy: "kiro-cli".to_string(),
+            strategies: vec!["kiro-cli-v2".to_string()],
             installed_at: "2026-01-15T09:30:00Z".to_string(),
             status: IndexEntryStatus::Complete,
         })
         .unwrap();
 
-        dispatch_update_with(None, None, true, false, false, false)
+        dispatch_update_with(
+            None,
+            None,
+            true,
+            None,
+            false,
+            false,
+            false,
+            ColorMode::disabled(),
+        )
     }
 
     #[test]
@@ -2368,12 +3197,21 @@ mod tests {
         fs::write(
             &index_path,
             br#"{"schema_version":1,"installs":[
-                {"target_dir":"/tmp/dup-update-target","strategy":"kiro-cli","installed_at":"2026-01-15T09:30:00Z","status":"complete"},
-                {"target_dir":"/tmp/dup-update-target","strategy":"kiro-cli","installed_at":"2026-01-16T09:30:00Z","status":"complete"}
+                {"target_dir":"/tmp/dup-update-target","strategy":"kiro-cli-v2","installed_at":"2026-01-15T09:30:00Z","status":"complete"},
+                {"target_dir":"/tmp/dup-update-target","strategy":"kiro-cli-v2","installed_at":"2026-01-16T09:30:00Z","status":"complete"}
             ]}"#,
         )
         .unwrap();
-        let code = dispatch_update_with(None, None, true, false, false, false);
+        let code = dispatch_update_with(
+            None,
+            None,
+            true,
+            None,
+            false,
+            false,
+            false,
+            ColorMode::disabled(),
+        );
         unsafe {
             match &original {
                 Some(value) => std::env::set_var("HOME", value),
@@ -2387,8 +3225,8 @@ mod tests {
     #[test]
     fn report_corrupted_index_does_not_panic_plain_or_json() {
         let duplicates = vec!["/tmp/dup-a".to_string(), "/tmp/dup-b".to_string()];
-        report_corrupted_index(&duplicates, false);
-        report_corrupted_index(&duplicates, true);
+        report_corrupted_index(&duplicates, false, ColorMode::disabled());
+        report_corrupted_index(&duplicates, true, ColorMode::disabled());
     }
 
     #[test]
@@ -2396,19 +3234,19 @@ mod tests {
         let entries = vec![
             IndexEntry {
                 target_dir: "/tmp/update-target-a".to_string(),
-                strategy: "kiro-cli".to_string(),
+                strategies: vec!["kiro-cli-v2".to_string()],
                 installed_at: "2026-01-15T09:30:00Z".to_string(),
                 status: IndexEntryStatus::Complete,
             },
             IndexEntry {
                 target_dir: "/tmp/update-target-b".to_string(),
-                strategy: "kiro-cli".to_string(),
+                strategies: vec!["kiro-cli-v2".to_string()],
                 installed_at: "2026-01-15T09:30:00Z".to_string(),
                 status: IndexEntryStatus::Complete,
             },
         ];
-        report_ambiguous_targets(&entries, false);
-        report_ambiguous_targets(&entries, true);
+        report_ambiguous_targets(&entries, false, ColorMode::disabled());
+        report_ambiguous_targets(&entries, true, ColorMode::disabled());
     }
 
     /// `report_ambiguous_targets`'s and `report_corrupted_index`'s
@@ -2521,9 +3359,10 @@ mod tests {
                 finalize_index_warning: Some(
                     "could not finalize install index: disk full".to_string(),
                 ),
+                strategy_name: "kiro-cli-v2".to_string(),
             },
         )];
-        report_update_batch(&succeeded, &[]);
+        report_update_batch(&succeeded, &[], &[]);
 
         // Pin the exact JSON shape report_update_batch's body
         // constructs for this input (kept in sync manually, per this
@@ -2534,7 +3373,7 @@ mod tests {
             "command": "update",
             "succeeded": succeeded.iter().map(|(dir, outcome)| {
                 match outcome {
-                    UpdateOutcome::Success { files, edited_files_overwritten, manifest_path, finalize_index_warning } => {
+                    UpdateOutcome::Success { files, edited_files_overwritten, manifest_path, finalize_index_warning, strategy_name: _ } => {
                         let mut entry = serde_json::json!({
                             "target_dir": dir,
                             "manifest_path": manifest_path,
@@ -2581,15 +3420,16 @@ mod tests {
                 edited_files_overwritten: 0,
                 manifest_path: "/tmp/no-warning-target/.konductor/manifest".to_string(),
                 finalize_index_warning: None,
+                strategy_name: "kiro-cli-v2".to_string(),
             },
         )];
-        report_update_batch(&succeeded, &[]);
+        report_update_batch(&succeeded, &[], &[]);
 
         let rendered = serde_json::json!({
             "command": "update",
             "succeeded": succeeded.iter().map(|(dir, outcome)| {
                 match outcome {
-                    UpdateOutcome::Success { files, edited_files_overwritten, manifest_path, finalize_index_warning } => {
+                    UpdateOutcome::Success { files, edited_files_overwritten, manifest_path, finalize_index_warning, strategy_name: _ } => {
                         let mut entry = serde_json::json!({
                             "target_dir": dir,
                             "manifest_path": manifest_path,
@@ -2624,8 +3464,14 @@ mod tests {
         seed_synthed_agent(&repo_root, "k-example");
         install_fixture(&target, &repo_root);
 
-        let outcome =
-            run_update_one_target(&target, Some(repo_root.to_str().unwrap()), false, false);
+        let outcome = run_update_one_target(
+            &target,
+            Some(repo_root.to_str().unwrap()),
+            None,
+            false,
+            false,
+            false,
+        );
         let Ok(UpdateOutcome::Success {
             finalize_index_warning,
             ..
@@ -2652,19 +3498,28 @@ mod tests {
         }
         index::write_index(IndexEntry {
             target_dir: "/tmp/ambiguity-message-a".to_string(),
-            strategy: "kiro-cli".to_string(),
+            strategies: vec!["kiro-cli-v2".to_string()],
             installed_at: "2026-01-15T09:30:00Z".to_string(),
             status: IndexEntryStatus::Complete,
         })
         .unwrap();
         index::write_index(IndexEntry {
             target_dir: "/tmp/ambiguity-message-b".to_string(),
-            strategy: "kiro-cli".to_string(),
+            strategies: vec!["kiro-cli-v2".to_string()],
             installed_at: "2026-01-15T09:30:00Z".to_string(),
             status: IndexEntryStatus::Complete,
         })
         .unwrap();
-        let code = dispatch_update_with(None, None, false, false, false, true);
+        let code = dispatch_update_with(
+            None,
+            None,
+            false,
+            None,
+            false,
+            false,
+            true,
+            ColorMode::disabled(),
+        );
         unsafe {
             match &original {
                 Some(value) => std::env::set_var("HOME", value),
@@ -2711,7 +3566,16 @@ mod tests {
         assert_eq!(reparsed["command"], "update");
         assert_eq!(reparsed["error"], message);
 
-        let code = dispatch_update_with(None, None, false, false, false, true);
+        let code = dispatch_update_with(
+            None,
+            None,
+            false,
+            None,
+            false,
+            false,
+            true,
+            ColorMode::disabled(),
+        );
         unsafe {
             match &original {
                 Some(value) => std::env::set_var("HOME", value),
@@ -2733,7 +3597,7 @@ mod tests {
         }
         index::write_index(IndexEntry {
             target_dir: "/tmp/does-not-matter-canon".to_string(),
-            strategy: "kiro-cli".to_string(),
+            strategies: vec!["kiro-cli-v2".to_string()],
             installed_at: "2026-01-15T09:30:00Z".to_string(),
             status: IndexEntryStatus::Complete,
         })
@@ -2761,9 +3625,11 @@ mod tests {
             None,
             Some(missing_target.to_string()),
             false,
+            None,
             false,
             false,
             true,
+            ColorMode::disabled(),
         );
         unsafe {
             match &original {
@@ -2787,7 +3653,7 @@ mod tests {
         }
         index::write_index(IndexEntry {
             target_dir: "/tmp/does-not-matter-no-match".to_string(),
-            strategy: "kiro-cli".to_string(),
+            strategies: vec!["kiro-cli-v2".to_string()],
             installed_at: "2026-01-15T09:30:00Z".to_string(),
             status: IndexEntryStatus::Complete,
         })
@@ -2808,7 +3674,16 @@ mod tests {
         assert_eq!(reparsed["error"], message);
         assert_eq!(reparsed["requested_target"], requested);
 
-        let code = dispatch_update_with(None, Some(requested), false, false, false, true);
+        let code = dispatch_update_with(
+            None,
+            Some(requested),
+            false,
+            None,
+            false,
+            false,
+            true,
+            ColorMode::disabled(),
+        );
         unsafe {
             match &original {
                 Some(value) => std::env::set_var("HOME", value),
@@ -2842,7 +3717,16 @@ mod tests {
         assert_eq!(reparsed["command"], "update");
         assert_eq!(reparsed["error"], message);
 
-        let code = update_one_target(&dir, None, false, true, false, false);
+        let code = update_one_target(
+            &dir,
+            None,
+            None,
+            false,
+            true,
+            false,
+            false,
+            ColorMode::disabled(),
+        );
         assert_eq!(code, EXIT_USAGE_ERROR);
         fs::remove_dir_all(&dir).ok();
     }
@@ -2852,17 +3736,26 @@ mod tests {
     #[test]
     fn update_one_target_in_progress_manifest_error_is_json_consistent() {
         let dir = scratch_dir("in-progress-manifest-json");
-        let manifest = Manifest::new(
-            "kiro-cli",
+        let manifest = StrategyManifest::new(
+            "kiro-cli-v2",
             "2026-01-01T00:00:00Z",
             ".",
             None,
             Status::InProgress,
             vec![],
         );
-        manifest::write_manifest(&dir, &manifest).unwrap();
+        manifest::upsert_strategy(&dir, manifest).unwrap();
 
-        let code = update_one_target(&dir, None, false, true, false, false);
+        let code = update_one_target(
+            &dir,
+            None,
+            None,
+            false,
+            true,
+            false,
+            false,
+            ColorMode::disabled(),
+        );
         assert_eq!(code, EXIT_USAGE_ERROR);
         fs::remove_dir_all(&dir).ok();
     }
@@ -2872,7 +3765,7 @@ mod tests {
     #[test]
     fn update_one_target_unregistered_strategy_error_is_json_consistent() {
         let dir = scratch_dir("unregistered-strategy-json");
-        let manifest = Manifest::new(
+        let manifest = StrategyManifest::new(
             "not-a-real-strategy",
             "2026-01-01T00:00:00Z",
             ".",
@@ -2880,7 +3773,7 @@ mod tests {
             Status::Complete,
             vec![],
         );
-        manifest::write_manifest(&dir, &manifest).unwrap();
+        manifest::upsert_strategy(&dir, manifest).unwrap();
 
         let message = format!(
             "strategy 'not-a-real-strategy' recorded for {} is no longer registered",
@@ -2898,7 +3791,16 @@ mod tests {
         assert_eq!(reparsed["command"], "update");
         assert_eq!(reparsed["error"], message);
 
-        let code = update_one_target(&dir, None, false, true, false, false);
+        let code = update_one_target(
+            &dir,
+            None,
+            None,
+            false,
+            true,
+            false,
+            false,
+            ColorMode::disabled(),
+        );
         assert_eq!(code, EXIT_USAGE_ERROR);
         fs::remove_dir_all(&dir).ok();
     }
@@ -2909,19 +3811,28 @@ mod tests {
     fn update_one_target_would_fail_as_noop_error_is_json_consistent() {
         let _home = HomeGuard::new("noop-error-json-home");
         let dir = scratch_dir("noop-error-json");
-        let manifest = Manifest::new(
-            "kiro-cli",
+        let manifest = StrategyManifest::new(
+            "kiro-cli-v2",
             "2026-01-01T00:00:00Z",
             ".",
             None,
             Status::Complete,
             vec![],
         );
-        manifest::write_manifest(&dir, &manifest).unwrap();
+        manifest::upsert_strategy(&dir, manifest).unwrap();
 
         // No --from given: install_from_local's own first check would
         // reject this as a no-op via would_fail_as_noop.
-        let code = update_one_target(&dir, None, false, true, false, false);
+        let code = update_one_target(
+            &dir,
+            None,
+            None,
+            false,
+            true,
+            false,
+            false,
+            ColorMode::disabled(),
+        );
         assert_eq!(code, EXIT_USAGE_ERROR);
         fs::remove_dir_all(&dir).ok();
     }
@@ -2944,10 +3855,12 @@ mod tests {
         let code = update_one_target(
             &target,
             Some(repo_root.to_str().unwrap()),
+            None,
             false,
             true,
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(code, EXIT_USAGE_ERROR);
 
@@ -3000,8 +3913,8 @@ mod tests {
     #[test]
     fn report_update_success_with_real_manifest_does_not_panic_plain_or_json() {
         let dir = scratch_dir("report-success");
-        let manifest = Manifest::new(
-            "kiro-cli",
+        let manifest = StrategyManifest::new(
+            "kiro-cli-v2",
             "2026-02-01T00:00:00Z",
             ".",
             None,
@@ -3012,26 +3925,112 @@ mod tests {
                 provenance: Provenance::Created,
             }],
         );
-        manifest::write_manifest(&dir, &manifest).unwrap();
+        manifest::upsert_strategy(&dir, manifest).unwrap();
         let manifest_path = manifest::manifest_path(&dir).display().to_string();
-        report_update_success(&dir, &manifest_path, 1, 0, None, false, false);
+        report_update_success(
+            &dir,
+            &manifest_path,
+            1,
+            0,
+            None,
+            "kiro-cli-v2",
+            false,
+            false,
+            ColorMode::disabled(),
+        );
         report_update_success(
             &dir,
             &manifest_path,
             1,
             2,
             Some("finalize warning"),
+            "kiro-cli-v2",
             true,
             true,
+            ColorMode::disabled(),
         );
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    /// `report_update_success`'s verbose
+    /// listing must scope to the `strategy_name` slot the run actually
+    /// acted on, not every tracked slot -- a target can track a
+    /// coexisting strategy (e.g. `claude`) that this run never touched.
+    /// Confirmed here via `manifest.get`, the same lookup
+    /// `report_update_success`'s verbose branch uses: with both
+    /// slots present, looking up the acted-on strategy's own name
+    /// returns only that slot's files, never the other slot's.
+    #[test]
+    fn report_update_success_verbose_scopes_to_the_selected_strategy_only() {
+        let dir = scratch_dir("report-success-verbose-scoped");
+        manifest::upsert_strategy(
+            &dir,
+            StrategyManifest::new(
+                "kiro-cli-v2",
+                "2026-02-01T00:00:00Z",
+                ".",
+                None,
+                Status::Complete,
+                vec![ManifestFile {
+                    path: ".kiro/agents/a.json".to_string(),
+                    sha256: Some(hash(b"kiro content")),
+                    provenance: Provenance::Created,
+                }],
+            ),
+        )
+        .unwrap();
+        manifest::upsert_strategy(
+            &dir,
+            StrategyManifest::new(
+                "claude",
+                "2026-02-01T00:00:00Z",
+                ".",
+                None,
+                Status::Complete,
+                vec![ManifestFile {
+                    path: ".claude/agents/k-example.md".to_string(),
+                    sha256: Some(hash(b"claude content")),
+                    provenance: Provenance::Created,
+                }],
+            ),
+        )
+        .unwrap();
+
+        let manifest = manifest::read_manifest(&dir).unwrap().unwrap();
+        let selected = manifest.get("kiro-cli-v2").unwrap();
+        assert_eq!(selected.files.len(), 1);
+        assert_eq!(selected.files[0].path, ".kiro/agents/a.json");
+        let untouched = manifest.get("claude").unwrap();
+        assert_eq!(untouched.files.len(), 1);
+        assert_ne!(
+            selected.files[0].path, untouched.files[0].path,
+            "the two slots must remain independently scoped"
+        );
+
+        let manifest_path = manifest::manifest_path(&dir).display().to_string();
+        // Exercises the real function against the two-strategy manifest
+        // to confirm it does not panic when scoping to one slot via
+        // `strategy_name` while a second, untouched slot coexists.
+        report_update_success(
+            &dir,
+            &manifest_path,
+            1,
+            0,
+            None,
+            "kiro-cli-v2",
+            true,
+            false,
+            ColorMode::disabled(),
+        );
+
         fs::remove_dir_all(&dir).ok();
     }
 
     #[test]
     fn report_update_success_json_reports_exact_file_count() {
         let dir = scratch_dir("report-success-json-count");
-        let manifest = Manifest::new(
-            "kiro-cli",
+        let manifest = StrategyManifest::new(
+            "kiro-cli-v2",
             "2026-02-01T00:00:00Z",
             ".",
             None,
@@ -3049,9 +4048,19 @@ mod tests {
                 },
             ],
         );
-        manifest::write_manifest(&dir, &manifest).unwrap();
+        manifest::upsert_strategy(&dir, manifest).unwrap();
         let manifest_path = manifest::manifest_path(&dir).display().to_string();
-        report_update_success(&dir, &manifest_path, 2, 0, None, false, false);
+        report_update_success(
+            &dir,
+            &manifest_path,
+            2,
+            0,
+            None,
+            "kiro-cli-v2",
+            false,
+            false,
+            ColorMode::disabled(),
+        );
         fs::remove_dir_all(&dir).ok();
     }
 
@@ -3074,8 +4083,8 @@ mod tests {
     #[test]
     fn report_update_success_json_output_is_sourced_from_passed_in_values_not_a_reread() {
         let dir = scratch_dir("report-success-no-reread");
-        let real_manifest = Manifest::new(
-            "kiro-cli",
+        let real_manifest = StrategyManifest::new(
+            "kiro-cli-v2",
             "2026-02-01T00:00:00Z",
             ".",
             None,
@@ -3093,7 +4102,8 @@ mod tests {
                 },
             ],
         );
-        manifest::write_manifest(&dir, &real_manifest).unwrap();
+        let real_manifest_files_len = real_manifest.files.len();
+        manifest::upsert_strategy(&dir, real_manifest).unwrap();
         let real_manifest_path = manifest::manifest_path(&dir).display().to_string();
 
         // Deliberately mismatched values: a file count the real
@@ -3101,7 +4111,7 @@ mod tests {
         // NOT the real on-disk path.
         let passed_in_files = 7usize;
         let passed_in_manifest_path = "/tmp/deliberately-not-the-real-path/manifest";
-        assert_ne!(passed_in_files, real_manifest.files.len());
+        assert_ne!(passed_in_files, real_manifest_files_len);
         assert_ne!(passed_in_manifest_path, real_manifest_path);
 
         // Reconstruct the exact JSON serde_json::json! call
@@ -3119,7 +4129,7 @@ mod tests {
         assert_eq!(expected["manifest_path"], passed_in_manifest_path);
         assert_ne!(
             expected["files"].as_u64().unwrap() as usize,
-            real_manifest.files.len(),
+            real_manifest_files_len,
             "the expected JSON must reflect the passed-in count, not the real on-disk count"
         );
 
@@ -3133,8 +4143,10 @@ mod tests {
             passed_in_files,
             0,
             None,
+            "kiro-cli-v2",
             false,
             true,
+            ColorMode::disabled(),
         );
 
         fs::remove_dir_all(&dir).ok();
@@ -3163,8 +4175,8 @@ mod tests {
         fs::create_dir_all(sibling_victim.parent().unwrap()).unwrap();
         fs::write(&sibling_victim, b"outside-target-content").unwrap();
 
-        let manifest = Manifest::new(
-            "kiro-cli",
+        let manifest = StrategyManifest::new(
+            "kiro-cli-v2",
             "2026-01-01T00:00:00Z",
             ".",
             None,
@@ -3195,8 +4207,8 @@ mod tests {
         let sibling_victim = parent.join("victim.txt");
         fs::write(&sibling_victim, b"outside-target-content").unwrap();
 
-        let manifest = Manifest::new(
-            "kiro-cli",
+        let manifest = StrategyManifest::new(
+            "kiro-cli-v2",
             "2026-01-01T00:00:00Z",
             ".",
             None,
@@ -3221,8 +4233,8 @@ mod tests {
         let full = dir.join("edited.json");
         fs::write(&full, b"hand-edited").unwrap();
 
-        let manifest = Manifest::new(
-            "kiro-cli",
+        let manifest = StrategyManifest::new(
+            "kiro-cli-v2",
             "2026-01-01T00:00:00Z",
             ".",
             None,
@@ -3249,8 +4261,8 @@ mod tests {
         fs::write(dir.join("untouched.json"), b"original").unwrap();
         // "missing.json" is recorded but never written to disk.
 
-        let manifest = Manifest::new(
-            "kiro-cli",
+        let manifest = StrategyManifest::new(
+            "kiro-cli-v2",
             "2026-01-01T00:00:00Z",
             ".",
             None,
@@ -3290,8 +4302,8 @@ mod tests {
     fn count_diverged_files_skips_entries_with_no_recorded_hash() {
         let dir = scratch_dir("count-diverged-no-hash");
         fs::write(dir.join("in-progress.json"), b"whatever").unwrap();
-        let manifest = Manifest::new(
-            "kiro-cli",
+        let manifest = StrategyManifest::new(
+            "kiro-cli-v2",
             "2026-01-01T00:00:00Z",
             ".",
             None,
@@ -3332,19 +4344,23 @@ mod tests {
         let code = update_one_target(
             &target,
             Some(repo_root.to_str().unwrap()),
+            None,
             false,
             false,
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(code, 0);
         let code = update_one_target(
             &target,
             Some(repo_root.to_str().unwrap()),
+            None,
             false,
             true,
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(code, 0);
 
@@ -3371,7 +4387,7 @@ mod tests {
         .unwrap();
 
         let current = manifest::read_manifest(&target).unwrap().unwrap();
-        let diverged = count_diverged_files(&target, &current);
+        let diverged = count_diverged_files(&target, &current.strategies[0]);
         assert_eq!(
             diverged, 1,
             "exactly the hand-edited file must be counted, untouched files must not"
@@ -3403,10 +4419,12 @@ mod tests {
         let code = update_one_target(
             &target,
             Some(repo_root.to_str().unwrap()),
+            None,
             false,
             false,
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(code, 0);
 

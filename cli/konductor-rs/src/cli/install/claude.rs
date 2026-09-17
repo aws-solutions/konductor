@@ -22,11 +22,20 @@
 // `skills:` frontmatter already carries the resolved skill content synth
 // itself produced.
 //
-// Out of scope: context files (Claude Code has no runtime-scanned
-// context directory to target — project context is an authored
-// `CLAUDE.md`, not something `konductor install` writes); and the MCP
-// server binary / permission-grant wiring (owned by a separate,
-// still-in-progress investigation).
+// Out of scope on THIS (install) side: a separate context-install phase
+// or on-disk context directory. Unlike Kiro CLI (`.kiro/context/` +
+// `file://context/<name>` resource entries), Claude Code has no
+// runtime-scanned context directory to target at all -- the real
+// materialization behavior confirms this: context content is spliced
+// directly into the agent's rendered `.md` body at SYNTH time, wrapped in a
+// `<Context: filename.md>...</Context: filename.md>` marker (see
+// `synth/claude.rs`'s `render_agent_md`), not written as a sibling file
+// `install` would need its own phase to copy. So there is genuinely
+// nothing for `install` to do for context here -- it is already inline
+// in the same agent file `AgentInstallPhase`-equivalent copying already
+// handles. The MCP server binary / permission-grant wiring remains
+// separately out of scope (owned by a separate, still-in-progress
+// investigation).
 //
 // SOPs ARE in scope, via `install_sop_skills` (called from `phases.rs`'s
 // shared `SopInstallPhase::run`, gated on `detect_runtimes` finding a
@@ -52,7 +61,7 @@ use super::kiro_cli::{
     attach_provenance, copy_agent_files, copy_skill_dir_recursive, list_agent_files_like,
     list_skill_dirs, plan_skill_dir_recursive, reject_unsafe_file_name, PlannedFile,
 };
-use super::manifest::{classify_provenance, Manifest, ManifestFile, Status};
+use super::manifest::{classify_provenance, ManifestFile, Status, StrategyManifest};
 use super::phases::{run_all_phases, InstallPhase, PhaseOutputs, SopInstallPhase};
 use super::runtime::{detect_runtimes, Runtime};
 use super::InstallError;
@@ -80,13 +89,20 @@ pub(crate) const CLAUDE_DESTINATION_ROOT: &str = ".claude";
 pub struct ClaudeInstallStrategy;
 
 impl InstallStrategy for ClaudeInstallStrategy {
+    /// Matches `CLAUDE_HARNESS_DIR`/`ClaudeTransformer::name()`
+    /// (`"claude"`) exactly -- the harness/strategy name unification
+    /// removes the translation layer that used to exist between
+    /// `--harness claude` and this strategy's own internal
+    /// manifest-recorded name, which used to carry a `"-code"` suffix.
     fn name(&self) -> &'static str {
-        "claude-code"
+        "claude"
     }
 
-    /// Returns `CLAUDE_HARNESS_DIR`.
+    /// Now identical to `name()` by construction (see this impl's own
+    /// `name()` doc comment) -- delegates directly rather than
+    /// returning the separately-declared `CLAUDE_HARNESS_DIR` constant.
     fn harness_dir(&self) -> &'static str {
-        CLAUDE_HARNESS_DIR
+        self.name()
     }
 
     /// Applies only when Claude Code is detected at the target (a
@@ -155,7 +171,17 @@ impl InstallStrategy for ClaudeInstallStrategy {
                 .to_string(),
         );
 
-        let prior_manifest = super::manifest::read_manifest(target_dir)?;
+        // `claude` is not a `KIRO_VARIANT_FAMILY` member,
+        // so `effective_prior_slot` here always resolves to this
+        // strategy's own tracked slot (or `None`, on a fresh install) --
+        // never borrows another strategy's slot the way a Kiro-variant
+        // override switch does (see `kiro_cli.rs`'s own doc comment on
+        // the identical call).
+        let full_prior_manifest = super::manifest::read_manifest(target_dir)?;
+        let prior_manifest: Option<StrategyManifest> = full_prior_manifest
+            .as_ref()
+            .and_then(|full| super::manifest::effective_prior_slot(full, self.name()))
+            .cloned();
 
         let plan = plan_all_files(&harness_dir, target_dir, prior_manifest.as_ref())?;
         if plan.is_empty() {
@@ -174,7 +200,7 @@ impl InstallStrategy for ClaudeInstallStrategy {
                 provenance: planned.provenance,
             })
             .collect();
-        let write_ahead = Manifest::new(
+        let write_ahead = StrategyManifest::new(
             self.name(),
             installed_at,
             ".",
@@ -182,7 +208,7 @@ impl InstallStrategy for ClaudeInstallStrategy {
             Status::InProgress,
             in_progress_files,
         );
-        super::manifest::write_manifest(target_dir, &write_ahead)?;
+        super::manifest::upsert_strategy(target_dir, write_ahead)?;
 
         let raw_files = run_all_phases(
             &standard_claude_install_phases(),
@@ -194,7 +220,7 @@ impl InstallStrategy for ClaudeInstallStrategy {
         )?;
         let files = attach_provenance(raw_files, &plan)?;
 
-        let complete = Manifest::new(
+        let complete = StrategyManifest::new(
             self.name(),
             installed_at,
             ".",
@@ -202,7 +228,7 @@ impl InstallStrategy for ClaudeInstallStrategy {
             Status::Complete,
             files,
         );
-        super::manifest::write_manifest(target_dir, &complete)?;
+        super::manifest::upsert_strategy(target_dir, complete)?;
         Ok(())
     }
 }
@@ -242,7 +268,7 @@ impl InstallPhase for ClaudeSkillInstallPhase {
         staged_root: &Path,
         target_dir: &Path,
         _repo_root: Option<&Path>,
-        prior_manifest: Option<&Manifest>,
+        prior_manifest: Option<&StrategyManifest>,
         _phase_outputs: &PhaseOutputs,
         _no_telemetry: bool,
     ) -> Result<Vec<ManifestFile>, InstallError> {
@@ -269,7 +295,7 @@ impl InstallPhase for ClaudeAgentInstallPhase {
         staged_root: &Path,
         target_dir: &Path,
         _repo_root: Option<&Path>,
-        _prior_manifest: Option<&Manifest>,
+        _prior_manifest: Option<&StrategyManifest>,
         _phase_outputs: &PhaseOutputs,
         _no_telemetry: bool,
     ) -> Result<Vec<ManifestFile>, InstallError> {
@@ -285,7 +311,7 @@ impl InstallPhase for ClaudeAgentInstallPhase {
 fn plan_all_files(
     harness_dir: &Path,
     target_dir: &Path,
-    prior_manifest: Option<&Manifest>,
+    prior_manifest: Option<&StrategyManifest>,
 ) -> Result<Vec<PlannedFile>, String> {
     let mut plan = Vec::new();
     plan.extend(plan_skill_files(harness_dir, target_dir, prior_manifest)?);
@@ -315,7 +341,7 @@ fn plan_all_files(
 pub(super) fn plan_sop_skill_files(
     harness_dir: &Path,
     target_dir: &Path,
-    prior_manifest: Option<&Manifest>,
+    prior_manifest: Option<&StrategyManifest>,
 ) -> Result<Vec<PlannedFile>, String> {
     let source_dir = harness_dir.join(SOPS_CONTENT_TYPE_DIR);
     let entries = list_agent_files_like(&source_dir)?;
@@ -350,7 +376,7 @@ pub(super) fn plan_sop_skill_files(
 fn plan_skill_files(
     harness_dir: &Path,
     target_dir: &Path,
-    prior_manifest: Option<&Manifest>,
+    prior_manifest: Option<&StrategyManifest>,
 ) -> Result<Vec<PlannedFile>, String> {
     let source_root = harness_dir.join(SKILLS_CONTENT_TYPE_DIR);
     let skill_names = list_skill_dirs(&source_root)?;
@@ -381,7 +407,7 @@ fn plan_skill_files(
 fn plan_agent_files(
     harness_dir: &Path,
     target_dir: &Path,
-    prior_manifest: Option<&Manifest>,
+    prior_manifest: Option<&StrategyManifest>,
 ) -> Result<Vec<PlannedFile>, String> {
     let source_dir = harness_dir.join(AGENTS_CONTENT_TYPE_DIR);
     let entries = list_agent_files_md(&source_dir)?;
@@ -428,7 +454,7 @@ fn content_manifest_path(content_dir: &str, name: &str) -> String {
 pub(super) fn install_skills(
     harness_dir: &Path,
     target_dir: &Path,
-    prior_manifest: Option<&Manifest>,
+    prior_manifest: Option<&StrategyManifest>,
 ) -> Result<Vec<ManifestFile>, String> {
     let source_root = harness_dir.join(SKILLS_CONTENT_TYPE_DIR);
     let skill_names = list_skill_dirs(&source_root)?;
@@ -1003,7 +1029,7 @@ mod tests {
 
     #[test]
     fn name_returns_claude_code() {
-        assert_eq!(ClaudeInstallStrategy.name(), "claude-code");
+        assert_eq!(ClaudeInstallStrategy.name(), "claude");
     }
 
     #[test]
@@ -1105,8 +1131,8 @@ mod tests {
         let manifest = super::super::manifest::read_manifest(&target_dir)
             .unwrap()
             .expect("manifest must exist after a successful install");
-        assert_eq!(manifest.strategy, "claude-code");
-        assert!(manifest
+        assert_eq!(manifest.strategies[0].strategy, "claude");
+        assert!(manifest.strategies[0]
             .files
             .iter()
             .any(|f| f.path == ".claude/agents/k-example.md"));
@@ -1274,12 +1300,15 @@ mod tests {
         let manifest = super::super::manifest::read_manifest(&target_dir)
             .unwrap()
             .expect("manifest must exist");
-        assert_eq!(manifest.status, super::super::manifest::Status::Complete);
-        assert!(manifest
+        assert_eq!(
+            manifest.strategies[0].status,
+            super::super::manifest::Status::Complete
+        );
+        assert!(manifest.strategies[0]
             .files
             .iter()
             .any(|f| f.path == ".claude/agents/k-example.md"));
-        assert!(manifest
+        assert!(manifest.strategies[0]
             .files
             .iter()
             .any(|f| f.path == ".claude/skills/constraints/SKILL.md"));

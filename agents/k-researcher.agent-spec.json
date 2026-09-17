@@ -27,6 +27,7 @@
   },
   "clientConfig": {
     "kiroCli": {
+      "welcomeMessage": "I gather information — external documentation, web resources, AWS docs, and (when configured) Slack. Ask me a question and I'll research it and report back with sources.",
       "tools": ["@builtin", "subagent"],
       "allowedTools": ["fs_read"],
       "toolsSettings": {

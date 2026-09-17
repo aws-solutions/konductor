@@ -76,6 +76,7 @@
   },
   "clientConfig": {
     "kiroCli": {
+      "welcomeMessage": "I'm your solutions architect. I produce system designs, API specifications, data models, and threat models, validating each artifact before it hands off to implementation. Bring me a requirement or a design problem and I'll work the architecture through with you.\n\nBuilt-in workflows — type any to run it:\n  /k-design-doc-creation — produce a design doc ready for principal-engineer review\n  /k-existing-design-review — review existing design artifacts across 10 dimensions before implementation\n  /k-principal-engineer-design-review — run a pre-submission quality gate on a design doc\n  /k-adversarial-pull-request-review — run an adversarial review that catches what standard code review misses",
       "tools": ["@builtin", "subagent", "@aws-mcp"],
       "allowedTools": [
         "fs_read",

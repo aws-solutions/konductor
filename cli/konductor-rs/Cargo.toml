@@ -4,6 +4,26 @@ version = "0.1.0"
 edition = "2021"
 description = "Konductor CLI — placeholder skeleton for build pipeline validation"
 license = "Apache-2.0"
+# Minimum supported Rust version, driven by the dependency tree rather than
+# this crate's own code: `icu_collections`, `icu_locale_core`,
+# `icu_normalizer`, `icu_normalizer_data`, `icu_properties`,
+# `icu_properties_data`, and `icu_provider` (all pulled in transitively via
+# `idna`/`url`) each declare `rust-version = "1.88"`, which cargo enforces at
+# resolve/build time. Verified empirically against this exact `Cargo.lock`:
+# `rustup run 1.87.0 cargo build --release` fails closed with an error naming
+# the icu_* packages; `rustup run 1.88.0 cargo build --release` succeeds
+# end-to-end. Declaring it here makes cargo itself enforce and report this
+# floor up front, instead of a caller discovering it from a lockfile
+# consumer's own tooling.
+#
+# Bump by re-running that same empirical check against a candidate version --
+# `rustup toolchain install <version> --profile minimal && rustup run
+# <version> cargo build --release` from this directory -- after any
+# `Cargo.lock` update that could raise a transitive MSRV, then updating this
+# field alongside the pinned toolchain version consumers build against (e.g.
+# `RUST_TOOLCHAIN_VERSION` in the release-pipeline package's
+# konductor-release-project.ts).
+rust-version = "1.88"
 
 [[bin]]
 name = "konductor"
@@ -129,3 +149,12 @@ rustls = { version = "=0.23.43", default-features = false, features = ["ring", "
 # a direct dependency rather than hand-rolling escaping. Exact-pinned per
 # repo convention.
 percent-encoding = "=2.3.2"
+# ANSI color styling for CLI output (src/cli/output.rs). Exact-pinned
+# per repo convention.
+owo-colors = "=4.2.2"
+# Terminal-width-aware text wrapping for doctor.rs's fix:/detail: lines
+# (src/cli/output.rs's `wrap_indented`). Only the `terminal_size`
+# feature is enabled; the default features add Unicode-aware line
+# breaking this crate's plain-ASCII output doesn't need. Exact-pinned
+# per repo convention.
+textwrap = { version = "=0.16.2", default-features = false, features = ["terminal_size"] }

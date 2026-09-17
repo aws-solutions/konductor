@@ -1282,9 +1282,9 @@ mod tests {
         let dir = temp_dir("dup-agent");
         fs::create_dir_all(dir.join("agents")).unwrap();
         for label in ["a", "b"] {
-            let content = format!(
-                r#"{{"schemaVersion":"1","name":"dup","config":{{"description":"d","systemPrompt":"s","model":"m"}},"clientConfig":{{}}}}"#
-            );
+            let content =
+                r#"{"schemaVersion":"1","name":"dup","config":{"description":"d","systemPrompt":"s","model":"m"},"clientConfig":{}}"#
+                    .to_string();
             fs::write(
                 dir.join("agents").join(format!("{label}.agent-spec.json")),
                 content,

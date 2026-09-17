@@ -34,6 +34,7 @@
   },
   "clientConfig": {
     "kiroCli": {
+      "welcomeMessage": "I drive a real browser through Playwright — navigating sites, filling forms, capturing screenshots, and running end-to-end UI tests. Point me at a URL or a flow you want exercised.",
       "tools": ["@builtin", "@playwright-mcp"],
       "allowedTools": [
         "fs_read",
