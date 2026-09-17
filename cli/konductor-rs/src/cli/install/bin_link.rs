@@ -318,12 +318,19 @@ const EXIT_VERIFY_FAILED: u8 = 65;
 /// the physical symlink and the sidecar diverged), `EXIT_USAGE_ERROR`
 /// (64) for every other variant. Same split `index::IndexError`'s/
 /// `manifest::ManifestError`'s own exit-code mapping functions apply.
-/// No production caller yet -- `install.rs`'s `--link-bin` reporting is
-/// deliberately non-fatal to the overall `install` exit code (see that
-/// module's own doc comment for why), so this mapping is not consulted
-/// for THIS process's exit code today. Reserved for a future caller
-/// that does need to distinguish the two (e.g. a standalone `--link-bin`
-/// command); exercised directly by this module's own tests.
+/// No production caller: `uninstall.rs`'s own `BinLinkFailure::from_error`
+/// (see that module) deliberately does NOT reuse this function's raw
+/// output -- this function's "every other variant is a usage error (64)"
+/// framing is correct for a context where a `BinLinkError` is the
+/// PRIMARY failure of the whole command (e.g. a future standalone
+/// `--link-bin` command), but `uninstall`'s own bin-link removal is
+/// explicitly non-fatal, so an ordinary variant there must stay a
+/// warning (6), not escalate to 64 as if the whole uninstall had
+/// failed -- only the same two 65-worthy variants are escalated, via
+/// `BinLinkFailure::from_error`'s own narrower match. Reserved for a
+/// future caller that both needs the two-way split AND treats every
+/// other variant as fatal; exercised directly by this module's own
+/// tests.
 #[allow(dead_code)]
 pub(crate) fn bin_link_error_exit_code(err: &BinLinkError) -> u8 {
     match err {
@@ -937,9 +944,61 @@ fn remove_bin_link_at_home(
     let konductor_dir = home.join(KONDUCTOR_DIR_NAME);
     // Same full-critical-section lock as `ensure_bin_link_at_home` --
     // see module doc "Concurrency safety".
+    //
+    // Regression (CR comment r1p4): this read used to propagate with
+    // `?` BEFORE ever checking whether `target_dir` was tracked at all
+    // -- so one malformed `~/.konductor/bin-links` turned every
+    // `uninstall` target's otherwise-clean run into a reported
+    // `bin_link_error` (and the caller's exit code 6), including
+    // targets that never ran `install --link-bin` and have nothing
+    // recorded here to fail over. `uninstall_one_impl` (see uninstall.rs)
+    // calls this UNCONDITIONALLY for every target, tracked or not, so
+    // this path is on every plain uninstall's critical path, not just
+    // `--link-bin` users'.
+    //
+    // A sidecar READ failure here makes "is target_dir tracked?"
+    // genuinely undeterminable -- there is no sidecar content to check
+    // against. Rather than assume the worst (propagate, and cost every
+    // target a false-positive warning + exit 6), this treats that
+    // undeterminable state the same as "definitely not tracked":
+    // `Ok(None)`, matching the pre-change exit-0 behavior for a target
+    // with no tracked link, and biasing toward silence over a corrupt
+    // sidecar that may have nothing at all to do with THIS target. A
+    // sidecar that is corrupt for a target that DOES have a real
+    // tracked link still surfaces on that target's own next
+    // `install --link-bin`/`doctor` pass through
+    // `ensure_bin_link`/`read_bin_links`, which read the same sidecar
+    // without this target-scoped tolerance -- so a genuine corruption
+    // is not silently hidden forever, only not charged against an
+    // uninstall that may have nothing to do with it.
+    //
+    // A LOCK-ACQUIRE failure (CR comment r2p2) does NOT get the same
+    // fold-to-`Ok(None)` treatment, and is instead propagated with `?`
+    // below like every other genuine `BinLinkError`. Lock contention
+    // (see `config_lock::acquire_named`'s own doc comment) is
+    // transient -- a concurrent install/update briefly holding the
+    // same lock -- and says nothing about whether `target_dir` lacks a
+    // real tracked link the way an undeterminable/corrupt sidecar READ
+    // does. Silently folding it to "not tracked" here risks skipping
+    // the removal of a genuinely real, currently-tracked symlink with
+    // zero warning surfaced; that risk is sharper for `uninstall` than
+    // for install/doctor, which get a later pass to resurface a missed
+    // problem on -- an uninstalled target may have no such later pass.
+    // `BinLinkFailure::from_error` (see uninstall.rs) already maps a
+    // bare `BinLinkError::Lock(_)` to the non-fatal
+    // `EXIT_SUCCESS_WITH_WARNINGS` (6), not `EXIT_VERIFY_FAILED` (65) --
+    // so propagating it here still leaves the overall uninstall
+    // non-fatal, just visible as a warning instead of vanishing.
     let _lock = config_lock::acquire_named(&konductor_dir, BIN_LINK_LOCK_FILE_NAME)?;
-
-    let mut links = read_bin_links_at_home(home_dir)?.unwrap_or_else(|| BinLinks::new(Vec::new()));
+    let mut links = match read_bin_links_at_home(home_dir) {
+        Ok(links) => links.unwrap_or_else(|| BinLinks::new(Vec::new())),
+        // Read failure: undeterminable, per the doc comment above --
+        // fold into "not tracked" rather than propagating. `_lock` is
+        // still held here and is dropped (releasing it) when this
+        // function returns on this path, same as every other early
+        // return below.
+        Err(_) => return Ok(None),
+    };
     let Some(pos) = links.links.iter().position(|e| e.target_dir == target_dir) else {
         return Ok(None);
     };
@@ -1030,6 +1089,36 @@ fn remove_bin_link_at_home(
     }))
 }
 
+/// Whether the current process is running as root (effective UID 0).
+/// The kernel grants root DAC-override, so a directory `chmod`ed to
+/// `0o000` still permits `symlink_metadata` on paths inside it for
+/// root -- a permission-denial repro that relies on that chmod (see
+/// `ensure_bin_link_propagates_a_non_not_found_stat_error_instead_of_treating_it_as_absence`
+/// below, and `uninstall.rs`'s own bin-link-failure tests) cannot fire
+/// under root and must be skipped there instead of asserting on an
+/// outcome the platform will not produce. Shells out to `id -u` rather
+/// than adding a `libc` direct dependency for a handful of tests; a
+/// failure to determine (missing `id`, non-UTF8 output) conservatively
+/// reports non-root so the test still runs and either passes or fails
+/// on its own merits.
+///
+/// `pub(crate)` (rather than private to this module's own `tests`
+/// submodule) so `uninstall.rs`'s test module -- which forces the same
+/// kind of `0o000`-based symlink-removal failure via this module's
+/// public `remove_bin_link` -- can apply the identical root guard
+/// instead of duplicating this helper or leaving its own tests
+/// unguarded.
+#[cfg(test)]
+pub(crate) fn running_as_root() -> bool {
+    std::process::Command::new("id")
+        .arg("-u")
+        .output()
+        .ok()
+        .and_then(|output| String::from_utf8(output.stdout).ok())
+        .map(|stdout| stdout.trim() == "0")
+        .unwrap_or(false)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1057,27 +1146,6 @@ mod tests {
         let path = dir.join(name);
         fs::write(&path, b"#!/bin/sh\n").unwrap();
         path
-    }
-
-    /// Whether the current process is running as root (effective UID 0).
-    /// The kernel grants root DAC-override, so a directory `chmod`ed to
-    /// `0o000` still permits `symlink_metadata` on paths inside it for
-    /// root -- a permission-denial repro that relies on that chmod (see
-    /// `ensure_bin_link_propagates_a_non_not_found_stat_error_instead_of_treating_it_as_absence`
-    /// below) cannot fire under root and must be skipped there instead of
-    /// asserting on an outcome the platform will not produce. Shells out
-    /// to `id -u` rather than adding a `libc` direct dependency for one
-    /// test; a failure to determine (missing `id`, non-UTF8 output)
-    /// conservatively reports non-root so the test still runs and either
-    /// passes or fails on its own merits.
-    fn running_as_root() -> bool {
-        std::process::Command::new("id")
-            .arg("-u")
-            .output()
-            .ok()
-            .and_then(|output| String::from_utf8(output.stdout).ok())
-            .map(|stdout| stdout.trim() == "0")
-            .unwrap_or(false)
     }
 
     #[test]
@@ -1460,6 +1528,90 @@ mod tests {
         let links = read_bin_links_at_home(Some(&home)).unwrap().unwrap();
         assert_eq!(links.links.len(), 1);
         assert!(local_bin_link_path(&home).is_symlink());
+
+        fs::remove_dir_all(&home).ok();
+    }
+
+    /// Regression pin for CR comment r1p4: a genuinely CORRUPT/unreadable
+    /// sidecar makes "is target_dir tracked?" undeterminable, and must
+    /// keep folding to `Ok(None)` ("not tracked") rather than
+    /// propagating -- this is the behavior CR comment r2p2 explicitly
+    /// says must NOT regress while the LOCK-acquire path (see
+    /// `remove_bin_link_at_home_propagates_a_lock_acquire_failure_instead_of_treating_it_as_not_tracked`
+    /// immediately below) changes to stop folding. Malformed JSON is the
+    /// simplest reliable way to make `read_bin_links_at_home` fail with
+    /// `BinLinkError::Malformed`, matching the corrupt-sidecar repro this
+    /// suite already uses elsewhere (`uninstall.rs`'s
+    /// `dispatch_all_usage_error_beats_bin_link_warning`).
+    #[test]
+    fn remove_bin_link_at_home_still_folds_a_corrupt_sidecar_read_to_not_tracked() {
+        let home = scratch_dir("remove-corrupt-sidecar-not-tracked");
+        let bin_links_path = bin_links_path(Some(&home)).expect("home is set");
+        fs::create_dir_all(bin_links_path.parent().unwrap()).unwrap();
+        fs::write(&bin_links_path, b"not valid json").unwrap();
+
+        let result = remove_bin_link_at_home(Some(&home), "/proj/never-tracked").expect(
+            "a corrupt/unreadable sidecar must still fold to Ok(None), not propagate as an error",
+        );
+        assert_eq!(result, None);
+
+        fs::remove_dir_all(&home).ok();
+    }
+
+    /// CR comment r2p2: unlike a corrupt sidecar READ (pinned by the test
+    /// immediately above), a LOCK-ACQUIRE failure must NOT silently fold
+    /// to "not tracked" -- it is propagated as a genuine
+    /// `BinLinkError::Lock`, which `uninstall.rs`'s own
+    /// `BinLinkFailure::from_error` then maps to the non-fatal
+    /// `EXIT_SUCCESS_WITH_WARNINGS` (6) rather than escalating to 65, so
+    /// this stays a surfaced warning rather than a vanished one.
+    /// Strips all permissions from `~/.konductor` itself (rather than
+    /// waiting out `config_lock::DEFAULT_TIMEOUT`'s 5-second contention
+    /// window) so `acquire_named`'s own `create_dir_all`/`open` fails
+    /// immediately with `ConfigLockError::Unavailable` -- a different
+    /// `ConfigLockError` variant than same-process `Contended`, but both
+    /// fold into `BinLinkError::Lock(_)` identically, so this exercises
+    /// the same "lock acquisition failed" branch this fix targets.
+    ///
+    /// Root-proofed the same way as this module's other permission-denial
+    /// tests: root's DAC override bypasses the `0o000` chmod this repro
+    /// depends on.
+    #[test]
+    fn remove_bin_link_at_home_propagates_a_lock_acquire_failure_instead_of_treating_it_as_not_tracked(
+    ) {
+        use std::os::unix::fs::PermissionsExt;
+
+        if running_as_root() {
+            eprintln!(
+                "skipping remove_bin_link_at_home_propagates_a_lock_acquire_failure_instead_of_treating_it_as_not_tracked: \
+                 running as root, which bypasses the DAC permission denial this test depends on"
+            );
+            return;
+        }
+
+        let home = scratch_dir("remove-lock-acquire-failure");
+        // No `.konductor` directory exists yet -- stripping all
+        // permissions from `home` itself means `acquire_named`'s
+        // `create_dir_all(&konductor_dir)` fails with `PermissionDenied`
+        // before a lock file can even be created, which is the failure
+        // this test targets: a lock ACQUIRE failure, not a sidecar READ
+        // failure.
+        let mut perms = fs::metadata(&home).unwrap().permissions();
+        perms.set_mode(0o000);
+        fs::set_permissions(&home, perms).unwrap();
+
+        let result = remove_bin_link_at_home(Some(&home), "/proj/whatever");
+
+        let restored = std::fs::Permissions::from_mode(0o755);
+        let _ = fs::set_permissions(&home, restored);
+
+        let err = result.expect_err(
+            "a lock-acquire failure must propagate as a real error, not fold to Ok(None)",
+        );
+        assert!(
+            matches!(err, BinLinkError::Lock(_)),
+            "expected BinLinkError::Lock, got {err:?}"
+        );
 
         fs::remove_dir_all(&home).ok();
     }

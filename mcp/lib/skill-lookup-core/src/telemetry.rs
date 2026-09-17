@@ -22,13 +22,14 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde::Deserialize;
 use tokio::io::AsyncWriteExt as _;
 
-/// Compile-time placeholder Solution ID -- real value pending
-/// AWS Solutions onboarding, same placeholder `konductor-rs` uses.
-const SOLUTION_ID: &str = "SO0169";
+/// AWS Solutions Library Solution ID assigned to Konductor -- the real,
+/// registered identifier, not a placeholder. Mirrors `konductor-rs`'s
+/// own constant of the same name.
+const SOLUTION_ID: &str = "SO0370";
 
-/// Compile-time placeholder endpoint -- same placeholder value
-/// `konductor-rs`'s mirror uses.
-const DEFAULT_TELEMETRY_ENDPOINT: &str = "https://example.invalid/konductor-telemetry";
+/// Compile-time default endpoint -- same real AWS Solutions Library
+/// metrics endpoint `konductor-rs`'s mirror uses.
+const DEFAULT_TELEMETRY_ENDPOINT: &str = "https://metrics.awssolutionsbuilder.com/generic";
 
 /// The checked-in transport script's text, embedded at compile time --
 /// the SAME checked-in file `konductor-rs` embeds, via this
@@ -452,9 +453,9 @@ async fn resolve_endpoint_with_pin() -> Option<(String, Option<std::net::IpAddr>
 /// classification and escape-hatch contract as `konductor-rs`'s own
 /// mirror (`cli/telemetry/report.rs`'s `endpoint_host_is_allowed`); see
 /// that function's own doc comment for the full rationale, including
-/// why a hostname that fails to resolve (e.g. this crate's own
-/// `example.invalid` placeholder) is never itself treated as
-/// disallowed. Duplicated here per this module's own "not
+/// why a hostname that fails to resolve at all (e.g. a reserved,
+/// deliberately-never-resolving `.invalid` TLD host) is never itself
+/// treated as disallowed. Duplicated here per this module's own "not
 /// workspace-linked" convention (see this file's module doc comment),
 /// not shared.
 ///
@@ -902,10 +903,9 @@ mod tests {
         assert!(!resolved_addresses_include_disallowed_host("192.0.2.1").await);
     }
 
-    /// Pins the "unresolvable is not itself disallowed" contract for
-    /// this crate's own `DEFAULT_TELEMETRY_ENDPOINT` placeholder host
-    /// -- see `konductor-rs`'s own mirror test of the same name for the
-    /// full rationale.
+    /// Pins the "unresolvable is not itself disallowed" contract using a
+    /// dedicated `.invalid`-TLD fixture host -- see `konductor-rs`'s own
+    /// mirror test of the same name for the full rationale.
     /// See the `#[allow(clippy::await_holding_lock)]` comment above
     /// `resolve_endpoint_respects_fleet_wide_telemetry_off_env_var` for
     /// why holding `TELEMETRY_ENV_LOCK` across this test's `.await` is
@@ -963,21 +963,29 @@ mod tests {
     /// and classifies an ordinary case correctly end-to-end -- i.e. the
     /// wiring (escape hatch -> literal check -> bounded resolve ->
     /// decide_pin) added by this fix compiles and runs correctly for a
-    /// real, non-timing-dependent case.
+    /// real, non-timing-dependent case. Uses a dedicated `.invalid`-TLD
+    /// fixture host rather than `DEFAULT_TELEMETRY_ENDPOINT`: the
+    /// compile-time default is now a real, resolvable public host, so
+    /// it no longer exercises this "nothing to pin" branch. Named to
+    /// match `konductor-rs`'s own mirror test of the same fixture and
+    /// contract (`endpoint_host_is_allowed_with_pin_returns_no_pin_for_an_unresolvable_host`).
     /// See the `#[allow(clippy::await_holding_lock)]` comment above
     /// `resolve_endpoint_respects_fleet_wide_telemetry_off_env_var` for
     /// why holding `TELEMETRY_ENV_LOCK` across this test's `.await` is
     /// safe.
     #[allow(clippy::await_holding_lock)]
     #[tokio::test]
-    async fn endpoint_host_is_allowed_with_pin_still_resolves_the_compile_time_default_endpoint() {
+    async fn endpoint_host_is_allowed_with_pin_returns_no_pin_for_an_unresolvable_host() {
         let _lock = lock_telemetry_env();
         std::env::remove_var(TELEMETRY_ALLOW_LOCAL_ENDPOINT_ENV_VAR);
         assert_eq!(
-            endpoint_host_is_allowed_with_pin(DEFAULT_TELEMETRY_ENDPOINT).await,
+            endpoint_host_is_allowed_with_pin(
+                "https://telemetry.konductor.example.invalid/collector"
+            )
+            .await,
             Some(None),
-            "the unresolvable placeholder host must still resolve as allowed now that this \
-             crate's own resolution path is bounded"
+            "an unresolvable host must still resolve as allowed now that this crate's own \
+             resolution path is bounded"
         );
     }
 

@@ -25,6 +25,8 @@
 
 use std::path::{Path, PathBuf};
 
+use crate::cli::output::ColorMode;
+
 pub mod artifact;
 pub mod bin_link;
 pub mod claude;
@@ -373,7 +375,7 @@ pub trait InstallStrategy: Sync {
     /// The harness directory this strategy reads synthed output from
     /// under `<from>/dist/<harness_dir>/` -- e.g. `kiro-cli-v2` for
     /// `KiroCliInstallStrategy`, `claude` for `ClaudeInstallStrategy`.
-    /// Distinct from `name()` (e.g. `"claude-code"`): this is the
+    /// Distinct from `name()` (e.g. `"claude"`): this is the
     /// on-disk directory a synth transformer writes to, which need not
     /// match the strategy's own identifier. Lets strategy-agnostic
     /// reporting code (`count_staged_sops`) read the right directory
@@ -480,6 +482,7 @@ fn report_no_strategy_for_harness(
     harness_name: &str,
     no_telemetry: bool,
     json: bool,
+    color: ColorMode,
 ) {
     let supported: Vec<&str> = registry::STRATEGIES
         .iter()
@@ -510,7 +513,75 @@ fn report_no_strategy_for_harness(
         &message,
         Vec::new(),
         json,
+        color,
     );
+}
+
+/// Projects the `strategies` names an install-index write-ahead entry
+/// should list for `incoming` being installed against a target whose
+/// manifest, before this run, is `existing` (`None` for a fresh
+/// target). This is a projection only, computed on a throwaway clone
+/// -- it never writes anything -- but it reuses the real
+/// `Manifest::upsert`/`remove` methods and `manifest`'s own
+/// `other_kiro_variant_tracked` override-selection helper, so the
+/// index's write-ahead display can't drift from what
+/// `manifest::upsert_strategy` actually decides once
+/// `install_from_local` reaches its real write. The final,
+/// authoritative index write re-reads the real manifest instead of
+/// relying on this projection.
+fn projected_strategy_names(existing: Option<&manifest::Manifest>, incoming: &str) -> Vec<String> {
+    let mut projected = existing.cloned().unwrap_or_else(manifest::Manifest::empty);
+    if let Some(other_name) = manifest::other_kiro_variant_tracked(&projected.strategies, incoming)
+    {
+        projected.remove(&other_name);
+    }
+    // A placeholder slot -- only the resulting strategy NAME set is
+    // used by the caller; every other field is discarded.
+    projected.upsert(manifest::StrategyManifest::new(
+        incoming,
+        "",
+        ".",
+        None,
+        manifest::Status::Complete,
+        Vec::new(),
+    ));
+    projected
+        .strategy_names()
+        .into_iter()
+        .map(str::to_string)
+        .collect()
+}
+
+/// Resolves the `strategies` the finalize index write should record,
+/// given the manifest read attempted at that point (`manifest_read`)
+/// and the write-ahead projection already computed earlier in the
+/// same install run (`write_ahead`, the list `projected_strategy_names`
+/// produced).
+///
+/// A successful, present read is authoritative: `install_from_local`
+/// has already written the real manifest by this point, so its
+/// `strategy_names()` is the definitive post-install list, reflecting
+/// whatever override/insert decision `manifest::upsert_strategy`
+/// actually made rather than a pre-computed guess. A failed or missing
+/// read falls back to `write_ahead` -- never a single-element vec
+/// naming only the strategy just installed, which would silently drop
+/// any other coexisting strategy's name from the index even though its
+/// manifest slot is still on disk.
+///
+/// `pub(super)`: `update.rs`'s `run_update_one_target` calls this same
+/// function for its own finalize index write, closing the identical
+/// staleness gap on the update side -- `update` used to always reuse a
+/// snapshot captured before `install_from_local` ran, never re-reading
+/// the manifest fresh at finalize time the way this function does.
+pub(super) fn resolve_final_strategies(
+    manifest_read: Result<Option<manifest::Manifest>, manifest::ManifestError>,
+    write_ahead: &[String],
+) -> Vec<String> {
+    manifest_read
+        .ok()
+        .flatten()
+        .map(|m| m.strategy_names().into_iter().map(str::to_string).collect())
+        .unwrap_or_else(|| write_ahead.to_vec())
 }
 
 /// `konductor install --harness <name> [--from ...] [--target ...]
@@ -548,6 +619,7 @@ pub fn dispatch_install_with(
     use_github_token: bool,
     verbose: bool,
     json: bool,
+    color: ColorMode,
 ) -> u8 {
     dispatch_install_with_remote_installer(
         from,
@@ -557,6 +629,7 @@ pub fn dispatch_install_with(
         no_telemetry,
         verbose,
         json,
+        color,
         // owner/repo are the confirmed real values for this project,
         // hardcoded ONLY at this one call site.
         //
@@ -594,6 +667,7 @@ fn dispatch_install_with_remote_installer(
     no_telemetry: bool,
     verbose: bool,
     json: bool,
+    color: ColorMode,
     remote_installer: impl FnOnce(
         &dyn InstallStrategy,
         &Path,
@@ -618,6 +692,7 @@ fn dispatch_install_with_remote_installer(
                 &message,
                 Vec::new(),
                 json,
+                color,
             );
             return EXIT_USAGE_ERROR;
         }
@@ -638,7 +713,7 @@ fn dispatch_install_with_remote_installer(
         .iter()
         .find(|strategy| strategy.harness_dir() == harness)
     else {
-        report_no_strategy_for_harness(&destination, &harness, no_telemetry, json);
+        report_no_strategy_for_harness(&destination, &harness, no_telemetry, json, color);
         return EXIT_USAGE_ERROR;
     };
     super::trace::trace(
@@ -670,59 +745,28 @@ fn dispatch_install_with_remote_installer(
                 &message,
                 Vec::new(),
                 json,
+                color,
             );
             return EXIT_USAGE_ERROR;
         }
     }
 
-    // Refuse to silently switch strategies on a target already tracked
-    // under a DIFFERENT strategy. `matches()` re-runs on every `install`
-    // invocation (unlike `update.rs`, which pins to `current.strategy`
-    // per design doc §7 -- see that module's own comment for why), and a
-    // target directory can legitimately carry both a `.kiro` and a
-    // `.claude` marker at once (see `runtime.rs`'s own `detects_both`
-    // test), so two separate `install` runs against the same target can
-    // genuinely select two different strategies. Both strategies write
-    // to the SAME un-scoped `<target_dir>/.konductor/manifest`
-    // (`manifest::manifest_path` takes no strategy parameter), and
-    // `install_from_local` always wholesale-overwrites it with only the
-    // CURRENT strategy's own file list -- switching strategies here
-    // would silently drop the OTHER strategy's files from tracking
-    // (they stay on disk but become invisible orphans to
-    // `update`/`uninstall`) and would misclassify that strategy's own
-    // still-present files as `Provenance::ReplacedForeign` on any later
-    // re-install, since they are absent from the intervening manifest --
-    // `uninstall.rs`'s `delete_eligible_files` never deletes a
-    // `ReplacedForeign` path, so this corruption is permanent once it
-    // happens. A read failure on the existing manifest is NOT this
-    // check's concern: it falls through to `install_from_local`'s own
-    // internal `read_manifest` call below, which surfaces the identical
-    // error through the normal `install_error_exit_code` path.
-    if let Ok(Some(existing)) = manifest::read_manifest(&destination) {
-        if existing.strategy != strategy.name() {
-            super::report::report_error(
-                "install",
-                "install.strategy_conflict",
-                &destination,
-                no_telemetry,
-                &format!(
-                    "{} was already installed with strategy '{}'; \
-                     installing with '{}' would corrupt tracking for the prior \
-                     strategy's files (they would become orphaned and un-removable). \
-                     Run `konductor update` to refresh the existing '{}' install \
-                     instead, or remove {} first if you intend to switch strategies.",
-                    destination.display(),
-                    existing.strategy,
-                    strategy.name(),
-                    existing.strategy,
-                    manifest::manifest_path(&destination).display()
-                ),
-                Vec::new(),
-                json,
-            );
-            return EXIT_USAGE_ERROR;
-        }
-    }
+    // Two behaviors are selected inside `manifest::upsert_strategy`
+    // itself, once `install_from_local` reaches the point of actually
+    // writing the manifest:
+    //
+    // - `strategy.name()` is a `KIRO_VARIANT_FAMILY` member and the
+    //   target already tracks the other family member:
+    //   `upsert_strategy` warns, then overwrites -- both variants write
+    //   every destination path identically, so this is a takeover, not
+    //   a coexistence question.
+    // - Otherwise (e.g. installing `claude` alongside an
+    //   already-tracked Kiro variant): `strategy.name()` gets its own
+    //   independent slot, since `claude` and a Kiro variant share no
+    //   destination path.
+    //
+    // No pre-check is needed here -- both cases are handled uniformly
+    // by `upsert_strategy`'s own read-modify-write.
 
     // A hand-edited or otherwise corrupted index can carry the same
     // target_dir more than once. write_index's upsert (find-first,
@@ -766,6 +810,7 @@ fn dispatch_install_with_remote_installer(
                         ),
                     )],
                     json,
+                    color,
                 );
                 return EXIT_USAGE_ERROR;
             }
@@ -780,13 +825,14 @@ fn dispatch_install_with_remote_installer(
                 &format!("could not read install index: {err}"),
                 Vec::new(),
                 json,
+                color,
             );
             return index_error_exit_code(&err);
         }
     }
 
-    // Index write-ahead (design doc §2, step 2): brackets the strategy's
-    // own manifest write-ahead/complete sequence (step 3-5) so a crash
+    // Index write-ahead: brackets the strategy's
+    // own manifest write-ahead/complete sequence so a crash
     // anywhere from here on always leaves an index entry naming this
     // target -- never a fully-installed target invisible to `update`/
     // `uninstall`. Canonicalize BEFORE upserting, so `--target .` and an
@@ -817,6 +863,7 @@ fn dispatch_install_with_remote_installer(
             ),
             Vec::new(),
             json,
+            color,
         );
         return EXIT_USAGE_ERROR;
     }
@@ -834,15 +881,29 @@ fn dispatch_install_with_remote_installer(
                 ),
                 Vec::new(),
                 json,
+                color,
             );
             return EXIT_USAGE_ERROR;
         }
     };
 
     let installed_at = crate::cli::time::utc_now_iso();
+    // Cloned (not moved) into the write-ahead `IndexEntry` below --
+    // `write_ahead_strategies` itself stays alive as the finalize
+    // fallback (see the `unwrap_or_else` a few hundred lines down),
+    // so a manifest read error at finalize time falls back to this
+    // same coexistence-aware projection instead of a single-element
+    // vec that would drop any other tracked strategy's name.
+    let write_ahead_strategies = projected_strategy_names(
+        manifest::read_manifest(&destination)
+            .ok()
+            .flatten()
+            .as_ref(),
+        strategy.name(),
+    );
     if let Err(err) = index::write_index(index::IndexEntry {
         target_dir: canonical_target_dir.clone(),
-        strategy: strategy.name().to_string(),
+        strategies: write_ahead_strategies.clone(),
         installed_at: installed_at.clone(),
         status: index::IndexEntryStatus::InProgress,
     }) {
@@ -854,11 +915,11 @@ fn dispatch_install_with_remote_installer(
             &format!("could not write install index: {err}"),
             Vec::new(),
             json,
+            color,
         );
         return index_error_exit_code(&err);
     }
 
-    // The actual install step: `--from` reads and copies synthed local
     // The actual install step: `--from` reads and copies synthed local
     // content through the selected strategy; no `--from` instead tries
     // the real remote fallback chain through the caller-supplied
@@ -914,13 +975,13 @@ fn dispatch_install_with_remote_installer(
                     &message,
                     extra,
                     json,
+                    color,
                 );
                 // The index write-ahead entry above stays `InProgress`
                 // after a remote-fetch failure, exactly like a
                 // `--from` failure leaves it -- it self-heals through
                 // the target's own manifest state on a later
-                // successful install, per the design doc's
-                // self-healing rule; we never roll it back here.
+                // successful install; we never roll it back here.
                 return fallback_chain_error_exit_code(&err);
             }
         }
@@ -931,8 +992,8 @@ fn dispatch_install_with_remote_installer(
             // Computed BEFORE `canonical_target_dir` is moved into the
             // index-finalize write below -- reuses the SAME
             // canonicalized target_dir string and the SAME `installed_at`
-            // clock read `index`/`manifest` already agree on (design doc
-            // §1's single-clock-read rule), rather than a fresh
+            // clock read `index`/`manifest` already agree on (the design
+            // doc's single-clock-read rule), rather than a fresh
             // `utc_now_iso()` call or a second canonicalization pass.
             let link_bin_result = if link_bin {
                 Some(bin_link::ensure_bin_link(
@@ -959,20 +1020,29 @@ fn dispatch_install_with_remote_installer(
             if !no_telemetry {
                 crate::cli::telemetry::ensure_identity(&destination, strategy.name());
             }
-            // Index complete (design doc §2, step 6): upserts the SAME
+            // Index complete: upserts the SAME
             // entry (by canonicalized target_dir) to Complete, after the
             // strategy's own manifest has already reached Complete.
             // Leaves the entry `InProgress` (self-healable via the
-            // target's own manifest, per the design doc) rather than
+            // target's own manifest) rather than
             // failing the whole install over a write that happens after
             // all real file-copy work already succeeded.
+            // See `resolve_final_strategies`'s own doc comment for the
+            // authoritative-read-vs-coexistence-aware-fallback rule.
+            let final_strategies = resolve_final_strategies(
+                manifest::read_manifest(&destination),
+                &write_ahead_strategies,
+            );
             if let Err(err) = index::write_index(index::IndexEntry {
                 target_dir: canonical_target_dir,
-                strategy: strategy.name().to_string(),
+                strategies: final_strategies,
                 installed_at,
                 status: index::IndexEntryStatus::Complete,
             }) {
-                eprintln!("konductor install: could not finalize install index: {err}");
+                eprintln!(
+                    "{} could not finalize install index: {err}",
+                    crate::cli::output::error_prefix(color, "konductor install:")
+                );
                 crate::cli::telemetry::report_cli_error(
                     &destination,
                     "install",
@@ -988,11 +1058,13 @@ fn dispatch_install_with_remote_installer(
             report_install_success(
                 &destination,
                 from.as_deref(),
+                strategy.name(),
                 strategy.harness_dir(),
                 verbose,
                 json,
                 link_bin_result,
                 remote_source,
+                color,
             );
             0
         }
@@ -1006,6 +1078,7 @@ fn dispatch_install_with_remote_installer(
                 &message,
                 Vec::new(),
                 json,
+                color,
             );
             install_error_exit_code(&err)
         }
@@ -1028,18 +1101,29 @@ fn dispatch_install_with_remote_installer(
 /// document). `remote_source` is `Some(..)` only on the no-`--from`
 /// fallback-chain path, naming which of the two remote sources
 /// produced the install -- `None` for a `--from` local install.
+#[allow(clippy::too_many_arguments)]
 fn report_install_success(
     destination: &Path,
     from: Option<&str>,
+    strategy_name: &str,
     harness_dir: &str,
     verbose: bool,
     json: bool,
     link_bin_result: Option<Result<(PathBuf, bin_link::BinLinkOutcome), bin_link::BinLinkError>>,
     remote_source: Option<remote_orchestrate::RemoteInstallSource>,
+    color: ColorMode,
 ) {
-    let manifest = match manifest::read_manifest(destination) {
-        Ok(Some(manifest)) => manifest,
-        _ => {
+    // The manifest now tracks possibly several
+    // strategies' slots; this report describes only the ONE this
+    // install run actually performed (`strategy_name`), never another
+    // already-tracked strategy's own slot.
+    let slot = match manifest::read_manifest(destination) {
+        Ok(Some(manifest)) => manifest.get(strategy_name).cloned(),
+        _ => None,
+    };
+    let slot = match slot {
+        Some(slot) => slot,
+        None => {
             // Internal inconsistency (a strategy reported success but no
             // manifest is readable). Still honor `--json`, and emit the
             // SAME field shape as the normal path
@@ -1073,16 +1157,19 @@ fn report_install_success(
                 let source_note = remote_source
                     .map(|source| format!(" (source: {source})"))
                     .unwrap_or_default();
-                println!("konductor install: installed{source_note}");
+                println!(
+                    "{} installed{source_note}",
+                    crate::cli::output::success_prefix(color, "konductor install:")
+                );
                 if let Some(result) = &link_bin_result {
-                    println!("{}", link_bin_report_line(result));
+                    println!("{}", link_bin_report_line(result, color));
                 }
             }
             return;
         }
     };
     let manifest_path = manifest::manifest_path(destination);
-    let counts = InstallCounts::from_manifest(&manifest);
+    let counts = InstallCounts::from_manifest(&slot);
     // Count skipped SOPs from the source synth staged under the
     // strategy that actually ran's own harness directory, not a
     // hardcoded one, so the figure reflects this specific `--from`
@@ -1107,16 +1194,16 @@ fn report_install_success(
     let summary_line = match remote_source {
         Some(source) => format!(
             "{} (source: {source})",
-            format_install_summary(destination, &manifest_path, &counts, sops_skipped)
+            format_install_summary(destination, &manifest_path, &counts, sops_skipped, color)
         ),
-        None => format_install_summary(destination, &manifest_path, &counts, sops_skipped),
+        None => format_install_summary(destination, &manifest_path, &counts, sops_skipped, color),
     };
     println!("{summary_line}");
     if let Some(result) = &link_bin_result {
-        println!("{}", link_bin_report_line(result));
+        println!("{}", link_bin_report_line(result, color));
     }
     if verbose {
-        for line in format_install_verbose_lines(&manifest) {
+        for line in format_install_verbose_lines(&slot) {
             println!("{line}");
         }
     }
@@ -1163,23 +1250,30 @@ fn bin_link_outcome_str(outcome: bin_link::BinLinkOutcome) -> &'static str {
 /// callers).
 fn link_bin_report_line(
     result: &Result<(PathBuf, bin_link::BinLinkOutcome), bin_link::BinLinkError>,
+    color: ColorMode,
 ) -> String {
     match result {
         Ok((link_path, bin_link::BinLinkOutcome::Created)) => format!(
-            "konductor install: linked {} -> the currently-running konductor binary",
+            "{} linked {} -> the currently-running konductor binary",
+            crate::cli::output::success_prefix(color, "konductor install:"),
             link_path.display()
         ),
         Ok((link_path, bin_link::BinLinkOutcome::SelfHealed)) => format!(
-            "konductor install: {} pointed at a different konductor binary; repointed \
+            "{} {} pointed at a different konductor binary; repointed \
              it at the currently-running one",
+            crate::cli::output::success_prefix(color, "konductor install:"),
             link_path.display()
         ),
         Ok((link_path, bin_link::BinLinkOutcome::AlreadyCurrent)) => format!(
-            "konductor install: {} already points at the currently-running konductor \
+            "{} {} already points at the currently-running konductor \
              binary; left unchanged",
+            crate::cli::output::success_prefix(color, "konductor install:"),
             link_path.display()
         ),
-        Err(err) => format!("konductor install --link-bin: {err}"),
+        Err(err) => format!(
+            "{} {err}",
+            crate::cli::output::error_prefix_stdout(color, "konductor install --link-bin:")
+        ),
     }
 }
 
@@ -1206,7 +1300,7 @@ struct InstallCounts {
 }
 
 impl InstallCounts {
-    fn from_manifest(manifest: &manifest::Manifest) -> Self {
+    fn from_manifest(manifest: &manifest::StrategyManifest) -> Self {
         use crate::cli::synth::kiro_cli_v2::{AGENTS_CONTENT_TYPE_DIR, SKILLS_CONTENT_TYPE_DIR};
         let claude_agents_prefix = format!(
             "{}/{AGENTS_CONTENT_TYPE_DIR}/",
@@ -1268,11 +1362,13 @@ fn format_install_summary(
     manifest_path: &Path,
     counts: &InstallCounts,
     sops_skipped: usize,
+    color: ColorMode,
 ) -> String {
     format!(
-        "konductor install: installed {} agent(s), {} skill(s), {} context file(s), {} \
+        "{} installed {} agent(s), {} skill(s), {} context file(s), {} \
          MCP server binary(ies) to {} (manifest: {}); skipped {} SOP(s) (no runtime \
          discovery path yet); overwrote {} pre-existing file(s) not created by Konductor",
+        crate::cli::output::success_prefix(color, "konductor install:"),
         counts.agents,
         counts.skills,
         counts.context,
@@ -1287,7 +1383,7 @@ fn format_install_summary(
 /// Builds the additional per-file detail lines `-v`/`--verbose` prints
 /// after the summary: one line per installed file's manifest path and
 /// provenance.
-fn format_install_verbose_lines(manifest: &manifest::Manifest) -> Vec<String> {
+fn format_install_verbose_lines(manifest: &manifest::StrategyManifest) -> Vec<String> {
     manifest
         .files
         .iter()
@@ -1435,6 +1531,7 @@ mod tests {
             false,
             false,
             false,
+            ColorMode::disabled(),
             move |strategy, destination, installed_at, no_telemetry| {
                 strategy
                     .install_from_local(
@@ -1476,6 +1573,7 @@ mod tests {
             false,
             false,
             false,
+            ColorMode::disabled(),
             |_strategy, _destination, _installed_at, _no_telemetry| {
                 Err(remote_orchestrate::FallbackChainError::ReleaseOnly(
                     remote_orchestrate::RemoteOrchestrationError::Fetch(
@@ -1597,7 +1695,7 @@ mod tests {
             .unwrap()
             .expect("manifest must exist after a successful remote install");
         assert_eq!(
-            entry.installed_at, manifest.installed_at,
+            entry.installed_at, manifest.strategies[0].installed_at,
             "the index entry and manifest must share the same installed_at clock read"
         );
 
@@ -1632,13 +1730,13 @@ mod tests {
   "installs": [
     {
       "target_dir": "/tmp/duplicate-a",
-      "strategy": "kiro-cli",
+      "strategy": "kiro-cli-v2",
       "installed_at": "2026-01-01T00:00:00Z",
       "status": "Complete"
     },
     {
       "target_dir": "/tmp/duplicate-a",
-      "strategy": "kiro-cli",
+      "strategy": "kiro-cli-v2",
       "installed_at": "2026-01-01T00:00:00Z",
       "status": "Complete"
     }
@@ -1662,6 +1760,7 @@ mod tests {
             false,
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(code, EXIT_USAGE_ERROR);
 
@@ -1706,6 +1805,7 @@ mod tests {
             false,
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(
             code, EXIT_VERIFY_FAILED,
@@ -1738,6 +1838,7 @@ mod tests {
             false,
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(code, 0);
         assert!(manifest::read_manifest(&dir).unwrap().is_some());
@@ -1747,21 +1848,16 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// Regression: the strategy-mismatch guard in `dispatch_install_with`
-    /// prevents a target already tracked under one strategy from being
-    /// silently re-installed under a different one, which would overwrite
-    /// `.konductor/manifest` and drop the other strategy's files from
-    /// tracking. Exercised via two explicit, different `--harness` values
-    /// on the same target. Dual-marker auto-detection is gone now that
-    /// `--harness` is mandatory, but the guard must still hold when a
-    /// caller explicitly asks to switch strategies -- mandatory
-    /// `--harness` doesn't make that any safer.
+    /// `claude` and a Kiro variant share no
+    /// destination path, so installing one after the other at the same
+    /// target must coexist independently -- BOTH tracked, neither
+    /// refused, neither's own files touched by the other's install.
     #[test]
-    fn dispatch_install_refuses_to_switch_strategy_on_an_already_tracked_target() {
-        let _home = HomeGuard::new("refuse-strategy-switch-home");
-        let dir = scratch_dir("refuse-strategy-switch");
-        let claude_repo_root = scratch_dir("refuse-strategy-switch-claude-repo");
-        let kiro_repo_root = scratch_dir("refuse-strategy-switch-kiro-repo");
+    fn dispatch_install_claude_code_and_kiro_cli_coexist_at_the_same_target() {
+        let _home = HomeGuard::new("coexist-claude-kiro-home");
+        let dir = scratch_dir("coexist-claude-kiro");
+        let claude_repo_root = scratch_dir("coexist-claude-kiro-claude-repo");
+        let kiro_repo_root = scratch_dir("coexist-claude-kiro-kiro-repo");
         seed_synthed_claude_agent(&claude_repo_root, "k-example");
         seed_synthed_agent(&kiro_repo_root, "k-example");
 
@@ -1777,18 +1873,15 @@ mod tests {
             false,
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(first_code, 0);
         let manifest_after_first = manifest::read_manifest(&dir).unwrap().unwrap();
-        assert_eq!(manifest_after_first.strategy, "claude-code");
+        assert_eq!(manifest_after_first.strategy_names(), vec!["claude"]);
         assert!(dir.join(".claude/agents/k-example.md").is_file());
 
-        // Second install: a DIFFERENT explicit `--harness kiro-cli-v2` on
-        // the SAME already-tracked target -- must be refused by the
-        // strategy-mismatch guard, regardless of the `.kiro` marker
-        // created below (irrelevant to selection now, but kept to show
-        // the guard fires even when a marker would have agreed with the
-        // switch).
+        // Second install: a DIFFERENT explicit `--harness kiro-cli-v2`
+        // on the SAME target -- must succeed and coexist, not refuse.
         fs::create_dir_all(dir.join(".kiro")).unwrap();
         let second_code = dispatch_install_with(
             Some(kiro_repo_root.to_str().unwrap().to_string()),
@@ -1799,26 +1892,114 @@ mod tests {
             false,
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(
-            second_code, EXIT_USAGE_ERROR,
-            "must refuse rather than silently switch strategies"
+            second_code, 0,
+            "claude and a Kiro variant must coexist independently, not refuse"
         );
 
-        // The manifest must be UNCHANGED -- still Claude's, still
-        // naming the Claude-installed file -- proving the refusal
-        // happened before any write, not after a partial overwrite.
+        // Both strategies must now be tracked, and neither's own files
+        // touched by the other's install.
         let manifest_after_second = manifest::read_manifest(&dir).unwrap().unwrap();
-        assert_eq!(manifest_after_second.strategy, "claude-code");
-        assert!(dir.join(".claude/agents/k-example.md").is_file());
-        assert!(
-            !dir.join(".kiro/agents/k-example.json").is_file(),
-            "the refused install must never have copied any Kiro file either"
+        let mut names = manifest_after_second.strategy_names();
+        names.sort_unstable();
+        assert_eq!(names, vec!["claude", "kiro-cli-v2"]);
+        assert_eq!(
+            manifest_after_second.get("claude").unwrap().files,
+            manifest_after_first.get("claude").unwrap().files,
+            "claude's own slot must be untouched by the kiro-cli-v2 install"
         );
+        assert!(dir.join(".claude/agents/k-example.md").is_file());
+        assert!(dir.join(".kiro/agents/k-example.json").is_file());
 
         fs::remove_dir_all(&dir).ok();
         fs::remove_dir_all(&claude_repo_root).ok();
         fs::remove_dir_all(&kiro_repo_root).ok();
+    }
+
+    /// On a coexistence target -- two strategies
+    /// (`claude` and `kiro-cli-v2`) already tracked -- a manifest read
+    /// error at finalize time must fall back to
+    /// the SAME coexistence-aware write-ahead projection, not a
+    /// single-element vec naming only the strategy just installed. A
+    /// single-element fallback would silently drop the other tracked
+    /// strategy's name from the index even though its manifest slot is
+    /// still on disk.
+    ///
+    /// `write_atomic` (the manifest's own crash-safe writer) always
+    /// finishes a successful write by renaming a fresh, freshly-permissioned
+    /// temp file over the manifest path -- so a real end-to-end dispatch
+    /// can never observe a read failure strictly between
+    /// `install_from_local`'s own successful manifest write and the
+    /// finalize block's separate read a few lines later: whatever made
+    /// the file unreadable before that write is undone by the write
+    /// itself. This calls `resolve_final_strategies` directly instead --
+    /// the exact function the finalize block calls -- with a REAL
+    /// `ManifestError` (malformed JSON, produced by a genuine
+    /// `manifest::read_manifest` call, not a hand-constructed enum
+    /// variant) standing in for that read failure.
+    #[test]
+    fn resolve_final_strategies_falls_back_to_write_ahead_on_manifest_read_error() {
+        let dir = scratch_dir("resolve-final-strategies-read-error");
+        let manifest_path = manifest::manifest_path(&dir);
+        fs::create_dir_all(manifest_path.parent().unwrap()).unwrap();
+        fs::write(&manifest_path, b"not valid json").unwrap();
+
+        let read_result = manifest::read_manifest(&dir);
+        assert!(
+            read_result.is_err(),
+            "malformed manifest JSON must produce a real ManifestError, \
+             not a fabricated one, so this test exercises the actual failure shape"
+        );
+
+        let write_ahead = vec!["claude".to_string(), "kiro-cli-v2".to_string()];
+        let mut resolved = resolve_final_strategies(read_result, &write_ahead);
+        resolved.sort_unstable();
+        assert_eq!(
+            resolved, write_ahead,
+            "a manifest read error at finalize time must fall back to the \
+             write-ahead projection, keeping BOTH coexisting strategies in \
+             the index -- never collapse to a single-element vec"
+        );
+
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    /// Same fallback rule, exercised via the OTHER branch
+    /// `resolve_final_strategies` also falls back on: a missing manifest
+    /// (`Ok(None)`), which `.flatten()` collapses to the same `None` case
+    /// as a read error.
+    #[test]
+    fn resolve_final_strategies_falls_back_to_write_ahead_when_manifest_missing() {
+        let write_ahead = vec!["claude".to_string(), "kiro-cli-v2".to_string()];
+        let mut resolved = resolve_final_strategies(Ok(None), &write_ahead);
+        resolved.sort_unstable();
+        assert_eq!(resolved, write_ahead);
+    }
+
+    /// Sanity check for the non-fallback branch: a successful, present
+    /// manifest read is authoritative and is returned verbatim (as
+    /// `strategy_names()`), ignoring `write_ahead` entirely.
+    #[test]
+    fn resolve_final_strategies_prefers_real_manifest_when_read_succeeds() {
+        let mut manifest = manifest::Manifest::empty();
+        manifest.upsert(manifest::StrategyManifest::new(
+            "claude",
+            "",
+            ".",
+            None,
+            manifest::Status::Complete,
+            Vec::new(),
+        ));
+
+        let write_ahead = vec!["kiro-cli-v2".to_string()];
+        let resolved = resolve_final_strategies(Ok(Some(manifest)), &write_ahead);
+        assert_eq!(
+            resolved,
+            vec!["claude".to_string()],
+            "a successful manifest read must win over the write-ahead fallback"
+        );
     }
 
     // ── explicit --harness selection ─────────────────────────────────────
@@ -1846,10 +2027,11 @@ mod tests {
             false,
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(code, 0);
         let manifest = manifest::read_manifest(&dir).unwrap().unwrap();
-        assert_eq!(manifest.strategy, "kiro-cli");
+        assert_eq!(manifest.strategy_names(), vec!["kiro-cli-v2"]);
         assert!(dir.join(".kiro/agents/k-example.json").is_file());
 
         fs::remove_dir_all(&dir).ok();
@@ -1880,13 +2062,14 @@ mod tests {
             false,
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(
             code, 0,
             "--harness claude must succeed on a completely undetected target"
         );
         let manifest = manifest::read_manifest(&dir).unwrap().unwrap();
-        assert_eq!(manifest.strategy, "claude-code");
+        assert_eq!(manifest.strategy_names(), vec!["claude"]);
         assert!(dir.join(".claude/agents/k-example.md").is_file());
         assert!(
             !dir.join(".kiro/agents/k-example.json").is_file(),
@@ -1899,7 +2082,7 @@ mod tests {
 
     /// `--harness kiro-v3` must select `KiroCliV3InstallStrategy` on a
     /// completely undetected target, copying the synthed agent verbatim
-    /// into `.kiro/agents/` and recording `kiro-cli-v3` as the manifest's
+    /// into `.kiro/agents/` and recording `kiro-v3` as the manifest's
     /// strategy -- proving `--harness kiro-v3` actually reaches a real,
     /// working install strategy end to end, with no "no consumer for
     /// this harness" scope gap.
@@ -1919,32 +2102,32 @@ mod tests {
             false,
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(
             code, 0,
             "--harness kiro-v3 must succeed on a completely undetected target"
         );
         let manifest = manifest::read_manifest(&dir).unwrap().unwrap();
-        assert_eq!(manifest.strategy, "kiro-cli-v3");
+        assert_eq!(manifest.strategy_names(), vec!["kiro-v3"]);
         assert!(dir.join(".kiro/agents/k-example.json").is_file());
 
         fs::remove_dir_all(&dir).ok();
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// A target already installed via `--harness kiro-cli-v2` must
-    /// refuse a subsequent `--harness kiro-v3` install rather than
-    /// silently corrupting the V2 install's tracked files -- both write
-    /// under the same `.kiro`/`.konductor` roots, so this exercises
-    /// `dispatch_install_with`'s existing strategy-conflict check
-    /// (`existing.strategy != strategy.name()`) across the two Kiro CLI
-    /// strategies specifically, not just Kiro-vs-Claude.
+    /// A target already installed via
+    /// `--harness kiro-cli-v2` must OVERRIDE (warn, then overwrite) on a
+    /// subsequent `--harness kiro-v3` install, not refuse -- both write
+    /// under the same `.kiro`/`.konductor` roots, so this exercises the
+    /// override-on-switch behavior across the two Kiro CLI strategies
+    /// specifically (see the coexistence test above for Kiro-vs-Claude).
     #[test]
-    fn dispatch_install_refuses_to_switch_from_kiro_cli_v2_to_kiro_v3() {
-        let _home = HomeGuard::new("v2-then-v3-conflict-home");
-        let dir = scratch_dir("v2-then-v3-conflict");
-        let v2_repo_root = scratch_dir("v2-then-v3-conflict-v2-repo");
-        let v3_repo_root = scratch_dir("v2-then-v3-conflict-v3-repo");
+    fn dispatch_install_kiro_cli_v2_to_kiro_v3_overrides_the_prior_variant() {
+        let _home = HomeGuard::new("v2-then-v3-override-home");
+        let dir = scratch_dir("v2-then-v3-override");
+        let v2_repo_root = scratch_dir("v2-then-v3-override-v2-repo");
+        let v3_repo_root = scratch_dir("v2-then-v3-override-v3-repo");
         seed_synthed_agent(&v2_repo_root, "k-example");
         seed_synthed_kiro_v3_agent(&v3_repo_root, "k-example");
 
@@ -1957,6 +2140,7 @@ mod tests {
             false,
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(first_code, 0);
 
@@ -1969,14 +2153,58 @@ mod tests {
             false,
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(
-            second_code, EXIT_USAGE_ERROR,
-            "must refuse rather than silently switch strategies"
+            second_code, 0,
+            "switching between kiro-cli-v2 and kiro-v3 must override, not refuse"
         );
 
         let manifest_after_second = manifest::read_manifest(&dir).unwrap().unwrap();
-        assert_eq!(manifest_after_second.strategy, "kiro-cli");
+        assert_eq!(manifest_after_second.strategy_names(), vec!["kiro-v3"]);
+        assert!(manifest_after_second.get("kiro-cli-v2").is_none());
+
+        fs::remove_dir_all(&dir).ok();
+        fs::remove_dir_all(&v2_repo_root).ok();
+        fs::remove_dir_all(&v3_repo_root).ok();
+    }
+
+    /// Repeated switching (kiro-cli-v2 -> kiro-v3 -> kiro-cli-v2) stays at
+    /// exactly one tracked strategy every time, end to end through the
+    /// real dispatch path -- not just at the `manifest::upsert_strategy`
+    /// unit level (see `manifest.rs`'s own test of the same property).
+    #[test]
+    fn dispatch_install_repeated_kiro_variant_switching_stays_at_one_strategy() {
+        let _home = HomeGuard::new("repeated-switch-home");
+        let dir = scratch_dir("repeated-switch");
+        let v2_repo_root = scratch_dir("repeated-switch-v2-repo");
+        let v3_repo_root = scratch_dir("repeated-switch-v3-repo");
+        seed_synthed_agent(&v2_repo_root, "k-example");
+        seed_synthed_kiro_v3_agent(&v3_repo_root, "k-example");
+
+        for harness in ["kiro-cli-v2", "kiro-v3", "kiro-cli-v2"] {
+            let repo_root = if harness == "kiro-v3" {
+                &v3_repo_root
+            } else {
+                &v2_repo_root
+            };
+            let code = dispatch_install_with(
+                Some(repo_root.to_str().unwrap().to_string()),
+                Some(dir.to_str().unwrap().to_string()),
+                harness.to_string(),
+                false,
+                false,
+                false,
+                false,
+                false,
+                ColorMode::disabled(),
+            );
+            assert_eq!(code, 0, "switch to {harness} must succeed");
+        }
+
+        let manifest = manifest::read_manifest(&dir).unwrap().unwrap();
+        assert_eq!(manifest.strategies.len(), 1);
+        assert_eq!(manifest.strategy_names(), vec!["kiro-cli-v2"]);
 
         fs::remove_dir_all(&dir).ok();
         fs::remove_dir_all(&v2_repo_root).ok();
@@ -2011,6 +2239,7 @@ mod tests {
             false,
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(
             code, 0,
@@ -2039,8 +2268,7 @@ mod tests {
 
     /// The index entry's `installed_at` and the manifest's own
     /// `installed_at` must be captured from the SAME clock read, not two
-    /// independent `utc_now_iso()` calls moments apart -- per
-    /// `designs/konductor-cli-install-index.md` §1. Runs a real
+    /// independent `utc_now_iso()` calls moments apart. Runs a real
     /// `dispatch_install_with`, then reads BOTH records back and asserts
     /// the two `installed_at` strings are byte-identical.
     #[test]
@@ -2059,6 +2287,7 @@ mod tests {
             false,
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(code, 0);
 
@@ -2075,7 +2304,7 @@ mod tests {
             .expect("manifest must exist after a successful install");
 
         assert_eq!(
-            entry.installed_at, manifest.installed_at,
+            entry.installed_at, manifest.strategies[0].installed_at,
             "the index entry's installed_at and the manifest's installed_at must be the \
              SAME string -- captured at the same instant, not two independent clock reads"
         );
@@ -2097,7 +2326,8 @@ mod tests {
                 false,
                 false,
                 false,
-                false
+                false,
+                ColorMode::disabled(),
             ),
             2
         );
@@ -2121,8 +2351,8 @@ mod tests {
         fs::write(
             &index_path,
             br#"{"schema_version":1,"installs":[
-                {"target_dir":"/tmp/dup-install-target","strategy":"kiro-cli","installed_at":"2026-01-15T09:30:00Z","status":"complete"},
-                {"target_dir":"/tmp/dup-install-target","strategy":"kiro-cli","installed_at":"2026-01-16T09:30:00Z","status":"complete"}
+                {"target_dir":"/tmp/dup-install-target","strategy":"kiro-cli-v2","installed_at":"2026-01-15T09:30:00Z","status":"complete"},
+                {"target_dir":"/tmp/dup-install-target","strategy":"kiro-cli-v2","installed_at":"2026-01-16T09:30:00Z","status":"complete"}
             ]}"#,
         )
         .unwrap();
@@ -2139,6 +2369,7 @@ mod tests {
             false,
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(code, EXIT_USAGE_ERROR);
         // Must refuse before ever writing a manifest for this target.
@@ -2235,6 +2466,7 @@ mod tests {
             false,
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(
             code, EXIT_VERIFY_FAILED,
@@ -2272,6 +2504,7 @@ mod tests {
             false,
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(code, EXIT_USAGE_ERROR);
         fs::remove_dir_all(&dir).ok();
@@ -2301,7 +2534,7 @@ mod tests {
 
         let err = index::write_index(index::IndexEntry {
             target_dir: "/tmp/whatever".to_string(),
-            strategy: "kiro-cli".to_string(),
+            strategies: vec!["kiro-cli-v2".to_string()],
             installed_at: "2026-01-01T00:00:00Z".to_string(),
             status: index::IndexEntryStatus::InProgress,
         })
@@ -2364,7 +2597,7 @@ mod tests {
         fs::create_dir_all(manifest_path.parent().unwrap()).unwrap();
         fs::write(
             &manifest_path,
-            br#"{"schema_version":99,"strategy":"kiro-cli","installed_at":"2026-01-15T09:30:00Z","destination":".","status":"complete","files":[]}"#,
+            br#"{"schema_version":99,"strategy":"kiro-cli-v2","installed_at":"2026-01-15T09:30:00Z","destination":".","status":"complete","files":[]}"#,
         )
         .unwrap();
 
@@ -2380,6 +2613,7 @@ mod tests {
             false,
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(
             code, EXIT_VERIFY_FAILED,
@@ -2416,6 +2650,7 @@ mod tests {
             false,
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(code, EXIT_USAGE_ERROR);
 
@@ -2519,9 +2754,9 @@ mod tests {
         result.is_err()
     }
 
-    fn sample_manifest() -> manifest::Manifest {
-        manifest::Manifest::new(
-            "kiro-cli",
+    fn sample_manifest() -> manifest::StrategyManifest {
+        manifest::StrategyManifest::new(
+            "kiro-cli-v2",
             "2026-01-15T09:30:00Z",
             ".",
             None,
@@ -2588,8 +2823,8 @@ mod tests {
     /// dedup applies identically under `.claude/skills/`.
     #[test]
     fn install_counts_from_manifest_recognizes_claude_prefixes() {
-        let manifest = manifest::Manifest::new(
-            "claude-code",
+        let manifest = manifest::StrategyManifest::new(
+            "claude",
             "2026-01-15T09:30:00Z",
             ".",
             None,
@@ -2639,6 +2874,7 @@ mod tests {
             Path::new("/tmp/example-target/.konductor/manifest"),
             &counts,
             7,
+            ColorMode::disabled(),
         );
         assert_eq!(
             summary,

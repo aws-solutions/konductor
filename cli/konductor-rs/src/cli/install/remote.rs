@@ -418,16 +418,31 @@ fn install_from_remote_bytes_named_with_limit(
     //
     // Best-effort: the install itself already succeeded above, so a
     // failure here (the freshly-written manifest being unreadable or
-    // unwritable) must not fail the whole call and unwind a completed
-    // install.
-    if let Ok(Some(mut manifest)) = super::manifest::read_manifest(target_dir) {
-        manifest.source = Some(format!("remote:{artifact_filename}"));
-        let _ = super::manifest::write_manifest(target_dir, &manifest);
-    } else {
+    // unwritable, or the lock below being contended) must not fail the
+    // whole call and unwind a completed install.
+    //
+    // `update_strategy_field_locked` rewrites this single field under
+    // the SAME lock `manifest::upsert_strategy` uses for a whole slot --
+    // the same read-modify-write race the slot-level lock guards
+    // against, just for one field. Without that lock, a concurrent
+    // `install` of a DIFFERENT strategy at this same target, landing
+    // between an unlocked read and write here, could have its own
+    // just-committed slot silently dropped by this rewrite's stale
+    // snapshot. Re-reading FRESH under the lock means this rewrite
+    // can never race it.
+    let rewrote =
+        super::manifest::update_strategy_field_locked(target_dir, strategy.name(), |slot| {
+            slot.source = Some(format!("remote:{artifact_filename}"));
+        });
+    if !matches!(rewrote, Ok(true)) {
         // Non-fatal by design (see above), but not silent: the source
         // field is left pointing at the now-deleted temp path, so
         // `doctor` will report it missing later -- surfaced here so
-        // it's discoverable.
+        // it's discoverable. Covers every non-success outcome alike
+        // (no manifest, slot not tracked in the fresh read, or a
+        // `ManifestError` including lock contention) -- none of them
+        // change what the caller needs to know: the rewrite didn't
+        // happen.
         eprintln!(
             "konductor install: warning: could not read back the manifest at {} to record a stable remote source; source will point at a deleted temp path",
             target_dir.display()
@@ -768,7 +783,7 @@ mod tests {
         let manifest = crate::cli::install::manifest::read_manifest(&target_dir)
             .unwrap()
             .expect("manifest must exist after remote install");
-        assert_eq!(manifest.strategy, "kiro-cli");
+        assert_eq!(manifest.strategy_names(), vec!["kiro-cli-v2"]);
 
         // Temp dir must be cleaned up on success -- check the real
         // filesystem for this call's own uniquely-tagged temp dir,
@@ -812,8 +827,9 @@ mod tests {
         let manifest = crate::cli::install::manifest::read_manifest(&target_dir)
             .unwrap()
             .expect("manifest must exist after remote install");
-        let source = manifest
+        let source = manifest.strategies[0]
             .source
+            .clone()
             .expect("remote install must record a source, not None");
         assert_eq!(
             source,
@@ -880,7 +896,7 @@ mod tests {
             .unwrap()
             .expect("manifest must exist after a successful install");
         assert_eq!(
-            manifest_before.source,
+            manifest_before.strategies[0].source,
             Some(format!("remote:{ARTIFACT_FILENAME}")),
             "sanity check: the success path must have already set the stable source marker"
         );

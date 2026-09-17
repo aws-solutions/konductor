@@ -1,55 +1,65 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// install/kiro_cli_v3.rs — `InstallStrategy` for the Kiro CLI V3 (KAS)
+// install/kiro_cli_v3.rs -- `InstallStrategy` for the Kiro CLI V3 (KAS)
 // runtime.
 //
 // Reuses V2's content-type layout and harness-agnostic planning/listing
 // primitives verbatim (`plan_all_files`, `install_context`,
 // `install_skills`, `install_sops`, `list_agent_files`), parameterized
 // only by this harness's own directory name: `KiroCliV3Transformer`
-// stages `dist/kiro-v3/` using the same content-type directory constants
-// as `KiroCliV2Transformer`. Agent installation is the one exception --
-// see below.
+// stages `dist/kiro-v3/` using the same content-type directory
+// constants as `KiroCliV2Transformer`. Agent installation is the one
+// exception.
 //
-// Runs the same `resource_rewrite::ResourceRewritePass` pipeline V2's
-// `kiro_cli::install_agents` runs, via `standard_passes_v3`:
-// `ContextResourcePass`/`SkillResourcePass` are reused UNCHANGED (V3's
-// `resources` field is rendered in the identical shape as V2's). The one
-// V3-specific piece is `McpServerPassV3`: it injects the same
-// `mcpServers.konductor-skills` entry as V2's `McpServerPass`, but
-// authorizes it via a `permissions.rules[]` entry instead of V2's
-// `tools`/`allowedTools` pair, since V3 has no `allowedTools` field (see
-// `resource_rewrite.rs`'s own doc comment on `McpServerPassV3` for the
-// full authorization rationale).
+// Agent installation runs the same `resource_rewrite::
+// ResourceRewritePass` pipeline V2's `kiro_cli::install_agents` runs,
+// via `standard_passes_v3`. `ContextResourcePass`/`SkillResourcePass`
+// are reused unchanged. The one V3-specific piece is `McpServerPassV3`:
+// it injects the same `mcpServers.konductor-skills` entry as V2's
+// `McpServerPass`, but authorizes it via a `permissions.rules[]` entry
+// instead of V2's `tools`/`allowedTools` pair, since V3 has no
+// `allowedTools` field.
 //
-// Copies the `skill-lookup-mcp` MCP server binary
-// (`super::mcp_server::install_bin_files`) before installing agents, the
-// same ordering `phases.rs`'s `McpInstallPhase` enforces ahead of
-// `AgentInstallPhase` for V2 -- the resource-rewrite pipeline needs
-// `bin_files` to know whether this run actually copied the binary before
-// it can inject a path to it.
+// Copies the `skill-lookup-mcp` MCP server binary before installing
+// agents, the same ordering `phases.rs`'s `McpInstallPhase` enforces
+// ahead of `AgentInstallPhase` for V2 -- agent installation needs to
+// know whether the binary was copied this run before it can inject a
+// path to it.
 //
-// No `InstallPhase` pipeline (`phases.rs`) is used: that pipeline's
-// `AgentInstallPhase` also performs the ADDITIVE Claude/V3
-// settings.json grant, a genuinely separate mechanism for a SHARED,
-// potentially pre-existing `.claude/settings.json` file -- out of scope
-// here, since this strategy's agents are always freshly synthesized JSON
-// files with no merge-into-existing-content concern. This strategy
-// instead calls the same content-type functions directly in one small,
-// self-contained `install_from_local`, mirroring `ClaudeInstallStrategy`'s
-// equally self-contained shape rather than `kiro_cli.rs`'s phase-based
-// one.
+// No `InstallPhase` pipeline is used for agent installation: this
+// strategy's agents are always freshly synthesized JSON files with no
+// merge-into-existing-content concern, so the pipeline's per-phase
+// ordering buys nothing a plain sequential call chain doesn't already
+// give. `install_from_local` below calls the content-type functions
+// directly, mirroring `ClaudeInstallStrategy`'s self-contained shape
+// rather than `kiro_cli.rs`'s phase-based one.
+//
+// That does not extend to the two additive, `.claude`-marker-gated
+// mechanisms V2's `SopInstallPhase`/`AgentInstallPhase` also perform:
+// the dual-marker SOP-skill conversion and the Claude/V3
+// settings.json grant, both for a shared, potentially pre-existing
+// `.claude/` tree that isn't this strategy's own content.
+// `install_from_local` calls the same shared functions those phases
+// call, inlined directly rather than routed through the phase
+// pipeline. Omitting them would leave `.claude/settings.json` and any
+// dual-marker `.claude/skills/sop-<name>/SKILL.md` files unclaimed by
+// any tracked slot after a `kiro-cli-v2` -> `kiro-v3` override switch,
+// since `manifest::upsert_strategy` removes the prior variant's slot
+// outright on that switch and this strategy's slot never wrote those
+// paths.
 
 use std::path::Path;
 
 use super::kiro_cli::{
     attach_provenance, content_manifest_path, install_context, install_skills, install_sops,
-    list_agent_files, plan_all_files, read_skill_scopes_sidecar, read_sop_scopes_sidecar,
+    list_agent_files, plan_additive_claude_sop_skill_files, plan_all_files,
+    plan_claude_settings_grant, read_skill_scopes_sidecar, read_sop_scopes_sidecar,
     reject_unsafe_file_name, KIRO_DESTINATION_ROOT, KONDUCTOR_DESTINATION_ROOT,
 };
-use super::manifest::{Manifest, ManifestFile, Provenance, Status};
+use super::manifest::{ManifestFile, Provenance, Status, StrategyManifest};
 use super::resource_rewrite::{
-    apply_all, standard_passes_v3, RewriteContext, SKILL_RESOURCE_PREFIX,
+    apply_all, apply_claude_settings_grant_and_hooks, standard_passes_v3, RewriteContext,
+    MCP_SERVER_NAME, SKILL_RESOURCE_PREFIX,
 };
 use super::runtime::{detect_runtimes, Runtime};
 use super::InstallError;
@@ -72,43 +82,43 @@ use crate::cli::synth::HarnessTransformer as _;
 pub struct KiroCliV3InstallStrategy;
 
 impl InstallStrategy for KiroCliV3InstallStrategy {
-    /// Distinct from `KiroCliInstallStrategy::name()` (`"kiro-cli"`) so
-    /// the two are never confused by `dispatch_install_with`'s existing
-    /// strategy-conflict check (`install.rs`'s
-    /// `existing.strategy != strategy.name()` guard): re-installing a V3
-    /// target with V2 (or vice versa) is refused with a clear message,
-    /// rather than silently corrupting the other strategy's tracked
-    /// files -- both write under the SAME `.kiro`/`.konductor` roots.
+    /// Matches `KiroCliV3Transformer::name()` (`"kiro-v3"`) exactly --
+    /// the harness/strategy name unification removes the translation
+    /// layer that used to exist between `--harness kiro-v3` and this
+    /// strategy's manifest-recorded name. Distinct from
+    /// `KiroCliInstallStrategy::name()` (`"kiro-cli-v2"`) so the two
+    /// remain individually addressable in the manifest --
+    /// `KIRO_VARIANT_FAMILY` governs switching between them (warn, then
+    /// override), not a hard refusal, since both write under the same
+    /// `.kiro`/`.konductor` roots and only one can meaningfully occupy
+    /// a target at a time.
     fn name(&self) -> &'static str {
-        "kiro-cli-v3"
+        "kiro-v3"
     }
 
-    /// Imported directly from `KiroCliV3Transformer` rather than
-    /// hand-duplicated as a literal, so this can never drift from the
-    /// real synth-side value.
+    /// Identical to `name()` by construction -- delegates directly
+    /// rather than re-deriving the string from `KiroCliV3Transformer::name()`.
     fn harness_dir(&self) -> &'static str {
-        KiroCliV3Transformer.name()
+        self.name()
     }
 
-    /// Applies when Kiro CLI is detected at the target. Not called by any
-    /// production path today (`#[allow(dead_code)]` on the trait --
-    /// `KiroCliInstallStrategy` already claims every target as the sole
-    /// default, per `registry.rs`), and can't disambiguate V2 from V3 for
-    /// an EXISTING `.kiro` marker either: both strategies key off the
-    /// same directory, with no on-disk signal distinguishing a
+    /// Applies when Kiro CLI is detected at the target. Not called by
+    /// any production path today -- `KiroCliInstallStrategy` already
+    /// claims every target as the sole default -- and can't
+    /// disambiguate V2 from V3 for an existing `.kiro` marker: both key
+    /// off the same directory, with no on-disk signal distinguishing a
     /// V2-installed `.kiro/` from a V3-installed one. A future
     /// `--auto`-detect mode would need to resolve that some other way
-    /// (e.g. via `.konductor/manifest`'s own recorded `strategy` field).
+    /// (e.g. via `.konductor/manifest`'s recorded `strategy` field).
     fn matches(&self, target_dir: &Path) -> bool {
         detect_runtimes(target_dir).has(Runtime::KiroCli)
     }
 
     /// Same no-op pre-check contract as
-    /// `KiroCliInstallStrategy::would_fail_as_noop` (see that
-    /// implementation's own doc comment), scoped to this strategy's
-    /// four content types and re-using the exact same `plan_all_files`
-    /// this strategy's `install_from_local` plans with below -- so this
-    /// check can never silently drift from what a real run would do.
+    /// `KiroCliInstallStrategy::would_fail_as_noop`, scoped to this
+    /// strategy's four content types and reusing the same
+    /// `plan_all_files` `install_from_local` plans with below, so this
+    /// check can't silently drift from what a real run would do.
     fn would_fail_as_noop(&self, target_dir: &Path, from: Option<&str>) -> Option<String> {
         let Some(repo_root) = from else {
             return Some(super::NO_REMOTE_RELEASE_MESSAGE.to_string());
@@ -120,36 +130,59 @@ impl InstallStrategy for KiroCliV3InstallStrategy {
             Ok(plan) => plan,
             Err(message) => return Some(message),
         };
-        // Mirrors `install_from_local`'s own merged plan below: a target
-        // with a built MCP binary but nothing else synthed still has
-        // something to install, so this check must not report a false
-        // no-op for it.
+        // A target with a built MCP binary but nothing else synthed
+        // still has something to install, so this check must not
+        // report a false no-op for it.
         let bin_plan = match super::mcp_server::plan_bin_files(repo_root, target_dir, None) {
             Ok(plan) => plan,
             Err(message) => return Some(message),
         };
-        if plan.is_empty() && bin_plan.is_empty() {
+        // `plan_additive_claude_sop_skill_files` is gated only on
+        // `target_dir` already carrying a `.claude` marker, independent
+        // of `plan`/`bin_plan`, so it can turn an otherwise-empty plan
+        // into a non-empty one on its own. Omitting it would report a
+        // false no-op for a target `install_from_local` would actually
+        // install into.
+        //
+        // Deliberately doesn't also call `plan_claude_settings_grant`:
+        // that function can only add an optional file to an otherwise
+        // non-empty plan -- it never turns an empty plan non-empty --
+        // so it can't change this function's verdict.
+        let claude_sop_skill_plan =
+            match plan_additive_claude_sop_skill_files(repo_root, target_dir, None) {
+                Ok(plan) => plan,
+                Err(message) => return Some(message),
+            };
+        if plan.is_empty() && bin_plan.is_empty() && claude_sop_skill_plan.is_empty() {
             return Some(no_source_message(&harness_dir, repo_root));
         }
         None
     }
 
     /// Same write-ahead sequencing as `KiroCliInstallStrategy::
-    /// install_from_local`: plan every file first (no copy), write an
-    /// `InProgress` manifest naming the plan, copy every content type in
-    /// order (skills, SOPs, context, the MCP binary, then agents -- so
-    /// agent installation's resource-rewrite pipeline finds the other
-    /// three already on disk and knows whether the binary was copied
-    /// this run), attach real provenance, then mark the manifest
-    /// `Complete`. `no_telemetry` has nothing to gate here: unlike
-    /// `kiro_cli.rs`'s `AgentInstallPhase`, this strategy has no Claude
-    /// settings-grant or telemetry-hook side effect.
+    /// install_from_local`: plan every file first, write an
+    /// `InProgress` manifest naming the plan, copy every content type
+    /// in order (skills, SOPs, context, the MCP binary, then agents --
+    /// so agent installation finds the other three already on disk and
+    /// knows whether the binary was copied this run), attach real
+    /// provenance, then mark the manifest `Complete`.
+    ///
+    /// Also applies the same two additive, `.claude`-marker-gated
+    /// mechanisms V2 applies when this target also carries a
+    /// pre-existing `.claude` marker: the dual-marker SOP-skill
+    /// conversion and the shared Claude/V3 settings grant. Without
+    /// these, a target that switches from `kiro-cli-v2` to this
+    /// strategy would leave `.claude/settings.json` and any dual-marker
+    /// SOP-skill files claimed by neither slot, since `kiro-cli-v2`'s
+    /// slot is removed outright on the switch and this strategy's slot
+    /// never wrote those paths. `no_telemetry` gates the telemetry-hook
+    /// wiring exactly as it does in `AgentInstallPhase::run`.
     fn install_from_local(
         &self,
         target_dir: &Path,
         from: Option<&str>,
         installed_at: &str,
-        _no_telemetry: bool,
+        no_telemetry: bool,
     ) -> Result<(), InstallError> {
         let repo_root = from
             .ok_or_else(|| InstallError::Message(super::NO_REMOTE_RELEASE_MESSAGE.to_string()))?;
@@ -169,19 +202,43 @@ impl InstallStrategy for KiroCliV3InstallStrategy {
                 .to_string(),
         );
 
-        let prior_manifest = super::manifest::read_manifest(target_dir)?;
+        // See `kiro_cli.rs`'s `install_from_local` for why this is
+        // `effective_prior_slot`, not a bare `read_manifest` -- an
+        // override-switch against the other Kiro variant borrows that
+        // variant's slot for provenance purposes.
+        let full_prior_manifest = super::manifest::read_manifest(target_dir)?;
+        let prior_manifest: Option<StrategyManifest> = full_prior_manifest
+            .as_ref()
+            .and_then(|full| super::manifest::effective_prior_slot(full, self.name()))
+            .cloned();
 
         let mut plan = plan_all_files(&harness_dir, target_dir, prior_manifest.as_ref())?;
-        // Folded into the SAME plan the write-ahead manifest below
-        // names, mirroring `KiroCliInstallStrategy::install_from_local`'s
-        // identical merge -- `attach_provenance` below requires every
-        // file this run actually copies (including the MCP binary
-        // `install_bin_files` copies further down) to already appear
-        // here, or it fails as an internal-error rather than silently
-        // under-tracking a copied file.
+        // Folded into the same plan the write-ahead manifest below
+        // names -- `attach_provenance` below requires every file this
+        // run actually copies (including the MCP binary) to already
+        // appear here, or it fails as an internal error rather than
+        // silently under-tracking a copied file.
         let bin_plan =
             super::mcp_server::plan_bin_files(repo_root, target_dir, prior_manifest.as_ref())?;
         plan.extend(bin_plan);
+        // Must run after the bin plan is folded in: it checks `plan`
+        // for the MCP binary's planned path to predict whether the
+        // Claude/V3 settings grant applies (this prediction, not the
+        // real run-time computation, is what closes the crash-safety
+        // gap).
+        let claude_plan =
+            plan_claude_settings_grant(&harness_dir, target_dir, &plan, prior_manifest.as_ref())?;
+        plan.extend(claude_plan);
+        // Predicts the additive Claude-side SOP-skill conversion files
+        // the dual-marker branch further down writes when this target
+        // also has a pre-existing `.claude` marker -- must run before
+        // the write-ahead `InProgress` manifest below, for the same
+        // crash-safety reason as `plan_claude_settings_grant`. Without
+        // this, `attach_provenance` fails the first time that branch
+        // produces a file that was never in the plan.
+        let claude_sop_skill_plan =
+            plan_additive_claude_sop_skill_files(repo_root, target_dir, prior_manifest.as_ref())?;
+        plan.extend(claude_sop_skill_plan);
         if plan.is_empty() {
             return Err(InstallError::Message(no_source_message(
                 &harness_dir,
@@ -189,15 +246,32 @@ impl InstallStrategy for KiroCliV3InstallStrategy {
             )));
         }
 
+        // Mirrored from `KiroCliInstallStrategy::install_from_local`'s
+        // identical exclusion: this strategy's own tracked slot must
+        // never claim `.claude/skills/sop-<name>/SKILL.md`, at any
+        // status, not just `Complete`. Defined here, before
+        // `in_progress_files` is built, so the write-ahead record
+        // excludes these paths too -- otherwise a crash between the
+        // write-ahead write and the `Complete` write further down
+        // would leave this slot's `InProgress` manifest claiming these
+        // paths, and `uninstall` (which has no status gate) would
+        // delete them even though `claude`'s slot may own them.
+        const DUAL_MARKER_SOP_SKILL_PREFIX: &str = ".claude/skills/sop-";
+
         let in_progress_files: Vec<ManifestFile> = plan
             .iter()
+            .filter(|planned| {
+                !planned
+                    .manifest_path
+                    .starts_with(DUAL_MARKER_SOP_SKILL_PREFIX)
+            })
             .map(|planned| ManifestFile {
                 path: planned.manifest_path.clone(),
                 sha256: None,
                 provenance: planned.provenance,
             })
             .collect();
-        let write_ahead = Manifest::new(
+        let write_ahead = StrategyManifest::new(
             self.name(),
             installed_at,
             ".",
@@ -205,17 +279,16 @@ impl InstallStrategy for KiroCliV3InstallStrategy {
             Status::InProgress,
             in_progress_files,
         );
-        super::manifest::write_manifest(target_dir, &write_ahead)?;
+        super::manifest::upsert_strategy(target_dir, write_ahead)?;
 
         // Plain sequential copy, one call per content type (no
-        // `InstallPhase` pipeline -- see this module's own doc comment).
-        // Order matters: agent installation's resource-rewrite pipeline
-        // needs skills/context already on disk and needs to know
-        // whether the MCP binary was copied this run, so those three
-        // plus the binary come before agents. Unlike V2's `phases.rs`,
-        // this ordering is enforced only by call sequence, not
-        // structurally -- `assert_bin_files_are_on_disk` below guards
-        // the one piece of it that would otherwise degrade silently.
+        // `InstallPhase` pipeline -- see module doc). Order matters:
+        // agent installation needs skills/context already on disk and
+        // needs to know whether the MCP binary was copied this run, so
+        // those three plus the binary come before agents. Unlike V2's
+        // `phases.rs`, this ordering is enforced only by call sequence
+        // -- `assert_bin_files_are_on_disk` below guards the one piece
+        // that would otherwise degrade silently.
         let mut raw_files = Vec::new();
         raw_files.extend(install_skills(
             &harness_dir,
@@ -223,15 +296,59 @@ impl InstallStrategy for KiroCliV3InstallStrategy {
             prior_manifest.as_ref(),
         )?);
         raw_files.extend(install_sops(&harness_dir, target_dir)?);
+        // Additive Claude branch, mirroring `SopInstallPhase::run`'s
+        // dual-marker branch: this run is this strategy's own, but the
+        // target also has a pre-existing `.claude` marker. Always
+        // re-derives its source directory from `repo_root`
+        // (`<repo_root>/dist/claude/sops/`), never from `harness_dir`,
+        // which is this strategy's own (V3) harness dir, not Claude's.
+        if detect_runtimes(target_dir).has(Runtime::ClaudeCode) {
+            let claude_harness_dir = repo_root
+                .join("dist")
+                .join(super::claude::CLAUDE_HARNESS_DIR);
+            raw_files.extend(super::claude::install_sop_skills(
+                &claude_harness_dir,
+                target_dir,
+            )?);
+        }
         raw_files.extend(install_context(&harness_dir, target_dir)?);
         let bin_files = super::mcp_server::install_bin_files(repo_root, target_dir)?;
         raw_files.extend(bin_files.clone());
         assert_bin_files_are_on_disk(target_dir, &bin_files)?;
-        raw_files.extend(install_agents(&harness_dir, target_dir, &bin_files)?);
+        let (agent_files, any_mcp_server_injected) =
+            install_agents(&harness_dir, target_dir, &bin_files)?;
+        raw_files.extend(agent_files);
+
+        // Additive, Claude/V3-only settings grant, mirroring
+        // `AgentInstallPhase::run`'s identical branch: applies the
+        // shared `.claude/settings.json` MCP-tool authorization grant
+        // (and, unless `--no-telemetry`, the telemetry-hook wiring)
+        // once for the whole run, only when this run injected an MCP
+        // server grant into at least one agent and this target is a
+        // detected Claude Code target. Both callers share this logic
+        // via `apply_claude_settings_grant_and_hooks` rather than each
+        // keeping its own copy.
+        if any_mcp_server_injected && detect_runtimes(target_dir).has(Runtime::ClaudeCode) {
+            if let Some(claude_settings_file) =
+                apply_claude_settings_grant_and_hooks(target_dir, no_telemetry, "Kiro CLI V3")
+            {
+                raw_files.push(claude_settings_file);
+            }
+        }
 
         let files = attach_provenance(raw_files, &plan)?;
 
-        let complete = Manifest::new(
+        // Mirrored from `KiroCliInstallStrategy::install_from_local`'s
+        // identical exclusion: the dual-marker branch above wrote
+        // `.claude/skills/sop-<name>/SKILL.md` -- this strategy's own
+        // slot must never claim it, so a future `uninstall`/`update`
+        // never deletes it. `claude`'s own slot, if separately
+        // installed at this target, owns that path on its own.
+        let (files, _dual_marker_claude_sop_skills): (Vec<ManifestFile>, Vec<ManifestFile>) = files
+            .into_iter()
+            .partition(|f| !f.path.starts_with(DUAL_MARKER_SOP_SKILL_PREFIX));
+
+        let complete = StrategyManifest::new(
             self.name(),
             installed_at,
             ".",
@@ -239,7 +356,7 @@ impl InstallStrategy for KiroCliV3InstallStrategy {
             Status::Complete,
             files,
         );
-        super::manifest::write_manifest(target_dir, &complete)?;
+        super::manifest::upsert_strategy(target_dir, complete)?;
         Ok(())
     }
 }
@@ -304,22 +421,26 @@ fn assert_bin_files_are_on_disk(
 /// Rewrites each agent's `resources`, `mcpServers`, and
 /// `permissions.rules[]` entries via `copy_agent_files_rewriting_
 /// resources` below (using `resource_rewrite::standard_passes_v3`) --
-/// same contract as `kiro_cli::install_agents`'s own doc comment for V2.
+/// same contract as V2's `kiro_cli::install_agents`.
 ///
-/// `bin_files` is the set of MCP server binaries THIS run actually
-/// copied (from `mcp_server::install_bin_files`, called before this
-/// function in `install_from_local`) -- passed in rather than
-/// re-derived, so this can never inject a path for a binary not
-/// actually copied to disk.
+/// `bin_files` is the set of MCP server binaries this run actually
+/// copied, passed in rather than re-derived, so this can never inject
+/// a path for a binary not actually copied to disk.
+///
+/// The returned `bool` is whether the `mcpServers.konductor-skills`
+/// grant was injected into at least one agent this run --
+/// `install_from_local` uses it to decide whether to also apply the
+/// additive Claude/V3 settings grant, which must never fire on a run
+/// where this strategy injected nothing.
 fn install_agents(
     harness_dir: &Path,
     target_dir: &Path,
     bin_files: &[ManifestFile],
-) -> Result<Vec<ManifestFile>, String> {
+) -> Result<(Vec<ManifestFile>, bool), String> {
     let source_dir = harness_dir.join(AGENTS_CONTENT_TYPE_DIR);
     let entries = list_agent_files(&source_dir)?;
     if entries.is_empty() {
-        return Ok(Vec::new());
+        return Ok((Vec::new(), false));
     }
 
     let destination = target_dir
@@ -357,13 +478,13 @@ fn install_agents(
         agent_skill_names: &agent_skill_names,
     };
 
-    let mut files =
+    let (mut files, any_mcp_server_injected) =
         copy_agent_files_rewriting_resources(&source_dir, &destination, &rewrite_ctx, entries)?;
     for file in &mut files {
         file.path =
             content_manifest_path(KIRO_DESTINATION_ROOT, AGENTS_CONTENT_TYPE_DIR, &file.path);
     }
-    Ok(files)
+    Ok((files, any_mcp_server_injected))
 }
 
 /// V3 (KAS) analog of `kiro_cli`'s own `copy_agent_files_rewriting_
@@ -371,10 +492,14 @@ fn install_agents(
 /// standard_passes_v3` over it before writing, rewriting `file://context/
 /// <name>` and `skill://skills/<name>/SKILL.md` resources to absolute
 /// paths and injecting `mcpServers.konductor-skills` plus a scoped `mcp`
-/// `permissions.rules[]` grant when the MCP binary was installed. Unlike
-/// V2's own version, this never returns an `any_mcp_server_injected`
-/// flag -- V3 has no additive Claude/settings grant of its own to gate
-/// on it.
+/// `permissions.rules[]` grant when the MCP binary was installed.
+///
+/// Also returns whether that `mcpServers.konductor-skills` grant was
+/// actually injected into at least one agent this run -- mirrors V2's
+/// own `copy_agent_files_rewriting_resources` return exactly, since
+/// `install_from_local` now gates the additive Claude/V3 settings grant
+/// on it the same way `AgentInstallPhase::run` gates the V2 grant on
+/// V2's own flag.
 ///
 /// Verbatim-copy fast path for an agent that matches no pass and has no
 /// SOP/skill-name sidecar entry, since parsing and re-serializing it
@@ -384,9 +509,10 @@ fn copy_agent_files_rewriting_resources(
     destination: &Path,
     ctx: &RewriteContext<'_>,
     file_names: Vec<String>,
-) -> Result<Vec<ManifestFile>, String> {
+) -> Result<(Vec<ManifestFile>, bool), String> {
     let passes = standard_passes_v3();
     let mut files = Vec::with_capacity(file_names.len());
+    let mut any_mcp_server_injected = false;
 
     for file_name in file_names {
         reject_unsafe_file_name(&file_name)?;
@@ -430,6 +556,13 @@ fn copy_agent_files_rewriting_resources(
         let mut value: serde_json::Value = serde_json::from_str(&contents)
             .map_err(|e| format!("failed to parse {} as JSON: {e}", src.display()))?;
         apply_all(&passes, &mut value, ctx, &src)?;
+        if value
+            .get("mcpServers")
+            .and_then(|m| m.get(MCP_SERVER_NAME))
+            .is_some()
+        {
+            any_mcp_server_injected = true;
+        }
 
         let mut bytes = serde_json::to_vec_pretty(&value)
             .map_err(|e| format!("failed to re-serialize {}: {e}", src.display()))?;
@@ -443,7 +576,7 @@ fn copy_agent_files_rewriting_resources(
             provenance: Provenance::Created,
         });
     }
-    Ok(files)
+    Ok((files, any_mcp_server_injected))
 }
 
 #[cfg(test)]
@@ -454,7 +587,7 @@ mod tests {
 
     fn scratch_dir(name: &str) -> PathBuf {
         let dir = std::env::temp_dir().join(format!(
-            "konductor-kiro-cli-v3-strategy-test-{name}-{}",
+            "konductor-kiro-v3-strategy-test-{name}-{}",
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
@@ -533,7 +666,7 @@ mod tests {
 
     #[test]
     fn name_returns_kiro_cli_v3() {
-        assert_eq!(KiroCliV3InstallStrategy.name(), "kiro-cli-v3");
+        assert_eq!(KiroCliV3InstallStrategy.name(), "kiro-v3");
     }
 
     #[test]
@@ -704,9 +837,9 @@ mod tests {
         let manifest = super::super::manifest::read_manifest(&target_dir)
             .unwrap()
             .expect("manifest must exist after install");
-        assert_eq!(manifest.strategy, "kiro-cli-v3");
-        assert_eq!(manifest.destination, ".");
-        assert!(manifest
+        assert_eq!(manifest.strategies[0].strategy, "kiro-v3");
+        assert_eq!(manifest.strategies[0].destination, ".");
+        assert!(manifest.strategies[0]
             .files
             .iter()
             .any(|f| f.path == ".kiro/agents/k-example.json"));
@@ -774,7 +907,7 @@ mod tests {
         let manifest = super::super::manifest::read_manifest(&target_dir)
             .unwrap()
             .expect("manifest must exist after install");
-        assert!(manifest
+        assert!(manifest.strategies[0]
             .files
             .iter()
             .any(|f| f.path == ".konductor/bin/skill-lookup-mcp"));
@@ -856,8 +989,11 @@ mod tests {
         let manifest = super::super::manifest::read_manifest(&target_dir)
             .unwrap()
             .unwrap();
-        assert_eq!(manifest.status, super::super::manifest::Status::Complete);
-        assert_eq!(manifest.files.len(), 4);
+        assert_eq!(
+            manifest.strategies[0].status,
+            super::super::manifest::Status::Complete
+        );
+        assert_eq!(manifest.strategies[0].files.len(), 4);
 
         fs::remove_dir_all(&target_dir).ok();
         fs::remove_dir_all(&repo_root).ok();
@@ -909,8 +1045,11 @@ mod tests {
         let manifest = super::super::manifest::read_manifest(&target_dir)
             .unwrap()
             .unwrap();
-        assert_eq!(manifest.files.len(), 1);
-        assert_eq!(manifest.files[0].path, ".kiro/agents/agent.json");
+        assert_eq!(manifest.strategies[0].files.len(), 1);
+        assert_eq!(
+            manifest.strategies[0].files[0].path,
+            ".kiro/agents/agent.json"
+        );
         assert!(!target_dir.join(".kiro/agents/README.md").exists());
 
         fs::remove_dir_all(&target_dir).ok();
@@ -963,12 +1102,15 @@ mod tests {
         let manifest = super::super::manifest::read_manifest(&target_dir)
             .unwrap()
             .expect("manifest must exist");
-        assert_eq!(manifest.status, super::super::manifest::Status::Complete);
-        assert!(manifest
+        assert_eq!(
+            manifest.strategies[0].status,
+            super::super::manifest::Status::Complete
+        );
+        assert!(manifest.strategies[0]
             .files
             .iter()
             .any(|f| f.path == ".kiro/agents/k-example.json"));
-        assert!(manifest
+        assert!(manifest.strategies[0]
             .files
             .iter()
             .any(|f| f.path == ".konductor/skills/constraints/SKILL.md"));
@@ -1029,6 +1171,195 @@ mod tests {
         assert!(target_dir
             .join(".konductor/skills/constraints/SKILL.md")
             .is_file());
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// Regression test for the bug this fix addresses (CR-304277042): a
+    /// dual-marker target (`.kiro` AND a pre-existing `.claude` marker)
+    /// with `kiro-cli-v2` installed tracks the additive Claude/V3
+    /// `.claude/settings.json` grant in `kiro-cli-v2`'s own manifest slot
+    /// (`plan_claude_settings_grant`/`apply_claude_settings_grant`).
+    /// Switching to `kiro-v3` via the override
+    /// (`manifest::upsert_strategy`'s override-on-switch)
+    /// removes `kiro-cli-v2`'s slot outright. Before this fix,
+    /// `kiro_cli_v3.rs`'s `install_from_local` never predicted or wrote
+    /// `.claude/settings.json` at all, so it ended up claimed by NEITHER
+    /// slot after the switch -- permanently unreachable by a future
+    /// `uninstall`/`update`, which only ever act on a tracked slot's own
+    /// `files` list.
+    ///
+    /// Also covers the second, related gap: the dual-marker
+    /// `.claude/skills/sop-<name>/SKILL.md` conversion
+    /// (`claude::install_sop_skills`). This file is
+    /// deliberately excluded from BOTH Kiro variants' own manifest
+    /// slots (confirmed by `kiro_cli.rs`'s own
+    /// `install_from_local_dual_marker_target_converts_claude_sop_skill_without_provenance_error`
+    /// test) -- so its bug is not manifest-orphaning but staleness:
+    /// before this fix, `kiro_cli_v3.rs` never performed this
+    /// conversion at all, so switching to `kiro-v3` would freeze the
+    /// file at whatever `kiro-cli-v2` last wrote, never refreshing it from
+    /// newly-staged `dist/claude/sops/` content on a subsequent
+    /// `kiro-v3` install. This test proves the content is actually
+    /// regenerated (not merely left untouched) by changing the staged
+    /// Claude-side SOP body between the two installs and asserting the
+    /// installed file picks up the NEW body.
+    #[test]
+    fn install_from_local_reclaims_dual_marker_files_after_kiro_variant_override_switch() {
+        let target_dir = scratch_dir("variant-switch-dual-marker-target");
+        let repo_root = scratch_dir("variant-switch-dual-marker-repo");
+
+        // Dual-marker target: `.kiro` (kiro-cli-v2's own marker) AND
+        // `.claude` (a pre-existing Claude Code setup) both present
+        // before either install runs.
+        fs::create_dir_all(target_dir.join(".kiro")).unwrap();
+        fs::create_dir_all(target_dir.join(".claude")).unwrap();
+
+        // kiro-cli-v2's own (V2) staged content: a skill-bearing agent (so
+        // the MCP grant -- and therefore the additive Claude/V3
+        // settings grant -- actually fires) and a staged SOP with a
+        // Claude-side copy for the dual-marker conversion.
+        let v2_dist = repo_root.join("dist/kiro-cli-v2");
+        fs::create_dir_all(v2_dist.join("agents")).unwrap();
+        fs::write(
+            v2_dist.join("agents/k-example.json"),
+            br#"{"name":"k-example","resources":["skill://skills/constraints/SKILL.md"]}"#,
+        )
+        .unwrap();
+        fs::create_dir_all(v2_dist.join("skills/constraints")).unwrap();
+        fs::write(v2_dist.join("skills/constraints/SKILL.md"), b"body\n").unwrap();
+
+        // Claude's own staged copy of the SOP -- the additive
+        // dual-marker branch's real source (never Kiro's own staged
+        // copy, whichever variant is running it).
+        let claude_sops_dir = repo_root.join("dist/claude/sops");
+        fs::create_dir_all(&claude_sops_dir).unwrap();
+        fs::write(
+            claude_sops_dir.join("ticket-sync.sop.md"),
+            b"## Overview\n\nOriginal body from the kiro-cli-v2 install.\n",
+        )
+        .unwrap();
+
+        fs::create_dir_all(repo_root.join("mcp/target/release")).unwrap();
+        fs::write(
+            repo_root.join("mcp/target/release/skill-lookup-mcp"),
+            b"fake binary",
+        )
+        .unwrap();
+
+        super::super::kiro_cli::KiroCliInstallStrategy
+            .install_from_local(
+                &target_dir,
+                Some(repo_root.to_str().unwrap()),
+                "2026-01-01T00:00:00Z",
+                false,
+            )
+            .expect("kiro-cli-v2 install must succeed on the dual-marker target");
+
+        // Sanity: before the switch, `.claude/settings.json` is tracked
+        // in kiro-cli-v2's own slot, and the dual-marker SOP-skill file
+        // exists on disk with the original body -- but is tracked in
+        // NEITHER slot (§9.5), consistent with `kiro_cli.rs`'s own
+        // established behavior.
+        let manifest_before = super::super::manifest::read_manifest(&target_dir)
+            .unwrap()
+            .expect("manifest must exist after the kiro-cli-v2 install");
+        assert_eq!(manifest_before.strategies.len(), 1);
+        assert_eq!(manifest_before.strategies[0].strategy, "kiro-cli-v2");
+        assert!(
+            manifest_before.strategies[0]
+                .files
+                .iter()
+                .any(|f| f.path == ".claude/settings.json"),
+            "sanity check: kiro-cli-v2's own slot must claim .claude/settings.json before the switch"
+        );
+        let sop_skill_path = target_dir.join(".claude/skills/sop-ticket-sync/SKILL.md");
+        let original_sop_skill_body =
+            fs::read_to_string(&sop_skill_path).expect("dual-marker SOP-skill file must exist");
+        assert!(original_sop_skill_body.contains("Original body from the kiro-cli-v2 install."));
+        assert!(
+            manifest_before.strategies[0]
+                .files
+                .iter()
+                .all(|f| f.path != ".claude/skills/sop-ticket-sync/SKILL.md"),
+            "sanity check: the dual-marker SOP-skill file is never claimed by kiro-cli-v2's own \
+             slot"
+        );
+
+        // Re-stage the Claude-side SOP with a NEW body, and seed
+        // kiro-v3's own (V3) staged content, mirroring what a real
+        // `konductor synth` re-run for the v3 harness would produce
+        // before `konductor install --harness kiro-v3` overrides
+        // the target.
+        fs::write(
+            claude_sops_dir.join("ticket-sync.sop.md"),
+            b"## Overview\n\nNEW body from the kiro-v3 install.\n",
+        )
+        .unwrap();
+        let v3_dist = repo_root.join("dist").join(KiroCliV3Transformer.name());
+        fs::create_dir_all(v3_dist.join("agents")).unwrap();
+        fs::write(
+            v3_dist.join("agents/k-example.json"),
+            br#"{"name":"k-example","resources":["skill://skills/constraints/SKILL.md"],"permissions":{"rules":[]}}"#,
+        )
+        .unwrap();
+        fs::create_dir_all(v3_dist.join("skills/constraints")).unwrap();
+        fs::write(v3_dist.join("skills/constraints/SKILL.md"), b"body\n").unwrap();
+
+        KiroCliV3InstallStrategy
+            .install_from_local(
+                &target_dir,
+                Some(repo_root.to_str().unwrap()),
+                "2026-01-01T00:01:00Z",
+                false,
+            )
+            .expect("kiro-v3 override-switch install must succeed");
+
+        let manifest_after = super::super::manifest::read_manifest(&target_dir)
+            .unwrap()
+            .expect("manifest must exist after the override switch");
+        assert_eq!(
+            manifest_after.strategies.len(),
+            1,
+            "the override switch must leave exactly one tracked Kiro-variant slot, not two"
+        );
+        let slot = &manifest_after.strategies[0];
+        assert_eq!(slot.strategy, "kiro-v3");
+
+        // THE BUG: `.claude/settings.json` must be re-claimed by
+        // kiro-v3's own new slot, not left orphaned by kiro-cli-v2's
+        // slot having been removed outright on the switch.
+        assert!(
+            slot.files.iter().any(|f| f.path == ".claude/settings.json"),
+            "kiro-v3's own slot must claim .claude/settings.json after the override switch \
+             -- before this fix, it was claimed by NEITHER slot, permanently unreachable by a \
+             future uninstall/update"
+        );
+
+        // THE SECOND GAP: the dual-marker SOP-skill file must have been
+        // ACTUALLY REGENERATED by kiro-v3's own dual-marker branch
+        // from the newly-staged Claude-side content -- not merely left
+        // untouched with its stale, kiro-cli-v2-written body.
+        let refreshed_sop_skill_body =
+            fs::read_to_string(&sop_skill_path).expect("dual-marker SOP-skill file must exist");
+        assert!(
+            refreshed_sop_skill_body.contains("NEW body from the kiro-v3 install."),
+            "kiro-v3 must regenerate the dual-marker SOP-skill file from the currently \
+             staged dist/claude/sops/ content, not leave it frozen at kiro-cli-v2's stale body"
+        );
+        assert!(!refreshed_sop_skill_body.contains("Original body from the kiro-cli-v2 install."));
+
+        // The dual-marker SOP-skill file remains
+        // excluded from EITHER Kiro variant's own slot after the
+        // switch too -- only `claude`'s own slot, if and when
+        // separately installed, ever owns and manages it.
+        assert!(
+            slot.files
+                .iter()
+                .all(|f| f.path != ".claude/skills/sop-ticket-sync/SKILL.md"),
+            "the dual-marker SOP-skill file must remain unclaimed by kiro-v3's own slot too"
+        );
 
         fs::remove_dir_all(&target_dir).ok();
         fs::remove_dir_all(&repo_root).ok();

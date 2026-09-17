@@ -24,7 +24,7 @@
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 
-use super::manifest::ManifestFile;
+use super::manifest::{ManifestFile, Provenance};
 
 /// Everything a pass may need at install time beyond the JSON value
 /// itself. Built once per agent file and passed by reference to every
@@ -1507,6 +1507,87 @@ pub(super) fn apply_claude_settings_hooks(
         CLAUDE_SETTINGS_RELATIVE_PATH.to_string(),
         super::artifact::sha256_hex(&bytes),
     ))
+}
+
+/// Performs the additive, `.claude`-marker-gated Claude/V3 settings.json
+/// grant (`apply_claude_settings_grant`) plus, unless `no_telemetry`,
+/// the telemetry-hook wiring (`apply_claude_settings_hooks`), for a
+/// whole install run, folding both into at most one `ManifestFile` --
+/// both calls target the exact same manifest path
+/// (`.claude/settings.json`), so exactly one entry is ever produced for
+/// it, never two. Returns `None` when the grant itself is skipped (see
+/// the `ClaudeGrantError` arms below), matching the call sites' own
+/// prior behavior of pushing no `ManifestFile` in that case.
+///
+/// Shared by `AgentInstallPhase::run` (`phases.rs`,
+/// `KiroCliInstallStrategy`) and `KiroCliV3InstallStrategy::
+/// install_from_local` (`kiro_cli_v3.rs`) -- previously two independent,
+/// near-verbatim copies of this exact match-arm/warning-string logic
+/// that had to be kept in lockstep by hand. Both callers already gate
+/// the call the same way (`any_mcp_server_injected && detect_runtimes(
+/// target_dir).has(Runtime::ClaudeCode)`) before invoking this.
+///
+/// Deliberately non-fatal on every `ClaudeGrantError` branch -- see
+/// `apply_claude_settings_grant`'s own doc comment for why aborting an
+/// already-succeeded Kiro install over a problem in unrelated,
+/// pre-existing Claude-side content would be the worse outcome.
+///
+/// `strategy_label` affects only the wording of the printed warnings
+/// (e.g. `"Kiro CLI"` vs `"Kiro CLI V3"`, matching each caller's own
+/// prior wording exactly) -- it has no effect on behavior.
+pub(super) fn apply_claude_settings_grant_and_hooks(
+    target_dir: &Path,
+    no_telemetry: bool,
+    strategy_label: &str,
+) -> Option<ManifestFile> {
+    let mut claude_settings: Option<(String, String)> = None;
+
+    match apply_claude_settings_grant(target_dir) {
+        Ok((claude_path, claude_sha256)) => {
+            claude_settings = Some((claude_path, claude_sha256));
+
+            if !no_telemetry {
+                match apply_claude_settings_hooks(target_dir) {
+                    Ok((hooks_path, hooks_sha256)) => {
+                        claude_settings = Some((hooks_path, hooks_sha256));
+                    }
+                    Err(ClaudeGrantError::DenyShadowed(message)) => {
+                        eprintln!(
+                            "warning: Claude Code telemetry hook wiring intentionally \
+                             skipped ({message})"
+                        );
+                    }
+                    Err(ClaudeGrantError::Other(message)) => {
+                        eprintln!(
+                            "warning: Claude Code telemetry hook wiring skipped \
+                             ({message}) -- the {strategy_label} portion of this install is \
+                             unaffected"
+                        );
+                    }
+                }
+            }
+        }
+        Err(ClaudeGrantError::DenyShadowed(message)) => {
+            eprintln!(
+                "warning: Claude Code permission grant intentionally skipped -- \
+                 an existing \"permissions.deny\" rule already blocks it \
+                 ({message}). This is respected, not an error to fix; the \
+                 {strategy_label} portion of this install is unaffected."
+            );
+        }
+        Err(ClaudeGrantError::Other(message)) => {
+            eprintln!(
+                "warning: Claude Code permission grant skipped ({message}) -- \
+                 the {strategy_label} portion of this install is unaffected"
+            );
+        }
+    }
+
+    claude_settings.map(|(path, sha256)| ManifestFile {
+        path,
+        sha256: Some(sha256),
+        provenance: Provenance::Created,
+    })
 }
 
 /// Injects an absolute-path `mcpServers.konductor-skills` entry

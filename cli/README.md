@@ -413,7 +413,7 @@ nothing left to update.
 ## `uninstall`
 
 ```bash
-konductor uninstall [--target <dir>] [--all] [--yes|-y]
+konductor uninstall [--target <dir>] [--all]
 ```
 
 Removes a tracked install's files: every path listed in that target's
@@ -424,35 +424,27 @@ even when the last tracked entry is removed from it. If that target ran
 `install --link-bin` (see [above](#--link-bin-put-konductor-itself-on-your-path)), the
 symlink it created at `$HOME/.local/bin/konductor` is removed too.
 
-Uses `update`'s `--target`/`--all` selection table above, with one divergence: when
-`--target` is omitted, `--all` is not passed, and 2+ installs are tracked, `uninstall`
-resolves the destination to `$HOME` — the same default `install --target` and
-`doctor --target` already apply when their own `--target` is omitted — instead of
-requiring an explicit `--target <dir>` or `--all`.
-
-| Tracked installs | `--target`/`--all` passed | Behavior |
-| ----------------- | -------------------------- | -------- |
-| 2+ | neither | Resolves the destination to `$HOME`, confirms interactively (see below), then acts on it exactly as an explicit `--target $HOME` would: uninstalls it if `$HOME` is tracked (printing a note naming every other tracked install left untouched), or fails with the same "does not match any tracked install" usage error (`64`) `--target <dir>` gives for an untracked path — now also listing every tracked install in that error |
-
-**Confirmation prompt for the bare, $HOME-resolved, 2+-tracked-installs case only.**
-Because that case picks a target implicitly rather than by an explicit `--target`/`--all`,
-it asks first: `Are you sure you want to uninstall from <dir>?`, requiring an explicit
-`y`/`yes` (case-insensitive) to proceed. An explicit `--target <dir>` or `--all` never
-prompts — both already name their own scope.
-
-- `--yes`/`-y` bypasses the prompt and proceeds immediately.
-- Without `--yes`, `--json` mode or a non-interactive stdin (no TTY attached, e.g.
-  piped input, CI, a script) aborts rather than blocking on input that can never
-  arrive — exit code `4` (`EXIT_USER_ABORTED`), distinct from a plain usage error.
+Uses `update`'s `--target`/`--all` selection table above exactly, with no divergence:
+a bare invocation (`--target` omitted, `--all` not passed) against 2+ tracked installs
+is a usage error (`64`) naming every tracked install, exactly like `update`'s own
+identical ambiguous-selection case — there is no implicit `$HOME` resolution and no
+confirmation prompt.
 
 One further safety difference from `update`: for a **stale** target (tracked in the
 index but its manifest is gone, e.g. the directory was deleted out-of-band), `uninstall`
-treats this as a non-fatal prune — it removes the stale index entry and reports
-`stale: true` rather than failing, since there is nothing left on disk to protect.
+treats this as a non-fatal prune — it removes the stale tracked install entry and
+reports `stale: true` rather than failing, since there is nothing left on disk to
+protect.
 
-`uninstall` also reports how many deleted files had a hash that diverged from the
-manifest's recorded hash (i.e. a file that was hand-edited after install and is about to
-be deleted anyway) — a disclosure, not a safeguard that blocks deletion.
+`uninstall` reports how many deleted files had a hash that diverged from the manifest's
+recorded hash (i.e. a file that was hand-edited after install and is about to be deleted
+anyway), naming the specific diverged file paths — a disclosure, not a safeguard that
+blocks deletion.
+
+Exit codes: `0` on success, `64` (`EXIT_USAGE_ERROR`) on any usage error (including the
+2+-tracked-installs ambiguity case), `65` (`EXIT_VERIFY_FAILED`) on an unsupported index
+schema version, `6` (`EXIT_SUCCESS_WITH_WARNINGS`) when everything this uninstall was
+responsible for succeeded but a tracked `--link-bin` symlink could not be removed.
 
 ---
 
@@ -667,15 +659,18 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
   reserved by the exit-code contract for "unresolved CRITICAL gate" (the CI-failing
   signal), so a malformed invocation is never mistaken for a gate failure.
 - **Exit-code contract** (the conductor that emits these for its own paused-verdict
-  workflow is post-launch — but two codes are already reused, each for its own distinct
-  local meaning, by real commands ahead of that conductor existing):
+  workflow is post-launch — but one code is already reused, for its own distinct
+  local meaning, by a real command ahead of that conductor existing):
   | Code | Meaning |
   |------|---------|
   | 0 | All passed |
   | 1 | Halted (timeout / runtime error / parse error) — reused by `doctor` for "at least one check failed/stale" |
   | 2 | Unresolved CRITICAL gate — CI-failing signal (**never** used for usage errors) |
   | 3 | Budget / turn limit exceeded |
-  | 4 | User aborted a paused verdict — reused by `uninstall` for "the interactive confirmation prompt (bare invocation, 2+ tracked installs, resolved to `$HOME`) was declined" |
+  | 4 | User aborted a paused verdict |
+  | 5 | Reserved for a lifecycle command's interactive confirmation prompt being declined. Not currently emitted by any command — `uninstall` has no confirmation prompt of its own (a bare, 2+-tracked-installs invocation is an immediate usage error, `64`, not a prompt). |
+  | 6 | Success with warnings — emitted by `uninstall` when an otherwise-successful run could not remove a tracked `--link-bin` symlink |
+  | 64 | CLI usage error (`EX_USAGE`) — never the reserved code `2` |
   | 65 | Unsupported manifest/index `schema_version` (state/verification failure, distinct from a `64` usage error) |
 - **Unknown-command suggestions.** An unknown command suggests a close match from the
   real command set.

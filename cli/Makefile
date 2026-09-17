@@ -104,17 +104,16 @@ LOCAL_BIN_DIR := $(HOME)/.local/bin
 
 # Published build-artifact location, relative to this Makefile's own directory
 # (cli/), i.e. <package root>/build/cli/konductor. This is NOT the same path as
-# RUST_BIN above: RUST_BIN assumes cargo's default target-dir
-# ($(RUST_DIR)/target), which holds for a plain standalone `cargo build`, but
-# under the Brazil build (build-tools/bin/aim-and-make-build) CargoBrazil
-# redirects cargo's target-dir to build/private/cargo-target via a generated
-# CARGO_HOME/config.toml -- so the real compiled binary does not live at
-# RUST_BIN in that case. STAGE_BIN is populated by the `build` target below by
-# asking cargo itself (via `cargo metadata`) where it actually put the binary,
-# which is correct in both the standalone and the Brazil-wrapped case.
-#
-# This exact path is what downstream deployment tooling resolves against for
-# this package's published build artifacts.
+# RUST_BIN above: RUST_BIN is CARGO_TARGET_DIR/release/konductor, which is
+# correct for both a plain standalone `cargo build` ($(RUST_DIR)/target) and
+# the Brazil-wrapped build (CargoBrazil redirects it to
+# build/private/cargo-target via a generated CARGO_HOME/config.toml) -- but
+# neither location is where Brazil PUBLISHES this package's build artifacts.
+# Brazil publishes a package's build/ directory (except build/private/) as
+# that package's build artifacts, and BrazilPathArtifacts.fromPackage in the
+# CDK release pipeline (KonductorReleaseStack, in a sibling release-pipeline
+# package) reads the compiled binary from exactly STAGE_BIN's path -- so
+# `build` below copies RUST_BIN there explicitly.
 STAGE_DIR := ../build/cli
 STAGE_BIN := $(STAGE_DIR)/konductor
 
@@ -170,7 +169,12 @@ help:
 # with no indication of WHY CARGO_TARGET_DIR resolved to the wrong place
 # (the failure mode this fixes; see CARGO_TARGET_DIR's own comment
 # above for the concrete instance of it observed in the real build
-# fleet).
+# fleet). This check runs AFTER the staging copy above, not instead of
+# it: RUST_BIN is only this Makefile's own assumed path for that
+# diagnostic (used purely to name where staging is expected to have
+# just landed a binary); the copy itself always goes by the
+# `cargo metadata`-derived path, since that is the one guaranteed
+# correct in both the plain-cargo and Brazil-wrapped cases.
 build:
 	@echo "=== [konductor] Building Rust binary (release) ==="
 	cd $(RUST_DIR) && $(CARGO) build --release

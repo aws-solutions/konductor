@@ -206,6 +206,12 @@ pub struct KiroCliConfig {
     pub mcp_servers: indexmap::IndexMap<String, McpServerDef>,
     #[serde(default)]
     pub resources: Vec<String>,
+    /// Optional greeting shown when a user switches to this agent. A
+    /// Kiro-only field (`welcomeMessage` in the wire format), so it lives
+    /// here in the Kiro client config rather than the harness-agnostic
+    /// `config` block. `None` when the spec omits it.
+    #[serde(default)]
+    pub welcome_message: Option<String>,
 }
 
 /// Per-harness runtime configuration for the Claude Code target.
@@ -565,6 +571,28 @@ mod tests {
         assert!(spec.dependencies.skills.is_empty());
         assert!(spec.dependencies.mcp_registry.is_empty());
         assert!(spec.client_config.claude_cli.is_none());
+        let kiro = spec.client_config.kiro_cli.expect("kiroCli present");
+        assert_eq!(kiro.welcome_message, None);
+    }
+
+    #[test]
+    fn parses_optional_welcome_message() {
+        let json = r#"{
+            "schemaVersion": "1",
+            "name": "k-example",
+            "config": {
+                "description": "Example agent.",
+                "model": "claude-sonnet-5",
+                "systemPrompt": "You are an example agent."
+            },
+            "clientConfig": {
+                "kiroCli": { "tools": ["@builtin"], "welcomeMessage": "Ready to help." }
+            }
+        }"#;
+
+        let spec = parse_agent_spec_str(json, "welcome.agent-spec.json").unwrap();
+        let kiro = spec.client_config.kiro_cli.expect("kiroCli present");
+        assert_eq!(kiro.welcome_message, Some("Ready to help.".to_string()));
     }
 
     #[test]

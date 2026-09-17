@@ -3,90 +3,130 @@
   "cases": [
     {
       "name": "single_agent_file",
-      "strategy": "kiro-cli",
+      "strategy": "kiro-cli-v2",
       "installed_at": "2026-01-15T09:30:00Z",
       "destination": ".",
       "status": "complete",
       "files": [
-        {"path": ".kiro/agents/k-example.json", "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "provenance": "created"}
+        {
+          "path": ".kiro/agents/k-example.json",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "provenance": "created"
+        }
       ],
       "expected": {
-        "serialized": "{\n  \"schema_version\": 1,\n  \"strategy\": \"kiro-cli\",\n  \"installed_at\": \"2026-01-15T09:30:00Z\",\n  \"destination\": \".\",\n  \"source\": null,\n  \"status\": \"complete\",\n  \"files\": [\n    {\n      \"path\": \".kiro/agents/k-example.json\",\n      \"sha256\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\n      \"provenance\": \"created\"\n    }\n  ]\n}\n"
+        "serialized": "{\n  \"schema_version\": 2,\n  \"strategies\": [\n    {\n      \"strategy\": \"kiro-cli-v2\",\n      \"installed_at\": \"2026-01-15T09:30:00Z\",\n      \"destination\": \".\",\n      \"source\": null,\n      \"status\": \"complete\",\n      \"files\": [\n        {\n          \"path\": \".kiro/agents/k-example.json\",\n          \"sha256\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\n          \"provenance\": \"created\"\n        }\n      ]\n    }\n  ]\n}\n"
       }
     },
     {
       "name": "no_files",
-      "strategy": "kiro-cli",
+      "strategy": "kiro-cli-v2",
       "installed_at": "2026-01-15T09:30:00Z",
       "destination": ".",
       "status": "complete",
       "files": [],
       "expected": {
-        "serialized": "{\n  \"schema_version\": 1,\n  \"strategy\": \"kiro-cli\",\n  \"installed_at\": \"2026-01-15T09:30:00Z\",\n  \"destination\": \".\",\n  \"source\": null,\n  \"status\": \"complete\",\n  \"files\": []\n}\n"
+        "serialized": "{\n  \"schema_version\": 2,\n  \"strategies\": [\n    {\n      \"strategy\": \"kiro-cli-v2\",\n      \"installed_at\": \"2026-01-15T09:30:00Z\",\n      \"destination\": \".\",\n      \"source\": null,\n      \"status\": \"complete\",\n      \"files\": []\n    }\n  ]\n}\n"
       }
     },
     {
       "name": "agents_and_skills_sorted_by_path_regardless_of_input_order",
-      "strategy": "kiro-cli",
+      "strategy": "kiro-cli-v2",
       "installed_at": "2026-01-15T09:30:00Z",
       "destination": ".",
       "status": "complete",
       "files": [
-        {"path": ".konductor/skills/code-review/SKILL.md", "sha256": "1111111111111111111111111111111111111111111111111111111111111111", "provenance": "created"},
-        {"path": ".kiro/agents/k-example.json", "sha256": "2222222222222222222222222222222222222222222222222222222222222222", "provenance": "replaced_ours"}
+        {
+          "path": ".konductor/skills/code-review/SKILL.md",
+          "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+          "provenance": "created"
+        },
+        {
+          "path": ".kiro/agents/k-example.json",
+          "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+          "provenance": "replaced_ours"
+        }
       ],
       "expected": {
-        "serialized": "{\n  \"schema_version\": 1,\n  \"strategy\": \"kiro-cli\",\n  \"installed_at\": \"2026-01-15T09:30:00Z\",\n  \"destination\": \".\",\n  \"source\": null,\n  \"status\": \"complete\",\n  \"files\": [\n    {\n      \"path\": \".kiro/agents/k-example.json\",\n      \"sha256\": \"2222222222222222222222222222222222222222222222222222222222222222\",\n      \"provenance\": \"replaced_ours\"\n    },\n    {\n      \"path\": \".konductor/skills/code-review/SKILL.md\",\n      \"sha256\": \"1111111111111111111111111111111111111111111111111111111111111111\",\n      \"provenance\": \"created\"\n    }\n  ]\n}\n"
+        "serialized": "{\n  \"schema_version\": 2,\n  \"strategies\": [\n    {\n      \"strategy\": \"kiro-cli-v2\",\n      \"installed_at\": \"2026-01-15T09:30:00Z\",\n      \"destination\": \".\",\n      \"source\": null,\n      \"status\": \"complete\",\n      \"files\": [\n        {\n          \"path\": \".kiro/agents/k-example.json\",\n          \"sha256\": \"2222222222222222222222222222222222222222222222222222222222222222\",\n          \"provenance\": \"replaced_ours\"\n        },\n        {\n          \"path\": \".konductor/skills/code-review/SKILL.md\",\n          \"sha256\": \"1111111111111111111111111111111111111111111111111111111111111111\",\n          \"provenance\": \"created\"\n        }\n      ]\n    }\n  ]\n}\n"
       }
     },
     {
       "name": "nested_skill_auxiliary_file",
-      "strategy": "kiro-cli",
+      "strategy": "kiro-cli-v2",
       "installed_at": "2026-01-15T09:30:00Z",
       "destination": ".",
       "status": "complete",
       "files": [
-        {"path": ".konductor/skills/with-script/SKILL.md", "sha256": "3333333333333333333333333333333333333333333333333333333333333333", "provenance": "created"},
-        {"path": ".konductor/skills/with-script/scripts/run.sh", "sha256": "4444444444444444444444444444444444444444444444444444444444444444", "provenance": "created"}
+        {
+          "path": ".konductor/skills/with-script/SKILL.md",
+          "sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+          "provenance": "created"
+        },
+        {
+          "path": ".konductor/skills/with-script/scripts/run.sh",
+          "sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+          "provenance": "created"
+        }
       ],
       "expected": {
-        "serialized": "{\n  \"schema_version\": 1,\n  \"strategy\": \"kiro-cli\",\n  \"installed_at\": \"2026-01-15T09:30:00Z\",\n  \"destination\": \".\",\n  \"source\": null,\n  \"status\": \"complete\",\n  \"files\": [\n    {\n      \"path\": \".konductor/skills/with-script/SKILL.md\",\n      \"sha256\": \"3333333333333333333333333333333333333333333333333333333333333333\",\n      \"provenance\": \"created\"\n    },\n    {\n      \"path\": \".konductor/skills/with-script/scripts/run.sh\",\n      \"sha256\": \"4444444444444444444444444444444444444444444444444444444444444444\",\n      \"provenance\": \"created\"\n    }\n  ]\n}\n"
+        "serialized": "{\n  \"schema_version\": 2,\n  \"strategies\": [\n    {\n      \"strategy\": \"kiro-cli-v2\",\n      \"installed_at\": \"2026-01-15T09:30:00Z\",\n      \"destination\": \".\",\n      \"source\": null,\n      \"status\": \"complete\",\n      \"files\": [\n        {\n          \"path\": \".konductor/skills/with-script/SKILL.md\",\n          \"sha256\": \"3333333333333333333333333333333333333333333333333333333333333333\",\n          \"provenance\": \"created\"\n        },\n        {\n          \"path\": \".konductor/skills/with-script/scripts/run.sh\",\n          \"sha256\": \"4444444444444444444444444444444444444444444444444444444444444444\",\n          \"provenance\": \"created\"\n        }\n      ]\n    }\n  ]\n}\n"
       }
     },
     {
       "name": "in_progress_write_ahead_record_has_null_hashes",
-      "strategy": "kiro-cli",
+      "strategy": "kiro-cli-v2",
       "installed_at": "2026-01-15T09:30:00Z",
       "destination": ".",
       "status": "in_progress",
       "files": [
-        {"path": ".kiro/agents/k-example.json", "sha256": null, "provenance": "created"},
-        {"path": ".konductor/skills/code-review/SKILL.md", "sha256": null, "provenance": "replaced_foreign"}
+        {
+          "path": ".kiro/agents/k-example.json",
+          "sha256": null,
+          "provenance": "created"
+        },
+        {
+          "path": ".konductor/skills/code-review/SKILL.md",
+          "sha256": null,
+          "provenance": "replaced_foreign"
+        }
       ],
       "expected": {
-        "serialized": "{\n  \"schema_version\": 1,\n  \"strategy\": \"kiro-cli\",\n  \"installed_at\": \"2026-01-15T09:30:00Z\",\n  \"destination\": \".\",\n  \"source\": null,\n  \"status\": \"in_progress\",\n  \"files\": [\n    {\n      \"path\": \".kiro/agents/k-example.json\",\n      \"sha256\": null,\n      \"provenance\": \"created\"\n    },\n    {\n      \"path\": \".konductor/skills/code-review/SKILL.md\",\n      \"sha256\": null,\n      \"provenance\": \"replaced_foreign\"\n    }\n  ]\n}\n"
+        "serialized": "{\n  \"schema_version\": 2,\n  \"strategies\": [\n    {\n      \"strategy\": \"kiro-cli-v2\",\n      \"installed_at\": \"2026-01-15T09:30:00Z\",\n      \"destination\": \".\",\n      \"source\": null,\n      \"status\": \"in_progress\",\n      \"files\": [\n        {\n          \"path\": \".kiro/agents/k-example.json\",\n          \"sha256\": null,\n          \"provenance\": \"created\"\n        },\n        {\n          \"path\": \".konductor/skills/code-review/SKILL.md\",\n          \"sha256\": null,\n          \"provenance\": \"replaced_foreign\"\n        }\n      ]\n    }\n  ]\n}\n"
       }
     },
     {
       "name": "all_three_provenance_states_on_a_complete_manifest",
-      "strategy": "kiro-cli",
+      "strategy": "kiro-cli-v2",
       "installed_at": "2026-01-15T09:30:00Z",
       "destination": ".",
       "status": "complete",
       "files": [
-        {"path": ".kiro/agents/created.json", "sha256": "5555555555555555555555555555555555555555555555555555555555555555", "provenance": "created"},
-        {"path": ".kiro/agents/replaced-foreign.json", "sha256": "6666666666666666666666666666666666666666666666666666666666666666", "provenance": "replaced_foreign"},
-        {"path": ".kiro/agents/replaced-ours.json", "sha256": "7777777777777777777777777777777777777777777777777777777777777777", "provenance": "replaced_ours"}
+        {
+          "path": ".kiro/agents/created.json",
+          "sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+          "provenance": "created"
+        },
+        {
+          "path": ".kiro/agents/replaced-foreign.json",
+          "sha256": "6666666666666666666666666666666666666666666666666666666666666666",
+          "provenance": "replaced_foreign"
+        },
+        {
+          "path": ".kiro/agents/replaced-ours.json",
+          "sha256": "7777777777777777777777777777777777777777777777777777777777777777",
+          "provenance": "replaced_ours"
+        }
       ],
       "expected": {
-        "serialized": "{\n  \"schema_version\": 1,\n  \"strategy\": \"kiro-cli\",\n  \"installed_at\": \"2026-01-15T09:30:00Z\",\n  \"destination\": \".\",\n  \"source\": null,\n  \"status\": \"complete\",\n  \"files\": [\n    {\n      \"path\": \".kiro/agents/created.json\",\n      \"sha256\": \"5555555555555555555555555555555555555555555555555555555555555555\",\n      \"provenance\": \"created\"\n    },\n    {\n      \"path\": \".kiro/agents/replaced-foreign.json\",\n      \"sha256\": \"6666666666666666666666666666666666666666666666666666666666666666\",\n      \"provenance\": \"replaced_foreign\"\n    },\n    {\n      \"path\": \".kiro/agents/replaced-ours.json\",\n      \"sha256\": \"7777777777777777777777777777777777777777777777777777777777777777\",\n      \"provenance\": \"replaced_ours\"\n    }\n  ]\n}\n"
+        "serialized": "{\n  \"schema_version\": 2,\n  \"strategies\": [\n    {\n      \"strategy\": \"kiro-cli-v2\",\n      \"installed_at\": \"2026-01-15T09:30:00Z\",\n      \"destination\": \".\",\n      \"source\": null,\n      \"status\": \"complete\",\n      \"files\": [\n        {\n          \"path\": \".kiro/agents/created.json\",\n          \"sha256\": \"5555555555555555555555555555555555555555555555555555555555555555\",\n          \"provenance\": \"created\"\n        },\n        {\n          \"path\": \".kiro/agents/replaced-foreign.json\",\n          \"sha256\": \"6666666666666666666666666666666666666666666666666666666666666666\",\n          \"provenance\": \"replaced_foreign\"\n        },\n        {\n          \"path\": \".kiro/agents/replaced-ours.json\",\n          \"sha256\": \"7777777777777777777777777777777777777777777777777777777777777777\",\n          \"provenance\": \"replaced_ours\"\n        }\n      ]\n    }\n  ]\n}\n"
       }
     }
   ],
   "error_cases": [
     {
       "name": "unknown_schema_version",
-      "raw_json": "{\n  \"schema_version\": 99,\n  \"strategy\": \"kiro-cli\",\n  \"installed_at\": \"2026-01-15T09:30:00Z\",\n  \"destination\": \".\",\n  \"status\": \"complete\",\n  \"files\": []\n}\n",
+      "raw_json": "{\n  \"schema_version\": 99,\n  \"strategy\": \"kiro-cli-v2\",\n  \"installed_at\": \"2026-01-15T09:30:00Z\",\n  \"destination\": \".\",\n  \"status\": \"complete\",\n  \"files\": []\n}\n",
       "expected": {
         "reason_substring": "schema_version 99"
       }

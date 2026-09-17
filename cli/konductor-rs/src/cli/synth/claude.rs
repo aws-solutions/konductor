@@ -1,55 +1,45 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// synth/claude.rs — `HarnessTransformer` for the Claude Code harness
+// synth/claude.rs -- `HarnessTransformer` for the Claude Code harness
 // target: writes each agent, skill, and SOP in a `CanonicalModel` out
 // as Claude Code output (agent markdown with YAML frontmatter,
 // `SKILL.md` + auxiliary files, `.sop.md`).
 //
 // Agent output shape is grounded against AIM's own live Claude Code
-// materialization for this package (`~/.claude/agents/<id>-<agent>.md`,
-// as produced by `aim plugins install`), not a written spec: YAML
-// frontmatter (`---`-delimited) with `name`/`description`/`model`/
-// `tools`/`skills`, followed by the system prompt as a plain markdown
-// body with no wrapping heading.
+// materialization for this package, not a written spec: YAML
+// frontmatter with `name`/`description`/`model`/`tools`/`skills`,
+// followed by the system prompt as a plain markdown body with no
+// wrapping heading.
 //
-// Deliberate scope boundaries below (not oversights) -- implement each
-// once a real spec actually needs it, rather than guessing at an
-// unverified shape:
-// - No `# System Prompt` heading in the body: the one real live
-//   artifact available to verify this shape against has none.
+// A few shapes are deliberately scoped down to what the live artifact
+// confirms, to be extended once a real spec needs more:
+// - No `# System Prompt` heading in the body.
 // - `allowedTools`/`hooks`/`mcpServers` each render as their own
-//   frontmatter key (see `ClaudeAgentFrontmatter`), grounded against the
-//   same live materialization cited above: an agent whose spec sets
-//   none of the three has no `allowedTools:`/`hooks:`/`mcpServers:` line
-//   at all, so each is omitted entirely (not rendered empty) when the
-//   corresponding `claudeCli` field is empty. `allowedTools` is a plain
-//   string array, structurally identical to `tools`/`skills`. `hooks`
-//   renders `ClaudeCliConfig::hooks`'s parsed `IndexMap<String,
-//   serde_json::Value>` structurally as-is -- the live artifact's
-//   `hooks:` block is exactly that passthrough structure -- but each
-//   leaf goes through `hooks_to_yaml`/`json_value_to_yaml_value` first:
-//   this crate's `serde_json` `arbitrary_precision` feature (see
-//   `Cargo.toml`) makes `serde_json::Number`'s own `Serialize` impl
-//   incompatible with `serde_yaml`, so a numeric leaf (e.g. a hook's
-//   `timeout` field) would otherwise render as a corrupted nested map
-//   instead of a scalar.
-//   `mcpServers` renders as a YAML sequence of single-key maps
-//   (`- <server-name>: {command, args, url}`), NOT a plain map keyed by
-//   server name, so `render_mcp_servers` reshapes
-//   `ClaudeCliConfig::mcp_servers`'s parsed `IndexMap<String,
-//   McpServerDef>` into that sequence (see `McpServerRender`);
-//   `command`/`args`/`url` are each omitted per-entry when absent/empty
-//   in the source, matching the live artifact (an entry with only
-//   `command` set has no `args:`/`url:` line).
+//   frontmatter key (see `ClaudeAgentFrontmatter`), omitted entirely
+//   (not rendered empty) when the corresponding `claudeCli` field is
+//   empty. `hooks` renders `ClaudeCliConfig::hooks`'s parsed structure
+//   as-is, but each leaf goes through `hooks_to_yaml`/
+//   `json_value_to_yaml_value` first, since this crate's `serde_json`
+//   `arbitrary_precision` feature makes `Number`'s `Serialize` impl
+//   incompatible with `serde_yaml` (a numeric leaf would otherwise
+//   render as a corrupted nested map). `mcpServers` renders as a YAML
+//   sequence of single-key maps, not a plain map keyed by server name,
+//   so `render_mcp_servers` reshapes it into that sequence via
+//   `McpServerRender`; `command`/`args`/`url` are omitted per-entry
+//   when absent in the source.
 // - No fallback to `dependencies.skills.skillNames` when
-//   `claudeCli.skills` is absent, unlike AIM's documented behavior --
-//   every real spec in this repo's fixture corpus sets both today, so
-//   the fallback path is untested.
+//   `claudeCli.skills` is absent -- every real spec in this repo's
+//   fixture corpus sets both today, so the fallback path is untested.
 // - `agent.dependencies.context.context_names` isn't referenced in the
 //   rendered frontmatter (Claude Code has no generic "resources" field
-//   like Kiro's `file://context/<name>` entries) -- the context files
-//   are still written unconditionally to `dist/claude/context/`, but
-//   nothing in the agent `.md` tells Claude Code they exist.
+//   like Kiro's). Instead, each named context file's content is
+//   spliced directly into the rendered body, wrapped in a `<Context:
+//   filename.md>...</Context: filename.md>` marker, one block per name
+//   in order (see `render_agent_md`) -- this mirrors the real
+//   materialization behavior, confirmed against a live installed agent
+//   file. `dist/claude/context/` is still written even though the
+//   Claude agent output no longer needs to read it back, in case some
+//   other consumer of `dist/claude/` wants the raw per-file content.
 
 use std::collections::HashSet;
 use std::fs;
@@ -311,7 +301,14 @@ impl HarnessTransformer for ClaudeTransformer {
                 let Some(claude) = &agent.client_config.claude_cli else {
                     continue;
                 };
-                let rendered = render_agent_md(&agent.name, &agent.config, claude, &skill_names)?;
+                let rendered = render_agent_md(
+                    &agent.name,
+                    &agent.config,
+                    claude,
+                    &agent.dependencies.context.context_names,
+                    &model.context,
+                    &skill_names,
+                )?;
                 write_agent_file(staging_dir, &agent.name, &rendered)?;
             }
             write_sop_scopes_sidecar(staging_dir, &model.agents)?;
@@ -334,9 +331,12 @@ impl HarnessTransformer for ClaudeTransformer {
     }
 }
 
-/// Renders one agent's YAML frontmatter + system prompt body -- the
-/// body is the verbatim `system_prompt` text with no inserted heading
-/// (see module docstring).
+/// Renders one agent's YAML frontmatter + system prompt body. The body
+/// starts as the verbatim `system_prompt` text with no inserted heading
+/// (see module docstring), then has each of `context_names`' matching
+/// `ContextDef` spliced onto the end, in order, via
+/// `append_context_blocks` -- see that function's own doc comment for
+/// the exact marker convention.
 ///
 /// `skill_names` (every packaged skill's name) validates each
 /// `claude.skills` entry before rendering: without this, a renamed,
@@ -346,10 +346,19 @@ impl HarnessTransformer for ClaudeTransformer {
 /// references with `file://` URIs and globs), every `claude.skills`
 /// entry is already a bare skill name, so this is a direct
 /// set-membership check, not URI parsing.
+///
+/// `context_names` is an agent spec's `dependencies.context.contextNames`
+/// (already validated against `context_defs` upstream, before any
+/// transformer runs, by `parse_canonical::check_dangling_context_references`
+/// -- see that function's own doc comment -- so every name here is
+/// guaranteed to match a real `ContextDef` in `context_defs` by the time
+/// this function runs).
 fn render_agent_md(
     name: &str,
     config: &super::parser::AgentConfig,
     claude: &ClaudeCliConfig,
+    context_names: &[String],
+    context_defs: &[super::model::ContextDef],
     skill_names: &HashSet<&str>,
 ) -> Result<String, String> {
     for skill_name in &claude.skills {
@@ -373,7 +382,67 @@ fn render_agent_md(
     };
     let yaml = serde_yaml::to_string(&frontmatter)
         .map_err(|e| format!("failed to serialize frontmatter for agent '{name}': {e}"))?;
-    Ok(format!("---\n{yaml}---\n\n{}", config.system_prompt))
+    // Trimmed before appending context blocks (only when there's at
+    // least one to append) so the prompt-to-first-block transition gets
+    // exactly one blank line, matching the live materialization's own
+    // spacing, rather than an extra one from the source prompt's own
+    // trailing newline. The no-context case is untouched -- the body is
+    // exactly `system_prompt`, unmodified.
+    let mut body = config.system_prompt.clone();
+    if !context_names.is_empty() {
+        let trimmed_len = body.trim_end().len();
+        body.truncate(trimmed_len);
+    }
+    append_context_blocks(&mut body, name, context_names, context_defs)?;
+    Ok(format!("---\n{yaml}---\n\n{body}"))
+}
+
+/// Appends one `<Context: {name}>\n{content}\n</Context: {name}>` block
+/// per entry in `context_names`, in order, onto `body` -- the exact
+/// marker convention the real Claude Code materialization uses to
+/// inline a context file's content directly into an agent's rendered
+/// system prompt (confirmed against a live installed agent file on
+/// this machine, e.g. `<Context: team-conventions.md>`
+/// wrapping that file's full markdown content, immediately followed by
+/// the matching `</Context: ...>` close, with a blank line before each
+/// block and between consecutive blocks -- never a blank line between a
+/// block's own content and its closing tag).
+///
+/// Each context file's body is trimmed of trailing whitespace before
+/// being wrapped, so a source file's own trailing newline doesn't leave
+/// a stray blank line before the closing tag; the marker names carry
+/// the `ContextDef.name` exactly as declared (which may itself include
+/// a subdirectory prefix, e.g. `shared/team-routing.md`, per the
+/// live materialization's own convention), not just a bare filename.
+///
+/// A `context_name` with no matching entry in `context_defs` is an
+/// `Err` naming the agent and the missing context file -- defensive
+/// only: `parse_canonical::check_dangling_context_references` already
+/// rejects this upstream before any transformer runs (see this
+/// function's own caller's doc comment), so this arm is not expected to
+/// be reachable in practice.
+fn append_context_blocks(
+    body: &mut String,
+    agent_name: &str,
+    context_names: &[String],
+    context_defs: &[super::model::ContextDef],
+) -> Result<(), String> {
+    for context_name in context_names {
+        let Some(context_def) = context_defs.iter().find(|c| &c.name == context_name) else {
+            return Err(format!(
+                "agent '{agent_name}' declares context '{context_name}', but no context file \
+                 named '{context_name}' exists under context/"
+            ));
+        };
+        body.push_str("\n\n<Context: ");
+        body.push_str(&context_def.name);
+        body.push_str(">\n");
+        body.push_str(context_def.body.trim_end());
+        body.push_str("\n</Context: ");
+        body.push_str(&context_def.name);
+        body.push('>');
+    }
+    Ok(())
 }
 
 /// Writes `rendered` to `<output_dir>/<agent_name>.md`, creating
@@ -465,8 +534,15 @@ mod tests {
         let agent = agent_with_claude("k-example", claude);
         let claude_cfg = agent.client_config.claude_cli.as_ref().unwrap();
         let skill_names: HashSet<&str> = ["constraints"].into_iter().collect();
-        let rendered =
-            render_agent_md("k-example", &agent.config, claude_cfg, &skill_names).unwrap();
+        let rendered = render_agent_md(
+            "k-example",
+            &agent.config,
+            claude_cfg,
+            &[],
+            &[],
+            &skill_names,
+        )
+        .unwrap();
 
         assert!(rendered.starts_with("---\n"));
         let mut parts = rendered.splitn(3, "---\n");
@@ -510,8 +586,15 @@ mod tests {
         agent.config.description =
             "Contains: a colon, \"quotes\", and\nan embedded newline.".to_string();
         let claude_cfg = agent.client_config.claude_cli.as_ref().unwrap();
-        let rendered =
-            render_agent_md("k-example", &agent.config, claude_cfg, &HashSet::new()).unwrap();
+        let rendered = render_agent_md(
+            "k-example",
+            &agent.config,
+            claude_cfg,
+            &[],
+            &[],
+            &HashSet::new(),
+        )
+        .unwrap();
 
         let frontmatter_yaml = rendered
             .split("---\n")
@@ -540,8 +623,15 @@ mod tests {
         );
         let agent = agent_with_claude("k-example", claude);
         let claude_cfg = agent.client_config.claude_cli.as_ref().unwrap();
-        let rendered =
-            render_agent_md("k-example", &agent.config, claude_cfg, &HashSet::new()).unwrap();
+        let rendered = render_agent_md(
+            "k-example",
+            &agent.config,
+            claude_cfg,
+            &[],
+            &[],
+            &HashSet::new(),
+        )
+        .unwrap();
 
         assert!(
             !rendered.contains("tools:"),
@@ -562,8 +652,15 @@ mod tests {
         };
         let agent = agent_with_claude("k-example", claude);
         let claude_cfg = agent.client_config.claude_cli.as_ref().unwrap();
-        let rendered =
-            render_agent_md("k-example", &agent.config, claude_cfg, &HashSet::new()).unwrap();
+        let rendered = render_agent_md(
+            "k-example",
+            &agent.config,
+            claude_cfg,
+            &[],
+            &[],
+            &HashSet::new(),
+        )
+        .unwrap();
 
         let frontmatter_yaml = rendered
             .split("---\n")
@@ -641,8 +738,15 @@ mod tests {
         };
         let agent = agent_with_claude("k-example", claude);
         let claude_cfg = agent.client_config.claude_cli.as_ref().unwrap();
-        let rendered =
-            render_agent_md("k-example", &agent.config, claude_cfg, &HashSet::new()).unwrap();
+        let rendered = render_agent_md(
+            "k-example",
+            &agent.config,
+            claude_cfg,
+            &[],
+            &[],
+            &HashSet::new(),
+        )
+        .unwrap();
 
         assert!(
             !rendered.contains(".inf"),
@@ -686,8 +790,15 @@ mod tests {
         };
         let agent = agent_with_claude("k-example", claude);
         let claude_cfg = agent.client_config.claude_cli.as_ref().unwrap();
-        let rendered =
-            render_agent_md("k-example", &agent.config, claude_cfg, &HashSet::new()).unwrap();
+        let rendered = render_agent_md(
+            "k-example",
+            &agent.config,
+            claude_cfg,
+            &[],
+            &[],
+            &HashSet::new(),
+        )
+        .unwrap();
 
         assert!(
             !rendered.contains("$serde_json::private::Number"),
@@ -736,8 +847,15 @@ mod tests {
         };
         let agent = agent_with_claude("k-example", claude);
         let claude_cfg = agent.client_config.claude_cli.as_ref().unwrap();
-        let rendered =
-            render_agent_md("k-example", &agent.config, claude_cfg, &HashSet::new()).unwrap();
+        let rendered = render_agent_md(
+            "k-example",
+            &agent.config,
+            claude_cfg,
+            &[],
+            &[],
+            &HashSet::new(),
+        )
+        .unwrap();
 
         let frontmatter_yaml = rendered
             .split("---\n")
@@ -784,8 +902,15 @@ mod tests {
         let claude = ClaudeCliConfig::default();
         let agent = agent_with_claude("k-example", claude);
         let claude_cfg = agent.client_config.claude_cli.as_ref().unwrap();
-        let rendered =
-            render_agent_md("k-example", &agent.config, claude_cfg, &HashSet::new()).unwrap();
+        let rendered = render_agent_md(
+            "k-example",
+            &agent.config,
+            claude_cfg,
+            &[],
+            &[],
+            &HashSet::new(),
+        )
+        .unwrap();
 
         assert!(!rendered.contains("allowedTools:"), "got: {rendered}");
         assert!(!rendered.contains("hooks:"), "got: {rendered}");
@@ -814,8 +939,15 @@ mod tests {
         };
         let agent = agent_with_claude("k-example", claude);
         let claude_cfg = agent.client_config.claude_cli.as_ref().unwrap();
-        let rendered =
-            render_agent_md("k-example", &agent.config, claude_cfg, &HashSet::new()).unwrap();
+        let rendered = render_agent_md(
+            "k-example",
+            &agent.config,
+            claude_cfg,
+            &[],
+            &[],
+            &HashSet::new(),
+        )
+        .unwrap();
 
         let hooks_zebra = rendered.find("zebra-hook").unwrap();
         let hooks_apple = rendered.find("apple-hook").unwrap();
@@ -845,7 +977,14 @@ mod tests {
         };
         let agent = agent_with_claude("k-example", claude);
         let claude_cfg = agent.client_config.claude_cli.as_ref().unwrap();
-        let result = render_agent_md("k-example", &agent.config, claude_cfg, &HashSet::new());
+        let result = render_agent_md(
+            "k-example",
+            &agent.config,
+            claude_cfg,
+            &[],
+            &[],
+            &HashSet::new(),
+        );
         let err = match result {
             Ok(_) => panic!("expected a dangling claudeCli skill reference to be rejected"),
             Err(e) => e,
@@ -1012,6 +1151,141 @@ mod tests {
             .join(CONTEXT_CONTENT_TYPE_DIR)
             .join("routing-rules.md");
         assert_eq!(fs::read_to_string(&written).unwrap(), "# Routing rules\n");
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// An agent with a declared context file must have that file's content
+    /// appear INLINE in its rendered `.md` body, wrapped in the
+    /// `<Context: name>...</Context: name>` marker convention -- not
+    /// merely written unreferenced to `dist/claude/context/`.
+    #[test]
+    fn render_agent_md_inlines_context_content_with_marker() {
+        let claude_cfg = ClaudeCliConfig::default();
+        let agent = agent_with_claude("k-example", claude_cfg);
+        let claude_cfg = agent.client_config.claude_cli.as_ref().unwrap();
+        let context_names = vec!["routing-rules.md".to_string()];
+        let context_defs = vec![ContextDef {
+            name: "routing-rules.md".to_string(),
+            body: "# Routing rules\n\nDelegate everything.\n".to_string(),
+        }];
+        let rendered = render_agent_md(
+            "k-example",
+            &agent.config,
+            claude_cfg,
+            &context_names,
+            &context_defs,
+            &HashSet::new(),
+        )
+        .unwrap();
+
+        assert!(
+            rendered.contains("You are a test agent."),
+            "the original system prompt must still be present"
+        );
+        assert!(
+            rendered.contains("<Context: routing-rules.md>\n# Routing rules\n\nDelegate everything.\n</Context: routing-rules.md>"),
+            "expected an inline context block with the exact marker convention, got:\n{rendered}"
+        );
+        // The context block must come AFTER the system prompt, not
+        // before -- matching the live materialization's own ordering.
+        let prompt_pos = rendered.find("You are a test agent.").unwrap();
+        let context_pos = rendered.find("<Context: routing-rules.md>").unwrap();
+        assert!(prompt_pos < context_pos);
+    }
+
+    /// Two context files render as two separate blocks, in
+    /// `context_names` order, each independently wrapped -- not merged
+    /// into one block or reordered.
+    #[test]
+    fn render_agent_md_inlines_multiple_context_blocks_in_order() {
+        let claude_cfg = ClaudeCliConfig::default();
+        let agent = agent_with_claude("k-example", claude_cfg);
+        let claude_cfg = agent.client_config.claude_cli.as_ref().unwrap();
+        let context_names = vec!["first.md".to_string(), "second.md".to_string()];
+        let context_defs = vec![
+            ContextDef {
+                name: "first.md".to_string(),
+                body: "First content.\n".to_string(),
+            },
+            ContextDef {
+                name: "second.md".to_string(),
+                body: "Second content.\n".to_string(),
+            },
+        ];
+        let rendered = render_agent_md(
+            "k-example",
+            &agent.config,
+            claude_cfg,
+            &context_names,
+            &context_defs,
+            &HashSet::new(),
+        )
+        .unwrap();
+
+        let first_pos = rendered.find("<Context: first.md>").unwrap();
+        let second_pos = rendered.find("<Context: second.md>").unwrap();
+        assert!(
+            first_pos < second_pos,
+            "blocks must render in declared order"
+        );
+        assert!(rendered.contains("<Context: first.md>\nFirst content.\n</Context: first.md>"));
+        assert!(rendered.contains("<Context: second.md>\nSecond content.\n</Context: second.md>"));
+    }
+
+    /// An agent with no declared context names renders with no
+    /// `<Context: ...>` block at all -- the body is exactly the
+    /// unmodified system prompt, matching the pre-fix behavior for
+    /// agents that don't use context.
+    #[test]
+    fn render_agent_md_with_no_context_names_has_no_context_block() {
+        let claude_cfg = ClaudeCliConfig::default();
+        let agent = agent_with_claude("k-example", claude_cfg);
+        let claude_cfg = agent.client_config.claude_cli.as_ref().unwrap();
+        let rendered = render_agent_md(
+            "k-example",
+            &agent.config,
+            claude_cfg,
+            &[],
+            &[],
+            &HashSet::new(),
+        )
+        .unwrap();
+        assert!(!rendered.contains("<Context:"));
+        assert!(rendered.ends_with("You are a test agent."));
+    }
+
+    /// End-to-end through `transform`, not just `render_agent_md`
+    /// directly: an agent declaring a context name, run through the
+    /// full transformer, produces a written `.md` file whose content
+    /// contains the inlined block -- confirms the `transform` call site
+    /// actually threads `agent.dependencies.context.context_names` and
+    /// `model.context` through, not just that the lower-level function
+    /// works in isolation.
+    #[test]
+    fn transform_inlines_context_into_written_agent_file() {
+        let dir = temp_dir("context-inline-e2e");
+        let mut agent = agent_with_claude("k-example", ClaudeCliConfig::default());
+        agent.dependencies.context.context_names = vec!["routing-rules.md".to_string()];
+        let model = CanonicalModel {
+            agents: vec![agent],
+            context: vec![ContextDef {
+                name: "routing-rules.md".to_string(),
+                body: "# Routing rules\n".to_string(),
+            }],
+            ..Default::default()
+        };
+
+        ClaudeTransformer.transform(&model, &dir).unwrap();
+
+        let written = dir.join(expected_output_dir()).join("k-example.md");
+        let contents = fs::read_to_string(&written).unwrap();
+        assert!(
+            contents.contains(
+                "<Context: routing-rules.md>\n# Routing rules\n</Context: routing-rules.md>"
+            ),
+            "expected inlined context block in written agent file, got:\n{contents}"
+        );
 
         let _ = fs::remove_dir_all(&dir);
     }

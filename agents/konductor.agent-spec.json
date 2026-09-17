@@ -43,6 +43,7 @@
   },
   "clientConfig": {
     "kiroCli": {
+      "welcomeMessage": "I'm Konductor, the orchestrator. I coordinate the full software development lifecycle by delegating to specialist agents — product, architecture, development, QA, research, and program management. Tell me what you want to build or fix, and I'll route the work, track progress across a TODO list, and verify results with evidence. I orchestrate; I don't implement directly.\n\nBuilt-in workflows — type any to run it:\n  /kiro-spec-workflow — turn PM & design docs into Kiro spec files (requirements, design, tasks)\n  /k-plan — break a non-trivial task into a work breakdown with dependencies and estimates\n  /k-context-gathering — gather deep context before implementing in unfamiliar code\n  /k-verify — confirm a task is truly done, backed by evidence\n  /k-light-ui-testing — run quick live UI testing of a deployed page\n  /k-comprehensive-search — run an exhaustive search across the codebase and external docs\n  /k-full-sdlc — take a feature through the whole lifecycle, analysis through documentation\n  /k-e2e-test-generation — generate functional/E2E tests for a deployed web app\n  /about-konductor — get oriented — what this is, how to install, and what to ask",
       "tools": ["@builtin", "subagent"],
       "allowedTools": ["fs_read"],
       "toolsSettings": {

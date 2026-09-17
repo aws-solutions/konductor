@@ -17,14 +17,17 @@ use std::sync::OnceLock;
 use super::envelope::{EventEnvelope, EventType, OuterEnvelope, NIL_UUID_SENTINEL};
 use super::identity::{self, IdentityRecord};
 
-/// Compile-time placeholder Solution ID -- real value pending
-/// AWS Solutions onboarding, not a blocker for this
-/// revision.
-pub(super) const SOLUTION_ID: &str = "SO0169";
+/// AWS Solutions Library Solution ID assigned to Konductor. This is the
+/// real, registered identifier, not a placeholder, and is sent as every
+/// outbound telemetry event's `Solution` field.
+pub(super) const SOLUTION_ID: &str = "SO0370";
 
-/// Compile-time placeholder endpoint (three-tier resolution order,
-/// tier 1) -- real value pending the same onboarding as `SOLUTION_ID`.
-const DEFAULT_TELEMETRY_ENDPOINT: &str = "https://example.invalid/konductor-telemetry";
+/// Compile-time default endpoint (three-tier resolution order, tier 1)
+/// -- the real AWS Solutions Library operational-metrics ingestion
+/// endpoint for Konductor (`SOLUTION_ID` = `SO0370`). Accepts a POST of
+/// the exact `Solution`/`Version`/`UUID`/`TimeStamp`/`Data` envelope
+/// shape `envelope.rs`'s `OuterEnvelope` already produces.
+const DEFAULT_TELEMETRY_ENDPOINT: &str = "https://metrics.awssolutionsbuilder.com/generic";
 
 /// Environment variable overriding the endpoint (tier 2 of the
 /// three-tier resolution order -- `KONDUCTOR_METRICS_ENDPOINT` env var
@@ -225,10 +228,9 @@ fn resolve_endpoint_with_pin(
 /// comment). Running both checks closes the gap without regressing the
 /// existing fast literal path: an IP literal never touches the
 /// resolver (`ToSocketAddrs` resolves it directly, no DNS query), and a
-/// hostname that fails to resolve at all -- including this crate's own
-/// `DEFAULT_TELEMETRY_ENDPOINT` placeholder host, `example.invalid`,
-/// which is a reserved, deliberately-never-resolving TLD (RFC 2606) --
-/// is NOT itself treated as disallowed; see that function's own doc
+/// hostname that fails to resolve at all -- e.g. a reserved,
+/// deliberately-never-resolving `.invalid` TLD host (RFC 2606) -- is
+/// NOT itself treated as disallowed; see that function's own doc
 /// comment for why.
 /// `#[cfg(test)]`: production code now calls
 /// `endpoint_host_is_allowed_with_pin` directly (it needs the pin this
@@ -1465,13 +1467,12 @@ mod tests {
         assert!(!resolved_addresses_include_disallowed_host("192.0.2.1"));
     }
 
-    /// Pins the "unresolvable is not itself disallowed" contract:
-    /// `DEFAULT_TELEMETRY_ENDPOINT`'s own host, `example.invalid`, is a
-    /// reserved TLD (RFC 2606) guaranteed to never resolve. If a failed
-    /// resolution were treated as disallowed, the compile-time default
-    /// endpoint -- and every test that relies on it resolving as
-    /// "allowed" -- would break the moment DNS resolution was added to
-    /// this check.
+    /// Pins the "unresolvable is not itself disallowed" contract using a
+    /// dedicated fixture host: `telemetry.konductor.example.invalid` sits
+    /// under the reserved `.invalid` TLD (RFC 2606), guaranteed to never
+    /// resolve. If a failed resolution were treated as disallowed, any
+    /// endpoint under a never-resolving domain would be rejected outright
+    /// the moment DNS resolution was added to this check.
     #[test]
     fn resolved_addresses_include_disallowed_host_does_not_flag_an_unresolvable_host() {
         assert!(!resolved_addresses_include_disallowed_host(
@@ -1480,10 +1481,9 @@ mod tests {
     }
 
     /// End-to-end regression guard: the compile-time default endpoint
-    /// must still be reported as `allowed` (i.e. `resolve_endpoint`
-    /// still returns `Some`) now that a real resolution check runs on
-    /// every call -- an unresolvable placeholder host must not silently
-    /// disable telemetry by default.
+    /// (a real, public AWS Solutions metrics host) must be reported as
+    /// `allowed` by the same DNS-backed check that rejects loopback and
+    /// private-range hosts.
     #[test]
     fn endpoint_host_is_allowed_accepts_the_compile_time_default_endpoint_host() {
         assert!(endpoint_host_is_allowed(DEFAULT_TELEMETRY_ENDPOINT));
@@ -1540,12 +1540,18 @@ mod tests {
     /// Same "nothing to pin" contract for an unresolvable hostname
     /// (fail-open, matching `resolved_addresses_include_disallowed_host`'s
     /// own contract) -- there is no resolved address to reuse as a pin.
+    /// Uses a dedicated `.invalid`-TLD fixture host rather than
+    /// `DEFAULT_TELEMETRY_ENDPOINT`: the compile-time default is now a
+    /// real, resolvable public host, so it no longer exercises this
+    /// "unresolvable" branch.
     #[test]
     fn endpoint_host_is_allowed_with_pin_returns_no_pin_for_an_unresolvable_host() {
         let _lock = lock_telemetry_env();
         std::env::remove_var(TELEMETRY_ALLOW_LOCAL_ENDPOINT_ENV_VAR);
         assert_eq!(
-            endpoint_host_is_allowed_with_pin(DEFAULT_TELEMETRY_ENDPOINT),
+            endpoint_host_is_allowed_with_pin(
+                "https://telemetry.konductor.example.invalid/collector"
+            ),
             Some(None)
         );
     }

@@ -109,6 +109,7 @@ pub(crate) fn build_error_json(
 /// means a slow-but-within-bound resolver delays only the fire-and-
 /// forget telemetry side effect, never the error output every caller
 /// of `report_error` exists to surface promptly.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn report_error(
     command: &str,
     error_code: &str,
@@ -117,6 +118,7 @@ pub(crate) fn report_error(
     message: &str,
     extra: Vec<(&str, serde_json::Value)>,
     json: bool,
+    color: crate::cli::output::ColorMode,
 ) {
     report_error_impl(
         command,
@@ -127,6 +129,7 @@ pub(crate) fn report_error(
         message,
         extra,
         json,
+        color,
     );
 }
 
@@ -142,6 +145,7 @@ pub(crate) fn report_error(
 /// convention already established in `telemetry/report.rs`, rather
 /// than widening `report_error`'s own signature for every one of its
 /// ~20 call sites just to thread a flag only batch call sites need.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn report_error_for_target(
     command: &str,
     error_code: &str,
@@ -150,6 +154,7 @@ pub(crate) fn report_error_for_target(
     message: &str,
     extra: Vec<(&str, serde_json::Value)>,
     json: bool,
+    color: crate::cli::output::ColorMode,
 ) {
     report_error_impl(
         command,
@@ -160,6 +165,7 @@ pub(crate) fn report_error_for_target(
         message,
         extra,
         json,
+        color,
     );
 }
 
@@ -178,11 +184,15 @@ fn report_error_impl(
     message: &str,
     extra: Vec<(&str, serde_json::Value)>,
     json: bool,
+    color: crate::cli::output::ColorMode,
 ) {
     if json {
         println!("{}", build_error_json(command, message, extra));
     } else {
-        eprintln!("konductor {command}: {message}");
+        eprintln!(
+            "{} {message}",
+            crate::cli::output::error_prefix(color, &format!("konductor {command}:"))
+        );
     }
     if uncached_identity {
         crate::cli::telemetry::report_cli_error_for_target(
@@ -197,11 +207,16 @@ fn report_error_impl(
 }
 
 /// Reports the zero-tracked-installs case shared by `uninstall`/
-/// `update`: the one success path that returns before there is any
-/// per-target result to shape into a richer report. `--json` mode
-/// emits `{"command": ..., "tracked_installs": 0}`; `--json` false
-/// keeps the plain-text wording each caller already used.
-pub(crate) fn report_no_tracked_installs(command: &str, json: bool) {
+/// `update`/`doctor`: the one success path that returns before there is
+/// any per-target result to shape into a richer report. `--json` mode
+/// emits `{"command": ..., "tracked_installs": 0}`; plain-text mode
+/// prints the same wording as before, now colorized green via
+/// `success_prefix` since this is a genuine success message.
+pub(crate) fn report_no_tracked_installs(
+    command: &str,
+    json: bool,
+    color: crate::cli::output::ColorMode,
+) {
     if json {
         println!(
             "{}",
@@ -212,7 +227,10 @@ pub(crate) fn report_no_tracked_installs(command: &str, json: bool) {
         );
         return;
     }
-    println!("konductor {command}: no tracked Konductor installs found");
+    println!(
+        "{} no tracked Konductor installs found",
+        crate::cli::output::success_prefix(color, &format!("konductor {command}:"))
+    );
 }
 
 #[cfg(test)]

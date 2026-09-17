@@ -43,7 +43,7 @@ use super::kiro_cli::{
     content_manifest_path, reject_unsafe_file_name, set_executable, PlannedFile,
     KONDUCTOR_DESTINATION_ROOT,
 };
-use super::manifest::{classify_provenance, Manifest, ManifestFile, Provenance};
+use super::manifest::{classify_provenance, ManifestFile, Provenance, StrategyManifest};
 
 /// Names of `mcp/servers/<name>/` binaries `konductor install` copies
 /// into `<target_dir>/.konductor/bin/`, if present at
@@ -75,7 +75,7 @@ fn mcp_binary_source_path(repo_root: &Path, binary_name: &str) -> std::path::Pat
 pub(super) fn plan_bin_files(
     repo_root: &Path,
     target_dir: &Path,
-    prior_manifest: Option<&Manifest>,
+    prior_manifest: Option<&StrategyManifest>,
 ) -> Result<Vec<PlannedFile>, String> {
     let destination_dir = target_dir
         .join(KONDUCTOR_DESTINATION_ROOT)

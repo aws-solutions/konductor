@@ -420,6 +420,7 @@ dependencies = [
  "flate2",
  "fs2",
  "indexmap",
+ "owo-colors",
  "percent-encoding",
  "rustls",
  "serde",
@@ -428,6 +429,7 @@ dependencies = [
  "sha2",
  "tar",
  "telemetry-net",
+ "textwrap",
  "unicode-normalization",
  "ureq",
 ]
@@ -483,6 +485,12 @@ name = "once_cell_polyfill"
 version = "1.70.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
+
+[[package]]
+name = "owo-colors"
+version = "4.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "48dd4f4a2c8405440fd0462561f0e5806bd0f77e86f51c761481bdd4018b545e"
 
 [[package]]
 name = "percent-encoding"
@@ -736,6 +744,25 @@ dependencies = [
 [[package]]
 name = "telemetry-net"
 version = "0.1.0"
+
+[[package]]
+name = "terminal_size"
+version = "0.4.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "230a1b821ccbd75b185820a1f1ff7b14d21da1e442e22c0863ea5f08771a8874"
+dependencies = [
+ "rustix",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "textwrap"
+version = "0.16.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c13547615a44dc9c452a8a534638acdf07120d4b6847c8178705da06306a3057"
+dependencies = [
+ "terminal_size",
+]
 
 [[package]]
 name = "tinystr"

@@ -1,8 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 #
-# PR-time validation (ADR-9 / TD-19, docs/design/github-first-release-pipeline-design.md
-# in SolNexusAICapabilities): runs `konductor synth` directly on a GitHub-hosted runner
-# and rejects any PR that hand-modifies dist/ (populated only by the release process).
+# PR-time validation: runs `konductor synth` directly on a GitHub-hosted
+# runner and rejects any PR that hand-modifies dist/. dist/ is gitignored and
+# never committed -- the release workflow (release.yml) regenerates it fresh
+# on every run and only ever publishes it as a release asset, so any dist/
+# content reaching a PR diff can only be a stray, hand-committed copy.
 #
 # Triggers on `pull_request`, NOT `pull_request_target`: this job checks out and builds
 # PR-head content (`make synth` compiles and runs contributor code), so it must run with
@@ -31,7 +33,7 @@ jobs:
           fetch-depth: 0
 
       - name: Reject PRs that modify dist/
-        # dist/ is committed but populated only by the release process (design doc §2) --
+        # dist/ is gitignored and populated only by the release process --
         # contributor PRs must never touch it directly.
         #
         # Three-dot diff against the merge-base (fetch-depth: 0 above makes it available),
@@ -47,6 +49,33 @@ jobs:
             echo "FATAL: this PR modifies dist/, which is generated only by the release process. Revert these changes and let the release pipeline regenerate dist/ instead:" >&2
             echo "$CHANGED_DIST_FILES" >&2
             exit 1
+          fi
+
+      - name: Require a CHANGELOG.md entry alongside any VERSION bump
+        # CHANGELOG.md's own convention (entries consolidated per release,
+        # not per commit) is otherwise unenforced -- a PR could bump VERSION
+        # with no corresponding CHANGELOG.md entry, or vice versa. Same
+        # three-dot diff mechanism as the dist/ check above; checks presence
+        # of a change on each side, plus VERSION's content format via the
+        # shared scripts/validate-version-semver.sh (also invoked by
+        # release.yml's own check-version job), so a malformed bump fails
+        # here instead of at merge time.
+        run: |
+          set -e
+          DIFF_RANGE="${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}"
+          VERSION_CHANGED="$(git diff --name-only "$DIFF_RANGE" -- VERSION)"
+          CHANGELOG_CHANGED="$(git diff --name-only "$DIFF_RANGE" -- CHANGELOG.md)"
+          if [ -n "$VERSION_CHANGED" ] && [ ! -f VERSION ]; then
+            echo "FATAL: VERSION was deleted. release.yml's check-version job requires it to exist at repo root and fails closed at merge time if it's missing. Restore it or this PR will break the next release." >&2
+            exit 1
+          fi
+          if [ -n "$VERSION_CHANGED" ] && [ -z "$CHANGELOG_CHANGED" ]; then
+            echo "FATAL: this PR bumps VERSION but does not update CHANGELOG.md. Add an entry for this release." >&2
+            exit 1
+          fi
+          if [ -n "$VERSION_CHANGED" ] && [ -f VERSION ]; then
+            RAW_VERSION="$(cat VERSION)"
+            scripts/validate-version-semver.sh "$RAW_VERSION"
           fi
 
       - name: Set up Rust toolchain
@@ -67,3 +96,61 @@ jobs:
               exit 1
             fi
           done
+
+      - name: Verify packaged tarball asset count and version
+        # PR-time analog of two release.yml checks that otherwise only run
+        # after merge: check-version's TARBALL_MATCH_COUNT/
+        # TARBALL_SIDECAR_MATCH_COUNT (its idempotency re-check), and the
+        # build job's "Stage the shared release assets" step, which fails
+        # closed on the same count and on a Cargo.toml/VERSION version
+        # mismatch. Only this narrow slice is reproducible here: `konductor
+        # synth` writes the tarball and its sidecar directly into dist/'s
+        # top level (see synth::artifact_filename), so no additional build
+        # step is needed beyond the synth step above. The rest of
+        # release.yml's asset-completeness checks (EXPECTED_ASSET_COUNT and
+        # the per-arch/per-tool name list) also cover the konductor and
+        # skill-lookup-mcp binaries for both x86_64 and aarch64, which this
+        # workflow does not build -- porting those would require adding an
+        # mcp/ build and a second (aarch64) job here, so they still run only
+        # in release.yml, post-merge.
+        run: |
+          set -e
+          TARBALL_MATCHES="$(find dist -maxdepth 1 -name 'konductor-v*.tar.gz')"
+          TARBALL_COUNT="$(printf '%s\n' "$TARBALL_MATCHES" | grep -c . || true)"
+          if [ "$TARBALL_COUNT" -eq 0 ]; then
+            echo "FATAL: no packaged .tar.gz artifact found at dist/'s top level after synth. release.yml's build job requires exactly one. Failing closed." >&2
+            exit 1
+          elif [ "$TARBALL_COUNT" -gt 1 ]; then
+            echo "FATAL: expected exactly one packaged .tar.gz artifact at dist/'s top level, found ${TARBALL_COUNT}. Failing closed." >&2
+            printf '%s\n' "$TARBALL_MATCHES" >&2
+            exit 1
+          fi
+          TARBALL_PATH="$TARBALL_MATCHES"
+          TARBALL_SIDECAR_PATH="${TARBALL_PATH}.sha256"
+          if [ ! -f "$TARBALL_SIDECAR_PATH" ]; then
+            echo "FATAL: expected sidecar $TARBALL_SIDECAR_PATH not found alongside $TARBALL_PATH. Failing closed." >&2
+            exit 1
+          fi
+
+          # The tarball's version segment comes from Cargo.toml
+          # (CARGO_PKG_VERSION), not the root VERSION file -- see
+          # artifact_filename()'s own doc comment. release.yml's build job
+          # fails closed on a mismatch between the two at merge time; check
+          # it here too so the PR that introduces the drift is the one that
+          # fails, not the next merge to main.
+          if [ ! -f VERSION ]; then
+            echo "FATAL: VERSION file not found at repo root. release.yml's check-version job requires it and fails closed at merge time. Failing closed." >&2
+            exit 1
+          fi
+          RAW_VERSION="$(cat VERSION)"
+          scripts/validate-version-semver.sh "$RAW_VERSION"
+          EXPECTED_TARBALL_VERSION="v${RAW_VERSION}"
+          TARBALL_VERSION="$(basename "$TARBALL_PATH" | sed -nE 's/^konductor-(v[0-9]+\.[0-9]+\.[0-9]+)\.tar\.gz$/\1/p')"
+          if [ -z "$TARBALL_VERSION" ]; then
+            echo "FATAL: could not parse a version segment from tarball filename $(basename "$TARBALL_PATH"). Failing closed." >&2
+            exit 1
+          fi
+          if [ "$TARBALL_VERSION" != "$EXPECTED_TARBALL_VERSION" ]; then
+            echo "FATAL: packaged tarball's version segment ($TARBALL_VERSION, from Cargo.toml) does not match the root VERSION file ($EXPECTED_TARBALL_VERSION). This will fail release.yml's build job after merge. Bump Cargo.toml's version to match VERSION before merging. Failing closed." >&2
+            exit 1
+          fi

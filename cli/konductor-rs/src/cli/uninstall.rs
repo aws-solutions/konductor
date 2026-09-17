@@ -1,61 +1,42 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// uninstall.rs — `konductor uninstall` dispatch (Rust implementation).
+// uninstall.rs -- `konductor uninstall` dispatch (Rust implementation).
 //
-// Real behavior per designs/konductor-cli-install-index.md §3 (selection
-// UX) and §5 (hash-divergence decision). `--target`/`--all` are a
-// divergence from the design doc's "uninstall is flagless" statement,
-// explicitly sanctioned by that same design doc -- see
-// ws-konductor-cli-notes/SKILL.md's "Root resolution gap for
-// `uninstall`" note for the prior standing constraint this satisfies.
+// `--target`/`--all` are supported alongside the flagless bare
+// invocation. No interactive TTY picker, and no implicit resolve-to-
+// $HOME destructive-confirmation gate either: a bare invocation
+// (`--target` omitted, `--all` not passed) against 2+ tracked entries
+// is an immediate usage error naming every tracked install, matching
+// design §3's own table exactly and mirroring `update.rs`'s identical
+// ambiguous-selection error (`report_ambiguous_targets`) -- see that
+// function's own doc comment. A single tracked entry is always
+// uninstalled directly with no flag needed, unchanged from the
+// design's own 1-entry row.
 //
-// No interactive TTY *picker* at this milestone (design §3's
-// 2+-entries/interactive row describes a numbered-list selection among
-// every tracked target -- that is not implemented). What IS
-// implemented, narrower in scope, is a plain yes/no confirmation gate
-// on the one specific case described below.
+// `harness` (design doc §9.6) is a SEPARATE selection axis from target
+// resolution: once a target is resolved (by whichever path above), if
+// that target tracks 2+ STRATEGIES, `harness` (or an interactive
+// picker, or a usage error) selects exactly one of them; see
+// `harness_select::select_harness`.
 //
-// ── Bare invocation with 2+ tracked entries resolves to $HOME ─────────────
-// Diverges from design §3's own table, which specifies a usage error
-// ("multiple installs are tracked; pass --target <dir> or --all") for
-// this case. `dispatch_uninstall` instead resolves the destination to
-// $HOME (`install::resolve_destination`, the identical function
-// `install`/`doctor` already use for their own "--target omitted"
-// default) and proceeds through the same single-target path an
-// explicit `--target <dir>` would take -- including its own "does not
-// match any tracked install" usage error when $HOME isn't one of the
-// tracked entries -- naming every OTHER tracked install alongside
-// that error, via `format_other_tracked_installs`. A single tracked
-// entry is still uninstalled directly regardless of whether it is at
-// $HOME, unchanged from the design's own 1-entry row.
-//
-// This specific case -- resolved to $HOME, and $HOME IS one of 2+
-// tracked entries -- is gated behind an interactive confirmation
-// (`confirm_destructive_uninstall`) before the delete proceeds:
-// "Are you sure you want to uninstall from <dir>?", requiring an
-// explicit `y`/`yes` (case-insensitive). `--yes`/`-y` bypasses the
-// prompt; so does `--json` or a non-terminal stdin declining by
-// default (EXIT_USER_ABORTED, 4) rather than blocking on input that
-// can never arrive -- see `confirm_destructive_uninstall`'s own doc
-// comment for the exact precedence. On success, a non-blocking stderr
-// note (`format_other_tracked_installs` again) names every other
-// tracked install left untouched. Neither the confirmation gate nor
-// the note applies to an explicit `--target <dir>` or `--all` -- both
-// already name their own scope, so neither needs re-confirming or a
-// "here's what else exists" hint.
-//
-// ── KNOWN LIMITATION: no same-target concurrency protection ───────────────
-// Running two `konductor` invocations (any mix of install/update/
-// uninstall) against the SAME target directory at once is unsupported
-// and can corrupt the manifest, index, or on-disk files -- e.g. this
-// module's delete loop can race `update`'s copy loop. No locking exists
-// or is planned; callers must serialize their own invocations per
-// target. Same accepted-risk posture as the cross-target index race
-// (design doc §2).
+// Manifest writes are locked and fresh-read; file copies are not. Every
+// manifest write here goes through the same `config_lock`-backed
+// advisory lock `install.rs`/`update.rs` use, and re-reads the manifest
+// fresh under that lock rather than trusting an earlier unlocked read
+// used only to drive harness selection. A concurrent install/uninstall
+// of a different, coexisting strategy at the same target can no longer
+// corrupt or lose its slot. What remains unsupported: two invocations
+// racing on the exact same strategy slot's on-disk files -- this
+// module's delete loop and `update.rs`'s copy loop each touch the
+// filesystem outside the manifest-write critical section, so they can
+// still interleave and corrupt files even though the manifest stays
+// consistent. Callers must still serialize same-slot invocations
+// themselves -- same accepted-risk posture as the cross-target index
+// race (design doc §2).
 
-use std::io::IsTerminal;
 use std::path::{Component, Path, PathBuf};
 
+use super::harness_select;
 use super::install::artifact::sha256_hex;
 use super::install::bin_link;
 use super::install::claude::CLAUDE_DESTINATION_ROOT as CLAUDE_ROOT;
@@ -63,37 +44,32 @@ use super::install::index::{self, Index};
 use super::install::kiro_cli::{
     KIRO_DESTINATION_ROOT as KIRO_ROOT, KONDUCTOR_DESTINATION_ROOT as KONDUCTOR_ROOT,
 };
-use super::install::manifest::{self, Manifest, ManifestError, Provenance};
-use super::install::resolve_destination;
+use super::install::manifest::{self, ManifestError, Provenance, StrategyManifest};
 use super::install::resource_rewrite::CLAUDE_SETTINGS_RELATIVE_PATH;
+use crate::cli::output::ColorMode;
 
-/// Remapped exit code for CLI usage errors, matching cli.rs's own
-/// `EXIT_USAGE_ERROR`. Duplicated per install.rs's own established
-/// precedent for this exact constant (cli.rs's is private to that
-/// module).
+/// Remapped exit code for CLI usage errors, matching cli.rs's
+/// `EXIT_USAGE_ERROR` (private to that module, so duplicated here).
 const EXIT_USAGE_ERROR: u8 = 64;
 
 /// Remapped exit code for a state/verification failure -- an
-/// unsupported manifest/index `schema_version` -- matching cli.rs's own
-/// `EXIT_VERIFY_FAILED` constant and `manifest::ManifestError`'s /
-/// `index::IndexError`'s own doc comments, which document that
-/// `UnsupportedSchemaVersion` must map to this code, never
-/// `EXIT_USAGE_ERROR` (64). Duplicated here per this module's own
-/// established precedent for `EXIT_USAGE_ERROR` above (cli.rs's
-/// constant is private to that module).
+/// unsupported manifest/index `schema_version` -- matching cli.rs's
+/// `EXIT_VERIFY_FAILED`, which `ManifestError`/`IndexError` document as
+/// the required mapping for `UnsupportedSchemaVersion`.
 const EXIT_VERIFY_FAILED: u8 = 65;
 
-/// Exit code for a user declining `confirm_destructive_uninstall`'s
-/// interactive prompt. Reuses cli.rs's own documented Exit-code
-/// contract (Engineering Design §6): "4 = user aborted a paused
-/// verdict" -- the existing reserved meaning closest to "the user was
-/// asked to confirm a destructive action and declined," rather than
-/// introducing a new, undocumented code. No other command in this
-/// crate emits this exit code (verifiable via `grep -rn '= 4;\|4u8'
-/// src/`) -- reused here per that reservation, matching doctor.rs's own
-/// precedent of reusing `EXIT_HALTED` (1) for its own distinct local
-/// meaning rather than declaring a fresh code.
-const EXIT_USER_ABORTED: u8 = 4;
+// `EXIT_CONFIRMATION_DECLINED`/`EXIT_SUCCESS_WITH_WARNINGS` used to live
+// here as private-to-this-module constants (CR comment r1p10): the
+// former was born dead (introduced when this module's confirmation flow
+// was removed in the same change, with zero live callers ever since --
+// verified by a repo-wide search finding no reference outside its own
+// definition), and the latter's contract belongs beside
+// `EXIT_CRITICAL_GATE`/`EXIT_USAGE_ERROR`/`EXIT_VERIFY_FAILED` in
+// cli.rs, not duplicated into a private module. `EXIT_CONFIRMATION_DECLINED`
+// is dropped outright per the reviewer's explicit suggestion rather than
+// relocated; `EXIT_SUCCESS_WITH_WARNINGS` is now `cli::EXIT_SUCCESS_WITH_WARNINGS`
+// (see cli.rs), imported below.
+use super::EXIT_SUCCESS_WITH_WARNINGS;
 
 /// Maps a `manifest::read_manifest`/`index::read_index` error to
 /// its correct exit code -- `EXIT_VERIFY_FAILED` (65) specifically for
@@ -116,14 +92,20 @@ fn index_error_exit_code(err: &index::IndexError) -> u8 {
     }
 }
 
-/// `uninstall_one`'s error type. Carries both a human-readable
-/// message and the exit code that produced it (`EXIT_VERIFY_FAILED`
-/// (65) for an unsupported manifest/index schema version,
-/// `EXIT_USAGE_ERROR` (64) otherwise).
+/// `uninstall_one`'s error type. Carries a human-readable message, the
+/// exit code that produced it (`EXIT_VERIFY_FAILED` for an unsupported
+/// manifest/index schema version, `EXIT_USAGE_ERROR` otherwise), and
+/// whether this is specifically the "target doesn't track the
+/// requested `--harness`" case (`harness_not_tracked`). Only
+/// `dispatch_all`'s batch loop inspects `harness_not_tracked`, treating
+/// it as a per-target skip rather than a failure.
+/// `dispatch_target`'s single-target path still surfaces it as an
+/// ordinary usage error -- there's no sibling target to skip to.
 #[derive(Debug)]
 struct UninstallError {
     message: String,
     exit_code: u8,
+    harness_not_tracked: bool,
 }
 
 impl std::fmt::Display for UninstallError {
@@ -137,6 +119,19 @@ impl UninstallError {
         UninstallError {
             message: message.into(),
             exit_code: EXIT_USAGE_ERROR,
+            harness_not_tracked: false,
+        }
+    }
+
+    /// Specifically the "target does not track the requested
+    /// `--harness`" case `harness_select::select_harness` reports via
+    /// `HarnessSelectionError::NotTracked` (see this struct's doc for
+    /// why it's split out from `usage`).
+    fn harness_not_tracked(message: impl Into<String>) -> Self {
+        UninstallError {
+            message: message.into(),
+            exit_code: EXIT_USAGE_ERROR,
+            harness_not_tracked: true,
         }
     }
 
@@ -144,6 +139,7 @@ impl UninstallError {
         UninstallError {
             exit_code: manifest_error_exit_code(&err),
             message: format!("could not read manifest for {target_dir}: {err}"),
+            harness_not_tracked: false,
         }
     }
 
@@ -151,16 +147,14 @@ impl UninstallError {
         UninstallError {
             exit_code: index_error_exit_code(&err),
             message: format!("could not update install index for {target_dir}: {err}"),
+            harness_not_tracked: false,
         }
     }
 }
 
 // Runtime namespace roots `uninstall` must never remove, regardless of
-// emptiness -- design doc §8. Imported above from `kiro_cli.rs`'s own
-// `pub(crate) const KIRO_DESTINATION_ROOT`/`KONDUCTOR_DESTINATION_ROOT`
-// (aliased to the shorter local names used throughout this module) so
-// the runtime-root values can never silently drift between modules --
-// matching how `update.rs` already imports the same constants.
+// emptiness. Imported from `kiro_cli.rs`'s own constants (aliased to
+// shorter local names) so the values can't drift between modules.
 
 /// One target's uninstall outcome: how many files were deleted, how
 /// many of those had a diverged hash (design §5's disclosure
@@ -175,36 +169,42 @@ impl UninstallError {
 /// would otherwise be indistinguishable in the report from a stale
 /// index entry that never had a manifest to begin with. `stale: true`
 /// is the caller's signal to report this target as "stale (no manifest
-/// found); index entry removed" rather than blending it into a real
-/// 0-file uninstall's message.
+/// found); cleared its tracked install entry" rather than blending it
+/// into a real 0-file uninstall's message.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct UninstallCounts {
     pub files_deleted: usize,
     pub diverged_deleted: usize,
+    /// The specific relative paths counted in `diverged_deleted`, in
+    /// the order `delete_eligible_files` encountered them -- design
+    /// §5's disclosure requirement made concrete: a bare count tells
+    /// the user HOW MANY hand-edited files were deleted anyway, but not
+    /// WHICH ones, so there is nothing to check before trusting the
+    /// count. Populated alongside `diverged_deleted`'s increment in
+    /// `delete_eligible_files`, never independently -- the two must
+    /// always agree in length. Surfaced verbatim in `--json` output and
+    /// listed by name in the plain-text success message when non-empty.
+    pub diverged_paths: Vec<PathBuf>,
     pub dirs_removed: usize,
     pub stale: bool,
-    /// Whether this target had a `--link-bin`-created symlink tracked in
-    /// `$HOME/.konductor/bin-links`, and that TRACKING entry was
-    /// dropped as part of this uninstall -- the corresponding-removal
-    /// half of `install::bin_link`'s module docstring. `false` for a
-    /// target that never requested `--link-bin` (the common case), not
-    /// an error. Deliberately does NOT imply the physical symlink itself
-    /// was deleted -- see `bin_link_symlink_removed` for that, since
-    /// another still-installed target can share the same physical
-    /// symlink (see `bin_link::BinLinkRemoval`'s own doc comment).
+    /// Whether this target had a `--link-bin`-created symlink tracked
+    /// in `$HOME/.konductor/bin-links`, and that tracking entry was
+    /// dropped as part of this uninstall. `false` for a target that
+    /// never requested `--link-bin` (the common case), not an error.
+    /// Does not imply the physical symlink was deleted -- see
+    /// `bin_link_symlink_removed`, since another still-installed
+    /// target can share the same physical symlink.
     pub bin_link_untracked: bool,
-    /// Whether the on-disk `--link-bin` symlink was actually deleted as
-    /// part of this uninstall -- `bin_link::BinLinkRemoval::physically_removed`
-    /// passed through unchanged. Always `false` when `bin_link_untracked`
-    /// is `false` (nothing was tracked to remove); can ALSO be `false`
-    /// even when `bin_link_untracked` is `true`, e.g. when another
-    /// still-installed target's tracking entry still names the same
-    /// physical symlink. Reporting must key its "removed its --link-bin
-    /// symlink" message off THIS field, not `bin_link_untracked` --
-    /// conflating the two previously reported a shared-link uninstall as
-    /// having changed `$PATH` resolution when it had not.
+    /// Whether the on-disk `--link-bin` symlink was actually deleted --
+    /// `bin_link::BinLinkRemoval::physically_removed` passed through.
+    /// Always `false` when `bin_link_untracked` is `false`; can also be
+    /// `false` even when `bin_link_untracked` is `true`, e.g. when
+    /// another still-installed target's tracking entry names the same
+    /// physical symlink. Reporting must key its "removed its
+    /// --link-bin symlink" message off this field, not
+    /// `bin_link_untracked`.
     pub bin_link_symlink_removed: bool,
-    /// The error message, if `bin_link::remove_bin_link` failed for this
+    /// The error, if `bin_link::remove_bin_link` failed for this
     /// target. `None` on the ordinary path -- either nothing was tracked
     /// (`bin_link_untracked` stays `false` too) or removal succeeded.
     /// Carried back as data rather than printed directly at the failure
@@ -212,28 +212,105 @@ pub struct UninstallCounts {
     /// and its "no printing in the core function" rationale): a
     /// `--json` consumer that only reads stdout must be able to see
     /// this failure too, not just a plain-text `eprintln!` on stderr --
-    /// and `Some(message)` here is distinguishable from "this target
+    /// and `Some(failure)` here is distinguishable from "this target
     /// never requested `--link-bin`" in a way a bare `false` on
     /// `bin_link_untracked` alone is not.
-    pub bin_link_error: Option<String>,
+    ///
+    /// A `BinLinkFailure` (message + exit code), not a bare `String` --
+    /// CR comment r1p6's regression: `bin_link.rs` already splits
+    /// `BinLinkError` into `EXIT_VERIFY_FAILED` (65, for
+    /// `UnsupportedSchemaVersion`/`RollbackAlsoFailed`) vs
+    /// `EXIT_USAGE_ERROR` (64, every other variant) via
+    /// `bin_link::bin_link_error_exit_code`, but a bare `String` throws
+    /// that distinction away before `exit_code_for_counts` ever runs --
+    /// every bin-link failure flattened to `EXIT_SUCCESS_WITH_WARNINGS`
+    /// (6), silently downgrading a real state-consistency concern (a
+    /// `BIN_LINK_SCHEMA_VERSION` bump, or a rollback that itself failed)
+    /// to a mere warning. The exit code is derived once, at construction
+    /// time in `uninstall_one_impl` (the one place that still has the
+    /// real `BinLinkError` value), rather than re-derived from the
+    /// message string later.
+    pub bin_link_error: Option<BinLinkFailure>,
 }
 
-/// `konductor uninstall [--target <dir>] [--all] [--yes]`. Reads
-/// `~/.konductor/installs` and applies the design §3 selection table,
-/// with one deliberate divergence: a bare invocation (`--target`
-/// omitted, `--all` not passed) against 2+ tracked entries resolves
-/// the destination to `$HOME` (`install::resolve_destination`, the
-/// same default `install`/`doctor` already apply) instead of
-/// immediately reporting the design's own "multiple installs are
-/// tracked" usage error -- see this module's own header comment for
-/// the full rationale. That specific case -- 2+ tracked entries,
-/// resolved to $HOME, and $HOME IS one of them -- is gated behind
-/// `confirm_destructive_uninstall`'s interactive prompt; `yes` bypasses
-/// it. Returns 0 on success/no-op, `EXIT_USAGE_ERROR` (64) on any usage
-/// error, `EXIT_VERIFY_FAILED` (65) on an unsupported index schema
-/// version, `EXIT_USER_ABORTED` (4) when the confirmation prompt is
-/// declined -- never exit code 2.
-pub fn dispatch_uninstall(target: Option<String>, all: bool, yes: bool, json: bool) -> u8 {
+/// `UninstallCounts.bin_link_error`'s payload: a `bin_link::BinLinkError`
+/// reduced to what a report/exit-code call site actually needs -- the
+/// rendered message, and the correct exit code for THIS non-fatal
+/// context. Not the `BinLinkError` itself: that type carries
+/// `std::io::Error`/`serde_json::Error` sources with no
+/// `Clone`/`PartialEq`/`Eq`, which `UninstallCounts`'s own derives require;
+/// reducing to (message, exit_code) at construction time keeps this struct
+/// exactly as inspectable as the plain `String` it replaces, while never
+/// losing the variant-specific exit code the way that bare `String` did.
+///
+/// The exit code here is NOT `bin_link::bin_link_error_exit_code`'s raw
+/// output taken verbatim: that function was written for a context where
+/// a `BinLinkError` is the PRIMARY failure of the whole command (its own
+/// doc comment's "reserved for a future caller... e.g. a standalone
+/// `--link-bin` command"), where every non-`UnsupportedSchemaVersion`/
+/// `RollbackAlsoFailed` variant is a real usage error (64). `uninstall`'s
+/// own bin-link removal is explicitly NON-FATAL (see
+/// `uninstall_one_impl`'s own doc comment) -- every file this uninstall
+/// was responsible for is still deleted and the index entry still
+/// removed regardless of this failure, so an ordinary `SymlinkFailed`/
+/// `ForeignFileExists`/etc. here must stay `EXIT_SUCCESS_WITH_WARNINGS`
+/// (6), a warning on top of a real success, not escalate to 64 as if
+/// the whole uninstall had failed. CR comment r1p6's actual complaint
+/// was narrower than "reuse `bin_link_error_exit_code` outright": it
+/// specifically named `UnsupportedSchemaVersion`/`RollbackAlsoFailed` as
+/// the two variants silently downgraded to 6 that should instead read as
+/// 65 (a state-consistency concern, not a mere warning) -- so only those
+/// two variants are escalated here; every other variant keeps the
+/// pre-existing non-fatal 6.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BinLinkFailure {
+    pub message: String,
+    pub exit_code: u8,
+}
+
+impl BinLinkFailure {
+    fn from_error(err: &bin_link::BinLinkError) -> Self {
+        // Escalate to EXIT_VERIFY_FAILED (65) only for the two variants
+        // CR comment r1p6 named -- a state-consistency concern, not an
+        // ordinary bin-link removal hiccup. Every other variant keeps
+        // the pre-existing non-fatal EXIT_SUCCESS_WITH_WARNINGS (6) --
+        // see this struct's own doc comment for why
+        // `bin_link_error_exit_code`'s raw output (64 for everything
+        // else) is the wrong mapping in THIS non-fatal context.
+        let exit_code = match err {
+            bin_link::BinLinkError::UnsupportedSchemaVersion { .. }
+            | bin_link::BinLinkError::RollbackAlsoFailed { .. } => EXIT_VERIFY_FAILED,
+            _ => EXIT_SUCCESS_WITH_WARNINGS,
+        };
+        BinLinkFailure {
+            message: err.to_string(),
+            exit_code,
+        }
+    }
+}
+
+/// `konductor uninstall [--target <dir>] [--all] [--harness <name>]`.
+/// Reads `~/.konductor/installs` and applies the design §3 selection
+/// table: a bare invocation (`--target` omitted, `--all` not passed)
+/// against 2+ tracked entries is a usage error naming every tracked
+/// install -- see `report_ambiguous_targets` below, mirroring
+/// `update.rs`'s own equivalent ambiguity error. `harness` (design doc
+/// §9.6) is a SEPARATE selection axis from all of the above -- once a
+/// target is resolved, if it tracks 2+ strategies, `harness` (or an
+/// interactive picker, or a usage error) selects exactly one of them;
+/// see `harness_select::select_harness`. Returns 0 on success/no-op,
+/// `EXIT_USAGE_ERROR` (64) on any usage error (including the
+/// 2+-tracked-installs ambiguity case), `EXIT_VERIFY_FAILED` (65) on an
+/// unsupported index schema version, `EXIT_SUCCESS_WITH_WARNINGS` (6)
+/// on an otherwise-successful uninstall that hit a non-fatal
+/// `--link-bin` symlink-removal failure -- never exit code 2.
+pub fn dispatch_uninstall(
+    target: Option<String>,
+    all: bool,
+    harness: Option<String>,
+    json: bool,
+    color: ColorMode,
+) -> u8 {
     // No single target is in scope yet at this point in dispatch --
     // `report_error`'s `target_dir` param
     // falls back to $HOME here, the closest thing to a scope-agnostic
@@ -253,6 +330,7 @@ pub fn dispatch_uninstall(target: Option<String>, all: bool, yes: bool, json: bo
                 &format!("could not read install index: {err}"),
                 Vec::new(),
                 json,
+                color,
             );
             return index_error_exit_code(&err);
         }
@@ -268,7 +346,7 @@ pub fn dispatch_uninstall(target: Option<String>, all: bool, yes: bool, json: bo
     // `--all` on an empty index has nothing to iterate either way, so
     // it stays a 0 no-op.
     if index.installs.is_empty() && target.is_none() && !all {
-        report_no_tracked_installs("uninstall", json);
+        report_no_tracked_installs("uninstall", json, color);
         return 0;
     }
 
@@ -279,24 +357,24 @@ pub fn dispatch_uninstall(target: Option<String>, all: bool, yes: bool, json: bo
     // authoritative.
     let duplicates = index::duplicate_target_dirs(&index.installs);
     if !duplicates.is_empty() {
-        report_corrupted_index(&duplicates, json);
+        report_corrupted_index(&duplicates, json, color);
         return EXIT_USAGE_ERROR;
     }
 
     if all {
-        return dispatch_all(&index, json);
+        return dispatch_all(&index, harness.as_deref(), json, color);
     }
 
     if let Some(target) = target {
-        return dispatch_target(&index, &target, json, ConfirmationRequirement::NotRequired);
+        return dispatch_target(&index, &target, harness.as_deref(), json, color);
     }
 
     if index.installs.len() == 1 {
         let entry = &index.installs[0];
-        return match uninstall_one(&entry.target_dir) {
+        return match uninstall_one(&entry.target_dir, harness.as_deref(), true, json) {
             Ok(counts) => {
-                report_single(&entry.target_dir, &counts, json);
-                0
+                report_single(&entry.target_dir, &counts, json, color);
+                exit_code_for_counts(&counts)
             }
             Err(err) => {
                 report_error(
@@ -310,91 +388,95 @@ pub fn dispatch_uninstall(target: Option<String>, all: bool, yes: bool, json: bo
                         serde_json::Value::String(entry.target_dir.clone()),
                     )],
                     json,
+                    color,
                 );
                 err.exit_code
             }
         };
     }
 
-    // 2+ tracked entries, neither `--target` nor `--all` given: resolve
-    // the destination to $HOME (mirroring `install`'s own default) and
-    // proceed through the identical single-target path an explicit
-    // `--target <dir>` would take, rather than reporting the design's
-    // own "multiple installs are tracked" ambiguity error -- see this
-    // module's header comment for the rationale. Gated behind
-    // `confirm_destructive_uninstall` inside `dispatch_target` (this is
-    // the ONLY call site that passes `ConfirmationRequirement::Required`
-    // -- the explicit `--target <dir>` arm above, and `--all`'s own
-    // per-entry loop below, both pass/use `NotRequired`).
-    //
-    // `resolve_destination(None)`'s `Err` case -- $HOME unset or empty
-    // -- cannot occur here: it guards the exact same condition
-    // `index::read_index()` already checked (via `env_home_dir()`) at
-    // the top of this function, and that call already returned early on
-    // `Err(IndexError::UnresolvableHome)` before this point could ever
-    // be reached. Verified by reading both resolution paths directly --
-    // `resolve_destination` checks `std::env::var_os("HOME")` filtered
-    // on non-empty, `env_home_dir()` checks the identical condition.
-    let home = resolve_destination(None).unwrap_or_else(|_| {
-        unreachable!("$HOME already confirmed resolvable by read_index() above")
-    });
-    let home_display = home.to_string_lossy().into_owned();
-    let code = dispatch_target(
-        &index,
-        &home_display,
-        json,
-        ConfirmationRequirement::Required { auto_yes: yes },
-    );
-    if code == 0 {
-        if let Some(note) = success_note_for_dispatch_uninstall(&home, &home_display, &index) {
-            eprintln!("konductor uninstall: {note}");
-        }
+    // 2+ tracked entries, neither `--target` nor `--all` given: usage
+    // error naming every tracked install, mirroring `update.rs`'s own
+    // `report_ambiguous_targets` for its identical ambiguous-selection
+    // case -- there is no picker/confirm flow to fall back to any more;
+    // the caller must disambiguate with `--target <dir>` or `--all`.
+    report_ambiguous_targets(&index.installs, json, color);
+    EXIT_USAGE_ERROR
+}
+
+/// Maps a successful `uninstall_one`/`uninstall_one_for_batch` result
+/// to its exit code: the failure's own carried exit code (see
+/// `BinLinkFailure`) when this target hit a non-fatal `--link-bin`
+/// symlink-removal failure (`counts.bin_link_error.is_some()`) -- 65
+/// (`EXIT_VERIFY_FAILED`) for `UnsupportedSchemaVersion`/
+/// `RollbackAlsoFailed`, `EXIT_SUCCESS_WITH_WARNINGS` (6) for every
+/// other `BinLinkError` variant (CR comment r1p6's fix: this used to
+/// assume 6 unconditionally, flattening a real state-consistency
+/// concern into a mere warning) -- 0 otherwise. Shared by every
+/// `Ok(counts)` call site in this module (the single-entry shortcut in
+/// `dispatch_uninstall`, `dispatch_target`'s matched-entry arm) so the
+/// mapping cannot drift between them. `dispatch_all`'s own batch
+/// tie-break additionally folds this into `worst_exit_code`'s
+/// precedence ordering -- see that function's own doc comment.
+fn exit_code_for_counts(counts: &UninstallCounts) -> u8 {
+    match &counts.bin_link_error {
+        Some(failure) => failure.exit_code,
+        None => 0,
     }
-    code
 }
 
-/// Resolves `home` to the same CANONICAL form `dispatch_target` matches
-/// a tracked entry against (`index::canonicalize_target_dir`), for use
-/// as the exclusion key passed to `success_note_for_other_tracked_installs`.
-/// `home_display` -- the raw, non-canonicalized `$HOME` string
-/// `resolve_destination` returns -- is not itself a safe exclusion key:
-/// every tracked entry's `target_dir` is stored in canonical form (see
-/// `canonicalize_target_dir`'s own doc comment), so a raw/canonical
-/// mismatch (a symlinked home dir, a trailing slash, macOS's `/var` ->
-/// `/private/var`, etc.) would leave a plain string comparison unable
-/// to match the entry `dispatch_target` just matched and removed,
-/// incorrectly listing it in the note as "left untouched." Falls back
-/// to `home_display` when canonicalization fails: the caller only
-/// reaches this after `dispatch_target` has already reported success
-/// (`code == 0`), but that success can also come from `dispatch_target`'s
-/// own non-canonicalizing fallback match (a stale entry whose directory
-/// no longer exists on disk), where re-canonicalizing `home` here would
-/// fail the identical way.
-fn canonical_home_for_exclusion(home: &Path, home_display: &str) -> String {
-    index::canonicalize_target_dir(home).unwrap_or_else(|_| home_display.to_string())
+/// Reports the 2+-tracked-installs-no-flag ambiguity error, listing
+/// every tracked install so the user knows what `--target <dir>`
+/// values are valid. Mirrors `update.rs`'s own `report_ambiguous_targets`
+/// message/shape exactly -- `uninstall` used to diverge from this by
+/// resolving to `$HOME` instead (see this module's git history), but
+/// that picker/confirm flow has been removed entirely in favor of this
+/// same hard error `update` already gives for its own identical
+/// ambiguous-selection case.
+/// Builds `report_ambiguous_targets`'s plain-text message: the
+/// ambiguity error plus a listing of every tracked install's
+/// `target_dir`, one per line. Named so tests bind to the real
+/// construction -- mirrors `dispatch_target_no_match_message`'s own
+/// split exactly (see that function's doc comment): pulling the
+/// message/listing construction out of its call site is what lets a
+/// test assert specific target names actually appear in the rendered
+/// output, rather than only confirming the call site doesn't panic.
+fn build_ambiguous_targets_message(entries: &[index::IndexEntry]) -> String {
+    let message = "multiple installs are tracked; pass --target <dir> or --all";
+    let listed = entries
+        .iter()
+        .map(|e| format!("  - {}", e.target_dir))
+        .collect::<Vec<_>>()
+        .join("\n");
+    format!("{message}. Tracked install(s):\n{listed}")
 }
 
-/// The exact success-note computation `dispatch_uninstall` performs
-/// after a successful (`code == 0`) resolved-to-`$HOME` uninstall:
-/// `canonical_home_for_exclusion` first, then
-/// `success_note_for_other_tracked_installs` against `index` (the
-/// PRE-delete state, as `dispatch_uninstall` has it in hand at this
-/// point). Factored into its own function -- rather than left inline at
-/// `dispatch_uninstall`'s call site -- so a test can call this exact
-/// sequence directly instead of independently reconstructing it: this
-/// module has no mechanism to capture the note from real stderr, so a
-/// test that re-derives the two-call sequence itself (rather than
-/// calling this one shared function) would keep passing even if
-/// `dispatch_uninstall`'s own call site regressed back to skipping
-/// canonicalization -- the exact bug this module's canonical-vs-raw
-/// fix addresses.
-fn success_note_for_dispatch_uninstall(
-    home: &Path,
-    home_display: &str,
-    index: &Index,
-) -> Option<String> {
-    let resolved_home = canonical_home_for_exclusion(home, home_display);
-    success_note_for_other_tracked_installs(index, &resolved_home)
+/// Reports the 2+-tracked-installs-no-flag ambiguity error, listing
+/// every tracked install so the user knows what `--target <dir>`
+/// values are valid. Mirrors `update.rs`'s own `report_ambiguous_targets`
+/// message/shape exactly -- `uninstall` used to diverge from this by
+/// resolving to `$HOME` instead (see this module's git history), but
+/// that picker/confirm flow has been removed entirely in favor of this
+/// same hard error `update` already gives for its own identical
+/// ambiguous-selection case.
+fn report_ambiguous_targets(entries: &[index::IndexEntry], json: bool, color: ColorMode) {
+    if json {
+        let message = "multiple installs are tracked; pass --target <dir> or --all";
+        println!(
+            "{}",
+            serde_json::json!({
+                "command": "uninstall",
+                "error": message,
+                "tracked_targets": entries.iter().map(|e| e.target_dir.clone()).collect::<Vec<_>>(),
+            })
+        );
+        return;
+    }
+    eprintln!(
+        "{} {}",
+        crate::cli::output::error_prefix(color, "konductor uninstall:"),
+        build_ambiguous_targets_message(entries)
+    );
 }
 
 // `build_error_json`/`report_error`/`report_no_tracked_installs` moved
@@ -410,11 +492,11 @@ use super::report::{report_error, report_no_tracked_installs};
 
 /// Reports a corrupted index (duplicate `target_dir` entries)
 /// and refuses to proceed with any operation, naming exactly which
-/// target_dir(s) are duplicated. Splits plain-text/`--json` output the
-/// same way `report_single`/`report_batch` do.
-fn report_corrupted_index(duplicates: &[String], json: bool) {
-    let message = "install index is corrupted: duplicate target_dir entries found; \
-                    fix ~/.konductor/installs by hand before running uninstall";
+/// tracked install(s) are duplicated. Splits plain-text/`--json` output
+/// the same way `report_single`/`report_batch` do.
+fn report_corrupted_index(duplicates: &[String], json: bool, color: ColorMode) {
+    let message = "the tracked-install index is corrupted: duplicate tracked install \
+                    entries found; fix ~/.konductor/installs by hand before running uninstall";
     if json {
         println!(
             "{}",
@@ -431,7 +513,10 @@ fn report_corrupted_index(duplicates: &[String], json: bool) {
         .map(|d| format!("  - {d}"))
         .collect::<Vec<_>>()
         .join("\n");
-    eprintln!("konductor uninstall: {message}. Duplicated target_dir(s):\n{listed}");
+    eprintln!(
+        "{} {message}. Duplicated tracked install(s):\n{listed}",
+        crate::cli::output::error_prefix(color, "konductor uninstall:")
+    );
 }
 
 /// Every tracked install's `target_dir` OTHER than `resolved_home`,
@@ -440,21 +525,14 @@ fn report_corrupted_index(duplicates: &[String], json: bool) {
 /// convention). `None` when there is nothing else to list -- either
 /// `resolved_home` is the index's only entry, or the index is empty.
 ///
-/// Shared by BOTH call sites so the "which OTHER installs exist, and
-/// how are they displayed" logic exists in exactly one place:
-///   - `success_note_for_other_tracked_installs` below (a non-blocking
-///     discoverability note after a successful bare, $HOME-resolved
-///     uninstall), and
-///   - `dispatch_target`'s NOT-FOUND usage error, so a resolved path
-///     that matches nothing tracked also tells the user what IS
-///     tracked, rather than naming only the path that failed to match.
+/// Used by `dispatch_target`'s NOT-FOUND usage error, so a resolved
+/// path that matches nothing tracked also tells the user what IS
+/// tracked, rather than naming only the path that failed to match.
 ///
 /// `resolved_home` is excluded by exact string match against each
-/// entry's `target_dir`. On the success-note call site it names the
-/// entry that WAS just found and uninstalled, so it must not reappear
-/// alongside the "others" it is being distinguished from. On the
-/// not-found call site it matches nothing tracked by definition, so
-/// nothing is excluded and every tracked install is listed.
+/// entry's `target_dir` -- on the not-found call site it matches
+/// nothing tracked by definition, so nothing is excluded and every
+/// tracked install is listed.
 fn format_other_tracked_installs(index: &Index, resolved_home: &str) -> Option<String> {
     let others: Vec<&str> = index
         .installs
@@ -474,158 +552,32 @@ fn format_other_tracked_installs(index: &Index, resolved_home: &str) -> Option<S
     )
 }
 
-/// Builds the full discoverability note `dispatch_uninstall`'s bare,
-/// $HOME-resolved 2+-tracked-installs branch prints to stderr after a
-/// SUCCESSFUL uninstall -- `None` when `format_other_tracked_installs`
-/// has nothing to list (there was nothing else tracked). Split out from
-/// the `eprintln!` call site itself purely for testability: this
-/// module has no stdout/stderr-capture mechanism (see the existing
-/// json-consistency tests' own module-level comment), so tests assert
-/// on this function's returned `String` content directly instead,
-/// matching the structural-assertion convention `build_error_json`'s
-/// own tests already establish.
-fn success_note_for_other_tracked_installs(index: &Index, resolved_home: &str) -> Option<String> {
-    let listing = format_other_tracked_installs(index, resolved_home)?;
-    let total = index.installs.len();
-    Some(format!(
-        "note: {resolved_home} was 1 of {total} tracked installs; the other install(s) were \
-         left untouched. Pass --all to remove every tracked install, or --target <dir> to \
-         target a specific one. Other tracked install(s):\n{listing}"
-    ))
-}
-
-/// Whether `dispatch_target` must gate the actual delete behind
-/// `confirm_destructive_uninstall` once a tracked entry is matched.
-/// `NotRequired` is passed by every call site that already named its
-/// target explicitly (`--target <dir>`) -- an explicitly-named target
-/// does not need re-confirming, matching this whole gate's scope:
-/// only the implicit, ambiguity-adjacent case. `Required { auto_yes }`
-/// is passed ONLY by `dispatch_uninstall`'s bare, $HOME-resolved
-/// 2+-tracked-installs branch.
-#[derive(Debug, Clone, Copy)]
-enum ConfirmationRequirement {
-    NotRequired,
-    Required { auto_yes: bool },
-}
-
-/// Outcome of `confirm_destructive_uninstall`: whether the caller
-/// should proceed with the delete, or abort without touching anything.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum ConfirmOutcome {
-    Proceed,
-    Abort,
-}
-
-/// Parses a confirmation prompt's raw response line -- case-insensitive
-/// `y`/`yes` (surrounding whitespace ignored) proceeds; every other
-/// input, including empty input, aborts. Split out from
-/// `confirm_destructive_uninstall` purely for testability: this module
-/// has no way to inject a fake stdin, so tests exercise this pure
-/// parsing function directly instead (same structural-assertion
-/// convention as `success_note_for_other_tracked_installs` above).
-fn parse_confirmation_response(raw: &str) -> ConfirmOutcome {
-    match raw.trim().to_ascii_lowercase().as_str() {
-        "y" | "yes" => ConfirmOutcome::Proceed,
-        _ => ConfirmOutcome::Abort,
-    }
-}
-
-/// Prompts "Are you sure you want to uninstall from `<target_dir>`?" on
-/// stderr and reads one line from stdin, via `parse_confirmation_response`.
-/// This crate has no existing interactive-prompting precedent anywhere
-/// else -- every check below exists specifically to keep this new
-/// pattern from ever blocking on input that cannot arrive, or from
-/// silently proceeding with a destructive delete nobody actually
-/// confirmed:
-///
-///   - `auto_yes` (the caller passed `--yes`/`-y`): proceeds
-///     immediately, without touching stdin at all.
-///   - otherwise, `json` (a `--json` consumer is a script, not an
-///     interactive human -- same "non-interactive implies no implicit
-///     consent" contract `--yes` gives an interactive caller
-///     explicitly) OR stdin is not a terminal
-///     (`std::io::IsTerminal`, e.g. piped input, CI, a script): aborts
-///     without prompting, rather than blocking on input that will
-///     never arrive. Requires `--yes` to bypass in either case.
-///   - otherwise (an interactive TTY, no `--json`): prints the prompt
-///     and reads a line; a read error is treated as abort, the same as
-///     any other non-`y`/`yes` response -- never as a silent proceed.
-fn confirm_destructive_uninstall(target_dir: &str, auto_yes: bool, json: bool) -> ConfirmOutcome {
-    if auto_yes {
-        return ConfirmOutcome::Proceed;
-    }
-    if json || !std::io::stdin().is_terminal() {
-        return ConfirmOutcome::Abort;
-    }
-    eprint!("Are you sure you want to uninstall from {target_dir}? [y/N] ");
-    let mut input = String::new();
-    if std::io::stdin().read_line(&mut input).is_err() {
-        return ConfirmOutcome::Abort;
-    }
-    parse_confirmation_response(&input)
-}
-
-/// Builds the JSON document `report_aborted` emits when a user declines
-/// `confirm_destructive_uninstall`'s prompt. Split out from
-/// `report_aborted` purely for testability -- this module has no
-/// stdout-capture mechanism (see `build_error_json`'s own doc comment)
-/// -- so tests assert on this function's returned `Value` directly,
-/// matching that same precedent.
-///
-/// Carries a `hint` field naming the remediation (`--yes`, or
-/// `--target <dir>`/`--all` to name a scope) alongside `"aborted": true`
-/// so a scripted `--json` consumer -- e.g. a CI job that trips over the
-/// abort -- has something in the document itself pointing at the fix,
-/// rather than only `"aborted": true` and a bare `target_dir`.
-fn build_aborted_json(target_dir: &str) -> serde_json::Value {
-    serde_json::json!({
-        "command": "uninstall",
-        "target_dir": target_dir,
-        "aborted": true,
-        "hint": "pass --yes to confirm, or --target <dir>/--all to name a scope",
-    })
-}
-
-/// Reports that the user declined `confirm_destructive_uninstall`'s
-/// prompt for `target_dir` -- nothing was deleted, the index entry
-/// still exists. Matches this module's `report_error`/`build_error_json`
-/// shape for `--json` so a scripted consumer sees a structured document
-/// either way, but is NOT itself an error: `command` stays `"uninstall"`
-/// and the JSON carries `"aborted": true` alongside `target_dir` rather
-/// than an `"error"` field, since declining a prompt is an intentional
-/// decision, not a failure. Both branches name the same `--yes`/
-/// `--target`/`--all` remediation `build_aborted_json` embeds as `hint`.
-fn report_aborted(target_dir: &str, json: bool) {
-    if json {
-        println!("{}", build_aborted_json(target_dir));
-        return;
-    }
-    eprintln!(
-        "konductor uninstall: aborted; {target_dir} was not uninstalled \
-         (pass --yes to confirm, or --target <dir>/--all to name a scope)"
-    );
-}
-
 /// Builds the "does not match any tracked install" usage-error message
 /// `dispatch_target`'s no-match branch reports. Named so tests bind to
 /// the real construction -- including the `format_other_tracked_installs`
 /// listing appended when the index has other tracked installs to name
 /// -- rather than reconstructing the message by hand and never
-/// exercising that append at all, the same testability precedent as
-/// `success_note_for_other_tracked_installs` above.
+/// exercising that append at all.
+///
+/// Ends with a softened clause acknowledging uncertainty rather than
+/// asserting `target` was never tracked: a directory that WAS
+/// previously installed but has since been fully uninstalled resolves
+/// identically to one that was never installed at all, and this
+/// message cannot tell the two apart -- both simply match nothing in
+/// the current index.
 fn dispatch_target_no_match_message(index: &Index, target: &str, resolved_display: &str) -> String {
     let mut message =
         format!("{target} does not match any tracked install (resolved to {resolved_display})");
     if let Some(listing) = format_other_tracked_installs(index, resolved_display) {
         message.push_str(&format!(". Tracked install(s):\n{listing}"));
     }
+    message.push_str(" (this may mean it was never installed, or was already fully uninstalled)");
     message
 }
 
 /// `--target <dir>` path: canonicalizes `<dir>` the same way install
 /// does, then requires an exact match against a tracked entry -- a
-/// non-matching target is a usage error, never a silent no-op (design
-/// §3).
+/// non-matching target is a usage error, never a silent no-op.
 ///
 /// If canonicalization fails (a tracked directory that no longer
 /// exists -- exactly the stale case `uninstall_one` is built to prune),
@@ -639,16 +591,12 @@ fn dispatch_target_no_match_message(index: &Index, target: &str, resolved_displa
 /// wrong/unrelated path still matches nothing in either the
 /// canonical-path attempt or this fallback, so it still falls through
 /// to the same usage error as before.
-///
-/// `confirmation` gates the actual delete once a match is found (see
-/// `ConfirmationRequirement`'s own doc comment) -- a declined
-/// confirmation returns `EXIT_USER_ABORTED` (4) without ever calling
-/// `uninstall_one`, so nothing is touched.
 fn dispatch_target(
     index: &Index,
     target: &str,
+    harness: Option<&str>,
     json: bool,
-    confirmation: ConfirmationRequirement,
+    color: ColorMode,
 ) -> u8 {
     let canonical = index::canonicalize_target_dir(Path::new(target));
 
@@ -697,20 +645,14 @@ fn dispatch_target(
                 ),
             ],
             json,
+            color,
         );
         return EXIT_USAGE_ERROR;
     };
-    if let ConfirmationRequirement::Required { auto_yes } = confirmation {
-        if confirm_destructive_uninstall(&entry.target_dir, auto_yes, json) == ConfirmOutcome::Abort
-        {
-            report_aborted(&entry.target_dir, json);
-            return EXIT_USER_ABORTED;
-        }
-    }
-    match uninstall_one(&entry.target_dir) {
+    match uninstall_one(&entry.target_dir, harness, true, json) {
         Ok(counts) => {
-            report_single(&entry.target_dir, &counts, json);
-            0
+            report_single(&entry.target_dir, &counts, json, color);
+            exit_code_for_counts(&counts)
         }
         Err(err) => {
             report_error(
@@ -724,6 +666,7 @@ fn dispatch_target(
                     serde_json::Value::String(entry.target_dir.clone()),
                 )],
                 json,
+                color,
             );
             err.exit_code
         }
@@ -731,80 +674,148 @@ fn dispatch_target(
 }
 
 /// `--all` path: uninstalls every tracked entry, continuing on a
-/// per-target failure and reporting which targets succeeded/failed
-/// rather than aborting the whole batch on the first error (design §3).
-/// Returns `EXIT_USAGE_ERROR` (64) if at least one target failed with a
-/// usage error, or `EXIT_VERIFY_FAILED` (65) if at least one target
-/// failed specifically on an unsupported schema version and none failed
-/// with a plain usage error (65 "wins" over 0 but never silently masks
-/// a 64 -- if both kinds of failure occur in the same batch, 64 is
-/// reported, matching this module's/`update.rs`'s single-target
-/// behavior where a usage error is the more actionable of the two). A
-/// stale entry (no manifest found) still counts as "succeeded"
-/// here (its index entry was pruned, which is uninstall's correct
-/// terminal behavior) -- `report_batch` distinguishes stale-skipped
-/// targets from genuinely-emptied ones via `UninstallCounts.stale`, so
-/// the batch summary itself does not need a third bucket.
-fn dispatch_all(index: &Index, json: bool) -> u8 {
+/// per-target failure and reporting which targets succeeded/skipped/
+/// failed rather than aborting the whole batch on the first error.
+/// Returns `EXIT_USAGE_ERROR` (64) if at least one target
+/// failed with a usage error, or `EXIT_VERIFY_FAILED` (65) if at least
+/// one target failed specifically on an unsupported schema version and
+/// none failed with a plain usage error (65 "wins" over 0 but never
+/// silently masks a 64 -- if both kinds of failure occur in the same
+/// batch, 64 is reported, matching this module's/`update.rs`'s
+/// single-target behavior where a usage error is the more actionable of
+/// the two). A stale entry (no manifest found) still counts as
+/// "succeeded" here (its index entry was pruned, which is uninstall's
+/// correct terminal behavior) -- `report_batch` distinguishes
+/// stale-skipped targets from genuinely-emptied ones via
+/// `UninstallCounts.stale`, so the batch summary itself does not need a
+/// third bucket for that case.
+///
+/// A DIFFERENT case does get its own bucket: a target that does not
+/// track the requested `--harness` at all
+/// (`UninstallError::harness_not_tracked`, set when
+/// `harness_select::select_harness` returns
+/// `HarnessSelectionError::NotTracked`). With `--harness <name>` given,
+/// `select_harness` now validates the name against every tracked target
+/// individually (r2's stricter check -- see that function's own doc
+/// comment), so a mixed set of targets where only some track the
+/// requested harness used to hard-fail the ones that don't, showing up
+/// in the FAILED list even though nothing about that target is actually
+/// broken. Design decision: such a target is SKIPPED instead -- an
+/// informational per-target message, not a failure -- and does not
+/// affect `worst_exit_code`. A target that DOES track the requested
+/// harness but fails to uninstall for some other reason still counts as
+/// a real failure below, unaffected by this.
+///
+/// Precedence rank for `dispatch_all`'s batch tie-break, highest wins:
+/// `EXIT_USAGE_ERROR` (64) beats `EXIT_VERIFY_FAILED` (65) beats
+/// `EXIT_SUCCESS_WITH_WARNINGS` (6) beats 0 -- a real failure anywhere
+/// in the batch is always more actionable than a `--link-bin` warning
+/// on an otherwise-successful target, which is itself more actionable
+/// than a clean 0. Not the numeric code itself: 65 is a larger number
+/// than 64 but ranks BELOW it here (a usage error is more actionable
+/// than a state-verification failure), so precedence needs its own
+/// ordering distinct from the raw exit-code values. Shared by both the
+/// `Ok`/`Err` arms below (comment r1p6's fix means the `Ok` arm's own
+/// `exit_code_for_counts` can now yield 65, not only 6/0, so both arms
+/// must resolve through the SAME ranking or a later, higher-precedence
+/// code from one arm could lose to an earlier, lower-precedence code
+/// already recorded by the other). The `harness_not_tracked` skip
+/// bucket never enters this ranking at all -- see this function's own
+/// doc comment above for why it is informational, not a failure.
+fn exit_code_precedence_rank(code: u8) -> u8 {
+    match code {
+        EXIT_USAGE_ERROR => 3,
+        EXIT_VERIFY_FAILED => 2,
+        EXIT_SUCCESS_WITH_WARNINGS => 1,
+        _ => 0,
+    }
+}
+
+/// Precedence across the whole batch, highest wins: see
+/// `exit_code_precedence_rank`'s own doc comment for the ranking and
+/// why it is not simply the numeric code value.
+fn dispatch_all(index: &Index, harness: Option<&str>, json: bool, color: ColorMode) -> u8 {
     let mut succeeded: Vec<(String, UninstallCounts)> = Vec::new();
+    let mut skipped: Vec<(String, String)> = Vec::new();
     let mut failed: Vec<(String, String)> = Vec::new();
     let mut worst_exit_code = 0u8;
 
+    let consider = |code: u8, worst_exit_code: &mut u8| {
+        if exit_code_precedence_rank(code) > exit_code_precedence_rank(*worst_exit_code) {
+            *worst_exit_code = code;
+        }
+    };
+
     for entry in &index.installs {
-        match uninstall_one_for_batch(&entry.target_dir) {
-            Ok(counts) => succeeded.push((entry.target_dir.clone(), counts)),
+        match uninstall_one_for_batch(&entry.target_dir, harness) {
+            Ok(counts) => {
+                consider(exit_code_for_counts(&counts), &mut worst_exit_code);
+                succeeded.push((entry.target_dir.clone(), counts));
+            }
+            Err(err) if err.harness_not_tracked => {
+                skipped.push((entry.target_dir.clone(), err.message));
+            }
             Err(err) => {
-                // A usage error (64) is more actionable than a schema
-                // failure (65) -- if this batch hits both, report 64.
-                if worst_exit_code == 0 || err.exit_code == EXIT_USAGE_ERROR {
-                    worst_exit_code = err.exit_code;
-                }
+                consider(err.exit_code, &mut worst_exit_code);
                 failed.push((entry.target_dir.clone(), err.message));
             }
         }
     }
 
-    report_batch(&succeeded, &failed, json);
+    report_batch(&succeeded, &skipped, &failed, json, color);
 
     worst_exit_code
 }
 
 /// Per-target uninstall: reads that target's manifest, deletes every
-/// eligible file (design §5: `Created`/`ReplacedOurs`, even if the
-/// on-disk hash has diverged; never `ReplacedForeign`), cleans up
-/// now-empty directories (never `.kiro/`/`.konductor/` themselves), and
-/// removes the target from the index. `target_dir` must already be the
+/// eligible file (`Created`/`ReplacedOurs`, even if the on-disk hash
+/// has diverged; never `ReplacedForeign`), cleans up now-empty
+/// directories (never `.kiro/`/`.konductor/` themselves), and removes
+/// the target from the index. `target_dir` must already be the
 /// canonicalized string an index entry carries.
 ///
 /// A missing manifest (`Ok(None)` from `read_manifest`) is a **stale
 /// tracked install** -- the index names this target, but nothing is
 /// there for uninstall to read. This is still the correct place to
-/// prune the stale index entry (uninstall's terminal behavior for a
-/// target it can no longer act on), but the returned
+/// prune the stale tracked install entry (uninstall's terminal
+/// behavior for a target it can no longer act on), but the returned
 /// `UninstallCounts.stale` is set to `true` so the caller's report
-/// explicitly says "stale (no manifest found); index entry removed"
-/// rather than rendering identically to a real, successful 0-file
-/// uninstall (see `report_single`/`report_batch`). Consistent in
-/// tone/wording with `update.rs`'s own message for the identical
-/// missing-manifest condition (see that module's `update_one_target`
-/// doc comment) -- `update` cannot treat it as non-fatal the way
-/// `uninstall` can, since it has nothing to reconcile against.
-fn uninstall_one(target_dir: &str) -> Result<UninstallCounts, UninstallError> {
-    uninstall_one_impl(target_dir, false)
+/// explicitly says "stale (no manifest found); cleared its tracked
+/// install entry" rather than rendering identically to a real,
+/// successful 0-file uninstall (see `report_single`/`report_batch`).
+/// Consistent in tone/wording with `update.rs`'s own message for the
+/// identical missing-manifest condition (see that module's
+/// `update_one_target` doc comment) -- `update` cannot treat it as
+/// non-fatal the way `uninstall` can, since it has nothing to
+/// reconcile against.
+fn uninstall_one(
+    target_dir: &str,
+    harness: Option<&str>,
+    allow_interactive: bool,
+    json: bool,
+) -> Result<UninstallCounts, UninstallError> {
+    uninstall_one_impl(target_dir, false, harness, allow_interactive, json)
 }
 
 /// Same as `uninstall_one`, but resolves telemetry identity per-target
-/// via `read_identity_uncached` instead of the process-global cache
-/// (finding f-c144d780) -- `dispatch_all`
-/// visits several distinct `target_dir`s in one process, and the cache
-/// only ever resolves the first one's UUID.
-fn uninstall_one_for_batch(target_dir: &str) -> Result<UninstallCounts, UninstallError> {
-    uninstall_one_impl(target_dir, true)
+/// via `read_identity_uncached` instead of the process-global cache,
+/// since `dispatch_all` visits several distinct `target_dir`s in one
+/// process and the cache only ever resolves the first one's UUID.
+/// Never prompts interactively and never treats itself as `--json` --
+/// an `--all` batch has no single caller context to prompt against.
+fn uninstall_one_for_batch(
+    target_dir: &str,
+    harness: Option<&str>,
+) -> Result<UninstallCounts, UninstallError> {
+    uninstall_one_impl(target_dir, true, harness, false, false)
 }
 
 fn uninstall_one_impl(
     target_dir: &str,
     uncached_identity: bool,
+    harness: Option<&str>,
+    allow_interactive: bool,
+    json: bool,
 ) -> Result<UninstallCounts, UninstallError> {
     let target_path = Path::new(target_dir);
 
@@ -813,122 +824,214 @@ fn uninstall_one_impl(
 
     let mut counts = UninstallCounts::default();
     let mut touched_dirs: Vec<PathBuf> = Vec::new();
+    // Whether this run leaves the target with no tracked strategies at
+    // all. Gates the target-wide side effects further down (bin-link
+    // untracking, index-entry removal, telemetry cleanup) to a genuine
+    // full teardown, never a partial single-harness removal that
+    // leaves another already-tracked strategy (e.g. `claude`) still
+    // installed. Defaults `true` because the `None` and
+    // empty-`strategies` arms below have nothing else to preserve; the
+    // `Some(full_manifest)` arm's concurrent-override race recomputes
+    // this from a fresh read instead (see that arm's comment).
+    let mut target_fully_removed = true;
+    // The strategy name this run actually removed, if any -- used
+    // below to shrink the index entry's `strategies` list by exactly
+    // that name when the target was not fully removed. `None` on the
+    // stale/0-slot paths, which remove the whole index entry instead.
+    let mut removed_strategy_name: Option<String> = None;
 
     match &manifest {
-        Some(manifest) => {
-            delete_eligible_files(target_path, manifest, &mut counts, &mut touched_dirs)
-                .map_err(UninstallError::usage)?;
-            // Remove the manifest file itself once every eligible file
-            // it names has been deleted -- `delete_eligible_files` only
-            // ever deletes paths LISTED INSIDE the manifest, and the
-            // manifest never lists itself (`plan_all_files` only plans
-            // `.kiro/agents/*`, `.kiro/context/*`, `.konductor/skills/*`).
-            // Without this, `X/.konductor/manifest` survives with
-            // `status: complete` and a file list describing files that
-            // no longer exist, leaving the target looking half-installed
-            // to a later `install`/`doctor` read. The manifest's own
-            // parent (`.konductor/`) is never removed regardless
-            // (`cleanup_empty_dirs` refuses to touch it by design), so
-            // this file removal happens on its own, before
-            // `cleanup_empty_dirs` runs -- the manifest's directory is
-            // not one `cleanup_empty_dirs` needs to revisit for the
-            // manifest's own removal, but removing the manifest first
-            // keeps the on-disk state consistent should
-            // `cleanup_empty_dirs` fail partway through for an unrelated
-            // reason. Skipped entirely on the stale path (`None` arm
-            // below) -- there is no manifest file there to begin with.
-            let manifest_path = manifest::manifest_path(target_path);
-            if manifest_path.is_file() {
-                std::fs::remove_file(&manifest_path).map_err(|e| {
-                    UninstallError::usage(format!(
-                        "failed to remove manifest {}: {e}",
-                        manifest_path.display()
-                    ))
-                })?;
-            }
-        }
         None => {
             counts.stale = true;
+        }
+        // A manifest can exist on disk with an empty `strategies` list
+        // (e.g. every slot was already removed by an earlier
+        // per-harness uninstall, or a hand-edited manifest). Handled as
+        // its own case rather than falling through to the `None` arm:
+        // that arm reports `stale = true` without removing the
+        // manifest file, while `index::remove_index_entry` still runs
+        // a few lines down -- which would orphan a manifest file with
+        // no index entry able to reach it. Handled here, the manifest
+        // file itself is removed too.
+        //
+        // The delete-vs-nothing decision must not be taken from this
+        // unlocked `manifest` read -- a concurrent `install --harness
+        // <other>` could commit a new slot into this file between this
+        // read and the delete, and an unconditional delete here would
+        // silently discard it. `remove_strategy_locked(_, None)`
+        // re-reads fresh under the same lock `install`'s
+        // `upsert_strategy` uses, and only deletes the file if it's
+        // still empty at that point.
+        Some(full_manifest) if full_manifest.strategies.is_empty() => {
+            let outcome = manifest::remove_strategy_locked(target_path, None)
+                .map_err(|err| UninstallError::from_manifest(target_dir, err))?;
+            // `None` only if the manifest vanished entirely between the
+            // unlocked read above and this locked re-read (e.g. a racing
+            // uninstall of the same target already removed it) --
+            // nothing left to finalize either way.
+            if let Some(outcome) = outcome {
+                target_fully_removed = outcome.target_fully_removed;
+            }
+            counts.stale = true;
+        }
+        Some(full_manifest) => {
+            let selected_name = harness_select::select_harness(
+                target_dir,
+                &full_manifest.strategies,
+                harness,
+                allow_interactive,
+                json,
+            )
+            .map_err(|err| {
+                // `NotTracked` is the one case a batch caller
+                // (`dispatch_all`) treats as a skip rather than a
+                // failure -- see `UninstallError`'s own doc comment.
+                // Every other `select_harness` failure (ambiguous
+                // selection, invalid prompt response) stays an ordinary
+                // usage error.
+                if err.is_not_tracked() {
+                    UninstallError::harness_not_tracked(err.to_string())
+                } else {
+                    UninstallError::usage(err.to_string())
+                }
+            })?
+            .strategy
+            .clone();
+
+            // `full_manifest` above is read unlocked -- it exists only
+            // to drive harness selection (picking a name, never file
+            // content). The actual deletion step must run against a
+            // fresh, locked re-read of `selected_name`'s slot, not this
+            // stale snapshot: a concurrent `install --harness <other>`
+            // landing in the gap could commit a new slot at the same
+            // destination paths (`KIRO_VARIANT_FAMILY` members write
+            // identical paths by construction), and this uninstall's
+            // stale view would then delete files the concurrent install
+            // just wrote. `delete_eligible_files` -- and the
+            // counts/touched_dirs it mutates -- run entirely inside the
+            // locked critical section below, against whichever slot is
+            // genuinely tracked under `selected_name` at the instant
+            // the lock is held. See `delete_and_remove_strategy_locked`'s
+            // doc comment for the matching removal-decision invariant.
+            match manifest::delete_and_remove_strategy_locked(
+                target_path,
+                &selected_name,
+                |fresh_slot| {
+                    delete_eligible_files(target_path, fresh_slot, &mut counts, &mut touched_dirs)
+                },
+            )
+            .map_err(|err| UninstallError::from_manifest(target_dir, err))?
+            {
+                Some(outcome) => {
+                    target_fully_removed = outcome.target_fully_removed;
+                    removed_strategy_name = Some(selected_name);
+                }
+                None => {
+                    // The fresh, locked read no longer tracks
+                    // `selected_name` -- either the manifest vanished
+                    // entirely (a concurrent uninstall of the last
+                    // remaining strategy), or a concurrent `install
+                    // --harness <other>` already replaced this exact
+                    // slot (the KIRO_VARIANT_FAMILY override-on-switch
+                    // race). Either way, `delete_eligible_files` was
+                    // never invoked -- nothing was deleted.
+                    //
+                    // `target_fully_removed` must not simply default to
+                    // `true` here: `None` says nothing about whether
+                    // some other, unrelated strategy (e.g. a
+                    // coexisting `claude`) is still tracked, and the
+                    // teardown below (`index::remove_index_entry`) is
+                    // not name-scoped -- it drops the whole index entry
+                    // regardless of which strategies remain, orphaning
+                    // a real survivor's manifest slot. Re-reading fresh
+                    // here (best-effort, since the lock is already
+                    // released) reflects the manifest's actual current
+                    // state instead of a blind default.
+                    target_fully_removed = match manifest::read_manifest(target_path) {
+                        Ok(Some(m)) => m.strategies.is_empty(),
+                        Ok(None) => true,
+                        Err(_) => true,
+                    };
+                    counts.stale = true;
+                }
+            }
         }
     }
 
     counts.dirs_removed = cleanup_empty_dirs(target_path, &touched_dirs);
 
-    // Corresponding-removal half of `install::bin_link`'s module
-    // docstring: if this target ever ran `install --link-bin`, its
-    // tracked $PATH symlink is removed here too, regardless of whether
-    // the target was stale (no manifest) or a real uninstall above --
-    // the tracked bin-link is a property of this `target_dir`
-    // independent of whether its manifest still existed. Deliberately
-    // non-fatal: a `--link-bin` cleanup failure (e.g. a permissions
-    // error removing the symlink) must not abort an uninstall that has
-    // already successfully removed every other tracked file for this
-    // target, mirroring `install`'s own `--link-bin` non-fatal posture
-    // (see `install.rs`'s `dispatch_install_with`, where that same
-    // non-fatal-posture rationale lives). NO printing here, on any
-    // path -- carried back as `counts.bin_link_error` instead, mirroring
-    // `update.rs`'s own `finalize_index_warning` field: a bare
-    // `eprintln!` on this path would be invisible to a `--json`
-    // consumer reading only stdout, and would leave a genuine failure
-    // indistinguishable in the emitted JSON from "this target never
-    // requested `--link-bin`" (both would otherwise leave
-    // `bin_link_untracked`/`bin_link_symlink_removed` at their default
-    // `false`). `report_single`/`report_batch` are what actually print
-    // it, in both plain-text and `--json` modes.
-    match bin_link::remove_bin_link(target_dir) {
-        Ok(Some(removal)) => {
-            counts.bin_link_untracked = true;
-            counts.bin_link_symlink_removed = removal.physically_removed;
+    // Everything from here down is a property of the target as a
+    // whole (the $PATH bin-link, the index entry, the telemetry
+    // identity file), not of any one strategy's slot -- so it must
+    // only be torn down on a genuine full teardown
+    // (`target_fully_removed`), never when another already-tracked
+    // strategy (e.g. `claude`) survives this run's partial removal.
+    if target_fully_removed {
+        // If this target ever ran `install --link-bin`, its tracked
+        // $PATH symlink is removed here too, regardless of whether the
+        // target was stale or a real uninstall above. Deliberately
+        // non-fatal: a cleanup failure must not abort an uninstall that
+        // already removed every other tracked file, mirroring
+        // `install`'s own `--link-bin` non-fatal posture. No printing
+        // here on any path -- carried back as `counts.bin_link_error`
+        // instead, so a `--json` consumer reading only stdout can still
+        // see it, distinct from "never requested `--link-bin`".
+        // `report_single`/`report_batch` print it in both modes.
+        match bin_link::remove_bin_link(target_dir) {
+            Ok(Some(removal)) => {
+                counts.bin_link_untracked = true;
+                counts.bin_link_symlink_removed = removal.physically_removed;
+            }
+            Ok(None) => {}
+            Err(err) => {
+                counts.bin_link_error = Some(BinLinkFailure::from_error(&err));
+            }
         }
-        Ok(None) => {}
-        Err(err) => {
-            counts.bin_link_error = Some(err.to_string());
+
+        index::remove_index_entry(target_dir)
+            .map_err(|err| UninstallError::from_index(target_dir, err))?;
+
+        // Telemetry: report only after every fallible operation above
+        // has already succeeded -- reporting success for an uninstall
+        // that goes on to fail with an `UninstallError` would be a
+        // false signal. Fires before the identity file is deleted
+        // below, while it still exists to read. Every failure mode
+        // this call can hit is folded into
+        // `report_package_uninstalled`'s own best-effort tolerance --
+        // never becomes an `UninstallError`.
+        if uncached_identity {
+            crate::cli::telemetry::report_package_uninstalled_for_target(target_path);
+        } else {
+            crate::cli::telemetry::report_package_uninstalled(target_path);
         }
+
+        // Delete the identity file last, so a crash/interruption
+        // before this point leaves it in place and a retried uninstall
+        // re-reports (accepted at-least-once delivery).
+        let identity_path = crate::cli::telemetry::identity_path(target_path);
+        let _ = std::fs::remove_file(identity_path);
+    } else if let Some(name) = &removed_strategy_name {
+        // Only the selected harness's name leaves the index's tracked
+        // `strategies` list -- every other already-tracked strategy,
+        // and the `target_dir` entry itself, survives.
+        index::remove_strategy_from_index(target_dir, name)
+            .map_err(|err| UninstallError::from_index(target_dir, err))?;
     }
-
-    index::remove_index_entry(target_dir)
-        .map_err(|err| UninstallError::from_index(target_dir, err))?;
-
-    // Telemetry: report only AFTER every fallible
-    // operation above has already succeeded (manifest read, eligible-file
-    // deletion, manifest removal, index-entry removal) -- reporting
-    // success telemetry for an uninstall that goes on to fail with an
-    // `UninstallError` would be a false success signal. Still fires
-    // BEFORE the identity file is deleted below, while
-    // `.konductor/telemetry-id.json` still exists to read (this call's
-    // ordering constraint). Every failure mode this call
-    // itself can hit (missing/unreadable/malformed identity file, spawn
-    // error, or a later network failure this process never observes) is
-    // folded into report_package_uninstalled's own best-effort tolerance
-    // -- never becomes an UninstallError.
-    if uncached_identity {
-        crate::cli::telemetry::report_package_uninstalled_for_target(target_path);
-    } else {
-        crate::cli::telemetry::report_package_uninstalled(target_path);
-    }
-
-    // Telemetry: delete the identity file only AFTER
-    // existing cleanup completes -- deliberately the LAST step, so a
-    // crash/interruption before this point leaves the identity file in
-    // place and a retried uninstall re-reports (accepted at-least-once
-    // delivery, not fixed in this revision).
-    let identity_path = crate::cli::telemetry::identity_path(target_path);
-    let _ = std::fs::remove_file(identity_path);
 
     Ok(counts)
 }
 
 /// Validates that a manifest-recorded relative path stays within
-/// `target_dir` BEFORE it is ever joined against it -- a corrupted/
+/// `target_dir` before it is ever joined against it -- a corrupted or
 /// hand-edited manifest must never cause a write/delete outside the
 /// intended tree. Rejects an absolute path (`Path::join` replaces the
 /// base entirely when the joined path is absolute, e.g.
 /// `target_dir.join("/etc/foo") == /etc/foo`) and any path containing a
-/// `..` (`ParentDir`) component (`Path::join` does not normalize `..`,
-/// and a lexical `starts_with` check on the joined result is not a
-/// sufficient guard on its own -- `target_dir/../../etc` still starts
-/// with `target_dir` by component). A `./`-prefixed but otherwise safe
-/// relative path is accepted unchanged.
+/// `..` component (`Path::join` doesn't normalize `..`, so a lexical
+/// `starts_with` check on the joined result alone isn't sufficient --
+/// `target_dir/../../etc` still starts with `target_dir` by
+/// component). A `./`-prefixed but otherwise safe relative path is
+/// accepted unchanged.
 pub(super) fn validate_relative_path(raw: &str) -> Result<&Path, String> {
     let rel = Path::new(raw);
     if rel.is_absolute() || rel.components().any(|c| c == Component::ParentDir) {
@@ -937,49 +1040,36 @@ pub(super) fn validate_relative_path(raw: &str) -> Result<&Path, String> {
     Ok(rel)
 }
 
-/// Deletes every `Created`/`ReplacedOurs` file this manifest names, per
-/// design §5 -- deletes EVEN IF the on-disk hash no longer matches the
-/// manifest's recorded hash (that preserve-on-divergence rule is
-/// `update`-only). Never deletes a `ReplacedForeign` path. Records each
-/// deleted file's parent directory in `touched_dirs` so the caller can
-/// attempt empty-directory cleanup afterward, and counts how many
-/// deleted files had a diverged hash (design §5's disclosure
-/// requirement) -- a missing on-disk file is not counted as diverged,
-/// since there is nothing to disclose losing.
+/// Deletes every `Created`/`ReplacedOurs` file this manifest names --
+/// even if the on-disk hash no longer matches the manifest's recorded
+/// hash (that preserve-on-divergence rule is `update`-only). Never
+/// deletes a `ReplacedForeign` path. Records each deleted file's
+/// parent directory in `touched_dirs` for later empty-directory
+/// cleanup, and counts how many deleted files had a diverged hash -- a
+/// missing on-disk file doesn't count as diverged, since there's
+/// nothing to disclose losing.
 ///
-/// `validate_relative_path` runs BEFORE `file.provenance` is even
-/// inspected, so a malicious/corrupted manifest entry can never cause
-/// any path computation involving an unsafe path at all, regardless of
-/// provenance -- including a `ReplacedForeign` entry, which is skipped
-/// from deletion but must still never be joined unvalidated.
+/// `validate_relative_path` runs before `file.provenance` is even
+/// inspected, so an unsafe path can never reach path computation
+/// regardless of provenance -- including a `ReplacedForeign` entry,
+/// which is skipped from deletion but must still never be joined
+/// unvalidated.
 ///
-/// `CLAUDE_SETTINGS_RELATIVE_PATH` (`.claude/settings.json`) is ALSO
-/// skipped here regardless of its recorded provenance, even
-/// `Created`/`ReplacedOurs`. Every other content type this codebase
-/// installs owns the WHOLE file at its manifest path -- `Created`/
-/// `ReplacedOurs` correctly means "safe to delete, we wrote every byte
-/// of it". This one file breaks that assumption: `resource_rewrite.rs`'s
-/// `merge_claude_settings_permissions` only ever merges a handful of
-/// `permissions.allow` grant strings into what is, by design, a shared
-/// file that may carry a user's own `hooks`, other MCP servers' grants,
-/// or anything else -- see its own
-/// `claude_settings_grant_merges_preserving_unrelated_entries` test. On
-/// a fresh target this file is legitimately `Created` (nothing else
-/// wrote it first); on any later reinstall/update its manifest entry
-/// becomes `ReplacedOurs` (a prior Konductor manifest already names
-/// it) even though its actual content may by then include plenty this
-/// install never touched. Neither classification means "we own 100% of
-/// these bytes" for this one path the way it does everywhere else, so
-/// `delete_eligible_files` must not treat it that way: there is no
-/// existing `Provenance` variant for "partially ours, strip only our
-/// own entries" to build finer-grained removal on (see
-/// `resource_rewrite.rs`'s own `apply_claude_settings_grant` doc
-/// comment, which defers exactly that for the same reason), so the
-/// safe default is to leave the whole file alone, matching this
-/// module's own `ReplacedForeign` handling one line below.
+/// `CLAUDE_SETTINGS_RELATIVE_PATH` (`.claude/settings.json`) is also
+/// skipped here regardless of provenance, even `Created`/
+/// `ReplacedOurs`. Every other content type owns the whole file at its
+/// manifest path, so those provenances correctly mean "safe to delete,
+/// we wrote every byte." This file breaks that assumption:
+/// `resource_rewrite.rs`'s `merge_claude_settings_permissions` only
+/// merges a handful of `permissions.allow` grants into what is, by
+/// design, a shared file that may carry a user's own `hooks` or other
+/// MCP servers' grants. There's no `Provenance` variant for "partially
+/// ours, strip only our own entries" to build finer-grained removal
+/// on, so the safe default is to leave the whole file alone, matching
+/// this function's `ReplacedForeign` handling.
 fn delete_eligible_files(
     target_dir: &Path,
-    manifest: &Manifest,
+    manifest: &StrategyManifest,
     counts: &mut UninstallCounts,
     touched_dirs: &mut Vec<PathBuf>,
 ) -> Result<(), String> {
@@ -998,6 +1088,7 @@ fn delete_eligible_files(
             if let Ok(bytes) = std::fs::read(&path) {
                 if sha256_hex(&bytes) != *expected {
                     counts.diverged_deleted += 1;
+                    counts.diverged_paths.push(rel.to_path_buf());
                 }
             }
         }
@@ -1015,8 +1106,8 @@ fn delete_eligible_files(
 /// its now-empty ancestors up to but not including `target_dir`) that is
 /// now empty, walking up from each touched directory. Never removes
 /// `<target_dir>/.kiro`, `<target_dir>/.konductor`, or
-/// `<target_dir>/.claude` themselves, regardless of emptiness (design
-/// §8) -- those are each runtime's own namespace root, not something uninstall
+/// `<target_dir>/.claude` themselves, regardless of emptiness --
+/// those are each runtime's own namespace root, not something uninstall
 /// owns the lifecycle of. Protecting `.claude` here matters even though
 /// `ClaudeInstallStrategy` installs both its content types under that
 /// one root (see `install::claude`'s own "Two install roots, collapsed
@@ -1078,34 +1169,49 @@ fn cleanup_empty_dirs(target_dir: &Path, touched_dirs: &[PathBuf]) -> usize {
     removed
 }
 
+/// Builds `report_single`'s `--json` document. Named so tests bind to
+/// the real construction directly -- mirrors
+/// `dispatch_target_no_match_message`'s/`build_ambiguous_targets_message`'s
+/// own split (CR comment r1p9): pulling this out of `report_single`'s
+/// body is what lets a test assert `diverged_paths`' actual VALUES
+/// appear in the emitted shape, rather than only confirming the call
+/// site doesn't panic.
+fn build_single_json(target_dir: &str, counts: &UninstallCounts) -> serde_json::Value {
+    // `bin_link_error` is inserted only when `Some` -- mirrors
+    // `update.rs`'s own conditional `value["warning"] = ...`
+    // pattern for `finalize_index_warning` -- so a `--json`
+    // consumer sees the failure in the SAME stdout document as
+    // everything else this uninstall did, rather than only on
+    // stderr as plain text (finding `f-dd9ebe8a`).
+    let mut value = serde_json::json!({
+        "command": "uninstall",
+        "target_dir": target_dir,
+        "stale": counts.stale,
+        "files_deleted": counts.files_deleted,
+        "diverged_deleted": counts.diverged_deleted,
+        "diverged_paths": counts.diverged_paths,
+        "dirs_removed": counts.dirs_removed,
+        "bin_link_untracked": counts.bin_link_untracked,
+        "bin_link_symlink_removed": counts.bin_link_symlink_removed,
+    });
+    if let Some(failure) = &counts.bin_link_error {
+        value["bin_link_error"] = serde_json::Value::String(failure.message.clone());
+    }
+    value
+}
+
 /// `counts.stale` (set by `uninstall_one` when no manifest was
 /// found for this target) branches to a distinct message/JSON shape --
-/// "stale (no manifest found); index entry removed" -- so a stale,
-/// nothing-to-delete result never renders identically to a real,
+/// "cleared (no manifest found); tracked install removed" -- so a
+/// stale, nothing-to-delete result never renders identically to a real,
 /// successful 0-file uninstall (e.g. every file was already
-/// independently removed while the manifest itself remained).
-fn report_single(target_dir: &str, counts: &UninstallCounts, json: bool) {
+/// independently removed while the manifest itself remained). Both the
+/// real-success and stale arms lead with a verb describing action taken
+/// WITHIN `target_dir` ("uninstalled from"/"cleared"), never a verb that
+/// could be misread as `target_dir` itself having been deleted.
+fn report_single(target_dir: &str, counts: &UninstallCounts, json: bool, color: ColorMode) {
     if json {
-        // `bin_link_error` is inserted only when `Some` -- mirrors
-        // `update.rs`'s own conditional `value["warning"] = ...`
-        // pattern for `finalize_index_warning` -- so a `--json`
-        // consumer sees the failure in the SAME stdout document as
-        // everything else this uninstall did, rather than only on
-        // stderr as plain text (finding `f-dd9ebe8a`).
-        let mut value = serde_json::json!({
-            "command": "uninstall",
-            "target_dir": target_dir,
-            "stale": counts.stale,
-            "files_deleted": counts.files_deleted,
-            "diverged_deleted": counts.diverged_deleted,
-            "dirs_removed": counts.dirs_removed,
-            "bin_link_untracked": counts.bin_link_untracked,
-            "bin_link_symlink_removed": counts.bin_link_symlink_removed,
-        });
-        if let Some(err) = &counts.bin_link_error {
-            value["bin_link_error"] = serde_json::Value::String(err.clone());
-        }
-        println!("{value}");
+        println!("{}", build_single_json(target_dir, counts));
         return;
     }
     // Keyed off `bin_link_symlink_removed` specifically, NOT
@@ -1122,35 +1228,72 @@ fn report_single(target_dir: &str, counts: &UninstallCounts, json: bool) {
     } else {
         ""
     };
+    let diverged_note = format_diverged_paths_note(&counts.diverged_paths);
     if counts.stale {
         println!(
-            "konductor uninstall: {target_dir} is stale (no manifest found); index entry \
-             removed{bin_link_note}"
+            "{} {target_dir} is stale (no manifest found); cleared its \
+             tracked install entry{bin_link_note}",
+            crate::cli::output::success_prefix(color, "konductor uninstall:")
         );
     } else {
         println!(
-            "konductor uninstall: removed {target_dir}; deleted {} file(s) ({} with a hash \
-             that had diverged from the manifest), removed {} now-empty director(y/ies)\
-             {bin_link_note}",
-            counts.files_deleted, counts.diverged_deleted, counts.dirs_removed
+            "{} uninstalled from {target_dir}; deleted {} file(s) ({} with \
+             a hash that had diverged from the manifest), removed {} now-empty \
+             director(y/ies){bin_link_note}{diverged_note}",
+            crate::cli::output::success_prefix(color, "konductor uninstall:"),
+            counts.files_deleted,
+            counts.diverged_deleted,
+            counts.dirs_removed
         );
     }
     // Printed via `println!` (stdout), not `eprintln!` -- see
     // `bin_link_error`'s own doc comment for why this must not be
     // stderr-only.
-    if let Some(err) = &counts.bin_link_error {
+    if let Some(failure) = &counts.bin_link_error {
         println!(
-            "konductor uninstall: warning: could not remove tracked --link-bin symlink for \
-             {target_dir}: {err}"
+            "{} could not remove tracked --link-bin symlink for \
+             {target_dir}: {}",
+            crate::cli::output::status::warn(color, "konductor uninstall: warning:"),
+            failure.message
         );
     }
+}
+
+/// Renders `counts.diverged_paths` as a trailing clause -- "; \
+/// hash-diverged file(s): path1, path2" -- for `report_single`/
+/// `report_batch`'s plain-text success message, or an empty string when
+/// there is nothing to list. Split out so both call sites format this
+/// exactly the same way.
+fn format_diverged_paths_note(diverged_paths: &[PathBuf]) -> String {
+    if diverged_paths.is_empty() {
+        return String::new();
+    }
+    let listed = diverged_paths
+        .iter()
+        .map(|p| p.display().to_string())
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!("; hash-diverged file(s): {listed}")
 }
 
 /// Same stale-vs-real distinguishability as `report_single`, but
 /// per succeeded entry in a batch, plus a `stale_skipped` count in the
 /// final summary line/JSON so the batch total distinguishes
 /// stale-skipped targets from genuinely-emptied ones at a glance.
-fn report_batch(succeeded: &[(String, UninstallCounts)], failed: &[(String, String)], json: bool) {
+///
+/// `skipped` is a SEPARATE bucket from both `succeeded` and `failed`:
+/// targets that do not track the `--harness` this batch requested
+/// (`UninstallError::harness_not_tracked`, see `dispatch_all`'s own doc
+/// comment). Reported informationally, distinct from a real failure --
+/// printed on stdout in plain-text mode (not stderr, where `failed` is
+/// printed), since it is not an error condition.
+fn report_batch(
+    succeeded: &[(String, UninstallCounts)],
+    skipped: &[(String, String)],
+    failed: &[(String, String)],
+    json: bool,
+    color: ColorMode,
+) {
     let stale_skipped = succeeded.iter().filter(|(_, c)| c.stale).count();
     if json {
         println!(
@@ -1167,15 +1310,20 @@ fn report_batch(succeeded: &[(String, UninstallCounts)], failed: &[(String, Stri
                         "stale": counts.stale,
                         "files_deleted": counts.files_deleted,
                         "diverged_deleted": counts.diverged_deleted,
+                        "diverged_paths": counts.diverged_paths,
                         "dirs_removed": counts.dirs_removed,
                         "bin_link_untracked": counts.bin_link_untracked,
                         "bin_link_symlink_removed": counts.bin_link_symlink_removed,
                     });
-                    if let Some(err) = &counts.bin_link_error {
-                        entry["bin_link_error"] = serde_json::Value::String(err.clone());
+                    if let Some(failure) = &counts.bin_link_error {
+                        entry["bin_link_error"] = serde_json::Value::String(failure.message.clone());
                     }
                     entry
                 }).collect::<Vec<_>>(),
+                "skipped": skipped.iter().map(|(dir, message)| serde_json::json!({
+                    "target_dir": dir,
+                    "reason": message,
+                })).collect::<Vec<_>>(),
                 "failed": failed.iter().map(|(dir, message)| serde_json::json!({
                     "target_dir": dir,
                     "error": message,
@@ -1196,34 +1344,49 @@ fn report_batch(succeeded: &[(String, UninstallCounts)], failed: &[(String, Stri
         } else {
             ""
         };
+        let diverged_note = format_diverged_paths_note(&counts.diverged_paths);
         if counts.stale {
             println!(
-                "konductor uninstall: {dir} is stale (no manifest found); index entry \
-                 removed{bin_link_note}"
+                "{} {dir} is stale (no manifest found); cleared its \
+                 tracked install entry{bin_link_note}",
+                crate::cli::output::success_prefix(color, "konductor uninstall:")
             );
         } else {
             println!(
-                "konductor uninstall: removed {dir}; deleted {} file(s) ({} diverged), removed \
-                 {} now-empty director(y/ies){bin_link_note}",
-                counts.files_deleted, counts.diverged_deleted, counts.dirs_removed
+                "{} uninstalled from {dir}; deleted {} file(s) ({} \
+                 diverged), removed {} now-empty director(y/ies){bin_link_note}{diverged_note}",
+                crate::cli::output::success_prefix(color, "konductor uninstall:"),
+                counts.files_deleted,
+                counts.diverged_deleted,
+                counts.dirs_removed
             );
         }
         // Same stdout-not-stderr rationale as `report_single`'s own
         // `bin_link_error` warning line.
-        if let Some(err) = &counts.bin_link_error {
+        if let Some(failure) = &counts.bin_link_error {
             println!(
-                "konductor uninstall: warning: could not remove tracked --link-bin symlink \
-                 for {dir}: {err}"
+                "{} could not remove tracked --link-bin symlink \
+                 for {dir}: {}",
+                crate::cli::output::status::warn(color, "konductor uninstall: warning:"),
+                failure.message
             );
         }
     }
+    for (dir, message) in skipped {
+        println!("konductor uninstall: skipped {dir}: {message}");
+    }
     for (dir, message) in failed {
-        eprintln!("konductor uninstall: failed to remove {dir}: {message}");
+        eprintln!(
+            "{} failed to remove {dir}: {message}",
+            crate::cli::output::error_prefix(color, "konductor uninstall:")
+        );
     }
     println!(
-        "konductor uninstall: {} succeeded ({} stale-skipped), {} failed",
+        "{} {} succeeded ({} stale-skipped), {} skipped (harness not tracked), {} failed",
+        crate::cli::output::success_prefix(color, "konductor uninstall:"),
         succeeded.len(),
         stale_skipped,
+        skipped.len(),
         failed.len()
     );
 }
@@ -1340,15 +1503,51 @@ mod tests {
                 provenance,
             });
         }
-        let manifest = Manifest::new(
-            "kiro-cli",
+        let manifest = StrategyManifest::new(
+            "kiro-cli-v2",
             "2026-01-15T09:30:00Z",
             ".",
             None,
             manifest::Status::Complete,
             manifest_files,
         );
-        manifest::write_manifest(target, &manifest).unwrap();
+        manifest::upsert_strategy(target, manifest).unwrap();
+    }
+
+    /// Same idea as `seed_target`, but writes TWO independent strategy
+    /// slots at the same target -- one
+    /// `strategy_name`/file set per call, via two separate
+    /// `manifest::upsert_strategy` calls (which is exactly what two
+    /// real, independent `konductor install --harness <name>` runs
+    /// against the same target would also produce, for two strategies
+    /// outside `KIRO_VARIANT_FAMILY` of each other). Used by the
+    /// harness-selection tests below to exercise a genuine 2-strategy
+    /// manifest without going through the full install pipeline.
+    fn seed_multi_strategy_target(
+        target: &Path,
+        strategy_name: &str,
+        files: Vec<(&str, &[u8], Provenance)>,
+    ) {
+        let mut manifest_files = Vec::new();
+        for (path, contents, provenance) in files {
+            let full = target.join(path);
+            fs::create_dir_all(full.parent().unwrap()).unwrap();
+            fs::write(&full, contents).unwrap();
+            manifest_files.push(manifest::ManifestFile {
+                path: path.to_string(),
+                sha256: Some(sha256_hex(&fs::read(&full).unwrap())),
+                provenance,
+            });
+        }
+        let manifest = StrategyManifest::new(
+            strategy_name,
+            "2026-01-15T09:30:00Z",
+            ".",
+            None,
+            manifest::Status::Complete,
+            manifest_files,
+        );
+        manifest::upsert_strategy(target, manifest).unwrap();
     }
 
     // ── path-traversal guard (finding f-71385e5d) ───────────────────────
@@ -1399,8 +1598,8 @@ mod tests {
         fs::create_dir_all(sibling_victim.parent().unwrap()).unwrap();
         fs::write(&sibling_victim, b"do not delete me").unwrap();
 
-        let manifest = Manifest::new(
-            "kiro-cli",
+        let manifest = StrategyManifest::new(
+            "kiro-cli-v2",
             "2026-01-15T09:30:00Z",
             ".",
             None,
@@ -1442,8 +1641,8 @@ mod tests {
         let sibling_victim = parent.join("victim.txt");
         fs::write(&sibling_victim, b"do not delete me").unwrap();
 
-        let manifest = Manifest::new(
-            "kiro-cli",
+        let manifest = StrategyManifest::new(
+            "kiro-cli-v2",
             "2026-01-15T09:30:00Z",
             ".",
             None,
@@ -1480,8 +1679,8 @@ mod tests {
     #[test]
     fn delete_eligible_files_rejects_unsafe_path_even_for_replaced_foreign_entry() {
         let target = scratch_home("traversal-replaced-foreign");
-        let manifest = Manifest::new(
-            "kiro-cli",
+        let manifest = StrategyManifest::new(
+            "kiro-cli-v2",
             "2026-01-15T09:30:00Z",
             ".",
             None,
@@ -1514,8 +1713,8 @@ mod tests {
         fs::create_dir_all(full.parent().unwrap()).unwrap();
         fs::write(&full, b"{}").unwrap();
 
-        let manifest = Manifest::new(
-            "kiro-cli",
+        let manifest = StrategyManifest::new(
+            "kiro-cli-v2",
             "2026-01-15T09:30:00Z",
             ".",
             None,
@@ -1553,7 +1752,7 @@ mod tests {
                 ),
             ],
         );
-        let counts = uninstall_one(target.to_str().unwrap()).unwrap();
+        let counts = uninstall_one(target.to_str().unwrap(), None, true, false).unwrap();
         assert_eq!(counts.files_deleted, 2);
         assert!(!target.join(".kiro/agents/a.json").exists());
         assert!(!target.join(".konductor/skills/s/SKILL.md").exists());
@@ -1578,7 +1777,7 @@ mod tests {
             "sanity check: the manifest must exist before uninstall"
         );
 
-        uninstall_one(target.to_str().unwrap()).unwrap();
+        uninstall_one(target.to_str().unwrap(), None, true, false).unwrap();
 
         assert!(
             !manifest::manifest_path(&target).exists(),
@@ -1599,7 +1798,7 @@ mod tests {
         // No manifest written at all -- the stale case.
         assert!(!manifest::manifest_path(&target).exists());
 
-        let counts = uninstall_one(target.to_str().unwrap()).unwrap();
+        let counts = uninstall_one(target.to_str().unwrap(), None, true, false).unwrap();
         assert!(counts.stale);
         assert!(!manifest::manifest_path(&target).exists());
         fs::remove_dir_all(&target).ok();
@@ -1617,8 +1816,32 @@ mod tests {
     /// from the untouched `bin_link_untracked`/`bin_link_symlink_removed`
     /// fields (which must stay `false`, not be conflated with "this
     /// target never requested `--link-bin`").
+    ///
+    /// A REAL tracked bin-link entry is seeded first (CR comment
+    /// r1p4's fix): `remove_bin_link` now folds an undeterminable
+    /// lock/read failure into "not tracked" for a target with no
+    /// evidence of a tracked link, which is the correct fix but means
+    /// this test's ORIGINAL untracked-target setup no longer reproduces
+    /// a captured failure at all (see
+    /// `uninstall_one_untracked_bin_link_survives_a_corrupt_sidecar`
+    /// below for that corrected, opposite case). Seeding a real entry
+    /// first, then injecting a permission-denial AFTER `remove_bin_link`'s
+    /// own `position()` match (rather than corrupting the sidecar, which
+    /// is undeterminable by construction and would fold to "not tracked"
+    /// regardless of this seed) is what still makes this target's
+    /// tracked status genuinely known before the injected failure.
     #[test]
     fn uninstall_one_captures_a_bin_link_removal_failure_instead_of_swallowing_it() {
+        use std::os::unix::fs::PermissionsExt;
+
+        if bin_link::running_as_root() {
+            eprintln!(
+                "skipping uninstall_one_captures_a_bin_link_removal_failure_instead_of_swallowing_it: \
+                 running as root, which bypasses the DAC permission denial this test depends on"
+            );
+            return;
+        }
+
         let _home = HomeGuard::new("bin-link-removal-failure-home");
         let target = scratch_home("bin-link-removal-failure");
         // Stale path (no manifest) is sufficient -- `remove_bin_link` is
@@ -1626,14 +1849,30 @@ mod tests {
         assert!(!manifest::manifest_path(&target).exists());
 
         let home = PathBuf::from(std::env::var_os("HOME").unwrap());
-        let bin_links_path = bin_link::bin_links_path(Some(&home)).unwrap();
-        fs::create_dir_all(bin_links_path.parent().unwrap()).unwrap();
-        // Malformed JSON -- `read_bin_links_at_home` (called inside
-        // `remove_bin_link`) must fail on this, giving `remove_bin_link`
-        // itself an `Err` to propagate.
-        fs::write(&bin_links_path, b"not valid json").unwrap();
+        // Real tracked entry first, under the EXACT string `uninstall_one`
+        // will pass to `remove_bin_link` below.
+        bin_link::ensure_bin_link(target.to_str().unwrap(), "2026-01-15T09:30:00Z").unwrap();
+        // Strip execute permission from the bin-link's parent directory
+        // so `symlink_metadata` on the link path inside it fails with
+        // `PermissionDenied`, not `NotFound` -- a real `SymlinkFailed`
+        // reached AFTER the `position()` lookup already matched this
+        // target (see bin_link.rs's own
+        // `remove_bin_link_propagates_a_non_not_found_stat_error_instead_of_treating_it_as_absence`
+        // for the identical repro shape on that module's own tests).
+        let bin_dir = bin_link::local_bin_link_path(&home)
+            .parent()
+            .expect("link path always has a parent")
+            .to_path_buf();
+        let mut perms = fs::metadata(&bin_dir).unwrap().permissions();
+        perms.set_mode(0o000);
+        fs::set_permissions(&bin_dir, perms).unwrap();
 
-        let counts = uninstall_one(target.to_str().unwrap()).expect(
+        let counts_result = uninstall_one(target.to_str().unwrap(), None, true, false);
+
+        let restored = std::fs::Permissions::from_mode(0o755);
+        let _ = fs::set_permissions(&bin_dir, restored);
+
+        let counts = counts_result.expect(
             "a bin-link removal failure must stay non-fatal to the overall uninstall, exactly \
              like the pre-fix eprintln!-only behavior",
         );
@@ -1653,6 +1892,308 @@ mod tests {
         fs::remove_dir_all(&target).ok();
     }
 
+    /// Companion to the test above, pinning the corrected (r1p4) behavior
+    /// directly at the `uninstall_one` level: a target that never ran
+    /// `install --link-bin` must uninstall cleanly with NO
+    /// `bin_link_error`, even while `~/.konductor/bin-links` is corrupt
+    /// for an unrelated reason.
+    #[test]
+    fn uninstall_one_untracked_bin_link_survives_a_corrupt_sidecar() {
+        let _home = HomeGuard::new("bin-link-untracked-corrupt-sidecar-home");
+        let target = scratch_home("bin-link-untracked-corrupt-sidecar");
+        assert!(!manifest::manifest_path(&target).exists());
+
+        let home = PathBuf::from(std::env::var_os("HOME").unwrap());
+        let bin_links_path = bin_link::bin_links_path(Some(&home)).unwrap();
+        fs::create_dir_all(bin_links_path.parent().unwrap()).unwrap();
+        // Corrupt, and this target was NEVER tracked in it.
+        fs::write(&bin_links_path, b"not valid json").unwrap();
+
+        let counts = uninstall_one(target.to_str().unwrap(), None, true, false)
+            .expect("an untracked target must uninstall cleanly regardless of sidecar state");
+        assert!(
+            counts.bin_link_error.is_none(),
+            "a target never tracked in bin-links must not be charged for an unrelated \
+             corrupt sidecar"
+        );
+        assert!(!counts.bin_link_untracked);
+        assert!(!counts.bin_link_symlink_removed);
+
+        fs::remove_dir_all(&target).ok();
+    }
+
+    /// `EXIT_SUCCESS_WITH_WARNINGS` (6): unlike `uninstall_one`'s own
+    /// unit test above (which only confirms `Ok(counts).bin_link_error`
+    /// is populated), this exercises the DISPATCH layer end to end --
+    /// `dispatch_target` and `dispatch_uninstall`'s single-entry
+    /// shortcut must both map a bin-link removal failure with no other
+    /// failure to exit code 6, not 0.
+    ///
+    /// Regression (CR comment r1p4): a REAL tracked bin-link entry is
+    /// seeded first, and the failure this test injects happens AFTER
+    /// the `position()` lookup succeeds (a symlink stat failure on the
+    /// bin directory itself, not a corrupt/unreadable sidecar) -- so
+    /// this target's tracking status is genuinely determinable as
+    /// "tracked" before the injected failure ever occurs, unlike the
+    /// r1p4 fix's own "sidecar itself unreadable" case (see
+    /// `dispatch_target_untracked_bin_link_survives_a_corrupt_sidecar`
+    /// below), which is undeterminable by construction and therefore
+    /// MUST fold to "not tracked" regardless of whether this target
+    /// happens to have a real entry -- there is no way to check
+    /// `position()` against content that never parsed.
+    #[test]
+    fn dispatch_target_returns_exit_code_6_when_bin_link_error_present_with_no_other_failure() {
+        use std::os::unix::fs::PermissionsExt;
+
+        if bin_link::running_as_root() {
+            eprintln!(
+                "skipping dispatch_target_returns_exit_code_6_when_bin_link_error_present_with_no_other_failure: \
+                 running as root, which bypasses the DAC permission denial this test depends on"
+            );
+            return;
+        }
+
+        let _home = HomeGuard::new("dispatch-target-exit-6-home");
+        let target = scratch_home("dispatch-target-exit-6");
+        seed_target(
+            &target,
+            vec![(".kiro/agents/a.json", b"{}", Provenance::Created, None)],
+        );
+        let canonical = index::canonicalize_target_dir(&target).unwrap();
+
+        let home = PathBuf::from(std::env::var_os("HOME").unwrap());
+        // Real tracked entry first, so the injected failure below
+        // resolves against a target with a genuine tracked link at
+        // stake -- not the untracked-target case r1p4 is about.
+        bin_link::ensure_bin_link(&canonical, "2026-01-15T09:30:00Z").unwrap();
+        // Strip execute permission from the bin-link's parent directory
+        // so `symlink_metadata` on the link path inside it fails with
+        // `PermissionDenied`, not `NotFound` -- a real `SymlinkFailed`
+        // reached AFTER `remove_bin_link`'s own `position()` lookup
+        // already matched this target, mirroring
+        // `remove_bin_link_propagates_a_non_not_found_stat_error_instead_of_treating_it_as_absence`
+        // in bin_link.rs's own test suite. Root's DAC override would
+        // bypass this chmod (see that test's own root-proofing), so
+        // this test is skipped under root via the guard above.
+        let bin_dir = bin_link::local_bin_link_path(&home)
+            .parent()
+            .expect("link path always has a parent")
+            .to_path_buf();
+        let mut perms = fs::metadata(&bin_dir).unwrap().permissions();
+        perms.set_mode(0o000);
+        fs::set_permissions(&bin_dir, perms).unwrap();
+
+        let index = Index::new(vec![IndexEntry {
+            target_dir: canonical,
+            strategies: vec!["kiro-cli-v2".to_string()],
+            installed_at: "2026-01-15T09:30:00Z".to_string(),
+            status: index::IndexEntryStatus::Complete,
+        }]);
+        let code = dispatch_target(
+            &index,
+            target.to_str().unwrap(),
+            None,
+            false,
+            ColorMode::disabled(),
+        );
+
+        // Restore permissions before any further cleanup.
+        let restored = std::fs::Permissions::from_mode(0o755);
+        let _ = fs::set_permissions(&bin_dir, restored);
+
+        assert_eq!(
+            code, EXIT_SUCCESS_WITH_WARNINGS,
+            "an otherwise-successful uninstall with a bin-link removal failure for a \
+             GENUINELY tracked target must exit 6, not 0"
+        );
+        assert!(!target.join(".kiro/agents/a.json").exists());
+        fs::remove_dir_all(&target).ok();
+    }
+
+    /// Regression (CR comment r1p4): the inverse of the test above.
+    /// A target that NEVER ran `install --link-bin` (nothing tracked
+    /// for it in the sidecar) must uninstall cleanly with exit 0, even
+    /// while `~/.konductor/bin-links` is corrupted for an unrelated
+    /// reason -- before this fix, the lock-acquire/read on the corrupt
+    /// sidecar propagated with `?` BEFORE the `position()` lookup ever
+    /// ran, so this untracked target was charged with a `bin_link_error`
+    /// (and exit 6) purely because SOME OTHER file was malformed, never
+    /// because this target had anything to do with `--link-bin` at all.
+    #[test]
+    fn dispatch_target_untracked_bin_link_survives_a_corrupt_sidecar() {
+        let _home = HomeGuard::new("dispatch-target-untracked-corrupt-sidecar-home");
+        let target = scratch_home("dispatch-target-untracked-corrupt-sidecar");
+        seed_target(
+            &target,
+            vec![(".kiro/agents/a.json", b"{}", Provenance::Created, None)],
+        );
+        let canonical = index::canonicalize_target_dir(&target).unwrap();
+
+        // This target never ran `install --link-bin` -- nothing tracked
+        // for it. The sidecar is corrupted anyway (simulating damage
+        // unrelated to this target, e.g. a hand-edit or a different
+        // target's own bug).
+        let home = PathBuf::from(std::env::var_os("HOME").unwrap());
+        let bin_links_path = bin_link::bin_links_path(Some(&home)).unwrap();
+        fs::create_dir_all(bin_links_path.parent().unwrap()).unwrap();
+        fs::write(&bin_links_path, b"not valid json").unwrap();
+
+        let index = Index::new(vec![IndexEntry {
+            target_dir: canonical,
+            strategies: vec!["kiro-cli-v2".to_string()],
+            installed_at: "2026-01-15T09:30:00Z".to_string(),
+            status: index::IndexEntryStatus::Complete,
+        }]);
+        let code = dispatch_target(
+            &index,
+            target.to_str().unwrap(),
+            None,
+            false,
+            ColorMode::disabled(),
+        );
+        assert_eq!(
+            code, 0,
+            "a target with no tracked --link-bin symlink must exit 0 even when the \
+             (unrelated) sidecar is corrupted -- it must never be charged for a failure \
+             that has nothing to do with it"
+        );
+        assert!(!target.join(".kiro/agents/a.json").exists());
+        fs::remove_dir_all(&target).ok();
+    }
+
+    /// Same exit-code-6 mapping, via `dispatch_uninstall`'s
+    /// single-tracked-entry shortcut rather than `dispatch_target`
+    /// directly. Real tracked bin-link entry seeded first, with a
+    /// permission-denial failure injected AFTER `remove_bin_link`'s own
+    /// `position()` match (not a corrupt/unreadable sidecar) -- see
+    /// `dispatch_target_returns_exit_code_6_when_bin_link_error_present_with_no_other_failure`'s
+    /// own comment for why (CR comment r1p4).
+    #[test]
+    fn dispatch_uninstall_single_entry_returns_exit_code_6_when_bin_link_error_present() {
+        use std::os::unix::fs::PermissionsExt;
+
+        if bin_link::running_as_root() {
+            eprintln!(
+                "skipping dispatch_uninstall_single_entry_returns_exit_code_6_when_bin_link_error_present: \
+                 running as root, which bypasses the DAC permission denial this test depends on"
+            );
+            return;
+        }
+
+        let _home = HomeGuard::new("dispatch-uninstall-exit-6-home");
+        let home = PathBuf::from(std::env::var_os("HOME").unwrap());
+        seed_target(
+            &home,
+            vec![(".kiro/agents/a.json", b"{}", Provenance::Created, None)],
+        );
+        let canonical = index::canonicalize_target_dir(&home).unwrap();
+        index::write_index(IndexEntry {
+            target_dir: canonical.clone(),
+            strategies: vec!["kiro-cli-v2".to_string()],
+            installed_at: "2026-01-15T09:30:00Z".to_string(),
+            status: index::IndexEntryStatus::Complete,
+        })
+        .unwrap();
+
+        bin_link::ensure_bin_link(&canonical, "2026-01-15T09:30:00Z").unwrap();
+        let bin_dir = bin_link::local_bin_link_path(&home)
+            .parent()
+            .expect("link path always has a parent")
+            .to_path_buf();
+        let mut perms = fs::metadata(&bin_dir).unwrap().permissions();
+        perms.set_mode(0o000);
+        fs::set_permissions(&bin_dir, perms).unwrap();
+
+        let code = dispatch_uninstall(None, false, None, false, ColorMode::disabled());
+
+        let restored = std::fs::Permissions::from_mode(0o755);
+        let _ = fs::set_permissions(&bin_dir, restored);
+
+        assert_eq!(code, EXIT_SUCCESS_WITH_WARNINGS);
+        assert!(!home.join(".kiro/agents/a.json").exists());
+    }
+
+    /// `exit_code_for_counts` itself: 0 when `bin_link_error` is `None`,
+    /// the failure's own carried exit code when it is `Some` -- 6 for a
+    /// USAGE_ERROR-mapped `BinLinkError` variant (see the companion test
+    /// below for the 65 case, CR comment r1p6's fix), regardless of any
+    /// other field.
+    #[test]
+    fn exit_code_for_counts_maps_bin_link_error_to_six() {
+        assert_eq!(exit_code_for_counts(&UninstallCounts::default()), 0);
+        let with_error = UninstallCounts {
+            bin_link_error: Some(BinLinkFailure {
+                message: "boom".to_string(),
+                exit_code: EXIT_SUCCESS_WITH_WARNINGS,
+            }),
+            ..Default::default()
+        };
+        assert_eq!(
+            exit_code_for_counts(&with_error),
+            EXIT_SUCCESS_WITH_WARNINGS
+        );
+    }
+
+    /// Regression (CR comment r1p6): a `bin_link_error` whose underlying
+    /// `BinLinkError` variant maps to `EXIT_VERIFY_FAILED` (65) --
+    /// `UnsupportedSchemaVersion`/`RollbackAlsoFailed` -- must propagate
+    /// AS 65 through `exit_code_for_counts`, not be flattened to 6. This
+    /// is exactly the case a bare `String` field could never carry: the
+    /// variant is already gone by the time a `String` is all that's
+    /// left, so `BinLinkFailure::from_error` -- which derives the exit
+    /// code from the real `BinLinkError` value at construction time --
+    /// is what makes this distinction possible at all.
+    #[test]
+    fn exit_code_for_counts_preserves_65_for_a_schema_version_bin_link_error() {
+        let err = bin_link::BinLinkError::UnsupportedSchemaVersion {
+            path: PathBuf::from("/home/x/.konductor/bin-links"),
+            found: 99,
+            supported: 1,
+        };
+        let failure = BinLinkFailure::from_error(&err);
+        assert_eq!(
+            failure.exit_code, EXIT_VERIFY_FAILED,
+            "UnsupportedSchemaVersion must carry exit code 65, not be assumed as 6"
+        );
+        let counts = UninstallCounts {
+            bin_link_error: Some(failure),
+            ..Default::default()
+        };
+        assert_eq!(
+            exit_code_for_counts(&counts),
+            EXIT_VERIFY_FAILED,
+            "exit_code_for_counts must surface the carried 65, not flatten it to 6"
+        );
+    }
+
+    /// Companion to the test above: an ORDINARY `BinLinkError` variant
+    /// (not `UnsupportedSchemaVersion`/`RollbackAlsoFailed`) must stay
+    /// at `EXIT_SUCCESS_WITH_WARNINGS` (6), not escalate to
+    /// `EXIT_USAGE_ERROR` (64) the way `bin_link::bin_link_error_exit_code`
+    /// would map it in its own (different) context. `uninstall`'s own
+    /// bin-link removal is explicitly non-fatal -- see
+    /// `BinLinkFailure`'s own doc comment for why blindly reusing that
+    /// function's raw output here would wrongly turn a warning-level
+    /// symlink hiccup into a reported usage error on an otherwise
+    /// fully-successful uninstall.
+    #[test]
+    fn exit_code_for_counts_keeps_six_for_an_ordinary_bin_link_error() {
+        let err = bin_link::BinLinkError::ForeignFileExists {
+            path: PathBuf::from("/home/x/.local/bin/konductor"),
+        };
+        let failure = BinLinkFailure::from_error(&err);
+        assert_eq!(
+            failure.exit_code, EXIT_SUCCESS_WITH_WARNINGS,
+            "an ordinary BinLinkError variant must stay a non-fatal warning (6), not \
+             escalate to a usage error (64)"
+        );
+        let counts = UninstallCounts {
+            bin_link_error: Some(failure),
+            ..Default::default()
+        };
+        assert_eq!(exit_code_for_counts(&counts), EXIT_SUCCESS_WITH_WARNINGS);
+    }
+
     #[test]
     fn never_deletes_replaced_foreign_files() {
         let _home = HomeGuard::new("never-delete-foreign-home");
@@ -1666,7 +2207,7 @@ mod tests {
                 None,
             )],
         );
-        let counts = uninstall_one(target.to_str().unwrap()).unwrap();
+        let counts = uninstall_one(target.to_str().unwrap(), None, true, false).unwrap();
         assert_eq!(counts.files_deleted, 0);
         assert!(target.join(".kiro/context/notes.md").exists());
         fs::remove_dir_all(&target).ok();
@@ -1701,7 +2242,7 @@ mod tests {
                 None,
             )],
         );
-        let counts = uninstall_one(target.to_str().unwrap()).unwrap();
+        let counts = uninstall_one(target.to_str().unwrap(), None, true, false).unwrap();
         assert_eq!(
             counts.files_deleted, 0,
             ".claude/settings.json must never be counted as deleted, regardless of provenance"
@@ -1721,7 +2262,7 @@ mod tests {
         let target = scratch_home("delete-diverged");
         // Force a stale recorded hash while real on-disk content differs
         // -- simulates a hand-edited Created file. Must still be
-        // deleted (design §5), and counted as diverged.
+        // deleted, and counted as diverged.
         seed_target(
             &target,
             vec![(
@@ -1731,11 +2272,117 @@ mod tests {
                 Some(&"a".repeat(64)),
             )],
         );
-        let counts = uninstall_one(target.to_str().unwrap()).unwrap();
+        let counts = uninstall_one(target.to_str().unwrap(), None, true, false).unwrap();
         assert_eq!(counts.files_deleted, 1);
         assert_eq!(counts.diverged_deleted, 1);
+        assert_eq!(
+            counts.diverged_paths,
+            vec![PathBuf::from(".kiro/agents/a.json")],
+            "diverged_paths must name the specific file counted in diverged_deleted"
+        );
         assert!(!target.join(".kiro/agents/a.json").exists());
         fs::remove_dir_all(&target).ok();
+    }
+
+    /// `diverged_paths` must stay empty (never a phantom entry) when no
+    /// file's hash actually diverged -- `diverged_deleted`/
+    /// `diverged_paths.len()` must always agree.
+    #[test]
+    fn diverged_paths_is_empty_when_nothing_diverged() {
+        let _home = HomeGuard::new("diverged-paths-empty-home");
+        let target = scratch_home("diverged-paths-empty");
+        seed_target(
+            &target,
+            vec![(".kiro/agents/a.json", b"{}", Provenance::Created, None)],
+        );
+        let counts = uninstall_one(target.to_str().unwrap(), None, true, false).unwrap();
+        assert_eq!(counts.diverged_deleted, 0);
+        assert!(counts.diverged_paths.is_empty());
+        fs::remove_dir_all(&target).ok();
+    }
+
+    /// Multiple diverged files must all be recorded, in the order
+    /// `delete_eligible_files` encounters them (manifest file order).
+    #[test]
+    fn diverged_paths_records_every_diverged_file_in_order() {
+        let _home = HomeGuard::new("diverged-paths-multiple-home");
+        let target = scratch_home("diverged-paths-multiple");
+        seed_target(
+            &target,
+            vec![
+                (
+                    ".kiro/agents/a.json",
+                    b"hand-edited a",
+                    Provenance::Created,
+                    Some(&"a".repeat(64)),
+                ),
+                (".kiro/agents/b.json", b"{}", Provenance::Created, None),
+                (
+                    ".kiro/agents/c.json",
+                    b"hand-edited c",
+                    Provenance::Created,
+                    Some(&"c".repeat(64)),
+                ),
+            ],
+        );
+        let counts = uninstall_one(target.to_str().unwrap(), None, true, false).unwrap();
+        assert_eq!(counts.diverged_deleted, 2);
+        assert_eq!(
+            counts.diverged_paths,
+            vec![
+                PathBuf::from(".kiro/agents/a.json"),
+                PathBuf::from(".kiro/agents/c.json"),
+            ]
+        );
+        fs::remove_dir_all(&target).ok();
+    }
+
+    /// `format_diverged_paths_note` renders the trailing clause
+    /// `report_single`/`report_batch` append to their plain-text success
+    /// message -- empty when there is nothing to list, and naming every
+    /// path (comma-separated) when there is.
+    #[test]
+    fn format_diverged_paths_note_lists_paths_or_is_empty() {
+        assert_eq!(format_diverged_paths_note(&[]), "");
+        let note = format_diverged_paths_note(&[
+            PathBuf::from(".kiro/agents/a.json"),
+            PathBuf::from(".kiro/agents/b.json"),
+        ]);
+        assert!(note.starts_with("; hash-diverged file(s): "));
+        assert!(note.contains(".kiro/agents/a.json"));
+        assert!(note.contains(".kiro/agents/b.json"));
+    }
+
+    /// `report_single`'s `--json` document must carry `diverged_paths`
+    /// as an actual array field with the real path VALUES, not only the
+    /// `diverged_deleted` count.
+    ///
+    /// Regression (CR comment r1p9): the old version of this test only
+    /// confirmed `report_single` doesn't panic -- `diverged_paths`
+    /// could be dropped from the `json!` macro entirely and this test
+    /// would stay green. Asserts against `build_single_json` (the same
+    /// construction `report_single` itself now calls, pulled out for
+    /// direct testability) so the actual emitted value is checked.
+    #[test]
+    fn report_single_json_includes_diverged_paths_field() {
+        let counts = UninstallCounts {
+            files_deleted: 1,
+            diverged_deleted: 1,
+            diverged_paths: vec![PathBuf::from(".kiro/agents/a.json")],
+            ..Default::default()
+        };
+        let value = build_single_json("/proj/a", &counts);
+        assert_eq!(
+            value["diverged_paths"],
+            serde_json::json!([".kiro/agents/a.json"]),
+            "diverged_paths must carry the real path values, not just a count: {value}"
+        );
+        assert_eq!(value["diverged_deleted"], 1);
+        assert_eq!(value["target_dir"], "/proj/a");
+
+        // Structural guard for the actual print call site.
+        report_single("/proj/a", &counts, false, ColorMode::disabled());
+        report_single("/proj/a", &counts, true, ColorMode::disabled());
     }
 
     #[test]
@@ -1746,7 +2393,7 @@ mod tests {
             &target,
             vec![(".kiro/agents/a.json", b"{}", Provenance::Created, None)],
         );
-        let counts = uninstall_one(target.to_str().unwrap()).unwrap();
+        let counts = uninstall_one(target.to_str().unwrap(), None, true, false).unwrap();
         assert_eq!(counts.files_deleted, 1);
         assert_eq!(counts.diverged_deleted, 0);
         fs::remove_dir_all(&target).ok();
@@ -1760,7 +2407,7 @@ mod tests {
             &target,
             vec![(".kiro/agents/a.json", b"{}", Provenance::Created, None)],
         );
-        let counts = uninstall_one(target.to_str().unwrap()).unwrap();
+        let counts = uninstall_one(target.to_str().unwrap(), None, true, false).unwrap();
         // agents/ subdir must be gone (now empty after deletion)...
         assert!(!target.join(".kiro/agents").exists());
         // ...but .kiro/ itself, and .konductor/ (holding the manifest
@@ -1789,7 +2436,7 @@ mod tests {
                 None,
             )],
         );
-        uninstall_one(target.to_str().unwrap()).unwrap();
+        uninstall_one(target.to_str().unwrap(), None, true, false).unwrap();
         assert!(target.join(".konductor").is_dir());
         fs::remove_dir_all(&target).ok();
     }
@@ -1814,7 +2461,7 @@ mod tests {
                 None,
             )],
         );
-        uninstall_one(target.to_str().unwrap()).unwrap();
+        uninstall_one(target.to_str().unwrap(), None, true, false).unwrap();
         assert!(target.join(".claude").is_dir());
         fs::remove_dir_all(&target).ok();
     }
@@ -1827,7 +2474,7 @@ mod tests {
             &target,
             vec![(".claude/agents/a.md", b"agent", Provenance::Created, None)],
         );
-        let counts = uninstall_one(target.to_str().unwrap()).unwrap();
+        let counts = uninstall_one(target.to_str().unwrap(), None, true, false).unwrap();
         assert!(!target.join(".claude/agents").exists());
         assert!(target.join(".claude").is_dir());
         assert!(counts.dirs_removed >= 1);
@@ -1845,7 +2492,7 @@ mod tests {
             &target,
             vec![(".kiro/agents/a.json", b"{}", Provenance::Created, None)],
         );
-        uninstall_one(target.to_str().unwrap()).unwrap();
+        uninstall_one(target.to_str().unwrap(), None, true, false).unwrap();
         assert!(target.join(".konductor/config.yml").is_file());
         assert!(target.join(".konductor/logs/run.log").is_file());
         fs::remove_dir_all(&target).ok();
@@ -1871,7 +2518,7 @@ mod tests {
             vec![(".kiro/agents/a.json", b"{}", Provenance::Created, None)],
         );
         let canonical = index::canonicalize_target_dir(&target).unwrap();
-        assert!(uninstall_one(&canonical).is_ok());
+        assert!(uninstall_one(&canonical, None, true, false).is_ok());
         fs::remove_dir_all(&target).ok();
     }
 
@@ -1884,7 +2531,7 @@ mod tests {
     fn dispatch_uninstall_with_zero_entries_prints_message_and_returns_zero() {
         let _home = HomeGuard::new("zero-entries-plain-home");
         assert!(index::read_index().unwrap().is_none());
-        let code = dispatch_uninstall(None, false, false, false);
+        let code = dispatch_uninstall(None, false, None, false, ColorMode::disabled());
         assert_eq!(code, 0);
     }
 
@@ -1906,7 +2553,7 @@ mod tests {
         unsafe {
             std::env::remove_var("HOME");
         }
-        let code = dispatch_uninstall(None, false, false, false);
+        let code = dispatch_uninstall(None, false, None, false, ColorMode::disabled());
         unsafe {
             match &original_home {
                 Some(value) => std::env::set_var("HOME", value),
@@ -1953,7 +2600,7 @@ mod tests {
     #[test]
     fn dispatch_uninstall_zero_tracked_installs_json_true_returns_zero() {
         let _home = HomeGuard::new("zero-tracked-json-home");
-        let code = dispatch_uninstall(None, false, false, true);
+        let code = dispatch_uninstall(None, false, None, true, ColorMode::disabled());
         assert_eq!(code, 0);
     }
 
@@ -1968,13 +2615,13 @@ mod tests {
         let index = Index::new(vec![
             IndexEntry {
                 target_dir: "/tracked/a".to_string(),
-                strategy: "kiro-cli".to_string(),
+                strategies: vec!["kiro-cli-v2".to_string()],
                 installed_at: "2026-01-15T09:30:00Z".to_string(),
                 status: index::IndexEntryStatus::Complete,
             },
             IndexEntry {
                 target_dir: "/tracked/b".to_string(),
-                strategy: "kiro-cli".to_string(),
+                strategies: vec!["kiro-cli-v2".to_string()],
                 installed_at: "2026-01-15T09:30:00Z".to_string(),
                 status: index::IndexEntryStatus::Complete,
             },
@@ -1990,15 +2637,16 @@ mod tests {
         let home = scratch_home("target-no-match");
         let index = Index::new(vec![IndexEntry {
             target_dir: "/does/not/match".to_string(),
-            strategy: "kiro-cli".to_string(),
+            strategies: vec!["kiro-cli-v2".to_string()],
             installed_at: "2026-01-15T09:30:00Z".to_string(),
             status: index::IndexEntryStatus::Complete,
         }]);
         let code = dispatch_target(
             &index,
             home.to_str().unwrap(),
+            None,
             false,
-            ConfirmationRequirement::NotRequired,
+            ColorMode::disabled(),
         );
         assert_eq!(code, EXIT_USAGE_ERROR);
         fs::remove_dir_all(&home).ok();
@@ -2015,15 +2663,16 @@ mod tests {
         let canonical = index::canonicalize_target_dir(&target).unwrap();
         let index = Index::new(vec![IndexEntry {
             target_dir: canonical.clone(),
-            strategy: "kiro-cli".to_string(),
+            strategies: vec!["kiro-cli-v2".to_string()],
             installed_at: "2026-01-15T09:30:00Z".to_string(),
             status: index::IndexEntryStatus::Complete,
         }]);
         let code = dispatch_target(
             &index,
             target.to_str().unwrap(),
+            None,
             false,
-            ConfirmationRequirement::NotRequired,
+            ColorMode::disabled(),
         );
         assert_eq!(code, 0);
         assert!(!target.join(".kiro/agents/a.json").exists());
@@ -2054,7 +2703,7 @@ mod tests {
 
         let idx = Index::new(vec![IndexEntry {
             target_dir: canonical.clone(),
-            strategy: "kiro-cli".to_string(),
+            strategies: vec!["kiro-cli-v2".to_string()],
             installed_at: "2026-01-15T09:30:00Z".to_string(),
             status: index::IndexEntryStatus::Complete,
         }]);
@@ -2062,12 +2711,7 @@ mod tests {
         // re-running uninstall with the same path they installed to,
         // which has since been deleted) -- the fallback's verbatim-match
         // arm finds it even though canonicalize_target_dir itself fails.
-        let code = dispatch_target(
-            &idx,
-            &canonical,
-            false,
-            ConfirmationRequirement::NotRequired,
-        );
+        let code = dispatch_target(&idx, &canonical, None, false, ColorMode::disabled());
         assert_eq!(
             code, 0,
             "a stale entry must be prunable via --target, not just --all"
@@ -2085,15 +2729,16 @@ mod tests {
         let canonical = index::canonicalize_target_dir(&target).unwrap();
         let idx = Index::new(vec![IndexEntry {
             target_dir: canonical,
-            strategy: "kiro-cli".to_string(),
+            strategies: vec!["kiro-cli-v2".to_string()],
             installed_at: "2026-01-15T09:30:00Z".to_string(),
             status: index::IndexEntryStatus::Complete,
         }]);
         let code = dispatch_target(
             &idx,
             "/definitely/does/not/exist/and/is/not/tracked",
+            None,
             false,
-            ConfirmationRequirement::NotRequired,
+            ColorMode::disabled(),
         );
         assert_eq!(code, EXIT_USAGE_ERROR);
         fs::remove_dir_all(&target).ok();
@@ -2120,27 +2765,27 @@ mod tests {
         fs::create_dir_all(bad_manifest_path.parent().unwrap()).unwrap();
         fs::write(
             &bad_manifest_path,
-            br#"{"schema_version":99,"strategy":"kiro-cli","installed_at":"2026-01-15T09:30:00Z","destination":".","status":"complete","files":[]}"#,
+            br#"{"schema_version":99,"strategy":"kiro-cli-v2","installed_at":"2026-01-15T09:30:00Z","destination":".","status":"complete","files":[]}"#,
         )
         .unwrap();
         let bad_canonical = index::canonicalize_target_dir(&bad).unwrap();
 
         index::write_index(IndexEntry {
             target_dir: good_canonical.clone(),
-            strategy: "kiro-cli".to_string(),
+            strategies: vec!["kiro-cli-v2".to_string()],
             installed_at: "2026-01-15T09:30:00Z".to_string(),
             status: index::IndexEntryStatus::Complete,
         })
         .unwrap();
         index::write_index(IndexEntry {
             target_dir: bad_canonical,
-            strategy: "kiro-cli".to_string(),
+            strategies: vec!["kiro-cli-v2".to_string()],
             installed_at: "2026-01-15T09:30:00Z".to_string(),
             status: index::IndexEntryStatus::Complete,
         })
         .unwrap();
 
-        let code = dispatch_uninstall(None, true, false, false);
+        let code = dispatch_uninstall(None, true, None, false, ColorMode::disabled());
 
         // The good target must have actually been uninstalled despite
         // the bad target's failure -- the continue-past-failure
@@ -2156,6 +2801,109 @@ mod tests {
 
         fs::remove_dir_all(&good).ok();
         fs::remove_dir_all(&bad).ok();
+    }
+
+    /// The design decision this CR implements (r2p5): with `--harness
+    /// <name>` given to an `--all` batch, a target that does not track
+    /// that harness is SKIPPED, not failed -- the batch still succeeds
+    /// (exit 0) and the skipped target's files are left untouched, while
+    /// a target that DOES track the requested harness is genuinely
+    /// uninstalled. Before this fix, `select_harness`'s stricter r2 check
+    /// made the mismatched target a hard failure, showing up in
+    /// `report_batch`'s failed list even though nothing was actually
+    /// broken about it.
+    #[test]
+    fn dispatch_all_skips_targets_that_do_not_track_the_requested_harness() {
+        let _home = HomeGuard::new("all-skip-harness-not-tracked-home");
+
+        let matching = scratch_home("all-skip-matching");
+        seed_target(
+            &matching,
+            vec![(".kiro/agents/a.json", b"{}", Provenance::Created, None)],
+        );
+        let matching_canonical = index::canonicalize_target_dir(&matching).unwrap();
+        let matching_file = matching.join(".kiro/agents/a.json");
+        assert!(matching_file.exists());
+
+        // Tracks a DIFFERENT harness ("claude") than the one this batch
+        // requests ("kiro-cli-v2") -- must be skipped, not failed.
+        let mismatched = scratch_home("all-skip-mismatched");
+        seed_multi_strategy_target(
+            &mismatched,
+            "claude",
+            vec![(".claude/agents/a.md", b"{}", Provenance::Created)],
+        );
+        let mismatched_canonical = index::canonicalize_target_dir(&mismatched).unwrap();
+        let mismatched_file = mismatched.join(".claude/agents/a.md");
+        assert!(mismatched_file.exists());
+
+        index::write_index(IndexEntry {
+            target_dir: matching_canonical,
+            strategies: vec!["kiro-cli-v2".to_string()],
+            installed_at: "2026-01-15T09:30:00Z".to_string(),
+            status: index::IndexEntryStatus::Complete,
+        })
+        .unwrap();
+        index::write_index(IndexEntry {
+            target_dir: mismatched_canonical,
+            strategies: vec!["claude".to_string()],
+            installed_at: "2026-01-15T09:30:00Z".to_string(),
+            status: index::IndexEntryStatus::Complete,
+        })
+        .unwrap();
+
+        let code = dispatch_uninstall(
+            None,
+            true,
+            Some("kiro-cli-v2".to_string()),
+            false,
+            ColorMode::disabled(),
+        );
+
+        assert!(
+            !matching_file.exists(),
+            "the target tracking the requested harness must have been uninstalled"
+        );
+        assert!(
+            mismatched_file.exists(),
+            "the target that does not track the requested harness must be left untouched, \
+             not deleted"
+        );
+        // A skip is not a failure -- the batch succeeds overall.
+        assert_eq!(code, 0);
+
+        fs::remove_dir_all(&matching).ok();
+        fs::remove_dir_all(&mismatched).ok();
+    }
+
+    /// `report_batch` itself, in isolation: a `skipped` entry lands in
+    /// its own bucket, distinct from `succeeded`/`failed`, in both
+    /// plain-text and `--json` mode -- guards against a future change
+    /// silently dropping the skip bucket or panicking on it.
+    #[test]
+    fn report_batch_does_not_panic_with_a_skipped_entry_present() {
+        report_batch(
+            &[],
+            &[(
+                "/proj/b".to_string(),
+                "/proj/b does not track harness 'kiro-cli-v2'; tracked harness(es): claude"
+                    .to_string(),
+            )],
+            &[],
+            false,
+            ColorMode::disabled(),
+        );
+        report_batch(
+            &[],
+            &[(
+                "/proj/b".to_string(),
+                "/proj/b does not track harness 'kiro-cli-v2'; tracked harness(es): claude"
+                    .to_string(),
+            )],
+            &[],
+            true,
+            ColorMode::disabled(),
+        );
     }
 
     #[test]
@@ -2175,10 +2923,10 @@ mod tests {
         fs::create_dir_all(manifest_path.parent().unwrap()).unwrap();
         fs::write(
             &manifest_path,
-            br#"{"schema_version":99,"strategy":"kiro-cli","installed_at":"2026-01-15T09:30:00Z","destination":".","status":"complete","files":[]}"#,
+            br#"{"schema_version":99,"strategy":"kiro-cli-v2","installed_at":"2026-01-15T09:30:00Z","destination":".","status":"complete","files":[]}"#,
         )
         .unwrap();
-        let err = uninstall_one(target.to_str().unwrap())
+        let err = uninstall_one(target.to_str().unwrap(), None, true, false)
             .expect_err("unsupported schema_version must be rejected");
         assert_eq!(err.exit_code, 65);
         fs::remove_dir_all(&target).ok();
@@ -2193,7 +2941,7 @@ mod tests {
         let manifest_path = manifest::manifest_path(&target);
         fs::create_dir_all(manifest_path.parent().unwrap()).unwrap();
         fs::write(&manifest_path, b"not json").unwrap();
-        let err = uninstall_one(target.to_str().unwrap())
+        let err = uninstall_one(target.to_str().unwrap(), None, true, false)
             .expect_err("malformed manifest must be rejected");
         assert_eq!(err.exit_code, EXIT_USAGE_ERROR);
         fs::remove_dir_all(&target).ok();
@@ -2209,420 +2957,182 @@ mod tests {
         fs::create_dir_all(manifest_path.parent().unwrap()).unwrap();
         fs::write(
             &manifest_path,
-            br#"{"schema_version":99,"strategy":"kiro-cli","installed_at":"2026-01-15T09:30:00Z","destination":".","status":"complete","files":[]}"#,
+            br#"{"schema_version":99,"strategy":"kiro-cli-v2","installed_at":"2026-01-15T09:30:00Z","destination":".","status":"complete","files":[]}"#,
         )
         .unwrap();
         let canonical = index::canonicalize_target_dir(&target).unwrap();
         let index = Index::new(vec![IndexEntry {
             target_dir: canonical.clone(),
-            strategy: "kiro-cli".to_string(),
+            strategies: vec!["kiro-cli-v2".to_string()],
             installed_at: "2026-01-15T09:30:00Z".to_string(),
             status: index::IndexEntryStatus::Complete,
         }]);
         let code = dispatch_target(
             &index,
             target.to_str().unwrap(),
+            None,
             false,
-            ConfirmationRequirement::NotRequired,
+            ColorMode::disabled(),
         );
         assert_eq!(code, 65);
         fs::remove_dir_all(&target).ok();
     }
 
-    // ── bare invocation resolves --target to $HOME ──────────────────────
+    // ── bare invocation with 2+ tracked installs is a hard usage error ──
     //
-    // `dispatch_uninstall`'s no-`--target`/no-`--all` path now resolves
-    // the destination to $HOME (mirroring `install`'s own default)
-    // rather than immediately reporting the design's former "multiple
-    // installs are tracked" ambiguity error the moment 2+ installs are
-    // tracked. A single tracked entry is still uninstalled directly
-    // regardless of $HOME, unchanged (see the existing single-entry
-    // tests elsewhere in this suite).
+    // `dispatch_uninstall`'s no-`--target`/no-`--all` path against 2+
+    // tracked entries is now an immediate usage error naming every
+    // tracked install (`report_ambiguous_targets`) -- there is no more
+    // implicit $HOME resolution, confirmation prompt, or discoverability
+    // note. A single tracked entry is still uninstalled directly,
+    // unchanged (see the existing single-entry tests elsewhere in this
+    // suite).
 
-    /// Regression (1): with exactly one tracked install, and that
-    /// install IS at $HOME, bare `uninstall` (no `--target`, no
-    /// `--yes`) succeeds and removes it -- via the existing
-    /// single-entry shortcut, which this change leaves untouched. Also
-    /// confirms this path is genuinely unaffected by the newer
-    /// confirmation-prompt gate added for the 2+-tracked-installs case:
-    /// `yes` is passed as `false` here and the test still succeeds
-    /// under `cargo test`'s non-terminal stdin (which would otherwise
-    /// abort a `ConfirmationRequirement::Required` gate) -- proving the
-    /// single-entry shortcut never reaches that gate at all. And with
-    /// only one tracked install, there is no "other" to note: this
-    /// test's own success (no note-dependent assertion needed) is the
-    /// single-entry half of the discoverability note's "no note when
-    /// there is nothing else tracked" contract --
-    /// `success_note_for_other_tracked_installs_is_none_when_home_is_the_only_entry`
-    /// below pins that contract directly at the unit level.
+    /// Regression (1): with exactly one tracked install, bare
+    /// `uninstall` (no `--target`) still succeeds via the existing
+    /// single-entry shortcut -- unaffected by the 2+-tracked ambiguity
+    /// error, which only applies once 2+ entries are tracked.
     #[test]
-    fn dispatch_uninstall_bare_invocation_single_entry_at_home_succeeds() {
-        let _home = HomeGuard::new("bare-single-entry-at-home-home");
-        let home = PathBuf::from(std::env::var_os("HOME").unwrap());
+    fn dispatch_uninstall_bare_invocation_single_entry_succeeds() {
+        let _home = HomeGuard::new("bare-single-entry-home");
+        let target = scratch_home("bare-single-entry-target");
         seed_target(
-            &home,
+            &target,
             vec![(".kiro/agents/a.json", b"{}", Provenance::Created, None)],
         );
-        let canonical = index::canonicalize_target_dir(&home).unwrap();
+        let canonical = index::canonicalize_target_dir(&target).unwrap();
         index::write_index(IndexEntry {
             target_dir: canonical,
-            strategy: "kiro-cli".to_string(),
+            strategies: vec!["kiro-cli-v2".to_string()],
             installed_at: "2026-01-15T09:30:00Z".to_string(),
             status: index::IndexEntryStatus::Complete,
         })
         .unwrap();
 
-        let code = dispatch_uninstall(None, false, false, false);
+        let code = dispatch_uninstall(None, false, None, false, ColorMode::disabled());
         assert_eq!(
             code, 0,
-            "bare uninstall with the sole tracked install at $HOME must succeed, \
-             unaffected by the confirmation gate (which only guards the 2+ case)"
+            "bare uninstall with exactly one tracked install must succeed"
         );
-        assert!(!home.join(".kiro/agents/a.json").exists());
+        assert!(!target.join(".kiro/agents/a.json").exists());
+        fs::remove_dir_all(&target).ok();
     }
 
-    /// Regression (2): with 2+ tracked installs, one of them at $HOME,
-    /// bare `uninstall --yes` resolves to $HOME specifically -- never
-    /// the ambiguity error -- and removes only that one, leaving every
-    /// other tracked install (and its index entry) untouched. `yes` is
-    /// passed as `true` here specifically to bypass the confirmation
-    /// gate (`cargo test`'s stdin is not a terminal, so without `--yes`
-    /// this exact scenario would abort -- see
-    /// `dispatch_uninstall_bare_invocation_multiple_entries_without_yes_aborts_non_interactively`
-    /// below, which asserts exactly that): this test's own focus is the
-    /// $HOME-resolution behavior, not the confirmation gate itself.
+    /// Regression (2): with 2+ tracked installs and neither `--target`
+    /// nor `--all` given, `dispatch_uninstall` is a usage error naming
+    /// every tracked install -- nothing is touched: both targets' files
+    /// and index entries survive untouched.
     #[test]
-    fn dispatch_uninstall_bare_invocation_multiple_entries_resolves_to_home_only() {
-        let _home = HomeGuard::new("bare-multi-entries-resolves-home-home");
-        let home = PathBuf::from(std::env::var_os("HOME").unwrap());
+    fn dispatch_uninstall_bare_invocation_multiple_entries_is_usage_error_naming_all() {
+        let _home = HomeGuard::new("bare-multi-entries-usage-error-home");
+        let target_a = scratch_home("bare-multi-entries-usage-error-a");
+        let target_b = scratch_home("bare-multi-entries-usage-error-b");
         seed_target(
-            &home,
+            &target_a,
             vec![(".kiro/agents/a.json", b"{}", Provenance::Created, None)],
         );
-        let home_canonical = index::canonicalize_target_dir(&home).unwrap();
-        index::write_index(IndexEntry {
-            target_dir: home_canonical.clone(),
-            strategy: "kiro-cli".to_string(),
-            installed_at: "2026-01-15T09:30:00Z".to_string(),
-            status: index::IndexEntryStatus::Complete,
-        })
-        .unwrap();
-
-        let other = scratch_home("bare-multi-entries-resolves-home-other");
         seed_target(
-            &other,
+            &target_b,
             vec![(".kiro/agents/b.json", b"{}", Provenance::Created, None)],
         );
-        let other_canonical = index::canonicalize_target_dir(&other).unwrap();
+        let canonical_a = index::canonicalize_target_dir(&target_a).unwrap();
+        let canonical_b = index::canonicalize_target_dir(&target_b).unwrap();
         index::write_index(IndexEntry {
-            target_dir: other_canonical.clone(),
-            strategy: "kiro-cli".to_string(),
+            target_dir: canonical_a.clone(),
+            strategies: vec!["kiro-cli-v2".to_string()],
+            installed_at: "2026-01-15T09:30:00Z".to_string(),
+            status: index::IndexEntryStatus::Complete,
+        })
+        .unwrap();
+        index::write_index(IndexEntry {
+            target_dir: canonical_b.clone(),
+            strategies: vec!["kiro-cli-v2".to_string()],
             installed_at: "2026-01-15T09:30:00Z".to_string(),
             status: index::IndexEntryStatus::Complete,
         })
         .unwrap();
 
-        let code = dispatch_uninstall(None, false, true, false);
+        let code = dispatch_uninstall(None, false, None, false, ColorMode::disabled());
         assert_eq!(
-            code, 0,
-            "bare uninstall with 2+ tracked installs, one at $HOME, must resolve to \
-             $HOME rather than reporting an ambiguity error"
+            code, EXIT_USAGE_ERROR,
+            "2+ tracked installs with neither --target nor --all must be a usage error"
         );
         assert!(
-            !home.join(".kiro/agents/a.json").exists(),
-            "the $HOME-tracked install must have been removed"
+            target_a.join(".kiro/agents/a.json").exists(),
+            "neither tracked install must be touched by the ambiguity error"
         );
-        assert!(
-            other.join(".kiro/agents/b.json").exists(),
-            "the OTHER tracked install must be untouched -- only $HOME was resolved"
-        );
+        assert!(target_b.join(".kiro/agents/b.json").exists());
         let remaining = index::read_index().unwrap().unwrap();
-        assert!(
-            remaining
-                .installs
-                .iter()
-                .any(|entry| entry.target_dir == other_canonical),
-            "the other tracked install's index entry must survive"
-        );
-        assert!(
-            !remaining
-                .installs
-                .iter()
-                .any(|entry| entry.target_dir == home_canonical),
-            "only the $HOME index entry must have been removed"
-        );
+        assert!(remaining
+            .installs
+            .iter()
+            .any(|e| e.target_dir == canonical_a));
+        assert!(remaining
+            .installs
+            .iter()
+            .any(|e| e.target_dir == canonical_b));
 
-        // The success-note content itself: built from the PRE-delete
-        // index (mirroring what `dispatch_uninstall` actually has in
-        // hand when it computes this note -- BEFORE `dispatch_target`'s
-        // call removes the $HOME entry), matching this module's
-        // structural-assertion convention rather than capturing real
-        // stderr (which this module has no mechanism for).
-        let before_delete = Index::new(vec![
+        fs::remove_dir_all(&target_a).ok();
+        fs::remove_dir_all(&target_b).ok();
+    }
+
+    /// `report_ambiguous_targets` must name every tracked install in
+    /// both plain-text (via a `--target <dir>`/`--all` remediation hint)
+    /// and `--json` (a structured `tracked_targets` array) modes,
+    /// mirroring `update.rs`'s own message text exactly.
+    ///
+    /// Regression (CR comment r1p9): the old version of this test only
+    /// confirmed `report_ambiguous_targets` doesn't panic -- deleting
+    /// the listing block, or the `tracked_targets` field, would have
+    /// left it green while the test name still promised otherwise. This
+    /// now asserts the real construction (`build_ambiguous_targets_message`,
+    /// pulled out the same way `dispatch_target_no_match_message` was)
+    /// actually contains each target name.
+    #[test]
+    fn report_ambiguous_targets_names_every_tracked_install() {
+        let entries = vec![
             IndexEntry {
-                target_dir: home_canonical.clone(),
-                strategy: "kiro-cli".to_string(),
+                target_dir: "/tracked/a".to_string(),
+                strategies: vec!["kiro-cli-v2".to_string()],
                 installed_at: "2026-01-15T09:30:00Z".to_string(),
                 status: index::IndexEntryStatus::Complete,
             },
             IndexEntry {
-                target_dir: other_canonical.clone(),
-                strategy: "kiro-cli".to_string(),
+                target_dir: "/tracked/b".to_string(),
+                strategies: vec!["kiro-cli-v2".to_string()],
                 installed_at: "2026-01-15T09:30:00Z".to_string(),
                 status: index::IndexEntryStatus::Complete,
             },
-        ]);
-        let note = success_note_for_other_tracked_installs(&before_delete, &home_canonical)
-            .expect("2+ tracked installs with one OTHER than $HOME must produce a note");
+        ];
+
+        let message = build_ambiguous_targets_message(&entries);
         assert!(
-            note.contains(&other_canonical),
-            "the note must name the other tracked install's path"
+            message.contains("/tracked/a"),
+            "message must name /tracked/a: {message}"
         );
         assert!(
-            note.contains("were left untouched"),
-            "the note must state that other installs were left untouched"
+            message.contains("/tracked/b"),
+            "message must name /tracked/b: {message}"
         );
         assert!(
-            note.contains("--all") && note.contains("--target"),
-            "the note must guide the user toward --all/--target"
+            message.contains("--target <dir>") && message.contains("--all"),
+            "message must point at the --target/--all remediation: {message}"
         );
 
-        fs::remove_dir_all(&other).ok();
+        // Structural guard for the actual print call sites (plain-text
+        // routes through `build_ambiguous_targets_message` directly;
+        // --json builds its own `tracked_targets` array separately --
+        // see `report_ambiguous_targets`'s own body).
+        report_ambiguous_targets(&entries, false, ColorMode::disabled());
+        report_ambiguous_targets(&entries, true, ColorMode::disabled());
     }
 
-    /// The discoverability note has nothing to add when $HOME is the
-    /// ONLY tracked install -- `format_other_tracked_installs`'s
-    /// `None` case, exercised directly at the unit level (the
-    /// single-entry end-to-end test above never reaches this code path
-    /// at all, since it takes the single-entry shortcut before
-    /// `success_note_for_other_tracked_installs` is ever called).
-    #[test]
-    fn success_note_for_other_tracked_installs_is_none_when_home_is_the_only_entry() {
-        let index = Index::new(vec![IndexEntry {
-            target_dir: "/home/only".to_string(),
-            strategy: "kiro-cli".to_string(),
-            installed_at: "2026-01-15T09:30:00Z".to_string(),
-            status: index::IndexEntryStatus::Complete,
-        }]);
-        assert!(success_note_for_other_tracked_installs(&index, "/home/only").is_none());
-    }
-
-    /// `canonical_home_for_exclusion` must resolve a symlinked home
-    /// directory to its CANONICAL, symlink-free form -- the same
-    /// resolution `index::canonicalize_target_dir` (and, transitively,
-    /// `dispatch_target`'s own entry match) performs -- rather than the
-    /// raw symlink path a caller's `home_display` string carries.
-    #[cfg(unix)]
-    #[test]
-    fn canonical_home_for_exclusion_resolves_symlinked_home_to_its_canonical_form() {
-        let real = scratch_home("canonical-home-exclusion-real");
-        let symlink = real
-            .parent()
-            .unwrap()
-            .join("canonical-home-exclusion-symlink");
-        std::os::unix::fs::symlink(&real, &symlink).unwrap();
-
-        let home_display = symlink.to_string_lossy().into_owned();
-        let canonical = index::canonicalize_target_dir(&real).unwrap();
-
-        let resolved = canonical_home_for_exclusion(&symlink, &home_display);
-        assert_eq!(
-            resolved, canonical,
-            "must resolve to the canonical form dispatch_target matches on, \
-             not the raw symlink display string"
-        );
-        assert_ne!(
-            resolved, home_display,
-            "sanity check: the raw symlink path and its canonical form must \
-             actually differ for this test to be meaningful"
-        );
-
-        fs::remove_file(&symlink).ok();
-        fs::remove_dir_all(&real).ok();
-    }
-
-    /// End-to-end regression: when $HOME is a symlink -- so
-    /// `resolve_destination`'s raw display string differs from the
-    /// canonical form every tracked entry's `target_dir` is stored in --
-    /// the discoverability note built after a bare, 2+-tracked-installs
-    /// uninstall must still exclude the just-removed $HOME entry. Calls
-    /// `success_note_for_dispatch_uninstall` -- the exact function
-    /// `dispatch_uninstall`'s own call site calls -- rather than
-    /// independently reconstructing its two-call sequence, so a
-    /// regression in that shared function (e.g. dropping the
-    /// canonicalization step) is guaranteed to surface here too: this
-    /// module has no mechanism to capture the note from real stderr, so
-    /// binding to the same function is what makes this an actual
-    /// end-to-end regression guard rather than a restatement of the
-    /// helper functions' own unit tests.
-    #[cfg(unix)]
-    #[test]
-    fn dispatch_uninstall_bare_invocation_symlinked_home_excludes_removed_entry_from_note() {
-        let _lock = lock_home();
-        let original_home = std::env::var_os("HOME");
-
-        let real_home = scratch_home("symlinked-home-note-real");
-        let symlink_home = real_home
-            .parent()
-            .unwrap()
-            .join("symlinked-home-note-symlink");
-        std::os::unix::fs::symlink(&real_home, &symlink_home).unwrap();
-
-        // SAFETY: held under the crate-wide HOME_ENV_LOCK for this
-        // test's entire body; restored before returning. Managed
-        // directly rather than via `HomeGuard` because this test needs
-        // `HOME` to be a SYMLINK path specifically -- `HomeGuard`'s own
-        // scratch dir is never a symlink.
-        unsafe {
-            std::env::set_var("HOME", &symlink_home);
-        }
-
-        seed_target(
-            &real_home,
-            vec![(".kiro/agents/a.json", b"{}", Provenance::Created, None)],
-        );
-        let home_canonical = index::canonicalize_target_dir(&real_home).unwrap();
-        index::write_index(IndexEntry {
-            target_dir: home_canonical.clone(),
-            strategy: "kiro-cli".to_string(),
-            installed_at: "2026-01-15T09:30:00Z".to_string(),
-            status: index::IndexEntryStatus::Complete,
-        })
-        .unwrap();
-
-        let other = scratch_home("symlinked-home-note-other");
-        seed_target(
-            &other,
-            vec![(".kiro/agents/b.json", b"{}", Provenance::Created, None)],
-        );
-        let other_canonical = index::canonicalize_target_dir(&other).unwrap();
-        index::write_index(IndexEntry {
-            target_dir: other_canonical.clone(),
-            strategy: "kiro-cli".to_string(),
-            installed_at: "2026-01-15T09:30:00Z".to_string(),
-            status: index::IndexEntryStatus::Complete,
-        })
-        .unwrap();
-
-        let code = dispatch_uninstall(None, false, true, false);
-
-        // SAFETY: see the set_var above.
-        unsafe {
-            match &original_home {
-                Some(value) => std::env::set_var("HOME", value),
-                None => std::env::remove_var("HOME"),
-            }
-        }
-
-        assert_eq!(code, 0);
-        assert!(!real_home.join(".kiro/agents/a.json").exists());
-        assert!(other.join(".kiro/agents/b.json").exists());
-
-        let home_display = symlink_home.to_string_lossy().into_owned();
-        let before_delete = Index::new(vec![
-            IndexEntry {
-                target_dir: home_canonical.clone(),
-                strategy: "kiro-cli".to_string(),
-                installed_at: "2026-01-15T09:30:00Z".to_string(),
-                status: index::IndexEntryStatus::Complete,
-            },
-            IndexEntry {
-                target_dir: other_canonical.clone(),
-                strategy: "kiro-cli".to_string(),
-                installed_at: "2026-01-15T09:30:00Z".to_string(),
-                status: index::IndexEntryStatus::Complete,
-            },
-        ]);
-        let note =
-            success_note_for_dispatch_uninstall(&symlink_home, &home_display, &before_delete)
-                .expect("2+ tracked installs with one OTHER than $HOME must produce a note");
-        // The note's INTRO sentence legitimately names `resolved_home`
-        // itself ("note: <home> was 1 of N tracked installs..."), so the
-        // bug this test guards against is specific to the "Other tracked
-        // install(s):" LISTING built by `format_other_tracked_installs`
-        // -- checked here via its exact `  - <dir>` bullet form, not bare
-        // string containment.
-        assert!(
-            !note.contains(&format!("  - {home_canonical}")),
-            "the just-removed $HOME entry must not appear in the \
-             'other tracked install(s)' listing"
-        );
-        assert!(
-            note.contains(&format!("  - {other_canonical}")),
-            "the other tracked install's path must still be listed"
-        );
-
-        fs::remove_dir_all(&real_home).ok();
-        fs::remove_file(&symlink_home).ok();
-        fs::remove_dir_all(&other).ok();
-    }
-
-    /// Regression (3): with 2+ tracked installs, none of them at
-    /// $HOME, bare `uninstall` gives the normal "does not match any
-    /// tracked install" error for the resolved $HOME path -- the exact
-    /// mechanism `dispatch_target` already applies to an explicit
-    /// `--target <dir>` that matches nothing.
-    #[test]
-    fn dispatch_uninstall_bare_invocation_no_entry_at_home_gives_not_tracked_error() {
-        let _home = HomeGuard::new("bare-no-entry-at-home-home");
-        let home = PathBuf::from(std::env::var_os("HOME").unwrap());
-        let good_a = scratch_home("bare-no-entry-at-home-a");
-        let good_b = scratch_home("bare-no-entry-at-home-b");
-        let canonical_a = index::canonicalize_target_dir(&good_a).unwrap();
-        let canonical_b = index::canonicalize_target_dir(&good_b).unwrap();
-        index::write_index(IndexEntry {
-            target_dir: canonical_a,
-            strategy: "kiro-cli".to_string(),
-            installed_at: "2026-01-15T09:30:00Z".to_string(),
-            status: index::IndexEntryStatus::Complete,
-        })
-        .unwrap();
-        index::write_index(IndexEntry {
-            target_dir: canonical_b,
-            strategy: "kiro-cli".to_string(),
-            installed_at: "2026-01-15T09:30:00Z".to_string(),
-            status: index::IndexEntryStatus::Complete,
-        })
-        .unwrap();
-
-        let code = dispatch_uninstall(None, false, false, false);
-        assert_eq!(code, EXIT_USAGE_ERROR);
-
-        // Confirms this is genuinely the not-tracked-at-$HOME
-        // resolution, not merely a coincidental 64 from elsewhere:
-        // calling `dispatch_target` directly against the same index
-        // and the resolved $HOME path reproduces the identical exit
-        // code, and $HOME is confirmed absent from the tracked set.
-        let index_snapshot = index::read_index().unwrap().unwrap();
-        let home_canonical = index::canonicalize_target_dir(&home).unwrap();
-        assert!(
-            !index_snapshot
-                .installs
-                .iter()
-                .any(|entry| entry.target_dir == home_canonical),
-            "sanity check: $HOME must not be one of the tracked entries"
-        );
-        let direct_code = dispatch_target(
-            &index_snapshot,
-            home.to_str().unwrap(),
-            false,
-            ConfirmationRequirement::NotRequired,
-        );
-        assert_eq!(direct_code, EXIT_USAGE_ERROR);
-
-        fs::remove_dir_all(&good_a).ok();
-        fs::remove_dir_all(&good_b).ok();
-    }
-
-    /// Regression (4): `--all` remains entirely unaffected by this
+    /// Regression (3): `--all` remains entirely unaffected by this
     /// change -- it still processes every tracked install, one at a
     /// time, regardless of whether any of them happen to be at $HOME.
-    /// Neither target here is at $HOME (which the bare-invocation
-    /// resolution this change adds would refuse to match), and `--all`
-    /// must still succeed for both.
     #[test]
-    fn dispatch_uninstall_all_flag_unaffected_by_home_default() {
-        let _home = HomeGuard::new("all-unaffected-by-home-default-home");
+    fn dispatch_uninstall_all_flag_unaffected_by_ambiguity_error() {
+        let _home = HomeGuard::new("all-unaffected-by-ambiguity-home");
         let target_a = scratch_home("all-unaffected-a");
         let target_b = scratch_home("all-unaffected-b");
         seed_target(
@@ -2637,20 +3147,20 @@ mod tests {
         let canonical_b = index::canonicalize_target_dir(&target_b).unwrap();
         index::write_index(IndexEntry {
             target_dir: canonical_a,
-            strategy: "kiro-cli".to_string(),
+            strategies: vec!["kiro-cli-v2".to_string()],
             installed_at: "2026-01-15T09:30:00Z".to_string(),
             status: index::IndexEntryStatus::Complete,
         })
         .unwrap();
         index::write_index(IndexEntry {
             target_dir: canonical_b,
-            strategy: "kiro-cli".to_string(),
+            strategies: vec!["kiro-cli-v2".to_string()],
             installed_at: "2026-01-15T09:30:00Z".to_string(),
             status: index::IndexEntryStatus::Complete,
         })
         .unwrap();
 
-        let code = dispatch_uninstall(None, true, false, false);
+        let code = dispatch_uninstall(None, true, None, false, ColorMode::disabled());
         assert_eq!(code, 0);
         assert!(!target_a.join(".kiro/agents/a.json").exists());
         assert!(!target_b.join(".kiro/agents/b.json").exists());
@@ -2659,177 +3169,13 @@ mod tests {
         fs::remove_dir_all(&target_b).ok();
     }
 
-    // ── interactive confirmation gate for the bare, 2+-tracked,
-    //    $HOME-resolved case ─────────────────────────────────────────────
-    //
-    // `dispatch_uninstall`'s bare-invocation-resolves-to-$HOME branch
-    // (Regression (2) above) is the ONLY case this gate applies to --
-    // an explicit `--target <dir>`, `--all`, and the single-tracked-
-    // entry shortcut all pass `ConfirmationRequirement::NotRequired` (or
-    // never reach `dispatch_target` at all) and are exercised elsewhere
-    // in this suite without ever touching it.
-
-    /// `y`/`yes` (any case, with surrounding whitespace) must proceed;
-    /// everything else, including empty input, must abort. Exercised
-    /// directly against the pure parsing function -- this module has no
-    /// way to inject a fake stdin into `confirm_destructive_uninstall`
-    /// itself.
+    /// An explicit `--target <dir>` matching a tracked entry must
+    /// succeed with no confirmation gate of any kind -- there is no
+    /// confirmation flow left in this module at all any more.
     #[test]
-    fn parse_confirmation_response_accepts_y_and_yes_case_insensitive() {
-        for accepted in ["y", "Y", "yes", "YES", "Yes", "  yes\n", "y\n"] {
-            assert_eq!(
-                parse_confirmation_response(accepted),
-                ConfirmOutcome::Proceed,
-                "{accepted:?} must be accepted as confirmation"
-            );
-        }
-    }
-
-    #[test]
-    fn parse_confirmation_response_rejects_other_input_including_empty() {
-        for rejected in ["", "\n", "n", "no", "N", "maybe", "yeah", "yep", " "] {
-            assert_eq!(
-                parse_confirmation_response(rejected),
-                ConfirmOutcome::Abort,
-                "{rejected:?} must be rejected (never a silent proceed)"
-            );
-        }
-    }
-
-    /// `auto_yes` (`--yes`/`-y`) must proceed immediately without
-    /// reading stdin at all -- safe to assert unconditionally in any
-    /// test environment, interactive or not, since the function returns
-    /// before ever touching `std::io::stdin()`.
-    #[test]
-    fn confirm_destructive_uninstall_auto_yes_proceeds_without_touching_stdin() {
-        assert_eq!(
-            confirm_destructive_uninstall("/tmp/some-target", true, false),
-            ConfirmOutcome::Proceed
-        );
-        // Also true with json=true -- auto_yes short-circuits before the
-        // json/TTY check is ever consulted.
-        assert_eq!(
-            confirm_destructive_uninstall("/tmp/some-target", true, true),
-            ConfirmOutcome::Proceed
-        );
-    }
-
-    /// `--json` mode aborts without `--yes` -- a scripted/JSON consumer
-    /// is not an interactive human, so it is treated the same as any
-    /// other non-interactive context: `--yes` is required to bypass.
-    /// Deterministic regardless of the test environment's real stdin,
-    /// since the `json` check short-circuits before the TTY check.
-    #[test]
-    fn confirm_destructive_uninstall_json_mode_aborts_without_auto_yes() {
-        assert_eq!(
-            confirm_destructive_uninstall("/tmp/some-target", false, true),
-            ConfirmOutcome::Abort
-        );
-    }
-
-    /// Non-interactive stdin (no TTY attached) aborts without `--yes`,
-    /// rather than blocking on input that can never arrive. `cargo
-    /// test`'s own stdin is not a terminal, so this is exercised
-    /// directly against the real, un-mocked `std::io::stdin()` this
-    /// function actually calls -- the same non-interactive context a
-    /// piped/CI/scripted invocation would hit.
-    #[test]
-    fn confirm_destructive_uninstall_non_interactive_stdin_aborts_without_auto_yes() {
-        assert!(
-            !std::io::stdin().is_terminal(),
-            "sanity check: this test process's stdin must not be a TTY under cargo test, \
-             or this test is not exercising the non-interactive path it claims to"
-        );
-        assert_eq!(
-            confirm_destructive_uninstall("/tmp/some-target", false, false),
-            ConfirmOutcome::Abort
-        );
-    }
-
-    /// End-to-end: 2+ tracked installs, one at $HOME, bare `uninstall`
-    /// with NEITHER `--yes` NOR a TTY attached (`cargo test`'s own
-    /// stdin) must abort with `EXIT_USER_ABORTED` (4) -- the exact
-    /// inverse of Regression (2) above, which passes `yes: true` to
-    /// bypass this same gate. Nothing is touched on abort: both
-    /// tracked installs' files and index entries survive untouched.
-    #[test]
-    fn dispatch_uninstall_bare_invocation_multiple_entries_without_yes_aborts_non_interactively() {
-        assert!(
-            !std::io::stdin().is_terminal(),
-            "sanity check: this test's stdin must not be a TTY under cargo test, \
-             otherwise the confirmation prompt would block on read_line"
-        );
-        let _home = HomeGuard::new("bare-multi-without-yes-aborts-home");
-        let home = PathBuf::from(std::env::var_os("HOME").unwrap());
-        seed_target(
-            &home,
-            vec![(".kiro/agents/a.json", b"{}", Provenance::Created, None)],
-        );
-        let home_canonical = index::canonicalize_target_dir(&home).unwrap();
-        index::write_index(IndexEntry {
-            target_dir: home_canonical.clone(),
-            strategy: "kiro-cli".to_string(),
-            installed_at: "2026-01-15T09:30:00Z".to_string(),
-            status: index::IndexEntryStatus::Complete,
-        })
-        .unwrap();
-
-        let other = scratch_home("bare-multi-without-yes-aborts-other");
-        seed_target(
-            &other,
-            vec![(".kiro/agents/b.json", b"{}", Provenance::Created, None)],
-        );
-        let other_canonical = index::canonicalize_target_dir(&other).unwrap();
-        index::write_index(IndexEntry {
-            target_dir: other_canonical.clone(),
-            strategy: "kiro-cli".to_string(),
-            installed_at: "2026-01-15T09:30:00Z".to_string(),
-            status: index::IndexEntryStatus::Complete,
-        })
-        .unwrap();
-
-        let code = dispatch_uninstall(None, false, false, false);
-        assert_eq!(
-            code, EXIT_USER_ABORTED,
-            "declining (here: non-interactively, without --yes) must abort with \
-             EXIT_USER_ABORTED, never proceed and never a plain usage error"
-        );
-        assert!(
-            home.join(".kiro/agents/a.json").exists(),
-            "the $HOME-tracked install must be untouched when the confirmation is declined"
-        );
-        assert!(
-            other.join(".kiro/agents/b.json").exists(),
-            "the other tracked install must also be untouched"
-        );
-        let remaining = index::read_index().unwrap().unwrap();
-        assert!(
-            remaining
-                .installs
-                .iter()
-                .any(|entry| entry.target_dir == home_canonical),
-            "the $HOME index entry must survive a declined confirmation"
-        );
-        assert!(
-            remaining
-                .installs
-                .iter()
-                .any(|entry| entry.target_dir == other_canonical),
-            "the other tracked install's index entry must also survive"
-        );
-
-        fs::remove_dir_all(&other).ok();
-    }
-
-    /// The confirmation gate is scoped to the implicit, bare-invocation
-    /// case only -- an explicit `--target <dir>` matching a tracked
-    /// entry must succeed with NO confirmation, even with a non-TTY
-    /// stdin and no `--yes` (`ConfirmationRequirement::NotRequired`
-    /// never consults either).
-    #[test]
-    fn dispatch_target_explicit_match_never_prompts_even_without_yes() {
-        let _home = HomeGuard::new("target-explicit-never-prompts-home");
-        let target = scratch_home("target-explicit-never-prompts");
+    fn dispatch_target_explicit_match_succeeds_with_no_confirmation_gate() {
+        let _home = HomeGuard::new("target-explicit-no-gate-home");
+        let target = scratch_home("target-explicit-no-gate");
         seed_target(
             &target,
             vec![(".kiro/agents/a.json", b"{}", Provenance::Created, None)],
@@ -2837,15 +3183,16 @@ mod tests {
         let canonical = index::canonicalize_target_dir(&target).unwrap();
         let index = Index::new(vec![IndexEntry {
             target_dir: canonical,
-            strategy: "kiro-cli".to_string(),
+            strategies: vec!["kiro-cli-v2".to_string()],
             installed_at: "2026-01-15T09:30:00Z".to_string(),
             status: index::IndexEntryStatus::Complete,
         }]);
         let code = dispatch_target(
             &index,
             target.to_str().unwrap(),
+            None,
             false,
-            ConfirmationRequirement::NotRequired,
+            ColorMode::disabled(),
         );
         assert_eq!(
             code, 0,
@@ -2861,7 +3208,7 @@ mod tests {
         let _home = HomeGuard::new("stale-missing-manifest-home");
         let target = scratch_home("stale-missing-manifest");
         // No manifest written at all -- a stale tracked install.
-        let counts = uninstall_one(target.to_str().unwrap()).unwrap();
+        let counts = uninstall_one(target.to_str().unwrap(), None, true, false).unwrap();
         assert!(counts.stale);
         assert_eq!(counts.files_deleted, 0);
         fs::remove_dir_all(&target).ok();
@@ -2874,7 +3221,7 @@ mod tests {
         let _home = HomeGuard::new("real-empty-not-stale-home");
         let target = scratch_home("real-empty-not-stale");
         seed_target(&target, vec![]);
-        let counts = uninstall_one(target.to_str().unwrap()).unwrap();
+        let counts = uninstall_one(target.to_str().unwrap(), None, true, false).unwrap();
         assert!(!counts.stale);
         assert_eq!(counts.files_deleted, 0);
         fs::remove_dir_all(&target).ok();
@@ -2890,8 +3237,446 @@ mod tests {
         // exercised end-to-end by the existing
         // `removes_index_entry_after_successful_uninstall` test's own
         // race-free equivalent at the index.rs level.
-        let counts = uninstall_one(&canonical).unwrap();
+        let counts = uninstall_one(&canonical, None, true, false).unwrap();
         assert!(counts.stale);
+        fs::remove_dir_all(&target).ok();
+    }
+
+    // ── Harness selection ─────────────────────────────────────────────────
+
+    /// `--harness <name>` at a target tracking 2+ strategies deletes
+    /// only the SELECTED strategy's own files, and leaves the OTHER
+    /// already-tracked strategy's own slot/files completely untouched --
+    /// both in the manifest and on disk.
+    #[test]
+    fn uninstall_one_with_harness_removes_only_selected_strategy_keeps_other_slot() {
+        let _home = HomeGuard::new("harness-select-partial-home");
+        let target = scratch_home("harness-select-partial");
+        seed_multi_strategy_target(
+            &target,
+            "kiro-cli-v2",
+            vec![(".kiro/agents/a.json", b"{}", Provenance::Created)],
+        );
+        seed_multi_strategy_target(
+            &target,
+            "claude",
+            vec![(".claude/agents/a.md", b"body", Provenance::Created)],
+        );
+
+        // "kiro-cli-v2" is `KiroCliInstallStrategy`'s own `harness_dir()`
+        // -- the `--harness` value a user would actually type -- NOT the
+        // manifest-internal "kiro-cli-v2" name (see `harness_select.rs`'s
+        // own translation-layer doc comment).
+        let counts =
+            uninstall_one(target.to_str().unwrap(), Some("kiro-cli-v2"), true, false).unwrap();
+        assert!(!counts.stale);
+        assert_eq!(counts.files_deleted, 1);
+
+        // The selected strategy's own file is gone.
+        assert!(!target.join(".kiro/agents/a.json").exists());
+        // The OTHER strategy's file survives, untouched.
+        assert!(target.join(".claude/agents/a.md").exists());
+
+        // The manifest still exists (claude's slot survives) and
+        // now tracks ONLY claude -- kiro-cli-v2's slot is gone.
+        let remaining = manifest::read_manifest(&target).unwrap().unwrap();
+        assert_eq!(remaining.strategy_names(), vec!["claude"]);
+
+        fs::remove_dir_all(&target).ok();
+    }
+
+    /// The index's own tracked `strategies` list for this target shrinks
+    /// by exactly the removed harness's name -- the index ENTRY itself
+    /// (and the surviving strategy's own name in it) must not be
+    /// dropped, since `claude` is still genuinely installed at this
+    /// target after this run.
+    #[test]
+    fn uninstall_one_with_harness_shrinks_index_entry_keeps_other_strategy_name() {
+        let _home = HomeGuard::new("harness-select-index-shrink-home");
+        let target = scratch_home("harness-select-index-shrink");
+        seed_multi_strategy_target(
+            &target,
+            "kiro-cli-v2",
+            vec![(".kiro/agents/a.json", b"{}", Provenance::Created)],
+        );
+        seed_multi_strategy_target(
+            &target,
+            "claude",
+            vec![(".claude/agents/a.md", b"body", Provenance::Created)],
+        );
+        let canonical = index::canonicalize_target_dir(&target).unwrap();
+        index::write_index(index::IndexEntry {
+            target_dir: canonical.clone(),
+            strategies: vec!["kiro-cli-v2".to_string(), "claude".to_string()],
+            installed_at: "2026-01-15T09:30:00Z".to_string(),
+            status: index::IndexEntryStatus::Complete,
+        })
+        .unwrap();
+
+        uninstall_one(&canonical, Some("kiro-cli-v2"), true, false).unwrap();
+
+        let index = index::read_index().unwrap().unwrap();
+        let entry = index
+            .installs
+            .iter()
+            .find(|e| e.target_dir == canonical)
+            .expect("the target_dir entry itself must survive a partial harness removal");
+        assert_eq!(entry.strategies, vec!["claude".to_string()]);
+
+        fs::remove_dir_all(&target).ok();
+    }
+
+    /// A non-matching `--harness` value at a 2+-strategy target is a
+    /// usage error naming what IS tracked, and touches nothing --
+    /// neither slot's files, manifest, or index entry.
+    #[test]
+    fn uninstall_one_with_unmatched_harness_is_usage_error_and_touches_nothing() {
+        let _home = HomeGuard::new("harness-select-unmatched-home");
+        let target = scratch_home("harness-select-unmatched");
+        seed_multi_strategy_target(
+            &target,
+            "kiro-cli-v2",
+            vec![(".kiro/agents/a.json", b"{}", Provenance::Created)],
+        );
+        seed_multi_strategy_target(
+            &target,
+            "claude",
+            vec![(".claude/agents/a.md", b"body", Provenance::Created)],
+        );
+
+        let err =
+            uninstall_one(target.to_str().unwrap(), Some("kiro-v3"), true, false).unwrap_err();
+        assert!(err.message.contains("does not track harness 'kiro-v3'"));
+        assert!(target.join(".kiro/agents/a.json").exists());
+        assert!(target.join(".claude/agents/a.md").exists());
+        assert_eq!(
+            manifest::read_manifest(&target)
+                .unwrap()
+                .unwrap()
+                .strategies
+                .len(),
+            2
+        );
+
+        fs::remove_dir_all(&target).ok();
+    }
+
+    /// A manifest that exists on disk but names ZERO
+    /// strategies (e.g. every slot was already removed by an earlier
+    /// per-harness uninstall run) must have its manifest FILE removed --
+    /// not merely be reported as "stale" while the file itself survives
+    /// with no index entry left able to reach it again.
+    #[test]
+    fn uninstall_one_zero_slot_manifest_removes_orphaned_manifest_file() {
+        let _home = HomeGuard::new("zero-slot-manifest-home");
+        let target = scratch_home("zero-slot-manifest");
+        fs::create_dir_all(target.join(".konductor")).unwrap();
+        // A manifest with an EMPTY `strategies` list -- distinct from no
+        // manifest at all.
+        manifest::write_manifest(&target, &manifest::Manifest::empty()).unwrap();
+        let manifest_path = manifest::manifest_path(&target);
+        assert!(
+            manifest_path.is_file(),
+            "sanity check: the zero-slot manifest file must genuinely exist first"
+        );
+
+        let counts = uninstall_one(target.to_str().unwrap(), None, true, false).unwrap();
+        assert!(counts.stale);
+        assert!(
+            !manifest_path.is_file(),
+            "the orphaned zero-slot manifest file must be removed, not left behind"
+        );
+
+        fs::remove_dir_all(&target).ok();
+    }
+
+    // ── kiro-cli-v2/kiro-v3 override race ────────────────────────────────
+    //
+    // `uninstall.rs`'s file-deletion step must run under the SAME
+    // manifest lock as `install`'s override-on-switch write -- see
+    // `manifest::delete_and_remove_strategy_locked`'s own doc comment
+    // for the full race. Reproducing this deterministically via real
+    // concurrent threads is unreliable: the window is the gap between
+    // one UNLOCKED read and an immediately-following LOCKED delete,
+    // which is far narrower than a whole concurrent `install` run's
+    // real-world duration -- see
+    // `install_manifest_concurrency.rs`'s own
+    // `uninstall_of_kiro_cli_survives_concurrent_override_to_kiro_cli_v3`
+    // for the real-process race test that exercises this race under
+    // genuine OS scheduling (a useful complement, but not a reliable
+    // reproduction on its own). These two tests instead manually
+    // sequence the EXACT interleaving a real race could produce, so the
+    // locked delete-and-remove sequence is verified deterministically
+    // rather than by chance.
+
+    /// Manually runs an UNLOCKED-delete-then-locked-remove sequence
+    /// (`delete_eligible_files` against a stale slot, THEN
+    /// `manifest::remove_strategy_locked`) using only functions this
+    /// crate still exposes today, to pin -- as a real running assertion
+    /// rather than only prose -- exactly what corruption that sequence
+    /// produces when a concurrent install's KIRO_VARIANT_FAMILY override
+    /// lands in the gap between the stale read and the delete. This is
+    /// not itself the regression test for the locked delete-and-remove
+    /// sequence; see the next test for that.
+    #[test]
+    fn old_unlocked_delete_then_locked_remove_sequence_corrupts_a_racing_kiro_variant_override() {
+        let _home = HomeGuard::new("kiro-variant-race-old-sequence-home");
+        let target = scratch_home("kiro-variant-race-old-sequence");
+
+        seed_target(
+            &target,
+            vec![(".kiro/agents/a.json", b"{}", Provenance::Created, None)],
+        );
+
+        // The UNLOCKED read `uninstall_one_impl`'s own harness selection
+        // performs, captured here exactly as it would be: before any
+        // concurrent install has touched anything.
+        let stale_manifest = manifest::read_manifest(&target).unwrap().unwrap();
+        let stale_slot = stale_manifest.get("kiro-cli-v2").unwrap().clone();
+        assert_eq!(stale_slot.files.len(), 1);
+
+        // A concurrent `install --harness kiro-v3` completing ENTIRELY
+        // in the gap: new content at the SAME destination path
+        // (KIRO_VARIANT_FAMILY members write identical paths by
+        // construction), then the real override-on-switch manifest
+        // commit a genuine `install_from_local` run performs.
+        fs::write(target.join(".kiro/agents/a.json"), b"{\"kiro-v3\": true}").unwrap();
+        let v3_hash = sha256_hex(&fs::read(target.join(".kiro/agents/a.json")).unwrap());
+        manifest::upsert_strategy(
+            &target,
+            StrategyManifest::new(
+                "kiro-v3",
+                "2026-01-15T09:31:00Z",
+                ".",
+                None,
+                manifest::Status::Complete,
+                vec![manifest::ManifestFile {
+                    path: ".kiro/agents/a.json".to_string(),
+                    sha256: Some(v3_hash.clone()),
+                    provenance: Provenance::ReplacedOurs,
+                }],
+            ),
+        )
+        .unwrap();
+
+        // The unlocked sequence: `delete_eligible_files` UNLOCKED against
+        // the STALE slot, then finalize via `remove_strategy_locked`.
+        let mut counts = UninstallCounts::default();
+        let mut touched_dirs = Vec::new();
+        delete_eligible_files(&target, &stale_slot, &mut counts, &mut touched_dirs).unwrap();
+        manifest::remove_strategy_locked(&target, Some("kiro-cli-v2")).unwrap();
+
+        // The corruption: the manifest still correctly names
+        // kiro-v3 as Complete with the file it just wrote, but the
+        // unlocked sequence's stale-slot delete already removed it
+        // from disk.
+        assert!(
+            !target.join(".kiro/agents/a.json").is_file(),
+            "sanity check: the old sequence's stale-slot delete really does remove the file"
+        );
+        let final_manifest = manifest::read_manifest(&target).unwrap().unwrap();
+        assert_eq!(final_manifest.strategy_names(), vec!["kiro-v3"]);
+        let v3_slot = final_manifest.get("kiro-v3").unwrap();
+        assert_eq!(v3_slot.files[0].sha256, Some(v3_hash));
+        assert!(
+            !target.join(&v3_slot.files[0].path).is_file(),
+            "CORRUPTED STATE reproduced: the manifest claims kiro-v3 tracks {}, but it does \
+             not exist on disk",
+            v3_slot.files[0].path
+        );
+
+        fs::remove_dir_all(&target).ok();
+    }
+
+    /// The SAME interleaving as the test above, but using
+    /// `manifest::delete_and_remove_strategy_locked` -- the function
+    /// `uninstall_one_impl`'s `Some(full_manifest)` branch calls -- in
+    /// place of an unlocked-delete-then-locked-remove sequence. Because
+    /// the delete decision itself runs against a FRESH, LOCKED re-read,
+    /// it finds nothing named "kiro-cli-v2" left to delete (the
+    /// concurrent override already replaced it) and touches nothing at
+    /// all -- kiro-v3's freshly-installed file survives untouched.
+    #[test]
+    fn delete_and_remove_strategy_locked_never_deletes_a_racing_kiro_variant_overrides_files() {
+        let _home = HomeGuard::new("kiro-variant-race-fixed-home");
+        let target = scratch_home("kiro-variant-race-fixed");
+
+        seed_target(
+            &target,
+            vec![(".kiro/agents/a.json", b"{}", Provenance::Created, None)],
+        );
+
+        let stale_manifest = manifest::read_manifest(&target).unwrap().unwrap();
+        let stale_slot = stale_manifest.get("kiro-cli-v2").unwrap().clone();
+
+        fs::write(target.join(".kiro/agents/a.json"), b"{\"kiro-v3\": true}").unwrap();
+        let v3_hash = sha256_hex(&fs::read(target.join(".kiro/agents/a.json")).unwrap());
+        manifest::upsert_strategy(
+            &target,
+            StrategyManifest::new(
+                "kiro-v3",
+                "2026-01-15T09:31:00Z",
+                ".",
+                None,
+                manifest::Status::Complete,
+                vec![manifest::ManifestFile {
+                    path: ".kiro/agents/a.json".to_string(),
+                    sha256: Some(v3_hash.clone()),
+                    provenance: Provenance::ReplacedOurs,
+                }],
+            ),
+        )
+        .unwrap();
+        // Sanity check: the override really happened before the
+        // delete step below runs.
+        let after_override = manifest::read_manifest(&target).unwrap().unwrap();
+        assert_eq!(after_override.strategy_names(), vec!["kiro-v3"]);
+
+        let mut counts = UninstallCounts::default();
+        let mut touched_dirs = Vec::new();
+        let mut delete_invoked = false;
+        let outcome = manifest::delete_and_remove_strategy_locked(
+            &target,
+            &stale_slot.strategy,
+            |fresh_slot| {
+                delete_invoked = true;
+                delete_eligible_files(&target, fresh_slot, &mut counts, &mut touched_dirs)
+            },
+        )
+        .unwrap();
+
+        assert!(
+            outcome.is_none(),
+            "kiro-cli-v2 is no longer tracked in the fresh, locked read -- there is nothing left \
+             to finalize under that name"
+        );
+        assert!(
+            !delete_invoked,
+            "the delete step must never run against a name the fresh, locked re-read no longer \
+             tracks -- this is the exact race the fix closes"
+        );
+        assert!(
+            target.join(".kiro/agents/a.json").is_file(),
+            "kiro-v3's freshly-installed file must survive untouched"
+        );
+        let final_manifest = manifest::read_manifest(&target).unwrap().unwrap();
+        assert_eq!(final_manifest.strategy_names(), vec!["kiro-v3"]);
+        assert_eq!(
+            final_manifest.get("kiro-v3").unwrap().files[0].sha256,
+            Some(v3_hash)
+        );
+
+        fs::remove_dir_all(&target).ok();
+    }
+
+    /// The SAME `delete_and_remove_strategy_locked`
+    /// `None` outcome as the test above -- a concurrent KIRO_VARIANT_FAMILY
+    /// override left nothing tracked under the originally-selected
+    /// name -- but this time with a coexisting `claude` slot also
+    /// tracked at the target. A hardcoded `target_fully_removed = true`
+    /// default in `uninstall_one_impl`'s `None` arm would run the
+    /// target-WIDE teardown (`index::remove_index_entry`) and orphan
+    /// `claude`'s still-valid manifest slot from the index even though
+    /// its files are untouched on disk. Demonstrates both computations
+    /// side by side: the hardcoded default is wrong here, the fresh-read
+    /// one is right.
+    #[test]
+    fn target_fully_removed_reflects_a_surviving_coexisting_strategy_after_a_concurrent_override() {
+        let _home = HomeGuard::new("target-fully-removed-coexist-race-home");
+        let target = scratch_home("target-fully-removed-coexist-race");
+
+        seed_target(
+            &target,
+            vec![(".kiro/agents/a.json", b"{}", Provenance::Created, None)],
+        );
+        // Coexisting slot -- never touched by anything in this
+        // race, and never removed by the override below (`claude` is
+        // not a `KIRO_VARIANT_FAMILY` member).
+        manifest::upsert_strategy(
+            &target,
+            StrategyManifest::new(
+                "claude",
+                "2026-01-15T09:30:30Z",
+                ".",
+                None,
+                manifest::Status::Complete,
+                vec![manifest::ManifestFile {
+                    path: ".claude/agents/a.md".to_string(),
+                    sha256: Some(sha256_hex(b"claude content\n")),
+                    provenance: Provenance::Created,
+                }],
+            ),
+        )
+        .unwrap();
+
+        let stale_manifest = manifest::read_manifest(&target).unwrap().unwrap();
+        let stale_slot = stale_manifest.get("kiro-cli-v2").unwrap().clone();
+
+        // The concurrent override: `kiro-cli-v2` -> `kiro-v3`, exactly
+        // as the sibling race test above -- `claude`'s own slot is
+        // untouched by this call (it is not a family member).
+        manifest::upsert_strategy(
+            &target,
+            StrategyManifest::new(
+                "kiro-v3",
+                "2026-01-15T09:31:00Z",
+                ".",
+                None,
+                manifest::Status::Complete,
+                vec![manifest::ManifestFile {
+                    path: ".kiro/agents/a.json".to_string(),
+                    sha256: Some(sha256_hex(b"{}")),
+                    provenance: Provenance::ReplacedOurs,
+                }],
+            ),
+        )
+        .unwrap();
+
+        let mut counts = UninstallCounts::default();
+        let mut touched_dirs = Vec::new();
+        let outcome = manifest::delete_and_remove_strategy_locked(
+            &target,
+            &stale_slot.strategy,
+            |fresh_slot| delete_eligible_files(&target, fresh_slot, &mut counts, &mut touched_dirs),
+        )
+        .unwrap();
+        assert!(
+            outcome.is_none(),
+            "kiro-cli-v2 is no longer tracked in the fresh, locked read"
+        );
+
+        // The OLD behavior: `target_fully_removed` simply defaulted to
+        // `true` in this arm, regardless of what else survives.
+        let old_buggy_target_fully_removed = true;
+
+        // The FIX: re-read fresh and check whether anything is
+        // genuinely left.
+        let fixed_target_fully_removed = match manifest::read_manifest(&target) {
+            Ok(Some(m)) => m.strategies.is_empty(),
+            Ok(None) => true,
+            Err(_) => true,
+        };
+
+        assert!(
+            old_buggy_target_fully_removed,
+            "sanity check: this is what the old code hardcoded"
+        );
+        assert!(
+            !fixed_target_fully_removed,
+            "the fix must find claude's coexisting slot still tracked and report \
+             target_fully_removed = false, not the old hardcoded true"
+        );
+
+        // Confirms what the old default would have broken: claude's
+        // manifest slot is still genuinely present, so the target-wide
+        // `index::remove_index_entry` teardown -- gated on
+        // `target_fully_removed` -- must never run here.
+        let final_manifest = manifest::read_manifest(&target).unwrap().unwrap();
+        assert!(
+            final_manifest.get("claude").is_some(),
+            "claude's coexisting slot must still be genuinely tracked"
+        );
+
         fs::remove_dir_all(&target).ok();
     }
 
@@ -2924,13 +3709,28 @@ mod tests {
     #[test]
     fn report_single_and_batch_do_not_panic_with_a_bin_link_error_present() {
         let counts = UninstallCounts {
-            bin_link_error: Some("could not remove tracked symlink: permission denied".to_string()),
+            bin_link_error: Some(BinLinkFailure {
+                message: "could not remove tracked symlink: permission denied".to_string(),
+                exit_code: EXIT_SUCCESS_WITH_WARNINGS,
+            }),
             ..Default::default()
         };
-        report_single("/proj/a", &counts, false);
-        report_single("/proj/a", &counts, true);
-        report_batch(&[("/proj/a".to_string(), counts.clone())], &[], false);
-        report_batch(&[("/proj/a".to_string(), counts)], &[], true);
+        report_single("/proj/a", &counts, false, ColorMode::disabled());
+        report_single("/proj/a", &counts, true, ColorMode::disabled());
+        report_batch(
+            &[("/proj/a".to_string(), counts.clone())],
+            &[],
+            &[],
+            false,
+            ColorMode::disabled(),
+        );
+        report_batch(
+            &[("/proj/a".to_string(), counts)],
+            &[],
+            &[],
+            true,
+            ColorMode::disabled(),
+        );
     }
 
     #[test]
@@ -2945,24 +3745,184 @@ mod tests {
         let index = Index::new(vec![
             IndexEntry {
                 target_dir: index::canonicalize_target_dir(&real_target).unwrap(),
-                strategy: "kiro-cli".to_string(),
+                strategies: vec!["kiro-cli-v2".to_string()],
                 installed_at: "2026-01-15T09:30:00Z".to_string(),
                 status: index::IndexEntryStatus::Complete,
             },
             IndexEntry {
                 target_dir: index::canonicalize_target_dir(&stale_target).unwrap(),
-                strategy: "kiro-cli".to_string(),
+                strategies: vec!["kiro-cli-v2".to_string()],
                 installed_at: "2026-01-15T09:30:00Z".to_string(),
                 status: index::IndexEntryStatus::Complete,
             },
         ]);
-        let code = dispatch_all(&index, false);
+        let code = dispatch_all(&index, None, false, ColorMode::disabled());
         assert_eq!(
             code, 0,
             "a real success + a stale prune must both count as success"
         );
         fs::remove_dir_all(&real_target).ok();
         fs::remove_dir_all(&stale_target).ok();
+    }
+
+    /// `dispatch_all`'s exit-code precedence now spans four levels:
+    /// `EXIT_USAGE_ERROR` (64) beats `EXIT_VERIFY_FAILED` (65) beats
+    /// `EXIT_SUCCESS_WITH_WARNINGS` (6) beats 0. A batch with one clean
+    /// success and one bin-link-warning success must report 6, not 0.
+    ///
+    /// `warning_target` is genuinely tracked in bin-links (CR comment
+    /// r1p4): the injected failure is a permission-denial reached AFTER
+    /// `remove_bin_link`'s own `position()` match for THIS target, not
+    /// a corrupt/unreadable sidecar -- an unreadable sidecar makes
+    /// tracking status undeterminable and now correctly folds to
+    /// "not tracked" (exit 0), which would no longer exercise the
+    /// warning precedence this test is about. See
+    /// `dispatch_target_returns_exit_code_6_when_bin_link_error_present_with_no_other_failure`'s
+    /// own comment for the identical reasoning.
+    #[test]
+    fn dispatch_all_reports_exit_code_6_when_only_a_bin_link_warning_occurred() {
+        use std::os::unix::fs::PermissionsExt;
+
+        if bin_link::running_as_root() {
+            eprintln!(
+                "skipping dispatch_all_reports_exit_code_6_when_only_a_bin_link_warning_occurred: \
+                 running as root, which bypasses the DAC permission denial this test depends on"
+            );
+            return;
+        }
+
+        let _home = HomeGuard::new("dispatch-all-exit-6-home");
+        let clean_target = scratch_home("dispatch-all-exit-6-clean");
+        let warning_target = scratch_home("dispatch-all-exit-6-warning");
+        seed_target(
+            &clean_target,
+            vec![(".kiro/agents/a.json", b"{}", Provenance::Created, None)],
+        );
+        seed_target(
+            &warning_target,
+            vec![(".kiro/agents/b.json", b"{}", Provenance::Created, None)],
+        );
+
+        let home = PathBuf::from(std::env::var_os("HOME").unwrap());
+        let canonical_warning = index::canonicalize_target_dir(&warning_target).unwrap();
+        bin_link::ensure_bin_link(&canonical_warning, "2026-01-15T09:30:00Z").unwrap();
+        let bin_dir = bin_link::local_bin_link_path(&home)
+            .parent()
+            .expect("link path always has a parent")
+            .to_path_buf();
+        let mut perms = fs::metadata(&bin_dir).unwrap().permissions();
+        perms.set_mode(0o000);
+        fs::set_permissions(&bin_dir, perms).unwrap();
+
+        let index = Index::new(vec![
+            IndexEntry {
+                target_dir: index::canonicalize_target_dir(&clean_target).unwrap(),
+                strategies: vec!["kiro-cli-v2".to_string()],
+                installed_at: "2026-01-15T09:30:00Z".to_string(),
+                status: index::IndexEntryStatus::Complete,
+            },
+            IndexEntry {
+                target_dir: canonical_warning,
+                strategies: vec!["kiro-cli-v2".to_string()],
+                installed_at: "2026-01-15T09:30:00Z".to_string(),
+                status: index::IndexEntryStatus::Complete,
+            },
+        ]);
+        let code = dispatch_all(&index, None, false, ColorMode::disabled());
+
+        let restored = std::fs::Permissions::from_mode(0o755);
+        let _ = fs::set_permissions(&bin_dir, restored);
+
+        assert_eq!(code, EXIT_SUCCESS_WITH_WARNINGS);
+
+        fs::remove_dir_all(&clean_target).ok();
+        fs::remove_dir_all(&warning_target).ok();
+    }
+
+    /// A real usage-error failure elsewhere in the batch must still
+    /// beat a bin-link warning -- 64 wins over 6, regardless of which
+    /// order the batch visits them in.
+    ///
+    /// CR comment r2p1: `warning_target` must be genuinely TRACKED in
+    /// bin-links and hit a genuine bin-link failure on ITS OWN target,
+    /// mirroring `dispatch_all_reports_exit_code_6_when_only_a_bin_link_warning_occurred`'s
+    /// own permission-denial technique -- injecting the failure via a
+    /// corrupt `~/.konductor/bin-links` sidecar does NOT do this: per
+    /// the r1p4 fix in `remove_bin_link_at_home`, a corrupt/unreadable
+    /// sidecar folds to `Ok(None)` ("not tracked") for any target with
+    /// no recorded link, so `warning_target` would uninstall cleanly at
+    /// exit 0 and this test's asserted `EXIT_USAGE_ERROR` would be
+    /// driven entirely by `failing_target` alone -- proving "64 beats
+    /// 0," not "64 beats 6" as this test's name and doc comment above
+    /// promise.
+    #[test]
+    fn dispatch_all_usage_error_beats_bin_link_warning() {
+        use std::os::unix::fs::PermissionsExt;
+
+        if bin_link::running_as_root() {
+            eprintln!(
+                "skipping dispatch_all_usage_error_beats_bin_link_warning: \
+                 running as root, which bypasses the DAC permission denial this test depends on"
+            );
+            return;
+        }
+
+        let _home = HomeGuard::new("dispatch-all-64-beats-6-home");
+        let warning_target = scratch_home("dispatch-all-64-beats-6-warning");
+        seed_target(
+            &warning_target,
+            vec![(".kiro/agents/a.json", b"{}", Provenance::Created, None)],
+        );
+
+        let home = PathBuf::from(std::env::var_os("HOME").unwrap());
+        let canonical_warning = index::canonicalize_target_dir(&warning_target).unwrap();
+        bin_link::ensure_bin_link(&canonical_warning, "2026-01-15T09:30:00Z").unwrap();
+        let bin_dir = bin_link::local_bin_link_path(&home)
+            .parent()
+            .expect("link path always has a parent")
+            .to_path_buf();
+        let mut perms = fs::metadata(&bin_dir).unwrap().permissions();
+        perms.set_mode(0o000);
+        fs::set_permissions(&bin_dir, perms).unwrap();
+
+        let failing_target = scratch_home("dispatch-all-64-beats-6-failing");
+        let failing_manifest_path = manifest::manifest_path(&failing_target);
+        fs::create_dir_all(failing_manifest_path.parent().unwrap()).unwrap();
+        // schema_version 1 is supported -- force a genuine usage-error
+        // failure a different way: an unreadable manifest whose install
+        // index entry does not match reality closely enough for
+        // read_manifest itself to fail. Simplest reliable failure here
+        // is malformed JSON, which read_manifest rejects as a plain
+        // usage error (64), matching this suite's existing
+        // `uninstall_one_maps_malformed_manifest_to_64` precedent.
+        fs::write(&failing_manifest_path, b"not json").unwrap();
+
+        let index = Index::new(vec![
+            IndexEntry {
+                target_dir: canonical_warning,
+                strategies: vec!["kiro-cli-v2".to_string()],
+                installed_at: "2026-01-15T09:30:00Z".to_string(),
+                status: index::IndexEntryStatus::Complete,
+            },
+            IndexEntry {
+                target_dir: index::canonicalize_target_dir(&failing_target).unwrap(),
+                strategies: vec!["kiro-cli-v2".to_string()],
+                installed_at: "2026-01-15T09:30:00Z".to_string(),
+                status: index::IndexEntryStatus::Complete,
+            },
+        ]);
+        let code = dispatch_all(&index, None, false, ColorMode::disabled());
+
+        let restored = std::fs::Permissions::from_mode(0o755);
+        let _ = fs::set_permissions(&bin_dir, restored);
+
+        assert_eq!(
+            code, EXIT_USAGE_ERROR,
+            "a real usage-error failure must beat a bin-link warning in the same batch"
+        );
+
+        fs::remove_dir_all(&warning_target).ok();
+        fs::remove_dir_all(&failing_target).ok();
     }
 
     // ── duplicate target_dir entries rejected ───────────────────────────
@@ -2972,13 +3932,13 @@ mod tests {
         let index = Index::new(vec![
             IndexEntry {
                 target_dir: "/tmp/dup-target".to_string(),
-                strategy: "kiro-cli".to_string(),
+                strategies: vec!["kiro-cli-v2".to_string()],
                 installed_at: "2026-01-15T09:30:00Z".to_string(),
                 status: index::IndexEntryStatus::Complete,
             },
             IndexEntry {
                 target_dir: "/tmp/dup-target".to_string(),
-                strategy: "kiro-cli".to_string(),
+                strategies: vec!["kiro-cli-v2".to_string()],
                 installed_at: "2026-01-16T09:30:00Z".to_string(),
                 status: index::IndexEntryStatus::Complete,
             },
@@ -2992,8 +3952,8 @@ mod tests {
         // Structural guard: report_corrupted_index must not panic given
         // a real duplicate list, in both plain and --json modes.
         let duplicates = vec!["/tmp/dup-a".to_string(), "/tmp/dup-b".to_string()];
-        report_corrupted_index(&duplicates, false);
-        report_corrupted_index(&duplicates, true);
+        report_corrupted_index(&duplicates, false, ColorMode::disabled());
+        report_corrupted_index(&duplicates, true, ColorMode::disabled());
     }
 
     /// `report_corrupted_index`'s `--json` documents go to stdout,
@@ -3003,33 +3963,107 @@ mod tests {
     /// `report_error_json_document_content_is_unchanged_and_goes_to_stdout_not_stderr`:
     /// by reading this module's own source, since there is no
     /// stdout/stderr-capture mechanism in this test suite. Rather than
-    /// pinning brittle whitespace-sensitive snippets, this counts every
-    /// `eprintln!` call that is immediately followed by a
-    /// `serde_json::json!`/`build_error_json` invocation -- this
-    /// module's ONLY JSON-emitting error paths (`report_error`,
-    /// `report_corrupted_index`) both print via `println!`, so there
-    /// must be none.
+    /// pinning brittle whitespace-sensitive snippets, or a fixed
+    /// line-count window after each macro call (which produced a
+    /// false positive here once cargo fmt reshuffled surrounding
+    /// blank lines and pulled an unrelated doc comment into the
+    /// window), this scans from each real (non-comment) call to the
+    /// stderr-printing macro to ITS OWN matching closing paren --
+    /// tracking nested `()`/`{}`/`[]` depth and skipping over
+    /// string/char literals so a `)` or a mention of the JSON-building
+    /// helper inside a string doesn't confuse the count -- and checks
+    /// only within that span, i.e. only the macro's actual argument
+    /// tokens. Matches on `//` and `///` comment lines are skipped, so
+    /// this doc comment's own mentions of the macro name don't count
+    /// as call sites. This module's ONLY JSON-emitting error paths
+    /// (`report_error`, `report_corrupted_index`) both print to
+    /// stdout, so no real stderr-printing call's arguments may
+    /// construct or reference a JSON document.
     #[test]
     fn no_json_document_in_this_module_is_emitted_via_eprintln() {
         let source = include_str!("uninstall.rs");
-        for (line_number, line) in source.lines().enumerate() {
-            if !line.trim_start().starts_with("eprintln!(") {
-                continue;
+        let macro_call = concat!("epri", "ntln!(");
+        let json_helper_fn = concat!("build_error_", "json");
+        let json_macro = concat!("serde_json::json", "!");
+        for (byte_offset, _) in source.match_indices(macro_call) {
+            let line_start = source[..byte_offset].rfind('\n').map_or(0, |i| i + 1);
+            if source[line_start..byte_offset]
+                .trim_start()
+                .starts_with("//")
+            {
+                continue; // a comment mentioning the macro name, not a real call
             }
-            let mut following = source
-                .lines()
-                .skip(line_number + 1)
-                .take(3)
-                .collect::<Vec<_>>()
-                .join("\n");
-            following.push_str(line);
+            let args_start = byte_offset + macro_call.len();
+            let line_number = source[..byte_offset].matches('\n').count() + 1;
+            let args_end = find_matching_close_paren(source, args_start).unwrap_or_else(|| {
+                panic!(
+                    "line {line_number}: {macro_call} has no matching closing paren -- \
+                     malformed source or scanner bug"
+                )
+            });
+            let args = &source[args_start..args_end];
             assert!(
-                !following.contains("serde_json::json!") && !following.contains("build_error_json"),
-                "line {} calls eprintln! immediately around a JSON construction -- every \
-                 --json document in this module must go to stdout via println!, never stderr",
-                line_number + 1
+                !args.contains(json_macro) && !args.contains(json_helper_fn),
+                "line {line_number} calls the stderr-printing macro whose arguments construct \
+                 or reference a JSON document -- every --json document in this module must go \
+                 to stdout, never stderr"
             );
         }
+    }
+
+    /// Scans forward from `start` (the byte offset immediately after an
+    /// opening paren already consumed by the caller) to find the byte
+    /// offset of that opening paren's matching close, tracking nested
+    /// `()`/`{}`/`[]` depth and skipping over the contents of string
+    /// and char literals (including escaped quotes within them) so a
+    /// bracket or quote inside a literal never perturbs the count.
+    /// Returns `None` if the source ends before the matching close is
+    /// found. Deliberately ignores raw strings (`r"..."`/`r#"..."#`)
+    /// and byte-string prefixes -- this module's `eprintln!` call
+    /// sites use only ordinary string/char literals, and the intent
+    /// here is a scoped syntax-aware scan for one test's needs, not a
+    /// general Rust tokenizer.
+    fn find_matching_close_paren(source: &str, start: usize) -> Option<usize> {
+        let bytes = source.as_bytes();
+        let mut depth = 1i32;
+        let mut i = start;
+        while i < bytes.len() {
+            match bytes[i] {
+                b'(' | b'{' | b'[' => depth += 1,
+                b')' | b'}' | b']' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        return Some(i);
+                    }
+                }
+                b'"' => {
+                    i += 1;
+                    while i < bytes.len() && bytes[i] != b'"' {
+                        if bytes[i] == b'\\' {
+                            i += 1;
+                        }
+                        i += 1;
+                    }
+                }
+                b'\'' => {
+                    // Distinguish a char literal ('x', '\'', '\\') from
+                    // a lifetime token (e.g. 'a in generics) by only
+                    // treating it as a literal when it's closed by
+                    // another `'` within a couple of bytes.
+                    let literal_end = if bytes.get(i + 1) == Some(&b'\\') {
+                        i + 3
+                    } else {
+                        i + 2
+                    };
+                    if bytes.get(literal_end) == Some(&b'\'') {
+                        i = literal_end;
+                    }
+                }
+                _ => {}
+            }
+            i += 1;
+        }
+        None
     }
 
     // ── cleanup_empty_dirs revisits a directory emptied by a later
@@ -3158,7 +4192,7 @@ mod tests {
         // prevents removing the now-empty `a` subdirectory). Reaches
         // `mid`, finds it non-empty (the blocker is still there), and
         // stops without attempting to remove it.
-        let removed_first_pass = cleanup_empty_dirs(&target, &[dir_a.clone()]);
+        let removed_first_pass = cleanup_empty_dirs(&target, std::slice::from_ref(&dir_a));
         // Remove the blocker before any assertion that might panic, so
         // cleanup can always proceed regardless of outcome.
         fs::remove_file(&blocker).unwrap();
@@ -3178,7 +4212,7 @@ mod tests {
         // skipped it. `skills/` itself (mid's own parent) also becomes
         // empty once `mid` is gone and is not a protected root, so it
         // is removed too.
-        let removed_second_pass = cleanup_empty_dirs(&target, &[dir_b.clone()]);
+        let removed_second_pass = cleanup_empty_dirs(&target, std::slice::from_ref(&dir_b));
         assert_eq!(
             removed_second_pass, 3,
             "`b`, the now-revisitable `mid`, and the now-empty `skills/` must all be removed"
@@ -3217,7 +4251,7 @@ mod tests {
                 ),
             ],
         );
-        let counts = uninstall_one(target.to_str().unwrap()).unwrap();
+        let counts = uninstall_one(target.to_str().unwrap(), None, true, false).unwrap();
         assert_eq!(counts.files_deleted, 2);
         assert!(
             !target.join(".konductor/skills").exists(),
@@ -3335,7 +4369,7 @@ mod tests {
         // Confirms dispatch_uninstall itself actually reaches this
         // branch and returns the exit code this path is responsible
         // for, exercising the real call site end to end.
-        let code = dispatch_uninstall(None, false, false, true);
+        let code = dispatch_uninstall(None, false, None, true, ColorMode::disabled());
         assert_eq!(code, EXIT_USAGE_ERROR);
     }
 
@@ -3353,19 +4387,20 @@ mod tests {
         fs::create_dir_all(manifest_path.parent().unwrap()).unwrap();
         fs::write(
             &manifest_path,
-            br#"{"schema_version":99,"strategy":"kiro-cli","installed_at":"2026-01-15T09:30:00Z","destination":".","status":"complete","files":[]}"#,
+            br#"{"schema_version":99,"strategy":"kiro-cli-v2","installed_at":"2026-01-15T09:30:00Z","destination":".","status":"complete","files":[]}"#,
         )
         .unwrap();
         let canonical = index::canonicalize_target_dir(&target).unwrap();
         index::write_index(IndexEntry {
             target_dir: canonical.clone(),
-            strategy: "kiro-cli".to_string(),
+            strategies: vec!["kiro-cli-v2".to_string()],
             installed_at: "2026-01-15T09:30:00Z".to_string(),
             status: index::IndexEntryStatus::Complete,
         })
         .unwrap();
 
-        let err = uninstall_one(&canonical).expect_err("unsupported schema_version must fail");
+        let err = uninstall_one(&canonical, None, true, false)
+            .expect_err("unsupported schema_version must fail");
         let message = err.to_string();
 
         let value = build_error_json(
@@ -3378,7 +4413,7 @@ mod tests {
         assert_eq!(reparsed["error"], message);
         assert_eq!(reparsed["target_dir"], canonical);
 
-        let code = dispatch_uninstall(None, false, false, true);
+        let code = dispatch_uninstall(None, false, None, true, ColorMode::disabled());
         assert_eq!(
             code, 65,
             "must propagate EXIT_VERIFY_FAILED, not flatten to 64"
@@ -3387,6 +4422,27 @@ mod tests {
     }
 
     /// Named error path 3: `dispatch_target`'s no-match usage error.
+    ///
+    /// `dispatch_target_no_match_message` must end with a clause
+    /// acknowledging uncertainty ("this may mean it was never
+    /// installed, or was already fully uninstalled") rather than
+    /// asserting the target was NEVER tracked -- a directory that was
+    /// previously installed and has since been fully uninstalled
+    /// resolves identically to one that was never installed at all.
+    #[test]
+    fn dispatch_target_no_match_message_softens_never_tracked_wording() {
+        let index = Index::new(Vec::new());
+        let message = dispatch_target_no_match_message(&index, "/some/dir", "/some/dir");
+        assert!(
+            message.contains(
+                "this may mean it was never installed, or was already fully \
+                               uninstalled"
+            ),
+            "message must acknowledge uncertainty rather than asserting the target was \
+             never tracked: {message}"
+        );
+    }
+
     /// Builds the expected message via `dispatch_target_no_match_message`
     /// itself -- the real construction the call site uses, including
     /// the appended "Tracked install(s):" listing -- rather than
@@ -3397,7 +4453,7 @@ mod tests {
         let home = scratch_home("target-no-match-json");
         let index = Index::new(vec![IndexEntry {
             target_dir: "/does/not/match".to_string(),
-            strategy: "kiro-cli".to_string(),
+            strategies: vec!["kiro-cli-v2".to_string()],
             installed_at: "2026-01-15T09:30:00Z".to_string(),
             status: index::IndexEntryStatus::Complete,
         }]);
@@ -3434,8 +4490,9 @@ mod tests {
         let code = dispatch_target(
             &index,
             home.to_str().unwrap(),
+            None,
             true,
-            ConfirmationRequirement::NotRequired,
+            ColorMode::disabled(),
         );
         assert_eq!(code, EXIT_USAGE_ERROR);
         fs::remove_dir_all(&home).ok();
@@ -3450,18 +4507,19 @@ mod tests {
         fs::create_dir_all(manifest_path.parent().unwrap()).unwrap();
         fs::write(
             &manifest_path,
-            br#"{"schema_version":99,"strategy":"kiro-cli","installed_at":"2026-01-15T09:30:00Z","destination":".","status":"complete","files":[]}"#,
+            br#"{"schema_version":99,"strategy":"kiro-cli-v2","installed_at":"2026-01-15T09:30:00Z","destination":".","status":"complete","files":[]}"#,
         )
         .unwrap();
         let canonical = index::canonicalize_target_dir(&target).unwrap();
         let index = Index::new(vec![IndexEntry {
             target_dir: canonical.clone(),
-            strategy: "kiro-cli".to_string(),
+            strategies: vec!["kiro-cli-v2".to_string()],
             installed_at: "2026-01-15T09:30:00Z".to_string(),
             status: index::IndexEntryStatus::Complete,
         }]);
 
-        let err = uninstall_one(&canonical).expect_err("unsupported schema_version must fail");
+        let err = uninstall_one(&canonical, None, true, false)
+            .expect_err("unsupported schema_version must fail");
         let message = err.to_string();
         let value = build_error_json(
             "uninstall",
@@ -3476,8 +4534,9 @@ mod tests {
         let code = dispatch_target(
             &index,
             target.to_str().unwrap(),
+            None,
             true,
-            ConfirmationRequirement::NotRequired,
+            ColorMode::disabled(),
         );
         assert_eq!(
             code, 65,

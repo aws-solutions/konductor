@@ -9,7 +9,7 @@
 use std::path::Path;
 
 use super::super::artifact::sha256_hex;
-use super::super::manifest::{Manifest, ManifestFile, Provenance};
+use super::super::manifest::{ManifestFile, Provenance, StrategyManifest};
 use super::fs_util::{is_executable, reject_unsafe_file_name, set_executable};
 use super::plan::{content_manifest_path, read_skill_scopes_sidecar, read_sop_scopes_sidecar};
 use super::{KIRO_DESTINATION_ROOT, KONDUCTOR_DESTINATION_ROOT};
@@ -46,13 +46,13 @@ pub(in crate::cli::install) const CONTEXT_RESOURCE_PREFIX: &str = "file://contex
 /// missing or empty -- `install_agents`' resources rewrite is what
 /// actually needs a context file to exist, and it performs its own
 /// stat-and-fail check against the destination (see
-/// `verify_context_targets_exist`) rather than relying on this
-/// function's return value.
+/// `resource_rewrite::ContextResourcePass::verify`) rather than relying
+/// on this function's return value.
 ///
 /// Limitation (shared with `install_agents`): this does not remove a
 /// context file a PRIOR install wrote that the current source no longer
 /// contains -- it becomes an untracked orphan (absent from the freshly
-/// written manifest). Manifest-driven cleanup of such orphaned
+/// written manifest). Slot-driven cleanup of such orphaned
 /// prior-install files across content types is `update`/`uninstall`'s
 /// job (the per-file `provenance` this install records is the data that
 /// makes it safe); only re-synthed *skills* get in-place dropped-file
@@ -262,7 +262,7 @@ pub(in crate::cli::install) fn install_agents(
 pub(in crate::cli::install) fn install_skills(
     harness_dir: &Path,
     target_dir: &Path,
-    prior_manifest: Option<&Manifest>,
+    prior_manifest: Option<&StrategyManifest>,
 ) -> Result<Vec<ManifestFile>, String> {
     let source_root = harness_dir.join(SKILLS_CONTENT_TYPE_DIR);
     let skill_names = list_skill_dirs(&source_root)?;

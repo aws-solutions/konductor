@@ -25,7 +25,7 @@
 // regardless of what it declares, which defeats per-agent scoping.
 // Moving skills outside that scanned directory means a skill is only
 // visible to an agent that explicitly references it via a `skill://`
-// resource entry -- confirmed live against kiro-cli 2.18.0 (see
+// resource entry -- confirmed live against kiro-cli-v2 2.18.0 (see
 // ws-konductor-cli-notes.SKILL.md). `manifest.destination` reflects this
 // by rooting at `target_dir` itself (see manifest.rs's module
 // docstring); each `files[].path` carries its own `.kiro/` or
@@ -59,7 +59,7 @@
 
 use std::path::Path;
 
-use super::manifest::{Manifest, ManifestFile, Status};
+use super::manifest::{ManifestFile, Status, StrategyManifest};
 use super::runtime::{detect_runtimes, Runtime};
 use super::InstallError;
 use super::InstallStrategy;
@@ -99,18 +99,21 @@ pub(crate) const KONDUCTOR_DESTINATION_ROOT: &str = ".konductor";
 pub struct KiroCliInstallStrategy;
 
 impl InstallStrategy for KiroCliInstallStrategy {
+    /// Matches `KiroCliV2Transformer::name()` (`"kiro-cli-v2"`) exactly
+    /// -- the harness/strategy name unification removes the translation
+    /// layer that used to exist between `--harness kiro-cli-v2` and this
+    /// strategy's own internal manifest-recorded name, which used to be
+    /// a distinct, shorter string. `harness_dir()` below now simply
+    /// delegates to this value.
     fn name(&self) -> &'static str {
-        "kiro-cli"
+        "kiro-cli-v2"
     }
 
-    /// The `KiroCliV2Transformer`'s own harness directory name --
-    /// imported directly from that transformer rather than
-    /// hand-duplicated as a literal, so this can never drift from the
-    /// real synth-side value.
+    /// Now identical to `name()` by construction (see this impl's own
+    /// `name()` doc comment) -- delegates directly rather than
+    /// re-deriving the same string from `KiroCliV2Transformer::name()`.
     fn harness_dir(&self) -> &'static str {
-        use crate::cli::synth::kiro_cli_v2::KiroCliV2Transformer;
-        use crate::cli::synth::HarnessTransformer as _;
-        KiroCliV2Transformer.name()
+        self.name()
     }
 
     /// Applies when Kiro CLI is detected at the target, or when NEITHER
@@ -263,7 +266,20 @@ impl InstallStrategy for KiroCliInstallStrategy {
                 .to_string(),
         );
 
-        let prior_manifest = super::manifest::read_manifest(target_dir)?;
+        // `prior_manifest` is the ONE slot whose
+        // own prior `files` list this run's provenance classification
+        // consults -- normally this strategy's own tracked slot, but on
+        // a Kiro-variant override switch (installing `kiro-cli-v2` where
+        // `kiro-v3` is currently tracked, or vice versa), it is the
+        // OTHER variant's slot instead, since both write every
+        // destination path identically and the switch is a takeover of
+        // those same paths, not a fresh install (see
+        // `manifest::effective_prior_slot`'s own doc comment).
+        let full_prior_manifest = super::manifest::read_manifest(target_dir)?;
+        let prior_manifest: Option<StrategyManifest> = full_prior_manifest
+            .as_ref()
+            .and_then(|full| super::manifest::effective_prior_slot(full, self.name()))
+            .cloned();
 
         let mut plan = plan_all_files(&harness_dir, target_dir, prior_manifest.as_ref())?;
         let bin_plan =
@@ -298,15 +314,29 @@ impl InstallStrategy for KiroCliInstallStrategy {
             )));
         }
 
+        // This slot must never claim `.claude/skills/sop-<name>/SKILL.md`,
+        // at any status (see the `complete` manifest write below for the
+        // full rationale). Excluded here too, before `in_progress_files`
+        // is built: otherwise a crash before the `Status::Complete` write
+        // leaves this slot's `InProgress` manifest claiming the path, and
+        // `uninstall` -- which has no status gate -- would delete it even
+        // though `claude`'s slot may own it.
+        const DUAL_MARKER_SOP_SKILL_PREFIX: &str = ".claude/skills/sop-";
+
         let in_progress_files: Vec<ManifestFile> = plan
             .iter()
+            .filter(|planned| {
+                !planned
+                    .manifest_path
+                    .starts_with(DUAL_MARKER_SOP_SKILL_PREFIX)
+            })
             .map(|planned| ManifestFile {
                 path: planned.manifest_path.clone(),
                 sha256: None,
                 provenance: planned.provenance,
             })
             .collect();
-        let write_ahead = Manifest::new(
+        let write_ahead = StrategyManifest::new(
             self.name(),
             installed_at,
             ".",
@@ -314,7 +344,7 @@ impl InstallStrategy for KiroCliInstallStrategy {
             Status::InProgress,
             in_progress_files,
         );
-        super::manifest::write_manifest(target_dir, &write_ahead)?;
+        super::manifest::upsert_strategy(target_dir, write_ahead)?;
 
         // The actual copy work is a list of `InstallPhase`s (see
         // `phases.rs`) run in order by `run_all_phases`, rather than a
@@ -336,11 +366,35 @@ impl InstallStrategy for KiroCliInstallStrategy {
         )?;
         let files = attach_provenance(raw_files, &plan)?;
 
+        // `SopInstallPhase::run`'s additive dual-marker
+        // branch writes `.claude/skills/sop-<name>/SKILL.md` when this
+        // target ALSO carries a pre-existing `.claude` marker -- the ONE
+        // path shape reachable from Kiro's own chain that lands under
+        // `.claude/`. This is narrower than "anything under `.claude/`":
+        // Kiro's chain also legitimately writes `.claude/settings.json`
+        // (the additive Claude/V3 settings-grant merge, a separate,
+        // unrelated mechanism -- see `resource_rewrite.rs`), which DOES
+        // stay tracked in this slot exactly as before, since that file
+        // is a genuinely shared, Kiro-authored grant, not another
+        // strategy's own content. Only the SOP-skill conversion path is
+        // excluded from THIS strategy's own manifest slot, so Kiro's own
+        // `uninstall` never deletes it. `claude`'s own slot, if and
+        // when it is separately installed at this target, owns and
+        // manages that path completely on its own (its own
+        // `install_sop_skills` call regenerates it on every run, and
+        // its own `uninstall` is the only thing that ever deletes it).
+        // `DUAL_MARKER_SOP_SKILL_PREFIX` is defined once, above, before
+        // `in_progress_files` -- see that definition's own doc comment
+        // for why the write-ahead record needs the identical exclusion.
+        let (files, _dual_marker_claude_sop_skills): (Vec<ManifestFile>, Vec<ManifestFile>) = files
+            .into_iter()
+            .partition(|f| !f.path.starts_with(DUAL_MARKER_SOP_SKILL_PREFIX));
+
         // `destination` is `.` (target_dir itself): installs now span
         // two roots (`.kiro/`, `.konductor/`), so each `files[].path`
         // above already carries its own full prefix rather than being
         // relative to a single shared destination directory.
-        let complete = Manifest::new(
+        let complete = StrategyManifest::new(
             self.name(),
             installed_at,
             ".",
@@ -348,7 +402,7 @@ impl InstallStrategy for KiroCliInstallStrategy {
             Status::Complete,
             files,
         );
-        super::manifest::write_manifest(target_dir, &complete)?;
+        super::manifest::upsert_strategy(target_dir, complete)?;
         Ok(())
     }
 }
@@ -383,7 +437,7 @@ pub(super) mod test_support {
 
     pub(super) fn scratch_dir(name: &str) -> PathBuf {
         let dir = std::env::temp_dir().join(format!(
-            "konductor-kiro-cli-strategy-test-{name}-{}",
+            "konductor-kiro-cli-v2-strategy-test-{name}-{}",
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
@@ -485,7 +539,7 @@ mod tests {
 
     #[test]
     fn name_returns_kiro_cli() {
-        assert_eq!(KiroCliInstallStrategy.name(), "kiro-cli");
+        assert_eq!(KiroCliInstallStrategy.name(), "kiro-cli-v2");
     }
 
     #[test]
@@ -544,12 +598,15 @@ mod tests {
         let manifest = super::super::manifest::read_manifest(&target_dir)
             .unwrap()
             .expect("manifest must exist after install");
-        assert_eq!(manifest.strategy, "kiro-cli");
-        assert_eq!(manifest.destination, ".");
-        assert_eq!(manifest.files.len(), 1);
-        assert_eq!(manifest.files[0].path, ".kiro/agents/k-example.json");
+        assert_eq!(manifest.strategies[0].strategy, "kiro-cli-v2");
+        assert_eq!(manifest.strategies[0].destination, ".");
+        assert_eq!(manifest.strategies[0].files.len(), 1);
         assert_eq!(
-            manifest.files[0].sha256,
+            manifest.strategies[0].files[0].path,
+            ".kiro/agents/k-example.json"
+        );
+        assert_eq!(
+            manifest.strategies[0].files[0].sha256,
             Some(sha256_hex(b"{\"name\":\"k-example\"}\n"))
         );
 
@@ -578,7 +635,7 @@ mod tests {
         let manifest = super::super::manifest::read_manifest(&target_dir)
             .unwrap()
             .unwrap();
-        assert_eq!(manifest.files.len(), 2);
+        assert_eq!(manifest.strategies[0].files.len(), 2);
 
         fs::remove_dir_all(&target_dir).ok();
         fs::remove_dir_all(&repo_root).ok();
@@ -742,7 +799,7 @@ mod tests {
                 provenance: planned.provenance,
             })
             .collect();
-        let write_ahead = Manifest::new(
+        let write_ahead = StrategyManifest::new(
             KiroCliInstallStrategy.name(),
             "2026-01-01T00:00:00Z",
             ".",
@@ -750,7 +807,7 @@ mod tests {
             Status::InProgress,
             in_progress_files,
         );
-        super::super::manifest::write_manifest(&target_dir, &write_ahead).unwrap();
+        super::super::manifest::upsert_strategy(&target_dir, write_ahead).unwrap();
 
         // Run only the phases a crash before `ContextInstallPhase`/
         // `AgentInstallPhase` would have completed, directly --
@@ -886,8 +943,11 @@ mod tests {
         let manifest = super::super::manifest::read_manifest(&target_dir)
             .unwrap()
             .unwrap();
-        assert_eq!(manifest.files.len(), 1);
-        assert_eq!(manifest.files[0].path, ".kiro/agents/agent.json");
+        assert_eq!(manifest.strategies[0].files.len(), 1);
+        assert_eq!(
+            manifest.strategies[0].files[0].path,
+            ".kiro/agents/agent.json"
+        );
         assert!(!target_dir.join(".kiro/agents/README.md").exists());
 
         fs::remove_dir_all(&target_dir).ok();
@@ -1005,10 +1065,10 @@ mod tests {
         let manifest = super::super::manifest::read_manifest(&target_dir)
             .unwrap()
             .expect("manifest must exist after install");
-        assert_eq!(manifest.destination, ".");
-        assert_eq!(manifest.files.len(), 1);
+        assert_eq!(manifest.strategies[0].destination, ".");
+        assert_eq!(manifest.strategies[0].files.len(), 1);
         assert_eq!(
-            manifest.files[0].path,
+            manifest.strategies[0].files[0].path,
             ".konductor/skills/code-review/SKILL.md"
         );
 
@@ -1304,7 +1364,7 @@ mod tests {
         let manifest = super::super::manifest::read_manifest(&target_dir)
             .unwrap()
             .unwrap();
-        assert!(manifest
+        assert!(manifest.strategies[0]
             .files
             .iter()
             .all(|f| !f.path.contains("relative-link") && !f.path.contains("absolute-link")));
@@ -1346,9 +1406,9 @@ mod tests {
         let manifest = super::super::manifest::read_manifest(&target_dir)
             .unwrap()
             .unwrap();
-        assert_eq!(manifest.files.len(), 1);
+        assert_eq!(manifest.strategies[0].files.len(), 1);
         assert_eq!(
-            manifest.files[0].path,
+            manifest.strategies[0].files[0].path,
             ".konductor/skills/real-skill/SKILL.md"
         );
 
@@ -1383,7 +1443,7 @@ mod tests {
         let manifest = super::super::manifest::read_manifest(&target_dir)
             .unwrap()
             .unwrap();
-        assert!(manifest
+        assert!(manifest.strategies[0]
             .files
             .iter()
             .any(|f| f.path == ".konductor/skills/nested/scripts/deep/helper.py"));
@@ -1413,9 +1473,9 @@ mod tests {
         let manifest = super::super::manifest::read_manifest(&target_dir)
             .unwrap()
             .unwrap();
-        assert_eq!(manifest.files.len(), 1);
+        assert_eq!(manifest.strategies[0].files.len(), 1);
         assert_eq!(
-            manifest.files[0].path,
+            manifest.strategies[0].files[0].path,
             ".konductor/skills/code-review/SKILL.md"
         );
 
@@ -1445,8 +1505,11 @@ mod tests {
         let manifest = super::super::manifest::read_manifest(&target_dir)
             .unwrap()
             .unwrap();
-        assert_eq!(manifest.files.len(), 1);
-        assert_eq!(manifest.files[0].path, ".kiro/agents/k-example.json");
+        assert_eq!(manifest.strategies[0].files.len(), 1);
+        assert_eq!(
+            manifest.strategies[0].files[0].path,
+            ".kiro/agents/k-example.json"
+        );
 
         fs::remove_dir_all(&target_dir).ok();
         fs::remove_dir_all(&repo_root).ok();
@@ -1487,7 +1550,7 @@ mod tests {
         let manifest = super::super::manifest::read_manifest(&target_dir)
             .unwrap()
             .unwrap();
-        assert!(manifest
+        assert!(manifest.strategies[0]
             .files
             .iter()
             .any(|f| f.path == ".konductor/sops/asdlc-plan.sop.md"));
@@ -1762,7 +1825,7 @@ mod tests {
         let manifest = super::super::manifest::read_manifest(&target_dir)
             .unwrap()
             .expect("manifest must exist after install");
-        let entry = manifest
+        let entry = manifest.strategies[0]
             .files
             .iter()
             .find(|f| f.path == ".kiro/context/routing-rules.md")
@@ -1781,7 +1844,7 @@ mod tests {
     }
 
     /// Regression guard for the runtime constraint this feature depends
-    /// on (see `rewrite_context_resources`): `kiro-cli` does not
+    /// on (see `rewrite_context_resources`): `kiro-cli-v2` does not
     /// percent-decode `file://` resource paths, so an install root
     /// containing a space and a non-ASCII character must still produce
     /// a raw, unencoded path -- never `%20`/`%C3%A9` -- or context
@@ -1824,7 +1887,7 @@ mod tests {
         );
         assert!(
             !text.contains("%20"),
-            "path must not be percent-encoded (kiro-cli does not percent-decode), got: {text}"
+            "path must not be percent-encoded (kiro-cli-v2 does not percent-decode), got: {text}"
         );
         assert!(
             !text.contains("%C3%A9") && !text.contains("%c3%a9"),
@@ -1999,14 +2062,14 @@ mod tests {
         let manifest = super::super::manifest::read_manifest(&target_dir)
             .unwrap()
             .unwrap();
-        let skill_entry = manifest
+        let skill_entry = manifest.strategies[0]
             .files
             .iter()
             .find(|f| f.path == ".konductor/skills/code-review/SKILL.md")
             .expect("the overwritten skill file must be recorded");
         assert_eq!(skill_entry.provenance, Provenance::ReplacedForeign);
         assert!(
-            manifest
+            manifest.strategies[0]
                 .files
                 .iter()
                 .all(|f| !f.path.ends_with("/notes.md")),
@@ -2436,7 +2499,7 @@ mod tests {
         let manifest = super::super::manifest::read_manifest(&target_dir)
             .unwrap()
             .unwrap();
-        let entry = manifest
+        let entry = manifest.strategies[0]
             .files
             .iter()
             .find(|f| f.path == ".konductor/skills/code-review/SKILL.md")
@@ -2538,9 +2601,12 @@ mod tests {
         let manifest = super::super::manifest::read_manifest(&target_dir)
             .unwrap()
             .expect("manifest must exist after install");
-        assert_eq!(manifest.status, super::super::manifest::Status::Complete);
-        assert!(!manifest.files.is_empty());
-        for file in &manifest.files {
+        assert_eq!(
+            manifest.strategies[0].status,
+            super::super::manifest::Status::Complete
+        );
+        assert!(!manifest.strategies[0].files.is_empty());
+        for file in &manifest.strategies[0].files {
             let hash = file.sha256.as_deref().unwrap_or_else(|| {
                 panic!("{} must have a hash once status is complete", file.path)
             });
@@ -2615,13 +2681,13 @@ mod tests {
             .unwrap()
             .expect("install's write-ahead manifest must remain after the forced copy failure");
         assert_eq!(
-            on_disk.status,
+            on_disk.strategies[0].status,
             super::super::manifest::Status::InProgress,
             "a failure before the final Complete rewrite must leave the manifest in_progress, \
              not complete and not absent"
         );
         assert!(
-            on_disk
+            on_disk.strategies[0]
                 .files
                 .iter()
                 .any(|f| f.path == ".kiro/agents/k-example.json"),
@@ -2652,7 +2718,7 @@ mod tests {
         let manifest = super::super::manifest::read_manifest(&target_dir)
             .unwrap()
             .unwrap();
-        let entry = manifest
+        let entry = manifest.strategies[0]
             .files
             .iter()
             .find(|f| f.path == ".kiro/agents/k-example.json")
@@ -2700,7 +2766,7 @@ mod tests {
         let manifest = super::super::manifest::read_manifest(&target_dir)
             .unwrap()
             .unwrap();
-        let entry = manifest
+        let entry = manifest.strategies[0]
             .files
             .iter()
             .find(|f| f.path == ".kiro/agents/k-example.json")
@@ -2745,7 +2811,7 @@ mod tests {
         let manifest = super::super::manifest::read_manifest(&target_dir)
             .unwrap()
             .unwrap();
-        let entry = manifest
+        let entry = manifest.strategies[0]
             .files
             .iter()
             .find(|f| f.path == ".kiro/agents/k-example.json")
@@ -2828,11 +2894,11 @@ mod tests {
             .unwrap()
             .expect("a manifest must exist after the failed second install");
         assert_eq!(
-            manifest.status,
+            manifest.strategies[0].status,
             super::super::manifest::Status::InProgress,
             "the failed second run's write-ahead manifest, not the stale first run's, must be on disk"
         );
-        let stable_entry = manifest
+        let stable_entry = manifest.strategies[0]
             .files
             .iter()
             .find(|f| f.path == ".kiro/agents/stable-agent.json")
@@ -2885,7 +2951,7 @@ mod tests {
         let manifest = super::super::manifest::read_manifest(&target_dir)
             .unwrap()
             .expect("manifest must exist after install");
-        let entry = manifest
+        let entry = manifest.strategies[0]
             .files
             .iter()
             .find(|f| f.path == ".konductor/bin/skill-lookup-mcp")
@@ -2921,7 +2987,7 @@ mod tests {
         let manifest = super::super::manifest::read_manifest(&target_dir)
             .unwrap()
             .unwrap();
-        assert!(manifest
+        assert!(manifest.strategies[0]
             .files
             .iter()
             .all(|f| !f.path.starts_with(".konductor/bin/")));
@@ -2989,7 +3055,7 @@ mod tests {
         let manifest = super::super::manifest::read_manifest(&target_dir)
             .unwrap()
             .unwrap();
-        let entry = manifest
+        let entry = manifest.strategies[0]
             .files
             .iter()
             .find(|f| f.path == ".konductor/bin/skill-lookup-mcp")
@@ -3026,7 +3092,7 @@ mod tests {
         let manifest = super::super::manifest::read_manifest(&target_dir)
             .unwrap()
             .unwrap();
-        let entry = manifest
+        let entry = manifest.strategies[0]
             .files
             .iter()
             .find(|f| f.path == ".konductor/bin/skill-lookup-mcp")
@@ -3260,7 +3326,7 @@ mod tests {
         let manifest = super::super::manifest::read_manifest(&target_dir)
             .unwrap()
             .expect("manifest must exist after install");
-        let claude_entry = manifest
+        let claude_entry = manifest.strategies[0]
             .files
             .iter()
             .find(|f| f.path == ".claude/settings.json")
@@ -3454,7 +3520,7 @@ mod tests {
             .unwrap()
             .expect("manifest must exist after install");
         assert!(
-            !manifest
+            !manifest.strategies[0]
                 .files
                 .iter()
                 .any(|f| f.path == ".claude/settings.json"),
@@ -4002,21 +4068,115 @@ mod tests {
         assert!(converted.contains("name: \"sop-ticket-sync\""));
         assert!(converted.contains("Syncs a ticket."));
 
-        // The converted file is correctly recorded in the FINAL manifest
-        // with real provenance -- proving `attach_provenance` matched it
-        // against the write-ahead plan rather than merely not crashing.
+        // The converted file is intentionally not recorded in Kiro's
+        // own manifest slot, so Kiro's `uninstall` never deletes it.
+        // `claude`'s own slot, if separately installed at this target,
+        // owns and manages this path on its own.
         let manifest = super::super::manifest::read_manifest(&target_dir)
             .unwrap()
             .expect("manifest must exist after install");
-        let claude_entry = manifest
-            .files
-            .iter()
-            .find(|f| f.path == ".claude/skills/sop-ticket-sync/SKILL.md")
-            .expect("converted Claude SOP-skill file must be recorded in the final manifest");
+        assert!(
+            manifest.strategies[0]
+                .files
+                .iter()
+                .all(|f| f.path != ".claude/skills/sop-ticket-sync/SKILL.md"),
+            "the dual-marker-converted Claude SOP-skill file must NOT be claimed by Kiro's \
+             own manifest slot -- Kiro's uninstall must never delete it"
+        );
         assert_eq!(
-            claude_entry.provenance,
-            super::super::manifest::Provenance::Created,
-            "a file that didn't exist before this run must be classified Created"
+            manifest.strategies.len(),
+            1,
+            "this run only ever installs the kiro-cli-v2 strategy; the dual-marker file's \
+             exclusion must not spuriously create or affect any other slot"
+        );
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// The write-ahead (`InProgress`) manifest built from `plan` must
+    /// exclude the dual-marker `.claude/skills/sop-<name>/SKILL.md`
+    /// path too, not just the complete manifest (covered above).
+    /// Without this exclusion, a crash between the write-ahead write
+    /// and the complete write would leave Kiro's own `InProgress` slot
+    /// claiming this path, and `uninstall` (no status gate) would
+    /// delete a file `claude`'s slot may own.
+    ///
+    /// Calls the same real plan-building functions `install_from_local`
+    /// calls, so this exercises real production planning code rather
+    /// than reimplementing it. The filter is duplicated inline since
+    /// `DUAL_MARKER_SOP_SKILL_PREFIX` is a function-local const; this
+    /// test's positive assertion (`plan` does contain the dual-marker
+    /// path before filtering) proves the filter is actually removing
+    /// something, not vacuously passing on an empty case.
+    #[test]
+    fn install_from_local_write_ahead_manifest_excludes_dual_marker_sop_skill_files() {
+        let target_dir = scratch_dir("sop-dual-marker-write-ahead-target");
+        let repo_root = scratch_dir("sop-dual-marker-write-ahead-repo");
+        fs::create_dir_all(target_dir.join(".kiro")).unwrap();
+        fs::create_dir_all(target_dir.join(".claude")).unwrap();
+
+        seed_synthed_agent(&repo_root, "k-example", br#"{"name":"k-example"}"#);
+        seed_synthed_sop_scopes(&repo_root, &[("k-example", &["ticket-sync"])]);
+        seed_synthed_sop(&repo_root, "ticket-sync", b"# Ticket Sync\n\nKiro copy.\n");
+        let claude_sops_dir = repo_root
+            .join("dist")
+            .join(super::super::claude::CLAUDE_HARNESS_DIR)
+            .join("sops");
+        fs::create_dir_all(&claude_sops_dir).unwrap();
+        fs::write(
+            claude_sops_dir.join("ticket-sync.sop.md"),
+            b"## Overview\n\nSyncs a ticket.\n",
+        )
+        .unwrap();
+
+        let harness_dir = repo_root.join("dist").join(KiroCliV2Transformer.name());
+        let mut plan = plan_all_files(&harness_dir, &target_dir, None).unwrap();
+        let claude_sop_skill_plan =
+            plan_additive_claude_sop_skill_files(&repo_root, &target_dir, None).unwrap();
+        plan.extend(claude_sop_skill_plan);
+
+        const DUAL_MARKER_SOP_SKILL_PREFIX: &str = ".claude/skills/sop-";
+        assert!(
+            plan.iter()
+                .any(|p| p.manifest_path.starts_with(DUAL_MARKER_SOP_SKILL_PREFIX)),
+            "sanity check: the dual-marker branch must actually produce a planned file here, \
+             or this test would vacuously pass with nothing to filter"
+        );
+
+        let in_progress_files: Vec<ManifestFile> = plan
+            .iter()
+            .filter(|planned| {
+                !planned
+                    .manifest_path
+                    .starts_with(DUAL_MARKER_SOP_SKILL_PREFIX)
+            })
+            .map(|planned| ManifestFile {
+                path: planned.manifest_path.clone(),
+                sha256: None,
+                provenance: planned.provenance,
+            })
+            .collect();
+        let write_ahead = StrategyManifest::new(
+            KiroCliInstallStrategy.name(),
+            "2026-01-01T00:00:00Z",
+            ".",
+            None,
+            Status::InProgress,
+            in_progress_files,
+        );
+        super::super::manifest::upsert_strategy(&target_dir, write_ahead).unwrap();
+
+        let manifest = super::super::manifest::read_manifest(&target_dir)
+            .unwrap()
+            .expect("write-ahead manifest must exist");
+        assert!(
+            manifest.strategies[0]
+                .files
+                .iter()
+                .all(|f| !f.path.starts_with(DUAL_MARKER_SOP_SKILL_PREFIX)),
+            "the WRITE-AHEAD manifest must never claim a dual-marker SOP-skill path, \
+             the exact window that would otherwise leave it unprotected"
         );
 
         fs::remove_dir_all(&target_dir).ok();

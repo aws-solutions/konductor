@@ -35,6 +35,7 @@
   },
   "clientConfig": {
     "kiroCli": {
+      "welcomeMessage": "I'm your technical program manager. I coordinate across projects — timelines, status reporting, risk tracking, and program-level decision documents. Tell me the program or the coordination problem.",
       "tools": [
         "@builtin",
         "subagent"

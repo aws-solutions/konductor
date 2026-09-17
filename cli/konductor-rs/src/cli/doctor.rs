@@ -104,11 +104,12 @@ use crate::cli::config;
 use crate::cli::init;
 use crate::cli::install::artifact::sha256_hex;
 use crate::cli::install::index::{self, IndexEntryStatus};
-use crate::cli::install::manifest::{self, Manifest, Status};
+use crate::cli::install::manifest::{self, Status, StrategyManifest};
 use crate::cli::install::registry;
 use crate::cli::install::resolve_destination;
 use crate::cli::install::resource_rewrite::CLAUDE_SETTINGS_RELATIVE_PATH;
 use crate::cli::install::runtime::{self, Runtime};
+use crate::cli::output::ColorMode;
 use crate::cli::synth::parse_canonical;
 
 /// The `--harness <value>` fragment every "re-run `konductor install`"
@@ -120,21 +121,25 @@ use crate::cli::synth::parse_canonical;
 const HARNESS_PLACEHOLDER: &str = "--harness <kiro-cli-v2|kiro-v3|claude>";
 
 /// Best-effort `--harness <value>` remediation fragment for a manifest's
-/// recorded `strategy` (an `InstallStrategy::name()`, e.g. `"kiro-cli"`)
-/// -- looks up that strategy's own `harness_dir()` (e.g. `"kiro-cli-v2"`)
-/// in `registry::STRATEGIES` so a "re-run `konductor install`"
-/// remediation for an install `doctor` can already see on disk names
-/// the harness that produced it, instead of the generic
-/// `HARNESS_PLACEHOLDER`. Falls back to `HARNESS_PLACEHOLDER` when
-/// `strategy_name` is not registered (e.g. a manifest written by a
-/// newer `konductor` build this binary doesn't know about).
+/// recorded `strategy` (an `InstallStrategy::name()`, e.g. `"kiro-cli-v2"`)
+/// so a "re-run `konductor install`" remediation for an install `doctor`
+/// can already see on disk names the harness that produced it, instead
+/// of the generic `HARNESS_PLACEHOLDER`. `name()` and `harness_dir()`
+/// are identical by construction (the harness/strategy name unification
+/// -- see `install.rs`'s `InstallStrategy` trait doc comment), so this
+/// no longer needs to look up a DIFFERENT value to display -- only
+/// whether `strategy_name` is still a REGISTERED strategy at all,
+/// falling back to `HARNESS_PLACEHOLDER` when it is not (e.g. a
+/// manifest written by a newer `konductor` build this binary doesn't
+/// know about).
 fn harness_hint(strategy_name: &str) -> String {
-    match registry::STRATEGIES
+    if registry::STRATEGIES
         .iter()
-        .find(|s| s.name() == strategy_name)
+        .any(|s| s.name() == strategy_name)
     {
-        Some(strategy) => format!("--harness {}", strategy.harness_dir()),
-        None => HARNESS_PLACEHOLDER.to_string(),
+        format!("--harness {strategy_name}")
+    } else {
+        HARNESS_PLACEHOLDER.to_string()
     }
 }
 
@@ -179,6 +184,19 @@ impl CheckStatus {
             CheckStatus::Warn => "warn",
             CheckStatus::Failed => "failed",
             CheckStatus::Stale => "stale",
+        }
+    }
+
+    /// One glyph per status, prefixed onto each report line alongside
+    /// the colorized label. `Failed`/`Stale` share ✗ since both are
+    /// already red via `status::error`. Always printed regardless of
+    /// `ColorMode` -- the icon is content, not a color affordance.
+    fn icon(self) -> &'static str {
+        match self {
+            CheckStatus::Ok => "✓",
+            CheckStatus::Info => "ℹ",
+            CheckStatus::Warn => "⚠",
+            CheckStatus::Failed | CheckStatus::Stale => "✗",
         }
     }
 
@@ -329,6 +347,7 @@ impl CheckResult {
 /// non-`None` `from`/`target` -- see `dispatch_doctor_all` for the
 /// iteration/reporting path this delegates to. Not passing `--all`
 /// preserves the exact prior single-target behavior (purely additive).
+#[allow(clippy::too_many_arguments)]
 pub fn dispatch_doctor_with(
     target_dir: &Path,
     from: Option<String>,
@@ -337,9 +356,10 @@ pub fn dispatch_doctor_with(
     verbose: bool,
     json: bool,
     home_dir_override: Option<&Path>,
+    color: ColorMode,
 ) -> u8 {
     if all {
-        return dispatch_doctor_all(target_dir, verbose, json, home_dir_override);
+        return dispatch_doctor_all(target_dir, verbose, json, home_dir_override, color);
     }
 
     let destination: PathBuf = match resolve_destination(target.as_deref()) {
@@ -353,6 +373,7 @@ pub fn dispatch_doctor_with(
                 &message,
                 Vec::new(),
                 json,
+                color,
             );
             return EXIT_USAGE_ERROR;
         }
@@ -367,7 +388,7 @@ pub fn dispatch_doctor_with(
     if json {
         println!("{}", format_report_json(&results));
     } else {
-        print_report(&results, verbose);
+        print_report(&results, verbose, color);
     }
 
     if results.iter().any(|r| r.status.is_failing()) {
@@ -460,6 +481,7 @@ fn dispatch_doctor_all(
     verbose: bool,
     json: bool,
     home_dir_override: Option<&Path>,
+    color: ColorMode,
 ) -> u8 {
     let index = match index::read_index() {
         Ok(index) => index,
@@ -472,6 +494,7 @@ fn dispatch_doctor_all(
                 &format!("could not read install index: {err}"),
                 Vec::new(),
                 json,
+                color,
             );
             return EXIT_USAGE_ERROR;
         }
@@ -479,13 +502,13 @@ fn dispatch_doctor_all(
     let entries = index.map(|i| i.installs).unwrap_or_default();
 
     if entries.is_empty() {
-        super::report::report_no_tracked_installs("doctor", json);
+        super::report::report_no_tracked_installs("doctor", json, color);
         return 0;
     }
 
     let duplicates = index::duplicate_target_dirs(&entries);
     if !duplicates.is_empty() {
-        report_corrupted_index_doctor(&duplicates, json);
+        report_corrupted_index_doctor(&duplicates, json, color);
         return EXIT_USAGE_ERROR;
     }
 
@@ -504,8 +527,11 @@ fn dispatch_doctor_all(
         println!("{}", format_report_json_all(&per_target));
     } else {
         for (target, results) in &per_target {
-            println!("== {target} ==");
-            print_report(results, verbose);
+            println!(
+                "{}",
+                crate::cli::output::status::dim(color, &format!("== {target} =="))
+            );
+            print_report(results, verbose, color);
         }
     }
 
@@ -518,7 +544,7 @@ fn dispatch_doctor_all(
 /// hardcodes `"uninstall"` in both its message text and remediation, so
 /// it cannot be reused verbatim the way `report_no_tracked_installs`
 /// (which already takes `command` as a parameter) is above.
-fn report_corrupted_index_doctor(duplicates: &[String], json: bool) {
+fn report_corrupted_index_doctor(duplicates: &[String], json: bool, color: ColorMode) {
     let message = "install index is corrupted: duplicate target_dir entries found; \
                     fix ~/.konductor/installs by hand before running doctor --all";
     if json {
@@ -537,7 +563,10 @@ fn report_corrupted_index_doctor(duplicates: &[String], json: bool) {
         .map(|d| format!("  - {d}"))
         .collect::<Vec<_>>()
         .join("\n");
-    eprintln!("konductor doctor: {message}. Duplicated target_dir(s):\n{listed}");
+    eprintln!(
+        "{} {message}. Duplicated target_dir(s):\n{listed}",
+        crate::cli::output::error_prefix(color, "konductor doctor:")
+    );
 }
 
 /// `--all` + `--json`'s batched document: one object per target
@@ -652,7 +681,15 @@ fn resolve_source_for_checks(
     }
 
     match manifest::read_manifest(destination) {
-        Ok(Some(manifest)) => match manifest.source {
+        // A target's manifest can now track more than
+        // one strategy. Doctor's source resolution is a diagnostic, not
+        // a mutating operation, so it resolves against the FIRST
+        // tracked slot rather than requiring a strategy to be named --
+        // in the overwhelmingly common single-strategy case this is
+        // exactly the same slot that always existed; a target with 2+
+        // strategies gets a diagnostic scoped to just one of them
+        // rather than a hard failure.
+        Ok(Some(manifest)) => match manifest.strategies.first().and_then(|s| s.source.clone()) {
             Some(source) => {
                 let source_path = PathBuf::from(&source);
                 // Deliberately `exists()`, not `is_dir()`: this check only
@@ -787,12 +824,17 @@ fn resolve_source_for_checks(
             missing_recorded_source: false,
             unsupported_schema_version: false,
         },
-        // `CreateDirFailed`/`WriteFailed` are write-path errors that
-        // `read_manifest` never returns -- unreachable in practice, but
-        // handled the same conservative way rather than panicking if
-        // that ever changes.
+        // `CreateDirFailed`/`WriteFailed`/`Lock`/`DeleteFailed` are
+        // write-path errors (`Lock` specifically from `upsert_strategy`'s
+        // manifest-lock acquisition; `DeleteFailed`
+        // from `delete_and_remove_strategy_locked`'s caller-supplied
+        // delete step) that `read_manifest` never
+        // returns -- unreachable in practice, but handled the same
+        // conservative way rather than panicking if that ever changes.
         Err(manifest::ManifestError::CreateDirFailed { .. })
-        | Err(manifest::ManifestError::WriteFailed { .. }) => ResolvedSource {
+        | Err(manifest::ManifestError::WriteFailed { .. })
+        | Err(manifest::ManifestError::Lock(_))
+        | Err(manifest::ManifestError::DeleteFailed(_)) => ResolvedSource {
             path: target_dir.to_path_buf(),
             fallback_note: Some(format!(
                 "WARNING: manifest unreadable -- falling back to an UNVALIDATED cwd: {}. \
@@ -1105,7 +1147,20 @@ fn check_manifest(destination: &Path) -> CheckResult {
         }
     };
 
-    if manifest.status == Status::InProgress {
+    // Aggregated across every tracked strategy slot -- `check_manifest`
+    // is read-only diagnostics, not a mutating operation, so (unlike
+    // update/uninstall) there is no need to refuse on 2+ tracked
+    // strategies; it simply reports on all of them. The remediation
+    // hint names whichever slot actually triggered the condition below
+    // (InProgress, or the first slot with drifted files), not just
+    // `manifest.strategies.first()` -- a target with an unrelated
+    // healthy first slot must not get a hint pointing at reinstalling
+    // that healthy slot instead of the broken one.
+    if let Some(slot) = manifest
+        .strategies
+        .iter()
+        .find(|slot| slot.status == Status::InProgress)
+    {
         return CheckResult::failed(
             "manifest",
             format!(
@@ -1115,13 +1170,21 @@ fn check_manifest(destination: &Path) -> CheckResult {
             ),
             format!(
                 "re-run `konductor install {}` to complete or repair the installation",
-                harness_hint(&manifest.strategy)
+                harness_hint(slot.strategy.as_str())
             ),
             vec!["manifest status is InProgress, not Complete".to_string()],
         );
     }
 
-    let drifted = drifted_files(destination, &manifest);
+    let mut drifted: Vec<String> = Vec::new();
+    let mut drifted_strategy_name: Option<&str> = None;
+    for slot in &manifest.strategies {
+        let files = drifted_files(destination, slot);
+        if !files.is_empty() && drifted_strategy_name.is_none() {
+            drifted_strategy_name = Some(slot.strategy.as_str());
+        }
+        drifted.extend(files);
+    }
     if !drifted.is_empty() {
         let count = drifted.len();
         return CheckResult::stale(
@@ -1132,18 +1195,19 @@ fn check_manifest(destination: &Path) -> CheckResult {
             ),
             format!(
                 "re-run `konductor install {}` to refresh the installed content",
-                harness_hint(&manifest.strategy)
+                harness_hint(drifted_strategy_name.unwrap_or(""))
             ),
             drifted,
         );
     }
 
+    let total_files: usize = manifest.strategies.iter().map(|s| s.files.len()).sum();
     CheckResult::ok(
         "manifest",
         format!(
             "manifest at {} is Complete and every recorded file matches ({} file(s))",
             manifest_path.display(),
-            manifest.files.len()
+            total_files
         ),
     )
 }
@@ -1168,7 +1232,7 @@ fn check_manifest(destination: &Path) -> CheckResult {
 /// use of a file they own -- not drift a "re-run install" remediation
 /// applies to -- so it must never surface here the way a real
 /// hash mismatch on a file Konductor fully owns would.
-fn drifted_files(destination: &Path, manifest: &Manifest) -> Vec<String> {
+fn drifted_files(destination: &Path, manifest: &StrategyManifest) -> Vec<String> {
     manifest
         .files
         .iter()
@@ -1282,12 +1346,32 @@ fn check_index_status(destination: &Path) -> CheckResult {
         );
     };
 
-    // Retains `strategy` alongside `status` (not just the latter) so
-    // the disagreement branch below can name the harness that produced
-    // this install via `harness_hint`, instead of the generic
-    // `HARNESS_PLACEHOLDER`.
+    // Retains a strategy name alongside the aggregated status so the
+    // disagreement branch below can name the harness that produced this
+    // install via `harness_hint`, instead of the generic
+    // `HARNESS_PLACEHOLDER`. Aggregated across every
+    // tracked slot -- `InProgress` if ANY slot is, `Complete` only if
+    // every slot is -- and the FIRST tracked strategy's name is used
+    // for the hint (a target with 2+ strategies gets a hint scoped to
+    // just one of them, matching `check_manifest`'s own simplification).
     let (manifest_status, manifest_strategy) = match manifest::read_manifest(destination) {
-        Ok(Some(manifest)) => (manifest.status, manifest.strategy),
+        Ok(Some(manifest)) => {
+            let status = if manifest
+                .strategies
+                .iter()
+                .any(|s| s.status == Status::InProgress)
+            {
+                Status::InProgress
+            } else {
+                Status::Complete
+            };
+            let strategy = manifest
+                .strategies
+                .first()
+                .map(|s| s.strategy.clone())
+                .unwrap_or_default();
+            (status, strategy)
+        }
         // No manifest, or unreadable -- `check_manifest` already
         // surfaces this loudly on its own. Nothing for THIS check to
         // compare against, so it stays a quiet `Info` rather than
@@ -1623,20 +1707,28 @@ fn check_role_allowlists() -> CheckResult {
 /// indented further, so nothing is hidden behind "the first error only"
 /// (relevant chiefly for a future multi-error `parse_canonical`, but
 /// applied uniformly to every check for consistency).
-fn print_report(results: &[CheckResult], verbose: bool) {
+fn print_report(results: &[CheckResult], verbose: bool, color: ColorMode) {
     for result in results {
+        let label = result.status.label();
+        let icon = result.status.icon();
+        let colored_label = match result.status {
+            CheckStatus::Ok => super::output::status::ok(color, label),
+            CheckStatus::Info => super::output::status::info(color, label),
+            CheckStatus::Warn => super::output::status::warn(color, label),
+            CheckStatus::Failed | CheckStatus::Stale => super::output::status::error(color, label),
+        };
         println!(
-            "{}: {} — {}",
-            result.status.label(),
-            result.name,
-            result.summary
+            "{icon} {colored_label}: {} — {}",
+            result.name, result.summary
         );
         if let Some(remediation) = &result.remediation {
-            println!("    fix: {remediation}");
+            let wrapped = crate::cli::output::wrap_indented(&format!("fix: {remediation}"), "    ");
+            println!("{}", crate::cli::output::status::dim(color, &wrapped));
         }
         if verbose {
             for line in &result.detail {
-                println!("    detail: {line}");
+                let wrapped = crate::cli::output::wrap_indented(&format!("detail: {line}"), "    ");
+                println!("{}", crate::cli::output::status::dim(color, &wrapped));
             }
         }
     }
@@ -1780,6 +1872,7 @@ mod tests {
             false,
             false,
             Some(&home),
+            ColorMode::disabled(),
         );
 
         assert_eq!(code, 0, "a healthy empty project must exit 0");
@@ -1813,6 +1906,7 @@ mod tests {
             false,
             false,
             Some(&home),
+            ColorMode::disabled(),
         );
 
         assert_eq!(code, EXIT_HALTED);
@@ -1857,6 +1951,7 @@ mod tests {
             false,
             false,
             Some(&home),
+            ColorMode::disabled(),
         );
 
         assert_eq!(
@@ -1944,6 +2039,7 @@ mod tests {
             false,
             false,
             Some(&home),
+            ColorMode::disabled(),
         );
 
         assert_eq!(code, EXIT_HALTED);
@@ -1991,6 +2087,7 @@ mod tests {
             false,
             false,
             Some(&home),
+            ColorMode::disabled(),
         );
 
         assert_eq!(code, EXIT_HALTED);
@@ -2033,6 +2130,7 @@ mod tests {
             false,
             false,
             Some(&home),
+            ColorMode::disabled(),
         );
 
         assert_eq!(code, 0);
@@ -2056,8 +2154,8 @@ mod tests {
         fs::write(&tracked_path, b"original content").unwrap();
 
         let recorded_hash = sha256_hex(b"original content");
-        let written = Manifest::new(
-            "kiro-cli",
+        let written = StrategyManifest::new(
+            "kiro-cli-v2",
             "2026-01-15T09:30:00Z",
             ".",
             None,
@@ -2082,6 +2180,7 @@ mod tests {
             false,
             false,
             Some(&home),
+            ColorMode::disabled(),
         );
 
         assert_eq!(code, EXIT_HALTED);
@@ -2110,8 +2209,8 @@ mod tests {
         fs::write(&tracked_path, b"original content").unwrap();
 
         let recorded_hash = sha256_hex(b"original content");
-        let written = Manifest::new(
-            "kiro-cli",
+        let written = StrategyManifest::new(
+            "kiro-cli-v2",
             "2026-01-15T09:30:00Z",
             ".",
             None,
@@ -2138,6 +2237,7 @@ mod tests {
             false,
             false,
             Some(&home),
+            ColorMode::disabled(),
         );
 
         assert_eq!(
@@ -2159,8 +2259,8 @@ mod tests {
         let destination = scratch_dir("in-progress-destination");
         let home = scratch_dir("in-progress-home");
 
-        let written = Manifest::new(
-            "kiro-cli",
+        let written = StrategyManifest::new(
+            "kiro-cli-v2",
             "2026-01-15T09:30:00Z",
             ".",
             None,
@@ -2181,6 +2281,7 @@ mod tests {
             false,
             false,
             Some(&home),
+            ColorMode::disabled(),
         );
 
         assert_eq!(code, EXIT_HALTED);
@@ -2188,6 +2289,122 @@ mod tests {
         fs::remove_dir_all(&source).ok();
         fs::remove_dir_all(&destination).ok();
         fs::remove_dir_all(&home).ok();
+    }
+
+    /// Review fix regression: with 2+ tracked strategy slots, the
+    /// `InProgress` remediation hint must name the slot that is
+    /// ACTUALLY `InProgress` -- not `manifest.strategies.first()`. Here
+    /// the first slot (`claude`) is healthy and the second (`kiro-v3`)
+    /// is the broken one; a hint pointing at reinstalling `claude`
+    /// would not fix anything.
+    #[test]
+    fn check_manifest_names_the_actually_in_progress_strategy_not_the_first() {
+        let destination = scratch_dir("check-manifest-in-progress-not-first");
+        let full = manifest::Manifest {
+            schema_version: 2,
+            strategies: vec![
+                StrategyManifest::new(
+                    "claude",
+                    "2026-01-15T09:30:00Z",
+                    ".",
+                    None,
+                    Status::Complete,
+                    vec![],
+                ),
+                StrategyManifest::new(
+                    "kiro-v3",
+                    "2026-01-15T09:31:00Z",
+                    ".",
+                    None,
+                    Status::InProgress,
+                    vec![],
+                ),
+            ],
+        };
+        let path = manifest::manifest_path(&destination);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(&path, serde_json::to_string_pretty(&full).unwrap()).unwrap();
+
+        let result = check_manifest(&destination);
+        assert_eq!(result.status, CheckStatus::Failed);
+        let remediation = result
+            .remediation
+            .as_ref()
+            .expect("a failed check must carry remediation");
+        assert!(
+            remediation.contains("--harness kiro-v3"),
+            "remediation must name the slot that is actually InProgress, got: {remediation}"
+        );
+        assert!(
+            !remediation.contains("--harness claude"),
+            "remediation must not point at reinstalling the healthy first slot, \
+             got: {remediation}"
+        );
+
+        fs::remove_dir_all(&destination).ok();
+    }
+
+    /// Sibling of the above for the drift path: the first slot
+    /// (`claude`) has no drifted files (its one file carries no
+    /// recorded hash, so `drifted_files` skips it), and the second slot
+    /// (`kiro-v3`) has a file missing on disk. The remediation hint
+    /// must name `kiro-v3`, not the healthy first slot.
+    #[test]
+    fn check_manifest_names_the_actually_drifted_strategy_not_the_first() {
+        let destination = scratch_dir("check-manifest-drift-not-first");
+        let full = manifest::Manifest {
+            schema_version: 2,
+            strategies: vec![
+                StrategyManifest::new(
+                    "claude",
+                    "2026-01-15T09:30:00Z",
+                    ".",
+                    None,
+                    Status::Complete,
+                    vec![manifest::ManifestFile {
+                        path: "claude-owned/file.txt".to_string(),
+                        sha256: None,
+                        provenance: manifest::Provenance::Created,
+                    }],
+                ),
+                StrategyManifest::new(
+                    "kiro-v3",
+                    "2026-01-15T09:31:00Z",
+                    ".",
+                    None,
+                    Status::Complete,
+                    vec![manifest::ManifestFile {
+                        path: "kiro-owned/missing.json".to_string(),
+                        sha256: Some(
+                            "0000000000000000000000000000000000000000000000000000000000000000"
+                                .to_string(),
+                        ),
+                        provenance: manifest::Provenance::Created,
+                    }],
+                ),
+            ],
+        };
+        let path = manifest::manifest_path(&destination);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(&path, serde_json::to_string_pretty(&full).unwrap()).unwrap();
+
+        let result = check_manifest(&destination);
+        assert_eq!(result.status, CheckStatus::Stale);
+        let remediation = result
+            .remediation
+            .as_ref()
+            .expect("a stale check must carry remediation");
+        assert!(
+            remediation.contains("--harness kiro-v3"),
+            "remediation must name the slot whose file actually drifted, got: {remediation}"
+        );
+        assert!(
+            !remediation.contains("--harness claude"),
+            "remediation must not point at reinstalling the healthy first slot, \
+             got: {remediation}"
+        );
+
+        fs::remove_dir_all(&destination).ok();
     }
 
     /// CRITICAL fix regression: `check_manifest` on a manifest with an
@@ -2207,7 +2424,7 @@ mod tests {
         fs::create_dir_all(path.parent().unwrap()).unwrap();
         fs::write(
             &path,
-            br#"{"schema_version":99,"strategy":"kiro-cli","installed_at":"2026-01-15T09:30:00Z","destination":".","status":"complete","files":[]}"#,
+            br#"{"schema_version":99,"strategy":"kiro-cli-v2","installed_at":"2026-01-15T09:30:00Z","destination":".","status":"complete","files":[]}"#,
         )
         .unwrap();
 
@@ -2256,7 +2473,7 @@ mod tests {
         fs::create_dir_all(path.parent().unwrap()).unwrap();
         fs::write(
             &path,
-            br#"{"schema_version":99,"strategy":"kiro-cli","installed_at":"2026-01-15T09:30:00Z","destination":".","status":"complete","files":[]}"#,
+            br#"{"schema_version":99,"strategy":"kiro-cli-v2","installed_at":"2026-01-15T09:30:00Z","destination":".","status":"complete","files":[]}"#,
         )
         .unwrap();
 
@@ -2303,6 +2520,7 @@ mod tests {
             false,
             false,
             Some(&home),
+            ColorMode::disabled(),
         );
         assert_eq!(code, EXIT_HALTED);
         assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
@@ -2353,7 +2571,7 @@ mod tests {
             .find(|c| c["name"] == "source")
             .expect("source check must be present");
         assert_eq!(source_check["status"], "failed");
-        assert!(source_check["detail"].as_array().unwrap().len() >= 1);
+        assert!(!source_check["detail"].as_array().unwrap().is_empty());
         assert_eq!(
             parsed["warnings"], false,
             "no check here is Warn, so the top-level warnings field must be false"
@@ -2375,7 +2593,7 @@ mod tests {
     #[test]
     fn format_report_json_warnings_field_is_true_when_a_check_is_warn_even_though_ok_is_true() {
         let results = vec![
-            CheckResult::ok("runtime", "detected runtime(s): kiro-cli"),
+            CheckResult::ok("runtime", "detected runtime(s): kiro-cli-v2"),
             CheckResult::warn(
                 "source",
                 "WARNING: manifest unreadable -- falling back to an UNVALIDATED cwd: /tmp",
@@ -2403,7 +2621,7 @@ mod tests {
     #[test]
     fn format_report_json_warnings_field_is_false_when_no_check_is_warn() {
         let results = vec![
-            CheckResult::ok("runtime", "detected runtime(s): kiro-cli"),
+            CheckResult::ok("runtime", "detected runtime(s): kiro-cli-v2"),
             CheckResult::ok("manifest", "manifest is Complete"),
         ];
         let rendered = format_report_json(&results);
@@ -2428,10 +2646,14 @@ mod tests {
     /// `install_from_local` path (this module has no dependency on any
     /// `InstallStrategy` -- these tests only need a manifest file to
     /// exist with specific content, not a real end-to-end install run).
-    fn write_manifest_for_test(dir: &Path, written: &Manifest) {
+    fn write_manifest_for_test(dir: &Path, written: &StrategyManifest) {
+        let full = manifest::Manifest {
+            schema_version: 2,
+            strategies: vec![written.clone()],
+        };
         let path = manifest::manifest_path(dir);
         fs::create_dir_all(path.parent().unwrap()).unwrap();
-        fs::write(&path, serde_json::to_string_pretty(written).unwrap()).unwrap();
+        fs::write(&path, serde_json::to_string_pretty(&full).unwrap()).unwrap();
     }
 
     // ── Manifest-based source resolution (check_source/check_config) ────
@@ -2465,8 +2687,8 @@ mod tests {
         // The REAL, well-formed source the manifest will record --
         // empty-but-valid, same as the healthy-project fixture
         // elsewhere in this file.
-        let written = Manifest::new(
-            "kiro-cli",
+        let written = StrategyManifest::new(
+            "kiro-cli-v2",
             "2026-01-15T09:30:00Z",
             ".",
             Some(real_source.display().to_string()),
@@ -2483,6 +2705,7 @@ mod tests {
             false,
             false,
             Some(&home),
+            ColorMode::disabled(),
         );
 
         assert_eq!(
@@ -2531,8 +2754,8 @@ mod tests {
         fs::create_dir_all(cwd.join("agent-sops")).unwrap();
         fs::create_dir_all(cwd.join("context")).unwrap();
 
-        let written = Manifest::new(
-            "kiro-cli",
+        let written = StrategyManifest::new(
+            "kiro-cli-v2",
             "2026-01-15T09:30:00Z",
             ".",
             Some(stale_source.display().to_string()),
@@ -2584,6 +2807,7 @@ mod tests {
             false,
             false,
             Some(&home),
+            ColorMode::disabled(),
         );
         assert_eq!(
             code, 0,
@@ -2646,6 +2870,7 @@ mod tests {
             false,
             false,
             Some(&home),
+            ColorMode::disabled(),
         );
         assert_eq!(
             code, 0,
@@ -2725,6 +2950,7 @@ mod tests {
             false,
             false,
             Some(&home),
+            ColorMode::disabled(),
         );
         assert_eq!(
             code, EXIT_HALTED,
@@ -2750,8 +2976,8 @@ mod tests {
         let destination = scratch_dir("explicit-from-override-destination");
         let home = scratch_dir("explicit-from-override-home");
 
-        let written = Manifest::new(
-            "kiro-cli",
+        let written = StrategyManifest::new(
+            "kiro-cli-v2",
             "2026-01-15T09:30:00Z",
             ".",
             Some(manifest_recorded_source.display().to_string()),
@@ -2779,6 +3005,7 @@ mod tests {
             false,
             false,
             Some(&home),
+            ColorMode::disabled(),
         );
         assert_eq!(code, 0);
         assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
@@ -2820,7 +3047,7 @@ mod tests {
         fs::create_dir_all(path.parent().unwrap()).unwrap();
         fs::write(
             &path,
-            br#"{"schema_version":1,"strategy":"kiro-cli","installed_at":"2026-01-15T09:30:00Z","destination":".","files":[]}"#,
+            br#"{"schema_version":1,"strategy":"kiro-cli-v2","installed_at":"2026-01-15T09:30:00Z","destination":".","files":[]}"#,
         )
         .unwrap();
 
@@ -2830,7 +3057,7 @@ mod tests {
             .expect("a legacy v1 manifest missing `source` must still parse")
             .expect("manifest must be present");
         assert_eq!(
-            loaded.source, None,
+            loaded.strategies[0].source, None,
             "a legacy manifest with no `source` key must default to None, not fail to deserialize"
         );
 
@@ -2878,6 +3105,7 @@ mod tests {
             false,
             false,
             Some(&home),
+            ColorMode::disabled(),
         );
         // Warn (like Info) never fails the overall run on its own.
         assert_eq!(code, 0);
@@ -2913,7 +3141,7 @@ mod tests {
         fs::create_dir_all(path.parent().unwrap()).unwrap();
         fs::write(
             &path,
-            br#"{"schema_version":1,"strategy":"kiro-cli","installed_at":"2026-01-15T09:30:00Z","destination":".","files":[]}"#,
+            br#"{"schema_version":1,"strategy":"kiro-cli-v2","installed_at":"2026-01-15T09:30:00Z","destination":".","files":[]}"#,
         )
         .unwrap();
 
@@ -3029,8 +3257,8 @@ mod tests {
         )
         .unwrap();
 
-        let written = Manifest::new(
-            "kiro-cli",
+        let written = StrategyManifest::new(
+            "kiro-cli-v2",
             "2026-01-15T09:30:00Z",
             ".",
             Some(stale_source.display().to_string()),
@@ -3075,6 +3303,7 @@ mod tests {
             false,
             false,
             Some(&home),
+            ColorMode::disabled(),
         );
         assert_ne!(
             code, EXIT_HALTED,
@@ -3138,6 +3367,7 @@ mod tests {
             false,
             false,
             Some(&home),
+            ColorMode::disabled(),
         );
         assert_eq!(
             code, EXIT_HALTED,
@@ -3442,6 +3672,7 @@ mod tests {
                 false,
                 true,
                 Some(&home),
+                ColorMode::disabled(),
             );
             assert_eq!(code, 0);
             assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
@@ -3550,6 +3781,7 @@ mod tests {
             false,
             false,
             Some(&broken_home),
+            ColorMode::disabled(),
         );
         assert_eq!(
             code, EXIT_HALTED,
@@ -3573,6 +3805,7 @@ mod tests {
             false,
             false,
             Some(&healthy_home),
+            ColorMode::disabled(),
         );
         assert_eq!(
             healthy_code, 0,
@@ -3666,20 +3899,20 @@ mod tests {
         let _home = HomeGuard::new("index-status-agree-complete-home");
         let destination = scratch_dir("index-status-agree-complete-dest");
 
-        let manifest = Manifest::new(
-            "kiro-cli",
+        let manifest = StrategyManifest::new(
+            "kiro-cli-v2",
             "2026-01-01T00:00:00Z",
             destination.display().to_string(),
             None,
             Status::Complete,
             vec![],
         );
-        manifest::write_manifest(&destination, &manifest).unwrap();
+        manifest::upsert_strategy(&destination, manifest).unwrap();
 
         let canonical = index::canonicalize_target_dir(&destination).unwrap();
         index::write_index(IndexEntry {
             target_dir: canonical,
-            strategy: "kiro-cli".to_string(),
+            strategies: vec!["kiro-cli-v2".to_string()],
             installed_at: "2026-01-01T00:00:00Z".to_string(),
             status: IndexEntryStatus::Complete,
         })
@@ -3701,20 +3934,20 @@ mod tests {
         let _home = HomeGuard::new("index-status-agree-in-progress-home");
         let destination = scratch_dir("index-status-agree-in-progress-dest");
 
-        let manifest = Manifest::new(
-            "kiro-cli",
+        let manifest = StrategyManifest::new(
+            "kiro-cli-v2",
             "2026-01-01T00:00:00Z",
             destination.display().to_string(),
             None,
             Status::InProgress,
             vec![],
         );
-        manifest::write_manifest(&destination, &manifest).unwrap();
+        manifest::upsert_strategy(&destination, manifest).unwrap();
 
         let canonical = index::canonicalize_target_dir(&destination).unwrap();
         index::write_index(IndexEntry {
             target_dir: canonical,
-            strategy: "kiro-cli".to_string(),
+            strategies: vec!["kiro-cli-v2".to_string()],
             installed_at: "2026-01-01T00:00:00Z".to_string(),
             status: IndexEntryStatus::InProgress,
         })
@@ -3736,20 +3969,20 @@ mod tests {
         let _home = HomeGuard::new("index-status-disagree-home");
         let destination = scratch_dir("index-status-disagree-dest");
 
-        let manifest = Manifest::new(
-            "kiro-cli",
+        let manifest = StrategyManifest::new(
+            "kiro-cli-v2",
             "2026-01-01T00:00:00Z",
             destination.display().to_string(),
             None,
             Status::InProgress,
             vec![],
         );
-        manifest::write_manifest(&destination, &manifest).unwrap();
+        manifest::upsert_strategy(&destination, manifest).unwrap();
 
         let canonical = index::canonicalize_target_dir(&destination).unwrap();
         index::write_index(IndexEntry {
             target_dir: canonical,
-            strategy: "kiro-cli".to_string(),
+            strategies: vec!["kiro-cli-v2".to_string()],
             installed_at: "2026-01-01T00:00:00Z".to_string(),
             status: IndexEntryStatus::Complete,
         })
@@ -3789,20 +4022,20 @@ mod tests {
         let _home = HomeGuard::new("index-status-disagree-reverse-home");
         let destination = scratch_dir("index-status-disagree-reverse-dest");
 
-        let manifest = Manifest::new(
-            "kiro-cli",
+        let manifest = StrategyManifest::new(
+            "kiro-cli-v2",
             "2026-01-01T00:00:00Z",
             destination.display().to_string(),
             None,
             Status::Complete,
             vec![],
         );
-        manifest::write_manifest(&destination, &manifest).unwrap();
+        manifest::upsert_strategy(&destination, manifest).unwrap();
 
         let canonical = index::canonicalize_target_dir(&destination).unwrap();
         index::write_index(IndexEntry {
             target_dir: canonical,
-            strategy: "kiro-cli".to_string(),
+            strategies: vec!["kiro-cli-v2".to_string()],
             installed_at: "2026-01-01T00:00:00Z".to_string(),
             status: IndexEntryStatus::InProgress,
         })
@@ -3829,19 +4062,19 @@ mod tests {
         let source = scratch_dir("dispatch-index-status-warn-source");
         let destination = scratch_dir("dispatch-index-status-warn-dest");
 
-        let manifest = Manifest::new(
-            "kiro-cli",
+        let manifest = StrategyManifest::new(
+            "kiro-cli-v2",
             "2026-01-01T00:00:00Z",
             destination.display().to_string(),
             None,
             Status::InProgress,
             vec![],
         );
-        manifest::write_manifest(&destination, &manifest).unwrap();
+        manifest::upsert_strategy(&destination, manifest).unwrap();
         let canonical = index::canonicalize_target_dir(&destination).unwrap();
         index::write_index(IndexEntry {
             target_dir: canonical,
-            strategy: "kiro-cli".to_string(),
+            strategies: vec!["kiro-cli-v2".to_string()],
             installed_at: "2026-01-01T00:00:00Z".to_string(),
             status: IndexEntryStatus::Complete,
         })
@@ -3865,6 +4098,7 @@ mod tests {
             false,
             false,
             None,
+            ColorMode::disabled(),
         );
         assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
 
@@ -3881,7 +4115,16 @@ mod tests {
         let _home = HomeGuard::new("doctor-all-zero-tracked-home");
         let cwd = scratch_dir("doctor-all-zero-tracked-cwd");
 
-        let code = dispatch_doctor_with(&cwd, None, None, true, false, false, None);
+        let code = dispatch_doctor_with(
+            &cwd,
+            None,
+            None,
+            true,
+            false,
+            false,
+            None,
+            ColorMode::disabled(),
+        );
         assert_eq!(code, 0, "zero tracked installs under --all must be a no-op");
 
         fs::remove_dir_all(&cwd).ok();
@@ -3895,25 +4138,34 @@ mod tests {
         let cwd = scratch_dir("doctor-all-one-tracked-cwd");
         let destination = scratch_dir("doctor-all-one-tracked-dest");
 
-        let manifest = Manifest::new(
-            "kiro-cli",
+        let manifest = StrategyManifest::new(
+            "kiro-cli-v2",
             "2026-01-01T00:00:00Z",
             destination.display().to_string(),
             None,
             Status::Complete,
             vec![],
         );
-        manifest::write_manifest(&destination, &manifest).unwrap();
+        manifest::upsert_strategy(&destination, manifest).unwrap();
         let canonical = index::canonicalize_target_dir(&destination).unwrap();
         index::write_index(IndexEntry {
             target_dir: canonical,
-            strategy: "kiro-cli".to_string(),
+            strategies: vec!["kiro-cli-v2".to_string()],
             installed_at: "2026-01-01T00:00:00Z".to_string(),
             status: IndexEntryStatus::Complete,
         })
         .unwrap();
 
-        let code = dispatch_doctor_with(&cwd, None, None, true, false, false, None);
+        let code = dispatch_doctor_with(
+            &cwd,
+            None,
+            None,
+            true,
+            false,
+            false,
+            None,
+            ColorMode::disabled(),
+        );
         assert_eq!(
             code, 0,
             "one healthy tracked install under --all must exit 0"
@@ -3936,37 +4188,37 @@ mod tests {
         let healthy_dest = scratch_dir("doctor-all-two-tracked-healthy-dest");
         let broken_dest = scratch_dir("doctor-all-two-tracked-broken-dest");
 
-        let healthy_manifest = Manifest::new(
-            "kiro-cli",
+        let healthy_manifest = StrategyManifest::new(
+            "kiro-cli-v2",
             "2026-01-01T00:00:00Z",
             healthy_dest.display().to_string(),
             None,
             Status::Complete,
             vec![],
         );
-        manifest::write_manifest(&healthy_dest, &healthy_manifest).unwrap();
+        manifest::upsert_strategy(&healthy_dest, healthy_manifest).unwrap();
         let healthy_canonical = index::canonicalize_target_dir(&healthy_dest).unwrap();
         index::write_index(IndexEntry {
             target_dir: healthy_canonical,
-            strategy: "kiro-cli".to_string(),
+            strategies: vec!["kiro-cli-v2".to_string()],
             installed_at: "2026-01-01T00:00:00Z".to_string(),
             status: IndexEntryStatus::Complete,
         })
         .unwrap();
 
-        let broken_manifest = Manifest::new(
-            "kiro-cli",
+        let broken_manifest = StrategyManifest::new(
+            "kiro-cli-v2",
             "2026-01-01T00:00:00Z",
             broken_dest.display().to_string(),
             None,
             Status::InProgress,
             vec![],
         );
-        manifest::write_manifest(&broken_dest, &broken_manifest).unwrap();
+        manifest::upsert_strategy(&broken_dest, broken_manifest).unwrap();
         let broken_canonical = index::canonicalize_target_dir(&broken_dest).unwrap();
         index::write_index(IndexEntry {
             target_dir: broken_canonical,
-            strategy: "kiro-cli".to_string(),
+            strategies: vec!["kiro-cli-v2".to_string()],
             installed_at: "2026-01-01T00:00:00Z".to_string(),
             status: IndexEntryStatus::InProgress,
         })
@@ -3979,7 +4231,16 @@ mod tests {
             "sanity check: both targets must be tracked before running --all"
         );
 
-        let code = dispatch_doctor_with(&cwd, None, None, true, false, false, None);
+        let code = dispatch_doctor_with(
+            &cwd,
+            None,
+            None,
+            true,
+            false,
+            false,
+            None,
+            ColorMode::disabled(),
+        );
         assert_eq!(
             code, EXIT_HALTED,
             "a failing check on ANY tracked target under --all must fail the overall run"
@@ -3999,19 +4260,19 @@ mod tests {
         let cwd = scratch_dir("doctor-all-json-cwd");
         let destination = scratch_dir("doctor-all-json-dest");
 
-        let manifest = Manifest::new(
-            "kiro-cli",
+        let manifest = StrategyManifest::new(
+            "kiro-cli-v2",
             "2026-01-01T00:00:00Z",
             destination.display().to_string(),
             None,
             Status::Complete,
             vec![],
         );
-        manifest::write_manifest(&destination, &manifest).unwrap();
+        manifest::upsert_strategy(&destination, manifest).unwrap();
         let canonical = index::canonicalize_target_dir(&destination).unwrap();
         index::write_index(IndexEntry {
             target_dir: canonical.clone(),
-            strategy: "kiro-cli".to_string(),
+            strategies: vec!["kiro-cli-v2".to_string()],
             installed_at: "2026-01-01T00:00:00Z".to_string(),
             status: IndexEntryStatus::Complete,
         })
@@ -4071,6 +4332,7 @@ mod tests {
             false,
             false,
             None,
+            ColorMode::disabled(),
         );
         assert_eq!(code, 0);
 
@@ -4089,19 +4351,19 @@ mod tests {
         let source = scratch_dir("doctor-single-target-tracked-source");
         let destination = scratch_dir("doctor-single-target-tracked-dest");
 
-        let manifest = Manifest::new(
-            "kiro-cli",
+        let manifest = StrategyManifest::new(
+            "kiro-cli-v2",
             "2026-01-01T00:00:00Z",
             destination.display().to_string(),
             None,
             Status::Complete,
             vec![],
         );
-        manifest::write_manifest(&destination, &manifest).unwrap();
+        manifest::upsert_strategy(&destination, manifest).unwrap();
         let canonical = index::canonicalize_target_dir(&destination).unwrap();
         index::write_index(IndexEntry {
             target_dir: canonical,
-            strategy: "kiro-cli".to_string(),
+            strategies: vec!["kiro-cli-v2".to_string()],
             installed_at: "2026-01-01T00:00:00Z".to_string(),
             status: IndexEntryStatus::Complete,
         })
@@ -4115,6 +4377,7 @@ mod tests {
             false,
             false,
             None,
+            ColorMode::disabled(),
         );
         assert_eq!(
             code, 0,

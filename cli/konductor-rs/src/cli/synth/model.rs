@@ -130,8 +130,8 @@ mod tests {
             ..base.clone()
         };
         assert_ne!(base, executable);
-        assert_eq!(base.executable, false);
-        assert_eq!(executable.executable, true);
+        assert!(!base.executable);
+        assert!(executable.executable);
     }
 
     #[test]

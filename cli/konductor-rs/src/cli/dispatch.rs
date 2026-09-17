@@ -22,7 +22,7 @@
 
 use std::path::PathBuf;
 
-use crate::cli::{config, init, Commands, ConfigAction};
+use crate::cli::{config, init, output::ColorMode, Commands, ConfigAction};
 
 /// Entry point called by `cli::run()` once argument parsing has produced a
 /// concrete `command` to dispatch. `Init`, `Config`, `Install`, `Synth`,
@@ -34,12 +34,15 @@ use crate::cli::{config, init, Commands, ConfigAction};
 /// to `Install`/`Synth`/`Doctor` only -- the commands with real,
 /// reportable output at this milestone. Every other arm ignores them; a
 /// future stub-to-real transition should thread them to its own arm the
-/// same way, not add a new flag.
+/// same way, not add a new flag. `color` (the resolved `--no-color`/
+/// `NO_COLOR`/TTY state, see cli/output.rs) is threaded through the
+/// same way, to every arm that can print a `konductor <command>:
+/// <message>` error prefix or (for `Doctor`) a colorized status report.
 ///
 /// Returns the raw numeric exit code rather than `std::process::ExitCode`
 /// (which offers no way to read the value back out again) so callers can
 /// both log the code and construct the real `ExitCode` from it.
-pub fn dispatch(command: Commands, verbose: bool, json: bool) -> u8 {
+pub fn dispatch(command: Commands, verbose: bool, json: bool, color: ColorMode) -> u8 {
     // TODO(design): static match, not a dynamic Command+Strategy registry.
     // See the module header above for the rationale (conformance harness
     // depends on the static command tree).
@@ -60,34 +63,45 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool) -> u8 {
             use_github_token,
             verbose,
             json,
+            color,
         ),
         Commands::Update {
             from,
             target,
             all,
+            harness,
             no_telemetry,
-        } => {
-            crate::cli::update::dispatch_update_with(from, target, all, no_telemetry, verbose, json)
-        }
-        Commands::Uninstall { target, all, yes } => {
-            crate::cli::uninstall::dispatch_uninstall(target, all, yes, json)
-        }
+        } => crate::cli::update::dispatch_update_with(
+            from,
+            target,
+            all,
+            harness,
+            no_telemetry,
+            verbose,
+            json,
+            color,
+        ),
+        Commands::Uninstall {
+            target,
+            all,
+            harness,
+        } => crate::cli::uninstall::dispatch_uninstall(target, all, harness, json, color),
         Commands::Synth { from } => {
-            let cwd = match resolve_cwd_reporting_json("synth", json) {
+            let cwd = match resolve_cwd_reporting_json("synth", json, color) {
                 Ok(dir) => dir,
                 Err(code) => return code,
             };
-            crate::cli::synth::dispatch_synth_with(&cwd, from, verbose, json)
+            crate::cli::synth::dispatch_synth_with(&cwd, from, verbose, json, color)
         }
         Commands::Init { preset, force } => {
-            let cwd = match resolve_cwd("init") {
+            let cwd = match resolve_cwd("init", color) {
                 Ok(dir) => dir,
                 Err(code) => return code,
             };
-            dispatch_init(&cwd, preset, force)
+            dispatch_init(&cwd, preset, force, color)
         }
         Commands::Doctor { from, target, all } => crate::cli::doctor::dispatch_doctor_with(
-            &match resolve_cwd_reporting_json("doctor", json) {
+            &match resolve_cwd_reporting_json("doctor", json, color) {
                 Ok(dir) => dir,
                 Err(code) => return code,
             },
@@ -99,13 +113,14 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool) -> u8 {
             std::env::var_os("HOME")
                 .map(std::path::PathBuf::from)
                 .as_deref(),
+            color,
         ),
         Commands::Config { action } => {
-            let cwd = match resolve_cwd("config") {
+            let cwd = match resolve_cwd("config", color) {
                 Ok(dir) => dir,
                 Err(code) => return code,
             };
-            dispatch_config(&cwd, action)
+            dispatch_config(&cwd, action, color)
         }
         Commands::Metrics { since } => {
             print_not_implemented("metrics", &[("--since", opt(&since))]);
@@ -168,9 +183,12 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool) -> u8 {
 /// `resolve_cwd_reporting_json`'s own doc comment for why its `--json`
 /// envelope's `command` field diverges from this telemetry attribution
 /// the same way.
-fn resolve_cwd(command: &str) -> Result<PathBuf, u8> {
+fn resolve_cwd(command: &str, color: ColorMode) -> Result<PathBuf, u8> {
     let cwd = std::env::current_dir().map_err(|err| {
-        eprintln!("konductor: could not determine the current directory: {err}");
+        eprintln!(
+            "{} could not determine the current directory: {err}",
+            crate::cli::output::error_prefix(color, "konductor:")
+        );
         let home_dir_fallback = std::env::var_os("HOME")
             .map(PathBuf::from)
             .unwrap_or_default();
@@ -213,9 +231,9 @@ fn resolve_cwd(command: &str) -> Result<PathBuf, u8> {
 /// `"command"` field AND the telemetry event's attribution, and here
 /// those two deliberately diverge (`"konductor"` vs. the real
 /// subcommand) -- a divergence `report_error` has no way to express.
-fn resolve_cwd_reporting_json(command: &str, json: bool) -> Result<PathBuf, u8> {
+fn resolve_cwd_reporting_json(command: &str, json: bool, color: ColorMode) -> Result<PathBuf, u8> {
     if !json {
-        return resolve_cwd(command);
+        return resolve_cwd(command, color);
     }
     match std::env::current_dir() {
         Ok(cwd) => {
@@ -259,11 +277,17 @@ fn resolve_cwd_reporting_json(command: &str, json: bool) -> Result<PathBuf, u8> 
 ///
 /// Exit-code contract: any `InitError` is a USAGE ERROR (64), never exit
 /// code 2 -- see cli/init.rs's module docstring.
-fn dispatch_init(target_dir: &std::path::Path, preset: Option<String>, force: bool) -> u8 {
+fn dispatch_init(
+    target_dir: &std::path::Path,
+    preset: Option<String>,
+    force: bool,
+    color: ColorMode,
+) -> u8 {
     match init::run_init(target_dir, force) {
         Ok(result) => {
             println!(
-                "Initialized Konductor project at {}",
+                "{} Initialized Konductor project at {}",
+                crate::cli::output::success_prefix(color, "konductor init:"),
                 result.konductor_dir.display()
             );
             println!("Wrote starter config: {}", result.config_path.display());
@@ -281,7 +305,10 @@ fn dispatch_init(target_dir: &std::path::Path, preset: Option<String>, force: bo
             0
         }
         Err(err) => {
-            eprintln!("konductor init: {err}");
+            eprintln!(
+                "{} {err}",
+                crate::cli::output::error_prefix(color, "konductor init:")
+            );
             crate::cli::telemetry::report_cli_error(target_dir, "init", err.error_code(), false);
             EXIT_USAGE_ERROR
         }
@@ -306,15 +333,21 @@ fn dispatch_init(target_dir: &std::path::Path, preset: Option<String>, force: bo
 /// Exit-code contract: a `ConfigError` (malformed/invalid config,
 /// unknown key, invalid value, or write failure) is a USAGE ERROR (64),
 /// never exit code 2 -- see cli/config.rs's module docstring.
-fn dispatch_config(target_dir: &std::path::Path, action: ConfigAction) -> u8 {
+fn dispatch_config(target_dir: &std::path::Path, action: ConfigAction, color: ColorMode) -> u8 {
     if let ConfigAction::Set { key, value } = &action {
         return match config::set_config_value(target_dir, key, value) {
             Ok(_) => {
-                println!("Set {key} = {value}");
+                println!(
+                    "{} Set {key} = {value}",
+                    crate::cli::output::success_prefix(color, "konductor config:")
+                );
                 0
             }
             Err(err) => {
-                eprintln!("konductor config: {err}");
+                eprintln!(
+                    "{} {err}",
+                    crate::cli::output::error_prefix(color, "konductor config:")
+                );
                 crate::cli::telemetry::report_cli_error(
                     target_dir,
                     "config",
@@ -329,20 +362,29 @@ fn dispatch_config(target_dir: &std::path::Path, action: ConfigAction) -> u8 {
     let loaded = match config::load_config(target_dir) {
         Ok(config) => config,
         Err(err) => {
-            eprintln!("konductor config: {err}");
+            eprintln!(
+                "{} {err}",
+                crate::cli::output::error_prefix(color, "konductor config:")
+            );
             crate::cli::telemetry::report_cli_error(target_dir, "config", err.error_code(), false);
             return EXIT_USAGE_ERROR;
         }
     };
 
     match action {
+        // Styled with `status::info`, matching `config list`'s key
+        // coloring below. `get` prints a single bare value, so that
+        // value itself carries the color instead of a separate label.
         ConfigAction::Get { key } => match get_field(&loaded, &key) {
             Some(value) => {
-                println!("{value}");
+                println!("{}", crate::cli::output::status::info(color, &value));
                 0
             }
             None => {
-                eprintln!("konductor config: unknown config key '{key}'");
+                eprintln!(
+                    "{} unknown config key '{key}'",
+                    crate::cli::output::error_prefix(color, "konductor config:")
+                );
                 crate::cli::telemetry::report_cli_error(
                     target_dir,
                     "config",
@@ -353,8 +395,15 @@ fn dispatch_config(target_dir: &std::path::Path, action: ConfigAction) -> u8 {
             }
         },
         ConfigAction::List => {
-            for (key, value) in list_fields(&loaded) {
-                println!("{key} = {value}");
+            let fields = list_fields(&loaded);
+            // Pad each key to the widest key's width so the '='
+            // separators line up. Keys are colored via `status::info`;
+            // values stay plain since they're the substantive content.
+            let key_width = fields.iter().map(|(key, _)| key.len()).max().unwrap_or(0);
+            for (key, value) in fields {
+                let colored_key = crate::cli::output::status::info(color, key);
+                let padding = " ".repeat(key_width.saturating_sub(key.len()));
+                println!("{colored_key}{padding} = {value}");
             }
             0
         }
@@ -469,7 +518,7 @@ mod tests {
     /// parallel test threads, and not portable to Windows).
     #[test]
     fn resolve_cwd_succeeds_with_an_existing_directory() {
-        let result = resolve_cwd("synth");
+        let result = resolve_cwd("synth", ColorMode::disabled());
         assert!(result.is_ok(), "resolve_cwd() must succeed: {result:?}");
         assert!(
             result.unwrap().is_dir(),
@@ -484,10 +533,10 @@ mod tests {
         let _lock = lock_home();
         let target = scratch_cwd("round-trip");
 
-        let init_code = dispatch_init(&target, None, false);
+        let init_code = dispatch_init(&target, None, false, ColorMode::disabled());
         assert_eq!(init_code, 0, "init on an empty target must succeed");
 
-        let list_code = dispatch_config(&target, ConfigAction::List);
+        let list_code = dispatch_config(&target, ConfigAction::List, ColorMode::disabled());
         assert_eq!(
             list_code, 0,
             "config list must succeed against a freshly-initialized project"
@@ -500,8 +549,14 @@ mod tests {
     fn dispatch_init_without_force_on_existing_dir_is_usage_error() {
         let target = scratch_cwd("clobber-guard");
 
-        assert_eq!(dispatch_init(&target, None, false), 0);
-        assert_eq!(dispatch_init(&target, None, false), EXIT_USAGE_ERROR);
+        assert_eq!(
+            dispatch_init(&target, None, false, ColorMode::disabled()),
+            0
+        );
+        assert_eq!(
+            dispatch_init(&target, None, false, ColorMode::disabled()),
+            EXIT_USAGE_ERROR
+        );
 
         fs::remove_dir_all(&target).ok();
     }
@@ -518,13 +573,17 @@ mod tests {
         let _lock = lock_home();
         let target = scratch_cwd("config-set-real");
 
-        assert_eq!(dispatch_init(&target, None, false), 0);
+        assert_eq!(
+            dispatch_init(&target, None, false, ColorMode::disabled()),
+            0
+        );
         let set_code = dispatch_config(
             &target,
             ConfigAction::Set {
                 key: "default_severity".to_string(),
                 value: "LOW".to_string(),
             },
+            ColorMode::disabled(),
         );
         assert_eq!(set_code, 0, "a valid config set must succeed");
         assert_ne!(
@@ -542,13 +601,17 @@ mod tests {
     fn dispatch_config_set_unknown_key_is_usage_error_not_critical_gate() {
         let target = scratch_cwd("config-set-unknown-key");
 
-        assert_eq!(dispatch_init(&target, None, false), 0);
+        assert_eq!(
+            dispatch_init(&target, None, false, ColorMode::disabled()),
+            0
+        );
         let code = dispatch_config(
             &target,
             ConfigAction::Set {
                 key: "not_a_real_field".to_string(),
                 value: "anything".to_string(),
             },
+            ColorMode::disabled(),
         );
         assert_eq!(code, EXIT_USAGE_ERROR);
         assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
@@ -560,13 +623,17 @@ mod tests {
     fn dispatch_config_set_invalid_value_is_usage_error_not_critical_gate() {
         let target = scratch_cwd("config-set-invalid-value");
 
-        assert_eq!(dispatch_init(&target, None, false), 0);
+        assert_eq!(
+            dispatch_init(&target, None, false, ColorMode::disabled()),
+            0
+        );
         let code = dispatch_config(
             &target,
             ConfigAction::Set {
                 key: "default_severity".to_string(),
                 value: "NOT_A_SEVERITY".to_string(),
             },
+            ColorMode::disabled(),
         );
         assert_eq!(code, EXIT_USAGE_ERROR);
         assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
@@ -588,7 +655,10 @@ mod tests {
         let _lock = lock_home();
         let target = scratch_cwd("config-set-fixes-broken-field");
 
-        assert_eq!(dispatch_init(&target, None, false), 0);
+        assert_eq!(
+            dispatch_init(&target, None, false, ColorMode::disabled()),
+            0
+        );
         let config_path = target
             .join(config::KONDUCTOR_DIR_NAME)
             .join(config::CONFIG_FILE_NAME);
@@ -606,6 +676,7 @@ mod tests {
                 key: "fail_on_severity_at_or_above".to_string(),
                 value: "LOW".to_string(),
             },
+            ColorMode::disabled(),
         );
         assert_eq!(
             set_code, 0,
@@ -641,7 +712,10 @@ mod tests {
         let _lock = lock_home();
         let target = scratch_cwd("config-get-list-reject-broken");
 
-        assert_eq!(dispatch_init(&target, None, false), 0);
+        assert_eq!(
+            dispatch_init(&target, None, false, ColorMode::disabled()),
+            0
+        );
         let config_path = target
             .join(config::KONDUCTOR_DIR_NAME)
             .join(config::CONFIG_FILE_NAME);
@@ -656,6 +730,7 @@ mod tests {
             ConfigAction::Get {
                 key: "default_severity".to_string(),
             },
+            ColorMode::disabled(),
         );
         assert_eq!(
             get_code, EXIT_USAGE_ERROR,
@@ -666,7 +741,7 @@ mod tests {
             "must never emit the reserved CRITICAL-gate code"
         );
 
-        let list_code = dispatch_config(&target, ConfigAction::List);
+        let list_code = dispatch_config(&target, ConfigAction::List, ColorMode::disabled());
         assert_eq!(
             list_code, EXIT_USAGE_ERROR,
             "config list against an already-invalid config must still fail"
@@ -688,7 +763,10 @@ mod tests {
         // `.konductor/config.yml` behind that wasn't already there.
         let target = scratch_cwd("config-set-unknown-key-no-write");
 
-        assert_eq!(dispatch_init(&target, None, false), 0);
+        assert_eq!(
+            dispatch_init(&target, None, false, ColorMode::disabled()),
+            0
+        );
         let config_path = target
             .join(config::KONDUCTOR_DIR_NAME)
             .join(config::CONFIG_FILE_NAME);
@@ -700,6 +778,7 @@ mod tests {
                 key: "not_a_real_field".to_string(),
                 value: "anything".to_string(),
             },
+            ColorMode::disabled(),
         );
         assert_eq!(code, EXIT_USAGE_ERROR);
 
@@ -721,7 +800,10 @@ mod tests {
         // called.
         let target = scratch_cwd("config-set-invalid-value-no-write");
 
-        assert_eq!(dispatch_init(&target, None, false), 0);
+        assert_eq!(
+            dispatch_init(&target, None, false, ColorMode::disabled()),
+            0
+        );
         let config_path = target
             .join(config::KONDUCTOR_DIR_NAME)
             .join(config::CONFIG_FILE_NAME);
@@ -733,6 +815,7 @@ mod tests {
                 key: "default_severity".to_string(),
                 value: "NOT_A_SEVERITY".to_string(),
             },
+            ColorMode::disabled(),
         );
         assert_eq!(code, EXIT_USAGE_ERROR);
 
@@ -755,13 +838,17 @@ mod tests {
         // the guarantee holds through the full `config set` call path.
         let target = scratch_cwd("config-set-no-leftover-tmp");
 
-        assert_eq!(dispatch_init(&target, None, false), 0);
+        assert_eq!(
+            dispatch_init(&target, None, false, ColorMode::disabled()),
+            0
+        );
         let code = dispatch_config(
             &target,
             ConfigAction::Set {
                 key: "default_severity".to_string(),
                 value: "LOW".to_string(),
             },
+            ColorMode::disabled(),
         );
         assert_eq!(code, 0, "a valid config set must succeed");
 
@@ -946,6 +1033,7 @@ mod tests {
             },
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(code, 0, "install itself must still succeed");
 
@@ -983,6 +1071,7 @@ mod tests {
             },
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(code, 0);
 
@@ -1016,6 +1105,7 @@ mod tests {
             },
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(install_code, 0);
         let link_path = home.scratch.join(".local").join("bin").join("konductor");
@@ -1032,10 +1122,11 @@ mod tests {
             Commands::Uninstall {
                 target: None,
                 all: false,
-                yes: false,
+                harness: None,
             },
             false,
             false,
+            ColorMode::disabled(),
         );
         assert_eq!(uninstall_code, 0);
 
