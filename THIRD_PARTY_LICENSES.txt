@@ -1,5 +1,0 @@
-ASDLC Core AI Capabilities — Third Party Licenses
-
-This product includes software developed by third parties. The following third-party licenses apply:
-
-(None at this time — this file will be populated as dependencies are introduced)

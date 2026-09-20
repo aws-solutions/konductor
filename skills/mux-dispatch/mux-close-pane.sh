@@ -343,8 +343,8 @@ for e in registry:
     # A list whose top level is valid but whose elements aren't all dicts
     # (e.g. '[1, 2]') passes the isinstance(registry, list) check above but
     # still blows up on e.get(...) below with an uncaught AttributeError --
-    # skip any non-dict element rather than letting it raise (AutoSDE-style
-    # gap flagged in code review: ssenior, CR-301600573).
+    # skip any non-dict element rather than letting it raise (an
+    # AutoSDE-style type-safety gap caught in code review).
     if not isinstance(e, dict):
         continue
     if e.get('workspace_id') == ws_id:

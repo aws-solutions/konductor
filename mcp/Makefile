@@ -2,8 +2,8 @@
 #
 # Build for the Konductor MCP servers workspace (Rust). Mirrors
 # cli/Makefile's target set and conventions. Works standalone for any
-# developer with Rust (cargo) installed. No Brazil, no Amazon tooling
-# required.
+# developer with Rust (cargo) installed. No internal build system or
+# Amazon tooling required.
 #
 # All targets invoke cargo at the mcp/ workspace root (this directory),
 # not per-server, so adding a new server under servers/<name>/ requires
@@ -26,20 +26,40 @@
 # ── Overridable variables ─────────────────────────────────────────────────────
 #   CARGO    path to cargo   (default: cargo)
 #   JQ       path to jq      (default: jq; build falls back to grep/sed if absent)
+#   TARGET   cargo `--target` triple (default: empty, i.e. cargo's own
+#            unqualified host build). Mirrors cli/Makefile's TARGET
+#            variable -- see that Makefile's comment for the full
+#            rationale. When set, passed straight through to `cargo build
+#            --target $(TARGET)`, and the staging step below reads
+#            cargo's per-target output path instead of the untargeted
+#            one. The target must already be installed (`rustup target
+#            add $(TARGET)`), and targets needing a C toolchain (e.g. any
+#            *-musl target, via `ring`'s dependency) need a matching
+#            linker/cc on PATH (e.g. `musl-tools` for `musl-gcc`) --
+#            neither is installed by this Makefile.
 
 CARGO ?= cargo
 JQ    ?= jq
+TARGET ?=
+
+# Passed to every `cargo build`/`cargo metadata` invocation below; empty
+# (the default) reproduces the exact untargeted command this Makefile ran
+# before TARGET existed.
+CARGO_TARGET_FLAG := $(if $(TARGET),--target $(TARGET),)
+# cargo nests output one directory deeper, under $(TARGET)/, whenever
+# --target is passed explicitly -- even for a target matching the host's
+# own triple -- so this suffix must be empty (untargeted) or `$(TARGET)/`
+# (targeted), never guessed from whether TARGET "looks like" the host.
+CARGO_TARGET_SUBDIR := $(if $(TARGET),$(TARGET)/,)
 
 # Binary names `build` stages at target/release/<name> for `konductor
-# install`'s own discovery to find (see `mcp_binary_source_path` in
-# cli/konductor-rs/src/cli/install/mcp_server.rs, which hardcodes exactly
-# that path). This list mirrors `MCP_SERVER_BINARY_NAMES` in that same
-# Rust file -- keep both in sync when adding a new MCP server binary
-# `konductor install` should discover. Unlike the `install` target above
-# (which globs servers/* to install every workspace member to
-# ~/.cargo/bin, needing no edit for a new server), this list is about
-# matching a specific hardcoded Rust-side lookup path, not "every
-# workspace member" -- so it does need a matching edit there.
+# install`'s discovery (see `mcp_binary_source_path` in
+# cli/konductor-rs/src/cli/install/mcp_server.rs). Mirrors
+# `MCP_SERVER_BINARY_NAMES` in that same file -- keep both in sync when
+# adding a new MCP server binary `konductor install` should discover.
+# Unlike `install` above (which globs servers/* and needs no edit for a
+# new server), this list matches a specific hardcoded Rust-side lookup
+# path, so it does need updating.
 BINARY_NAMES := skill-lookup-mcp
 
 .PHONY: all build fmt lint install test test-rust clean help
@@ -62,31 +82,23 @@ help:
 
 # ── build ─────────────────────────────────────────────────────────────────────
 # Compiles all workspace binaries, then stages each name in BINARY_NAMES at
-# target/release/<name> (relative to this Makefile, i.e. mcp/) -- the exact
-# path `mcp_binary_source_path` in
-# cli/konductor-rs/src/cli/install/mcp_server.rs hardcodes as where
-# `konductor install` looks for a pre-built MCP server binary. That hardcoded
-# path assumes cargo's default target-dir (mcp/target), which does NOT hold
-# under the Brazil build wrapper (build-tools/bin/aim-and-make-build's
-# `build_rust_component`, which runs `cargo brazil configure` for mcp/ the
-# same as it does for cli/): CargoBrazil redirects cargo's target-dir via a
-# generated CARGO_HOME/config.toml -- see cli/Makefile's CARGO_TARGET_DIR
-# comment for the full explanation of this redirect; it applies identically
-# here, since mcp/'s `cargo build --release --workspace` runs under that same
-# CARGO_HOME. Querying `cargo metadata` for the real `target_directory` and
-# copying from there keeps the binary landing at target/release/<name> in
-# both the standalone and the Brazil-wrapped case, mirroring cli/Makefile's
-# own `build` target.
+# target/release/<name> -- the exact path `mcp_binary_source_path` in
+# cli/konductor-rs/src/cli/install/mcp_server.rs hardcodes for `konductor
+# install` to find a pre-built server binary. That hardcoded path assumes
+# cargo's default target-dir (mcp/target), which doesn't hold under a
+# `.cargo/config.toml` or `CARGO_TARGET_DIR` override -- see cli/Makefile's
+# CARGO_TARGET_DIR comment. Querying `cargo metadata` for the real
+# `target_directory` keeps the binary landing at target/release/<name>
+# either way.
 #
-# Guards against copying a file onto itself: when cargo's real target
-# directory IS mcp/target (the common non-redirected case -- e.g. a
-# standalone `cargo build` with no CargoBrazil involved), the resolved
-# source and the staging destination are the identical path, and `cp` on
-# two paths that are the same file fails outright. The stage step is a
-# no-op in that case -- the binary is already where it needs to be.
+# Guards against copying a file onto itself: with the default (non-redirected)
+# target dir and no TARGET set, source and destination resolve to the same
+# path, and `cp` on two identical paths fails. The stage step is a no-op in
+# that case. Whenever TARGET is set, source and destination always differ
+# (source gains a $(TARGET)/ subdirectory), so the copy always runs.
 build:
-	@echo "=== [mcp] Building Rust binaries (release) ==="
-	$(CARGO) build --release --workspace
+	@echo "=== [mcp] Building Rust binaries (release$(if $(TARGET), --target $(TARGET),)) ==="
+	$(CARGO) build --release --workspace $(CARGO_TARGET_FLAG)
 	@echo "=== [mcp] Staging binaries at target/release/ for konductor install discovery ==="
 	@metadata=$$($(CARGO) metadata --no-deps --format-version=1); \
 	if command -v $(JQ) >/dev/null 2>&1; then \
@@ -103,7 +115,7 @@ build:
 	mkdir -p target/release; \
 	dst_dir=$$(cd target/release && pwd); \
 	for name in $(BINARY_NAMES); do \
-		src="$$cargo_target_dir/release/$$name"; \
+		src="$$cargo_target_dir/$(CARGO_TARGET_SUBDIR)release/$$name"; \
 		if [ ! -f "$$src" ]; then \
 			echo "error: [mcp] built, but no binary found at $$src" >&2; \
 			echo "  cargo metadata target_directory resolved to: $$cargo_target_dir" >&2; \
@@ -164,15 +176,14 @@ test: test-rust
 
 # ── clean ─────────────────────────────────────────────────────────────────────
 # Remove all build artifacts. Safe to run at any time -- in particular,
-# safe to run when rust-toolchain.toml (CargoBrazil-generated, gitignored)
-# still points at a `bb clean`-deleted build/private/cargo-brazil-toolchain
-# path, which would otherwise make `cargo clean` itself fail before doing
-# anything.
+# safe to run when a gitignored rust-toolchain.toml still points at a
+# toolchain path that no longer exists, which would otherwise make
+# `cargo clean` itself fail before doing anything.
 clean:
 	@echo "=== [mcp] Cleaning Rust build artifacts ==="
 	@toolchain=$$(sed -n 's/^path = "\(.*\)"/\1/p' rust-toolchain.toml 2>/dev/null); \
 	if [ -n "$$toolchain" ] && [ ! -d "$$toolchain/bin" ]; then \
-	  echo "  CargoBrazil toolchain absent ($$toolchain) -- removing target/ directly"; \
+	  echo "  Toolchain path from rust-toolchain.toml absent ($$toolchain) -- removing target/ directly"; \
 	  rm -rf target; \
 	else \
 	  $(CARGO) clean; \

@@ -10,18 +10,34 @@
 // tracing, error-prefix unification, the --json error envelope).
 //
 // Approach: run the REAL compiled binary against a failing invocation
-// on each of `install`/`synth`/`doctor` (the three commands with a
-// `--verbose` success-detail branch: `format_install_verbose_lines`,
-// `format_verbose_lines`, `doctor::print_report`'s verbose branch),
-// once with `--verbose`/`-v` and once without, and assert BYTE-IDENTICAL
-// stdout, stderr, and exit code between the two runs. A subprocess
-// (rather than calling dispatch functions directly and capturing
-// output) is used because these call sites write directly via
-// `println!`/`eprintln!` and there is no in-process capture mechanism
-// already established in this crate for that (see uninstall.rs's own
-// test-suite comments on preferring structural assertions over
-// stdout/stderr capture) -- a subprocess sidesteps that entirely by
-// letting the OS capture each stream.
+// on each of `synth`/`doctor` (both have a `--verbose` success-detail
+// branch: `format_verbose_lines`, `doctor::print_report`'s verbose
+// branch), once with `--verbose`/`-v` and once without, and assert
+// BYTE-IDENTICAL stdout, stderr, and exit code between the two runs. A
+// subprocess (rather than calling dispatch functions directly and
+// capturing output) is used because these call sites write directly
+// via `println!`/`eprintln!` and there is no in-process capture
+// mechanism already established in this crate for that (see
+// uninstall.rs's own test-suite comments on preferring structural
+// assertions over stdout/stderr capture): a subprocess sidesteps
+// that entirely by letting the OS capture each stream.
+//
+// `install` has its own `--verbose` success-detail branch
+// (`format_install_verbose_lines`) but no dedicated failing-invocation
+// test here. Every one of install's failure branches (an unresolvable
+// destination, an unregistered `--harness`, a `would_fail_as_noop`
+// local-source check, a corrupted/duplicate index) reports through the
+// same shared `report::report_error` function doctor's own
+// resolve-destination failure already exercises below: `doctor.rs`
+// re-exports and calls install's own `resolve_destination` directly,
+// so that specific failure is the identical function call, not just
+// similar code. `report_error` takes no `verbose` argument, so there
+// is no install-specific error-formatting code left for a dedicated
+// install test to cover. The only way to reach install's failure path
+// without `--from` is the real GitHub-backed remote-install fallback
+// (`dispatch_install_with`'s hardcoded remote closure), so a dedicated
+// install test here would require live network access for coverage
+// this file's other two failing-invocation tests already provide.
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
@@ -77,30 +93,6 @@ fn assert_verbose_has_no_effect_on_failure(home: &Path, args: &[&str]) {
     assert_eq!(
         without_verbose.stderr, with_verbose.stderr,
         "stderr must be byte-identical with/without -v on a failing invocation: {args:?}"
-    );
-}
-
-#[test]
-fn install_verbose_has_no_effect_on_a_failing_invocation() {
-    let home = scratch_home("install");
-    // `--harness` is required, so it must be present here to reach the
-    // failure path this test actually means to exercise: no --from,
-    // which fails inside `would_fail_as_noop` (a strategy IS selected --
-    // `--harness kiro-cli-v2` -- but that strategy's own no-op check
-    // fails before any file is copied), never reaching
-    // format_install_verbose_lines. Omitting `--harness` entirely would
-    // instead hit clap's own `MissingRequiredArgument` parse error --
-    // also a failing invocation `-v` has no effect on, but a different,
-    // earlier failure than the one this test documents.
-    assert_verbose_has_no_effect_on_failure(
-        &home,
-        &[
-            "install",
-            "--target",
-            home.to_str().unwrap(),
-            "--harness",
-            "kiro-cli-v2",
-        ],
     );
 }
 
@@ -167,7 +159,7 @@ fn doctor_verbose_has_no_effect_on_a_failing_invocation() {
 
 /// Companion positive control: `--verbose` DOES change output on a
 /// SUCCESSFUL `doctor` run (append the per-file detail listing) --
-/// without this, the three tests above would also pass if `-v` were
+/// without this, the two tests above would also pass if `-v` were
 /// silently ignored everywhere, which is not the property
 /// `--verbose` actually guarantees (scoped to error paths only, not a no-op flag).
 #[test]

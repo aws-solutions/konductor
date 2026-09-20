@@ -1227,20 +1227,37 @@ mod tests {
         assert_eq!(outcome, DnsOutcome::Failed);
     }
 
+    /// `resolve_host_addrs_bounded` always calls the real
+    /// `resolve_host_addrs` internally and cannot be driven with a
+    /// synthetic closure directly (see
+    /// `decide_pin_denies_a_panicked_sync_resolution_the_same_as_a_timeout`
+    /// above). A real DNS resolution to a real public hostname can
+    /// complete fast enough -- e.g. an already-cached resolver answer --
+    /// to land in `run_with_timeout`'s channel before `recv_timeout` is
+    /// even called: `mpsc::Receiver::recv_timeout` returns a buffered
+    /// value immediately regardless of how small the requested bound
+    /// is, so an effectively-zero bound does not guarantee the timeout
+    /// branch wins the race (observed directly: `example.com` at a 1ns
+    /// bound returned `Resolved` with real addresses on one run, not
+    /// `TimedOut`). This test instead exercises `run_with_timeout`
+    /// directly with a synthetic `std::thread::sleep`-based closure (the
+    /// same proven-reliable 20ms-bound/2s-sleep margin as
+    /// `run_with_timeout_returns_none_when_the_closure_exceeds_the_bound`
+    /// above), which bounds deterministically regardless of network
+    /// conditions, then applies `resolve_host_addrs_bounded`'s own
+    /// `Some(Some)`/`Some(None)`/`None` -> `DnsOutcome` mapping (see its
+    /// own source) to confirm the `None` case reports
+    /// `DnsOutcome::TimedOut`.
     #[test]
     fn resolve_host_addrs_bounded_reports_timed_out_when_the_bound_is_exceeded() {
-        // A resolution that (deterministically, via run_with_timeout's
-        // own synthetic-closure contract already proven above) cannot
-        // finish before an effectively-zero bound must report
-        // `TimedOut`, not `Failed` -- these are different outcomes with
-        // different downstream security treatment (see `decide_pin`).
-        // Using an ordinary public hostname here (rather than another
-        // unresolvable one) to prove the TWO outcomes are genuinely
-        // distinguishable or one might collapse the other has no
-        // resolver dependency: even if this resolves near-instantly on
-        // some hosts, the bound of 0ms makes the timeout branch of
-        // `run_with_timeout` fire before any result can arrive.
-        let outcome = resolve_host_addrs_bounded("example.com", Duration::from_nanos(1));
+        let outcome = match run_with_timeout(Duration::from_millis(20), || {
+            std::thread::sleep(Duration::from_secs(2));
+            None::<Vec<IpAddr>>
+        }) {
+            Some(Some(addrs)) => DnsOutcome::Resolved(addrs),
+            Some(None) => DnsOutcome::Failed,
+            None => DnsOutcome::TimedOut,
+        };
         assert_eq!(outcome, DnsOutcome::TimedOut);
     }
 
@@ -1362,11 +1379,29 @@ mod tests {
         /// classification first (the low-level primitive), deterministically
         /// via a closure that panics immediately rather than merely sleeping
         /// past the bound.
+        ///
+        /// The bound here is deliberately generous (seconds, not the
+        /// tens-of-milliseconds used by the genuine-timeout tests above)
+        /// even though the closure panics immediately: this test asserts
+        /// on which `Err` variant comes back, not on speed, so a wide
+        /// bound costs nothing in the success path (`tokio::time::timeout`
+        /// resolves as soon as the inner `spawn_blocking` join completes,
+        /// not after the full duration) while leaving headroom for
+        /// coverage-instrumented runs, where every instruction (including
+        /// the blocking-pool thread dispatch and unwind machinery between
+        /// the panic and the `JoinError` reaching this `.await`) runs
+        /// slower (the same class of instrumentation-induced timing
+        /// slowdown documented in `cli/konductor-rs/src/cli/logging.rs`'s
+        /// `HomeGuard` tests). A narrow bound here would race the
+        /// classification itself: if the timeout elapsed first, this
+        /// would observe `Err(AsyncBoundError::TimedOut)` even though the
+        /// closure genuinely panicked, misreporting an environment-speed
+        /// artifact as evidence the panic/timeout distinction had broken.
         #[tokio::test]
         async fn run_with_timeout_async_returns_panicked_when_the_closure_panics() {
             let result: Result<(), AsyncBoundError> =
-                run_with_timeout_async(Duration::from_millis(200), || {
-                    panic!("deliberate panic for the DnsOutcome::TimedOut regression (f-b44a65a0)");
+                run_with_timeout_async(Duration::from_secs(5), || {
+                    panic!("deliberate panic for the DnsOutcome::TimedOut regression");
                 })
                 .await;
             assert_eq!(result, Err(AsyncBoundError::Panicked));

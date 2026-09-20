@@ -84,10 +84,6 @@ cargo clippy -- -D warnings
 cargo fmt -- --check
 ```
 
-Brazil builds this workspace via `build-tools/bin/aim-and-make-build`,
-which runs the same configure/fetch/lint/build sequence against `mcp/`
-that it runs against `cli/konductor-rs`.
-
 ## Adding a second server
 
 This layout is designed so adding a new server requires **no edit** to
@@ -95,15 +91,15 @@ This layout is designed so adding a new server requires **no edit** to
 `build-tools/bin/aim-and-make-build`. Checklist:
 
 1. Create `mcp/servers/<name>/` with its own `Cargo.toml` (`[[bin]] name =
-   "<name>-mcp"`, one binary per server) and `src/main.rs`. The binary
+"<name>-mcp"`, one binary per server) and `src/main.rs`. The binary
    name must be unique across the whole `~/.cargo/bin` namespace, not
    just within `mcp/servers/` -- `make install` (via `cargo install
-   --path`) installs every server's binary into that same shared
+--path`) installs every server's binary into that same shared
    directory, so two servers that produce the same binary name will
    silently overwrite one another there. Append the new binary's name
    to `konductor-rs`'s `MCP_SERVER_BINARY_NAMES` (in
    `cli/konductor-rs/src/cli/install/mcp_server.rs`) to have `konductor
-   install` pick it up too -- no other change needed there; see that
+install` pick it up too -- no other change needed there; see that
    constant's own doc comment.
 2. Pin dependency versions exactly (no open ranges), matching this
    workspace's convention (see `servers/skill-lookup/Cargo.toml`).

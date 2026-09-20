@@ -34,7 +34,8 @@
         "adversarial-code-review",
         "adversarial-code-review-pass-security",
         "adversarial-code-review-pass-integrity",
-        "adversarial-code-review-pass-schema"
+        "adversarial-code-review-pass-schema",
+        "verification"
       ]
     },
     "mcpRegistry": {
@@ -130,7 +131,8 @@
         "adversarial-code-review",
         "adversarial-code-review-pass-security",
         "adversarial-code-review-pass-integrity",
-        "adversarial-code-review-pass-schema"
+        "adversarial-code-review-pass-schema",
+        "verification"
       ]
     }
   }

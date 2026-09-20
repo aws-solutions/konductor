@@ -5,6 +5,9 @@ edition = "2021"
 description = "skill-lookup-mcp -- stdio MCP server scaffold for Konductor skill lookup"
 license.workspace = true
 
+[lints]
+workspace = true
+
 [[bin]]
 name = "skill-lookup-mcp"
 path = "src/main.rs"

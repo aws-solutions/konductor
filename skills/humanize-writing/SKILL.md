@@ -1,8 +1,8 @@
 ---
 name: humanize-writing
-description: Rewrites text to remove AI-generated writing patterns (34 tell categories spanning content, language, style, and communication) while preserving meaning, coverage, and the author's voice. Use when a draft sounds like AI and needs to read like a real person wrote it.
+description: Rewrites text to remove AI-generated writing patterns (34 tell categories spanning content, language, style, and communication) while preserving meaning, coverage, and the author's voice. Use when a design document, README, code comment or docstring, user guide, PR or CR description, user story, or business case sounds like AI and needs to read like a real person wrote it.
 version: 1.0.0
-tags: [skill, writing, editing, prose, style, humanize]
+tags: [skill, writing, editing, prose, style, humanize, documentation, readme]
 ---
 
 # Humanizer: Remove AI Writing Patterns
@@ -12,6 +12,8 @@ You are a writing editor that identifies and removes signs of AI-generated text 
 ## Overview
 
 This skill rewrites text to strip out the statistical tells of LLM-generated writing (inflated significance, promotional language, em dash overuse, rule-of-three, AI vocabulary, sycophantic tone, and more) while preserving meaning, coverage, and the author's voice. Use it when a draft "sounds like AI" and needs to read like a real person wrote it.
+
+**Scope.** This skill applies to any content writing, not just prose essays or articles: design documents, code comments and docstrings (edit these in place; the surrounding code and string literals are out of scope), user guides, technical guides, README files, PR/CR descriptions, user story documents, and business case documents.
 
 ## Your Task
 
@@ -176,13 +178,15 @@ Avoiding AI patterns is only half the job. Sterile, voiceless writing is just as
 
 ### 7\. Overused "AI Vocabulary" Words
 
-**High-frequency AI words:** Actually, additionally, align with, crucial, delve, emphasizing, enduring, enhance, fostering, garner, highlight (verb), interplay, intricate/intricacies, key (adjective), landscape (abstract noun), pivotal, showcase, tapestry (abstract noun), testament, underscore (verb), valuable, vibrant
+**High-frequency AI words:** Actually, additionally, align with, best-in-class, comprehensive, crucial, cutting-edge, delve, emphasizing, enduring, enhance, fostering, garner, highlight (verb), holistic, interplay, intricate/intricacies, key (adjective), landscape (abstract noun), navigate the complexities of, pivotal, realm, robust, scalable (without a number), seamless, showcase, streamline, supercharge, synergy, tapestry (abstract noun), testament, underscore (verb), unlock, valuable, vibrant
 
 **Problem:** These words appear far more frequently in post-2023 text. They often co-occur.
 
 **Before:** Additionally, a distinctive feature of Somali cuisine is the incorporation of camel meat. An enduring testament to Italian colonial influence is the widespread adoption of pasta in the local culinary landscape, showcasing how these dishes have integrated into the traditional diet.
 
 **After:** Somali cuisine also includes camel meat, which is considered a delicacy. Pasta dishes, introduced during Italian colonization, remain common, especially in the south.
+
+This list is authoritative; `design-doc-guidelines`' "Cut the AI Slop" section defers to it rather than keeping a separate one.
 
 ### 8\. Avoidance of "is"/"are" (Copula Avoidance)
 
@@ -196,7 +200,7 @@ Avoiding AI patterns is only half the job. Sterile, voiceless writing is just as
 
 ### 9\. Negative Parallelisms and Tailing Negations
 
-**Problem:** Constructions like "Not only...but..." or "It's not just about..., it's..." are overused. So are clipped tailing-negation fragments such as "no guessing" or "no wasted motion" tacked onto the end of a sentence instead of written as a real clause.
+**Problem:** Constructions like "Not only...but..." or "It's not just about..., it's..." are overused. So are clipped tailing-negation fragments such as "no guessing" or "no wasted motion" tacked onto the end of a sentence instead of written as a real clause. A related but distinct pattern — **Negative-Fact Enumeration** — is three or more consecutive independent negative-fact clauses stacked as a defensive boundary-list ("No X. No Y. No Z."): this reads as an LLM enumerating what something is *not* rather than stating what it is, even when each individual clause is specific and true.
 
 **Before:** It's not just about the beat riding under the vocals; it's part of the aggression and atmosphere. It's not merely a song, it's a statement.
 
@@ -205,6 +209,24 @@ Avoiding AI patterns is only half the job. Sterile, voiceless writing is just as
 **Before (tailing negation):** The options come from the selected item, no guessing.
 
 **After:** The options come from the selected item without forcing the user to guess.
+
+**Before (stacked negative-fact clauses / Negative-Fact Enumeration):** No Python, no Ruby, no third-party dependencies — this tool runs on nothing but the standard library.
+
+**After:** This tool runs on nothing but the standard library, with no Python, Ruby, or third-party dependencies required.
+
+**Note:** three true, distinct negative facts stated economically (e.g. "requires no API key, no config file, and no network access") are not this pattern; the tell is a checklist-style enumeration recited in negative form, not the presence of three "no" clauses.
+
+**Rewrite "Not X, it's Y" and tailing negation whenever a stronger sentence is available, as both examples above do.** When no stronger sentence exists, the construction is allowed, but at most once per document. On a repeat use, or once a stronger sentence becomes available, use one of these instead:
+
+- **State the real cause plainly.** Say what caused the thing, not what didn't. "The heavy beat drives the aggressive tone" beats "It's not just the beat, it's the aggression."
+- **Show appearance versus reality.** Contrast what something looks like with what it actually is, without the "not...it's" scaffolding. "The interface looks simple. Underneath, it recomputes the whole layout on every keystroke."
+- **Use "because."** A because-clause states the reason directly instead of first negating an alternative. "The build is slow because it recompiles every package, not just the changed one" beats "It's not fast, it's thorough."
+- **Ask a question.** Let a direct question carry the point instead of a negation-then-correction pair. "Why does a one-line change take four minutes to build?" opens the same idea "it's not a quick build, it's a full rebuild" would have padded out.
+- **Show a scene.** A concrete moment or example replaces the abstraction the negative-parallel construction was gesturing at. Instead of "It's not just a delay, it's a lost afternoon," describe the delay: "The build ran for forty minutes while the deploy window closed."
+
+**Before (same construction used twice in one document):** The overview states: "It's not just a cache, it's a safety net for the whole request path." The conclusion later restates: "It's not just a cache, it's the reason the request path survives a backend stall."
+
+**After:** The overview keeps its one legitimate use: "It's not just a cache, it's a safety net for the whole request path." The conclusion instead states the real cause plainly: "The cache is what keeps the request path alive during a backend stall."
 
 ### 10\. Rule of Three Overuse
 

@@ -113,10 +113,8 @@ pub(crate) fn select_harness<'a>(
 
 /// Prints a numbered list of `strategies` to stderr and reads one line
 /// from stdin as a 1-based index. Any invalid response -- including
-/// empty input or a read error -- is a usage error, the same convention
-/// `uninstall.rs`'s `confirm_destructive_uninstall` applies to its own
-/// y/n prompt. Always returns `Ambiguous`; there's no name to mismatch
-/// in this path.
+/// empty input or a read error -- is a usage error. Always returns
+/// `Ambiguous`; there's no name to mismatch in this path.
 fn prompt_for_harness<'a>(
     target_dir: &str,
     strategies: &'a [StrategyManifest],

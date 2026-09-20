@@ -9,9 +9,7 @@
 // This is the ONLY production call path that makes a network fetch;
 // every other module in `install::remote`/`install::github`/
 // `install::github_branch` is reachable only from tests or from this
-// orchestration function. See `install::github`'s own module doc for
-// why a real fetch reliably fails with `RemoteOrchestrationError::Fetch`
-// wrapping `GithubFetchError::MissingAsset` today.
+// orchestration function.
 
 use std::path::Path;
 
@@ -83,7 +81,7 @@ impl std::error::Error for MainBranchDistOrchestrationError {}
 /// specific source.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RemoteInstallSource {
-    /// The primary path: a per-platform tarball + `.sha256` sidecar
+    /// The primary path: a version-named tarball + `.sha256` sidecar
     /// fetched from `owner/repo`'s latest GitHub Release
     /// (`install::github`).
     GithubRelease,
@@ -298,7 +296,7 @@ fn install_from_remote_with_fallback_using(
         Ok(()) => Ok(RemoteInstallSource::GithubRelease),
         Err(
             release_error @ RemoteOrchestrationError::Fetch(
-                GithubFetchError::MissingAsset(_) | GithubFetchError::MetadataHttp(404),
+                GithubFetchError::MissingAsset(_) | GithubFetchError::MetadataHttp(404, _),
             ),
         ) => match main_branch_dist_installer() {
             Ok(()) => Ok(RemoteInstallSource::MainBranchDist),
@@ -356,6 +354,7 @@ pub(crate) fn install_from_remote_with_fallback(
 
 #[cfg(test)]
 mod tests {
+    use super::super::private_repo_hint::TokenState;
     use super::*;
     use crate::cli::install::kiro_cli::KiroCliInstallStrategy;
     use crate::cli::install::manifest;
@@ -749,13 +748,13 @@ mod tests {
         );
     }
 
-    /// A release failure with `GithubFetchError::MissingAsset` -- the
-    /// expected outcome until `release.yml` is fixed -- must trigger
-    /// the fallback automatically: both sources read the same
-    /// repository, just from a different ref, so no separate opt-in
-    /// gates it. A successful fallback must report `MainBranchDist` as
-    /// the source, never blending the two into one undifferentiated
-    /// success.
+    /// A release failure with `GithubFetchError::MissingAsset` -- a
+    /// release that lacks the expected tarball or sidecar asset --
+    /// must trigger the fallback automatically: both sources read the
+    /// same repository, just from a different ref, so no separate
+    /// opt-in gates it. A successful fallback must report
+    /// `MainBranchDist` as the source, never blending the two into
+    /// one undifferentiated success.
     #[test]
     fn fallback_chain_falls_back_automatically_on_missing_asset_and_reports_main_branch_dist_source(
     ) {
@@ -783,7 +782,7 @@ mod tests {
         let result = install_from_remote_with_fallback_using(
             || {
                 Err(RemoteOrchestrationError::Fetch(
-                    GithubFetchError::MetadataHttp(404),
+                    GithubFetchError::MetadataHttp(404, TokenState::NotOptedIn),
                 ))
             },
             || Ok(()),
@@ -872,7 +871,7 @@ mod tests {
         let result = install_from_remote_with_fallback_using(
             || {
                 Err(RemoteOrchestrationError::Fetch(
-                    GithubFetchError::MetadataHttp(403),
+                    GithubFetchError::MetadataHttp(403, TokenState::NotOptedIn),
                 ))
             },
             move || {
@@ -883,7 +882,7 @@ mod tests {
         assert!(matches!(
             result,
             Err(FallbackChainError::ReleaseOnly(
-                RemoteOrchestrationError::Fetch(GithubFetchError::MetadataHttp(403))
+                RemoteOrchestrationError::Fetch(GithubFetchError::MetadataHttp(403, _))
             ))
         ));
         assert!(

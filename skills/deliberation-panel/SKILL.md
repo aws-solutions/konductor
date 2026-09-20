@@ -1,6 +1,6 @@
 ---
 name: deliberation-panel
-description: Multi-perspective deliberation for high-stakes, multi-option decisions. Derives a small set of decision-specific axes directly from the tradeoff at hand, argues each axis independently, cross-examines the arguments anonymously, and synthesizes a scored recommendation. Requires an explicit consent_confirmed flag before running — it is not free.
+description: Use for high-stakes, multi-option decisions once the user has explicitly consented to the cost (about 2-3 minutes and several subagent calls); pass consent_confirmed=true after presenting the derived axes. Derives decision-specific axes from the tradeoff, argues each independently, cross-examines the arguments anonymously, and returns a scored recommendation. Not a substitute for eliciting information from a person; use `socratic-elicitation` for that.
 version: 1.0.0
 tags:
   [skill, deliberation, tradeoff, decision, design, research, viability, panel]

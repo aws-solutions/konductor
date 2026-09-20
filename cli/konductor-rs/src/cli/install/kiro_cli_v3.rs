@@ -51,9 +51,9 @@
 use std::path::Path;
 
 use super::kiro_cli::{
-    attach_provenance, content_manifest_path, install_context, install_skills, install_sops,
-    list_agent_files, plan_additive_claude_sop_skill_files, plan_all_files,
-    plan_claude_settings_grant, read_skill_scopes_sidecar, read_sop_scopes_sidecar,
+    attach_provenance, content_manifest_path, install_context, install_kiro_sop_skills,
+    install_skills, install_sops, list_agent_files, plan_additive_claude_sop_skill_files,
+    plan_all_files, plan_claude_settings_grant, read_skill_scopes_sidecar, read_sop_scopes_sidecar,
     reject_unsafe_file_name, KIRO_DESTINATION_ROOT, KONDUCTOR_DESTINATION_ROOT,
 };
 use super::manifest::{ManifestFile, Provenance, Status, StrategyManifest};
@@ -296,6 +296,11 @@ impl InstallStrategy for KiroCliV3InstallStrategy {
             prior_manifest.as_ref(),
         )?);
         raw_files.extend(install_sops(&harness_dir, target_dir)?);
+        // Kiro-discoverable conversion, alongside the raw copy above --
+        // see `install_kiro_sop_skills`'s own doc comment. Primary
+        // content type for this strategy, not additive/marker-gated
+        // (unlike the Claude branch immediately below).
+        raw_files.extend(install_kiro_sop_skills(&harness_dir, target_dir)?);
         // Additive Claude branch, mirroring `SopInstallPhase::run`'s
         // dual-marker branch: this run is this strategy's own, but the
         // target also has a pre-existing `.claude` marker. Always
@@ -985,6 +990,19 @@ mod tests {
             !target_dir.join(".kiro/sops").exists(),
             "SOPs are Konductor tooling shared across runtimes, not a Kiro CLI concept"
         );
+        // Alongside the raw copy above, every staged SOP also gets a
+        // Kiro-discoverable `sop-<name>/SKILL.md` conversion under
+        // `.kiro/skills/` -- see `install_kiro_sop_skills`'s own doc
+        // comment.
+        let sop_skill =
+            fs::read_to_string(target_dir.join(".kiro/skills/sop-ticket-sync/SKILL.md"))
+                .expect("expected a Kiro-discoverable SOP-skill conversion");
+        assert!(sop_skill.contains("name: \"sop-ticket-sync\""));
+        assert!(
+            !sop_skill.contains("disable-model-invocation"),
+            "Kiro CLI has no documented equivalent to Claude Code's \
+             disable-model-invocation key, so it must be omitted entirely"
+        );
 
         let manifest = super::super::manifest::read_manifest(&target_dir)
             .unwrap()
@@ -993,7 +1011,11 @@ mod tests {
             manifest.strategies[0].status,
             super::super::manifest::Status::Complete
         );
-        assert_eq!(manifest.strategies[0].files.len(), 4);
+        assert_eq!(manifest.strategies[0].files.len(), 5);
+        assert!(manifest.strategies[0]
+            .files
+            .iter()
+            .any(|f| f.path == ".kiro/skills/sop-ticket-sync/SKILL.md"));
 
         fs::remove_dir_all(&target_dir).ok();
         fs::remove_dir_all(&repo_root).ok();
@@ -1176,35 +1198,35 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// Regression test for the bug this fix addresses (CR-304277042): a
-    /// dual-marker target (`.kiro` AND a pre-existing `.claude` marker)
-    /// with `kiro-cli-v2` installed tracks the additive Claude/V3
-    /// `.claude/settings.json` grant in `kiro-cli-v2`'s own manifest slot
-    /// (`plan_claude_settings_grant`/`apply_claude_settings_grant`).
-    /// Switching to `kiro-v3` via the override
-    /// (`manifest::upsert_strategy`'s override-on-switch)
-    /// removes `kiro-cli-v2`'s slot outright. Before this fix,
-    /// `kiro_cli_v3.rs`'s `install_from_local` never predicted or wrote
-    /// `.claude/settings.json` at all, so it ended up claimed by NEITHER
-    /// slot after the switch -- permanently unreachable by a future
-    /// `uninstall`/`update`, which only ever act on a tracked slot's own
-    /// `files` list.
+    /// Guards a dual-marker target (`.kiro` AND a pre-existing `.claude`
+    /// marker) with `kiro-cli-v2` installed against losing track of the
+    /// additive Claude/V3 `.claude/settings.json` grant across a
+    /// strategy switch: that grant lives in `kiro-cli-v2`'s own manifest
+    /// slot (`plan_claude_settings_grant`/`apply_claude_settings_grant`),
+    /// and switching to `kiro-v3` via the override
+    /// (`manifest::upsert_strategy`'s override-on-switch) removes
+    /// `kiro-cli-v2`'s slot outright. `kiro_cli_v3.rs`'s
+    /// `install_from_local` must predict and write
+    /// `.claude/settings.json` itself in that case, or the grant ends up
+    /// claimed by NEITHER slot after the switch -- permanently
+    /// unreachable by a future `uninstall`/`update`, which only ever act
+    /// on a tracked slot's own `files` list.
     ///
-    /// Also covers the second, related gap: the dual-marker
+    /// Also guards the second, related case: the dual-marker
     /// `.claude/skills/sop-<name>/SKILL.md` conversion
     /// (`claude::install_sop_skills`). This file is
     /// deliberately excluded from BOTH Kiro variants' own manifest
     /// slots (confirmed by `kiro_cli.rs`'s own
     /// `install_from_local_dual_marker_target_converts_claude_sop_skill_without_provenance_error`
-    /// test) -- so its bug is not manifest-orphaning but staleness:
-    /// before this fix, `kiro_cli_v3.rs` never performed this
-    /// conversion at all, so switching to `kiro-v3` would freeze the
-    /// file at whatever `kiro-cli-v2` last wrote, never refreshing it from
-    /// newly-staged `dist/claude/sops/` content on a subsequent
-    /// `kiro-v3` install. This test proves the content is actually
-    /// regenerated (not merely left untouched) by changing the staged
-    /// Claude-side SOP body between the two installs and asserting the
-    /// installed file picks up the NEW body.
+    /// test), so the risk here is not manifest-orphaning but staleness:
+    /// `kiro_cli_v3.rs`'s `install_from_local` must perform this
+    /// conversion itself on every install, or switching to `kiro-v3`
+    /// would freeze the file at whatever `kiro-cli-v2` last wrote, never
+    /// refreshing it from newly-staged `dist/claude/sops/` content on a
+    /// subsequent `kiro-v3` install. This test proves the content is
+    /// actually regenerated (not merely left untouched) by changing the
+    /// staged Claude-side SOP body between the two installs and
+    /// asserting the installed file picks up the NEW body.
     #[test]
     fn install_from_local_reclaims_dual_marker_files_after_kiro_variant_override_switch() {
         let target_dir = scratch_dir("variant-switch-dual-marker-target");
@@ -1359,6 +1381,121 @@ mod tests {
                 .iter()
                 .all(|f| f.path != ".claude/skills/sop-ticket-sync/SKILL.md"),
             "the dual-marker SOP-skill file must remain unclaimed by kiro-v3's own slot too"
+        );
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// The ownership decision for `.kiro/skills/sop-<name>/SKILL.md`
+    /// (both this strategy and `KiroCliInstallStrategy` write this
+    /// identical path): manifest-tracked under whichever Kiro variant's
+    /// own slot is CURRENTLY installed, relying on `KIRO_VARIANT_FAMILY`'s
+    /// existing mutual-exclusion/override-switch mechanism -- not the
+    /// Claude-style untracked dual-marker treatment. `kiro-cli-v2` and
+    /// `kiro-v3` can never both be tracked at the same target at once (see
+    /// `manifest::KIRO_VARIANT_FAMILY`'s own doc comment), so there is no
+    /// "both installed simultaneously" state this path needs to survive
+    /// the way `.claude/skills/sop-<name>/SKILL.md` does (Claude Code and
+    /// a Kiro variant DO legitimately coexist).
+    ///
+    /// This test drives the realistic version of "both would write it":
+    /// install `kiro-cli-v2` first (tracking the file in ITS slot), then
+    /// switch to `kiro-v3` with the SOP's content changed. Proves the
+    /// file (a) survives the switch, (b) is ACTUALLY regenerated from
+    /// the newly-staged content (not left frozen), and (c) ends up
+    /// tracked in kiro-v3's new slot, not orphaned in neither slot the
+    /// way the Claude dual-marker file deliberately is -- i.e. the
+    /// opposite assertion from
+    /// `install_from_local_reclaims_dual_marker_files_after_kiro_variant_override_switch`
+    /// above, for this different path.
+    #[test]
+    fn install_from_local_kiro_sop_skill_survives_variant_override_switch() {
+        let target_dir = scratch_dir("kiro-sop-skill-variant-switch-target");
+        let repo_root = scratch_dir("kiro-sop-skill-variant-switch-repo");
+
+        let v2_dist = repo_root.join("dist/kiro-cli-v2");
+        fs::create_dir_all(v2_dist.join("sops")).unwrap();
+        fs::write(
+            v2_dist.join("sops/ticket-sync.sop.md"),
+            b"## Overview\n\nOriginal body from the kiro-cli-v2 install.\n",
+        )
+        .unwrap();
+
+        super::super::kiro_cli::KiroCliInstallStrategy
+            .install_from_local(
+                &target_dir,
+                Some(repo_root.to_str().unwrap()),
+                "2026-01-01T00:00:00Z",
+                false,
+            )
+            .expect("kiro-cli-v2 install must succeed");
+
+        let sop_skill_path = target_dir.join(".kiro/skills/sop-ticket-sync/SKILL.md");
+        let original_body = fs::read_to_string(&sop_skill_path)
+            .expect("SOP-skill file must exist after v2 install");
+        assert!(original_body.contains("Original body from the kiro-cli-v2 install."));
+
+        let manifest_before = super::super::manifest::read_manifest(&target_dir)
+            .unwrap()
+            .expect("manifest must exist after the kiro-cli-v2 install");
+        assert_eq!(manifest_before.strategies.len(), 1);
+        assert_eq!(manifest_before.strategies[0].strategy, "kiro-cli-v2");
+        assert!(
+            manifest_before.strategies[0]
+                .files
+                .iter()
+                .any(|f| f.path == ".kiro/skills/sop-ticket-sync/SKILL.md"),
+            "sanity check: kiro-cli-v2's own slot must claim the SOP-skill file before the switch"
+        );
+
+        // Re-stage the SOP with a NEW body under kiro-v3's own harness
+        // dir, mirroring what a real `konductor synth --harness kiro-v3`
+        // re-run would produce before `konductor install --harness
+        // kiro-v3` overrides the target.
+        let v3_dist = repo_root.join("dist").join(KiroCliV3Transformer.name());
+        fs::create_dir_all(v3_dist.join("sops")).unwrap();
+        fs::write(
+            v3_dist.join("sops/ticket-sync.sop.md"),
+            b"## Overview\n\nNEW body from the kiro-v3 install.\n",
+        )
+        .unwrap();
+
+        KiroCliV3InstallStrategy
+            .install_from_local(
+                &target_dir,
+                Some(repo_root.to_str().unwrap()),
+                "2026-01-01T00:01:00Z",
+                false,
+            )
+            .expect("kiro-v3 override-switch install must succeed");
+
+        let manifest_after = super::super::manifest::read_manifest(&target_dir)
+            .unwrap()
+            .expect("manifest must exist after the override switch");
+        assert_eq!(
+            manifest_after.strategies.len(),
+            1,
+            "the override switch must leave exactly one tracked Kiro-variant slot, not two"
+        );
+        let slot = &manifest_after.strategies[0];
+        assert_eq!(slot.strategy, "kiro-v3");
+
+        let refreshed_body = fs::read_to_string(&sop_skill_path)
+            .expect("SOP-skill file must exist after the switch");
+        assert!(
+            refreshed_body.contains("NEW body from the kiro-v3 install."),
+            "kiro-v3 must regenerate the SOP-skill file from its own currently staged content, \
+             not leave it frozen at kiro-cli-v2's stale body"
+        );
+        assert!(!refreshed_body.contains("Original body from the kiro-cli-v2 install."));
+
+        assert!(
+            slot.files
+                .iter()
+                .any(|f| f.path == ".kiro/skills/sop-ticket-sync/SKILL.md"),
+            "the SOP-skill file must be reclaimed by kiro-v3's own new slot after the switch \
+             -- unlike the Claude dual-marker file, it must never end up orphaned in neither slot"
         );
 
         fs::remove_dir_all(&target_dir).ok();

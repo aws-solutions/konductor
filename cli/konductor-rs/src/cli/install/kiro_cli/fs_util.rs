@@ -52,26 +52,66 @@ pub(in crate::cli::install) fn set_executable(
 }
 
 /// Rejects a synthed file name that isn't a plain path segment: empty,
-/// absolute, containing a path separator, or a `..`/`.` component.
-/// Mirrors `synth::kiro_cli_v2`'s own `reject_unsafe_agent_name` check
-/// at the point of path construction -- copying a synthed name into a
-/// destination path must not be able to escape `destination`.
-/// Rejects a file name that is empty, `.`/`..`, contains a path
-/// separator, or is otherwise unsafe to join onto a destination
-/// directory without escaping it. `pub(in crate::cli::install)`: the sibling
-/// `mcp_server` module reuses this for its own binary/symlink names
-/// rather than duplicating the check.
+/// absolute, containing a path separator, a `..`/`.` component, or any
+/// of the control/whitespace/format-character set
+/// `synth::path_safety::reject_unsafe_name_segment` rejects. Delegates
+/// to that function -- the crate's single shared source of truth for
+/// this exact containment check -- rather than carrying its own
+/// independent boolean chain, so every caller of this function inherits
+/// whatever coverage that shared check has, without the two ever being
+/// able to drift apart the way a hand-maintained duplicate could.
+/// Mirrors `synth::kiro_cli_v2`'s own `reject_unsafe_agent_name` check at
+/// the point of path construction -- copying a synthed name into a
+/// destination path must not be able to escape `destination`. The
+/// control-character coverage extends that same
+/// safety-at-path-construction contract to callers that also render the
+/// name into other contexts (e.g. a YAML scalar): rejecting it here means
+/// a downstream renderer that assumes control-character-free input, such
+/// as `install::claude`'s `yaml_double_quote`, never sees one.
+///
+/// `pub(in crate::cli::install)`: the sibling `mcp_server` module reuses
+/// this for its own binary/symlink names rather than duplicating the
+/// check.
 pub(in crate::cli::install) fn reject_unsafe_file_name(file_name: &str) -> Result<(), String> {
-    let is_unsafe = file_name.is_empty()
-        || Path::new(file_name).is_absolute()
-        || file_name == ".."
-        || file_name == "."
-        || file_name.contains('/')
-        || file_name.contains('\\');
-    if is_unsafe {
+    if crate::cli::synth::path_safety::reject_unsafe_name_segment(file_name) {
         return Err(format!(
             "unsafe file name for install destination: {file_name:?}"
         ));
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reject_unsafe_file_name_rejects_a_name_containing_a_newline() {
+        assert!(reject_unsafe_file_name("weird\nname").is_err());
+    }
+
+    #[test]
+    fn reject_unsafe_file_name_rejects_a_name_containing_a_tab() {
+        assert!(reject_unsafe_file_name("weird\tname").is_err());
+    }
+
+    /// Regression guard for the delegation to
+    /// `synth::path_safety::reject_unsafe_name_segment`: a bidirectional
+    /// override or zero-width character (Unicode category `Cf`, not
+    /// covered by `char::is_control`) must be rejected here too, now
+    /// that this function no longer carries its own independent
+    /// (narrower) boolean chain.
+    #[test]
+    fn reject_unsafe_file_name_rejects_a_name_containing_a_cf_character() {
+        assert!(reject_unsafe_file_name("weird\u{202E}name").is_err());
+        assert!(reject_unsafe_file_name("weird\u{200B}name").is_err());
+    }
+
+    /// Regression guard for the same delegation: plain whitespace (not a
+    /// control character at all -- an ASCII space is category Zs, not
+    /// Cc) must be rejected here too.
+    #[test]
+    fn reject_unsafe_file_name_rejects_a_name_containing_a_space() {
+        assert!(reject_unsafe_file_name("weird name").is_err());
+    }
 }

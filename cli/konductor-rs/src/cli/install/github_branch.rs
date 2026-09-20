@@ -23,6 +23,7 @@ use std::time::Duration;
 
 use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
 
+use super::private_repo_hint;
 use super::remote::RemoteArtifactFetcher;
 
 /// Characters a GitHub Contents API URL segment must not carry
@@ -69,7 +70,17 @@ pub enum GithubBranchFetchError {
     MissingSidecar(String),
     /// The GitHub API responded with a non-2xx HTTP status (e.g. 403
     /// rate-limited) that isn't the 404-means-missing-file case above.
-    Http(u16),
+    ///
+    /// Carries the `TokenState` this specific request was made with.
+    /// Unlike `install::github`'s `DownloadHttp`, this variant covers
+    /// requests that DO send the token when available: both the
+    /// tarball and sidecar fetch here go through the Contents API on
+    /// `api.github.com` (never redirecting to a separate pre-signed
+    /// storage host the way a release asset's `browser_download_url`
+    /// does), so `download_dist_file_bytes` attaches
+    /// `Authorization` via `apply_github_token` just like the release
+    /// path's metadata call -- the hint fully applies here.
+    Http(u16, private_repo_hint::TokenState),
     /// The response body could not be read to completion.
     InvalidResponse(String),
     /// A downloaded file's response body exceeded
@@ -77,20 +88,6 @@ pub enum GithubBranchFetchError {
     /// Enforced by a bounded reader regardless of what any
     /// `Content-Length` header claimed.
     ResponseTooLarge { limit_bytes: u64 },
-}
-
-/// Self-diagnosis suffix appended to an HTTP-status error message when
-/// `status` is specifically 401 or 403 -- the exact codes a private
-/// repository without a token produces. Names the `--use-github-token`
-/// flag directly, so a caller hitting one of these two hard-to-diagnose
-/// statuses sees a concrete next step rather than a bare status code.
-/// Empty for every other status, so an unrelated failure (404, 500,
-/// etc) stays exactly as plain as it always has been.
-fn private_repo_hint(status: u16) -> &'static str {
-    match status {
-        401 | 403 => " -- if this repository is private, consider passing --use-github-token",
-        _ => "",
-    }
 }
 
 impl std::fmt::Display for GithubBranchFetchError {
@@ -109,11 +106,11 @@ impl std::fmt::Display for GithubBranchFetchError {
                  main's dist/ must also publish a checksum sidecar for this source to \
                  verify against"
             ),
-            GithubBranchFetchError::Http(status) => {
+            GithubBranchFetchError::Http(status, token_state) => {
                 write!(
                     f,
                     "GitHub API responded with HTTP status {status}{}",
-                    private_repo_hint(*status)
+                    private_repo_hint::private_repo_hint(*status, *token_state)
                 )
             }
             GithubBranchFetchError::InvalidResponse(message) => {
@@ -261,12 +258,10 @@ fn download_dist_file_bytes(
         .get(&url)
         .set("User-Agent", USER_AGENT)
         .set("Accept", "application/vnd.github.raw+json");
-    let request = super::github::apply_github_token(
-        request,
-        super::github::github_token_from_env(use_github_token).as_deref(),
-    );
+    let (request, token_state) =
+        super::github::apply_github_token_from_env(request, use_github_token);
     let response = request.call().map_err(|err| match err {
-        ureq::Error::Status(code, _response) => GithubBranchFetchError::Http(code),
+        ureq::Error::Status(code, _response) => GithubBranchFetchError::Http(code, token_state),
         ureq::Error::Transport(transport) => GithubBranchFetchError::Network(transport.to_string()),
     })?;
     let content_length = parse_content_length(&response);
@@ -297,7 +292,7 @@ pub(crate) fn fetch_branch_dist_artifact_and_sidecar(
     let artifact_bytes =
         match download_dist_file_bytes(owner, repo, branch, &artifact_filename, use_github_token) {
             Ok(bytes) => bytes,
-            Err(GithubBranchFetchError::Http(404)) => {
+            Err(GithubBranchFetchError::Http(404, _)) => {
                 return Err(GithubBranchFetchError::MissingArtifact(artifact_filename))
             }
             Err(other) => return Err(other),
@@ -306,7 +301,7 @@ pub(crate) fn fetch_branch_dist_artifact_and_sidecar(
     let sidecar_bytes =
         match download_dist_file_bytes(owner, repo, branch, &sidecar_filename, use_github_token) {
             Ok(bytes) => bytes,
-            Err(GithubBranchFetchError::Http(404)) => {
+            Err(GithubBranchFetchError::Http(404, _)) => {
                 return Err(GithubBranchFetchError::MissingSidecar(sidecar_filename))
             }
             Err(other) => return Err(other),
@@ -599,13 +594,19 @@ mod tests {
         );
     }
 
-    /// A 401 or 403 -- the exact codes a private repository without a
-    /// token produces -- must name `--use-github-token` in the
-    /// rendered message.
+    /// A 401 or 403, when `--use-github-token` was never passed
+    /// (`TokenState::NotOptedIn`) -- must name both `GITHUB_TOKEN` and
+    /// `--use-github-token` in the rendered message.
     #[test]
-    fn http_401_and_403_display_names_the_token_flag() {
+    fn http_401_and_403_not_opted_in_names_the_env_var_and_the_flag() {
         for status in [401u16, 403u16] {
-            let message = GithubBranchFetchError::Http(status).to_string();
+            let message =
+                GithubBranchFetchError::Http(status, private_repo_hint::TokenState::NotOptedIn)
+                    .to_string();
+            assert!(
+                message.contains("GITHUB_TOKEN"),
+                "status {status} must name GITHUB_TOKEN, got: {message}"
+            );
             assert!(
                 message.contains("--use-github-token"),
                 "status {status} must hint at --use-github-token, got: {message}"
@@ -613,16 +614,68 @@ mod tests {
         }
     }
 
-    /// Any OTHER status code must NOT carry the hint -- it would be
-    /// noise for a failure that has nothing to do with authentication.
+    /// A 401 or 403, when `--use-github-token` was passed but
+    /// `GITHUB_TOKEN` was empty/unset -- must explicitly report that
+    /// distinct state.
     #[test]
-    fn http_other_statuses_omit_the_token_flag_hint() {
-        for status in [404u16, 429u16, 500u16, 503u16] {
-            let message = GithubBranchFetchError::Http(status).to_string();
+    fn http_401_and_403_opted_in_empty_or_unset_reports_the_empty_state() {
+        for status in [401u16, 403u16] {
+            let message = GithubBranchFetchError::Http(
+                status,
+                private_repo_hint::TokenState::OptedInEmptyOrUnset,
+            )
+            .to_string();
+            assert!(
+                message.contains("GITHUB_TOKEN"),
+                "status {status} must name GITHUB_TOKEN, got: {message}"
+            );
+            assert!(
+                message.contains("not set") || message.contains("empty"),
+                "status {status} must describe the empty/unset state, got: {message}"
+            );
+        }
+    }
+
+    /// A 401 or 403, when a non-empty `GITHUB_TOKEN` was actually sent
+    /// and still rejected -- must NOT repeat the `--use-github-token`
+    /// suggestion (the silent-loop bug).
+    #[test]
+    fn http_401_and_403_opted_in_sent_does_not_repeat_the_flag_suggestion() {
+        for status in [401u16, 403u16] {
+            let message =
+                GithubBranchFetchError::Http(status, private_repo_hint::TokenState::OptedInSent)
+                    .to_string();
             assert!(
                 !message.contains("--use-github-token"),
-                "status {status} must not carry the token hint, got: {message}"
+                "status {status} must not repeat the already-followed --use-github-token \
+                 suggestion, got: {message}"
             );
+            assert!(
+                message.contains("GITHUB_TOKEN"),
+                "status {status} must still name GITHUB_TOKEN as the rejected credential, \
+                 got: {message}"
+            );
+        }
+    }
+
+    /// Any OTHER status code must NOT carry the hint, for every token
+    /// state -- it would be noise for a failure that has nothing to
+    /// do with authentication.
+    #[test]
+    fn http_other_statuses_omit_the_hint_for_every_token_state() {
+        for status in [404u16, 429u16, 500u16, 503u16] {
+            for state in [
+                private_repo_hint::TokenState::NotOptedIn,
+                private_repo_hint::TokenState::OptedInEmptyOrUnset,
+                private_repo_hint::TokenState::OptedInSent,
+            ] {
+                let message = GithubBranchFetchError::Http(status, state).to_string();
+                assert!(
+                    !message.contains("--use-github-token") && !message.contains("GITHUB_TOKEN"),
+                    "status {status} with state {state:?} must not carry the token hint, \
+                     got: {message}"
+                );
+            }
         }
     }
 }

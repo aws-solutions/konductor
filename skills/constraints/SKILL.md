@@ -1,6 +1,6 @@
 ---
 name: constraints
-description: Hard behavioral rules for all Konductor agents. Defines what agents must NEVER and ALWAYS do, covering code quality, security, and verification standards.
+description: MUST USE for every interaction across all Konductor agents. Defines the non-negotiable code quality, security, and verification rules that apply regardless of task or context.
 version: 1.0.0
 tags: [skill, behavioral, constraints, quality, security]
 ---

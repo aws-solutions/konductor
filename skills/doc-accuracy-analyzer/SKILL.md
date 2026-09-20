@@ -1,6 +1,6 @@
 ---
 name: doc-accuracy-analyzer
-description: 6-step workflow for systematically verifying technical documents against primary sources. Extracts verifiable claims, investigates each, classifies findings, and produces a structured accuracy report.
+description: Use before submitting a design doc for review, after major revisions to a design doc, or when a reviewer flags factual concerns. Extracts verifiable claims, investigates each against primary sources, classifies findings, and produces a structured accuracy report.
 version: 1.0.0
 source: MyAgentToolkit (copied locally — not yet in live version set)
 ---

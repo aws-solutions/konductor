@@ -1,7 +1,7 @@
 ---
 name: delegation-protocol
-description: Structured delegation format for Konductor. Defines the 8-field prompt format (mandatory target agent + 7 sections), agent registry, parallel execution rules, and handoff patterns.
-version: 1.3.0
+description: Use when spawning any subagent, deciding which agent should handle a piece of work, coordinating parallel or sequential agent execution, or handing off artifacts between agents. Defines the mandatory 8-field delegation prompt format, agent registry, and handoff patterns.
+version: 1.4.0
 tags: [skill, behavioral, orchestration, delegation, multi-agent]
 ---
 
@@ -101,6 +101,26 @@ When uncertain which agent to use, check the agent's skill list in the README or
 | **Web** (external pages) | `k-researcher` | `k-browser` (automation/scraping); `k-media-analyzer` (extract/interpret content from a specific URL) |
 
 For web content, prefer `k-researcher` for information retrieval. Delegate to `k-browser` for interactive automation or scraping, and to `k-media-analyzer` when the page content requires visual or structural interpretation.
+
+## Per-Agent SOP Registrations
+
+Which SOPs each agent declares in its own `dependencies.agentSops.agentSopNames`, read directly from `agents/*.agent-spec.json`. This is the authoritative source for which agent a SOP dispatches to when it names another SOP by identifier — a referencing SOP should look up the owning agent here rather than stating or assuming one independently.
+
+| Agent                                                                         | Registered SOPs (own `agentSopNames`)                                                                                                                                                      |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `k-architect`                                                                 | `k-design-doc-creation`, `k-existing-design-review`, `k-principal-engineer-design-review`, `k-adversarial-pull-request-review`                                                             |
+| `k-developer`                                                                 | `k-code-cleanup`, `k-pre-cr-critique`, `k-codebase-analysis`, `k-code-review-workflow`                                                                                                     |
+| `k-quality-assurance`                                                         | `k-test-coverage-review`                                                                                                                                                                   |
+| `konductor`                                                                   | `kiro-spec-workflow`, `k-delegate`, `k-plan`, `k-context-gathering`, `k-verify`, `k-light-ui-testing`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `about-konductor` |
+| `konductor-mux-orchestrator`                                                  | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `about-konductor`               |
+| `konductor-cmux-orchestrator`                                                 | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `about-konductor`               |
+| `k-product-manager`, `k-researcher`, `k-tpm`, `k-browser`, `k-media-analyzer` | None declared — these agents execute delegated tasks; they do not select their own SOPs                                                                                                    |
+
+`konductor` additionally registers `k-delegate`; `konductor-mux-orchestrator` and `konductor-cmux-orchestrator` do not.
+
+When a SOP is registered on more than one agent, the caller MUST pick the target based on what else the delegating step needs rather than treat the lookup as single-valued.
+
+A SOP registered directly on an orchestrator's own `agentSopNames`, such as `kiro-spec-workflow` on `konductor` above, MUST be invoked directly rather than routed through a specialist-agent lookup, since it delegates to its own agents internally.
 
 ## Parallel Execution
 

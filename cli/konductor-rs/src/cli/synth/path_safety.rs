@@ -22,12 +22,26 @@ use unicode_normalization::UnicodeNormalization;
 use super::model::{CanonicalModel, SkillDef};
 
 /// Rejects a `name` that isn't a plain path segment: empty, absolute,
-/// containing a path separator, a `..`/`.` component, or an embedded
-/// NUL byte. Backs every one of this module's thin per-content-type
-/// wrappers below. A NUL byte truncates a C string at the OS/
-/// filesystem-syscall layer on Unix, so a name embedding one could
-/// otherwise pass every other check here yet behave like a shorter,
-/// differently-shaped path once it reaches the kernel.
+/// containing a path separator, a `..`/`.` component, an embedded NUL
+/// byte, any other Unicode control character (`Cc`, `char::is_control`),
+/// any whitespace character (`char::is_whitespace` -- the ASCII space/
+/// tab/newline family plus Unicode space separators like U+00A0
+/// NO-BREAK SPACE), or any of the specific Unicode format (`Cf`)
+/// codepoints in `is_disallowed_format_char` (bidirectional overrides
+/// and zero-width characters). Backs every one of this module's thin
+/// per-content-type wrappers below, and -- via
+/// `install::kiro_cli::fs_util::reject_unsafe_file_name`'s delegation --
+/// every one of that function's own callers too, so both share one
+/// checked set instead of two independently maintained ones. A NUL byte
+/// truncates a C string at the OS/filesystem-syscall layer on Unix, so a
+/// name embedding one could otherwise pass every other check here yet
+/// behave like a shorter, differently-shaped path once it reaches the
+/// kernel. A bidirectional-override or zero-width codepoint can make a
+/// rendered name/description visually indistinguishable from a
+/// different, "clean" one -- the same class of spoofed-identifier attack
+/// Unicode's own security profiles document -- while a name containing
+/// plain whitespace produces a slug or identifier (e.g. `/sop-my sop`)
+/// that is not a single invocable token at all.
 ///
 /// Deliberately NOT rejected here (evidence-checked): a `:`-containing
 /// name (e.g. `C:evil`,
@@ -55,7 +69,35 @@ pub(crate) fn reject_unsafe_name_segment(name: &str) -> bool {
         || name == "."
         || name.contains('/')
         || name.contains('\\')
-        || name.contains('\0')
+        || name.chars().any(is_unsafe_name_char)
+}
+
+/// True for any character `reject_unsafe_name_segment` rejects wherever
+/// it appears in a name: a NUL byte or any other Unicode control
+/// character (`Cc`, subsuming the NUL check -- `char::is_control`
+/// reports NUL as a control character), any whitespace character, or
+/// any of the specific Unicode format (`Cf`) codepoints
+/// `is_disallowed_format_char` denylists.
+fn is_unsafe_name_char(c: char) -> bool {
+    c.is_control() || c.is_whitespace() || is_disallowed_format_char(c)
+}
+
+/// True for the specific Unicode format-category (`Cf`) codepoints this
+/// module denylists: the bidirectional-override control characters
+/// (U+202A-U+202E, U+2066-U+2069) and the zero-width characters
+/// (U+200B ZERO WIDTH SPACE, U+200C ZERO WIDTH NON-JOINER, U+200D ZERO
+/// WIDTH JOINER, U+FEFF ZERO WIDTH NO-BREAK SPACE / BOM). Denylisted by
+/// explicit codepoint rather than a full Unicode General_Category=Cf
+/// lookup: this crate's only Unicode-aware dependency is
+/// `unicode-normalization` (used elsewhere in this module for NFC
+/// folding), which exposes no category classification, and these are
+/// the specific Cf codepoints reachable through this module's own
+/// untrusted inputs (a synthed/staged name, or externally authored
+/// SOP/skill content) that this check exists to close.
+fn is_disallowed_format_char(c: char) -> bool {
+    matches!(c,
+        '\u{200B}'..='\u{200D}' | '\u{FEFF}' | '\u{202A}'..='\u{202E}' | '\u{2066}'..='\u{2069}'
+    )
 }
 
 /// Agent name reserved because it collides with the SOP-scope sidecar
@@ -1417,6 +1459,44 @@ mod tests {
         assert!(reject_unsafe_name_segment(""));
         assert!(reject_unsafe_name_segment("evil\0name"));
         assert!(!reject_unsafe_name_segment("safe-name"));
+    }
+
+    /// A Unicode format-category (`Cf`) character -- a bidirectional
+    /// override or a zero-width character -- must be rejected wherever
+    /// it appears in the name, not just at the start or end.
+    #[test]
+    fn reject_unsafe_name_segment_rejects_cf_characters() {
+        assert!(
+            reject_unsafe_name_segment("evil\u{202E}name"),
+            "a RIGHT-TO-LEFT OVERRIDE character must be rejected"
+        );
+        assert!(
+            reject_unsafe_name_segment("evil\u{200B}name"),
+            "a ZERO WIDTH SPACE character must be rejected"
+        );
+        assert!(
+            reject_unsafe_name_segment("evil\u{FEFF}name"),
+            "a ZERO WIDTH NO-BREAK SPACE / BOM character must be rejected"
+        );
+        assert!(
+            reject_unsafe_name_segment("evil\u{2066}name"),
+            "a LEFT-TO-RIGHT ISOLATE character must be rejected"
+        );
+    }
+
+    /// Plain whitespace -- a name a Kiro `/sop-<name>` slug could never
+    /// invoke as a single token -- must be rejected too, even though a
+    /// plain ASCII space is category Zs (Separator, space), not `Cc`, so
+    /// neither the pre-existing NUL check nor a bare `char::is_control`
+    /// check alone would catch it.
+    #[test]
+    fn reject_unsafe_name_segment_rejects_whitespace() {
+        assert!(reject_unsafe_name_segment("my sop"));
+        assert!(reject_unsafe_name_segment("my\tsop"));
+        assert!(
+            reject_unsafe_name_segment("my\u{00A0}sop"),
+            "a NO-BREAK SPACE must be rejected too"
+        );
     }
 
     #[test]

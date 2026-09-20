@@ -130,6 +130,49 @@ pub(in crate::cli::install) fn install_sops(
     Ok(files)
 }
 
+/// Converts every staged `.sop.md` file from `<harness_dir>/sops/` into a
+/// `sop-<name>/SKILL.md` file under `<target_dir>/.kiro/skills/`, so each
+/// SOP also shows up in Kiro IDE's own native `/` list (Skills, Steering,
+/// Powers, Custom Agents) -- Kiro IDE's `/` list is populated only from
+/// on-disk files it scans, never from MCP prompts (`skill-lookup-mcp`'s
+/// own `.sop.md` serving, which is what `install_sops` above feeds), so
+/// without this conversion a SOP served only over MCP would never appear
+/// there.
+///
+/// Purely additive to `install_sops`: the raw `.konductor/sops/<name>.sop.md`
+/// copy that `--agent-sop-paths`/`skill-lookup-mcp` reads for the CLI's
+/// own `/prompts` remains unchanged -- this writes a SEPARATE, converted
+/// file to a separate root, the same way `install::claude::install_sop_skills`
+/// does for `.claude/skills/`. `skill-lookup-mcp` itself never scans
+/// `.kiro/skills/`, so this file has no effect on `find_skills`/`/prompts`.
+///
+/// Thin wrapper around `install::claude::install_sop_skills_into`
+/// (`destination_root: KIRO_DESTINATION_ROOT`, `disable_model_invocation:
+/// false` -- Kiro CLI has no documented equivalent to Claude Code's
+/// `disable-model-invocation` frontmatter key, so it is omitted entirely
+/// rather than guessed at; see that function's own doc comment) -- reused
+/// rather than re-implemented, so the rendered frontmatter/body shape can
+/// never silently drift between the two runtimes. Returns an empty `Vec`
+/// (not an error) when the source directory is missing or empty, matching
+/// `install_sops`'s own contract.
+///
+/// Visibility: `pub(in crate::cli::install)`, not private -- see
+/// `install_context`'s own doc comment above for the reasoning (identical
+/// here, for this function's own two callers: `SopInstallPhase::run`'s
+/// Kiro branch in `phases.rs`, and `KiroCliV3InstallStrategy::
+/// install_from_local` in `kiro_cli_v3.rs`).
+pub(in crate::cli::install) fn install_kiro_sop_skills(
+    harness_dir: &Path,
+    target_dir: &Path,
+) -> Result<Vec<ManifestFile>, String> {
+    super::super::claude::install_sop_skills_into(
+        harness_dir,
+        target_dir,
+        KIRO_DESTINATION_ROOT,
+        false,
+    )
+}
+
 /// Copies `*.json` files from `<harness_dir>/agents/` into
 /// `<target_dir>/.kiro/agents/`, returning their manifest entries
 /// (`path` relative to `target_dir`, e.g. `.kiro/agents/foo.json`).

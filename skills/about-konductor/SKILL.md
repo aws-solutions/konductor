@@ -33,10 +33,10 @@ konductor install --from . --harness kiro-cli-v2
 
 `synth` builds the pipeline/config artifacts from the repo root you cloned;
 `install` copies them into a target (`$HOME` unless you pass `--target`).
-`--harness` is required — say `kiro-cli-v2` for Kiro CLI or `claude` for
-Claude Code; there is no auto-detection. Run `konductor doctor` afterward
-to confirm everything registered — it inspects the install and prints
-remediation guidance for anything wrong instead of a bare error.
+`--harness` is required — say `kiro-cli-v2` or `kiro-v3` for Kiro CLI, or
+`claude` for Claude Code; there is no auto-detection. Run `konductor doctor`
+afterward to confirm everything registered — it inspects the install and
+prints remediation guidance for anything wrong instead of a bare error.
 
 See `cli/README.md` for the fully spelled-out walkthrough, prerequisites,
 and installing into a directory other than `$HOME`.
@@ -49,9 +49,10 @@ kiro-cli chat --agent konductor
 
 `konductor install` targets both Kiro CLI and Claude Code, but `--harness`
 is required — it never auto-detects the runtime at the install target, so
-you say `kiro-cli-v2` or `claude` explicitly and it installs the matching
-agent/skill/SOP layout. On Claude Code, start the same orchestrator through
-the `claude` CLI's own `--agent` flag instead of `kiro-cli chat --agent`.
+you say `kiro-cli-v2`, `kiro-v3`, or `claude` explicitly and it installs the
+matching agent/skill/SOP layout. On Claude Code, start the same orchestrator
+through the `claude` CLI's own `--agent` flag instead of `kiro-cli chat
+--agent`.
 
 That's the whole entry point. From here you never pick a
 specialist agent, never pick a skill, never hunt for a SOP — you describe
@@ -161,9 +162,7 @@ Every subcommand takes `--config`, `-v`/`--verbose`, `--json`, and
 `install` can act on one tracked target or `--all` of them at once. That
 shape is stable enough to describe here; exact flag names, defaults, and
 per-subcommand behavior are not — `konductor <subcommand> --help` is the
-source of truth. There's also a hidden `konductor __dump_schema` that walks
-the CLI's real command tree and emits it as JSON, useful if you're scripting
-against the CLI surface instead of reading prose.
+source of truth.
 
 ### Fixing a broken install
 
@@ -197,14 +196,12 @@ answer "run this specific procedure right now." You don't need to invoke
 either directly — describing the work to the orchestrator is what triggers
 the right one.
 
-An agent spec can declare `"includes": ["some-base-agent"]` to inherit from
-another agent spec instead of restating everything. Array fields under
-`clientConfig` union with dedup on include — a child agent's list adds to
-its base's, it doesn't replace it — and that union has no exclusion
-mechanism at the `clientConfig` level. A name (skill or SOP) also has to be
-registered on the specific agent that needs it; inheriting from a related
-agent isn't enough unless that relationship is an actual `includes`, and
-even then the base agent has to have registered the name too.
+Each agent spec is self-contained. This schema has no inheritance between
+agent specs. An agent declares the skills it can load in
+`dependencies.skills.skillNames` and the SOPs it can run in
+`dependencies.agentSops.agentSopNames`, directly in its own file. A name has
+to be registered on the exact agent that needs it; being a specialist under
+the same orchestrator doesn't grant it automatically.
 
 ## Checking what's actually installed
 
@@ -221,11 +218,13 @@ recite a remembered list:
   for skills specifically; on Claude Code an ordinary skill is also
   slash-invocable directly as `/<skill-name>`. If you're not sure one
   applies, ask the orchestrator.
-- **SOPs:** `synth` builds runtime-native output into `dist/kiro-cli-v2/sops/`,
-  and `install` copies it into the target for you. On Kiro CLI, run
-  `/prompts` to list every SOP your install has and invoke a known one
-  directly as `/<sop-name>`. On Claude Code, run `/help` to list slash
-  commands — SOPs appear there as `/sop-<name>`.
+- **SOPs:** `synth` builds runtime-native output into `dist/<harness>/sops/`
+  (e.g. `dist/kiro-cli-v2/sops/`). On Kiro CLI, `install` copies each SOP
+  verbatim into `.konductor/sops/`. Run `/prompts` to list every SOP your
+  install has, then invoke a known one as `/agent-sop:<sop-name>`, not a
+  bare `/<sop-name>`. On Claude Code, `install` converts each SOP into its
+  own slash-invokable skill under `.claude/skills/sop-<name>/`. Run `/help`
+  to list slash commands: SOPs appear there as `/sop-<name>`.
 
 ## Getting unstuck
 

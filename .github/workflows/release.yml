@@ -2,17 +2,17 @@
 name: Release
 
 # Publishes a GitHub Release on every merge to main. Runs entirely on
-# GitHub-hosted infrastructure -- unlike the Pipeline Workflow (see
-# pipeline-dispatch.yml), this workflow never leaves GitHub, so it needs no
-# AWS credentials, no OIDC role, and no Secrets Manager-backed token: the
-# built-in GITHUB_TOKEN (scoped per-job below) is sufficient to create a
-# release in this same repo.
+# GitHub-hosted infrastructure, so it needs no AWS credentials or OIDC role --
+# the built-in GITHUB_TOKEN is sufficient.
 #
 # Three jobs: `check-version` decides whether a release is needed; `build`
-# compiles konductor and skill-lookup-mcp natively for both linux/x86_64 and
-# linux/aarch64 (no cross-compilation target configured) and uploads each
-# leg's assets; `publish` downloads both legs and creates the release
-# exactly once.
+# compiles konductor and skill-lookup-mcp for linux/x86_64, linux/aarch64, and
+# macos/aarch64 (Apple Silicon). Both Linux legs target `*-unknown-linux-musl`
+# (static libc, no runtime glibc version dependency) natively on their own
+# runner -- no cross-architecture compilation. No Intel/x86_64 macOS leg:
+# GitHub retired its free-tier Intel macOS runner and this org has no paid
+# larger-runner entitlement. `publish` downloads every leg's assets and
+# creates the release exactly once.
 
 on:
   push:
@@ -30,26 +30,19 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  # 2 arch legs x 4 per-arch files (raw binary + sidecar, for both konductor
-  # and skill-lookup-mcp) + 4 x86_64-only shared files (bundled zip, zip
-  # sidecar, packaged tarball, tarball sidecar). Used only by publish's own
-  # exact-count assertion below -- check-version uses a separate name-based
-  # completeness check and doesn't reference this variable.
-  #
-  # This count (and check-version's own name list below) only run after a
-  # merge to main. validate-pr.yml's "Verify packaged tarball asset count
-  # and version" step covers the narrower slice of this that's reproducible
-  # at PR time -- the packaged tarball and its sidecar, which `konductor
-  # synth` writes without needing the per-arch/per-tool binaries the rest of
-  # this count depends on.
-  EXPECTED_ASSET_COUNT: 12
+  # 3 arch legs x 4 per-arch files (raw binary + sidecar, for konductor and
+  # skill-lookup-mcp) + 2 x86_64-only shared files (packaged tarball +
+  # sidecar, staged only by the `primary: true` leg) = 14. Used by publish's
+  # own exact-count assertion below; check-version uses a separate
+  # name-based check and doesn't reference this variable.
+  EXPECTED_ASSET_COUNT: 14
 
 jobs:
   check-version:
     name: Check release version
-    # Mirrors the fork guard in pipeline-dispatch.yml. Downstream jobs need
-    # no copy: a skipped job's outputs are empty, so their
-    # `needs.check-version.outputs.should_publish` checks already resolve false.
+    # Mirrors the fork guard in pipeline-dispatch.yml. A skipped job's
+    # outputs are empty, so downstream `needs.check-version.outputs.
+    # should_publish` checks already resolve false -- no copy needed there.
     if: github.repository == 'aws-solutions/konductor'
     runs-on: ubuntu-latest
     outputs:
@@ -70,9 +63,8 @@ jobs:
             exit 1
           fi
           RAW_VERSION="$(cat VERSION)"
-          # Shared with validate-pr.yml (and mirrored on the CDK pipeline
-          # side by versionSemverValidationSnippet()) so the regex and FATAL
-          # message live in one place.
+          # Shared with validate-pr.yml so the regex and FATAL message
+          # live in one place.
           scripts/validate-version-semver.sh "$RAW_VERSION"
           RELEASE_VERSION="v${RAW_VERSION}"
           echo "release_version=${RELEASE_VERSION}" >> "$GITHUB_OUTPUT"
@@ -93,26 +85,22 @@ jobs:
           if printf '%s' "$RELEASE_LOOKUP_STATUS_LINE" | grep -qE '^HTTP/[0-9.]+ 200 '; then
             # Tag existence isn't proof publishing finished -- a prior run
             # could die mid-`publish` after creating the release but before
-            # every asset attached. Name-based, not count-based: a release
-            # with the right COUNT but wrong names (e.g. left over from an
-            # aborted VERSION-mismatch run) must not short-circuit here and
-            # skip `build`+`publish` entirely -- that would prevent
-            # `publish`'s own more accurate name+content re-check from ever
-            # running. `publish` re-checks independently anyway, since a
-            # long build can make this answer stale.
+            # every asset attached. Checking by name, not count, so a release
+            # with the right count but wrong names (e.g. left over from an
+            # aborted VERSION-mismatch run) doesn't short-circuit here and
+            # skip `build`+`publish` -- `publish` re-checks independently
+            # anyway, since a long build can make this answer stale.
             #
-            # Target triples are hardcoded here (matching the matrix's own
-            # `ubuntu-latest` / `ubuntu-24.04-arm` runners) rather than
-            # derived from `rustc -vV` like `build` does, since this job
-            # runs before any build. If a runner image ever changes its
-            # host triple, this only degrades to an unnecessary rebuild --
-            # `publish`'s own name+content check still derives triples from
-            # the real build output and remains correct regardless.
-            X86_64_TARGET_TRIPLE="x86_64-unknown-linux-gnu"
-            AARCH64_TARGET_TRIPLE="aarch64-unknown-linux-gnu"
+            # Target triples are hardcoded here rather than derived from
+            # `rustc -vV` or the `build` job's matrix, since this job runs
+            # before `build` and has no access to its matrix context. If the
+            # `build` matrix's `target:` values change, this only degrades to
+            # an unnecessary rebuild -- `publish`'s own name+content check
+            # derives triples from the real build output and stays correct.
+            X86_64_TARGET_TRIPLE="x86_64-unknown-linux-musl"
+            AARCH64_TARGET_TRIPLE="aarch64-unknown-linux-musl"
+            AARCH64_DARWIN_TARGET_TRIPLE="aarch64-apple-darwin"
             EXPECTED_STATIC_ASSET_NAMES="$(cat <<STATIC_NAMES_EOF
-          konductor-release.zip
-          konductor-release.zip.sha256
           konductor-${RELEASE_VERSION}-${X86_64_TARGET_TRIPLE}
           konductor-${RELEASE_VERSION}-${X86_64_TARGET_TRIPLE}.sha256
           skill-lookup-mcp-${RELEASE_VERSION}-${X86_64_TARGET_TRIPLE}
@@ -121,6 +109,10 @@ jobs:
           konductor-${RELEASE_VERSION}-${AARCH64_TARGET_TRIPLE}.sha256
           skill-lookup-mcp-${RELEASE_VERSION}-${AARCH64_TARGET_TRIPLE}
           skill-lookup-mcp-${RELEASE_VERSION}-${AARCH64_TARGET_TRIPLE}.sha256
+          konductor-${RELEASE_VERSION}-${AARCH64_DARWIN_TARGET_TRIPLE}
+          konductor-${RELEASE_VERSION}-${AARCH64_DARWIN_TARGET_TRIPLE}.sha256
+          skill-lookup-mcp-${RELEASE_VERSION}-${AARCH64_DARWIN_TARGET_TRIPLE}
+          skill-lookup-mcp-${RELEASE_VERSION}-${AARCH64_DARWIN_TARGET_TRIPLE}.sha256
           STATIC_NAMES_EOF
           )"
             ACTUAL_ASSET_NAMES="$(gh release view "$RELEASE_VERSION" --json assets --jq '.assets[].name' | sort)"
@@ -162,13 +154,42 @@ jobs:
         include:
           # linux/x86_64 is the primary leg: it stages the shared,
           # architecture-independent assets so exactly one leg publishes them.
+          #
+          # `target: x86_64-unknown-linux-musl`, not the runner's native
+          # `-gnu` host triple: ubuntu-latest's glibc (2.39 on Ubuntu 24.04)
+          # is newer than many install targets ship, so a `-gnu` binary built
+          # here can fail to load on an older-glibc target with a
+          # dynamic-linker version-mismatch error. `-musl` statically links
+          # musl libc instead, removing the runtime glibc dependency. Still
+          # built natively for this runner's own CPU -- only the libc flavor
+          # changes.
           - arch: x86_64
             runner: ubuntu-latest
+            target: x86_64-unknown-linux-musl
             primary: true
           # Free GitHub-hosted Linux ARM64 runner, public repos only:
           # https://github.blog/changelog/2025-01-16-linux-arm64-hosted-runners-now-available-for-free-in-public-repositories-public-preview/
+          #
+          # Same musl rationale as the x86_64 leg above.
           - arch: aarch64
             runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-musl
+            primary: false
+          # macOS Apple Silicon: free GitHub-hosted arm64 runner. No musl
+          # equivalent on Apple platforms -- `target` is the plain
+          # `-apple-darwin` triple, dynamically linked against the system
+          # libSystem (part of the OS, no glibc-style version skew), so this
+          # leg skips the musl-toolchain install step entirely (see "Install
+          # musl toolchain"'s `if:` guard below).
+          #
+          # `macos-14` is confirmed GA and arm64 by default as of this edit
+          # (EOL Nov 2026 per actions/runner-images), but GitHub's `-latest`
+          # labels migrate over time -- re-check
+          # https://github.com/actions/runner-images#available-images
+          # if there's a lag between this edit and merge.
+          - arch: aarch64-macos
+            runner: macos-14
+            target: aarch64-apple-darwin
             primary: false
     runs-on: ${{ matrix.runner }}
     env:
@@ -179,20 +200,36 @@ jobs:
 
       - name: Set up Rust toolchain
         # No repo convention to match -- cli/konductor-rs pins no MSRV, so
-        # `stable` is used. Pinned to a commit SHA (not the mutable branch
-        # ref) since this is a release-publishing workflow -- an unpinned
-        # action here is a supply-chain risk to what gets published.
-        # Installs natively for whichever arch `runs-on` resolved to.
+        # `stable` is used. Pinned to a commit SHA, not the mutable branch
+        # ref, since this is a release-publishing workflow. `targets:` adds
+        # this leg's musl target alongside the toolchain's native host
+        # target; only `matrix.target` is passed to `cargo build` below.
         uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install musl toolchain (musl-gcc)
+        # Required for *-unknown-linux-musl: `ring` (pulled in transitively
+        # via rustls/ureq) compiles C/assembly in its build script, which
+        # needs a musl-target C compiler on PATH -- `rustup target add`
+        # alone doesn't provide one. `musl-tools` supplies `musl-gcc` for
+        # the runner's own architecture and is in Ubuntu's default apt repos
+        # on both x86_64 and arm64. Native toolchain only, same as the musl
+        # target itself: no cross-architecture gcc is needed.
+        #
+        # Linux-only: macOS's `*-apple-darwin` targets need no musl
+        # toolchain at all (see the macOS matrix entry's comment above).
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
 
       - name: Build konductor and run synth (produces dist/)
-        run: make synth
+        run: make synth TARGET=${{ matrix.target }}
 
       - name: Verify synth produced output for all harnesses
-        # Enumerate every harness dist/ subdirectory here explicitly (kept in
-        # sync with cli/konductor-rs/src/cli/synth/registry.rs's TRANSFORMERS
-        # table) rather than hardcoding a count in the step name -- a 4th
-        # harness must be added to this list, not just registered in Rust.
+        # Enumerated explicitly (kept in sync with
+        # cli/konductor-rs/src/cli/synth/registry.rs's TRANSFORMERS table)
+        # rather than just checking a count, so a 4th harness must be added
+        # to this list, not only registered in Rust.
         run: |
           set -e
           for d in "dist/kiro-cli-v2/agents" "dist/kiro-v3/agents" "dist/claude/agents"; do
@@ -203,35 +240,34 @@ jobs:
           done
 
       - name: Build MCP servers (skill-lookup-mcp)
-        # mcp/ is deliberately NOT part of `make synth` (see the root
-        # Makefile's own synth-target comment: "mcp/ is not part of what
-        # gets synthesized") -- it has to be built as its own step so its
-        # binary exists for the release-asset publish step below. Stages
-        # to mcp/target/release/skill-lookup-mcp (see mcp/Makefile's build
-        # target and its BINARY_NAMES list).
-        run: make -C mcp build
+        # mcp/ is deliberately not part of `make synth` (see the root
+        # Makefile's synth comment), so it needs its own build step here.
+        # `TARGET=${{ matrix.target }}` only changes which cargo
+        # target-triple subdirectory the binary is built into and staged
+        # from -- see mcp/Makefile's build target.
+        run: make -C mcp build TARGET=${{ matrix.target }}
 
       - name: Determine this leg's target triple
         id: triple
         run: |
           set -e
-          TARGET_TRIPLE="$(rustc -vV | sed -n 's/^host: //p')"
+          # `matrix.target`, not `rustc -vV`'s host line: that reports the
+          # toolchain's native host triple (e.g. x86_64-unknown-linux-gnu on
+          # ubuntu-latest) regardless of `--target`, so it would mislabel
+          # every musl asset as `-gnu`.
+          TARGET_TRIPLE="${{ matrix.target }}"
           if [ -z "$TARGET_TRIPLE" ]; then
-            echo "FATAL: could not determine target triple from 'rustc -vV'. Failing closed." >&2
+            echo "FATAL: matrix.target is empty for this leg. Failing closed." >&2
             exit 1
           fi
           echo "target_triple=$TARGET_TRIPLE" >> "$GITHUB_OUTPUT"
 
       - name: Stage this leg's per-architecture release assets
-        # The raw binaries (the compiled `konductor` CLI and `skill-lookup-mcp`)
-        # genuinely differ per architecture, unlike the packaged content
-        # tarball below, so each leg's copy is renamed with its own target
-        # triple before upload -- otherwise both legs would produce a
+        # Renamed with the target triple because the raw binaries genuinely
+        # differ per architecture -- without this, both legs would produce a
         # same-named asset and `gh release create` would collide attaching
-        # them. Named on the standard Rust release-asset convention
-        # (<name>-<version>-<target-triple>), not derived from the tarball's
-        # own filename: that filename is deliberately architecture-independent
-        # (see synth::artifact_filename's doc comment) and stays that way.
+        # them. Convention: <name>-<version>-<target-triple>, matching the
+        # standard Rust release-asset pattern.
         run: |
           set -e
           TARGET_TRIPLE="${{ steps.triple.outputs.target_triple }}"
@@ -259,52 +295,20 @@ jobs:
           (cd "$ASSET_DIR" && sha256sum "$MCP_BIN_ASSET_NAME" > "$MCP_BIN_ASSET_NAME.sha256")
 
       - name: Stage the shared (architecture-independent) release assets
-        # Only the primary leg stages these: the packaged content tarball and
-        # the allowlist-copy zip are byte-for-byte identical regardless of
-        # which architecture built them (see synth::artifact_filename's doc
-        # comment), so a second copy from the other leg would only collide
-        # on `gh release create` for no benefit.
+        # Only the primary leg stages these: the packaged tarball is
+        # byte-for-byte identical regardless of which architecture built it,
+        # so a second copy from the other leg would only collide on
+        # `gh release create`.
         if: ${{ matrix.primary == true }}
         run: |
           set -e
           ASSET_DIR="$RUNNER_TEMP/release-assets"
           mkdir -p "$ASSET_DIR"
 
-          STAGING_DIR="$RUNNER_TEMP/konductor-release-staging"
-          mkdir -p "$STAGING_DIR"
-
-          # Mandatory, fail-closed: dist/ is the entire point of the release.
-          cp -r dist "$STAGING_DIR/dist"
-          if [ -z "$(ls -A "$STAGING_DIR/dist" 2>/dev/null)" ]; then
-            echo "FATAL: dist/ copied empty. Failing closed." >&2
-            exit 1
-          fi
-
-          # Best-effort only -- never fail-closed on these. Everything else
-          # (cli/, mcp/, .git/, etc.) is excluded structurally by simply
-          # never being copied here.
-          for f in LICENSE README.md CHANGELOG.md; do
-            [ -f "$f" ] && cp "$f" "$STAGING_DIR/" || true
-          done
-          if [ -d docs/guides ]; then
-            mkdir -p "$STAGING_DIR/docs"
-            cp -r docs/guides "$STAGING_DIR/docs/guides"
-          fi
-
-          (cd "$STAGING_DIR" && zip -r "$ASSET_DIR/konductor-release.zip" .)
-          # Matches every other asset's checksum-sidecar convention, so
-          # publish's content-verification pass below can cover the zip too
-          # instead of trusting a correct name with unverified content.
-          (cd "$ASSET_DIR" && sha256sum konductor-release.zip > konductor-release.zip.sha256)
-
-          # Individually-named assets, published alongside the bundled zip
-          # above (not instead of it): `install/github.rs` documents that
-          # `konductor install`'s GitHub-release path fails against a
-          # zip-only release, since it looks for an asset named exactly
-          # `synth::artifact_filename()` plus its `.sha256` sidecar, never a
-          # zip. `konductor synth` writes both into dist/'s top level.
-          # Exactly one match, not "at least one" -- a second stray tarball
-          # (e.g. a leftover local build) would otherwise corrupt this path.
+          # `install/github.rs` looks for an asset named exactly
+          # `synth::artifact_filename()` plus its `.sha256` sidecar.
+          # Exactly one match, not "at least one" -- a stray leftover
+          # tarball would otherwise corrupt this path.
           CLI_TARBALL_MATCHES="$(find dist -maxdepth 1 -name 'konductor-v*.tar.gz')"
           CLI_TARBALL_COUNT="$(printf '%s\n' "$CLI_TARBALL_MATCHES" | grep -c . || true)"
           if [ "$CLI_TARBALL_COUNT" -eq 0 ]; then
@@ -323,11 +327,9 @@ jobs:
           fi
 
           # artifact_filename()'s version segment comes from Cargo.toml, not
-          # RELEASE_VERSION (the root VERSION file) -- see check-version's own
-          # TARBALL_MATCH_COUNT comment above. Nothing enforces the two stay in
-          # sync, so fail closed here rather than publish a tarball whose name
-          # silently disagrees with the release tag and the binary's own
-          # --version output.
+          # RELEASE_VERSION (the root VERSION file) -- nothing enforces the
+          # two stay in sync, so fail closed here rather than publish a
+          # tarball whose name disagrees with the release tag.
           TARBALL_VERSION="$(basename "$CLI_TARBALL_PATH" | sed -nE 's/^konductor-(v[0-9]+\.[0-9]+\.[0-9]+)\.tar\.gz$/\1/p')"
           if [ -z "$TARBALL_VERSION" ]; then
             echo "FATAL: could not parse a version segment from tarball filename $(basename "$CLI_TARBALL_PATH"). Failing closed." >&2
@@ -375,6 +377,12 @@ jobs:
           name: release-assets-aarch64
           path: release-assets/release-assets-aarch64
 
+      - name: Download macOS arm64 (Apple Silicon) release assets
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: release-assets-aarch64-macos
+          path: release-assets/release-assets-aarch64-macos
+
       - name: Package and publish GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -392,7 +400,7 @@ jobs:
           done
           shopt -u nullglob
           if [ "${#ASSETS[@]}" -ne "$EXPECTED_ASSET_COUNT" ]; then
-            echo "FATAL: expected exactly $EXPECTED_ASSET_COUNT release assets (2 arch legs x 4 per-arch files + 4 x86_64-only shared files), found ${#ASSETS[@]}. Failing closed." >&2
+            echo "FATAL: expected exactly $EXPECTED_ASSET_COUNT release assets (3 arch legs x 4 per-arch files + 2 x86_64-only shared files), found ${#ASSETS[@]}. Failing closed." >&2
             printf '%s\n' "${ASSETS[@]}" >&2
             exit 1
           fi
@@ -415,11 +423,9 @@ jobs:
               # A correct name is not proof of correct content -- a partial
               # upload can leave an asset present under the right name with
               # corrupted bytes. Download each already-published asset that
-              # ships with a checksum sidecar (every raw binary, the packaged
-              # tarball, and the bundled zip) and verify it against its own
-              # sidecar before trusting this release, the same integrity
-              # principle the CDK S3 upload path already applies to its own
-              # idempotency check.
+              # ships with a checksum sidecar (every raw binary and the
+              # packaged tarball) and verify it against its own sidecar
+              # before trusting this release.
               CONTENT_VERIFY_DIR="$(mktemp -d)"
               CORRUPTED_ASSET_NAMES=""
               DOWNLOAD_FAILED_ASSET_NAMES=""
@@ -445,8 +451,7 @@ jobs:
 
               # A download failure here is inconclusive (transient network/API
               # error), not confirmed corruption. Fail closed instead of
-              # deleting the existing release, the same approach the CDK
-              # head-object checks use for a non-404 error.
+              # deleting the existing release.
               if [ -n "$DOWNLOAD_FAILED_ASSET_NAMES" ]; then
                 echo "FATAL: could not download the following already-published asset(s)/sidecar(s) from the existing release for content verification:" >&2
                 printf '%s\n' "$DOWNLOAD_FAILED_ASSET_NAMES" >&2
@@ -488,22 +493,12 @@ jobs:
           rm -f "$RELEASE_LOOKUP_STDERR"
 
           # The binary's own self-reported `--version` output, for the release
-          # notes below. Read directly from the x86_64 leg's already-downloaded
-          # binary asset (this job runs on ubuntu-latest, i.e. x86_64, so it can
-          # execute it) rather than through a `needs.build.outputs` value:
-          # GitHub Actions aggregates a matrix job's same-named output
-          # non-deterministically whenever more than one matrix instance
-          # defines it, so a version captured on only one leg (the binary's
-          # `--version` is architecture-independent -- it reads Cargo.toml's
-          # version at compile time, so one leg's reading is enough) can
-          # silently resolve to an empty or wrong leg's value depending on
-          # completion order. Matched by glob (not a hardcoded target triple),
-          # the same convention `publish`'s other checks above use. Extracted
-          # here, immediately before the only step that consumes it, rather
-          # than unconditionally at the top of this job's script: several
-          # branches above exit before ever needing it, and a legitimate
-          # idempotent no-op re-run should never depend on the binary
-          # executing successfully.
+          # notes below. Read from the x86_64 leg's downloaded binary (this
+          # job runs on ubuntu-latest, so it can execute it) rather than a
+          # `needs.build.outputs` value: GitHub Actions aggregates a matrix
+          # job's same-named output non-deterministically across instances,
+          # so a version captured on one leg could resolve to an empty or
+          # wrong value depending on completion order.
           X86_64_CLI_BINARY_MATCHES="$(find release-assets/release-assets-x86_64 -maxdepth 1 -name "konductor-${RELEASE_VERSION}-*" ! -name '*.sha256')"
           X86_64_CLI_BINARY_COUNT="$(printf '%s\n' "$X86_64_CLI_BINARY_MATCHES" | grep -c . || true)"
           if [ "$X86_64_CLI_BINARY_COUNT" -ne 1 ]; then

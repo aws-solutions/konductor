@@ -5,10 +5,8 @@
 // `dispatch_install_with`'s no-`--from` branch via
 // `install::remote_orchestrate::install_from_latest_github_release`,
 // which does the real HTTP fetch (`install::github`) before handing
-// off here. This still won't work end-to-end against a real release
-// until `.github/workflows/release.yml` (fixed separately) publishes
-// the tarball+sidecar pair as real release assets -- see
-// `install::github`'s own module doc for that caveat.
+// off here. See `install::github`'s own module doc for the release
+// asset-naming contract this pipeline depends on.
 
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -21,8 +19,7 @@ use super::{InstallError, InstallStrategy};
 /// (agents/skills/agent-sops) is a few MB; 256MB is over 100x that,
 /// generous for growth while still bounding decompressed output.
 /// Hardcoded, no config override -- this is the live cap on every
-/// real GitHub-release install, once the separate `release.yml` fix
-/// lands to actually publish the expected assets.
+/// real GitHub-release install.
 const MAX_UNPACKED_BYTES: u64 = 256 * 1024 * 1024;
 
 /// Hard ceiling on total archive entry COUNT, enforced during the same

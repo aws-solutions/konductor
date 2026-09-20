@@ -5,12 +5,10 @@
 // (`ureq`) HTTP client. No async runtime.
 //
 // Expects release assets in the shape `synth::artifact_filename()`
-// defines (per-platform tarball + `.sha256` sidecar). Today's
-// `.github/workflows/release.yml` instead zips all of `dist/` into one
-// fixed-name `konductor-release.zip` with no sidecar, so
-// `fetch_latest_github_release_artifact` reliably fails with
-// `GithubFetchError::MissingAsset` until that pipeline is fixed.
-// Expected, not a bug here.
+// defines: a single version-named tarball (`konductor-v<VERSION>.tar.gz`,
+// no architecture or OS in the name) plus its `.sha256` sidecar.
+// `.github/workflows/release.yml` publishes both as individually-named
+// release assets.
 //
 // No closure-based test seam of its own; a caller needing one supplies
 // a fake `RemoteArtifactFetcher`. This module's own tests exercise the
@@ -19,6 +17,7 @@
 use std::io::Read;
 use std::time::Duration;
 
+use super::private_repo_hint;
 use super::remote::RemoteArtifactFetcher;
 
 /// GitHub API response shapes this module reads. Deliberately narrow:
@@ -55,20 +54,36 @@ pub enum GithubFetchError {
     /// text, never a raw `ureq::Error`/`io::Error` type.
     Network(String),
     /// The release metadata parsed fine, but no asset exactly matched
-    /// the expected artifact or sidecar filename -- the expected
-    /// outcome against today's `release.yml` (see top-of-file comment).
+    /// the expected artifact or sidecar filename. Happens against a
+    /// release whose assets don't match `artifact_filename()`'s naming
+    /// convention, e.g. one published by something other than
+    /// `.github/workflows/release.yml`.
     MissingAsset(String),
     /// The `GET .../releases/latest` metadata call responded with a
     /// non-2xx HTTP status (404 = no release published, 403 =
     /// rate-limited, etc). The ONLY variant that means "nothing usable
     /// here" for fallback purposes: a 404 here proves no release
     /// exists to fall back away from.
-    MetadataHttp(u16),
+    ///
+    /// Carries the `TokenState` this specific request was made with,
+    /// so `Display` can render a hint that reflects whether a token
+    /// was actually sent (and rejected) versus never attempted --
+    /// this is the only site in this module that can attach the token
+    /// via `apply_github_token`, so it's the only variant that needs
+    /// this state.
+    MetadataHttp(u16, private_repo_hint::TokenState),
     /// The asset-download request responded with a non-2xx HTTP
     /// status, after a matching asset URL was already resolved. Kept
     /// distinct from `MetadataHttp`: here the release and asset both
     /// exist but the resolved (short-lived, pre-signed) download URL
     /// is broken/expired -- a real failure, never fallback-eligible.
+    ///
+    /// Never carries a private-repo hint, at any status: per
+    /// `apply_github_token`'s own doc comment, the token is never
+    /// sent on this path (the download URL redirects off
+    /// `api.github.com` to a pre-signed storage host), so suggesting
+    /// the token flag here would be misleading -- it cannot fix this
+    /// error regardless of status code.
     DownloadHttp(u16),
     /// The response body wasn't valid JSON, or didn't match the
     /// subset of the release-metadata shape this module reads.
@@ -82,20 +97,6 @@ pub enum GithubFetchError {
     ResponseTooLarge { limit_bytes: u64 },
 }
 
-/// Self-diagnosis suffix appended to an HTTP-status error message when
-/// `status` is specifically 401 or 403 -- the exact codes a private
-/// repository without a token produces. Names the `--use-github-token`
-/// flag directly, so a caller hitting one of these two hard-to-diagnose
-/// statuses sees a concrete next step rather than a bare status code.
-/// Empty for every other status, so an unrelated failure (404, 500,
-/// etc) stays exactly as plain as it always has been.
-fn private_repo_hint(status: u16) -> &'static str {
-    match status {
-        401 | 403 => " -- if this repository is private, consider passing --use-github-token",
-        _ => "",
-    }
-}
-
 impl std::fmt::Display for GithubFetchError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -106,18 +107,17 @@ impl std::fmt::Display for GithubFetchError {
                 f,
                 "no release asset named '{filename}' was found on the latest GitHub release"
             ),
-            GithubFetchError::MetadataHttp(status) => {
+            GithubFetchError::MetadataHttp(status, token_state) => {
                 write!(
                     f,
                     "GitHub API responded with HTTP status {status} while fetching release metadata{}",
-                    private_repo_hint(*status)
+                    private_repo_hint::private_repo_hint(*status, *token_state)
                 )
             }
             GithubFetchError::DownloadHttp(status) => {
                 write!(
                     f,
-                    "GitHub API responded with HTTP status {status} while downloading a release asset{}",
-                    private_repo_hint(*status)
+                    "GitHub API responded with HTTP status {status} while downloading a release asset"
                 )
             }
             GithubFetchError::InvalidResponse(message) => {
@@ -214,6 +214,31 @@ pub(crate) fn github_token_from_env(use_token: bool) -> Option<String> {
     std::env::var("GITHUB_TOKEN")
         .ok()
         .filter(|token| !token.is_empty())
+}
+
+/// Reads `GITHUB_TOKEN` exactly once and applies it to `request`,
+/// returning both the (possibly modified) request and the
+/// `TokenState` that read produced -- so the two can never desync.
+///
+/// Before this helper existed, every call site read the token, derived
+/// `TokenState` from it, and applied it to the request as three
+/// separate lines (`github_token_from_env` /
+/// `TokenState::from_flag_and_token` / `apply_github_token`), each
+/// naming the same `token` variable by hand. Nothing enforced that the
+/// `token` passed to the second and third calls was the SAME value the
+/// first call produced -- a future edit could pass a different
+/// `Option<String>` to one of them and `TokenState` would silently
+/// misreport what was actually sent. Folding all three into one
+/// function makes that impossible: `token` is a single local this
+/// function alone owns, threaded through both derivations itself.
+pub(crate) fn apply_github_token_from_env(
+    request: ureq::Request,
+    use_github_token: bool,
+) -> (ureq::Request, private_repo_hint::TokenState) {
+    let token = github_token_from_env(use_github_token);
+    let token_state = private_repo_hint::TokenState::from_flag_and_token(use_github_token, &token);
+    let request = apply_github_token(request, token.as_deref());
+    (request, token_state)
 }
 
 /// Hard ceiling on the release-metadata JSON response
@@ -352,9 +377,9 @@ fn fetch_latest_release_metadata(
         .get(&url)
         .set("User-Agent", USER_AGENT)
         .set("Accept", "application/vnd.github+json");
-    let request = apply_github_token(request, github_token_from_env(use_github_token).as_deref());
+    let (request, token_state) = apply_github_token_from_env(request, use_github_token);
     let response = request.call().map_err(|err| match err {
-        ureq::Error::Status(code, _response) => GithubFetchError::MetadataHttp(code),
+        ureq::Error::Status(code, _response) => GithubFetchError::MetadataHttp(code, token_state),
         ureq::Error::Transport(transport) => GithubFetchError::Network(transport.to_string()),
     })?;
     let content_length = parse_content_length(&response);
@@ -416,8 +441,10 @@ fn download_asset_bytes(url: &str) -> Result<Vec<u8>, GithubFetchError> {
 /// `(artifact_bytes, sidecar_bytes)` pair `remote::install_from_remote_bytes`
 /// consumes.
 ///
-/// Reliably returns `Err(GithubFetchError::MissingAsset)` against any
-/// release published by today's `release.yml` (see top-of-file comment).
+/// Returns `Err(GithubFetchError::MissingAsset)` if the latest release
+/// doesn't carry an asset named exactly `synth::artifact_filename()`
+/// (or its `.sha256` sidecar) -- see the `MissingAsset` variant's own
+/// doc for when that happens.
 pub(crate) fn fetch_latest_github_release_artifact(
     owner: &str,
     repo: &str,
@@ -943,14 +970,20 @@ mod tests {
         }
     }
 
-    /// A 401 or 403 on the metadata call -- the exact codes a private
-    /// repository without a token produces -- must name
-    /// `--use-github-token` in the rendered message, for both variants
-    /// that carry an HTTP status.
+    /// A 401 or 403 on the metadata call, when `--use-github-token`
+    /// was never passed (`TokenState::NotOptedIn`) -- must name both
+    /// `GITHUB_TOKEN` and `--use-github-token` in the rendered
+    /// message, the default/never-opted-in wording.
     #[test]
-    fn metadata_http_401_and_403_display_names_the_token_flag() {
+    fn metadata_http_401_and_403_not_opted_in_names_the_env_var_and_the_flag() {
         for status in [401u16, 403u16] {
-            let message = GithubFetchError::MetadataHttp(status).to_string();
+            let message =
+                GithubFetchError::MetadataHttp(status, private_repo_hint::TokenState::NotOptedIn)
+                    .to_string();
+            assert!(
+                message.contains("GITHUB_TOKEN"),
+                "status {status} must name GITHUB_TOKEN, got: {message}"
+            );
             assert!(
                 message.contains("--use-github-token"),
                 "status {status} must hint at --use-github-token, got: {message}"
@@ -958,32 +991,93 @@ mod tests {
         }
     }
 
+    /// A 401 or 403 on the metadata call, when `--use-github-token`
+    /// was passed but `GITHUB_TOKEN` was empty/unset
+    /// (`TokenState::OptedInEmptyOrUnset`) -- must explicitly report
+    /// that distinct state rather than repeating the plain "pass the
+    /// flag" suggestion.
     #[test]
-    fn download_http_401_and_403_display_names_the_token_flag() {
+    fn metadata_http_401_and_403_opted_in_empty_or_unset_reports_the_empty_state() {
         for status in [401u16, 403u16] {
+            let message = GithubFetchError::MetadataHttp(
+                status,
+                private_repo_hint::TokenState::OptedInEmptyOrUnset,
+            )
+            .to_string();
+            assert!(
+                message.contains("GITHUB_TOKEN"),
+                "status {status} must name GITHUB_TOKEN, got: {message}"
+            );
+            assert!(
+                message.contains("not set") || message.contains("empty"),
+                "status {status} must describe the empty/unset state, got: {message}"
+            );
+        }
+    }
+
+    /// A 401 or 403 on the metadata call, when a non-empty
+    /// `GITHUB_TOKEN` was actually sent and still rejected
+    /// (`TokenState::OptedInSent`) -- must NOT repeat the
+    /// `--use-github-token` suggestion (the silent-loop bug), and
+    /// must instead indicate the token was rejected.
+    #[test]
+    fn metadata_http_401_and_403_opted_in_sent_does_not_repeat_the_flag_suggestion() {
+        for status in [401u16, 403u16] {
+            let message =
+                GithubFetchError::MetadataHttp(status, private_repo_hint::TokenState::OptedInSent)
+                    .to_string();
+            assert!(
+                !message.contains("--use-github-token"),
+                "status {status} must not repeat the already-followed --use-github-token \
+                 suggestion, got: {message}"
+            );
+            assert!(
+                message.contains("GITHUB_TOKEN"),
+                "status {status} must still name GITHUB_TOKEN as the rejected credential, \
+                 got: {message}"
+            );
+        }
+    }
+
+    /// `DownloadHttp` must never carry the private-repo hint, at any
+    /// status -- the token is never sent on the asset-download path
+    /// (see `download_asset_bytes`'s own doc comment), so the hint
+    /// cannot apply regardless of what state produced it.
+    #[test]
+    fn download_http_never_carries_a_hint_at_any_status() {
+        for status in [401u16, 403u16, 404u16, 429u16, 500u16, 503u16] {
             let message = GithubFetchError::DownloadHttp(status).to_string();
             assert!(
-                message.contains("--use-github-token"),
-                "status {status} must hint at --use-github-token, got: {message}"
+                !message.contains("--use-github-token"),
+                "status {status} must never carry the token hint on DownloadHttp, \
+                 got: {message}"
+            );
+            assert!(
+                !message.contains("GITHUB_TOKEN"),
+                "status {status} must never carry the token hint on DownloadHttp, \
+                 got: {message}"
             );
         }
     }
 
-    /// Any OTHER status code must NOT carry the hint -- it would be
-    /// noise for a failure that has nothing to do with authentication.
+    /// Any OTHER status code must NOT carry the hint on `MetadataHttp`
+    /// either, for every token state -- it would be noise for a
+    /// failure that has nothing to do with authentication.
     #[test]
-    fn metadata_and_download_http_other_statuses_omit_the_token_flag_hint() {
+    fn metadata_http_other_statuses_omit_the_hint_for_every_token_state() {
         for status in [404u16, 429u16, 500u16, 503u16] {
-            let metadata_message = GithubFetchError::MetadataHttp(status).to_string();
-            let download_message = GithubFetchError::DownloadHttp(status).to_string();
-            assert!(
-                !metadata_message.contains("--use-github-token"),
-                "status {status} must not carry the token hint, got: {metadata_message}"
-            );
-            assert!(
-                !download_message.contains("--use-github-token"),
-                "status {status} must not carry the token hint, got: {download_message}"
-            );
+            for state in [
+                private_repo_hint::TokenState::NotOptedIn,
+                private_repo_hint::TokenState::OptedInEmptyOrUnset,
+                private_repo_hint::TokenState::OptedInSent,
+            ] {
+                let message = GithubFetchError::MetadataHttp(status, state).to_string();
+                assert!(
+                    !message.contains("--use-github-token") && !message.contains("GITHUB_TOKEN"),
+                    "status {status} with state {state:?} must not carry the token hint, \
+                     got: {message}"
+                );
+            }
         }
     }
 }

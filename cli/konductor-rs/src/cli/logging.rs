@@ -122,7 +122,7 @@ mod tests {
     /// reliably by inserting a short sleep between `set_var` and the
     /// `log_invocation` call to widen the interleaving window (mirroring
     /// how coverage instrumentation slows every instruction and widens
-    /// the same window in `cargo brazil with-coverage` test runs) --
+    /// the same window in coverage-instrumented test runs) --
     /// confirmed to fail with the exact same panic messages seen in the
     /// real coverage-instrumented build (`expected log file to be
     /// created`; and the log-content assertion seeing another test's

@@ -42,7 +42,13 @@ pub mod registry;
 mod content_writers;
 mod frontmatter;
 pub(crate) mod package;
-mod path_safety;
+// `pub(crate)`, not private: `install/kiro_cli/fs_util.rs` and
+// `install/claude.rs` call into this module's own `reject_unsafe_*_name`
+// functions directly (see `path_safety.rs`'s own module doc comment for
+// why this is the single shared source of truth for these checks),
+// rather than each carrying an independent copy of the same
+// path-containment predicate.
+pub(crate) mod path_safety;
 mod sidecar;
 mod staging;
 

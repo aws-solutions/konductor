@@ -1,6 +1,6 @@
 ---
 name: persistent-memory
-description: Read and write bounded memory files that persist facts across sessions.
+description: Use after an error-recovery sequence, when the user corrects your approach and the correction is durable, or when a non-obvious project or environment convention or preference is discovered. Persists the fact to bounded memory files that survive across sessions.
 ---
 
 # Skill: Persistent Memory

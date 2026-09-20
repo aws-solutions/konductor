@@ -1,7 +1,7 @@
 ---
 name: code-review
-description: Code review workflow for pull requests. Covers creating PRs, reviewing diffs, addressing feedback, and post-implementation review cycles. Uses standard git and GitHub CLI operations.
-version: 1.3.2
+description: Use when creating or submitting a pull request, reviewing a diff or PR from another developer, addressing PR feedback, or running a post-implementation review cycle on local changes. Uses standard git and GitHub CLI (`gh`) commands and classifies findings by severity (CRITICAL/IMPORTANT/SUGGESTION).
+version: 1.3.3
 tags: [skill, code-review, pr, git, workflow, humanize-writing]
 ---
 
@@ -9,7 +9,7 @@ tags: [skill, code-review, pr, git, workflow, humanize-writing]
 
 ## Overview
 
-Structured code review workflow for creating pull requests, reviewing diffs, addressing feedback, and running post-implementation review cycles using standard git and GitHub CLI (`gh`).
+Structured code review workflow for creating pull requests, reviewing diffs, addressing feedback, and running post-implementation review cycles using standard git and GitHub CLI (`gh`). Covers creating PRs, reviewing diffs, addressing feedback, and post-implementation review cycles.
 
 ## Usage
 
@@ -38,7 +38,7 @@ in this turn.
 
 ### Create PR
 
-1. Run `git diff main..HEAD` to capture the full diff of changes
+1. Run `git diff main...HEAD` to capture the full diff of changes
 2. Verify all changes are intentional — no debug code, no unrelated files
 3. Write a clear PR description: what changed, why, and how to test (see
    PR Description Concision below)
@@ -116,7 +116,7 @@ event=COMMENT` (or `APPROVE` / `REQUEST_CHANGES`).
 
 After completing a task, run a self-review cycle:
 
-1. **Capture diff** — `git diff main..HEAD` to get full diff of changes
+1. **Capture diff** — `git diff main...HEAD` to get full diff of changes
 2. **Review** — Apply the Review Checklist below to your own changes
 3. **Fix CRITICALs** — Address all CRITICAL findings immediately
 4. **Max 2 cycles** — If CRITICALs remain after 2 fix cycles, stop and escalate to the user with root cause analysis

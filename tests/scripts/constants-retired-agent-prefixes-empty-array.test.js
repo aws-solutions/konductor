@@ -1,21 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 /**
- * Regression test for a cross-language contract mismatch (CR-299843618
- * adversarial review, Finding 4): scripts/brand-config/lib/constants.js's
- * `_validateNonEmpty()` and this package's internal counterpart's
- * scripts/brand-config/lib/agent_match.py's `validate_constants()` /
- * `_validate_optional_field()` disagreed on whether
- * `"retired_agent_prefixes": []` is valid.
- *
- * `retired_agent_prefixes` is OPTIONAL and has no consumer that treats an
- * empty list differently from an omitted field -- agent_match.py's
- * `is_agent_name()` never reads it at all, and this package's internal
- * counterpart's own verify_rebrand.py `declared_agent_prefixes()` already
- * treats an empty list as contributing zero extra prefixes, identical to a
- * missing field. Before this fix, `constants.js` validated
- * `retired_agent_prefixes` by the SAME non-empty-array rule as the REQUIRED
- * `orchestrator_variants` field, so `"retired_agent_prefixes": []` threw at
- * this module's own `require()` time -- and because
+ * Regression test: `retired_agent_prefixes` is OPTIONAL and has no
+ * consumer that treats an empty list differently from an omitted field,
+ * but scripts/brand-config/lib/constants.js's `_validateNonEmpty()`
+ * validated it by the SAME non-empty-array rule as the REQUIRED
+ * `orchestrator_variants` field, so `"retired_agent_prefixes": []` threw
+ * at this module's own `require()` time -- and because
  * scripts/generate-agent-files.js requires this module at the TOP LEVEL,
  * that crashed agent-file generation entirely for a value with no consumer
  * that treats empty specially.

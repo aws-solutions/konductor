@@ -131,8 +131,44 @@ pub(in crate::cli::install) fn plan_all_files(
     plan.extend(plan_context_files(harness_dir, target_dir, prior_manifest)?);
     plan.extend(plan_skill_files(harness_dir, target_dir, prior_manifest)?);
     plan.extend(plan_sop_files(harness_dir, target_dir, prior_manifest)?);
+    plan.extend(plan_kiro_sop_skill_files(
+        harness_dir,
+        target_dir,
+        prior_manifest,
+    )?);
     plan.extend(plan_agent_files(harness_dir, target_dir, prior_manifest)?);
     Ok(plan)
+}
+
+/// Plans every file `install_kiro_sop_skills` will write: the same
+/// `sop-<name>/SKILL.md` conversion `plan_sop_skill_files` in
+/// `install::claude` plans for `.claude/skills/`, but for
+/// `.kiro/skills/`. Included unconditionally in `plan_all_files` above,
+/// alongside `plan_sop_files` -- unlike the Claude dual-marker case
+/// (`plan_additive_claude_sop_skill_files`), this is a PRIMARY content
+/// type for both Kiro variants, not an additive branch gated on a
+/// pre-existing marker for some OTHER runtime, so both `kiro_cli.rs`'s
+/// and `kiro_cli_v3.rs`'s own `install_from_local`/`would_fail_as_noop`
+/// pick it up "for free" through this shared function, the same way they
+/// already do for `plan_sop_files`/`install_sops`.
+///
+/// Reuses `claude::plan_sop_skill_files_into` directly (targeting
+/// `KIRO_DESTINATION_ROOT`) rather than re-deriving an approximation, so
+/// this prediction can never silently drift from what
+/// `install_kiro_sop_skills` (the function that actually writes these
+/// files) produces -- mirrors `plan_additive_claude_sop_skill_files`'s
+/// own "predict, don't recompute" contract.
+pub(in crate::cli::install) fn plan_kiro_sop_skill_files(
+    harness_dir: &Path,
+    target_dir: &Path,
+    prior_manifest: Option<&StrategyManifest>,
+) -> Result<Vec<PlannedFile>, String> {
+    super::super::claude::plan_sop_skill_files_into(
+        harness_dir,
+        target_dir,
+        KIRO_DESTINATION_ROOT,
+        prior_manifest,
+    )
 }
 
 /// Plans every file `install_sops` will copy: same source listing
