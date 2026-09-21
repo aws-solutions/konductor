@@ -49,8 +49,7 @@
 # convenience installer for `kiro-cli` users (it mirrors the "From source"
 # walkthrough's no-`--target` Kiro CLI path in README.md's "How installing
 # Konductor works"). Override with the `KONDUCTOR_HARNESS` environment
-# variable if you want `claude` instead (`kiro-v3` has no install
-# strategy yet and will exit with a scope-gap error).
+# variable if you want `claude` or `kiro-v3` instead.
 #
 # `install` is called with no `--target` flag, so it resolves its
 # destination to `$HOME` (see `cli/konductor-rs/src/cli/install.rs`'s

@@ -38,6 +38,7 @@ pub mod kiro_cli_v3;
 pub mod manifest;
 pub mod mcp_server;
 pub mod phases;
+mod private_repo_hint;
 pub mod registry;
 pub mod remote;
 pub mod remote_orchestrate;
@@ -147,7 +148,7 @@ fn remote_orchestration_error_code(
             github::GithubFetchError::MissingAsset(_),
         ) => "install.remote_asset_missing",
         remote_orchestrate::RemoteOrchestrationError::Fetch(
-            github::GithubFetchError::MetadataHttp(_),
+            github::GithubFetchError::MetadataHttp(_, _),
         ) => "install.remote_metadata_http_error",
         remote_orchestrate::RemoteOrchestrationError::Fetch(
             github::GithubFetchError::DownloadHttp(_),
@@ -210,7 +211,7 @@ fn main_branch_dist_orchestration_error_code(
             github_branch::GithubBranchFetchError::MissingSidecar(_),
         ) => "install.main_branch_dist_sidecar_missing",
         remote_orchestrate::MainBranchDistOrchestrationError::Fetch(
-            github_branch::GithubBranchFetchError::Http(_),
+            github_branch::GithubBranchFetchError::Http(_, _),
         ) => "install.main_branch_dist_http_error",
         remote_orchestrate::MainBranchDistOrchestrationError::Fetch(
             github_branch::GithubBranchFetchError::InvalidResponse(_),
@@ -1280,17 +1281,21 @@ fn link_bin_report_line(
 /// Per-content-type counts derived from a written manifest's
 /// `files[]`, plus how many were `Provenance::ReplacedForeign`. Content
 /// type is inferred from each file's path prefix -- `.kiro/agents/`,
-/// `.kiro/context/`, `.konductor/skills/`, `.konductor/bin/` for
-/// `KiroCliInstallStrategy`, and `.claude/agents/`, `.claude/skills/`
-/// for `ClaudeInstallStrategy` (built from that strategy's own
-/// `CLAUDE_DESTINATION_ROOT`/`AGENTS_CONTENT_TYPE_DIR`/
-/// `SKILLS_CONTENT_TYPE_DIR` constants, not a new hardcoded literal) --
-/// the same prefixes each strategy's own copy functions always write,
-/// so this stays in sync with install's real output by construction
-/// rather than by a second hand-maintained list. `skills` counts
-/// distinct skill DIRECTORIES (a skill may hold auxiliary files beyond
-/// `SKILL.md`) across BOTH strategies' skill roots; agents, context,
-/// and bin entries are one file each.
+/// `.kiro/context/`, `.konductor/skills/`, `.kiro/skills/`, `.konductor/bin/`
+/// for `KiroCliInstallStrategy`/`KiroCliV3InstallStrategy`, and
+/// `.claude/agents/`, `.claude/skills/` for `ClaudeInstallStrategy`
+/// (built from that strategy's own `CLAUDE_DESTINATION_ROOT`/
+/// `AGENTS_CONTENT_TYPE_DIR`/`SKILLS_CONTENT_TYPE_DIR` constants, not a
+/// new hardcoded literal) -- the same prefixes each strategy's own copy
+/// functions always write, so this stays in sync with install's real
+/// output by construction rather than by a second hand-maintained list.
+/// `.kiro/skills/` holds only the Kiro-discoverable `sop-<name>/SKILL.md`
+/// conversion (see `install::kiro_cli::install_kiro_sop_skills`) -- every
+/// OTHER Kiro-runtime skill still lives under `.konductor/skills/`, kept
+/// separate for the reasons `kiro_cli.rs`'s own "Two install roots" doc
+/// comment explains. `skills` counts distinct skill DIRECTORIES (a
+/// skill may hold auxiliary files beyond `SKILL.md`) across all three
+/// skill roots; agents, context, and bin entries are one file each.
 struct InstallCounts {
     agents: usize,
     skills: usize,
@@ -1313,23 +1318,38 @@ impl InstallCounts {
 
         // A skill is a DIRECTORY that may hold SKILL.md plus auxiliary
         // files, so count DISTINCT skill directories (the `<name>`
-        // segment right after `.konductor/skills/` or `.claude/skills/`),
-        // not one per file -- otherwise a skill with scripts would
-        // inflate the count. Agents, context, and bin entries are one
-        // file each, so a per-file count is exact for them.
+        // segment right after `.konductor/skills/`, `.kiro/skills/`, or
+        // `.claude/skills/`), not one per file -- otherwise a skill with
+        // scripts would inflate the count. Agents, context, and bin
+        // entries are one file each, so a per-file count is exact for
+        // them.
+        //
+        // Keyed by `(root, name)`, not bare `name`: `.konductor/skills/`
+        // and `.kiro/skills/` are both written by this same strategy on
+        // every Kiro install (a plain skill under the former, a
+        // Kiro-discoverable SOP-skill conversion under the latter), so a
+        // plain skill and a SOP-derived skill sharing a basename are two
+        // PHYSICALLY DISTINCT directories that must both count -- keying
+        // on the bare name alone would collapse them into one HashSet
+        // entry and undercount by one for every such collision.
         let mut agents = 0;
         let mut context = 0;
         let mut bin = 0;
         let mut replaced_foreign = 0;
-        let mut skill_dirs: std::collections::HashSet<&str> = std::collections::HashSet::new();
+        let mut skill_dirs: std::collections::HashSet<(&str, &str)> =
+            std::collections::HashSet::new();
         for file in &manifest.files {
             if let Some(rest) = file.path.strip_prefix(".konductor/skills/") {
                 if let Some(name) = rest.split('/').next().filter(|s| !s.is_empty()) {
-                    skill_dirs.insert(name);
+                    skill_dirs.insert((".konductor/skills/", name));
+                }
+            } else if let Some(rest) = file.path.strip_prefix(".kiro/skills/") {
+                if let Some(name) = rest.split('/').next().filter(|s| !s.is_empty()) {
+                    skill_dirs.insert((".kiro/skills/", name));
                 }
             } else if let Some(rest) = file.path.strip_prefix(claude_skills_prefix.as_str()) {
                 if let Some(name) = rest.split('/').next().filter(|s| !s.is_empty()) {
-                    skill_dirs.insert(name);
+                    skill_dirs.insert((claude_skills_prefix.as_str(), name));
                 }
             } else if file.path.starts_with(".kiro/agents/")
                 || file.path.starts_with(claude_agents_prefix.as_str())
@@ -2861,6 +2881,89 @@ mod tests {
         assert_eq!(counts.context, 0);
         assert_eq!(counts.bin, 0);
         assert_eq!(counts.replaced_foreign, 1);
+    }
+
+    /// `.kiro/skills/sop-<name>/SKILL.md` (the Kiro-discoverable SOP-skill
+    /// conversion) must count toward `skills`, exactly like
+    /// `.konductor/skills/`/`.claude/skills/` entries do -- regression
+    /// guard for the undercount this feature would otherwise introduce:
+    /// without this prefix recognized, the summary's skill count would
+    /// silently omit every installed SOP-skill directory.
+    #[test]
+    fn install_counts_from_manifest_recognizes_kiro_skills_prefix() {
+        let manifest = manifest::StrategyManifest::new(
+            "kiro-cli-v2",
+            "2026-01-15T09:30:00Z",
+            ".",
+            None,
+            manifest::Status::Complete,
+            vec![
+                manifest::ManifestFile {
+                    path: ".kiro/agents/k-example.json".to_string(),
+                    sha256: Some("a".repeat(64)),
+                    provenance: Provenance::Created,
+                },
+                manifest::ManifestFile {
+                    path: ".konductor/skills/constraints/SKILL.md".to_string(),
+                    sha256: Some("b".repeat(64)),
+                    provenance: Provenance::Created,
+                },
+                manifest::ManifestFile {
+                    path: ".kiro/skills/sop-ticket-sync/SKILL.md".to_string(),
+                    sha256: Some("c".repeat(64)),
+                    provenance: Provenance::Created,
+                },
+            ],
+        );
+
+        let counts = InstallCounts::from_manifest(&manifest);
+        assert_eq!(counts.agents, 1);
+        assert_eq!(
+            counts.skills, 2,
+            "both the .konductor/skills/ skill and the .kiro/skills/ SOP-skill must count"
+        );
+        assert_eq!(counts.replaced_foreign, 0);
+    }
+
+    /// Regression: a plain skill under `.konductor/skills/` and a
+    /// Kiro-discoverable SOP-skill conversion under `.kiro/skills/`
+    /// sharing the exact same basename (`sop-state-management`) are two
+    /// physically distinct on-disk directories, and both must count.
+    /// Keying `skill_dirs` on the bare name alone would collapse them
+    /// into a single `HashSet` entry and undercount by one -- this is
+    /// reachable today: `skills/sop-state-management/` already exists as
+    /// a plain skill in this package, and a `sop-<name>/SKILL.md`
+    /// conversion under `.kiro/skills/` derives its directory name the
+    /// same way (`sop-{sop_name}`), so a future `state-management.sop.md`
+    /// would collide with it exactly.
+    #[test]
+    fn install_counts_from_manifest_counts_colliding_basenames_across_two_roots_separately() {
+        let manifest = manifest::StrategyManifest::new(
+            "kiro-cli-v2",
+            "2026-01-15T09:30:00Z",
+            ".",
+            None,
+            manifest::Status::Complete,
+            vec![
+                manifest::ManifestFile {
+                    path: ".konductor/skills/sop-state-management/SKILL.md".to_string(),
+                    sha256: Some("a".repeat(64)),
+                    provenance: Provenance::Created,
+                },
+                manifest::ManifestFile {
+                    path: ".kiro/skills/sop-state-management/SKILL.md".to_string(),
+                    sha256: Some("b".repeat(64)),
+                    provenance: Provenance::Created,
+                },
+            ],
+        );
+
+        let counts = InstallCounts::from_manifest(&manifest);
+        assert_eq!(
+            counts.skills, 2,
+            "a plain skill and a SOP-derived skill sharing a basename across the two roots \
+             must count as two distinct skill directories, not one"
+        );
     }
 
     /// The default-mode summary line names the exact counts, the

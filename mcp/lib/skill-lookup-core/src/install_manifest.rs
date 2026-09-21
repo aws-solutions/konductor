@@ -24,8 +24,7 @@
 // `scanner::apply_name_filter` narrows `--skill-name-filter` to only ever
 // remove a skill konductor itself installed -- a hand-authored or
 // third-party skill living in the same `--skills-dir` root must always
-// pass through untouched, regardless of the filter (see reviewer
-// feedback on CR-302539291's r4p2). The install manifest is the only
+// pass through untouched, regardless of the filter. The install manifest is the only
 // reliable signal for that distinction: konductor's own installer MERGES
 // into `.konductor/skills/` rather than replacing it wholesale --
 // `cli/install/kiro_cli.rs`'s own module doc comment says so explicitly

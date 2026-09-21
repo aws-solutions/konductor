@@ -6,6 +6,23 @@ This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Entries are consolidated per release,
 not per individual commit.
 
+## [0.1.1] - 2026-09-18
+
+### Added
+
+- Kiro CLI install now emits each SOP as a Kiro-discoverable skill
+  (`.kiro/skills/sop-<name>/SKILL.md`), for both the Kiro CLI v2 and v3 (KAS)
+  install paths.
+- An advisory guard now accompanies each installed SOP's Claude Code
+  description, noting the SOP is intended for direct Kiro invocation.
+
+### Fixed
+
+- `install/mcp_server.rs` now carries its required SPDX license header.
+- Path-safety name-segment validation is consolidated into a single
+  `reject_unsafe_name_segment` check, used consistently across the synth
+  and install paths.
+
 ## [0.1.0] - 2026-09-16
 
 ### Added

@@ -1,6 +1,6 @@
 ---
 name: verification
-description: TDD workflow and evidence collection protocol. Ensures nothing is declared complete without proof it works. Integrates with maker-checker pattern.
+description: 'Use whenever a task producing a testable outcome (code, build artifacts, generated documents, or infrastructure changes) is about to be declared complete. MUST USE before presenting any such result: run the TDD workflow and show evidence it works, integrated with the maker-checker pattern.'
 version: 1.0.0
 tags: [skill, behavioral, verification, tdd, evidence, quality]
 ---

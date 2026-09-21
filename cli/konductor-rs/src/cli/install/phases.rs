@@ -550,6 +550,13 @@ impl InstallPhase for SopInstallPhase {
 
         if staged_root_name == Some(KiroCliV2Transformer.name()) {
             files.extend(super::kiro_cli::install_sops(staged_root, target_dir)?);
+            // Kiro-discoverable conversion, alongside the raw copy above
+            // -- see `install_kiro_sop_skills`'s own doc comment. Primary
+            // content type for this chain, not additive/marker-gated.
+            files.extend(super::kiro_cli::install_kiro_sop_skills(
+                staged_root,
+                target_dir,
+            )?);
 
             // Additive Claude branch: this run is Kiro's own, but the
             // target ALSO has a pre-existing `.claude` marker (a genuine
@@ -943,11 +950,12 @@ mod tests {
 
     /// The Kiro branch fires whenever `staged_root` is Kiro's own
     /// harness dir (`dist/kiro-cli-v2/`), copying every staged `.sop.md`
-    /// file verbatim into `.konductor/sops/` -- unconditional, not
-    /// gated on `detect_runtimes` (see this struct's own doc comment for
-    /// why `detect_runtimes` alone would be wrong for a from-scratch
-    /// install, which has no `.kiro` marker on disk yet at this point in
-    /// the chain).
+    /// file verbatim into `.konductor/sops/` AND converting it into a
+    /// Kiro-discoverable `sop-<name>/SKILL.md` under `.kiro/skills/` --
+    /// both unconditional, not gated on `detect_runtimes` (see this
+    /// struct's own doc comment for why `detect_runtimes` alone would be
+    /// wrong for a from-scratch install, which has no `.kiro` marker on
+    /// disk yet at this point in the chain).
     #[test]
     fn sop_install_phase_kiro_branch_copies_staged_sops_into_konductor_sops() {
         let dir = std::env::temp_dir().join(format!(
@@ -974,11 +982,15 @@ mod tests {
             )
             .expect("Kiro branch must succeed with no pre-existing .claude marker");
 
-        assert_eq!(files.len(), 1);
+        assert_eq!(files.len(), 2);
         assert_eq!(
             std::fs::read(target_dir.join(".konductor/sops/ticket-sync.sop.md")).unwrap(),
             b"# Ticket Sync\n"
         );
+        let sop_skill =
+            std::fs::read_to_string(target_dir.join(".kiro/skills/sop-ticket-sync/SKILL.md"))
+                .expect("expected a Kiro-discoverable SOP-skill conversion");
+        assert!(sop_skill.contains("name: \"sop-ticket-sync\""));
         assert!(
             !target_dir.join(".claude").exists(),
             "no Claude output must be produced without a pre-existing .claude marker"
@@ -1077,12 +1089,21 @@ mod tests {
 
         assert_eq!(
             files.len(),
-            2,
-            "expected one Kiro-side and one Claude-side output file"
+            3,
+            "expected the Kiro-side raw copy, the Kiro-discoverable skill conversion, \
+             and the additive Claude-side skill conversion"
         );
         assert_eq!(
             std::fs::read(target_dir.join(".konductor/sops/ticket-sync.sop.md")).unwrap(),
             b"# Kiro copy\n"
+        );
+        let kiro_skill =
+            std::fs::read_to_string(target_dir.join(".kiro/skills/sop-ticket-sync/SKILL.md"))
+                .expect("expected a Kiro-discoverable SOP-skill conversion");
+        assert!(
+            kiro_skill.contains("# Kiro copy"),
+            "the Kiro-discoverable conversion must read from staged_root (Kiro's own harness \
+             dir), not repo_root's Claude staging dir"
         );
         let rendered =
             std::fs::read_to_string(target_dir.join(".claude/skills/sop-ticket-sync/SKILL.md"))

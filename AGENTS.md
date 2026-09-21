@@ -65,7 +65,12 @@ instructions.
 ## Code Style & Conventions
 
 - Agent specs are JSON; keep them formatted (2-space indent).
-- Skills are markdown with YAML frontmatter (`name`, `description`).
+- Skills are markdown with YAML frontmatter (`name`, `description`). A `description` may take a
+  trigger-clause form ("Use when...") or a behavior-summary form ("Does X"); either is fine as
+  long as a reader, human or model, can tell when the skill applies from the text alone. Do not
+  convert a description from one form to the other for consistency alone. Fix a description
+  that gives no activation condition at all. You may broaden an existing condition (for example,
+  add a disjunct) when the skill's actual scope grew, but do not churn the form otherwise.
 - Keep all content generic and portable — do not introduce organization-specific references, internal
   tooling, or private domains.
 - Orchestrators are named `konductor`, `konductor-mux-orchestrator`, and `konductor-cmux-orchestrator`; every specialist uses a `k-*` name. Skills are unprefixed unless avoiding a known collision.
@@ -80,14 +85,14 @@ instructions.
   - Python: `# SPDX-License-Identifier: Apache-2.0`
   - JS/TS, Go: `// SPDX-License-Identifier: Apache-2.0`
   - Shell, YAML: `# SPDX-License-Identifier: Apache-2.0`
-  Formats that have no comment syntax at all (JSON and similar) cannot carry a header and are
-  exempt — do not add one and do not treat its absence as a violation.
-  Internal build-pipeline scripts are exempt from the SPDX header requirement if and only if they
-  meet this test: the script exists solely to drive the build system, is never shipped as a release
-  artifact, AND carries an internal-only marker comment stating that in place of the SPDX header
-  (e.g. `build-tools/bin/aim-and-make-build`'s `# Internal build-pipeline script — not licensed for
-  external distribution.` on the line after its shebang). A script missing that marker comment does
-  not qualify for the exemption and must carry the standard SPDX header instead.
+    Formats that have no comment syntax at all (JSON and similar) cannot carry a header and are
+    exempt — do not add one and do not treat its absence as a violation.
+    Internal build-pipeline scripts are exempt from the SPDX header requirement if and only if they
+    meet this test: the script exists solely to drive the build system, is never shipped as a release
+    artifact, AND carries an internal-only marker comment stating that in place of the SPDX header
+    (e.g. `build-tools/bin/aim-and-make-build`'s `# Internal build-pipeline script — not licensed for
+external distribution.` on the line after its shebang). A script missing that marker comment does
+    not qualify for the exemption and must carry the standard SPDX header instead.
 
 ## Pull Requests
 

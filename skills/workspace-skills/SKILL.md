@@ -1,8 +1,11 @@
 ---
 name: workspace-skills
 description: >
-  Teaches agents when and how to create project-specific workspace skills,
-  including proactive capture, dedup, and provenance protection.
+  Use after trial-and-error that succeeded, a mid-task course correction, a
+  user correction that worked, or an unexpected outcome requiring
+  investigation. Captures the reusable procedure as a project-specific
+  workspace skill, with proactive capture, dedup, and provenance
+  protection.
 origin: agent-created
 version: 4
 last_used: 2026-07-01

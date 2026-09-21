@@ -1,6 +1,6 @@
 [package]
 name = "konductor"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "Konductor CLI — placeholder skeleton for build pipeline validation"
 license = "Apache-2.0"
@@ -24,6 +24,26 @@ license = "Apache-2.0"
 # `RUST_TOOLCHAIN_VERSION` in the release-pipeline package's
 # konductor-release-project.ts).
 rust-version = "1.88"
+
+[lints.rust]
+# On aarch64, this toolchain's linker (GNU ld, binutils 2.41) does not
+# recognize the AArch64 GNU_PROPERTY_AARCH64_FEATURE_1_AND note
+# (type 0xc0000000) that this rustc/LLVM pairing emits into every
+# rlib's `.rmeta` member for hardening-feature advertisement (BTI/PAC).
+# `ld` treats an unrecognized property type as informational and
+# still produces a correct binary: the note only advertises an
+# optional hardening feature the linker doesn't merge, and it carries no
+# code or relocation `ld` needs to act on. `linker_messages` is the
+# specific rustc lint that surfaces linker stderr as a build warning;
+# allowing exactly this one lint (not a blanket `-A warnings`) leaves
+# every other lint, including `cargo clippy -- -D warnings`, at full
+# strength. No effect on x86_64, where this note/linker combination
+# doesn't occur and the lint never fires. This crate has no
+# `[workspace]` of its own (see the MSRV comment above for why it is
+# built standalone), so this is set directly rather than via a
+# `[workspace.lints]` table (see mcp/Cargo.toml for that crate's own
+# equivalent, workspace-level version of this exact entry).
+linker_messages = "allow"
 
 [[bin]]
 name = "konductor"
@@ -72,7 +92,7 @@ indexmap = { version = "=2.14.0", features = ["serde"] }
 # `.konductor/config.yml` / the preset `cli/gate-config/config.yml`.
 # Exact-pinned per repo convention. Version bumped past serde_json's own
 # `^1.0.220` transitive requirement (1.0.215 conflicts; verified against
-# the internal crates.io mirror via `cargo brazil fetch --target all`).
+# the internal crates.io mirror).
 serde = { version = "=1.0.228", features = ["derive"] }
 # YAML (de)serialization for the config loader. `serde_yaml` is
 # unmaintained upstream (archived by its author in 2024) but is still the
@@ -81,21 +101,21 @@ serde = { version = "=1.0.228", features = ["derive"] }
 # on the internal crates.io mirror at time of writing, so this stays with
 # the well-known crate rather than risking a mirror-fetch failure. Revisit
 # if a maintained fork becomes mirror-available and the team wants to
-# migrate. Exact-pinned per repo convention; verified fetchable via
-# `cargo brazil fetch --target all`.
+# migrate. Exact-pinned per repo convention; verified fetchable against
+# the internal crates.io mirror.
 serde_yaml = "=0.9.34"
 # Advisory exclusive file lock used to serialize `config set`'s
 # read-merge-write cycle across concurrent CLI invocations (see
 # src/cli/config_lock.rs). `fs2` is unmaintained upstream (like
 # `serde_yaml` above) but is confirmed present on the internal crates.io
-# mirror (observed in a real `cargo brazil fetch --target all` run
+# mirror (confirmed present via an internal mirror-fetch run
 # unpacking `fs2 v0.4.3`), and its `FileExt::try_lock_exclusive` /
 # `unlock` API is exactly the small, stable surface this needs. Exact-
 # pinned per repo convention.
 fs2 = "=0.4.3"
 # SHA-256 artifact-checksum verification for `konductor install` (task
-# 3.1). Exact-pinned per repo convention; verified fetchable via `cargo
-# brazil fetch --target all`.
+# 3.1). Exact-pinned per repo convention; verified fetchable against
+# the internal crates.io mirror.
 sha2 = "=0.10.8"
 # Unicode canonical (NFC) normalization for the case-insensitive
 # collision-detection fold shared by `parse_canonical.rs`/`path_safety.rs`
@@ -126,23 +146,23 @@ telemetry-net = { path = "../../mcp/lib/telemetry-net" }
 # Archive layout for konductor synth's packaging step (dist/ tree -> single
 # blob for write_sidecar to hash). Layout-only by design -- does not bundle
 # compression, hence flate2 below.
-tar = "=0.4.45"
+tar = "=0.4.46"
 # Gzip compression paired with tar above -- the standard Rust-ecosystem
 # combination (e.g. `cargo package` itself uses this same pairing).
-# Exact-pinned per repo convention; verify fetchable via `cargo brazil
-# fetch --target all` before merging.
+# Exact-pinned per repo convention; verify fetchable against the
+# internal crates.io mirror before merging.
 flate2 = "=1.1.5"
 # Sync HTTP client for `install::github`'s GitHub Release fetch/download.
 # Deliberately not `reqwest` -- no async runtime in this crate, and `ureq`
 # fits the existing sync I/O style (see `install/remote.rs`). Exact-pinned
-# per repo convention; verified fetchable via `cargo brazil fetch --target
-# all`.
+# per repo convention; verified fetchable against the internal
+# crates.io mirror.
 ureq = "=2.10.1"
 # Direct dependency pinning `ureq`'s transitive `rustls` (open range) to
 # the newest patch confirmed on the internal mirror, so both resolve to
 # one build instead of two. Features match what `ureq` itself requests.
-# Exact-pinned per repo convention; verified fetchable via `cargo brazil
-# fetch --target all`.
+# Exact-pinned per repo convention; verified fetchable against the
+# internal crates.io mirror.
 rustls = { version = "=0.23.43", default-features = false, features = ["ring", "logging", "std", "tls12"] }
 # Percent-encoding for path segments in `install::github_branch`'s GitHub
 # Contents API URLs. Already resolved transitively via `url`; promoted to

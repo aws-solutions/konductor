@@ -1,6 +1,6 @@
 ---
 name: decision-writing
-description: How to write effective decision records — structure, tone, alternatives framing, consequence articulation, and Amazon writing tenets for data-driven, specific, and actionable decisions
+description: Use when drafting or reviewing a decision record (ADR, PDR, or UXDR). Covers structure, tone, alternatives framing, consequence articulation, and plain-writing tenets for data-driven, specific, and actionable decisions.
 ---
 
 # Decision Writing
@@ -8,6 +8,10 @@ description: How to write effective decision records — structure, tone, altern
 ## Overview
 
 Decision records are permanent artifacts. Six months from now, someone will read your record to understand why a choice was made. Write for that future reader.
+
+## Usage
+
+Use this skill when drafting a decision record from scratch, when reviewing an existing one for structure and tone, or when the `adr-generator` skill needs ADR-specific writing guidance during design doc creation. Applies to ADR, PDR, and UXDR formats — the shared structure and language guidelines below hold across all three, with format-specific notes in Template-Specific Guidance.
 
 ## The One-Sentence Test
 

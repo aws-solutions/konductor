@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 //
 // install/mcp_server.rs — copies MCP server binaries
 // (`MCP_SERVER_BINARY_NAMES`) alongside whatever `kiro_cli.rs`'s

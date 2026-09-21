@@ -418,9 +418,9 @@ mod plan;
 // comment ("Module split" section above) for the 3-way split this cuts
 // across.
 pub(super) use copy::{
-    copy_agent_files, copy_skill_dir_recursive, install_agents, install_context, install_skills,
-    install_sops, list_agent_files, list_agent_files_like, list_skill_dirs,
-    CONTEXT_RESOURCE_PREFIX,
+    copy_agent_files, copy_skill_dir_recursive, install_agents, install_context,
+    install_kiro_sop_skills, install_skills, install_sops, list_agent_files, list_agent_files_like,
+    list_skill_dirs, CONTEXT_RESOURCE_PREFIX,
 };
 pub(super) use fs_util::{reject_unsafe_file_name, set_executable};
 pub(super) use plan::{
@@ -1636,6 +1636,76 @@ mod tests {
 
         fs::remove_dir_all(&source).ok();
         fs::remove_dir_all(&destination).ok();
+    }
+
+    /// Pins CURRENT, deliberate behavior for a hand-authored skill
+    /// auxiliary file whose basename contains a plain space (e.g. a
+    /// script named `my script.sh`): the whole install errors, it does
+    /// not skip or rename the one offending file. This is
+    /// `copy_skill_dir_recursive`'s delegation to `reject_unsafe_file_name`
+    /// -- the same shared `reject_unsafe_name_segment` check the
+    /// SOP-name/skill-name validation path uses -- applied unchanged to
+    /// arbitrary aux-file content read straight off disk via
+    /// `std::fs::read_dir`, content this crate's own synth-time checks
+    /// (`reject_unsafe_auxiliary_relative_path`) do not themselves reject
+    /// for plain whitespace. A workspace-wide scan across all three
+    /// packages found zero on-disk skill aux files with a
+    /// space/tab/control/Cf character in their basename, so this is not a
+    /// fix for an active regression -- it is intentional documentation
+    /// that the strictness choice on this call site is deliberate, not
+    /// accidental, and that a future loosening of
+    /// `reject_unsafe_name_segment` changes this test's expected outcome
+    /// on purpose.
+    #[test]
+    fn copy_skill_dir_recursive_rejects_aux_file_name_containing_a_space_pinned_strictness() {
+        let target_dir = scratch_dir("skill-aux-space-target");
+        let repo_root = scratch_dir("skill-aux-space-repo-root");
+        seed_synthed_skill(
+            &repo_root,
+            "example-skill",
+            b"body\n",
+            &[("scripts/my script.sh", b"#!/bin/sh\n")],
+        );
+
+        let err = KiroCliInstallStrategy
+            .install_from_local(
+                &target_dir,
+                Some(repo_root.to_str().unwrap()),
+                "2026-01-01T00:00:00Z",
+                false,
+            )
+            .expect_err(
+                "an aux file basename containing a space must error the whole install, \
+                 not be silently skipped or renamed",
+            );
+        assert!(
+            err.contains("unsafe file name"),
+            "expected the shared reject_unsafe_file_name error, got: {err}"
+        );
+        // `SKILL.md` sorts ahead of `scripts/` (`copy_skill_dir_recursive`
+        // visits entries in sorted order) and is a safe name, so it is
+        // already written by the time the recursive descent into
+        // `scripts/` hits the space-named file and aborts -- the known,
+        // pre-existing partial-write behavior this module's own doc
+        // comments describe for `install_sop_skills`/`install_skills`.
+        // The guarantee this test actually pins is narrower: the unsafe
+        // file itself is never written.
+        assert!(
+            target_dir
+                .join(".konductor/skills/example-skill/SKILL.md")
+                .exists(),
+            "sanity check: SKILL.md is written before the recursive descent reaches the \
+             unsafe aux file, per this module's documented partial-write behavior"
+        );
+        assert!(
+            !target_dir
+                .join(".konductor/skills/example-skill/scripts/my script.sh")
+                .exists(),
+            "the aux file whose name failed validation must never be written to disk"
+        );
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
     }
 
     #[test]
@@ -3995,6 +4065,71 @@ mod tests {
         assert_eq!(
             fs::read(target_dir.join(".konductor/sops/code-review.sop.md")).unwrap(),
             b"# Code Review\n"
+        );
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// Every staged SOP also becomes a Kiro-discoverable
+    /// `sop-<name>/SKILL.md` under `.kiro/skills/` -- unconditional,
+    /// alongside the raw `.konductor/sops/` copy, and TRACKED under this
+    /// strategy's own manifest slot exactly like every other content
+    /// type this strategy writes (agents, skills, context, the MCP
+    /// binary). Unlike the Claude dual-marker case
+    /// (`.claude/skills/sop-<name>/SKILL.md`, deliberately excluded from
+    /// both Kiro variants' slots -- see `DUAL_MARKER_SOP_SKILL_PREFIX`),
+    /// this path is never excluded: `kiro-cli-v2` and `kiro-v3` are
+    /// mutually exclusive at a given target by construction
+    /// (`KIRO_VARIANT_FAMILY`), so ordinary manifest tracking plus the
+    /// existing override-switch mechanism (`effective_prior_slot`,
+    /// `upsert_strategy`) already gives this path the same safety a
+    /// dual-marker exclusion would, with no extra bookkeeping. See
+    /// `install_from_local_kiro_sop_skill_survives_variant_override_switch`
+    /// in `kiro_cli_v3.rs` for the switch case.
+    #[test]
+    fn install_from_local_kiro_sop_skill_is_tracked_in_kiro_cli_v2_own_slot() {
+        let target_dir = scratch_dir("kiro-sop-skill-tracked-target");
+        let repo_root = scratch_dir("kiro-sop-skill-tracked-repo");
+        seed_synthed_agent(&repo_root, "k-example", br#"{"name":"k-example"}"#);
+        seed_synthed_sop(
+            &repo_root,
+            "ticket-sync",
+            b"## Overview\n\nSyncs a ticket.\n",
+        );
+
+        KiroCliInstallStrategy
+            .install_from_local(
+                &target_dir,
+                Some(repo_root.to_str().unwrap()),
+                "2026-01-01T00:00:00Z",
+                false,
+            )
+            .expect("install must succeed");
+
+        let sop_skill_path = target_dir.join(".kiro/skills/sop-ticket-sync/SKILL.md");
+        let rendered = fs::read_to_string(&sop_skill_path)
+            .expect("expected a Kiro-discoverable SOP-skill conversion");
+        assert!(rendered.contains("name: \"sop-ticket-sync\""));
+        assert!(rendered.contains("Syncs a ticket."));
+        assert!(
+            !rendered.contains("disable-model-invocation"),
+            "Kiro CLI has no documented equivalent to Claude Code's \
+             disable-model-invocation key, so it must be omitted entirely"
+        );
+
+        let manifest = super::super::manifest::read_manifest(&target_dir)
+            .unwrap()
+            .expect("manifest must exist after install");
+        assert_eq!(manifest.strategies.len(), 1);
+        assert_eq!(manifest.strategies[0].strategy, "kiro-cli-v2");
+        assert!(
+            manifest.strategies[0]
+                .files
+                .iter()
+                .any(|f| f.path == ".kiro/skills/sop-ticket-sync/SKILL.md"),
+            "the Kiro-discoverable SOP-skill file must be tracked in kiro-cli-v2's own slot, \
+             unlike the Claude dual-marker case"
         );
 
         fs::remove_dir_all(&target_dir).ok();

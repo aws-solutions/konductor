@@ -700,8 +700,8 @@ pub(crate) fn apply_name_filter(
         .into_iter()
         .filter(|(_, record)| {
             // Not konductor's to scope: always keep, regardless of
-            // `patterns` — this is the fix for r4p2 on CR-302539291
-            // (see this function's doc comment above).
+            // `patterns`, since this skill was not installed by
+            // konductor (see this function's doc comment above).
             if !record.installed_by_konductor {
                 return true;
             }
@@ -1895,10 +1895,9 @@ mod tests {
     fn manifest_hand_authored_skill_in_same_root_always_survives_the_filter() {
         // Scenario (b): a hand-authored skill in the SAME root as a
         // konductor-installed one always passes through, regardless of
-        // the filter — this is the exact defect reported on r4p2 of
-        // CR-302539291: before this fix, --skill-name-filter narrowed
-        // the whole merged scan of a --skills-dir root, hiding
-        // hand-authored/third-party skills it should never touch.
+        // the filter: --skill-name-filter narrows only the
+        // konductor-installed skills in a --skills-dir root, never the
+        // hand-authored/third-party skills sharing that same root.
         let (base, skills_root) = manifest_scope_fixture("manifest-scope-hand-authored-survives");
         write_skill(
             &skills_root,

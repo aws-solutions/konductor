@@ -116,8 +116,8 @@ use crate::cli::synth::parse_canonical;
 /// remediation string in this file embeds -- kept in exactly one place
 /// so those remediation strings can't independently drift from the
 /// three values `cli.rs`'s `--harness` clap `value_parser` actually
-/// accepts (the same "hardcoded, can drift" risk CR-303697675 already
-/// flagged for that allowlist itself).
+/// accepts (that allowlist carries the same "hardcoded, can drift"
+/// risk).
 const HARNESS_PLACEHOLDER: &str = "--harness <kiro-cli-v2|kiro-v3|claude>";
 
 /// Best-effort `--harness <value>` remediation fragment for a manifest's

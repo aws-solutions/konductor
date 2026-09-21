@@ -1,6 +1,6 @@
 ---
 name: decision-research
-description: Research patterns for gathering context before making decisions and verifying artifact claims — discover prior art, frame alternatives, assess trade-offs, build an evidence base, and challenge assumptions with source-backed findings.
+description: Use before drafting a decision record to gather context systematically, discovering prior art, framing alternatives, assessing trade-offs, and building an evidence base. Also use as a verification step after rubric-based quality checks (Maker-Checker Pattern) to validate an artifact's factual claims.
 ---
 
 # Decision Research
@@ -200,6 +200,8 @@ Constraints narrow the decision space. Document them explicitly.
 ```
 
 ## Anti-Patterns
+
+MUST guard against these biases when challenging assumptions, forcing source-backed findings rather than accepting the first plausible answer:
 
 1. **Confirmation bias** — Searching only for evidence that supports the preferred option. Force yourself to search for weaknesses of the leading option and strengths of alternatives.
 

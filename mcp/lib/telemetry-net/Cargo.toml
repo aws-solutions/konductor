@@ -15,6 +15,9 @@ description = "Host-allowlist DNS classification, DNS-rebinding pin construction
 # membership. See that crate's own Cargo.toml for the dependency entry.
 license.workspace = true
 
+[lints]
+workspace = true
+
 [lib]
 name = "telemetry_net"
 path = "src/lib.rs"

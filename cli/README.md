@@ -27,30 +27,32 @@ Set `KONDUCTOR_LOG=debug` to turn on a stream of diagnostic trace lines to stder
 the current invocation only — which config layer supplied a value, which install
 strategy matched, what path was resolved. It never prints the resolved value of a
 config field flagged sensitive. Unset, or set to anything other than `debug`, produces
-no additional output. Independent of `--json` (trace lines never mix into the stdout
-JSON document) and of the exit code (it fires on both success and failure).
+no additional output. This tracing is independent of `--json` (trace lines never mix
+into the stdout JSON document) and of the exit code (it fires on both success and
+failure).
 
 `init` also accepts `--force`, to overwrite an existing `.konductor/` directory instead
 of failing.
 
 `install` accepts:
+
 - `--from <repo-root>` — SOURCE: a local repo root to install previously-built (synthed)
   content from. Optional: omitting it tries a real GitHub Release fetch→verify→install
   first (against `aws-solutions/konductor`'s latest release), falling back to fetching
   `dist/`'s tarball straight from the `main` branch when the release path fails with a
   missing-asset error — see
   [Installing without `--from`: the GitHub-release / main-branch-`dist/` fallback chain](#installing-without---from-the-github-release--main-branch-dist-fallback-chain)
-  below for why the release path does not yet succeed against a real release.
+  below for the full fallback chain and its one remaining caveat: the `main`-branch
+  `dist/` fallback isn't published yet.
 - `--target <dir>` — DESTINATION: directory to install into. Defaults to `$HOME` when
   omitted.
 - `--harness <kiro-cli-v2|kiro-v3|claude>` — REQUIRED: which synthed harness output to
   install. There is no default and no destination-marker auto-detection — every `install`
-  invocation must say explicitly which harness it means. `kiro-v3` is a real, synthed
-  harness (see [`synth`](#synth) below) but has no install strategy implemented yet; passing
-  it exits with a clear message rather than installing anything. See
-  [`install`](#install) below for the full explanation.
+  invocation must say explicitly which harness it means. See [`install`](#install) below
+  for the full explanation.
 
 `doctor` accepts:
+
 - `--from <repo-root>` — SOURCE: an explicit override. When given, `source`/`config`
   always check this tree, regardless of any manifest. When omitted (the default), those
   two checks instead resolve against the manifest's recorded install-time source (see
@@ -58,7 +60,7 @@ of failing.
 - `--target <dir>` — DESTINATION: install directory to check for a runtime/manifest.
   Defaults to `$HOME` when omitted, same as `install --target`.
 
-Running an SDLC *workflow* is **not** a CLI subcommand — that is driven by the Konductor
+Running an SDLC _workflow_ is **not** a CLI subcommand — that is driven by the Konductor
 Kiro agent. The CLI utility handles setup, content build, lifecycle, and diagnostics only.
 
 ---
@@ -93,10 +95,9 @@ troubleshooting.
 > so skipping the `mcp/` build here and then installing produces agents that can't load
 > skills at runtime.
 
-> **Working inside a Brazil workspace?** `cargo: command not found` means `~/.cargo/bin`
-> isn't on `PATH` yet: `export PATH="$HOME/.cargo/bin:$PATH"`. If your shell also has a
-> personal `RUSTUP_HOME` (pointing at `~/.rustup`), CargoBrazil will refuse to build —
-> run `unset RUSTUP_HOME` first. Neither applies outside Brazil.
+> If `cargo build` reports `cargo: command not found`, `~/.cargo/bin` isn't on `PATH`
+> yet: `export PATH="$HOME/.cargo/bin:$PATH"`. If you have a custom `RUSTUP_HOME` set
+> that doesn't match your actual rustup install, unset it first.
 
 ## Building
 
@@ -104,15 +105,15 @@ troubleshooting.
 make build          # from the repo root; or `make -C cli build` for the CLI only
 ```
 
-Or directly with cargo:
-
-```bash
-cd cli/konductor-rs
-cargo build --release          # binary → target/release/konductor
-```
+`make build` is the target to use, not `cargo build` directly against `cli/konductor-rs`:
+the Makefile recipe runs `cargo build --release`, resolves cargo's real output directory
+via `cargo metadata` (a plain `cargo build` and a wrapped build can each place the binary
+somewhere different; see the Makefile's own comments), and additionally stages a copy at
+`build/cli/konductor` (relative to the repo root) for downstream packaging that a bare
+`cargo build` skips.
 
 See [Getting started](#getting-started) above for the full build → link → verify
-sequence and the Brazil-only gotchas.
+sequence.
 
 ## Putting it on your PATH
 
@@ -121,13 +122,14 @@ mkdir -p ~/.local/bin
 ln -sf "$(pwd)/target/release/konductor" ~/.local/bin/konductor
 ```
 
-(`make link` does the same thing — run it from the repo root, or as `make -C cli link`
-(also from the repo root, or with `-C` pointed at wherever `cli/` lives — `-C cli` on
-its own only resolves when the shell's current directory already is the repo root);
-see `make help` at either location for the full target list.
+`make link` does the same thing. Run it from the repo root, either as `make link` or as
+`make -C cli link` (a bare `-C cli` only resolves when the shell's current directory
+already is the repo root — point `-C` at wherever `cli/` actually lives otherwise). See
+`make help` at either location for the full target list.
+
 `konductor install --from <repo-root> --harness kiro-cli-v2 --link-bin` does this too,
 as part of installing — see
-[`install`'s `--link-bin`](#--link-bin-put-konductor-itself-on-your-path) below.)
+[`install`'s `--link-bin`](#--link-bin-put-konductor-itself-on-your-path) below.
 
 `~/.local/bin` isn't on `PATH` by default on every distro. Check first:
 
@@ -149,13 +151,12 @@ Verify:
 
 ```bash
 command -v konductor   # should print ~/.local/bin/konductor
-konductor --version    # expected: konductor 0.1.0
+konductor --version    # expected: konductor 0.1.1
 ```
 
 > Note: `make install` (also in `cli/`) is a different target — it runs
-> `cargo install --path .`, which installs into `~/.cargo/bin` and does not work inside
-> a Brazil workspace (Brazil blocks `cargo install`). Use the symlink/`make link` path
-> above instead.
+> `cargo install --path .`, which installs into `~/.cargo/bin`. Use the symlink/`make link`
+> path above instead.
 
 ---
 
@@ -220,15 +221,14 @@ deliberate: a destination carrying both markers at once used to be resolved sile
 registration order; requiring `--harness` removes that ambiguity. It's a real behavior
 change too — even a lone foreign marker (e.g. a `.kiro/` directory left over from
 unrelated Kiro CLI use) no longer steers selection, so `--harness claude` installs
-Claude Code content there regardless. `kiro-v3` is a real, registered `synth` harness,
-but `install` has no strategy that reads `dist/kiro-v3/` yet — passing it exits `64`
-with a message explaining the gap, rather than installing anything or crashing.
+Claude Code content there regardless. `kiro-v3` installs for Kiro CLI's V3 (KAS) engine,
+via its own `KiroCliV3InstallStrategy`.
 
 **`kiro-cli-v2` vs `kiro-v3` is not an IDE-vs-CLI split.** In Kiro v2, the CLI and IDE
 are separate products: `kiro-cli-v2` installs CLI-only content and will not work in the
 Kiro IDE at all. In Kiro v3, the CLI and IDE are unified into one product, so a single
-`kiro-v3` harness (once implemented) covers both — there is no separate
-`kiro-v3-ide`/`kiro-v3-cli` split to choose between.
+`kiro-v3` harness covers both — there is no separate `kiro-v3-ide`/`kiro-v3-cli` split to
+choose between.
 
 | Content  | Destination                          |
 | -------- | ------------------------------------ |
@@ -264,42 +264,41 @@ produced the install (a `source` field in `--json` mode, an inline clause in the
 plain-text summary), so the two are never blended together.
 
 1. **GitHub Release (primary).** Hits GitHub's `GET
-   /repos/aws-solutions/konductor/releases/latest` API, looks for a release asset
+/repos/aws-solutions/konductor/releases/latest` API, looks for a release asset
    matching this host's exact expected filename (`synth::artifact_filename()`'s
-   convention — a versioned, per-platform tarball) plus that filename's `.sha256`
-   sidecar, downloads both, verifies the checksum against that maintainer-published
-   sidecar, and installs through the same unpack/copy pipeline `--from` uses.
+   convention — a versioned tarball, no architecture or OS in the name) plus that
+   filename's `.sha256` sidecar, downloads both, verifies the checksum against that
+   maintainer-published sidecar, and installs through the same unpack/copy pipeline
+   `--from` uses.
 
-   **This does not yet succeed against a real release.** The live
-   `.github/workflows/release.yml` doesn't publish assets in that shape yet — today it
-   zips all of `dist/` into one fixed-name `konductor-release.zip`, with no per-platform
-   tarball and no `.sha256` sidecar. Until that pipeline is fixed separately, this
-   source fails with an `install.remote_asset_missing`-class error.
+   **This succeeds against a real release.** `.github/workflows/release.yml` publishes
+   the packaged tarball and its `.sha256` sidecar on every release, in the exact shape
+   this fetcher expects.
 
 2. **`main` branch's `dist/` directory (automatic fallback).** `main`'s `dist/`
    directory carries the same pre-built tarball `synth` produces — at the same
    `<artifact_filename>` the release path expects — plus its `.sha256` sidecar, as two
    named files sitting directly under `dist/`. This source fetches each one, by exact
    filename, via one GitHub Contents API request apiece (`GET
-   /repos/aws-solutions/konductor/contents/dist/{filename}?ref=main`) — two requests
+/repos/aws-solutions/konductor/contents/dist/{filename}?ref=main`) — two requests
    total, well under GitHub's unauthenticated rate limit — then verifies the fetched
-   tarball against the fetched sidecar and installs through the same pipeline. No file
-   listing, no per-file download loop, and no repackaging: the tarball is already
-   packaged exactly as `synth` would produce it, so this source returns it unchanged.
+   tarball against the fetched sidecar and installs through the same pipeline. Each file
+   is fetched by one direct request, with no listing step and no per-file loop, and the
+   tarball is already packaged exactly as `synth` would produce it, so this source
+   returns it unchanged.
 
    **This source has the same verification strength as the release path.** The only
    difference is WHERE the tarball+sidecar pair comes from — a release asset vs.
    `main`'s `dist/` directory — not how strongly the result is checked: both verify
    downloaded bytes against a real, independently-published sidecar. `dist/` is
    `.gitignore`d in this repo's own working tree, so this path needs a publishing step
-   to place both files under `dist/` on `main`; until then, a missing tarball or
-   sidecar cleanly fails with an
+   to place both files under `dist/` on `main` before it can succeed; until that
+   publishing step exists, a missing tarball or sidecar cleanly fails with an
    `install.main_branch_dist_artifact_missing`/`install.main_branch_dist_sidecar_missing`-class
-   error rather than installing something unverified — the same kind of gap the release
-   path's own asset-shape gap already documents above. Once the `release.yml` fix
-   lands, both sources will name the identical pair of published files — the same
-   tarball and sidecar, just reachable from two different paths (a repo path vs. a
-   release asset URL).
+   error rather than installing something unverified. Once that publishing step lands,
+   both sources will name the identical pair of published files — the same tarball and
+   sidecar, just reachable from two different paths (a repo path vs. a release asset
+   URL).
 
 Omitting `--harness` entirely is a usage error too (clap's own missing-required-argument
 message, remapped to exit `64`), independent of either source above.
@@ -373,32 +372,49 @@ itself lives outside any one `--target`).
 ## `update`
 
 ```bash
-konductor update [--from <repo-root>] [--target <dir>] [--all]
+konductor update [--from <repo-root>] [--target <dir>] [--all] [--dry-run]
 ```
 
 Overwrites a tracked install in place: for each selected target, `update` calls the same
 underlying install routine `install` itself uses, so the target's agents, skills, and
 manifest end up identical to a fresh `install --target <dir>` from the given `--from`
-source. There is no hash comparison, no divergence classification, and no reconciliation
-— it is an unconditional overwrite, and it will silently clobber any local edits to files
-under the managed destinations (`.kiro/agents/`, `.konductor/skills/`, `.konductor/manifest`).
+source. There is no reconciliation — it is an unconditional overwrite, and it will
+silently clobber any local edits to files under the managed destinations
+(`.kiro/agents/`, `.konductor/skills/`, `.konductor/manifest`). Hash-based divergence
+classification exists, but only under `--dry-run` (see below) — a real run instead
+reports, after the fact, only an aggregate count of how many files were overwritten
+while diverged; that count never gates or alters the overwrite. There is no `--force`
+flag either way.
 
 `update` has no `--from` default of its own — omit it to reuse whatever source each
 target was last installed from is **not** supported; pass `--from <repo-root>` explicitly.
+
+### `--dry-run`
+
+`--dry-run` reports exactly which files would be overwritten for every selected target
+— flagging each individual path that currently has local edits that would be clobbered,
+distinct from an unmodified tracked path, both in plain-text (`(local edits would be
+destroyed)`) and `--json` (a per-path `"diverged"` boolean), not just an aggregate count
+— without touching the filesystem in any way: no file write, no manifest write, no
+index write.
+
+Without `--dry-run`, a real update run proceeds directly: for every target the
+selection table below resolves, `update` overwrites its tracked files immediately, with
+no confirmation prompt.
 
 ### Selecting which target(s) to update
 
 `update` resolves which tracked install(s) to act on based on how many entries
 `~/.konductor/installs` has and whether `--target`/`--all` was passed:
 
-| Tracked installs | `--target`/`--all` passed | Behavior |
-| ----------------- | -------------------------- | -------- |
-| 0 | neither | No-op, exit `0` |
-| 0 | `--target <dir>` | Usage error, exit `64` (an explicit target must exist in the index) |
-| 1 | neither | Acts on that one target directly |
-| 2+ | neither | Usage error, exit `64` — ambiguous, requires `--target <dir>` or `--all` |
-| any | `--target <dir>` | Acts on the matching entry, or usage error (`64`) if no entry matches |
-| any | `--all` | Acts on every tracked entry |
+| Tracked installs | `--target`/`--all` passed | Behavior                                                                 |
+| ---------------- | ------------------------- | ------------------------------------------------------------------------ |
+| 0                | neither                   | No-op, exit `0`                                                          |
+| 0                | `--target <dir>`          | Usage error, exit `64` (an explicit target must exist in the index)      |
+| 1                | neither                   | Acts on that one target directly                                         |
+| 2+               | neither                   | Usage error, exit `64` — ambiguous, requires `--target <dir>` or `--all` |
+| any              | `--target <dir>`          | Acts on the matching entry, or usage error (`64`) if no entry matches    |
+| any              | `--all`                   | Acts on every tracked entry                                              |
 
 `uninstall` (below) uses this same table for every row except "2+ tracked installs,
 neither flag passed" — see its own section for that one divergence.
@@ -413,7 +429,7 @@ nothing left to update.
 ## `uninstall`
 
 ```bash
-konductor uninstall [--target <dir>] [--all]
+konductor uninstall [--target <dir>] [--all] [--dry-run]
 ```
 
 Removes a tracked install's files: every path listed in that target's
@@ -424,11 +440,19 @@ even when the last tracked entry is removed from it. If that target ran
 `install --link-bin` (see [above](#--link-bin-put-konductor-itself-on-your-path)), the
 symlink it created at `$HOME/.local/bin/konductor` is removed too.
 
+`--dry-run` reports exactly which files would be removed for every selected target,
+without touching the filesystem in any way, flagging each individual path that has
+diverged from its manifest-recorded hash (i.e. would have local edits destroyed) —
+distinct from an unmodified tracked path, both in plain-text (`(local edits would be
+destroyed)`) and `--json` (a per-path `"diverged"` boolean), not just an aggregate
+count. Without `--dry-run`, a real uninstall proceeds directly, with no confirmation
+prompt of any kind.
+
 Uses `update`'s `--target`/`--all` selection table above exactly, with no divergence:
 a bare invocation (`--target` omitted, `--all` not passed) against 2+ tracked installs
 is a usage error (`64`) naming every tracked install, exactly like `update`'s own
 identical ambiguous-selection case — there is no implicit `$HOME` resolution and no
-confirmation prompt.
+picker to disambiguate which target `--target <dir>`/`--all` means.
 
 One further safety difference from `update`: for a **stale** target (tracked in the
 index but its manifest is gone, e.g. the directory was deleted out-of-band), `uninstall`
@@ -466,14 +490,14 @@ Inspects a Konductor installation/checkout for problems and prints actionable
 remediation guidance, reusing the exact logic `install`/`synth`/`config` already use
 rather than re-implementing any validation.
 
-| Check                   | What it checks                                                                     |
-| ----------------------- | ----------------------------------------------------------------------------------- |
-| `source`                | Parses the source tree with `synth`'s own parser, including cross-reference validation (agent → context/skill/SOP references must resolve). |
-| `runtime`               | Which runtime(s) (Kiro CLI / Claude Code) `install` auto-detects at the target.      |
-| `manifest`              | Manifest presence, completion status, and per-file hash drift against what's on disk. |
-| `config`                | `.konductor/config.yml` loads and validates, via `config`'s own loader.             |
-| `container_runtime`     | Probes `docker`/`podman`/`nerdctl`/`finch` on PATH, in that order — informational only. |
-| `index_status`          | Compares `~/.konductor/installs`'s cached status for the target against that target's real manifest status — catches an install/update interrupted between the two writes. |
+| Check               | What it checks                                                                                                                                                             |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `source`            | Parses the source tree with `synth`'s own parser, including cross-reference validation (agent → context/skill/SOP references must resolve).                                |
+| `runtime`           | Which runtime(s) (Kiro CLI / Claude Code) `install` auto-detects at the target.                                                                                            |
+| `manifest`          | Manifest presence, completion status, and per-file hash drift against what's on disk.                                                                                      |
+| `config`            | `.konductor/config.yml` loads and validates, via `config`'s own loader.                                                                                                    |
+| `container_runtime` | Probes `docker`/`podman`/`nerdctl`/`finch` on PATH, in that order — informational only.                                                                                    |
+| `index_status`      | Compares `~/.konductor/installs`'s cached status for the target against that target's real manifest status — catches an install/update interrupted between the two writes. |
 
 A few forward-looking checks (`gitignore`, `provider_model_access`, `role_allowlists`)
 exist in the code and are unit-tested, but are not yet wired into live `doctor` output
@@ -606,14 +630,17 @@ least one is `failed`/`stale`; `64` on a usage error. Never exit code 2 — see
 
 ### `--json` error envelope (`install`/`synth`/`doctor`)
 
-Distinct from the status report above, `--json` also gates a shared *error* envelope
+Distinct from the status report above, `--json` also gates a shared _error_ envelope
 on early usage-error paths in `install`, `synth`, and `doctor` (and, previously,
 `uninstall`/`update`). On a non-zero exit, instead of a plain-text
 `konductor <command>: <message>` line to stderr, the command prints one JSON object to
 stdout instead:
 
 ```json
-{ "command": "install", "error": "no install strategy matched this target (...)" }
+{
+  "command": "install",
+  "error": "no install strategy matched this target (...)"
+}
 ```
 
 - `command`/`error` are guaranteed on every envelope, regardless of which command
@@ -668,7 +695,7 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
   | 2 | Unresolved CRITICAL gate — CI-failing signal (**never** used for usage errors) |
   | 3 | Budget / turn limit exceeded |
   | 4 | User aborted a paused verdict |
-  | 5 | Reserved for a lifecycle command's interactive confirmation prompt being declined. Not currently emitted by any command — `uninstall` has no confirmation prompt of its own (a bare, 2+-tracked-installs invocation is an immediate usage error, `64`, not a prompt). |
+  | 5 | Reserved, not yet emitted by any command. |
   | 6 | Success with warnings — emitted by `uninstall` when an otherwise-successful run could not remove a tracked `--link-bin` symlink |
   | 64 | CLI usage error (`EX_USAGE`) — never the reserved code `2` |
   | 65 | Unsupported manifest/index `schema_version` (state/verification failure, distinct from a `64` usage error) |
@@ -679,17 +706,21 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
 
 ## Current state
 
-- **Done:** the CLI command surface; the declarative contract (gate/config schemas —
-  `severity-schema.yml`, `scope-table.yml`, `config.yml`, `run-state.json` — plus the
-  config loader); `init` scaffolding a real `.konductor/` directory with a starter
-  `config.yml`; `config get`/`config list`/`config set` reading and writing the
-  effective (project-over-preset) configuration; `install` copying synthed agents/skills
-  into `$HOME/.kiro/` (or `--target <dir>/.kiro/`) and writing a manifest beside the
-  installed tree; `update` overwriting a tracked install in place from a source tree;
-  `uninstall` removing a tracked install's files and manifest; `synth` transforming
-  source content into runtime-native output; `doctor` inspecting a source tree/install
-  destination via `synth`/`install`/`config`'s own logic and reporting per-check
-  ok/info/failed/stale status with remediation guidance.
+- **Done:**
+  - the CLI command surface
+  - the declarative contract (gate/config schemas — `severity-schema.yml`,
+    `scope-table.yml`, `config.yml`, `run-state.json` — plus the config loader)
+  - `init` scaffolding a real `.konductor/` directory with a starter `config.yml`
+  - `config get`/`config list`/`config set` reading and writing the effective
+    (project-over-preset) configuration
+  - `install` copying synthed agents/skills into `$HOME/.kiro/` (or
+    `--target <dir>/.kiro/`) and writing a manifest beside the installed tree
+  - `update` overwriting a tracked install in place from a source tree
+  - `uninstall` removing a tracked install's files and manifest
+  - `synth` transforming source content into runtime-native output
+  - `doctor` inspecting a source tree/install destination via `synth`/`install`/`config`'s
+    own logic and reporting per-check ok/info/failed/stale status with remediation
+    guidance
 - **Stubs:** `metrics` still prints "not yet implemented."
 - **Not yet started:** the run-engine/conductor (which will read/write
   `.konductor/run-state.json`-shaped documents and is responsible for exit code 2's
@@ -697,16 +728,17 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
 
 ## Current limitations
 
-- No **working** remote/published-release install yet — the CLI-side fetch→verify→install
-  wiring exists (`install::github`, `install::remote_orchestrate`) and is wired into
-  `konductor install`'s no-`--from` path, but it won't succeed against a real release
-  until a separate, already-in-progress fix to `.github/workflows/release.yml` lands to
-  publish assets in the shape this fetcher expects (a per-platform, versioned tarball plus
-  a `.sha256` sidecar) instead of today's single fixed-name `konductor-release.zip`. See
+- The GitHub-release install path (the CLI-side fetch→verify→install wiring in
+  `install::github`/`install::remote_orchestrate`, wired into `konductor install`'s
+  no-`--from` path) works against a real release: `.github/workflows/release.yml`
+  publishes the packaged tarball and its `.sha256` sidecar on every release, in the
+  shape this fetcher expects. The `main` branch `dist/` fallback does not yet work —
+  `dist/` is `.gitignore`d in this repo's own working tree, so there is no publishing
+  step yet to place the tarball+sidecar under `dist/` on `main`. See
   [Installing without `--from`: the GitHub-release / main-branch-`dist/` fallback chain](#installing-without---from-the-github-release--main-branch-dist-fallback-chain)
-  for the exact failure mode and two further caveats (GitHub API rate limiting; no
-  GPG/sigstore provenance check — SHA-256 transport-integrity only). `--from <repo-root>`
-  remains the only way to install today.
+  for that gap plus two further caveats (GitHub API rate limiting; no GPG/sigstore
+  provenance check — SHA-256 transport-integrity only). `--from <repo-root>` remains
+  an alternative for installing from a local checkout.
 - SOPs are synthed into `dist/kiro-cli-v2/sops/` but are not installed anywhere; there is
   no runtime discovery path for them yet.
 - `metrics` is a stub (see above).

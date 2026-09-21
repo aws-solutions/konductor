@@ -1,6 +1,6 @@
 ---
 name: historical-issues-registry
-description: 'Loads prior review state for a pull request or code review, then filters new findings that duplicate ones already fixed or already decided against by a human reviewer. Reduces noise across revisions of the same review.'
+description: 'Invoke from an adversarial-review coordinator SOP, but only where a delta layer supplies the concrete platform mapping: load prior review state at the start of a review pass, then filter new findings against it after all passes complete, before the report is written. Not run standalone, and skip entirely on a platform with no such delta layer.'
 version: 1.0.0
 tags: [skill, code-review, adversarial, historical, filter]
 ---
@@ -10,6 +10,8 @@ tags: [skill, code-review, adversarial, historical, filter]
 ## Overview
 
 A code review that spans multiple revisions accumulates decisions: findings the author fixed, findings the reviewer marked wontfix, findings the reviewer rejected as false positives. Re-posting the same finding on a later revision is worse than missing it — it teaches reviewers to ignore automated comments.
+
+This skill filters new findings that duplicate ones already fixed or already decided against by a human reviewer, reducing noise across revisions of the same review.
 
 This skill loads prior review state, canonicalizes each historical finding into a fingerprint, and filters new candidate findings against those fingerprints before they reach the CR.
 

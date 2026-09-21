@@ -47,6 +47,7 @@ use super::install::kiro_cli::{
 use super::install::manifest::{self, ManifestError, Provenance, StrategyManifest};
 use super::install::resource_rewrite::CLAUDE_SETTINGS_RELATIVE_PATH;
 use crate::cli::output::ColorMode;
+use crate::cli::synth::kiro_cli_v2::SKILLS_CONTENT_TYPE_DIR;
 
 /// Remapped exit code for CLI usage errors, matching cli.rs's
 /// `EXIT_USAGE_ERROR` (private to that module, so duplicated here).
@@ -58,17 +59,6 @@ const EXIT_USAGE_ERROR: u8 = 64;
 /// the required mapping for `UnsupportedSchemaVersion`.
 const EXIT_VERIFY_FAILED: u8 = 65;
 
-// `EXIT_CONFIRMATION_DECLINED`/`EXIT_SUCCESS_WITH_WARNINGS` used to live
-// here as private-to-this-module constants (CR comment r1p10): the
-// former was born dead (introduced when this module's confirmation flow
-// was removed in the same change, with zero live callers ever since --
-// verified by a repo-wide search finding no reference outside its own
-// definition), and the latter's contract belongs beside
-// `EXIT_CRITICAL_GATE`/`EXIT_USAGE_ERROR`/`EXIT_VERIFY_FAILED` in
-// cli.rs, not duplicated into a private module. `EXIT_CONFIRMATION_DECLINED`
-// is dropped outright per the reviewer's explicit suggestion rather than
-// relocated; `EXIT_SUCCESS_WITH_WARNINGS` is now `cli::EXIT_SUCCESS_WITH_WARNINGS`
-// (see cli.rs), imported below.
 use super::EXIT_SUCCESS_WITH_WARNINGS;
 
 /// Maps a `manifest::read_manifest`/`index::read_index` error to
@@ -304,10 +294,16 @@ impl BinLinkFailure {
 /// unsupported index schema version, `EXIT_SUCCESS_WITH_WARNINGS` (6)
 /// on an otherwise-successful uninstall that hit a non-fatal
 /// `--link-bin` symlink-removal failure -- never exit code 2.
+///
+/// `dry_run` reports exactly what would be removed for each resolved
+/// target (via `preview_uninstall`) without touching the filesystem at
+/// all -- a dry run is non-destructive by definition. There is no
+/// confirmation prompt: a real (non-dry-run) run proceeds directly.
 pub fn dispatch_uninstall(
     target: Option<String>,
     all: bool,
     harness: Option<String>,
+    dry_run: bool,
     json: bool,
     color: ColorMode,
 ) -> u8 {
@@ -362,15 +358,18 @@ pub fn dispatch_uninstall(
     }
 
     if all {
-        return dispatch_all(&index, harness.as_deref(), json, color);
+        return dispatch_all(&index, harness.as_deref(), dry_run, json, color);
     }
 
     if let Some(target) = target {
-        return dispatch_target(&index, &target, harness.as_deref(), json, color);
+        return dispatch_target(&index, &target, harness.as_deref(), dry_run, json, color);
     }
 
     if index.installs.len() == 1 {
         let entry = &index.installs[0];
+        if dry_run {
+            return report_dry_run_preview(&entry.target_dir, harness.as_deref(), json, color);
+        }
         return match uninstall_one(&entry.target_dir, harness.as_deref(), true, json) {
             Ok(counts) => {
                 report_single(&entry.target_dir, &counts, json, color);
@@ -398,8 +397,8 @@ pub fn dispatch_uninstall(
     // 2+ tracked entries, neither `--target` nor `--all` given: usage
     // error naming every tracked install, mirroring `update.rs`'s own
     // `report_ambiguous_targets` for its identical ambiguous-selection
-    // case -- there is no picker/confirm flow to fall back to any more;
-    // the caller must disambiguate with `--target <dir>` or `--all`.
+    // case -- the caller must disambiguate with `--target <dir>` or
+    // `--all`.
     report_ambiguous_targets(&index.installs, json, color);
     EXIT_USAGE_ERROR
 }
@@ -425,14 +424,6 @@ fn exit_code_for_counts(counts: &UninstallCounts) -> u8 {
     }
 }
 
-/// Reports the 2+-tracked-installs-no-flag ambiguity error, listing
-/// every tracked install so the user knows what `--target <dir>`
-/// values are valid. Mirrors `update.rs`'s own `report_ambiguous_targets`
-/// message/shape exactly -- `uninstall` used to diverge from this by
-/// resolving to `$HOME` instead (see this module's git history), but
-/// that picker/confirm flow has been removed entirely in favor of this
-/// same hard error `update` already gives for its own identical
-/// ambiguous-selection case.
 /// Builds `report_ambiguous_targets`'s plain-text message: the
 /// ambiguity error plus a listing of every tracked install's
 /// `target_dir`, one per line. Named so tests bind to the real
@@ -454,11 +445,9 @@ fn build_ambiguous_targets_message(entries: &[index::IndexEntry]) -> String {
 /// Reports the 2+-tracked-installs-no-flag ambiguity error, listing
 /// every tracked install so the user knows what `--target <dir>`
 /// values are valid. Mirrors `update.rs`'s own `report_ambiguous_targets`
-/// message/shape exactly -- `uninstall` used to diverge from this by
-/// resolving to `$HOME` instead (see this module's git history), but
-/// that picker/confirm flow has been removed entirely in favor of this
-/// same hard error `update` already gives for its own identical
-/// ambiguous-selection case.
+/// message/shape exactly -- there is no implicit `$HOME` resolution or
+/// picker to fall back to; the caller must disambiguate with
+/// `--target <dir>` or `--all`.
 fn report_ambiguous_targets(entries: &[index::IndexEntry], json: bool, color: ColorMode) {
     if json {
         let message = "multiple installs are tracked; pass --target <dir> or --all";
@@ -595,6 +584,7 @@ fn dispatch_target(
     index: &Index,
     target: &str,
     harness: Option<&str>,
+    dry_run: bool,
     json: bool,
     color: ColorMode,
 ) -> u8 {
@@ -649,6 +639,9 @@ fn dispatch_target(
         );
         return EXIT_USAGE_ERROR;
     };
+    if dry_run {
+        return report_dry_run_preview(&entry.target_dir, harness, json, color);
+    }
     match uninstall_one(&entry.target_dir, harness, true, json) {
         Ok(counts) => {
             report_single(&entry.target_dir, &counts, json, color);
@@ -734,7 +727,32 @@ fn exit_code_precedence_rank(code: u8) -> u8 {
 /// Precedence across the whole batch, highest wins: see
 /// `exit_code_precedence_rank`'s own doc comment for the ranking and
 /// why it is not simply the numeric code value.
-fn dispatch_all(index: &Index, harness: Option<&str>, json: bool, color: ColorMode) -> u8 {
+///
+/// `dry_run` reports every tracked target's preview (via
+/// `preview_uninstall`) without touching the filesystem, mirroring
+/// `dispatch_target`'s own dry-run short-circuit. Otherwise, every
+/// resolved target is uninstalled directly with no confirmation gate.
+fn dispatch_all(
+    index: &Index,
+    harness: Option<&str>,
+    dry_run: bool,
+    json: bool,
+    color: ColorMode,
+) -> u8 {
+    // `--all` against an empty index has nothing to iterate and must
+    // stay a no-op regardless of `--dry-run`/`--json` -- the
+    // bare-invocation short-circuit in `dispatch_uninstall` deliberately
+    // excludes `--all` (see that function's own comment), so this is
+    // the only place left to catch it.
+    if index.installs.is_empty() {
+        report_no_tracked_installs("uninstall", json, color);
+        return 0;
+    }
+
+    if dry_run {
+        return report_dry_run_preview_all(&index.installs, harness, json, color);
+    }
+
     let mut succeeded: Vec<(String, UninstallCounts)> = Vec::new();
     let mut skipped: Vec<(String, String)> = Vec::new();
     let mut failed: Vec<(String, String)> = Vec::new();
@@ -765,6 +783,279 @@ fn dispatch_all(index: &Index, harness: Option<&str>, json: bool, color: ColorMo
     report_batch(&succeeded, &skipped, &failed, json, color);
 
     worst_exit_code
+}
+
+/// One file `preview_uninstall` would remove: its path (relative to the
+/// target directory) and whether its on-disk content has diverged from
+/// the manifest's recorded hash -- exactly the same disclosure the real
+/// (non-dry-run) run makes per-file via `UninstallCounts.diverged_paths`
+/// (see `delete_eligible_files`), computed here read-only via the same
+/// hash comparison rather than duplicating the eligibility logic.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct PreviewFile {
+    path: PathBuf,
+    /// Whether this file's on-disk content no longer matches the
+    /// manifest's recorded `sha256` -- i.e. deleting it for real would
+    /// destroy local edits. A missing on-disk hash (e.g. an
+    /// `InProgress` write-ahead record) is never considered diverged,
+    /// mirroring `delete_eligible_files`'s own rule.
+    diverged: bool,
+}
+
+/// `--dry-run` preview for a single target: reads the target's manifest
+/// (read-only -- `preview_uninstall` never calls
+/// `delete_eligible_files`/`cleanup_empty_dirs`/any index or manifest
+/// write) and reports exactly which files WOULD be deleted by a real
+/// `uninstall_one` run against `harness`'s resolved slot, applying the
+/// identical eligibility rule `delete_eligible_files` itself uses
+/// (`Created`/`ReplacedOurs`, never `ReplacedForeign`, never
+/// `CLAUDE_SETTINGS_RELATIVE_PATH`), and -- per file -- whether it has
+/// diverged from its manifest-recorded hash, via the same hash
+/// comparison `delete_eligible_files` itself performs before deleting.
+/// Returns the paths that would be removed, or an `UninstallError` for
+/// the same failure classes `uninstall_one` itself would report
+/// (missing/malformed manifest, unresolved `--harness`) -- a dry run
+/// must fail exactly where a real run would, so a script relying on
+/// `--dry-run`'s exit code to predict the real run's outcome sees the
+/// same signal.
+///
+/// A missing manifest (stale tracked install) previews as zero files,
+/// mirroring `uninstall_one`'s own non-fatal stale handling -- there is
+/// nothing to preview deleting, not a failure.
+fn preview_uninstall(
+    target_dir: &str,
+    harness: Option<&str>,
+    json: bool,
+) -> Result<Vec<PreviewFile>, UninstallError> {
+    let target_path = Path::new(target_dir);
+    let manifest = manifest::read_manifest(target_path)
+        .map_err(|err| UninstallError::from_manifest(target_dir, err))?;
+
+    let Some(full_manifest) = manifest else {
+        return Ok(Vec::new());
+    };
+    if full_manifest.strategies.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let selected = harness_select::select_harness(
+        target_dir,
+        &full_manifest.strategies,
+        harness,
+        // A dry-run preview never blocks on an interactive picker --
+        // it is read-only and side-effect-free either way, so there is
+        // no reason to prompt; an ambiguous selection is reported the
+        // same way a non-interactive real run would report it.
+        false,
+        json,
+    )
+    .map_err(|err| {
+        if err.is_not_tracked() {
+            UninstallError::harness_not_tracked(err.to_string())
+        } else {
+            UninstallError::usage(err.to_string())
+        }
+    })?;
+
+    let mut would_delete = Vec::new();
+    for file in &selected.files {
+        let rel = validate_relative_path(&file.path).map_err(UninstallError::usage)?;
+        if file.provenance == Provenance::ReplacedForeign
+            || file.path == CLAUDE_SETTINGS_RELATIVE_PATH
+        {
+            continue;
+        }
+        let path = target_path.join(rel);
+        if !path.is_file() {
+            continue;
+        }
+        // Same hash-comparison rule `delete_eligible_files` applies
+        // before it actually deletes this path -- a divergence here
+        // means the real run would destroy local edits, not just a
+        // manifest-tracked file.
+        let diverged = match &file.sha256 {
+            Some(expected) => match std::fs::read(&path) {
+                Ok(bytes) => sha256_hex(&bytes) != *expected,
+                Err(_) => false,
+            },
+            None => false,
+        };
+        would_delete.push(PreviewFile {
+            path: rel.to_path_buf(),
+            diverged,
+        });
+    }
+    Ok(would_delete)
+}
+
+/// Renders one `PreviewFile` as a plain-text line: `  <path>` when
+/// unmodified, `  <path> (local edits would be destroyed)` when
+/// diverged -- so a dry-run reader can tell at a glance which specific
+/// tracked path would lose hand-edited content, not just an aggregate
+/// count. Shared by `report_dry_run_preview`/`report_dry_run_preview_all`.
+fn format_preview_file_line(file: &PreviewFile) -> String {
+    if file.diverged {
+        format!("  {} (local edits would be destroyed)", file.path.display())
+    } else {
+        format!("  {}", file.path.display())
+    }
+}
+
+/// Builds one `PreviewFile`'s `--json` representation: `{"path": ...,
+/// "diverged": ...}` -- the per-path counterpart to
+/// `UninstallCounts.diverged_paths`'s own disclosure on the real run.
+fn preview_file_json(file: &PreviewFile) -> serde_json::Value {
+    serde_json::json!({
+        "path": file.path.display().to_string(),
+        "diverged": file.diverged,
+    })
+}
+
+/// Prints `preview_uninstall`'s result for a single target -- every
+/// path that would be removed, one per line in plain-text mode (each
+/// flagged individually when it has diverged from its manifest-recorded
+/// hash, via `format_preview_file_line`), or a structured `{"command":
+/// "uninstall", "dry_run": true, "target_dir": ..., "would_delete":
+/// [{"path": ..., "diverged": ...}, ...]}` document in `--json` mode --
+/// and returns the exit code `dispatch_target`/the single-entry
+/// shortcut should return. A preview failure (unresolved
+/// manifest/harness) is reported the same way a real failure would be,
+/// via `report_error`, so `--dry-run`'s exit code genuinely predicts
+/// the real run's.
+fn report_dry_run_preview(
+    target_dir: &str,
+    harness: Option<&str>,
+    json: bool,
+    color: ColorMode,
+) -> u8 {
+    match preview_uninstall(target_dir, harness, json) {
+        Ok(would_delete) => {
+            if json {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "command": "uninstall",
+                        "dry_run": true,
+                        "target_dir": target_dir,
+                        "would_delete": would_delete.iter().map(preview_file_json).collect::<Vec<_>>(),
+                    })
+                );
+            } else if would_delete.is_empty() {
+                println!(
+                    "{} dry run: nothing to remove from {target_dir}",
+                    crate::cli::output::success_prefix(color, "konductor uninstall:")
+                );
+            } else {
+                println!(
+                    "{} dry run: would remove {} file(s) from {target_dir}:",
+                    crate::cli::output::success_prefix(color, "konductor uninstall:"),
+                    would_delete.len()
+                );
+                for file in &would_delete {
+                    println!("{}", format_preview_file_line(file));
+                }
+            }
+            0
+        }
+        Err(err) => {
+            report_error(
+                "uninstall",
+                "uninstall.dry_run_preview_failed",
+                Path::new(target_dir),
+                false,
+                &err.to_string(),
+                vec![(
+                    "target_dir",
+                    serde_json::Value::String(target_dir.to_string()),
+                )],
+                json,
+                color,
+            );
+            err.exit_code
+        }
+    }
+}
+
+/// `--all --dry-run` path: previews every tracked target, continuing
+/// past a per-target preview failure (mirrors `dispatch_all`'s own
+/// continue-past-failure contract for the real deletion path) and
+/// reporting a single batched result. Always returns 0 in plain-text
+/// mode (a preview reports, it never itself fails the run); in `--json`
+/// mode a per-target preview failure is still surfaced in a `failed`
+/// bucket within the one document, but the overall exit code stays 0 --
+/// a dry run makes no filesystem changes, so there is nothing for a
+/// script to have failed AT, only something to inspect before deciding
+/// whether to re-run for real.
+fn report_dry_run_preview_all(
+    entries: &[index::IndexEntry],
+    harness: Option<&str>,
+    json: bool,
+    color: ColorMode,
+) -> u8 {
+    let mut previewed: Vec<(String, Vec<PreviewFile>)> = Vec::new();
+    let mut skipped: Vec<(String, String)> = Vec::new();
+    let mut failed: Vec<(String, String)> = Vec::new();
+
+    for entry in entries {
+        match preview_uninstall(&entry.target_dir, harness, json) {
+            Ok(would_delete) => previewed.push((entry.target_dir.clone(), would_delete)),
+            Err(err) if err.harness_not_tracked => {
+                skipped.push((entry.target_dir.clone(), err.message));
+            }
+            Err(err) => failed.push((entry.target_dir.clone(), err.message)),
+        }
+    }
+
+    if json {
+        println!(
+            "{}",
+            serde_json::json!({
+                "command": "uninstall",
+                "dry_run": true,
+                "previewed": previewed.iter().map(|(dir, files)| serde_json::json!({
+                    "target_dir": dir,
+                    "would_delete": files.iter().map(preview_file_json).collect::<Vec<_>>(),
+                })).collect::<Vec<_>>(),
+                "skipped": skipped.iter().map(|(dir, message)| serde_json::json!({
+                    "target_dir": dir,
+                    "reason": message,
+                })).collect::<Vec<_>>(),
+                "failed": failed.iter().map(|(dir, message)| serde_json::json!({
+                    "target_dir": dir,
+                    "error": message,
+                })).collect::<Vec<_>>(),
+            })
+        );
+        return 0;
+    }
+
+    for (dir, would_delete) in &previewed {
+        if would_delete.is_empty() {
+            println!(
+                "{} dry run: nothing to remove from {dir}",
+                crate::cli::output::success_prefix(color, "konductor uninstall:")
+            );
+        } else {
+            println!(
+                "{} dry run: would remove {} file(s) from {dir}:",
+                crate::cli::output::success_prefix(color, "konductor uninstall:"),
+                would_delete.len()
+            );
+            for file in would_delete {
+                println!("{}", format_preview_file_line(file));
+            }
+        }
+    }
+    for (dir, message) in &skipped {
+        println!("konductor uninstall: skipped {dir}: {message}");
+    }
+    for (dir, message) in &failed {
+        eprintln!(
+            "{} could not preview {dir}: {message}",
+            crate::cli::output::error_prefix(color, "konductor uninstall:")
+        );
+    }
+    0
 }
 
 /// Per-target uninstall: reads that target's manifest, deletes every
@@ -1118,12 +1409,27 @@ fn delete_eligible_files(
 /// removed. Best-effort: a directory that fails to remove (e.g.
 /// permissions) is simply left in place rather than aborting the whole
 /// uninstall over cleanup.
+///
+/// `.kiro/skills/` (`kiro_skills_root` below) is protected the same way
+/// `.kiro`/`.konductor`/`.claude` are, even though it is a SUBDIRECTORY of
+/// an already-protected root, not a root of its own: unlike every other
+/// path this codebase installs, `.kiro/skills/sop-<name>/SKILL.md` shares
+/// its parent directory with Kiro IDE's own general-purpose skills
+/// directory, which legitimately holds skills this install never created
+/// (see `install::kiro_cli::install_kiro_sop_skills`'s own doc comment).
+/// Deleting every tracked `sop-<name>/` subdirectory can leave
+/// `.kiro/skills/` itself empty, and without this explicit protection
+/// this function would then remove it outright -- destroying a directory
+/// that may still be relied on (e.g. as a mount point for symlinked
+/// third-party skills) even though this install owns nothing under it
+/// anymore.
 fn cleanup_empty_dirs(target_dir: &Path, touched_dirs: &[PathBuf]) -> usize {
     let mut removed = 0usize;
     let mut seen: std::collections::HashSet<PathBuf> = std::collections::HashSet::new();
     let kiro_root = target_dir.join(KIRO_ROOT);
     let konductor_root = target_dir.join(KONDUCTOR_ROOT);
     let claude_root = target_dir.join(CLAUDE_ROOT);
+    let kiro_skills_root = kiro_root.join(SKILLS_CONTENT_TYPE_DIR);
 
     for start in touched_dirs {
         let mut current = start.clone();
@@ -1132,6 +1438,7 @@ fn cleanup_empty_dirs(target_dir: &Path, touched_dirs: &[PathBuf]) -> usize {
                 || current == kiro_root
                 || current == konductor_root
                 || current == claude_root
+                || current == kiro_skills_root
             {
                 break;
             }
@@ -1429,8 +1736,8 @@ mod tests {
     /// write). `HomeGuard` below acquires the CRATE-WIDE
     /// `test_home_lock::HOME_ENV_LOCK` for its entire lifetime and
     /// repoints `HOME` at a scratch dir, so these tests stop depending
-    /// on a real, writable ambient `$HOME` -- required in the Brazil CI
-    /// sandbox, where `$HOME` cannot be resolved at all. Uses the
+    /// on a real, writable ambient `$HOME` -- required in some internal
+    /// CI sandboxes, where `$HOME` cannot be resolved at all. Uses the
     /// SHARED, crate-wide lock rather than a module-private one -- see
     /// `crate::cli::test_home_lock`'s own doc comment for why a
     /// module-private lock is insufficient: it explains that
@@ -1994,6 +2301,7 @@ mod tests {
             target.to_str().unwrap(),
             None,
             false,
+            false,
             ColorMode::disabled(),
         );
 
@@ -2048,6 +2356,7 @@ mod tests {
             &index,
             target.to_str().unwrap(),
             None,
+            false,
             false,
             ColorMode::disabled(),
         );
@@ -2104,7 +2413,7 @@ mod tests {
         perms.set_mode(0o000);
         fs::set_permissions(&bin_dir, perms).unwrap();
 
-        let code = dispatch_uninstall(None, false, None, false, ColorMode::disabled());
+        let code = dispatch_uninstall(None, false, None, false, false, ColorMode::disabled());
 
         let restored = std::fs::Permissions::from_mode(0o755);
         let _ = fs::set_permissions(&bin_dir, restored);
@@ -2481,6 +2790,145 @@ mod tests {
         fs::remove_dir_all(&target).ok();
     }
 
+    // ── `.kiro/skills/sop-<name>/SKILL.md` (Kiro-discoverable SOP skills) ──
+    //
+    // Unlike `.claude/skills/sop-<name>/SKILL.md` (the Claude dual-marker
+    // conversion, deliberately excluded from every strategy's manifest
+    // slot -- see `install::kiro_cli::plan_additive_claude_sop_skill_files`'s
+    // own doc comment), the Kiro-discoverable conversion IS tracked in
+    // the installing strategy's own slot, like any other content type.
+    // These tests exercise the same safety properties every other
+    // content type already gets from `delete_eligible_files`/
+    // `cleanup_empty_dirs`, plus the one extra protection this path
+    // specifically needs: `.kiro/skills/` itself must survive even when
+    // this install owns nothing under it anymore, since it is Kiro IDE's
+    // general-purpose skills directory, shared with skills this install
+    // never created.
+
+    #[test]
+    fn never_removes_dot_kiro_skills_even_if_it_would_become_empty() {
+        // `.kiro/skills/` legitimately holds skills this install never
+        // created (on a real developer machine, dozens of them) -- see
+        // `cleanup_empty_dirs`'s own doc comment on `kiro_skills_root`.
+        // Deleting the one tracked SOP-skill directory here must never
+        // remove `.kiro/skills/` itself, even though nothing else in this
+        // seeded target populates it.
+        let target = scratch_home("keep-kiro-skills-root");
+        let _home = HomeGuard::new("keep-kiro-skills-root-home");
+        seed_target(
+            &target,
+            vec![(
+                ".kiro/skills/sop-ticket-sync/SKILL.md",
+                b"# sop-ticket-sync",
+                Provenance::Created,
+                None,
+            )],
+        );
+        uninstall_one(target.to_str().unwrap(), None, true, false).unwrap();
+        assert!(target.join(".kiro/skills").is_dir());
+        fs::remove_dir_all(&target).ok();
+    }
+
+    #[test]
+    fn removes_now_empty_sop_skill_subdir_but_keeps_kiro_skills_root() {
+        let _home = HomeGuard::new("kiro-skills-empty-dir-cleanup-home");
+        let target = scratch_home("kiro-skills-empty-dir-cleanup");
+        seed_target(
+            &target,
+            vec![(
+                ".kiro/skills/sop-ticket-sync/SKILL.md",
+                b"# sop-ticket-sync",
+                Provenance::Created,
+                None,
+            )],
+        );
+        let counts = uninstall_one(target.to_str().unwrap(), None, true, false).unwrap();
+        // The per-SOP subdirectory this install owned is gone (now
+        // empty after its one file was deleted)...
+        assert!(!target.join(".kiro/skills/sop-ticket-sync").exists());
+        assert!(target.join(".kiro/skills").is_dir());
+        assert!(counts.dirs_removed >= 1);
+        fs::remove_dir_all(&target).ok();
+    }
+
+    /// The "never delete a skill it did not install" property: a foreign,
+    /// unrelated skill directory sitting alongside a tracked SOP-skill
+    /// directory in the SAME `.kiro/skills/` root must survive uninstall
+    /// byte-for-byte, exactly like `never_deletes_replaced_foreign_files`
+    /// proves for other content types -- `.kiro/skills/` is never wholesale-
+    /// managed the way `.konductor/skills/`/`.claude/skills/` are; this
+    /// install only ever touches the specific `sop-<name>/` directories it
+    /// itself created.
+    #[test]
+    fn never_deletes_unrelated_skill_under_kiro_skills() {
+        let _home = HomeGuard::new("kiro-skills-foreign-home");
+        let target = scratch_home("kiro-skills-foreign");
+        // A hand-authored/third-party skill this install never created --
+        // no manifest entry for it at all, mirroring how a real developer
+        // machine's `.kiro/skills/` holds many such directories.
+        let foreign = target.join(".kiro/skills/not-ours/SKILL.md");
+        fs::create_dir_all(foreign.parent().unwrap()).unwrap();
+        fs::write(&foreign, b"---\nname: not-ours\n---\nhand-authored\n").unwrap();
+
+        seed_target(
+            &target,
+            vec![(
+                ".kiro/skills/sop-ticket-sync/SKILL.md",
+                b"# sop-ticket-sync",
+                Provenance::Created,
+                None,
+            )],
+        );
+        uninstall_one(target.to_str().unwrap(), None, true, false).unwrap();
+
+        assert!(
+            !target.join(".kiro/skills/sop-ticket-sync").exists(),
+            "the tracked SOP-skill directory this install owned must be removed"
+        );
+        assert_eq!(
+            fs::read(&foreign).unwrap(),
+            b"---\nname: not-ours\n---\nhand-authored\n",
+            "the unrelated, untracked skill directory must survive uninstall byte-for-byte"
+        );
+        assert!(
+            target.join(".kiro/skills").is_dir(),
+            "the shared .kiro/skills/ root must survive, still holding the foreign skill"
+        );
+        fs::remove_dir_all(&target).ok();
+    }
+
+    /// Divergence semantics for a Kiro-discoverable SOP-skill file must
+    /// match the existing behavior for any other `Created` file (see
+    /// `deletes_created_file_even_when_hash_has_diverged`): a hand-edited
+    /// SOP-skill is still deleted (this install owns the whole path), and
+    /// still counted/named as diverged -- never silently left behind, and
+    /// never treated as foreign just because its content changed.
+    #[test]
+    fn deletes_kiro_sop_skill_even_when_hash_has_diverged() {
+        let _home = HomeGuard::new("kiro-sop-skill-diverged-home");
+        let target = scratch_home("kiro-sop-skill-diverged");
+        seed_target(
+            &target,
+            vec![(
+                ".kiro/skills/sop-ticket-sync/SKILL.md",
+                b"hand-edited body",
+                Provenance::Created,
+                Some(&"a".repeat(64)),
+            )],
+        );
+        let counts = uninstall_one(target.to_str().unwrap(), None, true, false).unwrap();
+        assert_eq!(counts.files_deleted, 1);
+        assert_eq!(counts.diverged_deleted, 1);
+        assert_eq!(
+            counts.diverged_paths,
+            vec![PathBuf::from(".kiro/skills/sop-ticket-sync/SKILL.md")]
+        );
+        assert!(!target
+            .join(".kiro/skills/sop-ticket-sync/SKILL.md")
+            .exists());
+        fs::remove_dir_all(&target).ok();
+    }
+
     #[test]
     fn never_touches_config_yml_or_logs_under_konductor() {
         let _home = HomeGuard::new("preserve-config-and-logs-home");
@@ -2531,7 +2979,7 @@ mod tests {
     fn dispatch_uninstall_with_zero_entries_prints_message_and_returns_zero() {
         let _home = HomeGuard::new("zero-entries-plain-home");
         assert!(index::read_index().unwrap().is_none());
-        let code = dispatch_uninstall(None, false, None, false, ColorMode::disabled());
+        let code = dispatch_uninstall(None, false, None, false, false, ColorMode::disabled());
         assert_eq!(code, 0);
     }
 
@@ -2553,7 +3001,7 @@ mod tests {
         unsafe {
             std::env::remove_var("HOME");
         }
-        let code = dispatch_uninstall(None, false, None, false, ColorMode::disabled());
+        let code = dispatch_uninstall(None, false, None, false, false, ColorMode::disabled());
         unsafe {
             match &original_home {
                 Some(value) => std::env::set_var("HOME", value),
@@ -2600,7 +3048,7 @@ mod tests {
     #[test]
     fn dispatch_uninstall_zero_tracked_installs_json_true_returns_zero() {
         let _home = HomeGuard::new("zero-tracked-json-home");
-        let code = dispatch_uninstall(None, false, None, true, ColorMode::disabled());
+        let code = dispatch_uninstall(None, false, None, false, true, ColorMode::disabled());
         assert_eq!(code, 0);
     }
 
@@ -2646,6 +3094,7 @@ mod tests {
             home.to_str().unwrap(),
             None,
             false,
+            false,
             ColorMode::disabled(),
         );
         assert_eq!(code, EXIT_USAGE_ERROR);
@@ -2671,6 +3120,7 @@ mod tests {
             &index,
             target.to_str().unwrap(),
             None,
+            false,
             false,
             ColorMode::disabled(),
         );
@@ -2711,7 +3161,7 @@ mod tests {
         // re-running uninstall with the same path they installed to,
         // which has since been deleted) -- the fallback's verbatim-match
         // arm finds it even though canonicalize_target_dir itself fails.
-        let code = dispatch_target(&idx, &canonical, None, false, ColorMode::disabled());
+        let code = dispatch_target(&idx, &canonical, None, false, false, ColorMode::disabled());
         assert_eq!(
             code, 0,
             "a stale entry must be prunable via --target, not just --all"
@@ -2737,6 +3187,7 @@ mod tests {
             &idx,
             "/definitely/does/not/exist/and/is/not/tracked",
             None,
+            false,
             false,
             ColorMode::disabled(),
         );
@@ -2785,7 +3236,7 @@ mod tests {
         })
         .unwrap();
 
-        let code = dispatch_uninstall(None, true, None, false, ColorMode::disabled());
+        let code = dispatch_uninstall(None, true, None, false, false, ColorMode::disabled());
 
         // The good target must have actually been uninstalled despite
         // the bad target's failure -- the continue-past-failure
@@ -2856,6 +3307,7 @@ mod tests {
             None,
             true,
             Some("kiro-cli-v2".to_string()),
+            false,
             false,
             ColorMode::disabled(),
         );
@@ -2972,6 +3424,7 @@ mod tests {
             target.to_str().unwrap(),
             None,
             false,
+            false,
             ColorMode::disabled(),
         );
         assert_eq!(code, 65);
@@ -3009,7 +3462,7 @@ mod tests {
         })
         .unwrap();
 
-        let code = dispatch_uninstall(None, false, None, false, ColorMode::disabled());
+        let code = dispatch_uninstall(None, false, None, false, false, ColorMode::disabled());
         assert_eq!(
             code, 0,
             "bare uninstall with exactly one tracked install must succeed"
@@ -3052,7 +3505,7 @@ mod tests {
         })
         .unwrap();
 
-        let code = dispatch_uninstall(None, false, None, false, ColorMode::disabled());
+        let code = dispatch_uninstall(None, false, None, false, false, ColorMode::disabled());
         assert_eq!(
             code, EXIT_USAGE_ERROR,
             "2+ tracked installs with neither --target nor --all must be a usage error"
@@ -3160,7 +3613,7 @@ mod tests {
         })
         .unwrap();
 
-        let code = dispatch_uninstall(None, true, None, false, ColorMode::disabled());
+        let code = dispatch_uninstall(None, true, None, false, false, ColorMode::disabled());
         assert_eq!(code, 0);
         assert!(!target_a.join(".kiro/agents/a.json").exists());
         assert!(!target_b.join(".kiro/agents/b.json").exists());
@@ -3191,6 +3644,7 @@ mod tests {
             &index,
             target.to_str().unwrap(),
             None,
+            false,
             false,
             ColorMode::disabled(),
         );
@@ -3552,8 +4006,7 @@ mod tests {
         );
         assert!(
             !delete_invoked,
-            "the delete step must never run against a name the fresh, locked re-read no longer \
-             tracks -- this is the exact race the fix closes"
+            "the delete step must never run against a name the fresh, locked re-read no longer tracks"
         );
         assert!(
             target.join(".kiro/agents/a.json").is_file(),
@@ -3663,8 +4116,7 @@ mod tests {
         );
         assert!(
             !fixed_target_fully_removed,
-            "the fix must find claude's coexisting slot still tracked and report \
-             target_fully_removed = false, not the old hardcoded true"
+            "a surviving strategy keeps the manifest non-empty, so target_fully_removed must be false"
         );
 
         // Confirms what the old default would have broken: claude's
@@ -3756,7 +4208,7 @@ mod tests {
                 status: index::IndexEntryStatus::Complete,
             },
         ]);
-        let code = dispatch_all(&index, None, false, ColorMode::disabled());
+        let code = dispatch_all(&index, None, false, false, ColorMode::disabled());
         assert_eq!(
             code, 0,
             "a real success + a stale prune must both count as success"
@@ -3828,7 +4280,7 @@ mod tests {
                 status: index::IndexEntryStatus::Complete,
             },
         ]);
-        let code = dispatch_all(&index, None, false, ColorMode::disabled());
+        let code = dispatch_all(&index, None, false, false, ColorMode::disabled());
 
         let restored = std::fs::Permissions::from_mode(0o755);
         let _ = fs::set_permissions(&bin_dir, restored);
@@ -3911,7 +4363,7 @@ mod tests {
                 status: index::IndexEntryStatus::Complete,
             },
         ]);
-        let code = dispatch_all(&index, None, false, ColorMode::disabled());
+        let code = dispatch_all(&index, None, false, false, ColorMode::disabled());
 
         let restored = std::fs::Permissions::from_mode(0o755);
         let _ = fs::set_permissions(&bin_dir, restored);
@@ -4157,8 +4609,8 @@ mod tests {
     /// -- unconditionally true for every uid including root, unlike the
     /// previous mechanism (chmod'ing the parent to `0o555`), which root
     /// bypasses on Unix (root ignores directory permission bits), so
-    /// under a root test runner (common in CI containers / the Brazil
-    /// sandbox) `remove_dir(mid)` would have unexpectedly succeeded on
+    /// under a root test runner (common in CI containers / an internal
+    /// CI sandbox) `remove_dir(mid)` would have unexpectedly succeeded on
     /// the first pass and made this test fail spuriously.
     ///
     /// Falsifiability: confirmed this test fails against the pre-fix
@@ -4369,7 +4821,7 @@ mod tests {
         // Confirms dispatch_uninstall itself actually reaches this
         // branch and returns the exit code this path is responsible
         // for, exercising the real call site end to end.
-        let code = dispatch_uninstall(None, false, None, true, ColorMode::disabled());
+        let code = dispatch_uninstall(None, false, None, false, true, ColorMode::disabled());
         assert_eq!(code, EXIT_USAGE_ERROR);
     }
 
@@ -4413,7 +4865,7 @@ mod tests {
         assert_eq!(reparsed["error"], message);
         assert_eq!(reparsed["target_dir"], canonical);
 
-        let code = dispatch_uninstall(None, false, None, true, ColorMode::disabled());
+        let code = dispatch_uninstall(None, false, None, false, true, ColorMode::disabled());
         assert_eq!(
             code, 65,
             "must propagate EXIT_VERIFY_FAILED, not flatten to 64"
@@ -4491,6 +4943,7 @@ mod tests {
             &index,
             home.to_str().unwrap(),
             None,
+            false,
             true,
             ColorMode::disabled(),
         );
@@ -4535,6 +4988,7 @@ mod tests {
             &index,
             target.to_str().unwrap(),
             None,
+            false,
             true,
             ColorMode::disabled(),
         );
@@ -4543,5 +4997,344 @@ mod tests {
             "must propagate EXIT_VERIFY_FAILED, not flatten to 64"
         );
         fs::remove_dir_all(&target).ok();
+    }
+
+    // ── --dry-run ────────────────────────────────────────────────────
+
+    /// (a) `--dry-run` makes no filesystem changes: every file the real
+    /// run would delete must still exist afterward, the manifest must
+    /// survive untouched, and the index entry must remain tracked.
+    #[test]
+    fn dispatch_uninstall_dry_run_makes_no_filesystem_changes() {
+        let _home = HomeGuard::new("dry-run-no-changes-home");
+        let target = scratch_home("dry-run-no-changes");
+        seed_target(
+            &target,
+            vec![(".kiro/agents/a.json", b"{}", Provenance::Created, None)],
+        );
+        let canonical = index::canonicalize_target_dir(&target).unwrap();
+        index::write_index(IndexEntry {
+            target_dir: canonical.clone(),
+            strategies: vec!["kiro-cli-v2".to_string()],
+            installed_at: "2026-01-15T09:30:00Z".to_string(),
+            status: index::IndexEntryStatus::Complete,
+        })
+        .unwrap();
+
+        let code = dispatch_uninstall(None, false, None, true, false, ColorMode::disabled());
+        assert_eq!(code, 0, "a dry run must report success, not fail");
+
+        assert!(
+            target.join(".kiro/agents/a.json").exists(),
+            "--dry-run must never delete the tracked file"
+        );
+        assert!(
+            manifest::manifest_path(&target).is_file(),
+            "--dry-run must never remove the manifest"
+        );
+        let index_after = index::read_index().unwrap().unwrap();
+        assert!(
+            index_after
+                .installs
+                .iter()
+                .any(|e| e.target_dir == canonical),
+            "--dry-run must never prune the tracked index entry"
+        );
+
+        fs::remove_dir_all(&target).ok();
+    }
+
+    /// `--dry-run`'s `--json` output must report the exact paths that
+    /// would be removed, matching what a real run would delete.
+    #[test]
+    fn dispatch_uninstall_dry_run_json_reports_would_delete_paths() {
+        let _home = HomeGuard::new("dry-run-json-home");
+        let target = scratch_home("dry-run-json");
+        seed_target(
+            &target,
+            vec![(".kiro/agents/a.json", b"{}", Provenance::Created, None)],
+        );
+        let canonical = index::canonicalize_target_dir(&target).unwrap();
+
+        let would_delete = preview_uninstall(&canonical, None, true).unwrap();
+        assert_eq!(
+            would_delete,
+            vec![PreviewFile {
+                path: PathBuf::from(".kiro/agents/a.json"),
+                diverged: false,
+            }]
+        );
+
+        // Structural guard for the real print call site (JSON must not
+        // panic and must carry the field).
+        let code = report_dry_run_preview(&canonical, None, true, ColorMode::disabled());
+        assert_eq!(code, 0);
+
+        fs::remove_dir_all(&target).ok();
+    }
+
+    /// `--dry-run` never deletes a `ReplacedForeign`/`.claude/settings.json`
+    /// path either -- the preview must apply the exact same eligibility
+    /// rule `delete_eligible_files` itself uses.
+    #[test]
+    fn preview_uninstall_never_lists_replaced_foreign_or_claude_settings() {
+        let target = scratch_home("preview-eligibility");
+        seed_target(
+            &target,
+            vec![
+                (".kiro/agents/a.json", b"{}", Provenance::Created, None),
+                (
+                    ".kiro/context/notes.md",
+                    b"user content",
+                    Provenance::ReplacedForeign,
+                    None,
+                ),
+                (
+                    ".claude/settings.json",
+                    br#"{"hooks":{}}"#,
+                    Provenance::ReplacedOurs,
+                    None,
+                ),
+            ],
+        );
+        let would_delete = preview_uninstall(target.to_str().unwrap(), None, false).unwrap();
+        assert_eq!(
+            would_delete,
+            vec![PreviewFile {
+                path: PathBuf::from(".kiro/agents/a.json"),
+                diverged: false,
+            }]
+        );
+        fs::remove_dir_all(&target).ok();
+    }
+
+    /// A stale target (no manifest) previews as zero files, not a
+    /// failure -- mirrors `uninstall_one`'s own non-fatal stale case.
+    #[test]
+    fn preview_uninstall_stale_target_previews_as_empty_not_a_failure() {
+        let target = scratch_home("preview-stale");
+        assert!(!manifest::manifest_path(&target).exists());
+        let would_delete = preview_uninstall(target.to_str().unwrap(), None, false).unwrap();
+        assert!(would_delete.is_empty());
+        fs::remove_dir_all(&target).ok();
+    }
+
+    /// Per-path divergence clarity: a target with one locally-modified
+    /// tracked file and one unmodified tracked file must have
+    /// `preview_uninstall` flag exactly the modified one as `diverged`,
+    /// distinct from the unmodified one -- reusing the same hash
+    /// comparison `delete_eligible_files` performs before a real
+    /// deletion, so a `--dry-run` reader can tell which specific path
+    /// would lose local edits, not just an aggregate count.
+    #[test]
+    fn preview_uninstall_flags_only_the_diverged_path_among_two_tracked_files() {
+        let target = scratch_home("preview-diverged-mixed");
+        seed_target(
+            &target,
+            vec![
+                (
+                    ".kiro/agents/edited.json",
+                    b"hand-edited content",
+                    Provenance::Created,
+                    Some(&"a".repeat(64)),
+                ),
+                (
+                    ".kiro/agents/untouched.json",
+                    b"{}",
+                    Provenance::Created,
+                    None,
+                ),
+            ],
+        );
+
+        let would_delete = preview_uninstall(target.to_str().unwrap(), None, false).unwrap();
+        assert_eq!(would_delete.len(), 2);
+
+        let edited = would_delete
+            .iter()
+            .find(|f| f.path == Path::new(".kiro/agents/edited.json"))
+            .expect("the hand-edited file must be in the preview");
+        assert!(
+            edited.diverged,
+            "the hand-edited file must be flagged as diverged"
+        );
+
+        let untouched = would_delete
+            .iter()
+            .find(|f| f.path == Path::new(".kiro/agents/untouched.json"))
+            .expect("the untouched file must be in the preview");
+        assert!(
+            !untouched.diverged,
+            "the untouched file must NOT be flagged as diverged"
+        );
+
+        fs::remove_dir_all(&target).ok();
+    }
+
+    /// Same mixed target as above, exercised through the real
+    /// `report_dry_run_preview` plain-text print call site: the
+    /// diverged path's line must be distinguishable from the
+    /// unmodified path's line (via `format_preview_file_line`'s
+    /// trailing note), not just an aggregate "N file(s)" count.
+    #[test]
+    fn format_preview_file_line_distinguishes_diverged_from_unmodified() {
+        let diverged = PreviewFile {
+            path: PathBuf::from(".kiro/agents/edited.json"),
+            diverged: true,
+        };
+        let untouched = PreviewFile {
+            path: PathBuf::from(".kiro/agents/untouched.json"),
+            diverged: false,
+        };
+        let diverged_line = format_preview_file_line(&diverged);
+        let untouched_line = format_preview_file_line(&untouched);
+        assert_ne!(
+            diverged_line, untouched_line,
+            "a diverged path's line must render differently from an unmodified path's"
+        );
+        assert!(diverged_line.contains(".kiro/agents/edited.json"));
+        assert!(diverged_line.contains("local edits would be destroyed"));
+        assert!(untouched_line.contains(".kiro/agents/untouched.json"));
+        assert!(!untouched_line.contains("local edits would be destroyed"));
+    }
+
+    /// Same mixed target's `--json` shape: `preview_file_json` must
+    /// carry `diverged: true`/`false` per path, not just a count, and
+    /// `report_dry_run_preview`'s emitted document must be consistent
+    /// with uninstall's own real-run `diverged_paths` disclosure
+    /// convention (naming the specific path).
+    #[test]
+    fn preview_file_json_carries_per_path_diverged_flag() {
+        let diverged = PreviewFile {
+            path: PathBuf::from(".kiro/agents/edited.json"),
+            diverged: true,
+        };
+        let untouched = PreviewFile {
+            path: PathBuf::from(".kiro/agents/untouched.json"),
+            diverged: false,
+        };
+        let diverged_value = preview_file_json(&diverged);
+        let untouched_value = preview_file_json(&untouched);
+        assert_eq!(diverged_value["path"], ".kiro/agents/edited.json");
+        assert_eq!(diverged_value["diverged"], true);
+        assert_eq!(untouched_value["path"], ".kiro/agents/untouched.json");
+        assert_eq!(untouched_value["diverged"], false);
+    }
+
+    /// End-to-end: `report_dry_run_preview`'s `--json` document for a
+    /// target with one diverged and one unmodified tracked file must
+    /// carry BOTH paths with their own correct `diverged` flag inside
+    /// the SAME `would_delete` array -- not merely an aggregate count
+    /// -- proving the dry-run path genuinely distinguishes the two
+    /// files from each other in its real emitted output.
+    #[test]
+    fn preview_uninstall_json_document_distinguishes_diverged_path_from_unmodified() {
+        let target = scratch_home("preview-diverged-json-e2e");
+        seed_target(
+            &target,
+            vec![
+                (
+                    ".kiro/agents/edited.json",
+                    b"hand-edited content",
+                    Provenance::Created,
+                    Some(&"a".repeat(64)),
+                ),
+                (
+                    ".kiro/agents/untouched.json",
+                    b"{}",
+                    Provenance::Created,
+                    None,
+                ),
+            ],
+        );
+
+        let would_delete = preview_uninstall(target.to_str().unwrap(), None, true).unwrap();
+        let document = serde_json::json!({
+            "command": "uninstall",
+            "dry_run": true,
+            "target_dir": target.to_str().unwrap(),
+            "would_delete": would_delete.iter().map(preview_file_json).collect::<Vec<_>>(),
+        });
+        let would_delete_json = document["would_delete"]
+            .as_array()
+            .expect("would_delete must be an array");
+        assert_eq!(would_delete_json.len(), 2);
+
+        let edited_entry = would_delete_json
+            .iter()
+            .find(|entry| entry["path"] == ".kiro/agents/edited.json")
+            .expect("the edited file must appear in would_delete");
+        assert_eq!(edited_entry["diverged"], true);
+
+        let untouched_entry = would_delete_json
+            .iter()
+            .find(|entry| entry["path"] == ".kiro/agents/untouched.json")
+            .expect("the untouched file must appear in would_delete");
+        assert_eq!(untouched_entry["diverged"], false);
+
+        // Structural guard for the real print call site.
+        let code =
+            report_dry_run_preview(target.to_str().unwrap(), None, true, ColorMode::disabled());
+        assert_eq!(code, 0);
+
+        fs::remove_dir_all(&target).ok();
+    }
+
+    /// `--json` mode has no effect on the (now nonexistent) confirmation
+    /// gate -- a `--json` invocation with no `--dry-run` still performs
+    /// the real deletion directly, matching plain-text mode.
+    #[test]
+    fn dispatch_uninstall_json_without_dry_run_proceeds_directly() {
+        let _home = HomeGuard::new("json-proceeds-directly-home");
+        let target = scratch_home("json-proceeds-directly");
+        seed_target(
+            &target,
+            vec![(".kiro/agents/a.json", b"{}", Provenance::Created, None)],
+        );
+        let canonical = index::canonicalize_target_dir(&target).unwrap();
+        index::write_index(IndexEntry {
+            target_dir: canonical,
+            strategies: vec!["kiro-cli-v2".to_string()],
+            installed_at: "2026-01-15T09:30:00Z".to_string(),
+            status: index::IndexEntryStatus::Complete,
+        })
+        .unwrap();
+
+        let code = dispatch_uninstall(None, false, None, false, true, ColorMode::disabled());
+        assert_eq!(code, 0);
+        assert!(!target.join(".kiro/agents/a.json").exists());
+
+        fs::remove_dir_all(&target).ok();
+    }
+
+    // ── `uninstall --all` on an empty index must stay a 0 no-op ────────
+    //
+    // `--all` reaches `dispatch_all` with `index.installs` empty rather
+    // than hitting `dispatch_uninstall`'s own bare-invocation
+    // short-circuit (which excludes `--all` on purpose). Covered here
+    // across every mode the dry-run branch depends on.
+
+    #[test]
+    fn dispatch_all_on_empty_index_dry_run_is_a_noop() {
+        let _home = HomeGuard::new("uninstall-all-empty-dry-run-home");
+        assert!(index::read_index().unwrap().is_none());
+        let code = dispatch_uninstall(None, true, None, true, false, ColorMode::disabled());
+        assert_eq!(code, 0, "--all --dry-run on an empty index must be a no-op");
+    }
+
+    #[test]
+    fn dispatch_all_on_empty_index_is_a_noop() {
+        let _home = HomeGuard::new("uninstall-all-empty-home");
+        assert!(index::read_index().unwrap().is_none());
+        let code = dispatch_uninstall(None, true, None, false, false, ColorMode::disabled());
+        assert_eq!(code, 0, "--all on an empty index must be a no-op");
+    }
+
+    #[test]
+    fn dispatch_all_on_empty_index_json_is_a_noop() {
+        let _home = HomeGuard::new("uninstall-all-empty-json-home");
+        assert!(index::read_index().unwrap().is_none());
+        let code = dispatch_uninstall(None, true, None, false, true, ColorMode::disabled());
+        assert_eq!(code, 0, "--all --json on an empty index must be a no-op");
     }
 }

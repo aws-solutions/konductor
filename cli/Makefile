@@ -1,19 +1,20 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # Build for the Konductor CLI (Rust). Works standalone for any developer
-# or OSS consumer with Rust (cargo) installed. No Brazil, no Amazon
-# tooling required.
+# or OSS consumer with Rust (cargo) installed. No internal build system
+# or Amazon tooling required.
 #
 # ── Targets ───────────────────────────────────────────────────────────────────
 #   build           Compile Rust binary (cargo build --release) and stage it at
-#                   build/cli/konductor (relative to the package root) for Brazil
-#                   packaging -- see the `build` target's own comment for why.
+#                   build/cli/konductor (relative to the package root) for
+#                   downstream packaging -- see the `build` target's own
+#                   comment for why.
 #   fmt             Auto-format: cargo fmt
 #   lint            Check formatting/linting: clippy + cargo fmt --check
 #   install         Install Rust binary to ~/.cargo/bin
 #   link            Symlink the built Rust binary into ~/.local/bin/konductor
 #                   (the PATH setup this project's README recommends; does not touch
-#                   ~/.cargo/bin and works inside a Brazil workspace, unlike `install`)
+#                   ~/.cargo/bin)
 #   test-rust       Run Rust unit tests (cargo test)
 #   test-schema-dump  Cheap smoke check: verifies `__dump_schema` produces
 #                   valid JSON on the Rust binary. See cli.rs's __dump_schema
@@ -31,62 +32,58 @@
 #   CARGO    path to cargo   (default: cargo)
 #   PYTHON   path to python3 (default: python3)
 #   JQ       path to jq      (default: jq; build falls back to grep/sed if absent)
+#   TARGET   cargo `--target` triple (default: empty, i.e. cargo's own
+#            unqualified host build). When set (e.g. `make build
+#            TARGET=x86_64-unknown-linux-musl`), passed straight through to
+#            `cargo build --target $(TARGET)`, and RUST_BIN below points at
+#            cargo's per-target output path instead of the untargeted one --
+#            cargo nests output under a $(TARGET)/ subdirectory whenever
+#            --target is passed explicitly, even if it matches the host's
+#            own triple. The target must already be installed (`rustup
+#            target add $(TARGET)`), and targets needing a C toolchain
+#            (e.g. any *-musl target, via this crate's `ring` dependency)
+#            need a matching linker/cc on PATH (e.g. `musl-tools` for
+#            *-unknown-linux-musl) -- neither is installed by this Makefile.
 
 CARGO    ?= cargo
 PYTHON   ?= python3
 JQ       ?= jq
+TARGET   ?=
 
 RUST_DIR := konductor-rs
 
-# `RUST_BIN` cannot be a hardcoded `$(RUST_DIR)/target/release/konductor`
-# guess: cargo's actual output directory is redirected by ANY `[build]
-# target-dir` override in a `.cargo/config.toml` (Amazon's CargoBrazil
-# tooling generates exactly such a file, at
-# `build/private/cargo-home/config.toml`, redirecting to
-# `build/private/cargo-target` -- present in every CargoBrazil-managed
-# build, dev desktop and pkgbuild sandbox alike) or a `CARGO_TARGET_DIR`
-# env var, and a hardcoded guess silently diverges from wherever `cargo
-# build --release` actually placed the binary the moment either applies.
-# `cargo metadata`'s `target_directory` field is cargo's own answer to
-# "where will you actually put build output", so querying it here keeps
-# this Makefile correct under the default layout, a config.toml
-# override, and a `CARGO_TARGET_DIR` override alike -- in any
-# environment -- with zero guessing. Falls back to the historical
-# `$(RUST_DIR)/target` default if the query itself fails (e.g. `cargo`
-# missing or unparseable output), so a broken toolchain fails at `build`
-# with a clear cargo error rather than this computation failing silently.
+# Passed to every `cargo build`/`cargo metadata` invocation below; empty
+# (the default) reproduces the exact untargeted command this Makefile ran
+# before TARGET existed.
+CARGO_TARGET_FLAG := $(if $(TARGET),--target $(TARGET),)
+# cargo nests output one directory deeper, under $(TARGET)/, whenever
+# --target is passed explicitly -- even for a target matching the host's
+# own triple -- so this suffix must be empty (untargeted) or `$(TARGET)/`
+# (targeted), never guessed from whether TARGET "looks like" the host.
+CARGO_TARGET_SUBDIR := $(if $(TARGET),$(TARGET)/,)
+
+# `RUST_BIN` can't be a hardcoded `$(RUST_DIR)/target/release/konductor`
+# guess: cargo's actual output directory is redirected by any `[build]
+# target-dir` override in `.cargo/config.toml` or a `CARGO_TARGET_DIR` env
+# var. `cargo metadata`'s `target_directory` field is cargo's own answer to
+# where build output lands, so querying it keeps this correct under the
+# default layout and either override, with zero guessing. Falls back to
+# the historical `$(RUST_DIR)/target` default if the query itself fails
+# (e.g. cargo missing), so a broken toolchain fails at `build` with a
+# clear cargo error instead of silently.
 #
-# `target_directory` is extracted with `grep`/`cut`, not
-# `$(PYTHON) -c '...json.load...'` (an earlier revision of this file did
-# use python -- see CR-302539291 r5/r6). On the real pkgbuild-const
-# build fleet (Dry Run Build, build.amazon.com/8015129743) the python
-# pipeline produced empty output and silently hit the hardcoded fallback
-# below on AL2_x86_64 and AL2_aarch64 specifically, while the identical
-# commit succeeded on AL2023_x86_64/AL2023_aarch64 in the same build.
-# That AL2-only split is not a `CARGO_TARGET_DIR`/config-vs-environment
-# mismatch: the plain `cargo build --release` two lines below it in this
-# same recipe -- which touches no python at all -- correctly reused the
-# CargoBrazil-redirected target dir on all 4 platforms in that build
-# (confirmed by its 0.07s cache-hit landing under
-# `build/private/cargo-target/release`, matching the linker paths this
-# package's other Rust build steps used in the same log). The signature
-# instead matches `python3` simply not being on `$PATH` in the AL2 image:
-# AL2's default userland ships Python 2 and treats `python3` as an
-# optional add-on, where AL2023 ships `python3` standard. `cargo
-# metadata`'s output is one compact line of JSON, and Linux build paths
-# never contain a literal `"`, so a `grep -o`/`cut` pair extracts
-# `target_directory` with the same semantics as the python one-liner
-# using only POSIX tools guaranteed present wherever `make`/`sh`
-# themselves run -- removing the AL2-specific gap entirely instead of
-# requiring `python3` on every platform this Makefile might build on.
+# Extracted with `grep`/`cut` rather than `$(PYTHON) -c '...json.load...'`:
+# `python3` isn't guaranteed on PATH everywhere this runs (Amazon Linux 2
+# ships Python 2 by default; AL2023 ships python3 standard), and a missing
+# python3 would silently produce empty output here for the wrong reason.
+# `cargo metadata`'s output is one compact JSON line with no literal `"`
+# in Linux build paths, so `grep -o`/`cut` extracts `target_directory`
+# using only POSIX tools guaranteed present wherever make/sh run.
 #
-# The `cargo metadata` call itself only runs for goals that actually
-# consume `$(RUST_BIN)` (directly, or transitively through a
-# prerequisite). `help`, `fmt`, `lint`, `install`, and `clean` have no
-# use for a resolved binary path, so they never pay its latency or its
-# implicit `cargo`-on-`$PATH` dependency; a bare `make` with no goal at
-# all falls back to the default target (`all` -> `build`), which does
-# need it.
+# The `cargo metadata` call only runs for goals that actually consume
+# `$(RUST_BIN)`. `help`, `fmt`, `lint`, `install`, and `clean` don't need a
+# resolved binary path, so they skip its latency and its implicit
+# cargo-on-PATH dependency.
 RUST_BIN_GOALS := build link test-schema-dump check-skill-scope test all
 INVOKED_GOALS := $(if $(MAKECMDGOALS),$(MAKECMDGOALS),all)
 
@@ -99,21 +96,15 @@ else
 CARGO_TARGET_DIR := $(abspath $(RUST_DIR)/target)
 endif
 
-RUST_BIN := $(CARGO_TARGET_DIR)/release/konductor
+RUST_BIN := $(CARGO_TARGET_DIR)/$(CARGO_TARGET_SUBDIR)release/konductor
 LOCAL_BIN_DIR := $(HOME)/.local/bin
 
 # Published build-artifact location, relative to this Makefile's own directory
 # (cli/), i.e. <package root>/build/cli/konductor. This is NOT the same path as
-# RUST_BIN above: RUST_BIN is CARGO_TARGET_DIR/release/konductor, which is
-# correct for both a plain standalone `cargo build` ($(RUST_DIR)/target) and
-# the Brazil-wrapped build (CargoBrazil redirects it to
-# build/private/cargo-target via a generated CARGO_HOME/config.toml) -- but
-# neither location is where Brazil PUBLISHES this package's build artifacts.
-# Brazil publishes a package's build/ directory (except build/private/) as
-# that package's build artifacts, and BrazilPathArtifacts.fromPackage in the
-# CDK release pipeline (KonductorReleaseStack, in a sibling release-pipeline
-# package) reads the compiled binary from exactly STAGE_BIN's path -- so
-# `build` below copies RUST_BIN there explicitly.
+# RUST_BIN above: RUST_BIN is CARGO_TARGET_DIR/release/konductor, which varies
+# with the cargo target-dir resolution described above -- but downstream
+# tooling expects the compiled binary at this fixed, predictable location,
+# so `build` below copies RUST_BIN there explicitly.
 STAGE_DIR := ../build/cli
 STAGE_BIN := $(STAGE_DIR)/konductor
 
@@ -143,41 +134,20 @@ help:
 	@echo ""
 
 # ── build ─────────────────────────────────────────────────────────────────────
-# Compiles the release binary, then stages a copy at STAGE_BIN
-# (../build/cli/konductor, relative to this Makefile). The staging copy is
-# required for Brazil packaging: Brazil publishes a package's build/
-# directory (except build/private/) as that package's build artifacts, and
-# BrazilPathArtifacts.fromPackage in the CDK release pipeline reads the
-# compiled binary from exactly that published location -- see the STAGE_DIR
-# comment above. The actual cargo output directory is resolved via `cargo
-# metadata` rather than assumed to be $(RUST_DIR)/target, because it is not:
-# under the Brazil build wrapper (aim-and-make-build) CargoBrazil redirects
-# it to build/private/cargo-target via CARGO_HOME/config.toml, whereas a
-# plain standalone `cargo build` uses $(RUST_DIR)/target. Querying cargo
-# directly keeps this correct in both cases without hardcoding either path.
+# Compiles the release binary and stages a copy at STAGE_BIN (see STAGE_DIR
+# comment above). Resolves the real cargo target directory via `cargo
+# metadata` rather than assuming $(RUST_DIR)/target (see RUST_BIN comment
+# above), extracting with jq when available and grep/sed otherwise -- same
+# python3-availability reasoning as RUST_BIN's own comment.
 #
-# `cargo metadata`'s default JSON output is a single line, so the
-# target_directory field is extracted with jq when available and with a
-# grep/sed field extraction otherwise -- not with $(PYTHON), since python3
-# is not guaranteed present on every build image (e.g. some Brazil build
-# images only ship a versioned python3.N, or no python3 at all).
-#
-# Fails immediately, with the resolved paths and a reproduction command,
-# if RUST_BIN doesn't exist right after building -- rather than leaving
-# `check-skill-scope`/`link`/`test-schema-dump` to hit that missing
-# binary later as an opaque "No such file or directory" from `/bin/sh`
-# with no indication of WHY CARGO_TARGET_DIR resolved to the wrong place
-# (the failure mode this fixes; see CARGO_TARGET_DIR's own comment
-# above for the concrete instance of it observed in the real build
-# fleet). This check runs AFTER the staging copy above, not instead of
-# it: RUST_BIN is only this Makefile's own assumed path for that
-# diagnostic (used purely to name where staging is expected to have
-# just landed a binary); the copy itself always goes by the
-# `cargo metadata`-derived path, since that is the one guaranteed
-# correct in both the plain-cargo and Brazil-wrapped cases.
+# Fails immediately, with the resolved paths and a repro command, if
+# RUST_BIN doesn't exist right after building -- rather than leaving
+# `check-skill-scope`/`link`/`test-schema-dump` to hit that missing binary
+# later as an opaque shell error with no indication of why CARGO_TARGET_DIR
+# resolved wrong.
 build:
-	@echo "=== [konductor] Building Rust binary (release) ==="
-	cd $(RUST_DIR) && $(CARGO) build --release
+	@echo "=== [konductor] Building Rust binary (release$(if $(TARGET), --target $(TARGET),)) ==="
+	cd $(RUST_DIR) && $(CARGO) build --release $(CARGO_TARGET_FLAG)
 	@echo "=== [konductor] Staging binary at $(STAGE_BIN) ==="
 	@metadata=$$(cd $(RUST_DIR) && $(CARGO) metadata --no-deps --format-version=1); \
 	if command -v $(JQ) >/dev/null 2>&1; then \
@@ -192,7 +162,7 @@ build:
 		exit 1; \
 	fi; \
 	mkdir -p "$(STAGE_DIR)"; \
-	cp "$$cargo_target_dir/release/konductor" "$(STAGE_BIN)"
+	cp "$$cargo_target_dir/$(CARGO_TARGET_SUBDIR)release/konductor" "$(STAGE_BIN)"
 	@echo "=== [konductor] Build complete ==="
 	@test -x "$(RUST_BIN)" || { \
 		echo "error: [konductor] built, but no binary found at RUST_BIN=$(RUST_BIN)" >&2; \
@@ -227,21 +197,16 @@ install:
 	@echo "=== [konductor] Install complete ==="
 
 # ── link ──────────────────────────────────────────────────────────────────────
-# Symlink the already-built Rust binary into ~/.local/bin/konductor. This is the
-# PATH setup this project's README recommends for local dev — separate from
-# `install` (cargo install --path .), which writes to ~/.cargo/bin and does not
-# work inside a Brazil workspace (Brazil blocks `cargo install`).
-# Requires `build` to have run first; does not build automatically so `make link`
-# never silently triggers a full rebuild.
+# Symlinks the already-built binary into ~/.local/bin/konductor -- the PATH
+# setup this project's README recommends, separate from `install` (which
+# writes to ~/.cargo/bin). Requires `build` to have run first; doesn't
+# build automatically, so `make link` never triggers a silent rebuild.
 #
-# Verifies the symlink itself resolves to an executable after creating it, the
-# same post-condition idiom `build` uses above for RUST_BIN — `ln -sf` exits 0
-# even if its target later disappears or the resulting link is broken (e.g.
-# LOCAL_BIN_DIR is on a filesystem that silently rejects symlinks), so without
-# this check a caller relying on `make link`'s exit code alone could see
-# success while `$(LOCAL_BIN_DIR)/konductor` doesn't actually resolve, and only
-# discover that later as a confusing "command not found" instead of a clear
-# diagnostic here.
+# Verifies the symlink resolves to an executable after creating it: `ln -sf`
+# exits 0 even if the target is broken (e.g. LOCAL_BIN_DIR rejects symlinks),
+# so without this check a caller could see success while the link doesn't
+# actually resolve, and only find out later as a confusing "command not
+# found".
 link:
 	@test -x "$(RUST_BIN)" || { echo "error: $(RUST_BIN) not found — run 'make build' first" >&2; exit 1; }
 	@mkdir -p "$(LOCAL_BIN_DIR)"
@@ -278,46 +243,32 @@ test-schema-dump: build
 	@echo "=== [konductor] Schema-dump smoke check passed ==="
 
 # ── check-skill-scope ─────────────────────────────────────────────────────────
-# Hard-fails THIS package's OWN build when its OWN agents/*.agent-spec.json
+# Hard-fails this package's own build when its own agents/*.agent-spec.json
 # violate the skill-scope consistency rule: every `clientConfig.kiroCli.
-# resources` `skill://` entry must name a skill also present in that
-# agent's `dependencies.skills.skillNames`.
+# resources` `skill://` entry must name a skill also present in that agent's
+# `dependencies.skills.skillNames`.
 #
-# `check_skill_scope_consistency` (synth/parse_canonical.rs) only ever WARNS,
-# via `eprintln!("konductor: warning: ...")` -- deliberately, and that stays
-# unconditional for every caller. `parse_canonical` runs against whatever
-# source tree an external `synth`/`install --from`/`doctor` invocation points
-# it at (this crate is the public-base CLI other teams point at their own
-# spec trees), so promoting that check to a hard `ParseError` there would
-# break any external consumer with legitimate resources/skillNames drift,
-# with no deprecation window (see CR-302539291 review thread r4p5/r4p6).
+# `check_skill_scope_consistency` (synth/parse_canonical.rs) only ever warns
+# (`eprintln!`), deliberately -- it runs against whatever tree an external
+# `synth`/`install --from`/`doctor` invocation points it at, and promoting
+# it to a hard error there would break external consumers with legitimate
+# drift, with no deprecation window. This target adds CI enforcement for
+# this package's own tree only, with no change to that shared function: it
+# runs the built binary's `doctor` (read-only) against this package's root,
+# and fails if the output contains the warning's `konductor: warning: `
+# prefix.
 #
-# This target adds CI-side enforcement ONLY for this package's own tree, with
-# ZERO change to the shared library function or its behavior for any other
-# caller: it runs the already-built binary's `doctor` command (read-only --
-# unlike `synth`, it writes no `dist/` output) against this package's own
-# root, points `--target` AND `HOME` at throwaway empty scratch directories
-# (`--target` alone is not enough -- doctor's `config` check resolves the
-# user-config tier via the real `$HOME` unconditionally, ignoring `--target`,
-# so a malformed personal `~/.konductor/config.yml` on the host running this
-# would otherwise fail this gate for a reason unrelated to skill-scope; same
-# isolation pattern `test-schema-dump` above already uses for the same
-# reason), so the result never depends on ambient `$HOME` state (and nothing
-# is written back into this package's tree), and fails if the captured
-# output contains the warning's fixed "konductor: warning: " prefix.
-# `doctor`'s own report (`print_report`) is written via `println!`, i.e. to
-# STDOUT, not stderr -- so stdout and stderr are captured together into one
-# stream; capturing stderr alone would silently discard the actual
-# diagnostic text on any real check failure (as opposed to a crash/bad
-# invocation, which does still produce stderr text), leaving only the bare
-# "doctor exited N" with no indication of what broke. `doctor`'s own exit
-# code IS still checked, but only to catch the command failing to run at all
-# (crash, bad `--from`/`--target`, unreadable tree) -- that path produces no
-# skill-scope warning either, so without this check it would silently
-# PASS the gate. For a normal `ok`/`info`/`warn` run, `doctor` exits 0
-# regardless of this specific warning (`check_skill_scope_consistency`'s
-# eprintln is independent of doctor's own CheckStatus/exit-code machinery),
-# so the warning-grep remains the actual pass/fail signal in that case.
+# Points both `--target` and `HOME` at scratch directories: `--target`
+# alone isn't enough, since doctor's `config` check resolves the
+# user-config tier via the real `$HOME` regardless, and a malformed
+# personal `~/.konductor/config.yml` would otherwise fail this gate for an
+# unrelated reason (same isolation `test-schema-dump` uses above).
+#
+# Captures stdout+stderr together: `doctor`'s report goes to stdout, so
+# capturing stderr alone would discard the actual diagnostic on a real
+# failure. The exit code is checked separately, only to catch `doctor`
+# failing to run at all (crash, bad path) -- that failure mode produces no
+# skill-scope warning, so without this check it would silently pass.
 #
 # Depends on `build` so the binary exists before the check runs.
 check-skill-scope: build
@@ -347,14 +298,14 @@ test: test-rust test-schema-dump
 
 # ── clean ─────────────────────────────────────────────────────────────────────
 # Remove all build artifacts. Safe to run at any time -- in particular, safe
-# to run when rust-toolchain.toml (CargoBrazil-generated, gitignored) still
-# points at a `bb clean`-deleted build/private/cargo-brazil-toolchain path,
-# which would otherwise make `cargo clean` itself fail before doing anything.
+# to run when a gitignored rust-toolchain.toml still points at a toolchain
+# path that no longer exists, which would otherwise make `cargo clean`
+# itself fail before doing anything.
 clean:
 	@echo "=== [konductor] Cleaning Rust build artifacts ==="
 	@toolchain=$$(sed -n 's/^path = "\(.*\)"/\1/p' $(RUST_DIR)/rust-toolchain.toml 2>/dev/null); \
 	if [ -n "$$toolchain" ] && [ ! -d "$$toolchain/bin" ]; then \
-	  echo "  CargoBrazil toolchain absent ($$toolchain) -- removing target/ directly"; \
+	  echo "  Toolchain path from rust-toolchain.toml absent ($$toolchain) -- removing target/ directly"; \
 	  rm -rf $(RUST_DIR)/target; \
 	else \
 	  cd $(RUST_DIR) && $(CARGO) clean; \

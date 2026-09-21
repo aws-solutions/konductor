@@ -76,29 +76,29 @@ link:
 	$(MAKE) -C cli link
 
 # ── synth ─────────────────────────────────────────────────────────────────────
-# cli/ only -- synth only needs the compiled `konductor` binary; mcp/ is not
-# part of what gets synthesized, so this depends on cli's own `build` target
-# (not the aggregate root `build` above) so `make synth` never forces an
-# unrelated mcp/ rebuild.
+# cli/ only -- mcp/ is not part of what gets synthesized. Depends on cli's
+# own `build` target (not the aggregate root `build` above) so `make synth`
+# never forces an unrelated mcp/ rebuild.
 #
-# `konductor synth` (no `--from`) defaults its source tree to the process's
-# current working directory, so this target must be invoked from the
-# directory containing this Makefile (the package root) for `dist/` to land
-# there rather than wherever `make` happened to be invoked from.
+# `konductor synth` (no `--from`) defaults its source tree to the current
+# working directory, so this target must be invoked from the directory
+# containing this Makefile for `dist/` to land in the right place.
 #
 # Invokes the staged binary at build/cli/konductor, not the plain cargo
-# output path (cli/konductor-rs/target/release/konductor): cli's own `build`
-# target always stages a copy there via `cargo metadata`, which resolves the
-# real cargo target-dir whether it's the plain standalone location or one
-# redirected elsewhere (e.g. by a build wrapper's own persisted
-# rust-toolchain.toml override, which persists across invocations once
-# anything in this checkout has been built through that wrapper) -- so the
-# staged path is the only one guaranteed to exist after `cli build` runs, in
-# either case.
+# output path: cli's `build` target always stages a copy there via `cargo
+# metadata`, so it's the only path guaranteed to exist regardless of
+# whether cargo's target-dir has been redirected.
 KONDUCTOR_BIN := build/cli/konductor
 
+# TARGET (optional): cargo `--target` triple, forwarded to `cli build` --
+# see cli/Makefile's TARGET comment for the full rationale. Passed
+# explicitly as `TARGET=$(TARGET)`, not left to sub-make's environment
+# inheritance: make does not export a command-line override
+# (`make synth TARGET=...`) to child `$(MAKE)` invocations on its own, only
+# an actual environment variable (`TARGET=... make synth`) does. This makes
+# both invocation styles behave the same.
 synth:
-	$(MAKE) -C cli build
+	$(MAKE) -C cli build TARGET=$(TARGET)
 	@test -x "$(KONDUCTOR_BIN)" || { echo "error: $(KONDUCTOR_BIN) not found — run 'make build' first" >&2; exit 1; }
 	@echo "=== [konductor] Running konductor synth ==="
 	$(KONDUCTOR_BIN) synth

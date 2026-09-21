@@ -1,6 +1,6 @@
 ---
 name: design-doc-guidelines
-description: Guidelines for writing and reviewing design docs. Covers outside-in structure, plain writing rules, AI slop detection, diagram accuracy, and technical accuracy.
+description: Use when writing, reviewing, or restructuring a design doc, RFC, technical spec, architecture proposal, ADR, or one-pager. Trigger on requests like "review my design," "tighten this spec," or "is this too technical?" Covers outside-in structure, plain writing rules, AI slop detection, diagram accuracy, and technical accuracy.
 version: 1
 ---
 
@@ -82,7 +82,7 @@ Filler openers and connectors — delete outright, they add nothing:
 - "When it comes to…", "At the end of the day…"
 - Stacked transitions: "Moreover," "Furthermore," "Additionally," opening consecutive paragraphs.
 
-Inflated buzzwords that sound substantive but aren't — cut or make concrete: "robust," "seamless," "scalable" (without a number), "comprehensive," "holistic," "cutting-edge," "best-in-class," "synergy," "streamline," "supercharge," "unlock," "delve into," "navigate the complexities of," "tapestry," "realm."
+Inflated buzzwords that sound substantive but aren't — cut or make concrete. `humanize-writing` §7 is the canonical list; this section defers to it rather than keeping a separate one.
 
 Empty structure:
 
@@ -116,6 +116,7 @@ After writing or restructuring, do a redundancy pass:
 - If a detail exists in the Implementation section, the Design section should only summarize + cross-reference
 - Sentinel files, retry behavior, validation rules — common offenders for duplication
 - Tables that appear in both "How It Works" and "Implementation Details" need clear boundary: summary vs spec
+- Check adjacent sentences, not just sections: if covering sentence A and reading sentence B alone tells the reader nothing new, cut B or merge its addition into A.
 
 ## Document Flow (outside-in)
 

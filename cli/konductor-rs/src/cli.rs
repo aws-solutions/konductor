@@ -236,10 +236,12 @@ pub enum Commands {
         from: Option<String>,
 
         /// DESTINATION: directory to install into (agents/context under
-        /// `<dir>/.kiro/`, skills under `<dir>/.konductor/skills/`).
-        /// Defaults to `$HOME` when omitted. Pass `.` to install into the
-        /// current working directory. Distinct from `--from`, which is
-        /// the install SOURCE.
+        /// `<dir>/.kiro/`, skills under `<dir>/.konductor/skills/`,
+        /// SOPs under `<dir>/.konductor/sops/` plus a Kiro-discoverable
+        /// `sop-<name>/SKILL.md` conversion under `<dir>/.kiro/skills/`
+        /// for the Kiro harnesses). Defaults to `$HOME` when omitted.
+        /// Pass `.` to install into the current working directory.
+        /// Distinct from `--from`, which is the install SOURCE.
         #[arg(long, display_order = 2)]
         target: Option<String>,
 
@@ -281,9 +283,14 @@ pub enum Commands {
     /// Update an existing Konductor installation: unconditionally
     /// overwrites every tracked file with fresh content from a fresh
     /// `--from <repo-root>` synth source -- the exact same file-copy
-    /// path `install` itself uses. There is no hash comparison, no
-    /// divergence classification, and no `--force` flag; a hand-edited
-    /// file is overwritten just like any other tracked file.
+    /// path `install` itself uses. There is no `--force` flag; a
+    /// hand-edited file is overwritten just like any other tracked
+    /// file. `--dry-run` reports hash-based divergence per file (which
+    /// tracked paths have local edits that would be destroyed) without
+    /// writing anything; a real run only reports how many files had
+    /// diverged, as an aggregate count, after unconditionally
+    /// overwriting all of them -- the count never gates or alters the
+    /// overwrite.
     Update {
         /// SOURCE: path to a local repo root to re-synth from, same
         /// meaning as `install --from`. Required to have anything fresh
@@ -343,6 +350,12 @@ pub enum Commands {
         /// at all for this run.
         #[arg(long)]
         no_telemetry: bool,
+
+        /// Report exactly what would be overwritten (files, paths) for
+        /// each selected target without touching the filesystem in any
+        /// way -- no manifest write, no index write, no file copy.
+        #[arg(long = "dry-run", action = ArgAction::SetTrue)]
+        dry_run: bool,
     },
 
     /// Remove Konductor from a repository.
@@ -382,6 +395,13 @@ pub enum Commands {
         /// picker lists them.
         #[arg(long, value_parser = harness_value_parser())]
         harness: Option<String>,
+
+        /// Report exactly what would be removed (files, paths) for each
+        /// selected target without touching the filesystem in any way
+        /// -- no file delete, no directory cleanup, no manifest/index
+        /// write.
+        #[arg(long = "dry-run", action = ArgAction::SetTrue)]
+        dry_run: bool,
     },
 
     /// Synthesize Konductor pipeline/config artifacts.
@@ -436,6 +456,13 @@ pub enum Commands {
     },
 
     /// Show Konductor usage/run metrics (stub).
+    ///
+    /// Hidden from normal --help since it has no real implementation yet
+    /// (see dispatch.rs's `print_not_implemented` handling) -- unlike
+    /// `__dump_schema`/`__telemetry-hook` below, this keeps its plain
+    /// `metrics` name and stays fully invokable; only its --help listing
+    /// is suppressed.
+    #[command(hide = true)]
     Metrics {
         /// Time window to report metrics for, e.g. "7d", "24h".
         #[arg(long)]
@@ -1378,5 +1405,39 @@ mod tests {
                 "--harness must appear before {other_flag} in install --help, got:\n{help_text}"
             );
         }
+    }
+
+    // ── `metrics` hidden-from-help regression ──────────────────────────
+
+    /// Pins `#[command(hide = true)]` on `Commands::Metrics`.
+    #[test]
+    fn metrics_does_not_appear_in_top_level_help() {
+        let help_text = Cli::command().render_help().to_string();
+        assert!(
+            !help_text.contains(Commands::METRICS),
+            "konductor --help must not list 'metrics' -- it has no real \
+             implementation yet, got:\n{help_text}"
+        );
+    }
+
+    /// Hiding `metrics` from `--help` must never silently become removing
+    /// it: `konductor metrics` still parses to `Commands::Metrics` and
+    /// still dispatches to its not-implemented stub, exiting 0.
+    #[test]
+    fn metrics_still_parses_and_dispatches() {
+        let cli = Cli::try_parse_from(["konductor", Commands::METRICS])
+            .expect("`konductor metrics` must still parse even though it is hidden from --help");
+        let command = cli
+            .command
+            .expect("a command must be present for `konductor metrics`");
+        assert!(
+            matches!(command, Commands::Metrics { since: None }),
+            "expected Commands::Metrics {{ since: None }}, got {command:?}"
+        );
+        let exit_code = dispatch::dispatch(command, false, false, output::ColorMode::disabled());
+        assert_eq!(
+            exit_code, 0,
+            "`konductor metrics` must still dispatch and exit 0 (its stub behavior is unchanged)"
+        );
     }
 }

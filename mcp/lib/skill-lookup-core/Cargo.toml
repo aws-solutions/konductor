@@ -5,6 +5,9 @@ edition = "2021"
 description = "Reusable scanning/index/frontmatter core shared by skill-lookup-mcp and future MCP servers that scan a directory tree of frontmatter-carrying files"
 license.workspace = true
 
+[lints]
+workspace = true
+
 [lib]
 name = "skill_lookup_core"
 path = "src/lib.rs"

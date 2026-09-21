@@ -2,7 +2,7 @@
 
 ## Overview
 
-This SOP activates analysis mode to gather comprehensive context before diving into implementation. Use it before implementing features in unfamiliar code, for complex multi-system changes, when debugging after 2+ failed attempts, for architecture decisions, or when understanding existing patterns.
+Use it before implementing features in unfamiliar code, for complex multi-system changes, when debugging after 2+ failed attempts, for architecture decisions, or when understanding existing patterns.
 
 > **Execution context:** Steps below run shell commands and may write files. An agent without those tools delegates them to specialist agents per its routing rules.
 

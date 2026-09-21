@@ -45,7 +45,8 @@
         "adversarial-code-review-pass-security",
         "adversarial-code-review-pass-integrity",
         "adversarial-code-review-pass-schema",
-        "historical-issues-registry"
+        "historical-issues-registry",
+        "verification"
       ]
     },
     "mcpRegistry": {
@@ -152,7 +153,8 @@
         "adversarial-code-review-pass-security",
         "adversarial-code-review-pass-integrity",
         "adversarial-code-review-pass-schema",
-        "historical-issues-registry"
+        "historical-issues-registry",
+        "verification"
       ]
     }
   }

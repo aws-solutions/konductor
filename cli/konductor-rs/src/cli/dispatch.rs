@@ -71,12 +71,14 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool, color: ColorMode) 
             all,
             harness,
             no_telemetry,
+            dry_run,
         } => crate::cli::update::dispatch_update_with(
             from,
             target,
             all,
             harness,
             no_telemetry,
+            dry_run,
             verbose,
             json,
             color,
@@ -85,7 +87,8 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool, color: ColorMode) 
             target,
             all,
             harness,
-        } => crate::cli::uninstall::dispatch_uninstall(target, all, harness, json, color),
+            dry_run,
+        } => crate::cli::uninstall::dispatch_uninstall(target, all, harness, dry_run, json, color),
         Commands::Synth { from } => {
             let cwd = match resolve_cwd_reporting_json("synth", json, color) {
                 Ok(dir) => dir,
@@ -1123,6 +1126,7 @@ mod tests {
                 target: None,
                 all: false,
                 harness: None,
+                dry_run: false,
             },
             false,
             false,
