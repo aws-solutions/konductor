@@ -288,11 +288,27 @@ jobs:
           MCP_BIN_ASSET_NAME="skill-lookup-mcp-${RELEASE_VERSION}-${TARGET_TRIPLE}"
           cp mcp/target/release/skill-lookup-mcp "$ASSET_DIR/$MCP_BIN_ASSET_NAME"
 
-          # sha256sum's own output ("<hash>  <filename>\n") already matches
-          # sidecar::write_sidecar's format; run from within ASSET_DIR so
-          # each sidecar records its sibling's bare filename, not a path.
-          (cd "$ASSET_DIR" && sha256sum "$CLI_BIN_ASSET_NAME" > "$CLI_BIN_ASSET_NAME.sha256")
-          (cd "$ASSET_DIR" && sha256sum "$MCP_BIN_ASSET_NAME" > "$MCP_BIN_ASSET_NAME.sha256")
+          # sha256sum has no equivalent on the aarch64-macos leg
+          # (macos-14 lacks it on PATH), so this falls back to
+          # shasum -a 256. Its output uses the same two-space
+          # separator that install::artifact::parse_sidecar
+          # requires; a single space parses as malformed.
+          # sha256sum stays preferred so the two Linux legs keep
+          # calling their own coreutils binary. Run from within
+          # ASSET_DIR so each sidecar records its sibling's bare
+          # filename, not a path.
+          sha256_line() {
+            if command -v sha256sum >/dev/null 2>&1; then
+              sha256sum "$1"
+            elif command -v shasum >/dev/null 2>&1; then
+              shasum -a 256 "$1"
+            else
+              echo "FATAL: neither sha256sum nor shasum found on PATH. Failing closed." >&2
+              exit 1
+            fi
+          }
+          (cd "$ASSET_DIR" && sha256_line "$CLI_BIN_ASSET_NAME" > "$CLI_BIN_ASSET_NAME.sha256")
+          (cd "$ASSET_DIR" && sha256_line "$MCP_BIN_ASSET_NAME" > "$MCP_BIN_ASSET_NAME.sha256")
 
       - name: Stage the shared (architecture-independent) release assets
         # Only the primary leg stages these: the packaged tarball is
@@ -522,3 +538,4 @@ jobs:
             --target "${{ github.sha }}" \
             --title "konductor $RELEASE_VERSION" \
             --notes "Synthesized by $BINARY_VERSION (release $RELEASE_VERSION) from ${{ github.sha }} at ${BUILD_TIMESTAMP}."
+
