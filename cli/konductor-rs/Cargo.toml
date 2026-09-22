@@ -1,6 +1,6 @@
 [package]
 name = "konductor"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 description = "Konductor CLI — placeholder skeleton for build pipeline validation"
 license = "Apache-2.0"
