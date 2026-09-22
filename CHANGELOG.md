@@ -6,7 +6,16 @@ This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Entries are consolidated per release,
 not per individual commit.
 
-## [0.1.1] - 2026-09-18
+### [0.1.2] - 2026-09-22
+
+### Added
+
+- Added the ability to use GitHub generated artifacts for installation
+- Created telemetry as a shared component
+- SOP invocations are now only when explicit `/` is provided.
+
+
+# [0.1.1] - 2026-09-18
 
 ### Added
 
