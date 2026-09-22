@@ -96,10 +96,10 @@ pub fn verify_sha256(
 /// Seam for the network fetch: a boxed closure returning the
 /// artifact's raw bytes (or an I/O error). Tests supply a fake with
 /// fixed bytes; no network access needed. The real production fetch
-/// (`github::fetch_latest_github_release_artifact`) doesn't use this
-/// seam -- it fetches over HTTP directly, and verification happens in
-/// `remote::verify_artifact_pair`, which calls `verify_sha256`/
-/// `parse_sidecar` directly rather than going through
+/// (`github::fetch_latest_release_artifact_and_mcp_asset`) doesn't use
+/// this seam -- it fetches over HTTP directly, and verification
+/// happens in `remote::verify_artifact_pair`, which calls
+/// `verify_sha256`/`parse_sidecar` directly rather than going through
 /// `fetch_and_verify` below. This alias and `fetch_and_verify` exist
 /// only to test `verify_sha256` against an injected fetch closure.
 #[allow(dead_code)]
@@ -107,8 +107,8 @@ pub type ArtifactFetcher<'a> = Box<dyn Fn() -> std::io::Result<Vec<u8>> + 'a>;
 
 /// Reads a local dist tarball's bytes. Test-only: this module's own
 /// tests use it as a fake `ArtifactFetcher`. The real production fetch
-/// (`github::fetch_latest_github_release_artifact`) reads bytes over
-/// HTTP, not from a local file.
+/// (`github::fetch_latest_release_artifact_and_mcp_asset`) reads bytes
+/// over HTTP, not from a local file.
 #[allow(dead_code)]
 pub fn fetch_local_file(path: &Path) -> std::io::Result<Vec<u8>> {
     std::fs::read(path)

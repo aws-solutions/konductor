@@ -9,6 +9,8 @@ Discovers a deployed web application via browser automation, then generates eith
 
 Use this SOP when the user has a deployed web app and wants test coverage generated from live discovery.
 
+This SOP splits work across `k-browser` (browser automation only), `k-quality-assurance`, and `k-developer` (shell/git only) — the orchestrator itself does not execute shell commands or write files. That split buys tool specialization (least privilege): each agent gets only the tool grants its step needs, and any login credentials pass through `k-developer`'s isolated shell rather than through the orchestrator's own context, keeping the secret out of a place a compaction or summary could later expose it.
+
 **Do NOT use for:** unit testing source code logic, API-only testing, or apps that require non-browser authentication (e.g., mTLS, client certificates).
 
 > **Browser note:** The browser agent uses Playwright's bundled **Chromium** (not system Chrome). This avoids the "Browser is already in use" error when Chrome is open on Mac. If the target app requires authentication, provide `username`/`password` or a `credentials_file` — see Parameters below.

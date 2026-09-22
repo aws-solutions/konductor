@@ -1,51 +1,42 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // telemetry_report_process.rs — integration test proving
-// `report_cli_error`'s once-per-process identity cache and
-// `--no-telemetry` skip semantics hold across the REAL compiled
-// `konductor` binary (mirrors install_manifest_concurrency.rs's own
-// rationale for testing across process boundaries: this crate defines
-// only a `[[bin]]` target, so `telemetry::report_cli_error`'s
-// process-global `OnceLock` identity cache -- and therefore
-// `--no-telemetry`'s interaction with it -- cannot be exercised
-// meaningfully from a `cargo test` unit test running inside ONE shared
-// process; see `telemetry/report.rs`'s own test-module docstring for
-// why those tests deliberately stop short of this).
+// `report_cli_error`'s `--no-telemetry` skip semantics hold across the
+// real compiled `konductor` binary: this crate defines only a `[[bin]]`
+// target, so a real subprocess run is needed to exercise the reporting
+// path end to end rather than through direct in-process function calls.
 //
-// The scenario this specifically guards: `report_cli_error`'s
-// `no_telemetry` flag must suppress a report regardless of whether an
-// identity is already cached for `target_dir` -- a target that already
-// has a valid `.konductor/telemetry-id.json` (e.g. left over from a
-// prior, successful, telemetry-ENABLED install) must NOT report an
-// error via that pre-existing identity on an invocation that
-// explicitly passes `--no-telemetry`; the opt-out must hold regardless
-// of whether an identity happens to already be on disk.
+// The scenario this guards: `report_cli_error`'s `no_telemetry` flag
+// must suppress a report regardless of whether this target already has
+// a persisted install-info record -- a target that was previously
+// installed with telemetry enabled must not report on an invocation
+// that explicitly passes `--no-telemetry`.
 //
-// Observability without a real network endpoint: `report_cli_error`'s
-// only observable side effect that does not depend on a live telemetry
-// backend is `spawn_and_send`'s script materialization
-// (`$HOME/.konductor/tmp/konductor-telemetry-report.sh`, written
-// SYNCHRONOUSLY before the fire-and-forget child process is even
-// spawned -- see `report.rs`'s own `materialize_script`/`spawn_and_send`).
-// Whether that file exists after this process exits is therefore a
-// reliable, deterministic proxy for "did a telemetry event actually
-// get reported", with no dependency on the (unreachable, `.invalid`)
-// compile-time-default endpoint the report itself is aimed at.
+// Observability: every test below runs against a
+// `telemetry_test_sink::TelemetrySink`, a real loopback HTTPS
+// listener, rather than the real production endpoint. A positive
+// control asserts the sink received a request body; a negative
+// control asserts it received nothing.
 //
 // Every invocation below passes `--target <isolated_dir>` explicitly,
-// and overrides `HOME` to a SEPARATE isolated scratch dir (never the
-// real machine's own `$HOME`) -- `install`'s default destination is
-// `$HOME` (see install.rs's `resolve_destination`), and script
-// materialization is keyed off `$HOME` too (`report.rs`'s
-// `private_script_dir`).
+// and overrides `HOME` to a separate isolated scratch dir -- `install`'s
+// default destination is `$HOME`, and script materialization is keyed
+// off `$HOME` too.
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
+use std::time::Duration;
+
+use telemetry_test_sink::TelemetrySink;
 
 const CMD_INSTALL: &str = "install";
 const CMD_UPDATE: &str = "update";
-const MATERIALIZED_SCRIPT_RELATIVE_PATH: &str = ".konductor/tmp/konductor-telemetry-report.sh";
 const IDENTITY_RELATIVE_PATH: &str = ".konductor/telemetry-id.json";
+
+/// Upper bound on how long a positive control waits for the sink to
+/// observe a body -- the send is fire-and-forget, so the parent
+/// process exits before the detached curl call necessarily completes.
+const SINK_WAIT: Duration = Duration::from_secs(5);
 
 fn bin() -> &'static str {
     env!("CARGO_BIN_EXE_konductor")
@@ -64,24 +55,33 @@ fn scratch_dir(name: &str) -> PathBuf {
 }
 
 /// Runs `konductor` with `args` against a fresh process, with `HOME`
-/// overridden to `home_dir` (script materialization and the log-write
-/// path both key off `$HOME` -- see this file's own module docstring).
-fn run_konductor(home_dir: &Path, target_dir: &Path, args: &[&str]) -> Output {
-    Command::new(bin())
+/// overridden to `home_dir` and `sink`'s env vars applied so any real
+/// telemetry send lands at the loopback fixture instead of the real
+/// endpoint.
+fn run_konductor(
+    home_dir: &Path,
+    target_dir: &Path,
+    sink: &TelemetrySink,
+    args: &[&str],
+) -> Output {
+    let mut command = Command::new(bin());
+    command
         .args(args)
         .current_dir(target_dir)
-        .env("HOME", home_dir)
-        .output()
-        .expect("failed to spawn konductor binary")
+        .env("HOME", home_dir);
+    for var in sink.env_vars() {
+        command.env(var.name, &var.value);
+    }
+    command.output().expect("failed to spawn konductor binary")
 }
 
-/// Writes a well-formed `.konductor/telemetry-id.json` directly at
-/// `target_dir`, simulating a prior successful (telemetry-enabled)
-/// install -- the exact precondition the regression needs:
-/// `cached_identity(target_dir)` must resolve to `Some(_)` on the very
-/// first `report_cli_error` call this process makes, matching
-/// `identity.rs`'s own on-disk schema exactly (`schema_version`,
-/// `version`, `UUID`, `harness`).
+/// Writes a well-formed legacy `.konductor/telemetry-id.json` directly
+/// at `target_dir`, simulating a target installed before this file was
+/// retired as a read source -- the precondition
+/// `no_telemetry_suppresses_cli_error_report_even_with_a_preexisting_identity`
+/// needs to prove suppression does not depend on whether this file
+/// happens to be present, matching `identity.rs`'s own on-disk schema
+/// exactly (`schema_version`, `version`, `UUID`, `harness`).
 fn seed_preexisting_identity(target_dir: &Path) {
     seed_preexisting_identity_with_uuid(target_dir, &"a".repeat(64));
 }
@@ -99,13 +99,36 @@ fn seed_preexisting_identity_with_uuid(target_dir: &Path, uuid: &str) {
     .unwrap();
 }
 
+/// Writes a well-formed `.konductor/install-info.json` directly at
+/// `target_dir`, matching `install_info::InstallInfoRecord`'s exact
+/// on-disk schema. `report_cli_error`/`report_cli_error_for_target`'s
+/// gate is `install_info::read_install_info`, not the legacy identity
+/// file `seed_preexisting_identity` seeds -- a caller whose target
+/// `command` is anything other than `"install"` (which alone gets the
+/// nil-sentinel pre-install-info carve-out) needs this fixture, not
+/// that one, to make the positive control actually report.
+fn seed_preexisting_install_info(target_dir: &Path) {
+    let konductor_dir = target_dir.join(".konductor");
+    std::fs::create_dir_all(&konductor_dir).unwrap();
+    std::fs::write(
+        konductor_dir.join("install-info.json"),
+        r#"{"schema_version":1,"agent_version":null,"harness":"kiro-cli","installed_at":"2026-01-01T00:00:00Z"}"#,
+    )
+    .unwrap();
+}
+
 /// Triggers `install`'s `install.would_fail_as_noop` error path (no
 /// `--from` at all) against `target_dir` -- the cheapest deterministic
 /// way to make `dispatch_install_with` call `report_cli_error` exactly
 /// once, without needing a seeded synth source tree or a real strategy
 /// run. Returns the process `Output` so the caller can assert on exit
 /// status if it wants to.
-fn run_install_with_no_from(home_dir: &Path, target_dir: &Path, extra_args: &[&str]) -> Output {
+fn run_install_with_no_from(
+    home_dir: &Path,
+    target_dir: &Path,
+    sink: &TelemetrySink,
+    extra_args: &[&str],
+) -> Output {
     let target_str = target_dir.display().to_string();
     // `--harness` is required. A valid choice must be passed so this
     // reaches `would_fail_as_noop` (a strategy IS selected -- that
@@ -123,7 +146,7 @@ fn run_install_with_no_from(home_dir: &Path, target_dir: &Path, extra_args: &[&s
         "kiro-cli-v2",
     ];
     args.extend_from_slice(extra_args);
-    run_konductor(home_dir, target_dir, &args)
+    run_konductor(home_dir, target_dir, sink, &args)
 }
 
 /// The core regression test (see this file's own module docstring):
@@ -132,11 +155,12 @@ fn run_install_with_no_from(home_dir: &Path, target_dir: &Path, extra_args: &[&s
 /// exists yet.
 #[test]
 fn no_telemetry_suppresses_cli_error_report_even_with_a_preexisting_identity() {
+    let sink = TelemetrySink::start();
     let home_dir = scratch_dir("no-telemetry-home");
     let target_dir = scratch_dir("no-telemetry-target");
     seed_preexisting_identity(&target_dir);
 
-    let output = run_install_with_no_from(&home_dir, &target_dir, &["--no-telemetry"]);
+    let output = run_install_with_no_from(&home_dir, &target_dir, &sink, &["--no-telemetry"]);
 
     assert!(
         !output.status.success(),
@@ -149,15 +173,17 @@ fn no_telemetry_suppresses_cli_error_report_even_with_a_preexisting_identity() {
         String::from_utf8_lossy(&output.stderr)
     );
 
-    let script_path = home_dir.join(MATERIALIZED_SCRIPT_RELATIVE_PATH);
+    // A short, bounded wait (not SINK_WAIT's full budget): this is a
+    // negative control, so there is nothing to wait FOR -- a longer
+    // wait would only slow down a passing run without strengthening
+    // the assertion, since the process being checked has already
+    // exited by the time this line runs.
     assert!(
-        !script_path.exists(),
+        !sink.wait_for_bodies(1, Duration::from_millis(500)),
         "--no-telemetry must suppress report_cli_error even when a valid identity already \
-         exists at the target ({}); found a materialized transport script at {} -- the \
-         opt-out must be checked unconditionally, not only in the branch taken when NO \
-         identity exists yet",
+         exists at the target ({}); the sink received a request body -- the opt-out must be \
+         checked unconditionally, not only in the branch taken when NO identity exists yet",
         target_dir.join(IDENTITY_RELATIVE_PATH).display(),
-        script_path.display()
     );
 
     std::fs::remove_dir_all(&home_dir).ok();
@@ -165,18 +191,19 @@ fn no_telemetry_suppresses_cli_error_report_even_with_a_preexisting_identity() {
 }
 
 /// Positive control for the test above: the SAME scenario, MINUS
-/// `--no-telemetry`, must still report (and therefore materialize the
-/// transport script) -- proving the absence of the script in the test
-/// above is actually caused by the opt-out, not by some unrelated
-/// reason telemetry never fires in this environment at all (e.g. a
-/// broken test harness assumption).
+/// `--no-telemetry`, must still report (and therefore reach the sink)
+/// -- proving the absence of a received body in the test above is
+/// actually caused by the opt-out, not by some unrelated reason
+/// telemetry never fires in this environment at all (e.g. a broken
+/// test harness assumption).
 #[test]
-fn cli_error_report_fires_and_materializes_the_script_without_no_telemetry() {
+fn cli_error_report_fires_and_reaches_the_sink_without_no_telemetry() {
+    let sink = TelemetrySink::start();
     let home_dir = scratch_dir("with-telemetry-home");
     let target_dir = scratch_dir("with-telemetry-target");
     seed_preexisting_identity(&target_dir);
 
-    let output = run_install_with_no_from(&home_dir, &target_dir, &[]);
+    let output = run_install_with_no_from(&home_dir, &target_dir, &sink, &[]);
 
     assert!(
         !output.status.success(),
@@ -184,13 +211,10 @@ fn cli_error_report_fires_and_materializes_the_script_without_no_telemetry() {
     );
     assert_eq!(output.status.code(), Some(64));
 
-    let script_path = home_dir.join(MATERIALIZED_SCRIPT_RELATIVE_PATH);
     assert!(
-        script_path.exists(),
-        "without --no-telemetry, report_cli_error must fire and materialize the transport \
-         script at {} -- if this positive control fails, the negative test above proves \
-         nothing",
-        script_path.display()
+        sink.wait_for_bodies(1, SINK_WAIT),
+        "without --no-telemetry, report_cli_error must fire and the send must reach the sink \
+         -- if this positive control fails, the negative test above proves nothing"
     );
 
     std::fs::remove_dir_all(&home_dir).ok();
@@ -204,21 +228,20 @@ fn cli_error_report_fires_and_materializes_the_script_without_no_telemetry() {
 /// it suppresses the pre-existing-identity branch above.
 #[test]
 fn no_telemetry_suppresses_cli_error_report_with_no_preexisting_identity() {
+    let sink = TelemetrySink::start();
     let home_dir = scratch_dir("no-telemetry-no-identity-home");
     let target_dir = scratch_dir("no-telemetry-no-identity-target");
     // Deliberately do NOT seed an identity file this time.
 
-    let output = run_install_with_no_from(&home_dir, &target_dir, &["--no-telemetry"]);
+    let output = run_install_with_no_from(&home_dir, &target_dir, &sink, &["--no-telemetry"]);
 
     assert!(!output.status.success());
     assert_eq!(output.status.code(), Some(64));
 
-    let script_path = home_dir.join(MATERIALIZED_SCRIPT_RELATIVE_PATH);
     assert!(
-        !script_path.exists(),
+        !sink.wait_for_bodies(1, Duration::from_millis(500)),
         "--no-telemetry must suppress the nil-UUID-sentinel report when no identity exists \
-         yet either; found a materialized transport script at {}",
-        script_path.display()
+         yet either; the sink received a request body"
     );
 
     std::fs::remove_dir_all(&home_dir).ok();
@@ -232,15 +255,17 @@ fn no_telemetry_suppresses_cli_error_report_with_no_preexisting_identity() {
 /// first-ever invocation against a target that has never been
 /// installed to before), yet no prior test exercised it. Every
 /// existing positive control in this file seeds a pre-existing
-/// identity first (`cli_error_report_fires_and_materializes_the_script_without_no_telemetry`);
+/// identity first
+/// (`cli_error_report_fires_and_reaches_the_sink_without_no_telemetry`);
 /// this test deliberately does NOT, confirming `report_cli_error`
-/// still fires (under the nil-UUID sentinel) and materializes
-/// the transport script even with no identity on disk at all --
-/// without `--no-telemetry`, unlike `no_telemetry_suppresses_cli_error_report_with_no_preexisting_identity`
+/// still fires (under the nil-UUID sentinel) and reaches the sink even
+/// with no identity on disk at all -- without `--no-telemetry`, unlike
+/// `no_telemetry_suppresses_cli_error_report_with_no_preexisting_identity`
 /// above, which covers the identical no-identity setup but asserts the
 /// OPPOSITE (suppressed) outcome under the opt-out.
 #[test]
 fn cli_error_report_fires_under_nil_uuid_sentinel_with_no_preexisting_identity() {
+    let sink = TelemetrySink::start();
     let home_dir = scratch_dir("nil-uuid-sentinel-home");
     let target_dir = scratch_dir("nil-uuid-sentinel-target");
     // Deliberately do NOT seed an identity file -- the exact precondition
@@ -250,7 +275,7 @@ fn cli_error_report_fires_under_nil_uuid_sentinel_with_no_preexisting_identity()
         "sanity check: no identity file must exist before this run"
     );
 
-    let output = run_install_with_no_from(&home_dir, &target_dir, &[]);
+    let output = run_install_with_no_from(&home_dir, &target_dir, &sink, &[]);
 
     assert!(
         !output.status.success(),
@@ -258,14 +283,12 @@ fn cli_error_report_fires_under_nil_uuid_sentinel_with_no_preexisting_identity()
     );
     assert_eq!(output.status.code(), Some(64));
 
-    let script_path = home_dir.join(MATERIALIZED_SCRIPT_RELATIVE_PATH);
     assert!(
-        script_path.exists(),
-        "report_cli_error must fire under the nil-UUID sentinel and materialize the transport \
-         script at {} even when no identity file exists at the target yet -- this is the \
-         positive control for no_telemetry_suppresses_cli_error_report_with_no_preexisting_identity; \
-         if this fails, that suppression test proves nothing",
-        script_path.display()
+        sink.wait_for_bodies(1, SINK_WAIT),
+        "report_cli_error must fire under the nil-UUID sentinel and reach the sink even when \
+         no identity file exists at the target yet -- this is the positive control for \
+         no_telemetry_suppresses_cli_error_report_with_no_preexisting_identity; if this \
+         fails, that suppression test proves nothing"
     );
     assert!(
         !target_dir.join(IDENTITY_RELATIVE_PATH).exists(),
@@ -295,26 +318,30 @@ fn cli_error_report_fires_under_nil_uuid_sentinel_with_no_preexisting_identity()
 fn run_update_with_untracked_target(
     home_dir: &Path,
     target_dir: &Path,
+    sink: &TelemetrySink,
     extra_args: &[&str],
 ) -> Output {
     let target_str = target_dir.display().to_string();
     let mut args: Vec<&str> = vec![CMD_UPDATE, "--target", &target_str];
     args.extend_from_slice(extra_args);
-    run_konductor(home_dir, target_dir, &args)
+    run_konductor(home_dir, target_dir, sink, &args)
 }
 
-/// The core regression test for this fix: with a pre-existing identity
-/// already on disk (so `cached_identity` resolves to `Some(_)` and
+/// The core regression test for this fix: with a pre-existing
+/// `install-info.json` already on disk (so `report_cli_error`'s own
+/// `install_info::read_install_info` gate resolves to `Some(_)` and
 /// would otherwise report), `--no-telemetry` must suppress the
 /// "update.target_not_found" report -- exactly the way `install`'s own
 /// suppression tests above already prove for `install`'s call sites.
 #[test]
 fn update_no_telemetry_suppresses_cli_error_report_on_target_not_found() {
+    let sink = TelemetrySink::start();
     let home_dir = scratch_dir("update-no-telemetry-home");
     let target_dir = scratch_dir("update-no-telemetry-target");
-    seed_preexisting_identity(&target_dir);
+    seed_preexisting_install_info(&target_dir);
 
-    let output = run_update_with_untracked_target(&home_dir, &target_dir, &["--no-telemetry"]);
+    let output =
+        run_update_with_untracked_target(&home_dir, &target_dir, &sink, &["--no-telemetry"]);
 
     assert!(
         !output.status.success(),
@@ -323,13 +350,11 @@ fn update_no_telemetry_suppresses_cli_error_report_on_target_not_found() {
     );
     assert_eq!(output.status.code(), Some(64));
 
-    let script_path = home_dir.join(MATERIALIZED_SCRIPT_RELATIVE_PATH);
     assert!(
-        !script_path.exists(),
+        !sink.wait_for_bodies(1, Duration::from_millis(500)),
         "update --no-telemetry must suppress the update.target_not_found cli_error report -- \
          before this fix, update.rs's report_error call sites hardcoded no_telemetry: false \
-         and reported regardless of this flag; found a materialized transport script at {}",
-        script_path.display()
+         and reported regardless of this flag; the sink received a request body"
     );
 
     std::fs::remove_dir_all(&home_dir).ok();
@@ -337,29 +362,27 @@ fn update_no_telemetry_suppresses_cli_error_report_on_target_not_found() {
 }
 
 /// Positive control for the test above: the SAME scenario, MINUS
-/// `--no-telemetry`, must still report (and therefore materialize the
-/// transport script) -- proving the absence of the script above is
-/// caused by the opt-out actually taking effect on update's own call
-/// sites, not by some unrelated reason telemetry never fires for
-/// `update` in this environment at all.
+/// `--no-telemetry`, must still report (and therefore reach the sink)
+/// -- proving the absence of a received body above is caused by the
+/// opt-out actually taking effect on update's own call sites, not by
+/// some unrelated reason telemetry never fires for `update` in this
+/// environment at all.
 #[test]
 fn update_cli_error_report_fires_on_target_not_found_without_no_telemetry() {
+    let sink = TelemetrySink::start();
     let home_dir = scratch_dir("update-with-telemetry-home");
     let target_dir = scratch_dir("update-with-telemetry-target");
-    seed_preexisting_identity(&target_dir);
+    seed_preexisting_install_info(&target_dir);
 
-    let output = run_update_with_untracked_target(&home_dir, &target_dir, &[]);
+    let output = run_update_with_untracked_target(&home_dir, &target_dir, &sink, &[]);
 
     assert!(!output.status.success());
     assert_eq!(output.status.code(), Some(64));
 
-    let script_path = home_dir.join(MATERIALIZED_SCRIPT_RELATIVE_PATH);
     assert!(
-        script_path.exists(),
-        "without --no-telemetry, update's report_cli_error must fire and materialize the \
-         transport script at {} -- if this positive control fails, the negative test above \
-         proves nothing",
-        script_path.display()
+        sink.wait_for_bodies(1, SINK_WAIT),
+        "without --no-telemetry, update's report_cli_error must fire and reach the sink -- if \
+         this positive control fails, the negative test above proves nothing"
     );
 
     std::fs::remove_dir_all(&home_dir).ok();
@@ -370,27 +393,19 @@ fn update_cli_error_report_fires_on_target_not_found_without_no_telemetry() {
 //
 // `dispatch_update_all_json`'s per-target failure branch, and
 // `update_one_target`'s failure arm when reached from the PLAIN `--all`
-// loop, both used to resolve telemetry identity via the process-global
-// `cached_identity` cache -- correct for a single target, but WRONG once
-// more than one distinct `target_dir` is visited in the same process:
-// every target after the first would report under whichever identity the
-// cache resolved FIRST, not its own. The fix routes both call sites
-// through `report_cli_error_for_target`/`report_error_for_target`
-// (`read_identity_uncached`) instead.
+// loop, both route through `report_cli_error_for_target`/
+// `report_error_for_target`, which resolve each target's own
+// `install-info.json` fresh per call rather than sharing any
+// process-lifetime state -- so a target visited later in the same
+// batch never inherits an earlier target's attribution.
 //
-// The exact per-target UUID is not observable from outside the process
-// (telemetry is fire-and-forget over HTTPS to an unreachable-by-design
-// placeholder host; nothing captures the wire body -- see this file's
-// own module docstring on why script materialization, not network
-// capture, is this test suite's established observability boundary).
-// The correctness of `read_identity_uncached` bypassing a poisoned
-// `IDENTITY_CACHE` is instead proven directly, at the unit level, by
-// `report.rs`'s own
-// `read_identity_uncached_returns_each_targets_own_identity_regardless_of_the_process_cache`.
-// What THIS subprocess test proves, that the unit test cannot: with 2+
-// distinct failing targets tracked in the SAME process's index, neither
-// target's `cli_error` report is silently dropped by the batch loop --
-// both appear in the single JSON document `update --all --json` emits.
+// The exact per-target harness is still not asserted on directly by
+// this section (the wire body's own field is not distinguished here
+// from any other field). What THIS subprocess test proves, that a
+// single-target test cannot: with 2+ distinct failing targets tracked
+// in the SAME process's index, neither target's `cli_error` report is
+// silently dropped by the batch loop -- both appear in the single JSON
+// document `update --all --json` emits.
 
 /// Seeds `<repo_root>/dist/kiro-cli-v2/agents/<name>.json`, mirroring
 /// real synth output layout -- same minimal fixture shape
@@ -429,6 +444,7 @@ fn make_target_stale(target_dir: &Path) {
 /// neither silently dropped or merged.
 #[test]
 fn update_all_json_batch_reports_every_distinct_failing_target_not_just_the_first() {
+    let sink = TelemetrySink::start();
     let home_dir = scratch_dir("batch-attribution-home");
     let repo_root = scratch_dir("batch-attribution-repo");
     let target_a = scratch_dir("batch-attribution-target-a");
@@ -441,6 +457,7 @@ fn update_all_json_batch_reports_every_distinct_failing_target_not_just_the_firs
         let output = run_konductor(
             &home_dir,
             target,
+            &sink,
             &[
                 CMD_INSTALL,
                 "--from",
@@ -471,7 +488,12 @@ fn update_all_json_batch_reports_every_distinct_failing_target_not_just_the_firs
     make_target_stale(&target_a);
     make_target_stale(&target_b);
 
-    let output = run_konductor(&home_dir, &home_dir, &[CMD_UPDATE, "--all", "--json"]);
+    let output = run_konductor(
+        &home_dir,
+        &home_dir,
+        &sink,
+        &[CMD_UPDATE, "--all", "--json"],
+    );
 
     assert_eq!(
         output.status.code(),
@@ -552,14 +574,22 @@ fn update_all_json_batch_reports_every_distinct_failing_target_not_just_the_firs
 /// needed only by the endpoint-caching regression below; every other
 /// test in this file relies on `run_konductor`'s plain (trace-off)
 /// behavior instead.
-fn run_konductor_with_debug_log(home_dir: &Path, target_dir: &Path, args: &[&str]) -> Output {
-    Command::new(bin())
+fn run_konductor_with_debug_log(
+    home_dir: &Path,
+    target_dir: &Path,
+    sink: &TelemetrySink,
+    args: &[&str],
+) -> Output {
+    let mut command = Command::new(bin());
+    command
         .args(args)
         .current_dir(target_dir)
         .env("HOME", home_dir)
-        .env("KONDUCTOR_LOG", "debug")
-        .output()
-        .expect("failed to spawn konductor binary")
+        .env("KONDUCTOR_LOG", "debug");
+    for var in sink.env_vars() {
+        command.env(var.name, &var.value);
+    }
+    command.output().expect("failed to spawn konductor binary")
 }
 
 /// Disables telemetry for `target_dir` specifically, via that target's
@@ -606,11 +636,12 @@ fn disable_telemetry_via_config(target_dir: &Path) {
 ///    own, from the single-target/non-batch call sites) never fires --
 ///    proving no `_for_target` sender in this batch touches that cache
 ///    at all anymore.
-/// 3. The transport script still materializes -- proving target A's
-///    enabled event was genuinely sent, not collaterally suppressed by
-///    target B's disablement.
+/// 3. The send still reaches the sink -- proving target A's enabled
+///    event was genuinely sent, not collaterally suppressed by target
+///    B's disablement.
 #[test]
 fn update_all_json_batch_honors_each_targets_own_telemetry_opt_out() {
+    let sink = TelemetrySink::start();
     let home_dir = scratch_dir("endpoint-opt-out-home");
     let repo_root = scratch_dir("endpoint-opt-out-repo");
     let target_a = scratch_dir("endpoint-opt-out-target-a");
@@ -623,6 +654,7 @@ fn update_all_json_batch_honors_each_targets_own_telemetry_opt_out() {
         let output = run_konductor(
             &home_dir,
             target,
+            &sink,
             &[
                 CMD_INSTALL,
                 "--from",
@@ -649,8 +681,12 @@ fn update_all_json_batch_honors_each_targets_own_telemetry_opt_out() {
     make_target_stale(&target_a);
     make_target_stale(&target_b);
 
-    let output =
-        run_konductor_with_debug_log(&home_dir, &home_dir, &[CMD_UPDATE, "--all", "--json"]);
+    let output = run_konductor_with_debug_log(
+        &home_dir,
+        &home_dir,
+        &sink,
+        &[CMD_UPDATE, "--all", "--json"],
+    );
 
     assert_eq!(
         output.status.code(),
@@ -685,13 +721,10 @@ fn update_all_json_batch_honors_each_targets_own_telemetry_opt_out() {
          stderr={stderr}"
     );
 
-    let script_path = home_dir.join(MATERIALIZED_SCRIPT_RELATIVE_PATH);
     assert!(
-        script_path.exists(),
-        "target A's telemetry-enabled cli_error event must still be genuinely sent, \
-         materializing the transport script at {} -- target B's opt-out must not \
-         collaterally suppress it",
-        script_path.display()
+        sink.wait_for_bodies(1, SINK_WAIT),
+        "target A's telemetry-enabled cli_error event must still be genuinely sent and reach \
+         the sink -- target B's opt-out must not collaterally suppress it"
     );
 
     std::fs::remove_dir_all(&home_dir).ok();

@@ -106,6 +106,58 @@ pub(crate) fn private_repo_hint(status: u16, token_state: TokenState) -> &'stati
     }
 }
 
+/// Self-diagnosis suffix for a resource-fetch call whose 404 can mask
+/// an unauthenticated private-repo request (`GithubFetchError::DownloadHttp`'s
+/// release-asset download, and `GithubBranchFetchError::MissingArtifact`/
+/// `MissingSidecar`'s branch-`dist/` Contents API fetch), where 404
+/// needs the same hint 401/403 already get. Delegates to
+/// `private_repo_hint` unchanged for every other status -- this only
+/// widens the gate for these 404-masking call sites, never touches
+/// `private_repo_hint`'s own 401/403 wording or its behavior for the
+/// metadata call, which stays exactly as narrow as before.
+///
+/// Both call sites 404 unauthenticated against a private repo's
+/// resource, BY DESIGN: GitHub returns 404 rather than 401/403 on both
+/// its release-asset download endpoint and its Contents API,
+/// specifically so an unauthorized caller can't distinguish "private
+/// repo" from "resource doesn't exist." The wording below names
+/// neither endpoint, so the identical text reads correctly for a
+/// release asset's download URL and a branch's `dist/` file alike.
+/// A caller with no token attached at
+/// all can never legitimately rule out "this 404 is the private-repo
+/// mask" -- so `NotOptedIn` and `OptedInEmptyOrUnset` (no token was
+/// actually sent either way) both still deserve the suggestion here,
+/// same as they already get for 401/403.
+///
+/// `OptedInSent` is deliberately excluded from this widened 404 gate,
+/// even though it still gets the 401/403 hint above: once a real,
+/// non-empty token was actually attached to the request and STILL got
+/// a 404 back, the far more likely explanation is a genuinely missing
+/// asset (a filename mismatch, an unpublished platform build) rather
+/// than an authorization gate a real token would have already
+/// unlocked. Widening this case too would repeat a suggestion the
+/// caller already followed for a failure a token can't fix --
+/// precisely the silent-loop noise `private_repo_hint`'s own
+/// `OptedInSent` wording exists to avoid for 401/403, applied the same
+/// way here.
+pub(crate) fn download_private_repo_hint(status: u16, token_state: TokenState) -> &'static str {
+    if status == 404 {
+        return match token_state {
+            TokenState::NotOptedIn => {
+                " -- this may be because the repository is private -- if so, set the \
+                 GITHUB_TOKEN environment variable and pass --use-github-token"
+            }
+            TokenState::OptedInEmptyOrUnset => {
+                " -- --use-github-token was passed but GITHUB_TOKEN is not set (or is \
+                 empty) in the environment -- this may be because the repository is \
+                 private"
+            }
+            TokenState::OptedInSent => "",
+        };
+    }
+    private_repo_hint(status, token_state)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -233,5 +285,115 @@ mod tests {
             "403 with a token sent may just be a rate limit, not necessarily a scope/access \
              problem, got: {message_403:?}"
         );
+    }
+
+    // ── download_private_repo_hint: the download-404 gap fix ────────
+
+    /// The exact case this fix closes: a 404 on the asset-DOWNLOAD
+    /// call, with `--use-github-token` never passed, must now name
+    /// both `GITHUB_TOKEN` and `--use-github-token` -- unlike
+    /// `private_repo_hint` itself, which stays silent on 404 (that
+    /// function is unchanged and still used verbatim by the metadata
+    /// call, where a 404 is genuinely ambiguous between "no release"
+    /// and "private repo").
+    #[test]
+    fn download_hint_404_not_opted_in_names_the_env_var_and_the_flag() {
+        let message = download_private_repo_hint(404, TokenState::NotOptedIn);
+        assert!(
+            message.contains("GITHUB_TOKEN"),
+            "must name GITHUB_TOKEN, got: {message:?}"
+        );
+        assert!(
+            message.contains("--use-github-token"),
+            "must hint at --use-github-token, got: {message:?}"
+        );
+    }
+
+    /// Same download-404 widening for `OptedInEmptyOrUnset`: the flag
+    /// was passed but no token was actually available to send, so the
+    /// 404 is still consistent with an unauthenticated private-repo
+    /// mask -- must report the empty/unset state, mirroring
+    /// `private_repo_hint`'s own 401/403 wording for this state.
+    #[test]
+    fn download_hint_404_opted_in_empty_or_unset_reports_the_empty_state() {
+        let message = download_private_repo_hint(404, TokenState::OptedInEmptyOrUnset);
+        assert!(
+            message.contains("GITHUB_TOKEN"),
+            "must name GITHUB_TOKEN, got: {message:?}"
+        );
+        assert!(
+            message.contains("not set") || message.contains("empty"),
+            "must describe the empty/unset state, got: {message:?}"
+        );
+    }
+
+    /// `OptedInSent` must NOT get a widened 404 hint: a real,
+    /// non-empty token was actually attached and still got a 404,
+    /// which is far more likely a genuinely missing asset than an
+    /// auth gate a real token would already have unlocked. Repeating
+    /// the suggestion here would be the same silent-loop noise
+    /// `private_repo_hint` already avoids for 401/403's `OptedInSent`
+    /// case.
+    #[test]
+    fn download_hint_404_opted_in_sent_omits_the_hint() {
+        assert_eq!(download_private_repo_hint(404, TokenState::OptedInSent), "");
+    }
+
+    /// Every status other than 404/401/403 must still stay silent for
+    /// every token state -- the widened gate is 404-specific, not a
+    /// blanket "any status" change.
+    #[test]
+    fn download_hint_other_statuses_still_omit_the_hint_for_every_token_state() {
+        for status in [429u16, 500u16, 503u16] {
+            for state in [
+                TokenState::NotOptedIn,
+                TokenState::OptedInEmptyOrUnset,
+                TokenState::OptedInSent,
+            ] {
+                assert_eq!(
+                    download_private_repo_hint(status, state),
+                    "",
+                    "status {status} with state {state:?} must not carry a hint"
+                );
+            }
+        }
+    }
+
+    /// For 401/403, `download_private_repo_hint` must delegate to
+    /// `private_repo_hint` unchanged -- proving this function only
+    /// widens the 404 case and never re-implements or diverges from
+    /// the existing 401/403 wording.
+    #[test]
+    fn download_hint_401_and_403_delegate_unchanged_to_private_repo_hint() {
+        for status in [401u16, 403u16] {
+            for state in [
+                TokenState::NotOptedIn,
+                TokenState::OptedInEmptyOrUnset,
+                TokenState::OptedInSent,
+            ] {
+                assert_eq!(
+                    download_private_repo_hint(status, state),
+                    private_repo_hint(status, state),
+                    "status {status} with state {state:?} must match private_repo_hint exactly"
+                );
+            }
+        }
+    }
+
+    /// `private_repo_hint` itself -- the metadata call's own hint
+    /// function -- must remain untouched: still silent on 404
+    /// regardless of token state. This is the deliberate boundary:
+    /// the metadata call's 404 stays ambiguous (no release published
+    /// vs. private repo) and fallback-eligible, so widening its hint
+    /// would contradict that existing design rather than fix a bug.
+    #[test]
+    fn private_repo_hint_itself_still_omits_404_for_every_token_state() {
+        for state in [
+            TokenState::NotOptedIn,
+            TokenState::OptedInEmptyOrUnset,
+            TokenState::OptedInSent,
+        ] {
+            assert_eq!(private_repo_hint(404, state), "");
+        }
     }
 }

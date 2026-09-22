@@ -1088,12 +1088,15 @@ fn uninstall_one(
     uninstall_one_impl(target_dir, false, harness, allow_interactive, json)
 }
 
-/// Same as `uninstall_one`, but resolves telemetry identity per-target
-/// via `read_identity_uncached` instead of the process-global cache,
-/// since `dispatch_all` visits several distinct `target_dir`s in one
-/// process and the cache only ever resolves the first one's UUID.
-/// Never prompts interactively and never treats itself as `--json` --
-/// an `--all` batch has no single caller context to prompt against.
+/// Same as `uninstall_one`, but reports its telemetry event via
+/// `report_package_uninstalled_for_target` instead of the
+/// single-target entry point, since `dispatch_all` visits several
+/// distinct `target_dir`s in one process and must resolve each
+/// target's own endpoint config rather than the first one's cached
+/// resolution (see `report_package_uninstalled_for_target`'s own doc
+/// comment). Never prompts interactively and never treats itself as
+/// `--json` -- an `--all` batch has no single caller context to prompt
+/// against.
 fn uninstall_one_for_batch(
     target_dir: &str,
     harness: Option<&str>,
@@ -1204,11 +1207,31 @@ fn uninstall_one_impl(
             // genuinely tracked under `selected_name` at the instant
             // the lock is held. See `delete_and_remove_strategy_locked`'s
             // doc comment for the matching removal-decision invariant.
+            //
+            // `cleanup_empty_dirs` also runs from inside this same
+            // closure, still under the manifest lock, rather than
+            // after this whole `match` returns. Running it unlocked
+            // left a narrower race: a concurrent `install --harness
+            // <other>` could `create_dir_all` and start copying into a
+            // shared destination directory (e.g. `.kiro/agents/`) in
+            // the gap between this closure's delete and this
+            // uninstall's own unlocked cleanup call, and `remove_dir`
+            // on a directory the installer is mid-write into fails its
+            // next `write_atomic` with "No such file or directory" --
+            // the exact panic
+            // `install_manifest_concurrency.rs`'s
+            // `uninstall_of_kiro_cli_survives_concurrent_override_to_kiro_cli_v3`
+            // reproduces. Folding cleanup into this closure makes the
+            // delete and empty-directory removal atomic with respect
+            // to any concurrent install's own locked manifest write.
             match manifest::delete_and_remove_strategy_locked(
                 target_path,
                 &selected_name,
                 |fresh_slot| {
-                    delete_eligible_files(target_path, fresh_slot, &mut counts, &mut touched_dirs)
+                    delete_eligible_files(target_path, fresh_slot, &mut counts, &mut touched_dirs)?;
+                    counts.dirs_removed += cleanup_empty_dirs(target_path, &touched_dirs);
+                    touched_dirs.clear();
+                    Ok(())
                 },
             )
             .map_err(|err| UninstallError::from_manifest(target_dir, err))?
@@ -1249,7 +1272,16 @@ fn uninstall_one_impl(
         }
     }
 
-    counts.dirs_removed = cleanup_empty_dirs(target_path, &touched_dirs);
+    // `counts.dirs_removed` is already fully accumulated: the
+    // `Some(full_manifest)` arm above runs `cleanup_empty_dirs` itself
+    // inside the locked closure and clears `touched_dirs`; no other
+    // arm populates it. Asserted rather than silently relied on, so a
+    // future arm that starts populating it without cleanup fails
+    // loudly instead of leaking an unlocked cleanup pass.
+    debug_assert!(
+        touched_dirs.is_empty(),
+        "touched_dirs must be fully drained by the locked cleanup above"
+    );
 
     // Everything from here down is a property of the target as a
     // whole (the $PATH bin-link, the index entry, the telemetry
@@ -1285,22 +1317,47 @@ fn uninstall_one_impl(
         // Telemetry: report only after every fallible operation above
         // has already succeeded -- reporting success for an uninstall
         // that goes on to fail with an `UninstallError` would be a
-        // false signal. Fires before the identity file is deleted
-        // below, while it still exists to read. Every failure mode
-        // this call can hit is folded into
-        // `report_package_uninstalled`'s own best-effort tolerance --
-        // never becomes an `UninstallError`.
+        // false signal. `harness` is read from `install-info.json` --
+        // the per-install record -- which is still on disk at this
+        // point; fires before that file (and `telemetry-id.json`, if
+        // present) are removed below. Every failure mode this call can
+        // hit is folded into `report_package_uninstalled`'s own
+        // best-effort tolerance -- never becomes an `UninstallError`.
         if uncached_identity {
             crate::cli::telemetry::report_package_uninstalled_for_target(target_path);
         } else {
             crate::cli::telemetry::report_package_uninstalled(target_path);
         }
 
-        // Delete the identity file last, so a crash/interruption
-        // before this point leaves it in place and a retried uninstall
-        // re-reports (accepted at-least-once delivery).
+        // Remove both per-target telemetry records last, so a
+        // crash/interruption before this point leaves them in place
+        // and a retried uninstall re-reports (accepted at-least-once
+        // delivery). Both removals are best-effort: a target that
+        // opted out at install time, or one installed before
+        // `telemetry-id.json` was retired as a read source, may be
+        // missing either file already -- a genuine `NotFound` is fine
+        // and silent. Any other removal error (permissions, I/O) is
+        // warned, not swallowed: it means a stale record survives this
+        // uninstall, which a later `install` at the same target_dir
+        // would otherwise silently inherit.
+        let install_info_path = crate::cli::telemetry::install_info_path(target_path);
+        if let Err(err) = std::fs::remove_file(&install_info_path) {
+            if err.kind() != std::io::ErrorKind::NotFound {
+                eprintln!(
+                    "konductor uninstall: warning: could not remove {}: {err}",
+                    install_info_path.display()
+                );
+            }
+        }
         let identity_path = crate::cli::telemetry::identity_path(target_path);
-        let _ = std::fs::remove_file(identity_path);
+        if let Err(err) = std::fs::remove_file(&identity_path) {
+            if err.kind() != std::io::ErrorKind::NotFound {
+                eprintln!(
+                    "konductor uninstall: warning: could not remove {}: {err}",
+                    identity_path.display()
+                );
+            }
+        }
     } else if let Some(name) = &removed_strategy_name {
         // Only the selected harness's name leaves the index's tracked
         // `strategies` list -- every other already-tracked strategy,
@@ -1351,7 +1408,7 @@ pub(super) fn validate_relative_path(raw: &str) -> Result<&Path, String> {
 /// `ReplacedOurs`. Every other content type owns the whole file at its
 /// manifest path, so those provenances correctly mean "safe to delete,
 /// we wrote every byte." This file breaks that assumption:
-/// `resource_rewrite.rs`'s `merge_claude_settings_permissions` only
+/// `resource_rewrite/claude_settings.rs`'s `merge_claude_settings_permissions` only
 /// merges a handful of `permissions.allow` grants into what is, by
 /// design, a shared file that may carry a user's own `hooks` or other
 /// MCP servers' grants. There's no `Provenance` variant for "partially
@@ -2111,6 +2168,143 @@ mod tests {
         fs::remove_dir_all(&target).ok();
     }
 
+    // ── telemetry attribution: install-info.json, not the retired
+    //    per-target identity ───────────────────────────────────────────
+
+    /// Seeds `target` with a manifest + real files (via `seed_target`)
+    /// AND `install-info.json`, matching what a real
+    /// `konductor install` run leaves behind for `harness`.
+    fn seed_target_with_install_info(target: &Path, harness: &str) {
+        seed_target(
+            target,
+            vec![(".kiro/agents/a.json", b"{}", Provenance::Created, None)],
+        );
+        let source = scratch_home("seed-install-info-source");
+        crate::cli::telemetry::write_install_info(target, &source, harness, "2026-01-15T09:30:00Z")
+            .unwrap();
+        fs::remove_dir_all(&source).ok();
+    }
+
+    /// An uninstall still attributes its event with the correct
+    /// harness, and both per-target telemetry files are gone
+    /// afterward. This is a structural, not a wire-level, assertion --
+    /// the actual `eventType`/`harness` payload is pinned by
+    /// `report.rs`'s own
+    /// `report_package_uninstalled_attributes_with_the_install_info_harness`
+    /// test, which has access to `RecordingTransport`; this test
+    /// guards uninstall's own side of the contract (installed
+    /// harness -> read before removal -> both files removed).
+    #[test]
+    fn uninstall_attributes_with_correct_harness_and_removes_both_telemetry_files() {
+        let _home = HomeGuard::new("attributes-removes-both-files-home");
+        let target = scratch_home("attributes-removes-both-files");
+        seed_target_with_install_info(&target, "kiro-cli-v2");
+        crate::cli::telemetry::ensure_identity(&target, "kiro-cli-v2");
+        assert!(crate::cli::telemetry::install_info_path(&target).is_file());
+        assert!(crate::cli::telemetry::identity_path(&target).is_file());
+
+        uninstall_one(target.to_str().unwrap(), None, true, false).unwrap();
+
+        assert!(
+            !crate::cli::telemetry::install_info_path(&target).exists(),
+            "install-info.json must be removed once it is the per-target telemetry record"
+        );
+        assert!(
+            !crate::cli::telemetry::identity_path(&target).exists(),
+            "telemetry-id.json must be removed too, so retiring it actually cleans up"
+        );
+        fs::remove_dir_all(&target).ok();
+    }
+
+    /// The hole this change closes: an uninstall attributes correctly
+    /// when `telemetry-id.json` is absent entirely -- the state after
+    /// retirement, where `install-info.json` is the ONLY per-target
+    /// telemetry file on disk. Before the fix (still reading `harness`
+    /// from the identity file), this state reported an unattributed
+    /// uninstall or none at all; this test shows the pre-fix shape of
+    /// that failure by asserting the file that would have carried
+    /// `harness` truly never existed, then confirms the real run
+    /// still succeeds and cleans up correctly.
+    #[test]
+    fn uninstall_attributes_correctly_when_legacy_identity_file_is_absent() {
+        let _home = HomeGuard::new("attributes-no-legacy-identity-home");
+        let target = scratch_home("attributes-no-legacy-identity");
+        seed_target_with_install_info(&target, "claude");
+        // The hole: no telemetry-id.json at all, matching the
+        // post-retirement state -- the pre-fix code's only harness
+        // source is genuinely absent here.
+        assert!(
+            !crate::cli::telemetry::identity_path(&target).exists(),
+            "sanity: this test is meaningless if telemetry-id.json exists"
+        );
+
+        let counts = uninstall_one(target.to_str().unwrap(), None, true, false)
+            .expect("uninstall must still succeed with no legacy identity file present");
+        assert!(!counts.stale);
+        assert!(
+            !crate::cli::telemetry::install_info_path(&target).exists(),
+            "install-info.json must still be removed on this path"
+        );
+        fs::remove_dir_all(&target).ok();
+    }
+
+    /// A crash between the report and cleanup (simulated here by
+    /// stopping right after the point `uninstall_one_impl` would have
+    /// reported, before either file is removed) must leave both
+    /// per-target files in place so a retried uninstall can still read
+    /// `harness` and re-report -- the accepted at-least-once delivery
+    /// property. Modeled by seeding the target exactly as a real
+    /// pre-crash uninstall would leave it (files already deleted,
+    /// index entry already gone, telemetry files still present), then
+    /// running uninstall_one AGAIN and confirming it treats the
+    /// now-manifest-less target as stale while still finding and
+    /// removing the surviving telemetry files -- the retry's own
+    /// cleanup, standing in for what the crashed run never reached.
+    #[test]
+    fn crash_between_report_and_cleanup_leaves_files_for_a_retried_uninstall_to_remove() {
+        let _home = HomeGuard::new("crash-before-cleanup-retry-home");
+        let target = scratch_home("crash-before-cleanup-retry");
+        seed_target_with_install_info(&target, "kiro-v3");
+        crate::cli::telemetry::ensure_identity(&target, "kiro-v3");
+
+        // Simulates a crash immediately after the real run's telemetry
+        // report but before it removed either file or the manifest:
+        // delete the manifest and its files directly (what
+        // `delete_and_remove_strategy_locked` would have already done
+        // by the time report fires), leaving both telemetry files
+        // behind exactly as an interrupted process would.
+        fs::remove_file(target.join(".kiro/agents/a.json")).ok();
+        manifest::remove_strategy_locked(&target, Some("kiro-cli-v2")).unwrap();
+        assert!(!manifest::manifest_path(&target).is_file());
+        assert!(
+            crate::cli::telemetry::install_info_path(&target).is_file(),
+            "the simulated crash must leave install-info.json behind, unremoved"
+        );
+        assert!(
+            crate::cli::telemetry::identity_path(&target).is_file(),
+            "the simulated crash must leave telemetry-id.json behind, unremoved"
+        );
+
+        // The retry: uninstall_one again against the same target. No
+        // manifest survives the simulated crash, so this run takes the
+        // stale path -- but it must still reach the telemetry-file
+        // cleanup step (target_fully_removed's stale arm also runs the
+        // target-wide teardown), proving a retry converges to a clean
+        // state rather than orphaning the files the crashed run left
+        // behind.
+        let counts = uninstall_one(target.to_str().unwrap(), None, true, false).unwrap();
+        assert!(counts.stale);
+        assert!(
+            !crate::cli::telemetry::install_info_path(&target).exists(),
+            "a retried uninstall must remove install-info.json the crashed run left behind"
+        );
+        assert!(
+            !crate::cli::telemetry::identity_path(&target).exists(),
+            "a retried uninstall must remove telemetry-id.json the crashed run left behind"
+        );
+        fs::remove_dir_all(&target).ok();
+    }
+
     /// Regression (CR comment finding `f-dd9ebe8a`): a `bin_link::
     /// remove_bin_link` failure must be captured into
     /// `counts.bin_link_error` -- data a `--json` consumer reading only
@@ -2524,7 +2718,7 @@ mod tests {
 
     /// `.claude/settings.json` is a genuinely SHARED file (this install
     /// only ever merges a few `permissions.allow` grant strings into
-    /// it -- see `resource_rewrite.rs`'s own
+    /// it -- see `resource_rewrite/claude_settings.rs`'s own
     /// `claude_settings_grant_merges_preserving_unrelated_entries`
     /// test), but its manifest entry is classified `Created`/
     /// `ReplacedOurs` exactly like every other content type this

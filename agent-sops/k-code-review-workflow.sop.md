@@ -10,6 +10,7 @@ This SOP runs a comprehensive multi-skill code review across backend, frontend, 
 - **review_type** (optional, default: `all`): Scope — `backend`, `frontend`, `infra`, or `all`
 - **output_file** (optional, default: `code-review-report.md`): File to write the consolidated report
 - **cr_url** (optional): URL of the code review, forwarded to `k-adversarial-pull-request-review` as its `pr_url` in Step 6. When absent, Step 6 runs without a URL and its review is diff-only.
+- **base_branch** (optional): Branch to diff against. If not provided, You MUST resolve the remote's default branch first and use it if found, falling back to `main` only if the remote default cannot be resolved. Trying `main` first would let a stale, abandoned `main` win over a repo's real trunk whenever both exist. To resolve the remote's default branch, You MUST run `git symbolic-ref --quiet --short refs/remotes/origin/HEAD` and strip the `origin/` prefix; if that returns nothing, You MUST fall back to `git ls-remote --symref origin HEAD` and parse the branch name from its `ref: refs/heads/<branch>` line, since the local symref is frequently unset in shallow or single-ref checkouts. If neither lookup resolves a branch name, You MUST fall back to `main`.
 
 **Constraints for parameter acquisition:**
 
@@ -24,8 +25,8 @@ Identify files to review via git diff or directory scan.
 
 **Constraints:**
 
-- You MUST first try `git diff main...HEAD` (or `mainline`) within `source_dir` to capture the full diff content (hunks), from which the changed-file list is derived
-- If not in a git repo, You MUST fall back to scanning `source_dir` recursively
+- You MUST run `git diff base_branch...HEAD` (three-dot, merge-base form) if `base_branch` is provided, else `git diff <default_branch>...HEAD` using the remote's resolved default branch, falling back to `git diff main...HEAD` only if that cannot be resolved, within `source_dir`, to capture the full diff content (hunks), from which the changed-file list is derived
+- If not in a git repository at all (`git rev-parse --is-inside-work-tree` fails or returns false), You MUST fall back to listing all files under `source_dir` recursively (e.g. via `find` or a recursive glob), applying the same exclusions as the line below, and treating every remaining file as "changed" for categorization purposes in Step 2. If in a git repository, treat the diff target as unresolved only when running the resolved `git diff <target>...HEAD` command itself fails because that target does not exist as a ref. When that happens, You MUST report it explicitly rather than silently falling through to this recursive-scan fallback, then ask the caller for `base_branch` if a reply channel is available; in an unattended run with no reply channel, You MUST use the recursive-scan fallback above instead, stating in the report that the diff target was unresolved and every file under `source_dir` was treated as changed.
 - You MUST exclude: `node_modules/`, `build/`, `dist/`, `cdk.out/`, lock files, `.js.map` files
 
 **Expected Output:** Full diff content (hunks) and the list of changed files derived from it for categorization

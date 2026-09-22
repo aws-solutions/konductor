@@ -39,17 +39,24 @@ fn scratch_home(name: &str) -> PathBuf {
     dir
 }
 
-/// Runs the real `konductor` binary with `KONDUCTOR_LOG` set to
-/// `konductor_log_value` (pass `None` to leave it unset), `HOME`
-/// overridden to `home` (an isolated scratch dir), and `args` as the
-/// invocation's arguments.
-fn run_konductor(home: &Path, konductor_log_value: Option<&str>, args: &[&str]) -> Output {
+/// Runs `konductor` with `HOME`/cwd both overridden to `home`,
+/// telemetry redirected to `sink`, and `konductor_log_value` (if
+/// `Some`) set as `KONDUCTOR_LOG`.
+fn run_konductor(
+    home: &Path,
+    sink: &telemetry_test_sink::TelemetrySink,
+    konductor_log_value: Option<&str>,
+    args: &[&str],
+) -> Output {
     let mut cmd = Command::new(bin());
     cmd.args(args).current_dir(home).env("HOME", home);
     match konductor_log_value {
         Some(value) => cmd.env("KONDUCTOR_LOG", value),
         None => cmd.env_remove("KONDUCTOR_LOG"),
     };
+    for var in sink.env_vars() {
+        cmd.env(var.name, &var.value);
+    }
     cmd.output().expect("failed to spawn konductor binary")
 }
 
@@ -61,8 +68,9 @@ fn run_konductor(home: &Path, konductor_log_value: Option<&str>, args: &[&str]) 
 #[test]
 fn konductor_log_debug_emits_trace_lines_to_stderr() {
     let home = scratch_home("emits");
+    let sink = telemetry_test_sink::TelemetrySink::start();
 
-    let output = run_konductor(&home, Some("debug"), &["doctor", "--target", "/tmp"]);
+    let output = run_konductor(&home, &sink, Some("debug"), &["doctor", "--target", "/tmp"]);
     let stderr = String::from_utf8_lossy(&output.stderr);
 
     assert!(
@@ -100,8 +108,9 @@ fn konductor_log_debug_emits_trace_lines_to_stderr() {
 #[test]
 fn konductor_log_unset_emits_no_trace_lines() {
     let home = scratch_home("unset");
+    let sink = telemetry_test_sink::TelemetrySink::start();
 
-    let output = run_konductor(&home, None, &["doctor", "--target", "/tmp"]);
+    let output = run_konductor(&home, &sink, None, &["doctor", "--target", "/tmp"]);
     let stderr = String::from_utf8_lossy(&output.stderr);
 
     assert!(
@@ -118,9 +127,10 @@ fn konductor_log_unset_emits_no_trace_lines() {
 #[test]
 fn konductor_log_wrong_value_emits_no_trace_lines() {
     let home = scratch_home("wrong-value");
+    let sink = telemetry_test_sink::TelemetrySink::start();
 
     for value in ["Debug", "DEBUG", "trace", "1", "true"] {
-        let output = run_konductor(&home, Some(value), &["doctor", "--target", "/tmp"]);
+        let output = run_konductor(&home, &sink, Some(value), &["doctor", "--target", "/tmp"]);
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
             !stderr
@@ -138,9 +148,11 @@ fn konductor_log_wrong_value_emits_no_trace_lines() {
 #[test]
 fn konductor_log_debug_never_mixes_into_json_stdout() {
     let home = scratch_home("json-isolation");
+    let sink = telemetry_test_sink::TelemetrySink::start();
 
     let output = run_konductor(
         &home,
+        &sink,
         Some("debug"),
         &["doctor", "--target", "/tmp", "--json"],
     );
@@ -171,6 +183,7 @@ fn konductor_log_debug_never_mixes_into_json_stdout() {
 #[test]
 fn konductor_log_debug_traces_a_failing_invocation_too() {
     let home = scratch_home("traces-failure");
+    let sink = telemetry_test_sink::TelemetrySink::start();
     // Remove HOME so `doctor`'s own destination resolution fails --
     // this only affects `$HOME`-based destination resolution, not
     // `KONDUCTOR_LOG`, which is read independently.
@@ -178,6 +191,9 @@ fn konductor_log_debug_traces_a_failing_invocation_too() {
     cmd.args(["doctor"]).current_dir(&home);
     cmd.env("KONDUCTOR_LOG", "debug");
     cmd.env_remove("HOME");
+    for var in sink.env_vars() {
+        cmd.env(var.name, &var.value);
+    }
     let output = cmd.output().expect("failed to spawn konductor binary");
 
     assert_ne!(

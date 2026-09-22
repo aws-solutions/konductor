@@ -42,27 +42,40 @@ fn scratch_dir(name: &str) -> PathBuf {
 /// shell wrapper. Each argument is single-quoted for the shell; none of
 /// the paths/args this test passes contain a `'`, so no escaping beyond
 /// that is needed.
-fn run_konductor_with_deleted_cwd(args: &[&str]) -> Output {
+///
+/// `resolve_cwd()`'s own failure path always reports a
+/// `dispatch.cwd_unavailable` `cli_error` event (see dispatch.rs),
+/// regardless of which command triggered it -- `sink` redirects that
+/// event to a loopback fixture rather than the real endpoint. Passed
+/// through the shell wrapper as an env var (rather than
+/// `Command::env()` on the `sh` process directly) so the `exec`'d
+/// `konductor` process inherits it.
+fn run_konductor_with_deleted_cwd(
+    sink: &telemetry_test_sink::TelemetrySink,
+    args: &[&str],
+) -> Output {
     let scratch = scratch_dir("deleted");
     let scratch_str = scratch.to_str().unwrap();
     let quoted_args: Vec<String> = args.iter().map(|a| format!("'{a}'")).collect();
+    let mut command = Command::new("sh");
     let shell_cmd = format!(
         "cd '{scratch_str}' && rmdir '{scratch_str}' && exec '{}' {}",
         bin(),
         quoted_args.join(" ")
     );
-    Command::new("sh")
-        .arg("-c")
-        .arg(shell_cmd)
-        .output()
-        .expect("failed to spawn sh")
+    command.arg("-c").arg(shell_cmd);
+    for var in sink.env_vars() {
+        command.env(var.name, &var.value);
+    }
+    command.output().expect("failed to spawn sh")
 }
 
 /// `konductor doctor --json` with an unresolvable cwd must emit the
 /// `--json` error envelope on stdout, not a plain-text line on stderr.
 #[test]
 fn doctor_json_resolve_cwd_failure_emits_json_envelope_not_plain_text() {
-    let output = run_konductor_with_deleted_cwd(&["doctor", "--json"]);
+    let sink = telemetry_test_sink::TelemetrySink::start();
+    let output = run_konductor_with_deleted_cwd(&sink, &["doctor", "--json"]);
 
     assert_ne!(
         output.status.code(),
@@ -97,7 +110,8 @@ fn doctor_json_resolve_cwd_failure_emits_json_envelope_not_plain_text() {
 /// `--json` error envelope on stdout, not a plain-text line on stderr.
 #[test]
 fn synth_json_resolve_cwd_failure_emits_json_envelope_not_plain_text() {
-    let output = run_konductor_with_deleted_cwd(&["synth", "--json"]);
+    let sink = telemetry_test_sink::TelemetrySink::start();
+    let output = run_konductor_with_deleted_cwd(&sink, &["synth", "--json"]);
 
     assert_ne!(
         output.status.code(),
@@ -135,7 +149,8 @@ fn synth_json_resolve_cwd_failure_emits_json_envelope_not_plain_text() {
 /// non-`--json` path.
 #[test]
 fn doctor_without_json_resolve_cwd_failure_stays_plain_text() {
-    let output = run_konductor_with_deleted_cwd(&["doctor"]);
+    let sink = telemetry_test_sink::TelemetrySink::start();
+    let output = run_konductor_with_deleted_cwd(&sink, &["doctor"]);
 
     assert_ne!(
         output.status.code(),

@@ -229,6 +229,22 @@ impl InstallStrategy for ClaudeInstallStrategy {
             files,
         );
         super::manifest::upsert_strategy(target_dir, complete)?;
+
+        // Same call, same rationale, as `kiro_cli.rs`'s own identical
+        // call site.
+        if !no_telemetry {
+            if let Err(err) = crate::cli::telemetry::write_install_info(
+                target_dir,
+                repo_root,
+                self.name(),
+                installed_at,
+            ) {
+                eprintln!(
+                    "konductor install: warning: could not write install-info.json at {}: {err}",
+                    target_dir.display()
+                );
+            }
+        }
         Ok(())
     }
 }
@@ -582,7 +598,7 @@ pub(super) fn install_agents(
 /// Unconditional over every staged SOP, not per-agent-filtered --
 /// mirrors `install_skills`'s own "copy everything staged" contract:
 /// Claude Code has no per-agent server-side filtering mechanism the way
-/// Kiro's `--agent-sop-filter` provides (see `resource_rewrite.rs`'s
+/// Kiro's `--agent-sop-filter` provides (see `resource_rewrite/mcp_server.rs`'s
 /// `McpServerPass`), so scoping which agent's frontmatter references
 /// which SOP-skill is left to synth/authoring, not to selective
 /// installation here.
@@ -721,9 +737,8 @@ const MAX_DESCRIPTION_CHARS: usize = 400;
 
 /// Generalized form of `render_sop_skill_md`: identical frontmatter/body
 /// wrapping, but `disable_model_invocation` controls whether the
-/// `disable-model-invocation: true` frontmatter key is emitted at all, and
-/// whether an advisory invocation-guard is prepended to the description
-/// and body.
+/// `disable-model-invocation: true` frontmatter key, and the `arguments`
+/// array, are emitted at all.
 ///
 /// Claude Code's own callers always pass `true` (see `render_sop_skill_md`
 /// above) -- these SOP-derived skills are meant to be explicitly
@@ -752,14 +767,16 @@ const MAX_DESCRIPTION_CHARS: usize = 400;
 /// either, so a Kiro-targeted `SKILL.md` never carries it, for the same
 /// "unrecognized key" reason.
 ///
-/// Because Kiro cannot enforce non-invocation, `disable_model_invocation
-/// == false` instead prepends `kiro_invocation_guard`'s advisory text to
-/// both the `description:` value and the body, ahead of the
-/// `<agent-sop>` wrapper. This is advisory only: it asks a Kiro-side
-/// model not to invoke the skill on its own initiative, but nothing in
-/// Kiro prevents an agent from doing so anyway -- every skill under
-/// `.kiro/skills/` remains visible and invocable by every agent
-/// regardless of this text.
+/// A Kiro-rendered SOP skill (`disable_model_invocation == false`)
+/// carries no advisory guard text of any kind. Nothing in this codebase
+/// attempts to discourage a Kiro-side agent from invoking a SOP skill on
+/// its own initiative; every skill under `.kiro/skills/` remains visible
+/// and invocable by every agent. There is no enforcement mechanism on
+/// Kiro that could gate this, and prose asking a model not to
+/// self-invoke has proven unreliable in practice -- a Kiro-side model
+/// can treat it as decisive on one task and ignore it entirely on
+/// another, depending on how the task is framed -- so it is not worth
+/// carrying text that only sometimes changes behavior.
 fn render_sop_skill_md_with_options(
     sop_name: &str,
     body: &str,
@@ -767,37 +784,7 @@ fn render_sop_skill_md_with_options(
 ) -> String {
     let base_description = extract_overview_description(body)
         .unwrap_or_else(|| format!("Standard operating procedure: {sop_name}."));
-
-    let description = if disable_model_invocation {
-        truncate_description(&base_description, MAX_DESCRIPTION_CHARS)
-    } else {
-        // Clamp the guard's own contribution first, to at most
-        // `MAX_DESCRIPTION_CHARS - 1` chars (the `-1` reserves the
-        // separating space below). `sop_name` is a staged file name with
-        // no length limit of its own, so an unclamped guard can exceed
-        // `MAX_DESCRIPTION_CHARS` by itself -- the summary budget below
-        // would still saturate to 0, but the composed description would
-        // remain over the bound regardless of what the (empty) summary
-        // contributes. Clamping here, rather than only ever-appending an
-        // ellipsis in `word_boundary_truncate`'s own degenerate branch,
-        // is what actually bounds the composed total: it guarantees
-        // `guard.chars().count() + 1 <= MAX_DESCRIPTION_CHARS`, so the
-        // summary budget derived from it is always non-negative and the
-        // final `format!` below never exceeds `MAX_DESCRIPTION_CHARS`,
-        // regardless of how long `sop_name` is.
-        let guard = truncate_description(
-            &kiro_invocation_guard(sop_name),
-            MAX_DESCRIPTION_CHARS.saturating_sub(1),
-        );
-        // The guard is prepended, not appended, so it is never itself the
-        // part that gets cut -- the derived summary absorbs the bound
-        // instead, shrunk by exactly the guard's own footprint (plus the
-        // one separating space) so the combined string still fits
-        // `MAX_DESCRIPTION_CHARS`.
-        let summary_budget = MAX_DESCRIPTION_CHARS.saturating_sub(guard.chars().count() + 1);
-        let summary = truncate_description(&base_description, summary_budget);
-        format!("{guard} {summary}")
-    };
+    let description = truncate_description(&base_description, MAX_DESCRIPTION_CHARS);
 
     let mut frontmatter = format!(
         "---\nname: {}\ndescription: {}\n",
@@ -815,62 +802,12 @@ fn render_sop_skill_md_with_options(
     }
     frontmatter.push_str("---\n\n");
 
-    let body_prefix = if disable_model_invocation {
-        String::new()
-    } else {
-        format!(
-            "{} Do not invoke this skill on your own initiative.\n\n",
-            kiro_invocation_guard(sop_name)
-        )
-    };
-
     let escaped_name = escape_xml_attr(sop_name);
     let guarded_body = guard_sop_body(body);
     format!(
-        "{frontmatter}{body_prefix}<agent-sop name=\"{escaped_name}\"><content>\n{guarded_body}\n</content><user-input>$ARGUMENTS</user-input></agent-sop>\n"
+        "{frontmatter}<agent-sop name=\"{escaped_name}\"><content>\n{guarded_body}\n</content><user-input>$ARGUMENTS</user-input></agent-sop>\n"
     )
 }
-
-/// Advisory-only text asking a Kiro-side model to treat `sop_name`'s
-/// skill as invoked only on deliberate `/sop-<name>` selection. Prepended
-/// to both the description and the body by `render_sop_skill_md_with_options`
-/// when `disable_model_invocation` is `false` -- see that function's own
-/// doc comment for why no enforced mechanism exists on Kiro. `/sop-` (not
-/// bare `/<sop_name>`) because the installed skill's own `name:` field is
-/// `sop-<sop_name>`, matching Claude Code's own slash form and Kiro's own
-/// slash-command-by-skill-name convention.
-///
-/// `sop_name`'s own contribution to this text is bounded to
-/// `MAX_GUARD_SOP_NAME_CHARS` characters (word-boundary truncated, with
-/// an ellipsis, past that) BEFORE the fixed surrounding prose is added.
-/// `sop_name` is a staged file name with no length limit of its own, and
-/// `render_sop_skill_md_with_options`'s later `truncate_description` call
-/// on this function's return value has no notion of "this substring is
-/// the one part that must survive" -- for a sufficiently long `sop_name`,
-/// its word-boundary cut can land in the fixed "Run only when explicitly
-/// invoked as " prose, before the `/sop-<name>` slug even starts,
-/// dropping the one piece of text this whole advisory exists to state.
-/// Bounding `sop_name`'s OWN contribution here first keeps the composed
-/// text's total length comfortably under that later budget regardless of
-/// how long the real `sop_name` is, so that later truncation call becomes
-/// a no-op for this string and the slug always survives.
-fn kiro_invocation_guard(sop_name: &str) -> String {
-    let guard_sop_name = if sop_name.chars().count() > MAX_GUARD_SOP_NAME_CHARS {
-        word_boundary_truncate(sop_name, MAX_GUARD_SOP_NAME_CHARS)
-    } else {
-        sop_name.to_string()
-    };
-    format!("Run only when explicitly invoked as /sop-{guard_sop_name}.")
-}
-
-/// Upper bound, in characters, on `sop_name`'s own contribution to
-/// `kiro_invocation_guard`'s rendered text -- see that function's own doc
-/// comment for why this exists. Comfortably larger than any real SOP
-/// name in this package's own `agent-sops/` (the longest is under 40
-/// characters), so this bound is never reached in practice; it exists
-/// only to guarantee the slug survives for a pathologically long
-/// `sop_name`.
-const MAX_GUARD_SOP_NAME_CHARS: usize = 60;
 
 /// Extracts the generated skill's `description:` from `body`'s own
 /// `## Overview` section: every non-blank physical line of the section's
@@ -1753,20 +1690,19 @@ mod tests {
     }
 
     /// Kiro has no `disable-model-invocation`-equivalent frontmatter key
-    /// (see `render_sop_skill_md_with_options`'s own doc comment), so the
-    /// `disable_model_invocation = false` path must carry the advisory
-    /// guard instead: prefixed onto the description, and as a standalone
-    /// instruction line ahead of the `<agent-sop>` wrapper. Neither the
-    /// frontmatter key nor either guard placement leaks into the Claude
-    /// path (`disable_model_invocation = true`).
+    /// (see `render_sop_skill_md_with_options`'s own doc comment), and it
+    /// also carries no advisory guard text of any kind: nothing on Kiro
+    /// enforces such a guard, and prose asking a model not to self-invoke
+    /// has proven unreliable in practice, so the Kiro path renders the
+    /// same plain description and body a `.sop.md` conversion would
+    /// carry with no advisory prose at all.
     #[test]
-    fn render_sop_skill_md_with_options_advisory_guards_the_kiro_path_only() {
+    fn render_sop_skill_md_with_options_kiro_path_carries_no_advisory_guard() {
         let body = "# Ticket Sync\n\n## Overview\n\nSyncs tickets.\n\nBody text.\n";
 
         let kiro_rendered = render_sop_skill_md_with_options("ticket-sync", body, false);
         assert!(
-            kiro_rendered
-                .contains("description: \"Run only when explicitly invoked as /sop-ticket-sync. Syncs tickets.\"\n"),
+            kiro_rendered.contains("description: \"Syncs tickets.\"\n"),
             "got: {kiro_rendered}"
         );
         assert!(
@@ -1774,16 +1710,18 @@ mod tests {
             "Kiro has no equivalent key to emit, got: {kiro_rendered}"
         );
         assert!(
-            kiro_rendered.contains(
-                "Run only when explicitly invoked as /sop-ticket-sync. Do not invoke this skill on your own initiative.\n\n<agent-sop"
-            ),
-            "advisory line must sit directly above the wrapper, got: {kiro_rendered}"
+            !kiro_rendered.contains("Run only when explicitly invoked"),
+            "no advisory guard should remain in the description or body, got: {kiro_rendered}"
+        );
+        assert!(
+            !kiro_rendered.contains("Do not invoke this skill on your own initiative"),
+            "no advisory guard should remain in the description or body, got: {kiro_rendered}"
         );
 
         let claude_rendered = render_sop_skill_md_with_options("ticket-sync", body, true);
         assert!(
             !claude_rendered.contains("Run only when explicitly invoked"),
-            "advisory guard must not leak into the Claude path, got: {claude_rendered}"
+            "the Claude path must never have carried this text either, got: {claude_rendered}"
         );
         assert!(claude_rendered.contains("disable-model-invocation: true\n"));
     }
@@ -2221,53 +2159,6 @@ mod tests {
                 "max_chars={max_chars} got: {truncated:?}"
             );
         }
-    }
-
-    /// The real bug this guards: `sop_name` has no length limit of its
-    /// own, so an unclamped `kiro_invocation_guard(sop_name)` can by
-    /// itself exceed `MAX_DESCRIPTION_CHARS`, driving the summary budget
-    /// to 0 while leaving the guard's own oversized length as the final
-    /// description -- over the bound no matter what the (empty) summary
-    /// contributes. Clamping the guard's own contribution first (see
-    /// `render_sop_skill_md_with_options`) keeps the composed
-    /// `description:` within `MAX_DESCRIPTION_CHARS` even for a
-    /// pathologically long `sop_name`.
-    ///
-    /// Length alone is not the whole property: the advisory exists to
-    /// tell a reader which command invokes the skill, so the `/sop-`
-    /// slug itself must survive every truncation step, not just the
-    /// overall description length. `kiro_invocation_guard`'s own
-    /// `MAX_GUARD_SOP_NAME_CHARS` bound (see that function's own doc
-    /// comment) is what guarantees this: it keeps the guard's total
-    /// length so far under the later `MAX_DESCRIPTION_CHARS` clamp that
-    /// this exact `sop_name` (1000 `x` characters) would otherwise
-    /// exceed on its own, which is what used to make
-    /// `truncate_description`'s word-boundary cut land inside the fixed
-    /// "Run only when explicitly invoked as " prose -- before the slug
-    /// even started -- rather than only ever shortening the summary that
-    /// follows it.
-    #[test]
-    fn render_sop_skill_md_bounds_the_description_even_with_a_pathologically_long_sop_name() {
-        let sop_name = "x".repeat(1000);
-        let rendered = render_sop_skill_md_with_options(&sop_name, "# Body\n", false);
-        let description_line = rendered
-            .lines()
-            .find(|line| line.starts_with("description: "))
-            .expect("rendered frontmatter must have a description: line");
-        let quoted = description_line.trim_start_matches("description: ");
-        // Strip the surrounding quotes added by `yaml_double_quote`; the
-        // escaping inside doesn't change the character-count bound.
-        let inner = quoted.trim_start_matches('"').trim_end_matches('"');
-        assert!(
-            inner.chars().count() <= MAX_DESCRIPTION_CHARS,
-            "description exceeded {MAX_DESCRIPTION_CHARS} chars ({} chars): {inner}",
-            inner.chars().count()
-        );
-        assert!(
-            inner.contains("/sop-"),
-            "the /sop-<name> slug must survive truncation -- an advisory naming no command \
-             fails the one job it exists to do, got: {inner}"
-        );
     }
 
     #[test]

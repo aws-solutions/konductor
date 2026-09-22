@@ -230,11 +230,19 @@ Kiro IDE at all. In Kiro v3, the CLI and IDE are unified into one product, so a 
 `kiro-v3` harness covers both — there is no separate `kiro-v3-ide`/`kiro-v3-cli` split to
 choose between.
 
-| Content  | Destination                          |
-| -------- | ------------------------------------ |
-| Agents   | `<target>/.kiro/agents/`             |
-| Skills   | `<target>/.konductor/skills/<name>/` |
-| Manifest | `<target>/.konductor/manifest`       |
+| Content           | Destination                          |
+| ----------------- | ------------------------------------ |
+| Agents            | `<target>/.kiro/agents/`             |
+| Skills            | `<target>/.konductor/skills/<name>/` |
+| MCP server binary | `<target>/.konductor/bin/<name>`     |
+| Manifest          | `<target>/.konductor/manifest`       |
+
+The MCP server binary is `skill-lookup-mcp`. On a `--from <repo-root>` install it's
+read from `<repo-root>/mcp/target/release/skill-lookup-mcp` (built by `make build`'s
+`mcp/` step — see [Getting started](#getting-started)'s note on why skipping that step
+produces agents that can't load skills at runtime). On a no-`--from` install, `install`
+fetches it directly — see [Installing without `--from`](#installing-without---from-the-github-release--main-branch-dist-fallback-chain)
+below.
 
 Skills land under `.konductor/skills/`, deliberately outside `.kiro/skills/`: Kiro CLI's
 own skill discovery scans `.kiro/skills/` unconditionally and makes every skill visible
@@ -273,7 +281,9 @@ plain-text summary), so the two are never blended together.
 
    **This succeeds against a real release.** `.github/workflows/release.yml` publishes
    the packaged tarball and its `.sha256` sidecar on every release, in the exact shape
-   this fetcher expects.
+   this fetcher expects. A release with no matching asset — for example, one built
+   before this naming convention existed — fails cleanly with an
+   `install.remote_asset_missing`-class error.
 
 2. **`main` branch's `dist/` directory (automatic fallback).** `main`'s `dist/`
    directory carries the same pre-built tarball `synth` produces — at the same
@@ -300,6 +310,34 @@ plain-text summary), so the two are never blended together.
    sidecar, just reachable from two different paths (a repo path vs. a release asset
    URL).
 
+### MCP server binary fetch (no-`--from` install)
+
+Alongside the tarball above, a no-`--from` install also fetches the `skill-lookup-mcp`
+MCP server binary for the running host's own platform, verifies it against its own
+`.sha256` sidecar the same way the tarball is verified, and installs it to
+`<target>/.konductor/bin/skill-lookup-mcp` — the same destination a `--from` install's
+local `mcp/target/release/skill-lookup-mcp` copy lands at (see the
+[Content/Destination table](#install) above). This binary fetch is part of the GitHub
+Release source (step 1 above), not a third fallback source of its own.
+
+Only three platforms have a published binary — `x86_64-unknown-linux-musl`,
+`aarch64-unknown-linux-musl`, and `aarch64-apple-darwin` — matching
+`.github/workflows/release.yml`'s build matrix exactly (see that workflow's own
+top-of-file comment: no free-tier Intel macOS GitHub runner, so there is no
+`x86_64-apple-darwin` leg, and Windows is out of scope entirely). What happens next
+depends on why the fetch didn't succeed:
+
+- **Unsupported platform (e.g. Intel/x86_64 macOS, or Windows).** This degrades
+  gracefully: `install` prints a `konductor install: warning: ...` line to stderr and
+  proceeds without the MCP server binary. The rest of the install — agents, skills,
+  context, manifest — still succeeds; only skill-lookup functionality is unavailable
+  for that install, the same non-fatal state a local `--from` install has any time
+  `mcp/` was never built (see [Getting started](#getting-started)'s note on that).
+- **Supported platform, but the fetch or checksum genuinely fails.** This is a blocking
+  error, since that platform is known to have a real published asset that should have
+  been fetchable — a transient network failure or a corrupted asset is not something to
+  silently paper over the way the "no asset exists at all" case above is.
+
 Omitting `--harness` entirely is a usage error too (clap's own missing-required-argument
 message, remapped to exit `64`), independent of either source above.
 
@@ -319,19 +357,33 @@ doc. If BOTH sources fail, the reported error names both underlying failures dis
 
 Pass `--use-github-token` to have `konductor install` (no `--from`) read `GITHUB_TOKEN`
 from the environment and send `Authorization: Bearer $GITHUB_TOKEN` on its
-`api.github.com` requests — the release path's metadata lookup and the
-main-branch-`dist/` fallback's two Contents API requests. Without this flag,
-`GITHUB_TOKEN` is never read, even if it's set in your shell: the environment variable
-is opt-in, not ambient. It is never sent on the release path's asset-download requests
-regardless of the flag: those follow a redirect off `api.github.com` to a short-lived,
-pre-signed storage host that already carries its own auth and must never receive the
-GitHub token. This is an access option, not a rate-limit workaround: unauthenticated
-requests already comfortably fit under GitHub's rate limits at this codebase's request
-volume (2-3 requests per install), and that stays true once the target repository is
-public. Its actual use case is testing `install` against a currently-private
-repository before it's published; omitting `--use-github-token` produces byte-for-byte
+`api.github.com` requests — the release path's metadata lookup, the release path's
+asset-download requests, and the main-branch-`dist/` fallback's two Contents API
+requests. Without this flag, `GITHUB_TOKEN` is never read, even if it's set in your
+shell: the environment variable is opt-in, not ambient, and asset downloads instead hit
+each asset's plain `browser_download_url` unauthenticated (GitHub's normal redirect to a
+short-lived, pre-signed storage host that already carries its own auth). This is an
+access option, not a rate-limit workaround: unauthenticated requests already comfortably
+fit under GitHub's rate limits at this codebase's request volume (2-3 requests per
+install), and that stays true once the target repository is public. Its actual use case
+is testing `install` against a currently-private repository before it's published: a
+private repo's asset download 404s unauthenticated even with a valid token, since GitHub
+returns 404 rather than 401/403 for an unauthorized asset request, to avoid confirming
+the asset's existence to an unauthorized caller — `--use-github-token` is what makes
+that download succeed, by requesting the asset through its authenticated REST API URL
+instead of its public redirect URL. Omitting `--use-github-token` produces byte-for-byte
 identical requests to a build with no token support at all, regardless of whether
 `GITHUB_TOKEN` happens to be set.
+
+On success, `install`'s summary (plain-text and `--json`) reports the installed
+content's own version alongside its usual counts — read back from
+`.konductor/install-info.json`'s `agent_version` field, which every install run writes
+from the synthed source's own `dist/VERSION` file. This is the same field for both
+install paths: a `--from <repo-root>` install reads it from that repo root's own
+`dist/`, and a no-`--from` install reads it from the fetched release's own `dist/`, so
+either path's summary names the actual version installed. It's `null`/omitted from the
+plain-text line only when no `VERSION` file was found under the source's `dist/` at
+all.
 
 Verify a `--target <dir>` install:
 
@@ -372,22 +424,34 @@ itself lives outside any one `--target`).
 ## `update`
 
 ```bash
-konductor update [--from <repo-root>] [--target <dir>] [--all] [--dry-run]
+konductor update [--from <repo-root>] [--target <dir>] [--all] [--use-github-token]
+                 [--dry-run]
 ```
 
 Overwrites a tracked install in place: for each selected target, `update` calls the same
 underlying install routine `install` itself uses, so the target's agents, skills, and
-manifest end up identical to a fresh `install --target <dir>` from the given `--from`
-source. There is no reconciliation — it is an unconditional overwrite, and it will
-silently clobber any local edits to files under the managed destinations
-(`.kiro/agents/`, `.konductor/skills/`, `.konductor/manifest`). Hash-based divergence
-classification exists, but only under `--dry-run` (see below) — a real run instead
-reports, after the fact, only an aggregate count of how many files were overwritten
-while diverged; that count never gates or alters the overwrite. There is no `--force`
-flag either way.
+manifest end up identical to a fresh `install --target <dir>` from the same source.
+There is no reconciliation — it is an unconditional overwrite, and it will silently
+clobber any local edits to files under the managed destinations (`.kiro/agents/`,
+`.konductor/skills/`, `.konductor/manifest`). Hash-based divergence classification
+exists, but only under `--dry-run` (see below) — a real run instead reports, after the
+fact, only an aggregate count of how many files were overwritten while diverged; that
+count never gates or alters the overwrite. There is no `--force` flag either way.
 
-`update` has no `--from` default of its own — omit it to reuse whatever source each
-target was last installed from is **not** supported; pass `--from <repo-root>` explicitly.
+`update` has no `--from` default of its own — omit it and `update` tries the same real
+remote fallback chain `install`'s own no-`--from` path uses (see [Installing without
+`--from`](#installing-without---from-the-github-release--main-branch-dist-fallback-chain)
+above): a fresh synth output tree fetched from a published release, applied through the
+resolved target's own already-tracked strategy, with no `--harness` re-prompt. There is
+no implicit "reuse whatever source this target was last installed from" behavior either
+way — omitting `--from` always means "try the remote fallback chain," never "remember
+the last `--from` value."
+
+`--use-github-token` has the identical meaning and effect as `install --use-github-token`
+(see [`GITHUB_TOKEN`: optional authenticated access to the GitHub API](#github_token-optional-authenticated-access-to-the-github-api)
+above) — read `GITHUB_TOKEN` from the environment and send it on the same
+`api.github.com` requests the no-`--from` path makes. It has no effect on a `--from
+<repo-root>` update, which never touches GitHub's API at all.
 
 ### `--dry-run`
 
@@ -398,9 +462,19 @@ destroyed)`) and `--json` (a per-path `"diverged"` boolean), not just an aggrega
 — without touching the filesystem in any way: no file write, no manifest write, no
 index write.
 
+This works whether the target's real run would source from `--from <repo-root>` or from
+a downloaded release: both paths report through the same preview machinery. The one
+difference: a no-`--from` preview cannot know the exact file set a fresh release would
+contain without fetching it, and `--dry-run` never makes a network call — so a
+no-`--from` preview instead reports the currently-tracked file list and its current
+divergence, noting that the exact set a real run fetches may differ once it actually
+pulls a fresh release. `--use-github-token` has no effect under `--dry-run` either way,
+since no network call is made.
+
 Without `--dry-run`, a real update run proceeds directly: for every target the
-selection table below resolves, `update` overwrites its tracked files immediately, with
-no confirmation prompt.
+selection table below resolves, `update` overwrites its tracked files immediately (or,
+with no `--from`, attempts the real remote fetch immediately), with no confirmation
+prompt.
 
 ### Selecting which target(s) to update
 
@@ -731,10 +805,13 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
 - The GitHub-release install path (the CLI-side fetch→verify→install wiring in
   `install::github`/`install::remote_orchestrate`, wired into `konductor install`'s
   no-`--from` path) works against a real release: `.github/workflows/release.yml`
-  publishes the packaged tarball and its `.sha256` sidecar on every release, in the
-  shape this fetcher expects. The `main` branch `dist/` fallback does not yet work —
-  `dist/` is `.gitignore`d in this repo's own working tree, so there is no publishing
-  step yet to place the tarball+sidecar under `dist/` on `main`. See
+  publishes the packaged tarball, its `.sha256` sidecar, and the platform-specific
+  `skill-lookup-mcp` binaries (see [MCP server binary fetch](#mcp-server-binary-fetch-no---from-install)
+  above) on every release, in the shape this fetcher expects. The `main` branch `dist/`
+  fallback does not yet work — `dist/` is `.gitignore`d in this repo's own working
+  tree, so there is no publishing step yet to place the tarball+sidecar under `dist/`
+  on `main`; that fallback source never fetches the MCP binary either way, since it
+  only ever handles the tarball+sidecar pair. See
   [Installing without `--from`: the GitHub-release / main-branch-`dist/` fallback chain](#installing-without---from-the-github-release--main-branch-dist-fallback-chain)
   for that gap plus two further caveats (GitHub API rate limiting; no GPG/sigstore
   provenance check — SHA-256 transport-integrity only). `--from <repo-root>` remains

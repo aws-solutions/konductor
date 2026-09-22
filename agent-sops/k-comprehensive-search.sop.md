@@ -2,7 +2,7 @@
 
 ## Overview
 
-This SOP activates search mode to maximize search effort across codebase and external documentation. Use it when finding patterns or implementations in a codebase, searching for external documentation, locating specific code/files/configurations, or for research tasks requiring thorough investigation.
+This SOP activates search mode to maximize search effort across codebase and external documentation. Use it when finding patterns or implementations in a codebase, searching for external documentation, locating specific code/files/configurations, or for research tasks requiring thorough investigation. When both scopes apply, delegating the codebase and documentation searches to separate agents buys parallelism (they run concurrently instead of serially) and context isolation (each agent's raw multi-pattern search output stays out of the orchestrator's context; only the capped summary returns).
 
 ## Parameters
 

@@ -39,6 +39,10 @@ use std::process::{Command, Output};
 // not reachable from an integration test at compile time.
 const KONDUCTOR_DIR_NAME: &str = ".konductor";
 const MANIFEST_FILE_NAME: &str = "manifest";
+// Duplicated for the same visibility-boundary reason as the two
+// constants above: `install_info::INSTALL_INFO_FILE_NAME` is
+// `pub(crate)`, unreachable from this integration test.
+const INSTALL_INFO_FILE_NAME: &str = "install-info.json";
 const CMD_INSTALL: &str = "install";
 const CMD_UNINSTALL: &str = "uninstall";
 
@@ -48,7 +52,7 @@ fn bin() -> &'static str {
     env!("CARGO_BIN_EXE_konductor")
 }
 
-fn run_konductor(cwd: &Path, args: &[&str]) -> Output {
+fn run_konductor(cwd: &Path, sink: &telemetry_test_sink::TelemetrySink, args: &[&str]) -> Output {
     // `HOME` is overridden to `cwd` (an isolated temp dir) for every
     // invocation here: `install`'s default destination is now `$HOME`
     // (this test always passes `--target` explicitly, so that alone
@@ -57,12 +61,16 @@ fn run_konductor(cwd: &Path, args: &[&str]) -> Output {
     // regardless of `--target` -- without this override, a real
     // subprocess run here would still write an invocation log line into
     // this test-runner's actual home directory.
-    Command::new(bin())
-        .args(args)
-        .current_dir(cwd)
-        .env("HOME", cwd)
-        .output()
-        .expect("failed to spawn konductor binary")
+    //
+    // Telemetry redirects to `sink` rather than being disabled: a
+    // successful install still reports a package_installed event, so
+    // without this every round would reach the live endpoint.
+    let mut command = Command::new(bin());
+    command.args(args).current_dir(cwd).env("HOME", cwd);
+    for var in sink.env_vars() {
+        command.env(var.name, &var.value);
+    }
+    command.output().expect("failed to spawn konductor binary")
 }
 
 fn scratch_dir(name: &str) -> std::path::PathBuf {
@@ -180,6 +188,8 @@ fn normalize_race_dependent_fields(json: &serde_json::Value) -> serde_json::Valu
 ///    the write is genuinely atomic, not merely well-shaped.
 #[test]
 fn concurrent_install_writes_never_produce_a_corrupt_manifest() {
+    // Shared, Arc-wrapped sink redirecting telemetry off the live endpoint.
+    let sink = std::sync::Arc::new(telemetry_test_sink::TelemetrySink::start());
     for i in 0..ITERATIONS {
         let reference_repo = seed_synthed_repo(&format!("reference-{i}"));
         let reference_local = reference_repo.display().to_string();
@@ -187,6 +197,7 @@ fn concurrent_install_writes_never_produce_a_corrupt_manifest() {
         let reference_target = reference_dir.display().to_string();
         let reference_output = run_konductor(
             &reference_dir,
+            &sink,
             &[
                 CMD_INSTALL,
                 "--from",
@@ -217,9 +228,12 @@ fn concurrent_install_writes_never_produce_a_corrupt_manifest() {
         let local_b = round_local.clone();
         let target_a = round_target.clone();
         let target_b = round_target.clone();
+        let sink_a = sink.clone();
+        let sink_b = sink.clone();
         let handle_a = std::thread::spawn(move || {
             run_konductor(
                 &dir_a,
+                &sink_a,
                 &[
                     CMD_INSTALL,
                     "--from",
@@ -234,6 +248,7 @@ fn concurrent_install_writes_never_produce_a_corrupt_manifest() {
         let handle_b = std::thread::spawn(move || {
             run_konductor(
                 &dir_b,
+                &sink_b,
                 &[
                     CMD_INSTALL,
                     "--from",
@@ -343,6 +358,8 @@ fn seed_dual_strategy_repo(name: &str) -> std::path::PathBuf {
 /// survive," not byte-identical content.
 #[test]
 fn two_different_strategies_installed_concurrently_do_not_drop_either_slot() {
+    // Shared, Arc-wrapped sink redirecting telemetry off the live endpoint.
+    let sink = std::sync::Arc::new(telemetry_test_sink::TelemetrySink::start());
     for i in 0..ITERATIONS {
         let repo = seed_dual_strategy_repo(&format!("{i}"));
         let repo_local = repo.display().to_string();
@@ -355,9 +372,12 @@ fn two_different_strategies_installed_concurrently_do_not_drop_either_slot() {
         let local_claude = repo_local.clone();
         let target_kiro = target.clone();
         let target_claude = target.clone();
+        let sink_kiro = sink.clone();
+        let sink_claude = sink.clone();
         let handle_kiro = std::thread::spawn(move || {
             run_konductor(
                 &dir_kiro,
+                &sink_kiro,
                 &[
                     CMD_INSTALL,
                     "--from",
@@ -372,6 +392,7 @@ fn two_different_strategies_installed_concurrently_do_not_drop_either_slot() {
         let handle_claude = std::thread::spawn(move || {
             run_konductor(
                 &dir_claude,
+                &sink_claude,
                 &[
                     CMD_INSTALL,
                     "--from",
@@ -440,6 +461,8 @@ fn two_different_strategies_installed_concurrently_do_not_drop_either_slot() {
 /// `claude` present. Never both, and never the whole manifest wiped.
 #[test]
 fn concurrent_install_of_other_strategy_survives_uninstall_of_original_strategy() {
+    // Shared, Arc-wrapped sink redirecting telemetry off the live endpoint.
+    let sink = std::sync::Arc::new(telemetry_test_sink::TelemetrySink::start());
     for i in 0..ITERATIONS {
         let repo = seed_dual_strategy_repo(&format!("install-vs-uninstall-{i}"));
         let repo_local = repo.display().to_string();
@@ -451,6 +474,7 @@ fn concurrent_install_of_other_strategy_survives_uninstall_of_original_strategy(
         // of the race.
         let setup_output = run_konductor(
             &target_dir,
+            &sink,
             &[
                 CMD_INSTALL,
                 "--from",
@@ -472,9 +496,12 @@ fn concurrent_install_of_other_strategy_survives_uninstall_of_original_strategy(
         let local_install = repo_local.clone();
         let target_install = target.clone();
         let target_uninstall = target.clone();
+        let sink_install = sink.clone();
+        let sink_uninstall = sink.clone();
         let handle_install = std::thread::spawn(move || {
             run_konductor(
                 &dir_install,
+                &sink_install,
                 &[
                     CMD_INSTALL,
                     "--from",
@@ -489,6 +516,7 @@ fn concurrent_install_of_other_strategy_survives_uninstall_of_original_strategy(
         let handle_uninstall = std::thread::spawn(move || {
             run_konductor(
                 &dir_uninstall,
+                &sink_uninstall,
                 &[
                     CMD_UNINSTALL,
                     "--target",
@@ -622,6 +650,8 @@ fn seed_kiro_variant_and_claude_repo(name: &str) -> std::path::PathBuf {
 /// the exact corrupted state this test's assertions rule out.
 #[test]
 fn uninstall_of_kiro_cli_survives_concurrent_override_to_kiro_cli_v3() {
+    // Shared, Arc-wrapped sink redirecting telemetry off the live endpoint.
+    let sink = std::sync::Arc::new(telemetry_test_sink::TelemetrySink::start());
     for i in 0..ITERATIONS {
         let repo = seed_kiro_variant_and_claude_repo(&format!("{i}"));
         let repo_local = repo.display().to_string();
@@ -634,6 +664,7 @@ fn uninstall_of_kiro_cli_survives_concurrent_override_to_kiro_cli_v3() {
         // comment for why claude's coexisting slot matters here.
         let setup_kiro_output = run_konductor(
             &target_dir,
+            &sink,
             &[
                 CMD_INSTALL,
                 "--from",
@@ -651,6 +682,7 @@ fn uninstall_of_kiro_cli_survives_concurrent_override_to_kiro_cli_v3() {
         );
         let setup_claude_output = run_konductor(
             &target_dir,
+            &sink,
             &[
                 CMD_INSTALL,
                 "--from",
@@ -672,9 +704,12 @@ fn uninstall_of_kiro_cli_survives_concurrent_override_to_kiro_cli_v3() {
         let local_install = repo_local.clone();
         let target_install = target.clone();
         let target_uninstall = target.clone();
+        let sink_install = sink.clone();
+        let sink_uninstall = sink.clone();
         let handle_install = std::thread::spawn(move || {
             run_konductor(
                 &dir_install,
+                &sink_install,
                 &[
                     CMD_INSTALL,
                     "--from",
@@ -689,6 +724,7 @@ fn uninstall_of_kiro_cli_survives_concurrent_override_to_kiro_cli_v3() {
         let handle_uninstall = std::thread::spawn(move || {
             run_konductor(
                 &dir_uninstall,
+                &sink_uninstall,
                 &[
                     CMD_UNINSTALL,
                     "--target",
@@ -787,4 +823,208 @@ fn uninstall_of_kiro_cli_survives_concurrent_override_to_kiro_cli_v3() {
         std::fs::remove_dir_all(&target_dir).ok();
         std::fs::remove_dir_all(&repo).ok();
     }
+}
+
+/// `write_install_info` (telemetry/install_info.rs) is called
+/// separately, AFTER each strategy's own `upsert_strategy` call has
+/// already returned and dropped its lock -- so two concurrent installs
+/// of DIFFERENT harnesses at the SAME target can each reach
+/// `write_install_info` unlocked and racing each other, independent of
+/// `upsert_strategy`'s own per-target lock (which only ever serializes
+/// the manifest read-modify-write, not anything after it returns).
+///
+/// Distinct from every other test in this file: those all assert the
+/// MANIFEST survives a race intact. This one is about the SEPARATE
+/// `install-info.json` record `write_install_info` produces.
+///
+/// The two WRITERS below are real, separate `konductor install`
+/// subprocesses, run back-to-back in a tight loop for a fixed wall-
+/// clock duration -- true process-level concurrency, exactly like
+/// every other test in this file. A single READER thread (no subprocess
+/// needed: it only ever reads, so it carries none of the temp-file-
+/// naming concerns a second writer would) polls the same path in a
+/// tight loop for the same duration, checking every read it manages to
+/// land: present-but-empty or present-but-unparseable is the actual
+/// defect this guards (an absent file, e.g. mid-`rename`, is not --
+/// `read_install_info`'s own real callers already treat "absent" as a
+/// normal outcome). A full round-based test that reads back only AFTER
+/// both writers have already returned (an earlier version of this
+/// test) can never observe this: whichever writer's complete write
+/// lands last always leaves a well-formed file by the time both have
+/// joined, so only a reader sampling WHILE the race is in flight can
+/// catch the transient bad state the unfixed truncate-then-write left
+/// exposed.
+#[test]
+fn concurrent_installs_of_different_harnesses_never_leave_a_torn_install_info() {
+    let sink = telemetry_test_sink::TelemetrySink::start();
+    let repo = seed_dual_strategy_repo("install-info-race");
+    let repo_local = repo.display().to_string();
+    let target_dir = scratch_dir("install-info-race-target");
+    let target = target_dir.display().to_string();
+    let install_info_path = target_dir
+        .join(KONDUCTOR_DIR_NAME)
+        .join(INSTALL_INFO_FILE_NAME);
+
+    let stop = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let violation: std::sync::Arc<std::sync::Mutex<Option<(Vec<u8>, String)>>> =
+        std::sync::Arc::new(std::sync::Mutex::new(None));
+
+    let stop_reader = stop.clone();
+    let violation_reader = violation.clone();
+    let reader_path = install_info_path.clone();
+    let reader = std::thread::spawn(move || {
+        while !stop_reader.load(std::sync::atomic::Ordering::Relaxed) {
+            // `NotFound` (e.g. mid-`rename`, or before the very first
+            // write has landed) is not the defect this test targets --
+            // see this test's own doc comment. Only a PRESENT file
+            // that is empty or fails to parse is.
+            let Ok(raw) = std::fs::read(&reader_path) else {
+                continue;
+            };
+            if raw.is_empty() {
+                let mut slot = violation_reader.lock().unwrap();
+                if slot.is_none() {
+                    *slot = Some((
+                        raw,
+                        "install-info.json existed but was EMPTY -- a truncate from one \
+                         writer landed with no following write yet visible"
+                            .to_string(),
+                    ));
+                }
+                continue;
+            }
+            if let Err(err) = serde_json::from_slice::<serde_json::Value>(&raw) {
+                let mut slot = violation_reader.lock().unwrap();
+                if slot.is_none() {
+                    *slot = Some((
+                        raw,
+                        format!(
+                            "install-info.json existed but was not valid JSON \
+                             (torn/spliced write): {err}"
+                        ),
+                    ));
+                }
+            }
+        }
+    });
+
+    // Race duration: long enough for the tight reader loop to sample
+    // many thousands of times against real, separate `install`
+    // subprocess launches -- see this test's own investigation notes
+    // for why a fixed, generous wall-clock budget (rather than a
+    // round count) is what actually lands the interleave: the
+    // vulnerable window is a handful of bytes, dwarfed by a full
+    // `install` invocation's own file-copy/manifest work, so it needs
+    // many thousands of real subprocess launches to hit at all.
+    const RACE_DURATION: std::time::Duration = std::time::Duration::from_secs(15);
+    let deadline = std::time::Instant::now() + RACE_DURATION;
+
+    let target_kiro = target.clone();
+    let local_kiro = repo_local.clone();
+    let sink_kiro = sink;
+    let writer_kiro = std::thread::spawn(move || {
+        while std::time::Instant::now() < deadline {
+            let output = run_konductor(
+                Path::new(&target_kiro),
+                &sink_kiro,
+                &[
+                    CMD_INSTALL,
+                    "--from",
+                    &local_kiro,
+                    "--target",
+                    &target_kiro,
+                    "--harness",
+                    "kiro-cli-v2",
+                ],
+            );
+            assert!(
+                output.status.success(),
+                "kiro-cli-v2 install must exit 0: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+    });
+    let target_claude = target.clone();
+    let local_claude = repo_local.clone();
+    let sink_claude = telemetry_test_sink::TelemetrySink::start();
+    let writer_claude = std::thread::spawn(move || {
+        while std::time::Instant::now() < deadline {
+            let output = run_konductor(
+                Path::new(&target_claude),
+                &sink_claude,
+                &[
+                    CMD_INSTALL,
+                    "--from",
+                    &local_claude,
+                    "--target",
+                    &target_claude,
+                    "--harness",
+                    "claude",
+                ],
+            );
+            assert!(
+                output.status.success(),
+                "claude install must exit 0: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+    });
+
+    writer_kiro
+        .join()
+        .expect("kiro-cli-v2 writer must not panic");
+    writer_claude.join().expect("claude writer must not panic");
+    stop.store(true, std::sync::atomic::Ordering::Relaxed);
+    reader.join().expect("reader thread must not panic");
+
+    let violation = violation.lock().unwrap();
+    assert!(
+        violation.is_none(),
+        "reader observed a corrupt install-info.json while installs raced: {:?}",
+        violation.as_ref().map(|(raw, msg)| (msg, raw))
+    );
+
+    // Final state, read once both writers and the reader have all
+    // stopped: must still be a complete, valid, one-writer record.
+    assert!(
+        install_info_path.is_file(),
+        "install-info.json missing after the race"
+    );
+    let raw = std::fs::read(&install_info_path)
+        .unwrap_or_else(|err| panic!("failed to read install-info.json: {err}"));
+    let parsed: serde_json::Value = serde_json::from_slice(&raw).unwrap_or_else(|err| {
+        panic!("final install-info.json is not valid JSON: {err}; raw bytes: {raw:?}")
+    });
+    let obj = parsed
+        .as_object()
+        .unwrap_or_else(|| panic!("install-info.json root must be an object: {parsed}"));
+    assert_eq!(
+        obj.len(),
+        4,
+        "install-info.json must have exactly four keys, got {obj:?}"
+    );
+    let harness = obj
+        .get("harness")
+        .and_then(|v| v.as_str())
+        .unwrap_or_else(|| panic!("missing/non-string 'harness' field: {parsed}"));
+    assert!(
+        harness == "kiro-cli-v2" || harness == "claude",
+        "'harness' must be exactly one racer's own value, got {harness:?}: {parsed}"
+    );
+
+    // No leftover temp file from either writer.
+    let konductor_dir = target_dir.join(KONDUCTOR_DIR_NAME);
+    let leftovers: Vec<_> = std::fs::read_dir(&konductor_dir)
+        .unwrap()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.file_name().to_string_lossy().contains(".tmp-"))
+        .collect();
+    assert!(
+        leftovers.is_empty(),
+        "leftover temp file(s): {:?}",
+        leftovers.iter().map(|e| e.file_name()).collect::<Vec<_>>()
+    );
+
+    std::fs::remove_dir_all(&target_dir).ok();
+    std::fs::remove_dir_all(&repo).ok();
 }

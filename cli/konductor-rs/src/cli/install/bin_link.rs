@@ -97,6 +97,7 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
+use super::index;
 use crate::cli::atomic_write::{unique_suffix, write_atomic};
 use crate::cli::config::KONDUCTOR_DIR_NAME;
 use crate::cli::config_lock;
@@ -351,12 +352,13 @@ pub fn bin_links_path(home_dir: Option<&Path>) -> Option<PathBuf> {
 
 /// Resolves `$HOME` from the environment. Split out from
 /// `bin_links_path`/`local_bin_link_path` so callers that already have a
-/// home directory (tests) can skip a second env lookup -- mirrors
-/// `index.rs`'s own `env_home_dir`.
+/// home directory (tests) can skip a second env lookup. Delegates to
+/// `index::env_home_dir` rather than keeping its own copy of the
+/// empty-string filter, so the two can't drift apart the way an
+/// inlined `var_os("HOME")` already did once (see that function's own
+/// doc comment).
 fn env_home_dir() -> Option<PathBuf> {
-    std::env::var_os("HOME")
-        .filter(|home| !home.is_empty())
-        .map(PathBuf::from)
+    index::env_home_dir()
 }
 
 /// `$HOME/.local/bin/konductor` -- the fixed `$PATH` location this
@@ -533,7 +535,7 @@ fn apply_link_target_sync(
 /// running exe path via `std::env::current_exe()` -- see this module's
 /// own doc comment for why a failure there is `CurrentExeUnresolvable`
 /// rather than falling back to a bare `"konductor"` word (unlike
-/// `resource_rewrite.rs`'s `resolve_konductor_exe_path`, a real
+/// `resource_rewrite/claude_settings.rs`'s `resolve_konductor_exe_path`, a real
 /// filesystem symlink has nothing sensible to point AT for a bare word;
 /// `resolve_konductor_exe_path`'s fallback exists only because a shell
 /// `command` string tolerates a `$PATH`-dependent bare word, which a

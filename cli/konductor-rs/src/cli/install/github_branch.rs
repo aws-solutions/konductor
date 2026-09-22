@@ -63,11 +63,21 @@ pub enum GithubBranchFetchError {
     /// No file matching the expected `<artifact_filename>` tarball
     /// name exists under `dist/` on this branch -- the counterpart to
     /// `GithubFetchError::MissingAsset`. Carries the expected filename.
-    MissingArtifact(String),
+    ///
+    /// Also carries the `TokenState` the 404'd request was made with:
+    /// the GitHub Contents API returns 404 (not 401/403) for an
+    /// unauthorized read of a private repository's path, the same
+    /// masking `install::github::download_private_repo_hint`'s own
+    /// doc comment documents for a release asset's download URL -- so
+    /// this 404 is exactly as ambiguous between "private repo" and
+    /// "genuinely nothing published there yet" and deserves the same
+    /// widened hint, applied via `Display` below.
+    MissingArtifact(String, private_repo_hint::TokenState),
     /// No file matching the expected `<artifact_filename>.sha256`
     /// sidecar name exists under `dist/` on this branch. Carries the
-    /// expected filename.
-    MissingSidecar(String),
+    /// expected filename, plus the `TokenState` the 404'd request was
+    /// made with, same reasoning as `MissingArtifact` above.
+    MissingSidecar(String, private_repo_hint::TokenState),
     /// The GitHub API responded with a non-2xx HTTP status (e.g. 403
     /// rate-limited) that isn't the 404-means-missing-file case above.
     ///
@@ -96,15 +106,17 @@ impl std::fmt::Display for GithubBranchFetchError {
             GithubBranchFetchError::Network(message) => {
                 write!(f, "network error contacting GitHub: {message}")
             }
-            GithubBranchFetchError::MissingArtifact(filename) => write!(
+            GithubBranchFetchError::MissingArtifact(filename, token_state) => write!(
                 f,
-                "no file named '{filename}' was found under 'dist/' on this branch"
+                "no file named '{filename}' was found under 'dist/' on this branch{}",
+                private_repo_hint::download_private_repo_hint(404, *token_state)
             ),
-            GithubBranchFetchError::MissingSidecar(filename) => write!(
+            GithubBranchFetchError::MissingSidecar(filename, token_state) => write!(
                 f,
                 "no file named '{filename}' was found under 'dist/' on this branch -- \
                  main's dist/ must also publish a checksum sidecar for this source to \
-                 verify against"
+                 verify against{}",
+                private_repo_hint::download_private_repo_hint(404, *token_state)
             ),
             GithubBranchFetchError::Http(status, token_state) => {
                 write!(
@@ -278,8 +290,12 @@ fn download_dist_file_bytes(
 /// already correctly packaged wherever it was placed under `dist/`.
 ///
 /// A 404 on the tarball maps to `MissingArtifact`; a 404 on the
-/// sidecar maps to `MissingSidecar`. Any other non-2xx status maps to
-/// the generic `Http` variant.
+/// sidecar maps to `MissingSidecar`. Both carry the `TokenState` the
+/// 404'd request was made with (never discarded), so their `Display`
+/// can apply the same private-repo widened-404 hint
+/// `install::github::download_private_repo_hint` already applies for
+/// a release asset's download-phase 404. Any other non-2xx status
+/// maps to the generic `Http` variant.
 pub(crate) fn fetch_branch_dist_artifact_and_sidecar(
     owner: &str,
     repo: &str,
@@ -292,8 +308,11 @@ pub(crate) fn fetch_branch_dist_artifact_and_sidecar(
     let artifact_bytes =
         match download_dist_file_bytes(owner, repo, branch, &artifact_filename, use_github_token) {
             Ok(bytes) => bytes,
-            Err(GithubBranchFetchError::Http(404, _)) => {
-                return Err(GithubBranchFetchError::MissingArtifact(artifact_filename))
+            Err(GithubBranchFetchError::Http(404, token_state)) => {
+                return Err(GithubBranchFetchError::MissingArtifact(
+                    artifact_filename,
+                    token_state,
+                ))
             }
             Err(other) => return Err(other),
         };
@@ -301,8 +320,11 @@ pub(crate) fn fetch_branch_dist_artifact_and_sidecar(
     let sidecar_bytes =
         match download_dist_file_bytes(owner, repo, branch, &sidecar_filename, use_github_token) {
             Ok(bytes) => bytes,
-            Err(GithubBranchFetchError::Http(404, _)) => {
-                return Err(GithubBranchFetchError::MissingSidecar(sidecar_filename))
+            Err(GithubBranchFetchError::Http(404, token_state)) => {
+                return Err(GithubBranchFetchError::MissingSidecar(
+                    sidecar_filename,
+                    token_state,
+                ))
             }
             Err(other) => return Err(other),
         };
@@ -398,16 +420,65 @@ mod tests {
 
     #[test]
     fn github_branch_fetch_error_display_never_panics_and_names_the_filename() {
-        let err = GithubBranchFetchError::MissingArtifact("konductor-v0.1.0-x.tar.gz".to_string());
+        let err = GithubBranchFetchError::MissingArtifact(
+            "konductor-v0.1.0-x.tar.gz".to_string(),
+            private_repo_hint::TokenState::NotOptedIn,
+        );
         let message = err.to_string();
         assert!(message.contains("konductor-v0.1.0-x.tar.gz"));
         assert!(message.contains("dist/"));
     }
 
+    /// The gap this fix closes: a 404 on the branch-`dist/` tarball
+    /// fetch, with `--use-github-token` never passed, is exactly as
+    /// ambiguous between "private repo" and "nothing published there"
+    /// as a release asset's download-phase 404 -- so `MissingArtifact`
+    /// must now carry the same widened hint
+    /// `install::github::GithubFetchError::DownloadHttp` already
+    /// carries for that case, naming both `GITHUB_TOKEN` and
+    /// `--use-github-token`.
+    #[test]
+    fn missing_artifact_names_the_env_var_and_the_flag_when_not_opted_in() {
+        let err = GithubBranchFetchError::MissingArtifact(
+            "konductor-v0.1.0-x.tar.gz".to_string(),
+            private_repo_hint::TokenState::NotOptedIn,
+        );
+        let message = err.to_string();
+        assert!(
+            message.contains("GITHUB_TOKEN"),
+            "must name GITHUB_TOKEN, got: {message}"
+        );
+        assert!(
+            message.contains("--use-github-token"),
+            "must hint at --use-github-token, got: {message}"
+        );
+    }
+
+    /// A `MissingArtifact` 404 with a real, non-empty token already
+    /// sent (`OptedInSent`) must NOT get the widened hint -- same
+    /// reasoning as `download_private_repo_hint`'s own `OptedInSent`
+    /// carve-out: a token that was actually attached and still got a
+    /// 404 back is far more likely a genuinely missing file than an
+    /// auth gate that token would already have unlocked.
+    #[test]
+    fn missing_artifact_omits_the_hint_when_a_real_token_was_already_sent() {
+        let err = GithubBranchFetchError::MissingArtifact(
+            "konductor-v0.1.0-x.tar.gz".to_string(),
+            private_repo_hint::TokenState::OptedInSent,
+        );
+        let message = err.to_string();
+        assert!(
+            !message.contains("--use-github-token") && !message.contains("GITHUB_TOKEN"),
+            "a real token already sent must not get the widened hint, got: {message}"
+        );
+    }
+
     #[test]
     fn missing_sidecar_display_names_the_filename_and_explains_the_gap() {
-        let err =
-            GithubBranchFetchError::MissingSidecar("konductor-v0.1.0-x.tar.gz.sha256".to_string());
+        let err = GithubBranchFetchError::MissingSidecar(
+            "konductor-v0.1.0-x.tar.gz.sha256".to_string(),
+            private_repo_hint::TokenState::NotOptedIn,
+        );
         let message = err.to_string();
         assert!(message.contains("konductor-v0.1.0-x.tar.gz.sha256"));
         assert!(message.contains("checksum sidecar"));
@@ -456,9 +527,11 @@ mod tests {
 
     #[test]
     fn fake_fetcher_missing_artifact_outcome_maps_to_an_io_error() {
-        let mapped_message =
-            GithubBranchFetchError::MissingArtifact("konductor-v0.1.0-x.tar.gz".to_string())
-                .to_string();
+        let mapped_message = GithubBranchFetchError::MissingArtifact(
+            "konductor-v0.1.0-x.tar.gz".to_string(),
+            private_repo_hint::TokenState::NotOptedIn,
+        )
+        .to_string();
         let fetcher: RemoteArtifactFetcher =
             Box::new(move || Err(std::io::Error::other(mapped_message.clone())));
         let err = fetcher().expect_err("fake missing-artifact fetch must fail");
@@ -467,9 +540,11 @@ mod tests {
 
     #[test]
     fn fake_fetcher_missing_sidecar_outcome_maps_to_an_io_error() {
-        let mapped_message =
-            GithubBranchFetchError::MissingSidecar("konductor-v0.1.0-x.tar.gz.sha256".to_string())
-                .to_string();
+        let mapped_message = GithubBranchFetchError::MissingSidecar(
+            "konductor-v0.1.0-x.tar.gz.sha256".to_string(),
+            private_repo_hint::TokenState::NotOptedIn,
+        )
+        .to_string();
         let fetcher: RemoteArtifactFetcher =
             Box::new(move || Err(std::io::Error::other(mapped_message.clone())));
         let err = fetcher().expect_err("fake missing-sidecar fetch must fail");

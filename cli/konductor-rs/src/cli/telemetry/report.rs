@@ -2,157 +2,106 @@
 //
 // telemetry/report.rs — the `telemetry::report_*` call-site API.
 //
-// Every function here returns `()`, never `Result` -- telemetry failure
-// must never propagate to a caller. Internally: a missing/malformed
-// identity file, a `spawn()` error, or the transport script's own
-// network failure are all discarded, never escalated.
-//
-// Naming: `telemetry`, not `metrics` -- `Commands::Metrics` already
-// names a distinct, unrelated stub command.
+// Every function here returns `()`, never `Result`: telemetry failure
+// must never propagate to a caller.
 
+#[cfg(not(test))]
 use std::io::Write as _;
+#[cfg(not(test))]
 use std::process::{Command, Stdio};
 use std::sync::OnceLock;
 
-use super::envelope::{EventEnvelope, EventType, OuterEnvelope, NIL_UUID_SENTINEL};
-use super::identity::{self, IdentityRecord};
+use super::envelope::{EventEnvelope, EventType, OuterEnvelope};
+use crate::cli::install::index;
+// `identity` is otherwise unused in this module's own non-test code --
+// no production `report_*` gate reads the legacy per-target identity
+// file anymore -- but stays available for `#[cfg(test)]` call sites
+// below that simulate a developer machine predating its retirement.
+#[allow(unused_imports)]
+use super::identity;
+use super::install_info;
+use super::instance;
 
-/// AWS Solutions Library Solution ID assigned to Konductor. This is the
-/// real, registered identifier, not a placeholder, and is sent as every
-/// outbound telemetry event's `Solution` field.
+use konductor_telemetry::NIL_UUID_SENTINEL;
+
+/// AWS Solutions Library Solution ID assigned to Konductor.
 pub(super) const SOLUTION_ID: &str = "SO0370";
 
-/// Compile-time default endpoint (three-tier resolution order, tier 1)
-/// -- the real AWS Solutions Library operational-metrics ingestion
-/// endpoint for Konductor (`SOLUTION_ID` = `SO0370`). Accepts a POST of
-/// the exact `Solution`/`Version`/`UUID`/`TimeStamp`/`Data` envelope
-/// shape `envelope.rs`'s `OuterEnvelope` already produces.
 const DEFAULT_TELEMETRY_ENDPOINT: &str = "https://metrics.awssolutionsbuilder.com/generic";
 
-/// Environment variable overriding the endpoint (tier 2 of the
-/// three-tier resolution order -- `KONDUCTOR_METRICS_ENDPOINT` env var
-/// -> `.konductor/config.yml` `telemetry.endpoint` -> compile-time
-/// default). Named `KONDUCTOR_METRICS_ENDPOINT`, not
-/// `KONDUCTOR_TELEMETRY_ENDPOINT` --
-/// must match that literal name exactly, since it
-/// is the one already-documented, externally-visible override an
-/// operator would set.
+/// Env var override, ahead of `.konductor/config.yml`.
 const TELEMETRY_ENDPOINT_ENV_VAR: &str = "KONDUCTOR_METRICS_ENDPOINT";
 
-/// Fleet-wide opt-out env var ("`KONDUCTOR_TELEMETRY=off` + managed
-/// config for fleet"). Checked FIRST in `resolve_endpoint`, ahead of
-/// `.konductor/config.yml`'s own per-repo `telemetry.enabled: false` --
-/// a fleet-level override set in the process environment is meant to be
-/// unconditional, not something an individual repo's checked-in config
-/// can re-enable.
+/// Fleet-wide opt-out (`KONDUCTOR_TELEMETRY=off`). Checked first in
+/// `resolve_endpoint`, ahead of a repo's own `telemetry.enabled: false`.
 const TELEMETRY_OFF_ENV_VAR: &str = "KONDUCTOR_TELEMETRY";
 
-/// The exact value `TELEMETRY_OFF_ENV_VAR` must equal to disable
-/// telemetry -- matches the documented literal example
-/// (`KONDUCTOR_TELEMETRY=off`) exactly; any other value (including
-/// empty) leaves telemetry enabled per the other resolution tiers.
 const TELEMETRY_OFF_VALUE: &str = "off";
 
-/// The checked-in transport script's text, embedded at compile time
-/// -- never read from a source-tree path at runtime.
 const TELEMETRY_REPORT_SCRIPT: &str =
     include_str!("../../../../../scripts/konductor-telemetry-report.sh");
 
-/// Materialized script's file name under `std::env::temp_dir()`.
 const MATERIALIZED_SCRIPT_NAME: &str = "konductor-telemetry-report.sh";
 
-/// This process's cached identity lookup: resolved at most once,
-/// regardless of how many `report_*` calls happen in this process's
-/// lifetime. Test-only escape hatch (`reset_identity_cache_for_test`)
-/// exists because `cargo test` runs every test in this module in one
-/// shared process -- without it, the first test to populate the cache
-/// would poison every later test in the same run.
-static IDENTITY_CACHE: OnceLock<Option<IdentityRecord>> = OnceLock::new();
+/// No fallback to `std::env::temp_dir()`: with no `HOME` there is no
+/// anchor the instance record could mean anything against. Routes
+/// through `index::env_home_dir` so `HOME=""` refuses the same way an
+/// unset `HOME` does, instead of resolving to a relative path that
+/// `instance::ensure_instance_with_migration`/
+/// `resolve_instance_uuid_for_wire` would silently treat as real.
+fn home_dir() -> Option<std::path::PathBuf> {
+    index::env_home_dir()
+}
 
-/// Resolves the identity record for `target_dir`, cached for the rest of
-/// this process. `target_dir`'s value only matters on the FIRST call in
-/// a process -- subsequent calls (even with a different `target_dir`,
-/// which no real call site ever does across process lifetime) return
-/// the cached value: identity is resolved once and reused for the rest
-/// of the process.
+/// The consent decision itself, as a pure function of its two inputs
+/// -- no I/O, no `HOME` lookup, no instance-file resolution. ANDed:
+/// either input being false suppresses reporting, unconditionally,
+/// and a per-target opt-out can never be overridden by machine
+/// consent.
 ///
-/// NOT SAFE for a `--all` batch loop that iterates several distinct
-/// `target_dir`s in one process -- each has its OWN
-/// `.konductor/telemetry-id.json` with its own UUID, but every target
-/// after the first would be reported under the first target's cached
-/// identity. Batch call sites (`uninstall_one`/`run_update_one_target`
-/// invoked from `dispatch_all`/`dispatch_update_all_json`) must use
-/// `read_identity_uncached` instead, which re-reads per call.
-fn cached_identity(target_dir: &std::path::Path) -> Option<IdentityRecord> {
-    IDENTITY_CACHE
-        .get_or_init(|| identity::read_identity(target_dir))
-        .clone()
+/// Split out of `telemetry_consent_allows` so this AND logic is
+/// exercisable without a filesystem: `machine_consent` is exactly
+/// `InstanceRecord.telemetry_consent`, resolved by the caller.
+fn consent_decision(target_already_opted_out: bool, machine_consent: bool) -> bool {
+    !target_already_opted_out && machine_consent
 }
 
-/// Reads `target_dir`'s identity record directly, bypassing
-/// `IDENTITY_CACHE` entirely. Use this from any call site that may run
-/// against more than one `target_dir` within a single process (the
-/// `--all` batch paths in `uninstall.rs`/`update.rs`) -- the process-
-/// global cache's "resolved once" contract only holds for a
-/// single-target invocation.
-pub(crate) fn read_identity_uncached(target_dir: &std::path::Path) -> Option<IdentityRecord> {
-    identity::read_identity(target_dir)
+/// Resolves this call's two consent inputs -- `HOME` and the instance
+/// record -- then applies `consent_decision`.
+///
+/// Always resolves/mints the instance record even when
+/// `target_already_opted_out` is true, so a later call for a
+/// different, opted-in target on the same machine finds a record
+/// already there.
+fn telemetry_consent_allows(target_already_opted_out: bool) -> bool {
+    let Some(home) = home_dir() else {
+        return false;
+    };
+    let record = instance::ensure_instance_with_migration(&home, target_already_opted_out, true);
+    consent_decision(target_already_opted_out, record.telemetry_consent)
 }
 
-/// Debug-only escape hatch for the host-allowlist check below
-/// (`endpoint_host_is_allowed`) -- set to bypass it for local
-/// dev/testing against a loopback endpoint (e.g. a developer's own test
-/// receiver on `127.0.0.1`). Never checked implicitly by any other
-/// code path; a caller must explicitly opt in by setting this exact
-/// env var, and the name says plainly what it does rather than reusing
-/// a more general-purpose-sounding flag.
+/// Debug-only escape hatch for the host-allowlist check below.
 const TELEMETRY_ALLOW_LOCAL_ENDPOINT_ENV_VAR: &str = "KONDUCTOR_TELEMETRY_ALLOW_LOCAL_ENDPOINT";
 
 /// Whether telemetry is disabled (fleet-wide env var or per-repo
-/// config), or no endpoint resolves. Checks, in order:
-/// 1. `KONDUCTOR_TELEMETRY=off` (`TELEMETRY_OFF_ENV_VAR`) -- the
-///    fleet-wide opt-out. Checked FIRST and unconditionally: a
-///    fleet-managed environment
-///    variable is meant to win over whatever an individual repo's
-///    checked-in `.konductor/config.yml` says.
-/// 2. `.konductor/config.yml`'s `telemetry.enabled: false` -- the
-///    per-repo opt-out.
+/// config), or no endpoint resolves. `KONDUCTOR_TELEMETRY=off` wins
+/// over a repo's own `.konductor/config.yml`. Endpoint resolution
+/// order: env var -> config.yml -> compile-time default.
 ///
-/// If neither disables telemetry, resolves the endpoint per the
-/// three-tier order: `KONDUCTOR_METRICS_ENDPOINT`
-/// env var -> `.konductor/config.yml`'s `telemetry.endpoint` ->
-/// compile-time `DEFAULT_TELEMETRY_ENDPOINT`. Returns `None` if
-/// telemetry is disabled by either mechanism above, OR if the resolved
-/// endpoint's host fails `endpoint_host_is_allowed` (see that
-/// function's own doc comment for the security rationale); `Some(endpoint)`
-/// otherwise. `target_dir` is used only to look for a project-local
-/// `.konductor/config.yml` -- absent that, falls back to the compile-time
-/// default (with the env var taking precedence over both).
-///
-/// Reads `.konductor/config.yml` directly via `serde_yaml` for just the
-/// `telemetry` top-level key -- deliberately NOT threaded through the
-/// existing `cli::config::Config`/`load_config` machinery, which models
-/// an unrelated severity/tier gate-config schema (this only requires
-/// "the YAML parsing already available to the crate", i.e. `serde_yaml`
-/// itself, not that specific struct).
-/// `#[cfg(test)]`: production code now calls `resolve_endpoint_with_pin`
-/// directly (it needs the pin `resolve_endpoint` itself discards) --
-/// this thin wrapper has no remaining non-test caller, kept only so
-/// this module's existing `Option<String>`-shaped tests need no
-/// changes.
+/// Reads just the `telemetry:` key out of
+/// `<target_dir>/.konductor/config.yml`, deliberately not through the
+/// `cli::config::Config` machinery, which models an unrelated schema.
+/// `#[cfg(test)]`: production calls `resolve_endpoint_with_pin` directly.
 #[cfg(test)]
 fn resolve_endpoint(target_dir: &std::path::Path) -> Option<String> {
     resolve_endpoint_with_pin(target_dir).map(|(endpoint, _pinned_ip)| endpoint)
 }
 
 /// Same resolution as `resolve_endpoint`, but also returns the address
-/// (if any) `send_event`/`spawn_and_send` must pin `curl` to via
-/// `--resolve` (adversarial finding: DNS-rebinding TOCTOU) -- see
-/// `endpoint_host_is_allowed_with_pin`'s own doc comment for the full
-/// rationale and the meaning of each `Option<Option<IpAddr>>` shape.
-/// Kept as a wrapper around the SAME logic `resolve_endpoint` used to
-/// contain directly (rather than two independently-maintained
-/// resolution pipelines) so the two can never drift.
+/// (if any) `spawn_and_send` must pin `curl` to via `--resolve` --
+/// closes a DNS-rebinding TOCTOU between this check's own resolution
+/// and curl's later, independent one.
 fn resolve_endpoint_with_pin(
     target_dir: &std::path::Path,
 ) -> Option<(String, Option<std::net::IpAddr>)> {
@@ -163,14 +112,6 @@ fn resolve_endpoint_with_pin(
     let raw = read_telemetry_config(target_dir);
 
     if let Some(false) = raw.as_ref().and_then(|r| r.enabled) {
-        // Provenance-only trace (`KONDUCTOR_LOG=debug`), mirroring
-        // `cached_endpoint_with_pin`'s own resolution trace: the one
-        // externally observable signal that THIS target's own
-        // `.konductor/config.yml` was actually consulted and found
-        // disabled, as opposed to a `--all` batch call site silently
-        // reusing a DIFFERENT target's cached verdict -- see
-        // `tests/telemetry_report_process.rs`'s own
-        // `update_all_json_batch_honors_each_targets_own_telemetry_opt_out`.
         crate::cli::trace::trace(
             "trace",
             "telemetry: disabled for this target via .konductor/config.yml",
@@ -192,145 +133,80 @@ fn resolve_endpoint_with_pin(
         DEFAULT_TELEMETRY_ENDPOINT.to_string()
     };
 
-    // Security gate (host allowlist): anyone with config-write or
-    // env-var-set access in shared CI could otherwise redirect
-    // telemetry to an attacker-controlled host by pointing either
-    // override tier at a loopback/link-local/private-range address that
-    // happens to be reachable from THIS host but is not the real
-    // fleet-managed collector -- e.g. a listener the attacker controls
-    // on the same CI runner or the same private network segment.
-    // Rejecting rather than silently sending is the same fail-closed
-    // posture `resolve_endpoint`'s other checks already apply.
+    // Host allowlist: without it, config-write or env-var-set access
+    // in shared CI could redirect telemetry to an attacker-controlled
+    // host via a loopback/private-range override.
     let pinned_ip = endpoint_host_is_allowed_with_pin(&candidate)?;
 
     Some((candidate, pinned_ip))
 }
 
-/// Whether `endpoint`'s host is safe to send telemetry to: rejects a
-/// loopback (`127.0.0.1`/`::1`/`localhost`), link-local
-/// (`169.254.0.0/16`/`fe80::/10`), or RFC 1918 private-range
-/// (`10.0.0.0/8`/`172.16.0.0/12`/`192.168.0.0/16`) host, unless the
-/// debug-only `KONDUCTOR_TELEMETRY_ALLOW_LOCAL_ENDPOINT` escape hatch is
-/// set (see that constant's own doc comment). A host this function
-/// cannot classify at all (fails to parse as a URL with a discernible
-/// host) is treated as NOT allowed -- fail closed, matching every other
-/// tolerance decision in this module, which drops rather than sends on
-/// anything it cannot positively validate.
+/// Rejects a loopback (`127.0.0.1`/`::1`/`localhost`), link-local, or
+/// RFC 1918 private-range host, unless the debug-only
+/// `KONDUCTOR_TELEMETRY_ALLOW_LOCAL_ENDPOINT` escape hatch is set. A
+/// host this function cannot classify at all is not allowed.
 ///
-/// Two checks run, in order: the cheap literal-string/IP-literal check
-/// (`is_disallowed_local_host`), then an actual DNS resolution check
-/// (`resolved_addresses_include_disallowed_host`). The literal check
-/// alone is bypassable by a hostname like `127.0.0.1.nip.io`, which is
-/// not itself a loopback/private-range literal but resolves to one at
-/// request time -- the same class of gap as an unmapped IPv4-mapped
-/// IPv6 literal (`::ffff:127.0.0.1`), which `is_disallowed_local_host`
-/// also now unmaps before classifying (see that function's own doc
-/// comment). Running both checks closes the gap without regressing the
-/// existing fast literal path: an IP literal never touches the
-/// resolver (`ToSocketAddrs` resolves it directly, no DNS query), and a
-/// hostname that fails to resolve at all -- e.g. a reserved,
-/// deliberately-never-resolving `.invalid` TLD host (RFC 2606) -- is
-/// NOT itself treated as disallowed; see that function's own doc
-/// comment for why.
-/// `#[cfg(test)]`: production code now calls
-/// `endpoint_host_is_allowed_with_pin` directly (it needs the pin this
-/// bool-only wrapper discards) -- kept only so this module's existing
-/// bool-shaped tests need no changes.
+/// Runs the cheap literal-string/IP-literal check first, then a real
+/// DNS resolution check -- the literal check alone is bypassable by a
+/// hostname like `127.0.0.1.nip.io`, which resolves to a loopback
+/// address without being one itself. A hostname that fails to resolve
+/// at all is NOT itself treated as disallowed. `#[cfg(test)]`:
+/// production calls `endpoint_host_is_allowed_with_pin` directly.
 #[cfg(test)]
 fn endpoint_host_is_allowed(endpoint: &str) -> bool {
     endpoint_host_is_allowed_with_pin(endpoint).is_some()
 }
 
 /// Same allow/deny decision as `endpoint_host_is_allowed`, but also
-/// returns the address (if any) `spawn_and_send` must pin `curl` to via
-/// `--resolve` -- closing the DNS-rebinding TOCTOU between THIS
-/// function's own resolution and curl's later, independent one
-/// (adversarial finding: the Rust-side check validates a hostname, then
-/// hands the bare hostname string to the transport script, which lets
-/// curl resolve it again at connect time -- a rebinding attacker can
-/// flip the DNS answer in between). Computes the pin from the EXACT
-/// SAME resolution this function's own allow/deny verdict is based on
-/// -- never a second, independent lookup, which would just move the
-/// TOCTOU window rather than close it (a second resolution can
-/// legitimately return a different address than the first under
-/// precisely the attack this closes).
+/// returns the address (if any) `spawn_and_send` must pin `curl` to.
+/// The pin comes from the SAME resolution this function's own
+/// allow/deny verdict is based on, never a second, independent lookup
+/// (which would just move the TOCTOU window).
 ///
-/// The literal-check and escape-hatch handling below is this crate's
-/// own glue; the resolution bound (`telemetry_net::resolve_host_addrs_bounded`)
-/// and the resulting allow/deny/pin decision (`telemetry_net::decide_pin`)
-/// are the shared implementation `mcp/lib/skill-lookup-core`'s own
-/// mirror also calls, so the timeout-vs-failure distinction that
-/// decision embodies can never diverge
-/// between the two crates.
+/// The literal-check and escape-hatch handling is this crate's own
+/// glue; the resolution bound and allow/deny/pin decision are shared
+/// with `skill-lookup-core`'s own mirror.
 ///
 /// Returns:
-/// - `None` -- disallowed; do not send. This now also covers a
-///   resolution that did not finish within `DNS_RESOLUTION_TIMEOUT`
-///   (see `telemetry_net::decide_pin`'s own doc comment for why a
-///   timeout is denied outright rather than folded into the same
-///   fail-open outcome a genuine resolution failure gets).
-/// - `Some(None)` -- allowed, with nothing to pin: either the debug
-///   escape hatch bypassed validation entirely, `host` is already an IP
-///   literal (curl performs no resolution for a literal, so there is no
-///   TOCTOU window to close), or `host` failed to resolve outright
-///   within the bound (fail-open, matching
-///   `resolved_addresses_include_disallowed_host`'s own contract --
-///   there is no address to pin either way).
-/// - `Some(Some(ip))` -- allowed, and `host` resolved to one or more
-///   addresses none of which are disallowed; `ip` is the exact address
-///   this check validated and `spawn_and_send` must pin `curl` to.
+/// - `None` -- disallowed; do not send. Also covers a resolution that
+///   timed out (denied outright, never folded into the fail-open case).
+/// - `Some(None)` -- allowed, nothing to pin.
+/// - `Some(Some(ip))` -- allowed; `ip` is what to pin to.
 fn endpoint_host_is_allowed_with_pin(endpoint: &str) -> Option<Option<std::net::IpAddr>> {
     if std::env::var_os(TELEMETRY_ALLOW_LOCAL_ENDPOINT_ENV_VAR).is_some() {
         return Some(None);
     }
-    let host = telemetry_net::extract_host(endpoint)?;
-    if telemetry_net::is_disallowed_local_host(host) {
+    let host = konductor_telemetry::extract_host(endpoint)?;
+    if konductor_telemetry::is_disallowed_local_host(host) {
         return None;
     }
     if host.parse::<std::net::IpAddr>().is_ok() {
-        // Already a literal -- ToSocketAddrs never queries a resolver
-        // for one, so there is nothing to pin.
         return Some(None);
     }
-    let outcome = telemetry_net::resolve_host_addrs_bounded(host, DNS_RESOLUTION_TIMEOUT);
-    telemetry_net::decide_pin(outcome)
+    let outcome = konductor_telemetry::resolve_host_addrs_bounded(host, DNS_RESOLUTION_TIMEOUT);
+    konductor_telemetry::decide_pin(outcome)
 }
 
-/// Resolves `host` via `telemetry_net::resolve_host_addrs_bounded` and
-/// checks whether the outcome would be flagged as disallowed -- a
-/// bool-only convenience so this module's existing tests exercising
-/// the resolution path (as opposed to `endpoint_host_is_allowed_with_pin`'s
-/// full pin-and-escape-hatch decision) need no changes. A `TimedOut`
-/// outcome is folded into `true` (treated the same as "flagged") here
-/// only because none of this test-only helper's own callers exercise a
-/// real timeout -- the actual timeout-vs-failure distinction is
-/// asserted directly against `telemetry_net::decide_pin` in this
-/// module's own tests below, and exhaustively in `telemetry-net`'s own
-/// test suite.
+/// Resolves `host` via `konductor_telemetry::resolve_host_addrs_bounded` and
+/// checks whether the outcome would be flagged as disallowed. `TimedOut`
+/// folds into `true` here only because none of this test-only helper's
+/// own callers exercise a real timeout.
 #[cfg(test)]
 fn resolved_addresses_include_disallowed_host(host: &str) -> bool {
-    match telemetry_net::resolve_host_addrs_bounded(host, DNS_RESOLUTION_TIMEOUT) {
-        telemetry_net::DnsOutcome::Resolved(addrs) => {
-            addrs.iter().any(|ip| telemetry_net::is_disallowed_ip(*ip))
-        }
-        telemetry_net::DnsOutcome::Failed => false,
-        telemetry_net::DnsOutcome::TimedOut => true,
+    match konductor_telemetry::resolve_host_addrs_bounded(host, DNS_RESOLUTION_TIMEOUT) {
+        konductor_telemetry::DnsOutcome::Resolved(addrs) => addrs
+            .iter()
+            .any(|ip| konductor_telemetry::is_disallowed_ip(*ip)),
+        konductor_telemetry::DnsOutcome::Failed => false,
+        konductor_telemetry::DnsOutcome::TimedOut => true,
     }
 }
 
-/// Upper bound on how long this module's DNS resolution may block its
-/// caller. `report_error` calls
-/// `telemetry::report_cli_error` -- which reaches this resolution via
-/// `resolve_endpoint`/`endpoint_host_is_allowed` -- BEFORE printing the
-/// user-facing error line, so an un-timeboxed `getaddrinfo` call here
-/// stalls every telemetry-enabled CLI error's visible output for as
-/// long as the (possibly slow or misconfigured) resolver takes.
-/// Deliberately short: a normal, responsive resolver finishes in low
-/// single-digit milliseconds. A resolution error still fails open (see
-/// `telemetry_net::decide_pin`'s own doc comment). A TIMEOUT does not --
-/// it is denied outright rather than
-/// given more time, since lengthening this bound on a timeout would
-/// reintroduce the exact foreground stall this bound exists to prevent.
+/// Upper bound on this module's DNS resolution. `report_error` reaches
+/// this resolution before printing the user-facing error line, so an
+/// un-timeboxed lookup here stalls every telemetry-enabled CLI error's
+/// output. A resolution error still fails open; a timeout does not --
+/// it is denied outright.
 const DNS_RESOLUTION_TIMEOUT: std::time::Duration = std::time::Duration::from_millis(500);
 
 #[derive(Debug, Default, serde::Deserialize)]
@@ -347,11 +223,8 @@ struct RawConfigTelemetryOnly {
     telemetry: Option<RawTelemetrySection>,
 }
 
-/// Reads just the `telemetry:` top-level key out of
-/// `<target_dir>/.konductor/config.yml`, if present and parseable.
-/// Missing file, unreadable file, or malformed YAML all read back as
-/// `None` -- the same "absent" tolerance every other telemetry read
-/// path in this module already applies.
+/// `None` on missing/unreadable/malformed -- the same "absent"
+/// tolerance every telemetry read path applies.
 fn read_telemetry_config(target_dir: &std::path::Path) -> Option<RawTelemetrySection> {
     let path = target_dir
         .join(super::super::config::KONDUCTOR_DIR_NAME)
@@ -362,316 +235,181 @@ fn read_telemetry_config(target_dir: &std::path::Path) -> Option<RawTelemetrySec
 }
 
 /// Materializes the embedded transport script into a process-private
-/// directory (never the shared, world-writable `std::env::temp_dir()`)
-/// and makes it executable.
-///
-/// Security follow-up: writing a fixed, predictable name into a
-/// shared temp dir is a local code-execution vector on multi-user
-/// hosts -- a local attacker can pre-place a symlink at that path
-/// (`std::fs::write` follows symlinks) or swap the file's contents
-/// between this write and the later `spawn()` (TOCTOU), running
-/// arbitrary code with this process's privileges. Mitigated by:
-///   1. materializing under `$HOME/.konductor/tmp`, created `0o700`
-///      (private to this user, not world-writable);
-///   2. opening with `O_NOFOLLOW` so a pre-placed symlink at the target
-///      path is rejected outright rather than followed;
-///   3. verifying the open file is a regular file immediately before
-///      making it executable, closing the TOCTOU window between the
-///      open and the `spawn()` below.
-///
-/// Self-healing: a deleted or stale (post-upgrade) copy is simply
-/// rewritten, with no separate upgrade step.
+/// directory and makes it executable. Self-healing: a deleted or
+/// stale copy is rewritten.
 fn materialize_script() -> std::io::Result<std::path::PathBuf> {
-    let dir = private_script_dir()?;
-    let path = dir.join(MATERIALIZED_SCRIPT_NAME);
-    write_verified(&path, TELEMETRY_REPORT_SCRIPT)?;
-    set_executable(&path)?;
-    Ok(path)
+    let dir = konductor_telemetry::private_script_dir()?;
+    konductor_telemetry::materialize_script(&dir, MATERIALIZED_SCRIPT_NAME, TELEMETRY_REPORT_SCRIPT)
 }
 
-/// `$HOME/.konductor/tmp` when `HOME` is set, created `0o700` if
-/// absent. Never the shared, world-writable `std::env::temp_dir()`
-/// directly -- see `materialize_script`'s doc comment.
+/// The transport seam `spawn_and_send_with_transport` sends through,
+/// injected explicitly rather than resolved via a global in this
+/// module's own test suite -- see `default_test_transport` below for
+/// the one place a `cfg(test)`-only global is used instead.
 ///
-/// `HOME` is not guaranteed to be set -- sandboxed build/CI containers
-/// commonly run with no `HOME` at all (this crate's `skill-lookup-core`
-/// mirror's `materialized_script_path_exists_and_is_executable` test
-/// caught this in a real dry-run build). When `HOME` is unset, falls
-/// back to a per-uid subdirectory under `std::env::temp_dir()`
-/// (`konductor-tmp-<uid>`), created `0o700` the same way -- private to
-/// the current user (not world-writable, not symlink-attackable via
-/// another uid) without requiring `$HOME` to exist.
-/// `std::env::temp_dir()` itself never depends on `HOME` (it falls
-/// back to `TMPDIR`/`/tmp`), so this fallback works in exactly the
-/// environment that broke the `$HOME`-only path.
-fn private_script_dir() -> std::io::Result<std::path::PathBuf> {
-    let dir = match std::env::var_os("HOME") {
-        Some(home) => std::path::PathBuf::from(home)
-            .join(".konductor")
-            .join("tmp"),
-        None => std::env::temp_dir().join(format!("konductor-tmp-{}", current_uid())),
-    };
-    create_private_dir_all(&dir)?;
-    Ok(dir)
+/// `send` takes the same arguments the real spawn always took: the
+/// resolved `endpoint`, an optional DNS-rebinding pin, and the
+/// serialized JSON `body`. Must never panic and never block its caller
+/// meaningfully -- the real implementation's "telemetry failure never
+/// propagates" contract applies to every implementation of this trait.
+trait Transport {
+    fn send(&self, endpoint: &str, pinned_ip: Option<std::net::IpAddr>, body: &str);
 }
 
-/// The current process's effective UID, via a direct `getuid(2)` FFI
-/// call -- avoids pulling in the `libc` crate for one syscall this
-/// module needs only for the `HOME`-unset fallback's per-user scoping.
-#[cfg(unix)]
-fn current_uid() -> u32 {
-    extern "C" {
-        fn getuid() -> u32;
-    }
-    // SAFETY: getuid(2) takes no arguments, has no preconditions, and
-    // cannot fail.
-    unsafe { getuid() }
-}
-
-#[cfg(not(unix))]
-fn current_uid() -> u32 {
-    0
-}
-
-/// Creates `dir` (and any missing parents) with `0o700` permissions,
-/// then verifies the final leaf component is a real directory owned by
-/// this process's own UID before returning -- never trusts a
-/// pre-existing entry at that exact path without checking both.
+/// Production's only implementation: byte-identical to what
+/// `spawn_and_send` always did before this seam existed. Materializes
+/// the script, spawns it detached with `endpoint` as its first argv
+/// (no shell interposed) and an optional `host:port:address` pin as
+/// its second, writes `body` to its stdin, and never `.wait()`s --
+/// any spawn error or later network failure is discarded.
 ///
-/// Two independent hazards on a shared multi-user host:
-///   1. Ownership: `create_dir_all` is a no-op if something is already
-///      there, and `set_permissions` happily re-chmods whatever that
-///      is. A different local user could have pre-created the
-///      directory before this process ever ran; silently trusting and
-///      writing into it hands that user visibility (or worse) into
-///      this process's private telemetry-transport script.
-///   2. Symlinks: `set_permissions` (`chmod(2)`) follows symlinks. If
-///      the leaf path component is a symlink to somewhere else
-///      entirely, the `0o700` mode lands on that OTHER target, not on
-///      a private directory at the intended path -- and the directory
-///      the script later gets written into (via `write_verified`'s own
-///      `O_NOFOLLOW` open, which only protects the FILE, not the
-///      directory) is not actually this process's private space.
-///
-/// Fails closed on either hazard: returns an error rather than
-/// proceeding to materialize the script into an untrustworthy
-/// directory. `symlink_metadata` (never `metadata`) on the leaf
-/// component specifically, so a symlink at that exact path is detected
-/// rather than transparently followed the way `create_dir_all` and
-/// `set_permissions` both would.
-#[cfg(unix)]
-fn create_private_dir_all(dir: &std::path::Path) -> std::io::Result<()> {
-    use std::os::unix::fs::{MetadataExt, PermissionsExt};
+/// `#[cfg(not(test))]`: this type does not exist in a test build --
+/// `spawn_and_send`'s own `#[cfg(test)]` arm never constructs it, so a
+/// test build has no code path that can reach a real spawn through
+/// this seam, structurally rather than by convention.
+#[cfg(not(test))]
+struct RealTransport;
 
-    std::fs::create_dir_all(dir)?;
-
-    let leaf_meta = std::fs::symlink_metadata(dir)?;
-    if leaf_meta.file_type().is_symlink() {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            format!(
-                "refusing to use {}: a symlink exists at this exact path \
-                 instead of a real directory",
-                dir.display()
-            ),
-        ));
-    }
-    if !leaf_meta.is_dir() {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            format!("refusing to use {}: not a directory", dir.display()),
-        ));
-    }
-    if leaf_meta.uid() != current_uid() {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::PermissionDenied,
-            format!(
-                "refusing to use {}: owned by uid {}, not this process's own uid {}",
-                dir.display(),
-                leaf_meta.uid(),
-                current_uid()
-            ),
-        ));
-    }
-
-    std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o700))
-}
-
-#[cfg(not(unix))]
-fn create_private_dir_all(dir: &std::path::Path) -> std::io::Result<()> {
-    std::fs::create_dir_all(dir)
-}
-
-/// Writes `contents` to `path` only if no byte-identical copy is
-/// already there, opening with `O_NOFOLLOW` (never following a
-/// symlink an attacker pre-placed at `path`) and verifying the result
-/// is a regular file before returning -- closes the TOCTOU window
-/// between this write and `spawn_and_send`'s later exec. Relies on
-/// `private_script_dir`'s `0o700` permissions (not a uid check here,
-/// to avoid pulling in a new `libc`-style dependency for one syscall)
-/// to keep another local user from replacing the file afterward.
-#[cfg(unix)]
-fn write_verified(path: &std::path::Path, contents: &str) -> std::io::Result<()> {
-    use std::io::Write as _;
-    use std::os::unix::fs::OpenOptionsExt;
-
-    if let Ok(existing) = std::fs::read_to_string(path) {
-        if existing == contents {
-            return verify_regular_file(path);
+#[cfg(not(test))]
+impl Transport for RealTransport {
+    fn send(&self, endpoint: &str, pinned_ip: Option<std::net::IpAddr>, body: &str) {
+        let Ok(script_path) = materialize_script() else {
+            return;
+        };
+        let mut command = Command::new(&script_path);
+        command.arg(endpoint);
+        if let Some(ip) = pinned_ip {
+            if let Some(host) = konductor_telemetry::extract_host(endpoint) {
+                command.arg(konductor_telemetry::build_resolve_arg(
+                    host,
+                    konductor_telemetry::extract_port(endpoint),
+                    ip,
+                ));
+            }
+        }
+        let Ok(mut child) = command
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+        else {
+            return;
+        };
+        if let Some(mut stdin) = child.stdin.take() {
+            let _ = stdin.write_all(body.as_bytes());
+            // stdin is closed here, leaving the child detached, never
+            // .wait()-ed -- fire-and-forget.
         }
     }
-
-    let mut file = std::fs::OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .custom_flags(O_NOFOLLOW)
-        .open(path)?;
-    file.write_all(contents.as_bytes())?;
-    drop(file);
-    verify_regular_file(path)
 }
 
-#[cfg(not(unix))]
-fn write_verified(path: &std::path::Path, contents: &str) -> std::io::Result<()> {
-    std::fs::write(path, contents)
-}
-
-/// `O_NOFOLLOW` -- NOT a single numeric value shared across
-/// Linux/BSD/macOS: on Linux/Android/illumos/Solaris it is `0o400_000`
-/// (`0x20000`); on macOS and the *BSDs it is `0o400` (`0x100`).
-/// cfg-gated per platform rather than pulling in a `libc` dependency
-/// for a single flag this crate doesn't otherwise need.
-#[cfg(any(
-    target_os = "linux",
-    target_os = "android",
-    target_os = "illumos",
-    target_os = "solaris"
-))]
-const O_NOFOLLOW: i32 = 0o400_000;
-#[cfg(all(
-    unix,
-    not(any(
-        target_os = "linux",
-        target_os = "android",
-        target_os = "illumos",
-        target_os = "solaris"
-    ))
-))]
-const O_NOFOLLOW: i32 = 0o400;
-
-/// Rejects anything that isn't a regular file -- the last check before
-/// this path is handed to `spawn()`. `symlink_metadata` (never
-/// `metadata`) so a symlink swapped in after the `O_NOFOLLOW` open
-/// above is detected rather than transparently followed.
-#[cfg(unix)]
-fn verify_regular_file(path: &std::path::Path) -> std::io::Result<()> {
-    let metadata = std::fs::symlink_metadata(path)?;
-    if !metadata.is_file() {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
-            "materialized script path is not a regular file",
-        ));
-    }
-    Ok(())
-}
-
-#[cfg(unix)]
-fn set_executable(path: &std::path::Path) -> std::io::Result<()> {
-    use std::os::unix::fs::PermissionsExt;
-    std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o755))
-}
-
-#[cfg(not(unix))]
-fn set_executable(_path: &std::path::Path) -> std::io::Result<()> {
-    Ok(())
-}
-
-/// Spawns the materialized transport script detached: the endpoint as
-/// its first `Command` argument (a fixed argv array, no shell
-/// interposed), an optional `host:port:address` pin as its second
-/// (adversarial finding: DNS-rebinding TOCTOU -- see
-/// `build_resolve_arg`'s own doc comment), the JSON body written to its
-/// stdin and the handle closed. Never `.wait()`-ed -- any
-/// spawn error, and any later network failure this Rust code never
-/// observes, is discarded.
+/// Production entry point: every `send_event*` call site -- and
+/// through them, every `report_*` public function -- funnels through
+/// here. Outside `cfg(test)` this is unconditionally `RealTransport`.
 ///
-/// `pinned_ip` is `None` whenever `endpoint_host_is_allowed_with_pin`
-/// had nothing to pin (an IP literal, an unresolvable host, or the
-/// debug escape hatch) -- in that case the script performs its own
-/// unpinned resolution, exactly as it did before this fix. When
-/// `Some`, `extract_host` is called again here purely as a string-split
-/// (no network I/O, so re-deriving it costs nothing and introduces no
-/// second TOCTOU window) to recover the host `build_resolve_arg` needs
-/// alongside the port and the already-resolved pin address.
+/// Under `cfg(test)` only, this defers to `default_test_transport()`
+/// instead. A test that wants explicit control over what was sent
+/// must call `spawn_and_send_with_transport` directly with its own
+/// stub, which this module's own tests below do.
 fn spawn_and_send(endpoint: &str, pinned_ip: Option<std::net::IpAddr>, body: &str) {
-    let Ok(script_path) = materialize_script() else {
+    #[cfg(test)]
+    {
+        spawn_and_send_with_transport(default_test_transport(), endpoint, pinned_ip, body);
         return;
-    };
-    let mut command = Command::new(&script_path);
-    command.arg(endpoint);
-    if let Some(ip) = pinned_ip {
-        if let Some(host) = telemetry_net::extract_host(endpoint) {
-            command.arg(telemetry_net::build_resolve_arg(
-                host,
-                telemetry_net::extract_port(endpoint),
-                ip,
-            ));
-        }
     }
-    let Ok(mut child) = command
-        .stdin(Stdio::piped())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()
-    else {
-        return;
-    };
-    if let Some(mut stdin) = child.stdin.take() {
-        let _ = stdin.write_all(body.as_bytes());
-        // Dropping `stdin` here closes the pipe; the child is left
-        // detached and never `.wait()`-ed -- a deliberate
-        // fire-and-forget shape.
+    #[cfg(not(test))]
+    spawn_and_send_with_transport(&RealTransport, endpoint, pinned_ip, body);
+}
+
+/// Same send as `spawn_and_send`, but through an explicitly injected
+/// `Transport` rather than always `RealTransport` -- the seam this
+/// module's own tests use directly, passing a `RecordingTransport`
+/// explicitly. Matches this codebase's `*_with_*` convention for an
+/// injectable variant sitting beneath a stable public wrapper.
+fn spawn_and_send_with_transport(
+    transport: &dyn Transport,
+    endpoint: &str,
+    pinned_ip: Option<std::net::IpAddr>,
+    body: &str,
+) {
+    transport.send(endpoint, pinned_ip, body);
+}
+
+/// `#[cfg(test)]`-only global, and the one place in this module a
+/// global is used rather than explicit injection: dozens of unit
+/// tests in other files (`install.rs`, `update.rs`, `uninstall.rs`,
+/// `dispatch.rs`, `telemetry_hook.rs`) reach `spawn_and_send` only
+/// transitively, through unchanged public entry points with no
+/// parameter list to thread a `Transport` through. Safe here because
+/// every caller gets the identical, never-mutated-after-init
+/// `RecordingTransport` instance -- unlike `HOME`-mutation (see
+/// `HomeGuard`/`NoHomeGuard` below), there is no race to write
+/// different values to this slot.
+#[cfg(test)]
+static DEFAULT_TEST_TRANSPORT: OnceLock<RecordingTransport> = OnceLock::new();
+
+#[cfg(test)]
+fn default_test_transport() -> &'static RecordingTransport {
+    DEFAULT_TEST_TRANSPORT.get_or_init(RecordingTransport::new)
+}
+
+/// Test-only stub `Transport`: records every send it receives instead
+/// of spawning anything, so a test can assert on what would have been
+/// sent without a real process, DNS resolution, or network egress
+/// occurring. `Mutex`-guarded since `cargo test` runs concurrently by
+/// default and multiple tests may share this single instance.
+#[cfg(test)]
+#[derive(Default)]
+struct RecordingTransport {
+    sent: std::sync::Mutex<Vec<RecordedSend>>,
+}
+
+#[cfg(test)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct RecordedSend {
+    endpoint: String,
+    pinned_ip: Option<std::net::IpAddr>,
+    body: String,
+}
+
+#[cfg(test)]
+impl RecordingTransport {
+    fn new() -> Self {
+        Self::default()
+    }
+
+    /// Snapshot of every send recorded so far, oldest first. Never
+    /// cleared automatically -- since `default_test_transport()` is
+    /// shared crate-wide, a test asserting on this must filter to its
+    /// own endpoint/body rather than assume an empty starting state.
+    fn recorded(&self) -> Vec<RecordedSend> {
+        self.sent
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .clone()
     }
 }
 
-/// This process's cached endpoint+pin resolution: resolved at most once
-/// per process, mirroring `IDENTITY_CACHE`'s own once-per-process
-/// contract (and its own caveat: `target_dir`'s value only matters on
-/// the FIRST call in a process). Correct for a single-target invocation
-/// -- where the resolution cost is paid once either way -- but WRONG for
-/// a `--all` batch over several distinct targets, for exactly the reason
-/// `IDENTITY_CACHE` documents on its own: each target has its OWN
-/// `target_dir/.konductor/config.yml`, which `resolve_endpoint_with_pin`
-/// reads for BOTH the endpoint AND the per-repo `telemetry.enabled`
-/// opt-out, so caching the first target's resolution and reusing it for
-/// every later target would silently ignore a later target's own
-/// opt-out. Every `_for_target` sender in
-/// this module (`send_event_for_target`) therefore bypasses this cache
-/// entirely via `resolve_endpoint_with_pin_uncached`, re-resolving once
-/// per target -- accepting a bounded DNS wait per target in a batch as
-/// the deliberate correctness-over-performance trade this fix requires,
-/// the same trade `read_identity_uncached` already makes for identity.
+#[cfg(test)]
+impl Transport for RecordingTransport {
+    fn send(&self, endpoint: &str, pinned_ip: Option<std::net::IpAddr>, body: &str) {
+        self.sent
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .push(RecordedSend {
+                endpoint: endpoint.to_string(),
+                pinned_ip,
+                body: body.to_string(),
+            });
+    }
+}
+
+/// Cached endpoint+pin resolution, once per process. Correct for a
+/// single-target invocation, wrong for a `--all` batch: each target
+/// has its own `.konductor/config.yml` opt-out. `_for_target` senders
+/// bypass this via `resolve_endpoint_with_pin_uncached`.
 static ENDPOINT_CACHE: OnceLock<Option<(String, Option<std::net::IpAddr>)>> = OnceLock::new();
 
-/// Resolves the telemetry endpoint and DNS-rebinding pin for
-/// `target_dir`, cached for the rest of this process -- see
-/// `ENDPOINT_CACHE`'s own doc comment for why this exists and what it
-/// fixes for a multi-target batch run.
-///
-/// Traces (provenance only, `KONDUCTOR_LOG=debug`) exactly once per
-/// process, on whichever call actually performs the resolution --
-/// never on a call that only observes the already-cached value. This
-/// is deliberately the one externally observable signal of the caching
-/// behavior itself: `ENDPOINT_CACHE` is a process-global `OnceLock`
-/// with no safe reset (the same constraint `IDENTITY_CACHE` documents
-/// on its own doc comment), so this function's caching contract cannot
-/// be exercised by an in-process unit test sharing a `cargo test`
-/// binary with other tests that may have already populated it --
-/// `tests/telemetry_report_process.rs`'s own
-/// `update_all_json_batch_resolves_the_endpoint_exactly_once` test
-/// instead spawns a fresh subprocess per case and counts this trace
-/// line in its stderr output.
 fn cached_endpoint_with_pin(
     target_dir: &std::path::Path,
 ) -> Option<(String, Option<std::net::IpAddr>)> {
@@ -688,76 +426,83 @@ fn cached_endpoint_with_pin(
     result
 }
 
-/// Resolves the telemetry endpoint and DNS-rebinding pin for
-/// `target_dir` directly, bypassing `ENDPOINT_CACHE` entirely -- mirrors
-/// `read_identity_uncached`'s own doc comment and exists for the same
-/// reason: unlike the MCP side's own
-/// once-per-process justification for a resolution cache (single
-/// process, no per-repo config), the CLI's `resolve_endpoint_with_pin`
-/// reads a genuinely PER-REPO `target_dir/.konductor/config.yml` for
-/// both the endpoint AND the `telemetry.enabled` opt-out. Use this from
-/// any call site that may run against more than one `target_dir` within
-/// a single process (the `_for_target` batch call sites in this module) --
-/// without it, every target after the first in an `--all` batch would
-/// silently inherit the FIRST target's resolved endpoint and opt-out
-/// verdict from `ENDPOINT_CACHE`, even when that target's own
-/// `config.yml` sets `telemetry.enabled: false` or a distinct endpoint.
+/// Bypasses `ENDPOINT_CACHE` -- for `_for_target` call sites, each
+/// with its own per-repo config and opt-out.
 fn resolve_endpoint_with_pin_uncached(
     target_dir: &std::path::Path,
 ) -> Option<(String, Option<std::net::IpAddr>)> {
     resolve_endpoint_with_pin(target_dir)
 }
 
-/// Shared core for `send_event`/`send_event_for_target`: given an
-/// ALREADY-resolved `(endpoint, pinned_ip)` pair, builds and sends one
-/// event. `harness` is only populated on the wire for `cli_error` events
-/// -- callers pass `None` for every other event type. Kept as
-/// one function so the two callers' identical envelope-building and
-/// serialization logic can never drift apart -- only how the endpoint
-/// is resolved (cached vs. uncached) differs between them.
+/// Resolves the wire `UUID`: the instance record's own value, never
+/// the per-target identity.
+fn resolve_wire_uuid() -> String {
+    match home_dir() {
+        Some(home) => instance::resolve_instance_uuid_for_wire(&home),
+        None => NIL_UUID_SENTINEL.to_string(),
+    }
+}
+
+/// `None` when the install-info record is missing, unreadable, an
+/// unrecognized schema version, or itself carries `agent_version:
+/// None`.
+///
+/// `#[allow(dead_code)]`: `report_package_installed`/
+/// `report_package_version_updated`(`_for_target`) now read
+/// `install_info::read_install_info` directly, reusing that single
+/// read for both their consent gate and `agent_version` -- calling
+/// this afterward would mean reading the same record twice. Kept, not
+/// retired -- still exercised by its own tests below.
+#[allow(dead_code)]
+fn agent_version_for_target(target_dir: &std::path::Path) -> Option<String> {
+    install_info::read_install_info(target_dir).and_then(|record| record.agent_version)
+}
+
 #[allow(clippy::too_many_arguments)]
 fn send_event_with_endpoint(
     endpoint: &str,
     pinned_ip: Option<std::net::IpAddr>,
     event_type: EventType,
     target_name: impl Into<String>,
-    uuid: &str,
+    identity_uuid: &str,
     session_id: Option<String>,
     parent_session_id: Option<String>,
     error_code: Option<String>,
     harness_field: Option<String>,
+    agent_version: Option<String>,
 ) {
+    // identity_uuid is used only as eventId entropy -- the wire UUID
+    // is always the instance record's own value.
     let data = EventEnvelope::build(
         event_type,
         target_name,
-        uuid,
+        identity_uuid,
         session_id,
         parent_session_id,
         error_code,
         harness_field,
+        agent_version,
     );
-    let outer = OuterEnvelope::wrap(data, uuid.to_string());
+    let outer = OuterEnvelope::wrap(data, resolve_wire_uuid());
     let Ok(body) = serde_json::to_string(&outer) else {
         return;
     };
     spawn_and_send(endpoint, pinned_ip, &body);
 }
 
-/// Builds and sends one event, given a resolved `(uuid, harness)` pair.
-/// Resolves the endpoint via `cached_endpoint_with_pin` -- correct for a
-/// single-target invocation, WRONG for a `--all` batch over several
-/// distinct targets (see `send_event_for_target`, which every
-/// `_for_target` sender in this module uses instead).
+/// Resolves the endpoint via `cached_endpoint_with_pin` -- correct for
+/// a single-target invocation, wrong for a `--all` batch.
 #[allow(clippy::too_many_arguments)]
 fn send_event(
     target_dir: &std::path::Path,
     event_type: EventType,
     target_name: impl Into<String>,
-    uuid: &str,
+    identity_uuid: &str,
     session_id: Option<String>,
     parent_session_id: Option<String>,
     error_code: Option<String>,
     harness_field: Option<String>,
+    agent_version: Option<String>,
 ) {
     let Some((endpoint, pinned_ip)) = cached_endpoint_with_pin(target_dir) else {
         return;
@@ -767,32 +512,30 @@ fn send_event(
         pinned_ip,
         event_type,
         target_name,
-        uuid,
+        identity_uuid,
         session_id,
         parent_session_id,
         error_code,
         harness_field,
+        agent_version,
     );
 }
 
-/// Same event as `send_event`, but resolves the endpoint+pin directly via
-/// `resolve_endpoint_with_pin_uncached` instead of `cached_endpoint_with_pin` --
-/// use this from any `_for_target` call
-/// site that may visit more than one `target_dir` in one process. Without
-/// this, a `--all` batch's second-and-later targets would inherit the
-/// FIRST target's resolved endpoint and per-repo `telemetry.enabled`
-/// verdict from `ENDPOINT_CACHE`, silently sending telemetry for a target
-/// that opted out via its own `.konductor/config.yml`.
+/// Same as `send_event`, but resolves via
+/// `resolve_endpoint_with_pin_uncached` -- for `_for_target` call
+/// sites, so each target's own opt-out is honored rather than
+/// inherited from `ENDPOINT_CACHE`.
 #[allow(clippy::too_many_arguments)]
 fn send_event_for_target(
     target_dir: &std::path::Path,
     event_type: EventType,
     target_name: impl Into<String>,
-    uuid: &str,
+    identity_uuid: &str,
     session_id: Option<String>,
     parent_session_id: Option<String>,
     error_code: Option<String>,
     harness_field: Option<String>,
+    agent_version: Option<String>,
 ) {
     let Some((endpoint, pinned_ip)) = resolve_endpoint_with_pin_uncached(target_dir) else {
         return;
@@ -802,127 +545,102 @@ fn send_event_for_target(
         pinned_ip,
         event_type,
         target_name,
-        uuid,
+        identity_uuid,
         session_id,
         parent_session_id,
         error_code,
         harness_field,
+        agent_version,
     );
 }
 
-/// Hashes a runtime-provided session identifier:
-/// `sha256_hex(UUID + the runtime's own session identifier)`. This is
-/// the ONE place `sessionId`/`parentSessionId` get their final wire
-/// value -- the raw runtime session id (e.g. Claude Code's own
-/// `session_id`/`sessionId` hook payload field, see `telemetry_hook.rs`)
-/// is never transmitted or stored as-is. Applied identically regardless
-/// of which of the two wire fields the caller is populating; the UUID
-/// mixed in is this identity's own, so the SAME raw runtime session id
-/// hashes to a DIFFERENT wire value on a different install (this
-/// design's join key, not the runtime's own value, is what a consumer
-/// can correlate on).
+/// `sha256_hex(UUID + raw_session_id)` -- the raw runtime session id
+/// is never transmitted as-is. The UUID mixed in means the same raw
+/// session id hashes to a different wire value per install.
 fn hash_session_id(uuid: &str, raw_session_id: &str) -> String {
     super::super::install::artifact::sha256_hex(format!("{uuid}{raw_session_id}").as_bytes())
 }
 
-/// Hashes `raw_session_id` per `hash_session_id`, but treats an
-/// empty-string value the SAME as a fully-absent (`None`) one --
-/// `hash_session_id` never fails on empty input, so without this
-/// filter a present-but-empty raw session id would hash into a
-/// valid-looking-but-meaningless 64-hex `sessionId` on the wire,
-/// silently masquerading as a real session identifier. Shared by
-/// `report_agent_invocation`/`report_subagent_invocation` (both of
-/// `session_id` and `parent_session_id`) so the empty-string treatment
-/// can't drift between call sites, and is directly unit-testable
-/// without going through the identity-cache-gated `report_*` functions
-/// (`IDENTITY_CACHE`'s process-global `OnceLock` makes those otherwise
-/// untestable at the unit level within a shared `cargo test` process --
-/// see that constant's own doc comment).
+/// Treats an empty-string `raw_session_id` the same as `None`.
 fn hash_present_session_id(uuid: &str, raw_session_id: Option<&str>) -> Option<String> {
     raw_session_id
         .filter(|raw| !raw.is_empty())
         .map(|raw| hash_session_id(uuid, raw))
 }
 
-/// `report_agent_invocation`: fired from the hidden
-/// `__telemetry-hook` subcommand at `SessionStart`/`agentSpawn`. Skips
-/// entirely if the identity cache is `None` (most plausibly means
-/// `--no-telemetry` was passed at install).
+/// Fired from the hidden `__telemetry-hook` subcommand at
+/// `SessionStart`/`agentSpawn`. Gated on `install_info::read_install_info`
+/// -- the per-target consent signal -- not the retired per-target
+/// identity.
+///
+/// `NIL_UUID_SENTINEL` stands in for the old `identity.uuid` as
+/// `eventId` entropy, matching `report_package_uninstalled`'s own
+/// precedent: the per-target identity UUID never reached the wire
+/// either (`resolve_wire_uuid` supplies that separately), so dropping
+/// it here loses no attribution. The session-hash salt is a separate
+/// role and uses `resolve_wire_uuid()` instead -- see
+/// `hash_present_session_id`.
 pub(crate) fn report_agent_invocation(
     target_dir: &std::path::Path,
     agent_name: &str,
     session_id: Option<String>,
 ) {
-    let Some(identity) = cached_identity(target_dir) else {
+    let Some(_install_info) = install_info::read_install_info(target_dir) else {
         return;
     };
-    let hashed_session_id = hash_present_session_id(&identity.uuid, session_id.as_deref());
+    if !telemetry_consent_allows(false) {
+        return;
+    }
+    let wire_uuid = resolve_wire_uuid();
+    let hashed_session_id = hash_present_session_id(&wire_uuid, session_id.as_deref());
     send_event(
         target_dir,
         EventType::AgentInvocation,
         agent_name,
-        &identity.uuid,
+        NIL_UUID_SENTINEL,
         hashed_session_id,
+        None,
         None,
         None,
         None,
     );
 }
 
-/// `report_subagent_invocation`: fired from the hidden
-/// `__telemetry-hook` subcommand at `SubagentStart`. `parent_session_id`
-/// is set from the SAME hook payload's own `sessionId` as `session_id`
-/// -- both parameters carry the identical raw value by
-/// construction; kept as two parameters so the call site stays
-/// self-describing rather than the function silently duplicating one
-/// into the other. Each is hashed independently (rather than hashing
-/// one and reusing the result for both) so a future caller that ever
-/// legitimately passes two different raw values is not silently
-/// collapsed onto one hash.
+/// Fired from the hidden `__telemetry-hook` subcommand at
+/// `SubagentStart`. Same install-info gate and sentinel-as-entropy
+/// substitution as `report_agent_invocation`.
 pub(crate) fn report_subagent_invocation(
     target_dir: &std::path::Path,
     specialist_name: &str,
     session_id: Option<String>,
     parent_session_id: Option<String>,
 ) {
-    let Some(identity) = cached_identity(target_dir) else {
+    let Some(_install_info) = install_info::read_install_info(target_dir) else {
         return;
     };
-    // Empty string treated the same as `None` for both -- see
-    // `hash_present_session_id`'s own doc comment.
-    let hashed_session_id = hash_present_session_id(&identity.uuid, session_id.as_deref());
+    if !telemetry_consent_allows(false) {
+        return;
+    }
+    let wire_uuid = resolve_wire_uuid();
+    let hashed_session_id = hash_present_session_id(&wire_uuid, session_id.as_deref());
     let hashed_parent_session_id =
-        hash_present_session_id(&identity.uuid, parent_session_id.as_deref());
+        hash_present_session_id(&wire_uuid, parent_session_id.as_deref());
     send_event(
         target_dir,
         EventType::SubagentInvocation,
         specialist_name,
-        &identity.uuid,
+        NIL_UUID_SENTINEL,
         hashed_session_id,
         hashed_parent_session_id,
+        None,
         None,
         None,
     );
 }
 
-/// `report_cli_error`: the one exception to the skip-on-
-/// `None` rule. `no_telemetry` carries `--no-telemetry`'s parsed value
-/// into the one call site (`command == "install"`) where the
-/// identity cache alone cannot disambiguate "opted out" from "hasn't
-/// installed yet". Every non-`install` call site passes `false`, a value
-/// never inspected for those commands.
-///
-/// `no_telemetry` is checked UNCONDITIONALLY, before `cached_identity`
-/// is even consulted -- not just inside the `None` arm below. A prior
-/// successful install (this exact target already carries a valid
-/// `.konductor/telemetry-id.json`, e.g. from before `--no-telemetry` was
-/// passed on a later, failing invocation) makes `cached_identity`
-/// return `Some(_)`; without this early return, that `Some` arm would
-/// report the error regardless of `no_telemetry`, silently ignoring the
-/// opt-out on every invocation that happens to already have an
-/// identity on disk. Checking it here, before the match, makes the
-/// opt-out unconditional and structural -- never
-/// "invoked then checked" -- for every caller, identity present or not.
+/// The one exception to the skip-on-`None` rule. `no_telemetry` is
+/// checked first so `--no-telemetry` is unconditional even when this
+/// target already has an install-info record.
 pub(crate) fn report_cli_error(
     target_dir: &std::path::Path,
     command: &str,
@@ -932,21 +650,23 @@ pub(crate) fn report_cli_error(
     if no_telemetry {
         return;
     }
-    report_cli_error_with_identity(target_dir, command, error_code, cached_identity(target_dir));
+    if !telemetry_consent_allows(false) {
+        return;
+    }
+    report_cli_error_with_install_info(
+        target_dir,
+        command,
+        error_code,
+        install_info::read_install_info(target_dir),
+    );
 }
 
-/// Same event and `no_telemetry`/nil-UUID-sentinel contract as
-/// `report_cli_error`, but resolves `target_dir`'s identity directly via
-/// `read_identity_uncached` instead of the process-global cache --
-/// use this from a `--all` batch call
-/// site that visits more than one `target_dir` in one process. Without
-/// this, `update.rs`'s `dispatch_update_all_json` (JSON batch) and
-/// `update_one_target`'s failure arm (plain-text `--all`, which shares
-/// the identical per-target loop) would report every failing target
-/// AFTER the first under the FIRST target's cached UUID -- the exact
-/// misattribution `report_package_uninstalled_for_target`/
-/// `report_package_version_updated_for_target` already exist to avoid
-/// for their own (success-path) events.
+/// Same as `report_cli_error`, but resolves `install-info.json` fresh
+/// per call -- for `--all` batch call sites. `install_info` has no
+/// process-lifetime cache to split (see `report_package_uninstalled`'s
+/// own doc comment), so this differs from `report_cli_error` only in
+/// which `send_event*`/`report_cli_error_with_install_info_for_target`
+/// variant it calls.
 pub(crate) fn report_cli_error_for_target(
     target_dir: &std::path::Path,
     command: &str,
@@ -956,45 +676,40 @@ pub(crate) fn report_cli_error_for_target(
     if no_telemetry {
         return;
     }
-    report_cli_error_with_identity_for_target(
+    if !telemetry_consent_allows(false) {
+        return;
+    }
+    report_cli_error_with_install_info_for_target(
         target_dir,
         command,
         error_code,
-        read_identity_uncached(target_dir),
+        install_info::read_install_info(target_dir),
     );
 }
 
-/// Shared core for `report_cli_error`/`report_cli_error_for_target`:
-/// given an ALREADY-resolved `identity` (cached or uncached, per the
-/// caller), sends the `cli_error` event or falls back to the nil-UUID
-/// sentinel -- kept as one function so the two callers' identical
-/// `Some`/`None` handling (and the nil-UUID sentinel's `command ==
-/// "install"` gate) can never drift apart.
-fn report_cli_error_with_identity(
+/// Shared core for `report_cli_error`/`report_cli_error_for_target`.
+fn report_cli_error_with_install_info(
     target_dir: &std::path::Path,
     command: &str,
     error_code: &str,
-    identity: Option<IdentityRecord>,
+    install_info: Option<install_info::InstallInfoRecord>,
 ) {
-    match identity {
-        Some(identity) => send_event(
+    match install_info {
+        Some(install_info) => send_event(
             target_dir,
             EventType::CliError,
             command,
-            &identity.uuid,
+            NIL_UUID_SENTINEL,
             None,
             None,
             Some(error_code.to_string()),
-            Some(identity.harness),
+            Some(install_info.harness),
+            None,
         ),
         None => {
-            // `no_telemetry` has already been handled by the caller's
-            // own early return, so the only remaining question is
-            // whether this is the one command that fires under the
-            // nil-UUID sentinel pre-identity.
+            // Only "install" fires under the nil sentinel
+            // pre-install-info; no_telemetry is handled by the caller.
             if command == "install" {
-                // Install failed before identity existed -- fire under
-                // the nil-UUID sentinel rather than skipping.
                 send_event(
                     target_dir,
                     EventType::CliError,
@@ -1003,39 +718,34 @@ fn report_cli_error_with_identity(
                     None,
                     None,
                     Some(error_code.to_string()),
-                    // `harness` is unknown pre-identity; there is no
-                    // install-strategy record to read it from yet.
+                    None,
                     None,
                 );
             }
-            // Otherwise: a non-install command with no prior successful
-            // install -- skip.
         }
     }
 }
 
-/// Same event and fallback-sentinel contract as
-/// `report_cli_error_with_identity`, but sends via `send_event_for_target`
-/// (uncached endpoint resolution, same per-repo-config concern
-/// `resolve_endpoint_with_pin_uncached` exists for) instead of
-/// `send_event` -- used by `report_cli_error_for_target`, the `--all`
-/// batch call site that visits more than one `target_dir` in one process.
-fn report_cli_error_with_identity_for_target(
+/// Same fallback-sentinel contract as
+/// `report_cli_error_with_install_info`, sent via
+/// `send_event_for_target`.
+fn report_cli_error_with_install_info_for_target(
     target_dir: &std::path::Path,
     command: &str,
     error_code: &str,
-    identity: Option<IdentityRecord>,
+    install_info: Option<install_info::InstallInfoRecord>,
 ) {
-    match identity {
-        Some(identity) => send_event_for_target(
+    match install_info {
+        Some(install_info) => send_event_for_target(
             target_dir,
             EventType::CliError,
             command,
-            &identity.uuid,
+            NIL_UUID_SENTINEL,
             None,
             None,
             Some(error_code.to_string()),
-            Some(identity.harness),
+            Some(install_info.harness),
+            None,
         ),
         None => {
             if command == "install" {
@@ -1048,37 +758,42 @@ fn report_cli_error_with_identity_for_target(
                     None,
                     Some(error_code.to_string()),
                     None,
+                    None,
                 );
             }
         }
     }
 }
 
-/// `report_package_uninstalled`: fired by `uninstall_one_impl`
-/// only AFTER every fallible step of that uninstall has already
-/// succeeded (manifest read, eligible-file deletion, manifest removal,
-/// index-entry removal) -- so a success event is never sent for an
-/// uninstall that goes on to fail with an `UninstallError`. Still fires
-/// BEFORE the identity file itself is deleted, so
-/// `.konductor/telemetry-id.json` still exists to read at the moment
-/// this call resolves it. Every failure mode -- missing, unreadable,
-/// malformed, unsupported `schema_version` -- is folded into the same
-/// skip-on-`None` tolerance; none of these becomes an `UninstallError`.
+/// Fired by `uninstall_one_impl` only after every fallible step has
+/// already succeeded, before `install-info.json`/`telemetry-id.json`
+/// are removed. `harness` comes from `install_info::read_install_info`
+/// -- the per-INSTALL record, not the (retired) per-target identity --
+/// via the process-global endpoint cache: correct for a single-target
+/// invocation, wrong for a `--all` batch (see
+/// `report_package_uninstalled_for_target`). `install_info` itself has
+/// no cache of its own to split; every read hits disk, so nothing here
+/// can inherit a sibling target's harness the way the old identity
+/// cache could.
 ///
-/// Uses the process-global identity cache -- correct for the
-/// single-target call sites (`dispatch_target`/the lone-tracked-install
-/// path), WRONG for a `--all` batch over several distinct targets (see
-/// `report_package_uninstalled_for_target`, which `dispatch_all` uses
-/// instead).
+/// The `NIL_UUID_SENTINEL` passed as `identity_uuid` is `eventId`
+/// entropy only -- see `EventEnvelope::build`'s own doc comment --
+/// never the wire `UUID` (`resolve_wire_uuid` supplies that). The
+/// per-target record this used to read had a UUID that reached
+/// nothing on the wire either; dropping it here loses no attribution.
 pub(crate) fn report_package_uninstalled(target_dir: &std::path::Path) {
-    let Some(identity) = cached_identity(target_dir) else {
+    let Some(install_info) = install_info::read_install_info(target_dir) else {
         return;
     };
+    if !telemetry_consent_allows(false) {
+        return;
+    }
     send_event(
         target_dir,
         EventType::PackageUninstalled,
-        identity.harness.clone(),
-        &identity.uuid,
+        install_info.harness.clone(),
+        NIL_UUID_SENTINEL,
+        None,
         None,
         None,
         None,
@@ -1086,22 +801,26 @@ pub(crate) fn report_package_uninstalled(target_dir: &std::path::Path) {
     );
 }
 
-/// Same event as `report_package_uninstalled`, but resolves `target_dir`'s
-/// identity directly via `read_identity_uncached` instead of the
-/// process-global cache. Use this from a
-/// `--all` loop that visits more than one `target_dir` in one process --
-/// each target's own UUID is read fresh, rather than every target after
-/// the first inheriting whichever UUID the cache happened to resolve
-/// first.
+/// Same as `report_package_uninstalled`, but resolves the endpoint via
+/// `resolve_endpoint_with_pin_uncached` -- for a `--all` loop, so each
+/// target's own `.konductor/config.yml` opt-out is honored rather than
+/// inherited from `ENDPOINT_CACHE`. `install_info::read_install_info`
+/// is already an uncached, per-call disk read on both paths, so this
+/// function's own harness resolution needs no separate uncached
+/// variant the way the old identity-cache split required.
 pub(crate) fn report_package_uninstalled_for_target(target_dir: &std::path::Path) {
-    let Some(identity) = read_identity_uncached(target_dir) else {
+    let Some(install_info) = install_info::read_install_info(target_dir) else {
         return;
     };
+    if !telemetry_consent_allows(false) {
+        return;
+    }
     send_event_for_target(
         target_dir,
         EventType::PackageUninstalled,
-        identity.harness.clone(),
-        &identity.uuid,
+        install_info.harness.clone(),
+        NIL_UUID_SENTINEL,
+        None,
         None,
         None,
         None,
@@ -1109,71 +828,79 @@ pub(crate) fn report_package_uninstalled_for_target(target_dir: &std::path::Path
     );
 }
 
-/// `report_package_installed`: fired once `install_from_local`
-/// and index finalize have both already succeeded, alongside the
-/// existing `report_install_success` call.
+/// Fired once `install_from_local` and index finalize have both
+/// already succeeded. Gated on `install_info::read_install_info` --
+/// the same record supplies `agent_version`, so this is a single read
+/// covering both.
 pub(crate) fn report_package_installed(target_dir: &std::path::Path, harness: &str) {
-    let Some(identity) = cached_identity(target_dir) else {
+    let Some(record) = install_info::read_install_info(target_dir) else {
         return;
     };
+    if !telemetry_consent_allows(false) {
+        return;
+    }
     send_event(
         target_dir,
         EventType::PackageInstalled,
         harness,
-        &identity.uuid,
+        NIL_UUID_SENTINEL,
         None,
         None,
         None,
         None,
+        record.agent_version,
     );
 }
 
-/// `report_package_version_updated`: fired once
-/// `strategy.install_from_local` has already succeeded, before
-/// `run_update_one_target`'s trailing `match manifest::read_manifest`.
-///
-/// Uses the process-global identity cache -- correct for a
-/// single-target run, WRONG for a `--all` batch over several distinct
-/// targets in one process (see `report_package_version_updated_for_target`,
-/// which `dispatch_update_all_json`'s per-target loop uses instead).
+/// Fired once `strategy.install_from_local` has already succeeded.
+/// `install_info` has no process-lifetime cache to split (see
+/// `report_package_uninstalled`'s own doc comment) -- every read here
+/// hits disk, so this differs from `report_package_version_updated_for_target`
+/// only in which `send_event*` variant it calls.
 pub(crate) fn report_package_version_updated(target_dir: &std::path::Path, harness: &str) {
-    let Some(identity) = cached_identity(target_dir) else {
+    let Some(record) = install_info::read_install_info(target_dir) else {
         return;
     };
+    if !telemetry_consent_allows(false) {
+        return;
+    }
     send_event(
         target_dir,
         EventType::PackageVersionUpdated,
         harness,
-        &identity.uuid,
+        NIL_UUID_SENTINEL,
         None,
         None,
         None,
         None,
+        record.agent_version,
     );
 }
 
-/// Same event as `report_package_version_updated`, but resolves
-/// `target_dir`'s identity directly via `read_identity_uncached`
-/// instead of the process-global cache -- every target in an `update
-/// --all` run has its own
-/// `.konductor/telemetry-id.json` and its own UUID; the cache only
-/// ever resolves the first target's.
+/// Same as `report_package_version_updated`, but resolves the endpoint
+/// via `resolve_endpoint_with_pin_uncached` -- for a `--all` loop, so
+/// each target's own `.konductor/config.yml` opt-out is honored rather
+/// than inherited from `ENDPOINT_CACHE`.
 pub(crate) fn report_package_version_updated_for_target(
     target_dir: &std::path::Path,
     harness: &str,
 ) {
-    let Some(identity) = read_identity_uncached(target_dir) else {
+    let Some(record) = install_info::read_install_info(target_dir) else {
         return;
     };
+    if !telemetry_consent_allows(false) {
+        return;
+    }
     send_event_for_target(
         target_dir,
         EventType::PackageVersionUpdated,
         harness,
-        &identity.uuid,
+        NIL_UUID_SENTINEL,
         None,
         None,
         None,
         None,
+        record.agent_version,
     );
 }
 
@@ -1184,46 +911,114 @@ mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::{Mutex, MutexGuard};
 
-    /// Test-only shared lock for every `resolve_endpoint_*` test below
-    /// that mutates the process-global `TELEMETRY_OFF_ENV_VAR`
-    /// (`KONDUCTOR_TELEMETRY`) / `TELEMETRY_ENDPOINT_ENV_VAR`
-    /// (`KONDUCTOR_METRICS_ENDPOINT`) / `TELEMETRY_ALLOW_LOCAL_ENDPOINT_ENV_VAR`
-    /// (`KONDUCTOR_TELEMETRY_ALLOW_LOCAL_ENDPOINT`) env vars -- `std::env::set_var`/
-    /// `remove_var` have no per-thread scoping, so two of these tests
-    /// running concurrently under `cargo test`'s default multi-threaded
-    /// harness could each mutate the SAME process-wide var at once and
-    /// observe a torn or unrelated value (the exact hazard
-    /// `crate::cli::test_home_lock::HOME_ENV_LOCK` exists to prevent for
-    /// `HOME` mutations elsewhere in this crate).
-    ///
-    /// A SEPARATE lock from `HOME_ENV_LOCK`, not a reuse of it: none of
-    /// the `resolve_endpoint_*` tests below touch `HOME` (`resolve_endpoint`
-    /// itself never reads it -- only `target_dir`'s own
-    /// `.konductor/config.yml`), and no `HOME`-mutating test anywhere in
-    /// this crate touches `KONDUCTOR_TELEMETRY`/`KONDUCTOR_METRICS_ENDPOINT`.
-    /// The two var sets are never touched by the same test, so there is
-    /// no cross-set race to guard against -- only the same-set race
-    /// within this module's own five tests -- and a dedicated lock keeps
-    /// that scope local instead of serializing against every unrelated
-    /// `HOME`-mutating test in the crate.
+    // consent_decision: exhaustive over its 2 bool inputs (4 cases),
+    // no filesystem, deterministic on any architecture. This is the
+    // AND gate itself; telemetry_consent_allows's own integration
+    // tests further down cover resolving HOME and the instance record
+    // into these two inputs, which this function deliberately excludes.
+
+    #[test]
+    fn consent_decision_reports_when_not_opted_out_and_machine_consents() {
+        assert!(consent_decision(false, true));
+    }
+
+    #[test]
+    fn consent_decision_suppresses_when_opted_out_even_if_machine_consents() {
+        assert!(
+            !consent_decision(true, true),
+            "a per-target opt-out must never be overridden by machine consent"
+        );
+    }
+
+    #[test]
+    fn consent_decision_suppresses_when_not_opted_out_but_machine_declines() {
+        assert!(!consent_decision(false, false));
+    }
+
+    #[test]
+    fn consent_decision_suppresses_when_opted_out_and_machine_declines() {
+        assert!(!consent_decision(true, false));
+    }
+
+    /// Dedicated lock for tests mutating `TELEMETRY_OFF_ENV_VAR`/
+    /// `TELEMETRY_ENDPOINT_ENV_VAR`/`TELEMETRY_ALLOW_LOCAL_ENDPOINT_ENV_VAR`
+    /// -- `std::env::set_var` has no per-thread scoping.
     static TELEMETRY_ENV_LOCK: Mutex<()> = Mutex::new(());
 
-    /// Acquires `TELEMETRY_ENV_LOCK`, recovering the guard even if a
-    /// previous holder panicked while it was held -- same poison-recovery
-    /// rationale as `test_home_lock::lock_home`, so one failing assertion
-    /// here never cascades into every later test in this module also
-    /// failing with `PoisonError`.
     fn lock_telemetry_env() -> MutexGuard<'static, ()> {
         TELEMETRY_ENV_LOCK
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 
-    /// `docs/telemetry-schema.json`'s own `properties.sessionId.pattern`
-    /// -- read from the real, checked-in schema file (never a second,
-    /// hand-typed copy of the pattern string) so this test fails loudly
-    /// if the schema's own regex ever drifts from what this module's
-    /// `hash_session_id` is assumed to satisfy.
+    #[test]
+    fn spawn_and_send_with_transport_records_endpoint_pin_and_body_unchanged() {
+        let transport = RecordingTransport::new();
+        let ip: std::net::IpAddr = "203.0.113.5".parse().unwrap();
+
+        spawn_and_send_with_transport(
+            &transport,
+            "https://example.invalid/collector",
+            Some(ip),
+            r#"{"eventType":"cli_error"}"#,
+        );
+
+        let recorded = transport.recorded();
+        assert_eq!(
+            recorded,
+            vec![RecordedSend {
+                endpoint: "https://example.invalid/collector".to_string(),
+                pinned_ip: Some(ip),
+                body: r#"{"eventType":"cli_error"}"#.to_string(),
+            }],
+            "the injected transport must receive exactly the endpoint, pin, and body \
+             spawn_and_send_with_transport was called with, unchanged -- no process spawned, \
+             no DNS resolution, no network egress"
+        );
+    }
+
+    #[test]
+    fn spawn_and_send_with_transport_records_multiple_sends_in_order() {
+        let transport = RecordingTransport::new();
+
+        spawn_and_send_with_transport(&transport, "https://a.invalid/x", None, "first");
+        spawn_and_send_with_transport(&transport, "https://b.invalid/y", None, "second");
+
+        let recorded = transport.recorded();
+        assert_eq!(recorded.len(), 2);
+        assert_eq!(recorded[0].endpoint, "https://a.invalid/x");
+        assert_eq!(recorded[0].body, "first");
+        assert_eq!(recorded[1].endpoint, "https://b.invalid/y");
+        assert_eq!(recorded[1].body, "second");
+    }
+
+    #[test]
+    fn spawn_and_send_default_entry_point_never_reaches_a_real_transport_in_a_test_build() {
+        let before = default_test_transport().recorded().len();
+
+        spawn_and_send(
+            "https://telemetry-seam-probe.example.invalid/generic",
+            None,
+            r#"{"probe":"default-entry-point"}"#,
+        );
+
+        let after = default_test_transport().recorded();
+        assert_eq!(
+            after.len(),
+            before + 1,
+            "spawn_and_send must record exactly one more send into the shared test transport"
+        );
+        assert_eq!(
+            after.last().unwrap().endpoint,
+            "https://telemetry-seam-probe.example.invalid/generic",
+            "the recorded send must carry the exact endpoint passed to spawn_and_send, \
+             confirming the call actually reached the stub rather than being silently dropped"
+        );
+    }
+
+    /// Reads the checked-in schema's own
+    /// `properties.sessionId.pattern` so this test fails loudly if it
+    /// ever drifts from what `hash_session_id` produces.
     fn session_id_pattern_from_schema() -> String {
         let schema_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../docs/telemetry-schema.json");
@@ -1240,14 +1035,6 @@ mod tests {
             .to_string()
     }
 
-    /// Anchored matcher for the EXACT pattern
-    /// `session_id_pattern_from_schema` is asserted (immediately below,
-    /// in the test that calls this) to equal --
-    /// `^[a-f0-9]{64}$` -- rather than a general-purpose regex engine
-    /// this crate has no other need for. Deliberately stricter than
-    /// `char::is_ascii_hexdigit()` (which also accepts uppercase A-F):
-    /// the schema's pattern is lowercase-only, matching `sha256_hex()`'s
-    /// own documented output shape.
     fn matches_lowercase_hex_64(value: &str) -> bool {
         value.len() == 64
             && value
@@ -1257,11 +1044,6 @@ mod tests {
 
     #[test]
     fn hash_session_id_output_matches_schemas_session_id_pattern() {
-        // Pin the assumption `matches_lowercase_hex_64` encodes against
-        // the schema's own real pattern string -- if the schema's regex
-        // ever changes shape, this fails here rather than the value
-        // check below silently passing against a stale hand-rolled
-        // matcher.
         assert_eq!(session_id_pattern_from_schema(), "^[a-f0-9]{64}$");
 
         let hashed = hash_session_id(&"a".repeat(64), "real-claude-code-session-id-value");
@@ -1275,50 +1057,69 @@ mod tests {
 
     #[test]
     fn hash_session_id_is_deterministic_and_uuid_scoped() {
-        // Same UUID + same raw session id -> identical hash (the join
-        // key must be reproducible across independent report_* calls in
-        // the same process/session).
         assert_eq!(
             hash_session_id(&"a".repeat(64), "session-123"),
             hash_session_id(&"a".repeat(64), "session-123")
         );
-        // Same raw runtime session id under a DIFFERENT install's UUID
-        // must hash to a DIFFERENT wire value -- the UUID, not the raw
-        // runtime session id itself, is this design's own join key.
         assert_ne!(
             hash_session_id(&"a".repeat(64), "session-123"),
             hash_session_id(&"b".repeat(64), "session-123")
         );
     }
 
-    /// Fix regression: an empty-string raw session id must be treated
-    /// the same as a fully-absent (`None`) one -- `hash_session_id`
-    /// itself never fails on empty input, so without
-    /// `hash_present_session_id`'s own filter a present-but-empty value
-    /// would hash into a valid-looking-but-meaningless 64-hex
-    /// `sessionId`, silently masquerading as a real session identifier
-    /// on the wire. Tests the shared helper directly (not
-    /// `report_agent_invocation`/`report_subagent_invocation`
-    /// themselves, which are gated by `IDENTITY_CACHE`'s process-global
-    /// `OnceLock` and so cannot be exercised meaningfully from a unit
-    /// test in this shared process -- see that constant's own doc
-    /// comment).
     #[test]
     fn hash_present_session_id_treats_empty_string_as_absent() {
         assert_eq!(hash_present_session_id(&"a".repeat(64), Some("")), None);
         assert_eq!(hash_present_session_id(&"a".repeat(64), None), None);
     }
 
-    /// The positive control for the test above: a genuinely non-empty
-    /// raw session id must still hash normally, matching
-    /// `hash_session_id`'s own direct output -- proving the empty-string
-    /// filter doesn't also swallow real values.
     #[test]
     fn hash_present_session_id_hashes_a_non_empty_value_normally() {
         let uuid = "a".repeat(64);
         assert_eq!(
             hash_present_session_id(&uuid, Some("real-session-id")),
             Some(hash_session_id(&uuid, "real-session-id"))
+        );
+    }
+
+    /// Regression test for the salt/wire-attribution conflation that
+    /// let `report_agent_invocation`/`report_subagent_invocation` hash
+    /// `sessionId` with the public, compile-time `NIL_UUID_SENTINEL`
+    /// instead of `resolve_wire_uuid()`. A constant salt makes the
+    /// same raw session id hash identically on every machine --
+    /// linkable across installs and confirmable by anyone holding
+    /// ingested data plus a candidate session id. `resolve_wire_uuid`
+    /// reads each machine's own instance record, so this must differ
+    /// per machine for a future regression back to a constant salt to
+    /// fail here.
+    #[test]
+    fn resolve_wire_uuid_salts_the_same_raw_session_id_differently_per_machine() {
+        const RAW_SESSION_ID: &str = "same-raw-session-id-on-both-machines";
+
+        let uuid_a = {
+            let home = HomeGuard::new("wire-uuid-salt-machine-a");
+            instance::ensure_instance(&home.scratch, true);
+            resolve_wire_uuid()
+        };
+        let uuid_b = {
+            let home = HomeGuard::new("wire-uuid-salt-machine-b");
+            instance::ensure_instance(&home.scratch, true);
+            resolve_wire_uuid()
+        };
+        assert_ne!(
+            uuid_a, uuid_b,
+            "two freshly minted instance records must not share a UUID -- \
+             otherwise this test cannot tell per-machine salting apart from a \
+             constant one"
+        );
+
+        let hash_a = hash_present_session_id(&uuid_a, Some(RAW_SESSION_ID));
+        let hash_b = hash_present_session_id(&uuid_b, Some(RAW_SESSION_ID));
+        assert_ne!(
+            hash_a, hash_b,
+            "the same raw session id must hash differently under two different \
+             machine UUIDs -- a constant salt (e.g. NIL_UUID_SENTINEL) would make \
+             this pass identically and defeat per-machine scoping"
         );
     }
 
@@ -1340,8 +1141,6 @@ mod tests {
     fn resolve_endpoint_falls_back_to_compile_time_default() {
         let _lock = lock_telemetry_env();
         let dir = scratch_dir("endpoint-default");
-        // No env var, no config.yml -- must resolve to the compile-time
-        // default rather than None.
         std::env::remove_var(TELEMETRY_ENDPOINT_ENV_VAR);
         std::env::remove_var(TELEMETRY_OFF_ENV_VAR);
         let resolved = resolve_endpoint(&dir);
@@ -1370,10 +1169,6 @@ mod tests {
     fn resolve_endpoint_respects_fleet_wide_telemetry_off_env_var() {
         let _lock = lock_telemetry_env();
         let dir = scratch_dir("endpoint-fleet-off");
-        // Even a repo that explicitly opts BACK IN via its own checked-in
-        // config must not override the fleet-wide env var -- the
-        // env var is the
-        // fleet-managed override, checked ahead of a per-repo config.
         let config_dir = dir.join(super::super::super::config::KONDUCTOR_DIR_NAME);
         fs::create_dir_all(&config_dir).unwrap();
         fs::write(
@@ -1430,33 +1225,11 @@ mod tests {
         fs::remove_dir_all(&dir).ok();
     }
 
-    // ── Host allowlist (security gate) ──────────────────────────────────
-    //
-    // The pure classification/parsing primitives this security gate is
-    // built on (`extract_host`, `is_disallowed_local_host`,
-    // `is_disallowed_ip`, `classify_resolved_addrs`, `build_resolve_arg`,
-    // `extract_port`, `run_with_timeout`) now live in the `telemetry-net`
-    // crate and are exercised by its own test suite -- see that crate's
-    // `src/lib.rs`. The tests below stay in THIS module because they
-    // exercise this crate's own glue around that shared logic (env var
-    // and `.konductor/config.yml` resolution, the escape hatch, and the
-    // end-to-end `endpoint_host_is_allowed_with_pin` decision), which
-    // has no equivalent in the shared crate.
-
-    /// FINDING regression (DNS resolution): `resolved_addresses_include_disallowed_host`
-    /// must flag a host based on what it actually resolves to, not the
-    /// literal string. A host that IS a bare IP literal never touches
-    /// the resolver at all (`ToSocketAddrs` parses it directly), so
-    /// this exercises the exact code path a real hostname resolving to
-    /// a disallowed address would take, deterministically and without
-    /// requiring network access in the test environment.
     #[test]
     fn resolved_addresses_include_disallowed_host_flags_a_resolved_loopback_or_private_literal() {
         assert!(resolved_addresses_include_disallowed_host("127.0.0.1"));
         assert!(resolved_addresses_include_disallowed_host("10.0.0.1"));
         assert!(resolved_addresses_include_disallowed_host("::1"));
-        // The same IPv4-mapped-IPv6 unmapping gap, exercised through the
-        // resolution path rather than the literal-string path.
         assert!(resolved_addresses_include_disallowed_host(
             "::ffff:127.0.0.1"
         ));
@@ -1467,12 +1240,6 @@ mod tests {
         assert!(!resolved_addresses_include_disallowed_host("192.0.2.1"));
     }
 
-    /// Pins the "unresolvable is not itself disallowed" contract using a
-    /// dedicated fixture host: `telemetry.konductor.example.invalid` sits
-    /// under the reserved `.invalid` TLD (RFC 2606), guaranteed to never
-    /// resolve. If a failed resolution were treated as disallowed, any
-    /// endpoint under a never-resolving domain would be rejected outright
-    /// the moment DNS resolution was added to this check.
     #[test]
     fn resolved_addresses_include_disallowed_host_does_not_flag_an_unresolvable_host() {
         assert!(!resolved_addresses_include_disallowed_host(
@@ -1480,53 +1247,28 @@ mod tests {
         ));
     }
 
-    /// End-to-end regression guard: the compile-time default endpoint
-    /// (a real, public AWS Solutions metrics host) must be reported as
-    /// `allowed` by the same DNS-backed check that rejects loopback and
-    /// private-range hosts.
     #[test]
     fn endpoint_host_is_allowed_accepts_the_compile_time_default_endpoint_host() {
         assert!(endpoint_host_is_allowed(DEFAULT_TELEMETRY_ENDPOINT));
     }
 
-    // ── Bounded DNS resolution and the timeout-vs-failure distinction
-    // (see telemetry-net's own test suite
-    // for `run_with_timeout`/`resolve_host_addrs_bounded`/`decide_pin`
-    // coverage; the tests below exercise this crate's own
-    // `endpoint_host_is_allowed_with_pin` wrapper end-to-end) ───────────
-
-    /// Property (b): a TIMEOUT must be denied outright, never folded
-    /// into the same fail-open, no-pin outcome a genuine resolution
-    /// failure gets -- the exact CRITICAL regression
-    /// the shared `telemetry_net::decide_pin` fixes.
-    /// Exercised directly against the shared decision function this
-    /// module's own `endpoint_host_is_allowed_with_pin` delegates to
-    /// (rather than forcing a real 500ms timeout in this test), so the
-    /// property is pinned regardless of local resolver latency.
     #[test]
     fn decide_pin_denies_a_timeout_outcome_rather_than_failing_open() {
         assert_eq!(
-            telemetry_net::decide_pin(telemetry_net::DnsOutcome::TimedOut),
+            konductor_telemetry::decide_pin(konductor_telemetry::DnsOutcome::TimedOut),
             None,
             "a TimedOut outcome must be denied, not treated the same as a resolution failure"
         );
     }
 
-    /// Property (a) (unchanged by the timeout fix): a genuine resolution
-    /// failure still fails open with nothing to pin.
     #[test]
     fn decide_pin_fails_open_for_a_genuine_resolution_failure() {
         assert_eq!(
-            telemetry_net::decide_pin(telemetry_net::DnsOutcome::Failed),
+            konductor_telemetry::decide_pin(konductor_telemetry::DnsOutcome::Failed),
             Some(None)
         );
     }
 
-    // ── Adversarial finding: DNS-rebinding TOCTOU (curl --resolve pin) ──
-
-    /// `endpoint_host_is_allowed_with_pin` must produce NOTHING to pin
-    /// for an IP literal -- `ToSocketAddrs` never queries a resolver for
-    /// one, so there is no TOCTOU window for `curl --resolve` to close.
     #[test]
     fn endpoint_host_is_allowed_with_pin_returns_no_pin_for_an_ip_literal() {
         let _lock = lock_telemetry_env();
@@ -1537,13 +1279,6 @@ mod tests {
         );
     }
 
-    /// Same "nothing to pin" contract for an unresolvable hostname
-    /// (fail-open, matching `resolved_addresses_include_disallowed_host`'s
-    /// own contract) -- there is no resolved address to reuse as a pin.
-    /// Uses a dedicated `.invalid`-TLD fixture host rather than
-    /// `DEFAULT_TELEMETRY_ENDPOINT`: the compile-time default is now a
-    /// real, resolvable public host, so it no longer exercises this
-    /// "unresolvable" branch.
     #[test]
     fn endpoint_host_is_allowed_with_pin_returns_no_pin_for_an_unresolvable_host() {
         let _lock = lock_telemetry_env();
@@ -1556,9 +1291,6 @@ mod tests {
         );
     }
 
-    /// The escape hatch bypasses validation (and therefore pinning)
-    /// entirely -- a developer who explicitly opted into an arbitrary
-    /// local endpoint gets no pin interference.
     #[test]
     fn endpoint_host_is_allowed_with_pin_returns_no_pin_when_escape_hatch_is_set() {
         let _lock = lock_telemetry_env();
@@ -1578,11 +1310,6 @@ mod tests {
         );
     }
 
-    /// The CRITICAL regression this fix addresses: an attacker (or a
-    /// misconfigured shared CI environment) with only config-write or
-    /// env-var-set access could otherwise redirect telemetry to a
-    /// loopback/private-range host by setting `KONDUCTOR_METRICS_ENDPOINT`
-    /// -- `resolve_endpoint` must reject it (return `None`), not send.
     #[test]
     fn resolve_endpoint_rejects_private_range_endpoint_from_env_var() {
         let _lock = lock_telemetry_env();
@@ -1599,9 +1326,6 @@ mod tests {
         fs::remove_dir_all(&dir).ok();
     }
 
-    /// Same attack, but a loopback host via `.konductor/config.yml`
-    /// (the OTHER override tier) -- confirms the check applies
-    /// regardless of which tier resolved the endpoint.
     #[test]
     fn resolve_endpoint_rejects_loopback_endpoint_from_config() {
         let _lock = lock_telemetry_env();
@@ -1620,11 +1344,6 @@ mod tests {
         fs::remove_dir_all(&dir).ok();
     }
 
-    /// The debug-only escape hatch: with
-    /// `KONDUCTOR_TELEMETRY_ALLOW_LOCAL_ENDPOINT` set, the SAME loopback
-    /// endpoint that the test above rejects must now resolve normally --
-    /// proving the escape hatch is real and correctly gated behind an
-    /// explicit, clearly-named opt-in rather than silently always-on.
     #[test]
     fn resolve_endpoint_escape_hatch_allows_loopback_endpoint_when_explicitly_set() {
         let _lock = lock_telemetry_env();
@@ -1657,6 +1376,60 @@ mod tests {
         assert_eq!(mode & 0o100, 0o100, "must be executable by owner");
     }
 
+    /// Pins both halves of `materialize_script`'s call site in this
+    /// crate: existence/executable-bit alone can't catch a `dir`/
+    /// `script_name`/`contents` transposition against
+    /// `mcp/lib/skill-lookup-core`'s own call, since both consumers
+    /// pass a private per-uid dir and a `String` argument in the same
+    /// position -- only reading the materialized name AND bytes back
+    /// tells the two calls apart.
+    #[test]
+    fn materialized_script_has_this_crates_own_name_and_contents() {
+        let _home = HomeGuard::new("materialize-content-and-name-pin");
+        let path = materialize_script().expect("must materialize");
+        assert_eq!(
+            path.file_name().and_then(|n| n.to_str()),
+            Some(MATERIALIZED_SCRIPT_NAME),
+            "cli/konductor-rs must materialize under its own filename \
+             (konductor-telemetry-report.sh), not skill-lookup-core's \
+             (konductor-telemetry-report-mcp.sh) -- a swapped script_name argument at this \
+             call site would still pass an existence/executable-bit-only check"
+        );
+        let contents = fs::read_to_string(&path).expect("materialized file must be readable");
+        assert_eq!(
+            contents, TELEMETRY_REPORT_SCRIPT,
+            "the materialized file's bytes must equal this crate's own embedded script \
+             constant -- a swapped contents argument at this call site would still pass an \
+             existence/executable-bit-only check"
+        );
+    }
+
+    /// The shell-side half of the HTTPS-only guarantee: the Rust side
+    /// enforces it independently via `extract_host`'s own
+    /// `strip_prefix("https://")`, so if this `case` construct were
+    /// ever dropped from the script, that Rust gate would still hold
+    /// and every existing test would keep passing -- only reading the
+    /// materialized script's own contents catches the silent loss of
+    /// defence-in-depth. Lives here (once per consumer, not shared)
+    /// because it reads THIS crate's own materialized file, exactly
+    /// like the content-pin test above it -- a single shared test
+    /// reading one consumer's script contents would leave the other
+    /// consumer's own transposition-into-materialize_script bug
+    /// unguarded for this specific property.
+    #[test]
+    fn materialized_script_still_enforces_https_only() {
+        let _home = HomeGuard::new("materialize-https-gate-pin");
+        let path = materialize_script().expect("must materialize");
+        let contents = fs::read_to_string(&path).expect("materialized file must be readable");
+        assert!(
+            contents.contains("case \"$endpoint\" in") && contents.contains("https://*) ;;"),
+            "the materialized script must still contain the shell-side HTTPS-only gate \
+             (`case \"$endpoint\" in https://*) ;; *) exit 0 ...`) -- dropping it would leave \
+             the Rust-side strip_prefix(\"https://\") gate as the only enforcement, silently \
+             losing defence-in-depth with no other test catching it"
+        );
+    }
+
     #[test]
     fn materialize_script_is_idempotent_when_already_matching() {
         let _home = HomeGuard::new("materialize-idempotent");
@@ -1672,14 +1445,6 @@ mod tests {
         );
     }
 
-    /// The portability regression this fix addresses: a real dry-run
-    /// build container with `HOME` unset failed this exact call with
-    /// `Custom { kind: NotFound, error: "HOME is not set" }` before the
-    /// fallback existed. Confirms `materialize_script` now succeeds with
-    /// `HOME` unset, AND that the fallback directory it lands in still
-    /// carries the same non-world-writable `0o700` property the
-    /// `HOME`-set path has -- the portability fix must not regress the
-    /// TOCTOU/symlink security fix.
     #[test]
     fn materialize_script_succeeds_with_home_unset_and_uses_private_fallback_dir() {
         use std::os::unix::fs::PermissionsExt;
@@ -1711,12 +1476,8 @@ mod tests {
         );
     }
 
-    /// RAII guard for `materialize_script_succeeds_with_home_unset_...`:
-    /// removes `HOME` entirely (rather than pointing it at a scratch
-    /// dir, like `HomeGuard` does) for its entire lifetime, under the
-    /// same crate-wide `HOME_ENV_LOCK` every other `HOME`-mutating test
-    /// in this crate uses, so this test never races a concurrently
-    /// running test that expects `HOME` to be set.
+    /// Removes `HOME` for the guard's lifetime, under
+    /// `HOME_ENV_LOCK`.
     struct NoHomeGuard {
         _lock: std::sync::MutexGuard<'static, ()>,
         original_home: Option<std::ffi::OsString>,
@@ -1750,20 +1511,8 @@ mod tests {
         }
     }
 
-    /// RAII guard for the two tests above, which call `materialize_script`
-    /// and therefore transitively read the process-global `$HOME` (via
-    /// `private_script_dir`'s TOCTOU/symlink fix). Acquires the
-    /// crate-wide `test_home_lock::HOME_ENV_LOCK` for its entire
-    /// lifetime and points `HOME` at a fresh scratch dir -- without
-    /// this, a concurrently-running test elsewhere in the crate that
-    /// also mutates `HOME` (every other module's own `HomeGuard`) can
-    /// interleave with these two tests' two separate
-    /// `materialize_script()` calls, making each call resolve a
-    /// DIFFERENT `$HOME/.konductor/tmp` and fail the "same path"
-    /// assertion despite both calls being correct in isolation. See
-    /// `crate::cli::test_home_lock`'s own doc comment for the general
-    /// rationale (module-private locks did not serialize across
-    /// modules).
+    /// Acquires the crate-wide `test_home_lock::HOME_ENV_LOCK` and
+    /// points `HOME` at a fresh scratch dir.
     struct HomeGuard {
         _lock: std::sync::MutexGuard<'static, ()>,
         scratch: std::path::PathBuf,
@@ -1803,108 +1552,6 @@ mod tests {
         }
     }
 
-    // `report_cli_error`'s `no_telemetry` short-circuit (the top-level
-    // early return above) interacting with `IDENTITY_CACHE`'s
-    // once-per-process semantics is NOT unit-tested here: `OnceLock` has
-    // no safe reset, and `cargo test` runs every test in this module
-    // inside one shared process, so the first test to populate
-    // `IDENTITY_CACHE` would silently poison every later test's
-    // expectations -- exactly the scenario this regression needs (a
-    // pre-existing identity already cached when `--no-telemetry` is
-    // passed) cannot be set up cleanly at the unit level. That specific
-    // interaction is exercised instead by
-    // `tests/telemetry_report_process.rs`, which spawns the real
-    // `konductor` binary as a fresh subprocess per case -- the same
-    // process-boundary guarantee this module's own design relies on.
-    // The
-    // OTHER `report_*` functions' own skip-on-missing-identity behavior
-    // (`report_package_installed`/`report_agent_invocation`/etc.) is not
-    // separately covered by that file today -- it shares the same
-    // `OnceLock` constraint but is not the regression that file was
-    // written to close.
-
-    /// Writes a well-formed `.konductor/telemetry-id.json` directly at
-    /// `target_dir`, matching `identity.rs`'s own on-disk schema exactly
-    /// -- same shape `tests/telemetry_report_process.rs`'s own
-    /// `seed_preexisting_identity` helper uses, duplicated here (not
-    /// imported) since this module's tests run in-process and that
-    /// file's helper is private to its own crate-external test binary.
-    fn write_identity_fixture(target_dir: &std::path::Path, uuid: &str) {
-        let konductor_dir = target_dir.join(super::super::super::config::KONDUCTOR_DIR_NAME);
-        fs::create_dir_all(&konductor_dir).unwrap();
-        fs::write(
-            konductor_dir.join("telemetry-id.json"),
-            format!(
-                r#"{{"schema_version":1,"version":"0.1.0","UUID":"{uuid}","harness":"kiro-cli"}}"#
-            ),
-        )
-        .unwrap();
-    }
-
-    /// Regression test: `read_identity_uncached`
-    /// -- the primitive `report_cli_error_for_target` relies on to avoid
-    /// the exact misattribution across batch targets -- must resolve
-    /// EACH target's own identity directly from disk, regardless of
-    /// what `IDENTITY_CACHE`'s process-global `OnceLock` already holds
-    /// for a DIFFERENT target. Unlike the no-telemetry/cache interaction
-    /// noted just above (which needs a specific, controlled initial
-    /// cache state this shared test process cannot guarantee), THIS
-    /// test asserts nothing about the cache's own value -- only that
-    /// the UNCACHED read for target B is correct no matter what the
-    /// cache is currently poisoned to (by this call to
-    /// `cached_identity(&target_a)`, or by any other test in this
-    /// shared process that happened to populate it first) -- so it is
-    /// safe to run alongside every other test in this module without
-    /// depending on execution order.
-    #[test]
-    fn read_identity_uncached_returns_each_targets_own_identity_regardless_of_the_process_cache() {
-        let target_a = scratch_dir("uncached-identity-target-a");
-        let target_b = scratch_dir("uncached-identity-target-b");
-        let uuid_a = "a".repeat(64);
-        let uuid_b = "b".repeat(64);
-        write_identity_fixture(&target_a, &uuid_a);
-        write_identity_fixture(&target_b, &uuid_b);
-
-        // Populate (or observe already-populated) IDENTITY_CACHE from
-        // target A -- the exact process-global cache
-        // `report_cli_error`'s CACHED path would (incorrectly, pre-fix)
-        // reuse for every subsequent target in a `--all` batch,
-        // regardless of which `target_dir` is passed.
-        let _ = cached_identity(&target_a);
-
-        let identity_b = read_identity_uncached(&target_b)
-            .expect("target B has a valid identity file and must resolve uncached");
-        assert_eq!(
-            identity_b.uuid, uuid_b,
-            "read_identity_uncached must resolve THIS target's own identity from disk, never \
-             a value inherited from the process-global cache -- this is the exact primitive \
-             report_cli_error_for_target relies on to avoid misattributing target B's \
-             cli_error event to target A's UUID in a --all batch"
-        );
-
-        fs::remove_dir_all(&target_a).ok();
-        fs::remove_dir_all(&target_b).ok();
-    }
-
-    /// Regression test: `resolve_endpoint_with_pin_uncached`
-    /// -- the primitive `send_event_for_target` relies on to avoid the
-    /// exact per-repo-opt-out bypass this guards against -- must
-    /// resolve EACH target's own `.konductor/config.yml` directly,
-    /// regardless of what `ENDPOINT_CACHE`'s process-global `OnceLock`
-    /// already holds for a DIFFERENT target. Mirrors
-    /// `read_identity_uncached_returns_each_targets_own_identity_regardless_of_the_process_cache`
-    /// above exactly: this test asserts nothing about the cache's own
-    /// value -- only that the UNCACHED resolution for target B is
-    /// correct no matter what the cache is currently poisoned to (by
-    /// this call for target A, or by any other test in this shared
-    /// process that happened to populate it first) -- so it is safe to
-    /// run alongside every other test in this module without depending
-    /// on execution order. The full batch-level regression (proving no
-    /// `_for_target` sender reaches `ENDPOINT_CACHE` at all, across a
-    /// real `update --all --json` run) is exercised by
-    /// `tests/telemetry_report_process.rs`'s
-    /// `update_all_json_batch_honors_each_targets_own_telemetry_opt_out`,
-    /// which spawns a fresh subprocess per case instead.
     #[test]
     fn resolve_endpoint_with_pin_uncached_returns_each_targets_own_config_regardless_of_the_process_cache(
     ) {
@@ -1918,11 +1565,6 @@ mod tests {
         )
         .unwrap();
 
-        // Populate (or observe already-populated) ENDPOINT_CACHE from
-        // target A -- the exact process-global cache the CRITICAL
-        // pre-fix `send_event` path would (incorrectly) reuse for every
-        // subsequent target in a `--all` batch, regardless of which
-        // `target_dir` is passed or what that target's OWN config says.
         let _ = cached_endpoint_with_pin(&target_a);
 
         assert_eq!(
@@ -1939,12 +1581,6 @@ mod tests {
         fs::remove_dir_all(&target_b).ok();
     }
 
-    /// FINDING 2 regression: a symlink placed at the exact target path
-    /// `create_private_dir_all` is asked to create must be detected and
-    /// rejected (fail closed) rather than followed/used -- `chmod(2)`
-    /// via `set_permissions` follows symlinks, so trusting one here
-    /// would set `0o700` on whatever the symlink points to instead of a
-    /// real private directory at the intended path.
     #[test]
     fn create_private_dir_all_rejects_symlink_at_target_path() {
         use std::os::unix::fs::PermissionsExt;
@@ -1955,7 +1591,7 @@ mod tests {
         let target = base.join("private-tmp-dir");
         std::os::unix::fs::symlink(&real_elsewhere, &target).unwrap();
 
-        let result = create_private_dir_all(&target);
+        let result = konductor_telemetry::create_private_dir_all(&target);
 
         assert!(
             result.is_err(),
@@ -1974,10 +1610,6 @@ mod tests {
         fs::remove_dir_all(&base).ok();
     }
 
-    /// A genuine, ordinary directory (no symlink involved, owned by
-    /// this process's own UID) must still succeed and end up `0o700` --
-    /// confirms the new ownership/symlink checks don't break the normal
-    /// case the function existed to serve in the first place.
     #[test]
     fn create_private_dir_all_succeeds_for_ordinary_owned_directory() {
         use std::os::unix::fs::PermissionsExt;
@@ -1985,7 +1617,8 @@ mod tests {
         let base = scratch_dir("ordinary-dir-still-works");
         let target = base.join("private-tmp-dir");
 
-        create_private_dir_all(&target).expect("must succeed for an ordinary, self-owned path");
+        konductor_telemetry::create_private_dir_all(&target)
+            .expect("must succeed for an ordinary, self-owned path");
 
         let mode = fs::metadata(&target).unwrap().permissions().mode() & 0o777;
         assert_eq!(mode, 0o700);
@@ -1993,24 +1626,6 @@ mod tests {
         fs::remove_dir_all(&base).ok();
     }
 
-    // ── shell-side is_disallowed_ip mirror: unspecified-address and
-    // hex-form IPv4-mapped address classification ──────────────
-    //
-    // These extract the `is_disallowed_ip` FUNCTION DEFINITION directly
-    // out of `TELEMETRY_REPORT_SCRIPT` (the exact, checked-in transport
-    // script text this crate embeds via `include_str!`) and re-run it
-    // standalone via `sh`, bypassing the script's own top-level
-    // `https://` endpoint gate -- proving the ACTUAL shipped shell
-    // logic classifies each literal correctly, not a hand-written
-    // reimplementation that could silently drift from what ships.
-
-    /// Extracts `is_disallowed_ip`'s function body from the checked-in
-    /// script by locating its opening `is_disallowed_ip() {` marker and
-    /// the next line consisting solely of `}` -- the function's own
-    /// body never contains a standalone `}` line (its only braces are
-    /// the function's own opening/closing ones; `case`/`esac` and
-    /// `${...}` parameter expansions use no other brace pairs), so this
-    /// is an exact, unambiguous extent.
     fn extract_shell_is_disallowed_ip() -> &'static str {
         let marker = "is_disallowed_ip() {";
         let start = TELEMETRY_REPORT_SCRIPT
@@ -2023,10 +1638,6 @@ mod tests {
         &TELEMETRY_REPORT_SCRIPT[start..body_start + close_offset + "\n}".len()]
     }
 
-    /// Runs the REAL, extracted `is_disallowed_ip` shell function
-    /// against `addr`, returning whether it classified `addr` as
-    /// disallowed (shell exit 0 == disallowed, matching the function's
-    /// own documented "Returns 0 (shell true) if disallowed" contract).
     fn shell_is_disallowed_ip(addr: &str) -> bool {
         let driver = format!(
             "{}\nis_disallowed_ip \"$1\"\n",
@@ -2042,9 +1653,6 @@ mod tests {
         status.success()
     }
 
-    /// Shell-side mirror check: the
-    /// unspecified address literal must be rejected on both address
-    /// families.
     #[test]
     fn shell_is_disallowed_ip_rejects_unspecified_addresses() {
         assert!(
@@ -2057,20 +1665,12 @@ mod tests {
         );
     }
 
-    /// Positive control: an address that merely LOOKS related to the
-    /// unspecified literal (differs in the last octet, or a plain
-    /// public address) must not be swept up by the new glob arm.
     #[test]
     fn shell_is_disallowed_ip_accepts_unspecified_lookalikes() {
         assert!(!shell_is_disallowed_ip("0.0.0.1"));
         assert!(!shell_is_disallowed_ip("192.0.2.1"));
     }
 
-    /// The hex form of an IPv4-mapped
-    /// IPv6 address (distinct from the dotted-decimal form already
-    /// matched) must be rejected -- including a hextet with a dropped
-    /// leading zero (`a00` for `0a00`, i.e. `10.0.0.x`), a case that is
-    /// fragile for a purely glob-based fix.
     #[test]
     fn shell_is_disallowed_ip_rejects_hex_form_ipv4_mapped_addresses() {
         assert!(
@@ -2083,9 +1683,6 @@ mod tests {
         );
     }
 
-    /// Positive control called out by the finding itself: a blanket
-    /// `::ffff:*:*` arm would incorrectly reject this genuinely public
-    /// address in mapped hex form.
     #[test]
     fn shell_is_disallowed_ip_accepts_public_hex_mapped_address() {
         assert!(
@@ -2094,9 +1691,6 @@ mod tests {
         );
     }
 
-    /// Regression guard: the new hex-form arm and the unspecified-
-    /// address arm must not have broken any pre-existing classification
-    /// this function already made correctly.
     #[test]
     fn shell_is_disallowed_ip_still_classifies_preexisting_cases_correctly() {
         assert!(shell_is_disallowed_ip("127.0.0.1"));
@@ -2108,11 +1702,6 @@ mod tests {
         assert!(!shell_is_disallowed_ip("192.0.2.1"));
     }
 
-    /// The IPv4-mapped form of the
-    /// unspecified address must be rejected in both its dotted-decimal
-    /// and hex-hextet forms, matching the Rust-side `is_disallowed_ip`
-    /// (which unmaps via `to_ipv4_mapped()` and rejects via
-    /// `is_unspecified()`).
     #[test]
     fn shell_is_disallowed_ip_rejects_ipv4_mapped_unspecified_address() {
         assert!(
@@ -2161,12 +1750,6 @@ mod tests {
         );
     }
 
-    /// This round's fix: 6to4 (2002::/16) must unmap its embedded IPv4
-    /// address (bits 16-48) and classify by it, mirroring the Rust-side
-    /// `six_to_four_embedded_ipv4`. "2002:6440:1::" embeds 100.64.0.1
-    /// (CGNAT) -- the same case the Rust-side test uses to show the
-    /// unmapping is security-relevant on its own, not just a
-    /// notational nicety.
     #[test]
     fn shell_is_disallowed_ip_unmaps_6to4_and_classifies_embedded_address() {
         assert!(
@@ -2180,11 +1763,6 @@ mod tests {
         );
     }
 
-    /// This round's fix: the NAT64 Well-Known Prefix (64:ff9b::/96)
-    /// must unmap its embedded IPv4 address (the low 32 bits) and
-    /// classify by it, mirroring the Rust-side
-    /// `nat64_well_known_prefix_embedded_ipv4`. Exercised in both the
-    /// hex-hextet and dotted-decimal forms RFC 6052 permits.
     #[test]
     fn shell_is_disallowed_ip_unmaps_nat64_wkp_and_classifies_embedded_address() {
         assert!(
@@ -2207,15 +1785,6 @@ mod tests {
         );
     }
 
-    /// "::" zero-compression landing on
-    /// the 6to4 embedded-IPv4 portion itself must be rejected, not
-    /// silently pass through. "2002::1" fully expands to
-    /// `2002:0:0:0:0:0:0:1`, so the embedded address (segments 1-2) is
-    /// `0.0.0.0` (unspecified); "2002:6440::" expands to
-    /// `2002:6440:0:0:0:0:0:0`, embedding `100.64.0.0` (CGNAT). Both
-    /// leave `hi` and/or `lo` empty via the naive colon-split
-    /// extraction, which this arm fails closed on rather than risk an
-    /// incorrect embedded-address computation.
     #[test]
     fn shell_is_disallowed_ip_rejects_6to4_zero_compression_on_embedded_address() {
         assert!(
@@ -2228,11 +1797,6 @@ mod tests {
         );
     }
 
-    /// Positive control: a 6to4 address whose "::" only compresses the
-    /// tail (segments 3-7, unrelated to the embedded IPv4) must still
-    /// classify normally by its explicit hi/lo hextets -- the
-    /// fail-closed arm above must not over-block this common,
-    /// unambiguous shape.
     #[test]
     fn shell_is_disallowed_ip_accepts_6to4_with_only_tail_compression() {
         assert!(
@@ -2242,13 +1806,6 @@ mod tests {
         );
     }
 
-    /// The NAT64 analog of the "::" zero-compression case above: "64:ff9b::6440" is
-    /// a valid, fully-compressed address (`64:ff9b:0:0:0:0:0:6440`)
-    /// whose single remaining hextet occupies the LOW position only
-    /// (hi is the compressed zero) -- a naive colon-split extraction
-    /// finds no colon to split on and would duplicate the one hextet
-    /// into both hi and lo, computing a wrong embedded address, so
-    /// this arm must fail closed on the ambiguity instead.
     #[test]
     fn shell_is_disallowed_ip_rejects_nat64_single_hextet_compression() {
         assert!(
@@ -2258,17 +1815,6 @@ mod tests {
         );
     }
 
-    // ── shell-side userinfo stripping (mirrors the Rust-side
-    // `extract_host` fix) ────────────────────────────────────────────
-
-    /// Extracts the shipped script's userinfo-then-host extraction
-    /// lines (from `host="${endpoint#https://}"` through the
-    /// bracket/port-handling `case ... esac` that immediately follows
-    /// it) directly out of `TELEMETRY_REPORT_SCRIPT`, the same
-    /// script-extraction technique `extract_shell_is_disallowed_ip`
-    /// above uses -- proving the ACTUAL shipped lines strip userinfo
-    /// and isolate the host correctly, not a hand-written
-    /// reimplementation that could silently drift from what ships.
     fn extract_shell_host_extraction() -> &'static str {
         let start_marker = "host=\"${endpoint#https://}\"";
         let start = TELEMETRY_REPORT_SCRIPT
@@ -2281,10 +1827,6 @@ mod tests {
         &TELEMETRY_REPORT_SCRIPT[start..start + rel_end + esac_marker.len()]
     }
 
-    /// Runs the REAL, extracted host-extraction lines against
-    /// `endpoint` and returns the resulting `$host` value -- the exact
-    /// string the script's own `is_disallowed_ip`/DNS-resolution steps
-    /// (extracted and tested separately above) go on to classify.
     fn shell_extract_host(endpoint: &str) -> String {
         let driver = format!(
             "endpoint=\"$1\"\n{}\nprintf '%s' \"$host\"\n",
@@ -2300,12 +1842,6 @@ mod tests {
         String::from_utf8(output.stdout).expect("shell output must be valid UTF-8")
     }
 
-    /// The shipped
-    /// script's own host-extraction lines must strip URL userinfo
-    /// BEFORE isolating the host, exactly like the Rust-side
-    /// `extract_host` fix -- otherwise `curl` (which itself discards
-    /// userinfo before connecting) and this defense-in-depth layer
-    /// classify two different strings for the same endpoint.
     #[test]
     fn shell_host_extraction_strips_userinfo_before_isolating_the_host() {
         assert_eq!(
@@ -2319,39 +1855,11 @@ mod tests {
         assert_eq!(shell_extract_host("https://x@[::1]:443/collector"), "::1");
     }
 
-    /// Same "take the LAST @" rule as the Rust-side `strip_userinfo`,
-    /// via `${host##*@}`'s greedy (longest-match) prefix removal.
     #[test]
     fn shell_host_extraction_strips_userinfo_up_to_the_last_at_sign() {
         assert_eq!(shell_extract_host("https://a@b@127.0.0.1/x"), "127.0.0.1");
     }
 
-    // ── POSIX-sh portability of the hex-decoding arms (6to4, NAT64
-    // hex-hextet, ::ffff:*:* hex form) ─────────────────────────────────
-    //
-    // `is_disallowed_ip`'s three hex-decoding arms use the POSIX
-    // `0x`-prefixed arithmetic form (`$((0x$hi))`). POSIX `sh`
-    // arithmetic defines only C-style integer constants -- `0x`-hex is
-    // one of those; base-N `#` conversion (`$((16#$hi))`) is a
-    // bash/ksh/zsh extension with no POSIX meaning at all. `dash` --
-    // the actual `/bin/sh` on Debian/Ubuntu and many CI images --
-    // rejects a `16#`-style expression outright with a fatal
-    // "arithmetic expression: expecting EOF" error that aborts the
-    // whole script, for every address that reaches one of these arms,
-    // regardless of which side of the allow/deny decision that address
-    // would land on. `sh` on a given dev/CI box is not reliably POSIX
-    // sh -- it is commonly a symlink to bash (which accepts `16#` even
-    // under `--posix`), so a test that runs the extracted function
-    // under plain `sh` cannot distinguish the two forms on such a box.
-    // The two tests below each target a specific external tool BY NAME
-    // (`dash`, `shellcheck`) and skip with a visible marker rather than
-    // substituting a different tool when that exact one is absent.
-
-    /// Resolves `name` on `PATH` via `command -v`, run under a driver
-    /// shell rather than assumed to be a builtin of the *current*
-    /// process's own shell. Shared by both tests below, each gating on
-    /// a different external tool that may or may not be installed in
-    /// the environment this test runs in.
     fn find_on_path(name: &str) -> Option<String> {
         let output = std::process::Command::new("sh")
             .arg("-c")
@@ -2365,13 +1873,10 @@ mod tests {
         (!path.is_empty()).then_some(path)
     }
 
-    /// Same extraction and driver-script shape as `shell_is_disallowed_ip`,
-    /// but runs the extracted function under an explicit `interpreter`
-    /// path rather than `sh`, and returns the raw exit code (plus
-    /// stderr) rather than a success/failure bool -- this test needs to
-    /// tell apart three outcomes (0 = disallowed, 1 = not disallowed, 2
-    /// = the interpreter itself aborted on a bad arithmetic expression),
-    /// not just two.
+    /// Returns the raw exit code (plus stderr) under an explicit
+    /// `interpreter` path -- needs to tell apart three outcomes (0 =
+    /// disallowed, 1 = not disallowed, 2 = the interpreter aborted on
+    /// a bad arithmetic expression), not just two.
     fn shell_is_disallowed_ip_exit_code_under(interpreter: &str, addr: &str) -> (i32, String) {
         let driver = format!(
             "{}\nis_disallowed_ip \"$1\"\n",
@@ -2391,19 +1896,9 @@ mod tests {
         (code, stderr)
     }
 
-    /// Runs the REAL, extracted `is_disallowed_ip` function under a
-    /// genuine `dash`, for six addresses that each reach one of the
-    /// three hex-decoding arms (three disallowed, three allowed
-    /// positive controls). A correct classification under dash exits 0
-    /// (disallowed) or 1 (allowed); exit code 2 -- dash's own
-    /// fatal-arithmetic-error code -- means the arm's arithmetic
-    /// expression is not valid POSIX sh, for every one of these
-    /// addresses regardless of its expected classification, which is
-    /// exactly the failure mode this test exists to catch. Skips with
-    /// an explicit, visible marker -- never a silent no-op, and never a
-    /// fallback to a different interpreter, which would let this test
-    /// pass on a shell that accepts both the POSIX and the non-POSIX
-    /// form alike -- when no `dash` is installed on this machine.
+    /// dash rejects the bash/ksh-only `16#` form; `sh` may be a bash
+    /// symlink that accepts it too, so this targets dash by name and
+    /// skips visibly if absent.
     #[test]
     fn shell_hex_arithmetic_arms_are_posix_portable_under_dash() {
         let Some(dash) = find_on_path("dash") else {
@@ -2441,20 +1936,6 @@ mod tests {
         }
     }
 
-    /// Independent, static confirmation of the same POSIX-sh compliance
-    /// property the test above checks dynamically: `shellcheck -s sh`
-    /// against the checked-in transport script's own on-disk path
-    /// (never a copy of the embedded `TELEMETRY_REPORT_SCRIPT` written
-    /// back out to a temp file -- `include_str!` already guarantees the
-    /// two are byte-identical at compile time, so checking the real
-    /// file is equivalent and simpler), mirroring
-    /// `session_id_pattern_from_schema`'s own `CARGO_MANIFEST_DIR`-
-    /// relative path pattern. `-s sh` pins the dialect shellcheck checks
-    /// against to POSIX sh specifically (not bash), flagging a `16#`
-    /// arithmetic expression under `SC3052` regardless of whether this
-    /// environment happens to have `dash` (or any other genuinely
-    /// POSIX-only shell) installed to exercise it at runtime. Skips
-    /// with a visible marker when no `shellcheck` executable is found.
     #[test]
     fn transport_script_passes_shellcheck_posix_sh() {
         let Some(shellcheck) = find_on_path("shellcheck") else {
@@ -2487,5 +1968,589 @@ mod tests {
             script_path.display(),
             String::from_utf8_lossy(&output.stdout)
         );
+    }
+
+    use crate::cli::test_home_lock::lock_home;
+
+    fn with_home<R>(home: &std::path::Path, body: impl FnOnce() -> R) -> R {
+        let original_home = std::env::var_os("HOME");
+        std::env::set_var("HOME", home);
+        let result = body();
+        match original_home {
+            Some(value) => std::env::set_var("HOME", value),
+            None => std::env::remove_var("HOME"),
+        }
+        result
+    }
+
+    /// Confirms the instance record actually persisted at `home` and
+    /// returns it. Call this AFTER a `telemetry_consent_allows` call
+    /// that should have minted it, and BEFORE asserting on that call's
+    /// boolean result: `ensure_instance` fails closed on a write
+    /// failure, so the boolean alone can't distinguish a denied
+    /// consent from an unwritten file. Panics naming the write
+    /// failure -- never silently lets a caller assert on a result that
+    /// was never really persisted.
+    fn assert_instance_persisted(home: &std::path::Path) -> instance::InstanceRecord {
+        with_home(home, || instance::read_instance(home)).unwrap_or_else(|| {
+            panic!(
+                "telemetry.json did not persist at {} -- this is a write failure, not a \
+                 consent decision; see stderr for the failing syscall",
+                home.display()
+            )
+        })
+    }
+
+    /// Case 1: `telemetry_consent_allows` resolves a fresh `HOME` with
+    /// no prior instance record for an opted-out target. The AND
+    /// logic itself is `consent_decision`'s own job, covered purely
+    /// above; this test is about resolution -- minting on first call
+    /// -- succeeding correctly for this input.
+    #[test]
+    fn telemetry_consent_allows_resolves_opted_out_target_against_a_fresh_home() {
+        let _guard = lock_home();
+        let home = scratch_dir("no-silent-reenable-case-1-home");
+        let target = scratch_dir("no-silent-reenable-case-1-target");
+
+        let allowed = with_home(&home, || telemetry_consent_allows(true));
+
+        assert!(
+            !allowed,
+            "a target with no telemetry-id.json (opted out at install) must not be \
+             allowed to report, even on a machine with no prior telemetry.json at all"
+        );
+        fs::remove_dir_all(&home).ok();
+        fs::remove_dir_all(&target).ok();
+    }
+
+    /// `HOME=""` must refuse consent the same way an unset `HOME`
+    /// does, not resolve to a relative path and treat it as real.
+    /// `home_dir()` used to read `var_os("HOME")` with no empty-string
+    /// filter, unlike `index::env_home_dir` (see this module's
+    /// `home_dir` doc comment for why it now delegates there).
+    #[test]
+    fn telemetry_consent_allows_refuses_with_home_set_to_empty_string_like_unset() {
+        let _guard = lock_home();
+        let original_home = std::env::var_os("HOME");
+        std::env::set_var("HOME", "");
+
+        let allowed = telemetry_consent_allows(false);
+
+        match original_home {
+            Some(value) => std::env::set_var("HOME", value),
+            None => std::env::remove_var("HOME"),
+        }
+
+        assert!(
+            !allowed,
+            "HOME=\"\" must refuse consent the same way an unset HOME does -- resolving \
+             it to a relative path would let a target's own opt-out state (or lack of \
+             one) attach to whatever the process's cwd happens to be, not a real machine"
+        );
+    }
+
+    /// Case 2: a second call for the same opted-out target resolves
+    /// the SAME on-disk instance record `ensure_instance_with_migration`
+    /// minted on the first call, and does not let that record's own
+    /// `telemetry_consent: true` re-seed anything. The suppression
+    /// itself is `consent_decision`'s job (covered purely above);
+    /// this test is about correctly resolving/persisting the instance
+    /// record across two calls, not the AND logic.
+    #[test]
+    fn telemetry_consent_allows_resolves_the_same_persisted_instance_record_across_repeat_calls() {
+        let _guard = lock_home();
+        let home = scratch_dir("no-silent-reenable-case-2-home");
+        let target = scratch_dir("no-silent-reenable-case-2-target");
+
+        let first_call_allowed = with_home(&home, || telemetry_consent_allows(true));
+        assert!(!first_call_allowed, "first call must not report");
+
+        let instance_record = with_home(&home, || {
+            instance::read_instance(&home).expect("telemetry.json must exist after the first call")
+        });
+        assert!(
+            instance_record.telemetry_consent,
+            "the instance record's own telemetry_consent must be the ordinary new-install \
+             default (true) even though the very first call on this machine was for an \
+             opted-out target -- seeding consent from target_already_opted_out has been removed"
+        );
+
+        let second_call_allowed = with_home(&home, || telemetry_consent_allows(true));
+        assert!(
+            !second_call_allowed,
+            "the same opted-out target must still not report after the instance record exists \
+             on disk -- the AND gate's own per-target conjunct suppresses it regardless of the \
+             instance record's consent value"
+        );
+        fs::remove_dir_all(&home).ok();
+        fs::remove_dir_all(&target).ok();
+    }
+
+    /// Case 3, positive control: `telemetry_consent_allows` resolves
+    /// a fresh `HOME`'s new-install default (opt-IN) for a target
+    /// that never opted out. `assert_instance_persisted` below is
+    /// this test's real point -- confirming the write actually
+    /// landed, not just that the boolean happened to be `true`.
+    #[test]
+    fn telemetry_consent_allows_resolves_the_new_install_default_for_a_never_opted_out_target() {
+        let _guard = lock_home();
+        let home = scratch_dir("no-silent-reenable-case-3-home");
+        let target = scratch_dir("no-silent-reenable-case-3-target");
+
+        let allowed = with_home(&home, || telemetry_consent_allows(false));
+
+        // Precondition, checked BEFORE the positive assertion below:
+        // a write failure also fails closed to `!allowed`, so the
+        // boolean alone can't distinguish "this machine's ordinary
+        // opt-in default" from "the instance record never persisted."
+        let instance_record = assert_instance_persisted(&home);
+        assert!(instance_record.telemetry_consent);
+
+        assert!(
+            allowed,
+            "a target that never opted out must continue to report on a machine with no \
+             prior instance record -- the ordinary new-install default is opt-IN"
+        );
+        fs::remove_dir_all(&home).ok();
+        fs::remove_dir_all(&target).ok();
+    }
+
+    /// Case 4: two distinct targets on one machine resolve the SAME
+    /// persisted instance record independently, opted-out running
+    /// first -- the opted-out call must not seed a decline that
+    /// leaks into the opted-in target's own later resolution. The AND
+    /// logic each call applies is covered purely above; this test is
+    /// about the shared instance record resolving the same way for
+    /// both targets regardless of call order.
+    #[test]
+    fn telemetry_consent_allows_resolves_the_same_instance_record_independently_for_two_targets_opted_out_first(
+    ) {
+        let _guard = lock_home();
+        let home = scratch_dir("no-silent-reenable-case-4-home");
+        let opted_out_target = scratch_dir("no-silent-reenable-case-4-opted-out");
+        let opted_in_target = scratch_dir("no-silent-reenable-case-4-opted-in");
+
+        let opted_out_result = with_home(&home, || telemetry_consent_allows(true));
+        assert!(!opted_out_result, "the opted-out target must not report");
+
+        let opted_in_result = with_home(&home, || telemetry_consent_allows(false));
+
+        // Precondition, checked BEFORE the positive assertion below:
+        // a write failure also fails closed to `!opted_in_result`, so
+        // the boolean alone can't distinguish "the opted-out call
+        // seeded a real decline" from "the instance record never
+        // persisted."
+        let instance_record = assert_instance_persisted(&home);
+        assert!(instance_record.telemetry_consent);
+
+        assert!(
+            opted_in_result,
+            "an opted-in target on the SAME machine must report normally, independent of an \
+             opted-out target's call having run first -- one project's historical opt-out must \
+             never permanently suppress telemetry for every OTHER project on the same machine"
+        );
+
+        assert_ne!(
+            opted_out_target, opted_in_target,
+            "sanity: the two targets in this test must be genuinely distinct paths"
+        );
+
+        fs::remove_dir_all(&home).ok();
+        fs::remove_dir_all(&opted_out_target).ok();
+        fs::remove_dir_all(&opted_in_target).ok();
+    }
+
+    /// Mirror ordering of case 4: opted-in runs first, persisting
+    /// `telemetry_consent: true`; the opted-out target's own call
+    /// must then resolve and apply that SAME persisted record
+    /// correctly, still suppressing itself. This is the test that
+    /// caught a real temp-file write collision on one CI
+    /// architecture: the failure was in
+    /// `ensure_instance_with_migration`'s persistence, not in the AND
+    /// logic, which `consent_decision`'s pure tests above now cover
+    /// without any filesystem involved.
+    #[test]
+    fn telemetry_consent_allows_resolves_persisted_true_consent_correctly_for_an_opted_out_target()
+    {
+        let _guard = lock_home();
+        let home = scratch_dir("no-silent-reenable-case-4b-home");
+        let opted_in_target = scratch_dir("no-silent-reenable-case-4b-opted-in");
+        let opted_out_target = scratch_dir("no-silent-reenable-case-4b-opted-out");
+
+        let opted_in_result = with_home(&home, || telemetry_consent_allows(false));
+
+        // Precondition, checked BEFORE the result below: on a write
+        // failure `ensure_instance` fails closed to consent=false, so
+        // `opted_in_result` alone can't distinguish "the target opted
+        // out" from "the instance record never made it to disk."
+        let instance_record = assert_instance_persisted(&home);
+        assert!(
+            instance_record.telemetry_consent,
+            "telemetry.json persisted but with consent=false -- ensure_instance did not mint \
+             the expected true default"
+        );
+
+        assert!(opted_in_result, "the opted-in target must report");
+
+        let opted_out_result = with_home(&home, || telemetry_consent_allows(true));
+        assert!(
+            !opted_out_result,
+            "a target's own per-target opt-out must independently suppress reporting for \
+             itself even on a machine whose instance-level consent is true -- the AND gate's \
+             two operands must each be able to veto reporting on their own"
+        );
+
+        fs::remove_dir_all(&home).ok();
+        fs::remove_dir_all(&opted_in_target).ok();
+        fs::remove_dir_all(&opted_out_target).ok();
+    }
+
+    #[test]
+    fn resolve_wire_uuid_returns_the_instance_uuid_not_the_per_target_identity_uuid() {
+        let _guard = lock_home();
+        let home = scratch_dir("wire-uuid-instance-not-identity-home");
+        let target = scratch_dir("wire-uuid-instance-not-identity-target");
+
+        let per_target_identity = identity::ensure_identity(&target, "kiro-cli");
+
+        let instance_record = with_home(&home, || instance::ensure_instance(&home, true));
+
+        // Precondition: on a write failure, ensure_instance's own
+        // return value AND resolve_wire_uuid's later read both fall
+        // to the same nil sentinel, so the equality assertion below
+        // would still hold -- a false pass that measures a broken
+        // write, not the UUID-selection logic this test targets.
+        let persisted = assert_instance_persisted(&home);
+        assert_eq!(persisted.uuid, instance_record.uuid);
+
+        assert_ne!(
+            per_target_identity.uuid, instance_record.uuid,
+            "sanity: the per-target and instance UUIDs must be genuinely different values \
+             (they are generated by different code, for different purposes)"
+        );
+
+        let wire_uuid = with_home(&home, resolve_wire_uuid);
+
+        assert_eq!(
+            wire_uuid, instance_record.uuid,
+            "resolve_wire_uuid must return the INSTANCE record's UUID"
+        );
+        assert_ne!(
+            wire_uuid, per_target_identity.uuid,
+            "resolve_wire_uuid must NEVER return the per-target identity's own UUID -- that \
+             was this phase's whole point: one identifier per machine, not per project"
+        );
+
+        fs::remove_dir_all(&home).ok();
+        fs::remove_dir_all(&target).ok();
+    }
+
+    #[test]
+    fn resolve_wire_uuid_yields_sentinel_not_a_per_target_uuid_when_instance_record_is_unreadable()
+    {
+        let _guard = lock_home();
+        let home = scratch_dir("wire-uuid-unreadable-instance-home");
+        let target = scratch_dir("wire-uuid-unreadable-instance-target");
+
+        let per_target_identity = identity::ensure_identity(&target, "kiro-cli");
+
+        let konductor_dir = home.join(super::super::super::config::KONDUCTOR_DIR_NAME);
+        fs::create_dir_all(&konductor_dir).unwrap();
+        fs::write(konductor_dir.join("telemetry.json"), b"not json at all").unwrap();
+
+        let wire_uuid = with_home(&home, resolve_wire_uuid);
+
+        assert_eq!(
+            wire_uuid, NIL_UUID_SENTINEL,
+            "an unreadable instance record must yield the nil-UUID sentinel"
+        );
+        assert_ne!(
+            wire_uuid, per_target_identity.uuid,
+            "an unreadable instance record must NEVER fall back to a per-target identity's \
+             own UUID -- that would silently reintroduce per-target attribution on exactly \
+             the failure path this fix is supposed to close"
+        );
+
+        fs::remove_dir_all(&home).ok();
+        fs::remove_dir_all(&target).ok();
+    }
+
+    #[test]
+    fn resolve_wire_uuid_yields_sentinel_when_home_is_unset() {
+        let _guard = crate::cli::test_home_lock::lock_home();
+        let original_home = std::env::var_os("HOME");
+        std::env::remove_var("HOME");
+
+        let wire_uuid = resolve_wire_uuid();
+
+        match original_home {
+            Some(value) => std::env::set_var("HOME", value),
+            None => {}
+        }
+
+        assert_eq!(wire_uuid, NIL_UUID_SENTINEL);
+    }
+
+    /// `HOME=""` must yield the same sentinel as an unset `HOME`, not
+    /// a wire UUID resolved against a relative path.
+    #[test]
+    fn resolve_wire_uuid_yields_sentinel_when_home_is_empty_string_like_unset() {
+        let _guard = crate::cli::test_home_lock::lock_home();
+        let original_home = std::env::var_os("HOME");
+        std::env::set_var("HOME", "");
+
+        let wire_uuid = resolve_wire_uuid();
+
+        match original_home {
+            Some(value) => std::env::set_var("HOME", value),
+            None => std::env::remove_var("HOME"),
+        }
+
+        assert_eq!(
+            wire_uuid, NIL_UUID_SENTINEL,
+            "HOME=\"\" must yield the sentinel, the same as unset HOME -- resolving a wire \
+             UUID against a relative path would be a real, but meaningless, identity"
+        );
+    }
+
+    #[test]
+    fn agent_version_for_target_reads_the_real_install_info_record() {
+        let target = scratch_dir("agent-version-for-target-present");
+        let source = scratch_dir("agent-version-for-target-present-source");
+        fs::create_dir_all(source.join("dist")).unwrap();
+        fs::write(source.join("dist").join("VERSION"), "9.8.7\n").unwrap();
+
+        install_info::write_install_info(&target, &source, "kiro-cli-v2", "2026-01-01T00:00:00Z")
+            .unwrap();
+
+        assert_eq!(agent_version_for_target(&target), Some("9.8.7".to_string()));
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&source).ok();
+    }
+
+    #[test]
+    fn agent_version_for_target_degrades_to_none_when_record_is_absent() {
+        let target = scratch_dir("agent-version-for-target-absent");
+        assert_eq!(agent_version_for_target(&target), None);
+        fs::remove_dir_all(&target).ok();
+    }
+
+    // ── report_package_uninstalled{,_for_target}: harness sourced from
+    //    install-info.json, not the retired per-target identity ────────
+
+    /// Finds the most recent send in `default_test_transport()` whose
+    /// body's `eventType` is `package_uninstalled` and whose
+    /// `targetName` matches `harness` -- narrows a shared, never-reset
+    /// recorder down to the one event a given test cares about,
+    /// mirroring `spawn_and_send_default_entry_point_never_reaches_a_real_transport_in_a_test_build`'s
+    /// own filter-by-content approach for a globally shared instance.
+    fn find_recorded_uninstall_event(harness: &str) -> Option<serde_json::Value> {
+        default_test_transport()
+            .recorded()
+            .into_iter()
+            .filter_map(|send| serde_json::from_str::<serde_json::Value>(&send.body).ok())
+            .filter(|body| body["Data"]["eventType"] == "package_uninstalled")
+            .filter(|body| body["Data"]["targetName"] == harness)
+            .last()
+    }
+
+    /// An uninstall still attributes its event with the harness
+    /// `install-info.json` carries -- the primary case this change
+    /// exists for. `harness` here is BOTH the event's `targetName`
+    /// (per `send_event`'s own `target_name` parameter, threaded
+    /// through as `install_info.harness.clone()`) and the `harness`
+    /// field.
+    #[test]
+    fn report_package_uninstalled_attributes_with_the_install_info_harness() {
+        let _guard = lock_home();
+        let home = scratch_dir("uninstalled-harness-from-install-info-home");
+        let target = scratch_dir("uninstalled-harness-from-install-info-target");
+        let source = scratch_dir("uninstalled-harness-from-install-info-source");
+        install_info::write_install_info(&target, &source, "kiro-cli-v2", "2026-01-01T00:00:00Z")
+            .unwrap();
+
+        with_home(&home, || report_package_uninstalled(&target));
+
+        let event = find_recorded_uninstall_event("kiro-cli-v2")
+            .expect("a package_uninstalled event naming kiro-cli-v2 must have been recorded");
+        assert_eq!(event["Data"]["targetName"], "kiro-cli-v2");
+
+        fs::remove_dir_all(&home).ok();
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&source).ok();
+    }
+
+    /// The hole this change closes: `telemetry-id.json` absent
+    /// entirely (the state after retirement) must still attribute the
+    /// event correctly, sourced from `install-info.json` alone.
+    #[test]
+    fn report_package_uninstalled_attributes_correctly_with_no_legacy_identity_file() {
+        let _guard = lock_home();
+        let home = scratch_dir("uninstalled-no-legacy-identity-home");
+        let target = scratch_dir("uninstalled-no-legacy-identity-target");
+        let source = scratch_dir("uninstalled-no-legacy-identity-source");
+        install_info::write_install_info(&target, &source, "claude", "2026-01-01T00:00:00Z")
+            .unwrap();
+        assert!(
+            !identity::identity_path(&target).exists(),
+            "sanity: telemetry-id.json must be genuinely absent for this test to mean anything"
+        );
+
+        with_home(&home, || report_package_uninstalled(&target));
+
+        let event = find_recorded_uninstall_event("claude").expect(
+            "a package_uninstalled event naming claude must have been recorded even \
+                     with no telemetry-id.json on disk",
+        );
+        assert_eq!(event["Data"]["targetName"], "claude");
+
+        fs::remove_dir_all(&home).ok();
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&source).ok();
+    }
+
+    /// With NEITHER file present (the target was never installed, or
+    /// opted out), no event is recorded at all -- `read_install_info`
+    /// returning `None` is a plain skip, not a fallback to the
+    /// nil-UUID sentinel path the way `report_cli_error` treats a
+    /// missing identity for "install".
+    #[test]
+    fn report_package_uninstalled_records_nothing_when_install_info_is_absent() {
+        let _guard = lock_home();
+        let home = scratch_dir("uninstalled-absent-install-info-home");
+        let target = scratch_dir("uninstalled-absent-install-info-target");
+        assert!(!install_info::install_info_path(&target).exists());
+
+        let before = default_test_transport().recorded().len();
+        with_home(&home, || report_package_uninstalled(&target));
+        let after = default_test_transport().recorded().len();
+
+        assert_eq!(
+            before, after,
+            "no install-info.json means no attribution source, so no event may be sent"
+        );
+
+        fs::remove_dir_all(&home).ok();
+        fs::remove_dir_all(&target).ok();
+    }
+
+    /// The batch entry point (`report_package_uninstalled_for_target`)
+    /// must attribute identically to the single-target entry point --
+    /// both read the same uncached `install_info::read_install_info`.
+    #[test]
+    fn report_package_uninstalled_for_target_attributes_with_the_install_info_harness() {
+        let _guard = lock_home();
+        let home = scratch_dir("uninstalled-for-target-harness-home");
+        let target = scratch_dir("uninstalled-for-target-harness-target");
+        let source = scratch_dir("uninstalled-for-target-harness-source");
+        install_info::write_install_info(&target, &source, "kiro-v3", "2026-01-01T00:00:00Z")
+            .unwrap();
+
+        with_home(&home, || report_package_uninstalled_for_target(&target));
+
+        let event = find_recorded_uninstall_event("kiro-v3")
+            .expect("a package_uninstalled event naming kiro-v3 must have been recorded");
+        assert_eq!(event["Data"]["targetName"], "kiro-v3");
+
+        fs::remove_dir_all(&home).ok();
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&source).ok();
+    }
+
+    /// Two-target batch, no cross-contamination: `install_info`'s own
+    /// reads are always uncached disk reads (there is no
+    /// process-lifetime `OnceLock` for this record the way
+    /// `IDENTITY_CACHE` gates `cached_identity`), so calling
+    /// `report_package_uninstalled_for_target` for target A and then
+    /// target B in the SAME process must report each target's own
+    /// harness -- neither inherits the other's. This is the
+    /// regression `IDENTITY_CACHE`'s own doc comment warns an `--all`
+    /// batch is unsafe for; this test proves the install-info-sourced
+    /// path never reintroduces it.
+    #[test]
+    fn two_target_batch_reports_each_targets_own_harness_without_cross_contamination() {
+        let _guard = lock_home();
+        let home = scratch_dir("uninstalled-batch-no-cross-contamination-home");
+        let target_a = scratch_dir("uninstalled-batch-no-cross-contamination-a");
+        let target_b = scratch_dir("uninstalled-batch-no-cross-contamination-b");
+        let source = scratch_dir("uninstalled-batch-no-cross-contamination-source");
+        install_info::write_install_info(&target_a, &source, "kiro-cli-v2", "2026-01-01T00:00:00Z")
+            .unwrap();
+        install_info::write_install_info(&target_b, &source, "claude", "2026-01-02T00:00:00Z")
+            .unwrap();
+
+        with_home(&home, || {
+            report_package_uninstalled_for_target(&target_a);
+            report_package_uninstalled_for_target(&target_b);
+        });
+
+        let event_a = find_recorded_uninstall_event("kiro-cli-v2")
+            .expect("target A's event, naming kiro-cli-v2, must have been recorded");
+        let event_b = find_recorded_uninstall_event("claude")
+            .expect("target B's event, naming claude, must have been recorded");
+        assert_eq!(event_a["Data"]["targetName"], "kiro-cli-v2");
+        assert_eq!(
+            event_b["Data"]["targetName"], "claude",
+            "target B must report ITS OWN harness (claude), never target A's (kiro-cli-v2) -- \
+             a process-lifetime cache here would leak A's value into B's event"
+        );
+
+        fs::remove_dir_all(&home).ok();
+        fs::remove_dir_all(&target_a).ok();
+        fs::remove_dir_all(&target_b).ok();
+        fs::remove_dir_all(&source).ok();
+    }
+
+    #[test]
+    fn built_envelope_carries_the_instance_uuid_and_agent_version_together() {
+        let instance_uuid = "c".repeat(64);
+        let identity_uuid = "d".repeat(64);
+        assert_ne!(
+            instance_uuid, identity_uuid,
+            "sanity: must be distinct values"
+        );
+
+        let data = EventEnvelope::build(
+            EventType::PackageInstalled,
+            "kiro-cli-v2",
+            &identity_uuid,
+            None,
+            None,
+            None,
+            None,
+            Some("5.6.7".to_string()),
+        );
+        let outer = OuterEnvelope::wrap(data, instance_uuid.clone());
+        let json = serde_json::to_value(&outer).unwrap();
+
+        assert_eq!(
+            json["UUID"], instance_uuid,
+            "the outer envelope's UUID must be the instance value passed to wrap(), never \
+             the per-target identity_uuid also in scope"
+        );
+        assert_eq!(json["Data"]["agentVersion"], "5.6.7");
+    }
+
+    #[test]
+    fn missing_home_env_var_fails_closed_never_open() {
+        let _guard = lock_home();
+        let original_home = std::env::var_os("HOME");
+        std::env::remove_var("HOME");
+
+        let target = scratch_dir("no-silent-reenable-missing-home-target");
+        let allowed = telemetry_consent_allows(false);
+
+        match original_home {
+            Some(value) => std::env::set_var("HOME", value),
+            None => {}
+        }
+
+        assert!(
+            !allowed,
+            "an unresolvable HOME must fail closed to \"not allowed\", never default to \
+             \"allowed\" -- there is no anchor to read a real consent signal from"
+        );
+        fs::remove_dir_all(&target).ok();
     }
 }

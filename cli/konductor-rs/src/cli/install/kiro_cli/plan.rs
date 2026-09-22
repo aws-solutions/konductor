@@ -267,7 +267,7 @@ fn plan_agent_files(
 }
 
 /// Predicts whether this run will apply the Claude/V3 settings grant
-/// (see `resource_rewrite.rs`'s "V3/Claude Code permission grant"
+/// (see `resource_rewrite/claude_settings.rs`'s "V3/Claude Code permission grant"
 /// section), and if so, includes `.claude/settings.json` in the
 /// returned plan -- so the write-ahead `Status::InProgress` manifest
 /// (written in `install_from_local` before any real content copy

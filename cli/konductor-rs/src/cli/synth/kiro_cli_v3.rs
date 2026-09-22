@@ -40,9 +40,9 @@
 // `hooks` conversion (`convert_hooks_for_v3`, `KAS_HOOK_TRIGGERS`) is the
 // one exception to "grounded in the four kiro.dev pages above": no public
 // page cited above documents KAS's hook-document schema. Confirmed instead
-// against `AIMBuildCommon`'s `kiro_config_migration/hooks.rs` module -- the
-// same vendored, canonically-derived copy of Kiro CLI's own `/upgrade-agent`
-// engine `push_trusted_agent_rules` cites below -- whose `convert_hooks`/
+// against a vendored, canonically-derived copy of Kiro CLI's own
+// `/upgrade-agent` engine's `kiro_config_migration/hooks.rs` module --
+// the same copy `push_trusted_agent_rules` cites below -- whose `convert_hooks`/
 // `object_form_to_docs`/`hook_entry_to_doc` functions implement this exact
 // conversion: an object (even `{}`) fails whole-profile validation
 // outright under KAS's `hooks: z.array(hookDocumentSchema)` schema, and
@@ -179,10 +179,10 @@ struct PermissionRule {
 ///     fetch re-confirmed every row of this specific table).
 ///   - `todo`/`task` -> `todo_list`, `agent_crew` -> `subagent`: not
 ///     named on either public page above. Confirmed instead against
-///     `AIMBuildCommon`'s vendored `kiro_config_migration` module
+///     a vendored, canonically-derived copy of Kiro CLI's own
+///     `/upgrade-agent` engine's `kiro_config_migration` module
 ///     (`tool_table.rs`/`vendored_types.rs` -- the same
-///     canonically-derived copy of Kiro CLI's own `/upgrade-agent`
-///     engine `push_trusted_agent_rules` cites below): the vendored
+///     copy `push_trusted_agent_rules` cites below): the vendored
 ///     `BuiltInToolName::Task`'s confirmed parse spellings are `todo`,
 ///     `task`, and `todo_list` (canonical display `todo_list`, upstream
 ///     `task/task_tool.rs`), and `BuiltInToolName::AgentCrew`'s are
@@ -287,7 +287,8 @@ const TOOL_ID_TO_TAG: &[(&str, &str)] = &[
 /// `subagent`. Checked against kiro.dev's built-in-tools reference
 /// (confirms only `read<->fs_read/fsRead`,
 /// `shell<->execute_bash/execute_cmd`, `aws<->use_aws`,
-/// `subagent<->use_subagent`), AIMBuildCommon's vendored
+/// `subagent<->use_subagent`), a vendored, canonically-derived copy of
+/// Kiro CLI's own `/upgrade-agent` engine's
 /// `kiro_config_migration` module (`BuiltInToolName::AgentCrew`'s only
 /// confirmed parse spellings are `agent_crew`/`use_subagent`, and its
 /// `aliases()` returns only `agent_crew`), and the pinned
@@ -925,8 +926,9 @@ fn push_path_or_command_rules(
 /// syntax at all (checked directly, not from memory, as part of this
 /// fix), so `trustedAgents` specifically (as opposed to its sibling
 /// `availableAgents`, see below) is not confirmed by a PUBLIC kiro.dev
-/// source. It IS confirmed directly against `AIMBuildCommon`'s
-/// `kiro_config_migration` module -- a vendored, canonically-derived
+/// source. It IS confirmed directly against a vendored,
+/// canonically-derived copy of Kiro CLI's own
+/// `/upgrade-agent` engine's `kiro_config_migration` module -- a vendored, canonically-derived
 /// copy of Kiro CLI's own real `/upgrade-agent` engine, not a guess --
 /// which shows, with a side-by-side per-agent table built from that
 /// engine's actual installed output, that `permissions.rules`' derived
@@ -1045,8 +1047,8 @@ const DEFAULT_HOOK_TIMEOUT_MS: u64 = 10_000;
 /// this directly ("install (untouched by this CR) only ever reads from
 /// the kiro-cli-v2 output today"), and this crate's `install` command
 /// never reads `dist/kiro-cli-v3/` anywhere. Separately, the merge path
-/// with that hazard (`adapter.rs`) lives entirely inside `AIMBuildCommon`'s
-/// own crate -- a different build tool (`aim-build`, driven by `aim
+/// with that hazard (`adapter.rs`) lives entirely inside the vendored
+/// upgrade-agent engine's own crate -- a different build tool (`aim-build`, driven by `aim
 /// agents install`/`aim plugins install`) with its own separate pipeline
 /// that composes `clientConfig.kiroCli` fragments from agent-spec.json
 /// files directly; it never reads this crate's `dist/` output either.
@@ -1091,7 +1093,8 @@ fn convert_hooks_for_v3(
 /// `matcher` is carried over verbatim as an opaque string -- no
 /// regex-to-glob rewrite, no alternation splitting, no validation of any
 /// kind -- and this is deliberate, not an oversight. The vendored
-/// `kiro_config_migration::hooks::hook_entry_to_doc` (AIMBuildCommon,
+/// `kiro_config_migration::hooks::hook_entry_to_doc` (a canonically-derived
+/// copy of Kiro CLI's own `/upgrade-agent` engine,
 /// `src/kiro_config_migration/hooks.rs`) is the canonical, real
 /// `/upgrade-agent` conversion this function mirrors, and its own
 /// handling of `matcher` is the identical single line: read the string if

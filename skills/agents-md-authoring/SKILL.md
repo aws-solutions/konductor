@@ -33,13 +33,13 @@ To make agents load steering/memory/skills, use **instructions** inside AGENTS.m
 
 ## Required structure
 
-Author AGENTS.md with these sections (adapt to the project):
+Author AGENTS.md with these sections, adapted to the project as follows: infer what you can directly from the repo (build files, existing test commands, directory structure, git history for commit-message conventions); ask the user only for what cannot be inferred (e.g., PR/review conventions not visible in the repo, or team-specific domain knowledge). State inferred content as inferred so the user can correct it during review.
 
 1. **Context Loading (MUST follow at session start)** — instruction block (see template below)
 2. **Project Overview** — what the project is, in 2-3 sentences
 3. **Project Structure** — directory map
 4. **Setup & Commands** — build, test, install commands
-5. **Code Style & Conventions** — formatting, naming, language rules
+5. **Code Style & Conventions** — formatting, naming, language rules; if a `.kiro/steering/*.md` file already documents these, reference it (`See .kiro/steering/<file>.md`) rather than duplicating its content
 6. **Testing** — how to run tests
 7. **Workflow** — git/PR/CR conventions
 8. **Domain Knowledge** (optional) — durable project-specific facts

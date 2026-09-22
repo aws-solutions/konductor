@@ -283,18 +283,24 @@ pub enum Commands {
     /// Update an existing Konductor installation: unconditionally
     /// overwrites every tracked file with fresh content from a fresh
     /// `--from <repo-root>` synth source -- the exact same file-copy
-    /// path `install` itself uses. There is no `--force` flag; a
-    /// hand-edited file is overwritten just like any other tracked
-    /// file. `--dry-run` reports hash-based divergence per file (which
-    /// tracked paths have local edits that would be destroyed) without
-    /// writing anything; a real run only reports how many files had
+    /// path `install` itself uses. Without `--from`, tries the same
+    /// real remote fallback chain `install`'s own no-`--from` path
+    /// uses (GitHub Release first, falling back to `main`'s `dist/`
+    /// tree) instead of requiring a local checkout. There is no
+    /// `--force` flag; a hand-edited file is overwritten just like any
+    /// other tracked file. `--dry-run` reports hash-based divergence
+    /// per file (which tracked paths have local edits that would be
+    /// destroyed) without writing anything and without making any
+    /// network call either; a real run only reports how many files had
     /// diverged, as an aggregate count, after unconditionally
     /// overwriting all of them -- the count never gates or alters the
     /// overwrite.
     Update {
         /// SOURCE: path to a local repo root to re-synth from, same
-        /// meaning as `install --from`. Required to have anything fresh
-        /// to re-copy.
+        /// meaning as `install --from`. When omitted, `update` instead
+        /// tries the real remote fallback chain (GitHub Release, then
+        /// `main`'s `dist/` tree) -- see `install`'s own `--from` doc
+        /// for the identical no-`--from` behavior.
         #[arg(long)]
         from: Option<String>,
 
@@ -330,19 +336,20 @@ pub enum Commands {
         /// Passing it always suppresses telemetry for this run,
         /// regardless of the target's own history -- an explicit
         /// override in either direction (it re-applies an opt-out on a
-        /// target that already has an identity file just as readily as
-        /// it applies one for the first time).
+        /// target that already has an install-info record just as
+        /// readily as it applies one for the first time).
         ///
         /// When this flag is NOT passed, `update` still honors a
         /// target's earlier choice: on a target that already has a
         /// manifest (an existing install), the ABSENCE of
-        /// `.konductor/telemetry-id.json` is read as "this target
+        /// `.konductor/install-info.json` is read as "this target
         /// opted out at install time" and carried forward -- no need
         /// to re-pass the flag on every `update`. A target whose
-        /// identity file IS present is read as opted in. An `--all`
-        /// batch resolves this signal independently per target,
-        /// matching how each target's own `.konductor/config.yml`
-        /// opt-out is already resolved independently.
+        /// install-info record IS present is read as opted in. An
+        /// `--all` batch resolves this signal independently per
+        /// target, matching how each target's own
+        /// `.konductor/config.yml` opt-out is already resolved
+        /// independently.
         ///
         /// Structural, same as `install --no-telemetry`: whenever the
         /// effective opt-out applies (explicit or carried forward), the
@@ -353,9 +360,23 @@ pub enum Commands {
 
         /// Report exactly what would be overwritten (files, paths) for
         /// each selected target without touching the filesystem in any
-        /// way -- no manifest write, no index write, no file copy.
+        /// way -- no manifest write, no index write, no file copy --
+        /// and, for a no-`--from` run, without making any network call
+        /// either.
         #[arg(long = "dry-run", action = ArgAction::SetTrue)]
         dry_run: bool,
+
+        /// Opt in to reading `GITHUB_TOKEN` from the environment for
+        /// the no-`--from` remote update path (GitHub Release metadata
+        /// lookup, asset download, and the main-branch-`dist/`
+        /// fallback's Contents API requests). Without this flag,
+        /// `GITHUB_TOKEN` is never read, even if it's set in the
+        /// shell. Identical in meaning and effect to
+        /// `install --use-github-token`; has no effect on a `--from
+        /// <repo-root>` update, which never touches GitHub's API at
+        /// all.
+        #[arg(long = "use-github-token", action = ArgAction::SetTrue)]
+        use_github_token: bool,
     },
 
     /// Remove Konductor from a repository.

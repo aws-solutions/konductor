@@ -5,18 +5,42 @@
 // Unconditional overwrite: `update` resolves which tracked target(s) to
 // act on, then for each one calls the exact same
 // `InstallStrategy::install_from_local(target_dir, from)`
-// `install.rs`'s `dispatch_install_with` calls. No filtering, no
-// reconciliation -- the manifest `install_from_local` writes as a side
-// effect of that call is the final manifest for this run, verbatim.
+// `install.rs`'s `dispatch_install_with` calls when `--from` is given.
+// No filtering, no reconciliation -- the manifest `install_from_local`
+// writes as a side effect of that call is the final manifest for this
+// run, verbatim. Reuses `manifest::read_manifest`, `index::{read_index,
+// write_index, canonicalize_target_dir}`, and `registry::STRATEGIES`
+// exactly as install does; never re-runs `matches()` selection against
+// the target.
+//
+// Without `--from`, each target's update instead tries the exact same
+// real remote fallback chain `install`'s own no-`--from` path uses
+// (`remote_orchestrate::install_from_remote_with_fallback`: GitHub
+// Release first, falling back to `main`'s `dist/` tree) -- see
+// `run_update_one_target`'s own doc comment for how the fetched tree is
+// then applied through the SAME strategy the target's manifest already
+// records, with no `--harness` re-prompt. `use_github_token` is
+// `update`'s own `--use-github-token` flag, threaded straight through
+// to that same call, identical in meaning and effect to
+// `install --use-github-token`. Every error-mapping helper this remote
+// path needs (`remote_orchestration_error_exit_code`,
+// `remote_orchestration_error_code`,
+// `main_branch_dist_orchestration_error_exit_code`,
+// `main_branch_dist_orchestration_error_code`,
+// `fallback_chain_error_exit_code`, `fallback_chain_error_code`) is
+// reused directly from `install.rs` (`pub(super)` there for exactly
+// this reason), never duplicated here.
+//
 // Hash-based divergence classification does exist here, but only under
 // `--dry-run` (`preview_update`/`is_diverged`, per file); a real run
 // computes the same hash comparison (`count_diverged_files`) purely for
 // an aggregate "how many were overwritten while diverged" count
 // reported after the fact -- it never gates or alters which files get
-// overwritten. Reuses `manifest::read_manifest`, `index::{read_index,
-// write_index, canonicalize_target_dir}`, and `registry::STRATEGIES`
-// exactly as install does; never re-runs `matches()` selection against
-// the target.
+// overwritten. `--dry-run` for a no-`--from` target never makes a
+// network call either (see `preview_update`'s own doc comment): it
+// reports the currently-tracked file list and its current divergence,
+// since fetching a fresh release just to preview it would give a
+// read-only inspection command a real external side effect.
 //
 // Manifest and index writes are locked and fresh-read; file copies are
 // not. Every manifest write here is serialized through the same
@@ -32,8 +56,9 @@
 // serialize same-slot invocations themselves.
 //
 // Known limitation: no transactional rollback on a mid-copy failure.
-// `update_one_target` calls `install_from_local` with no transactional
-// wrapper. A mid-copy failure (disk full, permission error) can leave
+// `update_one_target` calls `install_from_local` (or, with no
+// `--from`, the remote fallback chain) with no transactional wrapper.
+// A mid-copy failure (disk full, permission error) can leave
 // the target with a mix of fresh and stale files, the manifest never
 // gets rewritten to reflect the failure, and the index entry can stay
 // `InProgress` until a future read self-heals it. No rollback exists or
@@ -45,6 +70,7 @@ use super::install::artifact::sha256_hex;
 use super::install::index::{self, IndexEntry, IndexEntryStatus};
 use super::install::manifest::{self, ManifestError, Status, StrategyManifest};
 use super::install::registry;
+use super::install::{github_branch, remote_orchestrate};
 use crate::cli::output::ColorMode;
 
 // Test-only synchronization point, compiled only under `#[cfg(test)]`:
@@ -153,6 +179,7 @@ pub fn dispatch_update_with(
     harness: Option<String>,
     no_telemetry: bool,
     dry_run: bool,
+    use_github_token: bool,
     verbose: bool,
     json: bool,
     color: ColorMode,
@@ -292,7 +319,14 @@ pub fn dispatch_update_with(
     }
 
     if dry_run {
-        return report_dry_run_preview(&targets, from.as_deref(), harness.as_deref(), json, color);
+        return report_dry_run_preview(
+            &targets,
+            from.as_deref(),
+            harness.as_deref(),
+            use_github_token,
+            json,
+            color,
+        );
     }
 
     // For `--all` + `--json`, every target's outcome is collected into
@@ -309,6 +343,7 @@ pub fn dispatch_update_with(
             targets,
             from.as_deref(),
             harness.as_deref(),
+            use_github_token,
             verbose,
             no_telemetry,
         );
@@ -326,6 +361,7 @@ pub fn dispatch_update_with(
             &target_dir,
             from.as_deref(),
             harness.as_deref(),
+            use_github_token,
             verbose,
             json,
             all,
@@ -347,13 +383,17 @@ pub fn dispatch_update_with(
 /// usage-error-wins-the-tie-break rule).
 ///
 /// `finalize_index_warning`: `run_update_one_target` itself never
-/// prints -- a finalize-index failure (the `write_index` call that
-/// flips the entry to `Complete`, after `install_from_local` has
-/// already succeeded) is carried back here instead, so each caller
-/// renders it in its own mode: `update_one_target` folds it into
+/// prints -- carried back here instead, so each caller renders it in
+/// its own mode: `update_one_target` folds it into
 /// `report_update_success`'s output, `dispatch_update_all_json` folds
 /// it into this target's entry via `report_update_batch`. `None` on
-/// the ordinary path where the finalize write succeeded.
+/// the ordinary path where nothing below needed to speak up. Despite
+/// the name, this now carries either (or both, `"; "`-joined) of two
+/// independent conditions: a finalize-index failure (the `write_index`
+/// call that flips the entry to `Complete`, after `install_from_local`
+/// has already succeeded), or the opt-out carry-forward finding a
+/// broken (not merely absent) `install-info.json` -- see
+/// `run_update_one_target`'s own comment above that read.
 enum UpdateOutcome {
     Success {
         files: usize,
@@ -381,6 +421,19 @@ enum UpdateOutcome {
         /// path ignores this and reports an ordinary usage error --
         /// there's no sibling target to skip past.
         harness_not_tracked: bool,
+        /// `None` at every failure site that returns before the opt-out
+        /// carry-forward's `read_install_info_detailed` call runs (every
+        /// site above that point in `run_update_one_target`); `Some` iff
+        /// that read found a broken -- present but unreadable or
+        /// schema-invalid -- `install-info.json`, the same condition
+        /// `finalize_index_warning` (`UpdateOutcome::Success`) already
+        /// surfaces on the success path. Exists so a target whose
+        /// `install_from_local` (or the remote fallback chain) fails
+        /// still tells the user about a broken record instead of the
+        /// two problems masking each other -- the case where it matters
+        /// most, since a corrupted `.konductor/` and a failing install
+        /// plausibly share a cause.
+        telemetry_state_warning: Option<String>,
     },
 }
 
@@ -395,6 +448,7 @@ fn dispatch_update_all_json(
     targets: Vec<IndexEntry>,
     from: Option<&str>,
     harness: Option<&str>,
+    use_github_token: bool,
     verbose: bool,
     no_telemetry: bool,
 ) -> u8 {
@@ -410,11 +464,18 @@ fn dispatch_update_all_json(
         // runs for `--all --json`, so harness selection must never
         // prompt (see `harness_select::select_harness`'s own `json`/
         // `allow_interactive` gating).
-        let outcome =
-            match run_update_one_target(&target_dir, from, harness, true, true, no_telemetry) {
-                Ok(outcome) => outcome,
-                Err(outcome) => outcome,
-            };
+        let outcome = match run_update_one_target(
+            &target_dir,
+            from,
+            harness,
+            use_github_token,
+            true,
+            true,
+            no_telemetry,
+        ) {
+            Ok(outcome) => outcome,
+            Err(outcome) => outcome,
+        };
         match outcome {
             UpdateOutcome::Success { .. } => succeeded.push((entry.target_dir, outcome)),
             // A target that does not track the requested `--harness`
@@ -448,8 +509,8 @@ fn dispatch_update_all_json(
                 // process-global-cache variant: this loop iterates
                 // several distinct `target_dir`s in one process, so the
                 // cached variant would misattribute every target after
-                // the first to whichever target's identity the cache
-                // happened to resolve first.
+                // the first to whichever target's own `harness`/opt-out
+                // signal the cache resolved first.
                 crate::cli::telemetry::report_cli_error_for_target(
                     &target_dir,
                     "update",
@@ -516,10 +577,16 @@ fn report_update_batch(
             })).collect::<Vec<_>>(),
             "failed": failed.iter().map(|(dir, outcome)| {
                 match outcome {
-                    UpdateOutcome::Failure { message, .. } => serde_json::json!({
-                        "target_dir": dir,
-                        "error": message,
-                    }),
+                    UpdateOutcome::Failure { message, telemetry_state_warning, .. } => {
+                        let mut entry = serde_json::json!({
+                            "target_dir": dir,
+                            "error": message,
+                        });
+                        if let Some(warning) = telemetry_state_warning {
+                            entry["warning"] = serde_json::Value::String(warning.clone());
+                        }
+                        entry
+                    }
                     UpdateOutcome::Success { .. } => unreachable!("failed only ever holds UpdateOutcome::Failure"),
                 }
             }).collect::<Vec<_>>(),
@@ -608,13 +675,21 @@ fn report_corrupted_index(duplicates: &[String], json: bool, color: ColorMode) {
 /// continue-past-failure contract. Always returns 0: a preview reports,
 /// it never itself fails the run, since it made no filesystem changes
 /// for a script to have failed AT.
+///
+/// `use_github_token` is accepted for signature symmetry with
+/// `dispatch_update_with`'s other callers but has no effect here: a
+/// preview never makes a network call either way (see `preview_update`'s
+/// own doc comment), so there is nothing for a GitHub token to
+/// authenticate.
 fn report_dry_run_preview(
     targets: &[IndexEntry],
     from: Option<&str>,
     harness: Option<&str>,
+    use_github_token: bool,
     json: bool,
     color: ColorMode,
 ) -> u8 {
+    let _ = use_github_token;
     let mut previewed: Vec<(String, Vec<PreviewFile>)> = Vec::new();
     let mut skipped: Vec<(String, String)> = Vec::new();
     let mut failed: Vec<(String, String)> = Vec::new();
@@ -778,8 +853,19 @@ impl PreviewUpdateError {
 /// hash has already diverged from the manifest (via
 /// `diverged_files_in`, the same hash comparison `count_diverged_files`
 /// itself uses). Touches no filesystem state beyond reading the
-/// manifest and comparing hashes -- no `install_from_local`, no
-/// index/manifest write.
+/// manifest and comparing hashes -- no `install_from_local`, no remote
+/// fetch of any kind, no index/manifest write.
+///
+/// With no `--from`, a preview never makes a network call -- fetching
+/// a fresh release just to preview it would give a read-only inspection
+/// command a real external side effect. Instead it reports the
+/// CURRENTLY-tracked file list (`selected.files`, read from the
+/// existing manifest, same as the `--from` case) and that list's
+/// current divergence; the exact file set a real no-`--from` run
+/// fetches may differ once it actually pulls a fresh release. Open
+/// design decision, not resolved here: a different tradeoff (e.g. an
+/// opt-in `--dry-run --fetch`) is possible if this one proves
+/// insufficient.
 fn preview_update(
     target_dir: &Path,
     from: Option<&str>,
@@ -853,9 +939,16 @@ fn preview_update(
     // source with nothing to install, would make the REAL run fail
     // before it ever touches the filesystem, so the preview must report
     // that same failure rather than claiming files would be overwritten
-    // when they would not be.
-    if let Some(message) = strategy.would_fail_as_noop(target_dir, from) {
-        return Err(PreviewUpdateError::usage(message));
+    // when they would not be. Only checked when `--from` is given,
+    // matching `run_update_one_target`'s identical `from.is_some()`
+    // gate -- a missing `--from` preview never calls `would_fail_as_noop`
+    // (there is no local source to check against), since it never
+    // attempts the real remote fetch a `--from` run's no-op check
+    // exists to pre-empt.
+    if from.is_some() {
+        if let Some(message) = strategy.would_fail_as_noop(target_dir, from) {
+            return Err(PreviewUpdateError::usage(message));
+        }
     }
 
     let would_overwrite: Vec<PreviewFile> = selected
@@ -949,6 +1042,7 @@ fn update_one_target(
     target_dir: &Path,
     from: Option<&str>,
     harness: Option<&str>,
+    use_github_token: bool,
     verbose: bool,
     json: bool,
     uncached_identity: bool,
@@ -959,6 +1053,7 @@ fn update_one_target(
         target_dir,
         from,
         harness,
+        use_github_token,
         uncached_identity,
         json,
         no_telemetry,
@@ -990,6 +1085,7 @@ fn update_one_target(
             message,
             exit_code,
             harness_not_tracked,
+            telemetry_state_warning,
         }) => {
             // A target that does not track the requested `--harness`,
             // reached specifically via the plain-text `--all` loop
@@ -1015,24 +1111,43 @@ fn update_one_target(
                 );
                 return 0;
             }
+            // Folded into `message` with the same `"; "` join
+            // `finalize_index_warning` uses on the success path, and
+            // also carried in `extra` as a `"warning"` field so a
+            // `--json` consumer sees it as its own key rather than only
+            // embedded in `"error"`'s text. `Some` here means
+            // `run_update_one_target`'s opt-out carry-forward found a
+            // broken `install-info.json` before `install_from_local` (or
+            // the remote fallback chain) went on to fail -- the case
+            // `report_update_success`'s own `finalize_index_warning`
+            // never covers, since a failure never reaches
+            // `UpdateOutcome::Success` at all.
+            let full_message = match &telemetry_state_warning {
+                Some(warning) => format!("{message}; {warning}"),
+                None => message.clone(),
+            };
             // `uncached_identity` selects `report_error_for_target`
             // whenever this call may be one of several distinct
             // targets visited in this process -- the plain-`report_error`
             // (process-global-cache) variant would otherwise
             // misattribute every target after the first to whichever
-            // identity the cache resolved first, mirroring the
-            // identical fix on the success path below.
-            let extra = vec![(
+            // target's own `harness`/opt-out signal the cache resolved
+            // first, mirroring the identical fix on the success path
+            // below.
+            let mut extra = vec![(
                 "target_dir",
                 serde_json::Value::String(target_dir.display().to_string()),
             )];
+            if let Some(warning) = &telemetry_state_warning {
+                extra.push(("warning", serde_json::Value::String(warning.clone())));
+            }
             if uncached_identity {
                 super::report::report_error_for_target(
                     "update",
                     "update.target_failed",
                     target_dir,
                     no_telemetry,
-                    &message,
+                    &full_message,
                     extra,
                     json,
                     color,
@@ -1043,7 +1158,7 @@ fn update_one_target(
                     "update.target_failed",
                     target_dir,
                     no_telemetry,
-                    &message,
+                    &full_message,
                     extra,
                     json,
                     color,
@@ -1061,32 +1176,92 @@ fn update_one_target(
 /// exact nine-step sequence `update_one_target`'s own doc comment
 /// describes (read manifest, reject `in_progress`, count diverged
 /// files, look up the strategy, run `would_fail_as_noop`, canonicalize,
-/// write `InProgress`, call `install_from_local`, write `Complete`),
-/// with NO printing anywhere in its body -- a finalize-index failure
-/// is carried back to the caller as `UpdateOutcome::Success`'s
-/// `finalize_index_warning` field instead of being printed here (see
-/// that field's own doc comment). Both `update_one_target` (the
-/// single-target/plain-text/`--target`+`--json` path) and
-/// `dispatch_update_all_json` (the `--all --json` batch path) call this
-/// one function and handle reporting themselves -- print immediately
-/// via `report_error`/`report_update_success`, or collect into a batch
+/// write `InProgress`, call `install_from_local` or the no-`--from`
+/// remote fallback chain, write `Complete`), with NO printing anywhere
+/// in its body -- a finalize-index failure is carried back to the
+/// caller as `UpdateOutcome::Success`'s `finalize_index_warning` field
+/// instead of being printed here (see that field's own doc comment).
+/// Both `update_one_target` (the single-target/plain-text/
+/// `--target`+`--json` path) and `dispatch_update_all_json` (the
+/// `--all --json` batch path) call this one function and handle
+/// reporting themselves -- print immediately via
+/// `report_error`/`report_update_success`, or collect into a batch
 /// report. This is what keeps the ordering guarantee (several comments
 /// throughout this function explain WHY a given step must run before
 /// the next) living in exactly one place, rather than two
 /// hand-maintained copies that could drift.
+///
+/// `use_github_token` is only read on the no-`--from` branch -- it has
+/// no effect when `from` is `Some`, which never touches GitHub's API.
 ///
 /// Returns `Ok(UpdateOutcome::Success { .. })` on success,
 /// `Err(UpdateOutcome::Failure { .. })` on any failure -- the
 /// `Result<UpdateOutcome, UpdateOutcome>` shape lets each caller use
 /// `?`/`match` idiomatically while still carrying the same `UpdateOutcome`
 /// payload on both branches.
+#[allow(clippy::too_many_arguments)]
 fn run_update_one_target(
+    target_dir: &Path,
+    from: Option<&str>,
+    harness: Option<&str>,
+    use_github_token: bool,
+    uncached_identity: bool,
+    json: bool,
+    no_telemetry: bool,
+) -> Result<UpdateOutcome, UpdateOutcome> {
+    run_update_one_target_with_remote_installer(
+        target_dir,
+        from,
+        harness,
+        uncached_identity,
+        json,
+        no_telemetry,
+        // owner/repo are the confirmed real values for this project,
+        // hardcoded ONLY at this one call site -- mirrors
+        // `install.rs`'s own `dispatch_install_with`.
+        move |strategy, destination, installed_at, no_telemetry| {
+            remote_orchestrate::install_from_remote_with_fallback(
+                "aws-solutions",
+                "konductor",
+                github_branch::DEFAULT_BRANCH,
+                strategy,
+                destination,
+                installed_at,
+                no_telemetry,
+                use_github_token,
+            )
+        },
+    )
+}
+
+/// The full `run_update_one_target` implementation, parameterized by
+/// `remote_installer` -- the no-`--from` remote-install attempt. In
+/// production, `run_update_one_target` passes a closure that reaches
+/// the real GitHub API; this module's own tests pass a closure that
+/// fails (or succeeds) right away with no real network call --
+/// mirrors `install.rs`'s own
+/// `dispatch_install_with`/`dispatch_install_with_remote_installer`
+/// split exactly, so tests can inject a fake, network-free installer
+/// here the same way.
+fn run_update_one_target_with_remote_installer(
     target_dir: &Path,
     from: Option<&str>,
     harness: Option<&str>,
     uncached_identity: bool,
     json: bool,
     no_telemetry: bool,
+    remote_installer: impl FnOnce(
+        &dyn super::install::InstallStrategy,
+        &Path,
+        &str,
+        bool,
+    ) -> Result<
+        (
+            remote_orchestrate::RemoteInstallSource,
+            super::install::remote::RemoteInstallOutcome,
+        ),
+        remote_orchestrate::FallbackChainError,
+    >,
 ) -> Result<UpdateOutcome, UpdateOutcome> {
     let full_manifest = match manifest::read_manifest(target_dir) {
         Ok(Some(manifest)) => manifest,
@@ -1099,6 +1274,7 @@ fn run_update_one_target(
                 ),
                 exit_code: EXIT_USAGE_ERROR,
                 harness_not_tracked: false,
+                telemetry_state_warning: None,
             });
         }
         Err(err) => {
@@ -1106,6 +1282,7 @@ fn run_update_one_target(
                 message: format!("could not read manifest at {}: {err}", target_dir.display()),
                 exit_code: manifest_error_exit_code(&err),
                 harness_not_tracked: false,
+                telemetry_state_warning: None,
             });
         }
     };
@@ -1133,6 +1310,7 @@ fn run_update_one_target(
             ),
             exit_code: EXIT_USAGE_ERROR,
             harness_not_tracked: false,
+            telemetry_state_warning: None,
         });
     }
     // Every other already-tracked strategy's name must survive both
@@ -1172,6 +1350,7 @@ fn run_update_one_target(
                 harness_not_tracked: err.is_not_tracked(),
                 message: err.to_string(),
                 exit_code: EXIT_USAGE_ERROR,
+                telemetry_state_warning: None,
             });
         }
     };
@@ -1186,6 +1365,7 @@ fn run_update_one_target(
             ),
             exit_code: EXIT_USAGE_ERROR,
             harness_not_tracked: false,
+            telemetry_state_warning: None,
         });
     }
 
@@ -1220,6 +1400,7 @@ fn run_update_one_target(
             ),
             exit_code: EXIT_USAGE_ERROR,
             harness_not_tracked: false,
+            telemetry_state_warning: None,
         });
     };
 
@@ -1231,12 +1412,21 @@ fn run_update_one_target(
     // identical reason -- a healthy target's `Complete` index entry
     // must never flip to `InProgress` for a run that is guaranteed to
     // fail as a no-op.
-    if let Some(message) = strategy.would_fail_as_noop(target_dir, from) {
-        return Err(UpdateOutcome::Failure {
-            message,
-            exit_code: EXIT_USAGE_ERROR,
-            harness_not_tracked: false,
-        });
+    //
+    // Only checked when `--from` is given, matching `install.rs`'s
+    // identical guard: a missing `--from` has no local source to check
+    // with `would_fail_as_noop` at all -- the no-`--from` case tries
+    // the real remote fallback chain below instead, sharing every
+    // guard from this point on with the `--from` path.
+    if from.is_some() {
+        if let Some(message) = strategy.would_fail_as_noop(target_dir, from) {
+            return Err(UpdateOutcome::Failure {
+                message,
+                exit_code: EXIT_USAGE_ERROR,
+                harness_not_tracked: false,
+                telemetry_state_warning: None,
+            });
+        }
     }
 
     // Index write-ahead: InProgress before
@@ -1248,6 +1438,7 @@ fn run_update_one_target(
                 message: format!("could not resolve {}: {err}", target_dir.display()),
                 exit_code: EXIT_USAGE_ERROR,
                 harness_not_tracked: false,
+                telemetry_state_warning: None,
             });
         }
     };
@@ -1262,6 +1453,7 @@ fn run_update_one_target(
             message: format!("could not write install index: {err}"),
             exit_code: index_error_exit_code(&err),
             harness_not_tracked: false,
+            telemetry_state_warning: None,
         });
     }
 
@@ -1271,34 +1463,100 @@ fn run_update_one_target(
     // and when passed it always suppresses telemetry for this run
     // regardless of the target's own history -- an explicit override
     // in either direction. When it is NOT passed, this target's own
-    // `.konductor/telemetry-id.json` absence -- on a target already
-    // confirmed above to have a manifest -- is read as "opted out at
-    // install time" and carried forward, with no need to re-pass the
-    // flag on every `update`. `identity_file_exists` checks THIS
-    // target_dir specifically, so an `--all` batch resolves the signal
-    // independently per target, the same way each target's own
-    // `.konductor/config.yml` opt-out is already resolved independently
-    // rather than shared across the batch.
+    // `.konductor/install-info.json` is read via
+    // `read_install_info_detailed` (not the plain `read_install_info`
+    // `report_*` uses, since this call site -- unlike those -- needs to
+    // tell the user WHY, not just whether) to resolve one of three
+    // outcomes, the same three `doctor`'s `check_telemetry_state` reads
+    // from this file:
     //
-    // Applies identically whether the absence reflects a deliberate
-    // `--no-telemetry` choice or an install that predates this
-    // telemetry system entirely (no identity file was ever written for
-    // either reason) -- the two are indistinguishable from the
-    // filesystem alone, and treating "no recorded identity" as "not
-    // opted in" is the conservative default: it never wires a
-    // telemetry side effect for a target that never affirmatively got
-    // one.
+    //   - `Ok`: an install-info record exists and validated. Not
+    //     opted out; `no_telemetry` is left as the caller passed it.
+    //   - `Err(NotFound)`: no record was ever written, either from a
+    //     deliberate `--no-telemetry` choice at install or an install
+    //     that predates this telemetry system entirely -- the two are
+    //     indistinguishable from the filesystem alone. Carried forward
+    //     as opted-out silently, same as before: this is the
+    //     conservative default that never wires a telemetry side
+    //     effect for a target that never affirmatively got one, and
+    //     nothing here is broken, so nothing is printed.
+    //   - `Err(Broken)`: a record exists but is unreadable or fails
+    //     schema validation. Nobody opted out; something wrote, or
+    //     left, a file that cannot be trusted. Still carried forward as
+    //     opted-out -- fail-closed, since the code cannot know what the
+    //     user actually chose -- but unlike the other two outcomes this
+    //     is worth telling the user about, so it is surfaced as a
+    //     warning (`telemetry_state_warning` below) naming the file,
+    //     matching `check_telemetry_state`'s own wording for the same
+    //     condition.
+    //
+    // Resolved via THIS target_dir specifically, so an `--all` batch
+    // resolves the signal independently per target, the same way each
+    // target's own `.konductor/config.yml` opt-out is already resolved
+    // independently rather than shared across the batch.
     //
     // Threading the (possibly carried-forward) value through here is
     // what makes the opt-out actually suppress `AgentInstallPhase`'s
     // Claude Code telemetry-hook re-wiring step on this run.
-    let no_telemetry = no_telemetry || !crate::cli::telemetry::identity_file_exists(target_dir);
+    //
+    // Read unconditionally -- NOT `no_telemetry ||`-short-circuited --
+    // so a broken record is always surfaced via `telemetry_state_warning`
+    // even on a run where `--no-telemetry` was passed explicitly (which
+    // would otherwise skip this read entirely and never learn the
+    // record was broken rather than absent). The read's `Ok`/`NotFound`
+    // outcomes never affect `no_telemetry`: an explicit `--no-telemetry`
+    // already decided the opt-out on its own, and this read exists only
+    // to resolve that decision when the flag was NOT passed and to
+    // report whether the file backing that decision is trustworthy.
+    let mut telemetry_state_warning: Option<String> = None;
+    let carried_forward_opt_out =
+        match crate::cli::telemetry::read_install_info_detailed(target_dir) {
+            Ok(_) => false,
+            Err(crate::cli::telemetry::InstallInfoAbsence::NotFound) => true,
+            Err(crate::cli::telemetry::InstallInfoAbsence::Broken) => {
+                let record_path = crate::cli::telemetry::install_info_path(target_dir);
+                telemetry_state_warning = Some(format!(
+                    "telemetry reporting is off for {}: {} is present but could not be read \
+                 (unreadable or an unrecognized schema) -- re-run `konductor install` to \
+                 rewrite it, or inspect it directly to see why it failed to parse",
+                    target_dir.display(),
+                    record_path.display()
+                ));
+                true
+            }
+        };
+    let no_telemetry = no_telemetry || carried_forward_opt_out;
 
-    if let Err(err) = strategy.install_from_local(target_dir, from, &updated_at, no_telemetry) {
+    // The actual update step: `--from` reads and copies synthed local
+    // content through the selected strategy, exactly as before; no
+    // `--from` instead tries the real remote fallback chain through the
+    // caller-supplied `remote_installer` (production's real
+    // GitHub-backed closure, or this module's tests' fake, network-free
+    // one) -- mirrors `install.rs`'s own `--from`/no-`--from` branch in
+    // `dispatch_install_with_remote_installer` exactly, reusing its
+    // `pub(super)` error-mapping helpers below rather than duplicating
+    // them.
+    let install_result: Result<(), super::install::InstallError> = if let Some(from_path) = from {
+        strategy.install_from_local(target_dir, Some(from_path), &updated_at, no_telemetry)
+    } else {
+        match remote_installer(*strategy, target_dir, &updated_at, no_telemetry) {
+            Ok((_source, _outcome)) => Ok(()),
+            Err(err) => {
+                return Err(UpdateOutcome::Failure {
+                    message: err.to_string(),
+                    exit_code: super::install::fallback_chain_error_exit_code(&err),
+                    harness_not_tracked: false,
+                    telemetry_state_warning: telemetry_state_warning.clone(),
+                });
+            }
+        }
+    };
+    if let Err(err) = install_result {
         return Err(UpdateOutcome::Failure {
             message: err.to_string(),
             exit_code: super::install::install_error_exit_code(&err),
             harness_not_tracked: false,
+            telemetry_state_warning: telemetry_state_warning.clone(),
         });
     }
 
@@ -1343,6 +1601,16 @@ fn run_update_one_target(
         manifest::read_manifest(target_dir),
         &tracked_strategy_names,
     );
+    // Folded together with `telemetry_state_warning` (set above, if
+    // the opt-out carry-forward hit a broken install-info record)
+    // rather than adding a second `UpdateOutcome::Success` field --
+    // both are the same kind of thing from every caller's perspective,
+    // an otherwise-successful run with something worth telling the
+    // user about, and `report_update_success`/`report_update_batch`
+    // already render exactly one such message per target. The two
+    // conditions are independent and either can fire alone; joining
+    // with `"; "` when both do keeps both visible rather than one
+    // silently overwriting the other.
     let finalize_index_warning = index::write_index(IndexEntry {
         target_dir: canonical_target_dir,
         strategies: final_strategies,
@@ -1351,6 +1619,11 @@ fn run_update_one_target(
     })
     .err()
     .map(|err| format!("could not finalize install index: {err}"));
+    let finalize_index_warning = match (telemetry_state_warning, finalize_index_warning) {
+        (Some(telemetry), Some(finalize)) => Some(format!("{telemetry}; {finalize}")),
+        (Some(telemetry), None) => Some(telemetry),
+        (None, finalize) => finalize,
+    };
 
     // Telemetry: fires once install_from_local
     // has already succeeded, before the trailing manifest re-read below
@@ -1436,12 +1709,15 @@ fn run_update_one_target(
 /// the `strategy_name` slot -- see that parameter's own doc comment.
 ///
 /// `warning` (finding f-6e118a1c) is `run_update_one_target`'s
-/// `finalize_index_warning` -- `None` on the ordinary path, or the
-/// finalize-index failure message when the index write that flips the
-/// entry to `Complete` failed after the copy itself already succeeded.
-/// Rendered as an extra plain-text line / `--json` `warning` field
-/// rather than to stderr, so a `--json` consumer never needs to also
-/// read stderr for this module's own single-target success path either.
+/// `finalize_index_warning` -- `None` on the ordinary path, or a
+/// message covering one or both of: the finalize-index write that
+/// flips the entry to `Complete` failing after the copy itself already
+/// succeeded, or the opt-out carry-forward finding this target's
+/// `install-info.json` present but broken (see
+/// `UpdateOutcome::Success`'s own doc comment). Rendered as an extra
+/// plain-text line / `--json` `warning` field rather than to stderr, so
+/// a `--json` consumer never needs to also read stderr for this
+/// module's own single-target success path either.
 ///
 /// `strategy_name` is the slot this run actually acted on
 /// (`UpdateOutcome::Success`'s own field of the same name, threaded
@@ -1517,6 +1793,7 @@ mod tests {
     use manifest::{ManifestFile, Provenance};
     use std::fs;
 
+    use super::super::install::github;
     use crate::cli::test_home_lock::lock_home;
 
     /// RAII guard for tests that mutate the process-global `HOME` env
@@ -1711,6 +1988,7 @@ mod tests {
             &target,
             Some(repo_root.to_str().unwrap()),
             Some("kiro-cli-v2"),
+            false, /* use_github_token */
             false,
             false,
             false,
@@ -1838,6 +2116,7 @@ mod tests {
                 &target,
                 Some(repo_root.to_str().unwrap()),
                 None,
+                false, /* use_github_token */
                 false,
                 false,
                 false,
@@ -1916,6 +2195,7 @@ mod tests {
             &target,
             Some(repo_root.to_str().unwrap()),
             Some("kiro-v3"),
+            false, /* use_github_token */
             false,
             false,
             false,
@@ -2006,7 +2286,9 @@ mod tests {
             true,
             Some("kiro-cli-v2".to_string()),
             false,
-            false, /* yes */
+            false,
+            false, /* use_github_token */
+            /* yes */
             false,
             false,
             ColorMode::disabled(),
@@ -2059,11 +2341,11 @@ mod tests {
 
     /// (1) The primary regression this fix addresses: a target
     /// originally installed with `konductor install --no-telemetry`
-    /// (so no identity file, and no Claude Code telemetry-hook wiring,
-    /// was ever written) must have that wiring stay suppressed on a
-    /// later PLAIN `konductor update` -- with no `--no-telemetry`
+    /// (so no install-info record, and no Claude Code telemetry-hook
+    /// wiring, was ever written) must have that wiring stay suppressed
+    /// on a later PLAIN `konductor update` -- with no `--no-telemetry`
     /// re-passed to that specific `update` invocation. The target's own
-    /// missing `.konductor/telemetry-id.json` is what `update` reads as
+    /// missing `.konductor/install-info.json` is what `update` reads as
     /// the durable "opted out at install time" signal.
     ///
     /// Exercises the REAL dispatch path end to end
@@ -2087,9 +2369,9 @@ mod tests {
         );
         seed_mcp_binary(&repo_root, "skill-lookup-mcp", b"binary bytes\n");
 
-        // Initial install, opted out of telemetry -- no identity file,
-        // no hooks written, matching `kiro_cli.rs`'s own sibling test
-        // for the install side of this same contract.
+        // Initial install, opted out of telemetry -- no install-info
+        // record, no hooks written, matching `kiro_cli.rs`'s own
+        // sibling test for the install side of this same contract.
         let install_code = super::super::install::dispatch_install_with(
             Some(repo_root.to_str().unwrap().to_string()),
             Some(target_dir.to_str().unwrap().to_string()),
@@ -2103,8 +2385,8 @@ mod tests {
         );
         assert_eq!(install_code, 0, "initial install must succeed");
         assert!(
-            !crate::cli::telemetry::identity_file_exists(&target_dir),
-            "install --no-telemetry must never write the identity file"
+            !crate::cli::telemetry::install_info_exists(&target_dir),
+            "install --no-telemetry must never write install-info.json"
         );
         let claude_settings_path = target_dir.join(".claude/settings.json");
         let before_update: serde_json::Value =
@@ -2123,7 +2405,9 @@ mod tests {
             false,
             None,
             false,
-            false, /* yes */
+            false,
+            false, /* use_github_token */
+            /* yes */
             // no --no-telemetry on THIS invocation
             false,
             false,
@@ -2139,8 +2423,8 @@ mod tests {
              --no-telemetry; got: {after_update:?}"
         );
         assert!(
-            !crate::cli::telemetry::identity_file_exists(&target_dir),
-            "update must never write an identity file for a target that carried its own \
+            !crate::cli::telemetry::install_info_exists(&target_dir),
+            "update must never write install-info.json for a target that carried its own \
              opt-out forward"
         );
 
@@ -2149,16 +2433,18 @@ mod tests {
     }
 
     /// (2) `update --all` resolves the carry-forward signal
-    /// independently per target -- one target's own missing identity
-    /// file must never leak into another target's own decision,
-    /// matching how each target's own `.konductor/config.yml` opt-out
-    /// is already resolved independently within the same batch (see
+    /// independently per target -- one target's own missing
+    /// install-info record must never leak into another target's own
+    /// decision, matching how each target's own
+    /// `.konductor/config.yml` opt-out is already resolved
+    /// independently within the same batch (see
     /// `run_update_one_target`'s own doc comment above the carry-
     /// forward computation). Two targets share one tracked index: one
-    /// originally installed with `--no-telemetry` (no identity file),
-    /// one without (identity file present). A single `update --all` run
-    /// that itself passes no `--no-telemetry` must still keep the first
-    /// target's hooks suppressed while wiring the second target's.
+    /// originally installed with `--no-telemetry` (no install-info
+    /// record), one without (install-info record present). A single
+    /// `update --all` run that itself passes no `--no-telemetry` must
+    /// still keep the first target's hooks suppressed while wiring the
+    /// second target's.
     #[test]
     fn update_all_resolves_the_carry_forward_signal_independently_per_target() {
         let _home = HomeGuard::new("update-all-mixed-home");
@@ -2203,12 +2489,10 @@ mod tests {
         );
         assert_eq!(install_in_code, 0, "opted-in install must succeed");
 
-        assert!(!crate::cli::telemetry::identity_file_exists(
+        assert!(!crate::cli::telemetry::install_info_exists(
             &opted_out_target
         ));
-        assert!(crate::cli::telemetry::identity_file_exists(
-            &opted_in_target
-        ));
+        assert!(crate::cli::telemetry::install_info_exists(&opted_in_target));
 
         // `--all`, with no `--no-telemetry` of its own: a shared (not
         // per-target) carry-forward computation would either suppress
@@ -2220,7 +2504,9 @@ mod tests {
             true, // --all
             None,
             false,
-            false, /* yes */
+            false,
+            false, /* use_github_token */
+            /* yes */
             // no --no-telemetry
             false,
             false,
@@ -2253,15 +2539,95 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
+    /// (2.1) The reverse case: the legacy identity file present but
+    /// `install-info.json` absent must read as opted out -- no
+    /// fallback to the legacy file. The identity file is no longer
+    /// written by any install path, so it is seeded directly to
+    /// reconstruct a developer machine that predates this file's
+    /// retirement.
+    #[test]
+    fn update_carry_forward_does_not_fall_back_to_identity_file_when_install_info_absent() {
+        let _home = HomeGuard::new("update-carry-forward-no-fallback-home");
+        let target = scratch_dir("update-carry-forward-no-fallback-target");
+        fs::create_dir_all(target.join(".kiro")).unwrap();
+        fs::create_dir_all(target.join(".claude")).unwrap();
+        let repo_root = scratch_dir("update-carry-forward-no-fallback-repo");
+        seed_synthed_agent_with_skill_resource(&repo_root, "k-example", "constraints");
+        seed_synthed_skill(
+            &repo_root,
+            "constraints",
+            b"---\nname: constraints\n---\nBody\n",
+        );
+        seed_mcp_binary(&repo_root, "skill-lookup-mcp", b"binary bytes\n");
+
+        // Opted-in install: writes install-info.json. The legacy
+        // identity file is no longer written by any install path, so
+        // it is seeded directly here to reconstruct the state a
+        // developer machine from before this file was retired would
+        // still have on disk.
+        let install_code = super::super::install::dispatch_install_with(
+            Some(repo_root.to_str().unwrap().to_string()),
+            Some(target.to_str().unwrap().to_string()),
+            "kiro-cli-v2".to_string(),
+            false,
+            false,
+            false,
+            false,
+            false,
+            ColorMode::disabled(),
+        );
+        assert_eq!(install_code, 0, "opted-in install must succeed");
+        assert!(crate::cli::telemetry::install_info_exists(&target));
+        crate::cli::telemetry::ensure_identity(&target, "kiro-cli-v2");
+
+        // Delete only install-info.json, leaving the legacy identity
+        // file in place -- the signal read for reporting must not
+        // fall back to it.
+        fs::remove_file(crate::cli::telemetry::install_info_path(&target)).unwrap();
+        assert!(!crate::cli::telemetry::install_info_exists(&target));
+        assert!(crate::cli::telemetry::identity_path(&target).is_file());
+
+        let claude_settings_path = target.join(".claude/settings.json");
+        let mut settings: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&claude_settings_path).unwrap()).unwrap();
+        settings.as_object_mut().unwrap().remove("hooks");
+        fs::write(&claude_settings_path, settings.to_string()).unwrap();
+
+        let update_code = dispatch_update_with(
+            Some(repo_root.to_str().unwrap().to_string()),
+            Some(target.to_str().unwrap().to_string()),
+            false,
+            None,
+            false, // no explicit --no-telemetry: relies on the carry-forward signal alone
+            false,
+            false,
+            false,
+            false,
+            ColorMode::disabled(),
+        );
+        assert_eq!(update_code, 0, "update must succeed");
+        let after_update: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&claude_settings_path).unwrap()).unwrap();
+        assert!(
+            after_update.get("hooks").is_none(),
+            "a target with the legacy identity file present but install-info.json absent \
+             must be read as opted OUT -- there must be no fallback to the legacy file; \
+             got: {after_update:?}"
+        );
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
     /// (3) An explicit `--no-telemetry` on `update` still suppresses
-    /// hook re-wiring for a target that DOES have an identity file --
-    /// the flag is an override in the "opt out now" direction,
-    /// independent of what the persisted (identity-file-based) signal
-    /// says. The hooks block is removed between install and update to
-    /// force a genuine re-wiring opportunity (self-heal alone only
-    /// fires for a stale exe path), so a passing assertion actually
-    /// distinguishes "the flag suppressed this run's wiring" from
-    /// "there was nothing to wire anyway."
+    /// hook re-wiring for a target that DOES have an install-info
+    /// record -- the flag is an override in the "opt out now"
+    /// direction, independent of what the persisted signal says. The
+    /// hooks block is removed between install and update to force a
+    /// genuine re-wiring opportunity (self-heal alone only fires for a
+    /// stale exe path), so a passing assertion actually distinguishes
+    /// "the flag suppressed this run's wiring" from "there was nothing
+    /// to wire anyway."
     #[test]
     fn explicit_no_telemetry_still_suppresses_wiring_for_a_target_with_an_identity_file() {
         let _home = HomeGuard::new("update-explicit-override-home");
@@ -2277,7 +2643,7 @@ mod tests {
         );
         seed_mcp_binary(&repo_root, "skill-lookup-mcp", b"binary bytes\n");
 
-        // Initial install WITHOUT --no-telemetry: identity file is
+        // Initial install WITHOUT --no-telemetry: install-info.json is
         // written and hooks are wired.
         let install_code = super::super::install::dispatch_install_with(
             Some(repo_root.to_str().unwrap().to_string()),
@@ -2292,8 +2658,8 @@ mod tests {
         );
         assert_eq!(install_code, 0, "initial install must succeed");
         assert!(
-            crate::cli::telemetry::identity_file_exists(&target),
-            "a plain install must write the identity file"
+            crate::cli::telemetry::install_info_exists(&target),
+            "a plain install must write install-info.json"
         );
 
         let claude_settings_path = target.join(".claude/settings.json");
@@ -2320,7 +2686,9 @@ mod tests {
             false,
             None,
             true,
-            false, /* yes */
+            false,
+            false, /* use_github_token */
+            /* yes */
             // --no-telemetry
             false,
             false,
@@ -2345,7 +2713,9 @@ mod tests {
             false,
             None,
             false,
-            false, /* yes */
+            false,
+            false, /* use_github_token */
+            /* yes */
             false,
             false,
             ColorMode::disabled(),
@@ -2391,6 +2761,7 @@ mod tests {
             &target,
             Some(repo_root.to_str().unwrap()),
             None,
+            false, /* use_github_token */
             false,
             false,
             false,
@@ -2442,6 +2813,7 @@ mod tests {
             &target,
             Some(repo_root.to_str().unwrap()),
             None,
+            false, /* use_github_token */
             false,
             false,
             false,
@@ -2521,6 +2893,7 @@ mod tests {
             &target,
             Some(repo_root.to_str().unwrap()),
             None,
+            false, /* use_github_token */
             false,
             false,
             false,
@@ -2594,6 +2967,7 @@ mod tests {
             &updated_target,
             Some(repo_root.to_str().unwrap()),
             None,
+            false, /* use_github_token */
             false,
             false,
             false,
@@ -2666,6 +3040,7 @@ mod tests {
             &target,
             Some(repo_root.to_str().unwrap()),
             None,
+            false, /* use_github_token */
             false,
             false,
             false,
@@ -2715,6 +3090,7 @@ mod tests {
             &dir,
             None,
             None,
+            false, /* use_github_token */
             false,
             false,
             false,
@@ -2732,6 +3108,7 @@ mod tests {
             &dir,
             None,
             None,
+            false, /* use_github_token */
             false,
             false,
             false,
@@ -2749,6 +3126,7 @@ mod tests {
             &dir,
             None,
             None,
+            false, /* use_github_token */
             false,
             false,
             false,
@@ -2776,6 +3154,7 @@ mod tests {
                 &dir,
                 None,
                 None,
+                false, /* use_github_token */
                 false,
                 false,
                 false,
@@ -2901,6 +3280,7 @@ mod tests {
             &dir,
             None,
             None,
+            false, /* use_github_token */
             false,
             false,
             false,
@@ -2927,6 +3307,7 @@ mod tests {
             &dir,
             None,
             None,
+            false, /* use_github_token */
             false,
             false,
             false,
@@ -2976,6 +3357,7 @@ mod tests {
             &dir,
             None,
             None,
+            false, /* use_github_token */
             false,
             false,
             false,
@@ -3004,24 +3386,27 @@ mod tests {
 
     /// The other class of no-op failure `update_one_target` must catch
     /// before its own write-ahead: a HEALTHY target (registered
-    /// strategy, `Complete` index entry) whose run is going to fail as
-    /// a no-op because no `--from` was given. Must return the usual
-    /// usage error, but -- unlike the pre-fix behavior -- must never
-    /// flip that target's index status from `Complete` to `InProgress`
-    /// for a run that never touched the filesystem.
+    /// strategy, `Complete` index entry) given a `--from` pointing at a
+    /// source with nothing to install. Must return the usual usage
+    /// error, but -- unlike the pre-fix behavior -- must never flip
+    /// that target's index status from `Complete` to `InProgress` for a
+    /// run that never touched the filesystem. This is STILL a
+    /// synchronous no-op case, distinct from the no-`--from` case below:
+    /// `--from` was given, so `would_fail_as_noop` runs and catches it
+    /// before any index write, exactly as it always has.
     ///
     /// Falsifiability: confirmed this test fails against the pre-fix
     /// ordering (the `would_fail_as_noop` pre-check did not exist, and
     /// the index write-ahead ran unconditionally before
-    /// `install_from_local` itself rejected the missing `--from`) --
-    /// the index entry's status is observed as `InProgress` immediately
+    /// `install_from_local` itself rejected the empty source) -- the
+    /// index entry's status is observed as `InProgress` immediately
     /// after the failed call, since `install_from_local` never got a
-    /// chance to run before the write-ahead already happened. Restored
-    /// immediately after confirming the failure.
+    /// chance to run before the write-ahead already happened.
     #[test]
-    fn update_one_target_missing_from_does_not_mutate_healthy_index_status() {
-        let _home = HomeGuard::new("missing-from-index-home");
-        let dir = scratch_dir("missing-from-index-target");
+    fn update_one_target_from_with_nothing_to_install_does_not_mutate_healthy_index_status() {
+        let _home = HomeGuard::new("empty-from-index-home");
+        let dir = scratch_dir("empty-from-index-target");
+        let empty_source = scratch_dir("empty-from-index-source");
         let manifest = StrategyManifest::new(
             "kiro-cli-v2",
             "2026-01-01T00:00:00Z",
@@ -3044,13 +3429,15 @@ mod tests {
         })
         .unwrap();
 
-        // No --from given: install_from_local's own first check would
-        // reject this as a no-op, but the pre-check must catch it
-        // BEFORE any index write.
+        // `--from` IS given, but points at a source with nothing to
+        // install for this strategy -- install_from_local's own first
+        // check would reject this as a no-op, but the pre-check must
+        // catch it BEFORE any index write.
         let code = update_one_target(
             &dir,
+            Some(empty_source.to_str().unwrap()),
             None,
-            None,
+            false, // use_github_token
             false,
             false,
             false,
@@ -3068,8 +3455,265 @@ mod tests {
         assert_eq!(
             entry.status,
             IndexEntryStatus::Complete,
-            "a no-op failure (missing --from) must never flip a healthy target's index status"
+            "a no-op failure (--from with nothing to install) must never flip a healthy \
+             target's index status"
         );
+
+        fs::remove_dir_all(&dir).ok();
+        fs::remove_dir_all(&empty_source).ok();
+    }
+
+    /// The no-`--from` contract: omitting `--from` is no longer a
+    /// synchronous no-op the way an empty `--from` source still is (see
+    /// the test above) -- it defers to the real remote fallback chain
+    /// instead, via the SAME `remote_installer` seam
+    /// `run_update_one_target_with_remote_installer` accepts (mirrors
+    /// `install.rs`'s own fake-installer test pattern exactly; no real
+    /// network call is made here). A missing `--from` therefore DOES
+    /// write the `InProgress` index entry before the attempt, and
+    /// leaves it `InProgress` on failure -- exactly like a `--from`
+    /// failure after `install_from_local` starts already leaves it --
+    /// rather than the old "never mutate a healthy index status"
+    /// contract the pre-fix, `--from`-required world had for a missing
+    /// `--from`.
+    #[test]
+    fn update_one_target_missing_from_tries_remote_fallback_and_leaves_in_progress_on_failure() {
+        let _home = HomeGuard::new("missing-from-remote-fallback-home");
+        let dir = scratch_dir("missing-from-remote-fallback-target");
+        let manifest = StrategyManifest::new(
+            "kiro-cli-v2",
+            "2026-01-01T00:00:00Z",
+            ".",
+            None,
+            Status::Complete,
+            vec![],
+        );
+        manifest::upsert_strategy(&dir, manifest).unwrap();
+
+        // Seed the index with a Complete entry, exactly as a
+        // previously-successful, fully-healthy install would have left
+        // it.
+        let canonical = index::canonicalize_target_dir(&dir).unwrap();
+        index::write_index(IndexEntry {
+            target_dir: canonical.clone(),
+            strategies: vec!["kiro-cli-v2".to_string()],
+            installed_at: "2026-01-01T00:00:00Z".to_string(),
+            status: IndexEntryStatus::Complete,
+        })
+        .unwrap();
+
+        // No --from given: this now defers to the (fake, network-free)
+        // remote fallback chain instead of a synchronous no-op
+        // rejection.
+        let outcome = run_update_one_target_with_remote_installer(
+            &dir,
+            None,
+            None,
+            false,
+            false,
+            false,
+            |_strategy, _destination, _installed_at, _no_telemetry| {
+                Err(remote_orchestrate::FallbackChainError::ReleaseOnly(
+                    remote_orchestrate::RemoteOrchestrationError::Fetch(
+                        github::GithubFetchError::Network(
+                            "fake network error injected by a test -- no real network call was made"
+                                .to_string(),
+                        ),
+                    ),
+                ))
+            },
+        );
+        assert!(
+            matches!(outcome, Err(UpdateOutcome::Failure { .. })),
+            "a failed no-`--from` remote fetch must be reported as a Failure outcome"
+        );
+
+        // Unlike the `--from`-with-empty-source case above, the index
+        // entry IS expected to have been flipped to InProgress: a
+        // missing `--from` no longer short-circuits before the
+        // write-ahead, it attempts the real remote fetch first.
+        let index_after = index::read_index().unwrap().unwrap();
+        let entry = index_after
+            .installs
+            .iter()
+            .find(|e| e.target_dir == canonical)
+            .expect("index entry must still exist");
+        assert_eq!(
+            entry.status,
+            IndexEntryStatus::InProgress,
+            "a failed no-`--from` remote fetch attempt must leave the index entry \
+             InProgress, self-healable via the target's own manifest state, exactly like a \
+             `--from` failure after install_from_local starts already leaves it"
+        );
+
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    /// Closes half one of finding (`telemetry_state_warning` /
+    /// `install_from_local` early return): a target with a broken
+    /// `install-info.json` AND a failing install step must still hear
+    /// about the broken record, not just the install failure -- the
+    /// two problems are likely to share a cause, so silently dropping
+    /// the telemetry warning on this path is exactly the case where it
+    /// would help most. Uses the same fake-remote-fallback-failure
+    /// shape as the sibling test just above (`_leaves_in_progress_on_
+    /// failure`) rather than a real `install_from_local` I/O failure,
+    /// since both reach `UpdateOutcome::Failure` through the identical
+    /// post-read code path this fix touches.
+    #[test]
+    fn run_update_one_target_surfaces_broken_telemetry_record_on_install_failure() {
+        // `run_update_one_target_with_remote_installer`'s own write-ahead
+        // and finalize writes (inside the code under test, not this
+        // seed) go through the real, unguarded `index::write_index` --
+        // so this test's own seed entry must land in the SAME `$HOME`
+        // those internal writes resolve, not a separate scratch home,
+        // or the finalize write's read-modify-write would silently lose
+        // this seed rather than refreshing it. `HomeGuard` (not the
+        // home-aware `write_index_at_home` alone) is what's needed here.
+        let _home = HomeGuard::new("broken-record-install-failure-home");
+        let dir = scratch_dir("broken-record-install-failure-target");
+        let manifest = StrategyManifest::new(
+            "kiro-cli-v2",
+            "2026-01-01T00:00:00Z",
+            ".",
+            None,
+            Status::Complete,
+            vec![],
+        );
+        manifest::upsert_strategy(&dir, manifest).unwrap();
+        let canonical = index::canonicalize_target_dir(&dir).unwrap();
+        index::write_index(IndexEntry {
+            target_dir: canonical,
+            strategies: vec!["kiro-cli-v2".to_string()],
+            installed_at: "2026-01-01T00:00:00Z".to_string(),
+            status: IndexEntryStatus::Complete,
+        })
+        .unwrap();
+
+        // A present-but-corrupt install-info.json: neither valid JSON
+        // nor a recognized schema, matching
+        // `InstallInfoAbsence::Broken`'s own doc comment.
+        fs::create_dir_all(dir.join(".konductor")).unwrap();
+        fs::write(crate::cli::telemetry::install_info_path(&dir), b"not json").unwrap();
+
+        let outcome = run_update_one_target_with_remote_installer(
+            &dir,
+            None,
+            None,
+            false,
+            false,
+            false, // no_telemetry not passed -- the carry-forward must still run
+            |_strategy, _destination, _installed_at, _no_telemetry| {
+                Err(remote_orchestrate::FallbackChainError::ReleaseOnly(
+                    remote_orchestrate::RemoteOrchestrationError::Fetch(
+                        github::GithubFetchError::Network(
+                            "fake network error injected by a test -- no real network call \
+                             was made"
+                                .to_string(),
+                        ),
+                    ),
+                ))
+            },
+        );
+
+        match outcome {
+            Err(UpdateOutcome::Failure {
+                telemetry_state_warning,
+                ..
+            }) => {
+                let warning = telemetry_state_warning.expect(
+                    "a broken install-info.json must surface a warning even on the \
+                             install-failure early return",
+                );
+                assert!(
+                    warning.contains("could not be read"),
+                    "warning must name the broken-record condition, got: {warning}"
+                );
+            }
+            Err(UpdateOutcome::Success { .. }) => {
+                panic!("run_update_one_target's Err variant always holds UpdateOutcome::Failure")
+            }
+            Ok(_) => panic!("expected a Failure outcome from the fake remote-fallback error"),
+        }
+
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    /// Closes half two of the same finding: an explicit `--no-telemetry`
+    /// must not skip the detailed read entirely. Before the fix, the
+    /// `no_telemetry ||`-short-circuit meant a run with the flag passed
+    /// never learned whether its own broken record existed at all --
+    /// consent is unaffected either way (opted out was already true),
+    /// but the warning must still surface now that the read always
+    /// runs.
+    #[test]
+    fn run_update_one_target_surfaces_broken_telemetry_record_with_explicit_no_telemetry() {
+        // See the sibling test just above for why `HomeGuard` (not
+        // `write_index_at_home` alone) is required here.
+        let _home = HomeGuard::new("broken-record-explicit-no-telemetry-home");
+        let dir = scratch_dir("broken-record-explicit-no-telemetry-target");
+        let manifest = StrategyManifest::new(
+            "kiro-cli-v2",
+            "2026-01-01T00:00:00Z",
+            ".",
+            None,
+            Status::Complete,
+            vec![],
+        );
+        manifest::upsert_strategy(&dir, manifest).unwrap();
+        let canonical = index::canonicalize_target_dir(&dir).unwrap();
+        index::write_index(IndexEntry {
+            target_dir: canonical,
+            strategies: vec!["kiro-cli-v2".to_string()],
+            installed_at: "2026-01-01T00:00:00Z".to_string(),
+            status: IndexEntryStatus::Complete,
+        })
+        .unwrap();
+
+        fs::create_dir_all(dir.join(".konductor")).unwrap();
+        fs::write(crate::cli::telemetry::install_info_path(&dir), b"not json").unwrap();
+
+        let outcome = run_update_one_target_with_remote_installer(
+            &dir,
+            None,
+            None,
+            false,
+            false,
+            true, // --no-telemetry passed explicitly
+            |_strategy, _destination, installed_at, no_telemetry| {
+                // The flag must still read as opted-out regardless of
+                // the now-unconditional detailed read's own outcome.
+                assert!(
+                    no_telemetry,
+                    "--no-telemetry must reach the install step unchanged"
+                );
+                let _ = installed_at;
+                Ok((
+                    remote_orchestrate::RemoteInstallSource::MainBranchDist,
+                    crate::cli::install::remote::RemoteInstallOutcome::default(),
+                ))
+            },
+        );
+
+        match outcome {
+            Ok(UpdateOutcome::Success {
+                finalize_index_warning,
+                ..
+            }) => {
+                let warning = finalize_index_warning.expect(
+                    "an explicit --no-telemetry run must still surface the broken-record \
+                     warning -- the read must not be skipped by the || short-circuit",
+                );
+                assert!(
+                    warning.contains("could not be read"),
+                    "warning must name the broken-record condition, got: {warning}"
+                );
+            }
+            Ok(UpdateOutcome::Failure { .. }) => {
+                panic!("run_update_one_target's Ok variant always holds UpdateOutcome::Success")
+            }
+            Err(_) => panic!("expected a Success outcome from the fake remote-fallback success"),
+        }
 
         fs::remove_dir_all(&dir).ok();
     }
@@ -3092,7 +3736,9 @@ mod tests {
             false,
             None,
             false,
-            false, /* yes */
+            false,
+            false, /* use_github_token */
+            /* yes */
             false,
             false,
             ColorMode::disabled(),
@@ -3128,7 +3774,9 @@ mod tests {
             false,
             None,
             false,
-            false, /* yes */
+            false,
+            false, /* use_github_token */
+            /* yes */
             false,
             false,
             ColorMode::disabled(),
@@ -3172,7 +3820,9 @@ mod tests {
             false,
             None,
             false,
-            false, /* yes */
+            false,
+            false, /* use_github_token */
+            /* yes */
             false,
             true,
             ColorMode::disabled(),
@@ -3215,7 +3865,9 @@ mod tests {
             false,
             None,
             false,
-            false, /* yes */
+            false,
+            false, /* use_github_token */
+            /* yes */
             false,
             false,
             ColorMode::disabled(),
@@ -3266,7 +3918,9 @@ mod tests {
             true,
             None,
             false,
-            false, /* yes */
+            false,
+            false, /* use_github_token */
+            /* yes */
             false,
             false,
             ColorMode::disabled(),
@@ -3341,7 +3995,9 @@ mod tests {
             true,
             None,
             false,
-            false, /* yes */
+            false,
+            false, /* use_github_token */
+            /* yes */
             false,
             true,
             ColorMode::disabled(),
@@ -3387,6 +4043,7 @@ mod tests {
                 ),
                 exit_code: EXIT_USAGE_ERROR,
                 harness_not_tracked: false,
+                telemetry_state_warning: None,
             },
         )];
 
@@ -3468,6 +4125,7 @@ mod tests {
                 message: "some failure".to_string(),
                 exit_code: EXIT_USAGE_ERROR,
                 harness_not_tracked: false,
+                telemetry_state_warning: None,
             },
         )];
         // report_update_batch itself only ever calls println! once;
@@ -3549,7 +4207,9 @@ mod tests {
             true,
             None,
             false,
-            false, /* yes */
+            false,
+            false, /* use_github_token */
+            /* yes */
             false,
             false,
             ColorMode::disabled(),
@@ -3620,7 +4280,9 @@ mod tests {
             true,
             None,
             false,
-            false, /* yes */
+            false,
+            false, /* use_github_token */
+            /* yes */
             false,
             false,
             ColorMode::disabled(),
@@ -3881,6 +4543,7 @@ mod tests {
             &target,
             Some(repo_root.to_str().unwrap()),
             None,
+            false, /* use_github_token */
             false,
             false,
             false,
@@ -3901,9 +4564,160 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
+    // ── Carry-forward: absent vs. valid vs. broken install-info ─────────
+    //
+    // Three tests pinning the three outcomes `read_install_info_detailed`
+    // can produce at this call site, matching `doctor.rs`'s own
+    // `check_telemetry_state_*` trio for the same three-way read.
+
+    /// Outcome 1: a genuinely absent record (never opted out, never
+    /// installed with telemetry at all) is still carried forward as
+    /// opted-out, silently -- the pre-existing, correct behavior for
+    /// this case. No `finalize_index_warning` is synthesized.
+    #[test]
+    fn absent_install_info_carries_opt_out_forward_silently() {
+        let _home = HomeGuard::new("carry-forward-absent-home");
+        let target = scratch_dir("carry-forward-absent-target");
+        let repo_root = scratch_dir("carry-forward-absent-repo");
+        seed_synthed_agent(&repo_root, "k-example");
+        let install_code = super::super::install::dispatch_install_with(
+            Some(repo_root.to_str().unwrap().to_string()),
+            Some(target.to_str().unwrap().to_string()),
+            "kiro-cli-v2".to_string(),
+            false,
+            true, // --no-telemetry: no install-info.json is ever written
+            false,
+            false,
+            false,
+            ColorMode::disabled(),
+        );
+        assert_eq!(install_code, 0, "opted-out install fixture must succeed");
+        assert!(!crate::cli::telemetry::install_info_exists(&target));
+
+        let outcome = run_update_one_target(
+            &target,
+            Some(repo_root.to_str().unwrap()),
+            None,
+            false, // use_github_token
+            false, // uncached_identity
+            false, // json
+            false, // no --no-telemetry on this update call
+        );
+        let Ok(UpdateOutcome::Success {
+            finalize_index_warning,
+            ..
+        }) = outcome
+        else {
+            panic!("update on an absent-install-info target must still succeed");
+        };
+        assert!(
+            finalize_index_warning.is_none(),
+            "a genuinely absent record is the conservative default, not a broken one -- \
+             nothing to warn about; got: {finalize_index_warning:?}"
+        );
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// Outcome 2: a valid, schema-current record does not suppress
+    /// telemetry for this run, and produces no warning.
+    #[test]
+    fn valid_install_info_does_not_suppress_or_warn() {
+        let _home = HomeGuard::new("carry-forward-valid-home");
+        let target = scratch_dir("carry-forward-valid-target");
+        let repo_root = scratch_dir("carry-forward-valid-repo");
+        install_fixture(&target, &repo_root); // no --no-telemetry: writes a valid record
+        assert!(crate::cli::telemetry::install_info_exists(&target));
+
+        let outcome = run_update_one_target(
+            &target,
+            Some(repo_root.to_str().unwrap()),
+            None,
+            false, // use_github_token
+            false, // uncached_identity
+            false, // json
+            false, // no --no-telemetry on this update call
+        );
+        let Ok(UpdateOutcome::Success {
+            finalize_index_warning,
+            ..
+        }) = outcome
+        else {
+            panic!("update on a target with a valid install-info record must succeed");
+        };
+        assert!(
+            finalize_index_warning.is_none(),
+            "a valid record must neither suppress telemetry nor warn; got: \
+             {finalize_index_warning:?}"
+        );
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// Outcome 3 -- the regression this fix closes. A record that
+    /// exists but fails to read back (corrupted JSON) must still
+    /// suppress reporting, fail-closed, exactly like outcomes 1 and 2's
+    /// non-suppressing/suppressing behavior is unaffected -- but unlike
+    /// a genuine opt-out, it must ALSO emit a warning naming the file,
+    /// since nobody chose this and the target can still fix it.
+    ///
+    /// Before this fix, `read_install_info(target_dir).is_none()`
+    /// treated this identically to outcome 1: suppressed, and silent.
+    /// This test would have passed on suppression alone before the fix
+    /// -- the `finalize_index_warning` assertion is what actually
+    /// fails on the pre-fix code, since nothing there ever populated
+    /// it for this case.
+    #[test]
+    fn broken_install_info_suppresses_and_warns() {
+        let _home = HomeGuard::new("carry-forward-broken-home");
+        let target = scratch_dir("carry-forward-broken-target");
+        let repo_root = scratch_dir("carry-forward-broken-repo");
+        install_fixture(&target, &repo_root);
+        let record_path = crate::cli::telemetry::install_info_path(&target);
+        fs::write(&record_path, b"not json").unwrap();
+        assert!(
+            crate::cli::telemetry::read_install_info(&target).is_none(),
+            "corrupting the file must make it unreadable as a record"
+        );
+
+        let outcome = run_update_one_target(
+            &target,
+            Some(repo_root.to_str().unwrap()),
+            None,
+            false, // use_github_token
+            false, // uncached_identity
+            false, // json
+            false, // no --no-telemetry on this update call
+        );
+        let Ok(UpdateOutcome::Success {
+            finalize_index_warning,
+            ..
+        }) = outcome
+        else {
+            panic!("update on a target with a broken install-info record must still succeed");
+        };
+
+        let warning = finalize_index_warning
+            .expect("a broken (present but unreadable) record must produce a warning");
+        assert!(
+            warning.contains(&record_path.display().to_string()),
+            "the warning must name the broken file so the user can act on it; got: {warning}"
+        );
+        assert!(
+            warning.contains("could not be read"),
+            "the warning must match doctor's own wording for the same condition; got: {warning}"
+        );
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
     #[test]
     fn dispatch_update_ambiguity_still_returns_usage_error() {
         let _guard = lock_home();
+
         let home = scratch_dir("ambiguity-message-home");
         let original = std::env::var_os("HOME");
         unsafe {
@@ -3929,7 +4743,9 @@ mod tests {
             false,
             None,
             false,
-            false, /* yes */
+            false,
+            false, /* use_github_token */
+            /* yes */
             false,
             true,
             ColorMode::disabled(),
@@ -3986,7 +4802,9 @@ mod tests {
             false,
             None,
             false,
-            false, /* yes */
+            false,
+            false, /* use_github_token */
+            /* yes */
             false,
             true,
             ColorMode::disabled(),
@@ -4042,7 +4860,9 @@ mod tests {
             false,
             None,
             false,
-            false, /* yes */
+            false,
+            false, /* use_github_token */
+            /* yes */
             false,
             true,
             ColorMode::disabled(),
@@ -4096,7 +4916,9 @@ mod tests {
             false,
             None,
             false,
-            false, /* yes */
+            false,
+            false, /* use_github_token */
+            /* yes */
             false,
             true,
             ColorMode::disabled(),
@@ -4138,6 +4960,7 @@ mod tests {
             &dir,
             None,
             None,
+            false, /* use_github_token */
             false,
             true,
             false,
@@ -4167,6 +4990,7 @@ mod tests {
             &dir,
             None,
             None,
+            false, /* use_github_token */
             false,
             true,
             false,
@@ -4212,6 +5036,7 @@ mod tests {
             &dir,
             None,
             None,
+            false, /* use_github_token */
             false,
             true,
             false,
@@ -4244,6 +5069,7 @@ mod tests {
             &dir,
             None,
             None,
+            false, /* use_github_token */
             false,
             true,
             false,
@@ -4273,6 +5099,7 @@ mod tests {
             &target,
             Some(repo_root.to_str().unwrap()),
             None,
+            false, /* use_github_token */
             false,
             true,
             false,
@@ -4762,6 +5589,7 @@ mod tests {
             &target,
             Some(repo_root.to_str().unwrap()),
             None,
+            false, /* use_github_token */
             false,
             false,
             false,
@@ -4773,6 +5601,7 @@ mod tests {
             &target,
             Some(repo_root.to_str().unwrap()),
             None,
+            false, /* use_github_token */
             false,
             true,
             false,
@@ -4837,6 +5666,7 @@ mod tests {
             &target,
             Some(repo_root.to_str().unwrap()),
             None,
+            false, /* use_github_token */
             false,
             false,
             false,
@@ -4881,7 +5711,9 @@ mod tests {
             false,
             None,
             false,
-            true, // --dry-run
+            true,
+            false, /* use_github_token */
+            // --dry-run
             false,
             false,
             ColorMode::disabled(),
@@ -5083,6 +5915,7 @@ mod tests {
             &entries,
             Some(repo_root.to_str().unwrap()),
             None,
+            false, /* use_github_token */
             true,
             ColorMode::disabled(),
         );
@@ -5173,7 +6006,9 @@ mod tests {
             false,
             None,
             false,
-            false, // no --dry-run
+            false,
+            false, /* use_github_token */
+            // no --dry-run
             false,
             false,
             ColorMode::disabled(),
@@ -5215,7 +6050,9 @@ mod tests {
             true, // --all
             None,
             false,
-            false, // no --dry-run
+            false,
+            false, /* use_github_token */
+            // no --dry-run
             false,
             false,
             ColorMode::disabled(),
@@ -5247,7 +6084,9 @@ mod tests {
             false,
             None,
             false,
-            false, // no --dry-run
+            false,
+            false, /* use_github_token */
+            // no --dry-run
             false,
             true, // --json
             ColorMode::disabled(),
@@ -5279,7 +6118,9 @@ mod tests {
             true, // --all
             None,
             false,
-            true, // --dry-run
+            true,
+            false, /* use_github_token */
+            // --dry-run
             false,
             false,
             ColorMode::disabled(),
@@ -5297,7 +6138,9 @@ mod tests {
             true, // --all
             None,
             false,
-            false, // no --dry-run
+            false,
+            false, /* use_github_token */
+            // no --dry-run
             false,
             false,
             ColorMode::disabled(),
@@ -5315,7 +6158,9 @@ mod tests {
             true, // --all
             None,
             false,
-            false, // no --dry-run
+            false,
+            false, /* use_github_token */
+            // no --dry-run
             false,
             true, // --json
             ColorMode::disabled(),

@@ -1,8 +1,8 @@
 # Benchmarking ASDLCCoreAICapabilities agents
 
-A benchmark harness for this package's agents that has **zero dependency on `aim`
-or any internal-only build tooling**. If you can run the `claude` CLI, you
-can benchmark a change to this repo's agents/skills.
+Benchmark a change to this package's agents or skills using nothing but the
+`claude` CLI — this harness has **zero dependency on `aim` or any
+internal-only build tooling**.
 
 ## ⚠️ Sandbox warning — read this before running anything
 
@@ -31,11 +31,12 @@ requirement of running any agent with approvals bypassed, not a suggestion.
    a valid Anthropic API key or subscription. This is the one genuinely
    required external prerequisite; if you already use Claude Code, you have
    it.
-2. **Node.js** (v18+; developed against v24). No other language runtime, no
-   Python, no third-party npm packages — every script here is Node stdlib
-   only.
-3. **Nothing else.** No internal-only build system, no `aim`, no internal
-   authentication tooling, no internal MCP registration of any kind.
+2. **Node.js** (v18+; developed against v24). Every script here uses only
+   the Node standard library — no other runtime, and no third-party
+   packages.
+3. **Nothing else is required.** This package has no dependency on any
+   internal-only build system, `aim`, internal authentication tooling, or
+   internal MCP registration.
 
 ## Quick start
 
@@ -179,8 +180,9 @@ rationale.
 
 ## What's in this MVP, and what's deferred
 
-This is the **MVP** phase of a phased build-out (see the design history for
-the full plan):
+This is the **MVP** phase of a phased build-out; see "Deferred" below for
+the work planned next but out of scope for this MVP, and "Roadmap" above
+for the separate CLI-subcommand migration.
 
 **Included:**
 

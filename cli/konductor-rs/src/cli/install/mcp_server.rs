@@ -62,7 +62,16 @@ pub(super) const BIN_CONTENT_TYPE_DIR: &str = "bin";
 /// relative to `--from <repo-root>`. Covers the plain `cargo build
 /// --release` path only; a redirected `CARGO_TARGET_DIR` isn't picked
 /// up by this exact path.
-fn mcp_binary_source_path(repo_root: &Path, binary_name: &str) -> std::path::PathBuf {
+///
+/// `pub(super)`, not private: `remote.rs`'s no-`--from` MCP-binary
+/// fetch (`install_mcp_server_binary_into_remote_temp_dir`) writes the
+/// remotely-fetched binary to this EXACT path, inside the ephemeral
+/// unpacked-archive temp dir it treats as this run's own
+/// `repo_root` -- reusing this single destination-path computation
+/// rather than duplicating it, so `plan_bin_files`/`install_bin_files`
+/// (which also call this) can never disagree with where the remote
+/// fetch itself writes.
+pub(super) fn mcp_binary_source_path(repo_root: &Path, binary_name: &str) -> std::path::PathBuf {
     repo_root
         .join("mcp")
         .join("target")

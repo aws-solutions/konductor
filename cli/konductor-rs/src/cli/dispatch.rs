@@ -72,6 +72,7 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool, color: ColorMode) 
             harness,
             no_telemetry,
             dry_run,
+            use_github_token,
         } => crate::cli::update::dispatch_update_with(
             from,
             target,
@@ -79,6 +80,7 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool, color: ColorMode) 
             harness,
             no_telemetry,
             dry_run,
+            use_github_token,
             verbose,
             json,
             color,
@@ -113,9 +115,13 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool, color: ColorMode) 
             all,
             verbose,
             json,
-            std::env::var_os("HOME")
-                .map(std::path::PathBuf::from)
-                .as_deref(),
+            // Empty (not just unset) `HOME` must resolve the same as
+            // unset -- otherwise `index_path` treats it as a relative
+            // `.konductor/installs` and `doctor --all` silently sees
+            // zero tracked installs instead of refusing, unlike
+            // `update --all`/`uninstall --all`, which already go
+            // through this same filter.
+            crate::cli::install::index::env_home_dir().as_deref(),
             color,
         ),
         Commands::Config { action } => {

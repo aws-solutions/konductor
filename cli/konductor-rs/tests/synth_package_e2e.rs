@@ -37,17 +37,17 @@ fn scratch_dir(name: &str) -> PathBuf {
     dir
 }
 
-fn run_konductor(cwd: &Path, args: &[&str]) -> Output {
+fn run_konductor(cwd: &Path, sink: &telemetry_test_sink::TelemetrySink, args: &[&str]) -> Output {
     // `HOME` is overridden to `cwd` for the same reason
     // synth_install_e2e.rs overrides it: `log_invocation` resolves
     // `$HOME` for `~/.konductor/logs/` on every invocation, regardless
     // of `--from`/`--target`.
-    Command::new(bin())
-        .args(args)
-        .current_dir(cwd)
-        .env("HOME", cwd)
-        .output()
-        .expect("failed to spawn konductor binary")
+    let mut command = Command::new(bin());
+    command.args(args).current_dir(cwd).env("HOME", cwd);
+    for var in sink.env_vars() {
+        command.env(var.name, &var.value);
+    }
+    command.output().expect("failed to spawn konductor binary")
 }
 
 fn seed_agent_spec_source(repo_root: &Path) {
@@ -101,9 +101,11 @@ fn find_files_with_suffix(dir: &Path, suffix: &str) -> Vec<PathBuf> {
 fn real_synth_produces_packaged_artifact_and_sidecar_on_disk() {
     let repo_root = scratch_dir("repo");
     seed_agent_spec_source(&repo_root);
+    let sink = telemetry_test_sink::TelemetrySink::start();
 
     let synth_result = run_konductor(
         &repo_root,
+        &sink,
         &[CMD_SYNTH, "--from", &repo_root.display().to_string()],
     );
     assert!(
@@ -227,9 +229,11 @@ fn real_synth_produces_packaged_artifact_and_sidecar_on_disk() {
 fn real_synth_run_twice_leaves_exactly_one_artifact_and_sidecar() {
     let repo_root = scratch_dir("repo-twice");
     seed_agent_spec_source(&repo_root);
+    let sink = telemetry_test_sink::TelemetrySink::start();
 
     let first_synth_result = run_konductor(
         &repo_root,
+        &sink,
         &[CMD_SYNTH, "--from", &repo_root.display().to_string()],
     );
     assert!(
@@ -257,6 +261,7 @@ fn real_synth_run_twice_leaves_exactly_one_artifact_and_sidecar() {
 
     let second_synth_result = run_konductor(
         &repo_root,
+        &sink,
         &[CMD_SYNTH, "--from", &repo_root.display().to_string()],
     );
     assert!(
@@ -312,9 +317,11 @@ fn real_synth_run_twice_leaves_exactly_one_artifact_and_sidecar() {
 fn real_synth_json_output_reports_real_artifact_and_sidecar_paths() {
     let repo_root = scratch_dir("repo-json");
     seed_agent_spec_source(&repo_root);
+    let sink = telemetry_test_sink::TelemetrySink::start();
 
     let synth_result = run_konductor(
         &repo_root,
+        &sink,
         &[
             CMD_SYNTH,
             "--from",

@@ -97,7 +97,7 @@ esac
 # `f-0c663cdd`): its first hextet ranges over `fe80`-`febf`, not just
 # the literal `fe80` prefix a bare `fe80:*` glob matches -- an address
 # like `fe9a::1` is link-local yet a `fe80:*`-only glob would miss it,
-# while the Rust-side check (`is_disallowed_ip` in the `telemetry-net`
+# while the Rust-side check (`is_disallowed_ip` in the `konductor-telemetry`
 # crate) already covers the full range via a bitmask
 # (`(v6.segments()[0] & 0xffc0) == 0xfe80`). A POSIX-`sh` glob cannot
 # express a bitmask directly, but the four hextets `fe8?`/`fe9?`/`fea?`/

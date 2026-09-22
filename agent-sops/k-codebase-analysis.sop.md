@@ -2,7 +2,7 @@
 
 ## Overview
 
-This SOP performs comprehensive codebase analysis covering architecture, design principles, patterns, and technical debt. It produces a structured markdown report with Mermaid diagrams that can be used for onboarding, architecture reviews, or refactoring planning.
+This SOP performs comprehensive codebase analysis covering architecture, design principles, patterns, and technical debt. It produces a structured markdown report with Mermaid diagrams. Use `focus_areas=all` for onboarding a newcomer to an unfamiliar codebase (full breadth); use a narrower `focus_areas` selection (e.g. `architecture,dependencies,debt`) when the goal is a specific architecture review or refactoring-planning pass — see the `focus_areas` parameter below for the full list of selectable sections.
 
 Use this SOP when joining an unfamiliar codebase, before major refactoring, during architecture reviews, or when assessing technical debt.
 

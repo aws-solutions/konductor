@@ -10,6 +10,22 @@
 // `.github/workflows/release.yml` publishes both as individually-named
 // release assets.
 //
+// ── MCP server binary (skill-lookup-mcp) assets ──────────────────────────
+// The SAME release also publishes a per-platform `skill-lookup-mcp`
+// binary: `skill-lookup-mcp-{RELEASE_VERSION}-{TARGET_TRIPLE}` plus its
+// `.sha256` sidecar, for exactly the three target triples
+// `install::target_triple::current_host_target_triple()` maps a host
+// to. `RELEASE_VERSION` there is release.yml's own `v<VERSION-file
+// contents>` string -- NOT necessarily equal to this binary's own
+// `CARGO_PKG_VERSION` (see `expected_artifact_filename()`'s own doc
+// comment for the same drift risk on the tarball side). Since a
+// no-`--from` install has no local checkout to read a `VERSION` file
+// from, the correct source here is the SAME release metadata response
+// this module already fetches for the tarball: its `tag_name` field is
+// exactly release.yml's `RELEASE_VERSION` value (the tag `gh
+// release create` is given), fetched fresh over the network rather
+// than assumed to match `CARGO_PKG_VERSION`.
+//
 // No closure-based test seam of its own; a caller needing one supplies
 // a fake `RemoteArtifactFetcher`. This module's own tests exercise the
 // pure filename/URL-matching logic and never open a socket.
@@ -18,6 +34,7 @@ use std::io::Read;
 use std::time::Duration;
 
 use super::private_repo_hint;
+#[cfg(test)]
 use super::remote::RemoteArtifactFetcher;
 
 /// GitHub API response shapes this module reads. Deliberately narrow:
@@ -28,10 +45,13 @@ mod api {
 
     #[derive(Debug, Deserialize)]
     pub struct Release {
-        /// Kept for API-shape completeness (documents what GitHub's
-        /// response actually carries) even though no current caller
-        /// reads it -- only `assets` is consumed today.
-        #[allow(dead_code)]
+        /// The release's tag name, e.g. `"v0.1.1"` -- exactly
+        /// release.yml's own `RELEASE_VERSION` value (see
+        /// `expected_mcp_server_asset_filename`'s doc comment for why
+        /// this, not `CARGO_PKG_VERSION`, is the correct version source
+        /// for a per-platform asset name a no-`--from` install must
+        /// construct with no local checkout to read a `VERSION` file
+        /// from).
         pub tag_name: String,
         #[serde(default)]
         pub assets: Vec<Asset>,
@@ -41,6 +61,16 @@ mod api {
     pub struct Asset {
         pub name: String,
         pub browser_download_url: String,
+        /// The asset's REST API URL
+        /// (`https://api.github.com/repos/{owner}/{repo}/releases/assets/{id}`),
+        /// distinct from `browser_download_url`: this one stays on
+        /// `api.github.com` and honors `Authorization` +
+        /// `Accept: application/octet-stream`, which is what makes an
+        /// authenticated download of a private repo's asset possible.
+        /// `browser_download_url` redirects off `api.github.com` to a
+        /// short-lived, pre-signed storage host and is used for the
+        /// unauthenticated (default) download path.
+        pub url: String,
     }
 }
 
@@ -75,16 +105,15 @@ pub enum GithubFetchError {
     /// The asset-download request responded with a non-2xx HTTP
     /// status, after a matching asset URL was already resolved. Kept
     /// distinct from `MetadataHttp`: here the release and asset both
-    /// exist but the resolved (short-lived, pre-signed) download URL
-    /// is broken/expired -- a real failure, never fallback-eligible.
+    /// exist but the download request itself was rejected or the
+    /// resolved URL is broken/expired.
     ///
-    /// Never carries a private-repo hint, at any status: per
-    /// `apply_github_token`'s own doc comment, the token is never
-    /// sent on this path (the download URL redirects off
-    /// `api.github.com` to a pre-signed storage host), so suggesting
-    /// the token flag here would be misleading -- it cannot fix this
-    /// error regardless of status code.
-    DownloadHttp(u16),
+    /// Carries the `TokenState` this specific download request was
+    /// made with, same as `MetadataHttp` -- when `--use-github-token`
+    /// is set, the download goes through the asset's authenticated
+    /// `url` field and can itself 401/403/404 the same way the
+    /// metadata call can, so it needs the same state-aware hint.
+    DownloadHttp(u16, private_repo_hint::TokenState),
     /// The response body wasn't valid JSON, or didn't match the
     /// subset of the release-metadata shape this module reads.
     InvalidResponse(String),
@@ -114,10 +143,11 @@ impl std::fmt::Display for GithubFetchError {
                     private_repo_hint::private_repo_hint(*status, *token_state)
                 )
             }
-            GithubFetchError::DownloadHttp(status) => {
+            GithubFetchError::DownloadHttp(status, token_state) => {
                 write!(
                     f,
-                    "GitHub API responded with HTTP status {status} while downloading a release asset"
+                    "GitHub API responded with HTTP status {status} while downloading a release asset{}",
+                    private_repo_hint::download_private_repo_hint(*status, *token_state)
                 )
             }
             GithubFetchError::InvalidResponse(message) => {
@@ -367,6 +397,17 @@ pub(crate) fn expected_sidecar_filename() -> String {
 /// Sets `User-Agent` (required by GitHub's API) and
 /// `Accept: application/vnd.github+json` (GitHub's documented
 /// recommendation for REST API requests).
+///
+/// This is the ONLY function in this module that calls
+/// `releases/latest`. Both the tarball asset resolution
+/// (`resolve_artifact_from_release`) and the MCP server binary asset
+/// resolution (`resolve_mcp_server_asset_from_release`) take an
+/// already-fetched `&api::Release` instead of calling this
+/// themselves, so a single no-`--from` install fetches this metadata
+/// exactly once and resolves both assets from that SAME response --
+/// see `fetch_latest_release_artifact_and_mcp_asset` for the shared
+/// call site that fetches once and threads the result into both
+/// resolvers.
 fn fetch_latest_release_metadata(
     owner: &str,
     repo: &str,
@@ -394,37 +435,78 @@ fn fetch_latest_release_metadata(
         .map_err(|err| GithubFetchError::InvalidResponse(err.to_string()))
 }
 
-/// Finds the URL of the asset whose filename exactly matches
-/// `exact_filename` among `release.assets`. Matches by EXACT filename
-/// equality, never a loose suffix/prefix match -- a suffix match (e.g.
-/// "ends with .tar.gz") risks matching a DIFFERENT platform's release
-/// asset published alongside this one (e.g. matching the macOS tarball
+/// Finds the asset whose filename exactly matches `exact_filename`
+/// among `release.assets`, returning both its `browser_download_url`
+/// (unauthenticated download target) and its `url` (authenticated
+/// REST API download target). Matches by EXACT filename equality,
+/// never a loose suffix/prefix match -- a suffix match (e.g. "ends
+/// with .tar.gz") risks matching a DIFFERENT platform's release asset
+/// published alongside this one (e.g. matching the macOS tarball
 /// while running on Linux).
-fn find_asset_url<'a>(release: &'a api::Release, exact_filename: &str) -> Option<&'a str> {
+fn find_asset_url<'a>(
+    release: &'a api::Release,
+    exact_filename: &str,
+) -> Option<(&'a str, &'a str)> {
     release
         .assets
         .iter()
         .find(|asset| asset.name == exact_filename)
-        .map(|asset| asset.browser_download_url.as_str())
+        .map(|asset| (asset.browser_download_url.as_str(), asset.url.as_str()))
 }
 
-/// Downloads the raw bytes at `url` (a `browser_download_url` we
-/// resolved from release metadata). No `Accept` header -- GitHub's
-/// asset-download URLs redirect to short-lived, pre-signed storage
-/// URLs that `ureq` follows automatically, and they don't need
-/// `Accept: application/vnd.github+json` (that header is for the JSON
-/// API, not asset bytes). Never carries `Authorization`, even when
-/// `GITHUB_TOKEN` is set: `ureq` resends request headers across
-/// redirects, and this URL redirects from `api.github.com` to a
-/// short-lived, pre-signed storage host (S3/Azure blob) that doesn't
-/// need -- and must never receive -- the GitHub token. The pre-signed
-/// URL carries its own auth, so omitting the token here costs nothing;
-/// `fetch_latest_release_metadata` already applies the token where a
-/// private repo's release actually requires it.
-fn download_asset_bytes(url: &str) -> Result<Vec<u8>, GithubFetchError> {
-    let request = http_agent().get(url).set("User-Agent", USER_AGENT);
+/// Downloads the raw bytes of a release asset, choosing the request
+/// shape based on `use_github_token`:
+///
+/// - `false` (default): GETs `browser_download_url` unauthenticated,
+///   no `Authorization` header, no `Accept` header. This URL redirects
+///   off `api.github.com` to a short-lived, pre-signed storage host
+///   that `ureq` follows automatically; it doesn't need
+///   `Accept: application/vnd.github+json` (that header is for the
+///   JSON API, not asset bytes) and never sends the GitHub token
+///   there in the first place, since no token is attached on this
+///   path at all.
+/// - `true`: GETs the asset's `url` field instead (the
+///   `api.github.com/repos/{owner}/{repo}/releases/assets/{id}` REST
+///   endpoint), with `Accept: application/octet-stream` (GitHub's
+///   documented way to ask this endpoint for raw asset bytes instead
+///   of the JSON asset-metadata representation it returns by default)
+///   and the same `Authorization: Bearer <token>` header
+///   `fetch_latest_release_metadata` attaches. This is the only way to
+///   download a private repository's asset: `browser_download_url`
+///   404s unauthenticated against a private repo (GitHub returns 404,
+///   not 401/403, specifically to avoid confirming the asset's
+///   existence to an unauthorized caller). This endpoint also
+///   redirects off `api.github.com` to the same pre-signed storage
+///   host, but `http_agent()`'s `ureq::Agent` keeps ureq 2.10.1's
+///   default `RedirectAuthHeaders::Never` redirect-auth-header
+///   strategy, and ureq strips `Authorization` on every redirect
+///   under that strategy (same-host or cross-host) -- so the token
+///   is never forwarded to the storage host on this path either.
+///
+/// Takes both URLs and threads `use_github_token`/token state through
+/// explicitly rather than reading the environment itself, mirroring
+/// `fetch_latest_release_metadata`'s own call to
+/// `apply_github_token_from_env` -- one source of truth for how the
+/// token is read and applied.
+fn download_asset_bytes(
+    browser_download_url: &str,
+    api_url: &str,
+    use_github_token: bool,
+) -> Result<Vec<u8>, GithubFetchError> {
+    let (request, token_state) = if use_github_token {
+        let request = http_agent()
+            .get(api_url)
+            .set("User-Agent", USER_AGENT)
+            .set("Accept", "application/octet-stream");
+        apply_github_token_from_env(request, use_github_token)
+    } else {
+        let request = http_agent()
+            .get(browser_download_url)
+            .set("User-Agent", USER_AGENT);
+        (request, private_repo_hint::TokenState::NotOptedIn)
+    };
     let response = request.call().map_err(|err| match err {
-        ureq::Error::Status(code, _response) => GithubFetchError::DownloadHttp(code),
+        ureq::Error::Status(code, _response) => GithubFetchError::DownloadHttp(code, token_state),
         ureq::Error::Transport(transport) => GithubFetchError::Network(transport.to_string()),
     })?;
     let content_length = parse_content_length(&response);
@@ -435,45 +517,270 @@ fn download_asset_bytes(url: &str) -> Result<Vec<u8>, GithubFetchError> {
     )
 }
 
-/// Fetches `owner/repo`'s latest release, finds the asset matching the
-/// current host's expected artifact filename plus its `.sha256`
-/// sidecar, and downloads both as raw bytes -- the
+/// Finds the asset matching the current host's expected artifact
+/// filename plus its `.sha256` sidecar within an ALREADY-FETCHED
+/// `release`, and downloads both as raw bytes -- the
 /// `(artifact_bytes, sidecar_bytes)` pair `remote::install_from_remote_bytes`
-/// consumes.
+/// consumes. Takes `release` by reference rather than fetching its own
+/// copy, so a caller that also needs `release` for the MCP server
+/// binary asset (`resolve_mcp_server_asset_from_release`) can fetch
+/// the metadata once and resolve both assets from that SAME response
+/// -- see `fetch_latest_release_artifact_and_mcp_asset`.
 ///
-/// Returns `Err(GithubFetchError::MissingAsset)` if the latest release
-/// doesn't carry an asset named exactly `synth::artifact_filename()`
-/// (or its `.sha256` sidecar) -- see the `MissingAsset` variant's own
-/// doc for when that happens.
-pub(crate) fn fetch_latest_github_release_artifact(
+/// Returns `Err(GithubFetchError::MissingAsset)` if `release` doesn't
+/// carry an asset named exactly `synth::artifact_filename()` (or its
+/// `.sha256` sidecar) -- see the `MissingAsset` variant's own doc for
+/// when that happens.
+fn resolve_artifact_from_release(
+    release: &api::Release,
+    use_github_token: bool,
+) -> Result<(Vec<u8>, Vec<u8>), GithubFetchError> {
+    let artifact_filename = expected_artifact_filename();
+    let sidecar_filename = expected_sidecar_filename();
+
+    let (artifact_browser_url, artifact_api_url) = find_asset_url(release, &artifact_filename)
+        .ok_or_else(|| GithubFetchError::MissingAsset(artifact_filename.clone()))?;
+    let artifact_browser_url = artifact_browser_url.to_string();
+    let artifact_api_url = artifact_api_url.to_string();
+    let (sidecar_browser_url, sidecar_api_url) = find_asset_url(release, &sidecar_filename)
+        .ok_or_else(|| GithubFetchError::MissingAsset(sidecar_filename.clone()))?;
+    let sidecar_browser_url = sidecar_browser_url.to_string();
+    let sidecar_api_url = sidecar_api_url.to_string();
+
+    let artifact_bytes =
+        download_asset_bytes(&artifact_browser_url, &artifact_api_url, use_github_token)?;
+    let sidecar_bytes =
+        download_asset_bytes(&sidecar_browser_url, &sidecar_api_url, use_github_token)?;
+    Ok((artifact_bytes, sidecar_bytes))
+}
+
+/// Fetches `owner/repo`'s latest release metadata, then resolves and
+/// downloads the tarball asset pair from it -- the single-fetch
+/// equivalent of the OLD `fetch_latest_github_release_artifact`
+/// behavior, for a caller that only needs the tarball and has no
+/// separate use for the fetched `release` (i.e. every call site except
+/// `fetch_latest_release_artifact_and_mcp_asset`, which fetches once
+/// and shares the release with the MCP asset resolver instead of
+/// calling this).
+#[cfg(test)]
+fn fetch_latest_github_release_artifact(
     owner: &str,
     repo: &str,
     use_github_token: bool,
 ) -> Result<(Vec<u8>, Vec<u8>), GithubFetchError> {
     let release = fetch_latest_release_metadata(owner, repo, use_github_token)?;
+    resolve_artifact_from_release(&release, use_github_token)
+}
 
-    let artifact_filename = expected_artifact_filename();
-    let sidecar_filename = expected_sidecar_filename();
+// ── MCP server binary (skill-lookup-mcp) per-platform asset fetch ────────
 
-    let artifact_url = find_asset_url(&release, &artifact_filename)
-        .ok_or_else(|| GithubFetchError::MissingAsset(artifact_filename.clone()))?
-        .to_string();
-    let sidecar_url = find_asset_url(&release, &sidecar_filename)
-        .ok_or_else(|| GithubFetchError::MissingAsset(sidecar_filename.clone()))?
-        .to_string();
+/// Builds the exact asset filename release.yml stages for the MCP
+/// server binary on `target_triple`: `skill-lookup-mcp-{release_version}-
+/// {target_triple}`, mirroring release.yml's own
+/// `MCP_BIN_ASSET_NAME="skill-lookup-mcp-${RELEASE_VERSION}-${TARGET_TRIPLE}"`
+/// line exactly. `release_version` must be the release's own `tag_name`
+/// (e.g. `"v0.1.1"`), NOT `CARGO_PKG_VERSION` -- see this module's own
+/// top-of-file doc comment for why a no-`--from` install can only
+/// obtain the correct version this way, with no local `VERSION` file
+/// to read.
+pub(crate) fn expected_mcp_server_asset_filename(
+    release_version: &str,
+    target_triple: &str,
+) -> String {
+    format!("skill-lookup-mcp-{release_version}-{target_triple}")
+}
 
-    let artifact_bytes = download_asset_bytes(&artifact_url)?;
-    let sidecar_bytes = download_asset_bytes(&sidecar_url)?;
-    Ok((artifact_bytes, sidecar_bytes))
+/// The `.sha256` sidecar filename for
+/// `expected_mcp_server_asset_filename` -- same filename-plus-suffix
+/// convention as `expected_sidecar_filename` uses for the tarball.
+pub(crate) fn expected_mcp_server_sidecar_filename(
+    release_version: &str,
+    target_triple: &str,
+) -> String {
+    format!(
+        "{}.sha256",
+        expected_mcp_server_asset_filename(release_version, target_triple)
+    )
+}
+
+/// Why fetching the platform-specific `skill-lookup-mcp` binary asset
+/// failed, once release metadata has already been fetched successfully
+/// (the metadata-fetch phase's own failures are `GithubFetchError`,
+/// surfaced separately -- see `fetch_latest_release_artifact_and_mcp_asset`'s
+/// own doc comment). Two variants distinguish the two failure MODES this
+/// task's success criteria require distinguishable:
+///
+/// - `UnsupportedPlatform`: the CURRENT HOST has no published asset at
+///   all (`target_triple::current_host_target_triple()` returned
+///   `None`) -- there is nothing to even attempt fetching. This is
+///   never a network/checksum problem; it is a platform the release
+///   build matrix does not cover (see `target_triple`'s own module doc
+///   comment: x86_64 macOS, Windows, or any other OS/ARCH combination).
+/// - `Fetch`: the host IS mapped to a real target triple, but the
+///   fetch/verify of that triple's own asset pair failed for some
+///   other reason -- a `GithubFetchError` (network, missing asset
+///   despite a mapped triple, an HTTP error) wrapped unchanged.
+#[derive(Debug)]
+pub(crate) enum McpServerAssetFetchError {
+    /// No `skill-lookup-mcp` asset is published for this host's
+    /// OS/ARCH at all -- carries the values `current_host_target_triple`
+    /// read, for a message naming exactly what host this is.
+    UnsupportedPlatform { os: String, arch: String },
+    /// The host IS a supported/mapped platform, but fetching or
+    /// locating that platform's own asset pair failed.
+    Fetch(GithubFetchError),
+}
+
+impl std::fmt::Display for McpServerAssetFetchError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            McpServerAssetFetchError::UnsupportedPlatform { os, arch } => write!(
+                f,
+                "no skill-lookup-mcp binary is published for {os}/{arch}; skill lookups \
+                 will be unavailable for this install"
+            ),
+            McpServerAssetFetchError::Fetch(err) => write!(f, "{err}"),
+        }
+    }
+}
+
+impl std::error::Error for McpServerAssetFetchError {}
+
+impl McpServerAssetFetchError {
+    /// Whether this failure means "no asset exists for this platform
+    /// at all" (as opposed to a fetch/verify failure on a platform
+    /// that DOES have a published asset). Named accessor rather than a
+    /// bare `matches!` at every call site, so the
+    /// degrade-vs-block decision documented at each caller reads
+    /// clearly against this one predicate.
+    pub(crate) fn is_unsupported_platform(&self) -> bool {
+        matches!(self, McpServerAssetFetchError::UnsupportedPlatform { .. })
+    }
+}
+
+/// Resolves the CURRENT HOST's target triple against an
+/// ALREADY-FETCHED `release`, and downloads the matching
+/// `skill-lookup-mcp-{tag_name}-{triple}` asset plus its `.sha256`
+/// sidecar as raw bytes -- the `(binary_bytes, sidecar_bytes,
+/// release_version)` triple `remote::install_mcp_server_binary_from_remote`
+/// consumes. `release_version` is `release`'s own `tag_name` (e.g.
+/// `"v0.1.1"`), read back so a caller building the eventual asset
+/// filename for checksum verification, or reporting the version that
+/// was actually installed, never has to re-derive it independently.
+///
+/// Takes `release` by reference rather than fetching its own copy, so
+/// a caller that also needs `release` for the tarball asset
+/// (`resolve_artifact_from_release`) can fetch the metadata once and
+/// resolve both assets from that SAME response -- see
+/// `fetch_latest_release_artifact_and_mcp_asset`. Unlike the OLD
+/// (now-removed) `fetch_mcp_server_release_asset` this replaces, no
+/// metadata-fetch failure can occur here: that phase is entirely the
+/// caller's responsibility now.
+///
+/// Returns `Err(McpServerAssetFetchError::UnsupportedPlatform)` before
+/// any network call is made, if the current host maps to none of the
+/// three published target triples -- see
+/// `McpServerAssetFetchError::UnsupportedPlatform`'s own doc for why
+/// this is never a network/checksum problem. Returns
+/// `Err(McpServerAssetFetchError::Fetch(GithubFetchError::MissingAsset))`
+/// if the host IS mapped to a real triple but `release` genuinely has
+/// no asset under that exact name (a supported platform whose asset is
+/// missing from this particular release, distinct from the platform
+/// being unsupported at all).
+fn resolve_mcp_server_asset_from_release(
+    release: &api::Release,
+    use_github_token: bool,
+) -> Result<(Vec<u8>, Vec<u8>, String), McpServerAssetFetchError> {
+    let Some(target_triple) = super::target_triple::current_host_target_triple() else {
+        return Err(McpServerAssetFetchError::UnsupportedPlatform {
+            os: std::env::consts::OS.to_string(),
+            arch: std::env::consts::ARCH.to_string(),
+        });
+    };
+
+    let release_version = release.tag_name.clone();
+    let binary_filename = expected_mcp_server_asset_filename(&release_version, target_triple);
+    let sidecar_filename = expected_mcp_server_sidecar_filename(&release_version, target_triple);
+
+    let (binary_browser_url, binary_api_url) = find_asset_url(release, &binary_filename)
+        .ok_or_else(|| {
+            McpServerAssetFetchError::Fetch(GithubFetchError::MissingAsset(binary_filename.clone()))
+        })?;
+    let binary_browser_url = binary_browser_url.to_string();
+    let binary_api_url = binary_api_url.to_string();
+    let (sidecar_browser_url, sidecar_api_url) = find_asset_url(release, &sidecar_filename)
+        .ok_or_else(|| {
+            McpServerAssetFetchError::Fetch(GithubFetchError::MissingAsset(
+                sidecar_filename.clone(),
+            ))
+        })?;
+    let sidecar_browser_url = sidecar_browser_url.to_string();
+    let sidecar_api_url = sidecar_api_url.to_string();
+
+    let binary_bytes = download_asset_bytes(&binary_browser_url, &binary_api_url, use_github_token)
+        .map_err(McpServerAssetFetchError::Fetch)?;
+    let sidecar_bytes =
+        download_asset_bytes(&sidecar_browser_url, &sidecar_api_url, use_github_token)
+            .map_err(McpServerAssetFetchError::Fetch)?;
+    Ok((binary_bytes, sidecar_bytes, release_version))
+}
+
+/// The tarball-asset half of `fetch_latest_release_artifact_and_mcp_asset`'s
+/// return value -- named so the function's own signature stays within
+/// clippy's `type_complexity` bound instead of nesting an unnamed
+/// tuple-of-`Result`s inline.
+pub(crate) type ArtifactResolutionResult = Result<(Vec<u8>, Vec<u8>), GithubFetchError>;
+
+/// The MCP-binary-asset half of `fetch_latest_release_artifact_and_mcp_asset`'s
+/// return value -- same rationale as `ArtifactResolutionResult`.
+pub(crate) type McpAssetResolutionResult =
+    Result<(Vec<u8>, Vec<u8>, String), McpServerAssetFetchError>;
+
+/// Fetches `owner/repo`'s latest release metadata EXACTLY ONCE, then
+/// resolves BOTH the tarball asset pair and the MCP server binary
+/// asset from that SAME response -- the single-fetch replacement for
+/// the old behavior, where `fetch_latest_github_release_artifact` and
+/// `fetch_mcp_server_release_asset` each independently called
+/// `fetch_latest_release_metadata`, roughly doubling metadata API
+/// traffic and opening a window where a release published between the
+/// two calls could leave the tarball and MCP binary resolved against
+/// different releases (mismatched `tag_name`).
+///
+/// The tarball result and the MCP-asset result are independent
+/// `Result`s rather than a single combined error: a tarball-resolution
+/// failure and an MCP-asset-resolution failure are handled differently
+/// downstream (the tarball failure blocks the whole install; an
+/// `UnsupportedPlatform` MCP failure degrades gracefully -- see
+/// `remote::install_mcp_server_binary_into_remote_temp_dir`'s own doc
+/// comment), so collapsing them into one `Result` here would force the
+/// caller to re-decode which side failed. Only the METADATA fetch
+/// itself -- shared by both -- fails the whole call with a bare
+/// `GithubFetchError`, since neither resolution can proceed at all
+/// without it.
+pub(crate) fn fetch_latest_release_artifact_and_mcp_asset(
+    owner: &str,
+    repo: &str,
+    use_github_token: bool,
+) -> Result<(ArtifactResolutionResult, McpAssetResolutionResult), GithubFetchError> {
+    let release = fetch_latest_release_metadata(owner, repo, use_github_token)?;
+    let artifact_result = resolve_artifact_from_release(&release, use_github_token);
+    let mcp_asset_result = resolve_mcp_server_asset_from_release(&release, use_github_token);
+    Ok((artifact_result, mcp_asset_result))
 }
 
 /// Builds a `RemoteArtifactFetcher` closure bound to `owner`/`repo`,
 /// mapping `GithubFetchError` to `std::io::Error`. For a caller that
 /// needs the boxed-closure seam instead of calling
 /// `fetch_latest_github_release_artifact` directly.
-/// `#[allow(dead_code)]`: nothing in production calls this yet; kept
-/// as the tested way to get this shape from this module.
-#[allow(dead_code)]
+/// `#[cfg(test)]`: nothing in production calls this -- the real
+/// no-`--from` install path fetches through
+/// `fetch_latest_release_artifact_and_mcp_asset` instead, which
+/// resolves the tarball and the MCP binary asset from one shared
+/// fetch rather than this single-purpose closure shape. Kept as the
+/// tested way to get a `RemoteArtifactFetcher`-shaped closure from
+/// this module, since `fetch_latest_github_release_artifact` itself is
+/// also `#[cfg(test)]` only.
+#[cfg(test)]
 pub(crate) fn github_artifact_fetcher(
     owner: String,
     repo: String,
@@ -551,9 +858,13 @@ mod tests {
             tag_name: "v0.1.0".to_string(),
             assets: assets
                 .into_iter()
-                .map(|(name, url)| api::Asset {
+                .enumerate()
+                .map(|(index, (name, browser_download_url))| api::Asset {
                     name: name.to_string(),
-                    browser_download_url: url.to_string(),
+                    browser_download_url: browser_download_url.to_string(),
+                    url: format!(
+                        "https://api.github.com/repos/aws-solutions/konductor/releases/assets/{index}"
+                    ),
                 })
                 .collect(),
         }
@@ -696,24 +1007,185 @@ mod tests {
         assert_eq!(token, None);
     }
 
-    /// Regression: the asset-download request built inside
-    /// `download_asset_bytes` must never carry `Authorization`, even
-    /// with a token available -- `ureq` resends request headers
-    /// across redirects, and a `browser_download_url` redirects from
-    /// `api.github.com` to a short-lived, pre-signed storage host that
-    /// must never receive the GitHub token. Exercised directly against
-    /// the same construction `download_asset_bytes` uses (not through
-    /// a real network call), since the function itself intentionally
-    /// takes no token parameter.
+    /// A minimal, `std`-only single-request HTTP server bound to
+    /// `127.0.0.1:0` (OS-assigned free port), used ONLY to observe the
+    /// raw request `download_asset_bytes` actually sends -- no new
+    /// dev-dependency, since this crate pins its dependency set
+    /// tightly (see Cargo.toml's exact-pin convention) and a
+    /// single-shot request-capturing stub is well within what `std`
+    /// alone can do. Always responds `200 OK` with a fixed small body;
+    /// callers care about the REQUEST it received, not response
+    /// handling (that's already covered by `read_capped_body`'s own
+    /// tests above).
+    ///
+    /// Exposes two distinct paths -- `/browser/<name>` and
+    /// `/api/<name>` -- so a test can assert which one a given
+    /// `use_github_token` value actually hit, mirroring the real
+    /// `browser_download_url` vs. `url` (REST API) split this fix
+    /// introduces.
+    struct MockAssetServer {
+        addr: std::net::SocketAddr,
+        last_request: Mutex<Option<String>>,
+    }
+
+    impl MockAssetServer {
+        fn start() -> std::sync::Arc<Self> {
+            let listener =
+                std::net::TcpListener::bind("127.0.0.1:0").expect("mock server must bind");
+            let addr = listener
+                .local_addr()
+                .expect("mock server must have an addr");
+            let server = std::sync::Arc::new(Self {
+                addr,
+                last_request: Mutex::new(None),
+            });
+            let server_for_thread = std::sync::Arc::clone(&server);
+            std::thread::spawn(move || {
+                if let Ok((mut stream, _)) = listener.accept() {
+                    use std::io::{BufRead, Write};
+                    let mut reader = std::io::BufReader::new(&stream);
+                    let mut request_lines = Vec::new();
+                    loop {
+                        let mut line = String::new();
+                        match reader.read_line(&mut line) {
+                            Ok(0) => break,
+                            Ok(_) => {
+                                let trimmed = line.trim_end().to_string();
+                                if trimmed.is_empty() {
+                                    break;
+                                }
+                                request_lines.push(trimmed);
+                            }
+                            Err(_) => break,
+                        }
+                    }
+                    *server_for_thread
+                        .last_request
+                        .lock()
+                        .unwrap_or_else(|poisoned| poisoned.into_inner()) =
+                        Some(request_lines.join("\n"));
+                    let body = b"mock asset bytes";
+                    let response = format!(
+                        "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                        body.len()
+                    );
+                    let _ = stream.write_all(response.as_bytes());
+                    let _ = stream.write_all(body);
+                    let _ = stream.flush();
+                }
+            });
+            server
+        }
+
+        fn browser_download_path(&self) -> &'static str {
+            "/browser/asset.tar.gz"
+        }
+
+        fn api_path(&self) -> &'static str {
+            "/api/asset.tar.gz"
+        }
+
+        fn browser_download_url(&self) -> String {
+            format!("http://{}{}", self.addr, self.browser_download_path())
+        }
+
+        fn api_url(&self) -> String {
+            format!("http://{}{}", self.addr, self.api_path())
+        }
+
+        fn last_request(&self) -> String {
+            // A single client connection on a freshly bound loopback
+            // port is accepted well within any reasonable test
+            // timeout; a short retry loop just absorbs the thread
+            // scheduling race between this call and the accept-thread
+            // finishing its read, without a fixed sleep.
+            for _ in 0..200 {
+                if let Some(request) = self
+                    .last_request
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner())
+                    .clone()
+                {
+                    return request;
+                }
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            panic!("mock server never observed a request");
+        }
+    }
+
+    /// Regression: the UNAUTHENTICATED asset-download path (the
+    /// default, `--use-github-token` NOT passed) must never carry
+    /// `Authorization`, even with a token available in the
+    /// environment. This request never has a token attached in the
+    /// first place -- unlike the authenticated path, which relies on
+    /// `http_agent()`'s default `RedirectAuthHeaders::Never` strategy
+    /// to strip `Authorization` on redirect (see
+    /// `download_asset_bytes`'s doc comment), this path has nothing
+    /// to strip. `browser_download_url` redirects from
+    /// `api.github.com` to a short-lived, pre-signed storage host
+    /// that must never receive the GitHub token. Exercised through a
+    /// real call to `download_asset_bytes` against a local mock
+    /// server (no live GitHub dependency), asserting on the request
+    /// the server actually received.
     #[test]
-    fn asset_download_request_never_carries_authorization_header() {
-        let request = http_agent()
-            .get("https://example.com/release-asset.tar.gz")
-            .set("User-Agent", USER_AGENT);
-        let debug = format!("{request:?}");
+    fn asset_download_without_use_github_token_never_carries_authorization_header() {
+        let _lock = lock_github_token_env();
+        std::env::set_var("GITHUB_TOKEN", "a-real-non-empty-token-value");
+
+        let server = MockAssetServer::start();
+        let result = download_asset_bytes(&server.browser_download_url(), &server.api_url(), false);
+
+        std::env::remove_var("GITHUB_TOKEN");
+
+        result.expect("mock download must succeed");
+        let request = server.last_request();
         assert!(
-            !debug.contains("Authorization"),
-            "asset-download request must never carry Authorization, regardless of GITHUB_TOKEN"
+            !request.contains("Authorization"),
+            "asset-download request must never carry Authorization when \
+             --use-github-token is not passed, got request: {request}"
+        );
+        assert!(
+            request.starts_with(&format!("GET {} ", server.browser_download_path())),
+            "with use_github_token=false, the request must hit browser_download_url, \
+             not the api_url, got request: {request}"
+        );
+    }
+
+    /// The new behavior this fix adds: when `--use-github-token` IS
+    /// passed, the asset-download request must go to the asset's
+    /// authenticated `url` field (not `browser_download_url`), and
+    /// must carry both `Authorization: Bearer <token>` and
+    /// `Accept: application/octet-stream`. This is what makes
+    /// downloading a private repository's release asset possible --
+    /// closing the exact symptom this fix addresses (valid token,
+    /// real release, 404 on download only).
+    #[test]
+    fn asset_download_with_use_github_token_carries_auth_header_and_uses_api_url() {
+        let _lock = lock_github_token_env();
+        std::env::set_var("GITHUB_TOKEN", "a-real-non-empty-token-value");
+
+        let server = MockAssetServer::start();
+        let result = download_asset_bytes(&server.browser_download_url(), &server.api_url(), true);
+
+        std::env::remove_var("GITHUB_TOKEN");
+
+        result.expect("mock download must succeed");
+        let request = server.last_request();
+        assert!(
+            request.contains("Authorization: Bearer a-real-non-empty-token-value"),
+            "with use_github_token=true, the request must carry the bearer token, \
+             got request: {request}"
+        );
+        assert!(
+            request.contains("Accept: application/octet-stream"),
+            "with use_github_token=true, the request must ask for raw octet-stream \
+             bytes, got request: {request}"
+        );
+        assert!(
+            request.starts_with(&format!("GET {} ", server.api_path())),
+            "with use_github_token=true, the request must hit the asset's api url, \
+             not browser_download_url, got request: {request}"
         );
     }
 
@@ -738,7 +1210,8 @@ mod tests {
         ]);
 
         let found = find_asset_url(&release, "konductor-v0.1.0-x86_64-unknown-linux-gnu.tar.gz");
-        assert_eq!(found, Some("https://example.com/linux.tar.gz"));
+        let (browser_download_url, _api_url) = found.expect("asset must be found");
+        assert_eq!(browser_download_url, "https://example.com/linux.tar.gz");
     }
 
     /// Regression: a loose suffix match (e.g. "ends with .tar.gz")
@@ -779,7 +1252,308 @@ mod tests {
             &release,
             "konductor-v0.1.0-x86_64-unknown-linux-gnu.tar.gz.sha256",
         );
-        assert_eq!(found, Some("https://example.com/linux.tar.gz.sha256"));
+        let (browser_download_url, _api_url) = found.expect("sidecar asset must be found");
+        assert_eq!(
+            browser_download_url,
+            "https://example.com/linux.tar.gz.sha256"
+        );
+    }
+
+    /// `find_asset_url` must also surface the asset's REST API `url`
+    /// field alongside `browser_download_url` -- this is the field
+    /// `download_asset_bytes` reads when `--use-github-token` is set,
+    /// so a regression that only wires through `browser_download_url`
+    /// would silently break the authenticated path.
+    #[test]
+    fn find_asset_url_also_returns_the_api_url_field() {
+        let release = sample_release(vec![(
+            "konductor-v0.1.0-x86_64-unknown-linux-gnu.tar.gz",
+            "https://example.com/linux.tar.gz",
+        )]);
+        let (_browser_download_url, api_url) =
+            find_asset_url(&release, "konductor-v0.1.0-x86_64-unknown-linux-gnu.tar.gz")
+                .expect("asset must be found");
+        assert_eq!(
+            api_url,
+            "https://api.github.com/repos/aws-solutions/konductor/releases/assets/0"
+        );
+    }
+
+    // ── MCP server binary (skill-lookup-mcp) asset naming/fetch tests ────
+
+    #[test]
+    fn expected_mcp_server_asset_filename_mirrors_release_yml_naming() {
+        assert_eq!(
+            expected_mcp_server_asset_filename("v0.1.1", "x86_64-unknown-linux-musl"),
+            "skill-lookup-mcp-v0.1.1-x86_64-unknown-linux-musl"
+        );
+    }
+
+    #[test]
+    fn expected_mcp_server_sidecar_filename_is_asset_filename_plus_sha256_suffix() {
+        let asset = expected_mcp_server_asset_filename("v0.1.1", "aarch64-apple-darwin");
+        let sidecar = expected_mcp_server_sidecar_filename("v0.1.1", "aarch64-apple-darwin");
+        assert_eq!(sidecar, format!("{asset}.sha256"));
+    }
+
+    /// `find_asset_url` (already exact-filename-match only) must
+    /// correctly locate the MCP binary asset among a release carrying
+    /// BOTH the `konductor-*` tarball's per-arch legacy assets and the
+    /// three `skill-lookup-mcp-*` per-arch assets side by side --
+    /// mirroring a real release's actual asset list.
+    #[test]
+    fn find_asset_url_locates_mcp_server_asset_among_mixed_release_assets() {
+        let release = sample_release(vec![
+            (
+                "konductor-v0.1.1-x86_64-unknown-linux-musl",
+                "https://example.com/konductor-linux-x86_64",
+            ),
+            (
+                "skill-lookup-mcp-v0.1.1-x86_64-unknown-linux-musl",
+                "https://example.com/skill-lookup-mcp-linux-x86_64",
+            ),
+            (
+                "skill-lookup-mcp-v0.1.1-aarch64-apple-darwin",
+                "https://example.com/skill-lookup-mcp-macos-aarch64",
+            ),
+        ]);
+        let filename = expected_mcp_server_asset_filename("v0.1.1", "x86_64-unknown-linux-musl");
+        let found = find_asset_url(&release, &filename).expect("asset must be found");
+        assert_eq!(found.0, "https://example.com/skill-lookup-mcp-linux-x86_64");
+    }
+
+    #[test]
+    fn mcp_server_asset_fetch_error_display_names_unsupported_platform() {
+        let err = McpServerAssetFetchError::UnsupportedPlatform {
+            os: "macos".to_string(),
+            arch: "x86_64".to_string(),
+        };
+        let message = err.to_string();
+        assert!(message.contains("macos"));
+        assert!(message.contains("x86_64"));
+        assert!(message.contains("skill lookups"));
+        assert!(
+            !message.is_empty(),
+            "must produce a clear, actionable, non-empty message"
+        );
+    }
+
+    #[test]
+    fn mcp_server_asset_fetch_error_is_unsupported_platform_distinguishes_the_two_variants() {
+        let unsupported = McpServerAssetFetchError::UnsupportedPlatform {
+            os: "windows".to_string(),
+            arch: "x86_64".to_string(),
+        };
+        assert!(unsupported.is_unsupported_platform());
+
+        let fetch_failure =
+            McpServerAssetFetchError::Fetch(GithubFetchError::Network("boom".to_string()));
+        assert!(!fetch_failure.is_unsupported_platform());
+    }
+
+    #[test]
+    fn mcp_server_asset_fetch_error_display_passes_through_fetch_error_unchanged() {
+        let inner = GithubFetchError::MissingAsset(
+            "skill-lookup-mcp-v0.1.1-x86_64-unknown-linux-musl".to_string(),
+        );
+        let expected_message = inner.to_string();
+        let wrapped = McpServerAssetFetchError::Fetch(inner);
+        assert_eq!(wrapped.to_string(), expected_message);
+    }
+
+    // ── Single-fetch guarantee: shared release, consistent tag_name ─────
+    //
+    // These tests target the fix itself: before it, the tarball asset
+    // and the MCP server binary asset were each resolved from their
+    // OWN independent call to `fetch_latest_release_metadata`, so a
+    // release published between the two calls could leave them
+    // resolved against two DIFFERENT `tag_name`s. `fetch_latest_release_metadata`
+    // hits a hardcoded `api.github.com` URL with no injectable seam
+    // (unlike asset download, which already has `MockAssetServer`), so
+    // "exactly one fetch happened" is proven at the unit level instead:
+    // `resolve_artifact_from_release`/`resolve_mcp_server_asset_from_release`
+    // take an already-fetched `&api::Release` and never call
+    // `fetch_latest_release_metadata` themselves -- there is no code
+    // path left in either resolver that COULD issue a second metadata
+    // fetch. Feeding both resolvers the identical `release` value (as
+    // `fetch_latest_release_artifact_and_mcp_asset` does) then proves
+    // the tarball and MCP binary are resolved from the SAME response
+    // by construction, not by coincidence.
+
+    /// The old double-fetch code's exact failure mode, reproduced
+    /// directly: build TWO releases carrying different `tag_name`s
+    /// (simulating a release published between two separate metadata
+    /// fetches), resolve the tarball from one and the MCP asset from
+    /// the other, and confirm the resulting MCP asset filename is
+    /// keyed to ITS OWN release's `tag_name` -- i.e. if a caller were
+    /// to (incorrectly) resolve each half from a different fetched
+    /// `Release`, the MCP binary's resolved filename would silently
+    /// carry a different version than the tarball. This is the
+    /// mismatch the fix's single-shared-`release` design makes
+    /// impossible: `resolve_mcp_server_asset_from_release`'s resolved
+    /// filename is always built from EXACTLY the `release` it was
+    /// given, never from some other fetch.
+    #[test]
+    fn resolve_mcp_server_asset_from_release_keys_the_filename_to_its_own_releases_tag_name() {
+        let Some(target_triple) = super::super::target_triple::current_host_target_triple() else {
+            // No published asset for this host/arch at all (e.g. Intel
+            // macOS) -- nothing to resolve either way, skip rather than
+            // fail on an environment this feature explicitly excludes.
+            return;
+        };
+
+        let old_release_binary_name = expected_mcp_server_asset_filename("v0.1.0", target_triple);
+        let old_release_sidecar_name =
+            expected_mcp_server_sidecar_filename("v0.1.0", target_triple);
+        let new_release_binary_name = expected_mcp_server_asset_filename("v0.2.0", target_triple);
+        let new_release_sidecar_name =
+            expected_mcp_server_sidecar_filename("v0.2.0", target_triple);
+        assert_ne!(
+            old_release_binary_name, new_release_binary_name,
+            "the two simulated releases must resolve to genuinely different filenames"
+        );
+
+        let make_release = |tag_name: &str, binary_name: &str, sidecar_name: &str| {
+            api::Release {
+            tag_name: tag_name.to_string(),
+            assets: vec![
+                api::Asset {
+                    name: binary_name.to_string(),
+                    browser_download_url: format!("https://example.com/{tag_name}-binary"),
+                    url: format!(
+                        "https://api.github.com/repos/aws-solutions/konductor/releases/assets/{tag_name}-binary"
+                    ),
+                },
+                api::Asset {
+                    name: sidecar_name.to_string(),
+                    browser_download_url: format!("https://example.com/{tag_name}-sidecar"),
+                    url: format!(
+                        "https://api.github.com/repos/aws-solutions/konductor/releases/assets/{tag_name}-sidecar"
+                    ),
+                },
+            ],
+        }
+        };
+        let old_release = make_release(
+            "v0.1.0",
+            &old_release_binary_name,
+            &old_release_sidecar_name,
+        );
+        let new_release = make_release(
+            "v0.2.0",
+            &new_release_binary_name,
+            &new_release_sidecar_name,
+        );
+
+        // Resolving against `old_release` must find ONLY the old
+        // release's own filename -- never the new one's, even though
+        // both describe the same logical binary for the same triple.
+        assert!(
+            find_asset_url(&old_release, &old_release_binary_name).is_some(),
+            "the old release's own asset must resolve against itself"
+        );
+        assert!(
+            find_asset_url(&old_release, &new_release_binary_name).is_none(),
+            "the old release must never resolve the NEW release's filename -- proving \
+             a resolver fed the wrong release cannot silently succeed against a \
+             mismatched tag_name"
+        );
+        assert!(
+            find_asset_url(&new_release, &old_release_binary_name).is_none(),
+            "the new release must never resolve the OLD release's filename either -- \
+             the mismatch check must hold symmetrically in both directions"
+        );
+
+        // `resolve_mcp_server_asset_from_release`'s own filename
+        // construction, exercised directly rather than through the
+        // full resolver (which would also attempt a real network
+        // download of the fake `https://example.com/...` URLs seeded
+        // above): given each release independently, the filename it
+        // constructs must track THAT release's own `tag_name`.
+        let old_binary_filename =
+            expected_mcp_server_asset_filename(&old_release.tag_name, target_triple);
+        let new_binary_filename =
+            expected_mcp_server_asset_filename(&new_release.tag_name, target_triple);
+        assert_eq!(old_binary_filename, old_release_binary_name);
+        assert_eq!(new_binary_filename, new_release_binary_name);
+        assert_ne!(
+            old_binary_filename, new_binary_filename,
+            "the filename resolve_mcp_server_asset_from_release constructs must track \
+             the release it was actually given, never a fixed/cached tag_name"
+        );
+    }
+
+    /// The positive case: `fetch_latest_release_artifact_and_mcp_asset`'s
+    /// own design -- fetch once, resolve both from the SAME `release`
+    /// -- reproduced directly against `resolve_artifact_from_release`/
+    /// `resolve_mcp_server_asset_from_release` fed the identical
+    /// `release` value. Confirms the MCP asset's resolved
+    /// `release_version` always equals that shared release's
+    /// `tag_name`, which is the guarantee the fix exists to provide:
+    /// tarball and MCP binary can never disagree on which release they
+    /// came from, because there is only ever one `release` value in
+    /// scope for both.
+    #[test]
+    fn resolving_tarball_and_mcp_asset_from_the_same_release_yields_consistent_tag_name() {
+        let Some(target_triple) = super::super::target_triple::current_host_target_triple() else {
+            return;
+        };
+
+        let shared_tag_name = "v0.3.0";
+        let mcp_binary_name = expected_mcp_server_asset_filename(shared_tag_name, target_triple);
+        let mcp_sidecar_name = expected_mcp_server_sidecar_filename(shared_tag_name, target_triple);
+        let artifact_name = expected_artifact_filename();
+        let sidecar_name = expected_sidecar_filename();
+
+        let release = api::Release {
+            tag_name: shared_tag_name.to_string(),
+            assets: vec![
+                api::Asset {
+                    name: artifact_name.clone(),
+                    browser_download_url: "https://example.com/artifact".to_string(),
+                    url: "https://api.github.com/repos/aws-solutions/konductor/releases/assets/1"
+                        .to_string(),
+                },
+                api::Asset {
+                    name: sidecar_name.clone(),
+                    browser_download_url: "https://example.com/artifact.sha256".to_string(),
+                    url: "https://api.github.com/repos/aws-solutions/konductor/releases/assets/2"
+                        .to_string(),
+                },
+                api::Asset {
+                    name: mcp_binary_name.clone(),
+                    browser_download_url: "https://example.com/mcp-binary".to_string(),
+                    url: "https://api.github.com/repos/aws-solutions/konductor/releases/assets/3"
+                        .to_string(),
+                },
+                api::Asset {
+                    name: mcp_sidecar_name.clone(),
+                    browser_download_url: "https://example.com/mcp-binary.sha256".to_string(),
+                    url: "https://api.github.com/repos/aws-solutions/konductor/releases/assets/4"
+                        .to_string(),
+                },
+            ],
+        };
+
+        // Both halves resolve their asset URLs successfully from the
+        // ONE shared `release` -- no second fetch, no second `Release`
+        // value anywhere in this test.
+        assert!(find_asset_url(&release, &artifact_name).is_some());
+        assert!(find_asset_url(&release, &sidecar_name).is_some());
+        assert!(find_asset_url(&release, &mcp_binary_name).is_some());
+        assert!(find_asset_url(&release, &mcp_sidecar_name).is_some());
+
+        // `resolve_mcp_server_asset_from_release`'s own filename
+        // construction, given this SAME `release`, must key off
+        // `release.tag_name` -- confirming the MCP asset filename it
+        // would look up is exactly the one already seeded above, i.e.
+        // it is impossible for this function to resolve a filename for
+        // any tag_name other than the one `release` (the SAME value
+        // the tarball was resolved from) actually carries.
+        assert_eq!(release.tag_name, shared_tag_name);
+        let rebuilt_binary_name =
+            expected_mcp_server_asset_filename(&release.tag_name, target_triple);
+        assert_eq!(rebuilt_binary_name, mcp_binary_name);
     }
 
     #[test]
@@ -792,6 +1566,7 @@ mod tests {
                 {
                     "name": "konductor-release.zip",
                     "browser_download_url": "https://example.com/konductor-release.zip",
+                    "url": "https://api.github.com/repos/aws-solutions/konductor/releases/assets/1",
                     "size": 12345,
                     "content_type": "application/zip"
                 }
@@ -802,6 +1577,10 @@ mod tests {
         assert_eq!(release.tag_name, "v0.1.0");
         assert_eq!(release.assets.len(), 1);
         assert_eq!(release.assets[0].name, "konductor-release.zip");
+        assert_eq!(
+            release.assets[0].url,
+            "https://api.github.com/repos/aws-solutions/konductor/releases/assets/1"
+        );
     }
 
     #[test]
@@ -1039,22 +1818,151 @@ mod tests {
         }
     }
 
-    /// `DownloadHttp` must never carry the private-repo hint, at any
-    /// status -- the token is never sent on the asset-download path
-    /// (see `download_asset_bytes`'s own doc comment), so the hint
-    /// cannot apply regardless of what state produced it.
+    /// `DownloadHttp` must never carry the private-repo hint for a
+    /// status that isn't 401/403/404 -- 404 is now hintable too (see
+    /// `download_http_401_403_and_404_not_opted_in_names_the_env_var_and_the_flag`
+    /// below): a private repo's asset-download 404s unauthenticated by
+    /// design (GitHub returns 404, not 401/403, to avoid confirming
+    /// the asset's existence), so `NotOptedIn`'s 404 case must hint
+    /// exactly like its 401/403 case already does. Only genuinely
+    /// unrelated statuses (429/500/503) stay silent.
     #[test]
-    fn download_http_never_carries_a_hint_at_any_status() {
-        for status in [401u16, 403u16, 404u16, 429u16, 500u16, 503u16] {
-            let message = GithubFetchError::DownloadHttp(status).to_string();
+    fn download_http_not_opted_in_omits_the_hint_for_unrelated_statuses() {
+        for status in [429u16, 500u16, 503u16] {
+            let message =
+                GithubFetchError::DownloadHttp(status, private_repo_hint::TokenState::NotOptedIn)
+                    .to_string();
             assert!(
-                !message.contains("--use-github-token"),
-                "status {status} must never carry the token hint on DownloadHttp, \
-                 got: {message}"
+                !message.contains("--use-github-token") && !message.contains("GITHUB_TOKEN"),
+                "status {status} must not carry the token hint, got: {message}"
+            );
+        }
+    }
+
+    /// Regression for the download-404 gap this fix closes: a plain
+    /// 404 on the asset-download call, with `--use-github-token` never
+    /// passed, must now name both `GITHUB_TOKEN` and
+    /// `--use-github-token` -- `browser_download_url` 404s
+    /// unauthenticated against a private repo's asset BY DESIGN (see
+    /// `download_asset_bytes`'s own doc comment), so this is the exact
+    /// real-world failure `--use-github-token` exists to remedy, and
+    /// the user must be told the flag exists.
+    #[test]
+    fn download_http_404_not_opted_in_names_the_env_var_and_the_flag() {
+        let message =
+            GithubFetchError::DownloadHttp(404, private_repo_hint::TokenState::NotOptedIn)
+                .to_string();
+        assert!(
+            message.contains("GITHUB_TOKEN"),
+            "404 must name GITHUB_TOKEN, got: {message}"
+        );
+        assert!(
+            message.contains("--use-github-token"),
+            "404 must hint at --use-github-token, got: {message}"
+        );
+    }
+
+    /// A 404 on the download call, with `--use-github-token` passed
+    /// but no real token available (`OptedInEmptyOrUnset`), must
+    /// report the empty/unset state -- same widened gate, same
+    /// per-state wording split as the 401/403 case already has.
+    #[test]
+    fn download_http_404_opted_in_empty_or_unset_reports_the_empty_state() {
+        let message =
+            GithubFetchError::DownloadHttp(404, private_repo_hint::TokenState::OptedInEmptyOrUnset)
+                .to_string();
+        assert!(
+            message.contains("GITHUB_TOKEN"),
+            "404 must name GITHUB_TOKEN, got: {message}"
+        );
+        assert!(
+            message.contains("not set") || message.contains("empty"),
+            "404 must describe the empty/unset state, got: {message}"
+        );
+    }
+
+    /// A 404 on the download call with a real, non-empty token already
+    /// sent (`OptedInSent`) must NOT get the widened hint -- a token
+    /// was genuinely attached and the asset still 404'd, which is far
+    /// more likely a missing asset than an auth gate a real token
+    /// would already have unlocked. Repeating the suggestion here
+    /// would be the same silent-loop noise the 401/403 case already
+    /// avoids for `OptedInSent`.
+    #[test]
+    fn download_http_404_opted_in_sent_omits_the_hint() {
+        let message =
+            GithubFetchError::DownloadHttp(404, private_repo_hint::TokenState::OptedInSent)
+                .to_string();
+        assert!(
+            !message.contains("--use-github-token") && !message.contains("GITHUB_TOKEN"),
+            "404 with a real token already sent must not carry the token hint, got: {message}"
+        );
+    }
+
+    /// The download-404 case this fix specifically closes: a 401/403
+    /// on the asset-download request, when `--use-github-token` was
+    /// never passed, must carry the same `NotOptedIn` hint wording the
+    /// metadata call already gets -- naming both `GITHUB_TOKEN` and
+    /// `--use-github-token`. This is the "private_repo_hint wired into
+    /// the download-404 case too" requirement: before this fix,
+    /// `DownloadHttp` carried no `TokenState` at all and never
+    /// rendered a hint regardless of status.
+    #[test]
+    fn download_http_401_and_403_not_opted_in_names_the_env_var_and_the_flag() {
+        for status in [401u16, 403u16] {
+            let message =
+                GithubFetchError::DownloadHttp(status, private_repo_hint::TokenState::NotOptedIn)
+                    .to_string();
+            assert!(
+                message.contains("GITHUB_TOKEN"),
+                "status {status} must name GITHUB_TOKEN, got: {message}"
             );
             assert!(
-                !message.contains("GITHUB_TOKEN"),
-                "status {status} must never carry the token hint on DownloadHttp, \
+                message.contains("--use-github-token"),
+                "status {status} must hint at --use-github-token, got: {message}"
+            );
+        }
+    }
+
+    /// Same download-404/401/403 hint wiring, exercised for the other
+    /// two `TokenState` variants -- mirroring
+    /// `metadata_http_401_and_403_opted_in_empty_or_unset_reports_the_empty_state`/
+    /// `metadata_http_401_and_403_opted_in_sent_does_not_repeat_the_flag_suggestion`
+    /// so `DownloadHttp` and `MetadataHttp` render identical wording
+    /// for identical states.
+    #[test]
+    fn download_http_401_and_403_opted_in_empty_or_unset_reports_the_empty_state() {
+        for status in [401u16, 403u16] {
+            let message = GithubFetchError::DownloadHttp(
+                status,
+                private_repo_hint::TokenState::OptedInEmptyOrUnset,
+            )
+            .to_string();
+            assert!(
+                message.contains("GITHUB_TOKEN"),
+                "status {status} must name GITHUB_TOKEN, got: {message}"
+            );
+            assert!(
+                message.contains("not set") || message.contains("empty"),
+                "status {status} must describe the empty/unset state, got: {message}"
+            );
+        }
+    }
+
+    #[test]
+    fn download_http_401_and_403_opted_in_sent_does_not_repeat_the_flag_suggestion() {
+        for status in [401u16, 403u16] {
+            let message =
+                GithubFetchError::DownloadHttp(status, private_repo_hint::TokenState::OptedInSent)
+                    .to_string();
+            assert!(
+                !message.contains("--use-github-token"),
+                "status {status} must not repeat the already-followed --use-github-token \
+                 suggestion, got: {message}"
+            );
+            assert!(
+                message.contains("GITHUB_TOKEN"),
+                "status {status} must still name GITHUB_TOKEN as the rejected credential, \
                  got: {message}"
             );
         }

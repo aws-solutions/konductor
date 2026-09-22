@@ -77,7 +77,7 @@ Both commands work today for Kiro CLI and Claude Code. `install` requires an exp
 
 A target directory tracks a single strategy once installed: re-running `install` with a different `--harness` value against an already-tracked target is refused rather than silently switching strategies, since that would overwrite the manifest and drop the original strategy's files from tracking. Install a second harness into a separate target directory instead.
 
-`konductor install` also works without `--from`, fetching a published GitHub release directly. See [`cli/README.md`](cli/README.md#installing-without---from-the-github-release--main-branch-dist-fallback-chain) for the exact fallback chain and its caveats.
+`konductor install` also works without `--from`, fetching a published GitHub release directly — including the platform-specific `skill-lookup-mcp` MCP server binary the CLI's own skill lookups depend on (Linux x86_64/aarch64 and Apple Silicon macOS; a platform with no published binary degrades gracefully, install still succeeds, only skill lookups are unavailable). Either install path's summary reports the installed content's version. See [`cli/README.md`](cli/README.md#installing-without---from-the-github-release--main-branch-dist-fallback-chain) for the exact fallback chain and its caveats.
 
 ### From source
 
@@ -319,6 +319,18 @@ See [SECURITY.md](SECURITY.md) for how to report a security vulnerability.
 Licensed under the Apache License, Version 2.0 — see [LICENSE.txt](LICENSE.txt). Third-party attribution is in [NOTICE.txt](NOTICE.txt).
 
 ## Data Collection
+
+`konductor` sends operational metrics to AWS about how this solution is used. This is not anonymous: every event carries a persistent identifier.
+
+**What's collected.** Seven event types: `agent_invocation`, `subagent_invocation`, `mcp_tool_call`, `cli_error`, `package_installed`, `package_version_updated`, `package_uninstalled`. Each event carries an agent or sub-agent name, the CLI subcommand that failed (for errors), which harness ran it (`kiro-cli-v2`, `kiro-v3`, or `claude`), the CLI's own version, and — for install/update events — the installed content's own version. A session identifier is included when the harness exposes one (Claude Code; Kiro CLI does not), but never the raw value — it's hashed together with that project's own per-install identifier first, so the same underlying session ID produces a different value on a different install. Project paths, directory names, and file contents are never collected. See [`docs/telemetry-schema.json`](docs/telemetry-schema.json) for the exact schema.
+
+**The identifier is machine-scoped, not per-project.** The first time Konductor successfully reports a telemetry event anywhere on a machine — typically the first `konductor install` that isn't run with `--no-telemetry` — it mints one UUID and stores it at `$HOME/.konductor/telemetry.json`. That same UUID is then sent on every event from every project you install Konductor into on that machine — a receiving service can tell that events from several different projects came from the same machine, even though it can't tell which projects.
+
+**Opting out.** `konductor install --no-telemetry` disables reporting for that install — the identity file it would otherwise write is never created, and no telemetry event is ever sent for that target. This is per-project: it applies to the specific target directory that install ran against, not the whole machine.
+
+To decline for the whole machine, edit `$HOME/.konductor/telemetry.json` and set `"telemetry_consent": false`. This file is created the first time any telemetry event actually gets reported on the machine (a successful install, an agent invocation, and so on — never a `--no-telemetry` install, which reports nothing) — if it doesn't exist yet, there's nothing to edit. Once it exists, just flip that one field; Konductor reads this file but never resets an existing value, so a consent you set by hand stays in place across later installs and updates on that machine. A record missing any of its four fields (`schema_version`, `UUID`, `created_at`, `telemetry_consent`) or carrying a `UUID` that isn't exactly 64 lowercase hex characters is treated as unreadable — but it does not get replaced. Konductor never deletes or overwrites this file once it exists, so a malformed record is permanent: every subsequent event silently drops to an untraceable placeholder identifier and no consent flag is read until you repair the JSON or delete the file by hand.
+
+Reporting for any given install requires both the per-project flag and this machine-level setting to allow it; either one being off is enough to suppress it. `konductor doctor` reports which of these is in effect for the current install, including whether a machine-level decline is the reason a project that never opted out isn't reporting.
 
 This solution sends operational metrics to AWS (the "Data") about the use of this solution. We use this Data to better understand how customers use this solution and related services and products. AWS's collection of this Data is subject to the [AWS Privacy Notice](https://aws.amazon.com/privacy/).
 

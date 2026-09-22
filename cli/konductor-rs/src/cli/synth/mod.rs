@@ -260,6 +260,55 @@ pub fn dispatch_synth_with(
         completed.push(transformer.name());
     }
 
+    // Copies the repo-root VERSION file into output_root's top level
+    // so every artifact packages self-describing content, read back by
+    // install_info's agent_version_from_source. Runs after every
+    // transformer succeeds and before packaging, so package_dist's
+    // walk picks it up. Best-effort on both read and write: a source
+    // tree with no root VERSION file, or a write that fails, still
+    // produces a valid artifact -- just one that reports no agent
+    // version downstream.
+    //
+    // `output_root` (`dist/`) is never wiped between runs, so when the
+    // source has no root VERSION, a prior run's copy would otherwise
+    // survive at `output_root/VERSION` unchanged. The removal arm
+    // below handles that -- but only on a genuine NotFound. A
+    // different read error (permissions, I/O) must not trigger
+    // removal: that would delete a prior run's correct output copy
+    // over a source file that actually exists, just unreadable this
+    // run. A failed removal, like a failed write, only warns.
+    match std::fs::read_to_string(source_dir.join("VERSION")) {
+        Ok(version_contents) => {
+            if let Err(err) = std::fs::write(output_root.join("VERSION"), &version_contents) {
+                eprintln!(
+                    "konductor synth: warning: could not write {}: {err}",
+                    output_root.join("VERSION").display()
+                );
+            }
+        }
+        // Only a genuine NotFound means the source has no root
+        // VERSION -- remove any stale output copy. Any other error
+        // (permissions, I/O) does not mean absence, so leave the
+        // output copy untouched rather than destroying a prior run's
+        // valid version over a transient read failure.
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+            if let Err(err) = std::fs::remove_file(output_root.join("VERSION")) {
+                if err.kind() != std::io::ErrorKind::NotFound {
+                    eprintln!(
+                        "konductor synth: warning: could not remove stale {}: {err}",
+                        output_root.join("VERSION").display()
+                    );
+                }
+            }
+        }
+        Err(err) => {
+            eprintln!(
+                "konductor synth: warning: could not read {}: {err}",
+                source_dir.join("VERSION").display()
+            );
+        }
+    }
+
     // Package the now-complete dist/ tree and write its checksum sidecar
     // (transport-integrity only; see package.rs/sidecar.rs docstrings).
     // Runs only after every transformer has succeeded, so dist/ is
@@ -688,6 +737,172 @@ mod tests {
         fs::write(&file_path, b"not a directory").unwrap();
         let code = dispatch_synth_with(&file_path, None, false, false, ColorMode::disabled());
         assert_eq!(code, EXIT_USAGE_ERROR);
+        fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn dispatch_synth_copies_root_version_file_into_dist_output_root() {
+        let root = scratch_dir("version-copy");
+        fs::write(root.join("VERSION"), "1.2.3\n").unwrap();
+        let code = dispatch_synth_with(&root, None, false, false, ColorMode::disabled());
+        assert_eq!(code, 0);
+        let copied = fs::read_to_string(root.join("dist").join("VERSION")).unwrap();
+        assert_eq!(copied, "1.2.3\n");
+        fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn dispatch_synth_succeeds_without_writing_dist_version_when_root_version_is_absent() {
+        let root = scratch_dir("no-version-at-root");
+        let code = dispatch_synth_with(&root, None, false, false, ColorMode::disabled());
+        assert_eq!(code, 0);
+        assert!(!root.join("dist").join("VERSION").exists());
+        fs::remove_dir_all(&root).ok();
+    }
+
+    /// `output_root` (`dist/`) is never wiped between runs, so a
+    /// second run against the SAME `dist/` after the root VERSION is
+    /// removed must not leave the first run's copy sitting at
+    /// `dist/VERSION`.
+    #[test]
+    fn dispatch_synth_removes_stale_dist_version_when_later_run_has_no_root_version() {
+        let root = scratch_dir("stale-version-removed");
+
+        // First run: root VERSION present, so it's copied to dist/.
+        fs::write(root.join("VERSION"), "1.2.3\n").unwrap();
+        let first_code = dispatch_synth_with(&root, None, false, false, ColorMode::disabled());
+        assert_eq!(first_code, 0);
+        assert!(
+            root.join("dist").join("VERSION").exists(),
+            "first run must copy the root VERSION into dist/"
+        );
+
+        // Second run against the SAME dist/: root VERSION removed, so
+        // the source now has none.
+        fs::remove_file(root.join("VERSION")).unwrap();
+        let second_code = dispatch_synth_with(&root, None, false, false, ColorMode::disabled());
+        assert_eq!(second_code, 0);
+        assert!(
+            !root.join("dist").join("VERSION").exists(),
+            "a later synth against a source with no root VERSION must remove \
+             the stale copy from a prior run, not leave it in place -- \
+             `telemetry::install_info::agent_version_from_source` reads \
+             exactly this path (`dist/VERSION`) and returns `None` when \
+             it's absent, so this assertion is also what proves \
+             `agent_version` degrades to null rather than reporting the \
+             stale version from the prior run"
+        );
+
+        fs::remove_dir_all(&root).ok();
+    }
+
+    /// A read failure other than `NotFound` must not be treated as
+    /// "source has no VERSION". Forces the source `VERSION` path to
+    /// be a directory while a real `dist/VERSION` from a prior run
+    /// already exists; that prior copy must survive.
+    #[test]
+    fn dispatch_synth_leaves_dist_version_intact_when_root_version_read_fails() {
+        let root = scratch_dir("version-read-fails-non-notfound");
+
+        // First run: root VERSION present and readable, so it's copied
+        // to dist/ normally.
+        fs::write(root.join("VERSION"), "1.2.3\n").unwrap();
+        let first_code = dispatch_synth_with(&root, None, false, false, ColorMode::disabled());
+        assert_eq!(first_code, 0);
+        assert!(root.join("dist").join("VERSION").exists());
+
+        // Second run: replace the source VERSION file with a directory
+        // at the same path, forcing read_to_string to fail with a
+        // non-NotFound error (e.g. IsADirectory) rather than reporting
+        // absence.
+        fs::remove_file(root.join("VERSION")).unwrap();
+        fs::create_dir_all(root.join("VERSION")).unwrap();
+
+        let second_code = dispatch_synth_with(&root, None, false, false, ColorMode::disabled());
+
+        assert_eq!(
+            second_code, 0,
+            "a non-NotFound read failure must not abort a synth where every \
+             transformer already succeeded"
+        );
+        assert!(
+            root.join("dist").join("VERSION").exists(),
+            "a source VERSION that exists but could not be read (non-NotFound \
+             error) must NOT be treated as absence -- the prior run's output \
+             copy must survive, not be deleted"
+        );
+        let copied = fs::read_to_string(root.join("dist").join("VERSION")).unwrap();
+        assert_eq!(
+            copied, "1.2.3\n",
+            "the surviving output copy must still hold the prior run's content"
+        );
+
+        fs::remove_dir_all(&root).ok();
+    }
+
+    /// The VERSION write is best-effort like the read: pre-creating a
+    /// directory at `dist/VERSION` forces `std::fs::write` to fail
+    /// deterministically. `dispatch_synth_with` must still return 0
+    /// and finish packaging.
+    #[test]
+    fn dispatch_synth_succeeds_when_dist_version_write_fails() {
+        let root = scratch_dir("version-write-fails");
+        fs::write(root.join("VERSION"), "1.2.3\n").unwrap();
+        // Force the write to fail: `dist/VERSION` is a directory, so
+        // `std::fs::write(dist/VERSION, ..)` errors instead of
+        // succeeding.
+        fs::create_dir_all(root.join("dist").join("VERSION")).unwrap();
+
+        let code = dispatch_synth_with(&root, None, false, false, ColorMode::disabled());
+
+        assert_eq!(
+            code, 0,
+            "a failed VERSION write must not abort a synth where every \
+             transformer already succeeded"
+        );
+        assert!(
+            root.join("dist").join("VERSION").is_dir(),
+            "the pre-existing directory must be left untouched, not replaced by a file"
+        );
+        // The rest of the artifact -- packaging included -- must still
+        // have completed.
+        assert!(
+            root.join("dist").join(artifact_filename()).exists(),
+            "packaging must still run and produce the tarball artifact \
+             despite the VERSION write failure"
+        );
+
+        fs::remove_dir_all(&root).ok();
+    }
+
+    /// Confirms the packaged tarball contains the copied `VERSION`
+    /// entry -- `package_dist`'s walk picks it up like any other
+    /// content file.
+    #[test]
+    fn dispatch_synth_packages_dist_version_into_the_tarball_artifact() {
+        let root = scratch_dir("version-in-tarball");
+        fs::write(root.join("VERSION"), "9.9.9\n").unwrap();
+        let code = dispatch_synth_with(&root, None, false, false, ColorMode::disabled());
+        assert_eq!(code, 0);
+
+        let artifact_bytes = fs::read(root.join("dist").join(artifact_filename())).unwrap();
+        let decoder = flate2::read::GzDecoder::new(artifact_bytes.as_slice());
+        let mut archive = tar::Archive::new(decoder);
+        let mut found_version_contents = None;
+        for entry in archive.entries().unwrap() {
+            let mut entry = entry.unwrap();
+            if entry.path().unwrap().to_str() == Some("VERSION") {
+                let mut buf = String::new();
+                std::io::Read::read_to_string(&mut entry, &mut buf).unwrap();
+                found_version_contents = Some(buf);
+            }
+        }
+        assert_eq!(
+            found_version_contents,
+            Some("9.9.9\n".to_string()),
+            "packaged tarball must contain a top-level VERSION entry with the copied contents"
+        );
+
         fs::remove_dir_all(&root).ok();
     }
 

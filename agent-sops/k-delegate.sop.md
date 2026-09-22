@@ -2,7 +2,7 @@
 
 ## Overview
 
-This SOP provides a structured template for delegating tasks to specialized subagents with clear requirements and success criteria. Use it when assigning work to `k-researcher`, `k-developer`, `k-media-analyzer`, or other subagents, when orchestrating parallel agent execution, or when any task requires specialized agent capabilities.
+This SOP provides a structured template for delegating tasks to specialized subagents with clear requirements and success criteria. Use it when assigning work to `k-researcher`, `k-developer`, `k-media-analyzer`, or other subagents, when orchestrating parallel agent execution, or when any task requires specialized agent capabilities. The delegation this template structures buys capability specialization — routing work to the subagent whose skill set matches the task — and its own Steps 4 and 6 mandate handing over project root, source dirs, ignore list, and existing patterns, so the template's function is enforcing complete context transfer to that specialist, not withholding it.
 
 ## Parameters
 

@@ -36,6 +36,18 @@
 // a shared install. `read_identity` returns `ReadOutcome::NewerSchema`
 // for this case so callers can special-case it: read the `UUID` back
 // read-only if it still parses, and never touch the file on disk.
+//
+// ── Dead in production, alive in tests ────────────────────────────────
+// No install path writes this file anymore (the per-target consent
+// signal is `install_info::read_install_info`); the write mechanics
+// above have no production caller left. `identity_path` itself is the
+// exception -- `uninstall` still calls it to clean up a
+// `telemetry-id.json` left behind by an install that predates this
+// file's retirement. The rest stays as test-only infrastructure:
+// `uninstall`'s own tests need a way to simulate that same pre-
+// retirement machine. One module-level allow, not a function-by-
+// function scatter of the same justification.
+#![allow(dead_code)]
 
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -54,9 +66,12 @@ pub(crate) const SCHEMA_VERSION: u64 = 1;
 /// `NewerSchema` read whose `UUID` field didn't parse as a well-shaped
 /// string). Never persisted -- this value is only ever attached to the
 /// in-memory record returned for the current call; the file on disk is
-/// left untouched. Matches `skill-lookup-core`'s own mirror constant.
-pub(crate) const NIL_UUID_SENTINEL: &str =
-    "0000000000000000000000000000000000000000000000000000000000000000";
+/// left untouched.
+///
+/// Re-exported from the shared `konductor_telemetry` crate --
+/// `skill-lookup-core` depends on the same constant, so the two can
+/// never drift.
+pub(crate) use konductor_telemetry::NIL_UUID_SENTINEL;
 
 /// File name within `KONDUCTOR_DIR_NAME`.
 const IDENTITY_FILE_NAME: &str = "telemetry-id.json";
@@ -68,14 +83,10 @@ const IDENTITY_FILE_NAME: &str = "telemetry-id.json";
 const FILE_MODE: u32 = 0o644;
 
 /// A 64-character lowercase hex `sha256_hex()` digest -- the shape a
-/// well-formed `UUID` must match. Shared by the identity file's own
-/// validation and `skill-lookup-core`'s independent mirror.
-pub(crate) fn is_valid_uuid_shape(value: &str) -> bool {
-    value.len() == 64
-        && value
-            .bytes()
-            .all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase())
-}
+/// well-formed `UUID` must match.
+///
+/// Re-exported from the shared `konductor_telemetry` crate.
+pub(crate) use konductor_telemetry::is_valid_uuid_shape;
 
 /// `.konductor/telemetry-id.json`'s on-disk shape.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -101,20 +112,6 @@ impl IdentityRecord {
 /// `<target_dir>/.konductor/telemetry-id.json`.
 pub(crate) fn identity_path(target_dir: &Path) -> PathBuf {
     target_dir.join(KONDUCTOR_DIR_NAME).join(IDENTITY_FILE_NAME)
-}
-
-/// Whether `identity_path(target_dir)` exists on disk at all --
-/// deliberately a plain existence check, not
-/// `read_identity(target_dir).is_some()`. The latter also collapses a
-/// present-but-corrupted file to "absent" (see `ReadOutcome::Absent`'s
-/// own doc comment), which would misclassify a target that WAS
-/// installed with telemetry -- the write happened; only the content
-/// failed to survive -- as one that opted out. Used by `update`'s own
-/// opt-out carry-forward: on a target that already has an install
-/// manifest, this file's total absence is the durable signal that
-/// `install --no-telemetry` was passed for that target.
-pub(crate) fn identity_file_exists(target_dir: &Path) -> bool {
-    identity_path(target_dir).exists()
 }
 
 /// Generates a fresh `UUID`: `sha256_hex()` over
@@ -222,6 +219,10 @@ fn read_identity_raw(target_dir: &Path) -> ReadOutcome {
 /// distinguish it MUST use `read_identity_raw` directly instead of
 /// this convenience wrapper, so the distinction can't be silently lost
 /// by defaulting back to this function.
+///
+/// No production caller remains; kept only as test infrastructure that
+/// verifies `ensure_identity`'s own write path actually persists a
+/// well-formed record (see `assert_identity_persisted` below).
 pub(crate) fn read_identity(target_dir: &Path) -> Option<IdentityRecord> {
     match read_identity_raw(target_dir) {
         ReadOutcome::Ok(record) => Some(record),
@@ -229,29 +230,62 @@ pub(crate) fn read_identity(target_dir: &Path) -> Option<IdentityRecord> {
     }
 }
 
-/// A unique temp-file suffix: current time in nanoseconds is NOT used
-/// here (unlike `atomic_write.rs`'s `unique_suffix`) -- the temp name is
-/// `.tmp-<pid>` specifically so two concurrent
-/// processes never pick the same name (a single process only ever
-/// writes one identity file per invocation, so pid alone is sufficient
-/// and matches the exact naming this identity file uses).
+/// PID alone repeats across the two calls a single process makes in a
+/// race (both threads share one PID), so a monotonic counter is
+/// appended per call. An `AtomicU64` counter, not a nanosecond
+/// timestamp (`atomic_write.rs`'s `unique_suffix` collides under
+/// thread scheduling for exactly this reason): each `fetch_add` is a
+/// single atomic op, so two threads calling this in the same instant
+/// still get distinct values.
+static TEMP_NAME_COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 fn temp_path(target_dir: &Path) -> PathBuf {
     let dir = target_dir.join(KONDUCTOR_DIR_NAME);
-    dir.join(format!("{IDENTITY_FILE_NAME}.tmp-{}", std::process::id()))
+    let counter = TEMP_NAME_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    dir.join(format!(
+        "{IDENTITY_FILE_NAME}.tmp-{}-{counter}",
+        std::process::id()
+    ))
+}
+
+/// Removes the temp file at `path` when dropped. Exists so every
+/// `ensure_identity`/`publish_loser` return path cleans up its own
+/// temp file by construction, rather than each branch needing its own
+/// `remove_file` call -- including the winning `hard_link` branch:
+/// the temp file's inode is also linked at `final_path` by then, so
+/// removing the temp NAME leaves the final path's data untouched (two
+/// links, one inode; dropping one link never deletes the data while
+/// the other remains).
+struct TempFileGuard<'a> {
+    path: &'a Path,
+}
+
+impl<'a> TempFileGuard<'a> {
+    fn new(path: &'a Path) -> Self {
+        TempFileGuard { path }
+    }
+}
+
+impl Drop for TempFileGuard<'_> {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(self.path);
+    }
 }
 
 /// Writes `record` to `tmp_path` with explicit `0o644` permissions.
 ///
-/// The temp name is deterministic (`telemetry-id.json.tmp-<pid>` --
-/// see `temp_path` above), so a local attacker who predicts the pid
-/// could pre-place a symlink there before this call runs. Opens with
-/// `create_new` (`O_CREAT|O_EXCL`), which already refuses to open if
-/// anything -- symlink or otherwise -- exists at `tmp_path` without
-/// following it, plus `O_NOFOLLOW` as defense in depth, matching
-/// `report.rs`'s `write_verified`. A stale temp left behind by a prior
-/// process that reused this pid is removed best-effort first
-/// (`remove_file` doesn't follow a symlink either) so a legitimate
-/// retry doesn't fail on its own leftover.
+/// The temp name includes a per-call counter (see `temp_path` above),
+/// so nothing else in this process ever targets the same path while
+/// this call is in flight -- unlike the old PID-only scheme, a
+/// pre-existing entry here is never a live sibling call's own temp
+/// file. It can only be a pre-planted symlink (a local attacker
+/// predicting this path) or debris from an unrelated prior process
+/// that reused this exact pid+counter pair. Removing it best-effort
+/// before `create_new` (`remove_file` doesn't follow a symlink) covers
+/// both without weakening `create_new`'s own `O_EXCL` guarantee for
+/// concurrent, legitimate callers, since no such caller ever computes
+/// this same name. `O_NOFOLLOW` is defense in depth on top, matching
+/// `report.rs`'s `write_verified`.
 ///
 /// `.mode(FILE_MODE)` is passed to the `open(2)` call itself, so the
 /// file is never created wider than `0o644` at any point -- without
@@ -383,29 +417,28 @@ pub(crate) fn ensure_identity(target_dir: &Path, harness: &str) -> IdentityRecor
     let record = IdentityRecord::new(uuid, harness);
     let tmp = temp_path(target_dir);
     let final_path = identity_path(target_dir);
+    let _tmp_guard = TempFileGuard::new(&tmp);
 
     if write_temp(&tmp, &record).is_err() {
-        let _ = std::fs::remove_file(&tmp);
         return record;
     }
 
     match std::fs::hard_link(&tmp, &final_path) {
         Ok(()) => {
-            // Winner: drop the temp name. The underlying inode now has
-            // two names; removing the temp one leaves the final path
-            // (and its data) untouched.
-            let _ = std::fs::remove_file(&tmp);
+            // Winner: dropping `tmp_guard` at the end of this call
+            // removes the temp NAME only. The underlying inode now
+            // has two names; removing one leaves `final_path` (and
+            // its data) untouched.
             record
         }
         Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists => {
             publish_loser(target_dir, &tmp, &record, &final_path)
         }
         Err(_) => {
-            // Some other I/O error (e.g. permissions). Clean up the temp
-            // file and fall back to the freshly-generated, unpersisted
-            // record -- consistent with the "cannot create directory"
-            // fallback above.
-            let _ = std::fs::remove_file(&tmp);
+            // Some other I/O error (e.g. permissions). Fall back to
+            // the freshly-generated, unpersisted record -- consistent
+            // with the "cannot create directory" fallback above. The
+            // guard cleans up the temp file on the way out.
             record
         }
     }
@@ -426,19 +459,22 @@ pub(crate) fn ensure_identity(target_dir: &Path, harness: &str) -> IdentityRecor
 /// returns the newer file's UUID read-only (or the nil-UUID sentinel
 /// for this event only, if the UUID itself wasn't extractable),
 /// leaving the on-disk file exactly as it was.
+///
+/// `tmp`'s `TempFileGuard` is constructed once here and stays armed
+/// across the whole call, including the one retry: every return path
+/// removes `tmp` on the way out via that guard's drop, without needing
+/// its own `remove_file` call.
 fn publish_loser(
     target_dir: &Path,
     tmp: &Path,
     own_record: &IdentityRecord,
     final_path: &Path,
 ) -> IdentityRecord {
+    let _tmp_guard = TempFileGuard::new(tmp);
+
     match read_identity_raw(target_dir) {
-        ReadOutcome::Ok(winner) => {
-            let _ = std::fs::remove_file(tmp);
-            return winner;
-        }
+        ReadOutcome::Ok(winner) => return winner,
         ReadOutcome::NewerSchema { uuid } => {
-            let _ = std::fs::remove_file(tmp);
             let uuid = uuid.unwrap_or_else(|| NIL_UUID_SENTINEL.to_string());
             return IdentityRecord::new(uuid, own_record.harness.clone());
         }
@@ -449,10 +485,7 @@ fn publish_loser(
     // Remove it and retry our own hard_link exactly once.
     let _ = std::fs::remove_file(final_path);
     match std::fs::hard_link(tmp, final_path) {
-        Ok(()) => {
-            let _ = std::fs::remove_file(tmp);
-            own_record.clone()
-        }
+        Ok(()) => own_record.clone(),
         Err(_) => {
             // A second writer won in the interim, or another error.
             // Read once more; if still malformed, proceed unattributed
@@ -460,19 +493,12 @@ fn publish_loser(
             // NewerSchema result here is treated the same as the first
             // check above: read-only, never re-deleted.
             match read_identity_raw(target_dir) {
-                ReadOutcome::Ok(winner) => {
-                    let _ = std::fs::remove_file(tmp);
-                    winner
-                }
+                ReadOutcome::Ok(winner) => winner,
                 ReadOutcome::NewerSchema { uuid } => {
-                    let _ = std::fs::remove_file(tmp);
                     let uuid = uuid.unwrap_or_else(|| NIL_UUID_SENTINEL.to_string());
                     IdentityRecord::new(uuid, own_record.harness.clone())
                 }
-                ReadOutcome::Absent => {
-                    let _ = std::fs::remove_file(tmp);
-                    own_record.clone()
-                }
+                ReadOutcome::Absent => own_record.clone(),
             }
         }
     }
@@ -483,10 +509,27 @@ mod tests {
     use super::*;
     use std::fs;
 
+    /// Confirms the identity record at `dir` actually persisted and
+    /// returns it. `ensure_identity` fails closed to an unpersisted,
+    /// in-memory record on a write failure (same UUID it generated,
+    /// never written) rather than a sentinel, so its return value
+    /// alone can't tell a real mint apart from one that never reached
+    /// disk. Panics naming the write failure -- never lets a caller
+    /// assert on a record that isn't really there.
+    fn assert_identity_persisted(dir: &Path) -> IdentityRecord {
+        read_identity(dir).unwrap_or_else(|| {
+            panic!(
+                "telemetry-id.json did not persist at {} -- this is a write failure, not the \
+                 record's own field values; see stderr for the failing syscall",
+                dir.display()
+            )
+        })
+    }
+
     fn scratch_dir(name: &str) -> PathBuf {
         static COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
         let dir = std::env::temp_dir().join(format!(
-            "konductor-identity-test-{name}-{}-{}",
+            "konductor-telemetry-test-{name}-{}-{}",
             SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap()
@@ -501,7 +544,7 @@ mod tests {
     fn write_then_read_round_trips() {
         let dir = scratch_dir("round-trip");
         let record = ensure_identity(&dir, "kiro-cli");
-        let read_back = read_identity(&dir).expect("must read back");
+        let read_back = assert_identity_persisted(&dir);
         assert_eq!(read_back, record);
         assert_eq!(read_back.harness, "kiro-cli");
         assert!(is_valid_uuid_shape(&read_back.uuid));
@@ -512,6 +555,15 @@ mod tests {
     fn second_ensure_reuses_existing_uuid() {
         let dir = scratch_dir("reuse");
         let first = ensure_identity(&dir, "kiro-cli");
+
+        // Precondition: on a write failure, `ensure_identity` returns
+        // its own freshly-generated UUID unpersisted, so a second call
+        // would generate ANOTHER fresh UUID rather than reusing
+        // anything -- the assert_eq below would already fail loudly
+        // in that case, but without naming the write failure as the
+        // cause.
+        assert_identity_persisted(&dir);
+
         let second = ensure_identity(&dir, "kiro-cli");
         assert_eq!(first.uuid, second.uuid);
         fs::remove_dir_all(&dir).ok();
@@ -571,6 +623,12 @@ mod tests {
 
         let dir = scratch_dir("permissions");
         ensure_identity(&dir, "kiro-cli");
+
+        // Precondition: names a write failure instead of a bare
+        // `unwrap()` panic on the metadata call below, which would
+        // otherwise blame a missing file on this test's own logic.
+        assert_identity_persisted(&dir);
+
         let mode = fs::metadata(identity_path(&dir))
             .unwrap()
             .permissions()
@@ -621,10 +679,164 @@ mod tests {
         fs::remove_dir_all(&dir).ok();
     }
 
+    /// Regression: a second `ensure_identity` call in the SAME process
+    /// against the SAME target, immediately after the first call was
+    /// forced onto the loser side of a `hard_link` race, must still
+    /// persist a record on THAT second call. `temp_path` is PID-
+    /// derived (pre-fix), so both calls compute the identical tmp
+    /// path; if the first call's own temp file were ever left behind,
+    /// the second call's `create_new` would collide with it and fail
+    /// closed.
+    #[test]
+    fn second_ensure_identity_call_after_a_loser_path_in_the_same_process_still_persists() {
+        let dir = scratch_dir("second-call-after-loser");
+        fs::create_dir_all(dir.join(KONDUCTOR_DIR_NAME)).unwrap();
+
+        // Pre-populate the final record directly so the first
+        // ensure_identity call below reads it back via
+        // ReadOutcome::Ok, matching the shape a genuine loser-path
+        // call would leave behind.
+        let winner = IdentityRecord::new(generate_uuid(&dir), "kiro-cli");
+        let final_path = identity_path(&dir);
+        let winner_tmp = dir
+            .join(KONDUCTOR_DIR_NAME)
+            .join("telemetry-id.json.tmp-winner");
+        write_temp(&winner_tmp, &winner).unwrap();
+        std::fs::hard_link(&winner_tmp, &final_path).unwrap();
+        std::fs::remove_file(&winner_tmp).ok();
+
+        let first = ensure_identity(&dir, "kiro-cli");
+        assert_eq!(first.uuid, winner.uuid);
+
+        // Second call, same process, same target: temp_path(&dir)
+        // resolves to the exact same PID-derived path (pre-fix) any
+        // call this process makes for this target. If anything
+        // upstream ever left that name occupied, this call's own
+        // write_temp would hit create_new's AlreadyExists and fail
+        // closed.
+        let second = ensure_identity(&dir, "kiro-cli");
+        let persisted = assert_identity_persisted(&dir);
+        assert_eq!(persisted.uuid, winner.uuid);
+        assert_eq!(second.uuid, winner.uuid);
+
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    /// Regression: two threads in ONE process calling `temp_path`
+    /// against the SAME target must never compute the same name.
+    /// `temp_path` is PID-derived; PID is identical across threads in
+    /// one process, so without a per-call unique component, two
+    /// concurrent callers collide on `create_new`.
+    ///
+    /// This test exercises `temp_path` alone -- it does not call
+    /// `write_temp` or `ensure_identity`, so a regression in either's
+    /// exclusive-create or `O_NOFOLLOW` handling would not be caught
+    /// here. See
+    /// `concurrent_ensure_identity_calls_in_one_process_converge_on_one_persisted_record`
+    /// below for the end-to-end version of this same race.
+    #[test]
+    fn concurrent_callers_in_one_process_never_pick_the_same_temp_name() {
+        let dir = std::sync::Arc::new(scratch_dir("concurrent-same-process"));
+        fs::create_dir_all(dir.join(KONDUCTOR_DIR_NAME)).unwrap();
+
+        let barrier = std::sync::Arc::new(std::sync::Barrier::new(2));
+        let names_a = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+        let names_b = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+
+        let run = |dir: std::sync::Arc<PathBuf>,
+                   barrier: std::sync::Arc<std::sync::Barrier>,
+                   names: std::sync::Arc<std::sync::Mutex<Vec<PathBuf>>>| {
+            move || {
+                barrier.wait();
+                for _ in 0..50 {
+                    let path = temp_path(&dir);
+                    names.lock().unwrap().push(path);
+                }
+            }
+        };
+
+        let handle_a = std::thread::spawn(run(dir.clone(), barrier.clone(), names_a.clone()));
+        let handle_b = std::thread::spawn(run(dir.clone(), barrier, names_b.clone()));
+        handle_a.join().unwrap();
+        handle_b.join().unwrap();
+
+        let a = names_a.lock().unwrap();
+        let b = names_b.lock().unwrap();
+        let a_set: std::collections::HashSet<_> = a.iter().collect();
+        let b_set: std::collections::HashSet<_> = b.iter().collect();
+        assert!(
+            a_set.is_disjoint(&b_set),
+            "two concurrent callers in one process must never compute the same temp-file \
+             name; thread A and thread B both produced: {:?}",
+            a_set.intersection(&b_set).collect::<Vec<_>>()
+        );
+
+        fs::remove_dir_all(dir.as_ref()).ok();
+    }
+
+    /// End-to-end version of the race above: two threads in ONE
+    /// process racing `ensure_identity` (not just `temp_path`) against
+    /// the SAME target must converge on ONE persisted `UUID`, with no
+    /// leftover `.tmp-` files -- exercising `write_temp`'s
+    /// `create_new`/`O_NOFOLLOW` and `ensure_identity`'s `hard_link`
+    /// race-loser handling for real, not just the name-generator in
+    /// isolation.
+    #[test]
+    fn concurrent_ensure_identity_calls_in_one_process_converge_on_one_persisted_record() {
+        let dir = std::sync::Arc::new(scratch_dir("concurrent-ensure-identity-same-process"));
+        fs::create_dir_all(dir.join(KONDUCTOR_DIR_NAME)).unwrap();
+
+        let barrier = std::sync::Arc::new(std::sync::Barrier::new(2));
+
+        let run = |dir: std::sync::Arc<PathBuf>, barrier: std::sync::Arc<std::sync::Barrier>| {
+            move || {
+                barrier.wait();
+                ensure_identity(&dir, "kiro-cli")
+            }
+        };
+
+        let handle_a = std::thread::spawn(run(dir.clone(), barrier.clone()));
+        let handle_b = std::thread::spawn(run(dir.clone(), barrier));
+        let result_a = handle_a.join().unwrap();
+        let result_b = handle_b.join().unwrap();
+
+        assert_eq!(
+            result_a.uuid, result_b.uuid,
+            "two threads racing ensure_identity against the same target must converge on the \
+             SAME uuid -- one of them lost the hard_link race and must have read the winner's \
+             file back rather than persisting its own"
+        );
+
+        let persisted = assert_identity_persisted(&dir);
+        assert_eq!(
+            persisted.uuid, result_a.uuid,
+            "the winning uuid must actually be the one on disk"
+        );
+
+        let leftovers: Vec<_> = fs::read_dir(dir.join(KONDUCTOR_DIR_NAME))
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.file_name().to_string_lossy().contains(".tmp-"))
+            .collect();
+        assert!(
+            leftovers.is_empty(),
+            "the loser's own temp file must be cleaned up, not left behind: {leftovers:?}"
+        );
+
+        fs::remove_dir_all(dir.as_ref()).ok();
+    }
+
     #[test]
     fn no_temp_file_left_behind_after_successful_publish() {
         let dir = scratch_dir("no-leftover");
         ensure_identity(&dir, "kiro-cli");
+
+        // Precondition: names a write failure instead of a bare
+        // `unwrap()` panic on the read_dir call below, which would
+        // otherwise blame a missing .konductor/ dir on leftover-temp
+        // logic rather than the write that never happened.
+        assert_identity_persisted(&dir);
+
         let leftovers: Vec<_> = fs::read_dir(dir.join(KONDUCTOR_DIR_NAME))
             .unwrap()
             .filter_map(|e| e.ok())
@@ -774,35 +986,6 @@ mod tests {
         let after = fs::read(&path).unwrap();
         assert_eq!(before, after, "file must remain untouched");
         assert_eq!(result.uuid, NIL_UUID_SENTINEL);
-
-        fs::remove_dir_all(&dir).ok();
-    }
-
-    /// `identity_file_exists` is a plain existence check: false before
-    /// any write, true once `ensure_identity` publishes the file, and
-    /// still true for a file whose content is corrupted -- unlike
-    /// `read_identity`, which would report the corrupted case as
-    /// `None` (see this file's own doc comment on why the two must
-    /// diverge here).
-    #[test]
-    fn identity_file_exists_reflects_plain_presence_including_corrupted_content() {
-        let dir = scratch_dir("file-exists");
-        assert!(
-            !identity_file_exists(&dir),
-            "must be false before any write"
-        );
-
-        ensure_identity(&dir, "kiro-cli");
-        assert!(identity_file_exists(&dir), "must be true once published");
-
-        // Overwrite with corrupted content: read_identity now reports
-        // `None`, but the file itself is still genuinely present.
-        std::fs::write(identity_path(&dir), b"not json").unwrap();
-        assert_eq!(read_identity(&dir), None);
-        assert!(
-            identity_file_exists(&dir),
-            "corrupted content must not read back as absent"
-        );
 
         fs::remove_dir_all(&dir).ok();
     }

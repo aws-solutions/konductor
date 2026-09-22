@@ -55,13 +55,37 @@ const FILE_MODE: u32 = 0o644;
 /// (`<filename>.tmp-<unique>`, in the same directory as `path` so the
 /// later rename stays on one filesystem), explicitly chmods it to
 /// `0o644` (see the "Explicit file permissions" module note above), and then
-/// renames it over `path`.
-///
-/// On any failure, best-effort removes the temp file before returning the
-/// original error (a failed cleanup is ignored -- the write itself
-/// already failed, so a leftover temp file is a lesser concern than
-/// masking the real error with a cleanup error).
+/// renames it over `path`. A thin wrapper over `write_atomic_with_mode`
+/// with that fixed mode -- see that function for the write/rename shape
+/// itself.
 pub(crate) fn write_atomic(path: &Path, contents: &[u8]) -> io::Result<()> {
+    write_atomic_with_mode(path, contents, FILE_MODE)
+}
+
+/// Same shape as `write_atomic`, but the temp file is chmod'd to an
+/// explicit `mode` instead of the fixed `FILE_MODE` default, and that
+/// mode is applied to the temp file BEFORE the atomic rename rather than
+/// restored on the target path afterward. `fs::rename` preserves the
+/// SOURCE (temp) file's permissions across the rename (see the
+/// "Explicit file permissions" module note above), so `path` lands at
+/// exactly `mode` the instant the rename completes -- it is never
+/// visible, before or after, at any other mode. Callers that must
+/// preserve a caller-owned file's own pre-existing mode -- e.g. a
+/// narrower-than-`0o644` mode on a settings file that may hold secrets
+/// -- call this directly with that mode, rather than writing at
+/// `write_atomic`'s default and then chmod'ing the result back
+/// afterward (which would leave the file briefly at the wider default
+/// mode, and, if that second chmod ever failed, leave it there for
+/// good).
+///
+/// Writes to a sibling temp file (`<filename>.tmp-<unique>`, in the same
+/// directory as `path` so the later rename stays on one filesystem),
+/// then renames it over `path`. On any failure, best-effort removes the
+/// temp file before returning the original error (a failed cleanup is
+/// ignored -- the write itself already failed, so a leftover temp file
+/// is a lesser concern than masking the real error with a cleanup
+/// error).
+pub(crate) fn write_atomic_with_mode(path: &Path, contents: &[u8], mode: u32) -> io::Result<()> {
     let parent = path.parent().ok_or_else(|| {
         io::Error::new(
             io::ErrorKind::InvalidInput,
@@ -83,7 +107,7 @@ pub(crate) fn write_atomic(path: &Path, contents: &[u8]) -> io::Result<()> {
 
     let write_result = (|| -> io::Result<()> {
         let mut file = File::create(&tmp_path)?;
-        file.set_permissions(std::fs::Permissions::from_mode(FILE_MODE))?;
+        file.set_permissions(std::fs::Permissions::from_mode(mode))?;
         std::io::Write::write_all(&mut file, contents)
     })();
 
@@ -228,6 +252,53 @@ mod tests {
         assert_eq!(
             mode, 0o644,
             "permissions must still be 0o644 after writing through a single handle, got {mode:o}"
+        );
+
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn write_atomic_with_mode_uses_the_given_mode_not_the_0o644_default() {
+        // Regression test: this exercises `write_atomic_with_mode`
+        // directly (rather than through a caller like
+        // `claude_settings.rs`) so the mode-setting behavior itself is
+        // proven independent of any specific caller's read-modify-write
+        // logic.
+        use std::os::unix::fs::PermissionsExt;
+
+        let dir = scratch_dir("with-mode-new-file");
+        let target = dir.join("out.txt");
+
+        write_atomic_with_mode(&target, b"secret-shaped contents", 0o600)
+            .expect("write must succeed");
+
+        let mode = fs::metadata(&target).unwrap().permissions().mode() & 0o777;
+        assert_eq!(
+            mode, 0o600,
+            "write_atomic_with_mode must land the file at the requested mode, not FILE_MODE \
+             (0o644), got {mode:o}"
+        );
+
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn write_atomic_with_mode_overwrites_an_existing_file_at_the_new_mode() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let dir = scratch_dir("with-mode-overwrite");
+        let target = dir.join("out.txt");
+        fs::write(&target, b"old contents").unwrap();
+        fs::set_permissions(&target, std::fs::Permissions::from_mode(0o644)).unwrap();
+
+        write_atomic_with_mode(&target, b"new contents", 0o600).expect("write must succeed");
+
+        assert_eq!(fs::read_to_string(&target).unwrap(), "new contents");
+        let mode = fs::metadata(&target).unwrap().permissions().mode() & 0o777;
+        assert_eq!(
+            mode, 0o600,
+            "an overwrite via write_atomic_with_mode must land at the requested mode \
+             regardless of the target's prior mode, got {mode:o}"
         );
 
         fs::remove_dir_all(&dir).ok();

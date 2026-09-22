@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // install/remote_orchestrate.rs — sequences a GitHub-release fetch
-// (`install::github::fetch_latest_github_release_artifact`) or a
+// (`install::github::fetch_latest_release_artifact_and_mcp_asset`) or a
 // branch-`dist/` fetch (`install::github_branch`) into the existing,
 // unmodified bytes-in-hand verify->unpack->install pipeline
 // (`install::remote::install_from_remote_bytes`).
@@ -15,7 +15,7 @@ use std::path::Path;
 
 use super::github::{self, GithubFetchError};
 use super::github_branch::{self, GithubBranchFetchError};
-use super::remote::{self, RemoteInstallError};
+use super::remote::{self, McpBinaryFetcher, RemoteInstallError, RemoteInstallOutcome};
 use super::InstallStrategy;
 
 /// What `install_from_latest_github_release` can fail with -- separates
@@ -140,11 +140,30 @@ impl std::fmt::Display for FallbackChainError {
 
 impl std::error::Error for FallbackChainError {}
 
-/// Fetches `owner/repo`'s latest GitHub release artifact and sidecar,
-/// then hands the resulting bytes to the existing, unmodified
+/// Fetches `owner/repo`'s latest GitHub release metadata EXACTLY ONCE
+/// (via `github::fetch_latest_release_artifact_and_mcp_asset`), then
+/// hands the resolved tarball bytes to the existing, unmodified
 /// `remote::install_from_remote_bytes` -- verify, unpack, install.
 /// Never touches that pipeline's own logic; just sequences a real
-/// fetch in front of it. Thin wrapper around
+/// fetch in front of it.
+///
+/// The MCP server binary asset is resolved from that SAME release
+/// response, eagerly, right alongside the tarball -- rather than
+/// deferred into a closure that fetches its own metadata later. Before
+/// this fix, `github::fetch_latest_github_release_artifact` (for the
+/// tarball) and `github::fetch_mcp_server_release_asset` (for the MCP
+/// binary, invoked lazily from inside `install_from_remote_bytes` via
+/// `build_mcp_binary_fetcher`'s closure) each independently called
+/// `fetch_latest_release_metadata`, roughly doubling metadata API
+/// traffic and risking the tarball and MCP binary resolving against
+/// two DIFFERENT releases if a new one published between the calls.
+/// Resolving both eagerly from one fetch closes that window: the
+/// `McpBinaryFetcher` closure passed to `install_from_remote_bytes`
+/// below now just returns the already-computed result, matching the
+/// `McpBinaryFetcher` shape it always had.
+///
+/// This is the ONE place a real, no-`--from` install actually fetches
+/// the `skill-lookup-mcp` binary from GitHub. Thin wrapper around
 /// `install_from_latest_release_with_fetcher` bound to the real
 /// production fetcher -- the fetcher is parameterized in that function
 /// (not just here) so tests can inject a fake one and exercise this
@@ -157,28 +176,82 @@ pub(crate) fn install_from_latest_github_release(
     installed_at: &str,
     no_telemetry: bool,
     use_github_token: bool,
-) -> Result<(), RemoteOrchestrationError> {
+) -> Result<RemoteInstallOutcome, RemoteOrchestrationError> {
+    let (artifact_result, mcp_asset_result) =
+        github::fetch_latest_release_artifact_and_mcp_asset(owner, repo, use_github_token)
+            .map_err(RemoteOrchestrationError::Fetch)?;
+    let mcp_binary_fetcher = mcp_binary_fetcher_from_resolved_asset(mcp_asset_result);
     install_from_latest_release_with_fetcher(
-        || github::fetch_latest_github_release_artifact(owner, repo, use_github_token),
+        || artifact_result,
         strategy,
         target_dir,
         installed_at,
         no_telemetry,
+        Some(mcp_binary_fetcher),
     )
+}
+
+/// Builds a `McpBinaryFetcher` that just returns an ALREADY-RESOLVED
+/// `McpServerAssetFetchError`/asset-bytes result, mapped to
+/// `std::io::Error` the same way `github::github_artifact_fetcher`
+/// already maps `GithubFetchError` -- the identical mapping the OLD
+/// `build_mcp_binary_fetcher` used, except this closure performs no
+/// network call of its own at invocation time: `asset_result` was
+/// resolved eagerly, from the SAME release fetch the tarball asset was
+/// resolved from (see `install_from_latest_github_release`'s own doc
+/// comment for why). The "platform unsupported" signal
+/// (`McpServerAssetFetchError::is_unsupported_platform()`) has no
+/// dedicated slot in `std::io::Error`, so it survives the mapping by
+/// prefixing `remote::MCP_BINARY_UNSUPPORTED_PLATFORM_MARKER` onto the
+/// rendered message specifically for that case --
+/// `install_mcp_server_binary_into_remote_temp_dir` strips this exact
+/// prefix back off to recover the distinction on the other side of the
+/// closure boundary. Every other `McpServerAssetFetchError` variant
+/// (a real fetch/verify failure on a supported platform) maps through
+/// with its message unchanged, no marker prefix.
+///
+/// Takes `asset_result` by value and moves it directly into the
+/// returned `FnOnce` closure -- `McpBinaryFetcher`'s `FnOnce() -> ...`
+/// bound both permits and enforces exactly that: the closure consumes
+/// its captured `asset_result` on its one and only call, with no
+/// internal "have I already been called" bookkeeping needed, since the
+/// type system already guarantees `install_from_remote_bytes` can
+/// invoke it at most once per install.
+fn mcp_binary_fetcher_from_resolved_asset(
+    asset_result: github::McpAssetResolutionResult,
+) -> McpBinaryFetcher<'static> {
+    Box::new(move || {
+        asset_result.map_err(|err| {
+            if err.is_unsupported_platform() {
+                std::io::Error::other(format!(
+                    "{}{err}",
+                    remote::MCP_BINARY_UNSUPPORTED_PLATFORM_MARKER
+                ))
+            } else {
+                std::io::Error::other(err.to_string())
+            }
+        })
+    })
 }
 
 /// Same sequencing as `install_from_latest_github_release`, but with
 /// the fetch step injected as `fetcher` instead of always calling the
 /// real GitHub API, so a test can pass a fake closure with no network
 /// call. A fetcher failure wraps as `RemoteOrchestrationError::Fetch`
-/// carrying the exact `GithubFetchError` unchanged.
+/// carrying the exact `GithubFetchError` unchanged. `mcp_binary_fetcher`
+/// is threaded straight through to `remote::install_from_remote_bytes`
+/// unchanged -- `None` for a caller that wants the tarball-only
+/// sequencing this function already provided before the MCP-binary
+/// feature existed (every current test call site below), `Some(..)`
+/// for the real production path (`install_from_latest_github_release`).
 fn install_from_latest_release_with_fetcher(
     fetcher: impl FnOnce() -> Result<(Vec<u8>, Vec<u8>), GithubFetchError>,
     strategy: &dyn InstallStrategy,
     target_dir: &Path,
     installed_at: &str,
     no_telemetry: bool,
-) -> Result<(), RemoteOrchestrationError> {
+    mcp_binary_fetcher: Option<McpBinaryFetcher>,
+) -> Result<RemoteInstallOutcome, RemoteOrchestrationError> {
     let (artifact_bytes, sidecar_bytes) = fetcher().map_err(RemoteOrchestrationError::Fetch)?;
     let artifact_filename = github::expected_artifact_filename();
     remote::install_from_remote_bytes(
@@ -189,6 +262,7 @@ fn install_from_latest_release_with_fetcher(
         &artifact_filename,
         installed_at,
         no_telemetry,
+        mcp_binary_fetcher,
     )
     .map_err(RemoteOrchestrationError::Install)
 }
@@ -214,6 +288,14 @@ pub(crate) fn main_branch_dist_archive_filename() -> String {
 /// from. A missing tarball or sidecar fails cleanly with
 /// `MissingArtifact`/`MissingSidecar`, never by falling back to a
 /// self-computed hash.
+///
+/// Never fetches the MCP server binary: `main`'s `dist/` directory has
+/// no per-platform `skill-lookup-mcp-*` asset published alongside it
+/// (only release assets do -- see release.yml's own asset-staging
+/// step), so there is nothing analogous for this source to fetch. A
+/// caller falling back to this source after the release path failed
+/// gets a working agent/skill/context install with no `mcpServers`
+/// injection, exactly as if no binary had been built locally either.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn install_from_main_branch_dist(
     owner: &str,
@@ -224,7 +306,7 @@ pub(crate) fn install_from_main_branch_dist(
     installed_at: &str,
     no_telemetry: bool,
     use_github_token: bool,
-) -> Result<(), MainBranchDistOrchestrationError> {
+) -> Result<RemoteInstallOutcome, MainBranchDistOrchestrationError> {
     install_from_main_branch_dist_with_fetcher(
         || {
             github_branch::fetch_branch_dist_artifact_and_sidecar(
@@ -247,14 +329,17 @@ pub(crate) fn install_from_main_branch_dist(
 /// `fetcher` returns `(tarball_bytes, sidecar_bytes)`, the same shape
 /// `install::github`'s own release fetcher returns -- the sidecar
 /// bytes it returns are passed to `remote::install_from_remote_bytes`
-/// unmodified, never recomputed from `tarball_bytes` here.
+/// unmodified, never recomputed from `tarball_bytes` here. Always
+/// passes `None` for the MCP-binary fetcher (see
+/// `install_from_main_branch_dist`'s own doc comment for why this
+/// source has nothing analogous to fetch).
 fn install_from_main_branch_dist_with_fetcher(
     fetcher: impl FnOnce() -> Result<(Vec<u8>, Vec<u8>), GithubBranchFetchError>,
     strategy: &dyn InstallStrategy,
     target_dir: &Path,
     installed_at: &str,
     no_telemetry: bool,
-) -> Result<(), MainBranchDistOrchestrationError> {
+) -> Result<RemoteInstallOutcome, MainBranchDistOrchestrationError> {
     let (tarball_bytes, sidecar_bytes) =
         fetcher().map_err(MainBranchDistOrchestrationError::Fetch)?;
     let artifact_filename = main_branch_dist_archive_filename();
@@ -267,6 +352,7 @@ fn install_from_main_branch_dist_with_fetcher(
         &artifact_filename,
         installed_at,
         no_telemetry,
+        None,
     )
     .map_err(MainBranchDistOrchestrationError::Install)
 }
@@ -285,21 +371,27 @@ fn install_from_main_branch_dist_with_fetcher(
 /// from "a release exists but its asset bytes failed to fetch," even
 /// when both carry the same HTTP status code.
 ///
-/// Returns the source that produced a successful install. Parameterized
-/// by `release_installer`/`main_branch_dist_installer` so tests can
-/// inject fake closures with no real network call.
+/// Returns the source that produced a successful install, plus that
+/// install's own `RemoteInstallOutcome` (today just the MCP server
+/// binary's resolved release version, if any -- see
+/// `remote::RemoteInstallOutcome`'s own doc comment). Parameterized by
+/// `release_installer`/`main_branch_dist_installer` so tests can inject
+/// fake closures with no real network call.
 fn install_from_remote_with_fallback_using(
-    release_installer: impl FnOnce() -> Result<(), RemoteOrchestrationError>,
-    main_branch_dist_installer: impl FnOnce() -> Result<(), MainBranchDistOrchestrationError>,
-) -> Result<RemoteInstallSource, FallbackChainError> {
+    release_installer: impl FnOnce() -> Result<RemoteInstallOutcome, RemoteOrchestrationError>,
+    main_branch_dist_installer: impl FnOnce() -> Result<
+        RemoteInstallOutcome,
+        MainBranchDistOrchestrationError,
+    >,
+) -> Result<(RemoteInstallSource, RemoteInstallOutcome), FallbackChainError> {
     match release_installer() {
-        Ok(()) => Ok(RemoteInstallSource::GithubRelease),
+        Ok(outcome) => Ok((RemoteInstallSource::GithubRelease, outcome)),
         Err(
             release_error @ RemoteOrchestrationError::Fetch(
                 GithubFetchError::MissingAsset(_) | GithubFetchError::MetadataHttp(404, _),
             ),
         ) => match main_branch_dist_installer() {
-            Ok(()) => Ok(RemoteInstallSource::MainBranchDist),
+            Ok(outcome) => Ok((RemoteInstallSource::MainBranchDist, outcome)),
             Err(main_branch_dist_error) => Err(FallbackChainError::BothFailed {
                 release_error,
                 main_branch_dist_error,
@@ -324,7 +416,7 @@ pub(crate) fn install_from_remote_with_fallback(
     installed_at: &str,
     no_telemetry: bool,
     use_github_token: bool,
-) -> Result<RemoteInstallSource, FallbackChainError> {
+) -> Result<(RemoteInstallSource, RemoteInstallOutcome), FallbackChainError> {
     install_from_remote_with_fallback_using(
         || {
             install_from_latest_github_release(
@@ -419,6 +511,7 @@ mod tests {
             &artifact_filename,
             "2026-01-01T00:00:00Z",
             false,
+            None,
         )
         .expect("fake-fetched bytes must still verify/unpack/install successfully");
 
@@ -455,6 +548,7 @@ mod tests {
             &artifact_filename,
             "2026-01-01T00:00:00Z",
             false,
+            None,
         )
         .expect_err("checksum mismatch must fail verification");
         assert!(matches!(inner_err, RemoteInstallError::VerifyChecksum(_)));
@@ -506,6 +600,7 @@ mod tests {
             &target_dir,
             "2026-01-01T00:00:00Z",
             false,
+            None,
         )
         .expect("a successful injected fetch must route through to a real install");
 
@@ -538,6 +633,7 @@ mod tests {
             &target_dir,
             "2026-01-01T00:00:00Z",
             false,
+            None,
         )
         .expect_err("a failing injected fetch must surface as an error");
         assert!(matches!(
@@ -601,6 +697,7 @@ mod tests {
             || {
                 Err(GithubBranchFetchError::MissingArtifact(
                     "konductor-v0.1.0-x.tar.gz".to_string(),
+                    TokenState::NotOptedIn,
                 ))
             },
             &KiroCliInstallStrategy,
@@ -611,7 +708,7 @@ mod tests {
         .expect_err("a failing injected branch fetch must surface as an error");
         assert!(matches!(
             err,
-            MainBranchDistOrchestrationError::Fetch(GithubBranchFetchError::MissingArtifact(_))
+            MainBranchDistOrchestrationError::Fetch(GithubBranchFetchError::MissingArtifact(_, _))
         ));
         assert!(
             !target_dir.join(".konductor").join("manifest").exists(),
@@ -635,6 +732,7 @@ mod tests {
             || {
                 Err(GithubBranchFetchError::MissingSidecar(
                     "konductor-v0.1.0-x.tar.gz.sha256".to_string(),
+                    TokenState::NotOptedIn,
                 ))
             },
             &KiroCliInstallStrategy,
@@ -645,7 +743,7 @@ mod tests {
         .expect_err("a missing-sidecar fetch failure must surface as an error");
         assert!(matches!(
             err,
-            MainBranchDistOrchestrationError::Fetch(GithubBranchFetchError::MissingSidecar(_))
+            MainBranchDistOrchestrationError::Fetch(GithubBranchFetchError::MissingSidecar(_, _))
         ));
         assert!(
             !target_dir.join(".konductor").join("manifest").exists(),
@@ -735,13 +833,13 @@ mod tests {
         let fallback_called_check = fallback_called.clone();
 
         let result = install_from_remote_with_fallback_using(
-            || Ok(()),
+            || Ok(RemoteInstallOutcome::default()),
             move || {
                 fallback_called_check.set(true);
-                Ok(())
+                Ok(RemoteInstallOutcome::default())
             },
         );
-        assert_eq!(result.unwrap(), RemoteInstallSource::GithubRelease);
+        assert_eq!(result.unwrap().0, RemoteInstallSource::GithubRelease);
         assert!(
             !fallback_called.get(),
             "the fallback source must never be attempted when the primary source succeeds"
@@ -764,9 +862,9 @@ mod tests {
                     GithubFetchError::MissingAsset("konductor-v0.1.0-x.tar.gz".to_string()),
                 ))
             },
-            || Ok(()),
+            || Ok(RemoteInstallOutcome::default()),
         );
-        assert_eq!(result.unwrap(), RemoteInstallSource::MainBranchDist);
+        assert_eq!(result.unwrap().0, RemoteInstallSource::MainBranchDist);
     }
 
     /// A release failure with `GithubFetchError::MetadataHttp(404)` --
@@ -785,12 +883,12 @@ mod tests {
                     GithubFetchError::MetadataHttp(404, TokenState::NotOptedIn),
                 ))
             },
-            || Ok(()),
+            || Ok(RemoteInstallOutcome::default()),
         );
-        assert_eq!(result.unwrap(), RemoteInstallSource::MainBranchDist);
+        assert_eq!(result.unwrap().0, RemoteInstallSource::MainBranchDist);
     }
 
-    /// A `GithubFetchError::DownloadHttp(404)` -- a release that
+    /// A `GithubFetchError::DownloadHttp(404, _)` -- a release that
     /// genuinely exists and named a matching asset, but whose resolved
     /// download URL is broken/expired -- must NOT be fallback-eligible,
     /// even though it carries the same raw status code as the
@@ -805,18 +903,18 @@ mod tests {
         let result = install_from_remote_with_fallback_using(
             || {
                 Err(RemoteOrchestrationError::Fetch(
-                    GithubFetchError::DownloadHttp(404),
+                    GithubFetchError::DownloadHttp(404, TokenState::NotOptedIn),
                 ))
             },
             move || {
                 fallback_called_check.set(true);
-                Ok(())
+                Ok(RemoteInstallOutcome::default())
             },
         );
         assert!(matches!(
             result,
             Err(FallbackChainError::ReleaseOnly(
-                RemoteOrchestrationError::Fetch(GithubFetchError::DownloadHttp(404))
+                RemoteOrchestrationError::Fetch(GithubFetchError::DownloadHttp(404, _))
             ))
         ));
         assert!(
@@ -844,7 +942,7 @@ mod tests {
             },
             move || {
                 fallback_called_check.set(true);
-                Ok(())
+                Ok(RemoteInstallOutcome::default())
             },
         );
         assert!(matches!(
@@ -876,7 +974,7 @@ mod tests {
             },
             move || {
                 fallback_called_check.set(true);
-                Ok(())
+                Ok(RemoteInstallOutcome::default())
             },
         );
         assert!(matches!(
@@ -906,6 +1004,7 @@ mod tests {
                 Err(MainBranchDistOrchestrationError::Fetch(
                     GithubBranchFetchError::MissingArtifact(
                         "konductor-v0.1.0-x.tar.gz".to_string(),
+                        TokenState::NotOptedIn,
                     ),
                 ))
             },
@@ -922,7 +1021,7 @@ mod tests {
                 assert!(matches!(
                     main_branch_dist_error,
                     MainBranchDistOrchestrationError::Fetch(
-                        GithubBranchFetchError::MissingArtifact(_)
+                        GithubBranchFetchError::MissingArtifact(_, _)
                     )
                 ));
             }
@@ -940,12 +1039,63 @@ mod tests {
                 "konductor-v0.1.0-x.tar.gz".to_string(),
             )),
             main_branch_dist_error: MainBranchDistOrchestrationError::Fetch(
-                GithubBranchFetchError::MissingArtifact("konductor-v0.1.0-x.tar.gz".to_string()),
+                GithubBranchFetchError::MissingArtifact(
+                    "konductor-v0.1.0-x.tar.gz".to_string(),
+                    TokenState::NotOptedIn,
+                ),
             ),
         };
         let message = err.to_string();
         assert!(message.contains("github-release"));
         assert!(message.contains("main-branch-dist"));
+    }
+
+    /// The exact real-world gap this fix closes, exercised through the
+    /// actual fallback-chain dispatch (`install_from_remote_with_fallback_using`),
+    /// not just `Display` in isolation: a repository with no GitHub
+    /// release published at all gets a 404 on the release metadata call
+    /// (fallback-eligible), the fallback to `main`'s `dist/` ALSO 404s
+    /// because nothing is published there either, and with
+    /// `--use-github-token` never passed, the resulting top-level error
+    /// message must still carry the GITHUB_TOKEN/--use-github-token hint
+    /// -- even though neither underlying error is
+    /// `GithubFetchError::DownloadHttp` (the variant the prior fix in
+    /// this session widened). This is the scenario a real `konductor
+    /// install` with no `--from` hits against a repository with zero
+    /// published releases: the metadata-phase 404 masks the
+    /// download-phase 404 entirely by triggering the fallback first, and
+    /// the fallback's own `MissingArtifact`/`MissingSidecar` 404s were
+    /// never wired to any hint before this fix.
+    #[test]
+    fn fallback_chain_both_failed_on_metadata_404_and_missing_artifact_still_carries_the_hint_when_not_opted_in(
+    ) {
+        let result = install_from_remote_with_fallback_using(
+            || {
+                Err(RemoteOrchestrationError::Fetch(
+                    GithubFetchError::MetadataHttp(404, TokenState::NotOptedIn),
+                ))
+            },
+            || {
+                Err(MainBranchDistOrchestrationError::Fetch(
+                    GithubBranchFetchError::MissingArtifact(
+                        "konductor-v0.1.0-x.tar.gz".to_string(),
+                        TokenState::NotOptedIn,
+                    ),
+                ))
+            },
+        );
+        let err = result.expect_err("both sources failing must surface as BothFailed");
+        let message = err.to_string();
+        assert!(
+            message.contains("GITHUB_TOKEN"),
+            "the top-level fallback-chain error message must name GITHUB_TOKEN even though \
+             neither failure is a DownloadHttp, got: {message:?}"
+        );
+        assert!(
+            message.contains("--use-github-token"),
+            "the top-level fallback-chain error message must hint at --use-github-token, \
+             got: {message:?}"
+        );
     }
 
     #[test]
@@ -957,6 +1107,156 @@ mod tests {
         assert_eq!(
             RemoteInstallSource::MainBranchDist.to_string(),
             "main-branch-dist"
+        );
+    }
+
+    // ── mcp_binary_fetcher_from_resolved_asset: shared-fetch wiring ──────
+    //
+    // These exercise the piece of the single-fetch fix that lives in
+    // THIS module: `install_from_latest_github_release` now resolves
+    // the MCP asset eagerly (via
+    // `github::fetch_latest_release_artifact_and_mcp_asset`, exactly
+    // once) instead of handing `install_from_remote_bytes` a closure
+    // that fetches its own metadata later. `mcp_binary_fetcher_from_resolved_asset`
+    // is the seam that turns that already-resolved result into the
+    // `McpBinaryFetcher` shape `install_from_remote_bytes` still
+    // expects -- these tests confirm it never performs a fetch of its
+    // own, just replays the value it was constructed with.
+
+    /// A successful already-resolved asset result, wrapped by
+    /// `mcp_binary_fetcher_from_resolved_asset` and then invoked,
+    /// must hand back the exact bytes/version it was built with --
+    /// confirming the closure performs no computation/fetch of its
+    /// own at call time.
+    #[test]
+    fn mcp_binary_fetcher_from_resolved_asset_replays_a_successful_result_unchanged() {
+        let fetcher = mcp_binary_fetcher_from_resolved_asset(Ok((
+            b"binary bytes".to_vec(),
+            b"sidecar bytes".to_vec(),
+            "v0.4.0".to_string(),
+        )));
+        let (binary_bytes, sidecar_bytes, version) =
+            fetcher().expect("a successful resolved asset must replay as Ok");
+        assert_eq!(binary_bytes, b"binary bytes");
+        assert_eq!(sidecar_bytes, b"sidecar bytes");
+        assert_eq!(version, "v0.4.0");
+    }
+
+    /// `McpBinaryFetcher` is a `Box<dyn FnOnce() -> ...>`, and this
+    /// closure is called by consuming the `fetcher` binding itself
+    /// (`fetcher()`, not `(&fetcher)()`), same as every real call site
+    /// does (`install_mcp_server_binary_into_remote_temp_dir` takes
+    /// `fetcher: McpBinaryFetcher` by value). A second call --
+    /// `fetcher()` again on the same binding -- is therefore not a
+    /// runtime possibility to guard against: `fetcher` is moved into
+    /// its first (and, per the type, only) call, so a second call
+    /// would be a "use of moved value" compiler error, not a panic.
+    /// This test cannot exercise that second call at all (doing so
+    /// would fail `cargo build`, not `cargo test`); it instead pins
+    /// down the positive half of the same guarantee -- that a single
+    /// call still fully consumes and returns the captured result, with
+    /// no leftover internal state to "already be empty" the way the
+    /// old `RefCell`+`take()`+`.expect(..)` implementation needed to
+    /// check for.
+    #[test]
+    fn mcp_binary_fetcher_from_resolved_asset_is_consumed_by_its_one_permitted_call() {
+        let fetcher = mcp_binary_fetcher_from_resolved_asset(Ok((
+            b"binary bytes".to_vec(),
+            b"sidecar bytes".to_vec(),
+            "v0.9.0".to_string(),
+        )));
+        // Calling `fetcher` here moves it out of this binding. There is
+        // no way to write `fetcher()` a second time below this line --
+        // the binding no longer exists to call -- which is precisely
+        // the compile-time enforcement `FnOnce` (over the old `Fn` +
+        // `RefCell` + `.expect(...)`) was chosen to provide.
+        let result = fetcher();
+        assert!(result.is_ok(), "the one permitted call must still succeed");
+    }
+
+    /// An `UnsupportedPlatform` resolved error must map through with
+    /// `remote::MCP_BINARY_UNSUPPORTED_PLATFORM_MARKER` prefixed onto
+    /// the rendered message -- the exact signal
+    /// `install_mcp_server_binary_into_remote_temp_dir` looks for to
+    /// degrade gracefully instead of blocking the whole install. Same
+    /// mapping the OLD `build_mcp_binary_fetcher` performed; this
+    /// confirms the new eager-resolution path preserves it unchanged.
+    #[test]
+    fn mcp_binary_fetcher_from_resolved_asset_marks_unsupported_platform_errors() {
+        let inner = github::McpServerAssetFetchError::UnsupportedPlatform {
+            os: "windows".to_string(),
+            arch: "x86_64".to_string(),
+        };
+        let rendered = inner.to_string();
+        let fetcher = mcp_binary_fetcher_from_resolved_asset(Err(inner));
+        let err = fetcher().expect_err("an unsupported-platform result must map to an error");
+        assert_eq!(
+            err.to_string(),
+            format!(
+                "{}{rendered}",
+                remote::MCP_BINARY_UNSUPPORTED_PLATFORM_MARKER
+            )
+        );
+    }
+
+    /// A `Fetch` (non-unsupported-platform) resolved error must map
+    /// through with its message UNCHANGED -- no marker prefix -- so
+    /// `install_mcp_server_binary_into_remote_temp_dir` blocks the
+    /// whole install on it, same as the OLD `build_mcp_binary_fetcher`
+    /// did for a real fetch/verify failure on a supported platform.
+    #[test]
+    fn mcp_binary_fetcher_from_resolved_asset_passes_through_fetch_errors_unmarked() {
+        let inner = github::McpServerAssetFetchError::Fetch(GithubFetchError::Network(
+            "connection refused".to_string(),
+        ));
+        let expected_message = inner.to_string();
+        let fetcher = mcp_binary_fetcher_from_resolved_asset(Err(inner));
+        let err = fetcher().expect_err("a Fetch error must map to an error");
+        assert_eq!(err.to_string(), expected_message);
+        assert!(
+            !err.to_string()
+                .contains(remote::MCP_BINARY_UNSUPPORTED_PLATFORM_MARKER),
+            "a non-unsupported-platform error must never carry the degrade marker"
+        );
+    }
+
+    /// The single-fetch guarantee end to end for THIS module's own
+    /// piece: a fake `github::fetch_latest_release_artifact_and_mcp_asset`-shaped
+    /// call is simulated by constructing both halves from ONE shared
+    /// `tag_name`-bearing value and feeding the MCP half straight into
+    /// `mcp_binary_fetcher_from_resolved_asset` -- proving that by the
+    /// time `install_from_latest_github_release` builds this closure,
+    /// the MCP asset's version is already fixed and cannot diverge
+    /// from whatever the tarball side resolved, because both came from
+    /// values derived from the same simulated fetch, not two
+    /// independent ones.
+    #[test]
+    fn mcp_binary_fetcher_built_from_the_same_release_as_the_tarball_reports_matching_version() {
+        let shared_version = "v0.5.0";
+        // Simulates `github::fetch_latest_release_artifact_and_mcp_asset`'s
+        // own tuple: both halves derived from one shared release value
+        // (here, just the shared `shared_version` string standing in
+        // for the single fetched `tag_name`).
+        let artifact_result: Result<(Vec<u8>, Vec<u8>), GithubFetchError> =
+            Ok((b"tarball bytes".to_vec(), b"tarball sidecar".to_vec()));
+        let mcp_asset_result: github::McpAssetResolutionResult = Ok((
+            b"mcp binary bytes".to_vec(),
+            b"mcp sidecar bytes".to_vec(),
+            shared_version.to_string(),
+        ));
+
+        // The tarball side never even looks at `shared_version` --
+        // confirming this test's only shared value is the one the MCP
+        // side reports back.
+        assert!(artifact_result.is_ok());
+
+        let fetcher = mcp_binary_fetcher_from_resolved_asset(mcp_asset_result);
+        let (_binary_bytes, _sidecar_bytes, resolved_version) =
+            fetcher().expect("resolved MCP asset must replay as Ok");
+        assert_eq!(
+            resolved_version, shared_version,
+            "the MCP binary fetcher built alongside the tarball fetch must report back \
+             exactly the shared release's own version"
         );
     }
 }

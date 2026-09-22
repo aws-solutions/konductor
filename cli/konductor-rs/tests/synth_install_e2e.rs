@@ -51,7 +51,7 @@ fn scratch_dir(name: &str) -> PathBuf {
     dir
 }
 
-fn run_konductor(cwd: &Path, args: &[&str]) -> Output {
+fn run_konductor(cwd: &Path, sink: &telemetry_test_sink::TelemetrySink, args: &[&str]) -> Output {
     // `HOME` is overridden to `cwd` (an isolated temp dir) for every
     // invocation here: `install`'s default destination is now `$HOME`
     // (this test always passes `--target` explicitly, so that alone
@@ -60,12 +60,17 @@ fn run_konductor(cwd: &Path, args: &[&str]) -> Output {
     // regardless of `--target` -- without this override, a real
     // subprocess run here would still write an invocation log line into
     // this test-runner's actual home directory.
-    Command::new(bin())
-        .args(args)
-        .current_dir(cwd)
-        .env("HOME", cwd)
-        .output()
-        .expect("failed to spawn konductor binary")
+    //
+    // Telemetry is redirected to `sink`, a loopback fixture: a
+    // successful install still reports a package_installed event, so
+    // without this each synth/install pair would reach the live
+    // production endpoint.
+    let mut command = Command::new(bin());
+    command.args(args).current_dir(cwd).env("HOME", cwd);
+    for var in sink.env_vars() {
+        command.env(var.name, &var.value);
+    }
+    command.output().expect("failed to spawn konductor binary")
 }
 
 /// Seeds a minimal but real agent-spec source tree: one agent with a
@@ -117,12 +122,14 @@ fn seed_skill_source(repo_root: &Path) {
 /// than silently seeding around the mismatch.
 #[test]
 fn real_synth_then_real_install_agree_on_output_path_and_bytes() {
+    let sink = telemetry_test_sink::TelemetrySink::start();
     let repo_root = scratch_dir("repo");
     seed_agent_spec_source(&repo_root);
     seed_skill_source(&repo_root);
 
     let synth_result = run_konductor(
         &repo_root,
+        &sink,
         &[CMD_SYNTH, "--from", &repo_root.display().to_string()],
     );
     assert!(
@@ -170,6 +177,7 @@ fn real_synth_then_real_install_agree_on_output_path_and_bytes() {
     let target_dir = scratch_dir("target");
     let install_result = run_konductor(
         &target_dir,
+        &sink,
         &[
             CMD_INSTALL,
             "--from",
@@ -340,11 +348,13 @@ fn seed_agent_spec_with_context_source(repo_root: &Path) {
 /// copied to the destination the rewritten path points at.
 #[test]
 fn real_synth_then_real_install_rewrites_context_resource_to_absolute_path() {
+    let sink = telemetry_test_sink::TelemetrySink::start();
     let repo_root = scratch_dir("repo-context");
     seed_agent_spec_with_context_source(&repo_root);
 
     let synth_result = run_konductor(
         &repo_root,
+        &sink,
         &[CMD_SYNTH, "--from", &repo_root.display().to_string()],
     );
     assert!(
@@ -371,6 +381,7 @@ fn real_synth_then_real_install_rewrites_context_resource_to_absolute_path() {
     let target_dir = scratch_dir("target-context");
     let install_result = run_konductor(
         &target_dir,
+        &sink,
         &[
             CMD_INSTALL,
             "--from",
@@ -417,6 +428,7 @@ fn real_synth_then_real_install_rewrites_context_resource_to_absolute_path() {
     // resources entry.
     let second_install_result = run_konductor(
         &target_dir,
+        &sink,
         &[
             CMD_INSTALL,
             "--from",
@@ -495,11 +507,13 @@ fn seed_agent_spec_with_skill_source(repo_root: &Path) {
 /// up referencing ONLY its own declared skill, never the other's.
 #[test]
 fn real_synth_then_real_install_scopes_skill_resources_to_konductor_skills() {
+    let sink = telemetry_test_sink::TelemetrySink::start();
     let repo_root = scratch_dir("repo-skill-scoping");
     seed_agent_spec_with_skill_source(&repo_root);
 
     let synth_result = run_konductor(
         &repo_root,
+        &sink,
         &[CMD_SYNTH, "--from", &repo_root.display().to_string()],
     );
     assert!(
@@ -526,6 +540,7 @@ fn real_synth_then_real_install_scopes_skill_resources_to_konductor_skills() {
     let target_dir = scratch_dir("target-skill-scoping");
     let install_result = run_konductor(
         &target_dir,
+        &sink,
         &[
             CMD_INSTALL,
             "--from",
@@ -626,11 +641,13 @@ fn seed_agent_spec_with_dangling_skill_reference(repo_root: &Path) {
 /// `doctor.rs`'s own unit tests in the same crate).
 #[test]
 fn real_synth_fails_on_dangling_skill_reference() {
+    let sink = telemetry_test_sink::TelemetrySink::start();
     let repo_root = scratch_dir("repo-dangling-skill");
     seed_agent_spec_with_dangling_skill_reference(&repo_root);
 
     let synth_result = run_konductor(
         &repo_root,
+        &sink,
         &[CMD_SYNTH, "--from", &repo_root.display().to_string()],
     );
     assert!(

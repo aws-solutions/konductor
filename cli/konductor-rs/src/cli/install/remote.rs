@@ -35,15 +35,22 @@ const MAX_ENTRY_COUNT: usize = 50_000;
 
 /// What `install_from_remote_bytes` can fail with. `VerifySidecar`/
 /// `VerifyChecksum` are split so a caller can map each to its own exit
-/// code (64 vs 65; see design doc §7). `Unpack` covers a corrupt/unsafe
+/// code (64 vs 65). `Unpack` covers a corrupt/unsafe
 /// archive or disk I/O. `Install` passes `install_from_local`'s error
-/// through unchanged.
+/// through unchanged. `McpBinaryFetch` covers a supported-platform MCP
+/// binary fetch/verify failure that is NOT the "platform unsupported"
+/// case (see `install_mcp_server_binary_into_remote_temp_dir`'s own
+/// doc comment for that distinction) -- carries only the already-
+/// rendered message text, mirroring `Unpack`'s own `std::io::Error`
+/// wrapping but for the `McpBinaryFetcher` seam's `std::io::Error`
+/// shape specifically.
 #[derive(Debug)]
 pub enum RemoteInstallError {
     VerifySidecar(SidecarError),
     VerifyChecksum(VerificationError),
     Unpack(std::io::Error),
     Install(InstallError),
+    McpBinaryFetch(String),
 }
 
 impl std::fmt::Display for RemoteInstallError {
@@ -53,6 +60,9 @@ impl std::fmt::Display for RemoteInstallError {
             RemoteInstallError::VerifyChecksum(err) => write!(f, "{err}"),
             RemoteInstallError::Unpack(err) => write!(f, "failed to unpack artifact: {err}"),
             RemoteInstallError::Install(err) => write!(f, "{err}"),
+            RemoteInstallError::McpBinaryFetch(message) => {
+                write!(f, "failed to fetch the skill-lookup-mcp binary: {message}")
+            }
         }
     }
 }
@@ -73,6 +83,177 @@ fn verify_artifact_pair(
     let entry = artifact::parse_sidecar(&sidecar_text, expected_filename)
         .map_err(RemoteInstallError::VerifySidecar)?;
     artifact::verify_sha256(artifact_bytes, &entry.hash).map_err(RemoteInstallError::VerifyChecksum)
+}
+
+// ── MCP server binary (skill-lookup-mcp) remote fetch ───────────────────
+
+/// Seam for the MCP server binary's own network fetch, mirroring
+/// `RemoteArtifactFetcher`'s shape: a boxed closure returning
+/// `(binary_bytes, sidecar_bytes, release_version)` or an I/O error.
+/// Production wires this to an already-resolved
+/// `github::McpServerAssetFetchError`/asset-bytes result -- resolved
+/// eagerly from the SAME release fetch the tarball asset was resolved
+/// from (see `remote_orchestrate::install_from_latest_github_release`'s
+/// own doc comment for why), mapped to `std::io::Error` -- see
+/// `install_mcp_server_binary_into_remote_temp_dir`'s own doc comment
+/// for how the "platform unsupported" vs. "fetch failed on a supported
+/// platform" distinction survives that mapping. Tests inject a fake
+/// closure instead, so no test in this codebase depends on network
+/// access, matching `RemoteArtifactFetcher`'s own precedent.
+///
+/// `FnOnce`, not `Fn`: this fetcher is threaded through by value
+/// (`Option<McpBinaryFetcher>`, never `Option<&McpBinaryFetcher>`) and
+/// invoked at most once per install, at the single call site inside
+/// `install_mcp_server_binary_into_remote_temp_dir`. The bound makes
+/// that single-call contract a compile-time property of the type
+/// itself, rather than a runtime invariant an implementation has to
+/// uphold with its own internal bookkeeping.
+pub(crate) type McpBinaryFetcher<'a> =
+    Box<dyn FnOnce() -> std::io::Result<(Vec<u8>, Vec<u8>, String)> + 'a>;
+
+/// Sentinel prefix `install_mcp_server_binary_into_remote_temp_dir`
+/// looks for in a mapped fetcher error's message to recover the
+/// "platform unsupported" signal across the `std::io::Error` boundary
+/// `McpBinaryFetcher`'s closure shape imposes -- the closure can only
+/// return `std::io::Result`, which has no room for
+/// `github::McpServerAssetFetchError::is_unsupported_platform()`'s own
+/// typed distinction once it crosses that seam. Production's real
+/// fetcher (built in `remote_orchestrate.rs`) prefixes exactly this
+/// marker onto the mapped message whenever the underlying error IS
+/// `UnsupportedPlatform`, so the distinction survives the mapping
+/// intact; a fake test fetcher can reproduce the identical shape with
+/// no real network call.
+pub(crate) const MCP_BINARY_UNSUPPORTED_PLATFORM_MARKER: &str =
+    "__konductor_mcp_binary_unsupported_platform__:";
+
+/// The one MCP server binary this remote-fetch path installs --
+/// `skill-lookup-mcp`, matching `mcp_server::MCP_SERVER_BINARY_NAMES`'s
+/// sole entry. A bare constant (not a re-export of that slice) since
+/// this module only ever needs the one name.
+fn mcp_binary_name() -> &'static str {
+    "skill-lookup-mcp"
+}
+
+/// The explicit, actionable warning printed (never panicking, never
+/// silent) when the current host has no published `skill-lookup-mcp`
+/// binary at all -- see `install_mcp_server_binary_into_remote_temp_dir`'s
+/// own doc comment for the degrade-vs-block decision this backs.
+/// `rendered_error_text` is the already-rendered
+/// `github::McpServerAssetFetchError::UnsupportedPlatform`'s own
+/// `Display` text (everything after the marker prefix at the call
+/// site), so this prints it verbatim rather than re-deriving
+/// `os`/`arch` a second time.
+fn unsupported_platform_warning(rendered_error_text: &str) -> String {
+    format!("konductor install: warning: {rendered_error_text}")
+}
+
+/// Parses `sidecar_bytes` as a `sha256sum`-format sidecar (reusing
+/// `artifact::parse_sidecar`, the identical helper `verify_artifact_pair`
+/// already uses for the tarball) and returns just the hash, checked
+/// against `expected_filename`. Kept separate from `verify_artifact_pair`
+/// itself (which owns both the artifact bytes and the parsed hash
+/// together) since this call site verifies via `artifact::verify_sha256`
+/// directly, so it can distinguish a `SidecarError` from a
+/// `VerificationError` the same way `verify_artifact_pair` already does.
+fn parse_mcp_sidecar_hash(
+    sidecar_bytes: &[u8],
+    expected_filename: &str,
+) -> Result<String, RemoteInstallError> {
+    let sidecar_text = String::from_utf8_lossy(sidecar_bytes);
+    let entry = artifact::parse_sidecar(&sidecar_text, expected_filename)
+        .map_err(RemoteInstallError::VerifySidecar)?;
+    Ok(entry.hash)
+}
+
+/// Fetches the MCP server binary via `fetcher`, verifies it against
+/// its own fetched `.sha256` sidecar (reusing `parse_mcp_sidecar_hash`/
+/// `artifact::verify_sha256`, the identical verification primitives the
+/// tarball fetch already uses), and writes the verified bytes to
+/// `<temp_dir_path>/mcp/target/release/skill-lookup-mcp` -- the EXACT
+/// path `mcp_server::mcp_binary_source_path`/`install_bin_files`
+/// already read from locally, reused here rather than duplicated, so
+/// `McpInstallPhase` (unchanged) picks the binary up transparently once
+/// `strategy.install_from_local` runs with `temp_dir_path` as its own
+/// `repo_root`. Sets the executable bit via the existing
+/// `kiro_cli::set_executable` helper, same as the local `--from` path.
+///
+/// ── Degrade-vs-block decision (explicit, per this feature's design) ──
+/// Returns `Ok(None)` -- DEGRADE GRACEFULLY, never blocking the rest of
+/// the install -- when `fetcher()` fails with the unsupported-platform
+/// marker (see `MCP_BINARY_UNSUPPORTED_PLATFORM_MARKER`): a platform
+/// with no published binary at all is a permanent, expected condition
+/// (x86_64 macOS, Windows, or any other unmapped OS/ARCH), not a
+/// transient failure, so failing the WHOLE install over it would block
+/// every agent/skill/context install too, for a feature (skill lookup)
+/// that is optional at runtime -- `resource_rewrite/mcp_server.rs`'s own
+/// `McpServerPass` already tolerates "the binary was never installed"
+/// as a normal, non-fatal state for the identical LOCAL `--from` case
+/// (see that module's own doc comment: "a missing binary is not an
+/// error"). This function extends that tolerance to the new
+/// REMOTE-fetch path's own distinct failure mode, printing a clear
+/// warning via `unsupported_platform_warning` rather than the SILENT
+/// `continue` `mcp_server.rs`'s local path uses for its own (different)
+/// "not yet built" case.
+///
+/// Returns `Err(RemoteInstallError::McpBinaryFetch)` -- BLOCKING the
+/// whole install -- for every OTHER fetcher failure on a platform that
+/// IS mapped to a real target triple: a network error, or a release
+/// genuinely missing that platform's asset despite being mapped, are
+/// unexpected/transient conditions on a platform the release build
+/// matrix explicitly supports, distinguishable from the "not supported
+/// at all" case by NOT carrying the marker. A checksum mismatch instead
+/// maps to `RemoteInstallError::VerifyChecksum`/`VerifySidecar`, the
+/// same variants the tarball's own verification failure uses, so a
+/// caller mapping exit codes treats both identically.
+///
+/// Returns `Ok(Some(release_version))` on success -- the release's own
+/// version string (its `tag_name`), threaded back so a caller can
+/// report the actually-installed content's version.
+fn install_mcp_server_binary_into_remote_temp_dir(
+    fetcher: McpBinaryFetcher,
+    temp_dir_path: &Path,
+) -> Result<Option<String>, RemoteInstallError> {
+    let (binary_bytes, sidecar_bytes, release_version) = match fetcher() {
+        Ok(triple) => triple,
+        Err(err) => {
+            let message = err.to_string();
+            if let Some(rest) = message.strip_prefix(MCP_BINARY_UNSUPPORTED_PLATFORM_MARKER) {
+                eprintln!("{}", unsupported_platform_warning(rest));
+                return Ok(None);
+            }
+            return Err(RemoteInstallError::McpBinaryFetch(message));
+        }
+    };
+
+    // The sidecar's own recorded filename must match the exact asset
+    // filename that was actually fetched -- reconstructed the same way
+    // `github::resolve_mcp_server_asset_from_release` built it, from
+    // (release_version, current host's own target triple). Valid
+    // because this function only ever runs on the SAME host that
+    // fetched the bytes, never a cross-host fetch-then-verify split.
+    let binary_filename = match super::target_triple::current_host_target_triple() {
+        Some(triple) => super::github::expected_mcp_server_asset_filename(&release_version, triple),
+        // Unreachable in practice: a fetcher that succeeded already
+        // proved the platform is supported (see the early return
+        // above). Falls back to a filename built from a bare name-only
+        // fallback rather than panicking, in case a future fake test
+        // fetcher exercises this path directly with a mismatched host.
+        None => mcp_binary_name().to_string(),
+    };
+
+    let hash = parse_mcp_sidecar_hash(&sidecar_bytes, &binary_filename)?;
+    let verified =
+        artifact::verify_sha256(binary_bytes, &hash).map_err(RemoteInstallError::VerifyChecksum)?;
+
+    let destination = super::mcp_server::mcp_binary_source_path(temp_dir_path, mcp_binary_name());
+    if let Some(parent) = destination.parent() {
+        std::fs::create_dir_all(parent).map_err(RemoteInstallError::Unpack)?;
+    }
+    crate::cli::atomic_write::write_atomic(&destination, &verified.data)
+        .map_err(RemoteInstallError::Unpack)?;
+    super::kiro_cli::set_executable(&destination, true).map_err(RemoteInstallError::Unpack)?;
+
+    Ok(Some(release_version))
 }
 
 /// Rejects an archive entry path that would escape `dest_root` --
@@ -298,12 +479,28 @@ impl Drop for RemoteTempDir {
 /// Fetches a release artifact and its sidecar as raw bytes. Return
 /// shape (`(artifact_bytes, sidecar_bytes)`) matches exactly what
 /// `install_from_remote_bytes` consumes. In production this is
-/// implemented by `install::github::fetch_latest_github_release_artifact`
-/// (a real GitHub Release fetch, wired into `dispatch_install_with` via
-/// `install::remote_orchestrate`); this type alias still exists as the
-/// closure shape tests use to inject a fake fetcher instead of a real
+/// implemented by resolving the tarball asset from the release
+/// `install::github::fetch_latest_release_artifact_and_mcp_asset`
+/// fetched (a real GitHub Release fetch, wired into
+/// `dispatch_install_with` via `install::remote_orchestrate`); this
+/// type alias still exists as the closure shape tests use to inject a
+/// fake fetcher instead of a real
 /// network call. Modeled directly on `artifact::ArtifactFetcher`.
 pub type RemoteArtifactFetcher<'a> = Box<dyn Fn() -> std::io::Result<(Vec<u8>, Vec<u8>)> + 'a>;
+
+/// What a successful `install_from_remote_bytes` call actually
+/// installed, beyond "it succeeded" -- today just the MCP server
+/// binary's own release version (`None` when no `mcp_binary_fetcher`
+/// was supplied, or when the current host has no published binary at
+/// all -- see `install_mcp_server_binary_into_remote_temp_dir`'s own
+/// degrade-vs-block doc comment for that second case). Named struct
+/// rather than a bare `Option<String>` return so a future additional
+/// piece of "what got installed" data has an obvious place to land
+/// without changing every existing call site's return type again.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct RemoteInstallOutcome {
+    pub mcp_binary_version: Option<String>,
+}
 
 /// Verifies the pair, unpacks into a fresh temp directory, hands that
 /// directory's path to `strategy.install_from_local` UNCHANGED, then
@@ -313,6 +510,18 @@ pub type RemoteArtifactFetcher<'a> = Box<dyn Fn() -> std::io::Result<(Vec<u8>, V
 /// `dispatch_install_with`'s no-`--from` branch via
 /// `install::remote_orchestrate::install_from_latest_github_release`,
 /// which does the real GitHub Release fetch before calling this.
+///
+/// `mcp_binary_fetcher` is `None` for a caller that doesn't want the
+/// additive MCP-binary fetch at all (e.g.
+/// `install_from_main_branch_dist`'s own main-branch-`dist/` source,
+/// which has no analogous per-platform release asset to fetch from a
+/// branch tree); `Some(fetcher)` for the real GitHub-release path,
+/// which always supplies a closure wrapping the already-resolved
+/// `github::McpServerAssetFetchError`/asset-bytes result (see
+/// `remote_orchestrate::mcp_binary_fetcher_from_resolved_asset`). See
+/// `install_mcp_server_binary_into_remote_temp_dir`'s own doc comment
+/// for the fetch/verify/degrade-vs-block behavior once supplied.
+#[allow(clippy::too_many_arguments)]
 pub fn install_from_remote_bytes(
     strategy: &dyn InstallStrategy,
     target_dir: &Path,
@@ -321,7 +530,8 @@ pub fn install_from_remote_bytes(
     artifact_filename: &str,
     installed_at: &str,
     no_telemetry: bool,
-) -> Result<(), RemoteInstallError> {
+    mcp_binary_fetcher: Option<McpBinaryFetcher>,
+) -> Result<RemoteInstallOutcome, RemoteInstallError> {
     install_from_remote_bytes_named(
         "install",
         strategy,
@@ -331,6 +541,7 @@ pub fn install_from_remote_bytes(
         artifact_filename,
         installed_at,
         no_telemetry,
+        mcp_binary_fetcher,
     )
 }
 
@@ -357,7 +568,8 @@ fn install_from_remote_bytes_named(
     artifact_filename: &str,
     installed_at: &str,
     no_telemetry: bool,
-) -> Result<(), RemoteInstallError> {
+    mcp_binary_fetcher: Option<McpBinaryFetcher>,
+) -> Result<RemoteInstallOutcome, RemoteInstallError> {
     install_from_remote_bytes_named_with_limit(
         temp_name_tag,
         strategy,
@@ -367,6 +579,7 @@ fn install_from_remote_bytes_named(
         artifact_filename,
         installed_at,
         no_telemetry,
+        mcp_binary_fetcher,
         MAX_UNPACKED_BYTES,
     )
 }
@@ -381,8 +594,9 @@ fn install_from_remote_bytes_named_with_limit(
     artifact_filename: &str,
     installed_at: &str,
     no_telemetry: bool,
+    mcp_binary_fetcher: Option<McpBinaryFetcher>,
     max_unpacked_bytes: u64,
-) -> Result<(), RemoteInstallError> {
+) -> Result<RemoteInstallOutcome, RemoteInstallError> {
     let temp_dir = RemoteTempDir::create(temp_name_tag).map_err(RemoteInstallError::Unpack)?;
 
     let verified = verify_artifact_pair(artifact_bytes, sidecar_bytes, artifact_filename)?;
@@ -392,6 +606,19 @@ fn install_from_remote_bytes_named_with_limit(
         max_unpacked_bytes,
         MAX_ENTRY_COUNT,
     )?;
+
+    // Additive: fetches the platform-specific skill-lookup-mcp binary
+    // into `<temp_dir>/mcp/target/release/skill-lookup-mcp` BEFORE
+    // `install_from_local` runs, so `McpInstallPhase` (unmodified)
+    // finds it exactly where it already looks for a local `--from`
+    // build. `None` (the main-branch-dist source) or an
+    // unsupported-platform outcome both leave this `None` -- never an
+    // error on their own; see the called function's own doc comment
+    // for the full degrade-vs-block decision.
+    let mcp_binary_version = match mcp_binary_fetcher {
+        Some(fetcher) => install_mcp_server_binary_into_remote_temp_dir(fetcher, &temp_dir.path)?,
+        None => None,
+    };
 
     let from = temp_dir.path.to_str().ok_or_else(|| {
         RemoteInstallError::Unpack(std::io::Error::new(
@@ -446,7 +673,7 @@ fn install_from_remote_bytes_named_with_limit(
         );
     }
 
-    Ok(())
+    Ok(RemoteInstallOutcome { mcp_binary_version })
 }
 
 #[cfg(test)]
@@ -732,6 +959,7 @@ mod tests {
             ARTIFACT_FILENAME,
             "2026-01-01T00:00:00Z",
             false,
+            None,
             TINY_LIMIT,
         )
         .expect_err("oversized archive must fail unpack even after verify succeeds");
@@ -767,6 +995,7 @@ mod tests {
             ARTIFACT_FILENAME,
             "2026-01-01T00:00:00Z",
             false,
+            None,
         )
         .expect("end-to-end remote install must succeed");
 
@@ -818,6 +1047,7 @@ mod tests {
             ARTIFACT_FILENAME,
             "2026-01-01T00:00:00Z",
             false,
+            None,
         )
         .expect("end-to-end remote install must succeed");
 
@@ -882,6 +1112,7 @@ mod tests {
             ARTIFACT_FILENAME,
             "2026-01-01T00:00:00Z",
             false,
+            None,
         )
         .expect("end-to-end remote install must succeed even though this test then corrupts the manifest afterward");
 
@@ -943,6 +1174,7 @@ mod tests {
             ARTIFACT_FILENAME,
             "2026-01-01T00:00:00Z",
             false,
+            None,
         )
         .expect_err("checksum mismatch must fail the install");
         assert!(matches!(err, RemoteInstallError::VerifyChecksum(_)));
@@ -977,6 +1209,7 @@ mod tests {
             ARTIFACT_FILENAME,
             "2026-01-01T00:00:00Z",
             false,
+            None,
         )
         .expect_err("corrupt archive bytes must fail unpack after verify succeeds");
         assert!(matches!(err, RemoteInstallError::Unpack(_)));
@@ -1584,5 +1817,377 @@ mod tests {
 
         fs::remove_dir_all(&dist_root).ok();
         fs::remove_dir_all(&dest_root).ok();
+    }
+
+    // ── MCP server binary (skill-lookup-mcp) remote fetch tests ─────────
+
+    /// The sidecar-recorded filename `install_mcp_server_binary_into_remote_temp_dir`
+    /// re-derives internally from the CURRENT host's own target triple
+    /// (see that function's own doc comment) -- tests must build their
+    /// fake sidecars against that same real triple, not a hardcoded
+    /// one, so these tests pass regardless of which of the three
+    /// supported CI runner architectures actually executes them. Skips
+    /// (returns `None`) rather than asserting on an unsupported test
+    /// runner platform -- none of the three supported CI runners hit
+    /// that branch, and hardcoding a fallback string here would defeat
+    /// the whole point of re-deriving it for real.
+    fn current_host_mcp_binary_filename(release_version: &str) -> Option<String> {
+        super::super::target_triple::current_host_target_triple().map(|triple| {
+            super::super::github::expected_mcp_server_asset_filename(release_version, triple)
+        })
+    }
+
+    /// Builds a real `(binary_bytes, sidecar_bytes)` pair with a
+    /// matching sha256 sidecar, mirroring `build_real_artifact_and_sidecar`'s
+    /// own real-hash construction but for the MCP binary shape instead
+    /// of a packaged tarball. Sidecar filename is the CURRENT host's
+    /// own real triple (see `current_host_mcp_binary_filename`).
+    fn build_real_mcp_binary_and_sidecar(contents: &[u8]) -> (Vec<u8>, Vec<u8>) {
+        let filename = current_host_mcp_binary_filename("v0.1.1")
+            .expect("test runner must be one of the three supported CI platforms");
+        let hash = artifact::sha256_hex(contents);
+        let sidecar_bytes = format!("{hash}  {filename}\n").into_bytes();
+        (contents.to_vec(), sidecar_bytes)
+    }
+
+    /// A real fake fetcher: succeeds with real, checksum-matching bytes
+    /// for a given `release_version`.
+    fn fake_mcp_fetcher_success(
+        contents: Vec<u8>,
+        release_version: &str,
+    ) -> McpBinaryFetcher<'static> {
+        let (binary_bytes, sidecar_bytes) = build_real_mcp_binary_and_sidecar(&contents);
+        let release_version = release_version.to_string();
+        Box::new(move || {
+            Ok((
+                binary_bytes.clone(),
+                sidecar_bytes.clone(),
+                release_version.clone(),
+            ))
+        })
+    }
+
+    /// (a) Correct asset filename construction per platform: pins that
+    /// this test module's own `MCP_BINARY_FILENAME` constant matches
+    /// `github::expected_mcp_server_asset_filename`'s real construction
+    /// -- proving the sidecar text this test builds is the SAME shape
+    /// production code expects, not a hand-guessed string that happens
+    /// to look right.
+    #[test]
+    fn mcp_binary_filename_construction_matches_github_module_for_every_supported_platform() {
+        let cases = [
+            ("v0.1.1", "x86_64-unknown-linux-musl"),
+            ("v0.1.1", "aarch64-unknown-linux-musl"),
+            ("v0.1.1", "aarch64-apple-darwin"),
+        ];
+        for (version, triple) in cases {
+            let expected =
+                super::super::github::expected_mcp_server_asset_filename(version, triple);
+            assert_eq!(expected, format!("skill-lookup-mcp-{version}-{triple}"));
+        }
+    }
+
+    /// (b) Checksum verification SUCCESS, end to end: a fake fetcher
+    /// returning real, checksum-matching bytes must land the binary,
+    /// executable, at `<temp_dir>/mcp/target/release/skill-lookup-mcp`
+    /// -- the exact path `mcp_server::mcp_binary_source_path` reads
+    /// from locally.
+    #[cfg(unix)]
+    #[test]
+    fn install_mcp_server_binary_into_remote_temp_dir_succeeds_with_matching_checksum() {
+        let temp_dir = scratch_dir("mcp-fetch-checksum-ok");
+        let fetcher = fake_mcp_fetcher_success(b"fake mcp binary bytes".to_vec(), "v0.1.1");
+
+        let result = install_mcp_server_binary_into_remote_temp_dir(fetcher, &temp_dir)
+            .expect("a checksum-matching fetch must succeed");
+        assert_eq!(result, Some("v0.1.1".to_string()));
+
+        let installed = temp_dir
+            .join("mcp")
+            .join("target")
+            .join("release")
+            .join("skill-lookup-mcp");
+        assert!(installed.is_file());
+        assert_eq!(fs::read(&installed).unwrap(), b"fake mcp binary bytes");
+
+        use std::os::unix::fs::PermissionsExt;
+        let mode = fs::metadata(&installed).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o755, "installed MCP binary must be executable");
+
+        fs::remove_dir_all(&temp_dir).ok();
+    }
+
+    /// (b) Checksum verification FAILURE: a fetcher returning bytes
+    /// that don't match the sidecar's recorded hash must fail with
+    /// `VerifyChecksum`, and must never write anything to disk.
+    #[test]
+    fn install_mcp_server_binary_into_remote_temp_dir_fails_on_checksum_mismatch() {
+        let temp_dir = scratch_dir("mcp-fetch-checksum-mismatch");
+        let real_contents = b"fake mcp binary bytes".to_vec();
+        let (binary_bytes, _) = build_real_mcp_binary_and_sidecar(&real_contents);
+        let filename = current_host_mcp_binary_filename("v0.1.1").unwrap();
+        let bad_sidecar = format!("{}  {filename}\n", "0".repeat(64)).into_bytes();
+        let fetcher: McpBinaryFetcher = Box::new(move || {
+            Ok((
+                binary_bytes.clone(),
+                bad_sidecar.clone(),
+                "v0.1.1".to_string(),
+            ))
+        });
+
+        let err = install_mcp_server_binary_into_remote_temp_dir(fetcher, &temp_dir)
+            .expect_err("a checksum mismatch must fail");
+        assert!(matches!(err, RemoteInstallError::VerifyChecksum(_)));
+        assert!(
+            !temp_dir.join("mcp").exists(),
+            "no bytes must be written to disk when checksum verification fails"
+        );
+
+        fs::remove_dir_all(&temp_dir).ok();
+    }
+
+    /// A malformed sidecar (not the `<hash>  <filename>` shape) must
+    /// fail with `VerifySidecar`, distinguishable from a checksum
+    /// mismatch.
+    #[test]
+    fn install_mcp_server_binary_into_remote_temp_dir_fails_on_malformed_sidecar() {
+        let temp_dir = scratch_dir("mcp-fetch-malformed-sidecar");
+        let fetcher: McpBinaryFetcher = Box::new(|| {
+            Ok((
+                b"fake mcp binary bytes".to_vec(),
+                b"not a valid sidecar".to_vec(),
+                "v0.1.1".to_string(),
+            ))
+        });
+
+        let err = install_mcp_server_binary_into_remote_temp_dir(fetcher, &temp_dir)
+            .expect_err("a malformed sidecar must fail");
+        assert!(matches!(err, RemoteInstallError::VerifySidecar(_)));
+
+        fs::remove_dir_all(&temp_dir).ok();
+    }
+
+    /// (c) Unmapped-platform error path: a fetcher failing with the
+    /// unsupported-platform marker must DEGRADE GRACEFULLY -- return
+    /// `Ok(None)`, write nothing to disk, and never propagate as an
+    /// install-blocking error.
+    #[test]
+    fn install_mcp_server_binary_into_remote_temp_dir_degrades_gracefully_on_unsupported_platform()
+    {
+        let temp_dir = scratch_dir("mcp-fetch-unsupported-platform");
+        let fetcher: McpBinaryFetcher = Box::new(|| {
+            Err(std::io::Error::other(format!(
+                "{MCP_BINARY_UNSUPPORTED_PLATFORM_MARKER}no skill-lookup-mcp binary is \
+                 published for macos/x86_64; skill lookups will be unavailable for this install"
+            )))
+        });
+
+        let result = install_mcp_server_binary_into_remote_temp_dir(fetcher, &temp_dir).expect(
+            "an unsupported platform must degrade gracefully, never error the whole install",
+        );
+        assert_eq!(
+            result, None,
+            "no version is resolved when the platform has no published binary"
+        );
+        assert!(
+            !temp_dir.join("mcp").exists(),
+            "nothing must be written to disk for an unsupported platform"
+        );
+
+        fs::remove_dir_all(&temp_dir).ok();
+    }
+
+    /// A supported-platform fetch/verify failure that is NOT the
+    /// unsupported-platform marker (a real network error on a mapped
+    /// triple) must be a BLOCKING, non-panicking error -- distinguishable
+    /// from the unsupported-platform case by returning `Err`, not
+    /// `Ok(None)`.
+    #[test]
+    fn install_mcp_server_binary_into_remote_temp_dir_blocks_on_a_real_network_error() {
+        let temp_dir = scratch_dir("mcp-fetch-network-error");
+        let fetcher: McpBinaryFetcher =
+            Box::new(|| Err(std::io::Error::other("connection refused")));
+
+        let err = install_mcp_server_binary_into_remote_temp_dir(fetcher, &temp_dir)
+            .expect_err("a real fetch failure on a supported platform must block the install");
+        assert!(matches!(err, RemoteInstallError::McpBinaryFetch(_)));
+        assert!(err.to_string().contains("connection refused"));
+
+        fs::remove_dir_all(&temp_dir).ok();
+    }
+
+    /// (d) mcpServers injection on success, end to end through
+    /// `install_from_remote_bytes` itself (not just the inner fetch
+    /// helper): a real tarball install (with an agent declaring a
+    /// packaged-skill resource) PLUS a real, checksum-matching MCP
+    /// binary fetcher must result in an installed agent JSON carrying
+    /// an injected `mcpServers.konductor-skills` entry pointing at the
+    /// binary this run just fetched and installed -- proving
+    /// `McpInstallPhase`/`resource_rewrite::McpServerPass` (both
+    /// unmodified) transparently pick up the remotely-fetched binary
+    /// the same way they already do for a local `--from` build.
+    #[test]
+    fn install_from_remote_bytes_injects_mcp_server_entry_when_binary_fetcher_supplied() {
+        let dist_root = scratch_dir("mcp-e2e-dist");
+        // An agent declaring a skill:// resource, plus the skill itself
+        // -- the shape `resource_rewrite::McpServerPass::matches` gates
+        // injection on.
+        let agents_dir = dist_root.join("kiro-cli-v2").join("agents");
+        fs::create_dir_all(&agents_dir).unwrap();
+        fs::write(
+            agents_dir.join("k-example.json"),
+            br#"{"name":"k-example","resources":["skill://skills/constraints/SKILL.md"]}"#,
+        )
+        .unwrap();
+        let skills_dir = dist_root
+            .join("kiro-cli-v2")
+            .join("skills")
+            .join("constraints");
+        fs::create_dir_all(&skills_dir).unwrap();
+        fs::write(
+            skills_dir.join("SKILL.md"),
+            b"---\nname: constraints\n---\nBody\n",
+        )
+        .unwrap();
+        let (artifact_bytes, sidecar_bytes) = build_real_artifact_and_sidecar(&dist_root);
+
+        let mcp_fetcher = fake_mcp_fetcher_success(b"real mcp binary bytes".to_vec(), "v0.1.1");
+
+        let target_dir = scratch_dir("mcp-e2e-target");
+        let tag = "mcp-e2e-tag";
+
+        let outcome = install_from_remote_bytes_named(
+            tag,
+            &KiroCliInstallStrategy,
+            &target_dir,
+            artifact_bytes,
+            &sidecar_bytes,
+            ARTIFACT_FILENAME,
+            "2026-01-01T00:00:00Z",
+            false,
+            Some(mcp_fetcher),
+        )
+        .expect("end-to-end install with a real MCP-binary fetcher must succeed");
+        assert_eq!(outcome.mcp_binary_version, Some("v0.1.1".to_string()));
+
+        let installed_agent = target_dir.join(".kiro/agents/k-example.json");
+        let value: serde_json::Value =
+            serde_json::from_slice(&fs::read(&installed_agent).unwrap()).unwrap();
+        let command = value["mcpServers"]["konductor-skills"]["command"]
+            .as_str()
+            .expect("mcpServers.konductor-skills.command must be injected");
+        assert!(
+            Path::new(command).is_file(),
+            "the injected command must point at the actually-installed binary on disk"
+        );
+        assert_eq!(
+            std::path::Path::new(command),
+            target_dir.join(".konductor/bin/skill-lookup-mcp")
+        );
+
+        fs::remove_dir_all(&dist_root).ok();
+        fs::remove_dir_all(&target_dir).ok();
+    }
+
+    /// (e) No `mcp_binary_fetcher` supplied (e.g. the main-branch-dist
+    /// source) must install successfully with no `mcpServers` injection
+    /// at all -- the pre-existing tarball-only behavior every earlier
+    /// test in this module already exercises, pinned once more here
+    /// explicitly for the "no fetcher" contract this feature adds.
+    #[test]
+    fn install_from_remote_bytes_installs_with_no_mcp_injection_when_fetcher_is_none() {
+        let dist_root = scratch_dir("mcp-e2e-no-fetcher-dist");
+        seed_dist_agent(&dist_root, "k-example", b"{\"name\":\"k-example\"}\n");
+        let (artifact_bytes, sidecar_bytes) = build_real_artifact_and_sidecar(&dist_root);
+
+        let target_dir = scratch_dir("mcp-e2e-no-fetcher-target");
+        let outcome = install_from_remote_bytes(
+            &KiroCliInstallStrategy,
+            &target_dir,
+            artifact_bytes,
+            &sidecar_bytes,
+            ARTIFACT_FILENAME,
+            "2026-01-01T00:00:00Z",
+            false,
+            None,
+        )
+        .expect("install with no MCP-binary fetcher must still succeed");
+        assert_eq!(outcome.mcp_binary_version, None);
+        assert!(!target_dir.join(".konductor/bin").exists());
+
+        fs::remove_dir_all(&dist_root).ok();
+        fs::remove_dir_all(&target_dir).ok();
+    }
+
+    /// The unsupported-platform case, exercised end to end through
+    /// `install_from_remote_bytes`: the whole install must still
+    /// succeed (agents/skills/context install normally), with no
+    /// `mcpServers` injection and no MCP binary on disk -- degrade
+    /// gracefully, never block.
+    #[test]
+    fn install_from_remote_bytes_succeeds_with_no_mcp_binary_when_platform_unsupported() {
+        let dist_root = scratch_dir("mcp-e2e-unsupported-dist");
+        seed_dist_agent(&dist_root, "k-example", b"{\"name\":\"k-example\"}\n");
+        let (artifact_bytes, sidecar_bytes) = build_real_artifact_and_sidecar(&dist_root);
+
+        let unsupported_fetcher: McpBinaryFetcher = Box::new(|| {
+            Err(std::io::Error::other(format!(
+                "{MCP_BINARY_UNSUPPORTED_PLATFORM_MARKER}no skill-lookup-mcp binary is \
+                 published for macos/x86_64; skill lookups will be unavailable for this install"
+            )))
+        });
+
+        let target_dir = scratch_dir("mcp-e2e-unsupported-target");
+        let outcome = install_from_remote_bytes(
+            &KiroCliInstallStrategy,
+            &target_dir,
+            artifact_bytes,
+            &sidecar_bytes,
+            ARTIFACT_FILENAME,
+            "2026-01-01T00:00:00Z",
+            false,
+            Some(unsupported_fetcher),
+        )
+        .expect("an unsupported platform must never block the rest of the install");
+        assert_eq!(outcome.mcp_binary_version, None);
+        assert!(target_dir.join(".kiro/agents/k-example.json").is_file());
+        assert!(!target_dir.join(".konductor/bin").exists());
+
+        fs::remove_dir_all(&dist_root).ok();
+        fs::remove_dir_all(&target_dir).ok();
+    }
+
+    /// A real fetch/verify failure on a SUPPORTED platform (distinct
+    /// from the unsupported-platform case) must block the WHOLE
+    /// install, end to end -- no manifest written, no partial install.
+    #[test]
+    fn install_from_remote_bytes_blocks_whole_install_on_supported_platform_fetch_failure() {
+        let dist_root = scratch_dir("mcp-e2e-blocking-dist");
+        seed_dist_agent(&dist_root, "k-example", b"{\"name\":\"k-example\"}\n");
+        let (artifact_bytes, sidecar_bytes) = build_real_artifact_and_sidecar(&dist_root);
+
+        let failing_fetcher: McpBinaryFetcher =
+            Box::new(|| Err(std::io::Error::other("connection refused")));
+
+        let target_dir = scratch_dir("mcp-e2e-blocking-target");
+        let err = install_from_remote_bytes(
+            &KiroCliInstallStrategy,
+            &target_dir,
+            artifact_bytes,
+            &sidecar_bytes,
+            ARTIFACT_FILENAME,
+            "2026-01-01T00:00:00Z",
+            false,
+            Some(failing_fetcher),
+        )
+        .expect_err("a real MCP-binary fetch failure on a supported platform must block install");
+        assert!(matches!(err, RemoteInstallError::McpBinaryFetch(_)));
+        assert!(
+            !target_dir.join(".konductor").join("manifest").exists(),
+            "no manifest should be written when the MCP-binary fetch blocks the install"
+        );
+
+        fs::remove_dir_all(&dist_root).ok();
+        fs::remove_dir_all(&target_dir).ok();
     }
 }

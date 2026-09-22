@@ -55,3 +55,11 @@ tokio = { version = "=1.44.2", features = ["process", "io-util", "time"] }
 # frontmatter.rs); tests/initialize_handshake.rs uses that same
 # dependency to build/parse the raw JSON-RPC initialize request/response,
 # so no separate dev-dependency entry is needed here.
+# Loopback HTTPS sink standing in for the real telemetry endpoint --
+# full_tool_surface.rs's tool calls increment this server's own
+# telemetry counters, which flush (and therefore attempt a real send)
+# on clean shutdown; this dependency lets that flush land somewhere
+# observable and inert instead of a real, unreachable-by-design
+# endpoint. See shared/telemetry-test-sink's own module doc comment
+# for the full design rationale.
+telemetry-test-sink = { path = "../../../shared/telemetry-test-sink" }

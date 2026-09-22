@@ -58,19 +58,23 @@ fn scratch_home(name: &str) -> PathBuf {
     dir
 }
 
-fn run_konductor(home: &Path, args: &[&str]) -> Output {
-    Command::new(bin())
-        .args(args)
-        .current_dir(home)
-        .env("HOME", home)
-        .output()
-        .expect("failed to spawn konductor binary")
+fn run_konductor(home: &Path, sink: &telemetry_test_sink::TelemetrySink, args: &[&str]) -> Output {
+    let mut command = Command::new(bin());
+    command.args(args).current_dir(home).env("HOME", home);
+    for var in sink.env_vars() {
+        command.env(var.name, &var.value);
+    }
+    command.output().expect("failed to spawn konductor binary")
 }
 
 /// Asserts that appending `-v` to `args` changes NOTHING about a
 /// failing invocation's stdout, stderr, or exit code.
-fn assert_verbose_has_no_effect_on_failure(home: &Path, args: &[&str]) {
-    let without_verbose = run_konductor(home, args);
+fn assert_verbose_has_no_effect_on_failure(
+    home: &Path,
+    sink: &telemetry_test_sink::TelemetrySink,
+    args: &[&str],
+) {
+    let without_verbose = run_konductor(home, sink, args);
     assert_ne!(
         without_verbose.status.code(),
         Some(0),
@@ -79,7 +83,7 @@ fn assert_verbose_has_no_effect_on_failure(home: &Path, args: &[&str]) {
 
     let mut with_verbose_args: Vec<&str> = args.to_vec();
     with_verbose_args.push("-v");
-    let with_verbose = run_konductor(home, &with_verbose_args);
+    let with_verbose = run_konductor(home, sink, &with_verbose_args);
 
     assert_eq!(
         without_verbose.status.code(),
@@ -99,6 +103,7 @@ fn assert_verbose_has_no_effect_on_failure(home: &Path, args: &[&str]) {
 #[test]
 fn synth_verbose_has_no_effect_on_a_failing_invocation() {
     let home = scratch_home("synth");
+    let sink = telemetry_test_sink::TelemetrySink::start();
     // An empty source tree with no agents/skills/SOPs/context still
     // parses successfully today (see synth/mod.rs's own "nothing to
     // build" message) -- force a genuine parse failure instead via a
@@ -112,12 +117,13 @@ fn synth_verbose_has_no_effect_on_a_failing_invocation() {
     )
     .unwrap();
 
-    assert_verbose_has_no_effect_on_failure(&home, &["synth"]);
+    assert_verbose_has_no_effect_on_failure(&home, &sink, &["synth"]);
 }
 
 #[test]
 fn doctor_verbose_has_no_effect_on_a_failing_invocation() {
     let home = scratch_home("doctor");
+    let sink = telemetry_test_sink::TelemetrySink::start();
     // An unresolvable destination -- $HOME removed AND no --target --
     // is an APPLICATION-level error path (doctor.rs's own
     // resolve_destination failure, via report::report_error), not a
@@ -130,6 +136,9 @@ fn doctor_verbose_has_no_effect_on_a_failing_invocation() {
     let mut cmd = Command::new(bin());
     cmd.args(["doctor"]).current_dir(&home);
     cmd.env_remove("HOME");
+    for var in sink.env_vars() {
+        cmd.env(var.name, &var.value);
+    }
     let without_verbose = cmd.output().expect("failed to spawn konductor binary");
     assert_ne!(
         without_verbose.status.code(),
@@ -140,6 +149,9 @@ fn doctor_verbose_has_no_effect_on_a_failing_invocation() {
     let mut cmd = Command::new(bin());
     cmd.args(["doctor", "-v"]).current_dir(&home);
     cmd.env_remove("HOME");
+    for var in sink.env_vars() {
+        cmd.env(var.name, &var.value);
+    }
     let with_verbose = cmd.output().expect("failed to spawn konductor binary");
 
     assert_eq!(
@@ -165,9 +177,18 @@ fn doctor_verbose_has_no_effect_on_a_failing_invocation() {
 #[test]
 fn doctor_verbose_does_affect_a_successful_invocation() {
     let home = scratch_home("doctor-success-control");
+    let sink = telemetry_test_sink::TelemetrySink::start();
 
-    let without_verbose = run_konductor(&home, &["doctor", "--target", home.to_str().unwrap()]);
-    let with_verbose = run_konductor(&home, &["doctor", "--target", home.to_str().unwrap(), "-v"]);
+    let without_verbose = run_konductor(
+        &home,
+        &sink,
+        &["doctor", "--target", home.to_str().unwrap()],
+    );
+    let with_verbose = run_konductor(
+        &home,
+        &sink,
+        &["doctor", "--target", home.to_str().unwrap(), "-v"],
+    );
 
     assert_eq!(
         without_verbose.status.code(),

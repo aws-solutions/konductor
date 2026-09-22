@@ -25,6 +25,7 @@ When users need to:
 - "n-aspect review on this"
 - "review this from multiple angles"
 - "4-aspect review" / "8-aspect review"
+- "review this thoroughly" / "give me a detailed review"
 
 ## Instructions
 

@@ -41,13 +41,20 @@ const SEEDED_BODY_LINE: &str = "This is the seeded body line for full_tool_surfa
 /// Spawns `skill-lookup-mcp` against `skills_dir`, with `HOME` explicitly
 /// unset on the child process so the server's default-root fallback
 /// (`~/.konductor/skills/`) can never contribute skills this test didn't
-/// seed itself — only the explicit `--skills-dir` counts.
-fn spawn_server(skills_dir: &Path) -> Child {
+/// seed itself — only the explicit `--skills-dir` counts. `sink`'s own
+/// env vars redirect this server's telemetry to the loopback fixture --
+/// every tool call increments its counters, flushed on shutdown.
+fn spawn_server(skills_dir: &Path, sink: &telemetry_test_sink::TelemetrySink) -> Child {
     let bin = env!("CARGO_BIN_EXE_skill-lookup-mcp");
-    Command::new(bin)
+    let mut command = Command::new(bin);
+    command
         .arg("--skills-dir")
         .arg(skills_dir)
-        .env_remove("HOME")
+        .env_remove("HOME");
+    for var in sink.env_vars() {
+        command.env(var.name, &var.value);
+    }
+    command
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -182,7 +189,8 @@ where
     Fut: std::future::Future<Output = ()>,
 {
     let dir = TempDirGuard(seed_probe_skill_dir(label));
-    let mut child = spawn_server(&dir.0);
+    let sink = telemetry_test_sink::TelemetrySink::start();
+    let mut child = spawn_server(&dir.0, &sink);
 
     let stdin = child.stdin.take().expect("child stdin not piped");
     let stdout = child.stdout.take().expect("child stdout not piped");

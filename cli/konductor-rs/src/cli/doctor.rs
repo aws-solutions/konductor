@@ -6,7 +6,7 @@
 // Inspects a Konductor installation/checkout for problems and prints
 // actionable remediation guidance. Every check is REUSE-ONLY: it calls
 // the same functions `install`/`synth`/`config` already use, rather than
-// re-implementing any validation logic. Six checks run today, in this
+// re-implementing any validation logic. Seven checks run today, in this
 // order:
 //
 //   1. source                  — `parse_canonical` against the resolved
@@ -47,6 +47,21 @@
 //                                 index is a CACHE, refreshed on every
 //                                 install/update -- see `index.rs`'s own
 //                                 `IndexEntry::status` doc comment).
+//   7. telemetry_state          — the effective telemetry state for
+//                                 `destination`, read through
+//                                 `install_info::read_install_info`
+//                                 (the per-target opt-out signal) and
+//                                 `konductor_telemetry::read_instance`
+//                                 (the machine-scoped consent record) --
+//                                 the same two reads `report.rs`'s own
+//                                 AND gate consults, never re-derived.
+//                                 `ok` when both allow reporting; `info`
+//                                 when this target opted out, or no
+//                                 machine record exists yet; `warn` when
+//                                 the machine record declines and would
+//                                 otherwise suppress an opted-in target
+//                                 -- the case a design review flagged as
+//                                 silent.
 //
 // Three additional checks — `gitignore`, `provider_model_access`, and
 // `role_allowlists` — are fully implemented and unit-tested below, but
@@ -309,11 +324,11 @@ impl CheckResult {
     }
 }
 
-/// `konductor doctor [--from ...] [--target ...] [--all]`: runs the six
+/// `konductor doctor [--from ...] [--target ...] [--all]`: runs the seven
 /// active checks (source, runtime, manifest, config, container_runtime,
-/// index_status) against `--from`/`target_dir` (source tree) and
-/// `--target`/`$HOME` (install destination), prints a report, and
-/// returns the exit code.
+/// index_status, telemetry_state) against `--from`/`target_dir` (source
+/// tree) and `--target`/`$HOME` (install destination), prints a report,
+/// and returns the exit code.
 ///
 /// Three more checks (`gitignore`, `provider_model_access`,
 /// `role_allowlists`) exist in this module and are unit-tested, but are
@@ -399,11 +414,11 @@ pub fn dispatch_doctor_with(
 }
 
 /// The full active check suite (source, runtime, manifest, config,
-/// container_runtime, index_status) against one resolved
-/// source-tree/destination pair. Shared by the single-target path
-/// (`dispatch_doctor_with`) and the `--all` path (`dispatch_doctor_all`)
-/// below, so the two can never drift on which checks run or in what
-/// order.
+/// container_runtime, index_status, telemetry_state) against one
+/// resolved source-tree/destination pair. Shared by the single-target
+/// path (`dispatch_doctor_with`) and the `--all` path
+/// (`dispatch_doctor_all`) below, so the two can never drift on which
+/// checks run or in what order.
 fn run_checks(
     target_dir: &Path,
     from: Option<&str>,
@@ -414,7 +429,7 @@ fn run_checks(
 
     let home_dir: Option<PathBuf> = home_dir_override
         .map(PathBuf::from)
-        .or_else(|| std::env::var_os("HOME").map(PathBuf::from));
+        .or_else(index::env_home_dir);
 
     vec![
         check_source(&resolved_source),
@@ -422,7 +437,8 @@ fn run_checks(
         check_manifest(destination),
         check_config_with_home(&resolved_source, home_dir.as_deref()),
         check_container_runtime(),
-        check_index_status(destination),
+        check_index_status(destination, home_dir.as_deref()),
+        check_telemetry_state(destination, home_dir.as_deref()),
         // `gitignore`, `provider_model_access`, and `role_allowlists` are
         // implemented and unit-tested below, but intentionally NOT
         // surfaced in live doctor output yet:
@@ -483,7 +499,17 @@ fn dispatch_doctor_all(
     home_dir_override: Option<&Path>,
     color: ColorMode,
 ) -> u8 {
-    let index = match index::read_index() {
+    // Same home override `run_checks` below threads to `config`/
+    // `index_status`/`telemetry_state` -- the tracked-install
+    // enumeration itself must respect it too, or `--all` walks the
+    // real machine's index while every check it runs is pointed at a
+    // test's scratch home (the same `index_status`/live-`$HOME`
+    // mismatch `check_index_status` has on its own; see that
+    // function's docstring).
+    let resolved_home: Option<PathBuf> = home_dir_override
+        .map(PathBuf::from)
+        .or_else(index::env_home_dir);
+    let index = match index::read_index_at_home(resolved_home.as_deref()) {
         Ok(index) => index,
         Err(err) => {
             super::report::report_error(
@@ -1298,7 +1324,13 @@ fn drifted_files(destination: &Path, manifest: &StrategyManifest) -> Vec<String>
 /// corrupted `~/.konductor/installs` is `update`'s/`uninstall`'s
 /// problem to refuse to proceed on, not `doctor`'s to fail the whole
 /// run over).
-fn check_index_status(destination: &Path) -> CheckResult {
+///
+/// `home_dir` is the same resolved home `run_checks` threads to
+/// `check_config_with_home`/`check_telemetry_state` -- reads the index
+/// via `index::read_index_at_home` rather than the bare `read_index`,
+/// so a test pointed at a scratch home sees that home's index instead
+/// of the real machine's.
+fn check_index_status(destination: &Path, home_dir: Option<&Path>) -> CheckResult {
     let canonical = match index::canonicalize_target_dir(destination) {
         Ok(canonical) => canonical,
         // `destination` doesn't exist (or some other canonicalization
@@ -1321,7 +1353,7 @@ fn check_index_status(destination: &Path) -> CheckResult {
         }
     };
 
-    let entries = match index::read_index() {
+    let entries = match index::read_index_at_home(home_dir) {
         Ok(Some(idx)) => idx.installs,
         Ok(None) => Vec::new(),
         Err(err) => {
@@ -1430,7 +1462,149 @@ fn check_index_status(destination: &Path) -> CheckResult {
     )
 }
 
-/// The `config` check: project config validity, via
+/// The `telemetry_state` check: the effective telemetry state for
+/// `destination`, read through the exact two signals `report.rs`'s own
+/// AND gate consults -- `install_info::read_install_info_detailed`
+/// (the per-target opt-out signal, in its error-distinguishing form)
+/// and `konductor_telemetry::read_instance(home_dir)` (the
+/// machine-scoped consent record) -- never re-derived, so this check
+/// cannot drift from the gate it reports on.
+///
+/// The per-target signal is now ONE filesystem access:
+/// `install_info::read_install_info_detailed` returns either the
+/// record or an `InstallInfoAbsence` naming why it didn't --
+/// `NotFound` (no record: either this target's own `--no-telemetry`
+/// choice, or it was never installed here at all -- the absence alone
+/// cannot tell those apart) or `Broken` (present but unreadable,
+/// unparseable, or schema-mismatched: nobody chose this). A second,
+/// separate existence check on the same path used to run after this
+/// read to pick the message; a concurrent `uninstall` removing the
+/// file between the two reads (nothing serializes `doctor` against it
+/// -- `uninstall`'s manifest lock is already released by the time it
+/// deletes install-info.json) could make a target that was simply
+/// concurrently uninstalled misreport as this target's own opt-out
+/// choice. One read closes that window: whichever variant the SAME
+/// read returns is both the consent decision and the message.
+///
+/// The consent decision itself is unchanged from before this fix:
+/// anything other than `Ok(record)` is not opted in, matching
+/// `report.rs`'s own gate, which also treats a schema-mismatched or
+/// corrupted record as opted out. Only the MESSAGE differs by which
+/// `InstallInfoAbsence` variant fired -- `NotFound` names both
+/// possible causes rather than asserting opt-out as fact (an absent
+/// record is exactly as consistent with "never installed" as with
+/// "opted out," and `check_index_status` is the check that can tell
+/// them apart); `Broken` gets its own `Warn` naming the file's path,
+/// since that case is not a choice the user made.
+///
+/// `home_dir` mirrors `report.rs`'s own `home_dir()`: an unresolvable
+/// `HOME` has no anchor to read a machine record from, so it fails
+/// closed to the same "reporting is off, no record" wording as a
+/// missing `telemetry.json` -- never `Ok`.
+///
+/// Five cases, in the order the design calls for:
+/// - no install-info record at all -> `Info`: either this target opted
+///   out at install, or it was never installed -- an absent record
+///   cannot distinguish the two, so the message names both and points
+///   at the index check to tell which.
+/// - an install-info record is present but fails the validated read
+///   (unreadable or an unrecognized schema) -> `Warn`: this is not a
+///   choice the user made, and it also silently suppresses reporting,
+///   so it gets the same visibility as the machine-decline case below.
+/// - no machine record at all -> `Info`: nothing has reported on this
+///   machine yet.
+/// - the machine record declines (`telemetry_consent: false`) while
+///   this target opted in -> `Warn`: reporting is off for every
+///   project on this machine, including this one, naming the record's
+///   path so the user can change it. This is the case a design review
+///   named as silent -- a machine-level decline suppressing an
+///   opted-in project must be visible, not folded into ordinary `Ok`.
+/// - machine consent allows and this target opted in -> `Ok`:
+///   reporting is on.
+fn check_telemetry_state(destination: &Path, home_dir: Option<&Path>) -> CheckResult {
+    use crate::cli::telemetry::InstallInfoAbsence;
+
+    match crate::cli::telemetry::read_install_info_detailed(destination) {
+        Err(InstallInfoAbsence::NotFound) => {
+            return CheckResult::info(
+                "telemetry_state",
+                format!(
+                    "telemetry reporting is off for {} (either opted out at install, or {} \
+                     was never installed)",
+                    destination.display(),
+                    destination.display()
+                ),
+                "if this was opted out, re-run `konductor install` without --no-telemetry to \
+                 opt back in; if it was never installed, run `konductor install` to install \
+                 it -- see the index check's own result to tell which"
+                    .to_string(),
+            );
+        }
+        Err(InstallInfoAbsence::Broken) => {
+            let record_path = crate::cli::telemetry::install_info_path(destination);
+            return CheckResult::warn(
+                "telemetry_state",
+                format!(
+                    "telemetry reporting is off for {}: {} is present but could not be read \
+                     (unreadable or an unrecognized schema)",
+                    destination.display(),
+                    record_path.display()
+                ),
+                format!(
+                    "re-run `konductor install` to rewrite {}, or inspect it directly to see \
+                     why it failed to parse",
+                    record_path.display()
+                ),
+            );
+        }
+        Ok(_) => {}
+    }
+
+    let Some(home_dir) = home_dir else {
+        return CheckResult::info(
+            "telemetry_state",
+            "telemetry reporting is off: HOME could not be resolved, so there is no machine \
+             record to read consent from"
+                .to_string(),
+            "set HOME to a real directory to establish a machine-scoped telemetry record"
+                .to_string(),
+        );
+    };
+
+    let record_path = konductor_telemetry::instance_path(home_dir);
+    match konductor_telemetry::read_instance(home_dir) {
+        None => CheckResult::info(
+            "telemetry_state",
+            format!(
+                "telemetry reporting is off: no machine record exists yet at {} -- nothing \
+                 has reported from this machine so far",
+                record_path.display()
+            ),
+            "no action needed -- a machine record is created automatically the first time \
+             telemetry would report"
+                .to_string(),
+        ),
+        Some(record) if !record.telemetry_consent => CheckResult::warn(
+            "telemetry_state",
+            format!(
+                "telemetry reporting is off for every project on this machine, including {} \
+                 -- the machine record at {} declines consent",
+                destination.display(),
+                record_path.display()
+            ),
+            format!(
+                "this target has not opted out itself; edit {} and set telemetry_consent to \
+                 true to allow reporting again on this machine",
+                record_path.display()
+            ),
+        ),
+        Some(_) => CheckResult::ok(
+            "telemetry_state",
+            format!("telemetry reporting is on for {}", destination.display()),
+        ),
+    }
+}
+
 /// `config::load_config_with_home` -- the same loading logic
 /// `config get`/`config list`/`config set` use via `config::load_config`.
 /// A source tree with no `.konductor/config.yml` at all still loads (the
@@ -1789,16 +1963,19 @@ mod tests {
     use std::fs;
     use std::sync::MutexGuard;
 
-    /// RAII guard for tests exercising `check_index_status`/
-    /// `dispatch_doctor_all`, both of which transitively read the real,
-    /// process-global `$HOME/.konductor/installs` regardless of
-    /// `--target`/`home_dir_override` (see `index.rs`'s own docstring:
-    /// the index's LOCATION is always resolved against real `$HOME`,
-    /// unlike the manifest). Mirrors `install.rs`'s/`update.rs`'s own
-    /// `HomeGuard` exactly -- acquires the crate-wide
+    /// RAII guard for tests seeding `~/.konductor/installs` through
+    /// `index::write_index` (not yet home-aware -- unlike
+    /// `index::read_index_at_home`, there is no `write_index_at_home`
+    /// exposed to this module). Mirrors `install.rs`'s/`update.rs`'s
+    /// own `HomeGuard` exactly -- acquires the crate-wide
     /// `test_home_lock::HOME_ENV_LOCK` for its entire lifetime so no
     /// other `HOME`-mutating test anywhere in this crate observes an
-    /// interleaved value.
+    /// interleaved value. `check_index_status`/`dispatch_doctor_all`
+    /// themselves are home-aware now (see their own docstrings); tests
+    /// below pass this guard's own `scratch` home to them explicitly,
+    /// the same way `run_checks` threads its resolved home, rather than
+    /// relying on the mutated `$HOME` those two functions no longer
+    /// fall back to.
     struct HomeGuard {
         _lock: MutexGuard<'static, ()>,
         scratch: PathBuf,
@@ -1849,6 +2026,24 @@ mod tests {
         ));
         fs::create_dir_all(&dir).unwrap();
         dir
+    }
+
+    /// Test-only helper: opts `destination` in to telemetry the same
+    /// way a real `konductor install` (no `--no-telemetry`) does --
+    /// writes `.konductor/install-info.json`, the signal
+    /// `check_telemetry_state` now reads. `source_root` has no
+    /// `dist/VERSION`, which degrades `agent_version` to `None`; every
+    /// caller here only cares about the file's presence.
+    fn opt_in_to_telemetry(destination: &Path) {
+        let source_root = scratch_dir("opt-in-to-telemetry-source");
+        crate::cli::telemetry::write_install_info(
+            destination,
+            &source_root,
+            "kiro-cli",
+            "2026-01-01T00:00:00Z",
+        )
+        .unwrap();
+        fs::remove_dir_all(&source_root).ok();
     }
 
     /// Healthy/no-issues case: an empty-but-valid source tree (no
@@ -3635,15 +3830,16 @@ mod tests {
     }
 
     /// End-to-end: a healthy install with no recorded source (the
-    /// benign fallback case) must produce a LIVE report (via
-    /// `dispatch_doctor_with`) with exactly the FIVE ACTIVE checks
-    /// present (`gitignore`/`provider_model_access`/`role_allowlists`
-    /// must NOT appear -- see the comment in `dispatch_doctor_with`'s
-    /// `results` assembly for why they're dormant), zero
-    /// `Warn`/`Failed`/`Stale` entries among them (the zero-warnings
-    /// acceptance criterion), and exit code 0.
+    /// benign fallback case) must produce a LIVE report with zero
+    /// `Warn`/`Failed`/`Stale` entries (the zero-warnings acceptance
+    /// criterion) and exit code 0. The check LIST itself is pinned by
+    /// calling `run_checks` -- the actual live dispatch function, not a
+    /// hand-copied inline list -- so this test tracks `run_checks`
+    /// automatically instead of drifting from it. Dormant checks
+    /// (`gitignore`/`provider_model_access`/`role_allowlists`) must not
+    /// appear; see the comment in `run_checks` for why they're dormant.
     #[test]
-    fn dispatch_doctor_reports_five_active_checks_with_zero_warnings_on_healthy_install() {
+    fn dispatch_doctor_reports_run_checks_output_with_zero_warnings_on_healthy_install() {
         let source = scratch_dir("zero-warnings-source");
         let destination = scratch_dir("zero-warnings-destination");
         let home = scratch_dir("zero-warnings-home");
@@ -3662,64 +3858,66 @@ mod tests {
             format!("{}\n", init::GITIGNORE_PATTERNS.join("\n")),
         )
         .unwrap();
+        // The target never opted out (install-info.json is present),
+        // and the machine has no telemetry.json at all yet -- both are
+        // Info-tier outcomes for telemetry_state, not Warn, so this
+        // fixture stays a genuine zero-warnings case.
+        opt_in_to_telemetry(&destination);
 
-        let rendered_json = {
-            let code = dispatch_doctor_with(
-                &source,
-                Some(source.display().to_string()),
-                Some(destination.display().to_string()),
-                false, // all
-                false,
-                true,
-                Some(&home),
-                ColorMode::disabled(),
-            );
-            assert_eq!(code, 0);
-            assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        let code = dispatch_doctor_with(
+            &source,
+            Some(source.display().to_string()),
+            Some(destination.display().to_string()),
+            false, // all
+            false,
+            true,
+            Some(&home),
+            ColorMode::disabled(),
+        );
+        assert_eq!(code, 0);
+        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
 
-            // Capture the same call's --json form by re-deriving the
-            // results the same way `dispatch_doctor_with` does, since
-            // the function itself only prints to stdout.
-            let resolved_source = ResolvedSource {
-                path: source.clone(),
-                fallback_note: None,
-                unvalidated_cwd: false,
-                legacy_manifest_no_source: false,
-                missing_recorded_source: false,
-                unsupported_schema_version: false,
-            };
-            let results = vec![
-                check_source(&resolved_source),
-                check_runtime(&destination),
-                check_manifest(&destination),
-                check_config_with_home(&resolved_source, Some(&home)),
-                check_container_runtime(),
-            ];
-            assert_eq!(
-                results.len(),
-                5,
-                "exactly five checks must be present in the live dispatch path"
-            );
-            let names: Vec<&str> = results.iter().map(|r| r.name).collect();
-            for dormant in ["gitignore", "provider_model_access", "role_allowlists"] {
-                assert!(
-                    !names.contains(&dormant),
-                    "dormant check {dormant} must not appear in the live check list, got: \
-                     {names:?}"
-                );
-            }
+        // Pin against the real dispatch path: call `run_checks` itself
+        // rather than re-deriving its contents, so this test cannot
+        // pass while `run_checks` disagrees with it.
+        let results = run_checks(
+            &source,
+            Some(&source.display().to_string()),
+            &destination,
+            Some(&home),
+        );
+        let names: Vec<&str> = results.iter().map(|r| r.name).collect();
+        assert_eq!(
+            names,
+            vec![
+                "source",
+                "runtime",
+                "manifest",
+                "config",
+                "container_runtime",
+                "index_status",
+                "telemetry_state",
+            ],
+            "run_checks' active check set and order changed; update this test's expectation \
+             deliberately if the change is intended"
+        );
+        for dormant in ["gitignore", "provider_model_access", "role_allowlists"] {
             assert!(
-                !results.iter().any(|r| r.status.is_warning()),
-                "a genuinely healthy install must produce zero Warn entries: {:?}",
-                results
-                    .iter()
-                    .map(|r| (r.name, r.status.label()))
-                    .collect::<Vec<_>>()
+                !names.contains(&dormant),
+                "dormant check {dormant} must not appear in the live check list, got: {names:?}"
             );
-            assert!(!results.iter().any(|r| r.status.is_failing()));
-            format_report_json(&results)
-        };
+        }
+        assert!(
+            !results.iter().any(|r| r.status.is_warning()),
+            "a genuinely healthy install must produce zero Warn entries: {:?}",
+            results
+                .iter()
+                .map(|r| (r.name, r.status.label()))
+                .collect::<Vec<_>>()
+        );
+        assert!(!results.iter().any(|r| r.status.is_failing()));
 
+        let rendered_json = format_report_json(&results);
         let parsed: serde_json::Value =
             serde_json::from_str(&rendered_json).expect("must be valid JSON");
         assert_eq!(parsed["ok"], true);
@@ -3731,8 +3929,8 @@ mod tests {
         let checks = parsed["checks"].as_array().unwrap();
         assert_eq!(
             checks.len(),
-            5,
-            "--json must also carry exactly five checks"
+            results.len(),
+            "--json must carry every check `run_checks` produced"
         );
         for dormant in ["gitignore", "provider_model_access", "role_allowlists"] {
             assert!(
@@ -3879,10 +4077,10 @@ mod tests {
     /// missing manifest loudly on its own).
     #[test]
     fn check_index_status_is_info_when_target_not_in_index() {
-        let _home = HomeGuard::new("index-status-not-tracked-home");
+        let home = HomeGuard::new("index-status-not-tracked-home");
         let destination = scratch_dir("index-status-not-tracked-dest");
 
-        let result = check_index_status(&destination);
+        let result = check_index_status(&destination, Some(&home.scratch));
         assert_eq!(result.status, CheckStatus::Info);
         assert!(
             result.summary.contains("not tracked"),
@@ -3896,7 +4094,11 @@ mod tests {
     /// Index and manifest agree (`Complete`/`Complete`) -- `Ok`.
     #[test]
     fn check_index_status_is_ok_when_index_and_manifest_agree_complete() {
-        let _home = HomeGuard::new("index-status-agree-complete-home");
+        // `check_index_status` takes `home_dir` explicitly and never
+        // falls back to the live `$HOME`, so seeding via
+        // `write_index_at_home` (rather than `HomeGuard` mutating the
+        // real env var) is both sufficient and strictly more isolated.
+        let home = scratch_dir("index-status-agree-complete-home");
         let destination = scratch_dir("index-status-agree-complete-dest");
 
         let manifest = StrategyManifest::new(
@@ -3910,19 +4112,23 @@ mod tests {
         manifest::upsert_strategy(&destination, manifest).unwrap();
 
         let canonical = index::canonicalize_target_dir(&destination).unwrap();
-        index::write_index(IndexEntry {
-            target_dir: canonical,
-            strategies: vec!["kiro-cli-v2".to_string()],
-            installed_at: "2026-01-01T00:00:00Z".to_string(),
-            status: IndexEntryStatus::Complete,
-        })
+        index::write_index_at_home(
+            Some(&home),
+            IndexEntry {
+                target_dir: canonical,
+                strategies: vec!["kiro-cli-v2".to_string()],
+                installed_at: "2026-01-01T00:00:00Z".to_string(),
+                status: IndexEntryStatus::Complete,
+            },
+        )
         .unwrap();
 
-        let result = check_index_status(&destination);
+        let result = check_index_status(&destination, Some(&home));
         assert_eq!(result.status, CheckStatus::Ok);
         assert!(!result.status.is_failing());
 
         fs::remove_dir_all(&destination).ok();
+        fs::remove_dir_all(&home).ok();
     }
 
     /// Index and manifest agree (`InProgress`/`InProgress`) -- also
@@ -3931,7 +4137,7 @@ mod tests {
     /// ever reports on a DISAGREEMENT between the two records).
     #[test]
     fn check_index_status_is_ok_when_index_and_manifest_agree_in_progress() {
-        let _home = HomeGuard::new("index-status-agree-in-progress-home");
+        let home = scratch_dir("index-status-agree-in-progress-home");
         let destination = scratch_dir("index-status-agree-in-progress-dest");
 
         let manifest = StrategyManifest::new(
@@ -3945,18 +4151,22 @@ mod tests {
         manifest::upsert_strategy(&destination, manifest).unwrap();
 
         let canonical = index::canonicalize_target_dir(&destination).unwrap();
-        index::write_index(IndexEntry {
-            target_dir: canonical,
-            strategies: vec!["kiro-cli-v2".to_string()],
-            installed_at: "2026-01-01T00:00:00Z".to_string(),
-            status: IndexEntryStatus::InProgress,
-        })
+        index::write_index_at_home(
+            Some(&home),
+            IndexEntry {
+                target_dir: canonical,
+                strategies: vec!["kiro-cli-v2".to_string()],
+                installed_at: "2026-01-01T00:00:00Z".to_string(),
+                status: IndexEntryStatus::InProgress,
+            },
+        )
         .unwrap();
 
-        let result = check_index_status(&destination);
+        let result = check_index_status(&destination, Some(&home));
         assert_eq!(result.status, CheckStatus::Ok);
 
         fs::remove_dir_all(&destination).ok();
+        fs::remove_dir_all(&home).ok();
     }
 
     /// Disagreement case (finding's example): index says `Complete` but
@@ -3966,7 +4176,7 @@ mod tests {
     /// "interrupted" so the disagreement is unambiguous.
     #[test]
     fn check_index_status_is_warn_when_index_complete_but_manifest_in_progress() {
-        let _home = HomeGuard::new("index-status-disagree-home");
+        let home = scratch_dir("index-status-disagree-home");
         let destination = scratch_dir("index-status-disagree-dest");
 
         let manifest = StrategyManifest::new(
@@ -3980,15 +4190,18 @@ mod tests {
         manifest::upsert_strategy(&destination, manifest).unwrap();
 
         let canonical = index::canonicalize_target_dir(&destination).unwrap();
-        index::write_index(IndexEntry {
-            target_dir: canonical,
-            strategies: vec!["kiro-cli-v2".to_string()],
-            installed_at: "2026-01-01T00:00:00Z".to_string(),
-            status: IndexEntryStatus::Complete,
-        })
+        index::write_index_at_home(
+            Some(&home),
+            IndexEntry {
+                target_dir: canonical,
+                strategies: vec!["kiro-cli-v2".to_string()],
+                installed_at: "2026-01-01T00:00:00Z".to_string(),
+                status: IndexEntryStatus::Complete,
+            },
+        )
         .unwrap();
 
-        let result = check_index_status(&destination);
+        let result = check_index_status(&destination, Some(&home));
         assert_eq!(result.status, CheckStatus::Warn);
         assert!(!result.status.is_failing(), "Warn must never fail the run");
         assert!(
@@ -4011,6 +4224,7 @@ mod tests {
         );
 
         fs::remove_dir_all(&destination).ok();
+        fs::remove_dir_all(&home).ok();
     }
 
     /// The reverse disagreement -- index says `InProgress` but the real
@@ -4019,7 +4233,7 @@ mod tests {
     /// also be `Warn`, naming both states.
     #[test]
     fn check_index_status_is_warn_when_index_in_progress_but_manifest_complete() {
-        let _home = HomeGuard::new("index-status-disagree-reverse-home");
+        let home = scratch_dir("index-status-disagree-reverse-home");
         let destination = scratch_dir("index-status-disagree-reverse-dest");
 
         let manifest = StrategyManifest::new(
@@ -4033,15 +4247,18 @@ mod tests {
         manifest::upsert_strategy(&destination, manifest).unwrap();
 
         let canonical = index::canonicalize_target_dir(&destination).unwrap();
-        index::write_index(IndexEntry {
-            target_dir: canonical,
-            strategies: vec!["kiro-cli-v2".to_string()],
-            installed_at: "2026-01-01T00:00:00Z".to_string(),
-            status: IndexEntryStatus::InProgress,
-        })
+        index::write_index_at_home(
+            Some(&home),
+            IndexEntry {
+                target_dir: canonical,
+                strategies: vec!["kiro-cli-v2".to_string()],
+                installed_at: "2026-01-01T00:00:00Z".to_string(),
+                status: IndexEntryStatus::InProgress,
+            },
+        )
         .unwrap();
 
-        let result = check_index_status(&destination);
+        let result = check_index_status(&destination, Some(&home));
         assert_eq!(result.status, CheckStatus::Warn);
         assert!(
             result.summary.contains("InProgress") && result.summary.contains("Complete"),
@@ -4050,6 +4267,7 @@ mod tests {
         );
 
         fs::remove_dir_all(&destination).ok();
+        fs::remove_dir_all(&home).ok();
     }
 
     /// `dispatch_doctor_with` wiring: a `Warn`-only index-status
@@ -4058,7 +4276,12 @@ mod tests {
     /// `Failed`-only failure contract).
     #[test]
     fn dispatch_doctor_with_index_status_warn_does_not_fail_overall_run() {
-        let _home_guard = HomeGuard::new("dispatch-index-status-warn-home");
+        // `dispatch_doctor_with` below is called with `home_dir_override:
+        // None` on purpose, to exercise the live-`$HOME`-fallback path
+        // `run_checks` itself falls back to -- so this test still needs
+        // `HomeGuard` to mutate real `$HOME`, unlike the direct-call
+        // `check_index_status` tests above.
+        let home_guard = HomeGuard::new("dispatch-index-status-warn-home");
         let source = scratch_dir("dispatch-index-status-warn-source");
         let destination = scratch_dir("dispatch-index-status-warn-dest");
 
@@ -4087,7 +4310,7 @@ mod tests {
         // directly, then separately confirm dispatch's overall code is
         // driven by manifest's Failed (EXIT_HALTED), never anything
         // resembling exit code 2.
-        let index_result = check_index_status(&destination);
+        let index_result = check_index_status(&destination, Some(&home_guard.scratch));
         assert_eq!(index_result.status, CheckStatus::Warn);
 
         let code = dispatch_doctor_with(
@@ -4104,6 +4327,469 @@ mod tests {
 
         fs::remove_dir_all(&source).ok();
         fs::remove_dir_all(&destination).ok();
+    }
+
+    // ── check_telemetry_state ────────────────────────────────────────────
+
+    /// Case: no `install-info.json` -- `Info`, regardless of what the
+    /// machine record says, since either explanation (this target's own
+    /// opt-out, or the target simply not being installed) is unalarming
+    /// on its own.
+    #[test]
+    fn check_telemetry_state_is_info_when_install_info_absent() {
+        let destination = scratch_dir("telemetry-state-opted-out-target");
+        let home = scratch_dir("telemetry-state-opted-out-home");
+
+        let result = check_telemetry_state(&destination, Some(&home));
+
+        assert_eq!(result.status, CheckStatus::Info);
+        assert!(!result.status.is_failing());
+        assert!(
+            result.summary.contains("opted out"),
+            "summary must mention opt-out as one of the possible causes, got: {}",
+            result.summary
+        );
+
+        fs::remove_dir_all(&destination).ok();
+        fs::remove_dir_all(&home).ok();
+    }
+
+    /// Pins the absent-record wording itself: an absent install-info
+    /// record is exactly as consistent with "never installed" as with
+    /// "opted out at install," so the summary must name both
+    /// possibilities and the hint must not tell the user to treat
+    /// either as certain. Ties `ssenior`'s outstanding review comment
+    /// down as a wording contract, not just a status-code assertion --
+    /// a future edit that swaps this back to asserting a single cause
+    /// must fail this test, not just look different in a manual check.
+    #[test]
+    fn check_telemetry_state_absent_record_names_both_possible_causes() {
+        let destination = scratch_dir("telemetry-state-absent-record-wording-target");
+        let home = scratch_dir("telemetry-state-absent-record-wording-home");
+
+        let result = check_telemetry_state(&destination, Some(&home));
+
+        assert_eq!(result.status, CheckStatus::Info);
+        assert!(
+            result.summary.contains("opted out") && result.summary.contains("never installed"),
+            "summary must name both possible causes of an absent record, got: {}",
+            result.summary
+        );
+        assert!(
+            !result.summary.contains("(opted out at install)"),
+            "summary must not assert opt-out as the sole cause, got: {}",
+            result.summary
+        );
+        assert!(
+            result
+                .remediation
+                .as_deref()
+                .unwrap_or_default()
+                .contains("if this was opted out")
+                && result
+                    .remediation
+                    .as_deref()
+                    .unwrap_or_default()
+                    .contains("if it was"),
+            "remediation must stay conditional on which cause applies rather than assuming \
+             one, got: {:?}",
+            result.remediation
+        );
+
+        fs::remove_dir_all(&destination).ok();
+        fs::remove_dir_all(&home).ok();
+    }
+
+    /// Case: no machine record exists yet at all -- `Info`: nothing has
+    /// reported from this machine so far. The target itself never
+    /// opted out (install-info.json is present).
+    #[test]
+    fn check_telemetry_state_is_info_when_no_machine_record_exists_yet() {
+        let destination = scratch_dir("telemetry-state-no-machine-record-target");
+        let home = scratch_dir("telemetry-state-no-machine-record-home");
+        opt_in_to_telemetry(&destination);
+
+        let result = check_telemetry_state(&destination, Some(&home));
+
+        assert_eq!(result.status, CheckStatus::Info);
+        assert!(!result.status.is_failing());
+        assert!(
+            result.summary.contains("no machine record exists yet"),
+            "summary must clearly say no machine record exists, got: {}",
+            result.summary
+        );
+
+        fs::remove_dir_all(&destination).ok();
+        fs::remove_dir_all(&home).ok();
+    }
+
+    /// Positive control: machine consent allows and this target never
+    /// opted out -- `Ok`: reporting is on.
+    #[test]
+    fn check_telemetry_state_is_ok_when_machine_consents_and_target_opted_in() {
+        let destination = scratch_dir("telemetry-state-ok-target");
+        let home = scratch_dir("telemetry-state-ok-home");
+        opt_in_to_telemetry(&destination);
+        konductor_telemetry::ensure_instance(&home, true, crate::cli::time::utc_now_iso_millis);
+
+        // Precondition: names a write failure instead of asserting
+        // Ok/"reporting is on" on a machine whose telemetry.json never
+        // actually persisted -- ensure_instance fails closed to
+        // consent=false on a write failure, which check_telemetry_state
+        // would otherwise report as an ordinary opt-out.
+        let instance_record = konductor_telemetry::read_instance(&home).unwrap_or_else(|| {
+            panic!(
+                "telemetry.json did not persist at {} -- this is a write failure, not a \
+                 consent decision; see stderr for the failing syscall",
+                home.display()
+            )
+        });
+        assert!(instance_record.telemetry_consent);
+
+        let result = check_telemetry_state(&destination, Some(&home));
+
+        assert_eq!(result.status, CheckStatus::Ok);
+        assert!(
+            result.summary.contains("reporting is on"),
+            "summary must clearly say reporting is on, got: {}",
+            result.summary
+        );
+
+        fs::remove_dir_all(&destination).ok();
+        fs::remove_dir_all(&home).ok();
+    }
+
+    /// The case a design review named as silent: the machine record
+    /// declines (`telemetry_consent: false`) while THIS target never
+    /// opted out -- must be `Warn`, visible rather than folded into
+    /// ordinary `Ok`, and must name where the machine record lives so
+    /// the user can change it.
+    #[test]
+    fn check_telemetry_state_warns_when_machine_decline_suppresses_an_opted_in_target() {
+        let destination = scratch_dir("telemetry-state-machine-decline-opted-in-target");
+        let home = scratch_dir("telemetry-state-machine-decline-opted-in-home");
+        opt_in_to_telemetry(&destination);
+        konductor_telemetry::ensure_instance(&home, false, crate::cli::time::utc_now_iso_millis);
+
+        let result = check_telemetry_state(&destination, Some(&home));
+
+        assert_eq!(
+            result.status,
+            CheckStatus::Warn,
+            "a machine-level decline suppressing an opted-in target must be visible, not \
+             folded into Ok"
+        );
+        assert!(!result.status.is_failing(), "Warn must never fail the run");
+        let record_path = konductor_telemetry::instance_path(&home);
+        assert!(
+            result.summary.contains(&record_path.display().to_string()),
+            "summary must name where the machine record lives so the user can change it, \
+             got: {}",
+            result.summary
+        );
+        assert!(
+            result.summary.contains("every project on this machine"),
+            "summary must state the decline is machine-wide, not scoped to this target, \
+             got: {}",
+            result.summary
+        );
+        let remediation = result.remediation.as_ref().expect("must carry remediation");
+        assert!(
+            remediation.contains(&record_path.display().to_string()),
+            "remediation must also name the record's path, got: {remediation}"
+        );
+
+        fs::remove_dir_all(&destination).ok();
+        fs::remove_dir_all(&home).ok();
+    }
+
+    /// The divergent case Fix 1 closes: `install-info.json` is present
+    /// but fails schema validation (a `schema_version` this binary
+    /// doesn't recognize -- the same shape a corrupted file collapses
+    /// to). `read_install_info_detailed` -- what `check_telemetry_state`
+    /// now reads once, and what `read_install_info` (the plain-`Option`
+    /// projection every `report_*` call and `update`'s carry-forward
+    /// use) is built on -- correctly calls this target not opted in, so
+    /// reporting stays off, matching what `report.rs`'s own gate would
+    /// do. But the record being present is exactly what makes this a
+    /// different problem than an ordinary opt-out: nobody chose this,
+    /// so the message must say the record is broken and where it
+    /// lives, not tell the user they opted out at install.
+    #[test]
+    fn check_telemetry_state_warns_on_a_schema_invalid_record_instead_of_calling_it_opted_out() {
+        let destination = scratch_dir("telemetry-state-schema-invalid-target");
+        let home = scratch_dir("telemetry-state-schema-invalid-home");
+        let konductor_dir = destination.join(config::KONDUCTOR_DIR_NAME);
+        fs::create_dir_all(&konductor_dir).unwrap();
+        fs::write(
+            konductor_dir.join("install-info.json"),
+            r#"{"schema_version":99,"agent_version":null,"harness":"kiro-cli","installed_at":"2026-01-01T00:00:00Z"}"#,
+        )
+        .unwrap();
+
+        // Sanity: the record is genuinely present but fails the
+        // validated read -- this is what makes the case divergent.
+        assert!(
+            crate::cli::telemetry::install_info_exists(&destination),
+            "sanity: the bare existence check must see the file"
+        );
+        assert!(
+            crate::cli::telemetry::read_install_info(&destination).is_none(),
+            "sanity: a schema version this binary doesn't recognize must fail the \
+             validated read -- this is the same read report_cli_error/report_package_installed \
+             gate on, so it is what actually decides whether an event is sent"
+        );
+        assert_eq!(
+            crate::cli::telemetry::read_install_info_detailed(&destination),
+            Err(crate::cli::telemetry::InstallInfoAbsence::Broken),
+            "sanity: the detailed read must classify this specifically as Broken, not NotFound"
+        );
+
+        let result = check_telemetry_state(&destination, Some(&home));
+
+        assert_eq!(
+            result.status,
+            CheckStatus::Warn,
+            "a record the user never chose to break must not read as an ordinary, benign \
+             opt-out -- it needs the same visibility as the machine-decline case"
+        );
+        assert!(
+            !result.summary.contains("opted out"),
+            "summary must not claim this was the user's own opt-out choice when the record \
+             is merely broken, got: {}",
+            result.summary
+        );
+        let record_path = crate::cli::telemetry::install_info_path(&destination);
+        assert!(
+            result.summary.contains(&record_path.display().to_string()),
+            "summary must name the broken file's path so the user can act, got: {}",
+            result.summary
+        );
+
+        fs::remove_dir_all(&destination).ok();
+        fs::remove_dir_all(&home).ok();
+    }
+
+    /// Sibling of the case above: a target with no install-info record
+    /// at all -- the genuine opt-out -- must still get today's plain
+    /// "opted out at install" wording, unaffected by the new
+    /// broken-record branch that only fires when the file exists.
+    #[test]
+    fn check_telemetry_state_still_reports_plain_opt_out_when_record_is_genuinely_absent() {
+        let destination = scratch_dir("telemetry-state-genuinely-absent-target");
+        let home = scratch_dir("telemetry-state-genuinely-absent-home");
+
+        assert!(
+            !crate::cli::telemetry::install_info_exists(&destination),
+            "sanity: no install-info.json exists at all for this target"
+        );
+        assert_eq!(
+            crate::cli::telemetry::read_install_info_detailed(&destination),
+            Err(crate::cli::telemetry::InstallInfoAbsence::NotFound),
+            "sanity: the detailed read must classify a missing file as NotFound, not Broken"
+        );
+
+        let result = check_telemetry_state(&destination, Some(&home));
+
+        assert_eq!(
+            result.status,
+            CheckStatus::Info,
+            "a genuinely absent record is this target's own opt-out choice, not a warning"
+        );
+        assert!(
+            result.summary.contains("opted out at install"),
+            "summary must keep today's plain opt-out wording, got: {}",
+            result.summary
+        );
+
+        fs::remove_dir_all(&destination).ok();
+        fs::remove_dir_all(&home).ok();
+    }
+
+    /// Third outcome sibling: a record present but genuinely
+    /// UNREADABLE -- a directory sitting where the file should be, so
+    /// `std::fs::read_to_string` fails with an error that is not
+    /// `NotFound` (a permission-style/`IsADirectory` I/O error). Must
+    /// classify as `Broken`, the same as invalid JSON or a schema
+    /// mismatch, and `check_telemetry_state` must warn rather than
+    /// report a plain opt-out -- this is the "present but unreadable"
+    /// outcome named in Fix 1's three-outcomes requirement, distinct
+    /// from both the malformed-JSON and schema-mismatch fixtures
+    /// exercised elsewhere in this file.
+    #[test]
+    fn check_telemetry_state_warns_when_install_info_path_is_unreadable() {
+        let destination = scratch_dir("telemetry-state-unreadable-target");
+        let home = scratch_dir("telemetry-state-unreadable-home");
+        let konductor_dir = destination.join(config::KONDUCTOR_DIR_NAME);
+        fs::create_dir_all(&konductor_dir).unwrap();
+        // A directory, not a file, at the path read_to_string expects
+        // to open -- guarantees a non-NotFound I/O error on read.
+        fs::create_dir_all(konductor_dir.join("install-info.json")).unwrap();
+
+        assert_eq!(
+            crate::cli::telemetry::read_install_info_detailed(&destination),
+            Err(crate::cli::telemetry::InstallInfoAbsence::Broken),
+            "sanity: a directory where the file belongs must classify as Broken, not NotFound"
+        );
+
+        let result = check_telemetry_state(&destination, Some(&home));
+
+        assert_eq!(
+            result.status,
+            CheckStatus::Warn,
+            "an unreadable (not merely absent) record must warn, not report a plain opt-out"
+        );
+        assert!(
+            !result.summary.contains("opted out"),
+            "summary must not claim this was the user's own choice, got: {}",
+            result.summary
+        );
+
+        fs::remove_dir_all(&destination).ok();
+        fs::remove_dir_all(&home).ok();
+    }
+
+    /// Fix 1's core guarantee, proven directly rather than inferred
+    /// from the three outcome tests above: `check_telemetry_state`'s
+    /// per-target decision and message both come from the SAME
+    /// `read_install_info_detailed` result, not two independent
+    /// filesystem accesses. There is no way to intercept the function
+    /// call itself here, so this proves it structurally instead --
+    /// by writing a schema-invalid record, capturing what
+    /// `read_install_info_detailed` reports for it up front, then
+    /// asserting `check_telemetry_state`'s own output is consistent
+    /// with that ONE captured result. A two-read implementation could
+    /// still pass this on an untouched filesystem; the real regression
+    /// coverage for the RACE itself is the four tests above pinning
+    /// each outcome plus this one pinning that the two now can never
+    /// desynchronize by construction, because there is only one call
+    /// site producing both the decision and the message.
+    #[test]
+    fn check_telemetry_state_decision_and_message_derive_from_one_read() {
+        let destination = scratch_dir("telemetry-state-single-read-target");
+        let home = scratch_dir("telemetry-state-single-read-home");
+        let konductor_dir = destination.join(config::KONDUCTOR_DIR_NAME);
+        fs::create_dir_all(&konductor_dir).unwrap();
+        fs::write(
+            konductor_dir.join("install-info.json"),
+            r#"{"schema_version":99,"agent_version":null,"harness":"kiro-cli","installed_at":"2026-01-01T00:00:00Z"}"#,
+        )
+        .unwrap();
+
+        let captured = crate::cli::telemetry::read_install_info_detailed(&destination);
+        assert_eq!(
+            captured,
+            Err(crate::cli::telemetry::InstallInfoAbsence::Broken)
+        );
+
+        let result = check_telemetry_state(&destination, Some(&home));
+
+        // `check_telemetry_state` must agree with the single read
+        // captured above -- there is no second, independently-timed
+        // existence check that could disagree with it under a
+        // concurrent uninstall.
+        assert_eq!(
+            result.status,
+            CheckStatus::Warn,
+            "the decision must match what the single detailed read reported (Broken -> Warn)"
+        );
+        assert!(
+            !result.summary.contains("opted out"),
+            "the message must match what the single detailed read reported -- Broken must \
+             never produce opt-out wording, got: {}",
+            result.summary
+        );
+
+        fs::remove_dir_all(&destination).ok();
+        fs::remove_dir_all(&home).ok();
+    }
+
+    /// Sibling of the case above: a target that DID opt out is already
+    /// covered by its own `Info` outcome above regardless of the
+    /// machine record's value -- confirmed here by pairing an opted-out
+    /// target with a declining machine record, which must still report
+    /// as the target's own opt-out (`Info`), not the machine-wide `Warn`
+    /// -- the per-target signal is checked first.
+    #[test]
+    fn check_telemetry_state_reports_targets_own_opt_out_even_when_machine_also_declines() {
+        let destination = scratch_dir("telemetry-state-both-opted-out-and-declined-target");
+        let home = scratch_dir("telemetry-state-both-opted-out-and-declined-home");
+        konductor_telemetry::ensure_instance(&home, false, crate::cli::time::utc_now_iso_millis);
+
+        let result = check_telemetry_state(&destination, Some(&home));
+
+        assert_eq!(
+            result.status,
+            CheckStatus::Info,
+            "this target's own opt-out must be reported first, not the machine-wide decline"
+        );
+        assert!(
+            result.summary.contains("opted out"),
+            "summary must still name this target's own choice, got: {}",
+            result.summary
+        );
+
+        fs::remove_dir_all(&destination).ok();
+        fs::remove_dir_all(&home).ok();
+    }
+
+    /// `home_dir: None` (an unresolvable `HOME`) must fail closed to
+    /// the same "no machine record" family of outcome -- never `Ok`,
+    /// mirroring `report.rs`'s own `telemetry_consent_allows` contract
+    /// that an unresolvable `HOME` has no anchor to read consent from.
+    #[test]
+    fn check_telemetry_state_fails_closed_when_home_dir_is_unresolvable() {
+        let destination = scratch_dir("telemetry-state-no-home-target");
+        opt_in_to_telemetry(&destination);
+
+        let result = check_telemetry_state(&destination, None);
+
+        assert_ne!(
+            result.status,
+            CheckStatus::Ok,
+            "an unresolvable HOME must never report Ok -- there is no anchor to read a real \
+             consent signal from"
+        );
+        assert!(!result.status.is_failing());
+
+        fs::remove_dir_all(&destination).ok();
+    }
+
+    /// `dispatch_doctor_with` wiring: `check_telemetry_state` must
+    /// actually reach live, dispatched output -- not be a silent no-op
+    /// like the three dormant checks. Confirmed by name in both the
+    /// plain-text-equivalent check list and the `--json` `checks` array
+    /// for a real single-target dispatch call.
+    #[test]
+    fn dispatch_doctor_with_actually_dispatches_telemetry_state_check() {
+        let source = scratch_dir("telemetry-state-dispatched-source");
+        let destination = scratch_dir("telemetry-state-dispatched-destination");
+        let home = scratch_dir("telemetry-state-dispatched-home");
+
+        let results = run_checks(
+            &source,
+            Some(source.to_str().unwrap()),
+            &destination,
+            Some(&home),
+        );
+        assert!(
+            results.iter().any(|r| r.name == "telemetry_state"),
+            "telemetry_state must be present in run_checks' own output -- the exact function \
+             both dispatch_doctor_with and dispatch_doctor_all delegate to"
+        );
+
+        let rendered = format_report_json(&results);
+        let parsed: serde_json::Value =
+            serde_json::from_str(&rendered).expect("must be valid JSON");
+        let checks = parsed["checks"].as_array().unwrap();
+        assert!(
+            checks.iter().any(|c| c["name"] == "telemetry_state"),
+            "telemetry_state must appear in the --json checks array too, got: {checks:?}"
+        );
+
+        fs::remove_dir_all(&source).ok();
+        fs::remove_dir_all(&destination).ok();
+        fs::remove_dir_all(&home).ok();
     }
 
     // ── --all ────────────────────────────────────────────────────────────
@@ -4126,6 +4812,53 @@ mod tests {
             ColorMode::disabled(),
         );
         assert_eq!(code, 0, "zero tracked installs under --all must be a no-op");
+
+        fs::remove_dir_all(&cwd).ok();
+    }
+
+    /// `HOME=""` must refuse the same way `update --all`/`uninstall
+    /// --all` already do, not silently report zero tracked installs.
+    /// `index_path` turns an unfiltered empty `HOME` into a relative
+    /// `.konductor/installs`, so `--all`'s own tracked-install read
+    /// (through `run_checks`'s and `dispatch_doctor_all`'s home
+    /// resolution) previously never saw the real index at all.
+    #[test]
+    fn dispatch_doctor_all_with_home_set_to_empty_string_refuses_like_update_all() {
+        let _lock = crate::cli::test_home_lock::lock_home();
+        let original_home = std::env::var_os("HOME");
+        // SAFETY: held under the crate-wide HOME_ENV_LOCK for this
+        // test's entire body; restored before returning.
+        unsafe {
+            std::env::set_var("HOME", "");
+        }
+        let cwd = scratch_dir("doctor-all-empty-home-cwd");
+
+        let code = dispatch_doctor_with(
+            &cwd,
+            None,
+            None,
+            true,
+            false,
+            false,
+            None,
+            ColorMode::disabled(),
+        );
+
+        // SAFETY: see above; restores HOME before the lock (held by
+        // `_lock`) is released.
+        unsafe {
+            match &original_home {
+                Some(value) => std::env::set_var("HOME", value),
+                None => std::env::remove_var("HOME"),
+            }
+        }
+
+        assert_ne!(
+            code, 0,
+            "HOME=\"\" must never silently report zero tracked installs -- doctor cannot \
+             determine whether anything is tracked without a resolvable $HOME"
+        );
+        assert_eq!(code, EXIT_USAGE_ERROR);
 
         fs::remove_dir_all(&cwd).ok();
     }

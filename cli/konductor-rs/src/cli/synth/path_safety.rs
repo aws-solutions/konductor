@@ -55,8 +55,8 @@ use super::model::{CanonicalModel, SkillDef};
 /// `COM1`-`9`, `LPT1`-`9`), or Windows' trailing-`.`/trailing-space
 /// filename normalization (`SKILL.md.` colliding with `SKILL.md`).
 /// Checked directly against this package's own `Config` before deciding
-/// not to fix these: `build-tools` declares `RustLang1x` (Linux
-/// binaries) as the build-fleet toolchain, with a macOS-only branch in
+/// not to fix these: `build-tools` declares a Linux-only Rust toolchain
+/// as the build-fleet target, with a macOS-only branch in
 /// `aim-and-make-build` for local developer builds -- no Windows target
 /// is declared anywhere in this package. Both real targets (Linux CI,
 /// macOS local dev) are Unix, so none of these four Windows-specific

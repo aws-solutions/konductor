@@ -1,6 +1,6 @@
-# Design Review Workflow
+# Existing Design Artifact Review (Pre-Implementation)
 
-> **Deprecated for design doc review.** Use [`k-design-doc-creation.sop.md`](k-design-doc-creation.sop.md) for authoring new design documents. This SOP reviews existing artifacts before implementation.
+> **Not for authoring new design documents.** This SOP reviews a completed set of design artifacts (system design, threat model, API specs, data models, security policies, diagrams) for readiness before implementation begins. To author a new design document from scratch, use [`k-design-doc-creation.sop.md`](k-design-doc-creation.sop.md) instead.
 
 ## Overview
 

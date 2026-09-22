@@ -27,7 +27,7 @@ Use the `socratic-elicitation` skill (Mode A: Intake) to conduct Socratic requir
 
 **Constraints:**
 
-- You MUST run the `socratic-elicitation` skill before starting this phase.
+- You MUST conduct this phase by running the `socratic-elicitation` skill (Mode A: Intake) directly — the skill's execution constitutes this phase's work, it is not a prerequisite that runs before it.
 - You MUST ask questions sequentially, one at a time, waiting for the engineer's answer before asking the next, drawing from the skill's question dimensions — business value (`[PM]`), technical feasibility and dependencies (`[SDE]`), timeline and cross-team coordination (`[TPM]`), auth and data protection (`[Security]`), and observability and failure modes (`[Ops]`). Let each answer determine whether to follow up or move to the next dimension, rather than working through a fixed script.
 - You MUST ask at most `elicitation_depth` questions total (5 / 10 / 15 per setting).
 - You MUST NOT ask about dimensions already clearly addressed in the topic description.
@@ -44,13 +44,13 @@ Generate the design document using the outside-in structure mandated by `design-
 
 - You MUST apply the `design-doc-guidelines` skill before drafting.
 - You MUST follow the outside-in structure: Problem → Requirements → Solution Overview → How It Works → Implementation Details → Implementation Plan.
-- You MUST generate Mermaid diagrams before writing prose for each major section.
+- You MUST generate a Mermaid diagram before writing prose for each major section that describes a multi-component interaction, data flow, or sequence of steps (e.g. Solution Overview, How It Works). Every "How It Works" subsection MUST open with a diagram, with no exception, since `design-doc-guidelines`' checklist gates on it unconditionally. Elsewhere, You MAY skip a diagram for a section with no such structure to depict (e.g. a section in Implementation Details listing configuration values or a single API contract); state explicitly when a section has no diagram and why.
 - You MUST run the `adr-generator` skill and generate an inline ADR for every significant design decision. The `adr-generator` skill applies the `decision-writing` ADR format: Context, Decision, Alternatives Considered (table), Consequences. Trade-off scores are added in Phase 3 — do NOT wait for them here.
 - You MUST run the `design-doc-guidelines` checklist as a maker-checker pass after completing the draft.
 - You MUST NOT advance to Phase 3 until the maker-checker pass produces zero CRITICAL findings.
 - If the maker-checker pass finds CRITICAL issues, You MUST fix them and re-run before proceeding.
 
-**Expected Output:** Complete draft design document at `output_path` with Mermaid diagrams, inline ADRs, and a passing `design-doc-guidelines` maker-checker result.
+**Expected Output:** Complete draft design document at `output_path` with Mermaid diagrams for each multi-component/flow section, inline ADRs, and a passing `design-doc-guidelines` maker-checker result.
 
 ### Phase 3: Quality Gates
 

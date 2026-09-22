@@ -137,6 +137,7 @@ Calculate effort per phase into an authoritative baseline, then project an infor
 **Constraints:**
 
 - You MUST group tasks into phases (Research, Implementation, Testing, Documentation)
+- You MUST include a Review/Rework phase in the serial sum whenever the plan's execution phase (Step 6) includes a review or adversarial loop — do not rely on the agentic projection's `τ` term alone to represent this cost in the baseline
 - You MUST account for parallel execution where dependencies allow when deriving the calendar timeline — this nets out overlapping wait time across parallel tracks; it does not change the effort sum computed below
 - You MUST sum per-phase effort into a serial total
 - You MUST apply buffer: 20% for well-understood work (the floor, applied to all work — there is no zero-buffer tier), 40% for novel, complex, unfamiliar, or otherwise uncertain work; this buffer hedges the uncertainty of the estimate itself; it is a different risk than the `legacy-to-agentic-estimate` skill's verification tax (`τ`, the cost of reviewing AI output), so the buffer applies independently of that skill and is never replaced by it
@@ -161,26 +162,28 @@ Calculate effort per phase into an authoritative baseline, then project an infor
 | Implementation | 3, 4, 5 | 4h     | k-developer  |
 | Testing        | 6, 7    | 1h     | k-developer  |
 | Documentation  | 8       | 30m    | k-developer  |
+| Review/Rework  | —       | 30m    | k-architect  |
 
-**Serial Effort Sum**: 7.5h
+**Serial Effort Sum**: 8h
 
-**Estimation-Uncertainty Buffer** (complex/unfamiliar work, 40%): +3.0h
+**Estimation-Uncertainty Buffer** (complex/unfamiliar work, 40%): +3.2h
 
-**Total Estimated Effort (baseline)**: 10.5h
+**Total Estimated Effort (baseline)**: 11.2h
 
 ### Agentic Projection (uncalibrated presets — recalibrate from actuals)
 
-| Item                                              | Legacy   | Tier      | Tier source        | Low     | Mid     | High    | Δ (mid)  |
-| ------------------------------------------------- | -------- | --------- | ------------------ | ------- | ------- | ------- | -------- |
-| 1. Search codebase for existing patterns          | 1h       | 🟢 high   | inferred·llm (60%) | 0.4     | 0.6     | 0.7     | -40%     |
-| 2. Find relevant documentation                    | 1h       | 🟢 high   | inferred·llm (65%) | 0.4     | 0.6     | 0.7     | -40%     |
-| 3. Implement CRUD endpoints for settings API      | 2h       | 🟢 high   | inferred·kw (82%)  | 0.9     | 1.2     | 1.4     | -40%     |
-| 4. Wire up integration with upstream service      | 1h       | 🟡 medium | inferred·kw (100%) | 0.9     | 0.9     | 1.0     | -10%     |
-| 5. Add input validation and error handling        | 1h       | 🟡 medium | inferred·llm (60%) | 0.8     | 0.9     | 1.0     | -10%     |
-| 6. Write unit tests for new endpoints             | 0.5h     | 🟢 high   | inferred·kw (88%)  | 0.2     | 0.3     | 0.3     | -40%     |
-| 7. Run verification protocol and collect evidence | 0.5h     | 🔴 low    | inferred·llm (55%) | 0.5     | 0.6     | 0.6     | +20%     |
-| 8. Update README and add code comments            | 0.5h     | 🟢 high   | inferred·llm (70%) | 0.2     | 0.3     | 0.4     | -40%     |
-| **Total**                                         | **7.5h** |           |                    | **4.3** | **5.4** | **6.1** | **-28%** |
+| Item                                              | Legacy | Tier      | Tier source        | Low     | Mid     | High    | Δ (mid)  |
+| ------------------------------------------------- | ------ | --------- | ------------------ | ------- | ------- | ------- | -------- |
+| 1. Search codebase for existing patterns          | 1h     | 🟢 high   | inferred·llm (60%) | 0.4     | 0.6     | 0.7     | -40%     |
+| 2. Find relevant documentation                    | 1h     | 🟢 high   | inferred·llm (65%) | 0.4     | 0.6     | 0.7     | -40%     |
+| 3. Implement CRUD endpoints for settings API      | 2h     | 🟢 high   | inferred·kw (82%)  | 0.9     | 1.2     | 1.4     | -40%     |
+| 4. Wire up integration with upstream service      | 1h     | 🟡 medium | inferred·kw (100%) | 0.9     | 0.9     | 1.0     | -10%     |
+| 5. Add input validation and error handling        | 1h     | 🟡 medium | inferred·llm (60%) | 0.8     | 0.9     | 1.0     | -10%     |
+| 6. Write unit tests for new endpoints             | 0.5h   | 🟢 high   | inferred·kw (88%)  | 0.2     | 0.3     | 0.3     | -40%     |
+| 7. Run verification protocol and collect evidence | 0.5h   | 🔴 low    | inferred·llm (55%) | 0.5     | 0.6     | 0.6     | +20%     |
+| 8. Update README and add code comments            | 0.5h   | 🟢 high   | inferred·llm (70%) | 0.2     | 0.3     | 0.4     | -40%     |
+| 9. Review and address adversarial/PE findings     | 0.5h   | 🔴 low    | inferred·llm (55%) | 0.5     | 0.6     | 0.6     | +20%     |
+| **Total**                                         | **8h** |           |                    | **4.8** | **6.0** | **6.7** | **-25%** |
 
 Tier presets (`v`/`L`/`τ`/`C`) are uncalibrated defaults pending team telemetry, and the figures above are shown at the skill's native 0.1h resolution — sub-15-minute differences are rounding artifacts, not meaningful precision. This projection is informational context, not the committed estimate. Use the baseline above for commitments.
 ```

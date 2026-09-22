@@ -4,12 +4,11 @@
 // implementation).
 //
 // ── Scope (task 3.3) ────────────────────────────────────────────────────────
-// Tracks installed files and their hashes (design doc §11 task 3.3's only
-// field-level detail; no schema is given, so this is modeled on
-// cli/gate-config/'s existing schema conventions -- a `schema_version`
+// Tracks installed files and their hashes (modeled on cli/gate-config/'s
+// existing schema conventions -- a `schema_version`
 // discriminator plus the minimal field set the task requires). Named
-// `.konductor/manifest` (no `.json` suffix) per the design doc's own
-// naming, used consistently across all 5 of its references.
+// `.konductor/manifest` (no `.json` suffix), used consistently across
+// all references to this file.
 //
 // ── `files[].path` meaning ───────────────────────────────────────────────
 // `destination` is the install ROOT, relative to `target_dir` (always

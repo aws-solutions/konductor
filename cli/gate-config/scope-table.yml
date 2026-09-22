@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
-# scope-table.yml — per the design doc's §6 Scope Table: maps each change
-# tier to the ordered set of gated phases that tier activates.
+# scope-table.yml — maps each change tier to the ordered set of gated
+# phases that tier activates.
 #
 #   tiers.<tier_id>.phases   ordered list of phase names gated for this
 #                            tier. A run's config selects exactly one

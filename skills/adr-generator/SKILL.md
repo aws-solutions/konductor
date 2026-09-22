@@ -1,13 +1,13 @@
 ---
 name: adr-generator
-description: Produces inline Architecture Decision Records (ADRs) during design doc creation. Wraps the decision-writing skill's ADR format to generate a complete ADR — Context, Decision, Status, Alternatives Considered, Consequences — for every significant design choice. Use when a significant design decision is identified during creation, or when an engineer asks to document a decision as an ADR. Trigger phrases — "generate an ADR for this decision", "document this as an architecture decision record", "create an ADR for choosing X over Y".
+description: Produces a complete inline ADR (Context, Decision, Status, Alternatives, Consequences). Use when a significant design decision is identified during design doc creation, when an engineer asks to document a decision as an ADR, or when an existing ADR is incomplete (missing alternatives, consequences, or status). Trigger phrases — "generate an ADR for this decision", "document this as an architecture decision record", "create an ADR for choosing X over Y".
 version: 1.0.0
 tags: [skill, adr, decision, architecture, design-doc]
 ---
 
 # ADR Generator
 
-Produces a complete Architecture Decision Record (ADR) for a significant design decision. Uses the formal ADR format defined in the `decision-writing` skill. ADRs are generated inline during design doc creation and embedded under the `## Architecture Decision Records` section.
+Produces a complete Architecture Decision Record (ADR) for a significant design decision, with these sections: Context, Decision, Status, Alternatives Considered, Consequences. Uses the formal ADR format defined in the `decision-writing` skill. ADRs are generated inline during design doc creation and embedded under the `## Architecture Decision Records` section.
 
 ## When to Use
 
@@ -35,7 +35,7 @@ Collect from the current conversation or document:
 If alternatives are not yet documented:
 
 - **Automated SOP workflow (e.g., invoked from `k-design-doc-creation` Phase 3 — no user interaction allowed):** infer at least one viable alternative from the decision context and available trade-off data (from `trade-off-evaluator`). Do NOT ask the engineer. If no credible alternative can be inferred, still produce an Alternatives table with the chosen option PLUS a placeholder row `| <TBD — flagged for adversarial review> | — | — | — |`, and flag the ADR for the adversarial-review phase. This ensures the Alternatives table always has ≥ 2 rows so the Quality Gate is satisfied.
-- **Standalone / interactive use:** ask the engineer for at least one alternative before generating the ADR.
+- **Standalone / interactive use:** if the conversation already contains discussed alternatives, record those. If no alternatives have been explored yet, suggest 1-2 plausible alternatives and discuss them with the engineer before generating the ADR — do not silently invent alternatives the engineer never considered.
 
 ### Step 2: Generate ADR
 
@@ -82,7 +82,7 @@ _Scored trade-off matrix: see `<name>-tradeoffs.md` or inline table above._
 
 ### Step 3: Assign ADR Number
 
-ADRs are numbered sequentially within the document. Check the existing `## Architecture Decision Records` section for the highest existing ADR number and increment by 1. If no ADRs exist yet, start at ADR-1.
+ADRs are numbered sequentially within the document. Check the existing `## Architecture Decision Records` section for the highest existing ADR number and increment by 1. If no ADRs exist yet, start at ADR-1. Numbers are scoped to a single document — the same ADR-N in different design docs are unrelated decisions. When cross-referencing an ADR from outside its own document, name the source document (e.g., "see ADR-3 in payments-design.md") rather than the bare number.
 
 ### Step 4: Embed in Document
 

@@ -1,27 +1,25 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// telemetry/envelope.rs — per-invocation event schema and the real
-// ingestion API's outer envelope.
+// Per-invocation event schema and the ingestion API's outer envelope.
 //
-// `Data`'s own seven fields have no wiki-documented counterpart to match
-// by name, so they are camelCase by adopted convention. The outer
-// four fields (`Solution`/`Version`/`UUID`/`TimeStamp`) match the real
-// API's own documented casing exactly.
+// `Data`'s seven fields have no documented counterpart to match by
+// name, so they're camelCase by convention. The outer four fields
+// (`Solution`/`Version`/`UUID`/`TimeStamp`) match the API's own
+// documented casing exactly.
 
 use serde::Serialize;
 
 use super::super::time::utc_now_iso_millis;
 
-/// This crate's closed, additive `eventType` enum -- seven values today.
+/// This crate's closed, additive event-type enum -- seven values.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum EventType {
     AgentInvocation,
     SubagentInvocation,
-    // Never constructed in konductor-rs: mcp_tool_call events are only
-    // ever built by skill-lookup-core's own independent copy of this
-    // enum (mcp/lib/skill-lookup-core/src/telemetry.rs), since the two
-    // crates aren't workspace-linked. Kept here anyway so this
-    // enum still represents the full 7-value schema it documents.
+    // Never constructed here: mcp_tool_call events come only from
+    // skill-lookup-core's own copy of this enum, since the two crates
+    // aren't workspace-linked. Kept so this enum still matches the
+    // full 7-value schema it documents.
     #[allow(dead_code)]
     McpToolCall,
     CliError,
@@ -45,10 +43,8 @@ impl EventType {
 }
 
 /// The per-invocation event schema, nested under the outer envelope's
-/// `Data` field. No `UUID`, no `version`, no `schemaVersion` -- all three
-/// omitted: the identity join and version are carried only
-/// by the outer envelope; `schemaVersion` is dropped outright, nothing
-/// reads it back).
+/// `Data` field. No `UUID`/`version`/`schemaVersion` here: identity and
+/// version live only in the outer envelope; `schemaVersion` is dropped.
 #[derive(Debug, Clone, Serialize)]
 pub(crate) struct EventEnvelope {
     #[serde(rename = "eventId")]
@@ -64,19 +60,20 @@ pub(crate) struct EventEnvelope {
     #[serde(rename = "errorCode")]
     pub error_code: Option<String>,
     pub harness: Option<String>,
+    /// `agent_version` degrades to null rather than defaulting --
+    /// populated only on `package_installed`/`package_version_updated`.
+    #[serde(rename = "agentVersion")]
+    pub agent_version: Option<String>,
     #[serde(rename = "TimeStamp")]
     pub time_stamp: String,
 }
 
 impl EventEnvelope {
-    /// Builds an event envelope for `event_type`/`target_name`, filling
-    /// `eventId` (UUID + nanosecond timestamp + this process's own
-    /// PID, hashed via `sha256_hex()`) and `TimeStamp` (ISO 8601, UTC,
-    /// millisecond precision -- matching `docs/telemetry-schema.json`'s
-    /// own worked examples, and the MCP-side producer's `iso8601_now()`)
-    /// automatically. `uuid` is the identity record's `UUID` (or the nil
-    /// sentinel for unattributed usage) -- used only as `eventId` entropy
-    /// here, never duplicated as a `Data`-level field.
+    /// Builds an event envelope, filling `eventId` and `TimeStamp`.
+    /// `uuid` is used only as `eventId` entropy, never duplicated as a
+    /// `Data`-level field. `agent_version` is `None` except for
+    /// `package_installed`/`package_version_updated`.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn build(
         event_type: EventType,
         target_name: impl Into<String>,
@@ -85,6 +82,7 @@ impl EventEnvelope {
         parent_session_id: Option<String>,
         error_code: Option<String>,
         harness: Option<String>,
+        agent_version: Option<String>,
     ) -> Self {
         EventEnvelope {
             event_id: build_event_id(uuid),
@@ -94,6 +92,7 @@ impl EventEnvelope {
             parent_session_id,
             error_code,
             harness,
+            agent_version,
             time_stamp: utc_now_iso_millis(),
         }
     }
@@ -108,8 +107,8 @@ fn build_event_id(uuid: &str) -> String {
     super::super::install::artifact::sha256_hex(input.as_bytes())
 }
 
-/// The real ingestion API's outer envelope: `Solution`/`Version`/`UUID`/`TimeStamp`
-/// wrapping a `Data` object holding the built `EventEnvelope`.
+/// The ingestion API's outer envelope: `Solution`/`Version`/`UUID`/
+/// `TimeStamp` wrapping a `Data` object holding the `EventEnvelope`.
 #[derive(Debug, Clone, Serialize)]
 pub(crate) struct OuterEnvelope {
     #[serde(rename = "Solution")]
@@ -125,11 +124,9 @@ pub(crate) struct OuterEnvelope {
 }
 
 impl OuterEnvelope {
-    /// Wraps `data` in the outer envelope. `version` is read live from
-    /// `env!("CARGO_PKG_VERSION")` at the call site, never from the
-    /// cached identity record's own frozen `version` field.
-    /// `Solution` is `super::report::SOLUTION_ID`, the AWS Solutions
-    /// Library identifier assigned to Konductor.
+    /// Wraps `data` in the outer envelope. `version` reads live from
+    /// `env!("CARGO_PKG_VERSION")`, never a cached identity record's
+    /// frozen `version` field.
     pub(crate) fn wrap(data: EventEnvelope, uuid: String) -> Self {
         OuterEnvelope {
             solution: super::report::SOLUTION_ID,
@@ -141,9 +138,8 @@ impl OuterEnvelope {
     }
 }
 
-/// Formats "now" as the outer envelope's documented
-/// `"YYYY-MM-DD HH:MM:SS.f"` shape -- a second, independently-formatted
-/// value from the same "now" as `Data.TimeStamp`, never derived from it.
+/// Formats "now" as the outer envelope's `"YYYY-MM-DD HH:MM:SS.f"`
+/// shape, independently of `Data.TimeStamp`.
 fn wire_timestamp_now() -> String {
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -159,12 +155,12 @@ fn wire_timestamp_now() -> String {
     )
 }
 
-/// The nil-UUID sentinel: a fixed all-zero 64-character hex
-/// value, used as the outer envelope's `UUID` for unattributed usage --
-/// never a freshly-generated random value, so every unattributed event
-/// groups together rather than each looking like a distinct deployment.
-pub(crate) const NIL_UUID_SENTINEL: &str =
-    "0000000000000000000000000000000000000000000000000000000000000000";
+/// Fixed all-zero 64-char hex sentinel used as the outer envelope's
+/// `UUID` for unattributed usage, never random, so every unattributed
+/// event groups together. Production imports it directly from
+/// `konductor_telemetry`; this re-export is test-only.
+#[cfg(test)]
+use konductor_telemetry::NIL_UUID_SENTINEL;
 
 #[cfg(test)]
 mod tests {
@@ -186,12 +182,18 @@ mod tests {
             None,
             Some("init.create_dir_failed".to_string()),
             Some("kiro-cli".to_string()),
+            None,
         );
         let json = serde_json::to_value(&env).unwrap();
         assert_eq!(json["eventType"], "cli_error");
         assert_eq!(json["targetName"], "install");
         assert_eq!(json["errorCode"], "init.create_dir_failed");
         assert_eq!(json["harness"], "kiro-cli");
+        assert!(
+            json["agentVersion"].is_null(),
+            "agentVersion must serialize as an explicit JSON null for a cli_error event, \
+             never be omitted"
+        );
         assert!(json.get("UUID").is_none(), "Data must never carry UUID");
         assert!(
             json.get("schemaVersion").is_none(),
@@ -203,18 +205,16 @@ mod tests {
         );
     }
 
-    /// FINDING regression: `Data.TimeStamp` must carry millisecond
-    /// precision (`YYYY-MM-DDTHH:MM:SS.sssZ`, 24 chars), matching every
-    /// one of `docs/telemetry-schema.json`'s own worked examples and the
-    /// MCP-side producer's `iso8601_now()` -- before this fix, the CLI
-    /// side used `utc_now_iso()`'s second-precision, 20-char output,
-    /// diverging from the documented schema.
+    /// `Data.TimeStamp` must carry millisecond precision, matching
+    /// `docs/telemetry-schema.json`'s examples and the MCP-side
+    /// producer's `iso8601_now()`.
     #[test]
     fn event_envelope_time_stamp_has_millisecond_precision() {
         let env = EventEnvelope::build(
             EventType::CliError,
             "install",
             NIL_UUID_SENTINEL,
+            None,
             None,
             None,
             None,
@@ -231,11 +231,28 @@ mod tests {
     }
 
     #[test]
+    fn event_envelope_carries_agent_version_when_present() {
+        let env = EventEnvelope::build(
+            EventType::PackageInstalled,
+            "kiro-cli",
+            "a".repeat(64).as_str(),
+            None,
+            None,
+            None,
+            None,
+            Some("1.2.3".to_string()),
+        );
+        let json = serde_json::to_value(&env).unwrap();
+        assert_eq!(json["agentVersion"], "1.2.3");
+    }
+
+    #[test]
     fn outer_envelope_wraps_with_required_fields() {
         let env = EventEnvelope::build(
             EventType::PackageInstalled,
             "kiro-cli",
             "a".repeat(64).as_str(),
+            None,
             None,
             None,
             None,

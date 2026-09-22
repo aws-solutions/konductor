@@ -5,9 +5,9 @@
 //
 // ── Scope ────────────────────────────────────────────────────────────────
 // Detects which agent runtime(s) are present under a target directory.
-// Kiro CLI and Claude Code are the only two runtimes the design doc names
-// for install/registration (Codex is a synth-transform target only, not
-// an install target -- see the M3 design-doc handoff notes). Detection
+// Kiro CLI and Claude Code are the only two runtimes `konductor install`
+// registers with (Codex is a synth-transform target only, not an
+// install target). Detection
 // itself does not select an `InstallStrategy` -- that selection is the
 // registry's job (each strategy's own `matches()`), never a central
 // match/if-else chain over detected runtimes.
@@ -15,8 +15,8 @@
 use std::path::Path;
 
 /// An agent runtime `konductor install` can detect and register with.
-/// Only Kiro CLI and Claude Code are named as install/registration
-/// targets by the design doc.
+/// Only Kiro CLI and Claude Code are supported install/registration
+/// targets.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Runtime {
     KiroCli,

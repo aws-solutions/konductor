@@ -138,8 +138,9 @@ pub(crate) fn report_error(
 /// `telemetry::report_cli_error_for_target` (which re-reads identity
 /// per call, uncached) instead of `report_error`'s
 /// `telemetry::report_cli_error` (the process-global cache), so each
-/// target's own UUID is reported rather than every target after the
-/// first inheriting whichever UUID the cache resolved first. Mirrors
+/// target's own `harness` and per-target opt-out signal are read
+/// fresh, rather than inheriting whichever identity the cache resolved
+/// first. Mirrors
 /// the existing `report_package_uninstalled`/`_for_target` and
 /// `report_package_version_updated`/`_for_target` sibling-function
 /// convention already established in `telemetry/report.rs`, rather

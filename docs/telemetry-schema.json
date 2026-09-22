@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Konductor usage-analytics telemetry event envelope",
-  "description": "Per-invocation event schema. This is the shape of the outer envelope's 'Data' field, not the full wire-level request -- the outer envelope wraps this object with Solution/Version/UUID/TimeStamp.",
+  "description": "Per-invocation event schema. This is the shape of the outer envelope's 'Data' field, not the full wire-level request -- the outer envelope wraps this object with Solution/Version/UUID/TimeStamp. The outer envelope's UUID is a machine-scoped identifier: one value is minted once per machine (specifically, once per $HOME/.konductor/telemetry.json) the first time this tool runs anywhere on that machine, and the SAME value is then sent on every event from every project that machine's user ever installs this tool into. It is not a per-project or per-install identifier -- a receiving service can tell, from UUID alone, that events from several different projects came from the same machine. See each event's own targetName/harness fields (below) for the per-project/per-install facts this identifier does NOT carry (which project, which directory) -- project paths and names are never sent.",
   "type": "object",
   "required": [
     "eventId",
@@ -11,6 +11,7 @@
     "parentSessionId",
     "errorCode",
     "harness",
+    "agentVersion",
     "TimeStamp"
   ],
   "additionalProperties": true,
@@ -58,6 +59,13 @@
       ],
       "description": "Populated only on cli_error events, copied verbatim from the identity record. Null on every other eventType -- package_uninstalled/package_installed/package_version_updated carry their harness value through targetName instead, not through this field."
     },
+    "agentVersion": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The installed CONTENT's own version (distinct from the outer envelope's Version, which is always the CLI binary's own env!(\"CARGO_PKG_VERSION\")) -- populated only on package_installed and package_version_updated, sourced from that install's <target_dir>/.konductor/install-info.json record. Null on every other eventType (agent_invocation, subagent_invocation, mcp_tool_call, cli_error, package_uninstalled), and also null on package_installed/package_version_updated when the install source predates the VERSION-in-dist/ convention or that file could not be read -- never a fabricated version string."
+    },
     "TimeStamp": {
       "type": "string",
       "format": "date-time",
@@ -78,6 +86,7 @@
       "parentSessionId": null,
       "errorCode": null,
       "harness": null,
+      "agentVersion": null,
       "TimeStamp": "2026-09-03T20:41:07.312Z"
     },
     {
@@ -88,6 +97,7 @@
       "parentSessionId": "a5e1e982ee70061314417a1070f348e9cec20aa31ee256cb2f0c23ddafbb01b6",
       "errorCode": null,
       "harness": null,
+      "agentVersion": null,
       "TimeStamp": "2026-09-03T20:41:09.104Z"
     },
     {
@@ -98,6 +108,7 @@
       "parentSessionId": null,
       "errorCode": null,
       "harness": null,
+      "agentVersion": null,
       "TimeStamp": "2026-09-03T20:42:00.000Z",
       "count": 3
     },
@@ -109,6 +120,7 @@
       "parentSessionId": null,
       "errorCode": "init.create_dir_failed",
       "harness": "kiro-cli",
+      "agentVersion": null,
       "TimeStamp": "2026-09-03T20:41:07.312Z"
     },
     {
@@ -119,6 +131,7 @@
       "parentSessionId": null,
       "errorCode": null,
       "harness": null,
+      "agentVersion": null,
       "TimeStamp": "2026-09-03T20:45:00.000Z"
     },
     {
@@ -129,6 +142,7 @@
       "parentSessionId": null,
       "errorCode": null,
       "harness": null,
+      "agentVersion": "0.1.0",
       "TimeStamp": "2026-09-03T20:40:00.000Z"
     },
     {
@@ -139,6 +153,7 @@
       "parentSessionId": null,
       "errorCode": null,
       "harness": null,
+      "agentVersion": "0.2.0",
       "TimeStamp": "2026-09-03T21:00:00.000Z"
     }
   ]

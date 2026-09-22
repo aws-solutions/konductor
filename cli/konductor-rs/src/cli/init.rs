@@ -36,10 +36,10 @@ use super::config;
 /// `.konductor/.gitignore` filename, alongside `config::CONFIG_FILE_NAME`.
 pub(crate) const GITIGNORE_FILE_NAME: &str = ".gitignore";
 
-/// Patterns `run_init` writes into `.konductor/.gitignore`, verbatim per
-/// the design doc's Security section ("`konductor init` writes a
-/// `.gitignore` excluding `runs/`, `overrides.yml`, `*.key`, `*.pem`,
-/// `.env`. `konductor doctor` validates these paths are git-ignored.").
+/// Patterns `run_init` writes into `.konductor/.gitignore`: `konductor
+/// init` writes a `.gitignore` excluding `runs/`, `overrides.yml`,
+/// `*.key`, `*.pem`, `.env`, and `konductor doctor` validates these
+/// paths are git-ignored.
 /// Single source of truth -- `doctor.rs`'s `check_gitignore` reuses this
 /// same list rather than duplicating it.
 pub(crate) const GITIGNORE_PATTERNS: &[&str] =

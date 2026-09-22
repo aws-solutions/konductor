@@ -51,19 +51,19 @@ fn bin() -> &'static str {
     env!("CARGO_BIN_EXE_konductor")
 }
 
-fn run_konductor(cwd: &Path, args: &[&str]) -> Output {
+fn run_konductor(cwd: &Path, sink: &telemetry_test_sink::TelemetrySink, args: &[&str]) -> Output {
     // `HOME` is overridden to `cwd` (an isolated temp dir): unrelated to
     // this file's own `config set` assertions, but `log_invocation`
     // (logging.rs) independently resolves `$HOME` for
     // `~/.konductor/logs/` on EVERY invocation -- without this, a real
     // subprocess run here would still write an invocation log line into
     // this test-runner's actual home directory.
-    Command::new(bin())
-        .args(args)
-        .current_dir(cwd)
-        .env("HOME", cwd)
-        .output()
-        .expect("failed to spawn konductor binary")
+    let mut command = Command::new(bin());
+    command.args(args).current_dir(cwd).env("HOME", cwd);
+    for var in sink.env_vars() {
+        command.env(var.name, &var.value);
+    }
+    command.output().expect("failed to spawn konductor binary")
 }
 
 fn scratch_dir(name: &str) -> std::path::PathBuf {
@@ -88,7 +88,8 @@ fn scratch_dir(name: &str) -> std::path::PathBuf {
 #[test]
 fn concurrent_config_set_multiprocess_no_lost_updates() {
     let dir = scratch_dir("no-lost-updates");
-    let init_output = run_konductor(&dir, &[CMD_INIT]);
+    let sink = std::sync::Arc::new(telemetry_test_sink::TelemetrySink::start());
+    let init_output = run_konductor(&dir, &sink, &[CMD_INIT]);
     assert!(
         init_output.status.success(),
         "init must succeed: {}",
@@ -127,7 +128,10 @@ fn concurrent_config_set_multiprocess_no_lost_updates() {
         .into_iter()
         .map(|(key, value)| {
             let dir = dir.clone();
-            std::thread::spawn(move || run_konductor(&dir, &[CMD_CONFIG, ACTION_SET, key, value]))
+            let sink = sink.clone();
+            std::thread::spawn(move || {
+                run_konductor(&dir, &sink, &[CMD_CONFIG, ACTION_SET, key, value])
+            })
         })
         .collect();
 
@@ -169,9 +173,10 @@ fn concurrent_config_set_multiprocess_no_lost_updates() {
     // Confirm the two keys' writers never clobbered each other's field --
     // a lock that serializes but merges incorrectly could still exhibit
     // this as a silent-loss variant.
-    let get_severity = run_konductor(&dir, &[CMD_CONFIG, ACTION_GET, "default_severity"]);
+    let get_severity = run_konductor(&dir, &sink, &[CMD_CONFIG, ACTION_GET, "default_severity"]);
     let get_threshold = run_konductor(
         &dir,
+        &sink,
         &[CMD_CONFIG, ACTION_GET, "fail_on_severity_at_or_above"],
     );
     assert!(get_severity.status.success());
@@ -199,7 +204,8 @@ fn config_set_exits_usage_error_when_lock_is_held_by_another_process() {
     use fs2::FileExt;
 
     let dir = scratch_dir("lock-contention");
-    let init_output = run_konductor(&dir, &[CMD_INIT]);
+    let sink = telemetry_test_sink::TelemetrySink::start();
+    let init_output = run_konductor(&dir, &sink, &[CMD_INIT]);
     assert!(init_output.status.success());
 
     let konductor_dir = dir.join(KONDUCTOR_DIR_NAME);
@@ -216,6 +222,7 @@ fn config_set_exits_usage_error_when_lock_is_held_by_another_process() {
 
     let result = run_konductor(
         &dir,
+        &sink,
         &[CMD_CONFIG, ACTION_SET, "default_severity", SEVERITY_LOW],
     );
 

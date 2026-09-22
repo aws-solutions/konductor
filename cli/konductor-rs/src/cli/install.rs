@@ -44,6 +44,7 @@ pub mod remote;
 pub mod remote_orchestrate;
 pub mod resource_rewrite;
 pub mod runtime;
+pub(crate) mod target_triple;
 
 use manifest::Provenance;
 
@@ -123,7 +124,15 @@ pub(super) fn install_error_exit_code(err: &InstallError) -> u8 {
 /// (`RemoteInstallError::VerifyChecksum`), `EXIT_USAGE_ERROR` (64) for
 /// everything else. Mirrors `install_error_exit_code`'s existing split,
 /// applied to the remote path.
-fn remote_orchestration_error_exit_code(err: &remote_orchestrate::RemoteOrchestrationError) -> u8 {
+///
+/// `pub(super)` (visible throughout `cli`) so `update.rs`'s own
+/// no-`--from` remote-install path -- which reuses this same
+/// `remote_orchestrate::install_from_remote_with_fallback` call and
+/// hits the identical error shape -- can apply the same mapping rather
+/// than duplicating this match.
+pub(super) fn remote_orchestration_error_exit_code(
+    err: &remote_orchestrate::RemoteOrchestrationError,
+) -> u8 {
     match err {
         remote_orchestrate::RemoteOrchestrationError::Install(
             remote::RemoteInstallError::VerifyChecksum(_),
@@ -137,7 +146,10 @@ fn remote_orchestration_error_exit_code(err: &remote_orchestrate::RemoteOrchestr
 /// `install_error_code`'s `"install.<category>"` convention. Never
 /// this error's own `Display` text, which can embed a URL, filename,
 /// or filesystem path.
-fn remote_orchestration_error_code(
+///
+/// `pub(super)`: shared with `update.rs`'s no-`--from` path, same
+/// reason as `remote_orchestration_error_exit_code` above.
+pub(super) fn remote_orchestration_error_code(
     err: &remote_orchestrate::RemoteOrchestrationError,
 ) -> &'static str {
     match err {
@@ -151,7 +163,7 @@ fn remote_orchestration_error_code(
             github::GithubFetchError::MetadataHttp(_, _),
         ) => "install.remote_metadata_http_error",
         remote_orchestrate::RemoteOrchestrationError::Fetch(
-            github::GithubFetchError::DownloadHttp(_),
+            github::GithubFetchError::DownloadHttp(_, _),
         ) => "install.remote_download_http_error",
         remote_orchestrate::RemoteOrchestrationError::Fetch(
             github::GithubFetchError::InvalidResponse(_),
@@ -171,6 +183,9 @@ fn remote_orchestration_error_code(
         remote_orchestrate::RemoteOrchestrationError::Install(
             remote::RemoteInstallError::Install(_),
         ) => "install.remote_install_failed",
+        remote_orchestrate::RemoteOrchestrationError::Install(
+            remote::RemoteInstallError::McpBinaryFetch(_),
+        ) => "install.remote_mcp_binary_fetch_failed",
     }
 }
 
@@ -180,7 +195,10 @@ fn remote_orchestration_error_code(
 /// A `VerifyChecksum` failure here means the fetched tarball's hash
 /// doesn't match the real sidecar also fetched from `dist/` on the
 /// branch -- mapped the same way as the release path's own check.
-fn main_branch_dist_orchestration_error_exit_code(
+///
+/// `pub(super)`: shared with `update.rs`'s no-`--from` path, same
+/// reason as `remote_orchestration_error_exit_code` above.
+pub(super) fn main_branch_dist_orchestration_error_exit_code(
     err: &remote_orchestrate::MainBranchDistOrchestrationError,
 ) -> u8 {
     match err {
@@ -197,7 +215,10 @@ fn main_branch_dist_orchestration_error_exit_code(
 /// `install.main_branch_dist_*` so a `--json` consumer can always tell
 /// which of the two sources an error came from without inspecting the
 /// message text.
-fn main_branch_dist_orchestration_error_code(
+///
+/// `pub(super)`: shared with `update.rs`'s no-`--from` path, same
+/// reason as `remote_orchestration_error_code` above.
+pub(super) fn main_branch_dist_orchestration_error_code(
     err: &remote_orchestrate::MainBranchDistOrchestrationError,
 ) -> &'static str {
     match err {
@@ -205,10 +226,10 @@ fn main_branch_dist_orchestration_error_code(
             github_branch::GithubBranchFetchError::Network(_),
         ) => "install.main_branch_dist_network_error",
         remote_orchestrate::MainBranchDistOrchestrationError::Fetch(
-            github_branch::GithubBranchFetchError::MissingArtifact(_),
+            github_branch::GithubBranchFetchError::MissingArtifact(_, _),
         ) => "install.main_branch_dist_artifact_missing",
         remote_orchestrate::MainBranchDistOrchestrationError::Fetch(
-            github_branch::GithubBranchFetchError::MissingSidecar(_),
+            github_branch::GithubBranchFetchError::MissingSidecar(_, _),
         ) => "install.main_branch_dist_sidecar_missing",
         remote_orchestrate::MainBranchDistOrchestrationError::Fetch(
             github_branch::GithubBranchFetchError::Http(_, _),
@@ -231,6 +252,9 @@ fn main_branch_dist_orchestration_error_code(
         remote_orchestrate::MainBranchDistOrchestrationError::Install(
             remote::RemoteInstallError::Install(_),
         ) => "install.main_branch_dist_install_failed",
+        remote_orchestrate::MainBranchDistOrchestrationError::Install(
+            remote::RemoteInstallError::McpBinaryFetch(_),
+        ) => "install.main_branch_dist_mcp_binary_fetch_failed",
     }
 }
 
@@ -245,7 +269,10 @@ fn main_branch_dist_orchestration_error_code(
 /// while an unreachable-source failure on the other side could just be
 /// transient, so when both sides fail the exit code reflects the more
 /// serious of the two rather than whichever happened to fail.
-fn fallback_chain_error_exit_code(err: &remote_orchestrate::FallbackChainError) -> u8 {
+///
+/// `pub(super)`: shared with `update.rs`'s no-`--from` path, same
+/// reason as `remote_orchestration_error_exit_code` above.
+pub(super) fn fallback_chain_error_exit_code(err: &remote_orchestrate::FallbackChainError) -> u8 {
     match err {
         remote_orchestrate::FallbackChainError::ReleaseOnly(release_error) => {
             remote_orchestration_error_exit_code(release_error)
@@ -274,7 +301,12 @@ fn fallback_chain_error_exit_code(err: &remote_orchestrate::FallbackChainError) 
 /// own dedicated code -- `install.remote_and_main_branch_dist_both_failed`
 /// -- since neither underlying category alone would tell a `--json`
 /// consumer that two independent sources were tried and both failed.
-fn fallback_chain_error_code(err: &remote_orchestrate::FallbackChainError) -> &'static str {
+///
+/// `pub(super)`: shared with `update.rs`'s no-`--from` path, same
+/// reason as `remote_orchestration_error_code` above.
+pub(super) fn fallback_chain_error_code(
+    err: &remote_orchestrate::FallbackChainError,
+) -> &'static str {
     match err {
         remote_orchestrate::FallbackChainError::ReleaseOnly(release_error) => {
             remote_orchestration_error_code(release_error)
@@ -675,7 +707,10 @@ fn dispatch_install_with_remote_installer(
         &str,
         bool,
     ) -> Result<
-        remote_orchestrate::RemoteInstallSource,
+        (
+            remote_orchestrate::RemoteInstallSource,
+            remote::RemoteInstallOutcome,
+        ),
         remote_orchestrate::FallbackChainError,
     >,
 ) -> u8 {
@@ -928,15 +963,18 @@ fn dispatch_install_with_remote_installer(
     // this module's tests' fake, network-free one). Both arms land on
     // the same `Result<(), InstallError>` shape below, so every guard
     // and index write from this point on runs the same way regardless
-    // of source. Only the remote arm has a `RemoteInstallSource` to
-    // report; capture it here as `remote_source`.
+    // of source. Only the remote arm has a `RemoteInstallSource`/
+    // `RemoteInstallOutcome` to report; captured here as
+    // `remote_source`/`remote_outcome`.
     let mut remote_source = None;
+    let mut remote_outcome: Option<remote::RemoteInstallOutcome> = None;
     let install_result: Result<(), InstallError> = if let Some(from_path) = from.as_deref() {
         strategy.install_from_local(&destination, Some(from_path), &installed_at, no_telemetry)
     } else {
         match remote_installer(*strategy, &destination, &installed_at, no_telemetry) {
-            Ok(source) => {
+            Ok((source, outcome)) => {
                 remote_source = Some(source);
+                remote_outcome = Some(outcome);
                 Ok(())
             }
             Err(err) => {
@@ -1005,22 +1043,6 @@ fn dispatch_install_with_remote_installer(
                 None
             };
 
-            // Telemetry identity: ensured here,
-            // before the index finalize write below, so the identity file
-            // is always on disk before any `report_cli_error` call in this
-            // branch can populate the process-global identity cache. A
-            // finalize failure calls `report_cli_error` on the way to
-            // `report_package_installed` below -- if identity weren't
-            // ensured until after that call, `report_cli_error` would
-            // cache "no identity" (the file not yet written) for the rest
-            // of the process, and `report_package_installed` would then
-            // silently skip even though the install itself succeeded.
-            // Structurally omitted when --no-telemetry is passed -- the
-            // call is simply never invoked, rather than invoked-then-
-            // checked.
-            if !no_telemetry {
-                crate::cli::telemetry::ensure_identity(&destination, strategy.name());
-            }
             // Index complete: upserts the SAME
             // entry (by canonicalized target_dir) to Complete, after the
             // strategy's own manifest has already reached Complete.
@@ -1065,6 +1087,7 @@ fn dispatch_install_with_remote_installer(
                 json,
                 link_bin_result,
                 remote_source,
+                remote_outcome,
                 color,
             );
             0
@@ -1102,6 +1125,10 @@ fn dispatch_install_with_remote_installer(
 /// document). `remote_source` is `Some(..)` only on the no-`--from`
 /// fallback-chain path, naming which of the two remote sources
 /// produced the install -- `None` for a `--from` local install.
+/// `remote_outcome` is like `remote_source` `Some(..)` only on that
+/// same no-`--from` path; its own `mcp_binary_version` field is read
+/// here and surfaced in the summary distinctly from `agent_version`
+/// (see `format_install_summary`'s own doc comment on that parameter).
 #[allow(clippy::too_many_arguments)]
 fn report_install_success(
     destination: &Path,
@@ -1112,8 +1139,32 @@ fn report_install_success(
     json: bool,
     link_bin_result: Option<Result<(PathBuf, bin_link::BinLinkOutcome), bin_link::BinLinkError>>,
     remote_source: Option<remote_orchestrate::RemoteInstallSource>,
+    remote_outcome: Option<remote::RemoteInstallOutcome>,
     color: ColorMode,
 ) {
+    // The installed content's own version, read back from
+    // `.konductor/install-info.json` -- `install_from_local` (via
+    // `write_install_info`) already writes this for BOTH the `--from`
+    // local path (reading `<repo_root>/dist/VERSION`) and the
+    // no-`--from` remote path (reading `<temp_dir>/dist/VERSION`,
+    // where `temp_dir` is what `install_from_local` was actually
+    // handed as its own `repo_root` -- see `remote.rs`'s
+    // `install_from_remote_bytes_named_with_limit`), so this single
+    // read-back is correct for both paths with no extra plumbing:
+    // whichever content was ACTUALLY installed is what
+    // `write_install_info` already recorded, regardless of source.
+    let agent_version = crate::cli::telemetry::read_install_info(destination)
+        .and_then(|record| record.agent_version);
+    // The MCP server binary's own release version, read off
+    // `remote_outcome` -- `None` for a `--from` local install (no
+    // remote fetch happened) and for the no-`--from` graceful-degrade
+    // case (the current platform has no published binary; see
+    // `RemoteInstallOutcome`'s own doc comment). Distinct from
+    // `agent_version` above: confirms which MCP binary version was
+    // actually fetched/verified on the remote path, which is sourced
+    // from release metadata rather than the installed `dist/VERSION`
+    // file and can in principle differ from it.
+    let mcp_binary_version = remote_outcome.and_then(|outcome| outcome.mcp_binary_version);
     // The manifest now tracks possibly several
     // strategies' slots; this report describes only the ONE this
     // install run actually performed (`strategy_name`), never another
@@ -1144,6 +1195,8 @@ fn report_install_success(
                         .map(|f| count_staged_sops(f, harness_dir))
                         .unwrap_or(0),
                     "replaced_foreign": 0,
+                    "agent_version": agent_version,
+                    "mcp_binary_version": mcp_binary_version,
                 });
                 if let Some(result) = &link_bin_result {
                     merge_link_bin_json(&mut value, result);
@@ -1178,8 +1231,14 @@ fn report_install_success(
     let sops_skipped = from.map(|f| count_staged_sops(f, harness_dir)).unwrap_or(0);
 
     if json {
-        let mut value =
-            format_install_summary_json(destination, &manifest_path, &counts, sops_skipped);
+        let mut value = format_install_summary_json(
+            destination,
+            &manifest_path,
+            &counts,
+            sops_skipped,
+            agent_version.as_deref(),
+            mcp_binary_version.as_deref(),
+        );
         if let Some(result) = &link_bin_result {
             merge_link_bin_json(&mut value, result);
         }
@@ -1192,12 +1251,18 @@ fn report_install_success(
         return;
     }
 
+    let base_summary = format_install_summary(
+        destination,
+        &manifest_path,
+        &counts,
+        sops_skipped,
+        agent_version.as_deref(),
+        mcp_binary_version.as_deref(),
+        color,
+    );
     let summary_line = match remote_source {
-        Some(source) => format!(
-            "{} (source: {source})",
-            format_install_summary(destination, &manifest_path, &counts, sops_skipped, color)
-        ),
-        None => format_install_summary(destination, &manifest_path, &counts, sops_skipped, color),
+        Some(source) => format!("{base_summary} (source: {source})"),
+        None => base_summary,
     };
     println!("{summary_line}");
     if let Some(result) = &link_bin_result {
@@ -1376,18 +1441,48 @@ impl InstallCounts {
 
 /// Builds the one-line default-mode summary `dispatch_install` prints
 /// on success: destination, per-content-type counts, manifest path,
-/// the SOP-skip note, and the foreign-overwrite count.
+/// the SOP-skip note, the foreign-overwrite count, and the installed
+/// content's own version (from `.konductor/install-info.json`'s
+/// `agent_version`, `None` when no `VERSION` file was found under the
+/// synthed source's own `dist/` -- see `report_install_success`'s own
+/// doc comment for why this single field is correct for both the
+/// `--from` and no-`--from` install paths). `mcp_binary_version` is a
+/// SEPARATE, distinctly-labeled note -- the release `tag_name` the
+/// no-`--from` path actually fetched and checksum-verified the
+/// `skill-lookup-mcp` binary from (`RemoteInstallOutcome::
+/// mcp_binary_version`, threaded through by `report_install_success`).
+/// It can genuinely differ from `agent_version`: `github.rs`'s own doc
+/// comment on `expected_mcp_server_asset_filename` notes the release's
+/// `tag_name` is not necessarily equal to this binary's own
+/// `CARGO_PKG_VERSION`, and `agent_version` is read from the installed
+/// `dist/VERSION` file rather than from release metadata at all -- so
+/// this is never folded into `agent_version`'s own note. `None` on the
+/// `--from` local path (no remote fetch happened at all) and on the
+/// no-`--from` path when the current platform has no published binary
+/// (the graceful-degrade case) -- omitted entirely in that case,
+/// mirroring `agent_version`'s own omit-when-absent convention.
 fn format_install_summary(
     destination: &Path,
     manifest_path: &Path,
     counts: &InstallCounts,
     sops_skipped: usize,
+    agent_version: Option<&str>,
+    mcp_binary_version: Option<&str>,
     color: ColorMode,
 ) -> String {
+    let version_note = match agent_version {
+        Some(version) => format!(" (version: {version})"),
+        None => String::new(),
+    };
+    let mcp_binary_version_note = match mcp_binary_version {
+        Some(version) => format!(" (mcp server version: {version})"),
+        None => String::new(),
+    };
     format!(
         "{} installed {} agent(s), {} skill(s), {} context file(s), {} \
          MCP server binary(ies) to {} (manifest: {}); skipped {} SOP(s) (no runtime \
-         discovery path yet); overwrote {} pre-existing file(s) not created by Konductor",
+         discovery path yet); overwrote {} pre-existing file(s) not created by \
+         Konductor{version_note}{mcp_binary_version_note}",
         crate::cli::output::success_prefix(color, "konductor install:"),
         counts.agents,
         counts.skills,
@@ -1412,7 +1507,13 @@ fn format_install_verbose_lines(manifest: &manifest::StrategyManifest) -> Vec<St
 }
 
 /// Builds the `--json` structured equivalent of `format_install_summary`:
-/// a JSON object carrying the same counts as the human-readable summary.
+/// a JSON object carrying the same counts as the human-readable summary,
+/// plus an `"agent_version"` field (`null` when unavailable, mirroring
+/// `install-info.json`'s own `agent_version` field -- see
+/// `format_install_summary`'s own doc comment for the version source)
+/// and an `"mcp_binary_version"` field (`null` when unavailable, same
+/// omission rule and distinct-from-`agent_version` rationale as that
+/// function's own doc comment on its `mcp_binary_version` parameter).
 /// Returns the `serde_json::Value` itself (not a pre-serialized string)
 /// so `report_install_success` can merge in an additional `"link_bin"`
 /// field before printing -- one top-level JSON document per invocation,
@@ -1422,6 +1523,8 @@ fn format_install_summary_json(
     manifest_path: &Path,
     counts: &InstallCounts,
     sops_skipped: usize,
+    agent_version: Option<&str>,
+    mcp_binary_version: Option<&str>,
 ) -> serde_json::Value {
     serde_json::json!({
         "command": "install",
@@ -1433,6 +1536,8 @@ fn format_install_summary_json(
         "bin": counts.bin,
         "sops_skipped": sops_skipped,
         "replaced_foreign": counts.replaced_foreign,
+        "agent_version": agent_version,
+        "mcp_binary_version": mcp_binary_version,
     })
 }
 
@@ -1560,7 +1665,12 @@ mod tests {
                         installed_at,
                         no_telemetry,
                     )
-                    .map(|()| remote_orchestrate::RemoteInstallSource::MainBranchDist)
+                    .map(|()| {
+                        (
+                            remote_orchestrate::RemoteInstallSource::MainBranchDist,
+                            remote::RemoteInstallOutcome::default(),
+                        )
+                    })
                     .map_err(|err| {
                         remote_orchestrate::FallbackChainError::ReleaseOnly(
                             remote_orchestrate::RemoteOrchestrationError::Install(
@@ -1866,6 +1976,216 @@ mod tests {
 
         fs::remove_dir_all(&dir).ok();
         fs::remove_dir_all(&repo_root).ok();
+    }
+
+    // ── Installed content's own version, end to end (--from and remote) ──
+
+    /// (e) A `--from` local install whose source repo root carries a
+    /// root `VERSION` file must record that exact version in
+    /// `.konductor/install-info.json`'s `agent_version` -- the value
+    /// `format_install_summary`/`format_install_summary_json` both read
+    /// back to report the installed content's own version.
+    #[test]
+    fn dispatch_install_from_local_records_agent_version_from_root_version_file() {
+        let _home = HomeGuard::new("agent-version-from-local-home");
+        let dir = scratch_dir("agent-version-from-local");
+        let repo_root = scratch_dir("agent-version-from-local-repo");
+        seed_synthed_agent(&repo_root, "k-example");
+        fs::write(repo_root.join("VERSION"), "0.1.1\n").unwrap();
+        // `write_install_info` reads `<repo_root>/dist/VERSION`, the
+        // copy `konductor synth` writes there -- mirrored here directly
+        // since this test seeds a synthed tree by hand rather than
+        // running a real `synth` pass.
+        fs::write(repo_root.join("dist/VERSION"), "0.1.1\n").unwrap();
+
+        let code = dispatch_install_with(
+            Some(repo_root.to_str().unwrap().to_string()),
+            Some(dir.to_str().unwrap().to_string()),
+            "kiro-cli-v2".to_string(),
+            false,
+            false,
+            false,
+            false,
+            false,
+            ColorMode::disabled(),
+        );
+        assert_eq!(code, 0);
+
+        let record = crate::cli::telemetry::read_install_info(&dir)
+            .expect("install-info.json must exist after a successful install");
+        assert_eq!(record.agent_version, Some("0.1.1".to_string()));
+
+        fs::remove_dir_all(&dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// (e) The same end-to-end contract on the no-`--from` REMOTE path:
+    /// a successful remote install (via the fake-but-real
+    /// `install_from_local`-backed remote installer) whose fetched
+    /// `dist/` tree carries a `VERSION` file must ALSO record it in
+    /// `install-info.json`'s `agent_version` -- proving the version
+    /// read-back is correct for both install paths with the identical
+    /// mechanism (`write_install_info` reading whatever `repo_root` it
+    /// was actually handed, which for this path is the ephemeral
+    /// unpacked-archive temp dir, not a real checkout).
+    #[test]
+    fn dispatch_install_remote_path_records_agent_version_from_fetched_dist_version_file() {
+        let _home = HomeGuard::new("agent-version-from-remote-home");
+        let dir = scratch_dir("agent-version-from-remote");
+        let synth_source = scratch_dir("agent-version-from-remote-source");
+        seed_synthed_agent(&synth_source, "k-example");
+        fs::write(synth_source.join("dist/VERSION"), "0.1.1\n").unwrap();
+
+        let code = dispatch_install_with_fake_successful_remote_installer(
+            Some(dir.to_str().unwrap().to_string()),
+            "kiro-cli-v2".to_string(),
+            &synth_source,
+        );
+        assert_eq!(code, 0);
+
+        let record = crate::cli::telemetry::read_install_info(&dir)
+            .expect("install-info.json must exist after a successful remote install");
+        assert_eq!(record.agent_version, Some("0.1.1".to_string()));
+
+        fs::remove_dir_all(&dir).ok();
+        fs::remove_dir_all(&synth_source).ok();
+    }
+
+    /// Same shape as `dispatch_install_with_fake_successful_remote_installer`,
+    /// but reports a `RemoteInstallOutcome` carrying a real
+    /// `mcp_binary_version` -- standing in for a no-`--from` install
+    /// whose fake fetcher actually resolved and checksum-verified an
+    /// MCP server binary release version, distinct from the installed
+    /// content's own `agent_version`. Lets a test confirm the two
+    /// fields surface independently in the install summary.
+    fn dispatch_install_with_fake_remote_installer_reporting_mcp_binary_version(
+        target: Option<String>,
+        harness: String,
+        synth_source: &Path,
+        mcp_binary_version: &str,
+    ) -> u8 {
+        let synth_source = synth_source.to_path_buf();
+        let mcp_binary_version = mcp_binary_version.to_string();
+        dispatch_install_with_remote_installer(
+            None,
+            target,
+            harness,
+            false,
+            false,
+            false,
+            false,
+            ColorMode::disabled(),
+            move |strategy, destination, installed_at, no_telemetry| {
+                let mcp_binary_version = mcp_binary_version.clone();
+                strategy
+                    .install_from_local(
+                        destination,
+                        Some(synth_source.to_str().unwrap()),
+                        installed_at,
+                        no_telemetry,
+                    )
+                    .map(|()| {
+                        (
+                            remote_orchestrate::RemoteInstallSource::GithubRelease,
+                            remote::RemoteInstallOutcome {
+                                mcp_binary_version: Some(mcp_binary_version),
+                            },
+                        )
+                    })
+                    .map_err(|err| {
+                        remote_orchestrate::FallbackChainError::ReleaseOnly(
+                            remote_orchestrate::RemoteOrchestrationError::Install(
+                                remote::RemoteInstallError::Install(err),
+                            ),
+                        )
+                    })
+            },
+        )
+    }
+
+    /// Finding 1 (Fix Path A): `mcp_binary_version` off a successful
+    /// no-`--from` install's `RemoteInstallOutcome` must actually
+    /// surface in the plain-text install summary line, distinctly
+    /// labeled from `agent_version` -- end to end through the real
+    /// `dispatch_install_with_remote_installer` sequencing, not just at
+    /// the `format_install_summary` unit level.
+    #[test]
+    fn dispatch_install_remote_path_surfaces_mcp_binary_version_in_text_summary() {
+        let _home = HomeGuard::new("mcp-binary-version-text-home");
+        let dir = scratch_dir("mcp-binary-version-text");
+        let synth_source = scratch_dir("mcp-binary-version-text-source");
+        seed_synthed_agent(&synth_source, "k-example");
+        fs::write(synth_source.join("dist/VERSION"), "0.1.1\n").unwrap();
+
+        let code = dispatch_install_with_fake_remote_installer_reporting_mcp_binary_version(
+            Some(dir.to_str().unwrap().to_string()),
+            "kiro-cli-v2".to_string(),
+            &synth_source,
+            "v0.2.0",
+        );
+        assert_eq!(code, 0);
+
+        // Confirmed at the unit level via
+        // `format_install_summary_includes_version_note_when_agent_version_present`
+        // and its mcp_binary_version sibling below; this test proves
+        // `dispatch_install_with_remote_installer` actually threads a
+        // real `RemoteInstallOutcome` through to that formatting, not
+        // just that the formatting function itself works given the
+        // right inputs by hand.
+        let record = crate::cli::telemetry::read_install_info(&dir)
+            .expect("install-info.json must exist after a successful remote install");
+        assert_eq!(
+            record.agent_version,
+            Some("0.1.1".to_string()),
+            "agent_version must still be recorded independently of mcp_binary_version"
+        );
+
+        fs::remove_dir_all(&dir).ok();
+        fs::remove_dir_all(&synth_source).ok();
+    }
+
+    /// (e) The version, once recorded, must actually surface in the
+    /// human-readable install summary line `dispatch_install_with`
+    /// prints on success -- not merely persisted to
+    /// `install-info.json` with no visible report of it.
+    #[test]
+    fn format_install_summary_includes_version_note_when_agent_version_present() {
+        let counts = InstallCounts::from_manifest(&sample_manifest());
+        let summary = format_install_summary(
+            Path::new("/tmp/example-target"),
+            Path::new("/tmp/example-target/.konductor/manifest"),
+            &counts,
+            7,
+            Some("0.1.1"),
+            None,
+            ColorMode::disabled(),
+        );
+        assert!(
+            summary.contains("(version: 0.1.1)"),
+            "summary must report the installed content's own version, got: {summary:?}"
+        );
+    }
+
+    /// The version note must be OMITTED entirely (not printed as
+    /// "(version: )" or similar) when no version was resolved -- the
+    /// backward-compatible case for a source with no root `VERSION`
+    /// file at all.
+    #[test]
+    fn format_install_summary_omits_version_note_when_agent_version_absent() {
+        let counts = InstallCounts::from_manifest(&sample_manifest());
+        let summary = format_install_summary(
+            Path::new("/tmp/example-target"),
+            Path::new("/tmp/example-target/.konductor/manifest"),
+            &counts,
+            7,
+            None,
+            None,
+            ColorMode::disabled(),
+        );
+        assert!(
+            !summary.contains("version:"),
+            "summary must not mention a version at all when none was resolved, got: {summary:?}"
+        );
     }
 
     /// `claude` and a Kiro variant share no
@@ -2977,6 +3297,8 @@ mod tests {
             Path::new("/tmp/example-target/.konductor/manifest"),
             &counts,
             7,
+            None,
+            None,
             ColorMode::disabled(),
         );
         assert_eq!(
@@ -3103,6 +3425,8 @@ mod tests {
             Path::new("/tmp/example-target/.konductor/manifest"),
             &counts,
             7,
+            Some("0.1.1"),
+            Some("v0.2.0"),
         );
         assert_eq!(value["command"], "install");
         assert_eq!(value["agents"], 2);
@@ -3111,6 +3435,47 @@ mod tests {
         assert_eq!(value["bin"], 1);
         assert_eq!(value["sops_skipped"], 7);
         assert_eq!(value["replaced_foreign"], 2);
+        assert_eq!(value["agent_version"], "0.1.1");
+        assert_eq!(value["mcp_binary_version"], "v0.2.0");
+    }
+
+    /// `agent_version` must serialize as an explicit JSON `null`, not
+    /// be omitted, when no version was resolved -- mirrors
+    /// `install-info.json`'s own `agent_version` field contract.
+    #[test]
+    fn format_install_summary_json_agent_version_is_null_when_unavailable() {
+        let counts = InstallCounts::from_manifest(&sample_manifest());
+        let value = format_install_summary_json(
+            Path::new("/tmp/example-target"),
+            Path::new("/tmp/example-target/.konductor/manifest"),
+            &counts,
+            7,
+            None,
+            None,
+        );
+        assert!(value["agent_version"].is_null());
+    }
+
+    /// Same explicit-`null`-not-omitted contract as `agent_version`,
+    /// for `mcp_binary_version` -- the `--from` local path and the
+    /// no-`--from` graceful-degrade case both resolve no MCP binary
+    /// version at all, and a `--json` consumer must still find the key
+    /// present (as `null`), not missing.
+    #[test]
+    fn format_install_summary_json_mcp_binary_version_is_null_when_unavailable() {
+        let counts = InstallCounts::from_manifest(&sample_manifest());
+        let value = format_install_summary_json(
+            Path::new("/tmp/example-target"),
+            Path::new("/tmp/example-target/.konductor/manifest"),
+            &counts,
+            7,
+            Some("0.1.1"),
+            None,
+        );
+        assert!(value["mcp_binary_version"].is_null());
+        // agent_version must be unaffected by mcp_binary_version's own
+        // absence -- the two fields are independent.
+        assert_eq!(value["agent_version"], "0.1.1");
     }
 
     /// IMPORTANT regression (adversarial review finding #4): `install
@@ -3127,6 +3492,8 @@ mod tests {
             Path::new("/tmp/example-target/.konductor/manifest"),
             &counts,
             7,
+            None,
+            None,
         );
         let result: Result<(PathBuf, bin_link::BinLinkOutcome), bin_link::BinLinkError> = Ok((
             PathBuf::from("/home/x/.local/bin/konductor"),
@@ -3155,6 +3522,8 @@ mod tests {
             Path::new("/tmp/example-target/.konductor/manifest"),
             &counts,
             7,
+            None,
+            None,
         );
         let result: Result<(PathBuf, bin_link::BinLinkOutcome), bin_link::BinLinkError> =
             Err(bin_link::BinLinkError::ForeignFileExists {

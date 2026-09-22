@@ -27,15 +27,15 @@ Verify prerequisites are met before running verification.
 **Constraints:**
 
 - You MUST confirm all of the following:
-  - Success criteria are defined (either from `success_criteria` parameter or from a prior plan)
-  - All TODOs from the implementation are marked complete
+  - Success criteria are defined (either from the `success_criteria` parameter or from this task's success criteria in a prior plan, e.g. `k-plan.sop.md` Step 1)
+  - All `// TODO` / `# TODO` (or language-equivalent) comments introduced during this implementation are resolved or explicitly deferred with a tracked follow-up
 - If success criteria are not defined, You MUST ask the user to define them or extract them from the task context
 - You MUST NOT proceed to build if prerequisites are not met
 
 **Expected Output:** A pre-check checklist:
 
 - [ ] Success criteria defined?
-- [ ] All TODOs completed?
+- [ ] All TODOs resolved or explicitly deferred with a tracked follow-up?
 
 ### 2. Run Build
 
@@ -51,9 +51,10 @@ Execute the project build to verify compilation succeeds.
   - `build.gradle.kts` or `build.gradle` → `gradle build`
   - `pom.xml` → `mvn compile`
 - You MUST capture the exit code and relevant output
-- You MUST NOT proceed to tests if the build fails — fix build errors first
+- If `source_dir` contains multiple packages (multiple manifest files, e.g. several `package.json`/`Cargo.toml`/`build.gradle`), You MUST run the build command for each package and capture exit code/status per package
+- You MUST NOT proceed to tests if the build fails; fix build errors first. For multiple packages, this applies if ANY package's build fails
 
-**Expected Output:** Build result with command, exit code, and status (✓ or ✗)
+**Expected Output:** Build result with command, exit code, and status (✓ or ✗) per package (if multiple) plus an aggregate status
 
 ### 3. Run Tests
 
@@ -71,8 +72,9 @@ Execute the project test suite.
 - You MUST capture pass/fail counts
 - You MUST NOT proceed if tests fail — fix test failures first
 - If a separate integration test command or CI job exists, You MUST run those too
+- If `source_dir` contains multiple packages (multiple manifest files, e.g. several `package.json`/`Cargo.toml`/`build.gradle`) or a single package defines multiple distinct test suites, You MUST run the test command for each package/suite and report pass/fail counts per package/suite, then an aggregate total
 
-**Expected Output:** Test result with command, pass count, fail count, and status (✓ or ✗)
+**Expected Output:** Test result with command, pass count, fail count, and status (✓ or ✗) per package/suite (if multiple) plus an aggregate total
 
 ### 4. Run Lint
 
@@ -80,7 +82,7 @@ Execute linting/style checks if available.
 
 **Constraints:**
 
-- You MUST use the appropriate lint command:
+- If linting is available for the project (a lint config or tool is present), You MUST use the appropriate lint command:
   - npm: `npm run lint`
   - Cargo: `cargo clippy`
   - Go: `golangci-lint run`
@@ -111,7 +113,7 @@ For CDK/infrastructure packages, run additional CDK-specific checks.
 
 ### 6. Manual Verification
 
-Test the actual feature or fix to confirm it works as intended.
+Test the actual task's change (feature slice or fix) to confirm it works as intended.
 
 **Constraints:**
 
@@ -155,11 +157,11 @@ Document all verification results into a single evidence report.
   - All success criteria met?
   - Build passes?
   - Tests pass?
-  - Lint passes?
+  - Lint passes? (report as Skipped, not Failed, when no lint config or tool is present for the project, per Step 4)
   - Manual verification complete?
   - No regressions?
   - Documentation updated (if applicable)?
-- You MUST NOT declare the task complete if any checklist item fails
+- You MUST NOT declare the task complete if any checklist item fails; a Skipped item does not count as a failure
 
 **Expected Output:** A complete verification evidence report:
 
@@ -181,10 +183,10 @@ Document all verification results into a single evidence report.
 
 ### Lint
 
-- Command: `[command]`
+- Command: `[command, or "N/A" if no linter is configured]`
 - Errors: [count]
 - Warnings: [count]
-- Status: [✓ or ✗]
+- Status: [✓ / ✗ / Skipped]
 
 ### Manual Verification
 

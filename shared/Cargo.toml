@@ -1,0 +1,14 @@
+[workspace]
+resolver = "2"
+members = ["konductor-telemetry", "telemetry-test-sink"]
+
+[workspace.package]
+license = "Apache-2.0"
+
+[workspace.lints.rust]
+# See mcp/Cargo.toml's identical section for the full rationale (this
+# workspace hosts crates formerly under mcp/lib/, moved out only because
+# Cargo requires a workspace member to sit below its own workspace root
+# -- not because the lint requirement differs). Kept in sync with that
+# file; update both together if this ever changes.
+linker_messages = "allow"

@@ -538,4 +538,3 @@ jobs:
             --target "${{ github.sha }}" \
             --title "konductor $RELEASE_VERSION" \
             --notes "Synthesized by $BINARY_VERSION (release $RELEASE_VERSION) from ${{ github.sha }} at ${BUILD_TIMESTAMP}."
-

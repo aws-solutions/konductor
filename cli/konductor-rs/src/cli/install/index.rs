@@ -50,7 +50,9 @@ pub(crate) const INDEX_FILE_NAME: &str = "installs";
 /// for the general shape rationale. Distinct in what it protects: this
 /// guards a crash between two independent files (the index and that
 /// target's own manifest), not a crash within a single file's write --
-/// see the design doc's "Write-ahead crash safety" section. Defaults to
+/// each file is written atomically on its own, so this field exists
+/// to detect a crash that lands between the two writes, leaving one
+/// file updated and the other stale. Defaults to
 /// `Complete` for the same back-compat reason `manifest::Status` does:
 /// an index predating this field was only ever written on full success.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -255,11 +257,21 @@ pub fn index_path(home_dir: Option<&Path>) -> Option<PathBuf> {
     home_dir.map(|home| home.join(KONDUCTOR_DIR_NAME).join(INDEX_FILE_NAME))
 }
 
-/// Resolves `$HOME` from the environment. Split out from `index_path`
-/// so callers that already have a home directory (e.g. tests, or a
-/// future caller resolving it once per process) can skip a second env
-/// lookup.
-fn env_home_dir() -> Option<PathBuf> {
+/// Resolves `$HOME` from the environment, treating an empty value the
+/// same as unset. Split out from `index_path` so callers that already
+/// have a home directory (e.g. tests, or a future caller resolving it
+/// once per process) can skip a second env lookup.
+///
+/// `pub(crate)` so `doctor.rs`'s `dispatch.rs`-fed `home_dir_override`
+/// and its own `run_checks`/`dispatch_doctor_all` fallbacks can share
+/// this filter instead of each re-implementing the unfiltered
+/// `var_os("HOME")` pattern: an inlined copy previously let `HOME=""`
+/// resolve to `Some("")`, which `index_path` turns into a relative
+/// `.konductor/installs` -- `doctor --all` then read that (nonexistent
+/// relative to cwd) path as "zero tracked installs" and exited 0,
+/// where `update --all`/`uninstall --all` already refuse via this
+/// same filter, through `read_index`/`read_index_at_home`.
+pub(crate) fn env_home_dir() -> Option<PathBuf> {
     std::env::var_os("HOME")
         .filter(|home| !home.is_empty())
         .map(PathBuf::from)
@@ -335,7 +347,14 @@ pub fn read_index() -> Result<Option<Index>, IndexError> {
 /// without mutating the process-global `HOME` env var, which is unsafe
 /// to do from parallel `cargo test` threads (mirrors `config.rs`'s
 /// `load_config_with_home` split for the identical reason).
-fn read_index_at_home(home_dir: Option<&Path>) -> Result<Option<Index>, IndexError> {
+///
+/// `pub(crate)` (not private) so `doctor::check_index_status` and
+/// `doctor::dispatch_doctor_all` can thread the same home override
+/// `run_checks` already resolves for the `config`/`telemetry_state`
+/// checks, instead of silently falling back to the live `$HOME`
+/// (mirrors `config.rs`'s `load_config_with_home` visibility for the
+/// identical reason).
+pub(crate) fn read_index_at_home(home_dir: Option<&Path>) -> Result<Option<Index>, IndexError> {
     let Some(path) = index_path(home_dir) else {
         return Err(IndexError::UnresolvableHome);
     };
@@ -432,7 +451,15 @@ pub fn write_index(entry: IndexEntry) -> Result<PathBuf, IndexError> {
 
 /// Same as `write_index`, but with the home directory passed in
 /// explicitly -- see `read_index_at_home`'s docstring for why.
-fn write_index_at_home(home_dir: Option<&Path>, entry: IndexEntry) -> Result<PathBuf, IndexError> {
+///
+/// `pub(crate)` (not private) so tests elsewhere in the crate that
+/// need to register an index entry can write it into their own
+/// scratch home instead of the live `$HOME` -- mirrors
+/// `read_index_at_home`'s own visibility for the identical reason.
+pub(crate) fn write_index_at_home(
+    home_dir: Option<&Path>,
+    entry: IndexEntry,
+) -> Result<PathBuf, IndexError> {
     let path = index_path(home_dir).ok_or_else(|| IndexError::WriteFailed {
         path: PathBuf::from("$HOME/.konductor/installs"),
         source: std::io::Error::new(

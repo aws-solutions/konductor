@@ -61,7 +61,8 @@ struct HookPayload {
 /// `AGENT_INVOCATION` and `SUBAGENT_INVOCATION` match arms below, and
 /// directly unit-testable in isolation (unlike
 /// `report_agent_invocation`/`report_subagent_invocation` themselves,
-/// which are gated by `report.rs`'s process-global `IDENTITY_CACHE`).
+/// which read `install-info.json` per call and so need a real target
+/// directory on disk to test against).
 fn resolve_agent_name(agent_type: Option<String>) -> String {
     agent_type
         .filter(|name| !name.is_empty())

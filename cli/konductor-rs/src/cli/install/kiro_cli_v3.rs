@@ -362,6 +362,22 @@ impl InstallStrategy for KiroCliV3InstallStrategy {
             files,
         );
         super::manifest::upsert_strategy(target_dir, complete)?;
+
+        // Same call, same rationale, as `kiro_cli.rs`'s own identical
+        // call site.
+        if !no_telemetry {
+            if let Err(err) = crate::cli::telemetry::write_install_info(
+                target_dir,
+                repo_root,
+                self.name(),
+                installed_at,
+            ) {
+                eprintln!(
+                    "konductor install: warning: could not write install-info.json at {}: {err}",
+                    target_dir.display()
+                );
+            }
+        }
         Ok(())
     }
 }
@@ -955,6 +971,101 @@ mod tests {
             installed_json["permissions"]["rules"],
             serde_json::json!([])
         );
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// Alongside the `mcpServers.konductor-skills` entry and the `mcp`
+    /// permissions rule, a skill-bearing agent with the `skill-lookup-mcp`
+    /// binary present also gets the `@konductor-skills` visibility tag in
+    /// `tools[]`. Without it, `mcpServers`/`permissions` look correct but
+    /// the server's tools are unreachable ("Tool not available") -- the
+    /// regression this test locks in.
+    #[test]
+    fn install_from_local_injects_mcp_tools_visibility_tag_for_skill_bearing_agent() {
+        let target_dir = scratch_dir("install-mcp-tools-tag-target");
+        let repo_root = scratch_dir("install-mcp-tools-tag-repo");
+        let contents = br#"{
+            "name": "k-example",
+            "resources": ["skill://skills/constraints/SKILL.md"],
+            "permissions": {"rules": []}
+        }"#;
+        seed_synthed_agent(&repo_root, "k-example", contents);
+        seed_synthed_skill(&repo_root, "constraints", b"body\n", &[]);
+        seed_mcp_binary(&repo_root, "skill-lookup-mcp", b"fake binary");
+
+        KiroCliV3InstallStrategy
+            .install_from_local(
+                &target_dir,
+                Some(repo_root.to_str().unwrap()),
+                "2026-01-01T00:00:00Z",
+                false,
+            )
+            .expect("install must succeed");
+
+        let installed = target_dir.join(".kiro/agents/k-example.json");
+        let installed_json: serde_json::Value =
+            serde_json::from_slice(&fs::read(&installed).unwrap()).unwrap();
+
+        let tools = installed_json["tools"]
+            .as_array()
+            .expect("tools must be an array once the MCP server was injected");
+        assert!(
+            tools
+                .iter()
+                .any(|t| t.as_str() == Some("@konductor-skills")),
+            "tools must carry the @konductor-skills visibility tag alongside \
+             the mcpServers entry and permissions rule, or the server's \
+             tools are authorized but unreachable; got {tools:?}"
+        );
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// Mirrors `install_from_local_skips_mcp_wiring_when_binary_not_built`
+    /// for the `tools` visibility tag: without a built `skill-lookup-mcp`
+    /// binary, `rewrite` returns before injecting anything, so the
+    /// `@konductor-skills` tag never lands in `tools[]`.
+    #[test]
+    fn install_from_local_omits_mcp_tools_visibility_tag_when_binary_not_built() {
+        let target_dir = scratch_dir("install-mcp-tools-tag-skip-target");
+        let repo_root = scratch_dir("install-mcp-tools-tag-skip-repo");
+        let contents = br#"{
+            "name": "k-example",
+            "resources": ["skill://skills/constraints/SKILL.md"],
+            "permissions": {"rules": []}
+        }"#;
+        seed_synthed_agent(&repo_root, "k-example", contents);
+        seed_synthed_skill(&repo_root, "constraints", b"body\n", &[]);
+
+        KiroCliV3InstallStrategy
+            .install_from_local(
+                &target_dir,
+                Some(repo_root.to_str().unwrap()),
+                "2026-01-01T00:00:00Z",
+                false,
+            )
+            .expect("install must succeed even with no built MCP binary");
+
+        let installed = target_dir.join(".kiro/agents/k-example.json");
+        let installed_json: serde_json::Value =
+            serde_json::from_slice(&fs::read(&installed).unwrap()).unwrap();
+
+        match installed_json.get("tools") {
+            None => {}
+            Some(tools) => {
+                let tools = tools.as_array().expect("tools, if present, is an array");
+                assert!(
+                    !tools
+                        .iter()
+                        .any(|t| t.as_str() == Some("@konductor-skills")),
+                    "tools must not carry the @konductor-skills tag when no \
+                     MCP server was injected; got {tools:?}"
+                );
+            }
+        }
 
         fs::remove_dir_all(&target_dir).ok();
         fs::remove_dir_all(&repo_root).ok();

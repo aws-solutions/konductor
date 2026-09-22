@@ -1,6 +1,6 @@
 ---
 name: adversarial-code-review
-description: 'Reviews code changes from an adversarial, security-focused architect stance — arguing against approval. Targets the gap categories standard style/quality reviewers miss: information disclosure, data integrity failures, and schema/validation gaps. Produces CRITICAL/IMPORTANT/SUGGESTION findings.'
+description: 'Targets the three gap categories standard review misses: information disclosure, data integrity, and schema validation. Use for a second-pass review after standard code review, as the checker in a maker-checker cycle, or before submitting a change that touches auth, data writes, or external API boundaries.'
 version: 1.0.0
 tags:
   [

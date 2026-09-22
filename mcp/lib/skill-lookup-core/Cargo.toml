@@ -37,14 +37,26 @@ sha2 = "=0.10.8"
 # curl-wrapping script) -- same pin as servers/skill-lookup/Cargo.toml's
 # existing tokio dependency.
 tokio = { version = "=1.44.2", features = ["process", "time", "rt-multi-thread", "macros", "io-util"] }
-# Host-allowlist DNS classification, DNS-rebinding pin construction, and
-# the timeout-vs-failure resolution decision (telemetry.rs) -- a
-# sibling member of this same workspace (mcp/lib/telemetry-net,
-# matching the "lib/*" glob in mcp/Cargo.toml), also depended on via a
-# plain path dependency by cli/konductor-rs (see that crate's own
+# Host-allowlist DNS classification, DNS-rebinding pin construction,
+# the timeout-vs-failure resolution decision (telemetry.rs), and
+# shared identity primitives (nil-UUID sentinel, UUID-shape validation,
+# and the $HOME/.konductor/telemetry.json read path) -- lives in the
+# shared/ workspace (shared/konductor-telemetry), also depended on via
+# a plain path dependency by cli/konductor-rs (see that crate's own
 # Cargo.toml comment for why a path dependency, not shared workspace
 # membership, is that crate's own sharing mechanism). `async` enables
 # `resolve_host_addrs_bounded_async`, which this crate's telemetry.rs
 # uses to bound its own resolution via `tokio::task::spawn_blocking` +
-# `tokio::time::timeout` instead of a dedicated OS thread per call.
-telemetry-net = { path = "../telemetry-net", features = ["async"] }
+# `tokio::time::timeout` instead of a dedicated OS thread per call --
+# the identity half of this crate has no dependency on this feature.
+konductor-telemetry = { path = "../../../shared/konductor-telemetry", features = ["async"] }
+
+[dev-dependencies]
+# Loopback HTTPS sink standing in for the real telemetry endpoint in
+# this crate's own tests, shared with cli/konductor-rs -- see that
+# crate's own dev-dependency comment for the full rationale. This
+# crate's telemetry.rs test module uses it directly (in-process,
+# `flush_once`/`report_mcp_tool_call` calls run inside the SAME test
+# binary, unlike cli/konductor-rs's own subprocess-spawning
+# integration tests).
+telemetry-test-sink = { path = "../../../shared/telemetry-test-sink" }

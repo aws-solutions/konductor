@@ -32,6 +32,8 @@
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
+use crate::cli::install::index;
+
 /// Config schema versions this loader understands. Bump alongside
 /// cli/gate-config/config.yml's `version` field if the schema changes
 /// incompatibly.
@@ -387,13 +389,13 @@ pub(crate) fn load_config_with_home(
 }
 
 /// Resolves the current user's home directory for locating
-/// `~/.konductor/config.yml`. Uses the `HOME` env var directly (no extra
-/// crate dependency) rather than a full `dirs`-style resolver, since this
-/// milestone only needs Unix-style `HOME` resolution; a missing/unset
-/// `HOME` is treated the same as "no user-level config" rather than an
-/// error.
+/// `~/.konductor/config.yml`. Routes through `index::env_home_dir`
+/// rather than reading `HOME` directly, so `HOME=""` is treated the
+/// same as unset -- skips the user-tier merge entirely, rather than
+/// resolving to a relative `.konductor/config.yml` that would read (or
+/// silently miss) a cwd-relative file no user asked for.
 fn dirs_home_dir() -> Option<PathBuf> {
-    std::env::var_os("HOME").map(PathBuf::from)
+    index::env_home_dir()
 }
 
 /// `config set <key> <value>`: validates `key` against the known config
@@ -697,6 +699,40 @@ mod tests {
         ));
         fs::create_dir_all(&dir).unwrap();
         dir
+    }
+
+    /// `HOME=""` must skip the user-tier merge the same way an unset
+    /// `HOME` does, not resolve `dirs_home_dir()` to a relative path
+    /// and read (or silently miss) a cwd-relative `.konductor/config.yml`
+    /// no user asked for. Compares `load_config` (which resolves `HOME`
+    /// from the environment) under `HOME=""` against
+    /// `load_config_with_home(&root, None)` -- this file's own
+    /// deliberate "no user tier" baseline -- rather than `HOME` unset,
+    /// since the two must be indistinguishable to `load_config`.
+    #[test]
+    fn load_config_with_home_set_to_empty_string_skips_user_tier_like_unset() {
+        let _guard = crate::cli::test_home_lock::lock_home();
+        let root = scratch_dir("empty-home-skips-user-tier");
+        let original_home = std::env::var_os("HOME");
+        std::env::set_var("HOME", "");
+
+        let with_empty_home = load_config(&root).expect("preset defaults must still load");
+
+        match original_home {
+            Some(value) => std::env::set_var("HOME", value),
+            None => std::env::remove_var("HOME"),
+        }
+
+        let with_no_user_tier =
+            load_config_with_home(&root, None).expect("preset defaults must still load");
+
+        assert_eq!(
+            with_empty_home, with_no_user_tier,
+            "HOME=\"\" must produce the exact same config as no user tier at all -- \
+             resolving it to a relative path could pick up a stray .konductor/config.yml \
+             under cwd and merge it in as if it were ~/.konductor/config.yml"
+        );
+        fs::remove_dir_all(&root).ok();
     }
 
     #[test]

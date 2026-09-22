@@ -351,7 +351,7 @@ impl InstallStrategy for KiroCliInstallStrategy {
         // hand-written call chain -- ordering is enforced by
         // `standard_install_phases()` and `InstallPhase::dependencies()`,
         // not by this call site. This also covers the Claude/V3 settings
-        // grant (see `resource_rewrite.rs`'s "V3/Claude Code permission
+        // grant (see `resource_rewrite/claude_settings.rs`'s "V3/Claude Code permission
         // grant" section): `AgentInstallPhase::run` applies it itself,
         // right after calling `install_agents`, since that is the one
         // place that already holds the `any_mcp_server_injected` signal
@@ -373,7 +373,7 @@ impl InstallStrategy for KiroCliInstallStrategy {
         // `.claude/`. This is narrower than "anything under `.claude/`":
         // Kiro's chain also legitimately writes `.claude/settings.json`
         // (the additive Claude/V3 settings-grant merge, a separate,
-        // unrelated mechanism -- see `resource_rewrite.rs`), which DOES
+        // unrelated mechanism -- see `resource_rewrite/claude_settings.rs`), which DOES
         // stay tracked in this slot exactly as before, since that file
         // is a genuinely shared, Kiro-authored grant, not another
         // strategy's own content. Only the SOP-skill conversion path is
@@ -403,6 +403,25 @@ impl InstallStrategy for KiroCliInstallStrategy {
             files,
         );
         super::manifest::upsert_strategy(target_dir, complete)?;
+
+        // The per-install record, written after the manifest is
+        // finalized Complete. Best-effort: a failure here must not
+        // unwind an install that already succeeded. Gated on
+        // `no_telemetry` like `ensure_identity`: an opted-out install
+        // writes neither file.
+        if !no_telemetry {
+            if let Err(err) = crate::cli::telemetry::write_install_info(
+                target_dir,
+                repo_root,
+                self.name(),
+                installed_at,
+            ) {
+                eprintln!(
+                    "konductor install: warning: could not write install-info.json at {}: {err}",
+                    target_dir.display()
+                );
+            }
+        }
         Ok(())
     }
 }
@@ -3282,7 +3301,7 @@ mod tests {
     }
 
     /// Reachability proof for the Claude/V3 `permissions.allow` grant
-    /// (`resource_rewrite.rs`'s `McpServerPass::verify`): there is no
+    /// (`resource_rewrite/mcp_server.rs`'s `McpServerPass::verify`): there is no
     /// separate Claude `InstallStrategy` yet (`registry::STRATEGIES`
     /// registers only `KiroCliInstallStrategy`), but that grant does
     /// not depend on one existing -- it fires through THIS unmodified
@@ -3364,7 +3383,7 @@ mod tests {
         // succeeded (`phases.rs`'s `AgentInstallPhase::run`) -- asserts
         // the real hook entries, not just that SOME hooks key exists.
         // The command embeds the resolved absolute path to the
-        // currently-running binary (`resource_rewrite.rs`'s
+        // currently-running binary (`resource_rewrite/claude_settings.rs`'s
         // `resolve_konductor_exe_path`), not the bare word "konductor",
         // so this is computed the same way, not hand-typed.
         let exe = std::env::current_exe().unwrap().display().to_string();
@@ -3491,6 +3510,41 @@ mod tests {
             claude_settings.get("hooks").is_none(),
             "--no-telemetry must suppress the SessionStart/SubagentStart telemetry-hook \
              wiring entirely; got: {claude_settings:?}"
+        );
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// The install-info half of the same `--no-telemetry` contract:
+    /// `write_install_info` must be gated exactly like `ensure_identity`,
+    /// so an opted-out install leaves `.konductor/install-info.json`
+    /// unwritten too, not just the hook wiring above.
+    #[test]
+    fn install_from_local_no_telemetry_writes_no_install_info() {
+        let target_dir = scratch_dir("no-telemetry-skips-install-info-target");
+        let repo_root = scratch_dir("no-telemetry-skips-install-info-repo");
+        seed_synthed_agent_with_skill_resource(&repo_root, "k-example", "constraints");
+        seed_synthed_skill(
+            &repo_root,
+            "constraints",
+            b"---\nname: constraints\n---\nBody\n",
+            &[],
+        );
+        seed_mcp_binary(&repo_root, "skill-lookup-mcp", b"binary bytes\n");
+
+        KiroCliInstallStrategy
+            .install_from_local(
+                &target_dir,
+                Some(repo_root.to_str().unwrap()),
+                "2026-01-01T00:00:00Z",
+                true,
+            )
+            .expect("install must succeed with --no-telemetry");
+
+        assert!(
+            !target_dir.join(".konductor/install-info.json").exists(),
+            "install --no-telemetry must never write install-info.json"
         );
 
         fs::remove_dir_all(&target_dir).ok();

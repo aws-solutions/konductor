@@ -89,7 +89,7 @@ pub(in crate::cli::install) fn install_context(
 
 /// Copies every staged `.sop.md` file from `<harness_dir>/sops/` into
 /// `<target_dir>/.konductor/sops/` verbatim -- the raw files
-/// `--agent-sop-paths` (see `resource_rewrite.rs`'s `McpServerPass`)
+/// `--agent-sop-paths` (see `resource_rewrite/mcp_server.rs`'s `McpServerPass`)
 /// points `skill-lookup-mcp` at. Unconditional, not per-agent-filtered:
 /// mirrors `install_skills`'s own "copy everything staged, let per-agent
 /// scoping happen at MCP launch-arg time" contract -- `--agent-sop-
@@ -212,7 +212,7 @@ pub(in crate::cli::install) fn install_kiro_sop_skills(
 /// The returned `bool` is whether the V2 `mcpServers.konductor-skills`
 /// grant was actually injected into at least one agent this run --
 /// `AgentInstallPhase::run` uses it to decide whether to also apply the
-/// Claude/V3 settings grant (see `resource_rewrite.rs`'s "V3/Claude
+/// Claude/V3 settings grant (see `resource_rewrite/claude_settings.rs`'s "V3/Claude
 /// Code permission grant" section), which must never fire on a run
 /// where the V2 side injected nothing.
 pub(in crate::cli::install) fn install_agents(

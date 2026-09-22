@@ -499,7 +499,7 @@ impl InstallPhase for McpInstallPhase {
 ///   harness dir, i.e. this phase is running as part of Kiro's own
 ///   chain): copies every staged `.sop.md` file verbatim into
 ///   `.konductor/sops/` (via `kiro_cli::install_sops`), the raw files
-///   `--agent-sop-paths` (see `resource_rewrite.rs`'s `McpServerPass`)
+///   `--agent-sop-paths` (see `resource_rewrite/mcp_server.rs`'s `McpServerPass`)
 ///   points the launched `skill-lookup-mcp` process at.
 /// - Claude Code branch (unconditional whenever `staged_root` is
 ///   Claude's own harness dir): converts every staged `.sop.md` file
@@ -634,7 +634,7 @@ impl InstallPhase for ContextInstallPhase {
 /// `install_agents`'s pre-phases caller used to fold it into its own
 /// `agent_files` list.
 ///
-/// Also applies the Claude/V3 settings grant (see `resource_rewrite.rs`'s
+/// Also applies the Claude/V3 settings grant (see `resource_rewrite/claude_settings.rs`'s
 /// "V3/Claude Code permission grant" section) when `install_agents`
 /// reports it should fire. This lives HERE, not in `run_all_phases` or a
 /// later phase, because this is the one place that already holds
@@ -675,7 +675,7 @@ impl InstallPhase for AgentInstallPhase {
         // exactly (only ever applies when V2 actually injected
         // something into at least one agent this run) and is applied
         // exactly ONCE for the whole run, not per-agent -- see
-        // `resource_rewrite.rs`'s "V3/Claude Code permission grant"
+        // `resource_rewrite/claude_settings.rs`'s "V3/Claude Code permission grant"
         // section for why.
         //
         // Deliberately non-fatal: most of `apply_claude_settings_grant`'s
@@ -696,7 +696,7 @@ impl InstallPhase for AgentInstallPhase {
         // GRANT having just succeeded, not attempted independently, and
         // ALSO gated on `!no_telemetry` -- see
         // `apply_claude_settings_grant_and_hooks`'s own doc comment
-        // (`resource_rewrite.rs`) for the full rationale, shared
+        // (`resource_rewrite/claude_settings.rs`) for the full rationale, shared
         // verbatim with `KiroCliV3InstallStrategy::install_from_local`'s
         // identical call. `apply_claude_settings_grant`'s own failure
         // modes (symlink, `permissions.deny` shadow, malformed
@@ -1330,7 +1330,7 @@ mod tests {
     }
 
     /// A minimal `ManifestFile` for tests that only care about `path` --
-    /// mirrors `resource_rewrite.rs`'s own `bin_file_entry` test helper
+    /// mirrors `resource_rewrite/mcp_server.rs`'s own `bin_file_entry` test helper
     /// for the same reason: every `PhaseOutputs` test below cares which
     /// path came back, never the hash or provenance.
     fn mf(path: &str) -> ManifestFile {

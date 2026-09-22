@@ -154,7 +154,7 @@ pub fn acquire(konductor_dir: &Path) -> Result<ConfigLockGuard, ConfigLockError>
 /// name within `dir` instead of the hardcoded `.config.lock` -- so a
 /// DIFFERENT read-modify-write critical section (e.g.
 /// `install/bin_link.rs`'s `$HOME/.konductor/bin-links` sidecar, or
-/// `install/resource_rewrite.rs`'s Claude settings merges) gets its own
+/// `install/resource_rewrite/claude_settings.rs`'s Claude settings merges) gets its own
 /// independent lock file rather than contending with (or, worse,
 /// silently sharing identity with) `config set`'s lock on an unrelated
 /// document, or duplicating this module's bounded-retry/permissions
