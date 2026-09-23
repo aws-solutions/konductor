@@ -1,0 +1,26 @@
+[workspace]
+name="skills-lookup-mcp"
+version = "1.0.0"
+description = "MCP server for skills loop"
+resolver = "2"
+members = ["servers/*", "lib/*"]
+
+[workspace.package]
+license = "Apache-2.0"
+
+[workspace.lints.rust]
+# On aarch64, this toolchain's linker (GNU ld, binutils 2.41) does not
+# recognize the AArch64 GNU_PROPERTY_AARCH64_FEATURE_1_AND note
+# (type 0xc0000000) that this rustc/LLVM pairing emits into every
+# rlib's `.rmeta` member for hardening-feature advertisement (BTI/PAC).
+# `ld` treats an unrecognized property type as informational and
+# still produces a correct binary: the note only advertises an
+# optional hardening feature the linker doesn't merge, and it carries no
+# code or relocation `ld` needs to act on. `linker_messages` is the
+# specific rustc lint that surfaces linker stderr as a build warning;
+# allowing exactly this one lint (not a blanket `-A warnings`) leaves
+# every other lint, including `cargo clippy -- -D warnings`, at full
+# strength. No effect on x86_64, where this note/linker combination
+# doesn't occur and the lint never fires. Each member crate opts in
+# via `[lints] workspace = true` (see each crate's own Cargo.toml).
+linker_messages = "allow"

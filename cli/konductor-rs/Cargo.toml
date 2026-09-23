@@ -1,0 +1,193 @@
+[package]
+name = "konductor"
+version = "1.0.0"
+edition = "2021"
+description = "Konductor CLI — placeholder skeleton for build pipeline validation"
+license = "Apache-2.0"
+# Minimum supported Rust version, driven by the dependency tree rather than
+# this crate's own code: `icu_collections`, `icu_locale_core`,
+# `icu_normalizer`, `icu_normalizer_data`, `icu_properties`,
+# `icu_properties_data`, and `icu_provider` (all pulled in transitively via
+# `idna`/`url`) each declare `rust-version = "1.88"`, which cargo enforces at
+# resolve/build time. Verified empirically against this exact `Cargo.lock`:
+# `rustup run 1.87.0 cargo build --release` fails closed with an error naming
+# the icu_* packages; `rustup run 1.88.0 cargo build --release` succeeds
+# end-to-end. Declaring it here makes cargo itself enforce and report this
+# floor up front, instead of a caller discovering it from a lockfile
+# consumer's own tooling.
+#
+# Bump by re-running that same empirical check against a candidate version --
+# `rustup toolchain install <version> --profile minimal && rustup run
+# <version> cargo build --release` from this directory -- after any
+# `Cargo.lock` update that could raise a transitive MSRV, then updating this
+# field alongside the pinned toolchain version consumers build against (e.g.
+# `RUST_TOOLCHAIN_VERSION` in the release-pipeline package's
+# konductor-release-project.ts).
+rust-version = "1.88"
+
+[lints.rust]
+# On aarch64, this toolchain's linker (GNU ld, binutils 2.41) does not
+# recognize the AArch64 GNU_PROPERTY_AARCH64_FEATURE_1_AND note
+# (type 0xc0000000) that this rustc/LLVM pairing emits into every
+# rlib's `.rmeta` member for hardening-feature advertisement (BTI/PAC).
+# `ld` treats an unrecognized property type as informational and
+# still produces a correct binary: the note only advertises an
+# optional hardening feature the linker doesn't merge, and it carries no
+# code or relocation `ld` needs to act on. `linker_messages` is the
+# specific rustc lint that surfaces linker stderr as a build warning;
+# allowing exactly this one lint (not a blanket `-A warnings`) leaves
+# every other lint, including `cargo clippy -- -D warnings`, at full
+# strength. No effect on x86_64, where this note/linker combination
+# doesn't occur and the lint never fires. This crate has no
+# `[workspace]` of its own (see the MSRV comment above for why it is
+# built standalone), so this is set directly rather than via a
+# `[workspace.lints]` table (see mcp/Cargo.toml for that crate's own
+# equivalent, workspace-level version of this exact entry).
+linker_messages = "allow"
+
+[[bin]]
+name = "konductor"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "=4.6.2", features = ["derive"] }
+# Exact-pinned (repo convention: no open ranges). Used by the hidden
+# `__dump_schema` command (see src/cli.rs) and by synth's transformers.
+# `preserve_order` keeps JSON object key order as parsed/inserted (backed
+# by `indexmap` instead of `BTreeMap`, which alphabetizes) -- required so
+# raw-JSON-passthrough fields (e.g. KiroCliConfig::tools_settings) round-
+# trip through synth in source key order rather than sorted order.
+# `arbitrary_precision` keeps a parsed `Number`'s exact source digit text
+# internally instead of collapsing anything past i64::MIN/u64::MAX to an
+# f64 approximation -- required so PARSING an out-of-range integer
+# literal in a source spec does not fail. Without it, both parse paths
+# that build a `serde_json::Value` -- `serde_json::from_str` on an
+# agent-spec (parser.rs) and `serde_yaml::from_str` on skill frontmatter
+# for the name/description presence check (parse_canonical.rs) -- fail
+# outright on such a literal ("JSON number out of range") rather than
+# accepting it; with it, the exact source digits are preserved
+# internally. (`serde_yaml`'s own `Number` wraps `serde_json::Number`,
+# so this crate-global `serde_json` feature governs the YAML path too.)
+#
+# This is a crate-global `Number` change, not scoped to frontmatter: it
+# also changes how `Number` SERIALIZES everywhere, preserving a parsed
+# value's exact source digit text (e.g. `1.50`, `1e3`) instead of
+# normalizing it through `f64` on the way back out. `write_agent_file`
+# (kiro_cli_v2.rs) normalizes `Number` leaves in the agent JSON it emits
+# before serializing, to keep that output's numeric formatting
+# independent of this feature.
+serde_json = { version = "=1.0.150", features = ["preserve_order", "arbitrary_precision"] }
+# Exact-pinned per repo convention. Already resolved transitively via
+# serde_json's `preserve_order` feature (same crate, same version) --
+# promoted to a direct dependency so typed map fields (e.g.
+# KiroCliConfig::mcp_servers/hooks) can use IndexMap directly instead of
+# BTreeMap, keeping source JSON key order like tools_settings already
+# does. `serde` feature enables Serialize/Deserialize on IndexMap itself
+# (distinct from serde_json's preserve_order, which only affects
+# serde_json::Value::Object). Verified mirror-fetchable: already present
+# in Cargo.lock.
+indexmap = { version = "=2.14.0", features = ["serde"] }
+# Added for M1 (declarative contract): the config loader (src/config.rs)
+# derives Serialize/Deserialize on its Config struct to parse
+# `.konductor/config.yml` / the preset `cli/gate-config/config.yml`.
+# Exact-pinned per repo convention. Version bumped past serde_json's own
+# `^1.0.220` transitive requirement (1.0.215 conflicts; verified against
+# the internal crates.io mirror).
+serde = { version = "=1.0.228", features = ["derive"] }
+# YAML (de)serialization for the config loader. `serde_yaml` is
+# unmaintained upstream (archived by its author in 2024) but is still the
+# most mirror-compatible/widely-used option and has no known advisories;
+# newer forks (`serde_yml`, `serde_norway`) were not yet confirmed present
+# on the internal crates.io mirror at time of writing, so this stays with
+# the well-known crate rather than risking a mirror-fetch failure. Revisit
+# if a maintained fork becomes mirror-available and the team wants to
+# migrate. Exact-pinned per repo convention; verified fetchable against
+# the internal crates.io mirror.
+serde_yaml = "=0.9.34"
+# Advisory exclusive file lock used to serialize `config set`'s
+# read-merge-write cycle across concurrent CLI invocations (see
+# src/cli/config_lock.rs). `fs2` is unmaintained upstream (like
+# `serde_yaml` above) but is confirmed present on the internal crates.io
+# mirror (confirmed present via an internal mirror-fetch run
+# unpacking `fs2 v0.4.3`), and its `FileExt::try_lock_exclusive` /
+# `unlock` API is exactly the small, stable surface this needs. Exact-
+# pinned per repo convention.
+fs2 = "=0.4.3"
+# SHA-256 artifact-checksum verification for `konductor install` (task
+# 3.1). Exact-pinned per repo convention; verified fetchable against
+# the internal crates.io mirror.
+sha2 = "=0.10.8"
+# Unicode canonical (NFC) normalization for the case-insensitive
+# collision-detection fold shared by `parse_canonical.rs`/`path_safety.rs`
+# (see `path_safety::case_insensitive_fold_key`). `str::to_lowercase`
+# alone performs Unicode case-mapping but not normalization, so two
+# differently-composed but visually-identical names (e.g. NFC-precomposed
+# vs. NFD-decomposed) fold to different strings and bypass the collision
+# check outright. Exact-pinned per repo convention; verified fetchable
+# via `cargo add --dry-run` against the mirror-backed registry.
+unicode-normalization = "=0.1.25"
+# Host-allowlist DNS classification, DNS-rebinding pin construction,
+# the timeout-vs-failure resolution decision (`telemetry/report.rs`),
+# and shared identity primitives (nil-UUID sentinel, UUID-shape
+# validation, and the $HOME/.konductor/telemetry.json read/write path)
+# -- shared via a plain path dependency with `mcp/lib/skill-lookup-core`'s
+# own telemetry module -- this crate and `mcp/` are not otherwise
+# workspace-linked (this crate has no `[workspace]` of its own; `mcp/`
+# is a separate Cargo workspace this crate is not part of), so a path
+# dependency, not shared workspace membership, is the mechanism that
+# lets both depend on ONE implementation. The crate itself lives in its
+# own `shared/` workspace, sibling to `cli/` and `mcp/`; this
+# dependency's path reaches into that tree accordingly. No `async`
+# feature here: this crate has no async runtime, so it bounds its own
+# resolution via the crate's synchronous `run_with_timeout`/
+# `resolve_host_addrs_bounded`, never the tokio-based path that feature
+# gates. This crate's own `cli/telemetry/instance.rs` is a thin wrapper
+# around the identity half that adds only the CLI-specific
+# migration-parameter contract (`ensure_instance_with_migration`), not
+# a second implementation of the record's read/write mechanics.
+konductor-telemetry = { path = "../../shared/konductor-telemetry" }
+# Archive layout for konductor synth's packaging step (dist/ tree -> single
+# blob for write_sidecar to hash). Layout-only by design -- does not bundle
+# compression, hence flate2 below.
+tar = "=0.4.46"
+# Gzip compression paired with tar above -- the standard Rust-ecosystem
+# combination (e.g. `cargo package` itself uses this same pairing).
+# Exact-pinned per repo convention; verify fetchable against the
+# internal crates.io mirror before merging.
+flate2 = "=1.1.5"
+# Sync HTTP client for `install::github`'s GitHub Release fetch/download.
+# Deliberately not `reqwest` -- no async runtime in this crate, and `ureq`
+# fits the existing sync I/O style (see `install/remote.rs`). Exact-pinned
+# per repo convention; verified fetchable against the internal
+# crates.io mirror.
+ureq = "=2.10.1"
+# Direct dependency pinning `ureq`'s transitive `rustls` (open range) to
+# the newest patch confirmed on the internal mirror, so both resolve to
+# one build instead of two. Features match what `ureq` itself requests.
+# Exact-pinned per repo convention; verified fetchable against the
+# internal crates.io mirror.
+rustls = { version = "=0.23.43", default-features = false, features = ["ring", "logging", "std", "tls12"] }
+# Percent-encoding for path segments in `install::github_branch`'s GitHub
+# Contents API URLs. Already resolved transitively via `url`; promoted to
+# a direct dependency rather than hand-rolling escaping. Exact-pinned per
+# repo convention.
+percent-encoding = "=2.3.2"
+# ANSI color styling for CLI output (src/cli/output.rs). Exact-pinned
+# per repo convention.
+owo-colors = "=4.2.2"
+# Terminal-width-aware text wrapping for doctor.rs's fix:/detail: lines
+# (src/cli/output.rs's `wrap_indented`). Only the `terminal_size`
+# feature is enabled; the default features add Unicode-aware line
+# breaking this crate's plain-ASCII output doesn't need. Exact-pinned
+# per repo convention.
+textwrap = { version = "=0.16.2", default-features = false, features = ["terminal_size"] }
+
+[dev-dependencies]
+# Loopback HTTPS sink standing in for the real telemetry endpoint in
+# this crate's own integration tests (tests/telemetry_report_process.rs
+# and the three tests that previously set KONDUCTOR_TELEMETRY=off) --
+# see shared/telemetry-test-sink's own module doc comment for the full
+# design rationale, and that crate's own Cargo.toml for why a plain
+# path dependency (not shared workspace membership) is the sharing
+# mechanism, matching konductor-telemetry above.
+telemetry-test-sink = { path = "../../shared/telemetry-test-sink" }

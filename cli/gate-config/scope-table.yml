@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# scope-table.yml — maps each change tier to the ordered set of gated
+# phases that tier activates.
+#
+#   tiers.<tier_id>.phases   ordered list of phase names gated for this
+#                            tier. A run's config selects exactly one
+#                            active tier (see config.yml's `tier` field).
+#
+# `major` and `full` activate the same phase list: `major` is the
+# inferred tier for large changes, `full` is the force-override applied
+# when sensitive paths are touched. "Docs→PR" (opening/promoting the pull
+# request) is a lifecycle action, not a gated phase -- there is no `pr`
+# phase here.
+version: '1.0'
+tiers:
+  trivial:
+    phases: [code, tests]
+  bugfix:
+    phases: [code, tests, devil-advocate]
+  minor:
+    phases: [design, tasks, code, tests, devil-advocate]
+  major:
+    phases: [requirements, design, tasks, code, tests, docs, devil-advocate]
+  full:
+    phases: [requirements, design, tasks, code, tests, docs, devil-advocate]

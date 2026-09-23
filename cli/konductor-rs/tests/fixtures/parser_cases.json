@@ -1,0 +1,539 @@
+{
+  "$schema_note": "Parser test fixtures (Rust). Each case's raw_input is parsed by the Rust parser. expected.ok asserts exact IR field values; the following expected.ok keys are OPTIONAL (asserted only when present, so pre-existing cases that omit them are unaffected): kiro_cli_tools_settings (KiroCliConfig.tools_settings, an arbitrary JSON object), kiro_cli_hooks (KiroCliConfig.hooks, a map of hook-name to array-of-{command}), kiro_cli_resources (KiroCliConfig.resources, exact ordered list), claude_cli_tools (ClaudeCliConfig.tools, exact ordered list), and dependencies.mcp_registry_entries (a map from mcp_registry_keys entries to their full {command, args, url} shape, for asserting an entry's fields beyond just its key presence). expected.error asserts the ParseError reason_substring (when set) and the error field: 'field' is the expectation the Rust loader reads, overridden by 'field_rust' when present; 'field_python' is a legacy key retained in the data from the removed Python consumer and is ignored by the Rust loader. A case may carry an optional '_source_note' field documenting which real agents/*.agent-spec.json file(s) its raw_input values were lifted from verbatim; this is documentation only and not read by either consumer. Consumed by cli/konductor-rs/src/cli/synth/parser.rs's fixture-driven test.",
+  "cases": [
+    {
+      "name": "valid_v1_spec",
+      "raw_input": "{\"schemaVersion\":\"1\",\"name\":\"k-example\",\"config\":{\"description\":\"Example agent.\",\"model\":\"claude-sonnet-5\",\"systemPrompt\":\"You are an example agent.\"},\"dependencies\":{\"skills\":{},\"context\":{\"contextNames\":[\"routing.md\"]},\"mcpRegistry\":{\"example-mcp\":{\"command\":\"uvx\",\"args\":[\"example-mcp@latest\"]}},\"agentSops\":{\"agentSopNames\":[\"example-sop\"]}},\"clientConfig\":{\"kiroCli\":{\"tools\":[\"@builtin\"],\"allowedTools\":[\"fs_read\"],\"resources\":[\"file://AGENTS.md\"]},\"claudeCli\":{\"tools\":[\"Read\"],\"skills\":[\"constraints\"]}}}",
+      "expected": {
+        "ok": {
+          "name": "k-example",
+          "config": {
+            "description": "Example agent.",
+            "system_prompt": "You are an example agent.",
+            "model": "claude-sonnet-5"
+          },
+          "dependencies": {
+            "context_names": ["routing.md"],
+            "agent_sop_names": ["example-sop"],
+            "mcp_registry_keys": ["example-mcp"]
+          },
+          "kiro_cli_tools": ["@builtin"],
+          "kiro_cli_allowed_tools": ["fs_read"],
+          "claude_cli_tools": ["Read"],
+          "claude_cli_skills": ["constraints"]
+        }
+      }
+    },
+    {
+      "name": "absent_optional_dependency_sections",
+      "raw_input": "{\"schemaVersion\":\"1\",\"name\":\"k-minimal\",\"config\":{\"description\":\"Minimal agent.\",\"model\":\"claude-sonnet-5\",\"systemPrompt\":\"Minimal.\"},\"clientConfig\":{\"kiroCli\":{\"tools\":[\"@builtin\"]}}}",
+      "expected": {
+        "ok": {
+          "name": "k-minimal",
+          "config": {
+            "description": "Minimal agent.",
+            "system_prompt": "Minimal.",
+            "model": "claude-sonnet-5"
+          },
+          "dependencies": {
+            "context_names": [],
+            "agent_sop_names": [],
+            "mcp_registry_keys": []
+          },
+          "kiro_cli_tools": ["@builtin"],
+          "kiro_cli_allowed_tools": [],
+          "claude_cli_skills": null
+        }
+      }
+    },
+    {
+      "name": "malformed_json",
+      "raw_input": "{ not valid json",
+      "expected": {
+        "error": { "field": null, "reason_substring": "invalid JSON" }
+      }
+    },
+    {
+      "name": "missing_schema_version",
+      "raw_input": "{ \"name\": \"k-example\" }",
+      "expected": {
+        "error": { "field": "schemaVersion", "reason_substring": "missing or not a string" }
+      }
+    },
+    {
+      "name": "unsupported_schema_version",
+      "raw_input": "{ \"schemaVersion\": \"99\", \"name\": \"k-example\" }",
+      "expected": {
+        "error": { "field": "schemaVersion", "reason_substring": "unsupported schema version" }
+      }
+    },
+    {
+      "name": "missing_required_field",
+      "raw_input": "{\"schemaVersion\":\"1\",\"name\":\"k-example\",\"config\":{\"description\":\"No model or prompt.\"},\"clientConfig\":{}}",
+      "expected": {
+        "error": {
+          "field_rust": "systemPrompt",
+          "field_python": "config.systemPrompt",
+          "reason_substring": "missing field"
+        }
+      }
+    },
+    {
+      "name": "config_model_type_mismatch",
+      "raw_input": "{\"schemaVersion\":\"1\",\"name\":\"k-example\",\"config\":{\"description\":\"d\",\"systemPrompt\":\"s\",\"model\":42},\"clientConfig\":{}}",
+      "expected": {
+        "error": {
+          "field_rust": null,
+          "field_python": "config.model",
+          "reason_substring": null
+        }
+      }
+    },
+    {
+      "name": "schema_version_wrong_type_number",
+      "raw_input": "{ \"schemaVersion\": 1, \"name\": \"k-example\" }",
+      "expected": {
+        "error": { "field": "schemaVersion", "reason_substring": "missing or not a string" }
+      }
+    },
+    {
+      "name": "schema_version_wrong_type_null",
+      "raw_input": "{ \"schemaVersion\": null, \"name\": \"k-example\" }",
+      "expected": {
+        "error": { "field": "schemaVersion", "reason_substring": "missing or not a string" }
+      }
+    },
+    {
+      "name": "schema_version_empty_string",
+      "raw_input": "{ \"schemaVersion\": \"\", \"name\": \"k-example\" }",
+      "expected": {
+        "error": { "field": "schemaVersion", "reason_substring": "unsupported schema version" }
+      }
+    },
+    {
+      "name": "dependencies_explicit_null",
+      "raw_input": "{\"schemaVersion\":\"1\",\"name\":\"k-example\",\"config\":{\"description\":\"d\",\"systemPrompt\":\"s\",\"model\":\"m\"},\"dependencies\":null,\"clientConfig\":{}}",
+      "expected": {
+        "error": {
+          "field_rust": null,
+          "field_python": "dependencies",
+          "reason_substring": null
+        }
+      }
+    },
+    {
+      "name": "dependencies_explicit_empty_object",
+      "raw_input": "{\"schemaVersion\":\"1\",\"name\":\"k-example\",\"config\":{\"description\":\"d\",\"systemPrompt\":\"s\",\"model\":\"m\"},\"dependencies\":{},\"clientConfig\":{}}",
+      "expected": {
+        "ok": {
+          "name": "k-example",
+          "config": { "description": "d", "system_prompt": "s", "model": "m" },
+          "dependencies": { "context_names": [], "agent_sop_names": [], "mcp_registry_keys": [] },
+          "kiro_cli_tools": null,
+          "kiro_cli_allowed_tools": null,
+          "claude_cli_skills": null
+        }
+      }
+    },
+    {
+      "name": "dependencies_omitted",
+      "raw_input": "{\"schemaVersion\":\"1\",\"name\":\"k-example\",\"config\":{\"description\":\"d\",\"systemPrompt\":\"s\",\"model\":\"m\"},\"clientConfig\":{}}",
+      "expected": {
+        "ok": {
+          "name": "k-example",
+          "config": { "description": "d", "system_prompt": "s", "model": "m" },
+          "dependencies": { "context_names": [], "agent_sop_names": [], "mcp_registry_keys": [] },
+          "kiro_cli_tools": null,
+          "kiro_cli_allowed_tools": null,
+          "claude_cli_skills": null
+        }
+      }
+    },
+    {
+      "name": "dependencies_context_not_an_object",
+      "raw_input": "{\"schemaVersion\":\"1\",\"name\":\"k-example\",\"config\":{\"description\":\"d\",\"systemPrompt\":\"s\",\"model\":\"m\"},\"dependencies\":{\"context\":\"not-an-object\"},\"clientConfig\":{}}",
+      "expected": {
+        "error": {
+          "field_rust": null,
+          "field_python": "dependencies.context",
+          "reason_substring": null
+        }
+      }
+    },
+    {
+      "name": "dependencies_agent_sops_not_an_object",
+      "raw_input": "{\"schemaVersion\":\"1\",\"name\":\"k-example\",\"config\":{\"description\":\"d\",\"systemPrompt\":\"s\",\"model\":\"m\"},\"dependencies\":{\"agentSops\":[\"not\",\"an\",\"object\"]},\"clientConfig\":{}}",
+      "expected": {
+        "error": {
+          "field_rust": null,
+          "field_python": "dependencies.agentSops",
+          "reason_substring": null
+        }
+      }
+    },
+    {
+      "name": "dependencies_context_names_as_string",
+      "_source_note": "Reproduces a real bug: an unguarded list(...) coercion silently iterated a string character-by-character instead of raising a ParseError.",
+      "raw_input": "{\"schemaVersion\":\"1\",\"name\":\"k-example\",\"config\":{\"description\":\"d\",\"systemPrompt\":\"s\",\"model\":\"m\"},\"dependencies\":{\"context\":{\"contextNames\":\"routing.md\"}},\"clientConfig\":{}}",
+      "expected": {
+        "error": {
+          "field_rust": null,
+          "field_python": "dependencies.context.contextNames",
+          "reason_substring": null
+        }
+      }
+    },
+    {
+      "name": "dependencies_mcp_registry_as_array",
+      "_source_note": "Reproduces a real bug: calling .items() on a non-dict mcpRegistry value threw an unhandled AttributeError instead of raising a ParseError.",
+      "raw_input": "{\"schemaVersion\":\"1\",\"name\":\"k-example\",\"config\":{\"description\":\"d\",\"systemPrompt\":\"s\",\"model\":\"m\"},\"dependencies\":{\"mcpRegistry\":[1,2,3]},\"clientConfig\":{}}",
+      "expected": {
+        "error": {
+          "field_rust": null,
+          "field_python": "dependencies.mcpRegistry",
+          "reason_substring": null
+        }
+      }
+    },
+    {
+      "name": "duplicate_json_key_last_wins",
+      "raw_input": "{\"schemaVersion\":\"1\",\"name\":\"first\",\"name\":\"second\",\"config\":{\"description\":\"d\",\"systemPrompt\":\"s\",\"model\":\"m\"},\"clientConfig\":{}}",
+      "expected": {
+        "ok": {
+          "name": "second",
+          "config": { "description": "d", "system_prompt": "s", "model": "m" },
+          "dependencies": { "context_names": [], "agent_sop_names": [], "mcp_registry_keys": [] },
+          "kiro_cli_tools": null,
+          "kiro_cli_allowed_tools": null,
+          "claude_cli_skills": null
+        }
+      }
+    },
+    {
+      "name": "unknown_extra_field_tolerated",
+      "raw_input": "{\"schemaVersion\":\"1\",\"name\":\"k-example\",\"config\":{\"description\":\"d\",\"systemPrompt\":\"s\",\"model\":\"m\"},\"clientConfig\":{},\"unknownTopLevelField\":\"ignored\"}",
+      "expected": {
+        "ok": {
+          "name": "k-example",
+          "config": { "description": "d", "system_prompt": "s", "model": "m" },
+          "dependencies": { "context_names": [], "agent_sop_names": [], "mcp_registry_keys": [] },
+          "kiro_cli_tools": null,
+          "kiro_cli_allowed_tools": null,
+          "claude_cli_skills": null
+        }
+      }
+    },
+    {
+      "name": "toolsSettings_omitted_defaults_to_empty_object",
+      "raw_input": "{\"schemaVersion\":\"1\",\"name\":\"k-example\",\"config\":{\"description\":\"d\",\"systemPrompt\":\"s\",\"model\":\"m\"},\"clientConfig\":{\"kiroCli\":{\"tools\":[\"@builtin\"]}}}",
+      "expected": {
+        "ok": {
+          "name": "k-example",
+          "config": { "description": "d", "system_prompt": "s", "model": "m" },
+          "dependencies": { "context_names": [], "agent_sop_names": [], "mcp_registry_keys": [] },
+          "kiro_cli_tools": ["@builtin"],
+          "kiro_cli_allowed_tools": [],
+          "kiro_cli_tools_settings": {},
+          "claude_cli_skills": null
+        }
+      }
+    },
+    {
+      "name": "real_toolsSettings_subagent_shape",
+      "_source_note": "toolsSettings block lifted verbatim from agents/k-developer.agent-spec.json's clientConfig.kiroCli.toolsSettings.",
+      "raw_input": "{\"schemaVersion\":\"1\",\"name\":\"k-developer\",\"config\":{\"description\":\"d\",\"systemPrompt\":\"s\",\"model\":\"claude-sonnet-5\"},\"clientConfig\":{\"kiroCli\":{\"tools\":[\"@builtin\",\"subagent\"],\"allowedTools\":[\"fs_read\",\"fs_write\"],\"toolsSettings\":{\"subagent\":{\"availableAgents\":[\"k-quality-assurance\"],\"trustedAgents\":[\"k-quality-assurance\"]}},\"hooks\":{}}}}",
+      "expected": {
+        "ok": {
+          "name": "k-developer",
+          "config": { "description": "d", "system_prompt": "s", "model": "claude-sonnet-5" },
+          "dependencies": { "context_names": [], "agent_sop_names": [], "mcp_registry_keys": [] },
+          "kiro_cli_tools": ["@builtin", "subagent"],
+          "kiro_cli_allowed_tools": ["fs_read", "fs_write"],
+          "kiro_cli_tools_settings": {
+            "subagent": {
+              "availableAgents": ["k-quality-assurance"],
+              "trustedAgents": ["k-quality-assurance"]
+            }
+          },
+          "claude_cli_skills": null
+        }
+      }
+    },
+    {
+      "name": "real_hooks_stop_command_shape",
+      "_source_note": "hooks block lifted verbatim from agents/konductor-mux-orchestrator.agent-spec.json's clientConfig.kiroCli.hooks.",
+      "raw_input": "{\"schemaVersion\":\"1\",\"name\":\"konductor-mux-orchestrator\",\"config\":{\"description\":\"d\",\"systemPrompt\":\"s\",\"model\":\"claude-sonnet-5\"},\"clientConfig\":{\"kiroCli\":{\"tools\":[\"@builtin\",\"read\",\"shell\",\"todo\"],\"allowedTools\":[\"fs_read\",\"shell\"],\"hooks\":{\"stop\":[{\"command\":\"skills/mux-dispatch/mux-completion-hook.sh\"}]}}}}",
+      "expected": {
+        "ok": {
+          "name": "konductor-mux-orchestrator",
+          "config": { "description": "d", "system_prompt": "s", "model": "claude-sonnet-5" },
+          "dependencies": { "context_names": [], "agent_sop_names": [], "mcp_registry_keys": [] },
+          "kiro_cli_tools": ["@builtin", "read", "shell", "todo"],
+          "kiro_cli_allowed_tools": ["fs_read", "shell"],
+          "kiro_cli_hooks": {
+            "stop": [{ "command": "skills/mux-dispatch/mux-completion-hook.sh" }]
+          },
+          "claude_cli_skills": null
+        }
+      }
+    },
+    {
+      "name": "real_mcp_registry_entry_args_only_no_command",
+      "_source_note": "mcpRegistry.playwright-mcp entry lifted verbatim from agents/k-browser.agent-spec.json's dependencies.mcpRegistry (no 'command' key, only 'args').",
+      "raw_input": "{\"schemaVersion\":\"1\",\"name\":\"k-browser\",\"config\":{\"description\":\"d\",\"systemPrompt\":\"s\",\"model\":\"claude-sonnet-5\"},\"dependencies\":{\"mcpRegistry\":{\"playwright-mcp\":{\"args\":[\"-y\",\"@playwright/mcp@latest\"]}}},\"clientConfig\":{\"kiroCli\":{\"tools\":[\"@builtin\",\"@playwright-mcp\"]}}}",
+      "expected": {
+        "ok": {
+          "name": "k-browser",
+          "config": { "description": "d", "system_prompt": "s", "model": "claude-sonnet-5" },
+          "dependencies": {
+            "context_names": [],
+            "agent_sop_names": [],
+            "mcp_registry_keys": ["playwright-mcp"],
+            "mcp_registry_entries": {
+              "playwright-mcp": { "command": null, "args": ["-y", "@playwright/mcp@latest"], "url": null }
+            }
+          },
+          "kiro_cli_tools": ["@builtin", "@playwright-mcp"],
+          "kiro_cli_allowed_tools": [],
+          "claude_cli_skills": null
+        }
+      }
+    },
+    {
+      "name": "real_multi_entry_agentSopNames",
+      "_source_note": "agentSopNames array (5 entries) lifted verbatim from agents/konductor.agent-spec.json's dependencies.agentSops.",
+      "raw_input": "{\"schemaVersion\":\"1\",\"name\":\"konductor\",\"config\":{\"description\":\"d\",\"systemPrompt\":\"s\",\"model\":\"claude-sonnet-5\"},\"dependencies\":{\"agentSops\":{\"agentSopNames\":[\"kiro-spec-workflow\",\"k-delegate\",\"k-plan\",\"k-context-gathering\",\"k-verify\"]}},\"clientConfig\":{\"kiroCli\":{\"tools\":[\"@builtin\",\"subagent\"],\"allowedTools\":[\"fs_read\"]}}}",
+      "expected": {
+        "ok": {
+          "name": "konductor",
+          "config": { "description": "d", "system_prompt": "s", "model": "claude-sonnet-5" },
+          "dependencies": {
+            "context_names": [],
+            "agent_sop_names": [
+              "kiro-spec-workflow",
+              "k-delegate",
+              "k-plan",
+              "k-context-gathering",
+              "k-verify"
+            ],
+            "mcp_registry_keys": []
+          },
+          "kiro_cli_tools": ["@builtin", "subagent"],
+          "kiro_cli_allowed_tools": ["fs_read"],
+          "claude_cli_skills": null
+        }
+      }
+    },
+    {
+      "name": "real_namespaced_mcp_tool_ids",
+      "_source_note": "claudeCli.tools 'mcp__aws-mcp__*' entry and kiroCli.allowedTools '@aws-mcp/aws___search_documentation' entry lifted verbatim from agents/k-developer.agent-spec.json's clientConfig (subset: allowedTools 8->5 entries, claude_cli_tools 10->5, claude_cli_skills 17->1).",
+      "raw_input": "{\"schemaVersion\":\"1\",\"name\":\"k-developer\",\"config\":{\"description\":\"d\",\"systemPrompt\":\"s\",\"model\":\"claude-sonnet-5\"},\"clientConfig\":{\"kiroCli\":{\"tools\":[\"@builtin\",\"subagent\",\"@aws-mcp\"],\"allowedTools\":[\"fs_read\",\"fs_write\",\"shell\",\"@aws-mcp/aws___search_documentation\",\"@aws-mcp/aws___retrieve_skill\"]},\"claudeCli\":{\"tools\":[\"Read\",\"Write\",\"Edit\",\"Bash\",\"mcp__aws-mcp__*\"],\"skills\":[\"constraints\"]}}}",
+      "expected": {
+        "ok": {
+          "name": "k-developer",
+          "config": { "description": "d", "system_prompt": "s", "model": "claude-sonnet-5" },
+          "dependencies": { "context_names": [], "agent_sop_names": [], "mcp_registry_keys": [] },
+          "kiro_cli_tools": ["@builtin", "subagent", "@aws-mcp"],
+          "kiro_cli_allowed_tools": [
+            "fs_read",
+            "fs_write",
+            "shell",
+            "@aws-mcp/aws___search_documentation",
+            "@aws-mcp/aws___retrieve_skill"
+          ],
+          "claude_cli_tools": ["Read", "Write", "Edit", "Bash", "mcp__aws-mcp__*"],
+          "claude_cli_skills": ["constraints"]
+        }
+      }
+    },
+    {
+      "name": "mcp_registry_args_as_string",
+      "_source_note": "Reproduces a real bug: an unguarded list(...) coercion silently iterated a string character-by-character instead of raising a ParseError (same bug class as dependencies_context_names_as_string, applied to mcpRegistry entries).",
+      "raw_input": "{\"schemaVersion\":\"1\",\"name\":\"k-example\",\"config\":{\"description\":\"d\",\"systemPrompt\":\"s\",\"model\":\"m\"},\"dependencies\":{\"mcpRegistry\":{\"bad-server\":{\"args\":\"some-arg\"}}},\"clientConfig\":{}}",
+      "expected": {
+        "error": {
+          "field_rust": null,
+          "field_python": "dependencies.mcpRegistry.bad-server.args",
+          "reason_substring": null
+        }
+      }
+    },
+    {
+      "name": "mcp_registry_command_as_number",
+      "raw_input": "{\"schemaVersion\":\"1\",\"name\":\"k-example\",\"config\":{\"description\":\"d\",\"systemPrompt\":\"s\",\"model\":\"m\"},\"dependencies\":{\"mcpRegistry\":{\"bad-server\":{\"command\":42}}},\"clientConfig\":{}}",
+      "expected": {
+        "error": {
+          "field_rust": null,
+          "field_python": "dependencies.mcpRegistry.bad-server.command",
+          "reason_substring": null
+        }
+      }
+    },
+    {
+      "name": "mcp_registry_url_as_array",
+      "raw_input": "{\"schemaVersion\":\"1\",\"name\":\"k-example\",\"config\":{\"description\":\"d\",\"systemPrompt\":\"s\",\"model\":\"m\"},\"dependencies\":{\"mcpRegistry\":{\"bad-server\":{\"url\":[\"http://example.invalid\"]}}},\"clientConfig\":{}}",
+      "expected": {
+        "error": {
+          "field_rust": null,
+          "field_python": "dependencies.mcpRegistry.bad-server.url",
+          "reason_substring": null
+        }
+      }
+    },
+    {
+      "name": "toolsSettings_non_alphabetical_key_order_preserved",
+      "_source_note": "Regression fixture for the Rust/Python JSON key-ordering divergence (serde_json::Value defaulting to a BTreeMap, which silently alphabetizes object keys, vs. Python dict/json.load preserving source insertion order). Keys are deliberately out of alphabetical order (zebra, apple, middle) so an equality-only check (which is order-insensitive for JSON objects) would not catch a regression -- see kiro_cli.rs's transform_preserves_non_alphabetical_tools_settings_key_order for the order-sensitive assertion this fixture case backs.",
+      "raw_input": "{\"schemaVersion\":\"1\",\"name\":\"k-example\",\"config\":{\"description\":\"d\",\"systemPrompt\":\"s\",\"model\":\"m\"},\"clientConfig\":{\"kiroCli\":{\"tools\":[\"@builtin\"],\"toolsSettings\":{\"zebra\":1,\"apple\":2,\"middle\":3}}}}",
+      "expected": {
+        "ok": {
+          "name": "k-example",
+          "config": { "description": "d", "system_prompt": "s", "model": "m" },
+          "dependencies": { "context_names": [], "agent_sop_names": [], "mcp_registry_keys": [] },
+          "kiro_cli_tools": ["@builtin"],
+          "kiro_cli_allowed_tools": [],
+          "kiro_cli_tools_settings": { "zebra": 1, "apple": 2, "middle": 3 },
+          "claude_cli_skills": null
+        }
+      }
+    },
+    {
+      "name": "real_kiro_cli_resources_skill_uri_scheme",
+      "_source_note": "resources array entries lifted verbatim (subset) from agents/k-architect.agent-spec.json's clientConfig.kiroCli.resources, covering both file:// and skill:// URI schemes.",
+      "raw_input": "{\"schemaVersion\":\"1\",\"name\":\"k-architect\",\"config\":{\"description\":\"d\",\"systemPrompt\":\"s\",\"model\":\"claude-opus-4.6\"},\"clientConfig\":{\"kiroCli\":{\"tools\":[\"@builtin\"],\"resources\":[\"file://AGENTS.md\",\"skill://.kiro/skills/ws-*/SKILL.md\",\"skill://~/.kiro/skills/constraints/SKILL.md\",\"skill://~/.kiro/skills/threat-modeling/SKILL.md\"]}}}",
+      "expected": {
+        "ok": {
+          "name": "k-architect",
+          "config": { "description": "d", "system_prompt": "s", "model": "claude-opus-4.6" },
+          "dependencies": { "context_names": [], "agent_sop_names": [], "mcp_registry_keys": [] },
+          "kiro_cli_tools": ["@builtin"],
+          "kiro_cli_allowed_tools": [],
+          "kiro_cli_resources": [
+            "file://AGENTS.md",
+            "skill://.kiro/skills/ws-*/SKILL.md",
+            "skill://~/.kiro/skills/constraints/SKILL.md",
+            "skill://~/.kiro/skills/threat-modeling/SKILL.md"
+          ],
+          "claude_cli_skills": null
+        }
+      }
+    },
+    {
+      "name": "client_config_kiro_cli_as_string",
+      "_source_note": "Reproduces a real bug: an unguarded .get()-then-pass-through let a non-dict kiroCli value reach _parse_kiro_cli_config, which immediately calls .get() on it, raising an unhandled AttributeError instead of a ParseError.",
+      "raw_input": "{\"schemaVersion\":\"1\",\"name\":\"k-example\",\"config\":{\"description\":\"d\",\"systemPrompt\":\"s\",\"model\":\"m\"},\"clientConfig\":{\"kiroCli\":\"oops\"}}",
+      "expected": {
+        "error": {
+          "field_rust": null,
+          "field_python": "clientConfig.kiroCli",
+          "reason_substring": null
+        }
+      }
+    },
+    {
+      "name": "client_config_claude_cli_as_list",
+      "_source_note": "Same bug class as client_config_kiro_cli_as_string, applied to claudeCli.",
+      "raw_input": "{\"schemaVersion\":\"1\",\"name\":\"k-example\",\"config\":{\"description\":\"d\",\"systemPrompt\":\"s\",\"model\":\"m\"},\"clientConfig\":{\"claudeCli\":[1,2,3]}}",
+      "expected": {
+        "error": {
+          "field_rust": null,
+          "field_python": "clientConfig.claudeCli",
+          "reason_substring": null
+        }
+      }
+    },
+    {
+      "name": "kiro_cli_hooks_as_list",
+      "_source_note": "Reproduces a real bug: hooks=dict(value.get('hooks', {})) had no type check before dict(...), raising an unhandled ValueError/TypeError for a list of scalars instead of a ParseError.",
+      "raw_input": "{\"schemaVersion\":\"1\",\"name\":\"k-example\",\"config\":{\"description\":\"d\",\"systemPrompt\":\"s\",\"model\":\"m\"},\"clientConfig\":{\"kiroCli\":{\"hooks\":[\"a\",\"b\"]}}}",
+      "expected": {
+        "error": {
+          "field_rust": null,
+          "field_python": "clientConfig.kiroCli.hooks",
+          "reason_substring": null
+        }
+      }
+    },
+    {
+      "name": "kiro_cli_hooks_as_nested_list",
+      "_source_note": "Same bug class as kiro_cli_hooks_as_list, but this shape (a list of 2-element lists) succeeds SILENTLY in Python as dict(value.get('hooks', {})) == {'a': 'b'} rather than raising any error at all.",
+      "raw_input": "{\"schemaVersion\":\"1\",\"name\":\"k-example\",\"config\":{\"description\":\"d\",\"systemPrompt\":\"s\",\"model\":\"m\"},\"clientConfig\":{\"kiroCli\":{\"hooks\":[[\"a\",\"b\"]]}}}",
+      "expected": {
+        "error": {
+          "field_rust": null,
+          "field_python": "clientConfig.kiroCli.hooks",
+          "reason_substring": null
+        }
+      }
+    },
+    {
+      "name": "kiro_cli_tools_with_non_string_element",
+      "_source_note": "Cross-runtime conformance gap: Python's _require_list accepts non-string list elements silently; Rust's serde-derived Vec<String> rejects this via a type error.",
+      "raw_input": "{\"schemaVersion\":\"1\",\"name\":\"k-example\",\"config\":{\"description\":\"d\",\"systemPrompt\":\"s\",\"model\":\"m\"},\"clientConfig\":{\"kiroCli\":{\"tools\":[1,2]}}}",
+      "expected": {
+        "error": {
+          "field_rust": null,
+          "field_python": "clientConfig.kiroCli.tools[0]",
+          "reason_substring": null
+        }
+      }
+    },
+    {
+      "name": "dependencies_context_names_with_non_string_element",
+      "_source_note": "Same conformance gap as kiro_cli_tools_with_non_string_element, applied to dependencies.context.contextNames.",
+      "raw_input": "{\"schemaVersion\":\"1\",\"name\":\"k-example\",\"config\":{\"description\":\"d\",\"systemPrompt\":\"s\",\"model\":\"m\"},\"dependencies\":{\"context\":{\"contextNames\":[\"routing.md\",42]}},\"clientConfig\":{}}",
+      "expected": {
+        "error": {
+          "field_rust": null,
+          "field_python": "dependencies.context.contextNames[1]",
+          "reason_substring": null
+        }
+      }
+    },
+    {
+      "name": "mcp_registry_args_with_non_string_element",
+      "_source_note": "Same conformance gap as kiro_cli_tools_with_non_string_element, applied to an mcpRegistry entry's args.",
+      "raw_input": "{\"schemaVersion\":\"1\",\"name\":\"k-example\",\"config\":{\"description\":\"d\",\"systemPrompt\":\"s\",\"model\":\"m\"},\"dependencies\":{\"mcpRegistry\":{\"bad-server\":{\"args\":[\"ok\",true]}}},\"clientConfig\":{}}",
+      "expected": {
+        "error": {
+          "field_rust": null,
+          "field_python": "dependencies.mcpRegistry.bad-server.args[1]",
+          "reason_substring": null
+        }
+      }
+    },
+    {
+      "name": "agent_name_with_path_traversal",
+      "_source_note": "Security regression fixture: agent.name is joined directly into an output path by HarnessTransformer implementations (e.g. kiro_cli_v2.rs/kiro_cli_v2.py's write_agent_file), so a '..'-relative name must be rejected by the parser before it ever reaches a transformer.",
+      "raw_input": "{\"schemaVersion\":\"1\",\"name\":\"../../evil\",\"config\":{\"description\":\"d\",\"systemPrompt\":\"s\",\"model\":\"m\"},\"clientConfig\":{}}",
+      "expected": {
+        "error": {
+          "field": "name",
+          "reason_substring": "parent-directory"
+        }
+      }
+    },
+    {
+      "name": "agent_name_bare_parent_directory",
+      "_source_note": "Regression fixture for validate_agent_name/_validate_agent_name: a bare '..' has no path separator, so it is the one traversal shape the separator check (contains('/')/contains('\\\\')) does not also catch on its own -- this case is what makes the dedicated '..'-equality check non-redundant with the separator check.",
+      "raw_input": "{\"schemaVersion\":\"1\",\"name\":\"..\",\"config\":{\"description\":\"d\",\"systemPrompt\":\"s\",\"model\":\"m\"},\"clientConfig\":{}}",
+      "expected": {
+        "error": {
+          "field": "name",
+          "reason_substring": "parent-directory"
+        }
+      }
+    },
+    {
+      "name": "agent_name_path_traversal_and_missing_config_field",
+      "_source_note": "Error-precedence regression fixture: raw_input has BOTH an invalid/path-traversal name AND a missing config.model, so it exercises which check 'wins' first. normalize_v1 fully deserializes SpecV1 via serde_json::from_value before validate_agent_name ever runs, so the missing-field (config.model) error surfaces before the name check fires -- the config-field error must win over the name error, and the check must never report field 'name' here.",
+      "raw_input": "{\"schemaVersion\":\"1\",\"name\":\"../../evil\",\"config\":{\"description\":\"d\",\"systemPrompt\":\"s\"},\"clientConfig\":{}}",
+      "expected": {
+        "error": {
+          "field_rust": "model",
+          "field_python": "config.model",
+          "reason_substring": "missing field"
+        }
+      }
+    }
+  ]
+}

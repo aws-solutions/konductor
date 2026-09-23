@@ -1,0 +1,56 @@
+[package]
+name = "konductor-telemetry"
+version = "0.1.0"
+edition = "2021"
+description = "Shared telemetry primitives -- identity (nil-UUID sentinel, UUID-shape validation, the machine-scoped $HOME/.konductor/telemetry.json read/write path) and net (host-allowlist DNS classification, DNS-rebinding pin construction, and the timeout-vs-failure resolution decision) -- consumed by cli/konductor-rs and mcp/lib/skill-lookup-core"
+license.workspace = true
+
+[lints]
+workspace = true
+
+[lib]
+name = "konductor_telemetry"
+path = "src/lib.rs"
+
+[features]
+# Enables the tokio-based bounded-async resolution path in the `net`
+# module (`resolve_host_addrs_bounded_async`), used by an async caller
+# (mcp/lib/skill-lookup-core) that already has a tokio runtime and
+# therefore bounds the blocking DNS call via `tokio::time::timeout` +
+# `tokio::task::spawn_blocking` rather than the thread+channel
+# `run_with_timeout` primitive a synchronous caller (cli/konductor-rs,
+# which has no async runtime at all) uses instead. Off by default so a
+# synchronous consumer never pulls tokio into its dependency graph --
+# the `identity` module has no dependency on this feature at all.
+async = ["tokio"]
+
+[dependencies]
+# `identity` module only. Not exact-pinned, unlike every other
+# dependency in this repo's convention -- this crate is a path
+# dependency of both cli/konductor-rs (own Cargo.lock, no `[workspace]`
+# of its own, resolves serde to =1.0.228) and mcp/lib/skill-lookup-core
+# (a member of the mcp/ workspace, exact-pinning serde to =1.0.229).
+# Each lock file resolves this crate's serde requirement independently,
+# so an exact pin here would force both to agree on one patch version,
+# which they don't. A caret range within the minor line both already
+# pin lets each resolver keep its own patch (no behaviour change).
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "=1.0.150"
+# `identity` module only: sha256_hex() for generate_instance_uuid()'s
+# own hashing -- same exact pin both consumers already use, so no
+# relaxation needed here.
+sha2 = "=0.10.8"
+# `net` module only. Optional, feature-gated (see `[features] async`
+# above). Exact-pinned to match mcp/lib/skill-lookup-core's own tokio
+# dependency exactly, so the two resolve to one shared version rather
+# than two, within any single build graph that pulls in both (e.g.
+# `cargo test --workspace` from mcp/, which builds this crate's own
+# test target alongside skill-lookup-core's).
+tokio = { version = "=1.44.2", features = ["rt", "time"], optional = true }
+
+[dev-dependencies]
+# `net` module only: exercises the `async` feature's own tests
+# (`#[tokio::test]`) when this crate is tested as part of a build graph
+# that enables that feature (see `[features]` above) -- never on its
+# own turns on `async` by default.
+tokio = { version = "=1.44.2", features = ["macros", "rt-multi-thread"] }

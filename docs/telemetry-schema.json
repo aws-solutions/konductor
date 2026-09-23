@@ -1,0 +1,160 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Konductor usage-analytics telemetry event envelope",
+  "description": "Per-invocation event schema. This is the shape of the outer envelope's 'Data' field, not the full wire-level request -- the outer envelope wraps this object with Solution/Version/UUID/TimeStamp. The outer envelope's UUID is a machine-scoped identifier: one value is minted once per machine (specifically, once per $HOME/.konductor/telemetry.json) the first time this tool runs anywhere on that machine, and the SAME value is then sent on every event from every project that machine's user ever installs this tool into. It is not a per-project or per-install identifier -- a receiving service can tell, from UUID alone, that events from several different projects came from the same machine. See each event's own targetName/harness fields (below) for the per-project/per-install facts this identifier does NOT carry (which project, which directory) -- project paths and names are never sent.",
+  "type": "object",
+  "required": [
+    "eventId",
+    "eventType",
+    "targetName",
+    "sessionId",
+    "parentSessionId",
+    "errorCode",
+    "harness",
+    "agentVersion",
+    "TimeStamp"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "eventId": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "sha256_hex() over (UUID + nanosecond timestamp + the reporting process's own PID). Disambiguates concurrent invocations from different processes -- not guaranteed unique across a single flush batch (skill-lookup-mcp's flush task can build several events per cycle in one process)."
+    },
+    "eventType": {
+      "type": "string",
+      "description": "Open, additive enum -- a consumer must tolerate an eventType it doesn't yet recognize rather than reject the event outright. The seven values known today: agent_invocation, subagent_invocation, mcp_tool_call, cli_error, package_uninstalled, package_installed, package_version_updated. Deliberately not expressed as a closed JSON Schema `enum` -- a closed enum would reject any future/forward-compatible value, contradicting this field's own documented contract."
+    },
+    "targetName": {
+      "type": "string",
+      "description": "Meaning depends on eventType: an agent/sub-agent name (agent_invocation/subagent_invocation); tool_name or tool_name:skill_name (mcp_tool_call); the failed subcommand's name -- init/install/update/uninstall/synth/doctor/config (cli_error); the target's harness value (package_uninstalled/package_installed/package_version_updated)."
+    },
+    "sessionId": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "sha256_hex(UUID + the runtime's own session identifier). Present on agent_invocation/subagent_invocation events on harnesses that expose a session identifier (Claude Code); null on mcp_tool_call, cli_error, package_uninstalled, package_installed, and package_version_updated (no runtime session), and null on every event type for harnesses with no session identifier in their hook payload (Kiro CLI, confirmed absent)."
+    },
+    "parentSessionId": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "Null unless a sub-agent event. Holds the same value as that event's own sessionId (the parent's sessionId, not its eventId) -- a sub-agent event's parentSessionId is the delegating session's own sessionId, computed the same way."
+    },
+    "errorCode": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Null on every eventType except cli_error (always) and a failed mcp_tool_call. A stable, closed error-category string -- never the underlying error's own Display/message text, which can contain a local filesystem path or caller-supplied argument."
+    },
+    "harness": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Populated only on cli_error events, copied verbatim from the identity record. Null on every other eventType -- package_uninstalled/package_installed/package_version_updated carry their harness value through targetName instead, not through this field."
+    },
+    "agentVersion": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The installed CONTENT's own version (distinct from the outer envelope's Version, which is always the CLI binary's own env!(\"CARGO_PKG_VERSION\")) -- populated only on package_installed and package_version_updated, sourced from that install's <target_dir>/.konductor/install-info.json record. Null on every other eventType (agent_invocation, subagent_invocation, mcp_tool_call, cli_error, package_uninstalled), and also null on package_installed/package_version_updated when the install source predates the VERSION-in-dist/ convention or that file could not be read -- never a fabricated version string."
+    },
+    "TimeStamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601, UTC. Matches the outer envelope's own TimeStamp field by name only -- this field keeps ISO 8601 format; the outer field uses a different, space-separated format."
+    },
+    "count": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Only present on mcp_tool_call events (skill-lookup-core's own report_mcp_tool_call): the number of accumulated calls this flush cycle folded into one event under this (tool_name, skill_name, errorCode) key. Not part of the core per-invocation shape every other eventType shares -- allowed here, rather than made required, since a future eventType has no reason to carry it."
+    }
+  },
+  "examples": [
+    {
+      "eventId": "6bdcd548b619ebe7a25fecc354ba1e248dd24450cd71d773859ee4692d541bf0",
+      "eventType": "agent_invocation",
+      "targetName": "orchestrator",
+      "sessionId": "a5e1e982ee70061314417a1070f348e9cec20aa31ee256cb2f0c23ddafbb01b6",
+      "parentSessionId": null,
+      "errorCode": null,
+      "harness": null,
+      "agentVersion": null,
+      "TimeStamp": "2026-09-03T20:41:07.312Z"
+    },
+    {
+      "eventId": "5a77896d1bf07c72b3f35f1311958a4887973667e830745e6fd00e92260361c2",
+      "eventType": "subagent_invocation",
+      "targetName": "k-developer",
+      "sessionId": "a5e1e982ee70061314417a1070f348e9cec20aa31ee256cb2f0c23ddafbb01b6",
+      "parentSessionId": "a5e1e982ee70061314417a1070f348e9cec20aa31ee256cb2f0c23ddafbb01b6",
+      "errorCode": null,
+      "harness": null,
+      "agentVersion": null,
+      "TimeStamp": "2026-09-03T20:41:09.104Z"
+    },
+    {
+      "eventId": "c0ea33a1f372e778db02b9d1bb744c94afd4278a49229d4bf26ea7d1413b19e0",
+      "eventType": "mcp_tool_call",
+      "targetName": "get_skill:code-review",
+      "sessionId": null,
+      "parentSessionId": null,
+      "errorCode": null,
+      "harness": null,
+      "agentVersion": null,
+      "TimeStamp": "2026-09-03T20:42:00.000Z",
+      "count": 3
+    },
+    {
+      "eventId": "7a0e96cd15a52da3280b07b42dd3630840e4444e40fdaff1fd7282e31a662bf1",
+      "eventType": "cli_error",
+      "targetName": "install",
+      "sessionId": null,
+      "parentSessionId": null,
+      "errorCode": "init.create_dir_failed",
+      "harness": "kiro-cli",
+      "agentVersion": null,
+      "TimeStamp": "2026-09-03T20:41:07.312Z"
+    },
+    {
+      "eventId": "a3aefb045c26b250333e7b3249f09aa916d9c736989335fb077d541582e937ff",
+      "eventType": "package_uninstalled",
+      "targetName": "kiro-cli",
+      "sessionId": null,
+      "parentSessionId": null,
+      "errorCode": null,
+      "harness": null,
+      "agentVersion": null,
+      "TimeStamp": "2026-09-03T20:45:00.000Z"
+    },
+    {
+      "eventId": "9db1eb403a145b45719ad83a8a1781a4a69211e673200a2617a87c29eb35a312",
+      "eventType": "package_installed",
+      "targetName": "kiro-cli",
+      "sessionId": null,
+      "parentSessionId": null,
+      "errorCode": null,
+      "harness": null,
+      "agentVersion": "0.1.0",
+      "TimeStamp": "2026-09-03T20:40:00.000Z"
+    },
+    {
+      "eventId": "8707389c519d6767878f2d4d5a8e790115445431ca73f7e14a383fb0df191d7e",
+      "eventType": "package_version_updated",
+      "targetName": "kiro-cli",
+      "sessionId": null,
+      "parentSessionId": null,
+      "errorCode": null,
+      "harness": null,
+      "agentVersion": "0.2.0",
+      "TimeStamp": "2026-09-03T21:00:00.000Z"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "name": "asdlc-core-ai-capabilities-benchmark",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Aim-free benchmark harness for ASDLCCoreAICapabilities agents — no internal-only build tooling required. See docs/guides/benchmarking.md.",
+  "scripts": {
+    "generate-agents": "node scripts/generate-agent-files.js",
+    "generate-notice": "node scripts/generate-notice.js",
+    "benchmark": "node scripts/benchmark.js",
+    "benchmark:regression": "node tests/scripts/check-benchmark-regression.js",
+    "test": "node --test \"tests/scripts/**/*.test.js\""
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

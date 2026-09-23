@@ -1,0 +1,55 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# severity-schema.yml — the set of gate severities Konductor gates may
+# report, and their semantics.
+#
+# ── Scope (M1 declarative contract) ────────────────────────────────────────
+# This file is pure DATA, read by the config loader (cli/konductor-rs/
+# src/config.rs, cli/konductor/konductor/config.py) and by future gate
+# authors. It does not execute anything and is not itself validated against
+# a JSON Schema at this milestone — the loader's `severities` field is a
+# simple list of these ids, checked for a non-empty set and known ids only.
+#
+# ── Exit-code note (IMPORTANT — read before wiring this into anything) ────
+# `exit_code_signal: critical_gate` below is a SEMANTIC label only: it
+# documents that a CRITICAL-severity finding is the condition the
+# run-engine/conductor (not yet implemented — M5) will eventually use to
+# decide whether to emit process exit code 2 ("unresolved CRITICAL gate",
+# see AGENTS.md / cli/README.md's exit-code contract). Emitting exit code 2
+# is exclusively the run-engine's responsibility once it exists. Nothing in
+# this M1 stage (gate-config files, the config loader, or `init` scaffolding)
+# emits, references, or is permitted to emit exit code 2 — usage/config
+# errors in this stage use exit code 64 (EX_USAGE) per the existing
+# contract in cli/konductor/konductor/constants/exit_codes.py /
+# cli/konductor-rs/src/cli.rs.
+severities:
+  - id: CRITICAL
+    rank: 4
+    description: >-
+      A finding that must block the pipeline. Conceptually maps to the
+      run-engine's "unresolved CRITICAL gate" signal (exit code 2) — but
+      note: emitting that exit code is the run-engine/conductor's job
+      (M5, not yet implemented), never init/config/loader code.
+    exit_code_signal: critical_gate
+  - id: HIGH
+    rank: 3
+    description: >-
+      A finding that should block the pipeline in strict configurations,
+      but may be downgraded to a warning by scope/policy overrides.
+    exit_code_signal: null
+  - id: MEDIUM
+    rank: 2
+    description: >-
+      A finding worth surfacing to reviewers but that does not block the
+      pipeline by default.
+    exit_code_signal: null
+  - id: LOW
+    rank: 1
+    description: >-
+      A minor finding, informational for most workflows.
+    exit_code_signal: null
+  - id: INFO
+    rank: 0
+    description: >-
+      Purely informational output with no pass/fail implication.
+    exit_code_signal: null

@@ -1,0 +1,250 @@
+{
+  "$schema_note": "parse_canonical test fixtures (Rust). Loaded by the Rust test suite (via `include_str!` in parse_canonical.rs's `shared_fixture_cases_match_expected` test). Each case describes an on-disk source tree (agents/skills/agent-sops) reconstructed from this file's `files` map (relative path -> content), then asserted against expected.ok (sorted agent/skill/sop names plus optional per-field skill assertions) or expected.error (field/reason_substring). `input.source_dir_is_file`, when true, tells the test harness to point parse_canonical at a plain file instead of the constructed tree (ignoring `files`). `input.skill_md_oversized`, when true, tells the test harness to write a real SKILL.md larger than MAX_AUXILIARY_FILE_BYTES under a synthesized skill directory instead of using `files` (a fixture-embedded 1MB+ string is impractical in JSON). Skill frontmatter is passed through verbatim (`skill_raw_frontmatter`): synth checks that `name` and `description` keys are present (key only, not either value's type -- the name actually used for path/validation is the skill's directory name, never the YAML-resolved value), so no scalar-shape (date, bool-word, numeral, ...) is rejected at parse time -- all such content round-trips as raw text.",
+  "cases": [
+    {
+      "name": "valid_full_model",
+      "files": {
+        "agents/example.agent-spec.json": "{\"schemaVersion\":\"1\",\"name\":\"k-example\",\"config\":{\"description\":\"Example agent.\",\"model\":\"claude-sonnet-5\",\"systemPrompt\":\"You are an example agent.\"},\"clientConfig\":{}}",
+        "skills/example-skill/SKILL.md": "---\nname: example-skill\ndescription: An example skill.\ntags:\n  - example\n---\n\n# Example Skill\n\nBody.\n",
+        "agent-sops/example-sop.sop.md": "# Example SOP\n\nBody.\n"
+      },
+      "expected": {
+        "ok": {
+          "agent_names": ["k-example"],
+          "skill_names": ["example-skill"],
+          "sop_names": ["example-sop"],
+          "skill_raw_frontmatter": "name: example-skill\ndescription: An example skill.\ntags:\n  - example"
+        }
+      }
+    },
+    {
+      "name": "agent_with_dangling_context_name_is_rejected",
+      "$comment": "Fixture case for the dangling-contextNames check (see check_dangling_context_references): an agent declaring a contextNames entry with no corresponding file under context/ must be rejected, naming the field and the missing file in the error reason.",
+      "files": {
+        "agents/k-example.agent-spec.json": "{\"schemaVersion\":\"1\",\"name\":\"k-example\",\"config\":{\"description\":\"d\",\"model\":\"m\",\"systemPrompt\":\"s\"},\"dependencies\":{\"context\":{\"contextNames\":[\"missing-file.md\"]}},\"clientConfig\":{}}"
+      },
+      "expected": {
+        "error": {
+          "field": "dependencies.context.contextNames",
+          "reason_substring": "missing-file.md"
+        }
+      }
+    },
+    {
+      "name": "duplicate_agent_name",
+      "files": {
+        "agents/a.agent-spec.json": "{\"schemaVersion\":\"1\",\"name\":\"dup\",\"config\":{\"description\":\"d\",\"model\":\"m\",\"systemPrompt\":\"s\"},\"clientConfig\":{}}",
+        "agents/b.agent-spec.json": "{\"schemaVersion\":\"1\",\"name\":\"dup\",\"config\":{\"description\":\"d\",\"model\":\"m\",\"systemPrompt\":\"s\"},\"clientConfig\":{}}"
+      },
+      "expected": {
+        "error": { "field": "name", "reason_substring": "duplicate name" }
+      }
+    },
+    {
+      "name": "skill_with_full_field_set_and_unrecognized_key",
+      "$comment": "Under passthrough, every frontmatter key (typed or not) is just text -- this case now pins that the full block round-trips verbatim rather than asserting on individual typed fields.",
+      "files": {
+        "skills/full-fields-skill/SKILL.md": "---\nname: full-fields-skill\ndescription: A skill with every optional field set.\nlicense: Apache-2.0\ncompatibility: kiro-cli >= 1.0\nversion: 2.1.0\ntags:\n  - alpha\n  - beta\nmetadata:\n  owner: team-a\n  tier: gold\nallowed-tools: \"Read Write\"\n---\n\n# Full Fields Skill\n\nBody text.\n"
+      },
+      "expected": {
+        "ok": {
+          "agent_names": [],
+          "skill_names": ["full-fields-skill"],
+          "sop_names": [],
+          "skill_raw_frontmatter": "name: full-fields-skill\ndescription: A skill with every optional field set.\nlicense: Apache-2.0\ncompatibility: kiro-cli >= 1.0\nversion: 2.1.0\ntags:\n  - alpha\n  - beta\nmetadata:\n  owner: team-a\n  tier: gold\nallowed-tools: \"Read Write\""
+        }
+      }
+    },
+    {
+      "name": "source_dir_is_a_file",
+      "input": { "source_dir_is_file": true },
+      "files": {},
+      "expected": {
+        "error": { "reason_substring": "source_dir is a file" }
+      }
+    },
+    {
+      "name": "sop_with_empty_stem",
+      "files": {
+        "agent-sops/.sop.md": "# Body\n\nContent.\n"
+      },
+      "expected": {
+        "error": { "field": "name" }
+      }
+    },
+    {
+      "name": "oversized_skill_md",
+      "input": { "skill_md_oversized": true },
+      "files": {},
+      "expected": {
+        "error": { "reason_substring": "SKILL.md size" }
+      }
+    },
+    {
+      "name": "folded_scalar_description_with_no_blank_line_before_closing_delimiter",
+      "$comment": "Regression fixture for a real cross-language divergence: a `>`-folded description whose last content line is immediately followed by the closing '---' (no blank line) must have its frontmatter slice's trailing newline preserved consistently -- the frontmatter slice must exclude the newline byte immediately before the closing delimiter, not include it, in both languages.",
+      "files": {
+        "skills/folded-desc-skill/SKILL.md": "---\nname: folded-desc-skill\ndescription: >\n  Line one of the description.\n  Line two of the description.\n---\n\nBody.\n"
+      },
+      "expected": {
+        "ok": {
+          "agent_names": [],
+          "skill_names": ["folded-desc-skill"],
+          "sop_names": [],
+          "skill_raw_frontmatter": "name: folded-desc-skill\ndescription: >\n  Line one of the description.\n  Line two of the description."
+        }
+      }
+    },
+    {
+      "name": "single_blank_line_after_frontmatter_yields_no_leading_blank_in_body",
+      "$comment": "Regression fixture for a real cross-language bug: the conventional single blank line separating the closing '---' from the body (source: '---\\n\\nBody') was leaving one leading '\\n' inside the parsed body (both languages stripped only one leading newline instead of the whole separator), which `render_skill_md` then compounded into a double blank line in emitted SKILL.md output. `body` must start directly with the first body line, with no leading newline.",
+      "files": {
+        "skills/blank-line-skill/SKILL.md": "---\nname: blank-line-skill\ndescription: A skill with the conventional single blank line before its body.\n---\n\n# Blank Line Skill\n\nBody text.\n"
+      },
+      "expected": {
+        "ok": {
+          "agent_names": [],
+          "skill_names": ["blank-line-skill"],
+          "sop_names": [],
+          "skill_body": "# Blank Line Skill\n\nBody text.\n"
+        }
+      }
+    },
+    {
+      "name": "intentional_extra_leading_blank_lines_in_body_are_preserved",
+      "$comment": "Only the mandatory delimiter-line terminator plus the ONE conventional separator blank line are stripped; further leading blank lines are intentional body content and must survive identically in both runtimes.",
+      "files": {
+        "skills/extra-blank-lines/SKILL.md": "---\nname: extra-blank-lines\ndescription: d.\n---\n\n\n\n# Heading\n\nBody.\n"
+      },
+      "expected": {
+        "ok": {
+          "agent_names": [],
+          "skill_names": ["extra-blank-lines"],
+          "sop_names": [],
+          "skill_body": "\n\n# Heading\n\nBody.\n"
+        }
+      }
+    },
+    {
+      "name": "crlf_terminated_skill_md_strips_full_separator_and_matches_lf_body",
+      "$comment": "Regression fixture: a CRLF-terminated SKILL.md must not leave a stray '\\r' at the frontmatter/body boundary. Rust's original `trim_start_matches('\\n')` handled only LF, leaving a double-blank-line bug; the fix must strip '\\r' alongside '\\n' in both languages (mirroring the LF-only audit performed across the whole split_frontmatter path, not just one call site). `skill_body` here is intentionally CRLF throughout, matching the source file's line endings verbatim -- `fs::read_to_string` must preserve '\\r' rather than one language silently normalizing it away via universal-newline translation.",
+      "files": {
+        "skills/crlf-skill/SKILL.md": "---\r\nname: crlf-skill\r\ndescription: A skill whose source file uses CRLF line endings throughout.\r\n---\r\n\r\n# CRLF Skill\r\n\r\nBody line one.\r\nBody line two.\r\n"
+      },
+      "expected": {
+        "ok": {
+          "agent_names": [],
+          "skill_names": ["crlf-skill"],
+          "sop_names": [],
+          "skill_body": "# CRLF Skill\r\n\r\nBody line one.\r\nBody line two.\r\n"
+        }
+      }
+    },
+    {
+      "name": "skill_missing_description_is_rejected",
+      "$comment": "description presence is required (not its type): a missing `description` key must error identically in both runtimes.",
+      "files": {
+        "skills/no-description-skill/SKILL.md": "---\nname: no-description-skill\n---\n\nBody.\n"
+      },
+      "expected": {
+        "error": { "field": "description" }
+      }
+    },
+    {
+      "name": "skill_missing_name_key_is_rejected",
+      "$comment": "name presence is required (not its type): a missing `name` key must error identically in both runtimes.",
+      "files": {
+        "skills/missing-name-skill/SKILL.md": "---\ndescription: A skill with no name key.\n---\n\nBody.\n"
+      },
+      "expected": {
+        "error": { "field": "name" }
+      }
+    },
+    {
+      "name": "skill_name_ambiguous_bool_word_off_is_accepted",
+      "$comment": "Proves the name check is presence-only, not type: `name: off` (a bare word a YAML loader might resolve to a bool) must be ACCEPTED when the directory name matches -- the name is compared as raw source text against the directory, never YAML-resolved, so no scalar-type resolution is involved.",
+      "files": {
+        "skills/off/SKILL.md": "---\nname: off\ndescription: A skill named after a YAML 1.1 bool word.\n---\n\nBody.\n"
+      },
+      "expected": {
+        "ok": {
+          "agent_names": [],
+          "skill_names": ["off"],
+          "sop_names": [],
+          "skill_raw_frontmatter": "name: off\ndescription: A skill named after a YAML 1.1 bool word."
+        }
+      }
+    },
+    {
+      "name": "skill_name_not_matching_directory_name_is_rejected",
+      "$comment": "The raw source text of the `name:` value must equal the directory name; a mismatch must be REJECTED identically in both runtimes.",
+      "files": {
+        "skills/actual-dir-name/SKILL.md": "---\nname: different-name\ndescription: d.\n---\n\nBody.\n"
+      },
+      "expected": {
+        "error": { "field": "name" }
+      }
+    },
+    {
+      "name": "skill_name_quoted_matching_directory_is_accepted",
+      "$comment": "One layer of matching surrounding quotes around the `name:` value is stripped before the raw-text comparison, identically in both runtimes.",
+      "files": {
+        "skills/actual-dir-name/SKILL.md": "---\nname: \"actual-dir-name\"\ndescription: d.\n---\n\nBody.\n"
+      },
+      "expected": {
+        "ok": {
+          "agent_names": [],
+          "skill_names": ["actual-dir-name"],
+          "sop_names": [],
+          "skill_raw_frontmatter": "name: \"actual-dir-name\"\ndescription: d."
+        }
+      }
+    },
+    {
+      "name": "skill_name_ambiguous_bool_word_yes_is_accepted",
+      "$comment": "Same as skill_name_ambiguous_bool_word_off_is_accepted, for the `yes` bool word.",
+      "files": {
+        "skills/yes/SKILL.md": "---\nname: yes\ndescription: A skill named after a YAML 1.1 bool word.\n---\n\nBody.\n"
+      },
+      "expected": {
+        "ok": {
+          "agent_names": [],
+          "skill_names": ["yes"],
+          "sop_names": [],
+          "skill_raw_frontmatter": "name: yes\ndescription: A skill named after a YAML 1.1 bool word."
+        }
+      }
+    },
+    {
+      "name": "skill_description_ambiguous_scalar_is_accepted",
+      "$comment": "Proves the description check is presence-only, not type: `description: yes` (a bare word that one YAML loader resolves to a bool and another to a string) must be ACCEPTED identically in both runtimes -- a type check here would diverge and reintroduce the original cross-runtime exit-code bug.",
+      "files": {
+        "skills/ambiguous-description-skill/SKILL.md": "---\nname: ambiguous-description-skill\ndescription: yes\n---\n\nBody.\n"
+      },
+      "expected": {
+        "ok": {
+          "agent_names": [],
+          "skill_names": ["ambiguous-description-skill"],
+          "sop_names": [],
+          "skill_raw_frontmatter": "name: ambiguous-description-skill\ndescription: yes"
+        }
+      }
+    },
+    {
+      "name": "unindented_interior_dash_line_ends_frontmatter_early_in_both_runtimes",
+      "$comment": "split_frontmatter is line-based, not YAML-aware: an unindented line that is exactly '---' inside a folded scalar's continuation is treated as the CLOSING fence in both languages (matching how a real YAML loader also treats a column-0 '---' as a document separator), not as scalar content. Pins that both implementations draw the split at the same point rather than silently disagreeing on the frontmatter/body boundary.",
+      "files": {
+        "skills/interior-dash-skill/SKILL.md": "---\nname: interior-dash-skill\ndescription: >\n  before\n---\n  after\n---\n\nBody.\n"
+      },
+      "expected": {
+        "ok": {
+          "agent_names": [],
+          "skill_names": ["interior-dash-skill"],
+          "sop_names": [],
+          "skill_raw_frontmatter": "name: interior-dash-skill\ndescription: >\n  before",
+          "skill_body": "  after\n---\n\nBody.\n"
+        }
+      }
+    }
+  ]
+}

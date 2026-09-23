@@ -1,0 +1,55 @@
+[package]
+name = "telemetry-test-sink"
+version = "0.1.0"
+edition = "2021"
+description = "Test-only loopback HTTP sink standing in for the real telemetry endpoint, shared by cli/konductor-rs's and mcp/lib/skill-lookup-core's test suites so neither ever sends telemetry to a real endpoint during a test run"
+# Lives in the shared/ workspace, sibling to cli/ and mcp/, for the
+# same reason konductor-telemetry does (see that crate's own Cargo.toml
+# plain path [dev-dependencies] entry by cli/konductor-rs (which has no
+# `[workspace]` of its own), not via shared workspace membership.
+#
+# A [dev-dependencies]-only crate, never [dependencies]: this listens
+# on a real TCP socket and records request bodies -- test
+# infrastructure with a runtime footprint that has no reason to ship
+# inside either production binary. konductor-telemetry is a narrowly-
+# scoped, dependency-free-by-default production crate; bolting a
+# listening socket onto it would break that contract for every
+# consumer, including a release build that never runs a test.
+license.workspace = true
+
+[lints]
+workspace = true
+
+[lib]
+name = "telemetry_test_sink"
+path = "src/lib.rs"
+
+[dependencies]
+# Sync-only, std-based TCP listener + background thread -- no tokio
+# dependency here, deliberately: cli/konductor-rs's own test suite has
+# no async runtime at all, and a raw HTTP/1.1-over-TCP listener needs
+# none either. mcp/lib/skill-lookup-core's own async tests still use
+# this crate correctly (see this crate's own module doc comment) by
+# treating the sink as an opaque, already-running background thread --
+# nothing here blocks a tokio worker, since the accept loop runs on its
+# own dedicated OS thread, not inside any caller's runtime.
+# TLS server support for this test-only loopback sink, using the
+# `ring` crypto backend (already cached in this repo's own dependency
+# mirror via cli/konductor-rs's existing rustls dependency -- see that
+# crate's own Cargo.toml) rather than the default `aws-lc-rs` backend,
+# which needs a cmake/C build this offline mirror has no cached
+# tarball for.
+rustls = { version = "=0.23.43", default-features = false, features = ["ring", "std", "tls12"] }
+# Generates this sink's throwaway self-signed certificate + key
+# in-process (src/lib.rs's `generate_self_signed_cert`) -- no `openssl`
+# CLI subprocess, and no assumption that the build environment has an
+# `openssl` binary installed at all: `install_manifest_concurrency.rs`'s
+# tests need this sink to work even when it doesn't. `rcgen` uses `ring`
+# for its own key generation by default, matching the `ring` backend
+# already selected for the `rustls` dependency above, so no second
+# crypto backend is pulled in. The `pem` feature is needed only to write
+# the CA certificate's PEM encoding to the temp file `CURL_CA_BUNDLE`
+# points curl at (see src/lib.rs) -- the private key never touches disk
+# and never needs PEM at all; it goes straight from `rcgen`'s DER output
+# into rustls's `ServerConfig`.
+rcgen = { version = "=0.13.2", default-features = false, features = ["ring", "pem"] }

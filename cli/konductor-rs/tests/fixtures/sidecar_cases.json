@@ -1,0 +1,67 @@
+{
+  "$schema_note": "Shared sha256sum-format sidecar parsing conformance fixtures (design doc github-first-release-pipeline-design.md Sec 6.5). Each `cases[]` entry's `contents`/`expected_filename` must parse identically in both languages to `expected.hash`/`expected.filename`. Each `error_cases[]` entry must be rejected by both languages -- `expected.error_kind` names which failure category (empty, malformed, wrong_digest_length, filename_mismatch), checked by category, not by exact message text. Neither language hand-copies the other's scenario list into its own test file -- both load and assert against the same bytes. SPDX-License-Identifier: Apache-2.0 -- JSON has no native comment syntax; this $schema_note field carries the required license header.",
+  "cases": [
+    {
+      "name": "well_formed_line",
+      "contents": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  konductor-v1.2.0-x86_64-unknown-linux-gnu.tar.gz\n",
+      "expected_filename": "konductor-v1.2.0-x86_64-unknown-linux-gnu.tar.gz",
+      "expected": {
+        "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "filename": "konductor-v1.2.0-x86_64-unknown-linux-gnu.tar.gz"
+      }
+    },
+    {
+      "name": "mixed_case_digest",
+      "contents": "ABCDaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  artifact.tar.gz\n",
+      "expected_filename": "artifact.tar.gz",
+      "expected": {
+        "hash": "ABCDaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "filename": "artifact.tar.gz"
+      }
+    }
+  ],
+  "error_cases": [
+    {
+      "name": "empty_file",
+      "contents": "",
+      "expected_filename": "artifact.tar.gz",
+      "expected": {"error_kind": "empty"}
+    },
+    {
+      "name": "blank_first_line",
+      "contents": "\nsomething\n",
+      "expected_filename": "artifact.tar.gz",
+      "expected": {"error_kind": "empty"}
+    },
+    {
+      "name": "single_space_separator",
+      "contents": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa artifact.tar.gz\n",
+      "expected_filename": "artifact.tar.gz",
+      "expected": {"error_kind": "malformed"}
+    },
+    {
+      "name": "non_hex_digest",
+      "contents": "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz  artifact.tar.gz\n",
+      "expected_filename": "artifact.tar.gz",
+      "expected": {"error_kind": "malformed"}
+    },
+    {
+      "name": "wrong_length_digest",
+      "contents": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  artifact.tar.gz\n",
+      "expected_filename": "artifact.tar.gz",
+      "expected": {"error_kind": "wrong_digest_length"}
+    },
+    {
+      "name": "filename_mismatch",
+      "contents": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  other-file.tar.gz\n",
+      "expected_filename": "artifact.tar.gz",
+      "expected": {"error_kind": "filename_mismatch"}
+    },
+    {
+      "name": "bare_cr_is_not_a_line_boundary",
+      "contents": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  artifact.tar.gz\r",
+      "expected_filename": "artifact.tar.gz",
+      "expected": {"error_kind": "filename_mismatch"}
+    }
+  ]
+}

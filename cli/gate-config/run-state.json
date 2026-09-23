@@ -1,0 +1,85 @@
+{
+  "$comment": "SPDX-License-Identifier: Apache-2.0 -- JSON Schema files have no native comment syntax; this $comment field carries the required license header. See the module note below for why this is a JSON Schema rather than a bare example.",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://konductor.example/schemas/run-state.json",
+  "title": "Konductor run-state document",
+  "description": "Schema for a Konductor run-state document: one execution of the (not-yet-implemented, M5) run-engine/conductor against a project's gates. This schema applies ONLY to run-engine (M5) invocations -- doctor, install, synth, init, and config never produce or consume a run-state document. This M1 stage does not read, write, or validate any run-state document -- init/config code paths never touch `.konductor/runs/`. This schema is authored now, ahead of the run-engine, purely as the AGREED SHAPE downstream milestones (M5) will produce/consume, so the config loader's `tier`/`severities` vocabulary and this shape stay consistent from the start. DECISION: JSON Schema (not a documented plain example) was chosen because a validator is cheap to add on both sides without new heavy deps -- Rust already gains `serde_json` (pre-existing) for `__dump_schema`, and Python's stdlib `json` module (already used ad hoc in cli.py) is sufficient for basic shape checks; neither side needs a full JSON Schema validation LIBRARY (e.g. jsonschema/valico) for this milestone, since no code here actually validates a run-state document yet -- this file documents the target shape for M5 to implement against.",
+  "type": "object",
+  "required": ["schema_version", "run_id", "started_at", "status", "findings"],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Run-state document schema version. Bump when the shape changes incompatibly."
+    },
+    "run_id": {
+      "type": "string",
+      "description": "Opaque unique identifier for this run, e.g. a ULID or UUID."
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC timestamp when the run began."
+    },
+    "completed_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "ISO-8601 UTC timestamp when the run finished, or null while still in progress."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["running", "passed", "halted", "unresolved_critical_gate", "budget_exceeded", "aborted"],
+      "description": "Coarse run outcome. Mirrors the exit-code contract's meanings (see cli/README.md's Conventions table) but is a STATUS STRING, not an exit code -- translating this to a process exit code is exclusively the run-engine's job (M5), never this M1 stage's."
+    },
+    "tier": {
+      "type": "string",
+      "enum": ["trivial", "bugfix", "minor", "major", "full"],
+      "description": "The single tier (from cli/gate-config/scope-table.yml) active for this run."
+    },
+    "findings": {
+      "type": "array",
+      "description": "Findings emitted during this run, one entry per gate result.",
+      "items": {
+        "type": "object",
+        "required": ["phase", "severity"],
+        "properties": {
+          "phase": {
+            "type": "string",
+            "description": "Phase name (from the active tier's `phases` list in scope-table.yml) this finding was evaluated under."
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"],
+            "description": "Must be one of severity-schema.yml's ids."
+          },
+          "resource": {
+            "type": ["string", "null"],
+            "description": "Path or identifier of the resource this finding is about, if applicable."
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable finding description."
+          }
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "schema_version": 1,
+      "run_id": "01J8Z3K4N5P6Q7R8S9T0U1V2W3",
+      "started_at": "2026-01-15T09:30:00Z",
+      "completed_at": "2026-01-15T09:31:42Z",
+      "status": "unresolved_critical_gate",
+      "tier": "major",
+      "findings": [
+        {
+          "phase": "code",
+          "severity": "CRITICAL",
+          "resource": "infra/stacks/network-stack.ts",
+          "message": "IAM policy grants Action: '*' on Resource: '*'."
+        }
+      ]
+    }
+  ]
+}

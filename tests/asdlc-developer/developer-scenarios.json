@@ -1,0 +1,227 @@
+{
+  "scenarios": [
+    {
+      "taskId": "developer-backend-review - Level 1",
+      "input": [
+        "Use the backend-review skill to review this Lambda handler: export const handler = async (event: any) => { const item = await ddb.get({ TableName: 'tasks', Key: { pk: event.pathParameters.id } }).promise(); if (item.Item!.status === 'deleted') throw new Error('not found'); return { statusCode: 200, body: JSON.stringify(item.Item) }; };"
+      ],
+      "expectedOutput": "Agent invokes the backend-review skill and produces a checklist review identifying: CRITICAL - non-null assertion on item.Item without null check (runtime TypeError if item doesn't exist), IMPORTANT - 'any' type on event parameter (Type Safety), IMPORTANT - generic Error type instead of structured error response (Error Handling), SUGGESTION - no structured logging. Ends with 'Fix these issues? [y/n]'.",
+      "expectedStrings": ["CRITICAL", "Fix these issues"],
+      "expectedTools": {
+        "required": [],
+        "alternatives": {}
+      },
+      "expectedSkillMarkers": ["Fix these issues", "CRITICAL", "null check", "IMPORTANT"],
+      "metadata": {
+        "category": "Review",
+        "difficulty": "Easy",
+        "official": false,
+        "useCase": ["ReviewCode"]
+      }
+    },
+    {
+      "taskId": "developer-backend-review-dynamodb - Level 3",
+      "input": [
+        "Review this DynamoDB update: async function assignTask(taskId: string, assigneeId: string, updatedBy: string) { const task = await repo.getTask(taskId); const user = await repo.getUser(assigneeId); task.assigneeId = assigneeId; task.updatedBy = updatedBy; await repo.updateTask(task); await repo.updateUser({ ...user, assignedTaskCount: user.assignedTaskCount + 1 }); }"
+      ],
+      "expectedOutput": "Agent invokes the backend-review skill and identifies at minimum: CRITICAL - non-atomic multi-item update (task and user updated separately without a DynamoDB transaction — race condition risk if the process fails between the two writes). Ends with 'Fix these issues? [y/n]'.",
+      "expectedStrings": ["CRITICAL", "Fix these issues"],
+      "expectedTools": {
+        "required": [],
+        "alternatives": {}
+      },
+      "expectedSkillMarkers": ["CRITICAL", "IMPORTANT", "transaction", "atomic"],
+      "metadata": {
+        "category": "Review",
+        "difficulty": "Medium",
+        "official": false,
+        "useCase": ["ReviewCode"]
+      }
+    },
+    {
+      "taskId": "developer-task-decomposition - Level 1",
+      "input": [
+        "Use your task-decomposition skill to break down the implementation of a task management API into features. The system includes: API Gateway REST API, Lambda handlers for CRUD operations, DynamoDB single-table design, and Cognito authentication."
+      ],
+      "expectedOutput": "Agent invokes the task-decomposition skill and produces a Feature Split document with independent feature tracks (e.g., Auth integration, Task CRUD, Data layer), shared interfaces, and inter-feature dependencies. Does not produce requirements.md, design.md, or tasks.md files — those are Kiro Spec outputs, not task-decomposition outputs.",
+      "expectedTools": {
+        "required": [],
+        "alternatives": {}
+      },
+      "expectedSkillMarkers": ["Feature Split", "independently implementable", "Shared Interfaces", "User Stories"],
+      "metadata": {
+        "category": "Plan",
+        "difficulty": "Medium",
+        "official": false,
+        "useCase": ["PlanImplementation"]
+      }
+    },
+    {
+      "taskId": "developer-task-decomposition-no-kiro-spec - Level 3",
+      "input": [
+        "Break down the task assignment feature into implementation tasks. Users can assign tasks to team members, reassign them, and see who owns what. The system uses API Gateway, Lambda, and DynamoDB."
+      ],
+      "expectedOutput": "Agent invokes the task-decomposition skill and produces a Feature Split document with independent feature tracks, user story mappings, shared interfaces, and dependencies. Critically, does NOT produce requirements.md, design.md, or tasks.md — those belong to a separate spec-generation workflow, not task-decomposition. Each feature track is independently implementable by one engineer.",
+      "expectedTools": {
+        "required": [],
+        "alternatives": {}
+      },
+      "expectedSkillMarkers": ["Feature Split", "independently implementable", "Shared Interfaces", "User Stories"],
+      "metadata": {
+        "category": "Plan",
+        "difficulty": "Medium",
+        "official": false,
+        "useCase": ["PlanImplementation"]
+      }
+    },
+    {
+      "taskId": "developer-backend-development - Level 1",
+      "input": [
+        "Use the backend-development skill to implement a Lambda handler that lists tasks for a given user. It should accept a userId path parameter, support an optional status query parameter, and return paginated results from DynamoDB. Use TypeScript."
+      ],
+      "expectedOutput": "Agent invokes the backend-development skill and produces TypeScript code for a Lambda handler including: typed handler with APIGatewayProxyEvent or APIGatewayProxyHandlerV2 input type, DynamoDB Query using userId as PK or GSI, optional status filter expression, pagination via LastEvaluatedKey/ExclusiveStartKey, and error handling. Code may be presented inline or written to files.",
+      "expectedTools": {
+        "required": [],
+        "alternatives": {}
+      },
+      "expectedSkillMarkers": ["pagination", "try", "catch"],
+      "metadata": {
+        "category": "Develop",
+        "difficulty": "Medium",
+        "official": false,
+        "useCase": ["Developwithinaworkspace"]
+      }
+    },
+    {
+      "taskId": "developer-frontend-review - Level 3",
+      "input": [
+        "Review this React component: const TaskForm = () => { const [title, setTitle] = useState(''); const [assignee, setAssignee] = useState(''); return <form onSubmit={e => { e.preventDefault(); fetch('/api/tasks', {method:'POST', body: JSON.stringify({title, assignee})}); }}><input value={title} onChange={e => setTitle(e.target.value)} /><button type='submit'>Submit</button></form>; };"
+      ],
+      "expectedOutput": "Agent invokes the frontend-review skill and produces a checklist review identifying: CRITICAL - native HTML form and input elements instead of Cloudscape components, CRITICAL - useState for form state instead of React Hook Form, CRITICAL - no Zod validation schema, IMPORTANT - no TypeScript types, IMPORTANT - no error handling on fetch. Ends with 'Fix these issues? [y/n]'.",
+      "expectedStrings": ["CRITICAL", "Fix these issues"],
+      "expectedTools": {
+        "required": [],
+        "alternatives": {}
+      },
+      "expectedSkillMarkers": ["Fix these issues", "React Hook Form", "Cloudscape", "Zod"],
+      "metadata": {
+        "category": "Review",
+        "difficulty": "Easy",
+        "official": false,
+        "useCase": ["ReviewCode"]
+      }
+    },
+    {
+      "taskId": "developer-frontend-review-cloudscape - Level 3",
+      "input": [
+        "Review this Cloudscape form component: const TaskForm = ({ onSubmit }: { onSubmit: any }) => { return <Form><FormField label='Title'><Input value={title} onChange={e => setTitle(e.detail.value)} style={{ color: 'red' }} /></FormField><Button variant='primary' onClick={() => onSubmit({ title })}>Submit</Button></Form>; };"
+      ],
+      "expectedOutput": "Agent invokes the frontend-review skill and identifies: CRITICAL - inline style on Input component (style={{}} not allowed), CRITICAL - 'any' type on onSubmit prop, CRITICAL - form state managed with useState (setTitle) instead of React Hook Form, IMPORTANT - missing explicit type on form data, IMPORTANT - no Zod validation. Ends with 'Fix these issues? [y/n]'.",
+      "expectedStrings": ["CRITICAL", "Fix these issues"],
+      "expectedTools": {
+        "required": [],
+        "alternatives": {}
+      },
+      "expectedSkillMarkers": ["CRITICAL", "IMPORTANT", "React Hook Form"],
+      "metadata": {
+        "category": "Review",
+        "difficulty": "Medium",
+        "official": false,
+        "useCase": ["ReviewCode"]
+      }
+    },
+    {
+      "taskId": "developer-git-workflow - Level 3",
+      "input": [
+        "I've fixed a null pointer bug in the task handler. The change is already staged. Help me write a proper commit message and push to a feature branch. If no git repository exists in the workspace, produce a commit message template and branch naming example based on the git-workflow skill conventions."
+      ],
+      "expectedOutput": "Agent invokes the git-workflow skill and produces a conventional commit message in the format 'fix(<scope>): <description>' and git commands to push to a feature branch. Does not use interactive git flags (-i, --interactive).",
+      "expectedTools": {
+        "required": [],
+        "alternatives": {}
+      },
+      "expectedSkillMarkers": ["branch naming", "commit message", "Conventional Commits"],
+      "metadata": {
+        "category": "Develop",
+        "difficulty": "Easy",
+        "official": false,
+        "useCase": ["Developwithinaworkspace"]
+      }
+    },
+    {
+      "taskId": "developer-git-workflow-atomic - Level 3",
+      "input": [
+        "I've fixed a bug in the task assignment handler and also updated the README. How should I commit these changes?"
+      ],
+      "expectedOutput": "Agent invokes the git-workflow skill and advises splitting into two atomic commits: one for the bug fix ('fix(tasks): fix null check in assignment handler') and one for the docs ('docs: update README'). Does not suggest combining them into a single commit. Provides the exact git commands to stage each file separately.",
+      "expectedTools": {
+        "required": [],
+        "alternatives": {}
+      },
+      "expectedSkillMarkers": ["Atomic", "separate commits", "docs"],
+      "metadata": {
+        "category": "Develop",
+        "difficulty": "Easy",
+        "official": false,
+        "useCase": ["Developwithinaworkspace"]
+      }
+    },
+    {
+      "taskId": "developer-k-code-review-workflow - Level 3",
+      "input": [
+        "Use the code-review skill to triage the following pull request review comments. Do not fetch anything over the network — everything you need is below.\n\nPR diff (single file changed, taskService.js):\n```diff\n--- a/src/taskService.js\n+++ b/src/taskService.js\n@@ -12,7 +12,8 @@ async function completeTask(taskId) {\n-  const task = await db.get(taskId);\n-  task.done = true;\n-  await db.put(task);\n+  const task = await db.get(taskId);\n+  if (task.done) return task;\n+  task.done = true;\n+  db.put(task);\n+  return task;\n }\n```\n\nReview comments on this PR:\n1. (from bot \"lint-bot\") \"Line length exceeds 100 characters in an unrelated file (utils.js:45).\" — flagged on a file this PR doesn't touch; looks like stale automated lint noise.\n2. (from bot \"coverage-bot\") \"Coverage decreased by 0.02% on this PR.\" — automated coverage-delta comment with no specific finding.\n3. (from human reviewer \"@alexr\") \"You dropped the `await` on `db.put(task)` — doesn't this create a race where a concurrent completeTask call could read the pre-update task and overwrite it?\"\n\nFor each comment, assess whether it's a genuine issue and suggest a fix if so."
+      ],
+      "expectedOutput": "Agent invokes the code-review skill, evaluates each comment against CRITICAL/IMPORTANT/SUGGESTION criteria, dismisses the two automated bot comments as not genuine (unrelated file / no specific finding), and treats @alexr's comment as a genuine CRITICAL finding — the missing `await` on db.put makes the write fire-and-forget, creating a lost-update race between concurrent completeTask calls — and recommends re-adding the `await`.",
+      "expectedStrings": ["CRITICAL", "await"],
+      "expectedTools": {
+        "required": [],
+        "alternatives": {}
+      },
+      "expectedSkillMarkers": ["CRITICAL", "IMPORTANT", "SUGGESTION"],
+      "metadata": {
+        "category": "Review",
+        "difficulty": "Medium",
+        "official": false,
+        "useCase": ["ReviewCode"]
+      }
+    },
+    {
+      "taskId": "developer-persistent-memory - Level 1",
+      "input": [
+        "Use the persistent-memory skill to save this fact: this project uses DynamoDB single-table design with PK=SERVICE# and SK=RESOURCE#."
+      ],
+      "expectedOutput": "Agent invokes the persistent-memory skill, reads the current .konductor/memory/MEMORY.md file (or creates the directory if first write), prepares the full file content with the new timestamped entry, and pipes it through the memory-validator.sh script for atomic write.",
+      "expectedStrings": ["MEMORY.md"],
+      "expectedTools": {
+        "required": [],
+        "alternatives": {}
+      },
+      "expectedSkillMarkers": ["MEMORY.md", "Saved"],
+      "metadata": {
+        "category": "Develop",
+        "difficulty": "Easy",
+        "official": false,
+        "useCase": ["MemoryPersistence"]
+      }
+    },
+    {
+      "taskId": "developer-workspace-skills - Level 3",
+      "input": [
+        "We just finished releasing this package and it required a process with several non-obvious workarounds. Use the workspace-skills skill to propose creating a workspace skill that captures this procedure:\n\n1. Run `npm run build` then `npm run test:integration`; the `payment-webhook.integration.test.ts` test is known to fail intermittently on cold CI runners — rerun it once before treating a failure as real.\n2. Bump the version with `npm version minor` (not `patch`) even for pure bug fixes on this package — the API is still pre-1.0 and the team's convention is semver-minor for any behavior change.\n3. Open the release PR against the `release` branch, not `main` — `main` does not trigger the deploy workflow.\n4. Wait for the `smoke-test-staging` GitHub Actions job; if it is still queued after 10 minutes, cancel and re-run it once — the shared staging runner pool occasionally deadlocks on a stale lock file.\n5. After merge, manually trigger the `deploy-canary` workflow with `traffic_percent=5` — canary rollout is not automatic for this package.\n6. Watch the error-rate dashboard for 20 minutes; if it exceeds 1%, roll back immediately via `npm run rollback -- --to-canary=false` rather than waiting for the automated alert.\n7. If the canary looks healthy, re-trigger `deploy-canary` with `traffic_percent=100` — there is no auto-promote step yet.\n8. Tag the release with a signed tag (`git tag -s vX.Y.Z`) and push tags separately with `git push --tags` — this repo's branch protection requires signed tags.\n9. Update the CHANGELOG.md `Unreleased` section into the new version heading — this repo does not auto-generate changelogs.\n\nPropose capturing this as a workspace skill."
+      ],
+      "expectedOutput": "Agent invokes the workspace-skills skill, proposes a new skill at .claude/skills/ws-<name>/SKILL.md with correct frontmatter (name with ws- prefix, origin: agent-created, version: 1, last_used: today's date), includes the release procedure in the body, and asks the user to confirm before writing.",
+      "expectedStrings": ["ws-", "confirm"],
+      "expectedTools": {
+        "required": [],
+        "alternatives": {}
+      },
+      "expectedSkillMarkers": ["claude/skills", "origin: agent-created", "last_used", "SKILL.md"],
+      "metadata": {
+        "category": "Develop",
+        "difficulty": "Medium",
+        "official": false,
+        "useCase": ["WorkspaceSkills"]
+      }
+    }
+  ]
+}

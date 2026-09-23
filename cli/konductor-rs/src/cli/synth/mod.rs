@@ -1,0 +1,1537 @@
+// SPDX-License-Identifier: Apache-2.0
+//
+// synth/mod.rs — `konductor synth` dispatch and harness-transformer
+// trait (Rust implementation). Model types live in `model.rs`; the
+// `CanonicalModel` builder lives in `parse_canonical.rs`.
+//
+// `dispatch_synth` parses the source tree at `target_dir` (or `--from`,
+// when given) into a `CanonicalModel` via `parse_canonical`, then runs
+// every registered `registry::TRANSFORMERS` entry against it, writing
+// output under `<source_dir>/dist/` -- never the process cwd. A parse
+// failure or any transformer error maps to `EXIT_USAGE_ERROR` (64), never
+// exit code 2 -- see init.rs's module docstring for the same rule applied
+// there.
+//
+// ── Output reporting ──────────────────────────────────────────────────────
+// `dispatch_synth` prints two terse summary lines to stdout on success:
+// the output root written and a per-content-type count
+// (agents/skills/SOPs/context), followed by a second line naming the
+// packaged artifact + sidecar synth writes into that same output root
+// (see `package::package_dist` and `artifact_output_dir` below). The
+// count reflects what synth actually WROTE, not merely what it parsed.
+// Skills, SOPs and context files are emitted unconditionally, so their
+// model count equals what was written; but an agent is written only if
+// it targets a registered harness (see `agent_is_written`) -- an agent
+// with no `clientConfig` section for any registered harness is parsed
+// into the model yet skipped by every transformer, so it must not be
+// counted (or listed under `-v`) as written. An empty model (nothing to
+// build) gets its own explicit message rather than silent success.
+
+use std::path::{Path, PathBuf};
+
+use crate::cli::output::ColorMode;
+
+pub mod claude;
+pub mod kiro_cli_v2;
+pub mod kiro_cli_v3;
+pub mod model;
+pub mod parse_canonical;
+pub mod parser;
+pub mod registry;
+
+mod content_writers;
+mod frontmatter;
+pub(crate) mod package;
+// `pub(crate)`, not private: `install/kiro_cli/fs_util.rs` and
+// `install/claude.rs` call into this module's own `reject_unsafe_*_name`
+// functions directly (see `path_safety.rs`'s own module doc comment for
+// why this is the single shared source of truth for these checks),
+// rather than each carrying an independent copy of the same
+// path-containment predicate.
+pub(crate) mod path_safety;
+mod sidecar;
+mod staging;
+
+#[allow(unused_imports)]
+pub use model::{AgentSpec, AuxiliaryFile, CanonicalModel, SkillDef, SopDef};
+pub use parse_canonical::parse_canonical;
+
+/// Every failure path in `dispatch_synth` maps to this exit code -- never
+/// exit code 2, which is reserved for the "unresolved CRITICAL gate"
+/// signal (see dispatch.rs's module docstring).
+const EXIT_USAGE_ERROR: u8 = 64;
+
+/// Deterministic packaged-artifact filename:
+/// `konductor-v<CARGO_PKG_VERSION>.tar.gz`. Reuses Cargo.toml's
+/// `version` field only -- no architecture or OS in the name. The
+/// packaged content (agent/skill/SOP markdown and JSON config, no
+/// compiled code) is architecture- and OS-independent within the Unix
+/// family, so the filename does not encode either: a tarball built on
+/// Linux and one built on macOS from the same source tree are
+/// byte-for-byte identical apart from irrelevant packaging metadata
+/// (tar uid/gid, mtime). `synth` never generates artifacts for any
+/// host other than the one it's actually running on, so there is
+/// nothing here to disambiguate by triple. Windows is the one platform
+/// known to differ (executable-bit metadata doesn't survive there) and
+/// is out of scope for this naming scheme for now.
+///
+/// `pub(crate)` because `install::github` calls this directly to work
+/// out the exact filename a GitHub Release asset needs. This is the
+/// one place that naming convention is defined, so packaging (this
+/// module) and install (`install::github`) can't drift apart.
+pub(crate) fn artifact_filename() -> String {
+    format!("konductor-v{}.tar.gz", env!("CARGO_PKG_VERSION"))
+}
+
+/// Whether `file_name` (a bare filename, no directory components) is a
+/// packaged-artifact or sidecar file from ANY prior run -- the current
+/// version's exact `artifact_filename()`, an older/newer version's, or
+/// a legacy per-arch/OS-suffixed variant this binary no longer
+/// produces. Matches the stable, naming-convention-independent shape
+/// `konductor-v*.tar.gz`/`konductor-v*.tar.gz.sha256`: the `konductor-v`
+/// prefix and `.tar.gz`/`.tar.gz.sha256` extension are the only parts of
+/// the filename guaranteed stable across every naming convention this
+/// project has used or will use, so matching on those two ends (a
+/// simple `starts_with`/`ends_with` check, no glob crate needed) is
+/// enough to catch a leftover regardless of what the middle segment
+/// looks like. Used by `dispatch_synth_with`'s pre-packaging cleanup so
+/// no artifact of any vintage ever survives into a freshly packaged
+/// archive.
+fn is_stale_artifact_entry(file_name: &str) -> bool {
+    file_name.starts_with("konductor-v")
+        && (file_name.ends_with(".tar.gz") || file_name.ends_with(".tar.gz.sha256"))
+}
+
+/// The packaged artifact and its checksum sidecar are written directly
+/// into `output_root` (`<source_dir>/dist/`), alongside the per-harness
+/// subdirectories `registry::TRANSFORMERS` writes there. This is safe
+/// against self-referential archive growth because `package::package_dist`
+/// captures `output_root`'s contents into an in-memory byte buffer
+/// *before* the artifact/sidecar are written to disk (see
+/// `dispatch_synth_with` below): the archive being packaged can never
+/// contain a copy of itself, and since the artifact filename is
+/// deterministic (`artifact_filename`), a later run overwrites the same
+/// two files in place rather than accumulating new ones. The
+/// main-branch-`dist/` install fallback (`install::github_branch`)
+/// depends on finding both files at `dist/`'s top level on `main`, so
+/// this is also where a real repository checkout's published `dist/`
+/// tree needs them to live.
+fn artifact_output_dir(output_root: &Path) -> PathBuf {
+    output_root.to_path_buf()
+}
+
+/// Transforms a `CanonicalModel` into a specific harness's output.
+/// Implementations register themselves in `synth::registry::TRANSFORMERS`.
+/// Requires `Sync` since transformers live in a `static` slice.
+pub trait HarnessTransformer: Sync {
+    /// Stable identifier for this transformer.
+    fn name(&self) -> &'static str;
+
+    /// Transforms the canonical model into harness-specific output,
+    /// writing under `output_root` -- never the process cwd. `output_root`
+    /// is `dispatch_synth`'s `<source_dir>/dist/` directory, resolved
+    /// relative to the source tree being synthesized (`--from` when
+    /// given, else `target_dir`), not wherever `konductor` was invoked
+    /// from.
+    fn transform(&self, model: &CanonicalModel, output_root: &Path) -> Result<(), String>;
+}
+
+/// `konductor synth [--from ...]`: parses the source tree rooted at
+/// `--from` (falling back to `target_dir`, normally the cwd, when
+/// `--from` is absent) into a `CanonicalModel`, then runs every
+/// registered `HarnessTransformer` against it in `registry::TRANSFORMERS`
+/// order, writing output under `<source_dir>/dist/` -- never the process
+/// cwd, so `--from <dir>` places output under `<dir>/dist/`, not
+/// wherever `konductor` was invoked from. Returns `EXIT_USAGE_ERROR` (64)
+/// on the first parse or transform failure; 0 once every transformer has
+/// run successfully. Prints a summary of what was written to stdout on
+/// success (see `format_summary`); errors stay on stderr as before.
+///
+/// `verbose`/`json` are `cli.verbose`/`cli.json` (the global `-v`/
+/// `--json` flags): `verbose` appends a per-file detail listing after
+/// the summary line; `json` replaces the whole human-readable report
+/// with one `format_summary_json` line instead (mutually exclusive with
+/// `verbose` -- `json` wins if both are set, same precedence
+/// `install::dispatch_install_with` uses).
+///
+/// ── Cross-transformer failure is NOT rolled back ─────────────────────
+/// The loop below is fail-fast with no rollback ACROSS transformers.
+/// Say `kiro-cli-v2` finishes all four of its own `stage_content_type`
+/// swaps, then `claude` (registered later) fails partway through its
+/// own four: this function still returns `EXIT_USAGE_ERROR` for the
+/// call as a whole, but `kiro-cli-v2`'s output stays on disk, fully
+/// and correctly updated (each `stage_content_type` call is
+/// independently atomic -- see `staging.rs`), while `claude`'s own
+/// output tree is now a mix of updated and stale content types, split
+/// at whichever one it failed on. So a non-zero exit code does NOT
+/// mean "nothing under `dist/` changed" -- part of the tree can be
+/// ahead of the source that produced this run, another part behind
+/// it. This is self-healing: the next successful `synth` run brings
+/// every content type back to a consistent state (see
+/// `synth_run_twice_produces_byte_identical_dist_output`), but there is
+/// a real window, proportional to the number of registered
+/// transformers, where `dist/` is torn between two generations of the
+/// model. `second_transformer_failure_leaves_first_transformers_output_intact`
+/// below asserts this exact, accepted behavior so it can't silently
+/// regress into something worse (e.g. a rollback that only sometimes
+/// runs). The alternative -- staging all of `dist/` in one shared temp
+/// root with a single final atomic swap -- would be a materially
+/// larger change than this diff's scope, so it's left as a follow-up
+/// if the torn-state window above proves unacceptable in practice.
+pub fn dispatch_synth_with(
+    target_dir: &Path,
+    from: Option<String>,
+    verbose: bool,
+    json: bool,
+    color: ColorMode,
+) -> u8 {
+    let source_dir: PathBuf = match &from {
+        Some(v) => PathBuf::from(v),
+        None => target_dir.to_path_buf(),
+    };
+    let output_root: PathBuf = source_dir.join("dist");
+
+    let model = match parse_canonical(&source_dir) {
+        Ok(model) => model,
+        Err(err) => {
+            crate::cli::report::report_error(
+                "synth",
+                "synth.parse_canonical_failed",
+                target_dir,
+                false,
+                &err.to_string(),
+                Vec::new(),
+                json,
+                color,
+            );
+            return EXIT_USAGE_ERROR;
+        }
+    };
+
+    // Transformer-layer defense-in-depth: every registered transformer
+    // below receives this same `model` value, so this check runs once,
+    // here, rather than each transformer duplicating an identical call
+    // at the top of its own `transform` (see
+    // `path_safety::reject_case_insensitive_model_collisions`'s own
+    // docstring). Not integration-testable through this function's own
+    // public `--from`/`target_dir` interface: any real source tree that
+    // could trigger it is already rejected by `parse_canonical`'s own
+    // `assert_unique_names` above, before reaching this line -- the
+    // scenario this check exists for (a `CanonicalModel` built directly,
+    // bypassing the parser) is only reachable, and only tested, at the
+    // unit level in `path_safety.rs`.
+    if let Err(err) = path_safety::reject_case_insensitive_model_collisions(&model) {
+        crate::cli::report::report_error(
+            "synth",
+            "synth.case_insensitive_collision",
+            target_dir,
+            false,
+            &err.to_string(),
+            Vec::new(),
+            json,
+            color,
+        );
+        return EXIT_USAGE_ERROR;
+    }
+
+    // Name every transformer that already completed successfully in the
+    // failure message, so a caller relying only on this process's exit
+    // code (rather than
+    // diffing `dist/` itself) can tell exactly which `dist/<name()>/`
+    // subtrees are already updated to the new model vs. still stale --
+    // see this function's own docstring above for the torn-state
+    // window this is surfacing, not fixing.
+    let mut completed: Vec<&str> = Vec::with_capacity(registry::TRANSFORMERS.len());
+    for transformer in registry::TRANSFORMERS {
+        if let Err(err) = transformer.transform(&model, &output_root) {
+            let message = format_transformer_failure_message(transformer.name(), &err, &completed);
+            crate::cli::report::report_error(
+                "synth",
+                "synth.transformer_failed",
+                target_dir,
+                false,
+                &message,
+                Vec::new(),
+                json,
+                color,
+            );
+            return EXIT_USAGE_ERROR;
+        }
+        completed.push(transformer.name());
+    }
+
+    // Copies the repo-root VERSION file into output_root's top level
+    // so every artifact packages self-describing content, read back by
+    // install_info's agent_version_from_source. Runs after every
+    // transformer succeeds and before packaging, so package_dist's
+    // walk picks it up. Best-effort on both read and write: a source
+    // tree with no root VERSION file, or a write that fails, still
+    // produces a valid artifact -- just one that reports no agent
+    // version downstream.
+    //
+    // `output_root` (`dist/`) is never wiped between runs, so when the
+    // source has no root VERSION, a prior run's copy would otherwise
+    // survive at `output_root/VERSION` unchanged. The removal arm
+    // below handles that -- but only on a genuine NotFound. A
+    // different read error (permissions, I/O) must not trigger
+    // removal: that would delete a prior run's correct output copy
+    // over a source file that actually exists, just unreadable this
+    // run. A failed removal, like a failed write, only warns.
+    match std::fs::read_to_string(source_dir.join("VERSION")) {
+        Ok(version_contents) => {
+            if let Err(err) = std::fs::write(output_root.join("VERSION"), &version_contents) {
+                eprintln!(
+                    "konductor synth: warning: could not write {}: {err}",
+                    output_root.join("VERSION").display()
+                );
+            }
+        }
+        // Only a genuine NotFound means the source has no root
+        // VERSION -- remove any stale output copy. Any other error
+        // (permissions, I/O) does not mean absence, so leave the
+        // output copy untouched rather than destroying a prior run's
+        // valid version over a transient read failure.
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+            if let Err(err) = std::fs::remove_file(output_root.join("VERSION")) {
+                if err.kind() != std::io::ErrorKind::NotFound {
+                    eprintln!(
+                        "konductor synth: warning: could not remove stale {}: {err}",
+                        output_root.join("VERSION").display()
+                    );
+                }
+            }
+        }
+        Err(err) => {
+            eprintln!(
+                "konductor synth: warning: could not read {}: {err}",
+                source_dir.join("VERSION").display()
+            );
+        }
+    }
+
+    // Package the now-complete dist/ tree and write its checksum sidecar
+    // (transport-integrity only; see package.rs/sidecar.rs docstrings).
+    // Runs only after every transformer has succeeded, so dist/ is
+    // guaranteed consistent. Routed through `report_error` like the
+    // arms above, so failures here also get the --json envelope and
+    // telemetry.
+    //
+    // Any packaged artifact/sidecar already sitting at `output_root`'s
+    // top level is removed FIRST -- before `package_dist` reads that
+    // tree -- since the artifact lives inside the very tree being
+    // packaged. This matches on the stable `konductor-v*.tar.gz`/
+    // `konductor-v*.tar.gz.sha256` shape (see `is_stale_artifact_entry`)
+    // rather than the current run's exact filename, so it also catches
+    // a leftover from a naming convention this binary no longer
+    // produces (e.g. an old per-arch/OS-suffixed tarball from a prior
+    // build), not only today's universal filename. Without this, any
+    // such leftover -- current-format or legacy -- would be archived as
+    // an entry inside the newly packaged tarball, and a later run would
+    // archive that copy again, and so on indefinitely.
+    let artifact_dir = artifact_output_dir(&output_root);
+    match std::fs::read_dir(&artifact_dir) {
+        Ok(entries) => {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                let is_match = path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .is_some_and(is_stale_artifact_entry);
+                if !is_match {
+                    continue;
+                }
+                if let Err(err) = std::fs::remove_file(&path) {
+                    if err.kind() != std::io::ErrorKind::NotFound {
+                        crate::cli::report::report_error(
+                            "synth",
+                            "synth.stale_artifact_remove_failed",
+                            target_dir,
+                            false,
+                            &format!(
+                                "failed to remove previous artifact/sidecar at {}: {err}",
+                                path.display()
+                            ),
+                            Vec::new(),
+                            json,
+                            color,
+                        );
+                        return EXIT_USAGE_ERROR;
+                    }
+                }
+            }
+        }
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
+        Err(err) => {
+            crate::cli::report::report_error(
+                "synth",
+                "synth.stale_artifact_remove_failed",
+                target_dir,
+                false,
+                &format!(
+                    "failed to scan {} for previous artifact/sidecar: {err}",
+                    artifact_dir.display()
+                ),
+                Vec::new(),
+                json,
+                color,
+            );
+            return EXIT_USAGE_ERROR;
+        }
+    }
+    let artifact_path = artifact_dir.join(artifact_filename());
+
+    let artifact_bytes = match package::package_dist(&output_root) {
+        Ok(bytes) => bytes,
+        Err(err) => {
+            crate::cli::report::report_error(
+                "synth",
+                "synth.package_failed",
+                target_dir,
+                false,
+                &format!("failed to package dist/ tree: {err}"),
+                Vec::new(),
+                json,
+                color,
+            );
+            return EXIT_USAGE_ERROR;
+        }
+    };
+    if let Err(err) = std::fs::create_dir_all(&artifact_dir) {
+        crate::cli::report::report_error(
+            "synth",
+            "synth.artifact_dir_create_failed",
+            target_dir,
+            false,
+            &format!(
+                "failed to create artifact output directory {}: {err}",
+                artifact_dir.display()
+            ),
+            Vec::new(),
+            json,
+            color,
+        );
+        return EXIT_USAGE_ERROR;
+    }
+    if let Err(err) = std::fs::write(&artifact_path, &artifact_bytes) {
+        crate::cli::report::report_error(
+            "synth",
+            "synth.artifact_write_failed",
+            target_dir,
+            false,
+            &format!("failed to write packaged artifact: {err}"),
+            Vec::new(),
+            json,
+            color,
+        );
+        return EXIT_USAGE_ERROR;
+    }
+    let sidecar_path = match sidecar::write_sidecar(&artifact_path, &artifact_bytes) {
+        Ok(path) => path,
+        Err(err) => {
+            crate::cli::report::report_error(
+                "synth",
+                "synth.sidecar_write_failed",
+                target_dir,
+                false,
+                &format!("failed to write checksum sidecar: {err}"),
+                Vec::new(),
+                json,
+                color,
+            );
+            return EXIT_USAGE_ERROR;
+        }
+    };
+
+    if json {
+        println!(
+            "{}",
+            format_summary_json(&model, &output_root, &artifact_path, &sidecar_path)
+        );
+    } else {
+        println!("{}", format_summary(&model, &output_root, color));
+        println!(
+            "{}",
+            format_artifact_summary_line(&output_root, &artifact_path)
+        );
+        if verbose {
+            for line in format_verbose_lines(&model) {
+                println!("{line}");
+            }
+        }
+    }
+
+    0
+}
+
+/// Builds the failure message `dispatch_synth_with` reports (via
+/// `report::report_error`, which applies the `konductor synth: `
+/// prefix in plain-text mode, or embeds this text verbatim as the
+/// `--json` envelope's `error` field) when `failed_transformer` errors
+/// with `err`, after `completed` (every transformer name that already
+/// ran successfully, in registration order) -- see
+/// `dispatch_synth_with`'s own docstring for the torn-state window
+/// this surfaces. Extracted as a pure function (same pattern as
+/// `format_summary`/`format_verbose_lines` below) so the exact message
+/// text is directly testable without capturing stderr. Returns the
+/// BARE message -- no `konductor synth: ` prefix -- so `report_error`
+/// is the single place that decides how the prefix is applied,
+/// matching every other command's error-reporting convention.
+fn format_transformer_failure_message(
+    failed_transformer: &str,
+    err: &str,
+    completed: &[&str],
+) -> String {
+    if completed.is_empty() {
+        format!("transformer '{failed_transformer}' failed: {err}")
+    } else {
+        format!(
+            "transformer '{failed_transformer}' failed: {err} (already \
+             completed and left updated on disk: {})",
+            completed.join(", ")
+        )
+    }
+}
+
+/// Whether synth actually writes `agent` to `dist/` -- in at least ONE
+/// registered harness's own output tree, not necessarily all of them.
+/// Only the AGENT dimension can diverge from the parsed model:
+/// `kiro-cli-v2` emits an agent JSON iff the agent declares a
+/// `clientConfig.kiroCli` section, and `claude` emits an agent markdown
+/// file iff it declares a `clientConfig.claudeCli` section (see
+/// `synth::kiro_cli_v2` / `synth::claude` -- an agent missing BOTH
+/// sections targets no registered harness and is skipped by every
+/// transformer's own early `continue`). Skills, SOPs and context files
+/// are emitted unconditionally for every parsed entry, so their model
+/// counts already equal what was written.
+fn agent_is_written(agent: &AgentSpec) -> bool {
+    agent.client_config.kiro_cli.is_some() || agent.client_config.claude_cli.is_some()
+}
+
+/// Counts of each content type synth WROTE to the output tree, in the
+/// fixed order the summary line reports them (agents, skills, SOPs,
+/// context). For agents this is the count actually written (those
+/// targeting a registered harness -- see `agent_is_written`), not
+/// `model.agents.len()`; for the other three it equals the model count,
+/// since each parsed entry is emitted. A tiny named struct rather than a
+/// raw tuple so `format_summary`/`format_verbose_lines` read clearly at
+/// each call site.
+struct ContentCounts {
+    agents: usize,
+    skills: usize,
+    sops: usize,
+    context: usize,
+}
+
+impl ContentCounts {
+    fn from_model(model: &CanonicalModel) -> Self {
+        ContentCounts {
+            agents: model.agents.iter().filter(|a| agent_is_written(a)).count(),
+            skills: model.skills.len(),
+            sops: model.sops.len(),
+            context: model.context.len(),
+        }
+    }
+
+    fn total(&self) -> usize {
+        self.agents + self.skills + self.sops + self.context
+    }
+}
+
+/// Builds the one-line default-mode summary `dispatch_synth` prints on
+/// success: the output root written and a per-content-type count (the
+/// count synth actually wrote -- see `ContentCounts`), or an explicit
+/// "nothing to build" message when the parsed model is entirely empty.
+/// Exit code is untouched either way (still 0) -- this only changes what
+/// is printed.
+fn format_summary(model: &CanonicalModel, output_root: &Path, color: ColorMode) -> String {
+    let counts = ContentCounts::from_model(model);
+    if counts.total() == 0 {
+        return format!(
+            "{} nothing to build (no agents, skills, SOPs, or context files found)",
+            crate::cli::output::success_prefix(color, "konductor synth:")
+        );
+    }
+    format!(
+        "{} wrote {} agent(s), {} skill(s), {} SOP(s), {} context file(s) to {}",
+        crate::cli::output::success_prefix(color, "konductor synth:"),
+        counts.agents,
+        counts.skills,
+        counts.sops,
+        counts.context,
+        output_root.display()
+    )
+}
+
+/// Builds the plain-text-mode second summary line, printed
+/// unconditionally right after `format_summary`'s line: names the
+/// packaged artifact (by filename, not full path -- the directory is
+/// already stated on the line above) sitting inside `output_root`
+/// alongside its `.sha256` sidecar. Kept as its own line, separate from
+/// `format_summary`, so that function's exact-text assertions stay
+/// unaffected by this one. The `--json` path already carries the same
+/// information via `artifact_path`/`sidecar_path` (see
+/// `format_summary_json`), so this only closes the plain-text gap.
+fn format_artifact_summary_line(output_root: &Path, artifact_path: &Path) -> String {
+    let artifact_name = artifact_path
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_else(|| artifact_path.display().to_string());
+    format!(
+        "konductor synth: packaged {} as {artifact_name} (+ .sha256 sidecar)",
+        output_root.display()
+    )
+}
+
+/// Builds the additional per-file detail lines `-v`/`--verbose` prints
+/// after the summary: one line per WRITTEN agent, then per skill, SOP,
+/// and context file name, each prefixed with its content type. An agent
+/// skipped by every transformer (not written -- see `agent_is_written`)
+/// is not listed, matching the summary count. Empty when the model has
+/// nothing written of that type -- never a line for a zero count.
+fn format_verbose_lines(model: &CanonicalModel) -> Vec<String> {
+    let mut lines = Vec::new();
+    for agent in model.agents.iter().filter(|a| agent_is_written(a)) {
+        lines.push(format!("  agent: {}", agent.name));
+    }
+    for skill in &model.skills {
+        lines.push(format!("  skill: {}", skill.name));
+    }
+    for sop in &model.sops {
+        lines.push(format!("  sop: {}", sop.name));
+    }
+    for context in &model.context {
+        lines.push(format!("  context: {}", context.name));
+    }
+    lines
+}
+
+/// Builds the `--json` structured equivalent of `format_summary`: one
+/// compact JSON object on a single line (no pretty-printing -- this is a
+/// machine-readable report, not a document), carrying the same counts as
+/// the human-readable summary, plus `artifact_path`/`sidecar_path` for
+/// the packaged artifact and its sidecar, so a CI step can read them
+/// directly instead of globbing the output directory by suffix.
+fn format_summary_json(
+    model: &CanonicalModel,
+    output_root: &Path,
+    artifact_path: &Path,
+    sidecar_path: &Path,
+) -> String {
+    let counts = ContentCounts::from_model(model);
+    serde_json::json!({
+        "command": "synth",
+        "output_root": output_root.display().to_string(),
+        "agents": counts.agents,
+        "skills": counts.skills,
+        "sops": counts.sops,
+        "context": counts.context,
+        "nothing_to_build": counts.total() == 0,
+        "artifact_path": artifact_path.display().to_string(),
+        "sidecar_path": sidecar_path.display().to_string(),
+    })
+    .to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    /// `artifact_output_dir` must resolve to exactly `output_root` itself
+    /// (`<source_dir>/dist/`) -- the artifact/sidecar live at `dist/`'s
+    /// top level, alongside the per-harness subdirectories.
+    #[test]
+    fn artifact_output_dir_is_output_root_itself() {
+        let output_root = Path::new("/tmp/example-repo/dist");
+        assert_eq!(artifact_output_dir(output_root), output_root);
+    }
+
+    fn scratch_dir(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!(
+            "konductor-synth-dispatch-test-{name}-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    /// An empty source tree (no agents/skills/agent-sops directories) is a
+    /// valid, empty `CanonicalModel` -- `dispatch_synth` must still exit 0
+    /// even though every registered transformer runs against zero agents.
+    #[test]
+    fn dispatch_synth_returns_zero_on_empty_source_tree() {
+        let root = scratch_dir("empty-ok");
+        let code = dispatch_synth_with(&root, None, false, false, ColorMode::disabled());
+        assert_eq!(code, 0);
+        fs::remove_dir_all(&root).ok();
+    }
+
+    /// Regression guard for the output-path bug: transformer output must
+    /// land under `<--from's root>/dist/`. `target_dir` is passed as an
+    /// unrelated scratch dir (the process cwd is never touched) to prove
+    /// output resolves against `--from`'s root, not `target_dir` or any
+    /// other location.
+    #[test]
+    fn dispatch_synth_writes_transformer_output_under_local_root_dist_not_cwd() {
+        let unrelated_target_dir = scratch_dir("unrelated-target-dir");
+        let local_root = scratch_dir("local-root");
+        fs::create_dir_all(local_root.join("agents")).unwrap();
+        fs::write(
+            local_root.join("agents/k-example.agent-spec.json"),
+            br#"{
+                "schemaVersion": "1",
+                "name": "k-example",
+                "config": {"description": "d", "systemPrompt": "p", "model": "m"},
+                "clientConfig": {"kiroCli": {}}
+            }"#,
+        )
+        .unwrap();
+
+        let code = dispatch_synth_with(
+            &unrelated_target_dir,
+            Some(local_root.display().to_string()),
+            false,
+            false,
+            ColorMode::disabled(),
+        );
+
+        assert_eq!(code, 0);
+        assert!(
+            local_root
+                .join("dist/kiro-cli-v2/agents/k-example.json")
+                .exists(),
+            "expected kiro-cli output under --from's root's dist/, not target_dir"
+        );
+        assert!(!unrelated_target_dir.join("dist").exists());
+        assert!(!unrelated_target_dir.join("kiro-cli-v2").exists());
+
+        fs::remove_dir_all(&unrelated_target_dir).ok();
+        fs::remove_dir_all(&local_root).ok();
+    }
+
+    /// `--from` overrides `target_dir` as the source tree root.
+    #[test]
+    fn dispatch_synth_prefers_local_over_target_dir() {
+        let root = scratch_dir("local-override");
+        let bogus_target = PathBuf::from("/does/not/exist/at/all");
+        let code = dispatch_synth_with(
+            &bogus_target,
+            Some(root.display().to_string()),
+            false,
+            false,
+            ColorMode::disabled(),
+        );
+        assert_eq!(code, 0);
+        fs::remove_dir_all(&root).ok();
+    }
+
+    /// `source_dir` pointing at a file (not a directory) is a
+    /// `parse_canonical` failure, which must map to `EXIT_USAGE_ERROR`.
+    #[test]
+    fn dispatch_synth_returns_usage_error_when_source_dir_is_a_file() {
+        let root = scratch_dir("source-is-file");
+        let file_path = root.join("not-a-dir");
+        fs::write(&file_path, b"not a directory").unwrap();
+        let code = dispatch_synth_with(&file_path, None, false, false, ColorMode::disabled());
+        assert_eq!(code, EXIT_USAGE_ERROR);
+        fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn dispatch_synth_copies_root_version_file_into_dist_output_root() {
+        let root = scratch_dir("version-copy");
+        fs::write(root.join("VERSION"), "1.2.3\n").unwrap();
+        let code = dispatch_synth_with(&root, None, false, false, ColorMode::disabled());
+        assert_eq!(code, 0);
+        let copied = fs::read_to_string(root.join("dist").join("VERSION")).unwrap();
+        assert_eq!(copied, "1.2.3\n");
+        fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn dispatch_synth_succeeds_without_writing_dist_version_when_root_version_is_absent() {
+        let root = scratch_dir("no-version-at-root");
+        let code = dispatch_synth_with(&root, None, false, false, ColorMode::disabled());
+        assert_eq!(code, 0);
+        assert!(!root.join("dist").join("VERSION").exists());
+        fs::remove_dir_all(&root).ok();
+    }
+
+    /// `output_root` (`dist/`) is never wiped between runs, so a
+    /// second run against the SAME `dist/` after the root VERSION is
+    /// removed must not leave the first run's copy sitting at
+    /// `dist/VERSION`.
+    #[test]
+    fn dispatch_synth_removes_stale_dist_version_when_later_run_has_no_root_version() {
+        let root = scratch_dir("stale-version-removed");
+
+        // First run: root VERSION present, so it's copied to dist/.
+        fs::write(root.join("VERSION"), "1.2.3\n").unwrap();
+        let first_code = dispatch_synth_with(&root, None, false, false, ColorMode::disabled());
+        assert_eq!(first_code, 0);
+        assert!(
+            root.join("dist").join("VERSION").exists(),
+            "first run must copy the root VERSION into dist/"
+        );
+
+        // Second run against the SAME dist/: root VERSION removed, so
+        // the source now has none.
+        fs::remove_file(root.join("VERSION")).unwrap();
+        let second_code = dispatch_synth_with(&root, None, false, false, ColorMode::disabled());
+        assert_eq!(second_code, 0);
+        assert!(
+            !root.join("dist").join("VERSION").exists(),
+            "a later synth against a source with no root VERSION must remove \
+             the stale copy from a prior run, not leave it in place -- \
+             `telemetry::install_info::agent_version_from_source` reads \
+             exactly this path (`dist/VERSION`) and returns `None` when \
+             it's absent, so this assertion is also what proves \
+             `agent_version` degrades to null rather than reporting the \
+             stale version from the prior run"
+        );
+
+        fs::remove_dir_all(&root).ok();
+    }
+
+    /// A read failure other than `NotFound` must not be treated as
+    /// "source has no VERSION". Forces the source `VERSION` path to
+    /// be a directory while a real `dist/VERSION` from a prior run
+    /// already exists; that prior copy must survive.
+    #[test]
+    fn dispatch_synth_leaves_dist_version_intact_when_root_version_read_fails() {
+        let root = scratch_dir("version-read-fails-non-notfound");
+
+        // First run: root VERSION present and readable, so it's copied
+        // to dist/ normally.
+        fs::write(root.join("VERSION"), "1.2.3\n").unwrap();
+        let first_code = dispatch_synth_with(&root, None, false, false, ColorMode::disabled());
+        assert_eq!(first_code, 0);
+        assert!(root.join("dist").join("VERSION").exists());
+
+        // Second run: replace the source VERSION file with a directory
+        // at the same path, forcing read_to_string to fail with a
+        // non-NotFound error (e.g. IsADirectory) rather than reporting
+        // absence.
+        fs::remove_file(root.join("VERSION")).unwrap();
+        fs::create_dir_all(root.join("VERSION")).unwrap();
+
+        let second_code = dispatch_synth_with(&root, None, false, false, ColorMode::disabled());
+
+        assert_eq!(
+            second_code, 0,
+            "a non-NotFound read failure must not abort a synth where every \
+             transformer already succeeded"
+        );
+        assert!(
+            root.join("dist").join("VERSION").exists(),
+            "a source VERSION that exists but could not be read (non-NotFound \
+             error) must NOT be treated as absence -- the prior run's output \
+             copy must survive, not be deleted"
+        );
+        let copied = fs::read_to_string(root.join("dist").join("VERSION")).unwrap();
+        assert_eq!(
+            copied, "1.2.3\n",
+            "the surviving output copy must still hold the prior run's content"
+        );
+
+        fs::remove_dir_all(&root).ok();
+    }
+
+    /// The VERSION write is best-effort like the read: pre-creating a
+    /// directory at `dist/VERSION` forces `std::fs::write` to fail
+    /// deterministically. `dispatch_synth_with` must still return 0
+    /// and finish packaging.
+    #[test]
+    fn dispatch_synth_succeeds_when_dist_version_write_fails() {
+        let root = scratch_dir("version-write-fails");
+        fs::write(root.join("VERSION"), "1.2.3\n").unwrap();
+        // Force the write to fail: `dist/VERSION` is a directory, so
+        // `std::fs::write(dist/VERSION, ..)` errors instead of
+        // succeeding.
+        fs::create_dir_all(root.join("dist").join("VERSION")).unwrap();
+
+        let code = dispatch_synth_with(&root, None, false, false, ColorMode::disabled());
+
+        assert_eq!(
+            code, 0,
+            "a failed VERSION write must not abort a synth where every \
+             transformer already succeeded"
+        );
+        assert!(
+            root.join("dist").join("VERSION").is_dir(),
+            "the pre-existing directory must be left untouched, not replaced by a file"
+        );
+        // The rest of the artifact -- packaging included -- must still
+        // have completed.
+        assert!(
+            root.join("dist").join(artifact_filename()).exists(),
+            "packaging must still run and produce the tarball artifact \
+             despite the VERSION write failure"
+        );
+
+        fs::remove_dir_all(&root).ok();
+    }
+
+    /// Confirms the packaged tarball contains the copied `VERSION`
+    /// entry -- `package_dist`'s walk picks it up like any other
+    /// content file.
+    #[test]
+    fn dispatch_synth_packages_dist_version_into_the_tarball_artifact() {
+        let root = scratch_dir("version-in-tarball");
+        fs::write(root.join("VERSION"), "9.9.9\n").unwrap();
+        let code = dispatch_synth_with(&root, None, false, false, ColorMode::disabled());
+        assert_eq!(code, 0);
+
+        let artifact_bytes = fs::read(root.join("dist").join(artifact_filename())).unwrap();
+        let decoder = flate2::read::GzDecoder::new(artifact_bytes.as_slice());
+        let mut archive = tar::Archive::new(decoder);
+        let mut found_version_contents = None;
+        for entry in archive.entries().unwrap() {
+            let mut entry = entry.unwrap();
+            if entry.path().unwrap().to_str() == Some("VERSION") {
+                let mut buf = String::new();
+                std::io::Read::read_to_string(&mut entry, &mut buf).unwrap();
+                found_version_contents = Some(buf);
+            }
+        }
+        assert_eq!(
+            found_version_contents,
+            Some("9.9.9\n".to_string()),
+            "packaged tarball must contain a top-level VERSION entry with the copied contents"
+        );
+
+        fs::remove_dir_all(&root).ok();
+    }
+
+    /// A minimal agent that TARGETS the kiro-cli harness (declares a
+    /// `clientConfig.kiroCli` section), so `agent_is_written` counts it --
+    /// the normal case. For an agent that targets no harness, overwrite
+    /// `client_config` with `ClientConfig::default()` (see
+    /// `summary_counts_only_agents_that_target_a_harness`).
+    fn minimal_agent(name: &str) -> AgentSpec {
+        AgentSpec {
+            name: name.to_string(),
+            config: crate::cli::synth::parser::AgentConfig {
+                description: String::new(),
+                system_prompt: String::new(),
+                model: String::new(),
+            },
+            dependencies: crate::cli::synth::parser::AgentDependencies::default(),
+            client_config: crate::cli::synth::parser::ClientConfig {
+                kiro_cli: Some(crate::cli::synth::parser::KiroCliConfig::default()),
+                claude_cli: None,
+            },
+        }
+    }
+
+    fn populated_model() -> CanonicalModel {
+        CanonicalModel {
+            agents: vec![minimal_agent("k-example")],
+            skills: vec![model::SkillDef {
+                name: "code-review".to_string(),
+                raw_frontmatter: "name: code-review".to_string(),
+                body: String::new(),
+                auxiliary_files: vec![],
+            }],
+            sops: vec![
+                model::SopDef {
+                    name: "asdlc-plan".to_string(),
+                    body: String::new(),
+                },
+                model::SopDef {
+                    name: "asdlc-verify".to_string(),
+                    body: String::new(),
+                },
+            ],
+            context: vec![model::ContextDef {
+                name: "routing-rules.md".to_string(),
+                body: String::new(),
+            }],
+        }
+    }
+
+    /// The default-mode summary line reports the exact per-content-type
+    /// counts (1 agent, 1 skill, 2 SOPs, 1 context file) and the output
+    /// root -- non-vacuous: a stale/miscounted implementation would show
+    /// up as a wrong number here, not just "some text".
+    #[test]
+    fn format_summary_reports_exact_per_content_type_counts() {
+        let model = populated_model();
+        let summary = format_summary(
+            &model,
+            Path::new("/tmp/example/dist"),
+            ColorMode::disabled(),
+        );
+        assert_eq!(
+            summary,
+            "konductor synth: wrote 1 agent(s), 1 skill(s), 2 SOP(s), 1 context file(s) to /tmp/example/dist"
+        );
+    }
+
+    /// An entirely empty model gets the explicit "nothing to build"
+    /// message, not a summary line claiming zero of everything.
+    #[test]
+    fn format_summary_reports_nothing_to_build_on_empty_model() {
+        let summary = format_summary(
+            &CanonicalModel::default(),
+            Path::new("/tmp/example/dist"),
+            ColorMode::disabled(),
+        );
+        assert_eq!(
+            summary,
+            "konductor synth: nothing to build (no agents, skills, SOPs, or context files found)"
+        );
+    }
+
+    /// The second, artifact-naming summary line names the artifact's
+    /// filename (not its full path -- `format_summary`'s line already
+    /// states the directory) and mentions the sidecar, printed as its
+    /// own standalone line.
+    #[test]
+    fn format_artifact_summary_line_names_artifact_filename_and_sidecar() {
+        let line = format_artifact_summary_line(
+            Path::new("/tmp/example/dist"),
+            Path::new("/tmp/example/dist/konductor-v0.1.0.tar.gz"),
+        );
+        assert_eq!(
+            line,
+            "konductor synth: packaged /tmp/example/dist as \
+             konductor-v0.1.0.tar.gz (+ .sha256 sidecar)"
+        );
+    }
+
+    /// `--verbose` lines name every agent/skill/SOP/context file by
+    /// name, one per line, and produce MORE lines than the plain
+    /// summary (which is always exactly one line) -- proving `-v`
+    /// genuinely adds detail rather than just repeating the summary.
+    #[test]
+    fn format_verbose_lines_names_every_item_and_exceeds_summary_line_count() {
+        let model = populated_model();
+        let lines = format_verbose_lines(&model);
+        assert_eq!(
+            lines,
+            vec![
+                "  agent: k-example",
+                "  skill: code-review",
+                "  sop: asdlc-plan",
+                "  sop: asdlc-verify",
+                "  context: routing-rules.md",
+            ]
+        );
+        assert!(
+            lines.len() > 1,
+            "-v must add more than the single summary line"
+        );
+    }
+
+    /// `--verbose` on an empty model adds no lines at all -- never a
+    /// line for a zero count.
+    #[test]
+    fn format_verbose_lines_is_empty_for_empty_model() {
+        assert!(format_verbose_lines(&CanonicalModel::default()).is_empty());
+    }
+
+    /// `--json` output parses as valid JSON and carries the same counts
+    /// as the human-readable summary, plus the new
+    /// `artifact_path`/`sidecar_path` fields.
+    #[test]
+    fn format_summary_json_parses_and_matches_counts() {
+        let model = populated_model();
+        let rendered = format_summary_json(
+            &model,
+            Path::new("/tmp/example/dist"),
+            Path::new("/tmp/example/konductor-v0.1.0-x86_64-unknown-linux-gnu.tar.gz"),
+            Path::new("/tmp/example/konductor-v0.1.0-x86_64-unknown-linux-gnu.tar.gz.sha256"),
+        );
+        let parsed: serde_json::Value =
+            serde_json::from_str(&rendered).expect("must be valid JSON");
+        assert_eq!(parsed["command"], "synth");
+        assert_eq!(parsed["agents"], 1);
+        assert_eq!(parsed["skills"], 1);
+        assert_eq!(parsed["sops"], 2);
+        assert_eq!(parsed["context"], 1);
+        assert_eq!(parsed["nothing_to_build"], false);
+        assert_eq!(
+            parsed["artifact_path"],
+            "/tmp/example/konductor-v0.1.0-x86_64-unknown-linux-gnu.tar.gz"
+        );
+        assert_eq!(
+            parsed["sidecar_path"],
+            "/tmp/example/konductor-v0.1.0-x86_64-unknown-linux-gnu.tar.gz.sha256"
+        );
+    }
+
+    #[test]
+    fn format_summary_json_nothing_to_build_flag_true_on_empty_model() {
+        let rendered = format_summary_json(
+            &CanonicalModel::default(),
+            Path::new("/tmp/dist"),
+            Path::new("/tmp/konductor-v0.1.0-x86_64-unknown-linux-gnu.tar.gz"),
+            Path::new("/tmp/konductor-v0.1.0-x86_64-unknown-linux-gnu.tar.gz.sha256"),
+        );
+        let parsed: serde_json::Value = serde_json::from_str(&rendered).unwrap();
+        assert_eq!(parsed["nothing_to_build"], true);
+        assert_eq!(parsed["agents"], 0);
+    }
+
+    /// Security regression guard: the FIRST transformer to fail (nothing
+    /// completed yet) gets the plain, unqualified message -- no
+    /// "(already completed ...)" clause when there is nothing to report.
+    #[test]
+    fn format_transformer_failure_message_omits_completed_clause_when_nothing_completed() {
+        let msg = format_transformer_failure_message("kiro-cli-v2", "boom", &[]);
+        assert_eq!(msg, "transformer 'kiro-cli-v2' failed: boom");
+    }
+
+    /// A LATER transformer's failure must name every earlier transformer
+    /// that already completed, in order, so a caller reading only this
+    /// message (not diffing `dist/` itself) knows exactly which
+    /// `dist/<name()>/` subtrees are already updated to the new model.
+    #[test]
+    fn format_transformer_failure_message_names_every_completed_transformer_in_order() {
+        let msg = format_transformer_failure_message("claude", "boom", &["kiro-cli-v2"]);
+        assert_eq!(
+            msg,
+            "transformer 'claude' failed: boom (already completed and left \
+             updated on disk: kiro-cli-v2)"
+        );
+    }
+
+    /// Multiple completed transformers are joined, not just the first.
+    #[test]
+    fn format_transformer_failure_message_joins_multiple_completed_transformers() {
+        let msg = format_transformer_failure_message("third", "boom", &["first", "second"]);
+        assert!(msg.contains("first, second"));
+    }
+
+    /// Recursively snapshots every regular file under `root`: relative
+    /// path (relative to `root`) mapped to its exact byte content plus
+    /// its Unix permission bits (masked to `0o777`; a no-op comparison
+    /// value on non-Unix targets since there is no execute bit to
+    /// diverge there). Uses a `BTreeMap` purely as a stable, comparable
+    /// container -- insertion order from `fs::read_dir` is NOT assumed
+    /// deterministic, so ordering never enters the comparison.
+    ///
+    /// `walk` panics (via `.unwrap()`) on a `read_dir` failure rather
+    /// than silently skipping the unreadable subtree: this function is
+    /// the sole oracle behind the idempotency assertion below, so a
+    /// swallowed read failure would silently truncate both snapshots.
+    /// If the SAME subdirectory fails to read on both the first and
+    /// second call (the common case for a real, non-transient cause),
+    /// the two truncated snapshots would still compare equal --
+    /// masking a real byte-level regression in the untruncated part of
+    /// the tree instead of failing loudly. Every call site is a
+    /// post-synth-success `dist/` tree this test just created, so a
+    /// `read_dir` failure here always indicates a real problem worth
+    /// surfacing, never an expected "directory doesn't exist yet" case.
+    ///
+    /// Deliberately NOT reusing `parse_canonical.rs`'s
+    /// `collect_auxiliary_files`/`read_auxiliary_file` walker, despite
+    /// the structural similarity (recurse, `strip_prefix` for a relative
+    /// path, read content, record a mode/executable signal): that
+    /// walker enforces `MAX_AUXILIARY_FILE_BYTES` and rejects symlinks
+    /// per ADR-7's untrusted-CI-content contract, which is the wrong
+    /// contract for THIS walk -- `dist/` here is a tree this same test
+    /// just generated a moment ago, not untrusted external input.
+    /// Reusing the production walker would silently impose a byte-size
+    /// ceiling and a symlink rejection this test has no reason to want.
+    fn snapshot_dir(root: &Path) -> std::collections::BTreeMap<PathBuf, (Vec<u8>, u32)> {
+        fn walk(
+            dir: &Path,
+            root: &Path,
+            out: &mut std::collections::BTreeMap<PathBuf, (Vec<u8>, u32)>,
+        ) {
+            let entries = fs::read_dir(dir)
+                .unwrap_or_else(|e| panic!("failed to read directory {}: {e}", dir.display()));
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    walk(&path, root, out);
+                } else if path.is_file() {
+                    let content = fs::read(&path).unwrap();
+                    #[cfg(unix)]
+                    let mode = {
+                        use std::os::unix::fs::PermissionsExt;
+                        fs::metadata(&path).unwrap().permissions().mode() & 0o777
+                    };
+                    #[cfg(not(unix))]
+                    let mode = 0u32;
+                    let relative = path.strip_prefix(root).unwrap().to_path_buf();
+                    out.insert(relative, (content, mode));
+                }
+            }
+        }
+        let mut out = std::collections::BTreeMap::new();
+        walk(root, root, &mut out);
+        out
+    }
+
+    /// Idempotency regression guard: running `synth` twice against the
+    /// same, unchanged source tree must produce byte-identical
+    /// `dist/<name()>/` output the second time -- this is the "safe to
+    /// re-run" property `stage_content_type`'s rename-old-away /
+    /// rename-new-in / remove-old swap exists to guarantee (see
+    /// `kiro_cli_v2.rs`'s docstring). Exercises every content type
+    /// (agent, skill + executable auxiliary file, SOP, context) in one
+    /// source tree so a regression in any one of the four staged
+    /// directories is caught, not just the agent path. Since the
+    /// snapshot walk covers all of `dist/`, it also picks up the
+    /// packaged artifact and `.sha256` sidecar synth writes at `dist/`'s
+    /// top level -- these must be byte-identical across the two runs
+    /// too (guaranteed by `package_dist`'s own determinism, see
+    /// `package_dist_produces_byte_identical_archives_across_repeated_runs`),
+    /// not just the per-harness subdirectories.
+    ///
+    /// This test's whole reason to exist is to catch a non-idempotent
+    /// `stage_content_type` (e.g. one that merges into a stale staging
+    /// dir instead of always starting from a fresh one, or one whose
+    /// swap leaves a leftover backup directory counted as "output").
+    /// It passes because `stage_content_type` clears the previous output
+    /// via a full directory swap on every call (its rename-old-away /
+    /// rename-new-in / remove-old sequence) -- this guards that property
+    /// going forward.
+    #[test]
+    fn synth_run_twice_produces_byte_identical_dist_output() {
+        let root = scratch_dir("idempotent-rerun");
+
+        // `resources: ["file://AGENTS.md"]` deliberately does NOT create a
+        // matching `AGENTS.md` file anywhere in this scratch tree: a plain
+        // `file://` resource entry is passed through verbatim by
+        // `kiro_cli_v2.rs`'s `render_agent_file` and is never resolved
+        // against disk at synth time (only a `skill://` entry naming a
+        // single packaged skill is validated -- see
+        // `normalize_skill_resource`). Cross-reference consistency between
+        // an agent's `resources`/`contextNames` and the files they name is
+        // therefore out of scope for this idempotency test.
+        fs::create_dir_all(root.join("agents")).unwrap();
+        fs::write(
+            root.join("agents/k-example.agent-spec.json"),
+            br#"{
+                "schemaVersion": "1",
+                "name": "k-example",
+                "config": {"description": "d", "systemPrompt": "p", "model": "m"},
+                "dependencies": {"context": {"contextNames": ["notes.md"]}},
+                "clientConfig": {"kiroCli": {"resources": ["file://AGENTS.md"]}}
+            }"#,
+        )
+        .unwrap();
+
+        fs::create_dir_all(root.join("skills/example-skill")).unwrap();
+        fs::write(
+            root.join("skills/example-skill/SKILL.md"),
+            b"---\nname: example-skill\ndescription: A test skill.\n---\n\n# Body\n",
+        )
+        .unwrap();
+        fs::create_dir_all(root.join("skills/example-skill/scripts")).unwrap();
+        fs::write(
+            root.join("skills/example-skill/scripts/run.sh"),
+            b"#!/bin/sh\necho hi\n",
+        )
+        .unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(
+                root.join("skills/example-skill/scripts/run.sh"),
+                fs::Permissions::from_mode(0o755),
+            )
+            .unwrap();
+        }
+
+        fs::create_dir_all(root.join("agent-sops")).unwrap();
+        fs::write(
+            root.join("agent-sops/example-sop.sop.md"),
+            b"# Example SOP\n\nBody.\n",
+        )
+        .unwrap();
+
+        fs::create_dir_all(root.join("context")).unwrap();
+        fs::write(root.join("context/notes.md"), b"# Notes\n").unwrap();
+
+        let first_code = dispatch_synth_with(&root, None, false, false, ColorMode::disabled());
+        assert_eq!(first_code, 0, "first synth run must succeed");
+        let first_snapshot = snapshot_dir(&root.join("dist"));
+        assert!(
+            !first_snapshot.is_empty(),
+            "expected the first run to write something under dist/"
+        );
+
+        let second_code = dispatch_synth_with(&root, None, false, false, ColorMode::disabled());
+        assert_eq!(second_code, 0, "second synth run must succeed");
+        let second_snapshot = snapshot_dir(&root.join("dist"));
+
+        assert_eq!(
+            first_snapshot, second_snapshot,
+            "re-running synth against an unchanged source tree must produce \
+             byte-identical dist/ output (including file permission bits)"
+        );
+
+        fs::remove_dir_all(&root).ok();
+    }
+
+    /// Regression: synth's summary must report the agent
+    /// count it actually WROTE, not `model.agents.len()`. An agent with
+    /// no `clientConfig.kiroCli` section is parsed into the model but
+    /// skipped by the kiro-cli-v2 transformer, so it must not be counted
+    /// as written -- in the plain summary, the `--json` output, or the
+    /// `-v` listing. A naive `agents: model.agents.len()` would make
+    /// every assertion below see 2 agents and the `-v` listing include
+    /// the skipped agent; counting only written agents makes each see 1
+    /// and list only the written agent.
+    #[test]
+    fn summary_counts_only_agents_that_target_a_harness() {
+        // populated_model()'s agent targets kiro-cli (written).
+        let mut model = populated_model();
+        // A second agent that targets NO registered harness.
+        let mut unwritten = minimal_agent("k-not-built");
+        unwritten.client_config = crate::cli::synth::parser::ClientConfig::default();
+        model.agents.push(unwritten);
+
+        // Plain summary: 1 written agent, not 2.
+        assert_eq!(
+            format_summary(&model, Path::new("/tmp/example/dist"), ColorMode::disabled()),
+            "konductor synth: wrote 1 agent(s), 1 skill(s), 2 SOP(s), 1 context file(s) to /tmp/example/dist"
+        );
+        // JSON: agents == 1.
+        let parsed: serde_json::Value = serde_json::from_str(&format_summary_json(
+            &model,
+            Path::new("/tmp/example/dist"),
+            Path::new("/tmp/example/konductor-v0.1.0-x86_64-unknown-linux-gnu.tar.gz"),
+            Path::new("/tmp/example/konductor-v0.1.0-x86_64-unknown-linux-gnu.tar.gz.sha256"),
+        ))
+        .unwrap();
+        assert_eq!(parsed["agents"], 1);
+        // Verbose: lists the written agent, never the skipped one.
+        let lines = format_verbose_lines(&model);
+        assert!(lines.contains(&"  agent: k-example".to_string()));
+        assert!(
+            !lines.iter().any(|l| l.contains("k-not-built")),
+            "an agent that targets no registered harness must not appear in -v output"
+        );
+    }
+
+    /// Companion to the test above: an agent targeting ONLY
+    /// `clientConfig.claudeCli` (no `kiroCli` at all) must still count
+    /// as written now that `ClaudeTransformer` is registered --
+    /// `agent_is_written` is an OR across every registered harness's
+    /// own targeting section, not a kiro-cli-only check.
+    #[test]
+    fn summary_counts_an_agent_that_targets_only_claude_cli() {
+        let claude_only = AgentSpec {
+            name: "k-claude-only".to_string(),
+            config: crate::cli::synth::parser::AgentConfig {
+                description: String::new(),
+                system_prompt: String::new(),
+                model: String::new(),
+            },
+            dependencies: crate::cli::synth::parser::AgentDependencies::default(),
+            client_config: crate::cli::synth::parser::ClientConfig {
+                kiro_cli: None,
+                claude_cli: Some(crate::cli::synth::parser::ClaudeCliConfig::default()),
+            },
+        };
+        let model = CanonicalModel {
+            agents: vec![claude_only],
+            ..Default::default()
+        };
+
+        assert_eq!(
+            format_summary(&model, Path::new("/tmp/example/dist"), ColorMode::disabled()),
+            "konductor synth: wrote 1 agent(s), 0 skill(s), 0 SOP(s), 0 context file(s) to /tmp/example/dist"
+        );
+        let lines = format_verbose_lines(&model);
+        assert_eq!(lines, vec!["  agent: k-claude-only".to_string()]);
+    }
+
+    /// Cross-transformer partial-failure regression guard: drives the
+    /// exact composition `dispatch_synth_with` uses --
+    /// `registry::TRANSFORMERS` in order -- against a model built so the
+    /// FIRST registered transformer (`kiro-cli-v2`) succeeds fully while
+    /// the SECOND (`claude`) fails partway through its own agents stage.
+    /// Asserts the torn-state consequence `dispatch_synth_with`'s own
+    /// docstring documents: the already-succeeded transformer's output
+    /// is present and
+    /// correct on disk even though the overall composition reports
+    /// failure.
+    ///
+    /// The unsafe agent name (`"../../evil"`) that trips `claude`'s own
+    /// `reject_unsafe_agent_name` cannot reach this test via a real
+    /// `*.agent-spec.json` file -- `parser::validate_agent_name` already
+    /// rejects it at PARSE time, before any transformer runs at all (a
+    /// different failure path entirely, already covered by
+    /// `dispatch_synth_returns_usage_error_when_source_dir_is_a_file`-
+    /// style tests). Constructing the `AgentSpec` directly, bypassing
+    /// the parser, is the only way to exercise a transformer-TIME (not
+    /// parse-time) failure -- the same "constructed without parser"
+    /// pattern every security regression test in `kiro_cli_v2.rs` and
+    /// `claude.rs` already uses.
+    ///
+    /// This agent targets ONLY `claudeCli` (no `kiroCli`), so
+    /// `kiro-cli-v2` skips it via its own early `continue` and never
+    /// sees the unsafe name at all -- setting `kiro_cli: Some(..)` on
+    /// the unsafe agent too would make the FIRST transformer fail
+    /// instead, defeating this test's premise of isolating the SECOND
+    /// transformer's failure.
+    #[test]
+    fn second_transformer_failure_leaves_first_transformers_output_intact() {
+        let dir = scratch_dir("cross-transformer-partial-failure");
+
+        let good_kiro_agent = minimal_agent("k-good");
+        let unsafe_claude_agent = AgentSpec {
+            name: "../../evil".to_string(),
+            config: crate::cli::synth::parser::AgentConfig {
+                description: String::new(),
+                system_prompt: String::new(),
+                model: String::new(),
+            },
+            dependencies: crate::cli::synth::parser::AgentDependencies::default(),
+            client_config: crate::cli::synth::parser::ClientConfig {
+                kiro_cli: None,
+                claude_cli: Some(crate::cli::synth::parser::ClaudeCliConfig::default()),
+            },
+        };
+
+        let model = CanonicalModel {
+            agents: vec![good_kiro_agent, unsafe_claude_agent],
+            ..Default::default()
+        };
+
+        // Drive the exact same composition dispatch_synth_with uses:
+        // registry::TRANSFORMERS in order, fail-fast, no cross-
+        // transformer rollback.
+        let mut results = Vec::new();
+        for transformer in registry::TRANSFORMERS {
+            results.push((transformer.name(), transformer.transform(&model, &dir)));
+        }
+
+        let kiro_result = results
+            .iter()
+            .find(|(name, _)| *name == "kiro-cli-v2")
+            .expect("kiro-cli-v2 must be registered");
+        assert!(
+            kiro_result.1.is_ok(),
+            "expected kiro-cli-v2 to succeed fully despite claude's later failure, got: {:?}",
+            kiro_result.1
+        );
+
+        let claude_result = results
+            .iter()
+            .find(|(name, _)| *name == "claude")
+            .expect("claude must be registered");
+        assert!(
+            claude_result.1.is_err(),
+            "expected claude to fail on the unsafe agent name"
+        );
+
+        // The torn-state assertion: kiro-cli-v2's own already-succeeded
+        // output must remain present and correct on disk even though
+        // the overall composition (as dispatch_synth_with would report
+        // it) failed.
+        let kiro_agent_file = dir
+            .join("kiro-cli-v2")
+            .join(crate::cli::synth::kiro_cli_v2::AGENTS_CONTENT_TYPE_DIR)
+            .join("k-good.json");
+        assert!(
+            kiro_agent_file.exists(),
+            "kiro-cli-v2's already-succeeded output must remain intact when claude fails later, \
+             expected {} to exist",
+            kiro_agent_file.display()
+        );
+
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    /// `is_stale_artifact_entry` matches the current run's exact
+    /// filename, a different version's filename, and a legacy
+    /// per-arch/OS-suffixed variant this binary no longer produces --
+    /// both as a `.tar.gz` and as its `.tar.gz.sha256` sidecar. It must
+    /// NOT match an unrelated file that merely shares the `.tar.gz`
+    /// extension or the `konductor-v` text without both anchors.
+    #[test]
+    fn is_stale_artifact_entry_matches_any_vintage_and_rejects_unrelated_files() {
+        assert!(is_stale_artifact_entry("konductor-v0.1.0.tar.gz"));
+        assert!(is_stale_artifact_entry("konductor-v0.1.0.tar.gz.sha256"));
+        assert!(is_stale_artifact_entry("konductor-v9.9.9.tar.gz"));
+        assert!(is_stale_artifact_entry(
+            "konductor-v0.1.0-x86_64-unknown-linux-gnu.tar.gz"
+        ));
+        assert!(is_stale_artifact_entry(
+            "konductor-v0.1.0-x86_64-unknown-linux-gnu.tar.gz.sha256"
+        ));
+        assert!(is_stale_artifact_entry(
+            "konductor-v0.1.0-aarch64-apple-darwin.tar.gz"
+        ));
+
+        assert!(!is_stale_artifact_entry("other-tool-v0.1.0.tar.gz"));
+        assert!(!is_stale_artifact_entry("konductor-v0.1.0.zip"));
+        assert!(!is_stale_artifact_entry("README.md"));
+    }
+
+    /// Lists the entry names inside an in-memory gzip tar archive, for
+    /// asserting what did/didn't get packaged. Mirrors
+    /// `package::package_dist`'s own encoder pair
+    /// (`flate2::read::GzDecoder` + `tar::Archive`) in reverse.
+    fn list_tar_entries(archive_bytes: &[u8]) -> Vec<String> {
+        let decoder = flate2::read::GzDecoder::new(archive_bytes);
+        let mut archive = tar::Archive::new(decoder);
+        archive
+            .entries()
+            .unwrap()
+            .map(|entry| {
+                entry
+                    .unwrap()
+                    .path()
+                    .unwrap()
+                    .to_string_lossy()
+                    .into_owned()
+            })
+            .collect()
+    }
+
+    /// Regression guard for the stale-leftover gap: a `dist/` directory
+    /// carrying a LEGACY, per-arch/OS-suffixed artifact + sidecar (the
+    /// naming convention this binary no longer produces) left over from
+    /// a prior build must not survive a `synth` run, and must not be
+    /// swept into the freshly packaged tarball as a stale entry.
+    #[test]
+    fn stale_legacy_artifact_is_removed_and_never_archived() {
+        let root = scratch_dir("stale-legacy-artifact");
+        let dist_dir = root.join("dist");
+        fs::create_dir_all(&dist_dir).unwrap();
+
+        let legacy_artifact = dist_dir.join("konductor-v0.1.0-x86_64-unknown-linux-gnu.tar.gz");
+        let legacy_sidecar =
+            dist_dir.join("konductor-v0.1.0-x86_64-unknown-linux-gnu.tar.gz.sha256");
+        fs::write(&legacy_artifact, b"leftover legacy artifact bytes").unwrap();
+        fs::write(&legacy_sidecar, b"leftover legacy sidecar bytes").unwrap();
+
+        let code = dispatch_synth_with(&root, None, false, false, ColorMode::disabled());
+        assert_eq!(code, 0, "synth must succeed against an empty source tree");
+
+        assert!(
+            !legacy_artifact.exists(),
+            "legacy-format leftover artifact must be removed by cleanup"
+        );
+        assert!(
+            !legacy_sidecar.exists(),
+            "legacy-format leftover sidecar must be removed by cleanup"
+        );
+
+        let current_artifact = dist_dir.join(artifact_filename());
+        let packaged_bytes = fs::read(&current_artifact)
+            .expect("current-format artifact must have been written by this run");
+        let entries = list_tar_entries(&packaged_bytes);
+        assert!(
+            !entries
+                .iter()
+                .any(|e| e.contains("x86_64-unknown-linux-gnu")),
+            "the legacy leftover must never appear as an entry inside the freshly \
+             packaged tarball, got entries: {entries:?}"
+        );
+
+        fs::remove_dir_all(&root).ok();
+    }
+}
