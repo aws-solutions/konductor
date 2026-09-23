@@ -13,10 +13,7 @@ If a path does not exist, skip it silently and continue.
 
 ## Project Overview
 
-Konductor is an open-source multi-agent orchestration framework that provides a coordinated suite of specialist
-AI agents automating the full software development lifecycle. Agents collaborate through a structured
-delegation protocol. The package ships as static agent configuration files compatible with Kiro CLI and
-Claude Code — no runtime infrastructure required.
+Konductor is an open-source multi-agent orchestration framework that provides a coordinated suite of specialist AI agents automating the full software development lifecycle. Agents collaborate through a structured delegation protocol. The package ships as static agent configuration files compatible with Kiro CLI and Claude Code — no runtime infrastructure required.
 
 ## Project Structure
 
@@ -81,6 +78,8 @@ instructions.
   - Python: `# SPDX-License-Identifier: Apache-2.0`
   - JS/TS, Go: `// SPDX-License-Identifier: Apache-2.0`
   - Shell, YAML: `# SPDX-License-Identifier: Apache-2.0`
+
+  Formats that have no comment syntax at all (JSON and similar) cannot carry a header and are exempt -- do not add one and do not treat its absence as a violation.
 
 ## Pull Requests
 
