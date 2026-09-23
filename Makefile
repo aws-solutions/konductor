@@ -32,7 +32,8 @@
 #   clean             Remove build artifacts in cli/, mcp/, and shared/
 #   help              Show this usage summary
 
-.PHONY: all build fmt lint install link synth test test-rust test-schema-dump clean help
+.PHONY: all build fmt lint install link synth test test-rust test-schema-dump clean help \
+        guide guide-check guide-sync guide-html guide-record
 
 all: build
 
@@ -52,6 +53,13 @@ help:
 	@echo "  make test-rust          Run Rust unit tests, cli/mcp/shared (no internet required)"
 	@echo "  make test-schema-dump   Smoke-check __dump_schema (cli only)"
 	@echo "  make clean              Remove build artifacts in cli/, mcp/, and shared/"
+	@echo ""
+	@echo "  User guide (docs/user-guide/ + docs/site/, docs/index.html)"
+	@echo "  make guide-check        Report drift between the guide and the source tree"
+	@echo "  make guide-sync         Apply retired-name renames to Markdown + HTML"
+	@echo "  make guide-html         Apply source-derived content updates to the HTML"
+	@echo "  make guide-record       Record the current md+html pair as built"
+	@echo "  make guide              sync, html, check, then record"
 	@echo ""
 
 # ── build ─────────────────────────────────────────────────────────────────────
@@ -135,3 +143,30 @@ clean:
 	$(MAKE) -C cli clean
 	$(MAKE) -C mcp clean
 	$(MAKE) -C shared clean
+
+# ── user guide ────────────────────────────────────────────────────────────────
+# The guide is authored, not compiled, so these keep the FACTS in step with the
+# source tree; prose still needs a human or the agent pass in
+# tools/build-user-guide/. guide-check is standard-library Python plus `node`,
+# which it needs only to parse the published bundle's inline JavaScript, and is
+# safe to gate every pull request on.
+guide-check:
+	python3 tools/user-guide-sync/check-guide-facts.py
+
+guide-sync:
+	python3 tools/user-guide-sync/apply-renames.py --apply
+
+guide-html:
+	python3 tools/build-user-guide/sync-html-content.py --apply
+
+guide-record:
+	bash tools/build-user-guide/build-user-guide.sh --record
+
+# Sequenced in the recipe body, not as prerequisites: the four steps mutate the
+# same files in a fixed order, and `make -j` is free to build prerequisites
+# concurrently -- which would let guide-record snapshot a half-patched guide.
+guide:
+	$(MAKE) guide-sync
+	$(MAKE) guide-html
+	$(MAKE) guide-check
+	$(MAKE) guide-record
