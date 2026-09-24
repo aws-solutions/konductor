@@ -1,11 +1,10 @@
 [workspace]
-name="skills-lookup-mcp"
-version = "1.0.0"
-description = "MCP server for skills loop"
 resolver = "2"
 members = ["servers/*", "lib/*"]
 
 [workspace.package]
+version = "1.0.0"
+description = "MCP server for skills loop"
 license = "Apache-2.0"
 
 [workspace.lints.rust]
