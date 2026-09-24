@@ -208,9 +208,35 @@ fn real_synth_then_real_install_agree_on_output_path_and_bytes() {
     );
     let installed_bytes = std::fs::read(&installed_files[0]).unwrap();
 
+    // With telemetry enabled (the default -- this invocation passes no
+    // `--no-telemetry`), a real `install` wires
+    // `resource_rewrite::TelemetryHookPass` into every installed
+    // agent's own `hooks.agentSpawn` field, so the installed bytes
+    // diverge from synth's pristine output by exactly that one
+    // addition. Compare both sides with `"hooks"` stripped to confirm
+    // everything else still agrees, then separately confirm the
+    // telemetry hook landed.
+    let mut synth_value: serde_json::Value = serde_json::from_slice(&synth_output_bytes).unwrap();
+    let mut installed_value: serde_json::Value = serde_json::from_slice(&installed_bytes).unwrap();
+    synth_value.as_object_mut().unwrap().remove("hooks");
+    installed_value.as_object_mut().unwrap().remove("hooks");
     assert_eq!(
-        installed_bytes, synth_output_bytes,
-        "installed file bytes must be byte-identical to what the real synth run emitted"
+        installed_value, synth_value,
+        "every field other than \"hooks\" must still agree between synth's pristine output and \
+         install's rewritten copy"
+    );
+    let installed_full: serde_json::Value = serde_json::from_slice(&installed_bytes).unwrap();
+    assert!(
+        installed_full["hooks"]["agentSpawn"]
+            .as_array()
+            .is_some_and(|entries| entries.iter().any(|entry| {
+                entry
+                    .get("command")
+                    .and_then(|c| c.as_str())
+                    .is_some_and(|c| c.contains("__telemetry-hook agent-invocation"))
+            })),
+        "install must have wired the telemetry hook into hooks.agentSpawn, got: {}",
+        installed_full["hooks"]
     );
 
     // The specific location contract this test is meant to lock in --

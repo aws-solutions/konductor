@@ -35,12 +35,23 @@ use super::manifest::ManifestFile;
 
 mod claude_settings;
 mod mcp_server;
+mod telemetry_hook_pass;
 
 pub(super) use claude_settings::apply_claude_settings_grant_and_hooks;
 pub(crate) use claude_settings::CLAUDE_SETTINGS_RELATIVE_PATH;
 pub(super) use mcp_server::{McpServerPass, MCP_SERVER_BINARY_NAME, MCP_SERVER_NAME};
 
 use mcp_server::McpServerPassV3;
+use telemetry_hook_pass::TelemetryHookPass;
+
+pub(super) use telemetry_hook_pass::apply_v3_standalone_telemetry_hook;
+// `pub(crate)`, not `pub(super)`: `uninstall.rs` (a sibling of `install`,
+// not a descendant) also needs both names to clean up the untracked
+// lock file alongside the manifest-tracked hook document -- see
+// `V3_STANDALONE_HOOK_LOCK_FILE_NAME`'s own doc comment.
+pub(crate) use telemetry_hook_pass::{
+    V3_STANDALONE_HOOKS_RELATIVE_PATH, V3_STANDALONE_HOOK_LOCK_FILE_NAME,
+};
 
 /// Everything a pass may need at install time beyond the JSON value
 /// itself. Built once per agent file and passed by reference to every
@@ -170,14 +181,28 @@ pub(super) fn apply_all(
 /// The ordered pipeline: context resources, then skill resources, then
 /// MCP-server injection, which depends on the skill-resource pass
 /// having already run (see this module's own doc comment on why that
-/// can't be reordered). Adding a fourth pass is a new `struct FooPass`
-/// plus one `Box::new(FooPass)` line here -- no existing line changes.
-pub(super) fn standard_passes() -> Vec<Box<dyn ResourceRewritePass>> {
-    vec![
+/// can't be reordered), then -- unless `no_telemetry` -- the telemetry-
+/// hook injection last. Adding a pass is a new `struct FooPass` plus
+/// one line here -- no existing line changes.
+///
+/// `no_telemetry` gates `TelemetryHookPass` purely on this one flag,
+/// not on `McpServerPass`'s `matches` outcome the way the Claude/V3
+/// settings grant (`claude_settings.rs`) is gated on
+/// `any_mcp_server_injected`: that gate is specific to Claude's
+/// MCP-grant-triggered hook, while telemetry applies to every installed
+/// Kiro agent regardless of MCP usage. `TelemetryHookPass::matches` is
+/// itself unconditionally `true`, so omitting it from this `Vec` when
+/// `no_telemetry` is the entire gate.
+pub(super) fn standard_passes(no_telemetry: bool) -> Vec<Box<dyn ResourceRewritePass>> {
+    let mut passes: Vec<Box<dyn ResourceRewritePass>> = vec![
         Box::new(ContextResourcePass),
         Box::new(SkillResourcePass),
         Box::new(McpServerPass),
-    ]
+    ];
+    if !no_telemetry {
+        passes.push(Box::new(TelemetryHookPass));
+    }
+    passes
 }
 
 fn resources_contain_prefix(value: &serde_json::Value, prefix: &str) -> bool {
@@ -620,7 +645,7 @@ mod tests {
                 "skill://skills/constraints/SKILL.md"
             ]
         });
-        let passes = standard_passes();
+        let passes = standard_passes(true);
         apply_all(
             &passes,
             &mut value,
@@ -658,7 +683,7 @@ mod tests {
         let bin_files = [bin_file_entry()];
 
         let mut value = serde_json::json!({"resources": ["file://context/notes.md"]});
-        let passes = standard_passes();
+        let passes = standard_passes(true);
         apply_all(
             &passes,
             &mut value,
@@ -693,7 +718,7 @@ mod tests {
                 "skill://skills/constraints/SKILL.md"
             ]
         });
-        let passes = standard_passes();
+        let passes = standard_passes(true);
         let err = apply_all(
             &passes,
             &mut value,
@@ -706,15 +731,80 @@ mod tests {
     }
 
     #[test]
-    fn standard_passes_returns_three_passes_in_documented_order() {
+    fn standard_passes_returns_three_passes_when_no_telemetry() {
         // Not a type-level assertion (trait objects erase concrete
         // type), but pins the count so a future accidental duplicate-push
         // or drop is caught immediately.
-        assert_eq!(standard_passes().len(), 3);
+        assert_eq!(standard_passes(true).len(), 3);
+    }
+
+    #[test]
+    fn standard_passes_includes_telemetry_hook_pass_unless_no_telemetry() {
+        assert_eq!(
+            standard_passes(false).len(),
+            4,
+            "TelemetryHookPass must be appended when telemetry is enabled"
+        );
+        assert_eq!(
+            standard_passes(true).len(),
+            3,
+            "TelemetryHookPass must be omitted entirely when --no-telemetry is set"
+        );
     }
 
     #[test]
     fn standard_passes_v3_returns_three_passes_in_documented_order() {
         assert_eq!(standard_passes_v3().len(), 3);
+    }
+
+    #[test]
+    fn apply_all_with_telemetry_enabled_wires_agent_spawn_hook_for_v2() {
+        let dir = scratch_dir("apply-all-telemetry-v2");
+        let context_dir = dir.join("context");
+        let skills_dir = dir.join("skills");
+        let bin_dir = dir.join("bin");
+        let mut value = serde_json::json!({"name": "k-example"});
+        let passes = standard_passes(false);
+        apply_all(
+            &passes,
+            &mut value,
+            &ctx(&context_dir, &skills_dir, &bin_dir, &[]),
+            Path::new("/tmp/agent.json"),
+        )
+        .expect("pipeline with telemetry enabled must succeed for a bare agent");
+        assert!(
+            value["hooks"]["agentSpawn"].is_array(),
+            "the V2 pipeline must wire the telemetry hook under 'agentSpawn' when telemetry \
+             is enabled, got: {value:?}"
+        );
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    /// The V3 per-agent pipeline never touches `hooks` at all -- V3's
+    /// telemetry hook is a standalone `.kiro/hooks/*.json` document,
+    /// written once per install run by
+    /// `resource_rewrite::apply_v3_standalone_telemetry_hook`, never
+    /// through this per-agent pipeline.
+    #[test]
+    fn apply_all_v3_never_touches_hooks_key_on_the_agent_json() {
+        let dir = scratch_dir("apply-all-v3-no-hooks");
+        let context_dir = dir.join("context");
+        let skills_dir = dir.join("skills");
+        let bin_dir = dir.join("bin");
+        let mut value = serde_json::json!({"name": "k-example"});
+        let passes = standard_passes_v3();
+        apply_all(
+            &passes,
+            &mut value,
+            &ctx(&context_dir, &skills_dir, &bin_dir, &[]),
+            Path::new("/tmp/agent.json"),
+        )
+        .expect("v3 pipeline must succeed for a bare agent");
+        assert!(
+            value.get("hooks").is_none(),
+            "the V3 per-agent pipeline must never write a \"hooks\" key on the agent's own \
+             JSON -- telemetry for V3 is a standalone file now, got: {value:?}"
+        );
+        fs::remove_dir_all(&dir).ok();
     }
 }

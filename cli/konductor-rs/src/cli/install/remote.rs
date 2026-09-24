@@ -1004,7 +1004,12 @@ mod tests {
             installed.is_file(),
             "expected file installed via existing copy logic"
         );
-        assert_eq!(fs::read(&installed).unwrap(), b"{\"name\":\"k-example\"}\n");
+        // With telemetry enabled (`no_telemetry: false` above),
+        // `TelemetryHookPass` re-serializes the agent file, so check
+        // the field that survives rather than the raw bytes.
+        let installed_value: serde_json::Value =
+            serde_json::from_slice(&fs::read(&installed).unwrap()).unwrap();
+        assert_eq!(installed_value["name"], serde_json::json!("k-example"));
 
         let manifest = crate::cli::install::manifest::read_manifest(&target_dir)
             .unwrap()

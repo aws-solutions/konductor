@@ -669,7 +669,7 @@ impl InstallPhase for AgentInstallPhase {
         // so the two can never drift apart.
         let bin_files = phase_outputs.files_from(McpInstallPhase.name());
         let (mut files, any_mcp_server_injected) =
-            super::kiro_cli::install_agents(staged_root, target_dir, bin_files)?;
+            super::kiro_cli::install_agents(staged_root, target_dir, bin_files, no_telemetry)?;
 
         // Additive, Claude/V3-only: mirrors the V2 grant's own scope
         // exactly (only ever applies when V2 actually injected

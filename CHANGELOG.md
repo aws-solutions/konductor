@@ -6,6 +6,17 @@ This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Entries are consolidated per release,
 not per individual commit.
 
+## [1.0.1] - 2026-09-24
+
+### Fixed
+
+- Kiro CLI installs (v2 and v3/KAS) had no telemetry hook wiring at all, so `agent_invocation`
+  events never fired for either runtime — only Claude Code's install path had this. `konductor
+  install` now wires a `SessionStart` hook into every installed agent: inline under
+  `hooks.agentSpawn` for v2, and as a standalone `.kiro/hooks/*.json` file for v3. Gated on
+  `!no_telemetry`, removed on uninstall, and degrades to a non-fatal warning (instead of failing
+  the install) when the running binary's own path can't be resolved.
+
 ## [1.0.0] - 2026-09-23
 
 ### Added

@@ -2799,10 +2799,12 @@ mod tests {
 
         // The hand-edit is GONE -- the target tracking the requested
         // harness must have been genuinely updated with fresh content.
-        assert_eq!(
-            fs::read(&matching_agent_path).unwrap(),
-            b"{\"fresh\":true}\n"
-        );
+        // With telemetry enabled (`no_telemetry: false` above),
+        // `TelemetryHookPass` re-serializes the agent file, so check
+        // the field that survives rather than the raw bytes.
+        let matching_agent_value: serde_json::Value =
+            serde_json::from_slice(&fs::read(&matching_agent_path).unwrap()).unwrap();
+        assert_eq!(matching_agent_value["fresh"], serde_json::json!(true));
 
         let after_mismatched = manifest::read_manifest(&mismatched_target)
             .unwrap()
@@ -3299,8 +3301,12 @@ mod tests {
         assert_eq!(code, 0);
 
         // The hand-edit is GONE -- the tracked path now holds the fresh
-        // content, not the pre-update hand-edited bytes.
-        assert_eq!(fs::read(&agent_path).unwrap(), b"{\"fresh\":true}\n");
+        // content, not the pre-update hand-edited bytes. As above,
+        // TelemetryHookPass re-serializes the agent file, so check the
+        // field that survives rather than the raw bytes.
+        let fresh_bytes = fs::read(&agent_path).unwrap();
+        let agent_value: serde_json::Value = serde_json::from_slice(&fresh_bytes).unwrap();
+        assert_eq!(agent_value["fresh"], serde_json::json!(true));
 
         // No .bak-* sibling was ever created -- there is no backup
         // mechanism left in this design.
@@ -3311,14 +3317,15 @@ mod tests {
             .collect();
         assert!(backups.is_empty(), "no backup mechanism exists anymore");
 
-        // The manifest records the FRESH hash for this path.
+        // The manifest records the hash of whatever is actually on disk
+        // (the FRESH, rewritten content) for this path.
         let final_manifest = manifest::read_manifest(&target).unwrap().unwrap();
         let entry = final_manifest.strategies[0]
             .files
             .iter()
             .find(|f| f.path == ".kiro/agents/k-example.json")
             .unwrap();
-        assert_eq!(entry.sha256, Some(hash(b"{\"fresh\":true}\n")));
+        assert_eq!(entry.sha256, Some(hash(&fresh_bytes)));
 
         fs::remove_dir_all(&target).ok();
         fs::remove_dir_all(&repo_root).ok();
@@ -6702,8 +6709,11 @@ mod tests {
         assert_eq!(code, 0);
 
         // The hand-edit is gone -- fresh content landed regardless of
-        // the divergence count having been computed and reported.
-        assert_eq!(fs::read(&agent_path).unwrap(), b"{\"fresh\":true}\n");
+        // the divergence count having been computed and reported. As
+        // above, TelemetryHookPass re-serializes the agent file.
+        let agent_value: serde_json::Value =
+            serde_json::from_slice(&fs::read(&agent_path).unwrap()).unwrap();
+        assert_eq!(agent_value["fresh"], serde_json::json!(true));
 
         fs::remove_dir_all(&target).ok();
         fs::remove_dir_all(&repo_root).ok();

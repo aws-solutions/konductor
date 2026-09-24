@@ -4131,9 +4131,13 @@ mod tests {
         );
         assert_eq!(second_code, 0);
         let agent_path = target.join(".kiro/agents/k-example.json");
+        // TelemetryHookPass re-serializes the agent file, so check the
+        // parsed field rather than raw bytes.
+        let agent_value: serde_json::Value =
+            serde_json::from_slice(&fs::read(&agent_path).unwrap()).unwrap();
         assert_eq!(
-            fs::read(&agent_path).unwrap(),
-            b"{\"fresh\":true}\n",
+            agent_value["fresh"],
+            serde_json::json!(true),
             "--from must always overwrite, even at a matching recorded version"
         );
 

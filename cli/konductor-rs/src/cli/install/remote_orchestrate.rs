@@ -569,7 +569,10 @@ mod tests {
 
         let installed = target_dir.join(".kiro/agents/k-example.json");
         assert!(installed.is_file());
-        assert_eq!(fs::read(&installed).unwrap(), b"{\"name\":\"k-example\"}\n");
+        // As above, TelemetryHookPass re-serializes the agent file.
+        let installed_value: serde_json::Value =
+            serde_json::from_slice(&fs::read(&installed).unwrap()).unwrap();
+        assert_eq!(installed_value["name"], serde_json::json!("k-example"));
         let manifest = manifest::read_manifest(&target_dir)
             .unwrap()
             .expect("manifest must exist after successful install");
@@ -659,10 +662,10 @@ mod tests {
 
         let installed = target_dir.join(".kiro/agents/seam-example.json");
         assert!(installed.is_file());
-        assert_eq!(
-            fs::read(&installed).unwrap(),
-            b"{\"name\":\"seam-example\"}\n"
-        );
+        // As above, TelemetryHookPass re-serializes the agent file.
+        let installed_value: serde_json::Value =
+            serde_json::from_slice(&fs::read(&installed).unwrap()).unwrap();
+        assert_eq!(installed_value["name"], serde_json::json!("seam-example"));
         let manifest = manifest::read_manifest(&target_dir)
             .unwrap()
             .expect("manifest must exist after a successful install via the fetcher seam");
@@ -731,9 +734,12 @@ mod tests {
 
         let installed = target_dir.join(".kiro/agents/seam-version-example.json");
         assert!(installed.is_file());
+        // As above, TelemetryHookPass re-serializes the agent file.
+        let installed_value: serde_json::Value =
+            serde_json::from_slice(&fs::read(&installed).unwrap()).unwrap();
         assert_eq!(
-            fs::read(&installed).unwrap(),
-            b"{\"name\":\"seam-version-example\"}\n"
+            installed_value["name"],
+            serde_json::json!("seam-version-example")
         );
 
         fs::remove_dir_all(&dist_root).ok();
@@ -796,9 +802,12 @@ mod tests {
 
         let installed = target_dir.join(".kiro/agents/branch-seam-example.json");
         assert!(installed.is_file());
+        // As above, TelemetryHookPass re-serializes the agent file.
+        let installed_value: serde_json::Value =
+            serde_json::from_slice(&fs::read(&installed).unwrap()).unwrap();
         assert_eq!(
-            fs::read(&installed).unwrap(),
-            b"{\"name\":\"branch-seam-example\"}\n"
+            installed_value["name"],
+            serde_json::json!("branch-seam-example")
         );
         let manifest = manifest::read_manifest(&target_dir)
             .unwrap()
