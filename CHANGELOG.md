@@ -6,6 +6,26 @@ This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Entries are consolidated per release,
 not per individual commit.
 
+## [1.0.2] - 2026-09-28
+
+### Security
+
+- Upgraded the `rmcp` dependency of the `skill-lookup` MCP server (`mcp/servers/skill-lookup`)
+  from 0.1.5 to 2.1.0, closing four Dependabot alerts against `rmcp`'s Streamable HTTP
+  transport: [GHSA-9g45-5xwm-f3wc](https://github.com/advisories/GHSA-9g45-5xwm-f3wc) (missing
+  OAuth resource validation), [GHSA-9pj6-vhgr-3mwh](https://github.com/advisories/GHSA-9pj6-vhgr-3mwh)
+  (session-table denial-of-service leak), [GHSA-33f5-2c5q-wgwj](https://github.com/advisories/GHSA-33f5-2c5q-wgwj)
+  (cross-origin redirect header leak), and [GHSA-89vp-x53w-74fx](https://github.com/advisories/GHSA-89vp-x53w-74fx)
+  (DNS rebinding via unvalidated Streamable HTTP requests). `skill-lookup-mcp` only uses `rmcp`'s
+  stdio transport, so none of these four issues were reachable through this server's own
+  deployment, but the fixed version is required to clear the Dependabot alerts regardless.
+
+### Testing
+
+- Added shakedown test coverage for the `skill-lookup` MCP server's handshake, `find_skills`,
+  `get_skill`, and `reload_skills` handlers, plus full-tool-surface coverage, exercising the
+  upgraded `rmcp` 2.1.0 integration.
+
 ## [1.0.0] - 2026-09-23
 
 ### Added
