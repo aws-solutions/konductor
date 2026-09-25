@@ -37,7 +37,7 @@ use std::time::Duration;
 
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, ChildStdin, Command};
-use tokio::time::timeout;
+use tokio::time::{sleep, timeout};
 
 /// Bounded wait for a response that is EXPECTED to arrive -- a hang here
 /// is itself the bug under test, so this must be long enough not to
@@ -183,6 +183,24 @@ async fn complete_handshake<R: tokio::io::AsyncBufRead + Unpin>(
     write_message(stdin, &initialized_notification()).await;
 }
 
+/// Polls `child.try_wait()` up to `EXIT_POLL_ATTEMPTS` times, 50ms apart,
+/// returning the exit status as soon as one poll observes it. A process
+/// that has already torn down its stdin/stdout pipes may not yet be
+/// reaped by a single non-blocking poll; this loop gives it up to
+/// `EXIT_POLL_ATTEMPTS * 50ms` to become reapable before the caller
+/// treats it as still running.
+async fn poll_for_exit(child: &mut Child) -> Option<std::process::ExitStatus> {
+    const EXIT_POLL_ATTEMPTS: u32 = 20;
+    const EXIT_POLL_INTERVAL: Duration = Duration::from_millis(50);
+    for _ in 0..EXIT_POLL_ATTEMPTS {
+        if let Some(status) = child.try_wait().expect("try_wait failed") {
+            return Some(status);
+        }
+        sleep(EXIT_POLL_INTERVAL).await;
+    }
+    None
+}
+
 /// Drains and returns child stderr, bounded by `IO_TIMEOUT`, for
 /// inclusion in failure/diagnostic messages. Consumes `child`'s stderr
 /// handle, so call this at most once per child and only when done
@@ -237,22 +255,14 @@ async fn tool_call_before_initialize_is_rejected_or_handled_gracefully() {
                  checking the server is still alive (pending, not hung/crashed) by \
                  completing the handshake and confirming it responds to a fresh request."
             );
-            // "No response yet" needs a liveness check to distinguish
-            // "still processing, will answer eventually" from "already
-            // dead". Observed in practice: rmcp's own `serve()` loop
-            // enforces that the very next message after a successful
-            // `initialize` response must be `notifications/initialized`
-            // -- anything else (including a `tools/call`, as sent here)
-            // is treated as a fatal handshake-sequencing violation. The
-            // server never emits a JSON-RPC response frame for the
-            // offending request; it logs to stderr and the process
-            // exits. This matches `initialize_handshake.rs`'s own doc
-            // comment describing this same `serve()` enforcement for
-            // the "disconnect before sending `initialized`" case -- this
-            // is that enforcement firing on "sent something else instead
-            // of `initialized`", not a new regression introduced by the
-            // `AtomicBool` swap added for the rmcp 2.1.0 upgrade.
-            if let Some(status) = child.try_wait().expect("try_wait failed") {
+            // rmcp's `serve()` loop requires the message immediately after a
+            // successful `initialize` response to be `notifications/initialized`;
+            // a `tools/call` sent instead is a fatal handshake-sequencing
+            // violation. The server never emits a JSON-RPC response frame for
+            // the offending request -- it logs to stderr and exits. Exiting
+            // tears down stdin/stdout before the process becomes reapable via
+            // `try_wait()`, so this polls briefly rather than checking once.
+            if let Some(status) = poll_for_exit(&mut child).await {
                 let stderr_buf = drain_stderr(&mut child).await;
                 eprintln!(
                     "[pre-initialize tool call] FINDING: a `tools/call` sent before \
