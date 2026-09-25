@@ -6,7 +6,7 @@ This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Entries are consolidated per release,
 not per individual commit.
 
-## [Unreleased]
+## [1.0.2] - 2026-09-28
 
 ### Security
 
@@ -19,6 +19,12 @@ not per individual commit.
   (DNS rebinding via unvalidated Streamable HTTP requests). `skill-lookup-mcp` only uses `rmcp`'s
   stdio transport, so none of these four issues were reachable through this server's own
   deployment, but the fixed version is required to clear the Dependabot alerts regardless.
+
+### Testing
+
+- Added shakedown test coverage for the `skill-lookup` MCP server's handshake, `find_skills`,
+  `get_skill`, and `reload_skills` handlers, plus full-tool-surface coverage, exercising the
+  upgraded `rmcp` 2.1.0 integration.
 
 ## [1.0.0] - 2026-09-23
 
