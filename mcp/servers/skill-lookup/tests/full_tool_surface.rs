@@ -588,22 +588,14 @@ async fn prompts_get_unknown_name_returns_an_error() {
 
 #[tokio::test]
 async fn tools_list_with_a_real_cursor_still_returns_every_tool_and_no_next_cursor() {
-    // FINDING (dependabot rmcp 0.1.5->2.1.0 migration audit): `list_tools`
-    // takes `_request: Option<PaginatedRequestParams>` — the leading
-    // underscore is not decorative, the parameter is never read — and
-    // unconditionally answers via `ListToolsResult::with_all_items(...)`.
-    // Every prior test in this file only ever sent `tools/list` with no
-    // `params` at all (equivalent to `None`), so the `Some(cursor)` arm
-    // was never actually exercised on the wire.
-    //
-    // Verified behavior (not assumed): a non-empty `cursor` is accepted
-    // by the schema but has zero effect — the full three-tool set comes
-    // back regardless, and `result.nextCursor` is absent (rmcp's
-    // `with_all_items` hardcodes `next_cursor: None`, and `Option::is_none`
-    // skips serializing it). This is a genuine product gap: cursor-based
-    // pagination is wire-accepted but not implemented, not merely
-    // untested. Flagged per the ESCALATION clause rather than silently
-    // encoded as "correct" pass-through behavior.
+    // `list_tools` takes `_request: Option<PaginatedRequestParams>` and
+    // unconditionally answers via `ListToolsResult::with_all_items(...)`
+    // — the parameter is never read. A non-empty `cursor` is accepted by
+    // the schema but has zero effect: the full three-tool set comes back
+    // regardless, and `result.nextCursor` is absent (`with_all_items`
+    // hardcodes `next_cursor: None`, which `Option::is_none` then skips
+    // serializing). Cursor-based pagination is wire-accepted but not
+    // implemented.
     with_probe_server("tools-list-cursor", |mut stdin, mut reader| async move {
         complete_handshake(&mut stdin, &mut reader).await;
 
@@ -648,9 +640,8 @@ async fn tools_list_with_a_real_cursor_still_returns_every_tool_and_no_next_curs
             "expected all three tools regardless of the supplied cursor, got {names:?}"
         );
 
-        // Verified, not assumed: pagination is not implemented, so no
-        // continuation cursor is ever produced — this is the concrete,
-        // observable signal of that gap, not merely "cursor was ignored".
+        // Pagination is not implemented, so no continuation cursor is
+        // ever produced.
         assert!(
             result.get("nextCursor").is_none(),
             "expected no nextCursor since list_tools always returns every item \
@@ -664,18 +655,12 @@ async fn tools_list_with_a_real_cursor_still_returns_every_tool_and_no_next_curs
 
 #[tokio::test]
 async fn list_tools_and_list_prompts_omit_the_meta_field_entirely() {
-    // FINDING (dependabot rmcp 0.1.5->2.1.0 migration audit): no existing
-    // test asserted anything about `_meta` on `ListToolsResult`/
-    // `ListPromptsResult` — its presence was, at best, implicit.
-    //
-    // Verified behavior (not assumed): `rmcp` 2.1.0's `with_all_items`
-    // constructor (used by both `list_tools` and `list_prompts` in
-    // `handlers.rs`) hardcodes `meta: None`, and the field's own
+    // `rmcp` 2.1.0's `with_all_items` constructor (used by both
+    // `list_tools` and `list_prompts` in `handlers.rs`) hardcodes
+    // `meta: None`, and the field's own
     // `#[serde(rename = "_meta", skip_serializing_if = "Option::is_none")]`
     // attribute means a `None` meta is not serialized as `"_meta": null`
-    // — the `_meta` key is omitted from the JSON response entirely. The
-    // correct assertion is therefore that `_meta` is ABSENT from the
-    // wire response, not that it is present with some particular shape.
+    // — the `_meta` key is omitted from the JSON response entirely.
     with_probe_sop_server("list-meta-absent", |mut stdin, mut reader| async move {
         complete_handshake(&mut stdin, &mut reader).await;
 

@@ -23,13 +23,11 @@ skill-lookup-core = { path = "../../lib/skill-lookup-core" }
 # transport helper (rmcp::transport::stdio) this binary uses to answer the
 # MCP `initialize` handshake.
 #
-# Pinned at 2.1.0 (not just >=2.0.0) because that's the minimum version
-# carrying all four fixes closing GHSA-9g45-5xwm-f3wc, GHSA-9pj6-vhgr-3mwh,
-# GHSA-33f5-2c5q-wgwj, and GHSA-89vp-x53w-74fx: 2.0.0 fixes the OAuth
-# resource-spoofing and metadata-SSRF issues plus the streamable-HTTP
-# session leak, and 2.1.0 adds the redirect-header-leak fix and rejects
-# unparsable messages instead of responding to them. No 1.x release
-# carries these fixes.
+# Pinned at 2.1.0, not just >=2.0.0: that's the minimum version fixing
+# GHSA-9g45-5xwm-f3wc, GHSA-9pj6-vhgr-3mwh, GHSA-33f5-2c5q-wgwj, and
+# GHSA-89vp-x53w-74fx. 2.0.0 covers the first three; 2.1.0 adds the
+# redirect-header-leak fix and rejects unparsable messages instead of
+# responding to them. No 1.x release carries these fixes.
 rmcp = { version = "=2.1.0", features = ["server", "transport-io"] }
 tokio = { version = "=1.44.2", features = ["rt-multi-thread", "macros", "io-std", "io-util"] }
 schemars = "=0.8.22"

@@ -318,32 +318,15 @@ fn reload_skills_tool() -> Tool {
 /// `ServerHandler` implementation exposing the three skill-lookup tools
 /// on top of the `SkillIndex` this binary builds at startup.
 ///
-/// This type's `initialize` method rejects every call after the first.
-/// In `rmcp` 0.1.5, the crate's own handshake helper answered the
-/// legitimate first `initialize` directly from `get_info()`, without
-/// ever calling a `ServerHandler`'s own `initialize` override — so an
-/// unconditional-reject override was safe there; any call reaching it
-/// was necessarily a second, protocol-violating `initialize`.
-///
-/// `rmcp` 2.1.0 changed this (re-confirmed against
-/// `rmcp-2.1.0/src/service/server.rs`'s `serve_server_with_ct_inner`,
-/// which now dispatches the first `initialize` through the exact same
-/// `Service::handle_request` -> `ServerHandler::initialize` path as
-/// every later request — see also `rmcp-2.1.0/src/handler/server.rs`'s
-/// default `initialize` impl, which calls `get_info()` itself). This
-/// method is therefore reachable on a session's legitimate first call,
-/// and an unconditional reject would break every real handshake. The
-/// `initialized` flag below is this type's own replacement session-state
-/// signal: `false` on the first call (accept, answer from `get_info()`,
-/// flip the flag), `true` on every call after (reject). `AtomicBool`
+/// This type's `initialize` method rejects every call after the first,
+/// using the `initialized` flag below as session state. `AtomicBool`
 /// rather than a plain `bool` because `ServerHandler`/`Service<RoleServer>`
-/// dispatch through `&self`, not `&mut self` -- the handler instance is
+/// dispatch through `&self`, not `&mut self` — the handler instance is
 /// shared for the session's lifetime, so this needs `Sync` interior
 /// mutability, not exclusive access. Wrapped in `Arc` (like
-/// `tool_call_counters` below) so a `Clone` of this type -- if `rmcp`'s
-/// internals ever clone the handler mid-session -- still shares the
-/// same session-state signal, rather than each clone silently starting
-/// its own independent "first call" tracking.
+/// `tool_call_counters` below) so a `Clone` of this type shares the same
+/// session-state signal rather than each clone tracking its own "first
+/// call" independently.
 #[derive(Clone, Debug)]
 pub(crate) struct SkillLookupServer {
     pub(crate) index: SkillIndex,
@@ -359,12 +342,10 @@ pub(crate) struct SkillLookupServer {
     pub(crate) tool_call_counters: Option<skill_lookup_core::telemetry::ToolCallCounters>,
     /// Session-state signal for `initialize`: `false` until the first
     /// `initialize` call succeeds, `true` after. See the struct-level
-    /// doc comment above for why this replaced the unconditional-reject
-    /// override the `rmcp` 0.1.5 version of this type used. Every
+    /// doc comment above for why this is an `Arc<AtomicBool>`. Every
     /// construction site sets this to a fresh
-    /// `Arc::new(AtomicBool::new(false))` -- a session always starts
-    /// uninitialized, so there is no other value a fresh server should
-    /// ever be built with.
+    /// `Arc::new(AtomicBool::new(false))` — a session always starts
+    /// uninitialized.
     pub(crate) initialized: std::sync::Arc<std::sync::atomic::AtomicBool>,
 }
 
@@ -853,32 +834,16 @@ impl ServerHandler for SkillLookupServer {
         request: InitializeRequestParams,
         _context: RequestContext<RoleServer>,
     ) -> Result<InitializeResult, McpError> {
-        // DEVIATION FROM THE MIGRATION PLAN, flagged explicitly per the
-        // ESCALATION clause: `rmcp` 2.1.0 changed how the handshake
-        // dispatches the *first* `initialize`, and the plan's own risk
-        // assessment (correctly) named this exact method as the one
-        // place a real behavioral regression could hide.
-        //
-        // Verified against `rmcp-2.1.0/src/service/server.rs`'s
-        // `serve_server_with_ct_inner`: it now calls
-        // `service.handle_request(request.clone(), context)` for the
-        // *first* `initialize` too, which dispatches through the same
+        // `rmcp` 2.1.0 dispatches the first `initialize` through the same
         // `Service::handle_request` -> `ServerHandler::initialize` path
-        // (`rmcp-2.1.0/src/handler/server.rs`) as every later request —
-        // there is no longer a special "answer directly from
-        // `get_info()`, never call the handler's own override" path the
-        // 0.1.5-era version of this method (and this crate's doc
-        // comments) relied on. An unconditional-reject override, as
-        // this method used to be, would therefore reject every
-        // legitimate first handshake too.
-        //
-        // Fix: track "has this session already completed one
-        // `initialize`" explicitly, in `self.initialized` (an
-        // `Arc<AtomicBool>` — see the struct-level doc comment for why
-        // an atomic, not a plain `bool`). `swap(true, ...)` both reads
+        // (`rmcp-2.1.0/src/service/server.rs`'s `serve_server_with_ct_inner`)
+        // as every later request, so this method is reachable on a
+        // session's legitimate first call and can't unconditionally
+        // reject. `self.initialized` tracks whether this session has
+        // already completed one `initialize`. `swap(true, ...)` reads
         // the prior value and sets it to `true` in one atomic step, so
-        // two `initialize` calls racing on the same session can't both
-        // observe `false` and both proceed as though each were first.
+        // two calls racing on the same session can't both observe
+        // `false` and both proceed as though each were first.
         let already_initialized = self
             .initialized
             .swap(true, std::sync::atomic::Ordering::SeqCst);
