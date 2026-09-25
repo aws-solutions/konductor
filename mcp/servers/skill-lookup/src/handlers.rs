@@ -13,13 +13,13 @@
 // *what was scanned* — one file, one concern, matching the split
 // `main.rs`'s module doc comment describes.
 use rmcp::model::{
-    CallToolRequestParam, CallToolResult, Content, ErrorData as McpErrorData,
-    GetPromptRequestParam, GetPromptResult, Implementation, InitializeRequestParam,
-    InitializeResult, ListPromptsResult, ListToolsResult, PaginatedRequestParam, Prompt,
-    PromptMessage, PromptMessageRole, ProtocolVersion, ServerCapabilities, ServerInfo, Tool,
+    CallToolRequestParams, CallToolResult, ContentBlock, ErrorData as McpErrorData,
+    GetPromptRequestParams, GetPromptResult, Implementation, InitializeRequestParams,
+    InitializeResult, ListPromptsResult, ListToolsResult, PaginatedRequestParams, Prompt,
+    PromptMessage, Role, ServerCapabilities, ServerInfo, Tool,
 };
 use rmcp::service::RequestContext;
-use rmcp::{Error as McpError, RoleServer, ServerHandler};
+use rmcp::{ErrorData as McpError, RoleServer, ServerHandler};
 use serde::Serialize;
 use serde_json::json;
 use skill_lookup_core::{
@@ -237,7 +237,7 @@ fn sop_too_large_error(name: &str, actual_bytes: u64, stage: &str) -> McpError {
 /// path to a serialization error (that's reserved for types with
 /// fallible `Serialize` impls, none of which appear here).
 fn json_result<T: Serialize>(value: &T) -> CallToolResult {
-    let content = Content::json(value).expect("response DTOs cannot fail to serialize");
+    let content = ContentBlock::json(value).expect("response DTOs cannot fail to serialize");
     CallToolResult::success(vec![content])
 }
 
@@ -318,13 +318,32 @@ fn reload_skills_tool() -> Tool {
 /// `ServerHandler` implementation exposing the three skill-lookup tools
 /// on top of the `SkillIndex` this binary builds at startup.
 ///
-/// This type's `initialize` method always rejects. `rmcp` 0.1.5 answers
-/// the legitimate first `initialize` handshake itself, from
-/// `get_info()`, before ever calling a `ServerHandler`'s own
-/// `initialize` (confirmed by reading `rmcp` 0.1.5's source). So any
-/// call that reaches this method is necessarily a second,
-/// protocol-violating `initialize` on an already-live session — no
-/// extra state is needed to detect that.
+/// This type's `initialize` method rejects every call after the first.
+/// In `rmcp` 0.1.5, the crate's own handshake helper answered the
+/// legitimate first `initialize` directly from `get_info()`, without
+/// ever calling a `ServerHandler`'s own `initialize` override — so an
+/// unconditional-reject override was safe there; any call reaching it
+/// was necessarily a second, protocol-violating `initialize`.
+///
+/// `rmcp` 2.1.0 changed this (re-confirmed against
+/// `rmcp-2.1.0/src/service/server.rs`'s `serve_server_with_ct_inner`,
+/// which now dispatches the first `initialize` through the exact same
+/// `Service::handle_request` -> `ServerHandler::initialize` path as
+/// every later request — see also `rmcp-2.1.0/src/handler/server.rs`'s
+/// default `initialize` impl, which calls `get_info()` itself). This
+/// method is therefore reachable on a session's legitimate first call,
+/// and an unconditional reject would break every real handshake. The
+/// `initialized` flag below is this type's own replacement session-state
+/// signal: `false` on the first call (accept, answer from `get_info()`,
+/// flip the flag), `true` on every call after (reject). `AtomicBool`
+/// rather than a plain `bool` because `ServerHandler`/`Service<RoleServer>`
+/// dispatch through `&self`, not `&mut self` -- the handler instance is
+/// shared for the session's lifetime, so this needs `Sync` interior
+/// mutability, not exclusive access. Wrapped in `Arc` (like
+/// `tool_call_counters` below) so a `Clone` of this type -- if `rmcp`'s
+/// internals ever clone the handler mid-session -- still shares the
+/// same session-state signal, rather than each clone silently starting
+/// its own independent "first call" tracking.
 #[derive(Clone, Debug)]
 pub(crate) struct SkillLookupServer {
     pub(crate) index: SkillIndex,
@@ -338,6 +357,15 @@ pub(crate) struct SkillLookupServer {
     /// `--telemetry off` was passed -- structural opt-out: the
     /// increment call is simply skipped, never invoked-then-discarded.
     pub(crate) tool_call_counters: Option<skill_lookup_core::telemetry::ToolCallCounters>,
+    /// Session-state signal for `initialize`: `false` until the first
+    /// `initialize` call succeeds, `true` after. See the struct-level
+    /// doc comment above for why this replaced the unconditional-reject
+    /// override the `rmcp` 0.1.5 version of this type used. Every
+    /// construction site sets this to a fresh
+    /// `Arc::new(AtomicBool::new(false))` -- a session always starts
+    /// uninitialized, so there is no other value a fresh server should
+    /// ever be built with.
+    pub(crate) initialized: std::sync::Arc<std::sync::atomic::AtomicBool>,
 }
 
 impl SkillLookupServer {
@@ -518,10 +546,7 @@ impl SkillLookupServer {
             .iter()
             .map(|s| Prompt::new(s.name.clone(), None::<String>, None))
             .collect();
-        ListPromptsResult {
-            next_cursor: None,
-            prompts,
-        }
+        ListPromptsResult::with_all_items(prompts)
     }
 
     /// Handles `prompts/get`: exact-name, case-insensitive lookup, then a
@@ -593,10 +618,10 @@ impl SkillLookupServer {
             ));
         }
 
-        Ok(GetPromptResult {
-            description: None,
-            messages: vec![PromptMessage::new_text(PromptMessageRole::User, content)],
-        })
+        Ok(GetPromptResult::new(vec![PromptMessage::new_text(
+            Role::User,
+            content,
+        )]))
     }
 }
 
@@ -725,39 +750,38 @@ fn mcp_error_code(err: &McpError) -> &'static str {
 
 impl ServerHandler for SkillLookupServer {
     fn get_info(&self) -> ServerInfo {
-        ServerInfo {
-            protocol_version: ProtocolVersion::default(),
-            capabilities: ServerCapabilities::builder()
+        ServerInfo::new(
+            ServerCapabilities::builder()
                 .enable_tools()
                 .enable_prompts()
                 .build(),
-            server_info: Implementation {
-                name: "skill-lookup-mcp".to_string(),
-                version: env!("CARGO_PKG_VERSION").to_string(),
-            },
-            instructions: Some(
-                "Search the skill catalog with find_skills, fetch a skill's full body with \
-                 get_skill, and force a re-scan with reload_skills. List available agent SOPs \
-                 with the prompts/list method and fetch one with prompts/get."
-                    .to_string(),
-            ),
-        }
+        )
+        .with_server_info(Implementation::new(
+            "skill-lookup-mcp",
+            env!("CARGO_PKG_VERSION"),
+        ))
+        .with_instructions(
+            "Search the skill catalog with find_skills, fetch a skill's full body with \
+             get_skill, and force a re-scan with reload_skills. List available agent SOPs \
+             with the prompts/list method and fetch one with prompts/get.",
+        )
     }
 
     async fn list_tools(
         &self,
-        _request: PaginatedRequestParam,
+        _request: Option<PaginatedRequestParams>,
         _context: RequestContext<RoleServer>,
     ) -> Result<ListToolsResult, McpError> {
-        Ok(ListToolsResult {
-            next_cursor: None,
-            tools: vec![find_skills_tool(), get_skill_tool(), reload_skills_tool()],
-        })
+        Ok(ListToolsResult::with_all_items(vec![
+            find_skills_tool(),
+            get_skill_tool(),
+            reload_skills_tool(),
+        ]))
     }
 
     async fn call_tool(
         &self,
-        request: CallToolRequestParam,
+        request: CallToolRequestParams,
         _context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, McpError> {
         let empty = serde_json::Map::new();
@@ -797,7 +821,7 @@ impl ServerHandler for SkillLookupServer {
 
     async fn list_prompts(
         &self,
-        _request: PaginatedRequestParam,
+        _request: Option<PaginatedRequestParams>,
         _context: RequestContext<RoleServer>,
     ) -> Result<ListPromptsResult, McpError> {
         Ok(self.list_prompt_records())
@@ -805,7 +829,7 @@ impl ServerHandler for SkillLookupServer {
 
     async fn get_prompt(
         &self,
-        request: GetPromptRequestParam,
+        request: GetPromptRequestParams,
         _context: RequestContext<RoleServer>,
     ) -> Result<GetPromptResult, McpError> {
         let name = request.name.as_str();
@@ -826,25 +850,65 @@ impl ServerHandler for SkillLookupServer {
 
     async fn initialize(
         &self,
-        _request: InitializeRequestParam,
+        request: InitializeRequestParams,
         _context: RequestContext<RoleServer>,
     ) -> Result<InitializeResult, McpError> {
-        // `rmcp` 0.1.5's `serve_server_with_ct` (behind `ServiceExt::serve`,
-        // which `main` calls) answers the first `initialize` handshake
-        // itself, straight from `ServerHandler::get_info()`, before this
-        // handler is even constructed as part of a running session —
-        // confirmed by reading `rmcp-0.1.5/src/service/server.rs`. This
-        // method only becomes reachable once that handshake has already
-        // completed and normal request dispatch has begun (see
-        // `rmcp-0.1.5/src/handler/server.rs`'s `handle_request`, which
-        // routes a mid-session `ClientRequest::InitializeRequest` here).
-        // So every call that reaches this body is a second,
-        // protocol-violating `initialize` — there's no legitimate case
-        // to accept.
-        Err(McpError::invalid_request(
-            "initialize has already been completed for this session; MCP `initialize` is a one-time handshake",
-            None,
-        ))
+        // DEVIATION FROM THE MIGRATION PLAN, flagged explicitly per the
+        // ESCALATION clause: `rmcp` 2.1.0 changed how the handshake
+        // dispatches the *first* `initialize`, and the plan's own risk
+        // assessment (correctly) named this exact method as the one
+        // place a real behavioral regression could hide.
+        //
+        // Verified against `rmcp-2.1.0/src/service/server.rs`'s
+        // `serve_server_with_ct_inner`: it now calls
+        // `service.handle_request(request.clone(), context)` for the
+        // *first* `initialize` too, which dispatches through the same
+        // `Service::handle_request` -> `ServerHandler::initialize` path
+        // (`rmcp-2.1.0/src/handler/server.rs`) as every later request —
+        // there is no longer a special "answer directly from
+        // `get_info()`, never call the handler's own override" path the
+        // 0.1.5-era version of this method (and this crate's doc
+        // comments) relied on. An unconditional-reject override, as
+        // this method used to be, would therefore reject every
+        // legitimate first handshake too.
+        //
+        // Fix: track "has this session already completed one
+        // `initialize`" explicitly, in `self.initialized` (an
+        // `Arc<AtomicBool>` — see the struct-level doc comment for why
+        // an atomic, not a plain `bool`). `swap(true, ...)` both reads
+        // the prior value and sets it to `true` in one atomic step, so
+        // two `initialize` calls racing on the same session can't both
+        // observe `false` and both proceed as though each were first.
+        let already_initialized = self
+            .initialized
+            .swap(true, std::sync::atomic::Ordering::SeqCst);
+        if already_initialized {
+            return Err(McpError::invalid_request(
+                "initialize has already been completed for this session; MCP `initialize` is a one-time handshake",
+                None,
+            ));
+        }
+
+        // Mirrors `rmcp`'s own default `ServerHandler::initialize` impl
+        // (`rmcp-2.1.0/src/handler/server.rs`): answer from `get_info()`,
+        // then negotiate the protocol version against what the client
+        // requested. This handler still needs its own override (rather
+        // than relying on the default impl) purely to add the
+        // second-call rejection above -- the accept path below is
+        // otherwise identical to what the default impl already does.
+        //
+        // `rmcp`'s own negotiation helper
+        // (`service::server::negotiate_protocol_version`) is
+        // `pub(crate)` and not reachable from here, so this replicates
+        // its exact logic against the public `ProtocolVersion::KNOWN_VERSIONS`
+        // list instead: echo the client's requested version if this SDK
+        // knows it, otherwise fall back to this server's own advertised
+        // version from `get_info()`.
+        let mut info = self.get_info();
+        if rmcp::model::ProtocolVersion::KNOWN_VERSIONS.contains(&request.protocol_version) {
+            info.protocol_version = request.protocol_version;
+        }
+        Ok(info)
     }
 }
 
@@ -898,6 +962,7 @@ mod tool_handlers {
             index,
             sops: SopIndex::default(),
             tool_call_counters: None,
+            initialized: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
         }
     }
 
@@ -913,6 +978,7 @@ mod tool_handlers {
             index,
             sops,
             tool_call_counters: None,
+            initialized: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
         }
     }
 
@@ -927,8 +993,8 @@ mod tool_handlers {
     /// rather than a substring check on the raw text.
     fn json_content(result: &CallToolResult) -> serde_json::Value {
         assert_eq!(result.content.len(), 1, "expected exactly one content item");
-        let rmcp::model::RawContent::Text(text) = &result.content[0].raw else {
-            panic!("expected text content, got: {:?}", result.content[0].raw);
+        let ContentBlock::Text(text) = &result.content[0] else {
+            panic!("expected text content, got: {:?}", result.content[0]);
         };
         serde_json::from_str(&text.text).expect("content must be valid JSON")
     }
@@ -1202,6 +1268,7 @@ mod tool_handlers {
             index,
             sops: SopIndex::default(),
             tool_call_counters: None,
+            initialized: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
         }
         .find_skills(&serde_json::Map::new())
         .unwrap();
@@ -1696,10 +1763,10 @@ mod tool_handlers {
             .unwrap();
         assert!(result.description.is_none());
         assert_eq!(result.messages.len(), 1);
-        assert_eq!(result.messages[0].role, PromptMessageRole::User);
+        assert_eq!(result.messages[0].role, Role::User);
         match &result.messages[0].content {
-            rmcp::model::PromptMessageContent::Text { text } => {
-                assert_eq!(text, "The reload SOP body.\n");
+            ContentBlock::Text(text_content) => {
+                assert_eq!(text_content.text, "The reload SOP body.\n");
             }
             other => panic!("expected text content, got: {other:?}"),
         }
@@ -1875,6 +1942,7 @@ mod telemetry_counters {
                 index,
                 sops: SopIndex::default(),
                 tool_call_counters: Some(counters.clone()),
+                initialized: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
             },
             counters,
         )
@@ -2166,6 +2234,7 @@ mod telemetry_counters {
             index,
             sops: SopIndex::default(),
             tool_call_counters: None,
+            initialized: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
         };
         assert!(server.tool_call_counters.is_none());
         std::fs::remove_dir_all(&dir).ok();

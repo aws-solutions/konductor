@@ -145,6 +145,7 @@ async fn main() -> std::process::ExitCode {
         index,
         sops,
         tool_call_counters,
+        initialized: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
     };
     let service = match server.serve(rmcp::transport::stdio()).await {
         Ok(service) => service,
