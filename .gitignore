@@ -36,3 +36,11 @@ agents/claude/
 # mcpRegistry entry and k-light-ui-testing.sop.md Step 6). Persisted
 # screenshots are run-scratch, not package deliverables.
 browser-output/
+
+# JetBrains IDE project settings; per-developer, not package content.
+.idea/
+
+# Review ledgers written by the local review loop. Session-scratch like
+# .konductor/handoff/: they quote internal context and must not reach
+# this public package.
+.reviews/
