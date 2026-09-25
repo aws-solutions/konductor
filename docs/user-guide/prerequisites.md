@@ -15,7 +15,7 @@ with no servers, services, or cloud resources.
 | --- | --- | --- |
 | **One AI runtime** — Kiro CLI *or* Claude Code | Konductor supplies no model of its own; it configures a runtime you already have | `kiro-cli --version` or `claude --version` |
 | **Git** | Agents run git operations on your behalf during review and cleanup workflows | `git --version` |
-| **A Rust toolchain** | No release has been published yet, so you build the CLI from a clone — [rustup](https://rustup.rs) is the usual way to get one | `cargo --version` |
+| **A Rust toolchain** — only if installing from source | Not needed for the quick install, which fetches a published binary release — only for [installing from source](quick-start.md#installing-from-source); [rustup](https://rustup.rs) is the usual way to get one | `cargo --version` |
 | **A terminal** | Everything here is command-line | — |
 
 That is all that is required. Pick your runtime:

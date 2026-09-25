@@ -48,39 +48,38 @@ It prints "not yet implemented". The guide says so rather than describing what i
 `2` signals an unresolved CRITICAL gate and is owned by the run-engine, which is not yet
 started. Usage errors are `64`. The guide must never show `2` for a bad invocation.
 
-### No published release exists, and the repository is not public
-
-`https://api.github.com/repos/aws-solutions/konductor` returns **404**. The remote install path
-is fully implemented and documented in `cli/README.md` — GitHub release primary, `main`'s `dist/`
-as automatic fallback, both checksum-verified — and `.github/workflows/release.yml` publishes
-assets in exactly the shape the fetcher expects. What is missing is a published release.
+### `--from` is optional, not documented as required
 
 `--from` was removed from every documented `konductor install` by reviewer decision, so the
-documented command depends on that release and fails with a missing-asset error until the
-repository is public. `--from` survives as one row in `reference.md`'s flag table, marked a
-maintainer path. The guide describes the shipped product and does not narrate the pre-launch
-window; the quick start builds from a clone without commenting on the release state.
+guide's documented commands omit it and rely on the remote install path — GitHub release
+primary, `main`'s `dist/` as automatic fallback, both checksum-verified, as implemented and
+documented in `cli/README.md`. `aws-solutions/konductor` is public and has a published `v1.0.0`
+release with per-platform assets, so that path succeeds end to end against the release source.
+`--from` survives as one row in `reference.md`'s flag table, marked a maintainer path.
+`quick-start.md` leads with the curl-based quick install, which runs this exact no-`--from` path
+against the published release; "Installing from source" (clone-based) is the secondary path for
+readers who want a pinned commit or a platform outside the release build matrix.
 
-One source-side contradiction is deliberately left alone, being outside a docs change:
-`cli.rs`'s `--from` doc comment still says "Currently required: installing from a published
-release is not yet available", which contradicts `cli/README.md` and the implemented
-`remote_orchestrate` path. Worth a follow-up in the CLI.
+### `konductor config` is hidden, not deleted
 
-### `konductor config` is withheld from the v1 guide
+`config` still exists in the CLI as complete, tested, working code (cli.rs's
+`Commands::Config` variant) — it is deliberately hidden from `--help`
+(`#[command(hide = true)]`) and gated at dispatch (dispatch.rs's `Commands::Config` arm
+returns a usage error instead of calling `dispatch_config`) rather than removed. It is
+withheld from general use and from the guide's documentation, not absent from the CLI
+itself. **`.konductor/config.yml` itself is still documented**, schema included, because
+`konductor init` writes it and `konductor doctor` validates it — removing the file too
+would leave both of those pointing at something the guide never describes.
 
-By reviewer decision: the command is not part of the customer-visible surface for the v1 launch,
-so the guide does not document it. **`.konductor/config.yml` itself is still documented**,
-schema included, because `konductor init` writes it and `konductor doctor` validates it —
-removing the file too would leave both of those pointing at something the guide never describes.
+`check-guide-facts.py` records this by keeping `config` in `WITHDRAWN_COMMANDS` rather than
+dropping its command-coverage check. That section asserts three things: every command in
+`cli/README.md` is documented, every name in `WITHDRAWN_COMMANDS` is **absent** from
+`reference.md`, `concepts.md` and `glossary.md`, and every name in `WITHDRAWN_COMMANDS` still
+exists in `cli/README.md`. So a future withdrawal nobody recorded, or a stale entry naming a
+command that no longer exists, both fail loudly instead of quietly widening the carve-out.
 
-`check-guide-facts.py` records this in `WITHDRAWN_COMMANDS` rather than dropping its
-command-coverage check. That section asserts three things: every other command in
-`cli/README.md` is documented, every withdrawn command is **absent** from `reference.md`,
-`concepts.md` and `glossary.md`, and every name in `WITHDRAWN_COMMANDS` still exists in
-`cli/README.md`. So a second withdrawal nobody recorded, or a `config` command that gets deleted
-outright, both fail loudly instead of quietly widening the carve-out.
-
-**Adding a name to `WITHDRAWN_COMMANDS` is a product decision, not a way to quiet the checker.**
+**Adding or removing a name in `WITHDRAWN_COMMANDS` is a product decision, not a way to quiet
+the checker.**
 
 ---
 

@@ -15,7 +15,7 @@ lifecycle (SDLC).
 2. [How to use this guide](#how-to-use-this-guide)
 3. [Core concepts](concepts.md) — agents, skills, SOPs, runtimes, and how they fit together
 4. [Prerequisites](prerequisites.md) — software, accounts, platforms
-5. [Quick Start](quick-start.md) — from download to a working agent team in five steps
+5. [Quick Start](quick-start.md) — from a one-line install to a working agent team
 
 **Task guides**
 

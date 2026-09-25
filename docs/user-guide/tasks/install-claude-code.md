@@ -170,10 +170,10 @@ Verify with the CLI first:
 konductor doctor
 ```
 
-It runs six checks — `source`, `runtime`, `manifest`, `config`, `container_runtime` and
-`index_status` — and prints a status per check plus remediation for anything that is not `ok`.
-Exit code `0` when nothing failed. Full status vocabulary in
-[Diagnose problems](diagnose-problems.md).
+It runs nine checks — `source`, `runtime`, `manifest`, `config`, `container_runtime`,
+`index_status`, `cli_version`, `telemetry_state`, and `content_version` — and prints a status per
+check plus remediation for anything that is not `ok`. Exit code `0` when nothing failed. Full
+status vocabulary in [Diagnose problems](diagnose-problems.md).
 
 Then in a session:
 
