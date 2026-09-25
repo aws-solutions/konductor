@@ -1,0 +1,83 @@
+# SPDX-License-Identifier: Apache-2.0
+# Demo workflow, ambiguous: the request is unclear, so the weight sits up front.
+# Heavy discovery (elicitation, research, analysis in parallel), two competing
+# options and a spike before the owner picks a direction; the build after that
+# is kept light.
+version: 1
+name: custom-example-ambiguous
+description: Unclear request; discover and decide first, then build lean.
+max_fix_cycles: 2
+
+steps:
+  - id: elicitation
+    title: Intake elicitation
+    skill: socratic-elicitation/SKILL.md
+    instruction: Surface goals, assumptions and the questions only the owner can answer.
+    produces: [.konductor/requirements/requirements-summary.md]
+    gate: owner
+
+  - id: prior-art
+    title: Prior art research
+    instruction: How others solved this, inside and outside the company.
+    produces: [.konductor/research/prior-art.md]
+    gate: none
+    depends_on: [elicitation]
+
+  - id: codebase-analysis
+    title: Codebase analysis
+    instruction: What the code already offers that the answer could reuse.
+    produces: [.konductor/analysis/codebase-analysis.md]
+    gate: none
+    depends_on: [elicitation]
+
+  - id: option-a
+    title: Option A sketch
+    instruction: A one-page sketch of the simplest direction.
+    produces: [.konductor/options/option-a.md]
+    gate: none
+    depends_on: [prior-art, codebase-analysis]
+
+  - id: option-b
+    title: Option B sketch
+    instruction: A one-page sketch of the most complete direction.
+    produces: [.konductor/options/option-b.md]
+    gate: none
+    depends_on: [prior-art, codebase-analysis]
+
+  - id: spike
+    title: Spike
+    instruction: Throwaway prototype of the riskiest assumption shared by both options.
+    produces: [.konductor/options/spike-findings.md]
+    gate: none
+    depends_on: [codebase-analysis]
+
+  - id: decision
+    title: Decision
+    instruction: Compare A and B with the spike findings; recommend one.
+    produces: [.konductor/options/decision.md]
+    gate: owner
+    depends_on: [option-a, option-b, spike]
+
+  - id: requirements
+    title: Requirements
+    skill: user-story-writing/SKILL.md
+    produces: [.konductor/requirements/user-stories.md]
+    gate: owner
+
+  - id: implementation
+    title: Implementation
+    skill: verification/SKILL.md
+    produces: [.konductor/implementation/implementation-report.md]
+    gate: "check: npm test"
+
+  - id: code-review
+    title: Code review
+    skill: code-review/SKILL.md
+    produces: [.konductor/review/code-review.md]
+    gate: none
+
+  - id: final-summary
+    title: Summary
+    instruction: Which option was chosen and why, what shipped, what is open.
+    produces: [.konductor/sdlc-summary.md]
+    gate: none

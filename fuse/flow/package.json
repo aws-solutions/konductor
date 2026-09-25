@@ -1,0 +1,18 @@
+{
+  "name": "fuse-flow",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Deterministic workflow runner for Konductor workstreams: one workflow.yml, one state file per workstream, executable gates.",
+  "license": "Apache-2.0",
+  "scripts": {
+    "test": "bun test",
+    "flow": "bun run src/cli.ts"
+  },
+  "dependencies": {
+    "zod": "4.1.11"
+  },
+  "devDependencies": {
+    "@types/bun": "1.3.1"
+  }
+}

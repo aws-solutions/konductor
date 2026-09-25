@@ -1,0 +1,58 @@
+# SPDX-License-Identifier: Apache-2.0
+# Demo workflow, medium: one feature in an existing codebase.
+# Analysis and requirements run in parallel, then a short design, one owner
+# gate on the design, and testing alongside code review.
+version: 1
+name: custom-example-medium
+description: One feature, known codebase, one design checkpoint.
+max_fix_cycles: 2
+
+steps:
+  - id: codebase-analysis
+    title: Codebase analysis
+    instruction: Map the code the feature touches, with file and line.
+    produces: [.konductor/analysis/codebase-analysis.md]
+    gate: none
+    depends_on: []
+
+  - id: requirements
+    title: Requirements
+    skill: user-story-writing/SKILL.md
+    produces: [.konductor/requirements/user-stories.md]
+    gate: none
+    depends_on: []
+
+  - id: design
+    title: Design
+    skill: design-doc-guidelines/SKILL.md
+    instruction: A one-to-two page design grounded in the analysis.
+    produces: [.konductor/design/design.md]
+    gate: owner
+    depends_on: [codebase-analysis, requirements]
+
+  - id: implementation
+    title: Implementation
+    skill: verification/SKILL.md
+    produces: [.konductor/implementation/implementation-report.md]
+    gate: "check: npm test"
+
+  - id: code-review
+    title: Code review and pull request
+    skill: code-review/SKILL.md
+    produces: [.konductor/review/code-review.md]
+    gate: none
+    depends_on: [implementation]
+
+  - id: testing
+    title: Testing
+    skill: test-coverage-analysis/SKILL.md
+    produces: [.konductor/testing/test-coverage.md]
+    gate: none
+    depends_on: [implementation]
+
+  - id: final-summary
+    title: Summary
+    instruction: What shipped, the pull request, what was verified, what is open.
+    produces: [.konductor/sdlc-summary.md]
+    gate: owner
+    depends_on: [code-review, testing]

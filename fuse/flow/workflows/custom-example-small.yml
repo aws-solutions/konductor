@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: Apache-2.0
+# Demo workflow, small: a bug fix or a one-file change.
+# Three steps, one mechanical gate, no documents beyond a short note.
+version: 1
+name: custom-example-small
+description: Lightweight loop for a small, well-understood change.
+max_fix_cycles: 2
+
+steps:
+  - id: implementation
+    title: Implement
+    skill: verification/SKILL.md
+    instruction: >
+      Make the smallest change that fixes the request, with a test that fails
+      before it and passes after. Record the command and its output.
+    produces: [.konductor/implementation/implementation-report.md]
+    gate: "check: npm test"
+
+  - id: code-review
+    title: Self review
+    skill: code-review/SKILL.md
+    instruction: Review your own diff, fix CRITICAL findings, commit.
+    produces: [.konductor/review/code-review.md]
+    gate: none
+
+  - id: final-summary
+    title: Summary
+    instruction: One paragraph for the owner, what changed, how it was verified.
+    produces: [.konductor/sdlc-summary.md]
+    gate: owner

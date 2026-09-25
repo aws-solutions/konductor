@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
+# Shim so agents can call `fuse-flow ...` from any directory. Put the
+# directory containing this file on PATH (or symlink the file into one).
+# Runs the TypeScript entry point directly with Bun; no build step.
+set -euo pipefail
+
+self="${BASH_SOURCE[0]}"
+while [ -L "$self" ]; do
+  target="$(readlink "$self")"
+  case "$target" in
+    /*) self="$target" ;;
+    *) self="$(dirname "$self")/$target" ;;
+  esac
+done
+here="$(cd "$(dirname "$self")" && pwd)"
+
+if command -v bun >/dev/null 2>&1; then
+  bun_bin="$(command -v bun)"
+elif [ -x "${BUN_INSTALL:-$HOME/.bun}/bin/bun" ]; then
+  bun_bin="${BUN_INSTALL:-$HOME/.bun}/bin/bun"
+elif [ -x "$HOME/.local/bin/bun" ]; then
+  bun_bin="$HOME/.local/bin/bun"
+else
+  echo "fuse-flow: bun not found on PATH, in \$BUN_INSTALL/bin, ~/.bun/bin or ~/.local/bin" >&2
+  exit 69
+fi
+
+exec "$bun_bin" run "$here/src/cli.ts" "$@"

@@ -1,0 +1,165 @@
+# SPDX-License-Identifier: Apache-2.0
+# Default fuse-flow workflow: the k-full-sdlc phases as ordered, gated steps.
+# Install into a project with:  fuse-flow start <slug> --workflow <this file>
+# which copies it to .konductor/workflow.yml. Edit the copy, not this file.
+#
+# Fields per step:
+#   id          lowercase identifier, used in fuse-flow commands
+#   skill       SKILL.md to read first, relative to the skills directory
+#               (FUSE_SKILLS_DIR, else skills/, .konductor/skills, .claude/skills,
+#               ~/.konductor/skills, ~/.claude/skills), or an absolute path
+#   instruction inline guidance printed by `fuse-flow next`
+#   produces    artifacts that must exist before `fuse-flow done` is accepted
+#   gate        none | owner | "check: <command run from the repository root>"
+#   depends_on  step ids; omitted means "the previous step", [] means independent
+#
+# Artifacts live under .konductor/<phase>/; implementation code follows the
+# project's own layout. Steps 0 to 11 of the former k-full-sdlc SOP map onto
+# the twelve steps below in the same order. Owner gates sit where the SOP
+# paused for the engineer (requirements, design review, feature splitting,
+# specs, code review, testing).
+#
+# fuse-flow runs steps forward only. The SOP's backward routes are written into
+# the instructions instead: design review fixes the design in place (4 -> 3),
+# code review and testing fix the implementation in place (8, 9 -> 7), and
+# documentation fixes itself before it is marked done (10 -> 10).
+#
+# Steps 6 to 9 run per feature: each feature from feature-split.md goes through
+# specs, implementation, code review and testing on its own branch, and each
+# step's artifact covers every feature.
+version: 1
+name: k-full-sdlc
+description: Requirements through documentation for one feature or project (the twelve k-full-sdlc steps).
+max_fix_cycles: 2
+
+steps:
+  - id: elicitation
+    title: 0. Intake elicitation
+    skill: socratic-elicitation/SKILL.md
+    instruction: >
+      Resolve the request into a requirements summary: goals, non-goals, constraints,
+      open decisions with your recommendation. Skip the questioning when the request
+      already answers them and say so in the summary.
+    produces: [.konductor/requirements/requirements-summary.md]
+    gate: none
+
+  - id: codebase-analysis
+    title: 1. Codebase analysis
+    instruction: >
+      Read the existing code before designing against it. Record architecture,
+      the patterns and vocabulary the code already uses, build and test commands,
+      and the places the request will touch, each with file and line. For a
+      greenfield project write one line saying there is no code yet.
+    produces: [.konductor/analysis/codebase-analysis.md]
+    gate: none
+
+  - id: requirements
+    title: 2. Requirements
+    skill: user-story-writing/SKILL.md
+    instruction: >
+      Write the user stories and acceptance criteria from the requirements summary
+      and the codebase analysis, in the code's vocabulary. List every element the
+      request did not literally ask for as an owner decision.
+    produces: [.konductor/requirements/user-stories.md]
+    gate: owner
+
+  - id: design
+    title: 3. Design
+    skill: design-doc-guidelines/SKILL.md
+    instruction: >
+      Write the design document. For system architecture, data models and
+      infrastructure also read system-design-patterns/SKILL.md. Cite code for every claim
+      about current behaviour; mark what could not be verified.
+    produces: [.konductor/design/design.md]
+    gate: none
+
+  - id: design-review
+    title: 4. Principal engineer design review
+    skill: design-evaluation/SKILL.md
+    instruction: >
+      Review .konductor/design/design.md independently of the author: first
+      design-quality-check/SKILL.md, then this skill, then
+      adversarial-design-review/SKILL.md. Fix every
+      CRITICAL finding in design.md itself (the route back to step 3), never by
+      deferring it to implementation, and record the findings and their
+      resolution. The owner approves the reviewed design.
+    produces: [.konductor/design/design-review.md]
+    gate: owner
+
+  - id: feature-splitting
+    title: 5. Feature splitting
+    skill: task-decomposition/SKILL.md
+    instruction: >
+      Split the design into features that can be built independently, give each a
+      unique slug, and record the split. The owner approves it.
+    produces: [.konductor/features/feature-split.md]
+    gate: owner
+
+  - id: specs
+    title: 6. Specs (per feature)
+    skill: kiro-requirements-generation/SKILL.md
+    instruction: >
+      For each feature in feature-split.md write .kiro/specs/<feature>/requirements.md
+      (this skill), design.md (kiro-design-generation/SKILL.md) and tasks.md
+      (kiro-task-generation/SKILL.md), then list the spec directories in the index
+      artifact. The owner approves the specs for all features at once.
+    produces: [.konductor/specs/index.md]
+    gate: owner
+
+  - id: implementation
+    title: 7. Implementation (per feature)
+    skill: verification/SKILL.md
+    instruction: >
+      Implement each feature from its tasks.md on its own branch, with unit and
+      integration tests. On a greenfield project build the scaffold first. Run the
+      project's build and tests after each feature; record the commands and their
+      terminal output in the implementation report.
+    produces: [.konductor/implementation/implementation-report.md]
+    # Replace with "check: <build and test command>" so the gate is mechanical,
+    # for example  gate: "check: npm test"  or  gate: "check: cargo test".
+    gate: none
+
+  - id: code-review
+    title: 8. Code review and pull request (per feature)
+    skill: code-review/SKILL.md
+    instruction: >
+      Commit each feature (git-workflow/SKILL.md), open one pull request per
+      feature, and review the diff. Fix CRITICAL findings on the feature branch
+      (the route back to step 7), re-run the build and tests, and record the
+      review. Never merge. The owner approves the pull requests for all features
+      at once.
+    produces: [.konductor/review/code-review.md]
+    gate: owner
+
+  - id: testing
+    title: 9. Testing (per feature)
+    skill: test-coverage-analysis/SKILL.md
+    instruction: >
+      Find the coverage gaps for what was implemented, write the missing tests on
+      the feature branch (the route back to step 7) and update its pull request.
+      Mark a feature NEEDS_REVALIDATION in code-review.md when this step changes a
+      pull request that was already reviewed. Record the remaining gaps with a
+      reason each; the owner accepts what stays open.
+    produces: [.konductor/testing/test-coverage.md]
+    gate: owner
+
+  - id: documentation
+    title: 10. Documentation
+    skill: doc-accuracy-analyzer/SKILL.md
+    instruction: >
+      Write or update the README and developer guide for what shipped, write
+      AGENTS.md if it is missing or update it where commands or structure changed
+      (agents-md-authoring/SKILL.md), apply humanize-writing/SKILL.md, then check
+      every claim in them against the implementation. Fix every inaccuracy before
+      marking the step done, and record the result.
+    produces: [.konductor/docs/doc-accuracy.md]
+    gate: none
+
+  - id: final-summary
+    title: 11. Final summary
+    instruction: >
+      Write the summary for a reader who did not watch the work: what was
+      delivered (artifact paths, branches, pull requests), what was verified and
+      how, which features need revalidation, and what is left for the owner.
+    produces: [.konductor/sdlc-summary.md]
+    gate: none

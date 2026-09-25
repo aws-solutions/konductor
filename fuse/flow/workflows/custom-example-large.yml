@@ -1,0 +1,132 @@
+# SPDX-License-Identifier: Apache-2.0
+# Demo workflow, large: a multi-feature project with review at every stage.
+# Everything in k-full-sdlc, plus a threat model, a design review that runs
+# alongside it, independent security and UI testing, and a release readiness
+# gate. Several branches fan out and join again.
+version: 1
+name: custom-example-large
+description: Multi-feature project, heavy review, security and release gates.
+max_fix_cycles: 3
+
+steps:
+  - id: elicitation
+    title: Intake elicitation
+    skill: socratic-elicitation/SKILL.md
+    produces: [.konductor/requirements/requirements-summary.md]
+    gate: owner
+
+  - id: codebase-analysis
+    title: Codebase analysis
+    instruction: Map architecture, conventions, build and test commands.
+    produces: [.konductor/analysis/codebase-analysis.md]
+    gate: none
+    depends_on: [elicitation]
+
+  - id: requirements
+    title: Requirements
+    skill: user-story-writing/SKILL.md
+    produces: [.konductor/requirements/user-stories.md]
+    gate: owner
+    depends_on: [elicitation]
+
+  - id: design
+    title: System design
+    skill: system-design-patterns/SKILL.md
+    produces: [.konductor/design/design.md]
+    gate: none
+    depends_on: [codebase-analysis, requirements]
+
+  - id: threat-model
+    title: Threat model
+    instruction: STRIDE threat model for the design, with a mitigation per threat.
+    produces: [.konductor/design/threat-model.md]
+    gate: none
+
+  - id: design-review
+    title: Principal engineer design review
+    skill: design-evaluation/SKILL.md
+    instruction: >
+      First design-quality-check/SKILL.md, then this skill, then
+      adversarial-design-review/SKILL.md.
+    produces: [.konductor/design/design-review.md]
+    gate: none
+    depends_on: [design]
+
+  - id: design-signoff
+    title: Design sign-off
+    instruction: Present the reviewed design and threat model together.
+    produces: [.konductor/design/signoff.md]
+    gate: owner
+    depends_on: [threat-model, design-review]
+
+  - id: feature-splitting
+    title: Feature splitting
+    skill: task-decomposition/SKILL.md
+    produces: [.konductor/features/feature-split.md]
+    gate: owner
+
+  - id: specs
+    title: Specs per feature
+    skill: kiro-requirements-generation/SKILL.md
+    instruction: >
+      Per feature: requirements.md (this skill), design.md
+      (kiro-design-generation/SKILL.md), tasks.md (kiro-task-generation/SKILL.md)
+      under .kiro/specs/<feature>/.
+    produces: [.konductor/specs/index.md]
+    gate: owner
+
+  - id: implementation
+    title: Implementation per feature
+    skill: verification/SKILL.md
+    produces: [.konductor/implementation/implementation-report.md]
+    gate: "check: npm test"
+
+  - id: code-review
+    title: Code review and pull requests
+    skill: code-review/SKILL.md
+    produces: [.konductor/review/code-review.md]
+    gate: none
+    depends_on: [implementation]
+
+  - id: coverage-testing
+    title: Coverage testing
+    skill: test-coverage-analysis/SKILL.md
+    produces: [.konductor/testing/test-coverage.md]
+    gate: none
+    depends_on: [implementation]
+
+  - id: security-testing
+    title: Security testing
+    instruction: Test every mitigation in the threat model; record gaps.
+    produces: [.konductor/testing/security-tests.md]
+    gate: none
+    depends_on: [implementation]
+
+  - id: ui-testing
+    title: UI testing
+    instruction: One end-to-end pass against the deployed URL.
+    produces: [.konductor/testing/ui-tests.md]
+    gate: none
+    depends_on: [implementation]
+
+  - id: documentation
+    title: Documentation
+    skill: doc-accuracy-analyzer/SKILL.md
+    produces: [.konductor/docs/doc-accuracy.md]
+    gate: none
+    depends_on: [code-review]
+
+  - id: release-readiness
+    title: Release readiness
+    instruction: >
+      Collect review, all three test reports and the docs into one go/no-go
+      recommendation.
+    produces: [.konductor/release/readiness.md]
+    gate: owner
+    depends_on: [code-review, coverage-testing, security-testing, ui-testing, documentation]
+
+  - id: final-summary
+    title: Final summary
+    produces: [.konductor/sdlc-summary.md]
+    instruction: Deliverables, verification, open items, for a reader who was not there.
+    gate: none

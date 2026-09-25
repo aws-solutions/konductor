@@ -1,0 +1,98 @@
+# SPDX-License-Identifier: Apache-2.0
+# Lighter fuse-flow workflow: konductor's six-phase SDLC chain (the "SDLC
+# Workflow" and "Verification Protocol" sections of the konductor agent prompt),
+# with its code review side loop as a step of its own.
+# Install into a project with:  fuse-flow start <slug> --workflow <this file>
+# which copies it to .konductor/workflow.yml. Edit the copy, not this file.
+# Field reference: see _k-full-sdlc.yml next to this file.
+#
+# Compared with _k-full-sdlc.yml this chain has no intake elicitation, codebase
+# analysis, principal engineer review, documentation or final summary, and no
+# owner gates: it runs through without pausing. max_fix_cycles: 2 matches the
+# prompt's limit of two fix cycles before escalating to the user.
+#
+# fuse-flow runs steps forward only. The chain's backward routes are written
+# into the instructions: the PM and architect steps check and fix their own
+# documents (1 -> 1, 2 -> 2), and code review fixes the implementation in
+# place (5a -> 5). QA findings have no route back.
+#
+# Steps 4 to 5a run per feature; each step's artifact covers every feature.
+version: 1
+name: k-phase-chain
+description: Konductor's lighter six-phase chain, PM through QA, with no owner gates.
+max_fix_cycles: 2
+
+steps:
+  - id: pm
+    title: 1. PM
+    skill: user-story-writing/SKILL.md
+    instruction: >
+      Write the user stories and acceptance criteria from the request, then check
+      them against the request and fix what does not hold before marking the
+      step done.
+    produces: [.konductor/requirements/user-stories.md]
+    gate: none
+
+  - id: architect
+    title: 2. Architect
+    skill: system-design-patterns/SKILL.md
+    instruction: >
+      Write the system design: architecture, non-functional requirements, threat
+      model, API and data models, access policies. Follow
+      design-doc-guidelines/SKILL.md, then check every claim against the code
+      (doc-accuracy-analyzer/SKILL.md) and fix what does not hold before marking
+      the step done.
+    produces: [.konductor/design/design.md]
+    gate: none
+
+  - id: feature-splitting
+    title: 3. Feature splitting
+    skill: task-decomposition/SKILL.md
+    instruction: >
+      Split the design into features that can be built independently and give
+      each a unique slug.
+    produces: [.konductor/features/feature-split.md]
+    gate: none
+
+  - id: specs
+    title: 4. Developer (specs, per feature)
+    skill: kiro-requirements-generation/SKILL.md
+    instruction: >
+      For each feature in feature-split.md write .kiro/specs/<feature>/requirements.md
+      (this skill), design.md (kiro-design-generation/SKILL.md) and tasks.md
+      (kiro-task-generation/SKILL.md), then list the spec directories in the index
+      artifact.
+    produces: [.konductor/specs/index.md]
+    gate: none
+
+  - id: implementation
+    title: 5. Developer (implementation, per feature)
+    skill: verification/SKILL.md
+    instruction: >
+      Implement each feature from its tasks.md with tests. Run the project's build
+      and tests after each feature; record the commands and their terminal output
+      in the implementation report.
+    produces: [.konductor/implementation/implementation-report.md]
+    # Replace with "check: <build and test command>" so the gate is mechanical.
+    gate: none
+
+  - id: code-review
+    title: 5a. Code review (per feature)
+    skill: code-review/SKILL.md
+    instruction: >
+      Review the git diff of each feature. Fix every CRITICAL finding in the
+      implementation (the route back to step 5), re-run the build and tests, and
+      record the review. After two failed fix cycles, stop and escalate to the
+      owner.
+    produces: [.konductor/review/code-review.md]
+    gate: none
+
+  - id: qa
+    title: 6. QA
+    skill: test-coverage-analysis/SKILL.md
+    instruction: >
+      Find the test coverage gaps for what was implemented, plan the end-to-end
+      and security tests, check user-facing text, and record the findings. This
+      is the last step; findings are reported, not routed back to implementation.
+    produces: [.konductor/testing/test-coverage.md]
+    gate: none
