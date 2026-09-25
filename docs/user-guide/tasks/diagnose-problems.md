@@ -18,12 +18,15 @@ konductor doctor
 A healthy installation:
 
 ```text
+cli_version        running konductor 1.0.0, which is current    ok
 source             parsed, all cross-references resolve        ok
 runtime            Kiro CLI detected                           ok
 manifest           complete, no hash drift                     ok
 config             .konductor/config.yml valid                 ok
 container_runtime  docker found on PATH                      info
 index_status       matches the manifest                        ok
+telemetry_state    telemetry reporting is on                   ok
+content_version    at content version 1.0.0, which is current  ok
 
 All checks passed.
 ```
@@ -77,15 +80,19 @@ konductor doctor --json
     { "name": "manifest", "status": "ok", "summary": "..." },
     { "name": "config", "status": "ok", "summary": "..." },
     { "name": "container_runtime", "status": "info", "summary": "..." },
-    { "name": "index_status", "status": "ok", "summary": "..." }
-  ]
+    { "name": "index_status", "status": "ok", "summary": "..." },
+    { "name": "telemetry_state", "status": "ok", "summary": "..." },
+    { "name": "content_version", "status": "ok", "summary": "..." }
+  ],
+  "cli_version": { "name": "cli_version", "status": "ok", "summary": "..." }
 }
 ```
 
-One object per run, with one entry in `checks` per check in the order above. A check that has
-something to tell you also carries `remediation`, and `detail` when it has more than one line to
-report. `ok` is `false` when any check came back `failed` or `stale`; `warnings` is `true` when any
-came back `warn`, which `ok` deliberately ignores.
+One object per run, with one entry in `checks` per check in the order above, plus a top-level
+`cli_version` entry reported the same shape. A check that has something to tell you also carries
+`remediation`, and `detail` when it has more than one line to report. `ok` is `false` when any
+check came back `failed` or `stale`; `warnings` is `true` when any came back `warn`, which `ok`
+deliberately ignores.
 
 The exit code alone distinguishes the cases: failed checks exit `1`, a malformed invocation exits
 `64`, and all-ok exits `0`. So `ok` and the exit code always agree — scan `checks` for the statuses

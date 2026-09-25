@@ -14,6 +14,16 @@ Everything past that is detail you can come back to.
 
 ## 1. Install the CLI
 
+Quick install: fetches a prebuilt `konductor` binary for your platform.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/aws-solutions/konductor/refs/heads/main/scripts/konductor-bootstrap.sh | bash
+command -v konductor && konductor --version
+```
+
+Or build from source, for a pinned commit, a platform with no published
+binary, or auditing before you install:
+
 ```bash
 git clone <this-repository's-URL>
 cd <cloned-dir>
@@ -22,21 +32,31 @@ make link
 command -v konductor && konductor --version
 ```
 
-Building from a local checkout is how you get the CLI onto your machine.
-
 ## 2. Install the agent content
+
+Quick install continued: `install` with no `--from` flag fetches
+already-built agent/skill/SOP content, from a GitHub Release asset or,
+failing that, the same tarball straight from `main`'s `dist/` directory. It
+never runs `synth` itself:
+
+```bash
+konductor install --harness kiro-cli-v2
+```
+
+From-source continued: nobody has pre-built the output for you, so you run
+`synth` yourself first, then point `install` at it with `--from`:
 
 ```bash
 konductor synth --from .
 konductor install --from . --harness kiro-cli-v2
 ```
 
-`synth` builds the pipeline/config artifacts from the repo root you cloned;
-`install` copies them into a target (`$HOME` unless you pass `--target`).
-`--harness` is required — say `kiro-cli-v2` or `kiro-v3` for Kiro CLI, or
-`claude` for Claude Code; there is no auto-detection. Run `konductor doctor`
-afterward to confirm everything registered — it inspects the install and
-prints remediation guidance for anything wrong instead of a bare error.
+Either way, `install` copies the content into a target (`$HOME` unless you
+pass `--target`). `--harness` is required — say `kiro-cli-v2` or `kiro-v3`
+for Kiro CLI, or `claude` for Claude Code; there is no auto-detection. Run
+`konductor doctor` afterward to confirm everything registered — it inspects
+the install and prints remediation guidance for anything wrong instead of a
+bare error.
 
 See `cli/README.md` for the fully spelled-out walkthrough, prerequisites,
 and installing into a directory other than `$HOME`.

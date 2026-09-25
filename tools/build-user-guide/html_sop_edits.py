@@ -224,9 +224,6 @@ SOP_EDITS += [
     ("update task: sample output",
      "Installed 0.1.0, latest 0.1.2\n\nUpdating Konductor\n  agents          11 updated\n  skills          75 updated (2 new)\n  SOPs            13 updated\n  context files    1 updated\n\nPreserved 1 locally modified file:\n  skills/backend-review/SKILL.md\n\nUpdated to 0.1.2. Start a new session to pick up the changes.",
      "Updating Konductor\n  agents          11 updated\n  skills          82 updated\n  SOPs            19 updated\n  context files    1 updated\n\n2 files were overwritten while diverged from the manifest.\n\nUpdated. Start a new session to pick up the changes."),
-    ("update task: locally-modified row",
-     "Your files are kept. The release version is not applied to them.",
-     "OVERWRITTEN. The count of clobbered files is reported afterwards; run --dry-run first to see which."),
     ("uninstall task: sample output",
      "This will remove Konductor 0.1.0 from Kiro CLI:\n  agents          11\n  skills          75\n  SOPs            13\n  context files    1\n\nProject files under .konductor/ will be left in place.\n\nContinue? [y/N]",
      "Would remove Konductor 1.0.0 from Kiro CLI:\n  agents          11\n  skills          82\n  SOPs            19\n  context files    1\n\n  skills/backend-review/SKILL.md   (local edits would be destroyed)\n\nProject files under .konductor/ would be left in place."),
@@ -311,9 +308,6 @@ SOP_EDITS += [
 # required) and Claude Code does not prefix agent names -- dist/claude/agents/*.md
 # carry the bare name.
 SOP_EDITS += [
-    ("quick start: claude aside",
-     "If you have Claude Code instead, the detected runtime and the final command differ \u2014 Claude Code prefixes agent names, and needs two settings before a team of agents can run.",
-     "If you have Claude Code instead, pass --harness claude. Agent names are the same on both runtimes, but Claude Code needs two further settings before a team of agents can run."),
 ]
 
 SOP_EDITS += [
@@ -343,21 +337,9 @@ SOP_EDITS += [
     ("update: install-kiro row",
      "update</span> preserves local modifications and names the files it skipped.",
      "update</span>, by contrast, <strong style=\"color:var(--tx);font-weight:600\">overwrites it</strong> \u2014 run konductor update --dry-run to see what would be lost."),
-    ("update: state table row",
-     "Updates content, preserves local modifications, names what it skipped.",
-     "OVERWRITES content, including any local edits. The diverged-file count is reported afterwards; --dry-run lists them per path beforehand."),
     ("update: faq bullet",
      "konductor update preserves local modifications and names the files it skipped, so your edits survive an update \u2014 but commit them anyway so you can tell what you changed.",
      "konductor update DESTROYS local modifications \u2014 it unconditionally overwrites every tracked file under .kiro/agents/, .konductor/skills/ and .konductor/manifest. Commit your edits, and run konductor update --dry-run before every update to see what would be clobbered."),
-    ("update: preserved callout heading",
-     ">Local modifications are preserved</div>",
-     ">Local modifications are overwritten</div>"),
-    ("update: preserved callout body",
-     "update</span> names every file it skipped so you know what is now diverged",
-     "update</span> reports only a count, after the fact. Run --dry-run first to see which files are diverged"),
-    ("update: page intro",
-     "Moves your installed agents, skills, and SOPs to the latest release, keeping any local modifications you have made.",
-     "Overwrites a tracked install in place from a source tree. Any local edit under the managed destinations is destroyed \u2014 read the warning below before running it."),
     ("update: troubleshooting note",
      "If you want your edits to survive future updates, note that konductor update preserves locally modified files and names the ones it skipped.",
      "Your edits will NOT survive the next konductor update \u2014 it overwrites every tracked file unconditionally. Keep them in version control, and run konductor update --dry-run first to see which files would be clobbered."),
@@ -436,18 +418,15 @@ SOP_EDITS += [
     # removed from both install pages at a reviewer's request, so the edit has no
     # target left. The quick-start and diagnose-problems samples are the ones the
     # doctor-check names are now asserted against.
-    ("doctor: narrow block", 'Runtime\n  Kiro CLI            detected (0.4.2)     ok\nContent\n  agents              11 registered        ok\n  skills              75 registered        ok\n  SOPs                13 registered        ok\n  context files        1 registered        ok\nProject\n  .konductor/config.yml valid (version 1)  ok\nUpdates\n  installed 0.1.0, latest 0.1.0            ok\n\nAll checks passed.', 'source             parsed, refs resolve     ok\nruntime            Kiro CLI detected        ok\nmanifest           complete, no drift       ok\nconfig             config.yml valid         ok\ncontainer_runtime  docker on PATH         info\nindex_status       matches manifest         ok\n\nAll checks passed.'),
+    # "doctor: narrow block" is retired for the same reason: its mock transcript
+    # is gone, and its six-check replacement predates the nine-check correction.
 ]
 
 SOP_EDITS += [
     ("doctor: broken-state block", 'Runtime\n  Claude Code       detected (2.1.174)  stale\n    Agent teams needs 2.1.178 or later.\n  agent teams enabled  not set        failed\n    Run: claude settings set env.CLAUD…\n  tool permissions  no allowlist      failed\n    Add a permissions.allow block\nProject\n  .konductor/config.yml not found      info\n    Optional. Run `konductor init`.\nUpdates\n  installed 0.1.0, latest 0.1.2       stale\n    Run: konductor update\n\n3 checks failed.', 'source             agent k-developer references a missing skill   failed\n    fix: add the skill under skills/, or remove the reference\nruntime            no runtime detected at this target          failed\n    fix: install Kiro CLI or Claude Code, or pass --target\nmanifest           4 files differ from their recorded hash       warn\n    fix: run konductor update --from <repo-root> --dry-run\nconfig             .konductor/config.yml not found              info\n    fix: optional. Run `konductor init` to create one.\ncontainer_runtime  none of docker/podman/nerdctl/finch on PATH  info\nindex_status       index says complete, manifest says partial    warn\n\n2 checks failed.'),
-    ("doctor: standalone updates block", 'Updates\n  installed 0.1.0, latest 0.1.2                             stale\n    Run: konductor update', 'manifest           complete, no hash drift                     ok\nindex_status       matches the manifest                        ok'),
 ]
 
 SOP_EDITS += [
-    ("update: already-current claim",
-     "If you are already current: <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">Installed 0.1.2, latest 0.1.2 \u2014 already up to date.</span> Exit code",
-     "update does not detect \u0022already current\u0022 \u2014 it has no version awareness. Running it against an unchanged source overwrites every tracked file with byte-identical content and reports the same counts. Exit code"),
 ]
 
 # synth writes dist/<harness>/{agents,skills,sops,context}; the harness directory is
@@ -526,8 +505,9 @@ SOP_EDITS += [
 # The real --json shape is cli/README.md:597-620: command/ok/warnings/checks[].
 # The page invented runtime/content/project/updates objects and a `failed` count,
 # with 75/13 counts and a version comparison doctor does not perform.
+# "doctor --json schema" is retired: its invented schema is gone, and its
+# six-check replacement has itself been overtaken by the live nine-check shape.
 SOP_EDITS += [
-    ("doctor --json schema", '{\n  "runtime": { "name": "kiro-cli", "version": "0.4.2", "status": "ok" },\n  "content": { "agents": 11, "skills": 75, "sops": 13, "context": 1, "status": "ok" },\n  "project": { "config": ".konductor/config.yml", "status": "ok" },\n  "updates": { "installed": "0.1.0", "latest": "0.1.0", "status": "ok" },\n  "failed": 0\n}', '{\n  "command": "doctor",\n  "ok": true,\n  "warnings": false,\n  "checks": [\n    { "name": "source", "status": "ok", "summary": "..." },\n    { "name": "runtime", "status": "ok", "summary": "..." },\n    { "name": "manifest", "status": "ok", "summary": "..." },\n    { "name": "config", "status": "ok", "summary": "..." },\n    { "name": "container_runtime", "status": "info", "summary": "..." },\n    { "name": "index_status", "status": "ok", "summary": "..." }\n  ]\n}'),
     ("doctor --json prose",
      "failed</span> rather than the exit code if you want to distinguish a real problem from a usage error \u2014 both exit non-zero.",
      "ok</span> rather than the exit code if you want to distinguish a real problem from a usage error: it is false when any check is failed or stale. doctor exits 1 (EXIT_HALTED) for that, and 64 only for a bad invocation."),
@@ -570,18 +550,14 @@ SOP_EDITS += [
 # pinned as forbidden in naming.RETIRED_DOMAINS and asserted absent from the
 # Markdown and both bundles by check-guide-facts.py, which is a stronger
 # guarantee than a replacement that can no longer fire.
-SOP_EDITS += [
-    ("install: detects-runtime claim",
-     "install</span> detects which runtime you have and registers the agents, skills, SOPs, and context files with it.",
-     "install</span> registers the agents, skills, SOPs and context files with the harness you name. --harness is required — there is no auto-detection."),
-    # cli/README.md:20 -- "## The 8 commands"
-    # The "reference: seven commands" edit that was here predated the config
-    # withdrawal, which rewrote that whole sentence to "Seven commands." with no
-    # subcommand clause. One edit owns the sentence now.
-    ("reference: doctor and-available-updates",
-     '{"k":"konductor doctor","v":"Check the runtime, the installed content, the project config, and available updates"}',
-     '{"k":"konductor doctor","v":"Run six checks — source, runtime, manifest, config, container_runtime, index_status — and print remediation. It does NOT compare installed against available versions"}'),
-]
+#
+# cli/README.md:20 -- "## The 8 commands"
+# The "reference: seven commands" edit that was here predated the config
+# withdrawal, which rewrote that whole sentence to "Seven commands." with no
+# subcommand clause. One edit owns the sentence now.
+#
+# "reference: doctor and-available-updates" is also retired: the doctor row has
+# since been rewritten again, past both its old and new text, to nine checks.
 
 SOP_EDITS += [
     # SOP:20 -- diff_input required "even when pr_url is present"
@@ -589,9 +565,6 @@ SOP_EDITS += [
      'param("diff_input", true, "— unless pr_url is given. Accepts git diff output, file paths, or raw PR diff content")',
      'param("diff_input", true, "— ALWAYS required, even when pr_url is present. Accepts git diff output, file paths, or raw PR diff content")'),
     # cli/README.md:740 -- doctor does not compare installed vs available versions
-    ("update: doctor Updates checklist item",
-     'konductor doctor</span> reports the Updates check as <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">ok</span>.',
-     'konductor doctor</span> reports <span style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--tx)">manifest</span> as ok with no hash drift. (There is no Updates check — doctor does not compare versions.)'),
     # cli/README.md:533 -- stale means drifted from the manifest, not "newer version exists"
     ("doctor: stale status definition",
      '>Works, but a newer version exists</div>',
@@ -739,9 +712,6 @@ SOP_EDITS += [
     ("concepts: orchestrator is a hub",
      "The <strong style=\"color:var(--tx);font-weight:600\">orchestrator</strong> is a hub — though not an exclusive one.",
      "<strong style=\"color:var(--tx);font-weight:600\">konductor</strong>, as the orchestrator, is a hub — though not an exclusive one."),
-    ("download step: drop chmod and mkdir",
-     "<p style=\"margin:0 0 14px;font-size:16px;line-height:1.75;color:var(--mu)\">Make it executable:</p>\n            <div style=\"border:1px solid var(--bd);border-radius:12px;overflow:hidden;background:var(--code);margin-bottom:14px\">\n              <div style=\"display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid var(--bd)\"><span style=\"font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.16em;color:var(--mu2)\">BASH</span><button data-copy=\"1\" style=\"all:unset;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mu2)\" style-hover=\"color:var(--sig)\">copy</button></div>\n              <pre style=\"margin:0;padding:14px 14px;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.7;color:#E8E4F5;overflow-x:auto\">chmod +x konductor</pre>\n            </div>\n            <p style=\"margin:0 0 14px;font-size:16px;line-height:1.75;color:var(--mu)\">Move it somewhere on your <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx);background:rgba(124,92,255,.16);border-radius:5px;padding:1.5px 6px\">PATH</span>:</p>\n            <div style=\"border:1px solid var(--bd);border-radius:12px;overflow:hidden;background:var(--code);margin-bottom:18px\">\n              <div style=\"display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid var(--bd)\"><span style=\"font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.16em;color:var(--mu2)\">BASH</span><button data-copy=\"1\" style=\"all:unset;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mu2)\" style-hover=\"color:var(--sig)\">copy</button></div>\n              <pre style=\"margin:0;padding:14px 14px;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.7;color:#E8E4F5;overflow-x:auto\">mkdir -p ~/.local/bin &amp;&amp; mv konductor ~/.local/bin/</pre>\n            </div>\n            ",
-     "<p style=\"margin:0 0 22px;font-size:16px;line-height:1.75;color:var(--mu)\"><span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx);background:rgba(124,92,255,.16);border-radius:5px;padding:1.5px 6px\">make link</span> symlinks the binary into <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx);background:rgba(124,92,255,.16);border-radius:5px;padding:1.5px 6px\">~/.local/bin</span>, creating the directory if it is missing.</p>\n            "),
 ]
 
 # ── Review findings: reader-facing framing ────────────────────────────────────
@@ -764,9 +734,12 @@ SOP_EDITS += [
     ("prerequisites: drop the what-you-do-not-need section",
      "\n\n          <section id=\"p-not\" style=\"padding-bottom:44px;border-top:1px solid var(--bd);padding-top:40px\">\n            <h2 style=\"margin:0 0 16px;font-size:30px;letter-spacing:-.025em;font-weight:600\">What you do <em>not</em> need</h2>\n            <p style=\"margin:0 0 22px;font-size:16px;line-height:1.75;color:var(--mu)\">Worth stating, because it is unusual:</p>\n            <div style=\"display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px\">\n              <div style=\"border:1px solid var(--bd);border-radius:12px;background:var(--surf);padding:18px 20px\">\n                <div style=\"font-size:15.5px;font-weight:600;margin-bottom:7px\">No servers or infrastructure</div>\n                <div style=\"font-size:14px;line-height:1.6;color:var(--mu)\">Agents are configuration files your runtime executes.</div>\n              </div>\n              <div style=\"border:1px solid var(--bd);border-radius:12px;background:var(--surf);padding:18px 20px\">\n                <div style=\"font-size:15.5px;font-weight:600;margin-bottom:7px\">No database</div>\n                <div style=\"font-size:14px;line-height:1.6;color:var(--mu)\">Nothing persists except plain files you can read.</div>\n              </div>\n              <div style=\"border:1px solid var(--bd);border-radius:12px;background:var(--surf);padding:18px 20px\">\n                <div style=\"font-size:15.5px;font-weight:600;margin-bottom:7px\">No build toolchain</div>\n                <div style=\"font-size:14px;line-height:1.6;color:var(--mu)\">There is no published binary yet, so you build the CLI from a clone with make build. A Rust toolchain is required.</div>\n              </div>\n              <div style=\"border:1px solid var(--bd);border-radius:12px;background:var(--surf);padding:18px 20px\">\n                <div style=\"font-size:15.5px;font-weight:600;margin-bottom:7px\">No network access at run time for the CLI</div>\n                <div style=\"font-size:14px;line-height:1.6;color:var(--mu)\"><span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">init</span>, <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">config</span>, and <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">synth</span> touch only the local filesystem — and so do <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">update</span>, <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">doctor</span> and <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">metrics</span>. The single remote path is <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">install</span> with --from omitted, which tries a GitHub Release. Every documented workflow here passes --from, so in practice nothing reaches the network.</div>\n              </div>\n            </div>\n          </section>\n\n          ",
      "\n\n          "),
+    # RETIRED 2026-09-25: append-style edit whose `new` went stale after v1.0.0
+    # shipped, breaking its own `if new in page` idempotency guard -- every
+    # `--apply` re-inserted the stale row as a duplicate next to the corrected one.
     ("prerequisites: essentials gains a Rust row",
      "<div style=\"display:grid;grid-template-columns:1.2fr 1.7fr 1.1fr\">\n                <div style=\"padding:13px 16px;font-size:14.5px;font-weight:600\">A terminal</div>",
-     "<div style=\"display:grid;grid-template-columns:1.2fr 1.7fr 1.1fr;border-bottom:1px solid var(--bd)\">\n                <div style=\"padding:13px 16px;font-size:14.5px;font-weight:600\">A Rust toolchain</div>\n                <div style=\"padding:13px 16px;font-size:14.5px;line-height:1.55;color:var(--mu)\">No release has been published yet, so you build the CLI from a clone — rustup is the usual way to get one</div>\n                <div style=\"padding:13px 16px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--lav)\">cargo --version</div>\n              </div>\n              <div style=\"display:grid;grid-template-columns:1.2fr 1.7fr 1.1fr\">\n                <div style=\"padding:13px 16px;font-size:14.5px;font-weight:600\">A terminal</div>"),
+     "<div style=\"display:grid;grid-template-columns:1.2fr 1.7fr 1.1fr;border-bottom:1px solid var(--bd)\">\n                <div style=\"padding:13px 16px;font-size:14.5px;font-weight:600\">A Rust toolchain <em style=\"color:var(--mu);font-weight:400\">— only if installing from source</em></div>\n                <div style=\"padding:13px 16px;font-size:14.5px;line-height:1.55;color:var(--mu)\">Not needed for the quick install, which fetches a published binary release — only for <a href=\"#quick-installing-from-source\">installing from source</a>; rustup is the usual way to get one</div>\n                <div style=\"padding:13px 16px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--lav)\">cargo --version</div>\n              </div>\n              <div style=\"display:grid;grid-template-columns:1.2fr 1.7fr 1.1fr\">\n                <div style=\"padding:13px 16px;font-size:14.5px;font-weight:600\">A terminal</div>"),
 ]
 
 # A SECOND "install detects the runtime" claim, on the Kiro CLI install page --
@@ -815,12 +788,8 @@ SOP_EDITS += [
     ("install page claude: drop the mock install output",
      "<div style=\"border:1px solid var(--bd);border-radius:12px;overflow:hidden;background:var(--bg2);margin-bottom:18px\">\n              <div style=\"padding:9px 14px;border-bottom:1px solid var(--bd);font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.16em;color:var(--mu2)\">OUTPUT</div>\n              <pre style=\"margin:0;padding:14px;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.75;color:var(--mu);overflow-x:auto\">Installing Konductor 0.1.0\n  agents          11 registered\n  skills          82 registered\n  SOPs            19 registered\n  context files    1 registered\n\nInstalled. Two more settings are required before teammates can run —\nsee 'Enable agent teams' and 'Grant tool permissions'.\n\n  claude --agent konductor</pre>\n            </div>\n            ",
      "<p style=\"margin:0 0 22px;font-size:16px;line-height:1.75;color:var(--mu)\">On success it reports a per-content-type count — agents, skills, SOPs and context files — and says that two more settings are required before teammates can run. Both are below.</p>\n            "),
-    ("install page kiro: drop the mock doctor output",
-     "<div style=\"border:1px solid var(--bd);border-radius:12px;overflow:hidden;background:var(--bg2);margin-bottom:14px\">\n              <div style=\"padding:9px 14px;border-bottom:1px solid var(--bd);font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.16em;color:var(--mu2)\">OUTPUT</div>\n              <pre style=\"margin:0;padding:14px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.75;color:var(--mu);overflow-x:auto\">source             parsed, all cross-references resolve        ok\nruntime            Kiro CLI detected                           ok\nmanifest           complete, no hash drift                     ok\nconfig             .konductor/config.yml valid                 ok\ncontainer_runtime  docker found on PATH                      info\nindex_status       matches the manifest                        ok\n\nAll checks passed.</pre>\n            </div>\n            ",
-     "<p style=\"margin:0 0 22px;font-size:16px;line-height:1.75;color:var(--mu)\">It runs six checks — <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">source</span>, <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">runtime</span>, <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">manifest</span>, <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">config</span>, <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">container_runtime</span> and <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">index_status</span> — and prints a status per check plus remediation for anything that is not <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">ok</span>. Exit code <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">0</span> when nothing failed. Full status vocabulary in <a href=\"#/diagnose\">Diagnose problems</a>.</p>\n            "),
-    ("install page claude: drop the mock doctor output",
-     "<div style=\"border:1px solid var(--bd);border-radius:12px;overflow:hidden;background:var(--bg2);margin-bottom:20px\">\n              <div style=\"padding:9px 14px;border-bottom:1px solid var(--bd);font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.16em;color:var(--mu2)\">konductor doctor</div>\n              <pre style=\"margin:0;padding:14px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.75;color:var(--mu);overflow-x:auto\">source             parsed, all cross-references resolve        ok\nruntime            Claude Code detected                           ok\nmanifest           complete, no hash drift                     ok\nconfig             .konductor/config.yml valid                 ok\ncontainer_runtime  docker found on PATH                      info\nindex_status       matches the manifest                        ok\n\nAll checks passed.</pre>\n            </div>\n            ",
-     "<p style=\"margin:0 0 22px;font-size:16px;line-height:1.75;color:var(--mu)\">It runs six checks — <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">source</span>, <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">runtime</span>, <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">manifest</span>, <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">config</span>, <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">container_runtime</span> and <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">index_status</span> — and prints a status per check plus remediation for anything that is not <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">ok</span>. Exit code <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">0</span> when nothing failed. Full status vocabulary in <a href=\"#/diagnose\">Diagnose problems</a>.</p>\n            "),
+    # The two "drop the mock doctor output" entries (install page kiro/claude) are
+    # retired: both their old and new text predate the live nine-check prose.
 ]
 
 # ── `konductor config` withdrawn from the v1 customer-visible surface ──────────
@@ -833,9 +802,6 @@ SOP_EDITS += [
 # WITHDRAWN_COMMANDS, so "documents every command except the ones we chose to
 # withhold" is still an assertion rather than a gap.
 SOP_EDITS += [
-    ("init page: replace the config cross-link",
-     "<p style=\"margin:0;font-size:16px;line-height:1.75;color:var(--mu)\">Full detail in <a href=\"#/config\">Read and change configuration</a>.</p>",
-     "<p style=\"margin:0;font-size:16px;line-height:1.75;color:var(--mu)\"><span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">init</span> writes a verbatim copy of the CLI's own preset defaults, comments included, so the file documents its own fields. Field meanings are in the <a href=\"#/reference\">CLI reference</a>.</p>"),
     ("init page: next goes to Diagnose problems",
      "<button sc-camel-on-click=\"{{ goConfig }}\" style=\"all:unset;cursor:pointer;font-size:14px;font-weight:600;color:var(--vi)\" style-hover=\"color:var(--lav)\">Next: Read and change configuration →</button>",
      "<button sc-camel-on-click=\"{{ goDiagnose }}\" style=\"all:unset;cursor:pointer;font-size:14px;font-weight:600;color:var(--vi)\" style-hover=\"color:var(--lav)\">Next: Diagnose problems →</button>"),
@@ -890,9 +856,6 @@ SOP_EDITS += [
     ("uninstall: artifact row drops config set",
      "{ where: \"<project>/.konductor/config.yml\", by: \"konductor init, config set\", gone: \"you, manually\" }",
      "{ where: \"<project>/.konductor/config.yml\", by: \"konductor init\", gone: \"you, manually\" }"),
-    ("update page: schema-change warning uses doctor",
-     "If <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">config list</span> reports <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">config ",
-     "If <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">konductor doctor</span> reports <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">config "),
 ]
 
 # The quick start was the last page still showing invented CLI transcripts. Its
@@ -900,13 +863,9 @@ SOP_EDITS += [
 # check loses its input: the package totals are still asserted from the hero
 # banner, the stat tiles and the layout tree, and the doctor check NAMES are
 # asserted from reference.md, not from a transcript.
+# "quick start: drop the mock doctor output" is retired: its `new` is the
+# stale "Six checks" text an earlier pass this session already corrected to nine.
 SOP_EDITS += [
-    ("quick start: drop the mock install output",
-     "<div style=\"border:1px solid var(--bd);border-radius:12px;overflow:hidden;background:var(--bg2);margin-bottom:18px\">\n              <div style=\"padding:8px 12px;border-bottom:1px solid var(--bd);font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.16em;color:var(--mu2)\">OUTPUT</div>\n              <pre style=\"margin:0;padding:14px;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.75;color:var(--mu);overflow-x:auto\">Installing Konductor 0.1.0\n  agents          11 registered\n  skills          82 registered\n  SOPs            19 registered\n  context files    1 registered\n\nInstalled. Start a session with:\n  kiro-cli chat --agent konductor</pre>\n            </div>\n            ",
-     "<p style=\"margin:0 0 22px;font-size:16px;line-height:1.75;color:var(--mu)\">It reports a count per content type and the command to start a session with, and exits <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">0</span>.</p>\n            "),
-    ("quick start: drop the mock doctor output",
-     "<pre style=\"margin:0;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.75;color:var(--mu);overflow-x:auto\">source             parsed, all cross-references resolve        ok\nruntime            Kiro CLI detected                           ok\nmanifest           complete, no hash drift                     ok\nconfig             .konductor/config.yml valid                 ok\ncontainer_runtime  docker found on PATH                      info\nindex_status       matches the manifest                        ok\n\nAll checks passed.</pre>",
-     "<p style=\"margin:0;font-size:14px;line-height:1.6;color:var(--mu)\">Six checks — <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">source</span>, <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">runtime</span>, <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">manifest</span>, <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">config</span>, <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">container_runtime</span> and <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">index_status</span> — each with a status.</p>"),
 ]
 
 # Documented version is 1.0.0 for the v1 launch, by explicit decision. NOTE: no

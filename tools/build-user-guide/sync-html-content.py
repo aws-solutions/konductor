@@ -62,6 +62,94 @@ EDITS = [
     ("SOP glance heading", "All 13 SOPs at a glance", "All 19 SOPs at a glance"),
     ("SOP roster intro", '"paras":["All 13, with owning agent and required parameters.',
      '"paras":["All 19, with owning agent and required parameters.'),
+    # ---- doctor runs nine checks, not six --------------------------------
+    # `cli_version` and `content_version` were added later as version-comparison
+    # checks (see docs/user-guide/tasks/update.md), and `telemetry_state` was
+    # never counted here either -- the guide's "six checks" prose predates all
+    # three. Each install-page occurrence needs its own preceding <pre>/anchor
+    # in `old` because the sentence itself is byte-identical across pages.
+    ("doctor checks (kiro cli install page)",
+     '<pre style="margin:0;padding:14px;font-family:\'JetBrains Mono\',monospace;font-size:12.5px;'
+     'line-height:1.7;color:#E8E4F5;overflow-x:auto">konductor doctor</pre>\n            </div>\n'
+     '            <p style="margin:0 0 22px;font-size:16px;line-height:1.75;color:var(--mu)">'
+     'It runs six checks — <span style="font-family:\'JetBrains Mono\',monospace;font-size:12.5px;'
+     'color:var(--tx)">source</span>, <span style="font-family:\'JetBrains Mono\',monospace;'
+     'font-size:12.5px;color:var(--tx)">runtime</span>, <span style="font-family:\'JetBrains Mono\','
+     'monospace;font-size:12.5px;color:var(--tx)">manifest</span>, <span style="font-family:'
+     '\'JetBrains Mono\',monospace;font-size:12.5px;color:var(--tx)">config</span>, <span '
+     'style="font-family:\'JetBrains Mono\',monospace;font-size:12.5px;color:var(--tx)">'
+     'container_runtime</span> and <span style="font-family:\'JetBrains Mono\',monospace;'
+     'font-size:12.5px;color:var(--tx)">index_status</span> — and prints a status per check plus '
+     'remediation for anything that is not <span style="font-family:\'JetBrains Mono\',monospace;'
+     'font-size:12.5px;color:var(--tx)">ok</span>. Exit code <span style="font-family:'
+     '\'JetBrains Mono\',monospace;font-size:12.5px;color:var(--tx)">0</span> when nothing failed. '
+     'Full status vocabulary in <a href="#/diagnose">Diagnose problems</a>.</p>',
+     '<pre style="margin:0;padding:14px;font-family:\'JetBrains Mono\',monospace;font-size:12.5px;'
+     'line-height:1.7;color:#E8E4F5;overflow-x:auto">konductor doctor</pre>\n            </div>\n'
+     '            <p style="margin:0 0 22px;font-size:16px;line-height:1.75;color:var(--mu)">'
+     'It runs nine checks — <span style="font-family:\'JetBrains Mono\',monospace;font-size:12.5px;'
+     'color:var(--tx)">source</span>, <span style="font-family:\'JetBrains Mono\',monospace;'
+     'font-size:12.5px;color:var(--tx)">runtime</span>, <span style="font-family:\'JetBrains Mono\','
+     'monospace;font-size:12.5px;color:var(--tx)">manifest</span>, <span style="font-family:'
+     '\'JetBrains Mono\',monospace;font-size:12.5px;color:var(--tx)">config</span>, <span '
+     'style="font-family:\'JetBrains Mono\',monospace;font-size:12.5px;color:var(--tx)">'
+     'container_runtime</span>, <span style="font-family:\'JetBrains Mono\',monospace;'
+     'font-size:12.5px;color:var(--tx)">index_status</span>, <span style="font-family:'
+     '\'JetBrains Mono\',monospace;font-size:12.5px;color:var(--tx)">cli_version</span>, <span '
+     'style="font-family:\'JetBrains Mono\',monospace;font-size:12.5px;color:var(--tx)">'
+     'telemetry_state</span>, and <span style="font-family:\'JetBrains Mono\',monospace;'
+     'font-size:12.5px;color:var(--tx)">content_version</span> — and prints a status per check '
+     'plus remediation for anything that is not <span style="font-family:\'JetBrains Mono\','
+     'monospace;font-size:12.5px;color:var(--tx)">ok</span>. Exit code <span style="font-family:'
+     '\'JetBrains Mono\',monospace;font-size:12.5px;color:var(--tx)">0</span> when nothing failed. '
+     'Full status vocabulary in <a href="#/diagnose">Diagnose problems</a>.</p>'),
+    ("doctor checks (claude code install page)",
+     '<section id="ic-success" style="padding-bottom:44px;border-top:1px solid var(--bd);'
+     'padding-top:40px">\n            <h2 style="margin:0 0 18px;font-size:30px;'
+     'letter-spacing:-.025em;font-weight:600">What success looks like</h2>\n            <p '
+     'style="margin:0 0 16px;font-size:16px;line-height:1.75;color:var(--mu)">Verify with the CLI '
+     'first:</p>\n            <p style="margin:0 0 22px;font-size:16px;line-height:1.75;'
+     'color:var(--mu)">It runs six checks — <span style="font-family:\'JetBrains Mono\',monospace;'
+     'font-size:12.5px;color:var(--tx)">source</span>, <span style="font-family:\'JetBrains Mono\','
+     'monospace;font-size:12.5px;color:var(--tx)">runtime</span>, <span style="font-family:'
+     '\'JetBrains Mono\',monospace;font-size:12.5px;color:var(--tx)">manifest</span>, <span '
+     'style="font-family:\'JetBrains Mono\',monospace;font-size:12.5px;color:var(--tx)">config'
+     '</span>, <span style="font-family:\'JetBrains Mono\',monospace;font-size:12.5px;'
+     'color:var(--tx)">container_runtime</span> and <span style="font-family:\'JetBrains Mono\','
+     'monospace;font-size:12.5px;color:var(--tx)">index_status</span> — and prints a status per '
+     'check plus remediation for anything that is not <span style="font-family:\'JetBrains Mono\','
+     'monospace;font-size:12.5px;color:var(--tx)">ok</span>. Exit code <span style="font-family:'
+     '\'JetBrains Mono\',monospace;font-size:12.5px;color:var(--tx)">0</span> when nothing failed. '
+     'Full status vocabulary in <a href="#/diagnose">Diagnose problems</a>.</p>',
+     '<section id="ic-success" style="padding-bottom:44px;border-top:1px solid var(--bd);'
+     'padding-top:40px">\n            <h2 style="margin:0 0 18px;font-size:30px;'
+     'letter-spacing:-.025em;font-weight:600">What success looks like</h2>\n            <p '
+     'style="margin:0 0 16px;font-size:16px;line-height:1.75;color:var(--mu)">Verify with the CLI '
+     'first:</p>\n            <p style="margin:0 0 22px;font-size:16px;line-height:1.75;'
+     'color:var(--mu)">It runs nine checks — <span style="font-family:\'JetBrains Mono\','
+     'monospace;font-size:12.5px;color:var(--tx)">source</span>, <span style="font-family:'
+     '\'JetBrains Mono\',monospace;font-size:12.5px;color:var(--tx)">runtime</span>, <span '
+     'style="font-family:\'JetBrains Mono\',monospace;font-size:12.5px;color:var(--tx)">manifest'
+     '</span>, <span style="font-family:\'JetBrains Mono\',monospace;font-size:12.5px;'
+     'color:var(--tx)">config</span>, <span style="font-family:\'JetBrains Mono\',monospace;'
+     'font-size:12.5px;color:var(--tx)">container_runtime</span>, <span style="font-family:'
+     '\'JetBrains Mono\',monospace;font-size:12.5px;color:var(--tx)">index_status</span>, <span '
+     'style="font-family:\'JetBrains Mono\',monospace;font-size:12.5px;color:var(--tx)">'
+     'cli_version</span>, <span style="font-family:\'JetBrains Mono\',monospace;font-size:12.5px;'
+     'color:var(--tx)">telemetry_state</span>, and <span style="font-family:\'JetBrains Mono\','
+     'monospace;font-size:12.5px;color:var(--tx)">content_version</span> — and prints a status per '
+     'check plus remediation for anything that is not <span style="font-family:\'JetBrains Mono\','
+     'monospace;font-size:12.5px;color:var(--tx)">ok</span>. Exit code <span style="font-family:'
+     '\'JetBrains Mono\',monospace;font-size:12.5px;color:var(--tx)">0</span> when nothing failed. '
+     'Full status vocabulary in <a href="#/diagnose">Diagnose problems</a>.</p>'),
+    ("doctor checks (reference table row)",
+     '{"k":"konductor doctor","v":"Run six checks — source, runtime, manifest, config, '
+     'container_runtime, index_status — and print remediation. It does NOT compare installed '
+     'against available versions"}',
+     '{"k":"konductor doctor","v":"Run nine checks — source, runtime, manifest, config, '
+     'container_runtime, index_status, cli_version, telemetry_state, content_version — and print '
+     'remediation. cli_version and content_version compare installed against available versions; '
+     'the rest do not"}'),
     # ---- repository layout tree ---------------------------------------------
     ("layout tree SOPs", "├── agent-sops/                   13 SOPs (*.sop.md)",
      "├── agent-sops/                   19 SOPs (*.sop.md)"),
@@ -225,18 +313,6 @@ EDITS = [
      'can use it. allow is one of three verdicts this file supports — ask prompts you, deny '
      'refuses outright — but a background subagent cannot answer a prompt, so in team mode ask '
      'lands as a silent denial.</p>'),
-    # ---- quick start step 1 is a build, not a download ----------------------
-    # Nothing has been published to download, and the step already built from a
-    # clone -- the heading and the lead-in were the last two places still framing
-    # it as a fetch, one of them by narrating the absent release.
-    ("qs prereq row: release framing",
-     ">No release has been published yet, so you build the CLI from a clone — rustup is the "
-     "usual way to get one<",
-     ">Built from a clone of the repository — rustup is the usual way to get a toolchain<"),
-    ("qs step 1 heading", ">Download the CLI</h3>", ">Build the CLI</h3>"),
-    ("qs step 1 toc", ">1 — Download the CLI</a>", ">1 — Build the CLI</a>"),
-    ("qs step 1 intro", ">Get the build for your platform:</p>",
-     ">Build konductor from a clone of the repository. You need a Rust toolchain:</p>"),
     # ---- the layout tree omitted mcp/ ---------------------------------------
     ("rf layout tree: mcp/",
      "├── docs/\\n│   ├── guides/                   Integration guides",
