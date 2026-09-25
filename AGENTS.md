@@ -83,9 +83,37 @@ instructions.
 
 ## Pull Requests
 
+Write commit messages and pull request titles as [Conventional Commits](https://www.conventionalcommits.org):
+`type(scope): summary`, for example `fix(cli): reject unknown harness names`. Use a component name
+(`cli`, `mcp`, `skills`, `agents`) as the scope where one applies. Skills, agent specs, SOPs and
+context files are shipped product: use `feat` or `fix` when they change agent behavior and
+`refactor` when they do not, never `docs`. Changes to this file or `CLAUDE.md` are `chore`.
+This convention is inferred from the existing history and is not enforced by CI.
+
 Use [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md) for every pull request.
 GitHub pre-fills the PR body with it automatically. Complete every section, or delete it if it does
 not apply — do not leave a section untouched with its placeholder text still in place.
+
+## Branching
+
+`fuse` is the integration branch; every pull request targets it. Its history stays clean and
+linear, which is why merge commits are disabled. Commit as often as you like while working, but
+squash before landing: either the whole pull request into one well-named commit, or related
+commits within it. Five commits in a row editing the same file become one, whose message
+describes the result.
+
+- **Targeted changes** (anything that should land in `fuse` for sure) are built on a short-lived
+  branch named for the change type: `feature/<slug>`, `fix/<slug>`, `chore/<slug>`,
+  `refactoring/<slug>`, or `agent/<slug>` for agent-driven work. Each lands through a pull
+  request that replays its commits on top of `fuse`; merge commits are disabled on the
+  repository, and the branch is deleted on landing. Rebase onto the current `fuse` before
+  requesting review, so the reviewed commits are the ones that land.
+- **Candidates** are experimental, wide-scoped changes that alter agent behavior significantly
+  and are meant to be benchmarked against `fuse` and against each other. They live on
+  `candidates/<NAME>`. A candidate is not an incremental change and is never merged piecemeal:
+  most candidates are discarded, and a selected candidate replaces `fuse` as a whole. Replacing
+  `fuse` is the owner's call; tag the previous tip first (`git tag fuse-before-<NAME> fuse`) so it
+  stays reachable.
 
 ## Konductor CLI (`cli/`)
 
