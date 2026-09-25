@@ -920,8 +920,14 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
   for that gap plus two further caveats (GitHub API rate limiting; no GPG/sigstore
   provenance check — SHA-256 transport-integrity only). `--from <repo-root>` remains
   an alternative for installing from a local checkout.
-- SOPs are synthed into `dist/kiro-cli-v2/sops/` but are not installed anywhere; there is
-  no runtime discovery path for them yet.
+- SOPs are installed on both the `--from` and no-`--from` paths: every staged
+  `.sop.md` file is copied verbatim into `.konductor/sops/` and converted into a
+  `.kiro/skills/sop-<name>/SKILL.md` file, so a runtime discovery path exists for
+  both. `konductor install`'s own summary line still calls this count "skipped ...
+  (no runtime discovery path yet)" specifically on the `--from` path; that wording
+  predates the current install behavior and is deliberately left as-is (see
+  `format_install_summary`'s own doc comment in `install.rs`), while the
+  no-`--from` path correctly reports "installed N SOP(s)".
 - `metrics` is a stub (see above).
 - `update` and `uninstall` have no same-target concurrency protection: running two
   `konductor` invocations against the same target directory at once is unsupported and
