@@ -23,7 +23,7 @@ Use this skill when:
 
 ### Priority Classification
 
-P0 (critical path — must not fail), P1 (core features — high business value), P2 (edge cases — important but not blocking), P3 (nice-to-have — low risk if deferred).
+P0 (critical path, must not fail), P1 (core features, high business value), P2 (edge cases, important but not blocking), P3 (nice-to-have, low risk if deferred).
 
 ### Execution Strategy
 
@@ -50,7 +50,7 @@ Analyze test gap analysis output, Phase 1 user stories, Phase 2 architecture des
 
 ## Prerequisites
 
-If a calling SOP supplied paths for any artifact below, or for the output file, You MUST use those values and skip the corresponding prompt. Ask only for what the caller did not supply — a caller that keeps its artifacts under its own output directory already knows where they are.
+If a calling SOP supplied paths for any artifact below, or for the output file, You MUST use those values and skip the corresponding prompt. Ask only for what the caller did not supply. A caller that keeps its artifacts under its own output directory already knows where they are.
 
 Required artifacts:
 
@@ -58,15 +58,15 @@ Required artifacts:
    - Location: `testing-quality-assurance/outputs/test-gap-analysis.md`
    - Contains: Coverage analysis, identified gaps, testing philosophy, distribution analysis
 
-2. **Phase 1 - Requirements & Planning**: User stories with acceptance criteria
+2. **Phase 1: Requirements & Planning**: User stories with acceptance criteria
    - Location: `requirements-planning/outputs/user-stories.md`
    - Contains: Business requirements, user journeys, acceptance criteria
 
-3. **Phase 2 - Design & Architecture**: System design and architecture
+3. **Phase 2: Design & Architecture**: System design and architecture
    - Location: `design-architecture/outputs/system-design.md`
    - Contains: Architecture overview, integration points, data flows
 
-4. **Phase 3 - Implementation & Development**: Feature plans and implementation guides
+4. **Phase 3: Implementation & Development**: Feature plans and implementation guides
    - Location: `implementation-development/outputs/feature-plan.md`
    - Contains: Implementation approach, technical decisions, code structure
 
@@ -98,7 +98,7 @@ Follow stages sequentially:
 
 Before starting analysis, gather all required information from the user in a single interaction:
 
-**Ask the user for anything the caller did not already supply. If a calling SOP passed the output path, the gap analysis, the user stories, the system design, the feature plan, the change type, or the release type, use those values and skip the corresponding question. Ask nothing when all of them were supplied — a delegated run may have no human present to answer. Where a caller supplies none of the optional context, treat Feature Plan as absent, Change Type as `enhancement`, and Release Type as `minor` rather than blocking — both are in-enum, so Stage 1 validation passes and Stage 5 has a defined weight to score against.**
+**Ask the user for anything the caller did not already supply. If a calling SOP passed the output path, the gap analysis, the user stories, the system design, the feature plan, the change type, or the release type, use those values and skip the corresponding question. Ask nothing when all of them were supplied. A delegated run may have no human present to answer. Where a caller supplies none of the optional context, treat Feature Plan as absent, Change Type as `enhancement`, and Release Type as `minor` rather than blocking. Both are in-enum, so Stage 1 validation passes and Stage 5 has a defined weight to score against.**
 
 ```
 To generate your E2E test strategy, I need the following information:
@@ -228,7 +228,7 @@ Extract the following sections:
    - Alignment status
 
 2. **Current E2E Test Coverage**
-   - Total E2E test cases (not just files - run test suite to get accurate count)
+   - Total E2E test cases (not just files, run test suite to get accurate count)
    - E2E test files and locations
    - User journeys currently covered by E2E tests
    - E2E test status (passing/failing)
@@ -249,7 +249,7 @@ Extract the following sections:
 When analyzing test coverage:
 
 - **Always use test runner output** as source of truth (not file system scanning)
-- **Test files ≠ test cases** - a single file may contain 10-50 individual tests
+- **Test files ≠ test cases.** A single file may contain 10-50 individual tests
 - **Run test suite** to get accurate test case counts (e.g., `npm test`, `pytest --collect-only`)
 - **Example:** 123 test files = 1,236 test cases (10x difference)
 - **Classification matters:** Different definitions of "integration test" lead to different distributions

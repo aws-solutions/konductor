@@ -37,9 +37,9 @@ Supported hierarchy: **Goal > Initiative > Epic > Story > Task > Subtask**
 Rules:
 
 - Create parents first, nest children via task management tool with parent task ID
-- Only **Tasks and Subtasks** get assigned to a sprint — Initiatives/Epics/Stories spanning multiple sprints should NOT be sprint-assigned
+- Only **Tasks and Subtasks** get assigned to a sprint. Initiatives/Epics/Stories spanning multiple sprints should NOT be sprint-assigned
 - When adding a task to a sprint, all nested subtasks are auto-added
-- Always set explicit type — never leave as None. Default to **Task**.
+- Always set explicit type, never leave as None. Default to **Task**.
 
 ### Story Point Sizing
 
@@ -49,11 +49,11 @@ Rules:
 | 2      | Small     | Add API field, write unit test suite, update runbook                |
 | 3      | Medium    | New API endpoint with tests, refactor module, investigate+fix bug   |
 | 5      | Large     | New feature with API+UI, cross-package refactor, design+implement   |
-| 8      | Too large | Multi-service integration, major migration — **flag for splitting** |
+| 8      | Too large | Multi-service integration, major migration, **flag for splitting** |
 
 - Tasks above 5 points should be broken down
-- Set the **Estimate** attribute for story points — never put estimates in description
-- To convert a raw story-point estimate into an AI-adjusted (agentic) effort band, apply the `legacy-to-agentic-estimate` skill — pass the assigned points as the legacy value and the task description; use the returned mid-band for capacity tracking.
+- Set the **Estimate** attribute for story points, never put estimates in description
+- To convert a raw story-point estimate into an AI-adjusted (agentic) effort band, apply the `legacy-to-agentic-estimate` skill. Pass the assigned points as the legacy value and the task description; use the returned mid-band for capacity tracking.
 
 ### Capacity Tracking
 

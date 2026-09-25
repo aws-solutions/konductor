@@ -11,13 +11,13 @@ tags: [skill, feature-splitting, task-decomposition, planning, agile]
 
 Takes user stories and system design / HLD and splits them into independent features scoped for individual engineers. The goal is to minimize overlap and dependency between team members so each engineer can work on their feature track independently.
 
-This skill sits between Design and Kiro Spec Generation in the SDLC — one HLD fans out into multiple independent feature tracks, each going through its own Kiro spec workflow.
+This skill sits between Design and Kiro Spec Generation in the SDLC. One HLD fans out into multiple independent feature tracks, each going through its own Kiro spec workflow.
 
 ## Usage
 
 Use this skill when:
 
-- The request says "break down," "split," or "decompose" a feature/project into (implementation) tasks — this phrasing means produce the Feature Split format below, NOT a generic layer-by-layer technical breakdown (e.g. Data Model → Backend → API Contract → Frontend → Cross-cutting), even when the skill isn't named explicitly
+- The request says "break down," "split," or "decompose" a feature/project into (implementation) tasks. This phrasing means produce the Feature Split format below, NOT a generic layer-by-layer technical breakdown (e.g. Data Model → Backend → API Contract → Frontend → Cross-cutting), even when the skill isn't named explicitly
 - System design / HLD is approved and ready for implementation planning
 - Breaking a project into independent feature tracks for a team
 - Scoping work so each engineer can work with minimal coordination
@@ -32,11 +32,11 @@ Do NOT use when:
 
 Each split feature should:
 
-1. **Be independently implementable** — one engineer can complete it without blocking on others
-2. **Have clear boundaries** — well-defined inputs, outputs, and interfaces
-3. **Map to user stories** — traceable back to one or more user stories
-4. **Be testable in isolation** — can be verified without other features being complete
-5. **Minimize shared state** — avoid features that read/write the same data concurrently
+1. **Be independently implementable**: one engineer can complete it without blocking on others
+2. **Have clear boundaries**: well-defined inputs, outputs, and interfaces
+3. **Map to user stories**: traceable back to one or more user stories
+4. **Be testable in isolation**: can be verified without other features being complete
+5. **Minimize shared state**: avoid features that read/write the same data concurrently
 
 ## Output Format
 
@@ -69,7 +69,7 @@ Each split feature should:
 
 1. Read user stories and system design / HLD from the paths supplied by the caller
 2. Identify natural feature boundaries (by domain, by API surface, by data ownership)
-3. Check for overlap — if two features touch the same data model or API, consider merging or defining a shared interface
+3. Check for overlap. If two features touch the same data model or API, consider merging or defining a shared interface
 4. Produce the feature split with scope, user story mapping, and dependencies
 5. Present to user for approval
 
@@ -85,7 +85,7 @@ Each split feature should:
 
 - More than 2 features share the same data model (consider a shared-interfaces feature)
 - A feature is too large (>2 weeks of work for one engineer)
-- A feature is too small (<2 days of work — consider merging)
+- A feature is too small (<2 days of work; consider merging)
 
 **SUGGESTION:**
 

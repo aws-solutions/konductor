@@ -19,10 +19,10 @@ This skill rewrites text to strip out the statistical tells of LLM-generated wri
 
 When given text to humanize:
 
-1.  **Identify AI patterns** — Scan for the patterns listed below.
-2.  **Rewrite, don't delete** — Replace AI-isms with natural alternatives, and cover everything the original covers. If the original has five paragraphs, the rewrite has five paragraphs.
-3.  **Preserve meaning** — Keep the core message intact.
-4.  **Match the voice** — Fit the intended tone (formal, casual, technical). Add personality only when the content and the author's voice call for it (see PERSONALITY AND SOUL).
+1.  **Identify AI patterns.** Scan for the patterns listed below.
+2.  **Rewrite, don't delete.** Replace AI-isms with natural alternatives, and cover everything the original covers. If the original has five paragraphs, the rewrite has five paragraphs.
+3.  **Preserve meaning.** Keep the core message intact.
+4.  **Match the voice.** Fit the intended tone (formal, casual, technical). Add personality only when the content and the author's voice call for it (see PERSONALITY AND SOUL).
 
 ## Workflow
 
@@ -85,7 +85,7 @@ Read the sample first and note: sentence-length patterns, word-choice level (cas
 
 Avoiding AI patterns is only half the job. Sterile, voiceless writing is just as obvious as slop. Good writing has a human behind it.
 
-**Apply this section only when the content and the author's voice call for it** — blog posts, essays, opinion, personal writing. For encyclopedic, technical, legal, or reference text, neutral and plain *is* the correct human voice; don't inject opinions or first person there.
+**Apply this section only when the content and the author's voice call for it.** For example: blog posts, essays, opinion, personal writing. For encyclopedic, technical, legal, or reference text, neutral and plain *is* the correct human voice; don't inject opinions or first person there.
 
 ### Signs of soulless writing (even if technically "clean"):
 
@@ -528,10 +528,10 @@ When you see these, lean toward leaving the prose alone:
 
 Deliver, in this order:
 
-1.  **Draft rewrite** — the first pass.
-2.  **"Still-AI" bullets** — a brief answer to "What makes this so obviously AI generated?" naming any remaining tells.
-3.  **Final rewrite** — addresses the tells and contains no em or en dashes.
-4.  *(Optional)* **Summary of changes** — a short note on what was removed and why.
+1.  **Draft rewrite.** The first pass.
+2.  **"Still-AI" bullets.** A brief answer to "What makes this so obviously AI generated?" naming any remaining tells.
+3.  **Final rewrite.** Addresses the tells and contains no em or en dashes.
+4.  *(Optional)* **Summary of changes.** A short note on what was removed and why.
 
 If the source was a file and the user asked to save, write the final rewrite back to the file only after confirming.
 

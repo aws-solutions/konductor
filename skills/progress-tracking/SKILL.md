@@ -453,4 +453,4 @@ After completing mode-specific stages, generate consolidated report using standa
 - Could add traceability matrix linking tasks to user stories
 - Could flag tasks at risk based on remaining time vs effort
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.

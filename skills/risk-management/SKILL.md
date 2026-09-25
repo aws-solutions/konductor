@@ -24,10 +24,10 @@ Use this skill when:
 
 ### RAID Log Format
 
-- **Risks** — uncertain events that may impact the program (probability × impact)
-- **Assumptions** — conditions believed true but not yet validated
-- **Issues** — risks that have materialized and need resolution now
-- **Dependencies** — external factors the program relies on
+- **Risks**: uncertain events that may impact the program (probability × impact)
+- **Assumptions**: conditions believed true but not yet validated
+- **Issues**: risks that have materialized and need resolution now
+- **Dependencies**: external factors the program relies on
 
 ### Probability × Impact Scoring
 
@@ -43,11 +43,11 @@ Escalate when: risk score increases to Critical, mitigation fails, issue unresol
 
 ## Output Format
 
-1. **RAID Log Table** — columns: ID, Type (R/A/I/D), Description, Probability, Impact, Score, Mitigation, Owner, Due Date, Status (Open/Mitigated/Closed/Escalated)
-2. **Risk Heat Map** — 3×3 grid (Probability vs Impact) with risk IDs plotted
-3. **Top 5 Risks Summary** — one-liner per risk with mitigation status for executive reporting
-4. **Review Cadence** — recommended review frequency: Critical (weekly), High (bi-weekly), Medium (monthly), Low (quarterly)
-5. **Escalation Log** — any risks escalated this period with path and outcome
+1. **RAID Log Table**, with columns: ID, Type (R/A/I/D), Description, Probability, Impact, Score, Mitigation, Owner, Due Date, Status (Open/Mitigated/Closed/Escalated)
+2. **Risk Heat Map**: a 3×3 grid (Probability vs Impact) with risk IDs plotted
+3. **Top 5 Risks Summary**: one-liner per risk with mitigation status for executive reporting
+4. **Review Cadence**, the recommended review frequency: Critical (weekly), High (bi-weekly), Medium (monthly), Low (quarterly)
+5. **Escalation Log**: any risks escalated this period with path and outcome
 
 ## Quality Gate
 
@@ -69,4 +69,4 @@ Escalate when: risk score increases to Critical, mitigation fails, issue unresol
 - Could add risk velocity (new risks per sprint) as a trend metric
 - Could link risks to specific milestones in the program plan
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.

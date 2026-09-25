@@ -9,7 +9,7 @@ tags: [refactor, simplify, readability, maintainability]
 
 ## Overview
 
-Enhance code clarity, consistency, and maintainability while preserving exact functionality. Prioritize readable, explicit code over overly compact solutions.
+Improve code clarity, consistency, and maintainability while preserving exact functionality. Prioritize readable, explicit code over overly compact solutions.
 
 ## Usage
 
@@ -25,11 +25,11 @@ Use this skill when:
 
 ### Preserve Functionality
 
-Never change what the code does — only how it does it. All original features, outputs, and behaviors **MUST** remain intact.
+Never change what the code does, only how it does it. All original features, outputs, and behaviors **MUST** remain intact.
 
 ### Clarity Over Brevity
 
-- Avoid nested ternary operators — prefer switch statements or if/else chains
+- Avoid nested ternary operators: prefer switch statements or if/else chains
 - Explicit code is better than overly compact code
 - Readable code beats clever one-liners
 

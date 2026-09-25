@@ -11,7 +11,7 @@ tags: [skill, kiro, specs, requirements, ears, acceptance-criteria]
 
 Bridges product management artifacts to Kiro IDE's spec-driven development workflow. Takes user stories (from `user-story-writing`) and extracted requirements (from `requirements-extraction`) and produces `{spec_dir}/requirements.md` files using the EARS (Easy Approach to Requirements Syntax) format for acceptance criteria.
 
-This skill sits at the handoff point between product management and design — after user stories are approved and before architecture work begins. The output drives Kiro IDE's spec-driven development, where requirements.md is the source of truth for design and task generation.
+This skill sits at the handoff point between product management and design, after user stories are approved and before architecture work begins. The output drives Kiro IDE's spec-driven development, where requirements.md is the source of truth for design and task generation.
 
 ## Usage
 
@@ -24,16 +24,16 @@ Use this skill when:
 
 Do NOT use when:
 
-- User stories are not yet written or approved — use `user-story-writing` first
-- You need to generate design artifacts — use `kiro-design-generation` after this skill
-- Requirements are still being gathered — use `requirements-extraction` first
+- User stories are not yet written or approved. Use `user-story-writing` first.
+- You need to generate design artifacts. Use `kiro-design-generation` after this skill.
+- Requirements are still being gathered. Use `requirements-extraction` first.
 
 ## Input
 
 This skill consumes two upstream artifacts:
 
-1. **User Stories** from `user-story-writing` — INVEST-format stories with Given/When/Then acceptance criteria
-2. **Requirements** from `requirements-extraction` — Structured design inputs including functional requirements, NFRs, constraints, and assumptions
+1. **User Stories** from `user-story-writing`: INVEST-format stories with Given/When/Then acceptance criteria
+2. **Requirements** from `requirements-extraction`: structured design inputs including functional requirements, NFRs, constraints, and assumptions
 
 Input can come from:
 
@@ -47,7 +47,7 @@ Input can come from:
 {spec_dir}/requirements.md
 ```
 
-`spec_dir` (optional): path where spec artifacts are written. Defaults to `.kiro/specs/{feature-name}/` if not provided — the same location Kiro IDE itself writes specs to, so this skill behaves identically whether invoked standalone in any Kiro project or as part of a larger workflow. A caller that keeps its artifacts elsewhere — an SDLC workflow collecting everything under one output directory, for instance — passes its own `spec_dir` and this skill MUST write there instead. Directory names MUST be kebab-case either way.
+`spec_dir` (optional): path where spec artifacts are written. Defaults to `.kiro/specs/{feature-name}/` if not provided. This is the same location Kiro IDE itself writes specs to, so this skill behaves identically whether invoked standalone in any Kiro project or as part of a larger workflow. A caller that keeps its artifacts elsewhere, such as an SDLC workflow collecting everything under one output directory, passes its own `spec_dir`, and this skill MUST write there instead. Directory names MUST be kebab-case either way.
 
 One `requirements.md` per feature.
 
@@ -115,9 +115,9 @@ User stories from `user-story-writing` use Given/When/Then (BDD) acceptance crit
 
 | BDD Keyword | EARS Keyword | Role                                            |
 | ----------- | ------------ | ----------------------------------------------- |
-| **Given**   | **WHILE**    | Precondition — the state that must hold         |
-| **When**    | **WHEN**     | Trigger — the event that initiates the behavior |
-| **Then**    | **SHALL**    | Response — the required system behavior         |
+| **Given**   | **WHILE**    | Precondition: the state that must hold         |
+| **When**    | **WHEN**     | Trigger: the event that initiates the behavior |
+| **Then**    | **SHALL**    | Response: the required system behavior         |
 
 ### Conversion Examples
 
@@ -156,7 +156,7 @@ IF the API rate limit is exceeded, THEN THE system SHALL return a 429 status cod
   - If it describes an error or failure condition → use **Unwanted** pattern (IF... THEN THE system SHALL...)
   - Otherwise → use **State-Driven** pattern (WHILE... THE system SHALL...)
 - If **Given + When + Then** → use **Complex** pattern (WHILE... WHEN... THE system SHALL...)
-- Always make the response more specific than the original Then — add concrete values, status codes, timeouts, and identifiers
+- Always make the response more specific than the original Then: add concrete values, status codes, timeouts, and identifiers
 
 ## Output Format
 
@@ -239,7 +239,7 @@ Read the approved user stories from the upstream artifact. Sources (in priority 
 
 ### Step 2: Confirm Feature Scope
 
-This skill produces one `requirements.md` per invocation, for the single feature identified by `spec_dir` (or its default `.kiro/specs/{feature-name}/`). Feature splitting happens upstream, via `task-decomposition`. If the user stories read in Step 1 span multiple features, filter to only those in scope for this invocation's feature before continuing — do not group them into multiple features or write more than one `requirements.md` in a single run. If multiple features need specs, invoke this skill once per feature with that feature's own `spec_dir`, the same way `kiro-spec-workflow` does by passing a single `feature_name`.
+This skill produces one `requirements.md` per invocation, for the single feature identified by `spec_dir` (or its default `.kiro/specs/{feature-name}/`). Feature splitting happens upstream, via `task-decomposition`. If the user stories read in Step 1 span multiple features, filter to only those in scope for this invocation's feature before continuing. Do not group them into multiple features or write more than one `requirements.md` in a single run. If multiple features need specs, invoke this skill once per feature with that feature's own `spec_dir`, the same way `kiro-spec-workflow` does by passing a single `feature_name`.
 
 ### Step 3: Create Output Path
 
@@ -283,7 +283,7 @@ Before presenting output, verify:
 **CRITICAL (must fix before done):**
 
 - Acceptance criterion missing EARS keywords (`SHALL`, `WHEN`, `WHILE`, `WHERE`, `IF/THEN`)
-- No `SHALL` keyword in a criterion — every criterion must specify what the system SHALL do
+- No `SHALL` keyword in a criterion: every criterion must specify what the system SHALL do
 - Requirement missing its source user story
 - Feature directory name not in kebab-case
 - requirements.md missing the Introduction or Requirements sections
@@ -291,7 +291,7 @@ Before presenting output, verify:
 **IMPORTANT (should fix):**
 
 - Vague triggers without specific events ("when something happens" → specify the exact event)
-- Untestable criteria — no measurable outcome or observable behavior
+- Untestable criteria: no measurable outcome or observable behavior
 - Missing error/failure scenarios for a requirement that involves external calls or user input
 - Acceptance criteria describe implementation details instead of observable behavior
 - Fewer than 3 acceptance criteria per requirement
@@ -303,4 +303,4 @@ Before presenting output, verify:
 - Could add security criteria using Unwanted pattern (IF unauthorized access attempted, THEN...)
 - Could cross-reference NFRs from `requirements-extraction` as additional criteria
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.

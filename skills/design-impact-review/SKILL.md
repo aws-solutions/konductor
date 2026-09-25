@@ -11,14 +11,14 @@ tags: [skill, design, review, impact, deviation]
 
 A reasoning method, not an automated gate. It gives you a structured way to
 answer one question: _"What else does this change touch?"_ Agents tend to make a
-local change — add a database column, alter a response shape — and continue
-without re-evaluating the artifacts that depend on it. Applying this method
-forces that re-evaluation.
+local change, such as adding a database column or altering a response shape, and
+continue without re-evaluating the artifacts that depend on it. Applying this
+method forces that re-evaluation.
 
 ## When to apply it
 
 Apply it whenever you change a data model, API contract, schema, system
-interface, or any design-level decision — or when you are about to deviate from
+interface, or any design-level decision, or when you are about to deviate from
 a design doc or requirement. The developer agent's prompt directs it to pause
 and run this analysis before such a change; you can also invoke it on your own.
 It is guidance the agent applies by judgment, not a hook that fires on every
@@ -60,7 +60,7 @@ Using the dependency map, list every artifact the change may affect:
 
 | Change at      | Re-assess                                                         |
 | -------------- | ----------------------------------------------------------------- |
-| Requirement    | System design, UX, threat model, API, data model, tests — all     |
+| Requirement    | All of them: system design, UX, threat model, API, data model, tests |
 | System Design  | Threat model, API, data model, UX, NFRs, tests                    |
 | API / Contract | UX (consumer), data model, tests, threat model (new surface)      |
 | Data Model     | API (exposure), threat model (data sensitivity), tests            |

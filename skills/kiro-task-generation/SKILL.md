@@ -9,9 +9,9 @@ tags: [skill, kiro, specs, tasks, implementation-plan, spec-driven-development]
 
 ## Overview
 
-Produces `{spec_dir}/tasks.md` — a structured implementation task list for Kiro IDE's spec-driven development workflow. Each task is a coding task designed for a code-generation LLM to execute one at a time, with explicit references back to requirements.md.
+Produces `{spec_dir}/tasks.md`, a structured implementation task list for Kiro IDE's spec-driven development workflow. Each task is a coding task designed for a code-generation LLM to execute one at a time, with explicit references back to requirements.md.
 
-`spec_dir` (optional): path where spec artifacts are written. Defaults to `.kiro/specs/{feature-name}/` if not provided — the same location Kiro IDE itself writes specs to, so this skill behaves identically whether invoked standalone in any Kiro project or as part of a larger workflow. A caller that keeps its artifacts elsewhere passes its own `spec_dir`, and this skill MUST read and write there instead.
+`spec_dir` (optional): path where spec artifacts are written. Defaults to `.kiro/specs/{feature-name}/` if not provided. This is the same location Kiro IDE itself writes specs to, so this skill behaves identically whether invoked standalone in any Kiro project or as part of a larger workflow. A caller that keeps its artifacts elsewhere passes its own `spec_dir`, and this skill MUST read and write there instead.
 
 This skill is the final step in the Kiro spec workflow, after `kiro-requirements-generation` produces requirements.md and `kiro-design-generation` produces design.md.
 
@@ -57,19 +57,19 @@ Do NOT use when:
 - Max 2 levels of hierarchy (top-level + one sub-level)
 - Each task includes: clear objective, sub-bullets with details, requirement references in italics
 - Requirement references: `_Requirements: X.Y_` linking back to requirements.md
-- Tasks are ONLY coding tasks — no deployment, documentation, or user testing
+- Tasks are ONLY coding tasks. No deployment, documentation, or user testing
 - Each task builds incrementally on previous tasks
 - Tasks are designed for a code-generation LLM to execute one at a time
 
 ## Task Ordering
 
-1. **Foundation** — project structure, interfaces, shared utilities
-2. **Core** — main feature implementation (data models, services, API)
-3. **Polish** — error handling, edge cases, validation
+1. **Foundation.** Project structure, interfaces, shared utilities
+2. **Core.** Main feature implementation (data models, services, API)
+3. **Polish.** Error handling, edge cases, validation
 
 ## Execution Steps
 
-1. Resolve `spec_dir` — the caller's value if given, otherwise the default `.kiro/specs/{feature-name}/`
+1. Resolve `spec_dir` to the caller's value if given, otherwise the default `.kiro/specs/{feature-name}/`
 2. Read requirements.md from `{spec_dir}`
 3. Read design.md from `{spec_dir}`
 4. Map each requirement to implementation tasks
@@ -89,7 +89,7 @@ Do NOT use when:
 **IMPORTANT (should fix):**
 
 - Tasks too large (should be completable by an LLM in one pass)
-- No clear ordering — foundation tasks should come before core tasks
+- No clear ordering. Foundation tasks should come before core tasks
 - Sub-tasks at same indentation as parent (must be indented 2 spaces)
 
 **SUGGESTION:**

@@ -600,4 +600,4 @@ Generate Smithy models that are type-safe, well-documented, and follow industry 
 - Could add `@examples` traits for documentation
 - Could define reusable common shapes (timestamps, IDs)
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.

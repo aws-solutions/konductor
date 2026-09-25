@@ -9,7 +9,7 @@ tags: [skill, frontend, react, typescript, cloudscape, forms, implementation]
 
 ## Overview
 
-Implements frontend changes with surgical precision — only the specific issue, nothing more. Covers React Hook Form + Zod validation patterns, Cloudscape component compliance, TypeScript type safety, component extraction, and test improvements.
+Implements frontend changes with precision: only the specific issue, nothing more. Covers React Hook Form + Zod validation patterns, Cloudscape component compliance, TypeScript type safety, component extraction, and test improvements.
 
 ## Usage
 
@@ -33,28 +33,28 @@ No native HTML elements in UI code. Use `Box` instead of `<div>`/`<span>`, `Inpu
 
 ## Core Principles
 
-**Always read the complete file before making changes.** Make minimal changes — only fix the specific issue. Follow established patterns. Maintain backward compatibility.
+**Always read the complete file before making changes.** Make minimal changes: only fix the specific issue. Follow established patterns. Maintain backward compatibility.
 
 ## Implementation Standards
 
 ### Form Patterns
 
-- Use React Hook Form — not custom state hooks for form management
-- Use Zod for validation — not manual validation logic
-- Form sub-components use `useFormContext` — no prop drilling
+- Use React Hook Form, not custom state hooks for form management
+- Use Zod for validation, not manual validation logic
+- Form sub-components use `useFormContext`, no prop drilling
 - Wizard pages wrapped in `FormProvider`
 - Use `.refine()` for cross-field validation, not `.transform()`
-- Use constraint constants for validation messages — not hardcoded strings
+- Use constraint constants for validation messages, not hardcoded strings
 
 ### Cloudscape Compliance
 
-- Only Cloudscape components — no native HTML (`<div>`, `<span>`, `<input>`, `<button>`, `<a>`)
+- Only Cloudscape components, no native HTML (`<div>`, `<span>`, `<input>`, `<button>`, `<a>`)
 - No inline styles (`style={{}}`)
 - `Box` instead of `<div>` or `<span>`
-- `SpaceBetween` for spacing — not margin/padding
+- `SpaceBetween` for spacing, not margin/padding
 - `KeyValuePairs` for label-value display
 - `FormField` wraps all form inputs with labels
-- Fixed column counts in `ColumnLayout` — no dynamic column counts
+- Fixed column counts in `ColumnLayout`, no dynamic column counts
 
 ### Type Safety
 
@@ -74,7 +74,7 @@ No native HTML elements in UI code. Use `Box` instead of `<div>`/`<span>`, `Inpu
 
 - Unit tests for helper functions (100% coverage target)
 - Component tests for forms (80%+ coverage target)
-- Test assertions check actual values — not just existence
+- Test assertions check actual values, not just existence
 - Error states and edge cases tested
 
 ## Output Format
@@ -114,4 +114,4 @@ For each change, provide:
 - Could strengthen test assertions to check actual error messages
 - Could add missing edge case tests
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.

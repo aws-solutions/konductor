@@ -11,10 +11,10 @@ tags: [dom, forms, validation, testing, browser, html5, constraint-validation]
 
 Extracts structured metadata from web forms by inspecting the live DOM. Produces a per-field inspection report that captures:
 
-- **Declarative constraints** — HTML5 validation attributes (`required`, `pattern`, `min`, `max`, `minlength`, `maxlength`, `type`)
-- **Error message selectors** — elements that render validation errors for each field (`aria-describedby`, `aria-errormessage`, `[role="alert"]`)
-- **Conditional visibility** — fields that appear or disappear based on other field values
-- **Cross-field business rules** — observable constraints between fields (e.g. date ranges, dependent dropdowns)
+- **Declarative constraints**: HTML5 validation attributes (`required`, `pattern`, `min`, `max`, `minlength`, `maxlength`, `type`)
+- **Error message selectors**: elements that render validation errors for each field (`aria-describedby`, `aria-errormessage`, `[role="alert"]`)
+- **Conditional visibility**: fields that appear or disappear based on other field values
+- **Cross-field business rules**: observable constraints between fields (e.g. date ranges, dependent dropdowns)
 
 **This skill is distinct from accessibility auditing.** It focuses on extracting test oracles for functional test generation, not WCAG compliance. Accessibility concerns (contrast, focus order, screen reader compatibility) belong in a separate skill.
 
@@ -98,7 +98,7 @@ return Array.from(document.querySelectorAll('form')).map((form, index) => ({
 
 ### Phase 2: Validation Trigger Analysis
 
-For each form, determine when validation fires. **Try non-destructive methods first** — form submission can cause server-side side effects (creating records, sending emails, triggering workflows) on live apps. Note: a missing `action` attribute does NOT mean submission is safe — forms without `action` submit to the current URL, and SPAs ignore `action` entirely and use JS fetch/XHR handlers.
+For each form, determine when validation fires. **Try non-destructive methods first.** Form submission can cause server-side side effects (creating records, sending emails, triggering workflows) on live apps. Note: a missing `action` attribute does NOT mean submission is safe. Forms without `action` submit to the current URL, and SPAs ignore `action` entirely and use JS fetch/XHR handlers.
 
 Detection order:
 
@@ -108,7 +108,7 @@ Detection order:
 
 **Default to `validation_trigger: unknown`** when blur/change detection is inconclusive and submission safety has not been confirmed. This is the safe choice for live apps.
 
-Capture the exact error message text rendered for each field — this is the assertion string for test generation.
+Capture the exact error message text rendered for each field. This is the assertion string for test generation.
 
 ### Phase 3: Conditional Visibility
 
@@ -129,7 +129,7 @@ Observe and record:
 - Dependent dropdowns (selecting value A in field 1 filters options in field 2)
 - Fields that become required only when another field has a specific value
 
-These cannot be extracted statically — they require interaction. Trigger each observable rule and record the constraint.
+These cannot be extracted statically. They require interaction. Trigger each observable rule and record the constraint.
 
 ## Output Schema
 
@@ -194,7 +194,7 @@ From the inspection report, derive these test cases for each field:
 
 ## Cloudscape-Specific Notes
 
-Cloudscape components wrap native HTML inputs — the validation attributes are on the inner `<input>` element, not the Cloudscape component wrapper. Always query the inner input:
+Cloudscape components wrap native HTML inputs. The validation attributes are on the inner `<input>` element, not the Cloudscape component wrapper. Always query the inner input:
 
 ```javascript
 // Correct: query inner input inside Cloudscape wrapper
@@ -220,5 +220,5 @@ Error messages in Cloudscape render in `[class*="error-text"]` or `[data-testid*
 
 **SUGGESTION:**
 
-- Capture `placeholder` text — useful as a fallback selector and documents expected input format
-- Note fields with `autocomplete` attributes — relevant for test data strategy
+- Capture `placeholder` text: useful as a fallback selector and documents expected input format
+- Note fields with `autocomplete` attributes: relevant for test data strategy

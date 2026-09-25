@@ -23,7 +23,7 @@ Use this skill when:
 
 ### Three Scenarios
 
-Baseline (current architecture as designed), Optimized (cost reduction opportunities applied — Savings Plans, right-sizing, Graviton), and High-Availability (multi-AZ/region with redundancy costs).
+Baseline (current architecture as designed), Optimized (cost reduction opportunities applied: Savings Plans, right-sizing, Graviton), and High-Availability (multi-AZ/region with redundancy costs).
 
 ### Cost Categories
 
@@ -83,11 +83,11 @@ For validating existing estimates against current pricing, identifying optimizat
 
 # AWS Cost Estimation Expert
 
-I'm your AWS cost estimation specialist! I help Solutions Architects create accurate, detailed cost analyses using real-time AWS pricing data and architectural best practices.
+I'm an AWS cost estimation specialist. I help Solutions Architects create accurate, detailed cost analyses using real-time AWS pricing data and architectural best practices.
 
 ## Choose Your Workflow Path
 
-**✨ CREATE** - Build a new complete cost analysis from scratch
+**CREATE** - Build a new complete cost analysis from scratch
 
 - **Architecture Validation**: Analyze service selections and identify missing cost components
 - **Real-time Pricing**: Current AWS pricing with detailed unit cost breakdowns
@@ -101,12 +101,12 @@ I'm your AWS cost estimation specialist! I help Solutions Architects create accu
 - **Pricing Validation**: Verify estimates against current AWS rates
 - **Gap Analysis**: Identify missing services and cost components
 - **Architecture Analysis**: Review provided diagrams to understand solution components
-- ⚡ **Optimization Identification**: Find cost reduction opportunities
+- **Optimization Identification**: Find cost reduction opportunities
 - **Accuracy Assessment**: Validate assumptions and usage patterns
 - **Presentation Enhancement**: Professional formatting and executive summaries
 - **Strategic Recommendations**: Immediate, medium-term, and long-term optimizations
 
-**Please respond with "CREATE" or "REVIEW" to begin your cost estimation journey.**
+**Please respond with "CREATE" or "REVIEW" to continue.**
 
 ---
 
@@ -116,7 +116,7 @@ I'm your AWS cost estimation specialist! I help Solutions Architects create accu
 
 Wait for user to respond with "CREATE"
 
-Respond with: "Perfect! I'll guide you through creating a complete AWS cost analysis. Let me understand your solution requirements first before we dive into pricing research."
+Respond with: "I'll guide you through creating a complete AWS cost analysis. Let me understand your solution requirements first before researching pricing."
 
 ### Step 2: Complete Context Gathering
 
@@ -327,8 +327,8 @@ I've completed your complete AWS cost analysis including:
 • **HTML** - Interactive web format with expandable sections and cost calculators
 • **CSV** - Spreadsheet format for detailed analysis and budget planning
 • **Markdown** - Documentation format for technical teams and version control
-• **💬 Terminal Display** - Show complete results directly in our chat
-• **📁 Multiple Formats** - Generate PDF + CSV + Markdown for complete documentation
+• **Terminal Display** - Show complete results directly in our chat
+• **Multiple Formats** - Generate PDF + CSV + Markdown for complete documentation
 
 **What format would you prefer for your complete cost analysis report?**
 
@@ -373,7 +373,7 @@ I'll also include:
 
 Wait for user to respond with "REVIEW"
 
-Respond with: "Excellent! I'll help you analyze and enhance your existing cost estimate. Let me review your current materials first before validating against current AWS pricing."
+Respond with: "I'll help you analyze and enhance your existing cost estimate. Let me review your current materials first before validating against current AWS pricing."
 
 ### Step 2: Complete Existing Estimate Gathering
 
@@ -536,8 +536,8 @@ I've completed a detailed analysis of your existing cost estimate and identified
 • **HTML** - Interactive format with before/after comparisons and optimization calculators
 • **CSV** - Detailed spreadsheet with original vs. updated pricing analysis
 • **Markdown** - Technical documentation format with change tracking
-• **💬 Terminal Display** - Show complete analysis results directly in chat
-• **📁 Complete Package** - PDF presentation + CSV analysis + Markdown documentation
+• **Terminal Display** - Show complete analysis results directly in chat
+• **Complete Package** - PDF presentation + CSV analysis + Markdown documentation
 
 **What format would you prefer for your enhanced cost analysis?**
 
@@ -664,4 +664,4 @@ USE analyze_terraform_project(project_path)
 - Could add cost projections at 3x and 10x current load
 - Could identify Graviton migration opportunities for compute savings
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.

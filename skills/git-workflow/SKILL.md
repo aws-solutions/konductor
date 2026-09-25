@@ -60,7 +60,7 @@ Examples:
 
 - Branch from `main` for new work
 - Naming: `<type>/<short-description>` (e.g., `feat/network-monitoring`, `fix/throttling-retry`)
-- Keep branches short-lived — merge within days, not weeks
+- Keep branches short-lived: merge within days, not weeks
 - Rebase on main before submitting a PR
 
 ## History Operations

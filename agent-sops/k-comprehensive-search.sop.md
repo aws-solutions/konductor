@@ -7,7 +7,7 @@ This SOP activates search mode to maximize search effort across codebase and ext
 ## Parameters
 
 - **search_target** (required): What to search for (pattern, term, concept, or documentation topic)
-- **search_scope** (optional, default: both): Where to search — `codebase`, `documentation`, or `both`
+- **search_scope** (optional, default: both): Where to search: `codebase`, `documentation`, or `both`
 - **project_root** (optional, default: current directory): Root directory for codebase searches
 
 **Constraints for parameter acquisition:**
@@ -60,7 +60,7 @@ Delegate search tasks to specialized agents.
 - You MUST use the delegate SOP format (7-section structure) for each delegation
 - You MUST spawn agents in parallel when searching both codebase and documentation
 
-**Expected Output:** Results collected from all delegates (Step 2 blocks until delegates return) — including `k-developer`'s direct tool results (file paths, line numbers, relevant snippets of 3-5 lines per match)
+**Expected Output:** Results collected from all delegates (Step 2 blocks until delegates return), including `k-developer`'s direct tool results (file paths, line numbers, relevant snippets of 3-5 lines per match)
 
 ### 3. Synthesize Results
 
@@ -72,7 +72,7 @@ Consolidate findings from all agents and direct tools.
 - You MUST deduplicate results across sources
 - You MUST highlight the most relevant findings
 - If combined findings exceed the size limit, You MUST follow the handoff procedure in the Response Size Rules (Search Strategies Reference below)
-- You MUST NOT return raw file contents or complete source code — summarize with file paths and key snippets
+- You MUST NOT return raw file contents or complete source code. Summarize with file paths and key snippets
 
 **Expected Output:** A consolidated search results summary:
 
@@ -98,19 +98,19 @@ Consolidate findings from all agents and direct tools.
 
 This block is reference material for the Step 2 delegation prompt to `k-developer`.
 
-**Quick Search** — list matching files only:
+**Quick Search**: list matching files only:
 
 ```bash
 rg "term" {project_root} --type ts -l
 ```
 
-**Deep Search** — with surrounding context:
+**Deep Search**: with surrounding context:
 
 ```bash
 rg "term" {project_root} -C 5
 ```
 
-**AST-Aware Search** — structural code patterns:
+**AST-Aware Search**: structural code patterns:
 
 ```bash
 ast-grep -p 'import { $IMPORTS } from "$MODULE"' {project_root}
@@ -119,5 +119,5 @@ ast-grep -p 'import { $IMPORTS } from "$MODULE"' {project_root}
 **Response Size Rules:**
 
 - Return file paths + 3-5 line snippets, not full file contents
-- Cap at 20 matches per search pattern — report total count if more exist
+- Cap at 20 matches per search pattern. Report total count if more exist
 - If combined findings exceed ~100 lines, write to `.konductor/handoff/<search-name>.md` and return the path

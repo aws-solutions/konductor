@@ -23,14 +23,14 @@ Use `argumentation-reference` skill during this review to identify logical falla
 
 ### Classification
 
-**CRITICAL — architectural:**
+**CRITICAL (architectural):**
 
 - Wrong architecture choice for the stated requirements (e.g., synchronous design for a stated async requirement)
 - Missing security boundary (no auth, no encryption at rest/transit where PII is involved)
 - Fundamental scalability flaw (design cannot meet stated NFRs at stated load)
 - Single point of failure with no stated mitigation
 
-**CRITICAL — factual:**
+**CRITICAL (factual):**
 
 - Incorrect technical claim about a service or technology (e.g., wrong service limit, nonexistent feature)
 - Contradictory requirements (two requirements that cannot both be satisfied)
@@ -89,40 +89,40 @@ Flag any identified fallacy as IMPORTANT with the fallacy name and the affected 
 
 ## Steps
 
-1. **Parse sections** — Identify all design decision sections, ADRs, trade-off tables, and architecture choice paragraphs.
+1. **Parse sections.** Identify all design decision sections, ADRs, trade-off tables, and architecture choice paragraphs.
 
-2. **Deliberation Panel Confirmation Gate** — Before invoking the panel, present the cost estimate and obtain explicit user opt-in. Per the `deliberation-panel` skill's consent contract, the caller (this skill) is responsible for setting `consent_confirmed` explicitly — the panel will not infer consent on its own.
+2. **Deliberation Panel Confirmation Gate.** Before invoking the panel, present the cost estimate and obtain explicit user opt-in. Per the `deliberation-panel` skill's consent contract, the caller (this skill) is responsible for setting `consent_confirmed` explicitly. The panel will not infer consent on its own.
 
    > Panel-enhanced adversarial review is available for this document: axes derived from this document's own decisions and tradeoffs each challenge every parsed decision in adversarial stance, followed by an anonymous cross-examination round and an arbiter synthesis. Cost: roughly 2–3 minutes, scaling with the number of derived axes (typically 3–6).
    >
    > 1. Convene the deliberation panel (recommended for high-stakes designs)
-   > 2. Proceed without the panel — apply the Classification and Fallacy Checking sections above directly, single-voice
+   > 2. Proceed without the panel: apply the Classification and Fallacy Checking sections above directly, single-voice
    - If the user opts in, proceed to Step 3 with `consent_confirmed=true`.
-   - If the user declines or gives no confirmation, skip the panel entirely: apply the Classification and Fallacy Checking sections (above) directly to each decision from Step 1 — evaluate each justification against the Toulmin model, flag fallacies via `argumentation-reference`, and classify findings directly using the Classification table (CRITICAL architectural/factual, IMPORTANT, MINOR). Then skip to Step 6 (Architecture stress test).
+   - If the user declines or gives no confirmation, skip the panel entirely: apply the Classification and Fallacy Checking sections (above) directly to each decision from Step 1. Evaluate each justification against the Toulmin model, flag fallacies via `argumentation-reference`, and classify findings directly using the Classification table (CRITICAL architectural/factual, IMPORTANT, MINOR). Then skip to Step 6 (Architecture stress test).
 
-3. **Adversarial Panel — Axis-Derived Challenge** (panel path only, per Step 2) — Invoke the `deliberation-panel` skill with `decision_domain=design, stance=adversarial, consent_confirmed=true`. Pass the parsed design decisions and tradeoffs as the subject. The panel derives 3–6 axes specific to this document's decisions (Phase 0), then runs the adversarial challenge per axis (Phase 1 — each axis argues why the currently-favored option fails on that axis), the anonymous cross-examination round (Phase 2), and the arbiter synthesis (Phase 3).
+3. **Adversarial Panel: Axis-Derived Challenge** (panel path only, per Step 2). Invoke the `deliberation-panel` skill with `decision_domain=design, stance=adversarial, consent_confirmed=true`. Pass the parsed design decisions and tradeoffs as the subject. The panel derives 3–6 axes specific to this document's decisions (Phase 0), then runs the adversarial challenge per axis (Phase 1: each axis argues why the currently-favored option fails on that axis), the anonymous cross-examination round (Phase 2), and the arbiter synthesis (Phase 3).
 
    Each axis applies the Toulmin model (claim → data → warrant); the `argumentation-reference` skill is available to identify fallacies in decision justifications within each axis's analysis.
 
-4. **Anonymous Cross-Examination** (panel path only) — Handled internally by the `deliberation-panel` skill's Phase 2. Each axis-advocate reviews every other axis's challenges for logical soundness and blind spots without knowing which axis produced each finding, and must produce a weakness-or-corroboration pair per argument reviewed.
+4. **Anonymous Cross-Examination** (panel path only). Handled internally by the `deliberation-panel` skill's Phase 2. Each axis-advocate reviews every other axis's challenges for logical soundness and blind spots without knowing which axis produced each finding, and must produce a weakness-or-corroboration pair per argument reviewed.
 
-5. **Arbiter Mapping** (panel path only) — Map the panel's axis-weighted confidence output to the severity classification below.
+5. **Arbiter Mapping** (panel path only). Map the panel's axis-weighted confidence output to the severity classification below.
 
-   Confidence is the `deliberation-panel` skill's own Axis-Weighted Convergence output (`stance=adversarial`) — this skill does not define a separate scale, only reinterprets what convergence means in the adversarial stance: "the same option" that axes converge on is agreement that the currently-favored option fails. See `deliberation-panel`'s Axis-Weighted Convergence table for the HIGH/MEDIUM/LOW thresholds themselves.
+   Confidence is the `deliberation-panel` skill's own Axis-Weighted Convergence output (`stance=adversarial`). This skill does not define a separate scale, only reinterprets what convergence means in the adversarial stance: "the same option" that axes converge on is agreement that the currently-favored option fails. See `deliberation-panel`'s Axis-Weighted Convergence table for the HIGH/MEDIUM/LOW thresholds themselves.
 
-   **Severity mapping (panel path only — the single-voice path classifies via the Classification table in Step 2, not this mapping):**
+   **Severity mapping (panel path only; the single-voice path classifies via the Classification table in Step 2, not this mapping):**
    - HIGH-confidence architectural flaw → **CRITICAL (architectural)**
    - HIGH-confidence factual claim error → **CRITICAL (factual)**
    - MEDIUM-confidence architectural or factual flaw → **IMPORTANT** (not yet corroborated enough for CRITICAL, but too load-bearing to leave unclassified)
    - HIGH or MEDIUM-confidence justification gap or logical fallacy → **IMPORTANT**
    - LOW-confidence or stylistic observation → **MINOR**
 
-6. **Architecture stress test** — For the overall design:
+6. **Architecture stress test.** For the overall design:
    - Does it meet every stated NFR at stated load?
    - Are all security boundaries present?
    - Is there a single point of failure without mitigation?
 
-7. **Output findings** — For each finding:
+7. **Output findings.** For each finding:
 
    ```
    [SEVERITY] Section — {heading}
@@ -133,11 +133,11 @@ Flag any identified fallacy as IMPORTANT with the fallacy name and the affected 
    Fallacy (if any): {fallacy name from argumentation-reference}
    ```
 
-8. **Summary** — Report: N CRITICAL (architectural), N CRITICAL (factual), N IMPORTANT, N MINOR. Include axis attribution for all CRITICAL findings (or note "single-voice review — panel declined" if applicable).
+8. **Summary.** Report: N CRITICAL (architectural), N CRITICAL (factual), N IMPORTANT, N MINOR. Include axis attribution for all CRITICAL findings (or note "single-voice review, panel declined" if applicable).
 
 ## Quality Gate
 
-**CRITICAL findings require immediate resolution** — the document does not advance to PE review with any CRITICAL finding present.
+**CRITICAL findings require immediate resolution.** The document does not advance to PE review with any CRITICAL finding present.
 
 **Exit condition for pe-review loop:** 0 CRITICAL + 0 IMPORTANT + fewer than 3 MINOR findings.
 

@@ -6,24 +6,24 @@ This SOP performs a lightweight, read-only pre-submission code critique on local
 
 Use this SOP before creating a CR, after finishing a feature, or when you want a quick sanity check on uncommitted work.
 
-This SOP is **strictly read-only** — it never modifies source files, creates commits, or runs builds/tests.
+This SOP is **strictly read-only**. It never modifies source files, creates commits, or runs builds/tests.
 
 ## Parameters
 
 - **critique_scope** (optional, default: uncommitted changes): What to critique. Supports:
-  - `uncommitted` — uncommitted changes (`git diff` + `git diff --cached`)
-  - `last N` — last N commits (`git diff HEAD~N`)
-  - `branch1...branch2` — branch comparison (`git diff branch1...branch2`)
-  - specific file/directory paths — read files directly
+  - `uncommitted`: uncommitted changes (`git diff` + `git diff --cached`)
+  - `last N`: last N commits (`git diff HEAD~N`)
+  - `branch1...branch2`: branch comparison (`git diff branch1...branch2`)
+  - specific file/directory paths: read files directly
 - **output_dir** (optional, default: `.agents/scratchpad`): Directory for critique output files
 - **mode** (optional, default: `auto`): Resolution mode:
-  - `auto` — agent selects resolutions with reasoning for each issue
-  - `interactive` — present summary first, then walk through each issue with the user
+  - `auto`: agent selects resolutions with reasoning for each issue
+  - `interactive`: present summary first, then walk through each issue with the user
 - **focus_areas** (optional): Comma-separated areas of concern to prioritize (e.g., "error handling", "security", "concurrency"). When provided, findings in these areas are surfaced first.
 
 **Constraints for parameter acquisition:**
 
-- You MUST NOT ask for parameters that have defaults — use the defaults and proceed
+- You MUST NOT ask for parameters that have defaults. Use the defaults and proceed
 - If the user provides a critique scope, You MUST validate it resolves to actual changes before proceeding
 - If all parameters are resolved (explicitly or via defaults), You MUST proceed to the Steps immediately
 
@@ -58,7 +58,7 @@ Retrieve the diff or file contents based on `critique_scope`.
 - For specific paths: You MUST read the files directly
 - You MUST exclude binary files, lock files (`package-lock.json`, `yarn.lock`), build artifacts (`dist/`, `build/`, `cdk.out/`), and `.js.map` files
 - You MUST report the total number of files and approximate lines changed
-- If the diff is empty, You MUST inform the user and stop — there is nothing to critique
+- If the diff is empty, You MUST inform the user and stop. There is nothing to critique
 - You MUST NOT modify any files or run any build/test commands
 
 **Expected Output:** List of changed files with diff content, total file count, approximate lines changed
@@ -70,16 +70,16 @@ Analyze the changes exhaustively across six dimensions.
 **Constraints:**
 
 - You MUST critique across these 6 dimensions (derived from established code-review frameworks):
-  1. Correctness — logic accuracy, edge cases, bugs, null handling, race conditions, integration correctness
-  2. Performance — algorithmic complexity, memory usage, N+1 queries, scalability
-  3. Security — vulnerabilities, input validation, injection risks, secrets exposure, auth gaps
-  4. Maintainability — code clarity, naming, documentation, duplication, complexity
-  5. Architecture — design patterns, separation of concerns, coupling, backwards compatibility
-  6. Testing — whether tests exist and adequately cover the changed code (static analysis only)
+  1. Correctness: logic accuracy, edge cases, bugs, null handling, race conditions, integration correctness
+  2. Performance: algorithmic complexity, memory usage, N+1 queries, scalability
+  3. Security: vulnerabilities, input validation, injection risks, secrets exposure, auth gaps
+  4. Maintainability: code clarity, naming, documentation, duplication, complexity
+  5. Architecture: design patterns, separation of concerns, coupling, backwards compatibility
+  6. Testing: whether tests exist and adequately cover the changed code (static analysis only)
 - You MUST assign each finding a severity: **Critical** (bugs, vulnerabilities, data loss risks), **Important** (significant quality issues, missing error handling, performance problems), **Minor** (style, naming, minor improvements)
 - You MUST assign each finding a dimension tag from the six dimensions above
 - Each finding MUST include: file path, relevant code snippet from the diff, problem description, and suggested resolution
-- You MUST NOT include positive observations, praise, or "looks good" comments — only actionable problems
+- You MUST NOT include positive observations, praise, or "looks good" comments. Only actionable problems are allowed
 - You MUST NOT flag style-only issues that a linter would catch (formatting, trailing whitespace, import order) unless they indicate a deeper problem
 - If `focus_areas` is provided, You MUST still analyze all six dimensions but surface focus area findings first
 - For large diffs (>500 lines), You MUST save findings incrementally to `output_dir/critique-NNN-findings.tmp.md` after each file or logical group to prevent context overflow
@@ -102,7 +102,7 @@ Determine the disposition of each finding based on the selected mode.
   - You MUST then walk through findings starting with Critical, then Important, then Minor
   - For each finding, You MUST present the issue and ask the user to choose: `fix`, `won't fix`, or `defer`
   - You MUST accept the user's decision without argument
-- You MUST NOT modify any source files, create commits, or apply fixes — this SOP is read-only
+- You MUST NOT modify any source files, create commits, or apply fixes. This SOP is read-only
 - You MUST NOT run tests or builds to validate findings
 
 **Expected Output:** Each finding annotated with a resolution (`fix` / `won't fix` / `defer`) and rationale
@@ -166,7 +166,7 @@ Write the executive summary and format the complete critique document.
 
 - If a severity category has no findings, You MUST include the heading with "No issues found." beneath it
 - You MUST delete any temporary `critique-NNN-findings.tmp.md` file after the final critique is written
-- You MUST NOT print the full critique document in your response — reference the file path
+- You MUST NOT print the full critique document in your response. Reference the file path
 
 **Expected Output:** Critique file written to `output_dir/critique-NNN.md`
 
@@ -179,7 +179,7 @@ Summarize the critique for the user.
 - You MUST display: the critique file path, issue counts by severity, and a one-line description of each Critical finding
 - You MUST state the overall assessment: "No critical issues" or "N critical issues require attention before submission"
 - If there are findings with `fix` resolution, You SHOULD remind the user this SOP is read-only and they need to apply fixes manually
-- You MUST NOT reprint the full critique — the file is the deliverable
+- You MUST NOT reprint the full critique. The file is the deliverable
 - You MUST NOT offer to apply fixes, run builds, or create commits
 
 **Expected Output:** Summary message with file path, severity counts, critical finding descriptions, and overall assessment

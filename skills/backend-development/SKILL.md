@@ -9,7 +9,7 @@ tags: [skill, backend, lambda, dynamodb, typescript, nodejs, implementation]
 
 ## Overview
 
-Implements backend changes with surgical precision — only the specific issue, nothing more. Covers Lambda handler patterns, service layer architecture, DynamoDB operations, type safety, error handling, and test improvements.
+Implements backend changes with surgical precision, only the specific issue, nothing more. Covers Lambda handler patterns, service layer architecture, DynamoDB operations, type safety, error handling, and test improvements.
 
 ## Usage
 
@@ -29,21 +29,21 @@ Handlers (entry point, delegates to facade) → Business Facade (orchestrates se
 
 ### KISS/YAGNI/DRY
 
-Prefer simple, minimal solutions. Only add abstractions that solve a real, existing problem — not hypothetical future needs.
+Prefer simple, minimal solutions. Only add abstractions that solve a real, existing problem, not hypothetical future needs.
 
 ## Core Principles
 
-**Always read the complete file before making changes.** Make minimal changes — only fix the specific issue. Follow established patterns in the codebase. Maintain backward compatibility.
+**Always read the complete file before making changes.** Make only minimal changes that fix the specific issue. Follow established patterns in the codebase. Maintain backward compatibility.
 
-**Prefer simple solutions over design patterns.** Only introduce patterns (Strategy, Observer) when they solve a real, existing problem — not hypothetical future needs. Call out over-engineering directly.
+**Prefer simple solutions over design patterns.** Only introduce patterns (Strategy, Observer) when they solve a real, existing problem, not hypothetical future needs. Call out over-engineering directly.
 
 ## Implementation Standards
 
 ### Handler Patterns
 
-- Handlers delegate to a business facade — no direct business logic in handlers
-- Services created via factory pattern — no direct instantiation
-- Data access through repository interfaces — no direct database calls
+- Handlers delegate to a business facade, no direct business logic in handlers
+- Services created via factory pattern, no direct instantiation
+- Data access through repository interfaces, no direct database calls
 - Use return values from store operations to avoid extra queries
 
 ### Type Safety
@@ -57,7 +57,7 @@ Prefer simple, minimal solutions. Only add abstractions that solve a real, exist
 
 - Atomic operations use transactions for multi-item updates
 - Use conditional writes to prevent race conditions
-- No extra queries — use return values from write operations
+- No extra queries, use return values from write operations
 - Follow single-table design patterns (PK/SK)
 
 ### Error Handling
@@ -69,7 +69,7 @@ Prefer simple, minimal solutions. Only add abstractions that solve a real, exist
 
 ### Testing
 
-- Create shared fixture factories for test data — not inline objects
+- Create shared fixture factories for test data, not inline objects
 - Use `toContainEqual` for order-independent assertions
 - Add tests for new code before marking complete
 - Test edge cases: null values, empty arrays, boundary conditions
@@ -108,4 +108,4 @@ For each change, provide:
 - Could add structured log fields for better observability
 - Could strengthen test assertions to check actual values
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.

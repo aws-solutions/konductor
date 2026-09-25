@@ -24,7 +24,7 @@ Establish measurable criteria that determine when the objective is complete.
 **Constraints:**
 
 - You MUST define criteria in three categories: Functional (specific behaviors that must work), Observable (what can be measured or seen), and Pass/Fail (binary yes/no criteria)
-- You MUST make every criterion specific and testable — no vague statements like "works well"
+- You MUST make every criterion specific and testable. No vague statements like "works well"
 - You MUST NOT proceed to task breakdown without defined success criteria
 
 **Expected Output:** A structured success criteria document:
@@ -46,7 +46,7 @@ Decompose the objective into specific, actionable tasks with effort estimates an
 
 **Constraints:**
 
-- Every task MUST be specific and actionable — no vague tasks like "set up stuff"
+- Every task MUST be specific and actionable. No vague tasks like "set up stuff"
 - Every task MUST include an effort estimate
 - Tasks MUST be categorized as High, Medium, or Low priority
 - You MUST NOT create tasks that combine multiple unrelated actions
@@ -137,17 +137,17 @@ Calculate effort per phase into an authoritative baseline, then project an infor
 **Constraints:**
 
 - You MUST group tasks into phases (Research, Implementation, Testing, Documentation)
-- You MUST include a Review/Rework phase in the serial sum whenever the plan's execution phase (Step 6) includes a review or adversarial loop — do not rely on the agentic projection's `τ` term alone to represent this cost in the baseline
-- You MUST account for parallel execution where dependencies allow when deriving the calendar timeline — this nets out overlapping wait time across parallel tracks; it does not change the effort sum computed below
+- You MUST include a Review/Rework phase in the serial sum whenever the plan's execution phase (Step 6) includes a review or adversarial loop. Do not rely on the agentic projection's `τ` term alone to represent this cost in the baseline
+- You MUST account for parallel execution where dependencies allow when deriving the calendar timeline. This nets out overlapping wait time across parallel tracks; it does not change the effort sum computed below
 - You MUST sum per-phase effort into a serial total
-- You MUST apply buffer: 20% for well-understood work (the floor, applied to all work — there is no zero-buffer tier), 40% for novel, complex, unfamiliar, or otherwise uncertain work; this buffer hedges the uncertainty of the estimate itself; it is a different risk than the `legacy-to-agentic-estimate` skill's verification tax (`τ`, the cost of reviewing AI output), so the buffer applies independently of that skill and is never replaced by it
-- You MUST report the buffered total as **Total Estimated Effort (baseline)** — this is the authoritative estimate
-- You SHOULD then delegate the Agentic Projection to `k-tpm`, which owns the `legacy-to-agentic-estimate` skill and can run its bundled `convert_estimates.py` through a shell across the full prepare → classify → finalize seam. This is the preferred path — it keeps a stateful, script-verified seam inside the agent that owns it
-- Your delegation MUST pass each task individually with its own description (not the aggregate serial total) — one lumped total collapses every task onto a single leverage tier and hides per-task variation. The skill infers each task's tier from its description, so the descriptions are the input that matters
-- If you cannot delegate — `k-tpm` is not reachable, not present in this agent package, or reports it has no shell to run the script — you MAY compute the projection yourself rather than skipping outright: apply the `legacy-to-agentic-estimate` skill's documented method directly (its SKILL.md, not the script). Infer each task's tier from its description with the same keyword-then-judgment approach the skill uses, apply the matching tier preset (`v`/`L`/`τ`/`C`), and compute `E_agentic = E_legacy × [(1 − v) + v × (1 − L_eff)] × (1 + τ)` where `L_eff = L × C`, per task. Follow the documented tiers and formula exactly, per task — this is the skill's own method run without the script, not an ad hoc substitute — and state that the run was not script-verified
-- If even that isn't possible — you cannot infer a defensible tier for a task, or have no way to apply the formula — skip the Agentic Projection for that item, state in one line that it was skipped and why, and report the baseline alone. The baseline above is authoritative and complete without the projection either way, and a skip is not a failure of this SOP
-- You MUST present whatever you produce — delegated, self-computed, or a per-item skip — as an **Agentic Projection**, including tier, tier source (kw/llm/self-computed), confidence, low/mid/high, and Δ per item, plus roll-up totals
-- You MUST present the full low–high band as returned or computed, not just the mid point, and MUST NOT narrow or collapse it — when the script produces the figures, they resolve to a six-minute (0.1h) precision only as an artifact of internal rounding; either way, treat differences finer than about 15 minutes as noise from the uncalibrated presets, not signal
+- You MUST apply buffer: 20% for well-understood work (the floor, applied to all work since there is no zero-buffer tier), 40% for novel, complex, unfamiliar, or otherwise uncertain work; this buffer hedges the uncertainty of the estimate itself; it is a different risk than the `legacy-to-agentic-estimate` skill's verification tax (`τ`, the cost of reviewing AI output), so the buffer applies independently of that skill and is never replaced by it
+- You MUST report the buffered total as **Total Estimated Effort (baseline)**. This is the authoritative estimate
+- You SHOULD then delegate the Agentic Projection to `k-tpm`, which owns the `legacy-to-agentic-estimate` skill and can run its bundled `convert_estimates.py` through a shell across the full prepare → classify → finalize seam. This is the preferred path. It keeps a stateful, script-verified seam inside the agent that owns it
+- Your delegation MUST pass each task individually with its own description (not the aggregate serial total). One lumped total collapses every task onto a single leverage tier and hides per-task variation. The skill infers each task's tier from its description, so the descriptions are the input that matters
+- If you cannot delegate, because `k-tpm` is not reachable, not present in this agent package, or reports it has no shell to run the script, you MAY compute the projection yourself rather than skipping outright: apply the `legacy-to-agentic-estimate` skill's documented method directly (its SKILL.md, not the script). Infer each task's tier from its description with the same keyword-then-judgment approach the skill uses, apply the matching tier preset (`v`/`L`/`τ`/`C`), and compute `E_agentic = E_legacy × [(1 − v) + v × (1 − L_eff)] × (1 + τ)` where `L_eff = L × C`, per task. Follow the documented tiers and formula exactly, per task. This is the skill's own method run without the script, not an ad hoc substitute. State that the run was not script-verified
+- If even that isn't possible, because you cannot infer a defensible tier for a task or have no way to apply the formula, skip the Agentic Projection for that item, state in one line that it was skipped and why, and report the baseline alone. The baseline above is authoritative and complete without the projection either way, and a skip is not a failure of this SOP
+- You MUST present whatever you produce, whether delegated, self-computed, or a per-item skip, as an **Agentic Projection**, including tier, tier source (kw/llm/self-computed), confidence, low/mid/high, and Δ per item, plus roll-up totals
+- You MUST present the full low-high band as returned or computed, not just the mid point, and MUST NOT narrow or collapse it. When the script produces the figures, they resolve to a six-minute (0.1h) precision only as an artifact of internal rounding; either way, treat differences finer than about 15 minutes as noise from the uncalibrated presets, not signal
 - You MUST carry the caveat that the tier presets are uncalibrated defaults pending team telemetry
 - You MUST NOT present the Agentic Projection as the authoritative or committed estimate
 

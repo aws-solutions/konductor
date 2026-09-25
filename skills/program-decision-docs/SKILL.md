@@ -28,13 +28,13 @@ After decision is made, record: decision date, decision maker(s), option selecte
 
 ## Output Format
 
-1. **Decision Title & Status** — Draft / Under Review / Decided / Superseded
-2. **Context** — background, trigger, constraints, default outcome
-3. **Stakeholders** — decision maker, consulted, informed (DACI model)
-4. **Options Table** — columns: Option, Description, Pros, Cons, Effort, Risk
-5. **Evaluation Matrix** — columns: Criteria, Weight, Option A Score, Option B Score, ... Weighted Totals
-6. **Recommendation** — recommended option with rationale (2-3 sentences)
-7. **Decision Record** — date, decision maker, selected option, dissent, revisit conditions
+1. **Decision Title & Status.** Draft / Under Review / Decided / Superseded
+2. **Context.** Background, trigger, constraints, default outcome
+3. **Stakeholders.** Decision maker, consulted, informed (DACI model)
+4. **Options Table.** Columns: Option, Description, Pros, Cons, Effort, Risk
+5. **Evaluation Matrix.** Columns: Criteria, Weight, Option A Score, Option B Score, ... Weighted Totals
+6. **Recommendation.** Recommended option with rationale (2-3 sentences)
+7. **Decision Record.** Date, decision maker, selected option, dissent, revisit conditions
 
 ## Quality Gate
 
@@ -57,4 +57,4 @@ After decision is made, record: decision date, decision maker(s), option selecte
 - Could add cost comparison table for options with budget impact
 - Could link decision to program milestones affected
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.

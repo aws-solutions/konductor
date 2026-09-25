@@ -41,7 +41,7 @@ When the user provides Slack thread URLs or asks to search Slack for prior discu
 **Reading a specific thread:**
 
 - Use your Slack MCP integration's thread-replies tool with the Slack URL to read the full conversation
-- Use your Slack MCP integration's user-lookup tool to resolve Slack user IDs to real names — never use raw IDs in findings
+- Use your Slack MCP integration's user-lookup tool to resolve Slack user IDs to real names; never use raw IDs in findings
 - Use your Slack MCP integration's channel-info tool to get channel name and context
 
 **Searching for related discussions:**
@@ -73,7 +73,7 @@ When the user provides Slack thread URLs or asks to search Slack for prior discu
 
 ### Phase 2: Find Prior Decisions
 
-Check if this decision has been made before — in this project or elsewhere.
+Check if this decision has been made before, in this project or elsewhere.
 
 **Local:**
 
@@ -203,15 +203,15 @@ Constraints narrow the decision space. Document them explicitly.
 
 MUST guard against these biases when challenging assumptions, forcing source-backed findings rather than accepting the first plausible answer:
 
-1. **Confirmation bias** — Searching only for evidence that supports the preferred option. Force yourself to search for weaknesses of the leading option and strengths of alternatives.
+1. **Confirmation bias**: Searching only for evidence that supports the preferred option. Force yourself to search for weaknesses of the leading option and strengths of alternatives.
 
-2. **Recency bias** — Favoring new technologies just because they are new. Check for maturity indicators: how long has it been in production use?
+2. **Recency bias**: Favoring new technologies just because they are new. Check for maturity indicators: how long has it been in production use?
 
-3. **Anchoring** — Letting the first option found dominate the analysis. Document at least 3 alternatives before evaluating any of them.
+3. **Anchoring**: Letting the first option found dominate the analysis. Document at least 3 alternatives before evaluating any of them.
 
-4. **Authority bias** — "Team X uses it so it must be good." Ask why they chose it and whether their context matches yours.
+4. **Authority bias**: "Team X uses it so it must be good." Ask why they chose it and whether their context matches yours.
 
-5. **Missing data** — Presenting incomplete data as if it is complete. Always note what you could not find and what assumptions you are making.
+5. **Missing data**: Presenting incomplete data as if it is complete. Always note what you could not find and what assumptions you are making.
 
 ## Artifact Verification Mode
 
@@ -228,10 +228,10 @@ When used as a verification step after rubric-based quality checks (Maker-Checke
 
 Present findings in these categories (skip empty ones):
 
-1. **Factual Corrections** — Claims contradicted by evidence (with source links)
-2. **Missing Context** — Relevant prior art, adjacent work, or existing solutions the author may not know about
-3. **Strengthening Suggestions** — Evidence that supports the artifact but was not cited
-4. **Alternative Perspectives** — Different approaches found in sources worth considering
-5. **Open Questions** — Claims that could not be verified or refuted — need human input
+1. **Factual Corrections**: Claims contradicted by evidence (with source links)
+2. **Missing Context**: Relevant prior art, adjacent work, or existing solutions the author may not know about
+3. **Strengthening Suggestions**: Evidence that supports the artifact but was not cited
+4. **Alternative Perspectives**: Different approaches found in sources worth considering
+5. **Open Questions**: Claims that could not be verified or refuted; they need human input
 
 End with: strongest aspect of the artifact + single most important improvement.

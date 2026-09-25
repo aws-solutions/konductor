@@ -12,20 +12,20 @@ tags:
 
 Deliberation Panel is a structured decision-support mechanism for high-stakes, multi-option choices. Rather than running every decision through the same fixed set of named reviewer personas, it first asks what actually matters for _this_ decision, derives a small panel of perspectives from those axes, has each argue its case, cross-examines the arguments without revealing who made them, and closes with a scored recommendation rather than a prose verdict.
 
-This is **artifact-facing deliberation** — it operates on a described tradeoff or decision, not on a human. It is not a substitute for eliciting information from a person (use `socratic-elicitation` for that).
+This is **artifact-facing deliberation**: it operates on a described tradeoff or decision, not on a human. It is not a substitute for eliciting information from a person (use `socratic-elicitation` for that).
 
 ---
 
 ## Consent Gate
 
-**This is not free: expect roughly 2–3 minutes and a handful of subagent calls, scaling with the number of derived axes (typically 3–6).**
+**This is not free: expect roughly 2-3 minutes and a handful of subagent calls, scaling with the number of derived axes (typically 3-6).**
 
 The skill takes an explicit `consent_confirmed` parameter (see below) precisely so that "has the user agreed to pay this cost" is never a guess. There is exactly one path:
 
 1. If `consent_confirmed` is `false` or omitted: STOP after Phase 0 (Axis Derivation) and present the derived axis count plus the cost estimate to the user. Do not proceed to Phase 1 until the caller re-invokes with `consent_confirmed=true`.
-2. If `consent_confirmed` is `true`: the caller has already obtained consent (either the end user said yes directly, or an upstream skill like `socratic-elicitation` relayed an in-conversation opt-in) — proceed straight through Phases 0–3 without pausing again.
+2. If `consent_confirmed` is `true`: the caller has already obtained consent (either the end user said yes directly, or an upstream skill like `socratic-elicitation` relayed an in-conversation opt-in). Proceed straight through Phases 0-3 without pausing again.
 
-There is no second, implicit "re-confirm if invoked directly" path. Whoever invokes this skill — the user, `socratic-elicitation`, or `asdlc-aspect-review` — sets `consent_confirmed` explicitly and is responsible for what they pass. The skill itself never infers consent from conversational tone.
+There is no second, implicit "re-confirm if invoked directly" path. Whoever invokes this skill, the user, `socratic-elicitation`, or `asdlc-aspect-review`, sets `consent_confirmed` explicitly and is responsible for what they pass. The skill itself never infers consent from conversational tone.
 
 ---
 
@@ -43,7 +43,7 @@ There is no second, implicit "re-confirm if invoked directly" path. Whoever invo
 | ----------------------- | ---------------------------------------------------------------------------------------------------- |
 | `design`                | Architectural decisions, design alternatives, system structure choices                               |
 | `research-options`      | Competing research approaches, investigative paths, information-gathering strategies                 |
-| `viability-feasibility` | "Can we build / should we build this?" — technical feasibility, market viability, organizational fit |
+| `viability-feasibility` | "Can we build / should we build this?": technical feasibility, market viability, organizational fit |
 | `general-tradeoff`      | Any multi-option comparison that does not fit a more specific domain                                 |
 
 ### `stance` Descriptions
@@ -61,9 +61,9 @@ Unlike a fixed reviewer roster, the number and identity of perspectives are deri
 
 ### Phase 0 — Axis Derivation
 
-Before assigning any perspective, identify the 3–6 dimensions that actually distinguish the options in _this_ decision. Read the decision/tradeoff description and extract axes — e.g., a database choice might yield `cost`, `operational-burden`, `team-familiarity`, `scaling-headroom`; a vendor choice might yield `total-cost-of-ownership`, `lock-in-risk`, `support-quality`. Do not reuse a fixed list across decisions — re-derive every time.
+Before assigning any perspective, identify the 3-6 dimensions that actually distinguish the options in _this_ decision. Read the decision/tradeoff description and extract axes, for example, a database choice might yield `cost`, `operational-burden`, `team-familiarity`, `scaling-headroom`; a vendor choice might yield `total-cost-of-ownership`, `lock-in-risk`, `support-quality`. Do not reuse a fixed list across decisions. Re-derive every time.
 
-Output of this phase: an ordered list of 3–6 named axes, each with a one-sentence definition of what it measures for this specific decision. This list is shown to the user at the consent gate (Phase 0 runs even before consent, since it is cheap — a single pass, not a subagent fan-out — and the axis count determines the cost estimate the user is consenting to).
+Output of this phase: an ordered list of 3-6 named axes, each with a one-sentence definition of what it measures for this specific decision. This list is shown to the user at the consent gate. Phase 0 runs even before consent, since it is cheap (a single pass, not a subagent fan-out), and the axis count determines the cost estimate the user is consenting to.
 
 ### Phase 1 — Per-Axis Advocacy
 
@@ -72,7 +72,7 @@ Once `consent_confirmed=true`, spawn one subagent per derived axis, in parallel.
 - The decision/tradeoff description (exact subject passed by the caller)
 - Its assigned axis name and the one-sentence definition derived in Phase 0
 - The active `decision_domain` and `stance`
-- Instructions to argue strictly from its axis — which option best serves this axis, and why
+- Instructions to argue strictly from its axis: which option best serves this axis, and why
 
 **Prompt template for each axis subagent:**
 
@@ -99,11 +99,11 @@ Provide:
 
 ### Phase 2 — Anonymous Cross-Examination
 
-After all axis-advocates return, run a second parallel round. Each advocate reviews every _other_ advocate's output — anonymized, with axis names stripped, presented only as "Argument A", "Argument B", etc. Each cross-examiner must produce exactly two things: one specific weakness in another argument, and one point where it independently reaches the same conclusion as its own axis. This differs from a generic peer-review pass — it forces a concrete rebuttal-or-corroboration output per argument reviewed, not a free-form critique.
+After all axis-advocates return, run a second parallel round. Each advocate reviews every _other_ advocate's output, anonymized, with axis names stripped, presented only as "Argument A", "Argument B", etc. Each cross-examiner must produce exactly two things: one specific weakness in another argument, and one point where it independently reaches the same conclusion as its own axis. This differs from a generic peer-review pass: it forces a concrete rebuttal-or-corroboration output per argument reviewed, not a free-form critique.
 
 ### Phase 3 — Arbiter Synthesis
 
-A single arbiter pass consumes Phase 1's per-axis arguments and Phase 2's cross-examination, and produces the **Decision Scorecard** (see Output Format). The arbiter does not introduce new arguments — it only aggregates and scores what the axes and cross-examination surfaced.
+A single arbiter pass consumes Phase 1's per-axis arguments and Phase 2's cross-examination, and produces the **Decision Scorecard** (see Output Format). The arbiter does not introduce new arguments; it only aggregates and scores what the axes and cross-examination surfaced.
 
 ---
 
@@ -114,16 +114,16 @@ Because the number of axes varies per decision (never a fixed 5), confidence is 
 | Level      | Meaning                                                                                                                |
 | ---------- | ---------------------------------------------------------------------------------------------------------------------- |
 | **HIGH**   | ≥75% of derived axes recommend the same option, AND no cross-examination rebuttal against it stands unaddressed        |
-| **MEDIUM** | 50–74% of axes converge, OR ≥75% converge but with at least one unresolved (non-structural) cross-examination rebuttal |
+| **MEDIUM** | 50-74% of axes converge, OR ≥75% converge but with at least one unresolved (non-structural) cross-examination rebuttal |
 | **LOW**    | <50% of axes converge, OR cross-examination surfaced a structural flaw that no axis addressed                          |
 
-This is deliberately proportional rather than count-based: a 4-axis decision with 3 axes agreeing (75%) and a 6-axis decision with 5 axes agreeing (83%) are both HIGH, even though the raw counts differ — what matters is the share of the panel that was actually derived for this decision, not an absolute number carried over from some other decision's panel size.
+This is deliberately proportional rather than count-based: a 4-axis decision with 3 axes agreeing (75%) and a 6-axis decision with 5 axes agreeing (83%) are both HIGH, even though the raw counts differ. What matters is the share of the panel that was actually derived for this decision, not an absolute number carried over from some other decision's panel size.
 
 ---
 
 ## Output Format: Decision Scorecard
 
-The arbiter's synthesis is the panel's final output — a scorecard, not a six-part narrative:
+The arbiter's synthesis is the panel's final output: a scorecard, not a six-part narrative:
 
 ```
 ## Deliberation Panel — Decision Scorecard
@@ -150,10 +150,10 @@ The arbiter's synthesis is the panel's final output — a scorecard, not a six-p
 
 ## Rules
 
-- **Consent is explicit, not inferred.** See Consent Gate — `consent_confirmed` is the only signal this skill acts on.
+- **Consent is explicit, not inferred.** See Consent Gate; `consent_confirmed` is the only signal this skill acts on.
 - **Axes are re-derived every invocation.** Never carry over a prior decision's axis list, and never default to a fixed named roster regardless of domain.
 - **Once-per-session-per-topic guard (when called from `socratic-elicitation` or `asdlc-aspect-review`).** The host skill enforces this guard; the panel itself does not duplicate it.
-- **Graceful degradation.** If the panel cannot spawn the subagents Phase 1/2 require (environment limitation, token budget, or tool unavailability), offer the user the option to deliberate inline instead: "A full deliberation panel isn't available right now — would you like to reason through the axes together directly?"
+- **Graceful degradation.** If the panel cannot spawn the subagents Phase 1/2 require (environment limitation, token budget, or tool unavailability), offer the user the option to deliberate inline instead: "A full deliberation panel isn't available right now. Would you like to reason through the axes together directly?"
 - **Parameter contract is fixed.** `decision_domain`, `stance`, and `consent_confirmed` must not be renamed or aliased by callers.
 
 ---

@@ -21,10 +21,10 @@ Systematically verify technical documents by extracting and investigating every 
 
 Scan the document and extract all verifiable claims by category:
 
-- **Data claims** — metrics, counts, sizes, rates ("handles 10k RPS", "99.99% availability")
-- **Code claims** — "already implemented", "requires only configuration", "built on top of X"
-- **Infrastructure claims** — service features, regional availability, pricing, limits
-- **Approach claims** — "this is the standard pattern", "AWS recommends", "best practice"
+- **Data claims**: metrics, counts, sizes, rates ("handles 10k RPS", "99.99% availability")
+- **Code claims**: "already implemented", "requires only configuration", "built on top of X"
+- **Infrastructure claims**: service features, regional availability, pricing, limits
+- **Approach claims**: "this is the standard pattern", "AWS recommends", "best practice"
 
 Be aggressive. "Already built" and "requires only configuration" are the highest-risk claim types.
 
@@ -93,6 +93,6 @@ For each Inaccurate or Overstated finding, provide:
 ## Guidelines
 
 - Never accept "it is well known that" as evidence
-- Service limits change — always check current documentation
+- Service limits change. Always check current documentation
 - "AWS supports X" requires a docs.aws.amazon.com citation
 - Implementation claims require a file path or commit reference

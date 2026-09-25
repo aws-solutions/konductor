@@ -20,7 +20,7 @@ Use this skill when:
 - Discovering a deployed web app before generating test prompts or functional specs
 - Building a discovery report that captures DOM structure, validation rules, and UI framework
 
-Load this skill into `k-browser`. It depends on `dom-inspection` — ensure that skill is also available.
+Load this skill into `k-browser`. It depends on `dom-inspection`. Ensure that skill is also available.
 
 ## Discovery Protocol
 
@@ -35,17 +35,17 @@ If `credentials_file` is non-empty, read it first to obtain credentials before n
 After login:
 
 - Call `waitForURL('**', { waitUntil: 'networkidle' })` to ensure OAuth/SSO redirect completes
-- Reuse the session for all subsequent pages — do NOT re-authenticate on every page
+- Reuse the session for all subsequent pages, do NOT re-authenticate on every page
 
 #### Flow B: Generic in-page sign-in (SPA/AJAX login with no redirect)
 
-If the login does NOT trigger a navigation/redirect (single-page apps that authenticate in place), do NOT use `waitForURL` — it will hang waiting for a redirect that never happens. Instead, wait for a positive post-login signal, in preference order:
+If the login does NOT trigger a navigation/redirect (single-page apps that authenticate in place), do NOT use `waitForURL`. It will hang waiting for a redirect that never happens. Instead, wait for a positive post-login signal, in preference order:
 
 1. A known authenticated-page selector becoming visible (nav bar, avatar, dashboard heading): `page.waitForSelector(<post-auth-selector>, { timeout: 10000 })`
 2. A URL change away from the login URL: `page.waitForURL(url => url !== loginUrl, { timeout: 10000 })`
-3. Fallback only if neither signal is available: `page.waitForTimeout(3000)` — and note the fallback was used in the discovery report.
+3. Fallback only if neither signal is available: `page.waitForTimeout(3000)`, and note the fallback was used in the discovery report.
 
-As with Flow A, reuse the session for all subsequent pages — do NOT re-authenticate on every page.
+As with Flow A, reuse the session for all subsequent pages, do NOT re-authenticate on every page.
 
 ### Phase 2: UI Framework Detection
 
@@ -61,9 +61,9 @@ Include `ui_framework` in the discovery report. This flag is used by spec genera
 
 Navigate depth-first from `{url}`:
 
-- Track all visited URLs — do NOT visit the same URL twice
+- Track all visited URLs, do NOT visit the same URL twice
 - Take a screenshot after loading each page
-- Stop after 50 pages or 30 minutes, whichever comes first — if the limit is reached, note the cutoff in the report
+- Stop after 50 pages or 30 minutes, whichever comes first. If the limit is reached, note the cutoff in the report
 - Do NOT navigate outside the app's domain (identity-provider redirects during authentication are permitted)
 
 ### Phase 4: Per-Element Capture
@@ -73,7 +73,7 @@ For every interactive element on each page, capture:
 | Field                 | Description                                                                              |
 | --------------------- | ---------------------------------------------------------------------------------------- |
 | `selector_type`       | Most reliable selector: `data-testid` → `aria-label` → role → placeholder → CSS fallback |
-| `exact_text`          | Exact visible label or button text as rendered — not inferred                            |
+| `exact_text`          | Exact visible label or button text as rendered, not inferred                             |
 | `initial_state`       | `enabled`, `disabled`, `hidden`, or `checked` at page load                               |
 | `interaction_pattern` | `click`, `two-step` (open → select), `type`, `checkbox`, `radio`, `form-submit`          |
 | `duplicate_dom`       | Flag if multiple elements match the same selector                                        |
@@ -129,7 +129,7 @@ Produce a discovery report with this structure:
 - MUST NOT log or display password values
 - MUST NOT navigate outside the app's domain during crawl
 - Identity-provider redirects during the initial authentication flow are permitted
-- If navigation fails or authentication is rejected, surface the error and stop — do not produce a partial report without noting the failure
+- If navigation fails or authentication is rejected, surface the error and stop. Do not produce a partial report without noting the failure
 
 ## Quality Gate
 

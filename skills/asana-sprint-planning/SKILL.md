@@ -8,7 +8,7 @@ tags:
 
 # Sprint Planning (Asana)
 
-Extends the `sprint-planning` skill — load it for sprint parameters, task hierarchy, story-point sizing, and capacity tracking. The steps below are Asana-specific.
+Extends the `sprint-planning` skill. Load it for sprint parameters, task hierarchy, story-point sizing, and capacity tracking. The steps below are Asana-specific.
 
 ## Instructions
 
@@ -16,7 +16,7 @@ Extends the `sprint-planning` skill — load it for sprint parameters, task hier
 
 Before starting, verify Asana tools are available:
 
-1. Use the Asana identity/current-user capability (to verify connectivity and get the workspace) — if this succeeds, the Asana MCP is configured. Extract the **workspace GID** from the response. If the user belongs to multiple workspaces, present the list and ask which one to use.
+1. Use the Asana identity/current-user capability (to verify connectivity and get the workspace). If this succeeds, the Asana MCP is configured. Extract the **workspace GID** from the response. If the user belongs to multiple workspaces, present the list and ask which one to use.
 2. If the call fails or the capability is not found, STOP and inform the user:
    > "Asana MCP is not configured. See `docs/guides/asana-integration.md` for setup instructions."
 
@@ -53,9 +53,9 @@ Standard project hierarchy levels map to Asana as follows:
 Rules:
 
 - Create parent tasks first, then nest children by creating a task with a parent GID or by nesting the task under a parent (subtask)
-- Use **sections** to group tasks by epic, sprint, or workflow stage (sections are flat — they cannot be nested)
+- Use **sections** to group tasks by epic, sprint, or workflow stage (sections are flat; they cannot be nested)
 - Only leaf-level tasks (Tasks/Subtasks) should carry story point estimates
-- Asana has no explicit task "type" field — hierarchy is controlled via sections and parent/subtask relationships, not a type attribute
+- Asana has no explicit task "type" field. Hierarchy is controlled via sections and parent/subtask relationships, not a type attribute
 - Always set an explicit assignee and due date when available
 
 ### Story Point Sizing
@@ -108,7 +108,7 @@ To roll over incomplete work to the next sprint:
    a. Create the replacement task in the new sprint's section via the Asana MCP with the same name, description, assignee, and due date offset forward by the sprint duration (if the original has no due date, leave it blank). If a story points custom field exists on the project, update the task's fields/custom fields to copy the value to the new task. If points are tracked locally (no custom field), carry the point value into the new sprint's local capacity tracking and note it in the new task's description
    b. If a tag GID was resolved in step 4, apply a tag/label to the original task. If this fails, note the failure but continue
    c. Add a comment to the original task linking to the new task. If this fails, note the failure but continue
-   d. Close the original task by updating the task's fields/custom fields with `completed=true` — this step is critical and must always run if (a) succeeded, regardless of whether (b) or (c) failed. If (d) fails, report both the original and new task GIDs to the user so they can reconcile manually
+   d. Close the original task by updating the task's fields/custom fields with `completed=true`. This step is critical and must always run if (a) succeeded, regardless of whether (b) or (c) failed. If (d) fails, report both the original and new task GIDs to the user so they can reconcile manually
 6. Recalculate capacity for the new sprint based on carried-over points
 
 **Note:** The Asana API supports moving tasks between sections, but the Asana MCP tool sets available today do not consistently expose this endpoint. The workaround above recreates tasks in the target section. Be aware this loses task history, comments, attachments, subtasks, followers, tags, and other custom fields from the original task.

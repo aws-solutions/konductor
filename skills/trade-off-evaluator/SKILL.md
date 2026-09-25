@@ -11,7 +11,7 @@ Produces a scored comparison matrix for design decisions with multiple options. 
 
 ## When to Use
 
-- During `k-design-doc-creation.sop.md` Phase 3 — runs automatically for each significant decision
+- During `k-design-doc-creation.sop.md` Phase 3: runs automatically for each significant decision
 - Standalone: engineer asks to compare options for a specific decision
 - When an ADR's Alternatives table needs scored backing
 
@@ -33,9 +33,9 @@ Score each option 1–5 per dimension. Higher is better.
 
 Extract from context:
 
-- **Decision context** — what problem is being solved, what constraints apply
-- **Options** — at least 2, at most 5; each with a name and brief description
-- **Dimensions** — default to all five; omit a dimension only if it is genuinely not applicable (state why)
+- **Decision context.** What problem is being solved, what constraints apply
+- **Options.** At least 2, at most 5; each with a name and brief description
+- **Dimensions.** Default to all five; omit a dimension only if it is genuinely not applicable (state why)
 
 ### Step 2: Score Each Option
 
@@ -45,7 +45,7 @@ For each option × dimension pair:
 2. Assign a score 1–5
 3. Write a one-line justification
 
-Do not assign scores from memory alone for AWS service characteristics — cross-reference with `aws-service-validator` findings. When `aws-service-validator` is not used, you MUST note the assumption explicitly.
+Do not assign scores from memory alone for AWS service characteristics. Cross-reference with `aws-service-validator` findings. When `aws-service-validator` is not used, you MUST note the assumption explicitly.
 
 ### Step 3: Produce Comparison Table
 
@@ -83,10 +83,10 @@ Write the full trade-off report to `docs/design/<name>-tradeoffs.md`. If called 
 
 ## Pitfalls
 
-- **Do not score from memory for AWS service characteristics** — use `aws-service-validator` or note the assumption explicitly.
-- **Do not omit a dimension without stating why** — "not applicable" must be justified.
-- **Do not recommend the option with the highest total if context overrides it** — a hard constraint (e.g., "must be synchronous") can disqualify an option regardless of score.
-- **Avoid straw-manning** — every option must be scored fairly; a score of 1 requires a specific justification.
+- **Do not score from memory for AWS service characteristics.** Use `aws-service-validator` or note the assumption explicitly.
+- **Do not omit a dimension without stating why**: "not applicable" must be justified.
+- **Do not recommend the option with the highest total if context overrides it.** A hard constraint (e.g., "must be synchronous") can disqualify an option regardless of score.
+- **Avoid straw-manning.** Every option must be scored fairly; a score of 1 requires a specific justification.
 
 ## Verification
 

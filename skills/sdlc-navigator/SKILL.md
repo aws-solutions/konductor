@@ -9,7 +9,7 @@ tags: [skill, navigation, workflow, sdlc, agents, phases]
 
 ## Overview
 
-Guides users through the SDLC workflow — which agent to use, when to use it, and how outputs from one phase become inputs to the next.
+Guides users through the SDLC workflow: which agent to use, when to use it, and how outputs from one phase become inputs to the next.
 
 ## Usage
 

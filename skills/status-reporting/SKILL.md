@@ -24,11 +24,11 @@ Use this skill when:
 
 ### RAG Status
 
-Rate each workstream: **Green** (on track, no risks), **Amber** (at risk, mitigation in progress), **Red** (off track, escalation needed). RAG must be justified — include the specific reason for Amber/Red and the mitigation or escalation action.
+Rate each workstream: **Green** (on track, no risks), **Amber** (at risk, mitigation in progress), **Red** (off track, escalation needed). RAG must be justified. Include the specific reason for Amber/Red and the mitigation or escalation action.
 
 ### Two Report Formats
 
-**Executive Summary (1-page):** Overall RAG, 3 key accomplishments, 3 upcoming milestones, top blockers, ask/escalation. No detail — decisions only.
+**Executive Summary (1-page):** Overall RAG, 3 key accomplishments, 3 upcoming milestones, top blockers, ask/escalation. No detail, decisions only.
 **Detailed Report:** Per-workstream RAG, task-level progress, metrics (velocity, burn-down), full blocker list, action items with owners and due dates.
 
 ### Data Sources
@@ -37,21 +37,21 @@ Pull from available project management tools (Asana MCP if configured): task com
 
 ## Output Format — Executive Summary
 
-1. **Program Name & Date** — report period
-2. **Overall RAG** — single status with one-line justification
-3. **Key Accomplishments** — 3-5 bullet points, outcome-focused
-4. **Upcoming Milestones** — next 2 weeks, with dates and owners
-5. **Blockers & Risks** — top items with owner and mitigation
-6. **Ask / Escalation** — what you need from leadership (or "None")
+1. **Program Name & Date**: report period
+2. **Overall RAG**: single status with one-line justification
+3. **Key Accomplishments**: 3-5 bullet points, outcome-focused
+4. **Upcoming Milestones**: next 2 weeks, with dates and owners
+5. **Blockers & Risks**: top items with owner and mitigation
+6. **Ask / Escalation**: what you need from leadership (or "None")
 
 ## Output Format — Detailed Report
 
-1. **Workstream Status Table** — columns: Workstream, RAG, % Complete, Key Update, Next Milestone, Blocker
-2. **Accomplishments** — per workstream, with links to artifacts/PRs
-3. **Metrics** — sprint velocity, burn-down trend, scope changes
-4. **Action Items Table** — columns: Action, Owner, Due Date, Status, Notes
-5. **Risks & Issues** — link to RAID log (risk-management skill)
-6. **Next Period Plan** — key deliverables for next reporting period
+1. **Workstream Status Table**, with columns: Workstream, RAG, % Complete, Key Update, Next Milestone, Blocker
+2. **Accomplishments**: per workstream, with links to artifacts/PRs
+3. **Metrics**: sprint velocity, burn-down trend, scope changes
+4. **Action Items Table**, with columns: Action, Owner, Due Date, Status, Notes
+5. **Risks & Issues**: link to RAID log (risk-management skill)
+6. **Next Period Plan**: key deliverables for next reporting period
 
 ## Quality Gate
 
@@ -72,4 +72,4 @@ Pull from available project management tools (Asana MCP if configured): task com
 - Could add trend arrows (improving/stable/declining) per workstream
 - Could include week-over-week RAG comparison
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.

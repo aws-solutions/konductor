@@ -1163,7 +1163,7 @@ const table = new dynamodb.Table(this, 'UsersTable', {
 - Optional optimizations with < 10% benefit
 - Future-proofing suggestions
 - Code quality improvements
-- Documentation enhancements
+- Documentation improvements
 
 ### Evidence Requirements by Priority
 
@@ -1884,7 +1884,7 @@ Generate validation reports in this structured format:
 
 **CRITICAL (must fix):**
 
-- Hot partition detected — write throughput concentrated on predictable key values
+- Hot partition detected: write throughput concentrated on predictable key values
 - Required access pattern has no supporting index
 - Encryption at rest not configured
 - No backup strategy defined
@@ -1900,4 +1900,4 @@ Generate validation reports in this structured format:
 - Could add DAX caching for read-heavy access patterns
 - Could optimize GSI key design to reduce storage cost
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.

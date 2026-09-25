@@ -130,7 +130,7 @@ Ask discovery questions:
 - Primary actors/roles and their actions
 - Data classification levels and sensitive data types
 - Compliance frameworks and deployment region
-- Primary security concerns and threat landscape
+- Primary security concerns and the threats the system could face, including ones not yet identified
 - Existing security context and maturity level
 
 ### STEP 2: Analyze Access Patterns
@@ -966,4 +966,4 @@ Before finalizing, verify:
 - Could add SCPs for organizational guardrails
 - Could define IAM Access Analyzer findings to monitor
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.

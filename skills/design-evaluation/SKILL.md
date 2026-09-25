@@ -31,7 +31,7 @@ Use this skill when:
 
 ### 10 Evaluation Dimensions
 
-Template adherence, high-level assessment, scalability, performance, security, maintainability & extensibility, failure handling & resilience, code & implementation quality, testability & automation readiness (including CI/CD readiness), and actionable recommendations — matching the ten numbered items in the Review Structure below. Each dimension is scored and findings are prioritized.
+Template adherence, high-level assessment, scalability, performance, security, maintainability & extensibility, failure handling & resilience, code & implementation quality, testability & automation readiness (including CI/CD readiness), and actionable recommendations. These match the ten numbered items in the Review Structure below. Each dimension is scored and findings are prioritized.
 
 ### Scope-Tailored Feedback
 
@@ -61,7 +61,7 @@ Template Usage Guidelines
 
 Use {Tech Design Templates} as references, not strict requirements.
 
-Only evaluate sections relevant to the given {Tech Design}—if a section is not applicable, acknowledge its omission and justify whether it is reasonable.
+Only evaluate sections relevant to the given {Tech Design}. If a section is not applicable, acknowledge its omission and justify whether it is reasonable.
 
 If a template suggests an unnecessary feature for this project scope, state why it is not needed and provide guidance for potential future inclusion if applicable.
 
@@ -73,7 +73,7 @@ Does the design align with relevant sections of {Tech Design Templates}?
 
 Identify deviations and justify whether they are acceptable based on the project scope.
 
-Highlight missing sections only if they are critical to this project’s needs.
+Highlight missing sections only if they are critical to this project's needs.
 
 2. High-Level Assessment
 
@@ -127,18 +127,18 @@ Evaluate CI/CD readiness, structured logging, and monitoring strategies.
 
 10. Actionable Recommendations
 
-Provide detailed, practical steps to enhance the design.
+Provide detailed, practical steps to improve the design.
 
 Align recommendations with industry standards (e.g., AWS, Google, Meta best practices).
 
 Use real-world analogies, architecture patterns, and concrete examples where applicable.
 
 Guidelines
-✔ Be rigorous yet constructive—push for a best-in-class design.
-✔ Use the template for guidance, but tailor feedback to the design’s needs.
-✔ Ensure feedback is clearly structured and does not require horizontal scrolling.
-✔ Do not cut off text at the end of sections.
-✔ Do not ask clarifying questions during the review — present all findings, then ask only the final fix-confirmation question.
+- Be rigorous yet constructive. Push for a best-in-class design.
+- Use the template for guidance, but tailor feedback to the design's needs.
+- Ensure feedback is clearly structured and does not require horizontal scrolling.
+- Do not cut off text at the end of sections.
+- Do not ask clarifying questions during the review. Present all findings, then ask only the final fix-confirmation question.
 
 ---
 
@@ -162,4 +162,4 @@ Guidelines
 - Could add chaos engineering scenarios for resilience validation
 - Could define SLOs and error budgets
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.

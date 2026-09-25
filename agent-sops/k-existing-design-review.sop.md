@@ -30,12 +30,12 @@ Scan the design directory and identify which artifacts are present.
 **Constraints:**
 
 - You MUST check for these artifacts in `design_dir`:
-  - `system-design.md` — system architecture
-  - `threat-model.md` — STRIDE analysis and mitigations
-  - `smithy-model/` or `api-specs/` — API specifications
-  - `dynamodb-*.md` or `data-model.md` — data models
-  - `security-policy*.md` or `iam-policies.md` — security policies
-  - `*.drawio.xml` or `architecture-diagram*` — architecture diagrams
+  - `system-design.md`: system architecture
+  - `threat-model.md`: STRIDE analysis and mitigations
+  - `smithy-model/` or `api-specs/`: API specifications
+  - `dynamodb-*.md` or `data-model.md`: data models
+  - `security-policy*.md` or `iam-policies.md`: security policies
+  - `*.drawio.xml` or `architecture-diagram*`: architecture diagrams
 - You MUST report which artifacts were found and which are missing
 - You SHOULD warn if critical artifacts (system design, threat model) are missing
 - You MUST NOT proceed to evaluation if system-design.md is missing
@@ -88,7 +88,7 @@ Apply the design-evaluation skill to evaluate all artifacts across 10 dimensions
   8. Cost optimization
   9. API design quality
   10. Data model quality
-- You MUST assign a numeric score of 1–5 for each dimension; a dimension scoring below 3 MUST be flagged for revision
+- You MUST assign a numeric score of 1-5 for each dimension; a dimension scoring below 3 MUST be flagged for revision
 - You MUST identify CRITICAL issues (block implementation) vs IMPORTANT issues (should fix) vs SUGGESTIONS
 
 **Expected Output:**
@@ -129,7 +129,7 @@ Write the consolidated review report to the output file.
   [READY FOR IMPLEMENTATION / NOT READY — reason]
   ```
 
-- You MUST NOT print the full report content in your response — the file itself is sufficient
+- You MUST NOT print the full report content in your response. The file itself is sufficient.
 - You MUST inform the user of the file location and the overall recommendation
 
 **Expected Output:**

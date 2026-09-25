@@ -17,9 +17,9 @@ Use this skill when:
 
 ## Steps
 
-1. **Load document** — Accept a markdown file path or inline content. Report section count and approximate word count.
+1. **Load document**: accept a markdown file path or inline content. Report section count and approximate word count.
 
-2. **Structural completeness check** — Verify the document contains all required outside-in sections:
+2. **Structural completeness check**: verify the document contains all required outside-in sections:
    - Problem / Background
    - Requirements
    - Solution Overview
@@ -29,7 +29,7 @@ Use this skill when:
 
    Flag each missing required section as an issue of type `missing_section`.
 
-3. **Slop detection** — Scan every paragraph for the following issue types:
+3. **Slop detection**: scan every paragraph for the following issue types:
 
    | Type                    | Examples                                                                                                   | Severity  |
    | ----------------------- | ---------------------------------------------------------------------------------------------------------- | --------- |
@@ -41,20 +41,20 @@ Use this skill when:
    | `yagni_violation`       | Features, abstractions, or extensibility points not required by stated requirements                        | IMPORTANT |
    | `missing_section`       | Required section absent                                                                                    | IMPORTANT |
 
-4. **Complexity scoring** — For each decision or design choice, check:
+4. **Complexity scoring**: for each decision or design choice, check:
    - Is the simplest option chosen, or is complexity justified by a stated requirement?
    - Are there abstractions with no current use case?
 
    Flag unjustified complexity as `yagni_violation`.
 
-5. **Score** — Compute overall score 1–5:
+5. **Score**: compute overall score 1–5:
    - 5: No issues
    - 4: Only MINOR issues (≤3)
    - 3: MINOR issues (>3) or IMPORTANT issues (1–2)
    - 2: IMPORTANT issues (3+), no missing required sections
    - 1: IMPORTANT issues (3+) AND one or more missing sections (structural gaps)
 
-6. **Output** — Return:
+6. **Output**: return:
 
    ```
    Quality Score: N/5
@@ -76,9 +76,9 @@ Use this skill when:
 
 ## Pitfalls
 
-- Do not flag technical hedging that is accurate (e.g., "Lambda cold starts typically add 100–500ms" is not a hedge — it is a range).
+- Do not flag technical hedging that is accurate (e.g., "Lambda cold starts typically add 100–500ms" is not a hedge; it is a range).
 - Do not flag passive voice in formal definitions or standards references.
-- Do not penalize brevity — a short, complete doc scores higher than a verbose, incomplete one.
+- Do not penalize brevity. A short, complete doc scores higher than a verbose, incomplete one.
 - `unsupported_claims` applies only to quantitative assertions (latency, cost, throughput). Qualitative design rationale does not require evidence URLs.
 
 ## Verification

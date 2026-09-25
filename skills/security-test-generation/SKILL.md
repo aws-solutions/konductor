@@ -43,14 +43,14 @@ Follow stages sequentially. Each stage builds on previous outputs.
 
 ## Task List Configuration
 
-**Task List Directory:** `{output_dir}`, optional and defaulting to `.kiro/specs/security-testing/` — this default applies to the Kiro branch of Stage 8 (`tool_type == "kiro"`). The non-Kiro branch of Stage 8 defaults `output_dir` to `security-test-plans/` instead.
+**Task List Directory:** `{output_dir}`, optional and defaulting to `.kiro/specs/security-testing/`. This default applies to the Kiro branch of Stage 8 (`tool_type == "kiro"`). The non-Kiro branch of Stage 8 defaults `output_dir` to `security-test-plans/` instead.
 **Task List File:** `{output_dir}/tasks.md`
 
 `output_dir` lets a calling SOP place the task list alongside its other artifacts. Callers that pass nothing get the default, so existing behavior is unchanged. These paths are used throughout the prompt for task list generation and tracking.
 
 ## Unattended and Parallel Callers
 
-This skill asks the user several questions — tool type, technology stack, and how to proceed with generation. A calling SOP that runs this per feature in parallel, or with no human present, MUST pass `scope_confirmed=true` along with the context it already holds. When `scope_confirmed` is true You MUST NOT ask any of those questions: detect what you can, take `stack` and `approach` from the caller when supplied, otherwise default to the hybrid approach over the artifacts the caller pointed you at, and report what you assumed instead of prompting. Every question in this skill is subject to that rule, not only the ones nearest this note.
+This skill asks the user several questions: tool type, technology stack, and how to proceed with generation. A calling SOP that runs this per feature in parallel, or with no human present, MUST pass `scope_confirmed=true` along with the context it already holds. When `scope_confirmed` is true You MUST NOT ask any of those questions: detect what you can, take `stack` and `approach` from the caller when supplied, otherwise default to the hybrid approach over the artifacts the caller pointed you at, and report what you assumed instead of prompting. Every question in this skill is subject to that rule, not only the ones nearest this note.
 
 ---
 
@@ -531,7 +531,7 @@ Refining: Re-run to update based on new artifacts or code changes.
 
 **Generate:**
 
-1. Directory: `{output_dir}`, optional and defaulting to `security-test-plans/` — this default applies to this non-Kiro branch (`tool_type == "other"`). The Kiro branch above defaults `output_dir` to `.kiro/specs/security-testing/` instead.
+1. Directory: `{output_dir}`, optional and defaulting to `security-test-plans/`. This default applies to this non-Kiro branch (`tool_type == "other"`). The Kiro branch above defaults `output_dir` to `.kiro/specs/security-testing/` instead.
 2. Per category: `{output_dir}/[domain]-[layer].md` with description, test cases, best practices, references
 3. `{output_dir}/security-test-overview.md`: master view, all categories, testing framework, best practices
 4. `{output_dir}/best-practices-reference.md`: AWS, OWASP guidelines
@@ -733,4 +733,4 @@ Maintain throughout conversation:
 - Could add rate limiting and DDoS resilience tests
 - Could add dependency vulnerability scanning to CI pipeline
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.

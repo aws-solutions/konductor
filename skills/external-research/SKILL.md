@@ -9,7 +9,7 @@ tags: [skill, research, external, web, documentation, best-practices]
 
 ## Overview
 
-Guides systematic searching of external resources — official documentation, open-source repositories, and industry best practices. Ensures findings are reliable, current, and properly cited.
+Guides systematic searching of external resources, such as official documentation, open-source repositories, and industry best practices. Ensures findings are reliable, current, and properly cited.
 
 ## Usage
 
@@ -28,11 +28,11 @@ Use `WebFetch` to retrieve content from a known URL. When no URL is known, use `
 
 ## Search Strategy
 
-1. **Start broad, then narrow** — begin with official docs, then drill into specifics
-2. **Cross-reference multiple sources** — never rely on a single blog post or answer
-3. **Prefer official docs over community content** — blogs and forums may be outdated or wrong
-4. **Check version relevance** — ensure docs match the version you're actually using
-5. **Note recency** — flag if content is older than 12 months for fast-moving technologies
+1. **Start broad, then narrow.** Begin with official docs, then drill into specifics.
+2. **Cross-reference multiple sources.** Never rely on a single blog post or answer.
+3. **Prefer official docs over community content.** Blogs and forums may be outdated or wrong.
+4. **Check version relevance.** Ensure docs match the version you're actually using.
+5. **Note recency.** Flag if content is older than 12 months for fast-moving technologies.
 
 ## Source Reliability
 
@@ -40,20 +40,20 @@ Ranked from most to least reliable:
 
 | Tier | Source                                          | Trust Level                    |
 | ---- | ----------------------------------------------- | ------------------------------ |
-| 1    | Official documentation (AWS docs, library docs) | High — authoritative           |
-| 2    | GitHub repos (source code, issues, changelogs)  | High — primary source          |
-| 3    | Stack Overflow (highly voted, accepted answers) | Medium — verify independently  |
-| 4    | Blog posts, tutorials, Medium articles          | Low — cross-reference required |
+| 1    | Official documentation (AWS docs, library docs) | High, authoritative           |
+| 2    | GitHub repos (source code, issues, changelogs)  | High, primary source          |
+| 3    | Stack Overflow (highly voted, accepted answers) | Medium, verify independently  |
+| 4    | Blog posts, tutorials, Medium articles          | Low, cross-reference required |
 
-Always prefer Tier 1–2 sources. Use Tier 3–4 only to supplement or when higher-tier sources lack coverage.
+Always prefer Tier 1-2 sources. Use Tier 3-4 only to supplement or when higher-tier sources lack coverage.
 
 ## Output Format
 
-1. **Cite URLs** — include the full URL for every finding
-2. **Summarize key findings** — extract actionable insights, not full page content
-3. **Note version and date** — include the library/service version and when the source was published
-4. **Flag conflicts** — if sources disagree, present both sides with reliability tiers
-5. **State applicability** — note any caveats about environment, version, or scale
+1. **Cite URLs.** Include the full URL for every finding.
+2. **Summarize key findings.** Extract actionable insights, not full page content.
+3. **Note version and date.** Include the library/service version and when the source was published.
+4. **Flag conflicts.** If sources disagree, present both sides with reliability tiers.
+5. **State applicability.** Note any caveats about environment, version, or scale.
 
 Example:
 
@@ -83,4 +83,4 @@ Example:
 
 ## Optional: Official Slack MCP
 
-Optional: the researcher can also search Slack via the official Slack MCP — see `docs/guides/slack-integration.md` for setup.
+Optional: the researcher can also search Slack via the official Slack MCP. See `docs/guides/slack-integration.md` for setup.

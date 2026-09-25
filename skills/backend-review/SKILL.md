@@ -9,7 +9,7 @@ tags: [skill, backend, code-review, lambda, dynamodb, typescript, checker]
 
 ## Overview
 
-Reviews backend code with a critical eye across architectural patterns, type safety, DynamoDB operations, error handling, observability, and test coverage. Provides direct, unbiased assessment — calls out over-engineering, KISS/YAGNI/DRY violations, and unnecessary complexity.
+Reviews backend code with a critical eye across architectural patterns, type safety, DynamoDB operations, error handling, observability, and test coverage. Provides direct, unbiased assessment. Calls out over-engineering, KISS/YAGNI/DRY violations, and unnecessary complexity.
 
 ## Usage
 
@@ -30,9 +30,9 @@ Architectural pattern compliance (layer separation), dead code detection (unused
 
 ### Architectural Patterns
 
-- [ ] Handlers delegate to business facade — no direct business logic in handlers
-- [ ] Services created via factory — no direct instantiation
-- [ ] Data access through repository interfaces — no direct database calls
+- [ ] Handlers delegate to business facade: no direct business logic in handlers
+- [ ] Services created via factory: no direct instantiation
+- [ ] Data access through repository interfaces: no direct database calls
 - [ ] Proper layer separation maintained
 
 ### Dead Code
@@ -51,7 +51,7 @@ Architectural pattern compliance (layer separation), dead code detection (unused
 ### DynamoDB Operations
 
 - [ ] Multi-item updates use transactions (atomic)
-- [ ] No extra queries — write return values used where available
+- [ ] No extra queries: write return values used where available
 - [ ] Conditional writes used to prevent race conditions
 - [ ] Key design follows single-table patterns
 
@@ -91,4 +91,4 @@ Architectural pattern compliance (layer separation), dead code detection (unused
 - Could strengthen test assertions to check actual values not just existence
 - Could extract repeated logic into shared utility
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.

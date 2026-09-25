@@ -67,12 +67,12 @@ git push -d origin <feature_branch>   # delete remote
 
 | Flag          | Purpose                                                                         |
 | ------------- | ------------------------------------------------------------------------------- |
-| `--no-ff`     | Always create a merge commit (no fast-forward) — preserves branch history       |
-| `--no-commit` | Stage the merge but don't commit — lets you inspect and build before committing |
+| `--no-ff`     | Always create a merge commit (no fast-forward), preserving branch history       |
+| `--no-commit` | Stage the merge but don't commit, so you can inspect and build before committing |
 
 ## Anti-Patterns
 
-1. **NEVER** fast-forward merge into mainline — always use `--no-ff`
+1. **NEVER** fast-forward merge into mainline. Always use `--no-ff`
 2. **NEVER** merge into mainline without pulling latest first
 3. **NEVER** skip merging mainline into feature branch first
 4. **NEVER** force push to mainline
@@ -91,14 +91,14 @@ git push -d origin <feature_branch>   # delete remote
 
 **CRITICAL (block merge):**
 
-- Merging into mainline without `--no-ff` flag — branch history will be lost
-- Merging into mainline without pulling latest first — risks overwriting others' changes
-- Skipping Phase 1 (merging mainline into feature branch first) — conflicts should be resolved on the feature branch, not mainline
+- Merging into mainline without `--no-ff` flag: branch history will be lost
+- Merging into mainline without pulling latest first: risks overwriting others' changes
+- Skipping Phase 1 (merging mainline into feature branch first): conflicts should be resolved on the feature branch, not mainline
 - Force pushing to mainline
 
 **IMPORTANT (fix before proceeding):**
 
-- Not using `--no-commit` flag — prevents pre-commit inspection of merge result
+- Not using `--no-commit` flag: prevents pre-commit inspection of merge result
 - Not verifying build passes before committing the merge
 - Merge commit message doesn't describe what was merged
 

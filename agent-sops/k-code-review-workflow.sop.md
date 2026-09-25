@@ -7,7 +7,7 @@ This SOP runs a comprehensive multi-skill code review across backend, frontend, 
 ## Parameters
 
 - **source_dir** (required): Path to the source directory to review
-- **review_type** (optional, default: `all`): Scope — `backend`, `frontend`, `infra`, or `all`
+- **review_type** (optional, default: `all`): Scope: `backend`, `frontend`, `infra`, or `all`
 - **output_file** (optional, default: `code-review-report.md`): File to write the consolidated report
 - **cr_url** (optional): URL of the code review, forwarded to `k-adversarial-pull-request-review` as its `pr_url` in Step 6. When absent, Step 6 runs without a URL and its review is diff-only.
 - **base_branch** (optional): Branch to diff against. If not provided, You MUST resolve the remote's default branch first and use it if found, falling back to `main` only if the remote default cannot be resolved. Trying `main` first would let a stale, abandoned `main` win over a repo's real trunk whenever both exist. To resolve the remote's default branch, You MUST run `git symbolic-ref --quiet --short refs/remotes/origin/HEAD` and strip the `origin/` prefix; if that returns nothing, You MUST fall back to `git ls-remote --symref origin HEAD` and parse the branch name from its `ref: refs/heads/<branch>` line, since the local symref is frequently unset in shallow or single-ref checkouts. If neither lookup resolves a branch name, You MUST fall back to `main`.
@@ -71,13 +71,13 @@ Merge all findings into a single prioritized list.
 
 ### 5. Critique Findings
 
-Validate each finding to eliminate false positives. When in doubt, reject — false positives erode trust.
+Validate each finding to eliminate false positives. When in doubt, reject. False positives erode trust.
 
 **Constraints:**
 
 - You MUST reject findings that: praise correct code, speculate about unseen code, flag style-only issues, duplicate findings already reported by a linter run in this workflow, or give vague suggestions without concrete fixes
 - You MUST reject findings where the referenced code doesn't match the actual diff
-- You MUST verify each finding is actionable — it must state the problem, why it matters, and a concrete fix
+- You MUST verify each finding is actionable: it must state the problem, why it matters, and a concrete fix
 - You MUST re-sort surviving findings: CRITICAL → IMPORTANT → SUGGESTION
 
 **Expected Output:** Filtered findings list with false positives removed
@@ -90,7 +90,7 @@ If `k-adversarial-pull-request-review` is available, spawn `k-architect` in adve
 
 - You MUST skip this step if `k-adversarial-pull-request-review` is unavailable, or if `review_type` is `frontend` only (adversarial review targets backend/infra gaps)
 - You MUST pass the same diff used in Step 1 as `diff_input`
-- If the k-code-review-workflow was invoked with a CR URL, You MUST also pass it to `k-adversarial-pull-request-review` as its `pr_url` parameter — that is the name that SOP declares, and passing `cr_url` instead leaves it unset so the review degrades to diff-only. Do not send it to `adversarial-cr-review`, a different SOP that declares `cr_url`; on agents where both are loadable, name the target by filename.
+- If the k-code-review-workflow was invoked with a CR URL, You MUST also pass it to `k-adversarial-pull-request-review` as its `pr_url` parameter. That is the name that SOP declares, and passing `cr_url` instead leaves it unset so the review degrades to diff-only. Do not send it to `adversarial-cr-review`, a different SOP that declares `cr_url`; on agents where both are loadable, name the target by filename.
 - You MUST apply the same false-positive criteria from Step 5 to adversarial findings before merging them
 - You MUST merge any new CRITICAL or IMPORTANT findings into the consolidated list from Step 5
 - You MUST NOT re-report findings already present in the consolidated list
@@ -120,6 +120,6 @@ Write the consolidated report to the output file.
   ```
 
 - You MUST state the verdict: READY FOR CR / NEEDS FIXES
-- You MUST NOT print the full report in your response — reference the file
+- You MUST NOT print the full report in your response. Reference the file instead.
 
 **Expected Output:** Report file at `output_file` with verdict and finding counts

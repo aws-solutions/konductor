@@ -2,11 +2,11 @@
 
 ## Overview
 
-This SOP performs comprehensive codebase analysis covering architecture, design principles, patterns, and technical debt. It produces a structured markdown report with Mermaid diagrams. Use `focus_areas=all` for onboarding a newcomer to an unfamiliar codebase (full breadth); use a narrower `focus_areas` selection (e.g. `architecture,dependencies,debt`) when the goal is a specific architecture review or refactoring-planning pass — see the `focus_areas` parameter below for the full list of selectable sections.
+This SOP performs comprehensive codebase analysis covering architecture, design principles, patterns, and technical debt. It produces a structured markdown report with Mermaid diagrams. Use `focus_areas=all` for onboarding a newcomer to an unfamiliar codebase (full breadth); use a narrower `focus_areas` selection (e.g. `architecture,dependencies,debt`) when the goal is a specific architecture review or refactoring-planning pass. See the `focus_areas` parameter below for the full list of selectable sections.
 
 Use this SOP when joining an unfamiliar codebase, before major refactoring, during architecture reviews, or when assessing technical debt.
 
-This SOP differs from the `analyze` SOP, which performs pre-implementation context gathering across multiple research agents. Codebase analysis produces a comprehensive architectural assessment document with SOLID evaluation, design pattern identification, and technical debt scoring — it's a deep-dive reference document, not a pre-task research step.
+This SOP differs from the `analyze` SOP, which performs pre-implementation context gathering across multiple research agents. Codebase analysis produces a comprehensive architectural assessment document with SOLID evaluation, design pattern identification, and technical debt scoring. It's a deep-dive reference document, not a pre-task research step.
 
 ## Parameters
 
@@ -29,7 +29,7 @@ This SOP differs from the `analyze` SOP, which performs pre-implementation conte
 **Constraints for parameter acquisition:**
 
 - If all parameters use defaults, You MUST proceed to the Steps immediately
-- You MUST NOT prompt for optional parameters — use defaults if not provided
+- You MUST NOT prompt for optional parameters. Use defaults if not provided
 - You MUST validate that `codebase_path` exists before proceeding
 
 ## Steps
@@ -43,7 +43,7 @@ Validate paths, set defaults, and determine which analysis sections to run.
 - You MUST resolve `codebase_path` to an absolute path
 - You MUST verify `codebase_path` exists and contains source files
 - You MUST parse `focus_areas` into a list and validate each value against the allowed set: `architecture`, `solid`, `patterns`, `dependencies`, `security`, `performance`, `testing`, `debt`
-- If `focus_areas` is `all`, You MUST run all analysis sections (Steps 2–9)
+- If `focus_areas` is `all`, You MUST run all analysis sections (Steps 2-9)
 - If `focus_areas` is not `all`, You MUST only run the selected analysis sections and skip the rest
 - You MUST create the output file immediately with a header to enable incremental writes:
 
@@ -118,17 +118,17 @@ Evaluate adherence to each SOLID principle with concrete examples from the code.
 **Constraints:**
 
 - You MUST evaluate all five principles:
-  - **S** — Single Responsibility: Do classes/modules have one reason to change?
-  - **O** — Open/Closed: Can behavior be extended without modifying existing code?
-  - **L** — Liskov Substitution: Are subtypes substitutable for their base types?
-  - **I** — Interface Segregation: Are interfaces focused and minimal?
-  - **D** — Dependency Inversion: Do high-level modules depend on abstractions?
+  - **S.** Single Responsibility: Do classes/modules have one reason to change?
+  - **O.** Open/Closed: Can behavior be extended without modifying existing code?
+  - **L.** Liskov Substitution: Are subtypes substitutable for their base types?
+  - **I.** Interface Segregation: Are interfaces focused and minimal?
+  - **D.** Dependency Inversion: Do high-level modules depend on abstractions?
 - For each principle, You MUST provide:
   - A rating: ✅ Good, ⚠️ Needs Improvement, or ❌ Violated
   - At least one concrete code example with file path
   - A brief recommendation if not ✅
 - You MUST save findings to `output_file` under `## SOLID Principles Evaluation`
-- You MUST NOT fabricate examples — only reference actual code found in the codebase
+- You MUST NOT fabricate examples. Only reference actual code found in the codebase
 
 **Expected Output:** SOLID evaluation section appended to output file with per-principle rating, code examples with file paths, and recommendations
 
@@ -148,7 +148,7 @@ Identify Gang of Four and architectural patterns in use across the codebase.
   - Whether it's implemented correctly or is a partial/anti-pattern
 - You MUST also identify architectural patterns: Repository, Service Layer, MVC/MVVM, Event Sourcing, CQRS, Middleware Pipeline
 - You MUST save findings to `output_file` under `## Design Patterns Identified`
-- You MUST NOT force-fit patterns — only report patterns that are clearly present
+- You MUST NOT force-fit patterns. Only report patterns that are clearly present
 
 **Expected Output:** Design patterns section appended to output file with categorized patterns, file path references, and correctness assessment
 
@@ -194,7 +194,7 @@ Assess error handling, logging, and testing strategy.
 - For each area, You MUST provide a rating: ✅ Good, ⚠️ Needs Improvement, or ❌ Critical Issue
 - Each finding MUST include file path references
 - You MUST save findings to `output_file` under `## Code Quality Assessment`
-- You MUST NOT run any code or execute tests — this is static analysis only
+- You MUST NOT run any code or execute tests. This is static analysis only
 
 **Expected Output:** Code quality section appended to output file with per-area ratings, specific findings with file paths, and recommendations
 
@@ -210,7 +210,7 @@ Assess security mechanisms and performance considerations.
 - For each area, You MUST provide a rating: ✅ Good, ⚠️ Needs Improvement, or ❌ Critical Issue
 - Each finding MUST include file path references
 - You MUST save findings to `output_file` under `## Security & Performance`
-- You MUST NOT run any code or execute tests — this is static analysis only
+- You MUST NOT run any code or execute tests. This is static analysis only
 
 **Expected Output:** Security and performance section appended to output file with per-area ratings, specific findings with file paths, and recommendations
 
@@ -259,14 +259,14 @@ Compile all findings into the final structured report with an executive summary 
   ## Recommendations (prioritized)
   ```
 
-- The Executive Summary MUST be 3–5 sentences covering: overall health, biggest strengths, most critical issues
-- The Recommendations section MUST be a prioritized list (P0–P2) with:
+- The Executive Summary MUST be 3-5 sentences covering: overall health, biggest strengths, most critical issues
+- The Recommendations section MUST be a prioritized list (P0-P2) with:
   - P0: Fix immediately (security issues, critical bugs, blocking debt)
   - P1: Fix this quarter (architectural improvements, medium debt)
   - P2: Fix when convenient (cosmetic, low-severity debt)
 - If `focus_areas` was not `all`, You MUST only include sections for the selected areas
 - You MUST inform the user of the output file location and the top 3 recommendations
-- You MUST NOT print the full report in your response — reference the file
+- You MUST NOT print the full report in your response. Reference the file
 
 **Expected Output:** Complete report written to `output_file`, with a summary message to the user containing the file path and top 3 prioritized recommendations
 

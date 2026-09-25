@@ -31,9 +31,9 @@ Do NOT use when:
 ## Decision Framework
 
 1. **Bias toward simplicity**: Least complex solution that fulfills requirements
-2. **Leverage existing**: Favor modifications over new components
+2. **Use existing**: Favor modifications over new components
 3. **Developer experience**: Optimize for readability and maintainability
-4. **One clear path**: Single primary recommendation — don't hedge
+4. **One clear path**: Single primary recommendation. Don't hedge
 5. **Match depth to complexity**: Quick questions get quick answers
 
 ## Response Structure
@@ -96,7 +96,7 @@ Do NOT use when:
 
 **Effort estimate**: N/A (recommending against)
 
-**Why this approach**: GraphQL shines with complex, interconnected data graphs. Your current 5 endpoints don't justify the tooling overhead.
+**Why this approach**: GraphQL works well with complex, interconnected data graphs. Your current 5 endpoints don't justify the tooling overhead.
 
 **Trade-offs considered**: GraphQL would give better client flexibility, but at the cost of server complexity, caching challenges, and team learning curve.
 

@@ -2177,7 +2177,7 @@ Ask these questions during design review to catch issues early:
 
 **CRITICAL (must fix):**
 
-- Hot partition risk — access patterns concentrate writes on a single partition key value
+- Hot partition risk: access patterns concentrate writes on a single partition key value
 - Missing GSI for a required query pattern
 - No TTL strategy for time-bounded data
 
@@ -2192,4 +2192,4 @@ Ask these questions during design review to catch issues early:
 - Could add DynamoDB Streams configuration for event-driven patterns
 - Could document cost estimates for projected load
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.

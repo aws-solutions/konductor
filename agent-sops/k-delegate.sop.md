@@ -2,7 +2,7 @@
 
 ## Overview
 
-This SOP provides a structured template for delegating tasks to specialized subagents with clear requirements and success criteria. Use it when assigning work to `k-researcher`, `k-developer`, `k-media-analyzer`, or other subagents, when orchestrating parallel agent execution, or when any task requires specialized agent capabilities. The delegation this template structures buys capability specialization — routing work to the subagent whose skill set matches the task — and its own Steps 4 and 6 mandate handing over project root, source dirs, ignore list, and existing patterns, so the template's function is enforcing complete context transfer to that specialist, not withholding it.
+This SOP provides a structured template for delegating tasks to specialized subagents with clear requirements and success criteria. Use it when assigning work to `k-researcher`, `k-developer`, `k-media-analyzer`, or other subagents, when orchestrating parallel agent execution, or when any task requires specialized agent capabilities. The delegation this template structures buys capability specialization: routing work to the subagent whose skill set matches the task. Its own Steps 4 and 6 also mandate handing over project root, source dirs, ignore list, and existing patterns, so the template's function is enforcing complete context transfer to that specialist, not withholding it.
 
 ## Parameters
 
@@ -22,7 +22,7 @@ When adapting examples to any project:
 
 1. Identify the project's primary language from file extensions
 2. Substitute with language-appropriate values from this table
-3. All SOP examples below use TypeScript — always adapt using this table
+3. All SOP examples below use TypeScript; always adapt using this table
 
 | Concept         | Go          | Java        | Kotlin           | Python                   | Swift           | TypeScript    |
 | --------------- | ----------- | ----------- | ---------------- | ------------------------ | --------------- | ------------- |
@@ -39,7 +39,7 @@ When adapting examples to any project:
 
 ### 1. Define the TASK
 
-Write an atomic, specific goal — one action per delegation.
+Write an atomic, specific goal: one action per delegation.
 
 **Constraints:**
 
@@ -73,7 +73,7 @@ Specify the expertise needed and the explicit tool allowlist.
 **Constraints:**
 
 - You MUST list relevant skills the subagent needs
-- You MUST provide an explicit tool allowlist — this prevents tool sprawl
+- You MUST provide an explicit tool allowlist: this prevents tool sprawl
 - You MUST NOT allow tools that are unnecessary for the task
 
 **Expected Output:** Two lists:
@@ -83,7 +83,7 @@ Specify the expertise needed and the explicit tool allowlist.
 
 ### 4. Define MUST DO Requirements
 
-Write exhaustive requirements — leave NOTHING implicit.
+Write exhaustive requirements: leave NOTHING implicit.
 
 **Constraints:**
 
@@ -102,7 +102,7 @@ Write exhaustive requirements — leave NOTHING implicit.
 
 ### 5. Define MUST NOT DO Prohibitions
 
-Specify forbidden actions — anticipate and block rogue behavior.
+Specify forbidden actions: anticipate and block rogue behavior.
 
 **Constraints:**
 
@@ -116,7 +116,7 @@ Specify forbidden actions — anticipate and block rogue behavior.
 - Do not modify any files
 - Do not execute any application code
 - Do not make assumptions about file locations
-- Do not return raw file contents or complete source code — summarize with file paths and key snippets
+- Do not return raw file contents or complete source code: summarize with file paths and key snippets
 - Do not return responses exceeding ~100 lines
 
 ### 6. Provide CONTEXT

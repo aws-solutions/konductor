@@ -9,7 +9,7 @@ tags: [skill, behavioral, orchestration, delegation, multi-agent]
 
 ## Overview
 
-Defines how the orchestrator delegates work to specialist agents. Every subagent spawn MUST use the 8-field prompt format — an explicit target agent plus the 7 sections — and MUST NOT omit the target agent. This ensures tasks are atomic, outcomes are verifiable, agents stay within scope, and spawns never fail outright from a missing `subagent_type`.
+Defines how the orchestrator delegates work to specialist agents. Every subagent spawn MUST use the 8-field prompt format: an explicit target agent plus the 7 sections. It MUST NOT omit the target agent. This ensures tasks are atomic, outcomes are verifiable, agents stay within scope, and spawns never fail outright from a missing `subagent_type`.
 
 ## Usage
 
@@ -22,7 +22,7 @@ Use this skill when:
 
 ## Delegation Prompt Format
 
-Every delegation MUST include all 8 fields — the 7 sections below, plus an explicit `TARGET AGENT` preamble line:
+Every delegation MUST include all 8 fields, the 7 sections below plus an explicit `TARGET AGENT` preamble line:
 
 ```
 TARGET AGENT: <Exact subagent_type value — see "Never Omit the Target Agent" below. Never leave blank.>
@@ -50,21 +50,21 @@ MUST NOT DO:
 CONTEXT: <File paths, patterns, constraints, handoff file references>
 ```
 
-If a section is not applicable, write `N/A` — never omit the section. `TARGET AGENT` is the one exception: it is never `N/A` — every delegation targets exactly one agent.
+If a section is not applicable, write `N/A`; never omit the section. `TARGET AGENT` is the one exception: it is never `N/A`, because every delegation targets exactly one agent.
 
 ### Never Omit the Target Agent
 
-**Every subagent spawn — every `Agent()` call (Claude Code), every `subagent` tool invocation (Kiro CLI), and every `agent()` call inside a `Workflow` tool script (`.claude/workflows/*.js`) — MUST include an explicit target agent drawn from the Agent Registry below. Never omit it.** For `Agent()` and `subagent`, the tool's own default when the target is omitted is `general-purpose` — this fleet registers no agent by that name, and the spawn fails outright ("Agent type 'general-purpose' not found"). For `agent()` inside a `Workflow` script, the equivalent field is the `agentType` option in the call's options object (the second argument) — set it explicitly on every call; never leave it to default.
+**Every subagent spawn, meaning every `Agent()` call (Claude Code), every `subagent` tool invocation (Kiro CLI), and every `agent()` call inside a `Workflow` tool script (`.claude/workflows/*.js`), MUST include an explicit target agent drawn from the Agent Registry below. Never omit it.** For `Agent()` and `subagent`, the tool's own default when the target is omitted is `general-purpose`. This fleet registers no agent by that name, and the spawn fails outright ("Agent type 'general-purpose' not found"). For `agent()` inside a `Workflow` script, the equivalent field is the `agentType` option in the call's options object (the second argument). Set it explicitly on every call; never leave it to default.
 
-Resolve the exact identifier from the runtime's own available-agents list for the current session — do not guess or hardcode a single form, since the correct literal string is install-dependent:
+Resolve the exact identifier from the runtime's own available-agents list for the current session. Do not guess or hardcode a single form, since the correct literal string is install-dependent:
 
 - **Claude Code:** use the agent name exactly as it appears in your own tool definitions / available-agent list for this session (e.g. `ASDLCCoreAICapabilities-k-architect` for a published-plugin install, `local-ASDLCCoreAICapabilities-k-architect` for a local/dev install).
 - **Kiro CLI:** use the bare name from `toolsSettings.subagent.availableAgents` (e.g. `k-architect`).
-- **`Workflow` `agent()` calls:** set the `agentType` option using the same Claude Code naming form as above (e.g. `agentType: "local-ASDLCCoreAICapabilities-k-researcher"`) — the `Workflow` tool is a Claude Code–only feature, so there is no Kiro CLI equivalent to resolve.
+- **`Workflow` `agent()` calls:** set the `agentType` option using the same Claude Code naming form as above (e.g. `agentType: "local-ASDLCCoreAICapabilities-k-researcher"`). The `Workflow` tool is a Claude Code-only feature, so there is no Kiro CLI equivalent to resolve.
 
-This is distinct from spawning the wrong agent for the task (an IMPORTANT-tier Quality Gate issue below) — this rule guards against spawning _no_ agent at all.
+This is distinct from spawning the wrong agent for the task (an IMPORTANT-tier Quality Gate issue below); this rule guards against spawning _no_ agent at all.
 
-**Deliberate exception for `Workflow` `agent()` calls:** a call may omit `agentType` only when the step is pure reasoning over data already inlined into the prompt (decomposition, classification, or synthesis with no need to read files, run commands, or use any other tool) — in that case the session's default reasoning agent is a legitimate choice, not an oversight. Every such omission MUST carry an inline comment immediately above the call explaining why no specialist is needed, so the omission is never mistaken for the bug this rule exists to prevent. A call that needs file/tool access (reading a file, listing a directory, running a command, web search, etc.) always needs an explicit `agentType` — omitting it there is the CRITICAL defect below, not a deliberate exception.
+**Deliberate exception for `Workflow` `agent()` calls:** a call may omit `agentType` only when the step is pure reasoning over data already inlined into the prompt (decomposition, classification, or synthesis with no need to read files, run commands, or use any other tool). In that case the session's default reasoning agent is a legitimate choice, not an oversight. Every such omission MUST carry an inline comment immediately above the call explaining why no specialist is needed, so the omission is never mistaken for the bug this rule exists to prevent. A call that needs file/tool access (reading a file, listing a directory, running a command, web search, etc.) always needs an explicit `agentType`. Omitting it there is the CRITICAL defect below, not a deliberate exception.
 
 > **Format ownership rule**: MUST DO / MUST NOT DO sections should not contradict the receiving agent's skills or system prompt. If a specialist agent has a skill that defines how output is produced (e.g., `cloudscape-mock-ui` uses a CDN bundle), do not add constraints that override that skill's behavior. Format guidance from the user's request (e.g., "output as a single file") is acceptable to pass through.
 
@@ -94,7 +94,7 @@ When uncertain which agent to use, check the agent's skill list in the README or
 
 ### Tool-to-Agent Routing
 
-> **Authoritative source**: This table is the detailed routing reference. `context/k-orchestrator-routing-rules.md` is a quick-reference summary loaded at startup — when the two conflict, this file wins. Update both when adding new tool domains.
+> **Authoritative source**: This table is the detailed routing reference. `context/k-orchestrator-routing-rules.md` is a quick-reference summary loaded at startup; when the two conflict, this file wins. Update both when adding new tool domains.
 
 | Tool Domain              | Primary Agent  | Other Agents with Access                                                                              |
 | ------------------------ | -------------- | ----------------------------------------------------------------------------------------------------- |
@@ -104,7 +104,7 @@ For web content, prefer `k-researcher` for information retrieval. Delegate to `k
 
 ## Per-Agent SOP Registrations
 
-Which SOPs each agent declares in its own `dependencies.agentSops.agentSopNames`, read directly from `agents/*.agent-spec.json`. This is the authoritative source for which agent a SOP dispatches to when it names another SOP by identifier — a referencing SOP should look up the owning agent here rather than stating or assuming one independently.
+Which SOPs each agent declares in its own `dependencies.agentSops.agentSopNames`, read directly from `agents/*.agent-spec.json`. This is the authoritative source for which agent a SOP dispatches to when it names another SOP by identifier. A referencing SOP should look up the owning agent here rather than stating or assuming one independently.
 
 | Agent                                                                         | Registered SOPs (own `agentSopNames`)                                                                                                                                                      |
 | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -114,7 +114,7 @@ Which SOPs each agent declares in its own `dependencies.agentSops.agentSopNames`
 | `konductor`                                                                   | `kiro-spec-workflow`, `k-delegate`, `k-plan`, `k-context-gathering`, `k-verify`, `k-light-ui-testing`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `about-konductor` |
 | `konductor-mux-orchestrator`                                                  | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `about-konductor`               |
 | `konductor-cmux-orchestrator`                                                 | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `about-konductor`               |
-| `k-product-manager`, `k-researcher`, `k-tpm`, `k-browser`, `k-media-analyzer` | None declared — these agents execute delegated tasks; they do not select their own SOPs                                                                                                    |
+| `k-product-manager`, `k-researcher`, `k-tpm`, `k-browser`, `k-media-analyzer` | None declared. These agents execute delegated tasks; they do not select their own SOPs                                                                                                    |
 
 `konductor` additionally registers `k-delegate`; `konductor-mux-orchestrator` and `konductor-cmux-orchestrator` do not.
 
@@ -127,17 +127,17 @@ A SOP registered directly on an orchestrator's own `agentSopNames`, such as `kir
 - Independent tasks ALWAYS run in parallel (max 4 concurrent subagents)
 - Typical pattern: `research + explore` → `synthesize` → `plan` → `implement`
 - Never block on one subagent when another independent task can start
-- Dependent tasks run sequentially — wait for the upstream handoff file before spawning
+- Dependent tasks run sequentially: wait for the upstream handoff file before spawning
 
-Both runtimes support spawning the same agent multiple times in parallel with different tasks (e.g., two `k-developer` instances — one for backend, one for frontend, each in its own worktree), via their native delegation tool: the `subagent` tool (Kiro CLI) or `Agent()` (Claude Code). Each instance runs independently with its own context; the orchestrator waits for all spawned instances to complete before proceeding.
+Both runtimes support spawning the same agent multiple times in parallel with different tasks (e.g., two `k-developer` instances, one for backend, one for frontend, each in its own worktree), via their native delegation tool: the `subagent` tool (Kiro CLI) or `Agent()` (Claude Code). Each instance runs independently with its own context; the orchestrator waits for all spawned instances to complete before proceeding.
 
 Before spawning any write agent, explicitly name its exact target in the
-dispatch prompt — a new dedicated worktree, an existing worktree to reuse,
+dispatch prompt: a new dedicated worktree, an existing worktree to reuse,
 or (solo sequential dispatch only) the shared working tree. Never let an
 agent infer or default to a location: a silent default is what causes two
 agents, from the same task or different tasks, to collide in the same tree.
-The write agent itself provisions or reuses the named target using its own
-shell/file tools — not the orchestrator — on either runtime.
+The write agent itself, not the orchestrator, provisions or reuses the named
+target using its own shell/file tools on either runtime.
 
 For dispatch into a separate, visible pane or surface rather than an
 in-session subagent call, see `claude-teams-behavior` (Claude Code Agent
@@ -161,7 +161,7 @@ Large outputs between agents go through handoff files:
 1. Subagent writes output to `.konductor/handoff/<agent>-<task>.md`
 2. Subagent returns only the file path to the orchestrator
 3. Next subagent reads the handoff file directly as CONTEXT
-4. Max ~300 lines per handoff file — split into multiple files if larger
+4. Max ~300 lines per handoff file, split into multiple files if larger
 
 File naming: `<source-agent>-<descriptive-task>.md`
 Example: `architect-system-design.md`, `developer-task-breakdown.md`
@@ -173,22 +173,22 @@ After code changes, run the maker-checker cycle:
 1. Get the git diff of all changes
 2. Spawn the appropriate reviewer agent (e.g., `k-developer` with `backend-review` or `frontend-review`)
 3. Address all CRITICAL findings
-4. Re-review — max 2 review cycles total
+4. Re-review, max 2 review cycles total
 5. If CRITICAL findings persist after 2 cycles, escalate to the user
 
 ## Failure Recovery
 
 - If a subagent fails, retry once with additional CONTEXT explaining the failure
 - If the retry fails, escalate to the user with: what was attempted, what failed, and the root cause
-- Never retry more than once — 2-strike circuit breaker applies
+- Never retry more than once. The 2-strike circuit breaker applies
 - If a subagent times out, check `.konductor/handoff/` for partial output before retrying
 
 ## Quality Gate
 
 **CRITICAL (block delegation):**
 
-- Subagent spawned with no explicit target agent (`subagent_type` omitted) — the tool defaults to `general-purpose`, which is not registered in this fleet, and the spawn fails outright
-- `Workflow` `agent()` call with `agentType` omitted and no inline comment justifying the omission (see "Deliberate exception" above) — treat as an unreviewed omission, not a deliberate one
+- Subagent spawned with no explicit target agent (`subagent_type` omitted). The tool defaults to `general-purpose`, which is not registered in this fleet, and the spawn fails outright
+- `Workflow` `agent()` call with `agentType` omitted and no inline comment justifying the omission (see "Deliberate exception" above). Treat as an unreviewed omission, not a deliberate one
 - Delegation prompt missing any of the 7 required sections (or the `TARGET AGENT` preamble line)
 - Subagent spawned without explicit MUST NOT DO constraints
 - Dependent task spawned before upstream handoff file exists

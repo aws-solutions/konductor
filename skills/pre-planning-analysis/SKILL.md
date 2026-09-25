@@ -22,7 +22,7 @@ Use this skill when:
 Do NOT use when:
 
 - The request clearly maps to one agent (e.g., "write a PRD" → PM, "design the API" → architect)
-- The user just needs a clarifying question — ask it directly instead
+- The user just needs a clarifying question: ask it directly instead
 
 ## Phase 0: Intent Classification
 
@@ -61,7 +61,7 @@ Route to: `k-developer`
 
 Questions: Most important thing to get right? Timeline? Constraints? Options vs recommendation?
 Directives: Present choices at decision points, confirm understanding, break into checkpoints. Do NOT make major decisions without user input.
-Route to: Depends on domain — ask one clarifying question to determine
+Route to: Depends on domain; ask one clarifying question to determine
 
 ### Architecture
 

@@ -377,7 +377,7 @@ Good practice: [What's done well]
 
 ### Critical Issues
 
-**Type Safety** - WeatherData.temperature
+**Type Safety**: WeatherData.temperature
 Issue: Temperature field is untyped String without constraints
 Impact: Allows invalid values, breaks type safety in generated code
 Fix: Define specific type with validation
@@ -390,7 +390,7 @@ Double TemperatureCelsius
 ```
 ````
 
-**Error Handling** - GetForecast operation
+**Error Handling**: GetForecast operation
 Issue: Only defines GenericError, missing specific error types
 Impact: Clients can't handle different failure scenarios appropriately
 Fix: Define specific error types for each failure case
@@ -410,7 +410,7 @@ operation GetForecast {
 
 ### Warnings
 
-**Documentation** - ListLocations operation
+**Documentation**: ListLocations operation
 Issue: Missing documentation on pagination behavior
 Recommendation: Document pagination limits and token usage
 Example:
@@ -424,7 +424,7 @@ Returns up to 100 locations per request. Use nextToken for additional pages.
 operation ListLocations { ... }
 ```
 
-**Security** - User.email field
+**Security**: User.email field
 Issue: Email field not marked as sensitive
 Recommendation: Mark PII with @sensitive trait
 Example:
@@ -438,7 +438,7 @@ structure User {
 
 ### Suggestions
 
-**Performance** - ListLocations operation
+**Performance**: ListLocations operation
 Observation: No default page size specified
 Benefit: Prevents accidentally large responses
 Alternative: Add default value to maxResults
@@ -451,7 +451,7 @@ structure ListLocationsInput {
 }
 ```
 
-**File Organization** - Single file model
+**File Organization**: Single file model
 Observation: Model contains 15 operations and 600+ lines in single file
 Benefit: Splitting improves maintainability and enables parallel development
 Alternative: Organize into logical component files
@@ -571,4 +571,4 @@ Provide thorough, actionable feedback that improves model quality and ensures pr
 - Could add deprecation notices for planned removals
 - Could strengthen input validation constraints
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.

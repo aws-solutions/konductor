@@ -9,17 +9,17 @@ tags: [skill, elicitation, requirements, intake, challenge, socratic, pre-planni
 
 ## Overview
 
-Socratic Elicitation surfaces what is missing, ambiguous, or assumed BEFORE work begins (Mode A), or stress-tests a plan the user already holds before any artifact exists to review (Mode B). It works through one focused question at a time, waits for the answer, and lets each answer determine whether to follow up or move on — never a fixed script read start to finish.
+Socratic Elicitation surfaces what is missing, ambiguous, or assumed BEFORE work begins (Mode A), or stress-tests a plan the user already holds before any artifact exists to review (Mode B). It works through one focused question at a time, waits for the answer, and lets each answer determine whether to follow up or move on, never a fixed script read start to finish.
 
 This is a conversation with the human, not an evaluation of a document. If a finished artifact already exists, evaluate it with `asdlc-aspect-review` instead of running this skill against the human who wrote it.
 
-Both modes draw on the same underlying discipline: [Socratic questioning](https://en.wikipedia.org/wiki/Socratic_questioning), a public method of directed inquiry with six recognized question categories — clarification, probing assumptions, probing evidence/reasons, probing implications, examining alternative viewpoints, and questioning the question itself. Mode A and Mode B apply that discipline to two different situations.
+Both modes draw on the same underlying discipline: [Socratic questioning](https://en.wikipedia.org/wiki/Socratic_questioning), a public method of directed inquiry with six recognized question categories: clarification, probing assumptions, probing evidence/reasons, probing implications, examining alternative viewpoints, and questioning the question itself. Mode A and Mode B apply that discipline to two different situations.
 
 ---
 
 ## Mode A: Intake Elicitation (pre-work)
 
-**Purpose:** Surface missing functional requirements, unstated constraints, unvalidated assumptions, missing non-functional requirements, conflicting stakeholder needs, and unclear scope boundaries — BEFORE drafting or implementing anything.
+**Purpose:** Surface missing functional requirements, unstated constraints, unvalidated assumptions, missing non-functional requirements, conflicting stakeholder needs, and unclear scope boundaries, BEFORE drafting or implementing anything.
 
 **Triggers:**
 
@@ -39,13 +39,13 @@ Both modes draw on the same underlying discipline: [Socratic questioning](https:
 | Auth, data protection, threat surface      | What is sensitive? Who should NOT have access?                       | `[Security]`     |
 | Observability, failure modes, deployment   | How will this fail? How will we know it is broken?                   | `[Ops]`          |
 
-**Stakeholder tags** are advisory — they signal WHY a question matters (e.g., `[Security]` tells the user this is a security-relevant question). They are not prescriptive.
+**Stakeholder tags** are advisory. They signal WHY a question matters (e.g., `[Security]` tells the user this is a security-relevant question). They are not prescriptive.
 
 ---
 
 ## Mode B: Challenge Mode (plan not yet an artifact)
 
-**Purpose:** Stress-test an idea, plan, or decision the user already holds, while it still exists only as an intention — before it has become a document or a design an evaluator could review. If a completed artifact exists, use `asdlc-aspect-review` instead.
+**Purpose:** Stress-test an idea, plan, or decision the user already holds, while it still exists only as an intention, before it has become a document or a design an evaluator could review. If a completed artifact exists, use `asdlc-aspect-review` instead.
 
 **Triggers:**
 
@@ -73,10 +73,10 @@ This skill stops as soon as ANY of these is true:
 | -------------------------- | --------------- | --------------------------------------- |
 | Max questions reached       | 10 (standard)    | Range: 5–15 per `elicitation_depth`     |
 | Max questions per branch    | 3                | Prevents rabbit-holing on one topic      |
-| Max turns reached           | 15               | Hard budget cap — summarize and exit     |
+| Max turns reached           | 15               | Hard budget cap: summarize and exit      |
 | Early exit signal            | —                | Always respected immediately             |
 
-**`elicitation_depth` mapping** (honors the parameter directly — do not map to a different internal parameter):
+**`elicitation_depth` mapping** (honors the parameter directly; do not map to a different internal parameter):
 
 | `elicitation_depth` | Max questions |
 | --------------------- | -------------- |
@@ -115,14 +115,14 @@ this skill OFFERS (never auto-runs) a deliberation panel. Present the offer with
 ```
 I've identified a significant tradeoff:
 
-  [Option A]: <description> — favors <dimension>
-  [Option B]: <description> — favors <dimension>
+  [Option A]: <description>; favors <dimension>
+  [Option B]: <description>; favors <dimension>
   [Option C]: <description> (if applicable)
 
 How would you like to proceed?
 
   1. Answer directly (tell me your preference and we'll keep going)
-  2. Convene a deliberation panel (~2-3 minutes) — independent
+  2. Convene a deliberation panel (~2-3 minutes): independent
      perspectives derived from this specific tradeoff's own axes
      argue it out, then an arbiter synthesizes a confidence-scored
      recommendation
@@ -131,21 +131,21 @@ How would you like to proceed?
 **When the user opts in:**
 
 1. This skill pauses its question sequence.
-2. Invoke the `deliberation-panel` skill directly with `decision_domain` inferred from context (default `general-tradeoff`), `stance=evaluative`, and `consent_confirmed=true` (the user's opt-in above satisfies the panel's consent gate — pass it through explicitly rather than making the panel ask again). Pass the specific tradeoff as the subject.
+2. Invoke the `deliberation-panel` skill directly with `decision_domain` inferred from context (default `general-tradeoff`), `stance=evaluative`, and `consent_confirmed=true` (the user's opt-in above satisfies the panel's consent gate; pass it through explicitly rather than making the panel ask again). Pass the specific tradeoff as the subject.
 3. Present the panel's recommendation to the user.
 4. Resume elicitation with the user's decision incorporated into the requirements summary.
 
 **Rules:**
 
-- Offer the panel at MOST once per session per topic. Subsequent tradeoffs get a lighter prompt: "I found another tradeoff — same treatment?"
+- Offer the panel at MOST once per session per topic. Subsequent tradeoffs get a lighter prompt: "I found another tradeoff. Same treatment?"
 - Never auto-run the panel without the user's explicit opt-in.
-- If the `deliberation-panel` skill is not available in the current environment, offer the user the option to think it through together instead: "I found a significant tradeoff — would you like to reason through it together, or decide directly?"
+- If the `deliberation-panel` skill is not available in the current environment, offer the user the option to think it through together instead: "I found a significant tradeoff. Would you like to reason through it together, or decide directly?"
 
 ---
 
 ## Output
 
-Each mode concludes with its own summary shape — Mode A produces a Requirements Summary, Mode B produces a Challenge Summary. Do NOT proceed to drafting/implementation (Mode A) or to acting on the plan (Mode B) without presenting the summary for the mode that was run. If no early-exit signal was given, also confirm with the user that the summary is complete before proceeding. If an early-exit signal was given, skip the confirmation and proceed directly -- per Stopping Conditions, early-exit signals are honored immediately with no follow-up question.
+Each mode concludes with its own summary shape: Mode A produces a Requirements Summary, Mode B produces a Challenge Summary. Do NOT proceed to drafting/implementation (Mode A) or to acting on the plan (Mode B) without presenting the summary for the mode that was run. If no early-exit signal was given, also confirm with the user that the summary is complete before proceeding. If an early-exit signal was given, skip the confirmation and proceed directly. Per Stopping Conditions, early-exit signals are honored immediately with no follow-up question.
 
 ### Mode A Output: Requirements Summary
 
@@ -168,7 +168,7 @@ When Mode A concludes (max questions reached, early exit, or user satisfied), pr
 
 ### Open Items (unresolved)
 
-- [Anything not answered — flag for user attention]
+- [Anything not answered: flag for user attention]
 ```
 
 ### Mode B Output: Challenge Summary
@@ -180,7 +180,7 @@ Mode B stress-tests a plan rather than gathering requirements, so its summary is
 
 ### Challenged Assumptions
 
-- [Load-bearing beliefs surfaced as unverified — from probing-assumptions questions]
+- [Load-bearing beliefs surfaced as unverified, from probing-assumptions questions]
 
 ### Surfaced Risks
 
@@ -188,11 +188,11 @@ Mode B stress-tests a plan rather than gathering requirements, so its summary is
 
 ### Unresolved Tradeoffs
 
-- [Tradeoffs the user's answers did not resolve to a clear winner — see Escalation to Deliberation Panel]
+- [Tradeoffs the user's answers did not resolve to a clear winner; see Escalation to Deliberation Panel]
 
 ### Open Items (unresolved)
 
-- [Anything not answered — flag for user attention]
+- [Anything not answered: flag for user attention]
 ```
 
 ---

@@ -34,7 +34,7 @@ Spawn agents and use direct tools simultaneously to gather information.
 - You MUST scope searches to the `scope` parameter if provided
 - You MUST NOT skip test files during context gathering
 
-**Expected Output:** Raw findings from agents and direct tools — file paths, code snippets, documentation references, and pattern observations
+**Expected Output:** Raw findings from agents and direct tools: file paths, code snippets, documentation references, and pattern observations
 
 ### 2. Define Analysis Questions
 
@@ -86,7 +86,7 @@ Consolidate all gathered context into a structured analysis summary.
   - Dependencies: Libraries involved, integration points
   - Constraints: Technical limitations, requirements to follow
   - Recommended Approach: Based on findings
-- You MUST NOT include raw tool output — synthesize into actionable insights
+- You MUST NOT include raw tool output. Synthesize into actionable insights
 - If findings exceed ~100 lines, You MUST write to `.konductor/handoff/<analysis-name>.md` and return the path
 
 **Expected Output:** A structured analysis summary:

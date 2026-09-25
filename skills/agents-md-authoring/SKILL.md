@@ -6,7 +6,7 @@ tags: [skill, agents-md, onboarding, context, documentation]
 
 # AGENTS.md Authoring
 
-`AGENTS.md` is a README for AI agents — a predictable place at the repo root for project context and
+`AGENTS.md` is a README for AI agents. It is a predictable place at the repo root for project context and
 instructions. It is part of the open [agents.md](https://agents.md) standard, read by many agentic tools.
 
 ## When to create or update
@@ -19,7 +19,7 @@ instructions. It is part of the open [agents.md](https://agents.md) standard, re
 
 | | Kiro CLI custom agents | Claude Code custom agents |
 |---|---|---|
-| `AGENTS.md` | NOT auto-read — must be in the agent's `clientConfig.kiroCli.resources` as `file://AGENTS.md` | NOT auto-read — Claude Code only reads `CLAUDE.md` |
+| `AGENTS.md` | NOT auto-read. Must be in the agent's `clientConfig.kiroCli.resources` as `file://AGENTS.md` | NOT auto-read. Claude Code only reads `CLAUDE.md` |
 | `CLAUDE.md` | NOT auto-read | Auto-read at session start (all hierarchy levels) |
 
 **Implication:** AGENTS.md does NOT support import directives (`@path` or `#[[file:]]`) when loaded by Kiro.
@@ -35,14 +35,14 @@ To make agents load steering/memory/skills, use **instructions** inside AGENTS.m
 
 Author AGENTS.md with these sections, adapted to the project as follows: infer what you can directly from the repo (build files, existing test commands, directory structure, git history for commit-message conventions); ask the user only for what cannot be inferred (e.g., PR/review conventions not visible in the repo, or team-specific domain knowledge). State inferred content as inferred so the user can correct it during review.
 
-1. **Context Loading (MUST follow at session start)** — instruction block (see template below)
-2. **Project Overview** — what the project is, in 2-3 sentences
-3. **Project Structure** — directory map
-4. **Setup & Commands** — build, test, install commands
-5. **Code Style & Conventions** — formatting, naming, language rules; if a `.kiro/steering/*.md` file already documents these, reference it (`See .kiro/steering/<file>.md`) rather than duplicating its content
-6. **Testing** — how to run tests
-7. **Workflow** — git/PR/CR conventions
-8. **Domain Knowledge** (optional) — durable project-specific facts
+1. **Context Loading (MUST follow at session start).** Instruction block (see template below)
+2. **Project Overview.** What the project is, in 2-3 sentences
+3. **Project Structure.** Directory map
+4. **Setup & Commands.** Build, test, install commands
+5. **Code Style & Conventions.** Formatting, naming, language rules; if a `.kiro/steering/*.md` file already documents these, reference it (`See .kiro/steering/<file>.md`) rather than duplicating its content
+6. **Testing.** How to run tests
+7. **Workflow.** Git/PR/CR conventions
+8. **Domain Knowledge (optional).** Durable project-specific facts
 
 ## Context-loading instruction block (always include)
 
@@ -66,9 +66,9 @@ Replace `<workspace>` with the project root (e.g., `.konductor`), so `<workspace
 ## Rules
 
 - AGENTS.md is **developer-written instructions**, NOT agent memory. Do not dump session memory or
-  timestamped facts here — that belongs in the memory files. Promote only durable, reviewed learnings.
-- Keep it concise and scannable — bullets and short sections, not prose.
-- For public packages, keep content generic — no internal tools, domains, or credentials.
+  timestamped facts here. That belongs in the memory files. Promote only durable, reviewed learnings.
+- Keep it concise and scannable. Use bullets and short sections, not prose.
+- For public packages, keep content generic. No internal tools, domains, or credentials.
 - When asked to edit `CLAUDE.md`, edit `AGENTS.md` instead (CLAUDE.md should just `@AGENTS.md`).
 
 ## Procedure

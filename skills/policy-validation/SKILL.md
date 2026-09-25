@@ -965,4 +965,4 @@ Generate output in this format:
 - Could add `aws:CalledVia` conditions for service-to-service calls
 - Could tighten `s3:GetObject` to specific key prefixes
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.

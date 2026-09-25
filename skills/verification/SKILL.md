@@ -13,17 +13,17 @@ Evidence collection protocol that ensures no task is declared complete without p
 
 ## Usage
 
-This skill is always active. It applies whenever an agent completes a task that produces a testable outcome — code, build artifacts, generated documents, or infrastructure changes. No explicit activation needed.
+This skill is always active. It applies whenever an agent completes a task that produces a testable outcome: code, build artifacts, generated documents, or infrastructure changes. No explicit activation needed.
 
 ## TDD Workflow
 
 Follow these phases in order. Do not skip phases.
 
-1. **SPEC** — Define success criteria before implementation. What must be true when done?
-2. **RED** — Write a failing test. Run it. Confirm it FAILS. Show the output.
-3. **GREEN** — Write minimal code to make the test pass. Run it. Confirm it PASSES. Show the output.
-4. **REFACTOR** — Clean up code. Run tests again. Confirm they stay GREEN. Show the output.
-5. **VERIFY** — Run the full test suite. Confirm all tests pass. Show the output.
+1. **SPEC**: Define success criteria before implementation. What must be true when done?
+2. **RED**: Write a failing test. Run it. Confirm it FAILS. Show the output.
+3. **GREEN**: Write minimal code to make the test pass. Run it. Confirm it PASSES. Show the output.
+4. **REFACTOR**: Clean up code. Run tests again. Confirm they stay GREEN. Show the output.
+5. **VERIFY**: Run the full test suite. Confirm all tests pass. Show the output.
 
    ```bash
    # Node.js / TypeScript
@@ -39,7 +39,7 @@ Follow these phases in order. Do not skip phases.
    ./gradlew build test
    ```
 
-6. **EVIDENCE** — Present the output proving it works.
+6. **EVIDENCE**: Present the output proving it works.
 
 ## Evidence Requirements
 
@@ -66,19 +66,19 @@ After generating any artifact (design doc, implementation guide, specification):
 
 1. Run the corresponding checker skill automatically
 2. Checker must score PASS before presenting to user
-3. If checker finds CRITICAL issues — fix them, re-run checker, then present
+3. If checker finds CRITICAL issues, fix them, re-run checker, then present
 4. Include checker score in evidence
 
 ## Anti-Patterns
 
 These are NOT verification:
 
-- "I believe this works" — not evidence. Run it.
-- "The code looks correct" — not evidence. Compile it.
-- "Tests should pass" — not evidence. Execute them and show output.
-- Skipping verification because "it's a small change" — all changes need evidence.
-- Deleting failing tests instead of fixing code — fix the code, never delete the test.
-- Presenting an artifact without running the checker — always run maker-checker first.
+- "I believe this works" is not evidence. Run it.
+- "The code looks correct" is not evidence. Compile it.
+- "Tests should pass" is not evidence. Execute them and show output.
+- Skipping verification because "it's a small change". All changes need evidence.
+- Deleting failing tests instead of fixing code. Fix the code, never delete the test.
+- Presenting an artifact without running the checker. Always run maker-checker first.
 
 ## Self-Validation Checklist
 

@@ -11,7 +11,7 @@ Decision records are permanent artifacts. Six months from now, someone will read
 
 ## Usage
 
-Use this skill when drafting a decision record from scratch, when reviewing an existing one for structure and tone, or when the `adr-generator` skill needs ADR-specific writing guidance during design doc creation. Applies to ADR, PDR, and UXDR formats — the shared structure and language guidelines below hold across all three, with format-specific notes in Template-Specific Guidance.
+Use this skill when drafting a decision record from scratch, when reviewing an existing one for structure and tone, or when the `adr-generator` skill needs ADR-specific writing guidance during design doc creation. Applies to ADR, PDR, and UXDR formats: the shared structure and language guidelines below hold across all three, with format-specific notes in Template-Specific Guidance.
 
 ## The One-Sentence Test
 
@@ -27,7 +27,7 @@ The context sets the stage. A reader unfamiliar with the topic should understand
 Include:
 
 - What system or process is affected
-- What problem exists (be specific — "API latency exceeds p99 SLA of 200ms" not "API is slow")
+- What problem exists (be specific: "API latency exceeds p99 SLA of 200ms" not "API is slow")
 - Why this needs to be addressed now
 - Constraints: timeline, budget, team size, technical limitations
 
@@ -43,10 +43,10 @@ Present at least 2-3 genuine alternatives. The hallmark of a weak decision recor
 
 For each alternative:
 
-1. **Describe it fairly** — someone who advocates for this option should recognize it
-2. **State its strengths** — every viable alternative has genuine strengths
-3. **State its weaknesses** — be specific, with data where possible
-4. **Explain why it was not chosen** — the rationale must be evidence-based
+1. **Describe it fairly**: someone who advocates for this option should recognize it
+2. **State its strengths**: every viable alternative has genuine strengths
+3. **State its weaknesses**: be specific, with data where possible
+4. **Explain why it was not chosen**: the rationale must be evidence-based
 
 ### Avoid Straw-Manning
 
@@ -162,18 +162,18 @@ We will use X because Y. (One sentence. Active voice. State the concrete technic
 - <process or tooling change — neither good nor bad>
 ```
 
-**Rationale quality bar** — applies to every `Decision` (why accepted) and every `Why Not Chosen` cell (why rejected):
+**Rationale quality bar.** Applies to every `Decision` (why accepted) and every `Why Not Chosen` cell (why rejected):
 
-- **Crisp and simple** — one to three sentences per option; no filler or hedging.
-- **Technically accurate and specific** — cite the concrete technical reason: limits, latency, cost, consistency model, throughput, or operational burden. Not vague generalities.
-- **Fact-checked** — any AWS service/feature claim MUST be validated via the `aws-service-validator` skill before it is written. Never assert an unverified capability as the basis for a decision.
+- **Crisp and simple**: one to three sentences per option; no filler or hedging.
+- **Technically accurate and specific**: cite the concrete technical reason: limits, latency, cost, consistency model, throughput, or operational burden. Not vague generalities.
+- **Fact-checked**: any AWS service/feature claim MUST be validated via the `aws-service-validator` skill before it is written. Never assert an unverified capability as the basis for a decision.
 
 > Weak: "DynamoDB scales better." Strong: "DynamoDB sustains our projected 50k writes/s at p99 <5ms without table-level locking; RDS Aurora peaks at ~10k writes/s on db.r6g.2xlarge under the same load test (verified via `aws-service-validator`)."
 
 **ADR authoring rules:**
 
 - Status must be set. Default to `Accepted` for decisions made during creation; `Proposed` if not yet confirmed.
-- Minimum 2 alternatives including the chosen option. No straw men — each alternative must be genuinely viable.
+- Minimum 2 alternatives including the chosen option. No straw men: each alternative must be genuinely viable.
 - Consequences must be specific. "Will improve performance" is not a consequence. "Expected to reduce p99 latency from 450ms to <200ms" is.
 - Number ADRs sequentially within the document (ADR-1, ADR-2, …). Cross-reference from the section where the decision is first mentioned: `_(See ADR-N)_`.
 - Include architecture diagrams (Mermaid supported) when the decision involves a topology change.

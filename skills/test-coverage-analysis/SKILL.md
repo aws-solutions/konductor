@@ -2061,4 +2061,4 @@ RECOMMENDATION: Fix 1 failing test before release. Estimated effort: 1-2 hours.
 - Could add contract tests for API boundaries
 - Could identify flaky test patterns in existing suite
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.

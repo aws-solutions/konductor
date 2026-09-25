@@ -5,11 +5,11 @@ version: 1.0.0
 tags: [skill, schema, code-review, adversarial, pass]
 ---
 
-# Adversarial Code Review — Schema / Contract Pass
+# Adversarial Code Review: Schema / Contract Pass
 
 ## Overview
 
-Reviews a diff through the lens of schema and contract stability — API shapes, type changes, validation completeness, and backward compatibility. This is one of three parallel review passes spawned by an adversarial-review coordinator SOP. The framing is neutral by design: review through the lens of contract, do not assume any specific issue exists.
+Reviews a diff through the lens of schema and contract stability: API shapes, type changes, validation completeness, and backward compatibility. This is one of three parallel review passes spawned by an adversarial-review coordinator SOP. The framing is neutral by design: review through the lens of contract, do not assume any specific issue exists.
 
 ## Usage
 
@@ -32,7 +32,7 @@ For each concern, name the file:line, the concrete failure scenario (which clien
 
 ## Out of scope
 
-- Do not flag validation issues on synthetic fixture data in test files — test fixtures intentionally skip production validation paths. This exempts fixture DATA specifically, not test files as a category: a genuine contract/schema defect in production-reachable code that happens to live in a test file is still in scope and must be flagged.
+- Do not flag validation issues on synthetic fixture data in test files. Test fixtures intentionally skip production validation paths. This exempts fixture DATA specifically, not test files as a category: a genuine contract/schema defect in production-reachable code that happens to live in a test file is still in scope and must be flagged.
 
 ## Codebase awareness
 
@@ -48,9 +48,9 @@ Findings produced by this pass are candidates, not verdicts. The coordinator for
 
 ## Severity guidance
 
-- **CRITICAL** — breaking change to a shipped API or data model without a migration path; new field required by write path but not defaulted in read path (existing records unparseable)
-- **IMPORTANT** — validate-then-act ordering violation (validation exists but runs after a side effect); integration wiring gap (handler present, not wired to auth or middleware); missing guard on a map/optional access that will be reached at runtime
-- **SUGGESTION** — new field validated at one entry point but not another; enum change that consumers may pattern-match on
+- **CRITICAL**: breaking change to a shipped API or data model without a migration path; new field required by write path but not defaulted in read path (existing records unparseable)
+- **IMPORTANT**: validate-then-act ordering violation (validation exists but runs after a side effect); integration wiring gap (handler present, not wired to auth or middleware); missing guard on a map/optional access that will be reached at runtime
+- **SUGGESTION**: new field validated at one entry point but not another; enum change that consumers may pattern-match on
 
 ## Output format
 
@@ -60,4 +60,4 @@ Problem: {what is wrong and why it is a risk}
 Fix: {concrete suggested change}
 ```
 
-Return the findings list. Do not deduplicate against other passes — the coordinator does that.
+Return the findings list. Do not deduplicate against other passes. The coordinator does that.

@@ -11,7 +11,7 @@ tags: [skill, tpm, planning, timeline, milestones, dependencies]
 
 ### Milestone Definition
 
-Each milestone has: name, target date, exit criteria (measurable), owning team, and dependencies. Milestones mark phase transitions — not individual task completion. Use SMART criteria (Specific, Measurable, Achievable, Relevant, Time-bound).
+Each milestone has: name, target date, exit criteria (measurable), owning team, and dependencies. Milestones mark phase transitions, not individual task completion. Use SMART criteria (Specific, Measurable, Achievable, Relevant, Time-bound).
 
 ### Dependency Mapping
 
@@ -23,20 +23,20 @@ The longest sequence of dependent milestones determining minimum program duratio
 
 ### Timeline Estimation
 
-Convert T-shirt sizes to calendar ranges: XS (1-2d), S (3-5d), M (1-2w), L (3-4w), XL (5-8w). Apply buffer: 20% for well-understood work (the floor, applied to all work — there is no zero-buffer tier), 40% for novel, complex, unfamiliar, or otherwise uncertain work — the same estimation-uncertainty buffer the plan SOP's Step 5 (Estimate Timeline) applies ahead of its agentic-conversion projection. Account for holidays, on-call rotations, and team availability.
+Convert T-shirt sizes to calendar ranges: XS (1-2d), S (3-5d), M (1-2w), L (3-4w), XL (5-8w). Apply buffer: 20% for well-understood work (the floor, applied to all work; there is no zero-buffer tier), 40% for novel, complex, unfamiliar, or otherwise uncertain work. This is the same estimation-uncertainty buffer the plan SOP's Step 5 (Estimate Timeline) applies ahead of its agentic-conversion projection. Account for holidays, on-call rotations, and team availability.
 
 ## Output Format
 
 Generate a program plan with these sections:
 
-1. **Program Summary** — name, objective, sponsor, TPM, start/end dates, team size
-2. **Milestones Table** — columns: ID, Milestone, Owner, Target Date, Exit Criteria, Dependencies, Status
-3. **Gantt-Style Timeline** — ASCII table showing milestones across weeks/months with `[====]` bars and `|` for dependencies
-4. **Critical Path** — ordered list of critical path milestones with zero-float callout
-5. **Dependency Map** — table: Source → Target, Type, Lag, Risk Level
-6. **Resource Allocation** — team/person → workstream mapping with utilization %
-7. **Risks to Plan** — top 3 schedule risks with mitigation (link to risk-management skill for full RAID)
-8. **Task Management Integration** — task breakdown ready for import: task title, assignee, sprint, story points
+1. **Program Summary**: name, objective, sponsor, TPM, start/end dates, team size
+2. **Milestones Table**: columns: ID, Milestone, Owner, Target Date, Exit Criteria, Dependencies, Status
+3. **Gantt-Style Timeline**: ASCII table showing milestones across weeks/months with `[====]` bars and `|` for dependencies
+4. **Critical Path**: ordered list of critical path milestones with zero-float callout
+5. **Dependency Map**: table: Source → Target, Type, Lag, Risk Level
+6. **Resource Allocation**: team/person → workstream mapping with utilization %
+7. **Risks to Plan**: top 3 schedule risks with mitigation (link to risk-management skill for full RAID)
+8. **Task Management Integration**: task breakdown ready for import: task title, assignee, sprint, story points
 
 ## Quality Gate
 
@@ -58,4 +58,4 @@ Generate a program plan with these sections:
 - Could add confidence levels per milestone (High/Medium/Low)
 - Could identify parallel workstreams to compress timeline
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.

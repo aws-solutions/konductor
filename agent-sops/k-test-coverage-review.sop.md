@@ -14,8 +14,8 @@ Use this SOP after implementation is complete and before release.
 - **design_file** (optional): Path to system design document (used for security test generation)
 - **output_dir** (optional, default: `test-coverage-review/`): Directory for output files
 - **dry_run** (optional, default: false): If true, show what would be analyzed without generating reports
-- **scope_confirmed** (optional, default: false): Set true when the caller has already authorized E2E planning for whatever gaps the analysis finds. Step 3 then reports the gap summary and proceeds without prompting. This flag also suppresses downstream scope/tool questions in delegated skills (including `security-test-generation`), which report their findings without asking instead of prompting the caller — it does not authorize any skill to change code. A parallel or unattended caller MUST set this — the prompt has no one to answer it.
-- **scope_declined** (optional, default: false): Set true when the caller has already asked the engineer whether to plan E2E tests for this analysis and the engineer said no. Step 3 then reports the gap summary and skips Step 4 without asking again. Mutually exclusive with `scope_confirmed` — a caller MUST NOT set both true. Leaving both false is not equivalent to declining: Step 3 has no way to distinguish "not yet asked" from "asked and declined" and will ask again, so a caller that already has the engineer's answer MUST set the matching flag rather than leaving both false.
+- **scope_confirmed** (optional, default: false): Set true when the caller has already authorized E2E planning for whatever gaps the analysis finds. Step 3 then reports the gap summary and proceeds without prompting. This flag also suppresses downstream scope/tool questions in delegated skills (including `security-test-generation`), which report their findings without asking instead of prompting the caller. It does not authorize any skill to change code. A parallel or unattended caller MUST set this. The prompt has no one to answer it.
+- **scope_declined** (optional, default: false): Set true when the caller has already asked the engineer whether to plan E2E tests for this analysis and the engineer said no. Step 3 then reports the gap summary and skips Step 4 without asking again. Mutually exclusive with `scope_confirmed`. A caller MUST NOT set both true. Leaving both false is not equivalent to declining: Step 3 has no way to distinguish "not yet asked" from "asked and declined" and will ask again, so a caller that already has the engineer's answer MUST set the matching flag rather than leaving both false.
 
 **Constraints for parameter acquisition:**
 
@@ -68,8 +68,8 @@ Present the gap analysis and confirm whether to proceed with E2E planning.
 **Constraints:**
 
 - You MUST display a summary of the gap analysis (total gaps by severity)
-- If `dry_run` is true, You MUST stop here and report what would be planned — `dry_run` takes precedence over `scope_confirmed` and `scope_declined`, and always stops at this step regardless of either flag's value.
-- Otherwise: if `scope_confirmed` is true, You MUST proceed to Step 4 without asking — the caller already authorized E2E planning for whatever the analysis found. If `scope_declined` is true, You MUST skip Step 4 without asking — the caller already asked the engineer and they declined, so asking again would repeat a question already answered. Otherwise You MUST ask: "Plan E2E tests for these gaps? [y/n]" and MUST NOT proceed without explicit user confirmation; treat a "no" answer the same as `scope_declined=true` and skip Step 4
+- If `dry_run` is true, You MUST stop here and report what would be planned. `dry_run` takes precedence over `scope_confirmed` and `scope_declined`, and always stops at this step regardless of either flag's value.
+- Otherwise: if `scope_confirmed` is true, You MUST proceed to Step 4 without asking. The caller already authorized E2E planning for whatever the analysis found. If `scope_declined` is true, You MUST skip Step 4 without asking. The caller already asked the engineer and they declined, so asking again would repeat a question already answered. Otherwise You MUST ask: "Plan E2E tests for these gaps? [y/n]" and MUST NOT proceed without explicit user confirmation; treat a "no" answer the same as `scope_declined=true` and skip Step 4
 
 ### 4. Plan E2E Test Strategy
 
@@ -101,9 +101,9 @@ Apply the security-test-generation skill to create security test coverage.
 - If `design_file` is provided, you MUST use it for threat context
 - You MUST cover all 7 security domains: authentication, input validation, API security, data protection, session management, error handling, infrastructure
 - You MUST organize tests by layer: frontend, backend, infrastructure
-- The skill writes its own output under `output_dir` — `tasks.md` for Kiro callers, or per-category files plus `security-test-overview.md` and `best-practices-reference.md` for non-Kiro callers (see `skills/security-test-generation/SKILL.md`'s Output section) — you MUST NOT expect a separate `security-test-plan.md` file
-- You MUST count the CRITICAL and IMPORTANT findings the skill reports from its own Quality Gate and carry those counts into Step 6's report — a CRITICAL security finding is a coverage gap and MUST reach the same gate as the other CRITICAL gaps this SOP surfaces.
-- If the skill ran in Kiro stub mode — `tasks.md` written with no `security-test-overview.md`, `best-practices-reference.md`, or `[domain]-[layer].md` file alongside it — there is no real findings count to carry forward: real test content is deferred to a human clicking "Start task" in the Kiro IDE. You MUST record Critical and Important findings in Step 6's report as NOT EVALUATED, not as 0, so the report does not misrepresent an unevaluated pass as a clean one.
+- The skill writes its own output under `output_dir`: `tasks.md` for Kiro callers, or per-category files plus `security-test-overview.md` and `best-practices-reference.md` for non-Kiro callers (see `skills/security-test-generation/SKILL.md`'s Output section). You MUST NOT expect a separate `security-test-plan.md` file
+- You MUST count the CRITICAL and IMPORTANT findings the skill reports from its own Quality Gate and carry those counts into Step 6's report. A CRITICAL security finding is a coverage gap and MUST reach the same gate as the other CRITICAL gaps this SOP surfaces.
+- If the skill ran in Kiro stub mode, meaning `tasks.md` was written with no `security-test-overview.md`, `best-practices-reference.md`, or `[domain]-[layer].md` file alongside it, there is no real findings count to carry forward: real test content is deferred to a human clicking "Start task" in the Kiro IDE. You MUST record Critical and Important findings in Step 6's report as NOT EVALUATED, not as 0, so the report does not misrepresent an unevaluated pass as a clean one.
 
 **Expected Output:**
 
@@ -155,7 +155,7 @@ Write a summary report combining all three analyses.
 
 **Expected Output:**
 
-- `test-gap-analysis.md`, `e2e-test-strategy.md`, `test-coverage-review-report.md`, plus the security-test-generation skill's own output files (see Step 5) — all in `output_dir/`
+- `test-gap-analysis.md`, `e2e-test-strategy.md`, `test-coverage-review-report.md`, plus the security-test-generation skill's own output files (see Step 5), all in `output_dir/`
 - Summary message with recommendation
 
 ### 7. Present Recommendation
@@ -165,7 +165,7 @@ Summarize findings and recommend next steps.
 **Constraints:**
 
 - You MUST state clearly: READY FOR RELEASE or NOT READY
-- You MUST treat a Security Test Plan reported as NOT EVALUATED the same as a critical gap for this determination — recommend NOT READY, not READY, when its findings were never actually evaluated
+- You MUST treat a Security Test Plan reported as NOT EVALUATED the same as a critical gap for this determination. When its findings were never actually evaluated, recommend NOT READY, not READY
 - If NOT READY, you MUST list the critical gaps that must be addressed
 - You SHOULD offer to spawn `k-developer` subagent to implement missing tests
 - You MAY offer to re-run the review after tests are added

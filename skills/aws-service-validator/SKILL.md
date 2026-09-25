@@ -11,7 +11,7 @@ Validates AWS service and feature claims in a design document. Produces a struct
 
 ## When to Use
 
-- During `k-design-doc-creation.sop.md` Phase 3 (quality gates) — runs automatically
+- During `k-design-doc-creation.sop.md` Phase 3 (quality gates), runs automatically
 - Standalone: engineer says "fact-check my AWS claims" or "check whether X is accurate for us-east-1"
 - After major revisions that touch AWS service choices or feature assertions
 
@@ -21,11 +21,11 @@ Validates AWS service and feature claims in a design document. Produces a struct
 
 Scan the document and extract every verifiable AWS assertion:
 
-- **Feature claims** — "DynamoDB Streams supports filter patterns", "Lambda supports response streaming"
-- **Regional availability** — "available in us-east-1", "not yet GA in ap-southeast-2"
-- **Pricing model** — "charged per request", "no cost for idle capacity"
-- **Service limits/quotas** — "max payload 6 MB", "15-minute Lambda timeout"
-- **GA/Preview status** — "generally available", "in preview"
+- **Feature claims**: "DynamoDB Streams supports filter patterns", "Lambda supports response streaming"
+- **Regional availability**: "available in us-east-1", "not yet GA in ap-southeast-2"
+- **Pricing model**: "charged per request", "no cost for idle capacity"
+- **Service limits/quotas**: "max payload 6 MB", "15-minute Lambda timeout"
+- **GA/Preview status**: "generally available", "in preview"
 
 List each claim as: `{service, feature, region (if applicable), assertion}`.
 
@@ -33,9 +33,9 @@ List each claim as: `{service, feature, region (if applicable), assertion}`.
 
 For each extracted claim, use the `aws-mcp` tools in this order:
 
-1. **`aws___search_documentation`** — search for the service + feature to locate the relevant doc page
-2. **`aws___read_documentation`** — read the located page to confirm or deny the assertion
-3. **`aws___get_regional_availability`** — for any regional availability claim, call this tool with the service and region
+1. **`aws___search_documentation`**: search for the service + feature to locate the relevant doc page
+2. **`aws___read_documentation`**: read the located page to confirm or deny the assertion
+3. **`aws___get_regional_availability`**: for any regional availability claim, call this tool with the service and region
 
 Do not accept the document's own assertion as evidence. Always consult the primary source.
 
@@ -68,10 +68,10 @@ Output a markdown report in this format:
 
 ## Pitfalls
 
-- **Do not block on UNVERIFIED** — mark and proceed. New services may not yet appear in documentation.
-- **Do not validate pricing claims from memory** — always call `aws___search_documentation` for pricing pages.
-- **Regional availability changes frequently** — always call `aws___get_regional_availability` rather than relying on prior knowledge.
-- **Feature names drift** — search by both the marketing name and the API/console name if the first search returns no results.
+- **Do not block on UNVERIFIED**. Mark and proceed. New services may not yet appear in documentation.
+- **Do not validate pricing claims from memory**. Always call `aws___search_documentation` for pricing pages.
+- **Regional availability changes frequently**. Always call `aws___get_regional_availability` rather than relying on prior knowledge.
+- **Feature names drift**. Search by both the marketing name and the API/console name if the first search returns no results.
 
 ## Verification
 

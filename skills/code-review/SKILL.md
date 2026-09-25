@@ -39,7 +39,7 @@ in this turn.
 ### Create PR
 
 1. Run `git diff main...HEAD` to capture the full diff of changes
-2. Verify all changes are intentional — no debug code, no unrelated files
+2. Verify all changes are intentional: no debug code, no unrelated files
 3. Write a clear PR description: what changed, why, and how to test (see
    PR Description Concision below)
 4. Submit as a draft by default: `gh pr create --draft --title "..." --body
@@ -50,16 +50,16 @@ in this turn.
 ### Review Diff
 
 1. Before checking out, determine whether a checkout already exists for
-   this PR — check in this order, and stop at the first match. In every
+   this PR. Check in this order, and stop at the first match. In every
    case, record the exact directory the code is (or will be) checked out
-   in — a worktree's own location, or an explicit regular directory — as
-   an absolute path, never a relative one, and never a tool's implicit
-   default. (Agents have been observed resolving a relative path against
+   in, whether a worktree's own location or an explicit regular
+   directory, as an absolute path, never a relative one, and never a
+   tool's implicit default. (Agents have been observed resolving a relative path against
    the wrong working directory when a tool call's implicit working
    directory differed from what was assumed.)
    1. **Current checkout.** Run `git branch --show-current` (or
       `git status`) in the present working directory. If it matches this
-      PR's branch name, use it directly — record the current working
+      PR's branch name, use it directly. Record the current working
       directory (via `pwd`) as its absolute-path location. No new
       checkout needed.
    2. **Existing worktree.** Run `git worktree list` and look for an
@@ -69,9 +69,9 @@ in this turn.
       you choose, not your primary checkout: if the project uses git
       worktrees (a `worktrees/` directory convention), add one with
       `git worktree add <path> <branch>`. Otherwise, clone into a
-      dedicated `pr-reviews/<PR-number>` directory under the repo root —
-      parallel to the `worktrees/<name>` convention above, not an
-      improvised scratch path — then run `gh pr checkout <number>` from
+      dedicated `pr-reviews/<PR-number>` directory under the repo root,
+      parallel to the `worktrees/<name>` convention above and not an
+      improvised scratch path, then run `gh pr checkout <number>` from
       inside it; running it in place on your primary checkout can carry
       over uncommitted changes.
 2. Read every changed file completely before commenting
@@ -85,7 +85,7 @@ in this turn.
      this call's response as `review_id`: the submit step in the next
      bullet needs it. GitHub allows only one pending review per user per
      PR, so calling `create` again on the same PR fails instead of opening
-     a fresh pending review — if `create` fails, or if `review_id` was
+     a fresh pending review. If `create` fails, or if `review_id` was
      lost or misremembered, recover the existing pending review with
      `gh api repos/{owner}/{repo}/pulls/{number}/reviews` and find the
      entry with `"state": "PENDING"` authored by you. That list-reviews
@@ -102,9 +102,9 @@ event=COMMENT` (or `APPROVE` / `REQUEST_CHANGES`).
 ### Address Feedback
 
 1. Read all comments on the PR before making changes (`gh pr view <number> --comments`)
-2. Fix all CRITICAL findings — these block merge
+2. Fix all CRITICAL findings. These block merge
 3. Fix IMPORTANT findings unless you document why not
-4. Respond to every comment — even SUGGESTIONs get an acknowledgment. A
+4. Respond to every comment. Even SUGGESTIONs get an acknowledgment. A
    reply to an individual PR comment goes out right away; GitHub has no
    draft option for a standalone comment reply. Confirm with the user
    before each individual reply (see Explicit Publish Authorization
@@ -116,10 +116,10 @@ event=COMMENT` (or `APPROVE` / `REQUEST_CHANGES`).
 
 After completing a task, run a self-review cycle:
 
-1. **Capture diff** — `git diff main...HEAD` to get full diff of changes
-2. **Review** — Apply the Review Checklist below to your own changes
-3. **Fix CRITICALs** — Address all CRITICAL findings immediately
-4. **Max 2 cycles** — If CRITICALs remain after 2 fix cycles, stop and escalate to the user with root cause analysis
+1. **Capture diff**: `git diff main...HEAD` to get full diff of changes
+2. **Review**: Apply the Review Checklist below to your own changes
+3. **Fix CRITICALs**: Address all CRITICAL findings immediately
+4. **Max 2 cycles**: If CRITICALs remain after 2 fix cycles, stop and escalate to the user with root cause analysis
 
 ## PR Description Concision
 

@@ -17,14 +17,14 @@ You (the orchestrator) are the sole hub. The rules below are MANDATORY:
 - **Specialists never message each other.** All coordination flows through you. A specialist that completes its work reports back to you; you decide what happens next.
 - **You are the single point of coordination.** Do not instruct specialists to spawn further specialists or to relay messages to peers.
 
-This constraint keeps multi-agent behavior portable across runtimes. This skill and Claude's `SendMessage`/`Agent()` tools are scoped to Claude Code only (via `claudeCli.skills` / `claudeCli.tools`); the same specialists also run as Kiro CLI subagents, which are one-shot with no peer-messaging channel — the orchestrator spawns a specialist, it runs to completion in isolation, and returns its result. Peer-to-peer coordination therefore cannot be relied on cross-runtime, so all coordination flows through the orchestrator. This also matches the documented orchestrator-only dispatch design: native dispatch belongs solely to the orchestrator, and nested subagent spawning is unsupported in both runtimes.
+This constraint keeps multi-agent behavior portable across runtimes. This skill and Claude's `SendMessage`/`Agent()` tools are scoped to Claude Code only (via `claudeCli.skills` / `claudeCli.tools`); the same specialists also run as Kiro CLI subagents, which are one-shot with no peer-messaging channel. The orchestrator spawns a specialist, it runs to completion in isolation, and returns its result. Peer-to-peer coordination therefore cannot be relied on cross-runtime, so all coordination flows through the orchestrator. This also matches the documented orchestrator-only dispatch design: native dispatch belongs solely to the orchestrator, and nested subagent spawning is unsupported in both runtimes.
 
 ## Tool Usage: Glob and Grep
 
 Your system prompt instructs you to delegate shell commands (`Bash`) to specialist agents. However, `Glob` and `Grep` are **built-in tools, not shell commands**. You have them in your tool list and should use them directly for lightweight file discovery and pattern matching:
 
-- **`Glob`** — find files by pattern (e.g., `**/*.json`). Use instead of delegating `find` or `ls`.
-- **`Grep`** — search file contents by regex. Use instead of delegating `grep` or `Bash(grep ...)`.
+- **`Glob`**: find files by pattern (e.g., `**/*.json`). Use instead of delegating `find` or `ls`.
+- **`Grep`**: search file contents by regex. Use instead of delegating `grep` or `Bash(grep ...)`.
 
 Use `Glob`/`Grep` directly when:
 
@@ -43,39 +43,39 @@ The Bash-delegation rule above is otherwise unconditional for shell commands.
 your `Bash` tool to check existing worktree state before dispatching a write
 agent (see Worktree Scoping below). This exception covers only that one
 read-only listing command, plus reading `.wt-ledger.json` with your file-read
-tool — it does not cover `git worktree add`, `git worktree remove`, or any
+tool. It does not cover `git worktree add`, `git worktree remove`, or any
 other git/Bash command, which stay delegated to the write agent.
 
 ## Worktree Scoping
 
-`Agent()` has no `cwd` parameter — a spawned Claude Code subagent starts in
+`Agent()` has no `cwd` parameter. A spawned Claude Code subagent starts in
 the orchestrator's own working directory. Working-tree isolation is
 established by prompt, not by parameter.
 
 **The rule: every write-agent dispatch prompt must explicitly name the
-exact target — never let the agent infer or default.** A silent default is
+exact target. Never let the agent infer or default.** A silent default is
 the actual collision mechanism: two agents (from the same task or from
 different tasks) can each independently default into the same location and
 step on each other, even when neither dispatch looked "concurrent" from the
 orchestrator's own point of view. The named target is one of three
 legitimate forms:
 
-1. A new dedicated worktree — `wt-<id>` on branch `wt-<id>` (worktree and
+1. A new dedicated worktree: `wt-<id>` on branch `wt-<id>` (worktree and
    branch share one flat name), for the agent to create.
-2. An existing worktree to reuse — `wt-<id>` at `<path>` on branch `wt-<id>`.
-3. The shared primary tree, on a named feature branch `<branch>` — a
+2. An existing worktree to reuse: `wt-<id>` at `<path>` on branch `wt-<id>`.
+3. The shared primary tree, on a named feature branch `<branch>`: a
    deliberate, explicit choice, only for a single sequential write agent
    with no concurrent writer sharing that tree.
 
 **Read-only agents** (research, investigation, review) need no worktree
-decision at all — they share the primary working tree by default, and the
+decision at all. They share the primary working tree by default, and the
 dispatch prompt does not need to name a target.
 
-**Before dispatch (orchestrator — read-only):** using the narrow exception
+**Before dispatch (orchestrator, read-only):** using the narrow exception
 above, check current worktree state (`.wt-ledger.json` and `git worktree
-list` — treat `git worktree list` as ground truth over the ledger, which can
+list`, treat `git worktree list` as ground truth over the ledger, which can
 go stale) and decide which of the three forms applies for this task. This is
-a read plus a naming decision, not a mutation — it needs no exception to the
+a read plus a naming decision, not a mutation. It needs no exception to the
 orchestrator's zero-mutation rule, and the `git worktree list` call itself is
 covered by the narrow Bash exception above.
 
@@ -99,29 +99,29 @@ Agent(
 **Write agent's first action, before touching any file:** if a worktree was
 named, independently re-run `git worktree list` (the orchestrator's read
 could be stale by dispatch time), then either `cd` into the existing
-worktree or provision it — running `$WORKTREE_PROVISION_CMD wt-<id>` if that
+worktree or provision it: running `$WORKTREE_PROVISION_CMD wt-<id>` if that
 variable is set in its environment, otherwise `git worktree add` (see
 `mux-dispatch`/`cmux-dispatch`'s Provisioning command section for the same
 hook). If the shared tree was named, check out the named branch there. The
-write agent was always going to mutate — this is an explicit first step, not
+write agent was always going to mutate. This is an explicit first step, not
 new authority.
 
-This is a **best-effort guardrail, not a hard boundary** — the subagent could
+This is a **best-effort guardrail, not a hard boundary**. The subagent could
 in principle ignore the instruction. Two things provide harder enforcement
 after the fact:
 
 - The pre-commit hook (husky/lint-staged, or the equivalent for this
-  project) runs inside the tree the agent actually committed from — edits
+  project) runs inside the tree the agent actually committed from. Edits
   made outside the named target simply will not surface in that commit.
 - The CR diff at review time shows exactly which files changed; a human
   reviewer catches any file that should not have been touched before merge.
 
-**Sequential handoff** is the reuse case above, not a special case — a
+**Sequential handoff** is the reuse case above, not a special case. A
 second write agent continuing the same task gets the same named target
 (worktree or shared-tree branch) in its prompt and resumes there.
 
-**Concurrent collaboration on one target is not supported, by design** —
-that is the exact collision this mechanism exists to prevent, whether the
+**Concurrent collaboration on one target is not supported, by design**.
+That is the exact collision this mechanism exists to prevent, whether the
 target is a worktree or the shared tree. A maker/checker pair never shares a
 target; a checker gets its own separate read-only checkout (e.g.
 `CrCheckout`), never the maker's tree. Only sequential reuse of a named
@@ -130,7 +130,7 @@ is always wrong.
 
 ## Agent Name Resolution
 
-When spawning subagents via `Agent()`, use the **full installed agent name** — short names do not resolve. Derive the correct prefix from your own agent name:
+When spawning subagents via `Agent()`, use the **full installed agent name**. Short names do not resolve. Derive the correct prefix from your own agent name:
 
 - Your agent name contains the package prefix (e.g., `ASDLCCoreAICapabilities-konductor` or `local-ASDLCCoreAICapabilities-konductor`)
 - Replace your role suffix with the target specialist's role to get the full name
@@ -143,12 +143,12 @@ The prefix varies by install type (registry vs local). Always match your own pre
 
 ### How to Achieve Parallel Execution
 
-Both fire-and-wait (multiple `Agent()` calls in one message) and `run_in_background: true` achieve true parallelism — agents run concurrently in both cases. The difference is:
+Both fire-and-wait (multiple `Agent()` calls in one message) and `run_in_background: true` achieve true parallelism. Agents run concurrently in both cases. The difference is:
 
 - **Fire-and-wait:** orchestrator blocks until all complete, receives all results in one response turn. Best for short, independent lookups where you need all results before proceeding.
 - **Background agents (`run_in_background: true`):** orchestrator continues working while agents run, receives notifications individually as each completes, and can inject context mid-run via `SendMessage`. Best for long-running work, maker-checker patterns, and tasks where findings from one agent should feed another.
 
-When `SendMessage` is in your tool list, **prefer `run_in_background: true`** for parallel work — it unlocks mid-run communication that fire-and-wait cannot provide. See the Decision Rule below for when each is appropriate.
+When `SendMessage` is in your tool list, **prefer `run_in_background: true`** for parallel work. It unlocks mid-run communication that fire-and-wait cannot provide. See the Decision Rule below for when each is appropriate.
 
 ### Detection
 
@@ -170,7 +170,7 @@ Do NOT use background agents when:
 
 - Task B depends on Task A's output (use sequential `Agent()` calls)
 - There is only one subtask
-- The task is simple enough for a single agent (short lookups — fire-and-wait is fine)
+- The task is simple enough for a single agent (short lookups, fire-and-wait is fine)
 
 ### Full Pattern
 
@@ -192,12 +192,12 @@ SendMessage(to: developer_id, message: "Use the pattern from file W")
 
 **Same-task follow-up → `SendMessage`.** When a subagent returns and needs follow-up on that same task, use `SendMessage` (retains session context) instead of a new `Agent()` (starts from zero).
 
-**Independent work → new `Agent()`.** Spawn fresh for genuinely new tasks, even while another session is active. Don't serialize unrelated work behind one session — that defeats concurrency.
+**Independent work → new `Agent()`.** Spawn fresh for genuinely new tasks, even while another session is active. Don't serialize unrelated work behind one session. That defeats concurrency.
 
 ### Primitives
 
 | Primitive                                    | What it does                                                        |
 | -------------------------------------------- | ------------------------------------------------------------------- |
 | `Agent(run_in_background: true, ...)`        | Spawns a background agent, returns `agentId`                        |
-| `SendMessage(to: <agentId>, message: "...")` | Resumes an existing agent's session — does NOT spawn new agents     |
-| `Agent()` (no `run_in_background`)           | Fire-and-wait — use when Teams is unavailable or task is sequential |
+| `SendMessage(to: <agentId>, message: "...")` | Resumes an existing agent's session; does NOT spawn new agents      |
+| `Agent()` (no `run_in_background`)           | Fire-and-wait; use when Teams is unavailable or task is sequential  |
