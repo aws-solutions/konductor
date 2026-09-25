@@ -1,6 +1,6 @@
 ---
 name: security-test-generation
-description: Generates security test plans organized by domain and layer. Use when creating security test coverage for a service. Covers authentication, input validation, API security, data protection, session management, error handling, and infrastructure.
+description: 'Use when a service needs its security test coverage planned. Generates a security test plan by domain and layer: authentication, input validation, API security, data protection, session management, error handling, and infrastructure.'
 version: 1.0.0
 tags: [skill, security-testing, owasp, quality-assurance, aws]
 ---

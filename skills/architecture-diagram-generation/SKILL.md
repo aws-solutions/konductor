@@ -1,6 +1,6 @@
 ---
 name: architecture-diagram-generation
-description: Generates AWS architecture diagrams in draw.io XML format compatible with Amazon Design Inspector. Use when you need a visual diagram from a system design document. Produces single or multi-account diagrams with official AWS service icons and directional data flows.
+description: Use when a system design document needs a visual AWS architecture diagram, or someone asks to draw or diagram an AWS architecture. Generates draw.io XML with official AWS icons and directional data flows, single- or multi-account, compatible with Amazon Design Inspector.
 version: 1.0.0
 tags: [skill, architecture, diagram, drawio, design-inspector, aws]
 ---

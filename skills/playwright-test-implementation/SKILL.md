@@ -1,6 +1,6 @@
 ---
 name: playwright-test-implementation
-description: Authors Playwright functional test specs — selector strategy, authenticated-session setup via global-setup.ts and storageState, and Cloudscape-specific locator patterns. Use when writing or reviewing Playwright specs against a discovered web app, wiring up global-setup.ts, or fixing flaky selectors on a Cloudscape UI.
+description: Use when writing or reviewing Playwright specs against a discovered web app, wiring up global-setup.ts and storageState for authenticated sessions, or fixing flaky selectors on a Cloudscape UI. Covers selector strategy and Cloudscape-specific locator patterns. For planning or tracking a Cypress implementation, use cypress-test-implementation.
 version: 1.0.0
 tags: [skill, playwright, e2e-testing, implementation, quality-assurance]
 ---

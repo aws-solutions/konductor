@@ -1,7 +1,7 @@
 ---
 name: app-discovery
 version: 1.0.0
-description: Navigates a deployed web application, discovers all pages and interactive elements, and produces a structured discovery report. Loads dom-inspection to extract form validation rules, error selectors, and conditional visibility. Used as input to k-light-ui-testing and k-e2e-test-generation workflows.
+description: Use when you need a map of a deployed web application's pages, forms, and interactive elements, for example before writing UI or end-to-end tests for it. Crawls the app into a structured discovery report, using dom-inspection for form validation rules.
 tags: [discovery, browser, dom, testing, playwright, app-inspection]
 ---
 

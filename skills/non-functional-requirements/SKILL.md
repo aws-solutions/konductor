@@ -1,6 +1,6 @@
 ---
 name: non-functional-requirements
-description: Extracts measurable non-functional requirements from system design documents. Use after system design to produce NFRs across performance, availability, security, scalability, and observability. Outputs are used as inputs for test planning and architecture validation.
+description: Use when a system design is done and the service needs measurable non-functional requirements for test planning or architecture validation. Extracts NFRs for performance, availability, security, scalability, and observability from the design documents.
 version: 1.0.0
 tags: [skill, nfr, requirements, performance, availability, security, architecture]
 ---

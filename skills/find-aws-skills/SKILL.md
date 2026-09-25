@@ -1,10 +1,6 @@
 ---
 name: find-aws-skills
-description: >
-  Discovers and retrieves additional AWS skills for specialized tasks not covered by the default
-  bundled skills. Searches the AWS MCP server when a user's request involves an AWS service or
-  workflow without a matching default skill. Use when the user asks about an AWS service or
-  workflow and no bundled skill covers it.
+description: Use when the user's request involves an AWS service or workflow that no bundled skill covers. Searches the AWS MCP server for an additional specialized skill and retrieves it.
 ---
 
 # Find AWS Skills

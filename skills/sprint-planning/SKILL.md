@@ -1,6 +1,6 @@
 ---
 name: sprint-planning
-description: Sprint planning — task hierarchy, story point sizing, capacity tracking, and sprint workflow. Use when planning sprints, creating tasks from tickets/docs, estimating work, or managing sprint capacity.
+description: Use when planning a sprint, creating tasks from tickets or documents, estimating work, or managing sprint capacity. Covers task hierarchy, story point sizing, and capacity tracking with whatever project tool is available; for Asana, use asana-sprint-planning.
 version: 1.0.0
 tags: [skill, sprint-planning, scrum, agile, capacity]
 ---

@@ -1,11 +1,6 @@
 ---
 name: workspace-skills
-description: >
-  Use after trial-and-error that succeeded, a mid-task course correction, a
-  user correction that worked, or an unexpected outcome requiring
-  investigation. Captures the reusable procedure as a project-specific
-  workspace skill, with proactive capture, dedup, and provenance
-  protection.
+description: Use after trial-and-error that succeeded, a mid-task course correction, a user correction that worked, or an unexpected outcome requiring investigation. Captures the reusable procedure as a project-specific workspace skill, with proactive capture, dedup, and provenance protection. For a single fact or preference, use persistent-memory.
 origin: agent-created
 version: 4
 last_used: 2026-07-01
@@ -197,7 +192,7 @@ collisions with package-provided skills.
 ```yaml
 ---
 name: ws-<name>         # kebab-case, ws- prefix required
-description: <one sentence>  # what procedure this skill captures
+description: Use when <situation>. <What the procedure does>.  # when to apply it first, then what it does
 origin: agent-created   # or: user-authored
 version: 1              # integer, increment on every edit
 last_used: YYYY-MM-DD   # updated after applying the skill
@@ -213,8 +208,8 @@ related: []             # optional: names of related/overlapping skills
 ---
 name: ws-dynamodb-pagination
 description: >
-  How to implement DynamoDB pagination with LastEvaluatedKey
-  in this project.
+  Use when a DynamoDB query or scan in this project returns more
+  items than one page. Paginates with LastEvaluatedKey.
 origin: agent-created
 version: 1
 last_used: 2026-05-21

@@ -1,6 +1,6 @@
 ---
 name: policy-validation
-description: Validates IAM policies and security controls against AWS best practices. Use before deployment to detect overly permissive permissions, missing conditions, and compliance gaps. Produces prioritized findings with specific fixes.
+description: Use when IAM policies or security controls are about to be deployed, to catch overly permissive permissions, missing conditions, and compliance gaps first. Produces prioritized findings with specific fixes. To write new policies, use iam-policy-design.
 version: 1.0.0
 tags: [skill, iam, security, policy, validation, checker, aws]
 ---

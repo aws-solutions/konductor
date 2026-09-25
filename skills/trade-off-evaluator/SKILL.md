@@ -1,6 +1,6 @@
 ---
 name: trade-off-evaluator
-description: 'Scores design trade-offs across five dimensions — cost, latency, complexity, scalability, operability — producing a structured comparison matrix and a recommendation. Use when a design decision has multiple options, when an engineer asks to evaluate trade-offs, or when the k-design-doc-creation SOP reaches its trade-off evaluation step. Trigger phrases — "evaluate the trade-offs between X and Y", "score these options", "which is better: SQS or EventBridge for this use case", "compare these alternatives".'
+description: 'Use when a design decision has several options and someone asks to evaluate or compare them in depth ("evaluate the trade-offs between X and Y", "score these options", "which is better: SQS or EventBridge for this use case", "compare these alternatives"), or when the k-design-doc-creation SOP reaches its trade-off step. Scores cost, latency, complexity, scalability, and operability in a comparison matrix with a recommendation. For a quick opinion, use architecture-advisor.'
 version: 1.0.0
 tags: [skill, design, trade-offs, evaluation, decision, architecture]
 ---

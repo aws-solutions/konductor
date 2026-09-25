@@ -1,6 +1,6 @@
 ---
 name: persistent-memory
-description: Use after an error-recovery sequence, when the user corrects your approach and the correction is durable, or when a non-obvious project or environment convention or preference is discovered. Persists the fact to bounded memory files that survive across sessions.
+description: Use after an error-recovery sequence, when the user corrects your approach and the correction is durable, or when a non-obvious project or environment convention or preference is discovered. Persists the fact to bounded memory files that survive across sessions. For a reusable multi-step procedure, use workspace-skills.
 ---
 
 # Skill: Persistent Memory

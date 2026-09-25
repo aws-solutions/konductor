@@ -1,6 +1,6 @@
 ---
 name: system-design-patterns
-description: Guides system architecture design through a structured interview. Use when starting a new service or feature that needs a system design document. Produces system design, non-functional requirements, threat model inputs, and architecture diagram description.
+description: Use when starting a new service or feature that needs a system design document. Guides the design through a structured interview and produces the system design, non-functional requirements, threat model inputs, and an architecture diagram description.
 version: 1.0.0
 tags: [skill, system-design, architecture, interview, requirements]
 ---

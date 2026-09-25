@@ -1,6 +1,6 @@
 ---
 name: program-planning
-description: Creates program plans with timelines, milestones, dependencies, and critical path analysis. Use when starting a new program or replanning an existing one.
+description: Use when starting a new program or replanning an existing one. Produces a program plan with timelines, milestones, dependencies, and critical path analysis.
 version: 1.0.0
 tags: [skill, tpm, planning, timeline, milestones, dependencies]
 ---

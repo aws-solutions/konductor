@@ -1,6 +1,6 @@
 ---
 name: socratic-elicitation
-description: Interactive Socratic questioning that surfaces missing information, unstated assumptions, and unresolved tradeoffs from the user before work begins, or when stress-testing a plan the user already holds. Operates in two modes — Mode A (intake elicitation, pre-work) and Mode B (challenge mode, applied to a plan rather than a finished artifact).
+description: 'Use when a request leaves information, assumptions, or trade-offs unstated and work has not started yet, or when the user wants a plan they already hold stress-tested. Asks Socratic questions in two modes: A (intake, before work) and B (challenge, applied to a plan rather than a finished artifact).'
 version: 1.0.0
 tags: [skill, elicitation, requirements, intake, challenge, socratic, pre-planning]
 ---

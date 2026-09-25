@@ -1,6 +1,6 @@
 ---
 name: decision-writing
-description: Use when drafting or reviewing a decision record (ADR, PDR, or UXDR). Covers structure, tone, alternatives framing, consequence articulation, and plain-writing tenets for data-driven, specific, and actionable decisions.
+description: Use when drafting or reviewing a decision record (ADR, PDR, or UXDR). Covers structure, tone, alternatives framing, consequence articulation, and plain-writing tenets for data-driven, specific, and actionable decisions. To generate a complete ADR inline in a design doc, use adr-generator.
 ---
 
 # Decision Writing

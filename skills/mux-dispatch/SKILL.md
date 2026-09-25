@@ -1,6 +1,6 @@
 ---
 name: mux-dispatch
-description: Delegate tasks to parallel agent sessions via tmux or zellij. Auto-detects the active multiplexer from environment variables. Use when the user asks to delegate, spawn, or run a task in a separate pane with a specific agent.
+description: Use when the user asks to delegate, spawn, or run a task in a separate tmux or zellij pane with a specific agent, or wants parallel agent sessions in a terminal multiplexer. Detects the active multiplexer from environment variables. For cmux, use cmux-dispatch.
 ---
 
 # mux Dispatch

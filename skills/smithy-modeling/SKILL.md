@@ -1,6 +1,6 @@
 ---
 name: smithy-modeling
-description: Generates Smithy API models from requirements. Use when designing a new service API. Produces service definitions, operations, data structures, validation rules, and error handling following Smithy best practices. Supports TypeScript, OpenAPI, and AWS SDK code generation.
+description: Use when designing the API for a new service in Smithy, or turning requirements into an API model. Generates service definitions, operations, data structures, validation rules, and errors, with TypeScript, OpenAPI, and AWS SDK code generation. To check an existing model, use smithy-validation.
 version: 1.0.0
 tags: [skill, smithy, api-design, type-safety, code-generation, aws]
 ---

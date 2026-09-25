@@ -1,6 +1,6 @@
 ---
 name: legacy-to-agentic-estimate
-description: Convert legacy all-human-coding effort estimates into agentic SDLC estimates that account for AI toolchains and agents. Use to convert legacy estimate(s), produce an agentic estimate, re-baseline LOE for AI, build an AI-assisted estimate, or do effort estimation from a legacy value plus a task description (single item or a batch/table). The tier is always inferred from the description (keyword first, model fallback for ambiguous cases); output is a banded low/mid/high Markdown table with a roll-up.
+description: 'Use when someone has effort estimates made for all-human coding and wants them converted for AI-assisted or agentic development: re-baselining LOE for AI, producing an agentic estimate, or estimating from a legacy value plus a task description, for one item or a batch. Infers the tier from each description and outputs a banded low/mid/high Markdown table with a roll-up.'
 version: 1.0.0
 tags: [skill, estimation, agentic-sdlc, loe, re-baseline, planning]
 ---

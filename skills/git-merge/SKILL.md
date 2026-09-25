@@ -1,6 +1,6 @@
 ---
 name: git-merge
-description: "MUST USE for merging branches. Feature branch into mainline, dev into mainline, release merges. Triggers: 'merge', 'merge branch', 'merge into mainline', 'release merge', 'merge dev'."
+description: 'Use when merging branches, every time: a feature or dev branch into mainline, or a release merge ("merge", "merge branch", "merge into mainline", "release merge", "merge dev"). Runs the standard four-phase merge with `--no-ff --no-commit`, so the merge can be inspected before it is committed; mandatory for merges.'
 version: 1.0.0
 tags: [skill, git, merge, branch, mainline, release]
 ---

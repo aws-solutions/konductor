@@ -1,6 +1,6 @@
 ---
 name: design-evaluation
-description: Evaluates complete design packages for production readiness across 10 dimensions. Use as the final quality gate before handoff to implementation. Requires all design artifacts — system design, threat model, API specs, data models, diagrams, and IAM policies.
+description: Use when a design package is about to be handed to implementation, as the final quality gate, or when someone asks whether a design is production-ready. Evaluates the complete package (system design, threat model, API specs, data models, diagrams, IAM policies) across 10 dimensions.
 version: 1.0.0
 tags:
   [

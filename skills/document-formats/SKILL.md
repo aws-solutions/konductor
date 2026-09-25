@@ -1,6 +1,6 @@
 ---
 name: document-formats
-description: Read and write Microsoft Office documents (.docx) using pandoc. Use when handling Word documents from SharePoint, OneDrive, or local files.
+description: Use when reading or writing a Microsoft Word (.docx) file, whether it comes from SharePoint, OneDrive, or the local disk. Converts with pandoc.
 version: 1.0.0
 tags: [skill, documents, docx, pandoc, office]
 ---

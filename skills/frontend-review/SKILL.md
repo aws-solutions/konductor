@@ -1,6 +1,6 @@
 ---
 name: frontend-review
-description: Reviews frontend code changes for Cloudscape compliance, React Hook Form patterns, TypeScript type safety, and test quality. Use after implementing frontend changes to catch issues before code review. Produces CRITICAL/IMPORTANT/SUGGESTION findings.
+description: Use when frontend changes are implemented and not yet in code review, to catch problems early. Reviews Cloudscape compliance, React Hook Form patterns, TypeScript type safety, and test quality, with CRITICAL, IMPORTANT, and SUGGESTION findings. For backend code, use backend-review.
 version: 1.0.0
 tags: [skill, frontend, code-review, react, typescript, cloudscape, checker]
 ---

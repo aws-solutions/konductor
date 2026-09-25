@@ -1,6 +1,6 @@
 ---
 name: sop-state-management
-description: Generic session-state persistence for multi-step SOPs — mint-or-resume a YAML session file by project identity, track per-phase status (pending/skipped/in-progress/completed/blocked) with skip reasons and completion summaries, and serialize shared fix-cycle counters across parallel work. Load when authoring or running any long-running, resumable SOP that needs to survive a crash or restart.
+description: Use when authoring or running a long-running, multi-step SOP that must survive a crash or restart. Persists session state in a YAML file keyed by project identity, with per-phase status, skip reasons, completion summaries, and shared fix-cycle counters for parallel work.
 version: 1.0.0
 tags: [skill, session-state, resume, checklist, yaml, sop-infrastructure]
 ---

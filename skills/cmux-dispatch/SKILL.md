@@ -1,6 +1,6 @@
 ---
 name: cmux-dispatch
-description: Delegate tasks to parallel agent sessions via cmux. Use when the user asks to delegate, spawn, or run a task in a separate cmux surface with a specific agent. Handles surface creation, readiness polling, prompt delivery, and completion notification.
+description: Use when the user asks to delegate, spawn, or run a task in a separate cmux surface with a specific agent, or wants parallel agent sessions under cmux. Creates the surface, waits for readiness, delivers the prompt, and reports completion. For tmux or zellij, use mux-dispatch.
 ---
 
 # cmux Dispatch

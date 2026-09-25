@@ -1,6 +1,6 @@
 ---
 name: external-research
-description: Search external documentation, web resources, and best practices. Use when gathering information about open-source libraries, AWS services, industry patterns, or external tools.
+description: 'Use when a task needs information from outside the codebase: open-source libraries, AWS services, industry patterns, external tools, or current best practices. Searches external documentation and the web.'
 version: 1.0.0
 tags: [skill, research, external, web, documentation, best-practices]
 ---

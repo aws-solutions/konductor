@@ -1,6 +1,6 @@
 ---
 name: git-workflow
-description: Git workflow patterns for atomic commits, branch management, and history operations. Use when committing changes, managing branches, or searching git history.
+description: Use when committing changes, creating or managing branches, or searching git history. Covers atomic commits, branch management, and history operations. For merging branches, use git-merge.
 version: 1.0.0
 tags: [skill, git, workflow, commits, branches]
 ---

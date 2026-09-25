@@ -1,6 +1,6 @@
 ---
 name: historical-issues-registry
-description: 'Invoke from an adversarial-review coordinator SOP, but only where a delta layer supplies the concrete platform mapping: load prior review state at the start of a review pass, then filter new findings against it after all passes complete, before the report is written. Not run standalone, and skip entirely on a platform with no such delta layer.'
+description: 'Use when a code review spans several revisions and an adversarial review must not re-post findings that were already fixed or decided against: load prior review state at the start of a pass, then filter new findings against it before the report is written. Only where a delta layer supplies the concrete platform mapping; skip it entirely otherwise.'
 version: 1.0.0
 tags: [skill, code-review, adversarial, historical, filter]
 ---

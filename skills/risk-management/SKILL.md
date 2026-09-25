@@ -1,6 +1,6 @@
 ---
 name: risk-management
-description: Identifies, assesses, and tracks program risks with mitigation plans. Use when starting risk assessment or updating RAID logs.
+description: Use when starting a risk assessment, updating a RAID log, or when a program's risks need to be identified and tracked. Assesses risks and records mitigation plans.
 version: 1.0.0
 tags: [skill, tpm, risk, mitigation, raid, assessment]
 ---

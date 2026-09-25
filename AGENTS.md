@@ -59,12 +59,11 @@ instructions.
 ## Code Style & Conventions
 
 - Agent specs are JSON; keep them formatted (2-space indent).
-- Skills are markdown with YAML frontmatter (`name`, `description`). A `description` may take a
-  trigger-clause form ("Use when...") or a behavior-summary form ("Does X"); either is fine as
-  long as a reader, human or model, can tell when the skill applies from the text alone. Do not
-  convert a description from one form to the other for consistency alone. Fix a description
-  that gives no activation condition at all. You may broaden an existing condition (for example,
-  add a disjunct) when the skill's actual scope grew, but do not churn the form otherwise.
+- Skills follow the [Agent Skills specification](https://agentskills.io/specification). Write
+  each `description` as the [optimizing-descriptions](https://agentskills.io/skill-creation/optimizing-descriptions)
+  guide describes, opening with when to use the skill ("Use when ...") and then saying briefly
+  what it does, in at most 1024 characters. Write the body by the
+  [best practices](https://agentskills.io/skill-creation/best-practices).
 - Orchestrators are named `konductor`, `konductor-mux-orchestrator`, and `konductor-cmux-orchestrator`; 
   every specialist uses a `k-*` name. Skills are unprefixed unless avoiding a known collision.
 - **License headers:** All code files must carry an SPDX short-form identifier as the very first line

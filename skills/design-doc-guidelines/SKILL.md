@@ -1,6 +1,6 @@
 ---
 name: design-doc-guidelines
-description: Use when writing, reviewing, or restructuring a design doc, RFC, technical spec, architecture proposal, ADR, or one-pager. Trigger on requests like "review my design," "tighten this spec," or "is this too technical?" Covers outside-in structure, plain writing rules, AI slop detection, diagram accuracy, and technical accuracy.
+description: Use when writing, reviewing, or restructuring a design doc, RFC, technical spec, architecture proposal, ADR, or one-pager. Trigger on requests like "review my design," "tighten this spec," or "is this too technical?" Covers outside-in structure, plain writing rules, AI slop detection, diagram accuracy, and technical accuracy. To challenge the design's decisions rather than its writing, use adversarial-design-review.
 version: 1
 ---
 

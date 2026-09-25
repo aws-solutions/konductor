@@ -1,6 +1,6 @@
 ---
 name: design-impact-review
-description: Method for tracing the downstream, cross-artifact impact of a change before it cascades — DB column to API to UX/FE, spec to implementation. Use when changing a data model, API schema, system interface, or any design-level decision. Classifies each affected artifact BREAKING / STALE / UNAFFECTED and reports.
+description: Use when changing a data model, API schema, system interface, or other design-level decision, before the change cascades into other artifacts. Traces the downstream impact (for example DB column to API to UX) and classifies each affected artifact BREAKING, STALE, or UNAFFECTED.
 version: 2.1.0
 tags: [skill, design, review, impact, deviation]
 ---

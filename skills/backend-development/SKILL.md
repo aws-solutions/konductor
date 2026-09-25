@@ -1,6 +1,6 @@
 ---
 name: backend-development
-description: Implements backend code changes for Lambda handlers, service layers, and DynamoDB operations. Use when fixing code quality issues, adding features, or optimizing backend logic. Follows KISS/YAGNI/DRY principles with minimal, surgical changes.
+description: 'Use when implementing or fixing backend code (Lambda handlers, service layers, DynamoDB operations): code quality fixes, new features, or performance work. Makes minimal, surgical changes following KISS, YAGNI, and DRY.'
 version: 1.0.0
 tags: [skill, backend, lambda, dynamodb, typescript, nodejs, implementation]
 ---

@@ -1,6 +1,6 @@
 ---
 name: doc-accuracy-analyzer
-description: Use before submitting a design doc for review, after major revisions to a design doc, or when a reviewer flags factual concerns. Extracts verifiable claims, investigates each against primary sources, classifies findings, and produces a structured accuracy report.
+description: Use before submitting a design doc for review, after major revisions to a design doc, or when a reviewer flags factual concerns. Extracts verifiable claims, investigates each against primary sources, classifies findings, and produces a structured accuracy report. For AWS service claims only, use aws-service-validator.
 version: 1.0.0
 source: MyAgentToolkit (copied locally — not yet in live version set)
 ---

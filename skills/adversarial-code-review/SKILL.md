@@ -1,6 +1,6 @@
 ---
 name: adversarial-code-review
-description: 'Targets the three gap categories standard review misses: information disclosure, data integrity, and schema validation. Use for a second-pass review after standard code review, as the checker in a maker-checker cycle, or before submitting a change that touches auth, data writes, or external API boundaries.'
+description: 'Use when a change needs a second-pass review after standard code review, as the checker in a maker-checker cycle, or before submitting a change that touches auth, data writes, or external API boundaries. Targets what standard review misses: information disclosure, data integrity, and schema validation. For a routine first review of a diff or PR, use code-review.'
 version: 1.0.0
 tags:
   [

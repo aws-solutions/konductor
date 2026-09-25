@@ -1,6 +1,6 @@
 ---
 name: e2e-test-strategy
-description: Generates a prioritized E2E test strategy from test gap analysis and user stories. Use after coverage analysis to plan E2E tests. Produces a test matrix organized by priority (P0-P3) with execution approach and framework recommendations.
+description: Use when test coverage analysis is done and E2E tests need to be planned from the gaps and user stories. Produces a prioritized (P0-P3) test matrix with execution approach and framework recommendations.
 version: 1.0.0
 tags: [skill, e2e-testing, test-strategy, quality-assurance, planning]
 ---

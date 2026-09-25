@@ -1,6 +1,6 @@
 ---
 name: aws-service-validator
-description: Validates AWS service and feature claims in a design document against AWS documentation. Catches incorrect or hallucinated AWS assertions. Use when a design doc contains AWS service references, when an engineer asks to fact-check AWS claims, or when the k-design-doc-creation SOP reaches its fact-check gate. Trigger phrases — "validate my AWS claims", "fact-check my AWS assertions", "check whether this DynamoDB feature is accurate", "verify regional availability for X".
+description: Use when a design doc makes claims about AWS services or features, when someone asks to fact-check them ("validate my AWS claims", "is this DynamoDB feature real?", "verify regional availability for X"), or when the k-design-doc-creation SOP reaches its fact-check gate. Checks each claim against AWS documentation and flags incorrect or hallucinated ones.
 version: 1.0.0
 tags: [skill, aws, validation, fact-checking, design, accuracy]
 ---

@@ -1,6 +1,6 @@
 ---
 name: smithy-validation
-description: Validates Smithy API models for quality, best practices, and production readiness. Use before implementation to catch structural, naming, security, and code generation issues. Produces prioritized findings with specific fixes.
+description: Use when a Smithy API model is ready for implementation, to catch structural, naming, security, and code generation issues first. Produces prioritized findings with specific fixes. To create a model, use smithy-modeling.
 version: 1.0.0
 tags: [skill, smithy, api-design, validation, checker, code-review]
 ---

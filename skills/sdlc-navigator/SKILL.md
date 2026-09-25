@@ -1,6 +1,6 @@
 ---
 name: sdlc-navigator
-description: Provides guidance on which agent to use next and how artifacts connect across SDLC phases. Use when asked about workflow, next steps, which agent to use, or how phases connect.
+description: Use when someone asks which agent to use next, what the next step in the workflow is, or how artifacts connect across SDLC phases. Gives routing guidance across the Konductor agents.
 version: 1.0.0
 tags: [skill, navigation, workflow, sdlc, agents, phases]
 ---

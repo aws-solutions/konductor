@@ -1,6 +1,6 @@
 ---
 name: asana-sprint-planning
-description: Sprint planning with Asana — task hierarchy, story point sizing, capacity tracking, and sprint workflow. Requires an Asana MCP server (see docs/guides/asana-integration.md). Use when planning sprints, creating tasks, estimating work, or managing sprint capacity in Asana.
+description: Use when planning a sprint, creating or estimating tasks, or managing sprint capacity in Asana. Covers task hierarchy, story point sizing, and capacity tracking; requires an Asana MCP server (see docs/guides/asana-integration.md). For other tools, use sprint-planning.
 version: 2.1.0
 tags:
   [skill, sprint-planning, asana-sprint-planning, asana, scrum, agile, capacity]

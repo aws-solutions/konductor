@@ -1,6 +1,6 @@
 ---
 name: pre-planning-analysis
-description: Structured analysis framework for ambiguous requests. Classifies intent into 6 types, identifies ambiguities, bounds scope, and recommends an agent chain. Use when you cannot determine which specialist agent handles a request.
+description: Use when a request is ambiguous and it is unclear which specialist agent should handle it. Classifies the intent into one of 6 types, surfaces ambiguities, bounds the scope, and recommends an agent chain.
 version: 1.0.0
 tags: [skill, pre-planning, analysis, intent-classification, scope, orchestration]
 ---

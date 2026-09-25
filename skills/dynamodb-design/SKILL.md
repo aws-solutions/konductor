@@ -1,6 +1,6 @@
 ---
 name: dynamodb-design
-description: Generates DynamoDB table designs optimized for access patterns. Use when designing a data model for a new service. Produces partition key recommendations, GSI strategies, capacity planning, and CDK/CloudFormation implementation code.
+description: Use when designing the data model for a new service on DynamoDB, or when someone asks how to structure tables and keys for their access patterns. Produces partition key and GSI strategies, capacity planning, and CDK or CloudFormation code. To check an existing design, use dynamodb-validation.
 version: 1.0.0
 tags: [skill, dynamodb, database-design, nosql, data-modeling, aws]
 ---

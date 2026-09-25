@@ -1,6 +1,6 @@
 ---
 name: cost-estimation
-description: Generates AWS cost estimates for architectures. Use after system design is complete to produce baseline, optimized, and high-availability cost scenarios. Requires service configurations and expected load parameters.
+description: Use when a finished system design needs an AWS cost estimate, or someone asks what an architecture will cost to run. Produces baseline, optimized, and high-availability cost scenarios from service configurations and expected load.
 version: 1.0.0
 tags: [skill, cost, aws, pricing, architecture, estimation]
 ---

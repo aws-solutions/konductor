@@ -1,6 +1,6 @@
 ---
 name: dynamodb-validation
-description: Validates DynamoDB table designs against AWS best practices. Use before implementation to detect hot partitions, missing indexes, cost issues, and security gaps. Produces a 13-category validation report with prioritized fixes.
+description: Use when a DynamoDB table design is ready for implementation, to catch hot partitions, missing indexes, cost issues, and security gaps first. Produces a 13-category validation report with prioritized fixes. To create a design, use dynamodb-design.
 version: 1.0.0
 tags: [skill, dynamodb, database-design, validation, checker, aws]
 ---

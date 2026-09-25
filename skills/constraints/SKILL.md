@@ -1,6 +1,6 @@
 ---
 name: constraints
-description: MUST USE for every interaction across all Konductor agents. Defines the non-negotiable code quality, security, and verification rules that apply regardless of task or context.
+description: Use when any Konductor agent does any work, on every interaction and regardless of task or context; this skill is mandatory. Defines the non-negotiable code quality, security, and verification rules.
 version: 1.0.0
 tags: [skill, behavioral, constraints, quality, security]
 ---

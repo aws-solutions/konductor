@@ -1,6 +1,6 @@
 ---
 name: claude-teams-behavior
-description: Claude Code Agent Teams patterns for the orchestrator. Loaded only in Claude Code sessions via claudeCli.skills. Provides hub-and-spoke contract, decision rules for SendMessage, background agent spawning, and agent name resolution.
+description: 'Use when orchestrating an agent team in Claude Code: spawning background agents, deciding whether to SendMessage, or resolving agent names. Defines the hub-and-spoke contract between the orchestrator and its specialists.'
 version: 1.1.0
 tags: [skill, claude-code, agent-teams, orchestration]
 ---

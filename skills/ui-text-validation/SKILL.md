@@ -1,6 +1,6 @@
 ---
 name: ui-text-validation
-description: Validates UI text against public AWS style guidance, Cloudscape design standards, and general content quality principles. Use when reviewing user-facing text in console-style applications. Produces findings organized by severity with before/after examples.
+description: Use when reviewing user-facing text in a console-style application, such as labels, messages, and help text. Checks it against public AWS style guidance, Cloudscape standards, and content quality principles, with severity-ranked findings and before/after examples.
 version: 1.0.0
 tags:
   [

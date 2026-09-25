@@ -1,6 +1,6 @@
 ---
 name: asdlc-code-simplifier
-description: Simplifies and refines code for clarity, consistency, and maintainability while preserving functionality. Use when reviewing recently modified code, refactoring for readability, applying coding standards, or reducing complexity without changing behavior.
+description: Use when recently modified code should be cleaned up, refactored for readability, brought in line with coding standards, or made less complex without changing its behavior. Simplifies code while preserving functionality.
 version: 1.0.0
 tags: [refactor, simplify, readability, maintainability]
 ---

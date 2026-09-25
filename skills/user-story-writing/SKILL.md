@@ -1,6 +1,6 @@
 ---
 name: user-story-writing
-description: Creates user stories with INVEST principles, epics, and acceptance criteria from business requirements or product documentation. Use when converting validated requirements into development-ready stories. Supports MVP (10-15 stories), Production (20-30 stories), and full scope (30-40 stories).
+description: Use when validated requirements or product documentation need to become development-ready user stories. Writes INVEST stories, epics, and acceptance criteria at MVP (10-15 stories), Production (20-30), or full scope (30-40).
 version: 1.0.0
 tags: [skill, user-stories, agile, invest, acceptance-criteria, requirements]
 ---

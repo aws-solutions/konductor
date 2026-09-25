@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: Use when creating or submitting a pull request, reviewing a diff or PR from another developer, addressing PR feedback, or running a post-implementation review cycle on local changes. Uses standard git and GitHub CLI (`gh`) commands and classifies findings by severity (CRITICAL/IMPORTANT/SUGGESTION).
+description: Use when creating or submitting a pull request, reviewing a diff or PR from another developer, addressing PR feedback, or running a post-implementation review cycle on local changes. Uses standard git and GitHub CLI (`gh`) commands and classifies findings by severity (CRITICAL/IMPORTANT/SUGGESTION). For a deeper second pass on disclosure, integrity, and schema risks, use adversarial-code-review.
 version: 1.3.3
 tags: [skill, code-review, pr, git, workflow, humanize-writing]
 ---

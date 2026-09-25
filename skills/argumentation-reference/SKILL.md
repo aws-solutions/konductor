@@ -1,6 +1,6 @@
 ---
 name: argumentation-reference
-description: Reference primer for argumentation theory — Toulmin model, fallacy taxonomy, argument scoring rubric. Use during adversarial design review to identify weak arguments and logical fallacies.
+description: 'Use when checking a design document''s reasoning for weak arguments or logical fallacies, for example during an adversarial design review. Reference primer: the Toulmin model, a fallacy taxonomy, and an argument scoring rubric.'
 version: 1
 ---
 

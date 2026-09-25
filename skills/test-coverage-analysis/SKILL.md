@@ -1,6 +1,6 @@
 ---
 name: test-coverage-analysis
-description: Analyzes test coverage across unit, integration, and E2E tests to identify gaps. Use after implementation to find missing test scenarios before release. Operates in two modes — coverage (test analysis) and release readiness (deployment validation).
+description: 'Use when implementation is done and, before release, missing test scenarios or release readiness need checking. Analyzes unit, integration, and E2E coverage in two modes: coverage and release readiness.'
 version: 1.0.0
 tags: [skill, testing, coverage, gap-analysis, quality-assurance]
 ---

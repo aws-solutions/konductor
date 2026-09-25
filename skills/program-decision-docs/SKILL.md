@@ -1,6 +1,6 @@
 ---
 name: program-decision-docs
-description: Creates program-level decision documents with options analysis, trade-offs, and recommendations. Use when a program decision needs formal documentation.
+description: Use when a program-level decision needs formal documentation, or program stakeholders need options compared before choosing. Produces a decision document with options analysis, trade-offs, and a recommendation. For comparing architecture options, use trade-off-evaluator; to record a chosen architecture decision, use adr-generator.
 version: 1.0.0
 tags: [skill, tpm, decision, options-analysis, trade-offs]
 ---

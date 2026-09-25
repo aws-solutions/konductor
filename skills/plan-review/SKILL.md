@@ -1,6 +1,6 @@
 ---
 name: plan-review
-description: Critical review of work plans against 4 criteria (clarity, verifiability, context completeness, big picture) with 1-5 star rating and BLOCKED/OKAY/SHIP IT verdicts. Use when evaluating implementation plans, task breakdowns, or work breakdowns before execution.
+description: Use when an implementation plan, task breakdown, or work breakdown should be checked before execution starts. Rates it 1-5 stars on clarity, verifiability, context completeness, and big picture, with a BLOCKED, OKAY, or SHIP IT verdict.
 version: 1.0.0
 tags: [skill, review, plan, quality-gate, evaluation, tpm]
 ---
