@@ -612,7 +612,12 @@ mod tests {
 
         let installed = target_dir.join(".kiro/agents/k-example.json");
         assert!(installed.is_file());
-        assert_eq!(fs::read(&installed).unwrap(), b"{\"name\":\"k-example\"}\n");
+        // `TelemetryHookPass` re-serializes every installed agent file
+        // to inject the SessionStart hook, so check the parsed field
+        // rather than raw bytes.
+        let installed_bytes = fs::read(&installed).unwrap();
+        let installed_value: serde_json::Value = serde_json::from_slice(&installed_bytes).unwrap();
+        assert_eq!(installed_value["name"], serde_json::json!("k-example"));
 
         let manifest = super::super::manifest::read_manifest(&target_dir)
             .unwrap()
@@ -626,7 +631,7 @@ mod tests {
         );
         assert_eq!(
             manifest.strategies[0].files[0].sha256,
-            Some(sha256_hex(b"{\"name\":\"k-example\"}\n"))
+            Some(sha256_hex(&installed_bytes))
         );
 
         fs::remove_dir_all(&target_dir).ok();
@@ -1205,11 +1210,14 @@ mod tests {
             )
             .expect("install into a populated destination must succeed");
 
-        // The newly-installed content landed correctly.
-        assert_eq!(
-            fs::read(target_dir.join(".kiro/agents/k-example.json")).unwrap(),
-            b"{\"name\":\"k-example\"}\n"
-        );
+        // The newly-installed content landed correctly. As above,
+        // `TelemetryHookPass` re-serializes the agent file, so check
+        // the field that survives rather than the raw bytes.
+        let installed_agent: serde_json::Value = serde_json::from_slice(
+            &fs::read(target_dir.join(".kiro/agents/k-example.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(installed_agent["name"], serde_json::json!("k-example"));
         assert_eq!(
             fs::read(target_dir.join(".konductor/skills/code-review/SKILL.md")).unwrap(),
             b"synthed content\n"
@@ -2970,8 +2978,15 @@ mod tests {
 
         // `stable-agent.json` on disk now holds the SECOND run's bytes
         // (copied before the failure further down in `install_agents`).
+        // `TelemetryHookPass` re-serializes the agent file, so check
+        // the field that survives rather than the raw bytes.
         let on_disk_bytes = fs::read(target_dir.join(".kiro/agents/stable-agent.json")).unwrap();
-        assert_eq!(on_disk_bytes, b"{\"v\":2}\n");
+        let on_disk_value: serde_json::Value = serde_json::from_slice(&on_disk_bytes).unwrap();
+        assert_eq!(
+            on_disk_value["v"],
+            serde_json::json!(2),
+            "the SECOND run's own \"v\": 2 content must be on disk, not the first run's \"v\": 1"
+        );
 
         // The manifest on disk must NOT be the stale first-run manifest
         // (which would record `stable-agent.json`'s OLD hash, mismatching

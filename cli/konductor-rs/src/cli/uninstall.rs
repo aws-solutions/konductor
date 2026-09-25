@@ -45,7 +45,10 @@ use super::install::kiro_cli::{
     KIRO_DESTINATION_ROOT as KIRO_ROOT, KONDUCTOR_DESTINATION_ROOT as KONDUCTOR_ROOT,
 };
 use super::install::manifest::{self, ManifestError, Provenance, StrategyManifest};
-use super::install::resource_rewrite::CLAUDE_SETTINGS_RELATIVE_PATH;
+use super::install::resource_rewrite::{
+    CLAUDE_SETTINGS_RELATIVE_PATH, V3_STANDALONE_HOOKS_RELATIVE_PATH,
+    V3_STANDALONE_HOOK_LOCK_FILE_NAME,
+};
 use crate::cli::output::ColorMode;
 use crate::cli::synth::kiro_cli_v2::SKILLS_CONTENT_TYPE_DIR;
 
@@ -1429,6 +1432,24 @@ fn delete_eligible_files(
             continue;
         }
         let path = target_dir.join(rel);
+
+        // The V3 standalone telemetry-hook document shares its directory
+        // with a dedicated lock file (`V3_STANDALONE_HOOK_LOCK_FILE_NAME`,
+        // see its own doc comment) that is never manifest-tracked, so it
+        // never appears as its own loop iteration here. Removed
+        // unconditionally alongside the tracked hook document's entry,
+        // regardless of whether that entry's `path` still exists on disk
+        // or whether removing it below succeeds -- otherwise the lock
+        // file (and, transitively, `.kiro/hooks/`) would be stranded
+        // whenever the tracked document was deleted out-of-band before
+        // uninstall ran.
+        if file.path == V3_STANDALONE_HOOKS_RELATIVE_PATH {
+            if let Some(parent) = path.parent() {
+                let _ = std::fs::remove_file(parent.join(V3_STANDALONE_HOOK_LOCK_FILE_NAME));
+                touched_dirs.push(parent.to_path_buf());
+            }
+        }
+
         if !path.is_file() {
             continue;
         }

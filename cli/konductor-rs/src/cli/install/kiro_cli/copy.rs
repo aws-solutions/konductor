@@ -219,6 +219,7 @@ pub(in crate::cli::install) fn install_agents(
     harness_dir: &Path,
     target_dir: &Path,
     bin_files: &[ManifestFile],
+    no_telemetry: bool,
 ) -> Result<(Vec<ManifestFile>, bool), String> {
     let source_dir = harness_dir.join(AGENTS_CONTENT_TYPE_DIR);
     let entries = list_agent_files(&source_dir)?;
@@ -261,8 +262,13 @@ pub(in crate::cli::install) fn install_agents(
         agent_sop_names: &agent_sop_names,
         agent_skill_names: &agent_skill_names,
     };
-    let (mut files, any_mcp_server_injected) =
-        copy_agent_files_rewriting_resources(&source_dir, &destination, &ctx, entries)?;
+    let (mut files, any_mcp_server_injected) = copy_agent_files_rewriting_resources(
+        &source_dir,
+        &destination,
+        &ctx,
+        entries,
+        no_telemetry,
+    )?;
     for file in &mut files {
         file.path =
             content_manifest_path(KIRO_DESTINATION_ROOT, AGENTS_CONTENT_TYPE_DIR, &file.path);
@@ -554,8 +560,9 @@ fn copy_agent_files_rewriting_resources(
     destination: &Path,
     ctx: &super::super::resource_rewrite::RewriteContext<'_>,
     file_names: Vec<String>,
+    no_telemetry: bool,
 ) -> Result<(Vec<ManifestFile>, bool), String> {
-    let passes = super::super::resource_rewrite::standard_passes();
+    let passes = super::super::resource_rewrite::standard_passes(no_telemetry);
 
     let mut files = Vec::with_capacity(file_names.len());
     let mut any_mcp_server_injected = false;
@@ -587,18 +594,28 @@ fn copy_agent_files_rewriting_resources(
             .get(agent_name)
             .is_some_and(|names| !names.is_empty());
 
-        // No rewrite prefix present, and this agent has no SOP or
-        // skill-name scoping either -> copy verbatim, skipping the
-        // parse/re-serialize round trip, so an unaffected agent stays
-        // byte-identical to synth's `dist/` output. Such an agent can
-        // never have gotten an mcpServers injection either (that
-        // injection is scoped to skill-bearing, SOP-scoped, or
-        // skill-name-scoped agents, which always contain
+        // No rewrite prefix present, this agent has no SOP or
+        // skill-name scoping either, and telemetry is disabled -> copy
+        // verbatim, skipping the parse/re-serialize round trip, so an
+        // unaffected agent stays byte-identical to synth's `dist/`
+        // output. Such an agent can never have gotten an mcpServers
+        // injection either (that injection is scoped to skill-bearing,
+        // SOP-scoped, or skill-name-scoped agents, which always contain
         // SKILL_RESOURCE_PREFIX or have a non-empty sidecar entry), so
         // `any_mcp_server_injected` is left unchanged here.
+        //
+        // `no_telemetry` is required in this condition, not merely an
+        // additional narrowing: `TelemetryHookPass::matches` is
+        // unconditionally `true` (telemetry applies to every installed
+        // agent, not just ones with a resource/sidecar match), so
+        // without this clause an agent matching none of the other three
+        // conditions would take this fast path and never reach
+        // `apply_all` when telemetry is enabled, silently skipping hook
+        // injection for exactly the agents that most need it.
         let contents = String::from_utf8(original_bytes.clone())
             .map_err(|e| format!("{} is not valid UTF-8: {e}", src.display()))?;
-        if !contents.contains(CONTEXT_RESOURCE_PREFIX)
+        if no_telemetry
+            && !contents.contains(CONTEXT_RESOURCE_PREFIX)
             && !contents.contains(super::super::resource_rewrite::SKILL_RESOURCE_PREFIX)
             && !agent_has_sop_names
             && !agent_has_skill_names

@@ -54,12 +54,13 @@ use super::kiro_cli::{
     attach_provenance, content_manifest_path, install_context, install_kiro_sop_skills,
     install_skills, install_sops, list_agent_files, plan_additive_claude_sop_skill_files,
     plan_all_files, plan_claude_settings_grant, read_skill_scopes_sidecar, read_sop_scopes_sidecar,
-    reject_unsafe_file_name, KIRO_DESTINATION_ROOT, KONDUCTOR_DESTINATION_ROOT,
+    reject_unsafe_file_name, PlannedFile, KIRO_DESTINATION_ROOT, KONDUCTOR_DESTINATION_ROOT,
 };
-use super::manifest::{ManifestFile, Provenance, Status, StrategyManifest};
+use super::manifest::{classify_provenance, ManifestFile, Provenance, Status, StrategyManifest};
 use super::resource_rewrite::{
-    apply_all, apply_claude_settings_grant_and_hooks, standard_passes_v3, RewriteContext,
-    MCP_SERVER_NAME, SKILL_RESOURCE_PREFIX,
+    apply_all, apply_claude_settings_grant_and_hooks, apply_v3_standalone_telemetry_hook,
+    standard_passes_v3, RewriteContext, MCP_SERVER_NAME, SKILL_RESOURCE_PREFIX,
+    V3_STANDALONE_HOOKS_RELATIVE_PATH,
 };
 use super::runtime::{detect_runtimes, Runtime};
 use super::InstallError;
@@ -246,6 +247,30 @@ impl InstallStrategy for KiroCliV3InstallStrategy {
             )));
         }
 
+        // Predicts the standalone V3 SessionStart telemetry hook
+        // document this run writes (unless `--no-telemetry`). Folded in
+        // after the no-op check above, not before: this file is written
+        // unconditionally for every V3 install with telemetry enabled,
+        // so including it in the no-op check would let an otherwise
+        // genuinely-empty install "succeed" by writing only this one
+        // file. Folded into `plan` before the write-ahead manifest below
+        // for the same crash-safety reason `plan_claude_settings_grant`
+        // documents: `attach_provenance` requires every file this run
+        // writes to already appear here, or it fails as an internal
+        // error.
+        if !no_telemetry {
+            let manifest_path = V3_STANDALONE_HOOKS_RELATIVE_PATH.to_string();
+            let provenance = classify_provenance(
+                &target_dir.join(&manifest_path),
+                &manifest_path,
+                prior_manifest.as_ref(),
+            );
+            plan.push(PlannedFile {
+                manifest_path,
+                provenance,
+            });
+        }
+
         // Mirrored from `KiroCliInstallStrategy::install_from_local`'s
         // identical exclusion: this strategy's own tracked slot must
         // never claim `.claude/skills/sop-<name>/SKILL.md`, at any
@@ -323,6 +348,33 @@ impl InstallStrategy for KiroCliV3InstallStrategy {
         let (agent_files, any_mcp_server_injected) =
             install_agents(&harness_dir, target_dir, &bin_files)?;
         raw_files.extend(agent_files);
+
+        // The standalone V3 SessionStart telemetry hook document,
+        // written unconditionally for every V3 install unless
+        // `--no-telemetry` -- unlike the block below, this has nothing
+        // to do with Claude Code detection or `any_mcp_server_injected`.
+        // Non-fatal on failure, matching `apply_claude_settings_grant_
+        // and_hooks`'s philosophy: a problem writing this additive,
+        // best-effort file must never abort an otherwise-successful
+        // Kiro install.
+        if !no_telemetry {
+            match apply_v3_standalone_telemetry_hook(target_dir) {
+                Ok((path, sha256)) => raw_files.push(ManifestFile {
+                    path,
+                    sha256: Some(sha256),
+                    // Overwritten by `attach_provenance` below, which
+                    // resolves the real provenance from `plan` (see the
+                    // planning step above).
+                    provenance: Provenance::Created,
+                }),
+                Err(err) => {
+                    eprintln!(
+                        "konductor install: warning: standalone telemetry hook wiring skipped \
+                         ({err}) -- the rest of this install is unaffected"
+                    );
+                }
+            }
+        }
 
         // Additive, Claude/V3-only settings grant, mirroring
         // `AgentInstallPhase::run`'s identical branch: applies the
@@ -1122,7 +1174,11 @@ mod tests {
             manifest.strategies[0].status,
             super::super::manifest::Status::Complete
         );
-        assert_eq!(manifest.strategies[0].files.len(), 5);
+        // 5 content-type files (agent, skill, sop, kiro-sop-skill,
+        // context) plus the standalone V3 telemetry hook document --
+        // written unconditionally with telemetry enabled (the default,
+        // `no_telemetry: false` above).
+        assert_eq!(manifest.strategies[0].files.len(), 6);
         assert!(manifest.strategies[0]
             .files
             .iter()
@@ -1178,7 +1234,12 @@ mod tests {
         let manifest = super::super::manifest::read_manifest(&target_dir)
             .unwrap()
             .unwrap();
-        assert_eq!(manifest.strategies[0].files.len(), 1);
+        // The agent file, plus the standalone V3 telemetry hook document
+        // written unconditionally with telemetry enabled (the default,
+        // `no_telemetry: false` above). Manifest files are serialized
+        // sorted by path, and ".kiro/agents/..." sorts before
+        // ".kiro/hooks/...", so index 0 remains the agent.
+        assert_eq!(manifest.strategies[0].files.len(), 2);
         assert_eq!(
             manifest.strategies[0].files[0].path,
             ".kiro/agents/agent.json"

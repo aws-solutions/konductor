@@ -644,7 +644,7 @@ const TELEMETRY_HOOK_ENTRIES: &[TelemetryHookEntry] = &[
 /// reason -- never fails the whole install over a diagnostics-only path
 /// display concern, matching `kiro_cli.rs`'s own `install_from_local`
 /// canonicalize fallback for its manifest `source` field.
-fn resolve_konductor_exe_path() -> String {
+pub(super) fn resolve_konductor_exe_path() -> String {
     std::env::current_exe()
         .map(|path| path.display().to_string())
         .unwrap_or_else(|_| "konductor".to_string())
@@ -661,7 +661,7 @@ fn resolve_konductor_exe_path() -> String {
 /// non-absolute string is never a genuine `current_exe()` result on
 /// any platform this fallback runs on, so this check is exact, not a
 /// heuristic.
-fn is_resolved_absolute_exe_path(exe: &str) -> bool {
+pub(super) fn is_resolved_absolute_exe_path(exe: &str) -> bool {
     Path::new(exe).is_absolute()
 }
 
@@ -697,7 +697,7 @@ fn is_resolved_absolute_exe_path(exe: &str) -> bool {
 /// one token despite embedded spaces; an embedded double quote (never
 /// legal in an actual Windows file path, but handled defensively) is
 /// escaped by doubling it.
-fn shell_quote_for_hook_command(exe: &str) -> String {
+pub(super) fn shell_quote_for_hook_command(exe: &str) -> String {
     let is_safe_unquoted = exe.chars().all(|c| {
         c.is_ascii_alphanumeric()
             || matches!(c, '/' | '.' | '-' | '_' | ':')
@@ -749,7 +749,7 @@ fn shell_quote_for_hook_command(exe: &str) -> String {
 /// the SAME hook, not two different ones -- this extraction is what makes that comparison
 /// possible. Returns `None` if `command` doesn't contain the marker at
 /// all (not a telemetry-hook command shape this pass recognizes).
-fn stable_hook_command_suffix(command: &str) -> Option<&str> {
+pub(super) fn stable_hook_command_suffix(command: &str) -> Option<&str> {
     const MARKER: &str = "__telemetry-hook ";
     let idx = command.find(MARKER)?;
     Some(&command[idx..])
