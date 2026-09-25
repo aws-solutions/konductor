@@ -248,18 +248,16 @@ impl InstallStrategy for KiroCliV3InstallStrategy {
         }
 
         // Predicts the standalone V3 SessionStart telemetry hook
-        // document this run writes (unless `--no-telemetry`) --
-        // deliberately folded in AFTER the no-op check above, not
-        // before it: this file is written unconditionally for every V3
-        // install with telemetry enabled, independent of whether any
-        // OTHER synthed content exists at all -- including it in the
-        // no-op check would let an otherwise genuinely-empty install
-        // "succeed" by writing only this one file. Still folded into
-        // `plan` before the write-ahead manifest below, for the
-        // identical crash-safety reason `plan_claude_settings_grant`
+        // document this run writes (unless `--no-telemetry`). Folded in
+        // after the no-op check above, not before: this file is written
+        // unconditionally for every V3 install with telemetry enabled,
+        // so including it in the no-op check would let an otherwise
+        // genuinely-empty install "succeed" by writing only this one
+        // file. Folded into `plan` before the write-ahead manifest below
+        // for the same crash-safety reason `plan_claude_settings_grant`
         // documents: `attach_provenance` requires every file this run
-        // actually writes to already appear here, or it fails as an
-        // internal error.
+        // writes to already appear here, or it fails as an internal
+        // error.
         if !no_telemetry {
             let manifest_path = V3_STANDALONE_HOOKS_RELATIVE_PATH.to_string();
             let provenance = classify_provenance(
@@ -351,14 +349,14 @@ impl InstallStrategy for KiroCliV3InstallStrategy {
             install_agents(&harness_dir, target_dir, &bin_files)?;
         raw_files.extend(agent_files);
 
-        // The standalone V3 SessionStart telemetry hook document --
+        // The standalone V3 SessionStart telemetry hook document,
         // written unconditionally for every V3 install unless
-        // `--no-telemetry`, independent of `any_mcp_server_injected`/
-        // Claude Code detection -- unlike the block below, this has
-        // nothing to do with Claude Code at all. Non-fatal on failure,
-        // matching `apply_claude_settings_grant_and_hooks`'s own
-        // philosophy: a problem writing this additive, best-effort file
-        // must never abort an otherwise-successful Kiro install.
+        // `--no-telemetry` -- unlike the block below, this has nothing
+        // to do with Claude Code detection or `any_mcp_server_injected`.
+        // Non-fatal on failure, matching `apply_claude_settings_grant_
+        // and_hooks`'s philosophy: a problem writing this additive,
+        // best-effort file must never abort an otherwise-successful
+        // Kiro install.
         if !no_telemetry {
             match apply_v3_standalone_telemetry_hook(target_dir) {
                 Ok((path, sha256)) => raw_files.push(ManifestFile {

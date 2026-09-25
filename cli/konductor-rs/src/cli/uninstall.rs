@@ -1434,15 +1434,15 @@ fn delete_eligible_files(
         let path = target_dir.join(rel);
 
         // The V3 standalone telemetry-hook document shares its directory
-        // with a dedicated lock file (`V3_STANDALONE_HOOK_LOCK_FILE_NAME`)
-        // that guards writes to it -- see that constant's own doc
-        // comment. The lock file is never manifest-tracked, so it is
-        // never itself a loop iteration here. Runs unconditionally for
-        // the tracked hook document's own manifest entry, independent of
-        // whether that entry's `path` still exists on disk or whether
-        // removing it below succeeds -- otherwise the lock file (and,
-        // transitively, `.kiro/hooks/`) would be stranded whenever the
-        // tracked document was deleted out-of-band before uninstall ran.
+        // with a dedicated lock file (`V3_STANDALONE_HOOK_LOCK_FILE_NAME`,
+        // see its own doc comment) that is never manifest-tracked, so it
+        // never appears as its own loop iteration here. Removed
+        // unconditionally alongside the tracked hook document's entry,
+        // regardless of whether that entry's `path` still exists on disk
+        // or whether removing it below succeeds -- otherwise the lock
+        // file (and, transitively, `.kiro/hooks/`) would be stranded
+        // whenever the tracked document was deleted out-of-band before
+        // uninstall ran.
         if file.path == V3_STANDALONE_HOOKS_RELATIVE_PATH {
             if let Some(parent) = path.parent() {
                 let _ = std::fs::remove_file(parent.join(V3_STANDALONE_HOOK_LOCK_FILE_NAME));

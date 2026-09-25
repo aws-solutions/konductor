@@ -6,59 +6,43 @@
 // `claude_settings.rs`'s `TELEMETRY_HOOK_ENTRIES`/`apply_claude_
 // settings_hooks`:
 //
-// - V2 (`TelemetryHookPass`): mutates the installed agent's own JSON
-//   file, merging an entry into its inline `hooks.agentSpawn` array --
-//   a per-agent `ResourceRewritePass`, run once per agent through
+// - V2 (`TelemetryHookPass`): merges an entry into the installed
+//   agent's own inline `hooks.agentSpawn` array -- a per-agent
+//   `ResourceRewritePass`, run once per agent through
 //   `resource_rewrite::apply_all`/`standard_passes`. Wires `konductor
-//   __telemetry-hook agent-invocation`, the Kiro CLI 2.x trigger name
-//   for "a new agent/session invocation begins".
+//   __telemetry-hook agent-invocation` under `agentSpawn`, V2's trigger
+//   name for "a new agent/session invocation begins".
 // - V3/KAS (`apply_v3_standalone_telemetry_hook`): writes one
-//   standalone `.kiro/hooks/<name>.json` document, shared by every
-//   agent at the install target -- not a per-agent `ResourceRewritePass`
-//   at all, since KAS 3.0's own hooks-migration mechanism moved hooks
-//   out of embedded agent-config fields and into standalone
-//   `.kiro/hooks/*.json` files. Wires the same `agent-invocation` event
-//   under `SessionStart`, the KAS 3.0 PascalCase rename of V2's
-//   `agentSpawn`.
+//   standalone `.kiro/hooks/<name>.json` document shared by every agent
+//   at the install target, since KAS 3.0 moved hooks out of embedded
+//   agent-config fields into standalone `.kiro/hooks/*.json` files.
+//   Wires the same event under `SessionStart`, KAS 3.0's PascalCase
+//   rename of V2's `agentSpawn`.
 //
 // Scope: only the confirmed top-level `agent_invocation` event.
-// Sub-agent-delegation telemetry (`subagent_invocation`) for Kiro is
-// not wired by this module -- Kiro's own PreToolUse/sub-agent-name
-// payload shape is not confirmed against this codebase's
-// `telemetry_hook.rs::resolve_agent_name`, and inventing a matcher
-// convention without that confirmation risks silently misattributing
-// or double-counting events. This mirrors the existing project stance
-// of implementing only what's confirmed elsewhere in this codebase.
+// Sub-agent-delegation telemetry (`subagent_invocation`) is not wired
+// here -- Kiro's PreToolUse/sub-agent-name payload shape isn't
+// confirmed against `telemetry_hook.rs::resolve_agent_name`, and
+// inventing a matcher without that confirmation risks misattributing
+// or double-counting events.
 //
-// ── Structural fit: an install-strategy-level step for V3, a resource-
-//    rewrite pass for V2 ───────────────────────────────────────────────
+// V3's standalone document is an install-target-level artifact, not
+// one agent's own JSON, so `apply_v3_standalone_telemetry_hook` is a
+// plain function called once per install from `kiro_cli_v3.rs`'s
+// `install_from_local`, at the same call-site level as
+// `write_install_info`/`apply_claude_settings_grant_and_hooks`.
+// `standard_passes_v3` never carries a telemetry-hook pass.
 //
-// `ResourceRewritePass::rewrite`/`verify` assume the pass mutates one
-// agent's own parsed JSON -- true for V2's inline `hooks.agentSpawn`,
-// not true for V3's standalone document, which is a separate,
-// install-target-level artifact sibling to `.kiro/agents/` itself.
-// `apply_v3_standalone_telemetry_hook` is therefore a plain function,
-// called once per install from `kiro_cli_v3.rs`'s `install_from_local`,
-// at the same call-site level as `write_install_info`/
-// `apply_claude_settings_grant_and_hooks`. `standard_passes_v3` never
-// carries a telemetry-hook pass.
-//
-// ── V2/V3 parity: a transient current_exe() failure is non-fatal
-//    everywhere ────────────────────────────────────────────────────────
-//
-// `merge_agent_spawn_hook`'s `Absent` branch deliberately never
-// persists a `$PATH`-dependent fallback command when
-// `resolve_konductor_exe_path()` couldn't resolve
-// `std::env::current_exe()` to an absolute path this run.
-// `verify_agent_spawn_hook_command` re-checks `current_exe()`
-// resolvability before turning a missing entry into a hard `Err`: still
-// unresolvable degrades to a non-fatal warning; resolvable but still
-// missing means the agent file's pre-existing `hooks` shape is
-// genuinely malformed, which remains a hard `Err`. Mirrors
-// `claude_settings.rs`'s own non-fatal handling of the identical root
-// cause (`ClaudeGrantError::Other`), and
-// `apply_v3_standalone_telemetry_hook_with_exe`'s own refusal for the
-// V3 side.
+// A transient `current_exe()` failure is non-fatal on both sides:
+// `merge_agent_spawn_hook`'s `Absent` branch never persists a
+// `$PATH`-dependent fallback command when the exe path didn't resolve
+// to an absolute path this run, and `verify_agent_spawn_hook_command`
+// re-checks resolvability before erroring -- still unresolvable
+// degrades to a warning; resolvable but still missing means the
+// agent's pre-existing `hooks` shape is genuinely malformed, which
+// stays a hard error. Mirrors `claude_settings.rs`'s handling of the
+// same root cause, and `apply_v3_standalone_telemetry_hook_with_exe`'s
+// refusal on the V3 side.
 
 use std::path::Path;
 
@@ -109,16 +93,16 @@ impl ResourceRewritePass for TelemetryHookPass {
 /// Relative path, under a Kiro CLI V3 (KAS) install target directory, of
 /// the standalone SessionStart telemetry hook document this module
 /// writes. A dedicated, Konductor-namespaced filename under the shared
-/// `.kiro/hooks/` directory. Because this path is fully owned by
-/// Konductor (never merged with unrelated hand-authored hooks the way
-/// `.claude/settings.json` is), the generic `Created`/`ReplacedOurs`/
-/// `ReplacedForeign` provenance model gives correct install/uninstall
-/// behavior with no special-casing, except for the dedicated lock file
-/// this module also writes into the same directory (see
-/// `V3_STANDALONE_HOOK_LOCK_FILE_NAME`), which is untracked by the
-/// manifest and needs `uninstall.rs`'s own best-effort cleanup.
-/// `pub(crate)`: read by `kiro_cli_v3.rs` to build the manifest entry,
-/// and by `uninstall.rs` to clean up the sibling lock file.
+/// `.kiro/hooks/` directory. This path is fully owned by Konductor
+/// (never merged with unrelated hand-authored hooks the way
+/// `.claude/settings.json` is), so the generic `Created`/`ReplacedOurs`/
+/// `ReplacedForeign` provenance model needs no special-casing here --
+/// except for the dedicated lock file this module also writes into the
+/// same directory (see `V3_STANDALONE_HOOK_LOCK_FILE_NAME`), which is
+/// untracked by the manifest and needs `uninstall.rs`'s own best-effort
+/// cleanup. `pub(crate)`: read by `kiro_cli_v3.rs` to build the
+/// manifest entry, and by `uninstall.rs` to clean up the sibling lock
+/// file.
 pub(crate) const V3_STANDALONE_HOOKS_RELATIVE_PATH: &str =
     ".kiro/hooks/konductor-telemetry-hooks.json";
 
@@ -164,17 +148,14 @@ fn build_v3_standalone_hook_document(session_start_command: String) -> serde_jso
 /// content with the fresh document `build_v3_standalone_hook_document`
 /// produces for the current `exe`. Unlike `merge_claude_settings_hooks`
 /// or this file's own V2 `merge_agent_spawn_hook`, this never reads or
-/// merges into pre-existing content: this file's dedicated,
-/// Konductor-owned name means there is no "preserve someone else's
-/// unrelated hooks" concern the way there is for a genuinely shared
-/// file like `.claude/settings.json`. Mirrors how `.kiro/agents/
-/// <name>.json` itself is written: fully Konductor-owned, rewritten
-/// fresh on every install.
-///
-/// A full overwrite makes idempotency and self-healing automatic: every
-/// write recomputes the same document from the current `exe`, so a
-/// relocated binary or a second install run both simply reproduce
-/// correct, up-to-date content.
+/// merges pre-existing content: the file's Konductor-owned name means
+/// there is no "preserve someone else's hooks" concern the way there is
+/// for a genuinely shared file like `.claude/settings.json` -- it's
+/// rewritten fresh on every install, the same as `.kiro/agents/
+/// <name>.json`. That full overwrite also makes idempotency and
+/// self-healing automatic: a relocated binary or a second install run
+/// both just reproduce correct, up-to-date content from the current
+/// `exe`.
 ///
 /// Returns the exact bytes written, so the caller can hash them for the
 /// manifest entry.
@@ -182,11 +163,10 @@ fn build_v3_standalone_hook_document(session_start_command: String) -> serde_jso
 /// Unlike `.kiro/agents/<name>.json` (one file per agent), this file is
 /// written unconditionally by every V3 install with telemetry enabled,
 /// so two concurrent `konductor install --harness kiro-v3` runs against
-/// the same target are guaranteed to race on this exact path. The
-/// create-dir-plus-write sequence is serialized via `config_lock`'s
-/// advisory lock, the same primitive `claude_settings.rs`'s
-/// settings-merge lock uses. The lock guard is held for the rest of
-/// this function's scope.
+/// the same target will race on this exact path. The create-dir-plus-
+/// write sequence is serialized via `config_lock`'s advisory lock (the
+/// same primitive `claude_settings.rs`'s settings-merge lock uses),
+/// held for the rest of this function's scope.
 pub(super) fn write_v3_standalone_telemetry_hook_file(
     target_dir: &Path,
     exe: &str,
@@ -340,20 +320,19 @@ fn read_existing_hook_entries<'a>(
 /// __telemetry-hook agent-invocation` -- creates `hooks`/`hooks.
 /// <trigger>` fresh when either is absent, or merges into existing
 /// content otherwise. Operates directly on an in-memory
-/// `serde_json::Value` already parsed by the caller's `apply_all` --
-/// there is no file to read/lock/write here.
+/// `serde_json::Value` already parsed by the caller's `apply_all`; no
+/// file to read/lock/write here.
 ///
-/// Silently leaves `value` untouched (a documented no-op, not a panic)
-/// when `value`'s top level, its pre-existing `"hooks"` key, or
-/// `"hooks.<trigger>"` is not the JSON shape this expects --
-/// `verify_agent_spawn_hook_command` turns that no-op into a hard `Err`
-/// for the whole install.
+/// Leaves `value` untouched (a documented no-op, not a panic) when its
+/// top level, its pre-existing `"hooks"` key, or `"hooks.<trigger>"` is
+/// not the JSON shape this expects -- `verify_agent_spawn_hook_command`
+/// turns that no-op into a hard `Err` for the whole install.
 ///
 /// Also leaves `value` untouched when the exe path could not be
-/// resolved and there is no existing entry to self-heal or match: a
-/// skipped wiring never creates so much as an empty
-/// `"hooks"`/`"hooks.<trigger>"` scaffold, since `exe_is_absolute` is
-/// checked BEFORE any mutation.
+/// resolved and there is no existing entry to self-heal or match:
+/// `exe_is_absolute` is checked before any mutation, so a skipped
+/// wiring never creates so much as an empty `"hooks"`/`"hooks.
+/// <trigger>"` scaffold.
 fn merge_agent_spawn_hook(value: &mut serde_json::Value, trigger: &str, exe: &str) {
     let quoted_exe = super::claude_settings::shell_quote_for_hook_command(exe);
     let command = format!(
@@ -386,12 +365,11 @@ fn merge_agent_spawn_hook(value: &mut serde_json::Value, trigger: &str, exe: &st
         HookEntryMatch::Absent => {
             // Same absolute-path guard, applied to fresh creation: a
             // fresh entry has no prior command to fall back on, so
-            // skipping the push here leaves the trigger's array without
-            // a matching entry. `verify_agent_spawn_hook_command`
-            // degrades that condition to a non-fatal warning (see this
-            // module's header comment, "V2/V3 parity"). `value`'s
-            // `hooks` structure is only created/mutated past this
-            // guard.
+            // skipping the push here leaves the trigger's array with no
+            // matching entry. `verify_agent_spawn_hook_command`
+            // degrades that to a non-fatal warning (see this module's
+            // header comment). `value`'s `hooks` structure is only
+            // created/mutated past this guard.
             if exe_is_absolute {
                 let Some(root_obj) = value.as_object_mut() else {
                     return;
@@ -439,8 +417,7 @@ fn hooks_array_has_telemetry_entry(value: &serde_json::Value, trigger: &str) -> 
 }
 
 /// Checks `hooks_array_has_telemetry_entry` above and, when it comes
-/// back `false`, tells apart the two reasons that can happen, per this
-/// module's header comment ("V2/V3 parity"):
+/// back `false`, tells apart the two reasons that can happen:
 ///
 /// - `current_exe()` could not be resolved to a genuine absolute path
 ///   this run (re-checked here, since `apply_all` runs `rewrite` and

@@ -209,13 +209,12 @@ fn real_synth_then_real_install_agree_on_output_path_and_bytes() {
     let installed_bytes = std::fs::read(&installed_files[0]).unwrap();
 
     // With telemetry enabled (the default -- this invocation passes no
-    // `--no-telemetry`), a real `install` wires
-    // `resource_rewrite::TelemetryHookPass` into every installed
-    // agent's own `hooks.agentSpawn` field, so the installed bytes
-    // diverge from synth's pristine output by exactly that one
-    // addition. Compare both sides with `"hooks"` stripped to confirm
-    // everything else still agrees, then separately confirm the
-    // telemetry hook landed.
+    // `--no-telemetry`), a real `install` wires `resource_rewrite::
+    // TelemetryHookPass` into every installed agent's `hooks.agentSpawn`
+    // field, so the installed bytes diverge from synth's pristine output
+    // by exactly that one addition. Compare both sides with `"hooks"`
+    // stripped to confirm everything else agrees, then separately
+    // confirm the telemetry hook landed.
     let mut synth_value: serde_json::Value = serde_json::from_slice(&synth_output_bytes).unwrap();
     let mut installed_value: serde_json::Value = serde_json::from_slice(&installed_bytes).unwrap();
     synth_value.as_object_mut().unwrap().remove("hooks");
