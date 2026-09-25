@@ -1330,6 +1330,7 @@ fn report_install_success(
                     "skills": 0,
                     "context": 0,
                     "bin": 0,
+                    "sops_installed": 0,
                     "sops_skipped": from
                         .map(|f| count_staged_sops(f, harness_dir))
                         .unwrap_or(0),
@@ -1536,6 +1537,17 @@ struct InstallCounts {
     skills: usize,
     context: usize,
     bin: usize,
+    /// Raw `.konductor/sops/*.sop.md` files this run actually wrote --
+    /// distinct from `skills` (which already counts the derived
+    /// `sop-<name>/SKILL.md` conversions under `.kiro/skills/`/
+    /// `.claude/skills/`). Populated on every install path (`--from`
+    /// and no-`--from` alike), since `SopInstallPhase` runs
+    /// unconditionally and this reads back what actually landed in the
+    /// manifest -- unlike `count_staged_sops`, which only has a source
+    /// tree to read on the `--from` path. See `report_install_success`'s
+    /// doc comment for how this and `count_staged_sops`'s skip count
+    /// combine into one accurate message on both paths.
+    sops: usize,
     replaced_foreign: usize,
 }
 
@@ -1565,6 +1577,7 @@ impl InstallCounts {
         let mut agents = 0;
         let mut context = 0;
         let mut bin = 0;
+        let mut sops = 0;
         let mut replaced_foreign = 0;
         let mut skill_dirs: std::collections::HashSet<(&str, &str)> =
             std::collections::HashSet::new();
@@ -1589,6 +1602,8 @@ impl InstallCounts {
                 context += 1;
             } else if file.path.starts_with(".konductor/bin/") {
                 bin += 1;
+            } else if file.path.starts_with(".konductor/sops/") && file.path.ends_with(".sop.md") {
+                sops += 1;
             }
             if file.provenance == Provenance::ReplacedForeign {
                 replaced_foreign += 1;
@@ -1599,6 +1614,7 @@ impl InstallCounts {
             skills: skill_dirs.len(),
             context,
             bin,
+            sops,
             replaced_foreign,
         }
     }
@@ -1632,11 +1648,15 @@ fn format_install_summary(
         Some(version) => format!(" (mcp server version: {version})"),
         None => String::new(),
     };
+    let sop_note = if sops_skipped > 0 {
+        format!("; skipped {sops_skipped} SOP(s) (no runtime discovery path yet)")
+    } else {
+        format!("; installed {} SOP(s)", counts.sops)
+    };
     format!(
         "{} installed {} agent(s), {} skill(s), {} context file(s), {} \
-         MCP server binary(ies) to {} (manifest: {}); skipped {} SOP(s) (no runtime \
-         discovery path yet); overwrote {} pre-existing file(s) not created by \
-         Konductor{version_note}{mcp_binary_version_note}",
+         MCP server binary(ies) to {} (manifest: {}){sop_note}; overwrote {} \
+         pre-existing file(s) not created by Konductor{version_note}{mcp_binary_version_note}",
         crate::cli::output::success_prefix(color, "konductor install:"),
         counts.agents,
         counts.skills,
@@ -1644,7 +1664,6 @@ fn format_install_summary(
         counts.bin,
         destination.display(),
         manifest_path.display(),
-        sops_skipped,
         counts.replaced_foreign,
     )
 }
@@ -1682,6 +1701,7 @@ fn format_install_summary_json(
         "skills": counts.skills,
         "context": counts.context,
         "bin": counts.bin,
+        "sops_installed": counts.sops,
         "sops_skipped": sops_skipped,
         "replaced_foreign": counts.replaced_foreign,
         "agent_version": agent_version,
@@ -3428,6 +3448,11 @@ mod tests {
                     sha256: Some("f".repeat(64)),
                     provenance: Provenance::Created,
                 },
+                manifest::ManifestFile {
+                    path: ".konductor/sops/k-plan.sop.md".to_string(),
+                    sha256: Some("g".repeat(64)),
+                    provenance: Provenance::Created,
+                },
             ],
         )
     }
@@ -3445,6 +3470,7 @@ mod tests {
         assert_eq!(counts.skills, 1);
         assert_eq!(counts.context, 1);
         assert_eq!(counts.bin, 1);
+        assert_eq!(counts.sops, 1);
         assert_eq!(counts.replaced_foreign, 2);
     }
 
@@ -3494,6 +3520,7 @@ mod tests {
         assert_eq!(counts.skills, 1);
         assert_eq!(counts.context, 0);
         assert_eq!(counts.bin, 0);
+        assert_eq!(counts.sops, 0);
         assert_eq!(counts.replaced_foreign, 1);
     }
 
@@ -3536,7 +3563,145 @@ mod tests {
             counts.skills, 2,
             "both the .konductor/skills/ skill and the .kiro/skills/ SOP-skill must count"
         );
+        assert_eq!(
+            counts.sops, 0,
+            "the SOP-skill conversion under .kiro/skills/ is not a raw .konductor/sops/ file"
+        );
         assert_eq!(counts.replaced_foreign, 0);
+    }
+
+    /// `InstallCounts::sops` counts the RAW `.konductor/sops/*.sop.md`
+    /// files a run wrote, distinct from `skills` (which separately
+    /// counts the derived `sop-<name>/SKILL.md` conversion directory
+    /// under `.kiro/skills/`). Both artifact kinds from the same source
+    /// SOP appear in one manifest -- this is the field
+    /// `report_install_success` reads to report `sops_installed`
+    /// accurately on every install path, since (unlike
+    /// `count_staged_sops`) it has no dependency on a staged source
+    /// tree being present.
+    #[test]
+    fn install_counts_from_manifest_counts_raw_sop_files_distinctly_from_sop_skills() {
+        let manifest = manifest::StrategyManifest::new(
+            "kiro-cli-v2",
+            "2026-01-15T09:30:00Z",
+            ".",
+            None,
+            manifest::Status::Complete,
+            vec![
+                manifest::ManifestFile {
+                    path: ".konductor/sops/k-plan.sop.md".to_string(),
+                    sha256: Some("a".repeat(64)),
+                    provenance: Provenance::Created,
+                },
+                manifest::ManifestFile {
+                    path: ".konductor/sops/k-verify.sop.md".to_string(),
+                    sha256: Some("b".repeat(64)),
+                    provenance: Provenance::Created,
+                },
+                manifest::ManifestFile {
+                    path: ".kiro/skills/sop-k-plan/SKILL.md".to_string(),
+                    sha256: Some("c".repeat(64)),
+                    provenance: Provenance::Created,
+                },
+            ],
+        );
+
+        let counts = InstallCounts::from_manifest(&manifest);
+        assert_eq!(counts.sops, 2, "two raw .sop.md files were written");
+        assert_eq!(
+            counts.skills, 1,
+            "the sop-k-plan SOP-skill conversion counts toward skills, not sops"
+        );
+    }
+
+    /// The `--from` local path: `sops_skipped > 0` must render the
+    /// verbatim "skipped N SOP(s) (no runtime discovery path yet)"
+    /// clause this message has always used for that path -- unchanged
+    /// by this fix, since that limitation genuinely still applies
+    /// there. Regression guard against the fix accidentally also
+    /// rewording the still-accurate `--from` path.
+    #[test]
+    fn format_install_summary_reports_skipped_sops_with_reason_when_from_path_skips_them() {
+        let counts = InstallCounts::from_manifest(&sample_manifest());
+        let summary = format_install_summary(
+            Path::new("/tmp/example-target"),
+            Path::new("/tmp/example-target/.konductor/manifest"),
+            &counts,
+            19,
+            None,
+            None,
+            ColorMode::disabled(),
+        );
+        assert!(
+            summary.contains("skipped 19 SOP(s) (no runtime discovery path yet)"),
+            "the --from path must keep its verbatim skip clause, got: {summary:?}"
+        );
+        assert!(
+            !summary.contains("installed 1 SOP(s)"),
+            "must not ALSO claim an install count in the same message, got: {summary:?}"
+        );
+    }
+
+    /// The no-`--from` remote path: `sops_skipped == 0` (no staged
+    /// source tree for `count_staged_sops` to read) must NOT render the
+    /// false "skipped 0 SOP(s) (no runtime discovery path yet)" clause
+    /// -- the exact bug this fix corrects. Instead it must report the
+    /// real installed count from the manifest.
+    #[test]
+    fn format_install_summary_reports_installed_sops_with_no_false_skip_on_remote_path() {
+        let counts = InstallCounts::from_manifest(&sample_manifest());
+        let summary = format_install_summary(
+            Path::new("/tmp/example-target"),
+            Path::new("/tmp/example-target/.konductor/manifest"),
+            &counts,
+            0,
+            None,
+            None,
+            ColorMode::disabled(),
+        );
+        assert!(
+            !summary.contains("skipped 0 SOP(s)"),
+            "must never claim a skip that didn't happen, got: {summary:?}"
+        );
+        assert!(
+            !summary.contains("no runtime discovery path yet"),
+            "the false reason phrase must not appear when nothing was skipped, got: {summary:?}"
+        );
+        assert!(
+            summary.contains("installed 1 SOP(s)"),
+            "must report the real installed count from the manifest, got: {summary:?}"
+        );
+    }
+
+    /// `--json` equivalent of the two `format_install_summary` tests
+    /// above: `sops_installed` always reflects the manifest, and
+    /// `sops_skipped` is `0` (not a false nonzero) on the no-`--from`
+    /// path, so a machine consumer reading `--json` output sees the
+    /// same accurate picture the plain-text summary does.
+    #[test]
+    fn format_install_summary_json_reports_both_sops_installed_and_sops_skipped_fields() {
+        let counts = InstallCounts::from_manifest(&sample_manifest());
+        let value = format_install_summary_json(
+            Path::new("/tmp/example-target"),
+            Path::new("/tmp/example-target/.konductor/manifest"),
+            &counts,
+            0,
+            None,
+            None,
+        );
+        assert_eq!(value["sops_installed"], serde_json::json!(1));
+        assert_eq!(value["sops_skipped"], serde_json::json!(0));
+
+        let value_from_path = format_install_summary_json(
+            Path::new("/tmp/example-target"),
+            Path::new("/tmp/example-target/.konductor/manifest"),
+            &counts,
+            19,
+            None,
+            None,
+        );
+        assert_eq!(value_from_path["sops_installed"], serde_json::json!(1));
+        assert_eq!(value_from_path["sops_skipped"], serde_json::json!(19));
     }
 
     /// Regression: a plain skill under `.konductor/skills/` and a
