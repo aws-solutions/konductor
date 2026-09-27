@@ -587,6 +587,138 @@ async fn prompts_get_unknown_name_returns_an_error() {
 }
 
 #[tokio::test]
+async fn tools_list_with_a_real_cursor_still_returns_every_tool_and_no_next_cursor() {
+    // `list_tools` takes `_request: Option<PaginatedRequestParams>` and
+    // unconditionally answers via `ListToolsResult::with_all_items(...)`
+    // — the parameter is never read. A non-empty `cursor` is accepted by
+    // the schema but has zero effect: the full three-tool set comes back
+    // regardless, and `result.nextCursor` is absent (`with_all_items`
+    // hardcodes `next_cursor: None`, which `Option::is_none` then skips
+    // serializing). Cursor-based pagination is wire-accepted but not
+    // implemented.
+    with_probe_server("tools-list-cursor", |mut stdin, mut reader| async move {
+        complete_handshake(&mut stdin, &mut reader).await;
+
+        write_message(
+            &mut stdin,
+            &serde_json::json!({
+                "jsonrpc": "2.0",
+                "id": 2,
+                "method": "tools/list",
+                "params": {"cursor": "some-arbitrary-cursor-value"}
+            }),
+        )
+        .await;
+        let response = read_json_line(&mut reader).await;
+        assert_eq!(
+            response.get("id").and_then(|v| v.as_i64()),
+            Some(2),
+            "tools/list response did not echo request id 2: {response:?}"
+        );
+
+        let result = response
+            .get("result")
+            .unwrap_or_else(|| panic!("expected tools/list with a cursor to still succeed (the cursor is not validated), got: {response:?}"));
+
+        let tools = result
+            .get("tools")
+            .and_then(|v| v.as_array())
+            .unwrap_or_else(|| panic!("expected result.tools array: {response:?}"));
+        let names: Vec<&str> = tools
+            .iter()
+            .filter_map(|t| t.get("name").and_then(|n| n.as_str()))
+            .collect();
+        for expected in ["find_skills", "get_skill", "reload_skills"] {
+            assert!(
+                names.contains(&expected),
+                "a non-None cursor must not suppress any advertised tool, expected '{expected}', got {names:?}"
+            );
+        }
+        assert_eq!(
+            names.len(),
+            3,
+            "expected all three tools regardless of the supplied cursor, got {names:?}"
+        );
+
+        // Pagination is not implemented, so no continuation cursor is
+        // ever produced.
+        assert!(
+            result.get("nextCursor").is_none(),
+            "expected no nextCursor since list_tools always returns every item \
+             regardless of the supplied cursor (pagination is not implemented): {result:?}"
+        );
+
+        drop(stdin);
+    })
+    .await;
+}
+
+#[tokio::test]
+async fn list_tools_and_list_prompts_omit_the_meta_field_entirely() {
+    // `rmcp` 2.1.0's `with_all_items` constructor (used by both
+    // `list_tools` and `list_prompts` in `handlers.rs`) hardcodes
+    // `meta: None`, and the field's own
+    // `#[serde(rename = "_meta", skip_serializing_if = "Option::is_none")]`
+    // attribute means a `None` meta is not serialized as `"_meta": null`
+    // — the `_meta` key is omitted from the JSON response entirely.
+    with_probe_sop_server("list-meta-absent", |mut stdin, mut reader| async move {
+        complete_handshake(&mut stdin, &mut reader).await;
+
+        write_message(
+            &mut stdin,
+            &serde_json::json!({
+                "jsonrpc": "2.0",
+                "id": 2,
+                "method": "prompts/list"
+            }),
+        )
+        .await;
+        let response = read_json_line(&mut reader).await;
+        let result = response
+            .get("result")
+            .unwrap_or_else(|| panic!("expected prompts/list to succeed: {response:?}"));
+        assert!(
+            result.get("_meta").is_none(),
+            "expected no '_meta' key on ListPromptsResult (with_all_items sets meta: None, \
+             which skip_serializing_if omits from the wire), got: {result:?}"
+        );
+        assert!(
+            result.get("nextCursor").is_none(),
+            "expected no 'nextCursor' key on ListPromptsResult for the same reason: {result:?}"
+        );
+
+        drop(stdin);
+    })
+    .await;
+
+    with_probe_server("list-meta-absent-tools", |mut stdin, mut reader| async move {
+        complete_handshake(&mut stdin, &mut reader).await;
+
+        write_message(
+            &mut stdin,
+            &serde_json::json!({
+                "jsonrpc": "2.0",
+                "id": 2,
+                "method": "tools/list"
+            }),
+        )
+        .await;
+        let response = read_json_line(&mut reader).await;
+        let result = response
+            .get("result")
+            .unwrap_or_else(|| panic!("expected tools/list to succeed: {response:?}"));
+        assert!(
+            result.get("_meta").is_none(),
+            "expected no '_meta' key on ListToolsResult (with_all_items sets meta: None, \
+             which skip_serializing_if omits from the wire), got: {result:?}"
+        );
+
+        drop(stdin);
+    })
+    .await;
+}
+
+#[tokio::test]
 async fn reload_skills_succeeds_and_reports_the_expected_indexed_count() {
     with_probe_server("reload-skills", |mut stdin, mut reader| async move {
         complete_handshake(&mut stdin, &mut reader).await;
