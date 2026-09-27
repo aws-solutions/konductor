@@ -475,9 +475,9 @@ fn plan_skill_files(
 ) -> Result<Vec<PlannedFile>, String> {
     let source_root = harness_dir.join(SKILLS_CONTENT_TYPE_DIR);
     let skill_names = list_skill_dirs(&source_root)?;
-    let destination_root = target_dir
-        .join(KONDUCTOR_DESTINATION_ROOT)
-        .join(SKILLS_CONTENT_TYPE_DIR);
+    let skills_root = skills_destination_root(harness_dir)?;
+    reject_sop_skill_collisions(harness_dir, skills_root, &skill_names)?;
+    let destination_root = target_dir.join(skills_root).join(SKILLS_CONTENT_TYPE_DIR);
 
     let mut plan = Vec::new();
     for skill_name in skill_names {
@@ -486,16 +486,64 @@ fn plan_skill_files(
         plan_skill_dir_recursive(
             &skill_source,
             &skill_destination,
-            &content_manifest_path(
-                KONDUCTOR_DESTINATION_ROOT,
-                SKILLS_CONTENT_TYPE_DIR,
-                &skill_name,
-            ),
+            &content_manifest_path(skills_root, SKILLS_CONTENT_TYPE_DIR, &skill_name),
             prior_manifest,
             &mut plan,
         )?;
     }
     Ok(plan)
+}
+
+/// The install root ordinary skills go under for this synth output:
+/// `.konductor/` when the output carries at least one agent, else
+/// `.kiro/`.
+///
+/// Skills normally stay out of `.kiro/skills/` because Kiro CLI shows
+/// every skill there to every agent, which defeats the per-agent skill
+/// scoping the agents' `skill-lookup-mcp` configuration provides. Output
+/// with no agents has nothing to scope and nothing to carry that MCP
+/// configuration, so `.konductor/skills/` would be unreachable from a
+/// plain Kiro session; `.kiro/skills/` is the one place Kiro CLI
+/// discovers skills natively. Both `plan_skill_files` and
+/// `copy::install_skills` call this, so the plan and the copy always
+/// agree on the root. Scope sidecars in `agents/` are not agents
+/// (`list_agent_files` skips them).
+pub(in crate::cli::install) fn skills_destination_root(
+    harness_dir: &Path,
+) -> Result<&'static str, String> {
+    if list_agent_files(&harness_dir.join(AGENTS_CONTENT_TYPE_DIR))?.is_empty() {
+        Ok(KIRO_DESTINATION_ROOT)
+    } else {
+        Ok(KONDUCTOR_DESTINATION_ROOT)
+    }
+}
+
+/// When ordinary skills share `.kiro/skills/` with the `sop-<name>`
+/// conversions `install_kiro_sop_skills` writes there, a skill directory
+/// named exactly like one of those conversions would be overwritten by
+/// it. Refuse that before anything is written. No check is needed under
+/// `.konductor/`, where the two never share a directory.
+pub(in crate::cli::install) fn reject_sop_skill_collisions(
+    harness_dir: &Path,
+    skills_root: &str,
+    skill_names: &[String],
+) -> Result<(), String> {
+    if skills_root != KIRO_DESTINATION_ROOT {
+        return Ok(());
+    }
+    for sop_file in list_agent_files_like(&harness_dir.join(SOPS_CONTENT_TYPE_DIR))? {
+        let Some(sop_name) = sop_file.strip_suffix(".sop.md") else {
+            continue;
+        };
+        let converted = format!("sop-{sop_name}");
+        if skill_names.iter().any(|name| name == &converted) {
+            return Err(format!(
+                "skill '{converted}' has the same name as the skill the '{sop_name}' SOP \
+                 converts to under {KIRO_DESTINATION_ROOT}/{SKILLS_CONTENT_TYPE_DIR}/; rename one of them"
+            ));
+        }
+    }
+    Ok(())
 }
 
 /// Recursive planning counterpart to `copy_skill_dir_recursive`: walks

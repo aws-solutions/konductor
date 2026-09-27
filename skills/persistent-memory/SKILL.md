@@ -38,7 +38,13 @@ Load `.konductor/memory/MEMORY.md` and `.konductor/memory/USER.md` via `fs_read`
    ```bash
    VALIDATOR="$(git rev-parse --show-toplevel 2>/dev/null)/skills/persistent-memory/scripts/memory-validator.sh"
    if [[ ! -x "$VALIDATOR" ]]; then
-     VALIDATOR="${SKILLS_HOME:-$HOME/.konductor/skills}/persistent-memory/scripts/memory-validator.sh"
+     # Installed copies: .konductor/skills (packages with agents), .kiro/skills
+     # (Kiro CLI without agents), .claude/skills (Claude Code).
+     for dir in "${SKILLS_HOME:-$HOME/.konductor/skills}" .kiro/skills .claude/skills \
+       "$HOME/.kiro/skills" "$HOME/.claude/skills"; do
+       VALIDATOR="$dir/persistent-memory/scripts/memory-validator.sh"
+       [[ -x "$VALIDATOR" ]] && break
+     done
    fi
    printf '%s' "$PROPOSED_CONTENT" | bash "$VALIDATOR" ".konductor/memory/MEMORY.md"
    ```
@@ -46,7 +52,7 @@ Load `.konductor/memory/MEMORY.md` and `.konductor/memory/USER.md` via `fs_read`
 4. **Exit 0** → write succeeded (validator performs atomic write).
 5. **Exit 1** → read stderr for reason, adjust and retry once, or skip if unresolvable.
 
-**Missing validator:** If neither path resolves to an executable validator, fail closed: do not write, log the error, continue the session normally.
+**Missing validator:** If no candidate path resolves to an executable validator, fail closed: do not write, log the error, continue the session normally.
 
 ### Add an entry
 

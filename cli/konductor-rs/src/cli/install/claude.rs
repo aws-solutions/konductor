@@ -230,6 +230,9 @@ impl InstallStrategy for ClaudeInstallStrategy {
         );
         super::manifest::upsert_strategy(target_dir, complete)?;
 
+        // Same call, same rationale, as `kiro_cli.rs`'s own call site.
+        super::prune::remove_source_deleted_files(target_dir, prior_manifest.as_ref(), &[]);
+
         // Same call, same rationale, as `kiro_cli.rs`'s own identical
         // call site.
         if !no_telemetry {

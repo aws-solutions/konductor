@@ -39,6 +39,10 @@ For each extracted claim, use the `aws-mcp` tools in this order:
 
 Do not accept the document's own assertion as evidence. Always consult the primary source.
 
+If the `aws-mcp` tools are not available in the session, do not validate from memory. Follow the
+`aws-mcp-usage` skill's "When the tools are missing" section: tell the user the server is not
+configured, and classify every claim as UNVERIFIED with the reason "aws-mcp tools unavailable".
+
 ### Step 3: Classify Each Claim
 
 | Status     | Definition                                                         |

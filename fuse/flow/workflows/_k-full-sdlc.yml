@@ -6,8 +6,9 @@
 # Fields per step:
 #   id          lowercase identifier, used in fuse-flow commands
 #   skill       SKILL.md to read first, relative to the skills directory
-#               (FUSE_SKILLS_DIR, else skills/, .konductor/skills, .claude/skills,
-#               ~/.konductor/skills, ~/.claude/skills), or an absolute path
+#               (FUSE_SKILLS_DIR, else skills/, .kiro/skills, .konductor/skills,
+#               .claude/skills, ~/.kiro/skills, ~/.konductor/skills,
+#               ~/.claude/skills), or an absolute path
 #   instruction inline guidance printed by `fuse-flow next`
 #   produces    artifacts that must exist before `fuse-flow done` is accepted
 #   gate        none | owner | "check: <command run from the repository root>"

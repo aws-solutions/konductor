@@ -1,6 +1,6 @@
 ---
 name: pre-planning-analysis
-description: Use when a request is ambiguous and it is unclear which specialist agent should handle it. Classifies the intent into one of 6 types, surfaces ambiguities, bounds the scope, and recommends an agent chain.
+description: Use when a request is ambiguous and it is unclear which skill or SOP should handle it. Classifies the intent into one of 6 types, surfaces ambiguities, bounds the scope, and recommends a procedure chain.
 version: 1.0.0
 tags: [skill, pre-planning, analysis, intent-classification, scope, orchestration]
 ---
@@ -9,19 +9,19 @@ tags: [skill, pre-planning, analysis, intent-classification, scope, orchestratio
 
 ## Overview
 
-Provides a structured framework for analyzing ambiguous requests before routing to specialist agents. Classifies the work intent, identifies ambiguities and AI failure risks, bounds scope, and recommends which agents to involve.
+Provides a structured framework for analyzing ambiguous requests before selecting skills and SOPs. Classifies the work intent, identifies ambiguities and AI failure risks, bounds scope, and recommends which procedures to run.
 
 ## Usage
 
 Use this skill when:
 
-- You cannot determine which specialist agent handles a request
+- You cannot determine which skill or SOP handles a request
 - A request spans multiple SDLC phases and needs decomposition
-- The request is vague and needs scope bounding before delegation
+- The request is vague and needs scope bounding before execution
 
 Do NOT use when:
 
-- The request clearly maps to one agent (e.g., "write a PRD" → PM, "design the API" → architect)
+- The request clearly maps to one skill or SOP (e.g., "write user stories" → `user-story-writing`, "design the system" → `system-design-patterns`)
 - The user just needs a clarifying question: ask it directly instead
 
 ## Phase 0: Intent Classification
@@ -43,37 +43,37 @@ Classify the request into one of 6 types:
 
 Questions: What behavior must be preserved? Rollback strategy? Propagation scope? Hidden dependencies?
 Directives: Pre-refactor verification, verify after EACH change, document preserved behavior. Do NOT combine with feature changes.
-Route to: `k-developer`
+Run: the applicable implementation skill
 
 ### Build from Scratch
 
 Questions: Similar existing code? Codebase conventions? Existing utilities? Testing strategy?
 Directives: Research patterns BEFORE implementation, reference specific files, define "done" criteria. Do NOT invent new patterns.
-Route to: `k-product-manager` (if new product) or `k-developer` (if new module)
+Run: `user-story-writing` for a new product, or the applicable implementation skill for a new module
 
 ### Mid-sized Task
 
 Questions: Exact deliverables? Explicit exclusions? Assumptions? Verification criteria?
 Directives: List deliverables and exclusions explicitly, define acceptance criteria per deliverable. Do NOT expand scope.
-Route to: `k-developer`
+Run: the applicable implementation skill
 
 ### Collaborative
 
 Questions: Most important thing to get right? Timeline? Constraints? Options vs recommendation?
 Directives: Present choices at decision points, confirm understanding, break into checkpoints. Do NOT make major decisions without user input.
-Route to: Depends on domain; ask one clarifying question to determine
+Run: `socratic-elicitation` when the domain or decision remains unclear
 
 ### Architecture
 
 Questions: Long-term implications? Optimizing for what? Constraints? Alternatives considered?
-Directives: Involve `k-architect` (has architecture-advisor skill), document trade-offs. Do NOT optimize prematurely.
-Route to: `k-architect`
+Directives: Run `system-design-patterns` or `architecture-advisor`, and document trade-offs. Do NOT optimize prematurely.
+Run: `system-design-patterns` for a full design or `architecture-advisor` for a focused recommendation
 
 ### Research
 
 Questions: Specific question to answer? "Good enough" criteria? Time budget? What to do with findings?
 Directives: Define exit criteria, set time bounds, specify output format. Do NOT research indefinitely.
-Route to: `k-researcher`
+Run: `external-research` for external sources or `k-context-gathering` for codebase and mixed-source investigation
 
 ## Phase 2: Anti-Pattern Detection
 
@@ -86,7 +86,7 @@ Flag these common AI failure patterns:
 | Assumption Cascade     | Building on unvalidated assumptions | Validate assumptions first     |
 | Premature Optimization | Optimizing before it works          | Focus on "working" first       |
 | Analysis Paralysis     | Researching forever                 | Set time bounds, exit criteria |
-| Hero Syndrome          | Trying to do everything             | Delegate to specialists        |
+| Hero Syndrome          | Trying to do everything             | Decompose with `task-decomposition` |
 
 ## Escalation to Socratic Elicitation
 
@@ -117,10 +117,10 @@ Run the `socratic-elicitation` skill's Mode A intake questioning to resolve the 
 
 > [Question — what we need to know and why]
 
-### Recommended Agent Chain
+### Recommended Procedure Chain
 
-1. [agent] → [Purpose]
-2. [agent] → [Purpose]
+1. [skill or SOP] → [Purpose]
+2. [skill or SOP] → [Purpose]
 
 ### Scope Boundaries
 
@@ -135,7 +135,7 @@ Run the `socratic-elicitation` skill's Mode A intake questioning to resolve the 
 
 - No intent classification provided
 - Scope boundaries missing (no IN/OUT distinction)
-- Recommended agent chain references agents that don't exist
+- Recommended procedure chain references skills or SOPs that do not exist
 
 **IMPORTANT (should fix):**
 
@@ -145,5 +145,5 @@ Run the `socratic-elicitation` skill's Mode A intake questioning to resolve the 
 
 **SUGGESTION:**
 
-- Could identify parallel execution opportunities in the agent chain
+- Could identify parallel execution opportunities in the procedure chain
 - Could estimate effort per phase

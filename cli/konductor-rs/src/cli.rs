@@ -231,11 +231,12 @@ pub enum Commands {
         #[arg(long, display_order = 1)]
         from: Option<String>,
 
-        /// DESTINATION: directory to install into (agents/context under
-        /// `<dir>/.kiro/`, skills under `<dir>/.konductor/skills/`,
-        /// SOPs under `<dir>/.konductor/sops/` plus a Kiro-discoverable
-        /// `sop-<name>/SKILL.md` conversion under `<dir>/.kiro/skills/`
-        /// for the Kiro harnesses). Defaults to `$HOME` when omitted.
+        /// DESTINATION: directory to install into (for the Kiro
+        /// harnesses: agents/context under `<dir>/.kiro/`, skills under
+        /// `<dir>/.konductor/skills/`, or under `<dir>/.kiro/skills/` when
+        /// the synthed output has no agents, SOPs under
+        /// `<dir>/.konductor/sops/` plus a Kiro-discoverable
+        /// `sop-<name>/SKILL.md` conversion under `<dir>/.kiro/skills/`). Defaults to `$HOME` when omitted.
         /// Pass `.` to install into the current working directory.
         /// Distinct from `--from`, which is the install SOURCE.
         #[arg(long, display_order = 2)]

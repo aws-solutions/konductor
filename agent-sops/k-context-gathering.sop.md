@@ -4,7 +4,7 @@
 
 Use it before implementing features in unfamiliar code, for complex multi-system changes, when debugging after 2+ failed attempts, for architecture decisions, or when understanding existing patterns.
 
-> **Execution context:** Steps below run shell commands and may write files. An agent without those tools delegates them to specialist agents per its routing rules.
+> **Execution context:** Steps below run shell commands and may write files. When generic subagents are available, independent code and documentation searches MAY run in parallel subagents. Otherwise, the agent running this SOP performs them sequentially.
 
 ## Parameters
 
@@ -21,14 +21,13 @@ Use it before implementing features in unfamiliar code, for complex multi-system
 
 ### 1. Gather Context
 
-Spawn agents and use direct tools simultaneously to gather information.
+Gather information with code and documentation searches.
 
 **Constraints:**
 
-- You MUST spawn agents in parallel where possible:
-  - `k-researcher` (1-2 agents): Codebase patterns, implementations, file structure
-  - `k-researcher` (1-2 agents): External library documentation (if external dependencies are involved)
-- You MUST also use direct tools in parallel with agent spawning:
+- You SHOULD run codebase and external documentation searches in parallel generic subagents when available; otherwise You MUST run them sequentially yourself
+- Generic subagents MUST receive only the target, scope, and search questions, and MUST return capped findings rather than raw file contents
+- You MUST use direct tools for codebase searches:
   - `grep`/`rg` for targeted text searches
   - `ast-grep` for structural code pattern searches
 - You MUST scope searches to the `scope` parameter if provided
@@ -63,16 +62,16 @@ Determine if the task requires escalation to a senior architect review.
 
 | Indicator                                 | Action                     |
 | ----------------------------------------- | -------------------------- |
-| Architecture decision required            | Escalate to k-architect    |
-| Multi-system coordination (3+ components) | Escalate to k-architect    |
-| Debugging after 2+ failed fix attempts    | Escalate to k-architect    |
-| Security implications                     | Escalate to k-architect    |
-| Simple implementation with clear patterns | Proceed without escalation |
+| Architecture decision required            | Run `system-design-patterns` before implementation |
+| Multi-system coordination (3+ components) | Run `system-design-patterns` before implementation |
+| Debugging after 2+ failed fix attempts    | Run a fresh `k-context-gathering` pass focused on root cause |
+| Security implications                     | Run the applicable security review or `threat-modeling` skill |
+| Simple implementation with clear patterns | Proceed without additional analysis |
 
-- If ANY escalation indicator is true, You MUST note it and recommend architect consultation before implementation
+- If ANY additional-analysis indicator is true, You MUST note it and run the listed skill or SOP before implementation
 - You MUST NOT skip the complexity check
 
-**Expected Output:** A complexity assessment with each indicator checked and a clear recommendation: "Proceed" or "Escalate to k-architect with [reason]"
+**Expected Output:** A complexity assessment with each indicator checked and a clear recommendation: "Proceed" or "Run [skill or SOP] with [reason]"
 
 ### 4. Synthesize Findings
 
@@ -126,11 +125,11 @@ Transition from analysis to action using the gathered context.
 **Constraints:**
 
 - You MUST NOT proceed to implementation if any analysis questions from Step 2 remain unanswered
-- You MUST NOT proceed if complexity assessment in Step 3 recommended escalation and escalation has not occurred
+- You MUST NOT proceed if complexity assessment in Step 3 requires additional analysis and that analysis has not occurred
 - You MUST create an implementation plan (using the plan SOP) based on the analysis summary
 - You MUST define success criteria before writing any code
 
 **Expected Output:** Confirmation that analysis is complete, with either:
 
 - A handoff to the plan SOP for implementation planning, or
-- A recommendation to escalate to k-architect with specific questions
+- A handoff to the required skill or SOP with specific questions

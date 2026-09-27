@@ -41,6 +41,7 @@ pub mod manifest;
 pub mod mcp_server;
 pub mod phases;
 mod private_repo_hint;
+pub(crate) mod prune;
 pub mod registry;
 pub mod remote;
 pub mod remote_orchestrate;

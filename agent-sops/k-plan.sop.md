@@ -2,7 +2,7 @@
 
 ## Overview
 
-This SOP creates detailed work breakdowns with success criteria, task dependencies, agent assignments, and timeline estimates. Use it for multi-step tasks requiring coordination, complex features needing a structured approach, before starting any non-trivial implementation, or when scope needs clarification.
+This SOP creates detailed work breakdowns with success criteria, task dependencies, required skills and capabilities, and timeline estimates. Use it for multi-step tasks requiring coordination, complex features needing a structured approach, before starting any non-trivial implementation, or when scope needs clarification.
 
 ## Parameters
 
@@ -95,40 +95,27 @@ Task 3 (depends on Task 2)
 Task 4 (independent, can run parallel with Task 1-3)
 ```
 
-### 4. Assign to Agents
+### 4. Identify Skills and Capabilities
 
-Match each task to the most appropriate specialized agent.
+Match each task to the skills and capabilities needed to perform it.
 
 **Constraints:**
 
-- You MUST use this agent assignment guide:
+- You MUST identify the required skill or capability for every task
+- You MUST keep every referenced skill available to the task that needs it
+- You MUST group related tasks that use the same skill or capability where possible to reduce context switching
 
-| Task Type               | Agent                                   | Reason                                           |
-| ----------------------- | --------------------------------------- | ------------------------------------------------ |
-| Search codebase         | k-researcher                            | Codebase navigation                              |
-| Find documentation      | k-researcher                            | External research                                |
-| Implement feature       | k-developer                             | Code implementation                              |
-| Write tests             | k-developer                             | Test development                                 |
-| Update docs             | k-developer                             | Documentation                                    |
-| Review architecture     | k-architect                             | Complex design decisions                         |
-| Browser automation      | k-browser                               | E2E testing, screenshots                         |
-| Operational tasks       | k-developer                             | Deployment, infra validation                     |
-| Pre-planning analysis   | konductor (pre-planning-analysis skill) | Ambiguity detection, intent classification       |
-| Plan/approach review    | k-tpm                                   | Plan review via plan-review skill                |
-| Agentic effort estimate | k-tpm                                   | Estimation via legacy-to-agentic-estimate skill  |
-| Architecture decisions  | k-architect                             | Trade-off analysis via trade-off-evaluator skill |
-| Media file analysis     | k-media-analyzer                        | PDF/image/diagram interpretation                 |
+**Expected Output:** A task-to-capability table:
 
-- You MUST NOT assign tasks to agents outside their specialization
-- You MUST group related tasks for the same agent where possible to reduce context switching
-
-**Expected Output:** A task-to-agent assignment table:
-
-| Task                         | Agent        | Reason              |
-| ---------------------------- | ------------ | ------------------- |
-| Search codebase for patterns | k-researcher | Codebase navigation |
-| Implement feature            | k-developer  | Code implementation |
-| Write documentation          | k-developer  | Documentation       |
+| Task                         | Skill / capability                 | Reason                    |
+| ---------------------------- | ---------------------------------- | ------------------------- |
+| Search codebase for patterns | Codebase research                  | Codebase navigation       |
+| Implement feature            | Code implementation                | Implement and validate    |
+| Write documentation          | Documentation authoring             | Explain user-facing change |
+| Review plan                  | `plan-review`                       | Independent plan critique |
+| Estimate agentic effort      | `legacy-to-agentic-estimate`        | Script-verified projection |
+| Evaluate architecture        | `trade-off-evaluator`               | Structured trade-off analysis |
+| Analyze media files          | Media analysis                      | Interpret PDFs and diagrams |
 
 ### 5. Estimate Timeline
 
@@ -142,11 +129,11 @@ Calculate effort per phase into an authoritative baseline, then project an infor
 - You MUST sum per-phase effort into a serial total
 - You MUST apply buffer: 20% for well-understood work (the floor, applied to all work since there is no zero-buffer tier), 40% for novel, complex, unfamiliar, or otherwise uncertain work; this buffer hedges the uncertainty of the estimate itself; it is a different risk than the `legacy-to-agentic-estimate` skill's verification tax (`τ`, the cost of reviewing AI output), so the buffer applies independently of that skill and is never replaced by it
 - You MUST report the buffered total as **Total Estimated Effort (baseline)**. This is the authoritative estimate
-- You SHOULD then delegate the Agentic Projection to `k-tpm`, which owns the `legacy-to-agentic-estimate` skill and can run its bundled `convert_estimates.py` through a shell across the full prepare → classify → finalize seam. This is the preferred path. It keeps a stateful, script-verified seam inside the agent that owns it
-- Your delegation MUST pass each task individually with its own description (not the aggregate serial total). One lumped total collapses every task onto a single leverage tier and hides per-task variation. The skill infers each task's tier from its description, so the descriptions are the input that matters
-- If you cannot delegate, because `k-tpm` is not reachable, not present in this agent package, or reports it has no shell to run the script, you MAY compute the projection yourself rather than skipping outright: apply the `legacy-to-agentic-estimate` skill's documented method directly (its SKILL.md, not the script). Infer each task's tier from its description with the same keyword-then-judgment approach the skill uses, apply the matching tier preset (`v`/`L`/`τ`/`C`), and compute `E_agentic = E_legacy × [(1 − v) + v × (1 − L_eff)] × (1 + τ)` where `L_eff = L × C`, per task. Follow the documented tiers and formula exactly, per task. This is the skill's own method run without the script, not an ad hoc substitute. State that the run was not script-verified
+- You SHOULD load the `legacy-to-agentic-estimate` skill and run its bundled `convert_estimates.py` through a shell across the full prepare → classify → finalize seam. This is the preferred path because it keeps the projection script-verified
+- You MUST pass each task to the projection individually with its own description (not the aggregate serial total). One lumped total collapses every task onto a single leverage tier and hides per-task variation. The skill infers each task's tier from its description, so the descriptions are the input that matters
+- If the bundled script cannot be run, you MAY compute the projection directly rather than skipping outright: apply the `legacy-to-agentic-estimate` skill's documented method directly (its SKILL.md, not the script). Infer each task's tier from its description with the same keyword-then-judgment approach the skill uses, apply the matching tier preset (`v`/`L`/`τ`/`C`), and compute `E_agentic = E_legacy × [(1 − v) + v × (1 − L_eff)] × (1 + τ)` where `L_eff = L × C`, per task. Follow the documented tiers and formula exactly, per task. This is the skill's own method run without the script, not an ad hoc substitute. State that the run was not script-verified
 - If even that isn't possible, because you cannot infer a defensible tier for a task or have no way to apply the formula, skip the Agentic Projection for that item, state in one line that it was skipped and why, and report the baseline alone. The baseline above is authoritative and complete without the projection either way, and a skip is not a failure of this SOP
-- You MUST present whatever you produce, whether delegated, self-computed, or a per-item skip, as an **Agentic Projection**, including tier, tier source (kw/llm/self-computed), confidence, low/mid/high, and Δ per item, plus roll-up totals
+- You MUST present whatever you produce, whether script-computed, self-computed, or a per-item skip, as an **Agentic Projection**, including tier, tier source (kw/llm/self-computed), confidence, low/mid/high, and Δ per item, plus roll-up totals
 - You MUST present the full low-high band as returned or computed, not just the mid point, and MUST NOT narrow or collapse it. When the script produces the figures, they resolve to a six-minute (0.1h) precision only as an artifact of internal rounding; either way, treat differences finer than about 15 minutes as noise from the uncalibrated presets, not signal
 - You MUST carry the caveat that the tier presets are uncalibrated defaults pending team telemetry
 - You MUST NOT present the Agentic Projection as the authoritative or committed estimate
@@ -156,13 +143,13 @@ Calculate effort per phase into an authoritative baseline, then project an infor
 ```markdown
 ## Timeline Estimate
 
-| Phase          | Tasks   | Effort | Agent(s)     |
-| -------------- | ------- | ------ | ------------ |
-| Research       | 1, 2    | 2h     | k-researcher |
-| Implementation | 3, 4, 5 | 4h     | k-developer  |
-| Testing        | 6, 7    | 1h     | k-developer  |
-| Documentation  | 8       | 30m    | k-developer  |
-| Review/Rework  | —       | 30m    | k-architect  |
+| Phase          | Tasks   | Effort | Skill / capability       |
+| -------------- | ------- | ------ | ------------------------ |
+| Research       | 1, 2    | 2h     | Codebase research        |
+| Implementation | 3, 4, 5 | 4h     | Code implementation      |
+| Testing        | 6, 7    | 1h     | Test development         |
+| Documentation  | 8       | 30m    | Documentation authoring  |
+| Review/Rework  | —       | 30m    | Independent review       |
 
 **Serial Effort Sum**: 8h
 
@@ -207,8 +194,8 @@ Assemble the final execution plan with phased ordering.
 
 ### Phase 1: Research (Parallel)
 
-- [ ] k-researcher: Search codebase for patterns
-- [ ] k-researcher: Find relevant documentation
+- [ ] Search codebase for patterns using codebase research
+- [ ] Find relevant documentation using documentation research
 
 ### Phase 2: Implementation (Sequential)
 

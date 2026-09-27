@@ -2,7 +2,7 @@
 
 ## Overview
 
-This SOP activates search mode to maximize search effort across codebase and external documentation. Use it when finding patterns or implementations in a codebase, searching for external documentation, locating specific code/files/configurations, or for research tasks requiring thorough investigation. When both scopes apply, delegating the codebase and documentation searches to separate agents buys parallelism (they run concurrently instead of serially) and context isolation (each agent's raw multi-pattern search output stays out of the orchestrator's context; only the capped summary returns).
+This SOP activates search mode to maximize search effort across codebase and external documentation. Use it when finding patterns or implementations in a codebase, searching for external documentation, locating specific code/files/configurations, or for research tasks requiring thorough investigation. When both scopes apply, codebase and documentation searches SHOULD run in parallel generic subagents when available. Otherwise, the agent running this SOP MUST perform them sequentially. Both modes MUST keep raw output within the result caps below.
 
 ## Parameters
 
@@ -19,17 +19,17 @@ This SOP activates search mode to maximize search effort across codebase and ext
 
 ### 1. Identify Search Scope
 
-Determine what needs to be searched and which agents/tools to use.
+Determine what needs to be searched and which tools to use.
 
 **Constraints:**
 
-- You MUST map the search scope to agents and tools:
+- You MUST map the search scope to execution and tools:
 
-| Scope                  | Agent/Tool                                |
-| ---------------------- | ----------------------------------------- |
-| Internal codebase      | k-developer agent for rg/grep/ast-grep    |
-| External documentation | k-researcher agent + web_search/web_fetch |
-| Both                   | Parallel k-developer + k-researcher       |
+| Scope                  | Execution and tools |
+| ---------------------- | ------------------- |
+| Internal codebase      | Run rg/grep/ast-grep directly or in a generic subagent |
+| External documentation | Run web_search/web_fetch directly or in a generic subagent |
+| Both                   | Parallel generic subagents when available; otherwise sequential direct execution |
 
 - You MUST identify multiple search patterns and variations for the `search_target` (e.g., different naming conventions, abbreviations, related terms)
 - You MUST NOT limit search to a single pattern when variations are likely
@@ -37,30 +37,30 @@ Determine what needs to be searched and which agents/tools to use.
 **Expected Output:** A search plan listing:
 
 - Search targets (primary term + variations)
-- Agents to spawn
-- Direct tools for the delegated agent to use in parallel
+- Execution mode
+- Direct tools to use
 
-### 2. Spawn Search Agents
+### 2. Run Searches
 
-Delegate search tasks to specialized agents.
+Run the codebase and documentation searches.
 
 **Constraints:**
 
-- For codebase search, You MUST delegate to `k-developer` with:
-  - `project_root` as the search root
+- For codebase search, You MUST perform the following directly or in a generic subagent:
+  - Use `project_root` as the search root
   - Use these tools as appropriate: `rg "pattern" --type <lang>` for fast pattern matching, `find {project_root} -name "*.ext" -type f` for file discovery, `ast-grep -p '<pattern>'` for structural code pattern matching (see Search Strategies Reference below)
   - Search multiple patterns and variations
   - Include test files in searches
   - Include file paths and line numbers in results
   - Cap results per the Response Size Rules in the Search Strategies Reference below
-- For documentation search, You MUST delegate to `k-researcher` with:
-  - Documentation topic
-  - Preference for official sources
-  - Examples needed
-- You MUST use the delegate SOP format (7-section structure) for each delegation
-- You MUST spawn agents in parallel when searching both codebase and documentation
+- For documentation search, You MUST perform the following directly or in a generic subagent:
+  - Search the documentation topic
+  - Prefer official sources
+  - Include relevant examples
+- Each generic subagent task MUST state the task, expected outcome, tools, constraints, and required context
+- When searching both scopes, You SHOULD run generic subagents in parallel when available; otherwise You MUST run the searches sequentially yourself
 
-**Expected Output:** Results collected from all delegates (Step 2 blocks until delegates return), including `k-developer`'s direct tool results (file paths, line numbers, relevant snippets of 3-5 lines per match)
+**Expected Output:** Results from all requested scopes, including codebase file paths, line numbers, and relevant snippets of 3-5 lines per match
 
 ### 3. Synthesize Results
 
@@ -79,12 +79,12 @@ Consolidate findings from all agents and direct tools.
 ```markdown
 ## Search Results Summary
 
-### From k-developer (Codebase)
+### From generic code-search subagent (Codebase)
 
 - [Files found / patterns identified / relevant code locations]
 - [Direct tool results: file paths, line numbers, snippets]
 
-### From k-researcher (Documentation)
+### From generic documentation subagent (Documentation)
 
 - [Documentation sources / examples / best practices]
 
@@ -96,7 +96,7 @@ Consolidate findings from all agents and direct tools.
 
 ### Search Strategies Reference
 
-This block is reference material for the Step 2 delegation prompt to `k-developer`.
+This block is reference material for the Step 2 delegation prompt to `generic code-search subagent`.
 
 **Quick Search**: list matching files only:
 

@@ -55,6 +55,26 @@ describe("next: ordering and depends_on", () => {
     expect(out).toContain("not found");
   });
 
+  test("a skill installed by Kiro CLI under .kiro/skills is found", () => {
+    repo.write("out/a.md");
+    repo.ok(["done", "feat", "a"]);
+    delete repo.env.FUSE_SKILLS_DIR;
+    repo.write(".kiro/skills/some-skill/SKILL.md", "# skill\n");
+    const out = repo.ok(["next", "feat"]);
+    expect(out).toMatch(/read: \S*\/\.kiro\/skills\/some-skill\/SKILL\.md\n/);
+    expect(out).not.toContain("not found");
+  });
+
+  test("a stale .konductor/skills copy does not shadow the .kiro/skills one", () => {
+    repo.write("out/a.md");
+    repo.ok(["done", "feat", "a"]);
+    delete repo.env.FUSE_SKILLS_DIR;
+    repo.write(".konductor/skills/some-skill/SKILL.md", "# old\n");
+    repo.write(".kiro/skills/some-skill/SKILL.md", "# current\n");
+    const out = repo.ok(["next", "feat"]);
+    expect(out).toMatch(/read: \S*\/\.kiro\/skills\/some-skill\/SKILL\.md\n/);
+  });
+
   test("an explicit depends_on on a later step is honoured", () => {
     const wf = `version: 1
 name: dep

@@ -51,19 +51,26 @@ export function validateSlug(slug: string): void {
 }
 
 // Where SKILL.md files live differs per install: the package checkout keeps
-// them under skills/, a Kiro install under .konductor/skills, a Claude Code
-// install under .claude/skills. FUSE_SKILLS_DIR wins when set. A candidate
+// them under skills/, a Kiro install under .kiro/skills (or .konductor/skills
+// when the installed package ships agents), a Claude Code install under
+// .claude/skills. FUSE_SKILLS_DIR wins when set. A candidate
 // counts only if it holds at least one SKILL.md so that an empty directory
 // does not shadow the real one.
 export function skillsDirCandidates(root: string, env: NodeJS.ProcessEnv = process.env): string[] {
   const home = env.HOME ?? homedir();
   const out: string[] = [];
   if (env.FUSE_SKILLS_DIR) out.push(env.FUSE_SKILLS_DIR);
+  // .kiro/skills comes before .konductor/skills: an agentless Kiro install
+  // writes its skills to .kiro/skills, and a copy an older agent-bearing
+  // install left in .konductor/skills must not shadow the current one.
   out.push(
     join(root, "skills"),
+    join(root, ".kiro", "skills"),
     join(root, ".konductor", "skills"),
     join(root, ".claude", "skills"),
-    env.SKILLS_HOME ?? join(home, ".konductor", "skills"),
+    ...(env.SKILLS_HOME
+      ? [env.SKILLS_HOME]
+      : [join(home, ".kiro", "skills"), join(home, ".konductor", "skills")]),
     join(home, ".claude", "skills"),
   );
   return out;

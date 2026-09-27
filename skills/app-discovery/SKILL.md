@@ -20,7 +20,7 @@ Use this skill when:
 - Discovering a deployed web app before generating test prompts or functional specs
 - Building a discovery report that captures DOM structure, validation rules, and UI framework
 
-Load this skill into `k-browser`. It depends on `dom-inspection`. Ensure that skill is also available.
+Load this skill before performing browser-based application discovery. It depends on `dom-inspection`; load that skill as well.
 
 ## Discovery Protocol
 
@@ -94,7 +94,7 @@ See `skills/dom-inspection/SKILL.md` for the full inspection protocol and output
 After the discovery report has been fully written:
 
 - Close the browser session
-- This ensures no Chromium process remains running after discovery completes, preventing session conflicts when a subsequent agent (e.g. Step 6 test execution) launches its own browser
+- This ensures no Chromium process remains running after discovery completes, preventing session conflicts when a subsequent test-execution pass launches its own browser
 
 ## Output: Discovery Report
 

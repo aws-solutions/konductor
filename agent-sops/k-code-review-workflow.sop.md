@@ -84,7 +84,7 @@ Validate each finding to eliminate false positives. When in doubt, reject. False
 
 ### 6. Adversarial Review
 
-If `k-adversarial-pull-request-review` is available, spawn `k-architect` in adversarial mode with it, passing the same diff used in Step 1 as `diff_input`, to surface gaps missed by standard review.
+If `k-adversarial-pull-request-review` is available, run it in a separate generic subagent when available, passing the same diff used in Step 1 as `diff_input`, to surface gaps missed by standard review. Otherwise, run it as a separate pass that does not reuse the standard review's conclusions.
 
 **Constraints:**
 

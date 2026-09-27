@@ -25,7 +25,7 @@ Takes the stance of a security-focused architect arguing against approval. Does 
 Use this skill when:
 
 - Running a second-pass review after standard code review is complete
-- Spawned by the orchestrator as the checker in a maker-checker cycle
+- Run as the checker in a maker-checker cycle
 - Reviewing a change before submission when the change touches auth, data writes, or external API boundaries
 
 ## Modes

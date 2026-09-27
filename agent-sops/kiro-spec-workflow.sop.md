@@ -4,7 +4,7 @@
 
 End-to-end workflow that transforms PM and design artifacts into Kiro IDE spec documents. Chains three skills in sequence: kiro-requirements-generation → kiro-design-generation → kiro-task-generation, producing a complete `.kiro/specs/{feature-name}/` directory (by default; see `spec_dir` below) with requirements.md, design.md, and tasks.md.
 
-> **Execution context:** Each skill below lives on the domain specialist who owns that artifact type, not on the orchestrator. This delegation buys capability specialization, since generating EARS requirements, a low-level design, or a Kiro task list each requires a different domain skill the orchestrator doesn't hold inline. The orchestrator delegates each step to the named agent and passes it the step's parameters; the specialist runs its skill and returns the output file.
+> **Execution context:** The agent running this SOP performs each step itself, loading the skill named for that step and passing the step's parameters. A runtime MAY use a generic subagent for fresh context when available, but the procedure does not depend on one.
 
 > **No independent review exists for design.md today:** Steps 2 and 3 each run a lightweight self-check inside the same agent that generated the artifact. This catches clear defects but is not an independent review, since the generator and the checker share one context and one set of blind spots. `k-full-sdlc` runs `k-principal-engineer-design-review`, but against the earlier, project-wide `system-design.md` its own Step 3 produces, not against this SOP's per-feature `design.md`. Composing this SOP inside `k-full-sdlc` does not add an independent pass for the artifact this SOP produces. Whether run standalone or composed, this SOP's `design.md` gets only the self-check above until an independent review step is added after `k-full-sdlc`'s Step 6.
 
@@ -20,7 +20,7 @@ End-to-end workflow that transforms PM and design artifacts into Kiro IDE spec d
 
 ### 1. Generate Requirements (EARS Format)
 
-Delegate to `k-product-manager`. It runs the `kiro-requirements-generation` skill to convert user stories into EARS-format requirements.
+Load and run the `kiro-requirements-generation` skill to convert user stories into EARS-format requirements.
 
 **Constraints:**
 
@@ -36,7 +36,7 @@ Delegate to `k-product-manager`. It runs the `kiro-requirements-generation` skil
 
 ### 2. Generate Design (Per-Feature)
 
-Delegate to `k-architect`. It runs the `kiro-design-generation` skill to produce per-feature low-level design.
+Load and run the `kiro-design-generation` skill to produce per-feature low-level design.
 
 **Constraints:**
 
@@ -47,13 +47,13 @@ Delegate to `k-architect`. It runs the `kiro-design-generation` skill to produce
 - Before presenting, You MUST run a lightweight self-check pass over design.md: does every major section stay internally consistent, and does the design plausibly satisfy every requirement's acceptance criteria (not just exist as a section heading)? If a self-check finds a clear defect, fix it before presenting rather than presenting a known-broken draft.
 - You MUST present design.md to user for approval before proceeding
 - If user requests changes, You MUST revise and re-present (max 2 cycles). If the user still requests changes after 2 cycles, You MUST stop and ask the user how to proceed: accept the current draft with noted open concerns, continue revising past the cap, or escalate/abandon. Do not silently continue looping or silently proceed with unresolved feedback.
-- **For UI features**: before presenting design.md for approval, if a UI-prototyping agent is available, spawn it with the HLD or product requirements document URL to generate a Cloudscape mock UI. Present the mock alongside design.md so the user can validate both the design and the UI before handing off to implementation.
+- **For UI features**: before presenting design.md for approval, if the `cloudscape-mock-ui` skill is available, load and run it with the HLD or product requirements document URL to generate a Cloudscape mock UI. Present the mock alongside design.md so the user can validate both the design and the UI before handing off to implementation.
 
 **Expected Output:** spec_dir/design.md
 
 ### 3. Generate Tasks (Kiro Format)
 
-Delegate to `k-developer`. It runs the `kiro-task-generation` skill to produce a Kiro IDE-compatible task list.
+Load and run the `kiro-task-generation` skill to produce a Kiro IDE-compatible task list.
 
 **Constraints:**
 
@@ -69,7 +69,7 @@ Delegate to `k-developer`. It runs the `kiro-task-generation` skill to produce a
 
 ### 4. Validate Spec Completeness
 
-The orchestrator verifies all three documents are consistent and complete. It MAY delegate this to a specialist agent (e.g. architect or QA) but is not required to.
+Verify all three documents are consistent and complete. You MAY use a separate generic subagent when available; otherwise perform a separate validation pass that does not reuse the earlier passes' conclusions.
 
 **Constraints:**
 

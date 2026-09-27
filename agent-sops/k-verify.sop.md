@@ -4,7 +4,7 @@
 
 This SOP runs comprehensive verification to ensure task completion with collected evidence. Use it after completing implementation, before declaring any task done, when the user requests verification, or after bug fixes to confirm resolution.
 
-> **Execution context:** Steps below run shell commands. An agent without those tools delegates them to specialist agents per its routing rules.
+> **Execution context:** Steps below run shell commands. If the session has no shell tool, You MUST NOT report any step as passed: report each command-dependent step as NOT RUN with the reason "no shell tool in this session", and give the user the exact commands to run. A generic subagent that has a shell tool MAY run the commands instead.
 > **Command selection:** Prefer the project's wrapper or lockfile-indicated tool for every step below. `./gradlew` over `gradle` when `gradlew` exists, `pnpm`/`yarn` over `npm` when `pnpm-lock.yaml`/`yarn.lock` exists.
 
 ## Parameters

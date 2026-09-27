@@ -9,11 +9,11 @@ Discovers a deployed web application via browser automation, then generates eith
 
 Use this SOP when the user has a deployed web app and wants test coverage generated from live discovery.
 
-This SOP splits work across `k-browser` (browser automation only), `k-quality-assurance`, and `k-developer` (shell/git only). The orchestrator itself does not execute shell commands or write files. That split buys tool specialization (least privilege): each agent gets only the tool grants its step needs, and any login credentials pass through `k-developer`'s isolated shell rather than through the orchestrator's own context, keeping the secret out of a place a compaction or summary could later expose it.
+The agent running this SOP performs each step and loads the required skills. Browser discovery and test execution MUST use a separate subagent when the runtime offers one, and otherwise a separate browser pass that does not reuse conclusions from the authoring pass. Credential handling stays in the shell pass that creates the credentials file, keeping the secret out of browser and report context.
 
 **Do NOT use for:** unit testing source code logic, API-only testing, or apps that require non-browser authentication (e.g., mTLS, client certificates).
 
-> **Browser note:** The browser agent uses Playwright's bundled **Chromium** (not system Chrome). This avoids the "Browser is already in use" error when Chrome is open on Mac. If the target app requires authentication, provide `username`/`password` or a `credentials_file`. See Parameters below.
+> **Browser note:** Browser automation uses Playwright's bundled **Chromium** (not system Chrome). This avoids the "Browser is already in use" error when Chrome is open on Mac. If the target app requires authentication, provide `username`/`password` or a `credentials_file`. See Parameters below.
 
 ## Parameters
 
@@ -36,11 +36,11 @@ This SOP splits work across `k-browser` (browser automation only), `k-quality-as
 - When `output_mode` is `unit-prompts`, `project_mode` and `project_dir` are not needed
 - When `project_mode` is `bootstrap`, `project_dir` is not needed
 
-## Subagents Used
+## Skills and Capabilities
 
-- `k-browser`: navigates the app, takes screenshots, discovers pages
-- `k-quality-assurance`: generates test specs and unit test prompts
-- `k-developer`: bootstraps projects, validates builds, and analyzes existing project files
+- Browser automation with `app-discovery` and `dom-inspection`: navigates the app, takes screenshots, discovers pages
+- Test generation with `e2e-test-strategy`, `cypress-test-implementation`, or `playwright-test-implementation`: generates test specs and unit test prompts
+- Shell, file, and git operations: bootstraps projects, validates builds, and analyzes existing project files
 
 ## Steps
 
@@ -61,7 +61,7 @@ Normalize credentials into a single `credentials_file` path before proceeding.
 
 **If `credentials_file` is NOT provided but `username` and `password` are provided:**
 
-Delegate this branch to `k-developer` (not run directly by the orchestrator, which does not execute shell commands or write files itself):
+Perform this branch in the shell pass:
 
 - Generate a unique path: `_mktemp_base="$(mktemp /tmp/test-credentials-XXXXXXXXXX)"; credentials_file="${_mktemp_base}.properties"; rm -f "$_mktemp_base"; unset _mktemp_base` (portable form: BSD/macOS `mktemp` does not support the GNU-only `--suffix` flag, so the bare file `mktemp` actually creates is captured and removed immediately after deriving the `.properties` path from it, since `$credentials_file` names a second path that `mktemp` never touched and later cleanup of `$credentials_file` would not reach the original bare file)
 - Create the file with restrictive permissions using the `write` tool (do NOT use a shell heredoc: if the password contains a line that is exactly `EOF`, the heredoc terminates prematurely):
@@ -87,11 +87,11 @@ After this step, `credentials_file` is either a valid path or empty.
 
 - MUST NOT log or display the password value in any output
 - If the file is missing or malformed, surface the error and stop
-- **On any early exit after this step:** if `agent_created_credentials_file=true`, delete the temp file and unset the flag before stopping: `rm -f "$credentials_file" && unset agent_created_credentials_file` (this step still runs in the same `k-developer` shell that set them, so the shell variables are valid here)
+- **On any early exit after this step:** if `agent_created_credentials_file=true`, delete the temp file and unset the flag before stopping: `rm -f "$credentials_file" && unset agent_created_credentials_file` (this step still runs in the same shell pass that set them, so the shell variables are valid here)
 
 ### Step 2: Discover the Application
 
-Delegate to `k-browser`.
+Run this step in a separate subagent when the runtime offers one. Otherwise, run it as a separate browser pass that does not reuse conclusions from earlier passes.
 
 **REQUIRED SKILLS:** app-discovery, dom-inspection
 **REQUIRED TOOLS:** browser automation tools
@@ -108,7 +108,7 @@ Delegate to `k-browser`.
 - Log or display password values
 - Navigate outside the app's domain during discovery (identity-provider redirects during the initial authentication flow are permitted)
 
-**ON FAILURE:** If navigation fails or authentication is rejected (wrong credentials, MFA wall, CAPTCHA, unreachable app), `k-browser` surfaces the error and stops; do not proceed to Step 3. If `{agent_created_credentials_file}` is `true`, delegate cleanup to `k-developer`, which runs `rm -f "{credentials_file}"` (not `k-browser` itself). Reference the literal values, not shell variables, the same way Step 5 does.
+**ON FAILURE:** If navigation fails or authentication is rejected (wrong credentials, MFA wall, CAPTCHA, unreachable app), the browser pass surfaces the error and stops; do not proceed to Step 3. If `{agent_created_credentials_file}` is `true`, run cleanup in a shell pass using `rm -f "{credentials_file}"` (not in the browser pass). Reference the literal values, not shell variables, the same way Step 5 does.
 
 **CONTEXT:** `url={url}`, `credentials_file={credentials_file}` (always set after Step 1; empty means public app).
 
@@ -126,13 +126,13 @@ Unless `scope_confirmed=true`, ask: "Proceed with test generation for these N pa
 
 - If the caller passed `scope_confirmed=true`, MUST report the discovery summary and proceed without asking. The caller already authorized generation for whatever pages discovery found. A parallel or unattended caller MUST set it, since the prompt has no one to answer
 - Otherwise MUST NOT proceed without explicit user confirmation
-- If the user declines: if `{agent_created_credentials_file}` is `true`, delegate cleanup to `k-developer`, which runs `rm -f "{credentials_file}"` (reference the literal value carried forward from Step 1, not a shell variable, the same way Step 5 does); then stop and report the discovery summary
+- If the user declines: if `{agent_created_credentials_file}` is `true`, run cleanup in a shell pass using `rm -f "{credentials_file}"` (reference the literal value carried forward from Step 1, not a shell variable, the same way Step 5 does); then stop and report the discovery summary
 
 ### Step 4A: Generate Unit Test Prompts
 
 _Only if `output_mode=unit-prompts`. Skip if `output_mode` is `cypress` or `playwright`._
 
-Delegate to `k-quality-assurance`.
+Load the listed test-generation skills and perform this step.
 
 **REQUIRED SKILLS:** e2e-test-strategy
 **REQUIRED TOOLS:** read, write
@@ -143,7 +143,7 @@ Delegate to `k-quality-assurance`.
 - Each file must contain: Objective, Pre-requisite, Steps, Expected Outcome
 - Record the absolute path of the `{prompts_dir}` directory as `prompts_dir` (the same way Step 4B-ii records `project_dir` after bootstrapping)
 
-**ON FAILURE:** If this step fails, `k-quality-assurance` runs `rm -f "{credentials_file}"` if `{agent_created_credentials_file}` is `true`, then surfaces the error and stops. (This step runs in a separate agent from Step 1, which set `credentials_file`/`agent_created_credentials_file`; reference the literal values, not shell variables, the same way Step 5 does.)
+**ON FAILURE:** If this step fails, the agent running this step runs `rm -f "{credentials_file}"` if `{agent_created_credentials_file}` is `true`, then surfaces the error and stops. (This step MUST NOT assume shell state from Step 1; reference the literal values, not shell variables, the same way Step 5 does.)
 
 ### Step 4B: Generate Functional Tests
 
@@ -153,7 +153,7 @@ _Only if `output_mode=cypress` or `output_mode=playwright`. Skip if `output_mode
 
 _Only if `project_mode=add-to-existing`. Skip if `project_mode=bootstrap`._
 
-Delegate to `k-developer` (not `k-researcher`: `k-developer` is the agent equipped to analyze a local project).
+Perform this analysis using the listed file-reading tools.
 
 **REQUIRED TOOLS:** read, glob, grep
 
@@ -162,13 +162,13 @@ Delegate to `k-developer` (not `k-researcher`: `k-developer` is the agent equipp
 - Analyze `{project_dir}` to understand test structure, config files, and existing patterns
 - Capture the analysis as `existing_project_analysis` (naming conventions, selector patterns, file structure, config). This is passed as context to Steps 4B-iii and 4B-iv
 
-**ON FAILURE:** `k-developer` runs `rm -f "{credentials_file}"` if `{agent_created_credentials_file}` is `true`, then surfaces the error and stops. (This step runs in a separate agent invocation from Step 1; reference the literal values, not shell variables, the same way Step 5 does.)
+**ON FAILURE:** the agent running this step runs `rm -f "{credentials_file}"` if `{agent_created_credentials_file}` is `true`, then surfaces the error and stops. (This step MUST NOT assume shell state from Step 1; reference the literal values, not shell variables, the same way Step 5 does.)
 
 #### Step 4B-ii: Bootstrap Project
 
 _Only if `project_mode=bootstrap`. Skip if `project_mode=add-to-existing`._
 
-Delegate to `k-developer`.
+Perform this step using the listed shell and file tools.
 
 **REQUIRED TOOLS:** shell, write
 
@@ -184,13 +184,13 @@ Delegate to `k-developer`.
 - After scaffolding, run `npx tsc --noEmit` to confirm TypeScript compiles clean before proceeding (do not use `npm install` as the validation gate: it passes even when TypeScript is broken)
 - Record the scaffold root as `project_dir`
 
-**ON FAILURE:** `k-developer` runs `rm -f "{credentials_file}"` if `{agent_created_credentials_file}` is `true`, then surfaces the error and stops. (This step runs in a separate agent invocation from Step 1; reference the literal values, not shell variables, the same way Step 5 does.)
+**ON FAILURE:** the agent running this step runs `rm -f "{credentials_file}"` if `{agent_created_credentials_file}` is `true`, then surfaces the error and stops. (This step MUST NOT assume shell state from Step 1; reference the literal values, not shell variables, the same way Step 5 does.)
 
 #### Step 4B-iii: Generate Cypress Specs
 
 _Only if `output_mode=cypress`. Skip if `output_mode=playwright`._
 
-Delegate to `k-quality-assurance`.
+Load the listed test-generation skills and perform this step.
 
 **REQUIRED SKILLS:** cypress-test-implementation
 **REQUIRED TOOLS:** read, write
@@ -240,13 +240,13 @@ Delegate to `k-quality-assurance`.
   - Form fields: prefer `cy.get('[placeholder="..."]')` over `cy.get('label')`, since Cloudscape does not always use standard label associations
 - **If `project_mode=add-to-existing`:** follow the naming conventions and patterns from `existing_project_analysis`
 
-**ON FAILURE:** `k-quality-assurance` runs `rm -f "{credentials_file}"` if `{agent_created_credentials_file}` is `true`, then surfaces the error and stops. (This step runs in a separate agent from Step 1, which set `credentials_file`/`agent_created_credentials_file`; reference the literal values, not shell variables, the same way Step 5 does.)
+**ON FAILURE:** the agent running this step runs `rm -f "{credentials_file}"` if `{agent_created_credentials_file}` is `true`, then surfaces the error and stops. (This step MUST NOT assume shell state from Step 1; reference the literal values, not shell variables, the same way Step 5 does.)
 
 #### Step 4B-iv: Generate Playwright Specs
 
 _Only if `output_mode=playwright`. Skip if `output_mode=cypress`._
 
-Delegate to `k-quality-assurance`.
+Load the listed test-generation skills and perform this step.
 
 **REQUIRED SKILLS:** e2e-test-strategy, playwright-test-implementation
 **REQUIRED TOOLS:** read, write, shell
@@ -261,11 +261,11 @@ Load and follow `skills/playwright-test-implementation/SKILL.md` for the selecto
 - **If `ui_framework=cloudscape` from discovery:** apply the Cloudscape-specific locator patterns from the skill's Step 4 (table row selection, tiles/radio groups, select/dropdown, modals, form fields). The skill's "where the app uses Cloudscape" clause maps directly onto this flag, matching how Step 4B-iii gates its Cloudscape block
 - **If `project_mode=add-to-existing`:** follow the naming conventions and patterns from `existing_project_analysis`; also run `mkdir -p fixtures/auth` and add `fixtures/auth/` to `.gitignore` if either is missing. `project_mode=bootstrap` handles both in Step 4B-ii, but `add-to-existing` skips that step
 
-**ON FAILURE:** `k-quality-assurance` runs `rm -f "{credentials_file}"` if `{agent_created_credentials_file}` is `true`, then surfaces the error and stops. (This step runs in a separate agent from Step 1, which set `credentials_file`/`agent_created_credentials_file`; reference the literal values, not shell variables, the same way Step 5 does.)
+**ON FAILURE:** the agent running this step runs `rm -f "{credentials_file}"` if `{agent_created_credentials_file}` is `true`, then surfaces the error and stops. (This step MUST NOT assume shell state from Step 1; reference the literal values, not shell variables, the same way Step 5 does.)
 
 ### Step 5: Validate Generated Tests
 
-Delegate to `k-developer`. Pass `{credentials_file}` and `{agent_created_credentials_file}` into this delegated step as literals. Step 5 runs in a separate agent from Step 1, which set them, so the delegate has no shell state to inherit; `k-developer` is the actor that runs the cleanup below using the literal values it was given.
+Perform this step using the listed shell and file tools. Carry `{credentials_file}` and `{agent_created_credentials_file}` into this step as literals. This step MUST NOT assume shell state from Step 1; it runs cleanup using the literal values it was given.
 
 **REQUIRED TOOLS:** shell
 
@@ -301,15 +301,15 @@ Delegate to `k-developer`. Pass `{credentials_file}` and `{agent_created_credent
   fi
   ```
 
-- If `{agent_created_credentials_file}` is `true`, `k-developer` deletes the temp file: `rm -f "{credentials_file}"`
+- If `{agent_created_credentials_file}` is `true`, the agent running this step deletes the temp file: `rm -f "{credentials_file}"`
 
-**ON FAILURE:** If any validation command fails, `k-developer` runs `rm -f "{credentials_file}"` if `{agent_created_credentials_file}` is `true`, then surfaces the error and stops.
+**ON FAILURE:** If any validation command fails, the agent running this step runs `rm -f "{credentials_file}"` if `{agent_created_credentials_file}` is `true`, then surfaces the error and stops.
 
 ### Step 6: Commit Generated Tests
 
 _Only if `output_mode=cypress` or `output_mode=playwright`. Skip if `output_mode=unit-prompts`: those prompt files are reference material for a human to act on, the same as `k-light-ui-testing`'s prompt files, not source code, so the commit requirement below does not apply to them._
 
-Delegate to `k-developer`.
+Perform this step using the listed shell and file tools.
 
 **REQUIRED TOOLS:** shell (git)
 
@@ -323,7 +323,7 @@ Delegate to `k-developer`.
 - Push the current branch (`git push`, or `git push -u origin <branch>` if it has no upstream yet). If the push fails, for example no remote configured or no network, the commit still exists locally, which already satisfies the requirement that generated tests are not left untracked; record the push failure in the summary as IMPORTANT rather than stopping the SOP.
 - When this SOP is reached through `k-full-sdlc`'s Step 9, that SOP's Step 8 already opened a pull request for this feature before Step 9 runs. The push above is what updates it; no separate pull-request action is needed here, matching how `k-full-sdlc`'s own CRITICAL-gap fix loop (Step 9(b)) already treats "push a fix commit" as "update the affected pull request." This SOP does not open or update pull requests directly in any other case either. A standalone invocation with no pull request yet just leaves the branch pushed and ready for one.
 
-**ON FAILURE:** If the commit itself fails (not the push, see above), `k-developer` surfaces the error and stops before Step 7.
+**ON FAILURE:** If the commit itself fails (not the push, see above), the agent running this step surfaces the error and stops before Step 7.
 
 ### Step 7: Output Summary Report
 
@@ -340,10 +340,10 @@ Print a summary to the user:
 
 **CRITICAL (block proceeding):**
 
-- Password value appears in any delegation prompt or log output
+- Password value appears in any subagent prompt or log output
 - Hard-coded credentials in any generated test file
 - Tests generated without user confirmation in Step 3, unless the caller set `scope_confirmed=true`
-- Temp credentials file (`agent_created_credentials_file=true`) not deleted before the SOP exits for any reason. Run `rm -f "$credentials_file" && unset agent_created_credentials_file` (Step 1, which has the shell state) or the equivalent `rm -f "{credentials_file}"` against the literal value (Steps 2, 3, 4A, 4B-i through 4B-iv, and Step 5, which run in separate delegated agents) on every exit path
+- Temp credentials file (`agent_created_credentials_file=true`) not deleted before the SOP exits for any reason. Run `rm -f "$credentials_file" && unset agent_created_credentials_file` (Step 1, which has the shell state) or the equivalent `rm -f "{credentials_file}"` against the literal value (Steps 2, 3, 4A, 4B-i through 4B-iv, and Step 5, which MUST NOT assume Step 1 shell state) on every exit path
 
 **IMPORTANT (note but do not block):**
 

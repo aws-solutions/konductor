@@ -47,7 +47,7 @@ Follow these phases in order. Do not skip phases.
 | -------- | ------------------ | --------------------------------------- |
 | Build    | Run build command  | Exit code 0, no errors in output        |
 | Test     | Execute test suite | All tests pass (full output shown)      |
-| Artifact | Generate document  | Corresponding checker skill scores PASS |
+| Artifact | Generate document  | Corresponding checker skill passes      |
 | Manual   | Test the feature   | Describe exactly what was observed      |
 
 ### Evidence Format
@@ -65,9 +65,38 @@ Follow these phases in order. Do not skip phases.
 After generating any artifact (design doc, implementation guide, specification):
 
 1. Run the corresponding checker skill automatically
-2. Checker must score PASS before presenting to user
+2. Checker must pass (see the pass condition below) before presenting to user
 3. If checker finds CRITICAL issues, fix them, re-run checker, then present
-4. Include checker score in evidence
+4. Include the checker's result (its score, or its finding counts per severity) in evidence
+
+### Checker for each artifact
+
+Use the checker that matches what you produced. Load its skill and apply its criteria.
+
+| You produced                              | Checker                                                                                                 |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Backend code change                       | `backend-review`                                                                                        |
+| Frontend code change                      | `frontend-review`                                                                                       |
+| Infrastructure as code change             | `infra-validation`                                                                                      |
+| System design or architecture document    | `design-doc-guidelines`                                                                                 |
+| Threat model                              | `threat-modeling` quality criteria                                                                      |
+| Technical research or decision evidence   | `decision-research`, to verify claims and surface prior art                                             |
+| User stories                              | `user-story-writing` criteria (INVEST, complete acceptance criteria), then `decision-research` on claims |
+| Any other document produced by a skill    | That skill's own quality criteria                                                                       |
+
+A change to a design-bearing artifact needs `design-impact-review` before you make it, not after.
+Design-bearing means a requirement or user story, a system design decision, an API contract, a data
+model or schema, or a user experience flow: anything other artifacts depend on. The same applies to
+a change that deviates from an existing design document. Surface every BREAKING impact the review
+finds before proceeding.
+
+Present checker findings in the order CRITICAL, IMPORTANT, SUGGESTION. Most checkers report
+severity-ranked findings rather than a score: for those, the artifact passes when no CRITICAL
+finding remains, and the evidence is the finding counts per severity. A checker that defines its
+own pass condition or score uses that instead. Then ask the user "Fix these issues? [y/n]", unless
+the checker's own instructions say the user already confirmed scope or the run is unattended (for
+example `backend-review` with `scope_confirmed`); in that case report the findings without asking
+and leave fixing to the caller, as the checker says.
 
 ## Anti-Patterns
 

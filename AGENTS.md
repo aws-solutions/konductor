@@ -13,35 +13,25 @@ If a path does not exist, skip it silently and continue.
 
 ## Project Overview
 
-Konductor is an open-source multi-agent orchestration framework that provides a coordinated suite of specialist AI agents automating the full software development lifecycle. Agents collaborate through a structured delegation protocol. The package ships as static agent configuration files compatible with Kiro CLI and Claude Code — no runtime infrastructure required.
+Konductor is an open-source package of skills, SOPs and workflows that automate the software development lifecycle. It ships as static configuration files compatible with Kiro CLI and Claude Code, with no runtime infrastructure required. The package ships no agent specs: an agent runs a workflow step by step and loads each step's skill directly (see `fuse/flow/`).
 
 ## Project Structure
 
 ```
-agents/        # Agent definitions (.agent-spec.json, one per agent)
 skills/        # Skill definitions (SKILL.md + optional scripts)
 agent-sops/    # Standard operating procedures (user-invoked workflows)
-context/       # Context files loaded at agent startup (system prompts, routing rules)
 cli/           # Konductor CLI; see cli/README.md
+fuse/flow/     # fuse-flow workflow runner and workflow definitions; see fuse/flow/README.md
 ```
 
 ## Setup & Commands
-
-```bash
-# Kiro CLI
-konductor install
-kiro-cli chat --agent konductor
-
-# Claude Code
-claude --agent konductor
-```
 
 Run from the repo root (`make synth`'s `konductor synth` defaults its source tree to
 the current working directory, and the `build/cli/konductor` path below is relative
 to it):
 
 ```bash
-# Build cli/ + mcp/, synth agent/skill content, then install from this checkout
+# Build cli/ + mcp/, synth skill and SOP content, then install from this checkout
 make build
 make synth
 build/cli/konductor install --from . --harness kiro-cli-v2
@@ -51,21 +41,19 @@ build/cli/konductor install --from . --harness kiro-cli-v2
 `cli/` (it needs the `konductor` binary, nothing from `mcp/`), so skipping this step
 and going straight to `make synth` leaves `mcp/`'s MCP server binary unbuilt --
 `install` auto-discovers that binary and silently skips it if missing (no error),
-producing agents that can't load skills at runtime.
+producing an install whose skills cannot be loaded at runtime.
 
 See [`cli/README.md`](cli/README.md) for the full build, PATH setup, and install
 instructions.
 
 ## Code Style & Conventions
 
-- Agent specs are JSON; keep them formatted (2-space indent).
 - Skills follow the [Agent Skills specification](https://agentskills.io/specification). Write
   each `description` as the [optimizing-descriptions](https://agentskills.io/skill-creation/optimizing-descriptions)
   guide describes, opening with when to use the skill ("Use when ...") and then saying briefly
   what it does, in at most 1024 characters. Write the body by the
   [best practices](https://agentskills.io/skill-creation/best-practices).
-- Orchestrators are named `konductor`, `konductor-mux-orchestrator`, and `konductor-cmux-orchestrator`; 
-  every specialist uses a `k-*` name. Skills are unprefixed unless avoiding a known collision.
+- SOPs use a `k-*` name, except the older `kiro-spec-workflow` and `about-konductor`. Skills are unprefixed unless avoiding a known collision.
 - **License headers:** All code files must carry an SPDX short-form identifier as the very first line
   (before any docstring or comment block), matching the project's declared Apache-2.0 license.
   `Apache-2.0` is the only permitted SPDX identifier in this package. Do not introduce any other

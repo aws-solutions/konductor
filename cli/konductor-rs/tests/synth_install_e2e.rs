@@ -670,3 +670,93 @@ fn real_synth_fails_on_dangling_skill_reference() {
 
     std::fs::remove_dir_all(&repo_root).ok();
 }
+
+/// Agentless package, end to end: a REAL `synth` of a source tree with a
+/// skill and a SOP but no agent specs, then a REAL `install` for each
+/// harness. The ordinary skill and the SOP's `sop-<name>` conversion must
+/// both land in the directory the harness itself scans for skills --
+/// `.kiro/skills/` for the Kiro harnesses (not `.konductor/skills/`,
+/// which only an agent's skill-lookup MCP configuration can reach) and
+/// `.claude/skills/` for Claude Code -- with the synthed bytes.
+///
+/// This stops at the installed layout. Whether a plain Kiro CLI session
+/// then discovers those skills needs an authenticated `kiro-cli` and a
+/// model call, so it lives in `tests/integration/kiro-agentless-discovery.sh`,
+/// which is run by hand rather than in CI.
+#[test]
+fn real_synth_then_real_install_of_agentless_output_lands_skills_where_the_harness_looks() {
+    let sink = telemetry_test_sink::TelemetrySink::start();
+    let repo_root = scratch_dir("agentless-repo");
+    seed_skill_source(&repo_root);
+    let sops_dir = repo_root.join("agent-sops");
+    std::fs::create_dir_all(&sops_dir).unwrap();
+    std::fs::write(
+        sops_dir.join("k-example.sop.md"),
+        b"# Example\n\n## Overview\n\nAn example SOP.\n\n## Steps\n\n### 1. Do it\n\nDo the thing.\n",
+    )
+    .unwrap();
+
+    let synth_result = run_konductor(
+        &repo_root,
+        &sink,
+        &[CMD_SYNTH, "--from", &repo_root.display().to_string()],
+    );
+    assert!(
+        synth_result.status.success(),
+        "real `synth` of an agentless tree must succeed: stderr={}",
+        String::from_utf8_lossy(&synth_result.stderr)
+    );
+    let synthed_skill =
+        std::fs::read(repo_root.join("dist/kiro-cli-v2/skills/example-skill/SKILL.md")).unwrap();
+
+    for (harness, skills_dir, marker) in [
+        ("kiro-cli-v2", ".kiro/skills", None),
+        ("kiro-v3", ".kiro/skills", None),
+        ("claude", ".claude/skills", Some(".claude")),
+    ] {
+        let target_dir = scratch_dir(&format!("agentless-target-{harness}"));
+        if let Some(marker) = marker {
+            std::fs::create_dir_all(target_dir.join(marker)).unwrap();
+        }
+        let install_result = run_konductor(
+            &target_dir,
+            &sink,
+            &[
+                CMD_INSTALL,
+                "--from",
+                &repo_root.display().to_string(),
+                "--target",
+                &target_dir.display().to_string(),
+                "--harness",
+                harness,
+                "--no-telemetry",
+            ],
+        );
+        assert!(
+            install_result.status.success(),
+            "{harness}: real `install` of agentless output must succeed: stderr={}",
+            String::from_utf8_lossy(&install_result.stderr)
+        );
+
+        let installed_skill = target_dir.join(skills_dir).join("example-skill/SKILL.md");
+        assert_eq!(
+            std::fs::read(&installed_skill).unwrap_or_default(),
+            synthed_skill,
+            "{harness}: the ordinary skill must be installed at {} with the synthed bytes",
+            installed_skill.display()
+        );
+        assert!(
+            target_dir
+                .join(skills_dir)
+                .join("sop-k-example/SKILL.md")
+                .is_file(),
+            "{harness}: the SOP's sop-<name> conversion must sit next to the ordinary skill"
+        );
+        assert!(
+            !target_dir.join(".konductor/skills").exists(),
+            "{harness}: nothing may be installed under .konductor/skills/ without agents"
+        );
+        std::fs::remove_dir_all(&target_dir).ok();
+    }
+    std::fs::remove_dir_all(&repo_root).ok();
+}

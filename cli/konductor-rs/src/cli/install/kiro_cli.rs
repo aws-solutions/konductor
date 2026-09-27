@@ -31,7 +31,13 @@
 // docstring); each `files[].path` carries its own `.kiro/` or
 // `.konductor/` prefix.
 //
-// Skill install MERGES into `.konductor/skills/`: a skill directory this
+// Exception: when the synth output carries no agents, skills land under
+// `.kiro/skills/` instead. With no agent there is no scoping to protect
+// and no agent to carry the skill-lookup MCP configuration, so
+// `.kiro/skills/` is the only place a plain Kiro session can find them
+// (see `plan::skills_destination_root`).
+//
+// Skill install MERGES into the skills directory: a skill directory this
 // install did not emit (e.g. hand-authored) is left untouched, but a
 // skill directory it does own is fully replaced so a file removed from
 // the source doesn't linger in the destination.
@@ -83,8 +89,9 @@ use crate::cli::synth::HarnessTransformer as _;
 /// under the user's home directory. Agents and context stay under
 /// `.kiro/` (Kiro's own config root).
 pub(crate) const KIRO_DESTINATION_ROOT: &str = ".kiro";
-/// Skills live under `.konductor/` -- see module docstring's "Two
-/// install roots" section for why this is NOT `.kiro/skills/`.
+/// Skills live under `.konductor/` when the synth output carries agents
+/// -- see module docstring's "Two install roots" section for why this
+/// is NOT `.kiro/skills/`, and for the no-agent exception.
 ///
 /// Both constants are `pub(crate)`: `uninstall.rs` uses them to build
 /// the same runtime-root paths it must never delete, regardless of
@@ -386,7 +393,7 @@ impl InstallStrategy for KiroCliInstallStrategy {
         // `DUAL_MARKER_SOP_SKILL_PREFIX` is defined once, above, before
         // `in_progress_files` -- see that definition's own doc comment
         // for why the write-ahead record needs the identical exclusion.
-        let (files, _dual_marker_claude_sop_skills): (Vec<ManifestFile>, Vec<ManifestFile>) = files
+        let (files, dual_marker_claude_sop_skills): (Vec<ManifestFile>, Vec<ManifestFile>) = files
             .into_iter()
             .partition(|f| !f.path.starts_with(DUAL_MARKER_SOP_SKILL_PREFIX));
 
@@ -403,6 +410,17 @@ impl InstallStrategy for KiroCliInstallStrategy {
             files,
         );
         super::manifest::upsert_strategy(target_dir, complete)?;
+
+        // Files the previous install of this strategy wrote that this
+        // source no longer contains (a removed agent, skill, SOP or
+        // context file) are deleted now that the new slot no longer
+        // names them, when they are unchanged and provably ours. See
+        // `prune.rs`.
+        super::prune::remove_source_deleted_files(
+            target_dir,
+            prior_manifest.as_ref(),
+            &dual_marker_claude_sop_skills,
+        );
 
         // The per-install record, written after the manifest is
         // finalized Complete. Best-effort: a failure here must not
@@ -1074,7 +1092,7 @@ mod tests {
             )
             .expect("install must succeed");
 
-        let installed = target_dir.join(".konductor/skills/code-review/SKILL.md");
+        let installed = target_dir.join(".kiro/skills/code-review/SKILL.md");
         assert!(installed.is_file());
         assert_eq!(
             fs::read(&installed).unwrap(),
@@ -1088,7 +1106,7 @@ mod tests {
         assert_eq!(manifest.strategies[0].files.len(), 1);
         assert_eq!(
             manifest.strategies[0].files[0].path,
-            ".konductor/skills/code-review/SKILL.md"
+            ".kiro/skills/code-review/SKILL.md"
         );
 
         fs::remove_dir_all(&target_dir).ok();
@@ -1106,7 +1124,7 @@ mod tests {
         seed_synthed_skill(&repo_root, "code-review", b"synthed content\n", &[]);
 
         // Pre-existing hand-authored skill this install does not own.
-        let hand_authored_dir = target_dir.join(".konductor/skills/hand-authored-notes");
+        let hand_authored_dir = target_dir.join(".kiro/skills/hand-authored-notes");
         fs::create_dir_all(&hand_authored_dir).unwrap();
         fs::write(
             hand_authored_dir.join("SKILL.md"),
@@ -1125,7 +1143,7 @@ mod tests {
 
         // The installed skill landed.
         assert_eq!(
-            fs::read(target_dir.join(".konductor/skills/code-review/SKILL.md")).unwrap(),
+            fs::read(target_dir.join(".kiro/skills/code-review/SKILL.md")).unwrap(),
             b"synthed content\n"
         );
         // The unrelated hand-authored skill is untouched, byte for byte.
@@ -1268,7 +1286,7 @@ mod tests {
             )
             .expect("first install must succeed");
         assert!(target_dir
-            .join(".konductor/skills/code-review/old-aux.txt")
+            .join(".kiro/skills/code-review/old-aux.txt")
             .exists());
 
         // Re-synth without the auxiliary file, then re-install.
@@ -1284,11 +1302,11 @@ mod tests {
             .expect("second install must succeed");
 
         assert_eq!(
-            fs::read(target_dir.join(".konductor/skills/code-review/SKILL.md")).unwrap(),
+            fs::read(target_dir.join(".kiro/skills/code-review/SKILL.md")).unwrap(),
             b"v2\n"
         );
         assert!(!target_dir
-            .join(".konductor/skills/code-review/old-aux.txt")
+            .join(".kiro/skills/code-review/old-aux.txt")
             .exists());
 
         fs::remove_dir_all(&target_dir).ok();
@@ -1317,7 +1335,7 @@ mod tests {
             )
             .expect("install must succeed");
 
-        let installed_script = target_dir.join(".konductor/skills/with-script/scripts/run.sh");
+        let installed_script = target_dir.join(".kiro/skills/with-script/scripts/run.sh");
         assert!(installed_script.is_file());
         assert!(
             is_executable(&installed_script).unwrap(),
@@ -1375,7 +1393,7 @@ mod tests {
             )
             .expect("install must succeed despite the symlinks");
 
-        let installed_dir = target_dir.join(".konductor/skills/with-symlinks");
+        let installed_dir = target_dir.join(".kiro/skills/with-symlinks");
         assert!(installed_dir.join("real.txt").is_file());
         assert!(!installed_dir.join("relative-link.txt").exists());
         assert!(!installed_dir.join("absolute-link.txt").exists());
@@ -1416,11 +1434,9 @@ mod tests {
             .expect("install must succeed despite the stray file");
 
         assert!(target_dir
-            .join(".konductor/skills/real-skill/SKILL.md")
+            .join(".kiro/skills/real-skill/SKILL.md")
             .is_file());
-        assert!(!target_dir
-            .join(".konductor/skills/not-a-skill-dir")
-            .exists());
+        assert!(!target_dir.join(".kiro/skills/not-a-skill-dir").exists());
 
         let manifest = super::super::manifest::read_manifest(&target_dir)
             .unwrap()
@@ -1428,7 +1444,7 @@ mod tests {
         assert_eq!(manifest.strategies[0].files.len(), 1);
         assert_eq!(
             manifest.strategies[0].files[0].path,
-            ".konductor/skills/real-skill/SKILL.md"
+            ".kiro/skills/real-skill/SKILL.md"
         );
 
         fs::remove_dir_all(&target_dir).ok();
@@ -1455,7 +1471,7 @@ mod tests {
             )
             .expect("install must succeed");
 
-        let installed = target_dir.join(".konductor/skills/nested/scripts/deep/helper.py");
+        let installed = target_dir.join(".kiro/skills/nested/scripts/deep/helper.py");
         assert!(installed.is_file());
         assert_eq!(fs::read(&installed).unwrap(), b"print('hi')\n");
 
@@ -1465,7 +1481,7 @@ mod tests {
         assert!(manifest.strategies[0]
             .files
             .iter()
-            .any(|f| f.path == ".konductor/skills/nested/scripts/deep/helper.py"));
+            .any(|f| f.path == ".kiro/skills/nested/scripts/deep/helper.py"));
 
         fs::remove_dir_all(&target_dir).ok();
         fs::remove_dir_all(&repo_root).ok();
@@ -1495,7 +1511,7 @@ mod tests {
         assert_eq!(manifest.strategies[0].files.len(), 1);
         assert_eq!(
             manifest.strategies[0].files[0].path,
-            ".konductor/skills/code-review/SKILL.md"
+            ".kiro/skills/code-review/SKILL.md"
         );
 
         fs::remove_dir_all(&target_dir).ok();
@@ -1711,14 +1727,14 @@ mod tests {
         // file itself is never written.
         assert!(
             target_dir
-                .join(".konductor/skills/example-skill/SKILL.md")
+                .join(".kiro/skills/example-skill/SKILL.md")
                 .exists(),
             "sanity check: SKILL.md is written before the recursive descent reaches the \
              unsafe aux file, per this module's documented partial-write behavior"
         );
         assert!(
             !target_dir
-                .join(".konductor/skills/example-skill/scripts/my script.sh")
+                .join(".kiro/skills/example-skill/scripts/my script.sh")
                 .exists(),
             "the aux file whose name failed validation must never be written to disk"
         );
@@ -2120,7 +2136,7 @@ mod tests {
         // A foreign, never-installed directory sharing the synthed
         // skill's name, holding its own extra file AND a colliding file
         // -- with NO prior Konductor manifest for this target.
-        let foreign_dir = target_dir.join(".konductor/skills/code-review");
+        let foreign_dir = target_dir.join(".kiro/skills/code-review");
         fs::create_dir_all(&foreign_dir).unwrap();
         fs::write(foreign_dir.join("notes.md"), b"my private notes\n").unwrap();
         fs::write(foreign_dir.join("SKILL.md"), b"hand-authored\n").unwrap();
@@ -2154,7 +2170,7 @@ mod tests {
         let skill_entry = manifest.strategies[0]
             .files
             .iter()
-            .find(|f| f.path == ".konductor/skills/code-review/SKILL.md")
+            .find(|f| f.path == ".kiro/skills/code-review/SKILL.md")
             .expect("the overwritten skill file must be recorded");
         assert_eq!(skill_entry.provenance, Provenance::ReplacedForeign);
         assert!(
@@ -2252,7 +2268,7 @@ mod tests {
             )
             .expect("first install must succeed");
         assert!(target_dir
-            .join(".konductor/skills/with-scripts/scripts/deep/helper.py")
+            .join(".kiro/skills/with-scripts/scripts/deep/helper.py")
             .is_file());
 
         // Re-synth WITHOUT the nested file (drops the whole scripts/
@@ -2274,7 +2290,7 @@ mod tests {
             .expect("second install must succeed");
 
         // The stale file is gone AND the empty dirs it left are pruned.
-        let skill_dir = target_dir.join(".konductor/skills/with-scripts");
+        let skill_dir = target_dir.join(".kiro/skills/with-scripts");
         assert!(!skill_dir.join("scripts/deep/helper.py").exists());
         assert!(
             !skill_dir.join("scripts/deep").exists(),
@@ -2294,18 +2310,16 @@ mod tests {
 
     // -- Skill resource rewrite (moving skills to .konductor/skills/). --
 
-    /// Skills must land under `.konductor/skills/`, NOT `.kiro/skills/`
-    /// -- the whole point of the move (Kiro's native discovery scans
-    /// `.kiro/skills/` unconditionally, which defeats per-agent
-    /// scoping).
+    /// When the synth output carries at least one agent, skills must
+    /// land under `.konductor/skills/`, NOT `.kiro/skills/`: Kiro's
+    /// native discovery scans `.kiro/skills/` unconditionally, which
+    /// defeats per-agent scoping.
     ///
-    /// Falsifiability: confirmed this test fails (the `.kiro/skills/`
-    /// assertion trips) if `install_skills`'s
-    /// `KONDUCTOR_DESTINATION_ROOT` is swapped back for
-    /// `KIRO_DESTINATION_ROOT`. Restored immediately after confirming
-    /// the failure.
+    /// Falsifiability: fails (the `.kiro/skills` assertion trips) if
+    /// `skills_destination_root` returns `KIRO_DESTINATION_ROOT`
+    /// regardless of agents.
     #[test]
-    fn install_from_local_installs_skills_under_konductor_not_kiro() {
+    fn install_from_local_installs_skills_under_konductor_when_agents_ship() {
         let target_dir = scratch_dir("skill-under-konductor-target");
         let repo_root = scratch_dir("skill-under-konductor-repo");
         seed_synthed_skill(
@@ -2314,6 +2328,7 @@ mod tests {
             b"---\nname: code-review\n---\nBody\n",
             &[],
         );
+        seed_synthed_agent(&repo_root, "k-example", b"{\"name\":\"k-example\"}\n");
 
         KiroCliInstallStrategy
             .install_from_local(
@@ -2328,6 +2343,153 @@ mod tests {
             .join(".konductor/skills/code-review/SKILL.md")
             .is_file());
         assert!(!target_dir.join(".kiro/skills").exists());
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// With no agents in the synth output there is no agent to carry
+    /// the skill-lookup MCP configuration, so skills must land under
+    /// `.kiro/skills/`, where Kiro CLI discovers them natively, and
+    /// nothing may be written under `.konductor/skills/`. A scope
+    /// sidecar alone in `agents/` does not count as an agent.
+    ///
+    /// Falsifiability: fails if `skills_destination_root` returns
+    /// `KONDUCTOR_DESTINATION_ROOT` regardless of agents.
+    #[test]
+    fn install_from_local_installs_skills_under_kiro_when_no_agents_ship() {
+        let target_dir = scratch_dir("skill-under-kiro-target");
+        let repo_root = scratch_dir("skill-under-kiro-repo");
+        seed_synthed_skill(
+            &repo_root,
+            "code-review",
+            b"---\nname: code-review\n---\nBody\n",
+            &[],
+        );
+        let agents_dir = repo_root.join("dist").join("kiro-cli-v2").join("agents");
+        fs::create_dir_all(&agents_dir).unwrap();
+        fs::write(agents_dir.join("_skill_scopes.json"), b"{}\n").unwrap();
+
+        KiroCliInstallStrategy
+            .install_from_local(
+                &target_dir,
+                Some(repo_root.to_str().unwrap()),
+                "2026-01-01T00:00:00Z",
+                false,
+            )
+            .expect("install must succeed");
+
+        assert!(target_dir
+            .join(".kiro/skills/code-review/SKILL.md")
+            .is_file());
+        assert!(!target_dir.join(".konductor/skills").exists());
+        let manifest = super::super::manifest::read_manifest(&target_dir)
+            .unwrap()
+            .unwrap();
+        assert!(manifest.strategies[0]
+            .files
+            .iter()
+            .any(|f| f.path == ".kiro/skills/code-review/SKILL.md"));
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// With no agents, ordinary skills share `.kiro/skills/` with the
+    /// `sop-<name>` SOP conversions, so a skill named like one of them
+    /// must be refused before anything is written.
+    /// Upgrading from agent-bearing output to agentless output: the
+    /// second install must remove the first install's agent and its
+    /// `.konductor/skills/` copies (unchanged, no longer sourced), keep a
+    /// user-edited file, and leave the skill installed under
+    /// `.kiro/skills/`.
+    #[test]
+    fn install_from_local_upgrade_to_agentless_output_removes_dropped_agent_and_moved_skill() {
+        let target_dir = scratch_dir("agentless-upgrade-target");
+        let repo_root = scratch_dir("agentless-upgrade-repo");
+        seed_synthed_skill(
+            &repo_root,
+            "code-review",
+            b"---\nname: code-review\n---\nBody\n",
+            &[],
+        );
+        seed_synthed_skill(&repo_root, "notes", b"---\nname: notes\n---\nBody\n", &[]);
+        seed_synthed_agent(&repo_root, "k-example", b"{\"name\":\"k-example\"}\n");
+        KiroCliInstallStrategy
+            .install_from_local(
+                &target_dir,
+                Some(repo_root.to_str().unwrap()),
+                "2026-01-01T00:00:00Z",
+                false,
+            )
+            .expect("agent-bearing install must succeed");
+        assert!(target_dir.join(".kiro/agents/k-example.json").is_file());
+        assert!(target_dir
+            .join(".konductor/skills/code-review/SKILL.md")
+            .is_file());
+        // A user edit to one installed file must survive the upgrade.
+        fs::write(
+            target_dir.join(".konductor/skills/notes/SKILL.md"),
+            b"my own notes\n",
+        )
+        .unwrap();
+
+        fs::remove_file(
+            repo_root
+                .join("dist")
+                .join("kiro-cli-v2")
+                .join("agents")
+                .join("k-example.json"),
+        )
+        .unwrap();
+        KiroCliInstallStrategy
+            .install_from_local(
+                &target_dir,
+                Some(repo_root.to_str().unwrap()),
+                "2026-01-01T00:01:00Z",
+                false,
+            )
+            .expect("agentless install must succeed");
+
+        assert!(!target_dir.join(".kiro/agents/k-example.json").exists());
+        assert!(!target_dir.join(".konductor/skills/code-review").exists());
+        assert!(target_dir
+            .join(".kiro/skills/code-review/SKILL.md")
+            .is_file());
+        assert!(target_dir.join(".kiro/skills/notes/SKILL.md").is_file());
+        assert_eq!(
+            fs::read(target_dir.join(".konductor/skills/notes/SKILL.md")).unwrap(),
+            b"my own notes\n"
+        );
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn install_from_local_rejects_skill_named_like_a_sop_conversion_when_no_agents_ship() {
+        let target_dir = scratch_dir("skill-sop-collision-target");
+        let repo_root = scratch_dir("skill-sop-collision-repo");
+        seed_synthed_skill(
+            &repo_root,
+            "sop-k-plan",
+            b"---\nname: sop-k-plan\n---\nBody\n",
+            &[],
+        );
+        let sops_dir = repo_root.join("dist").join("kiro-cli-v2").join("sops");
+        fs::create_dir_all(&sops_dir).unwrap();
+        fs::write(sops_dir.join("k-plan.sop.md"), b"# Plan\n").unwrap();
+
+        let err = KiroCliInstallStrategy
+            .install_from_local(
+                &target_dir,
+                Some(repo_root.to_str().unwrap()),
+                "2026-01-01T00:00:00Z",
+                false,
+            )
+            .expect_err("a skill colliding with a SOP conversion must be refused");
+        assert!(err.contains("sop-k-plan"), "unexpected error: {err}");
+        assert!(!target_dir.join(".kiro/skills/sop-k-plan").exists());
 
         fs::remove_dir_all(&target_dir).ok();
         fs::remove_dir_all(&repo_root).ok();
@@ -2575,6 +2737,9 @@ mod tests {
         let repo_root = scratch_dir("skill-manifest-prefix-repo");
         let skill_contents: &[u8] = b"---\nname: code-review\n---\nBody\n";
         seed_synthed_skill(&repo_root, "code-review", skill_contents, &[]);
+        // Skills install under `.konductor/` only when the output carries
+        // an agent; see `skills_destination_root`.
+        seed_synthed_agent(&repo_root, "k-example", b"{\"name\":\"k-example\"}\n");
 
         KiroCliInstallStrategy
             .install_from_local(
@@ -3781,12 +3946,11 @@ mod tests {
     /// injected, and the binary is copied to
     /// `.konductor/bin/skill-lookup-mcp`), then remove the binary from
     /// the SOURCE (`mcp/target/release/skill-lookup-mcp`) and install
-    /// again. The stale copy this install previously wrote to
-    /// `.konductor/bin/skill-lookup-mcp` deliberately stays on disk --
-    /// `install_bin_files` never deletes a no-longer-sourced binary --
-    /// so this test specifically proves the `mcpServers` entry is
-    /// dropped on the rerun anyway, rather than being left dangling and
-    /// pointing at that now-orphaned file.
+    /// again. `install_bin_files` itself never deletes a no-longer-sourced
+    /// binary; the unchanged copy is removed afterwards by
+    /// `prune::remove_source_deleted_files`. This test proves the
+    /// `mcpServers` entry is dropped on the rerun, rather than being left
+    /// dangling, and that the unchanged stale binary is gone.
     #[test]
     fn install_from_local_removes_stale_mcp_server_entry_when_binary_becomes_absent() {
         let target_dir = scratch_dir("mcp-inject-becomes-absent-target");
@@ -3837,10 +4001,12 @@ mod tests {
             )
             .expect("second install (binary absent) must succeed");
 
+        // The first install's binary is unchanged and no longer sourced,
+        // so `prune::remove_source_deleted_files` removes it; the agent
+        // must not be left pointing at it.
         assert!(
-            installed_binary.is_file(),
-            "sanity check: the stale binary copy from the first install must still be on \
-             disk -- install_bin_files never deletes a no-longer-sourced binary"
+            !installed_binary.exists(),
+            "the unchanged binary the new source no longer provides must be removed"
         );
         let second: serde_json::Value =
             serde_json::from_str(&fs::read_to_string(&installed_agent).unwrap()).unwrap();

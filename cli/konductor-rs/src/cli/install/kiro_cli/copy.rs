@@ -11,7 +11,10 @@ use std::path::Path;
 use super::super::artifact::sha256_hex;
 use super::super::manifest::{ManifestFile, Provenance, StrategyManifest};
 use super::fs_util::{is_executable, reject_unsafe_file_name, set_executable};
-use super::plan::{content_manifest_path, read_skill_scopes_sidecar, read_sop_scopes_sidecar};
+use super::plan::{
+    content_manifest_path, read_skill_scopes_sidecar, read_sop_scopes_sidecar,
+    reject_sop_skill_collisions, skills_destination_root,
+};
 use super::{KIRO_DESTINATION_ROOT, KONDUCTOR_DESTINATION_ROOT};
 use crate::cli::synth::kiro_cli_v2::{
     AGENTS_CONTENT_TYPE_DIR, CONTEXT_CONTENT_TYPE_DIR, SKILLS_CONTENT_TYPE_DIR,
@@ -292,11 +295,12 @@ pub(in crate::cli::install) fn install_agents(
 /// "owned" would preserve foreign files only until this install
 /// recorded the skill, then wipe them on the next run.)
 ///
-/// Limitation: the dropped-file cleanup only visits skills still present
-/// in the source (the loop below iterates the source skill list). A
-/// skill removed ENTIRELY from the source is never visited, so its
-/// prior-install files remain on disk as untracked orphans -- wholesale
-/// orphan removal is `update`/`uninstall`'s job, as for agents/context.
+/// The dropped-file cleanup here only visits skills still present in
+/// the source (the loop below iterates the source skill list). A skill
+/// removed ENTIRELY from the source, or one that moved to the other
+/// install root, is removed afterwards by
+/// `prune::remove_source_deleted_files`, as are dropped agents and
+/// context files.
 ///
 /// Visibility: `pub(in crate::cli::install)`, not private -- see `install_context`'s own
 /// doc comment above for the reasoning (identical here, for this
@@ -313,9 +317,11 @@ pub(in crate::cli::install) fn install_skills(
         return Ok(Vec::new());
     }
 
-    let destination_root = target_dir
-        .join(KONDUCTOR_DESTINATION_ROOT)
-        .join(SKILLS_CONTENT_TYPE_DIR);
+    // `.kiro/` instead of `.konductor/` when the synth output has no
+    // agents -- see `skills_destination_root`'s doc comment.
+    let skills_root = skills_destination_root(harness_dir)?;
+    reject_sop_skill_collisions(harness_dir, skills_root, &skill_names)?;
+    let destination_root = target_dir.join(skills_root).join(SKILLS_CONTENT_TYPE_DIR);
     std::fs::create_dir_all(&destination_root)
         .map_err(|e| format!("failed to create {}: {e}", destination_root.display()))?;
 
@@ -325,11 +331,8 @@ pub(in crate::cli::install) fn install_skills(
         let skill_source = source_root.join(&skill_name);
         let skill_destination = destination_root.join(&skill_name);
 
-        let manifest_prefix = content_manifest_path(
-            KONDUCTOR_DESTINATION_ROOT,
-            SKILLS_CONTENT_TYPE_DIR,
-            &skill_name,
-        );
+        let manifest_prefix =
+            content_manifest_path(skills_root, SKILLS_CONTENT_TYPE_DIR, &skill_name);
 
         std::fs::create_dir_all(&skill_destination)
             .map_err(|e| format!("failed to create {}: {e}", skill_destination.display()))?;

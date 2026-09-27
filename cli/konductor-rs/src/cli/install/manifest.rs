@@ -448,6 +448,23 @@ pub fn upsert_strategy(
     Ok(manifest)
 }
 
+/// Runs `f` on a fresh read of the manifest with the same per-target
+/// lock `upsert_strategy` holds, and keeps holding it until `f` returns.
+/// For a caller that must decide from the manifest AND act on the
+/// filesystem without another install recording a path in between
+/// (`prune::remove_source_deleted_files`). `f` must not call
+/// `upsert_strategy` or any other locked function: the lock is not
+/// re-entrant.
+pub(crate) fn with_manifest_locked<R>(
+    target_dir: &Path,
+    f: impl FnOnce(Option<&Manifest>) -> R,
+) -> Result<R, ManifestError> {
+    let konductor_dir = target_dir.join(KONDUCTOR_DIR_NAME);
+    let _lock = config_lock::acquire_named(&konductor_dir, MANIFEST_LOCK_FILE_NAME)?;
+    let manifest = read_manifest(target_dir)?;
+    Ok(f(manifest.as_ref()))
+}
+
 /// What a fresh, LOCKED re-read found immediately before
 /// `remove_strategy_locked` acted on it.
 #[derive(Debug)]

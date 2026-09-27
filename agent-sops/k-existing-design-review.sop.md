@@ -185,7 +185,7 @@ Artifacts found:
 ✅ dynamodb-table-design.md
 
 Proceeding with review. Note: the Security and threat coverage dimension will be limited.
-Consider generating a threat model first using the k-architect agent with the threat-modeling skill.
+Consider generating a threat model first by loading and running the threat-modeling skill.
 ```
 
 ### Example 3: Dry Run
@@ -216,7 +216,7 @@ No report generated (dry_run=true).
 
 ### Issue: System design file not found
 
-**Solution:** The system design document is required. Generate it first using `k-architect` with the `system-design-patterns` skill before running this SOP.
+**Solution:** The system design document is required. Generate it first by loading and running the `system-design-patterns` skill before running this SOP.
 
 ### Issue: Evaluation produces too many findings
 

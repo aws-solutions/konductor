@@ -8,7 +8,7 @@ Use this SOP during development when pages are not yet ready for full functional
 
 **Do NOT use for:** full Cypress/Playwright spec generation, CI pipeline wiring, or apps requiring non-browser authentication (e.g. mTLS).
 
-> **Browser note:** The browser agent uses Playwright's bundled **Chromium** (not system Chrome). This avoids the "Browser is already in use" error when Chrome is open on Mac. If the target page requires authentication, provide `username`/`password` or a `credentials_file`. See Parameters below.
+> **Browser note:** Browser automation uses Playwright's bundled **Chromium** (not system Chrome). This avoids the "Browser is already in use" error when Chrome is open on Mac. If the target page requires authentication, provide `username`/`password` or a `credentials_file`. See Parameters below.
 
 ## Parameters
 
@@ -27,14 +27,14 @@ Use this SOP during development when pages are not yet ready for full functional
 - If all required parameters are provided (or `credentials_file` covers `url`), proceed immediately
 - If any required parameters are missing, ask for all missing parameters in a single prompt
 
-## Subagents Used
+## Skills and Capabilities
 
-- `k-browser`, discovers the page, runs DOM inspection, executes test prompts
-- `k-quality-assurance`, writes structured test prompt files from discovery report
+- Browser automation with `app-discovery` and `dom-inspection`, discovers the page, runs DOM inspection, executes test prompts
+- Test prompt authoring, writes structured test prompt files from the discovery report
 
 ## Steps
 
-> **Dispatch model:** `k-light-ui-testing` may be registered on more than one orchestrator's `agentSopNames`. Verify via each orchestrator's own agent spec rather than assuming `konductor` is the only one. Today `konductor`, `konductor-mux-orchestrator`, and `konductor-cmux-orchestrator` all register it, and all three carry the Steps 1/3/5/7 shared-shell-state carve-out this SOP depends on. Whichever orchestrator is driving this SOP dispatches Step 2 and Step 6 to its own browser-persona subagent (`k-browser` in `konductor`'s case), and Step 4 to its own test-writing subagent (`k-quality-assurance` in `konductor`'s case), as three independent peer delegations. The test-writing subagent runs Step 4's work inline once dispatched, with no further delegation hop.
+> **Execution model:** The agent running this SOP performs all steps. Steps 2 and 6 MUST each run in a separate subagent when the runtime offers one, and otherwise as separate browser passes that do not reuse conclusions from the prompt-authoring pass. Step 4 is a separate test-writing pass. Steps 1, 3, 5, and 7 retain shared shell state.
 
 ### Step 1: Load Credentials
 
@@ -73,7 +73,7 @@ Normalize credentials into a single `credentials_file` path.
 
 ### Step 2: Discover the Page
 
-Delegate to `k-browser`.
+Run this step in a separate subagent when the runtime offers one. Otherwise, run it as a separate browser pass that does not reuse conclusions from earlier passes.
 
 **REQUIRED SKILLS:** app-discovery, dom-inspection
 **REQUIRED TOOLS:** browser automation tools
@@ -91,7 +91,7 @@ Delegate to `k-browser`.
 - Log or display password values
 - Navigate outside the app's domain
 
-**ON FAILURE:** `k-browser` runs `rm -f "{credentials_file}"` if `{agent_created_credentials_file}` is `true`, then surfaces the error and stops. (This step runs in a separate agent from Step 1, which set `credentials_file`/`agent_created_credentials_file`. Reference the literal values, not shell variables.)
+**ON FAILURE:** the browser pass runs `rm -f "{credentials_file}"` if `{agent_created_credentials_file}` is `true`, then surfaces the error and stops. (This pass MUST NOT assume shell state from Step 1. Reference the literal values, not shell variables.)
 
 **CONTEXT:** `url={url}`, `credentials_file={credentials_file}`, `agent_created_credentials_file={agent_created_credentials_file}`, `features={features}`.
 
@@ -114,7 +114,7 @@ Unless `scope_confirmed=true`, ask: "Proceed with test prompt generation for the
 
 ### Step 4: Write Test Prompts
 
-Delegate to `k-quality-assurance`. Pass `{credentials_file}` and `{agent_created_credentials_file}` into this delegated step as literals. Step 4 runs in a separate agent from Step 1, which set them, so the delegate has no shell state to inherit.
+Run this as a separate test-writing pass. Carry `{credentials_file}` and `{agent_created_credentials_file}` into this pass as literals. It MUST NOT assume shell state from Step 1.
 
 **REQUIRED TOOLS:** read, write
 
@@ -130,7 +130,7 @@ Delegate to `k-quality-assurance`. Pass `{credentials_file}` and `{agent_created
 - Use the `dom-inspection` output to make assertions precise: test exact error messages, exact field constraints, exact conditional visibility triggers
 - Name files descriptively: `{feature-slug}.test-prompt.md`
 
-**ON FAILURE:** `k-quality-assurance` runs `rm -f "{credentials_file}"` if `{agent_created_credentials_file}` is `true`, then surfaces the error and stops. (Reference the literal values, not shell variables. This step runs in a separate agent from Step 1.)
+**ON FAILURE:** the test-writing pass runs `rm -f "{credentials_file}"` if `{agent_created_credentials_file}` is `true`, then surfaces the error and stops. (Reference the literal values, not shell variables. This pass MUST NOT assume shell state from Step 1.)
 
 ### Step 5: Review Prompts
 
@@ -148,21 +148,21 @@ Unless `scope_confirmed=true`, ask: "Review the prompts above. Run them now? [y/
 
 ### Step 6: Execute Test Prompts
 
-Delegate to `k-browser`. Pass `{credentials_file}` and `{agent_created_credentials_file}` into this delegated step as literals. Step 6 runs in a separate agent from Step 1, which set them, so the delegate has no shell state to inherit.
+Run this step in a separate subagent when the runtime offers one. Otherwise, run it as a separate browser pass that does not reuse conclusions from the prompt-authoring pass. Carry `{credentials_file}` and `{agent_created_credentials_file}` into this pass as literals. It MUST NOT assume shell state from Step 1.
 
 **REQUIRED TOOLS:** browser automation tools
 
 **MUST DO:**
 
 - For each selected prompt file, read it and execute the Steps section using Playwright browser tools
-- After each step, take a screenshot to document state. Whether the screenshot is persisted to a referenceable path or must be described in text depends on which MCP server the dispatched browser agent is actually using. Check both before assuming either:
-  - **`playwright-mcp`** (the public `@playwright/mcp` package, used by `k-browser`) IS configured with `--output-dir` (see that agent's `mcpRegistry` entry). `browser_take_screenshot` persists to that directory (default filename `page-{timestamp}.{png|jpeg|webp}` when no `filename` argument is given, per that tool's own documentation). Record the actual saved path, as reported back by the tool call, or `{configured-output-dir}/{filename-used}` if the tool call did not echo one, as Evidence, not a text description.
-  - **An internal proxy MCP server some packages route through instead** has no equivalent, and this is verified, not assumed: it is a shared, remote, multi-tenant server that opens one CDP connection per session via a hardcoded, empty connection config with no output-directory option and no per-agent way to set one. There is no CLI-args entry point analogous to `playwright-mcp`'s spawn-time flags at all, since that proxy is a long-running deployed service, not a process this SOP spawns. For this path, `browser_take_screenshot` still returns the image inline with no persisted, referenceable path. Do not invent one. Record the screenshot's on-screen content as a short text description (what was visible, e.g. "success banner: 'Item saved'") instead of a path, exactly as before.
+- After each step, take a screenshot to document state. Whether the screenshot is persisted to a referenceable path or must be described in text depends on which MCP server the browser pass is actually using. Check both before assuming either:
+  - **`playwright-mcp`** (the public `@playwright/mcp` package) MAY be configured with `--output-dir`. Check the active tool configuration. `browser_take_screenshot` persists to that directory (default filename `page-{timestamp}.{png|jpeg|webp}` when no `filename` argument is given, per that tool's own documentation). Record the actual saved path, as reported back by the tool call, or `{configured-output-dir}/{filename-used}` if the tool call did not echo one, as Evidence, not a text description.
+  - **An internal proxy MCP server some packages route through instead** has no equivalent, and this is verified, not assumed: it is a shared, remote, multi-tenant server that opens one CDP connection per session via a hardcoded, empty connection config with no output-directory option and no per-session way to set one. There is no CLI-args entry point analogous to `playwright-mcp`'s spawn-time flags at all, since that proxy is a long-running deployed service, not a process this SOP spawns. For this path, `browser_take_screenshot` still returns the image inline with no persisted, referenceable path. Do not invent one. Record the screenshot's on-screen content as a short text description (what was visible, e.g. "success banner: 'Item saved'") instead of a path, exactly as before.
 - Evaluate the Expected Outcome. Assert the described behavior using DOM queries and screenshot comparison
-- Record pass/fail per prompt with evidence, a real screenshot path when the dispatched agent is using `playwright-mcp` (per the first bullet above), or a short text description of the screenshot's content plus actual vs expected when it is using the internal proxy MCP server (per the second bullet above)
+- Record pass/fail per prompt with evidence, a real screenshot path when the browser pass is using `playwright-mcp` (per the first bullet above), or a short text description of the screenshot's content plus actual vs expected when it is using the internal proxy MCP server (per the second bullet above)
 - If `credentials_file` is non-empty, authenticate before executing prompts (reuse session across all prompts)
 - If `credentials_file` is non-empty, sign out of the application before closing (navigate to the app's sign-out/log-off URL or click the sign-out control)
-- Close the browser session after all prompts have been executed and results recorded. Do this before returning results to the orchestrator
+- Close the browser session after all prompts have been executed and results recorded. Do this before reporting results
 
 **MUST NOT DO:**
 
@@ -171,7 +171,7 @@ Delegate to `k-browser`. Pass `{credentials_file}` and `{agent_created_credentia
 
 **ON FAILURE of a prompt:** record as FAIL with the failure reason and the Evidence captured per Step 6 above (a screenshot path or a text description, depending on the MCP server in use), continue to the next prompt. Do not abort the entire run.
 
-**ON FAILURE of the browser session:** `k-browser` runs `rm -f "{credentials_file}"` if `{agent_created_credentials_file}` is `true`, then surfaces the error and stops. (Reference the literal values, not shell variables. This step runs in a separate agent from Step 1.)
+**ON FAILURE of the browser session:** the browser pass runs `rm -f "{credentials_file}"` if `{agent_created_credentials_file}` is `true`, then surfaces the error and stops. (Reference the literal values, not shell variables. This pass MUST NOT assume shell state from Step 1.)
 
 ### Step 7: Report Results
 
@@ -181,7 +181,7 @@ Print a summary:
 | ------------ | ----------- | ----------------- | ---------------------------------- |
 | `{filename}` | `{feature}` | ✅ Pass / ❌ Fail | `{screenshot path or description}` |
 
-- Evidence is, per Step 6: a real screenshot path under the configured `--output-dir` when the dispatched agent used `playwright-mcp`, or a short text description of each screenshot's on-screen content when it used the internal proxy MCP server. That server has no persisted, referenceable output location (verified against its actual implementation; see Step 6)
+- Evidence is, per Step 6: a real screenshot path under the configured `--output-dir` when the browser pass used `playwright-mcp`, or a short text description of each screenshot's on-screen content when it used the internal proxy MCP server. That server has no persisted, referenceable output location (verified against its actual implementation; see Step 6)
 - For each FAIL: include the step that failed, the expected outcome, and the actual outcome
 - If `agent_created_credentials_file=true`, delete the temp file: `rm -f "$credentials_file" && unset agent_created_credentials_file`
 - Next steps: fix failing features and re-run, or escalate to full Cypress/Playwright spec generation once the page is stable
@@ -190,8 +190,8 @@ Print a summary:
 
 **CRITICAL (block proceeding):**
 
-- Password value appears in any delegation prompt, log output, or prompt file
-- Temp credentials file not deleted after Step 7 (plaintext password persists on disk). Run `rm -f "$credentials_file" && unset agent_created_credentials_file` (Step 1, 3, 5, 7, which share Step 1's shell state) or the equivalent `rm -f "{credentials_file}"` against the literal value (Steps 2, 4, 6, which run in separate delegated agents) on every exit path
+- Password value appears in any subagent prompt, log output, or prompt file
+- Temp credentials file not deleted after Step 7 (plaintext password persists on disk). Run `rm -f "$credentials_file" && unset agent_created_credentials_file` (Step 1, 3, 5, 7, which share Step 1's shell state) or the equivalent `rm -f "{credentials_file}"` against the literal value (Steps 2, 4, 6, which MUST NOT assume Step 1 shell state) on every exit path
 - Test prompts executed without user confirmation in Step 5, unless the caller set `scope_confirmed=true`
 - `dom-inspection` not run on forms (assertions will be inaccurate)
 

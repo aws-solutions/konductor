@@ -132,7 +132,10 @@ def main() -> int:
 
     root = Path(args.repo) if args.repo else Path(__file__).resolve().parents[2]
     guide = root / "docs" / "user-guide"
-    for required in (guide, root / "agents", root / "skills", root / "agent-sops"):
+    # agents/ is optional: a tree that ships no agent specs has an empty agent
+    # catalog, and the roster checks below then report every agent the guide
+    # still names as drift instead of refusing to run.
+    for required in (guide, root / "skills", root / "agent-sops"):
         if not required.exists():
             print(f"error: {required} not found — pass --repo <path>", file=sys.stderr)
             return 64

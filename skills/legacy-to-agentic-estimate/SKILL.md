@@ -148,7 +148,9 @@ item's tier by keyword, and reports which items need model judgment.
 
 ```bash
 SCRIPT="$(git rev-parse --show-toplevel 2>/dev/null)/skills/legacy-to-agentic-estimate/scripts/convert_estimates.py"
-[ -f "$SCRIPT" ] || SCRIPT="${SKILLS_HOME:-$HOME/.konductor/skills}/legacy-to-agentic-estimate/scripts/convert_estimates.py"
+for dir in "${SKILLS_HOME:-$HOME/.konductor/skills}" .kiro/skills .claude/skills "$HOME/.kiro/skills" "$HOME/.claude/skills"; do
+  [ -f "$SCRIPT" ] && break; SCRIPT="$dir/legacy-to-agentic-estimate/scripts/convert_estimates.py"
+done
 python3 "$SCRIPT" \
   prepare --items '[{"E_legacy":30,"description":"Revamp the onboarding flow"}]'
 ```
@@ -180,7 +182,9 @@ Merge the agent's judgment back in and compute the bands.
 
 ```bash
 SCRIPT="$(git rev-parse --show-toplevel 2>/dev/null)/skills/legacy-to-agentic-estimate/scripts/convert_estimates.py"
-[ -f "$SCRIPT" ] || SCRIPT="${SKILLS_HOME:-$HOME/.konductor/skills}/legacy-to-agentic-estimate/scripts/convert_estimates.py"
+for dir in "${SKILLS_HOME:-$HOME/.konductor/skills}" .kiro/skills .claude/skills "$HOME/.kiro/skills" "$HOME/.claude/skills"; do
+  [ -f "$SCRIPT" ] && break; SCRIPT="$dir/legacy-to-agentic-estimate/scripts/convert_estimates.py"
+done
 python3 "$SCRIPT" \
   finalize \
   --items '[{"E_legacy":30,"description":"Revamp the onboarding flow"}]' \
@@ -198,7 +202,9 @@ array printed by `prepare`.
 
 ```bash
 SCRIPT="$(git rev-parse --show-toplevel 2>/dev/null)/skills/legacy-to-agentic-estimate/scripts/convert_estimates.py"
-[ -f "$SCRIPT" ] || SCRIPT="${SKILLS_HOME:-$HOME/.konductor/skills}/legacy-to-agentic-estimate/scripts/convert_estimates.py"
+for dir in "${SKILLS_HOME:-$HOME/.konductor/skills}" .kiro/skills .claude/skills "$HOME/.kiro/skills" "$HOME/.claude/skills"; do
+  [ -f "$SCRIPT" ] && break; SCRIPT="$dir/legacy-to-agentic-estimate/scripts/convert_estimates.py"
+done
 python3 "$SCRIPT" \
   convert --items '[{"E_legacy":24,"description":"Add CRUD endpoints and DTOs for the settings API"},{"E_legacy":60,"description":"Design multi-region failover architecture for the datastore"}]'
 ```

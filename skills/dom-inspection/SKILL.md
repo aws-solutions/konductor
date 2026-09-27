@@ -26,7 +26,7 @@ Use this skill when:
 - Discovering validation rules that are not visible from screenshots alone
 - Building a discovery report that captures form business logic for test generation
 
-Load this skill into `k-browser` (for live DOM inspection during app discovery) or `k-quality-assurance` (for interpreting an existing inspection report when generating specs).
+Load this skill for live DOM inspection during app discovery or for interpreting an existing inspection report when generating specs.
 
 ## Inspection Protocol
 

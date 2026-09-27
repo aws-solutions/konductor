@@ -349,7 +349,7 @@ impl InstallStrategy for KiroCliV3InstallStrategy {
         // slot must never claim it, so a future `uninstall`/`update`
         // never deletes it. `claude`'s own slot, if separately
         // installed at this target, owns that path on its own.
-        let (files, _dual_marker_claude_sop_skills): (Vec<ManifestFile>, Vec<ManifestFile>) = files
+        let (files, dual_marker_claude_sop_skills): (Vec<ManifestFile>, Vec<ManifestFile>) = files
             .into_iter()
             .partition(|f| !f.path.starts_with(DUAL_MARKER_SOP_SKILL_PREFIX));
 
@@ -362,6 +362,13 @@ impl InstallStrategy for KiroCliV3InstallStrategy {
             files,
         );
         super::manifest::upsert_strategy(target_dir, complete)?;
+
+        // Same call, same rationale, as `kiro_cli.rs`'s own call site.
+        super::prune::remove_source_deleted_files(
+            target_dir,
+            prior_manifest.as_ref(),
+            &dual_marker_claude_sop_skills,
+        );
 
         // Same call, same rationale, as `kiro_cli.rs`'s own identical
         // call site.
@@ -1275,7 +1282,7 @@ mod tests {
                 false,
             )
             .expect("first install must succeed");
-        let extra_path = target_dir.join(".konductor/skills/constraints/extra.md");
+        let extra_path = target_dir.join(".kiro/skills/constraints/extra.md");
         assert!(extra_path.is_file());
 
         fs::remove_file(
@@ -1302,7 +1309,7 @@ mod tests {
             "a file dropped from the source must not linger after reinstall"
         );
         assert!(target_dir
-            .join(".konductor/skills/constraints/SKILL.md")
+            .join(".kiro/skills/constraints/SKILL.md")
             .is_file());
 
         fs::remove_dir_all(&target_dir).ok();

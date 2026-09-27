@@ -79,7 +79,7 @@ make link                                                     # 2. link
 command -v konductor && konductor --version                  # 3. verify
 konductor synth --from .                                      # 4. synth
 konductor install --from . --harness kiro-cli-v2              # 5. install (to $HOME)
-kiro-cli chat --agent konductor                               # 6. chat
+kiro-cli chat                                                 # 6. chat
 ```
 
 The rest of this doc is the reference for each step — flags, destinations, and
@@ -262,7 +262,7 @@ choose between.
 | Content           | Destination                          |
 | ----------------- | ------------------------------------ |
 | Agents            | `<target>/.kiro/agents/`             |
-| Skills            | `<target>/.konductor/skills/<name>/` |
+| Skills            | `<target>/.konductor/skills/<name>/`, or `<target>/.kiro/skills/<name>/` when the synth output has no agents |
 | MCP server binary | `<target>/.konductor/bin/<name>`     |
 | Manifest          | `<target>/.konductor/manifest`       |
 
@@ -275,8 +275,12 @@ below.
 
 Skills land under `.konductor/skills/`, deliberately outside `.kiro/skills/`: Kiro CLI's
 own skill discovery scans `.kiro/skills/` unconditionally and makes every skill visible
-to every agent regardless of what it declares, which defeats per-agent scoping. Skill
-install merges into `<target>/.konductor/skills/`: a skill directory this install did
+to every agent regardless of what it declares, which defeats per-agent scoping. The
+exception is synth output with no agents, such as this package's: there is nothing to
+scope and no agent to carry the `skill-lookup-mcp` configuration, so skills land under
+`.kiro/skills/`, where a plain Kiro session discovers them. A skill named like a SOP's
+`sop-<name>` conversion is then refused, because both would share that directory. Skill
+install merges into the skills directory: a skill directory this install did
 not emit (e.g. hand-authored) is left untouched, but a skill directory it does own is
 fully replaced so a file removed from the source doesn't linger in the destination.
 
@@ -417,8 +421,9 @@ all.
 Verify a `--target <dir>` install:
 
 ```bash
-ls dir/.kiro/agents/*.json | wc -l          # agent count
-ls -d dir/.konductor/skills/*/ | wc -l      # skill count
+ls dir/.kiro/agents/*.json | wc -l          # agent count (0 for this package)
+ls -d dir/.kiro/skills/*/ | wc -l           # skill count, including sop-<name> conversions
+                                            # (dir/.konductor/skills/ when agents ship)
 wc -l dir/.konductor/manifest                # manifest entries
 ```
 
@@ -833,21 +838,14 @@ stdout instead:
 
 ---
 
-## Using the orchestrator
+## Using the installed content
 
-Agents installed with `--target <dir>` are discovered by a **cwd-relative scan** — they
-only show up in `kiro-cli agent list` when your shell is inside `<dir>` (labeled
-`Workspace`). A default install (no `--target`) puts them under `$HOME/.kiro/agents/`
-(labeled `Global`), visible from anywhere.
-
-```bash
-kiro-cli agent list                                  # confirm discovery
-kiro-cli chat --agent konductor                      # start a session
-```
-
-Skill bodies load lazily via the `fs_read` tool: an interactive session prompts for
-approval the first time an agent reads a skill, and a `--no-interactive` run needs
-`--trust-tools=fs_read` (or `--trust-all-tools`) to read skills without prompting.
+The package ships no agents, so start a plain session (`kiro-cli chat` or `claude`) in the
+install target. On Kiro CLI, the ordinary skills and the `sop-<name>` SOP conversions
+are both installed under `.kiro/skills/`, which Kiro CLI discovers natively. Skill bodies are read with the `fs_read` tool: an interactive session prompts
+for approval the first time it reads one, and a `--no-interactive` run needs
+`--trust-tools=fs_read` (or `--trust-all-tools`). For multi-phase work, use the fuse-flow
+workflow runner in `fuse/flow/` (see its README).
 
 ---
 

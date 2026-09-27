@@ -52,7 +52,7 @@ Required artifacts:
 3. **Design & Architecture**: Non-functional requirements (NFRs), system design with integration points
 4. **Codebase Access**: Test files (unit, integration, E2E)
 5. **Analysis Mode**: Coverage or Readiness
-6. **Kiro Environment**: For subagent-powered parallel code analysis (uses `invokeSubAgent` tool)
+6. **Analysis Environment**: Generic subagents are optional for isolated or parallel code analysis; otherwise run each analysis inline
 
 ## Execution Flow
 
@@ -154,7 +154,7 @@ Include at the top of the report file and update as stages complete:
 - [ ] Functional test coverage calculated
 - [ ] Non-functional test coverage analyzed
 - [ ] Integration points analyzed
-- [ ] Gaps identified (with subagent analysis)
+- [ ] Gaps identified (with architecture-specific analysis)
 - [ ] Pattern analysis complete
 - [ ] Readiness assessment complete (Readiness mode only)
 - [ ] Risk evaluation complete (Readiness mode only)
@@ -903,7 +903,7 @@ Overall:
 
 **Objective:** Validate all system integration points have corresponding integration tests.
 
-**CRITICAL:** Use subagent to extract integration points from system design. This handles varied document structures, implicit integrations, and any AWS architecture.
+You SHOULD use a generic subagent to extract integration points from system design when one is available. Otherwise perform the extraction inline. In either case, handle varied document structures, implicit integrations, and any AWS architecture.
 
 **Step 1: Locate System Design Document**
 
@@ -916,15 +916,12 @@ Check for common names:
 
 If not found, ask user for path.
 
-**Step 2: Invoke Integration Extraction Subagent**
+**Step 2: Extract Integration Points**
 
-Use `invokeSubAgent` with `general-task-execution` to extract integration points:
+Run the following prompt in a generic subagent when available, or follow it inline otherwise:
 
 ```
-Tool: invokeSubAgent
-Parameters:
-  name: "general-task-execution"
-  prompt: "Analyze the system design document at [path] and extract all integration points:
+Prompt: "Analyze the system design document at [path] and extract all integration points:
 
 1. Read the entire document carefully, including:
    - Architecture Overview section
@@ -1022,7 +1019,7 @@ Format as structured list:
 
 **Step 3: Validate Extraction**
 
-After subagent completes:
+After the extraction pass completes:
 
 1. Review extracted integration points for completeness
 2. Check against architecture diagram (if available)
@@ -1098,13 +1095,11 @@ Overall:
 
 ## Stage 7: Gap Identification
 
-**Objective:** Identify coverage gaps and categorize by severity using Kiro subagent-powered code analysis. Enhanced with negative test case analysis.
+**Objective:** Identify coverage gaps and categorize by severity using architecture-specific code analysis. Enhanced with negative test case analysis.
 
-**CRITICAL:** Use Kiro's `invokeSubAgent` tool for detailed code analysis. This enables parallel analysis of different code types and provides file-level specificity.
+You SHOULD use separate generic subagents for architecture-specific code analysis when available. Otherwise run each analysis inline as a separate pass. Preserve file-level specificity in either mode.
 
-**Subagent-Powered Analysis:**
-
-Use the `invokeSubAgent` tool with `general-task-execution` agent to analyze code in parallel:
+**Architecture-Specific Analysis:**
 
 **Step 1: Identify Code Directories by Architecture Type**
 
@@ -1139,13 +1134,13 @@ Scan project for code directories:
 If automatic detection is unclear, ask:
 "Which directories contain your [frontend/backend/serverless/microservices] code? (comma-separated paths)"
 
-**Store discovered directories for subagent invocation.**
+**Store discovered directories for architecture-specific analysis.**
 
-**Step 2: Invoke Subagents in Parallel**
+**Step 2: Run Architecture-Specific Analysis**
 
-For each detected architecture type, invoke a subagent with a specialized prompt:
+For each detected architecture type, run the specialized prompt in a generic subagent when available, in parallel where supported. Otherwise run the prompts inline as separate passes:
 
-**Frontend Analysis Subagent:**
+**Frontend Analysis Pass:**
 
 ```
 Prompt: "Analyze frontend code in [src/components/, src/pages/] and identify test gaps:
@@ -1167,7 +1162,7 @@ For each identified gap, provide:
 Format output as structured list with clear sections."
 ```
 
-**Backend Analysis Subagent:**
+**Backend Analysis Pass:**
 
 ```
 Prompt: "Analyze backend code in [src/services/, src/controllers/] and identify test gaps:
@@ -1189,7 +1184,7 @@ For each identified gap, provide:
 Format output as structured list with clear sections."
 ```
 
-**Serverless Analysis Subagent:**
+**Serverless Analysis Pass:**
 
 ```
 Prompt: "Analyze serverless code in [src/handlers/, lambda/] and identify test gaps:
@@ -1211,7 +1206,7 @@ For each identified gap, provide:
 Format output as structured list with clear sections."
 ```
 
-**Microservices Analysis Subagent:**
+**Microservices Analysis Pass:**
 
 ```
 Prompt: "Analyze microservices code in [services/*/src/] and identify test gaps:
@@ -1233,16 +1228,16 @@ For each identified gap, provide:
 Format output as structured list with clear sections."
 ```
 
-**Step 3: Consolidate Subagent Results**
+**Step 3: Consolidate Analysis Results**
 
-After all subagents complete:
+After all analysis passes complete:
 
-1. Parse structured output from each subagent
+1. Parse structured output from each analysis pass
 2. Merge recommendations into unified gap list
 3. Deduplicate overlapping recommendations
 4. Prioritize by severity and testing philosophy alignment
 5. Group by feature and test type
-6. Add subagent attribution to track source
+6. Add analysis-pass attribution to track source
 
 **Identify Gaps:**
 
@@ -1276,7 +1271,7 @@ After all subagents complete:
 - User experience validation
 
 **Build Gap Records:**
-For each gap: `{ gapId, type, severity, feature, criterion/plan/nfr/integration, description, impact, recommendation, manualTestRequired, recommendedTestType, file, component/function, currentTestStatus, rationale, estimatedEffort, priority, subagentSource, testCategory }`
+For each gap: `{ gapId, type, severity, feature, criterion/plan/nfr/integration, description, impact, recommendation, manualTestRequired, recommendedTestType, file, component/function, currentTestStatus, rationale, estimatedEffort, priority, analysisSource, testCategory }`
 
 **Test Category Classification:**
 
@@ -1297,15 +1292,15 @@ For each gap: `{ gapId, type, severity, feature, criterion/plan/nfr/integration,
 
 **For Missing Tests:** Specific test implementation guidance with:
 
-- Recommended test type (based on testing philosophy and subagent analysis)
-- Specific file path and function/component name (from subagent output)
+- Recommended test type (based on testing philosophy and architecture-specific analysis)
+- Specific file path and function/component name (from analysis output)
 - Example test structure appropriate for the test type
 - Rationale for why this test type is recommended
 - Estimated effort based on complexity
 
 **For Partial Coverage:** Additional test cases needed with:
 
-- Scenarios to cover (identified by subagent)
+- Scenarios to cover (identified by the analysis pass)
 - Appropriate test type for each scenario
 - Integration points to validate
 - Specific code locations needing coverage
@@ -1318,12 +1313,12 @@ For each gap: `{ gapId, type, severity, feature, criterion/plan/nfr/integration,
 
 **For Wrong Test Type:** Refactoring guidance with:
 
-- Current test type and specific issues (from subagent analysis)
+- Current test type and specific issues (from architecture-specific analysis)
 - Recommended test type and specific benefits
 - Example of how to refactor
 - Before/after code examples
 
-**Example Recommendation (Subagent-Powered):**
+**Example Recommendation (Architecture-Specific Analysis):**
 
 ````markdown
 ### Gap: Missing Integration Test for User Login Flow
@@ -1379,25 +1374,25 @@ describe('LoginForm Integration', () => {
 ```
 ````
 
-**Source:** Frontend Code Analyzer (subagent)
+**Source:** Frontend Code Analysis Pass
 
 ```
 
-**Report:** Use standard template. Summary: gap counts by severity, manual test count, subagent usage. Critical Gaps: list with feature, criterion, impact, recommendation, file paths (from subagent analysis). Warning Gaps: list with improvement suggestions. Manual Testing Requirements: detailed procedures with steps. Detailed mode: all gaps, example tests, full procedures, subagent attribution. Summary mode: counts, critical gaps, high-priority manual tests.
+**Report:** Use standard template. Summary: gap counts by severity, manual test count, and analysis execution mode. Critical Gaps: list with feature, criterion, impact, recommendation, file paths (from architecture-specific analysis). Warning Gaps: list with improvement suggestions. Manual Testing Requirements: detailed procedures with steps. Detailed mode: all gaps, example tests, full procedures, and analysis-pass attribution. Summary mode: counts, critical gaps, high-priority manual tests.
 
-**Subagent Usage Note:**
+**Analysis Execution Note:**
 
 Include in report:
 ```
 
-Analysis Method: Subagent-Powered (Parallel Code Analysis via invokeSubAgent)
-Subagents Invoked: [Frontend Analysis, Backend Analysis, ...]
+Analysis Method: [Generic subagents or inline separate passes]
+Analysis Passes Run: [Frontend Analysis, Backend Analysis, ...]
 Analysis Duration: [X] seconds
 File-Level Recommendations: [N] specific code locations identified
 
 ```
 
-**Update Progress Tracker:** Mark "Gaps identified (with subagent analysis)" as complete and update timestamp.
+**Update Progress Tracker:** Mark "Gaps identified (with architecture-specific analysis)" as complete and update timestamp.
 
 **Store:** validation_results.gap_analysis
 
@@ -1998,7 +1993,7 @@ RECOMMENDATION: Fix 1 failing test before release. Estimated effort: 1-2 hours.
 
 **Compatibility:**
 
-- Kiro ✅ Fully Supported (with subagent-powered analysis)
+- Kiro ✅ Fully Supported
 
 **Test Framework Support:**
 
@@ -2009,9 +2004,9 @@ RECOMMENDATION: Fix 1 failing test before release. Estimated effort: 1-2 hours.
 
 **Performance:**
 
-- Coverage Analysis: <20s with subagents (parallel) (typical: 8-12s)
-- Readiness Assessment: <40s with subagents (parallel) (typical: 20-25s)
-- Subagent overhead: +5-10s for parallel code analysis (worth it for file-level specificity)
+- Coverage Analysis: runtime varies by project size and whether generic subagents run in parallel
+- Readiness Assessment: runtime varies by project size and analysis execution mode
+- Generic subagents add startup overhead but can isolate and parallelize architecture-specific analysis
 
 **Known Limitations:**
 
@@ -2020,7 +2015,7 @@ RECOMMENDATION: Fix 1 failing test before release. Estimated effort: 1-2 hours.
 - Manual test identification requires explicit markers
 - Test case count accuracy depends on test runner output parsing
 - File count vs test case count distinction must be clear in reports
-- Subagent analysis requires Kiro environment (falls back to pattern-based otherwise)
+- Generic subagents are optional; inline separate passes provide the fallback
 
 **Critical Lessons Learned:**
 
@@ -2033,11 +2028,11 @@ RECOMMENDATION: Fix 1 failing test before release. Estimated effort: 1-2 hours.
 **Future Enhancements:**
 
 - Multi-language test framework support expansion
-- AI-powered test generation suggestions (using subagent analysis)
+- AI-powered test generation suggestions (using architecture-specific analysis)
 - Integration with CI/CD pipelines
 - Real-time coverage monitoring dashboard
 - Automated test prioritization based on risk
-- Enhanced subagent prompts for deeper code analysis
+- Enhanced architecture-specific prompts for deeper code analysis
 - Contract testing support for microservices
 
 ---

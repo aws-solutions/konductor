@@ -232,9 +232,19 @@ jobs:
         # to this list, not only registered in Rust.
         run: |
           set -e
-          for d in "dist/kiro-cli-v2/agents" "dist/kiro-v3/agents" "dist/claude/agents"; do
-            if [ -z "$(ls -A "$d" 2>/dev/null)" ]; then
-              echo "FATAL: $d is empty or missing after konductor synth. Failing closed." >&2
+          # The package ships no agent specs, so dist/<harness>/agents/ holds only
+          # scope sidecars. Check the content that is shipped: every source skill
+          # and SOP must appear in every harness's output.
+          # Shell globs rather than find -mindepth/-maxdepth, which BSD find
+          # on the macOS runner does not support.
+          count() { local n=0 f; for f in "$@"; do [ -e "$f" ] && n=$((n + 1)); done; echo "$n"; }
+          skills=$(count skills/*/SKILL.md)
+          sops=$(count agent-sops/*.sop.md)
+          for h in kiro-cli-v2 kiro-v3 claude; do
+            got_skills=$(count "dist/$h/skills"/*/SKILL.md)
+            got_sops=$(count "dist/$h/sops"/*.sop.md)
+            if [ "$skills" -eq 0 ] || [ "$got_skills" -ne "$skills" ] || [ "$got_sops" -ne "$sops" ]; then
+              echo "FATAL: dist/$h has $got_skills skill(s) and $got_sops SOP(s); source has $skills and $sops. Failing closed." >&2
               exit 1
             fi
           done

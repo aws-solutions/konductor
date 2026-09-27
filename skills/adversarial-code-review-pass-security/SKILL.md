@@ -9,11 +9,11 @@ tags: [skill, security, code-review, adversarial, pass]
 
 ## Overview
 
-Reviews a diff through the lens of security concerns. This is one of three parallel review passes spawned by an adversarial-review coordinator SOP. The framing is neutral by design: review through the lens of security, do not assume any specific issue exists.
+Reviews a diff through the lens of security concerns. This is one of three parallel review passes run by an adversarial-review SOP. The framing is neutral by design: review through the lens of security, do not assume any specific issue exists.
 
 ## Usage
 
-Spawned by an adversarial-review coordinator SOP (such as `k-adversarial-pull-request-review`) as one of three parallel subagent passes. May also be run directly against a diff.
+Run by an adversarial-review SOP (such as `k-adversarial-pull-request-review`) as one of three parallel subagent passes. May also be run directly against a diff.
 
 ## What to look for
 
@@ -45,7 +45,7 @@ Before flagging a missing implementation, check whether the codebase already pro
 
 ## Checker handoff
 
-Findings produced by this pass are candidates, not verdicts. The coordinator forwards them to a different-persona checker that applies `adversarial-code-review` in Validator Mode before anything reaches the CR. Do not soften findings for the checker. Produce your honest read; the checker's job is to filter, not to nudge.
+Findings produced by this pass are candidates, not verdicts. The review procedure forwards them to a different-persona checker that applies `adversarial-code-review` in Validator Mode before anything reaches the CR. Do not soften findings for the checker. Produce your honest read; the checker's job is to filter, not to nudge.
 
 ## Severity guidance
 
@@ -61,4 +61,4 @@ Problem: {what is wrong and why it is a risk}
 Fix: {concrete suggested change}
 ```
 
-Return the findings list. Do not deduplicate against other passes; the coordinator does that.
+Return the findings list. Do not deduplicate against other passes; the review procedure does that.
