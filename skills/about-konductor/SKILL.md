@@ -147,13 +147,14 @@ defaults are the kind of detail that drifts across versions.
 
 | Subcommand  | What it does                                                                                                                                                                             |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `init`      | Create `.konductor/config.yml` in the current directory from a preset (`solo`, `team`, or `org`).                                                                                        |
+| `init`      | Create `.konductor/config.yml` in the current directory from a preset (`solo`, `team`, or `org`). Hidden from `--help` and gated behind its own escape hatch.                             |
+| `config`    | Get, set, or list configuration values. Hidden from `--help` and gated behind its own escape hatch.                                                                                       |
 | `install`   | Install Konductor into a target directory from a `--from <repo-root>` source. `--from` (source) and `--target` (destination) are distinct flags — don't conflate them.                   |
 | `update`    | Re-run the same file-copy `install` uses against a tracked install, unconditionally overwriting every tracked file. No diffing, no `--force` flag, no protection for a hand-edited file. |
 | `uninstall` | Remove a tracked install.                                                                                                                                                                |
 | `synth`     | Synthesize pipeline/config artifacts from a repo root without installing anywhere.                                                                                                       |
 | `doctor`    | Inspect an install or checkout and print remediation guidance for problems it finds.                                                                                                     |
-| `metrics`   | Show usage/run metrics (still a stub as of this writing — verify with `--help`, don't assume it stayed one).                                                                             |
+| `metrics`   | Show usage/run metrics (still a stub as of this writing — verify with `--help`, don't assume it stayed one). Also hidden and gated behind its own escape hatch.                          |
 
 Every subcommand takes `-v`/`--verbose`, `--json`, and
 `--no-color`; `install`, `update`, `uninstall`, and `doctor` also take

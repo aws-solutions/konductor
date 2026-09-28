@@ -63,14 +63,15 @@ fn run_konductor(cwd: &Path, sink: &telemetry_test_sink::TelemetrySink, args: &[
     // hatch) lets the `config` invocations below reach the real
     // `dispatch_config` path while `config` is temporarily gated from
     // ordinary end users -- see dispatch.rs's `config_dispatch_allowed`
-    // doc comment. Harmless on the `init` invocations in this file too,
-    // since nothing else reads this variable.
+    // doc comment. `KONDUCTOR_ALLOW_INIT=1` does the same for this
+    // file's `init` invocations, now gated the same way.
     let mut command = Command::new(bin());
     command
         .args(args)
         .current_dir(cwd)
         .env("HOME", cwd)
-        .env("KONDUCTOR_ALLOW_CONFIG", "1");
+        .env("KONDUCTOR_ALLOW_CONFIG", "1")
+        .env("KONDUCTOR_ALLOW_INIT", "1");
     for var in sink.env_vars() {
         command.env(var.name, &var.value);
     }

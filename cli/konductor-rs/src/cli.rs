@@ -333,6 +333,17 @@ pub enum Commands {
     /// Initialize a new Konductor project: creates `.konductor/` in the
     /// current working directory and writes a starter
     /// `.konductor/config.yml` derived from the CLI's preset defaults.
+    ///
+    /// Temporarily hidden from normal --help and from normal dispatch (see
+    /// dispatch.rs's `Commands::Init` arm, which returns
+    /// `EXIT_USAGE_ERROR` with a "not currently available" message instead
+    /// of calling `dispatch_init`) while the underlying implementation
+    /// stays fully intact -- like `Config` below, and unlike `Metrics`
+    /// further below, this variant's real logic is complete and covered
+    /// by tests; it is withheld, not stubbed. Re-enable by removing
+    /// `#[command(hide = true)]` here and the gating check at the top of
+    /// dispatch.rs's `Commands::Init` arm.
+    #[command(hide = true)]
     Init {
         /// Initialization preset to apply.
         #[arg(long, value_parser = ["solo", "team", "org"])]
@@ -590,6 +601,11 @@ fn _contract_constants_reference() -> (u8, u8) {
 mod tests {
     use super::*;
     use clap::{CommandFactory, Parser};
+    // `metrics_still_parses_and_dispatches` below mutates the process-global
+    // `KONDUCTOR_ALLOW_METRICS` env var, which races every other
+    // HOME/env-mutating test in this crate under `cargo test`'s default
+    // parallelism -- see `test_home_lock`'s own doc comment.
+    use crate::cli::test_home_lock::lock_home;
 
     #[test]
     fn parses_install_with_from_flag() {
@@ -1680,10 +1696,12 @@ mod tests {
     }
 
     /// Hiding `metrics` from `--help` must never silently become removing
-    /// it: `konductor metrics` still parses to `Commands::Metrics` and
+    /// it: `konductor metrics` still parses to `Commands::Metrics` and,
+    /// with the internal `KONDUCTOR_ALLOW_METRICS=1` escape hatch set,
     /// still dispatches to its not-implemented stub, exiting 0.
     #[test]
     fn metrics_still_parses_and_dispatches() {
+        let _guard = lock_home();
         let cli = Cli::try_parse_from(["konductor", Commands::METRICS])
             .expect("`konductor metrics` must still parse even though it is hidden from --help");
         let command = cli
@@ -1693,10 +1711,19 @@ mod tests {
             matches!(command, Commands::Metrics { since: None }),
             "expected Commands::Metrics {{ since: None }}, got {command:?}"
         );
+
+        let previous = std::env::var("KONDUCTOR_ALLOW_METRICS").ok();
+        std::env::set_var("KONDUCTOR_ALLOW_METRICS", "1");
         let exit_code = dispatch::dispatch(command, false, false, output::ColorMode::disabled());
+        match previous {
+            Some(value) => std::env::set_var("KONDUCTOR_ALLOW_METRICS", value),
+            None => std::env::remove_var("KONDUCTOR_ALLOW_METRICS"),
+        }
+
         assert_eq!(
             exit_code, 0,
-            "`konductor metrics` must still dispatch and exit 0 (its stub behavior is unchanged)"
+            "`konductor metrics` must still dispatch and exit 0 (its stub behavior is unchanged) \
+             once the internal KONDUCTOR_ALLOW_METRICS escape hatch is set"
         );
     }
 }

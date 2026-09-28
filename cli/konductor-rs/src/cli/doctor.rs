@@ -5,28 +5,28 @@
 // Inspects a Konductor installation/checkout for problems and prints
 // actionable remediation guidance. Every check is reuse-only: it calls
 // the same functions `install`/`synth`/`config` already use, rather
-// than re-implementing any validation logic. Seven checks run today,
-// in this order: source, runtime, manifest, config, container_runtime,
+// than re-implementing any validation logic. Six checks run today, in
+// this order: source, runtime, manifest, container_runtime,
 // index_status, telemetry_state.
 //
-// Three additional checks (`gitignore`, `provider_model_access`,
+// Four additional checks (`config`, `gitignore`, `provider_model_access`,
 // `role_allowlists`) are fully implemented and unit-tested below, but
 // are intentionally not called from `dispatch_doctor_with` and so
 // never appear in live `doctor` output today. See the comment at that
 // call site for why each is dormant, and the doc comment on each
 // function for the re-enable condition.
 //
-// `source`/`config` validate that the repo/project config an install is
-// built from is well-formed, useful mainly when a local `--from`
-// checkout exists to point at. Anyone installing from a published
-// release artifact has no such checkout, so a `Warn`/`Info` fallback
-// here is the normal, expected outcome for them. `manifest`/`runtime`
-// are the checks that answer "is my installation healthy" regardless
-// of install method, since they only ever inspect the installed
+// `source` validates that the repo/project config an install is built
+// from is well-formed, useful mainly when a local `--from` checkout
+// exists to point at. Anyone installing from a published release
+// artifact has no such checkout, so a `Warn`/`Info` fallback here is
+// the normal, expected outcome for them. `manifest`/`runtime` are the
+// checks that answer "is my installation healthy" regardless of
+// install method, since they only ever inspect the installed
 // destination.
 //
-// Source resolution (`source`/`config` checks), in
-// `resolve_source_for_checks` below:
+// Source resolution (`source` check), in `resolve_source_for_checks`
+// below:
 //   1. Explicit `--from <repo-root>` always wins outright.
 //   2. No `--from`: read the manifest at the resolved install
 //      destination. If it exists and its `source` field is recorded,
@@ -245,13 +245,16 @@ impl CheckResult {
     }
 }
 
-/// `konductor doctor [--from ...] [--target ...] [--all]`: runs the seven
-/// active checks (source, runtime, manifest, config, container_runtime,
-/// index_status, telemetry_state) against `--from`/`target_dir` (source
+/// `konductor doctor [--from ...] [--target ...] [--all]`: runs the full
+/// 8-check suite -- `run_checks()`'s 6 per-target checks (source,
+/// runtime, manifest, container_runtime, index_status, telemetry_state)
+/// plus `cli_version` (machine-wide, once) and `content_version`
+/// (per-target, appended after `run_checks()` returns) -- against
+/// `--from`/`target_dir` (source
 /// tree) and `--target`/`$HOME` (install destination), prints a report,
 /// and returns the exit code.
 ///
-/// Three more checks (`gitignore`, `provider_model_access`,
+/// Four more checks (`config`, `gitignore`, `provider_model_access`,
 /// `role_allowlists`) exist in this module and are unit-tested, but are
 /// deliberately NOT included in the `results` vec below -- see the
 /// comment at that call site.
@@ -339,7 +342,7 @@ pub fn dispatch_doctor_with(
     }
 }
 
-/// The full active check suite (source, runtime, manifest, config,
+/// The full active check suite (source, runtime, manifest,
 /// container_runtime, index_status, telemetry_state) against one
 /// resolved source-tree/destination pair. Shared by the single-target
 /// path and the `--all` path, so the two can never drift on which
@@ -360,13 +363,16 @@ fn run_checks(
         check_source(&resolved_source),
         check_runtime(destination),
         check_manifest(destination),
-        check_config_with_home(&resolved_source, home_dir.as_deref()),
         check_container_runtime(),
         check_index_status(destination, home_dir.as_deref()),
         check_telemetry_state(destination, home_dir.as_deref()),
-        // `gitignore`, `provider_model_access`, and `role_allowlists`
-        // are implemented and unit-tested below, but intentionally not
-        // surfaced in live doctor output yet:
+        // `config`, `gitignore`, and `provider_model_access`/
+        // `role_allowlists` are implemented and unit-tested below, but
+        // intentionally not surfaced in live doctor output yet:
+        //   - `check_config_with_home` loads `.konductor/config.yml`
+        //     cleanly, but its resolved values have no consumer that
+        //     acts on them for a real decision yet, so the check is
+        //     decorative today.
         //   - `check_gitignore` warns about `runs/`/`overrides.yml`
         //     being absent from `.gitignore`, but nothing in this
         //     codebase can create those paths yet.
@@ -744,7 +750,7 @@ fn check_content_version(
     }
 }
 
-/// The source tree the `source`/`config` checks validate, plus (when
+/// The source tree the `source` check validates, plus (when
 /// resolution did not come from an explicit `--from`) a human-readable
 /// note explaining which fallback rule fired and why. See this
 /// module's docstring, "Source resolution", for the three-step
@@ -1604,7 +1610,8 @@ fn check_telemetry_state(destination: &Path, home_dir: Option<&Path>) -> CheckRe
     }
 }
 
-/// `config::load_config_with_home`, the same loading logic
+/// Check (dormant, not wired into `dispatch_doctor_with`'s live check
+/// list): `config::load_config_with_home`, the same loading logic
 /// `config get`/`config list`/`config set` use. A source tree with no
 /// `.konductor/config.yml` at all still loads (preset defaults alone
 /// are a valid config), so this only fails on a genuinely
@@ -1620,6 +1627,13 @@ fn check_telemetry_state(destination: &Path, home_dir: Option<&Path>) -> CheckRe
 /// explicitly rather than resolved from the `HOME` env var here, so
 /// end-to-end tests can point the user tier at a scratch directory.
 /// Production callers pass the real `$HOME`.
+///
+/// Dormant: not called from `dispatch_doctor_with` (see the comment at
+/// that call site for why), but kept fully implemented and tested so
+/// it's ready once a real consumer needs these values.
+/// `#[allow(dead_code)]` because nothing calls it outside tests while
+/// dormant.
+#[allow(dead_code)]
 fn check_config_with_home(resolved: &ResolvedSource, home_dir: Option<&Path>) -> CheckResult {
     let source_dir = resolved.path.as_path();
     match config::load_config_with_home(source_dir, home_dir) {
@@ -1646,8 +1660,9 @@ fn check_config_with_home(resolved: &ResolvedSource, home_dir: Option<&Path>) ->
                 // project config were the problem.
                 format!("config failed to load: {err}"),
             ),
-            "run `konductor config list` for the full merged view, or `konductor init --force` \
-             to reset to preset defaults"
+            "there is currently no supported command to inspect or re-scaffold config.yml -- \
+             back up the file, then hand-edit it against the schema in the CLI reference docs, \
+             or delete it entirely to fall back to preset defaults"
                 .to_string(),
             err.to_string(),
         ),
@@ -4059,7 +4074,6 @@ mod tests {
                 "source",
                 "runtime",
                 "manifest",
-                "config",
                 "container_runtime",
                 "index_status",
                 "telemetry_state",
@@ -4067,7 +4081,12 @@ mod tests {
             "run_checks' active check set and order changed; update this test's expectation \
              deliberately if the change is intended"
         );
-        for dormant in ["gitignore", "provider_model_access", "role_allowlists"] {
+        for dormant in [
+            "config",
+            "gitignore",
+            "provider_model_access",
+            "role_allowlists",
+        ] {
             assert!(
                 !names.contains(&dormant),
                 "dormant check {dormant} must not appear in the live check list, got: {names:?}"
@@ -4116,9 +4135,8 @@ mod tests {
     /// result, and must not leak into a separate `dispatch_doctor_with`
     /// run against an unrelated healthy scratch home dir.
     #[test]
-    fn dispatch_doctor_with_malformed_home_config_is_isolated_and_does_not_affect_other_runs() {
+    fn check_config_with_home_malformed_home_config_is_isolated_and_does_not_affect_other_calls() {
         let broken_source = scratch_dir("isolation-broken-source");
-        let broken_destination = scratch_dir("isolation-broken-destination");
         let broken_home = scratch_dir("isolation-broken-home");
         let broken_user_config_dir = broken_home.join(config::KONDUCTOR_DIR_NAME);
         fs::create_dir_all(&broken_user_config_dir).unwrap();
@@ -4128,52 +4146,47 @@ mod tests {
         )
         .unwrap();
 
-        let code = dispatch_doctor_with(
-            &broken_source,
-            Some(broken_source.display().to_string()),
-            Some(broken_destination.display().to_string()),
-            false, // all
-            false,
-            false,
-            Some(&broken_home),
-            false, /* no_version_check */
-            ColorMode::disabled(),
+        let broken_resolved = ResolvedSource {
+            path: broken_source.clone(),
+            fallback_note: None,
+            unvalidated_cwd: false,
+            legacy_manifest_no_source: false,
+            missing_recorded_source: false,
+            unsupported_schema_version: false,
+        };
+        let broken_result = check_config_with_home(&broken_resolved, Some(&broken_home));
+        assert!(
+            broken_result.status.is_failing(),
+            "a malformed $HOME-tier config reached through the override seam must fail: {:?}",
+            broken_result.status.label()
         );
-        assert_eq!(
-            code, EXIT_HALTED,
-            "a malformed $HOME-tier config reached through the override seam must halt the run"
-        );
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
 
         // A second, unrelated run against a genuinely healthy scratch
         // home dir must be completely unaffected by the broken run
         // above.
         let healthy_source = scratch_dir("isolation-healthy-source");
-        let healthy_destination = scratch_dir("isolation-healthy-destination");
         let healthy_home = scratch_dir("isolation-healthy-home");
 
-        let healthy_code = dispatch_doctor_with(
-            &healthy_source,
-            Some(healthy_source.display().to_string()),
-            Some(healthy_destination.display().to_string()),
-            false, // all
-            false,
-            false,
-            Some(&healthy_home),
-            false, /* no_version_check */
-            ColorMode::disabled(),
-        );
-        assert_eq!(
-            healthy_code, 0,
-            "an unrelated healthy run must not be affected by a prior run's broken $HOME \
-             override -- isolation must hold across successive dispatch_doctor_with calls"
+        let healthy_resolved = ResolvedSource {
+            path: healthy_source.clone(),
+            fallback_note: None,
+            unvalidated_cwd: false,
+            legacy_manifest_no_source: false,
+            missing_recorded_source: false,
+            unsupported_schema_version: false,
+        };
+        let healthy_result = check_config_with_home(&healthy_resolved, Some(&healthy_home));
+        assert!(
+            !healthy_result.status.is_failing(),
+            "an unrelated healthy call must not be affected by a prior call's broken $HOME \
+             override -- isolation must hold across successive check_config_with_home calls: \
+             {:?}",
+            healthy_result.status.label()
         );
 
         fs::remove_dir_all(&broken_source).ok();
-        fs::remove_dir_all(&broken_destination).ok();
         fs::remove_dir_all(&broken_home).ok();
         fs::remove_dir_all(&healthy_source).ok();
-        fs::remove_dir_all(&healthy_destination).ok();
         fs::remove_dir_all(&healthy_home).ok();
     }
 
