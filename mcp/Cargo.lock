@@ -504,7 +504,7 @@ dependencies = [
 
 [[package]]
 name = "konductor-telemetry"
-version = "0.1.0"
+version = "1.0.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -923,7 +923,7 @@ dependencies = [
 
 [[package]]
 name = "skill-lookup-core"
-version = "0.1.0"
+version = "1.0.3"
 dependencies = [
  "konductor-telemetry",
  "serde",
@@ -936,7 +936,7 @@ dependencies = [
 
 [[package]]
 name = "skill-lookup-mcp"
-version = "0.1.0"
+version = "1.0.3"
 dependencies = [
  "clap",
  "rmcp",
@@ -990,7 +990,7 @@ dependencies = [
 
 [[package]]
 name = "telemetry-test-sink"
-version = "0.1.0"
+version = "1.0.3"
 dependencies = [
  "rcgen",
  "rustls",
