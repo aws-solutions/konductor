@@ -297,81 +297,20 @@ One entry per majority-agreed action (delete/trim only — "needs human review" 
 
 This file is structured for direct machine parsing, not direct machine execution: an agent can read `skill_path` and the proposed `action` without additional interpretation, but every entry requires human confirmation before anything runs. Concretely: an executing agent MUST default to a dry-run mode that prints the proposed change (file removed, or line range removed) without touching disk, and MUST require an explicit per-entry or per-run confirmation flag before it checks for dangling references (`delete`) or re-validates the trimmed file (`trim`) and writes the result. There is no auto-execution path in this design; the confirmation gate is a required behavior of any agent that consumes this file, not an optional safeguard left to that agent's own future spec.
 
+## Decision Requested
 
+Approve this design to replace the existing benchmark harness under `tests/` with a monthly skill evaluation framework that:
 
-### Cadence configuration
+1. **Identifies redundant skills** — via confusion rate (a different skill fires when the expected one should) across scenarios derived from skill frontmatter
+2. **Identifies trimmable skills** — via token budget breach percentage and unused sections
+3. **Validates trigger quality** — via pass rate (skill fires correctly when it should) and correct-skill selection among confusable neighbors
 
-The `--frequency` flag controls how often the framework runs:
+The framework runs monthly with a council of 5 models (Opus + 4 others) voting per skill on keep/trim/delete, producing a human-readable report and machine-readable implementation plan. Implementation is phased: Phase 0 deletes the existing harness, Phases 1-4 are placeholders for the actual implementation, and Phase 5 validates parameterized `corpus_path`.
 
-| Value | Description |
-|---|---|
-| `monthly` (default) | Run once per month, generating `YYYY-MM-` dated artifacts |
-| `bi-monthly` | Run twice per month, using `YYYY-MM-01`, `YYYY-MM-15` style suffixes |
-| `ad-hoc` | No automatic scheduling; manual invocation only, suffixes determined by user-provided `--run-id` |
+### Phase 1-5 are placeholders
 
-This is a parameter, not hardcoded — the Phase 2-4 scripts accept `--frequency` and map it to date-suffix logic. The report filename convention (`YYYY-MM-report.md`) stays the same for monthly/bi-monthly (the suffix encodes the interval); for ad-hoc, the user supplies `--run-id` which becomes the suffix. `corpus-snapshot.json` is generated for every cadence, including ad-hoc — only the directory suffix under `scenarios/` changes, not whether the snapshot is taken.
+Per MUST NOT DO for this design pass, Phase 1-4 of the Implementation Plan are intentionally unimplemented. They are defined here to show what the framework's implementation will require, but no code is to be written for these phases. A future feature-splitting pass should size each into task-level tickets once Phase 3 of the SOP runs.
 
-## Implementation Plan
-
-### Phase 0 — Remove the existing benchmark harness
-
-The constraint is deletion, not migration. Exact scope, confirmed against the current tree:
-
-| Path | Disposition |
-|---|---|
-| `scripts/benchmark.js` | delete |
-| `tests/judges/claude-code-agent-runner.js` | delete |
-| `tests/scripts/claude-code-agent-runner.test.js` | delete |
-| `tests/scripts/check-benchmark-regression.js` | delete |
-| `tests/scripts/check-benchmark-regression.test.js` | delete |
-| `tests/registry.json` | delete |
-| `tests/asdlc-quality-assurance/` | delete |
-| `tests/asdlc-developer/` | delete |
-| `docs/guides/benchmarking.md` | delete |
-| `package.json` `benchmark` / `benchmark:regression` scripts | remove |
-
-`scripts/run-claude-subset.js` and `scripts/generate-agent-files.js` are **kept** — they render agent specs into runnable Claude Code agent files, a capability the new framework's evaluation stage still depends on to run scenarios against baseline agents; only the scenario/registry/judging layer built on top of them is removed. Their own tests (`tests/scripts/run-claude-subset.test.js`, `tests/scripts/generate-agent-files.test.js`) are kept for the same reason.
-
-### Phase 1 — Scaffolding
-
-| Task | Output |
-|---|---|
-| Create `benchmarking/` directory tree (`scenarios/`, `results/`, `reports/`, `plans/`, `scripts/`) | empty tree matching [Directory layout](#directory-layout) |
-| Add `scripts/` placeholders (no logic) | `generate-scenarios.*`, `run-evaluation.*`, `tally-council.*`, `render-report.*` stubs |
-| Define `scenarios.json` and `plans/*.json` JSON Schemas | schema files under `benchmarking/schemas/` |
-
-### Phase 2 — Scenario generation (not implemented in this design pass)
-
-Implements the frontmatter parser, positive/negative prompt derivation, and redundancy-cluster probe generation described in [How It Works](#how-it-works). Placeholder only per MUST NOT DO.
-
-### Phase 3 — Evaluation + council tallying (not implemented in this design pass)
-
-Implements the per-baseline scenario runner and the per-skill council vote aggregation, including the retry-once/mark-`run_failed`, abstention-tracking, and stale-snapshot exclusion behavior defined in [Failure Handling](#failure-handling). Placeholder only.
-
-### Phase 4 — Report and plan rendering (not implemented in this design pass)
-
-Implements the `humanize-writing`-conformant report renderer and the machine-readable plan renderer. Placeholder only.
-
-### Phase 5 — Verification
+## Verification
 
 No code change expected if Phase 1–4 held `corpus_path` as a real parameter throughout — this phase is a validation pass, not new implementation.
-
-## Maker-Checker Result
-
-`design-doc-guidelines` checklist applied against this draft:
-
-- [x] Problem stated in first 10 lines with concrete examples — three named skill-pair examples given.
-- [x] Reviewer can understand the approach from §Problem–§Solution Overview alone.
-- [x] Every "How It Works" subsection opens with a diagram.
-- [x] Diagrams tell the story without needing prose (traced each arrow against the described control flow).
-- [x] Implementation detail confined to its own section.
-- [x] Plain language; no filler openers or stacked transitions found.
-- [x] Tables used for structured data (report format, plan schema fields, deletion scope).
-- [x] No forward references — council voting is explained before the ADR that justifies it is read, and the ADR is explained before its consequences are cited later.
-- [x] Inline ADRs present for the two flagged major decisions (council voting, directory split).
-- [x] Redundancy pass: report/plan schemas are defined once in Implementation Details; How It Works only summarizes and cross-references them.
-- [x] Existing-harness deletion scope is enumerated exactly (file-by-file), not asserted abstractly — addresses a gap the source DESIGN.md left unstated.
-
-**CRITICAL findings: 0. IMPORTANT findings: 0.**
-
-One SUGGESTION (non-blocking): the Implementation Plan's Phases 2–4 are intentionally unimplemented per MUST NOT DO; a future pass should size each into task-level tickets once Phase 3 of the SOP (feature splitting) runs.
