@@ -6059,7 +6059,7 @@ mod tests {
     }
 
     /// Named error path 7: `update_one_target`'s `would_fail_as_noop`
-    /// arm (missing `--from`).
+    /// arm (a `--from` source with nothing to install).
     #[test]
     fn update_one_target_would_fail_as_noop_error_is_json_consistent() {
         let _home = HomeGuard::new("noop-error-json-home");
@@ -6074,11 +6074,17 @@ mod tests {
         );
         manifest::upsert_strategy(&dir, manifest).unwrap();
 
-        // No --from given: install_from_local's own first check would
-        // reject this as a no-op via would_fail_as_noop.
+        // `--from` an empty source dir (no `dist/` tree): `would_fail_as_noop`
+        // rejects it locally with EXIT_USAGE_ERROR. Passing `None` instead
+        // would take the no-`--from` remote branch, whose real GitHub fetch is
+        // not stubbed here -- its outcome flips with whether a reachable
+        // release exists, so this pins the deterministic local no-op the test
+        // is named for.
+        let empty_source = scratch_dir("noop-error-json-empty-source");
+        let from_str = empty_source.display().to_string();
         let code = update_one_target(
             &dir,
-            None,
+            Some(&from_str),
             None,
             false, /* use_github_token */
             None,  /* release_version */
@@ -6091,6 +6097,7 @@ mod tests {
             None, /* latest_release_tag_cache */
         );
         assert_eq!(code, EXIT_USAGE_ERROR);
+        fs::remove_dir_all(&empty_source).ok();
         fs::remove_dir_all(&dir).ok();
     }
 
