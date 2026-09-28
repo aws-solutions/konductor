@@ -1360,12 +1360,17 @@ mod tests {
     /// case-insensitive check is ever removed from `assert_unique_names`.
     #[test]
     fn case_insensitive_duplicate_agent_name_is_rejected() {
-        let dir = temp_dir("case-dup-agent");
-        write_agent_spec(&dir, "MyAgent");
-        write_agent_spec(&dir, "myagent");
-        let err = parse_canonical(&dir).unwrap_err();
+        // Drive the guard directly: a case-insensitive/normalizing filesystem
+        // (macOS APFS, Windows NTFS) would collapse two case-variant files
+        // into one on disk, so a write-then-parse fixture can't present the
+        // duplicate on those hosts.
+        let names = ["MyAgent", "myagent"];
+        let labels: Vec<String> = names
+            .iter()
+            .map(|n| format!("{n}.agent-spec.json"))
+            .collect();
+        let err = assert_unique_names(&names, |s| *s, &labels, "agents").unwrap_err();
         assert!(err.reason.contains("collides case-insensitively"));
-        let _ = fs::remove_dir_all(&dir);
     }
 
     /// `assert_unique_names`'s case-insensitive fold goes through
@@ -1383,16 +1388,17 @@ mod tests {
     /// `to_ascii_lowercase`.
     #[test]
     fn case_insensitive_duplicate_agent_name_is_rejected_for_non_ascii_case() {
-        let dir = temp_dir("case-dup-agent-non-ascii");
-        write_agent_spec(&dir, "cafe-CAFÉ");
-        write_agent_spec(&dir, "cafe-café");
-        let err = parse_canonical(&dir).unwrap_err();
+        let names = ["cafe-CAFÉ", "cafe-café"];
+        let labels: Vec<String> = names
+            .iter()
+            .map(|n| format!("{n}.agent-spec.json"))
+            .collect();
+        let err = assert_unique_names(&names, |s| *s, &labels, "agents").unwrap_err();
         assert!(
             err.reason.contains("collides case-insensitively"),
             "got: {}",
             err.reason
         );
-        let _ = fs::remove_dir_all(&dir);
     }
 
     /// NFC/NFD counterpart of the non-ASCII-case test above: two agent
@@ -1407,16 +1413,17 @@ mod tests {
     /// `to_lowercase()`.
     #[test]
     fn case_insensitive_duplicate_agent_name_is_rejected_for_nfc_nfd_composition() {
-        let dir = temp_dir("case-dup-agent-nfc-nfd");
-        write_agent_spec(&dir, "cafe-caf\u{e9}");
-        write_agent_spec(&dir, "cafe-cafe\u{301}");
-        let err = parse_canonical(&dir).unwrap_err();
+        let names = ["cafe-caf\u{e9}", "cafe-cafe\u{301}"];
+        let labels: Vec<String> = names
+            .iter()
+            .map(|n| format!("{n}.agent-spec.json"))
+            .collect();
+        let err = assert_unique_names(&names, |s| *s, &labels, "agents").unwrap_err();
         assert!(
             err.reason.contains("collides case-insensitively"),
             "got: {}",
             err.reason
         );
-        let _ = fs::remove_dir_all(&dir);
     }
 
     /// Data-integrity regression guard, auxiliary-file half: two
@@ -1427,25 +1434,26 @@ mod tests {
     /// the skill's own generated `SKILL.md`.
     #[test]
     fn case_insensitive_duplicate_auxiliary_file_path_is_rejected() {
-        let dir = temp_dir("case-dup-aux");
-        let skill_dir = dir.join("skills").join("aux-skill");
-        fs::create_dir_all(skill_dir.join("scripts")).unwrap();
-        fs::write(
-            skill_dir.join("SKILL.md"),
-            "---\nname: aux-skill\ndescription: A test skill.\n---\n\nBody.\n",
-        )
-        .unwrap();
-        fs::write(skill_dir.join("scripts").join("Run.sh"), "#!/bin/sh\n").unwrap();
-        fs::write(skill_dir.join("scripts").join("run.sh"), "#!/bin/sh\n").unwrap();
-
-        let err = parse_canonical(&dir).unwrap_err();
+        let aux = [
+            AuxiliaryFile {
+                relative_path: PathBuf::from("scripts/Run.sh"),
+                content: b"#!/bin/sh\n".to_vec(),
+                executable: false,
+            },
+            AuxiliaryFile {
+                relative_path: PathBuf::from("scripts/run.sh"),
+                content: b"#!/bin/sh\n".to_vec(),
+                executable: false,
+            },
+        ];
+        let err =
+            assert_unique_auxiliary_paths_case_insensitive(&aux, "aux-skill/SKILL.md").unwrap_err();
         assert_eq!(err.field, Some("auxiliary_files".to_string()));
         assert!(
             err.reason.contains("collides case-insensitively"),
             "got: {}",
             err.reason
         );
-        let _ = fs::remove_dir_all(&dir);
     }
 
     /// Non-ASCII counterpart of the above (see
@@ -1458,25 +1466,27 @@ mod tests {
     /// `assert_unique_names`.
     #[test]
     fn case_insensitive_duplicate_auxiliary_file_path_is_rejected_for_non_ascii_case() {
-        let dir = temp_dir("case-dup-aux-non-ascii");
-        let skill_dir = dir.join("skills").join("aux-skill-non-ascii");
-        fs::create_dir_all(skill_dir.join("scripts")).unwrap();
-        fs::write(
-            skill_dir.join("SKILL.md"),
-            "---\nname: aux-skill-non-ascii\ndescription: A test skill.\n---\n\nBody.\n",
-        )
-        .unwrap();
-        fs::write(skill_dir.join("scripts").join("Café.sh"), "#!/bin/sh\n").unwrap();
-        fs::write(skill_dir.join("scripts").join("CAFÉ.sh"), "#!/bin/sh\n").unwrap();
-
-        let err = parse_canonical(&dir).unwrap_err();
+        let aux = [
+            AuxiliaryFile {
+                relative_path: PathBuf::from("scripts/Café.sh"),
+                content: b"#!/bin/sh\n".to_vec(),
+                executable: false,
+            },
+            AuxiliaryFile {
+                relative_path: PathBuf::from("scripts/CAFÉ.sh"),
+                content: b"#!/bin/sh\n".to_vec(),
+                executable: false,
+            },
+        ];
+        let err =
+            assert_unique_auxiliary_paths_case_insensitive(&aux, "aux-skill-non-ascii/SKILL.md")
+                .unwrap_err();
         assert_eq!(err.field, Some("auxiliary_files".to_string()));
         assert!(
             err.reason.contains("collides case-insensitively"),
             "got: {}",
             err.reason
         );
-        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
@@ -1536,6 +1546,19 @@ mod tests {
         let mut perms = fs::metadata(&aux).unwrap().permissions();
         perms.set_mode(0o4755); // setuid
         fs::set_permissions(&aux, perms).unwrap();
+        // The guard reads the special bits from a real file, so this test
+        // needs one that actually carries them -- and macOS clears
+        // setuid/setgid/sticky on a $TMPDIR file. Skip only when none stuck;
+        // still runs on Linux.
+        let stuck = fs::metadata(&aux).unwrap().permissions().mode() & 0o7000 != 0;
+        if !stuck {
+            eprintln!(
+                "SKIP auxiliary_file_with_setuid_bit_is_rejected: host did not preserve \
+                 the setuid/setgid/sticky bit on a $TMPDIR file (expected on macOS)."
+            );
+            let _ = fs::remove_dir_all(&dir);
+            return;
+        }
 
         let err = parse_canonical(&dir).unwrap_err();
         assert!(err.reason.contains("setuid/setgid/sticky"));

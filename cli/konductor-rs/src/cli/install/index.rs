@@ -1033,7 +1033,25 @@ mod tests {
             "sanity check: the constructed component must itself not be valid UTF-8"
         );
         let non_utf8_dir = dir.join(bad_component);
-        fs::create_dir_all(&non_utf8_dir).expect("filesystem allows non-UTF-8 byte paths");
+        // Reaching the non-UTF-8 branch needs such a path on disk, but some
+        // filesystems reject the name with EILSEQ (macOS APFS). Skip only on
+        // EILSEQ -- matched by errno, since ErrorKind leaves it Uncategorized
+        // -- so any other failure still surfaces. Still runs on Linux.
+        const EILSEQ_LINUX: i32 = 84;
+        const EILSEQ_MACOS: i32 = 92;
+        match fs::create_dir_all(&non_utf8_dir) {
+            Ok(()) => {}
+            Err(e) if matches!(e.raw_os_error(), Some(EILSEQ_LINUX) | Some(EILSEQ_MACOS)) => {
+                eprintln!(
+                    "SKIP canonicalize_target_dir_rejects_genuinely_non_utf8_path: this \
+                     filesystem rejects a non-UTF-8 filename ({e}), so the fixture cannot \
+                     be created (expected on macOS APFS)."
+                );
+                fs::remove_dir_all(&dir).ok();
+                return;
+            }
+            Err(e) => panic!("unexpected error creating non-UTF-8 fixture dir: {e:?}"),
+        }
 
         let err = canonicalize_target_dir(&non_utf8_dir)
             .expect_err("a non-UTF-8 canonical path must be rejected, not lossily coerced");

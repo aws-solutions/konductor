@@ -117,36 +117,49 @@ fn seed_preexisting_install_info(target_dir: &Path) {
     .unwrap();
 }
 
-/// Triggers `install`'s `install.would_fail_as_noop` error path (no
-/// `--from` at all) against `target_dir` -- the cheapest deterministic
-/// way to make `dispatch_install_with` call `report_cli_error` exactly
-/// once, without needing a seeded synth source tree or a real strategy
-/// run. Returns the process `Output` so the caller can assert on exit
-/// status if it wants to.
-fn run_install_with_no_from(
+/// Triggers `install`'s `install.would_fail_as_noop` error path against
+/// `target_dir` -- the cheapest deterministic way to make
+/// `dispatch_install_with` call `report_cli_error` exactly once, without
+/// needing a seeded synth source tree or a real strategy run.
+///
+/// `--from` points at a fresh EMPTY directory (no `dist/` tree), which
+/// is what makes this hermetic: `dispatch_install` only reaches the
+/// local `would_fail_as_noop` check on the `from.is_some()` branch, and
+/// an empty source has nothing to install, so the strategy reports a
+/// no-op and the process exits `EXIT_USAGE_ERROR` (64). Omitting `--from`
+/// instead takes the no-`--from` REMOTE branch, which fetches a real
+/// GitHub release -- that call is un-stubbed here (only telemetry is
+/// redirected to the loopback sink), so its outcome flips with whether a
+/// reachable release happens to exist, which is exactly the
+/// non-determinism this avoids. Returns the process `Output`.
+fn run_install_would_fail_as_noop(
     home_dir: &Path,
     target_dir: &Path,
     sink: &TelemetrySink,
     extra_args: &[&str],
 ) -> Output {
     let target_str = target_dir.display().to_string();
-    // `--harness` is required. A valid choice must be passed so this
-    // reaches `would_fail_as_noop` (a strategy IS selected -- that
-    // strategy's own no-op check is what actually fails, since --from
-    // is absent) -- omitting it would instead fail at clap parse time,
-    // before `dispatch_install_with`/`report_cli_error` are ever
-    // reached, which would make every regression this file tests pass
-    // for the wrong reason (telemetry code never ran, rather than
-    // running and correctly suppressing).
+    // Empty source: exists (so `--from` is accepted) but carries no
+    // `dist/<harness>/` tree, so `would_fail_as_noop` finds nothing to
+    // install and fails locally without any network fetch.
+    let empty_source = scratch_dir("empty-install-source");
+    let from_str = empty_source.display().to_string();
+    // `--harness` is required so a strategy is selected and its own
+    // no-op check runs; omitting it would fail at clap parse time,
+    // before `report_cli_error` is ever reached.
     let mut args: Vec<&str> = vec![
         CMD_INSTALL,
         "--target",
         &target_str,
+        "--from",
+        &from_str,
         "--harness",
         "kiro-cli-v2",
     ];
     args.extend_from_slice(extra_args);
-    run_konductor(home_dir, target_dir, sink, &args)
+    let output = run_konductor(home_dir, target_dir, sink, &args);
+    std::fs::remove_dir_all(&empty_source).ok();
+    output
 }
 
 /// The core regression test (see this file's own module docstring):
@@ -160,7 +173,7 @@ fn no_telemetry_suppresses_cli_error_report_even_with_a_preexisting_identity() {
     let target_dir = scratch_dir("no-telemetry-target");
     seed_preexisting_identity(&target_dir);
 
-    let output = run_install_with_no_from(&home_dir, &target_dir, &sink, &["--no-telemetry"]);
+    let output = run_install_would_fail_as_noop(&home_dir, &target_dir, &sink, &["--no-telemetry"]);
 
     assert!(
         !output.status.success(),
@@ -203,7 +216,7 @@ fn cli_error_report_fires_and_reaches_the_sink_without_no_telemetry() {
     let target_dir = scratch_dir("with-telemetry-target");
     seed_preexisting_identity(&target_dir);
 
-    let output = run_install_with_no_from(&home_dir, &target_dir, &sink, &[]);
+    let output = run_install_would_fail_as_noop(&home_dir, &target_dir, &sink, &[]);
 
     assert!(
         !output.status.success(),
@@ -233,7 +246,7 @@ fn no_telemetry_suppresses_cli_error_report_with_no_preexisting_identity() {
     let target_dir = scratch_dir("no-telemetry-no-identity-target");
     // Deliberately do NOT seed an identity file this time.
 
-    let output = run_install_with_no_from(&home_dir, &target_dir, &sink, &["--no-telemetry"]);
+    let output = run_install_would_fail_as_noop(&home_dir, &target_dir, &sink, &["--no-telemetry"]);
 
     assert!(!output.status.success());
     assert_eq!(output.status.code(), Some(64));
@@ -275,7 +288,7 @@ fn cli_error_report_fires_under_nil_uuid_sentinel_with_no_preexisting_identity()
         "sanity check: no identity file must exist before this run"
     );
 
-    let output = run_install_with_no_from(&home_dir, &target_dir, &sink, &[]);
+    let output = run_install_would_fail_as_noop(&home_dir, &target_dir, &sink, &[]);
 
     assert!(
         !output.status.success(),
@@ -314,7 +327,7 @@ fn cli_error_report_fires_under_nil_uuid_sentinel_with_no_preexisting_identity()
 // seeded manifest or a real strategy run.
 
 /// Triggers `update`'s "update.target_not_found" error path. Mirrors
-/// `run_install_with_no_from`'s own shape for the update command.
+/// `run_install_would_fail_as_noop`'s own shape for the update command.
 fn run_update_with_untracked_target(
     home_dir: &Path,
     target_dir: &Path,
