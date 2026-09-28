@@ -93,6 +93,10 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool, color: ColorMode) 
             crate::cli::synth::dispatch_synth_with(&cwd, from, verbose, json, color)
         }
         Commands::Init { preset, force } => {
+            if !init_dispatch_allowed() {
+                print_not_currently_available("init");
+                return EXIT_USAGE_ERROR;
+            }
             let cwd = match resolve_cwd("init", color) {
                 Ok(dir) => dir,
                 Err(code) => return code,
@@ -136,6 +140,10 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool, color: ColorMode) 
             dispatch_config(&cwd, action, color)
         }
         Commands::Metrics { since } => {
+            if !metrics_dispatch_allowed() {
+                print_not_currently_available("metrics");
+                return EXIT_USAGE_ERROR;
+            }
             print_not_implemented("metrics", &[("--since", opt(&since))]);
             0
         }
@@ -459,6 +467,63 @@ fn config_dispatch_allowed() -> bool {
 /// process-global `KONDUCTOR_ALLOW_CONFIG` env var (which would race
 /// against other tests reading process env concurrently).
 fn config_dispatch_allowed_for(value: Option<String>) -> bool {
+    value.as_deref() == Some("1")
+}
+
+/// Gates `Commands::Init` dispatch while the subcommand is temporarily
+/// hidden (see cli.rs's `#[command(hide = true)]` on `Commands::Init`).
+/// The underlying `dispatch_init`/`init` logic is fully intact and
+/// unconditionally reachable in code -- this only decides whether a
+/// normal CLI invocation may reach it.
+///
+/// `KONDUCTOR_ALLOW_INIT=1` is an internal-only escape hatch, not a
+/// documented user-facing flag (mirrors `config_dispatch_allowed`'s own
+/// `KONDUCTOR_ALLOW_CONFIG` precedent, and `trace.rs`'s
+/// `KONDUCTOR_LOG=debug` before that). `tests/config_set_concurrency.rs`
+/// sets it: its `run_konductor` helper calls
+/// `.env("KONDUCTOR_ALLOW_INIT", "1")` on every subprocess `Command` it
+/// builds, so both of that file's test functions reach the real `init`
+/// dispatch path as a setup step before their `config set` assertions,
+/// while `init` stays withheld from ordinary end users. Any other
+/// value, or the variable being unset, keeps `init` gated.
+fn init_dispatch_allowed() -> bool {
+    init_dispatch_allowed_for(std::env::var("KONDUCTOR_ALLOW_INIT").ok())
+}
+
+/// Pure decision logic behind `init_dispatch_allowed`, split out so
+/// tests can exercise every input value without mutating the real
+/// process-global `KONDUCTOR_ALLOW_INIT` env var (which would race
+/// against other tests reading process env concurrently).
+fn init_dispatch_allowed_for(value: Option<String>) -> bool {
+    value.as_deref() == Some("1")
+}
+
+/// Gates `Commands::Metrics` dispatch while the subcommand is
+/// temporarily hidden (see cli.rs's `#[command(hide = true)]` on
+/// `Commands::Metrics`). Unlike `config_dispatch_allowed`/
+/// `init_dispatch_allowed`, there is no real business logic behind this
+/// gate to protect -- `metrics` is a stub (`print_not_implemented`, no
+/// side effects) -- but the gate still applies for a consistent
+/// "not currently available" response across all three hidden
+/// commands, rather than a stub that silently still succeeds (exit 0)
+/// for anyone who invokes it directly despite it being hidden from
+/// `--help`.
+///
+/// `KONDUCTOR_ALLOW_METRICS=1` is an internal-only escape hatch, not a
+/// documented user-facing flag, mirroring `KONDUCTOR_ALLOW_CONFIG`/
+/// `KONDUCTOR_ALLOW_INIT` above. No existing test currently invokes
+/// `metrics` directly (in-process or as a subprocess), so this escape
+/// hatch has no current consumer -- it exists for parity with `Config`/
+/// `Init`'s mechanism, and so a future test would have the same
+/// bypass available without inventing a new convention.
+fn metrics_dispatch_allowed() -> bool {
+    metrics_dispatch_allowed_for(std::env::var("KONDUCTOR_ALLOW_METRICS").ok())
+}
+
+/// Pure decision logic behind `metrics_dispatch_allowed`, split out for
+/// the same reason as `config_dispatch_allowed_for`/
+/// `init_dispatch_allowed_for` above.
+fn metrics_dispatch_allowed_for(value: Option<String>) -> bool {
     value.as_deref() == Some("1")
 }
 
@@ -1126,6 +1191,30 @@ mod tests {
         assert!(!config_dispatch_allowed_for(Some("0".to_string())));
     }
 
+    /// Pure decision logic behind the `KONDUCTOR_ALLOW_INIT` gate.
+    /// Mirrors `config_dispatch_allowed_for_only_accepts_exact_value_one`
+    /// above for the same reason.
+    #[test]
+    fn init_dispatch_allowed_for_only_accepts_exact_value_one() {
+        assert!(init_dispatch_allowed_for(Some("1".to_string())));
+        assert!(!init_dispatch_allowed_for(None));
+        assert!(!init_dispatch_allowed_for(Some("".to_string())));
+        assert!(!init_dispatch_allowed_for(Some("true".to_string())));
+        assert!(!init_dispatch_allowed_for(Some("0".to_string())));
+    }
+
+    /// Pure decision logic behind the `KONDUCTOR_ALLOW_METRICS` gate.
+    /// Mirrors `config_dispatch_allowed_for_only_accepts_exact_value_one`
+    /// above for the same reason.
+    #[test]
+    fn metrics_dispatch_allowed_for_only_accepts_exact_value_one() {
+        assert!(metrics_dispatch_allowed_for(Some("1".to_string())));
+        assert!(!metrics_dispatch_allowed_for(None));
+        assert!(!metrics_dispatch_allowed_for(Some("".to_string())));
+        assert!(!metrics_dispatch_allowed_for(Some("true".to_string())));
+        assert!(!metrics_dispatch_allowed_for(Some("0".to_string())));
+    }
+
     /// `Commands::Config` must be gated by default: with
     /// `KONDUCTOR_ALLOW_CONFIG` unset, dispatching it must return
     /// `EXIT_USAGE_ERROR` and must NOT reach `dispatch_config` (proven by
@@ -1193,6 +1282,136 @@ mod tests {
         assert_eq!(
             code, 0,
             "with the escape hatch set, `config list` must reach dispatch_config and succeed"
+        );
+    }
+
+    /// `Commands::Init` must be gated by default: with
+    /// `KONDUCTOR_ALLOW_INIT` unset, dispatching it must return
+    /// `EXIT_USAGE_ERROR` rather than reaching `resolve_cwd`/
+    /// `dispatch_init` at all. Mirrors
+    /// `dispatch_config_is_gated_without_the_allow_env_var` above.
+    /// Unlike that Config test, this cannot additionally prove
+    /// "never scaffolds .konductor/" by pointing at an isolated `cwd`:
+    /// `Commands::Init`'s dispatch arm resolves the process's REAL
+    /// current working directory (there is no `target_dir` override at
+    /// the `dispatch()` entry point, unlike `dispatch_init` the function
+    /// it would call), so mutating or inspecting cwd from this test
+    /// would affect the whole test binary. The exit-code assertion alone
+    /// is sufficient: a bypassed gate reaching `dispatch_init` against
+    /// this test binary's real cwd would fail with "already
+    /// initialized" or succeed silently, but would never itself produce
+    /// `EXIT_USAGE_ERROR` via the gate's own `print_not_currently_available`
+    /// path, so this exit code is unambiguous proof the gate fired.
+    #[test]
+    fn dispatch_init_is_gated_without_the_allow_env_var() {
+        let _guard = lock_home();
+        let previous = std::env::var("KONDUCTOR_ALLOW_INIT").ok();
+        std::env::remove_var("KONDUCTOR_ALLOW_INIT");
+
+        let code = dispatch(
+            Commands::Init {
+                preset: None,
+                force: false,
+            },
+            false,
+            false,
+            ColorMode::disabled(),
+        );
+
+        match previous {
+            Some(value) => std::env::set_var("KONDUCTOR_ALLOW_INIT", value),
+            None => std::env::remove_var("KONDUCTOR_ALLOW_INIT"),
+        }
+
+        assert_eq!(
+            code, EXIT_USAGE_ERROR,
+            "gated `init` dispatch must return EXIT_USAGE_ERROR (64)"
+        );
+    }
+
+    /// The escape hatch: with `KONDUCTOR_ALLOW_INIT=1` set,
+    /// `init_dispatch_allowed()` must return `true`, letting
+    /// `Commands::Init` dispatch reach the real `dispatch_init` path.
+    /// This checks the gate function directly rather than a full
+    /// `dispatch(Commands::Init { .. })` call (as
+    /// `dispatch_config_reaches_real_dispatch_when_allow_env_var_is_set`
+    /// does for Config): `Commands::Init`'s dispatch arm has no
+    /// `target_dir` override, so a full end-to-end call here would
+    /// scaffold `.konductor/` into this test binary's REAL process cwd
+    /// -- shared, uncontrolled state that would corrupt this repo
+    /// checkout and race every other test. `dispatch_init_then_config_list_round_trips`
+    /// above already proves `dispatch_init` itself succeeds end to end
+    /// against an isolated scratch dir; this test only needs to prove
+    /// the gate steps aside when told to.
+    #[test]
+    fn init_dispatch_allowed_returns_true_when_allow_env_var_is_set() {
+        let _guard = lock_home();
+        let previous = std::env::var("KONDUCTOR_ALLOW_INIT").ok();
+        std::env::set_var("KONDUCTOR_ALLOW_INIT", "1");
+
+        let allowed = init_dispatch_allowed();
+
+        match previous {
+            Some(value) => std::env::set_var("KONDUCTOR_ALLOW_INIT", value),
+            None => std::env::remove_var("KONDUCTOR_ALLOW_INIT"),
+        }
+
+        assert!(
+            allowed,
+            "with KONDUCTOR_ALLOW_INIT=1 set, init_dispatch_allowed() must return true"
+        );
+    }
+
+    /// `Commands::Metrics` must be gated by default: with
+    /// `KONDUCTOR_ALLOW_METRICS` unset, dispatching it must return
+    /// `EXIT_USAGE_ERROR`, not the stub's usual exit 0.
+    #[test]
+    fn dispatch_metrics_is_gated_without_the_allow_env_var() {
+        let _guard = lock_home();
+        let previous = std::env::var("KONDUCTOR_ALLOW_METRICS").ok();
+        std::env::remove_var("KONDUCTOR_ALLOW_METRICS");
+
+        let code = dispatch(
+            Commands::Metrics { since: None },
+            false,
+            false,
+            ColorMode::disabled(),
+        );
+
+        match previous {
+            Some(value) => std::env::set_var("KONDUCTOR_ALLOW_METRICS", value),
+            None => std::env::remove_var("KONDUCTOR_ALLOW_METRICS"),
+        }
+
+        assert_eq!(
+            code, EXIT_USAGE_ERROR,
+            "gated `metrics` dispatch must return EXIT_USAGE_ERROR (64), not the stub's exit 0"
+        );
+    }
+
+    /// The escape hatch: with `KONDUCTOR_ALLOW_METRICS=1` set,
+    /// `Commands::Metrics` must reach the stub's normal exit-0 behavior.
+    #[test]
+    fn dispatch_metrics_reaches_stub_when_allow_env_var_is_set() {
+        let _guard = lock_home();
+        let previous = std::env::var("KONDUCTOR_ALLOW_METRICS").ok();
+        std::env::set_var("KONDUCTOR_ALLOW_METRICS", "1");
+
+        let code = dispatch(
+            Commands::Metrics { since: None },
+            false,
+            false,
+            ColorMode::disabled(),
+        );
+
+        match previous {
+            Some(value) => std::env::set_var("KONDUCTOR_ALLOW_METRICS", value),
+            None => std::env::remove_var("KONDUCTOR_ALLOW_METRICS"),
+        }
+
+        assert_eq!(
+            code, 0,
+            "with the escape hatch set, `metrics` must reach the stub and exit 0"
         );
     }
 }
