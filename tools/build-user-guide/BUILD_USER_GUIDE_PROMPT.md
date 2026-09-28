@@ -80,7 +80,6 @@ quick           docs/user-guide/quick-start.md
 tasks           docs/user-guide/tasks/README.md
 install-kiro    docs/user-guide/tasks/install-kiro-cli.md
 install-claude  docs/user-guide/tasks/install-claude-code.md
-init            docs/user-guide/tasks/initialize-a-project.md
 diagnose        docs/user-guide/tasks/diagnose-problems.md
 update          docs/user-guide/tasks/update.md
 uninstall       docs/user-guide/tasks/uninstall.md

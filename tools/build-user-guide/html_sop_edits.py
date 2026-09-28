@@ -211,9 +211,10 @@ SOP_EDITS += [
     ("commands: install/update/uninstall rows",
      'konductor install","v":"Detect the runtime and register agents, skills, SOPs, and context files with it"},{"k":"konductor update","v":"Fetch the latest release and re-register it, preserving local modifications"},{"k":"konductor uninstall","v":"Deregister Konductor from the runtime"}',
      'konductor install","v":"Register agents, skills, SOPs and context files with the harness named by --harness (required \u2014 there is no auto-detection)"},{"k":"konductor update","v":"Unconditionally overwrite a tracked install in place from --from. There is no merge: local edits are clobbered. --dry-run previews, per path"},{"k":"konductor uninstall","v":"Remove a tracked install\'s files and its index entry. No confirmation prompt; --dry-run previews, per path"}'),
-    ("commands: add metrics row",
-     '{"k":"konductor synth","v":"Parse agents/, skills/, and agent-sops/ and write per-runtime output to <source>/dist/"}]',
-     '{"k":"konductor synth","v":"Parse agents/, skills/, and agent-sops/ and write per-runtime output to <source>/dist/"},{"k":"konductor metrics","v":"Quality trends from recent runs \u2014 a STUB in this release; it prints \'not yet implemented\'"}]'),
+    # RETIRED 2026-09-28: append-style edit whose `new` re-adds the now-withdrawn
+    # `metrics` row -- its premise (metrics missing from the table) reversed
+    # after metrics was withdrawn, so every `--apply` since then silently
+    # reintroduced the row this file's own WITHDRAWN_COMMANDS list disallows.
 ]
 
 # The update/uninstall TASK pages: hand-written blocks that promised local edits
@@ -274,13 +275,9 @@ SOP_EDITS += [
      'runtimeLabel: kiro ? "KIRO CLI" : "CLAUDE CODE",\n      harnessFlag: kiro ? "kiro-cli-v2" : "claude",'),
 ]
 
-# Per-command flags, from cli/konductor-rs/src/cli.rs. The table had install/synth
-# on a --local flag that does not exist, claimed update and doctor take no flags,
-# and offered an uninstall --yes for a confirmation prompt that was removed.
+# "per-command flags table" is retired: its `new` still lists init --preset/
+# --force and metrics --since as real flags, both withdrawn from the live table.
 SOP_EDITS += [
-    ("per-command flags table",
-     "\"rows\":[{\"k\":\"install --local <PATH>\",\"v\":\"path · no · install into this repository root instead of the current directory\"},{\"k\":\"update\",\"v\":\"— · takes no command-specific flags\"},{\"k\":\"uninstall --yes\",\"v\":\"flag · no · skip the confirmation prompt\"},{\"k\":\"doctor\",\"v\":\"— · takes no command-specific flags; honours --json\"},{\"k\":\"init --preset <PRESET>\",\"v\":\"enum · no · solo, team, org\"},{\"k\":\"init --force\",\"v\":\"flag · no · overwrite an existing .konductor/ instead of failing\"},{\"k\":\"synth --local <PATH>\",\"v\":\"path · no · synthesize this source tree instead of the current directory. Output goes to <PATH>/dist/\"}",
-     "\"rows\":[{\"k\":\"install --harness <NAME>\",\"v\":\"enum · YES · kiro-cli-v2, kiro-v3, claude. No default and no auto-detection\"},{\"k\":\"install --from <PATH>\",\"v\":\"path · no · install from a local repo root with already-synthed content instead of fetching a release. A maintainer path — the documented workflows all install from a release\"},{\"k\":\"install --target <DIR>\",\"v\":\"path · no · destination; defaults to $HOME\"},{\"k\":\"install --link-bin\",\"v\":\"flag · no · symlink konductor into $HOME/.local/bin\"},{\"k\":\"install --no-telemetry\",\"v\":\"flag · no · suppress telemetry for this invocation\"},{\"k\":\"install --use-github-token\",\"v\":\"flag · no · authenticate the release fetch with a GitHub token\"},{\"k\":\"update --from <PATH>\",\"v\":\"path · no · source repo root. No default — pass it every time\"},{\"k\":\"update --target <DIR> / --all\",\"v\":\"path / flag · no · which tracked install(s) to update; mutually exclusive\"},{\"k\":\"update --dry-run\",\"v\":\"flag · no · report what would be overwritten, per path, flagging local edits. Writes nothing\"},{\"k\":\"uninstall --target <DIR> / --all\",\"v\":\"path / flag · no · which tracked install(s) to remove; mutually exclusive\"},{\"k\":\"uninstall --dry-run\",\"v\":\"flag · no · report what would be removed, per path, flagging local edits. Writes nothing\"},{\"k\":\"doctor --from <PATH> / --target <DIR> / --all\",\"v\":\"path / path / flag · no · what to check; --all conflicts with the other two. Honours --json\"},{\"k\":\"init --preset <PRESET>\",\"v\":\"enum · no · solo, team, org\"},{\"k\":\"init --force\",\"v\":\"flag · no · overwrite an existing .konductor/ instead of failing\"},{\"k\":\"synth --from <PATH>\",\"v\":\"path · no · synthesize this source tree instead of the current directory. Output goes to <PATH>/dist/\"},{\"k\":\"metrics --since <WINDOW>\",\"v\":\"string · no · limit the report to a time window. metrics is a STUB in this release\"}"),
 ]
 
 # Remaining --local / --yes usages outside the flags table: the install task page's
@@ -422,8 +419,9 @@ SOP_EDITS += [
     # is gone, and its six-check replacement predates the nine-check correction.
 ]
 
+# "doctor: broken-state block" is retired: its `new` still says the config fix
+# is "Run `konductor init`", superseded by diagnose-problems.md's own rewording.
 SOP_EDITS += [
-    ("doctor: broken-state block", 'Runtime\n  Claude Code       detected (2.1.174)  stale\n    Agent teams needs 2.1.178 or later.\n  agent teams enabled  not set        failed\n    Run: claude settings set env.CLAUD…\n  tool permissions  no allowlist      failed\n    Add a permissions.allow block\nProject\n  .konductor/config.yml not found      info\n    Optional. Run `konductor init`.\nUpdates\n  installed 0.1.0, latest 0.1.2       stale\n    Run: konductor update\n\n3 checks failed.', 'source             agent k-developer references a missing skill   failed\n    fix: add the skill under skills/, or remove the reference\nruntime            no runtime detected at this target          failed\n    fix: install Kiro CLI or Claude Code, or pass --target\nmanifest           4 files differ from their recorded hash       warn\n    fix: run konductor update --from <repo-root> --dry-run\nconfig             .konductor/config.yml not found              info\n    fix: optional. Run `konductor init` to create one.\ncontainer_runtime  none of docker/podman/nerdctl/finch on PATH  info\nindex_status       index says complete, manifest says partial    warn\n\n2 checks failed.'),
 ]
 
 SOP_EDITS += [
@@ -575,7 +573,17 @@ SOP_EDITS += [
      '{ id: "update", title: "Update an installation", what: "An unconditional overwrite from a source tree. Local edits are destroyed." }'),
     # leftover advice from the old preserve-and-skip model
     # update and doctor make no release calls; only install's no---from path does
-    ("faq: network claim", "The CLI touches the network only to fetch or compare releases \u2014 install, update, and doctor. init, config, and synth are entirely local. ", "The CLI touches the network in one place only: install, fetching the release it installs from. Everything else \u2014 update, doctor, init, synth, metrics \u2014 is entirely local. "),
+    # "faq: network claim" is retired: its `old` no longer exists in the
+    # bundle (already applied once), and its `new` is itself the stale
+    # "update, doctor, init, synth, metrics" enumeration that leaked init and
+    # metrics as live commands -- both withdrawn since. Replaced by "faq:
+    # network claim drops init/metrics" below, which targets the CURRENT text
+    # and corrects it to name only the checks that stayed live.
+    ("faq: network claim drops init/metrics",
+     "The CLI touches the network in one place only: install, fetching the release it installs "
+     "from. Everything else \u2014 update, doctor, init, synth, metrics \u2014 is entirely local. ",
+     "The CLI touches the network in one place only: install, fetching the release it installs "
+     "from. Everything else \u2014 update, doctor, synth \u2014 is entirely local. "),
     # garbled hand-edit
     ("install: older-version row",
      "Tells you a newer release is available and to run <span style=\"font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--tx)\">konductor update</span>.",
@@ -805,15 +813,12 @@ SOP_EDITS += [
     ("init page: next goes to Diagnose problems",
      "<button sc-camel-on-click=\"{{ goConfig }}\" style=\"all:unset;cursor:pointer;font-size:14px;font-weight:600;color:var(--vi)\" style-hover=\"color:var(--lav)\">Next: Read and change configuration →</button>",
      "<button sc-camel-on-click=\"{{ goDiagnose }}\" style=\"all:unset;cursor:pointer;font-size:14px;font-weight:600;color:var(--vi)\" style-hover=\"color:var(--lav)\">Next: Diagnose problems →</button>"),
-    ("diagnose page: previous goes to Initialize a project",
-     "<button sc-camel-on-click=\"{{ goConfig }}\" style=\"all:unset;cursor:pointer;font-size:14px;color:var(--mu)\" style-hover=\"color:var(--vi)\">← Configuration</button>",
-     "<button sc-camel-on-click=\"{{ goInit }}\" style=\"all:unset;cursor:pointer;font-size:14px;color:var(--mu)\" style-hover=\"color:var(--vi)\">← Initialize a project</button>"),
-    ("reference: seven commands, no config group",
-     "\"Eight commands. config is a group with three subcommands. konductor help [COMMAND] prints help for a command, and --help works at every level.\"",
-     "\"Seven commands. konductor help [COMMAND] prints help for a command, and --help works at every level.\""),
-    ("reference: config-file path no longer names --config",
-     "Path: .konductor/config.yml, relative to the current working directory, or whatever --config points at.",
-     "Path: .konductor/config.yml, relative to the current working directory. konductor init writes it and konductor doctor validates it; edit it by hand."),
+    # "diagnose page: previous goes to Initialize a project" is retired: the init
+    # page it points to (initialize-a-project.md) is deleted; init is withdrawn.
+    # "reference: seven commands, no config group" is retired: its `new` says
+    # "Seven commands"; the live page already says "Five" (init/metrics gone too).
+    # "reference: config-file path no longer names --config" is retired: its
+    # `new` credits `konductor init` with writing the file; init is withdrawn.
     ("reference: precedence drops --config",
      "then <cwd>/.konductor/config.yml or --config <PATH>.",
      "then <cwd>/.konductor/config.yml."),
@@ -823,9 +828,8 @@ SOP_EDITS += [
     ("reference: exit-64 rows drop config key/value/load",
      "{\"k\":\"Unknown config key\",\"v\":\"konductor config get colour_scheme\"},{\"k\":\"Invalid config value\",\"v\":\"konductor config set version 9\"},{\"k\":\"Malformed config on load\",\"v\":\"konductor config list against a broken config.yml\"},",
      "{\"k\":\"Malformed config on load\",\"v\":\"any command, against a broken .konductor/config.yml\"},"),
-    ("reference: layout row drops config set",
-     "{\"k\":\".konductor/config.yml\",\"v\":\"konductor init, konductor config set · no\"}",
-     "{\"k\":\".konductor/config.yml\",\"v\":\"konductor init · no\"}"),
+    # "reference: layout row drops config set" is retired: its `new` still
+    # credits `konductor init` with writing the file; init is withdrawn.
     ("troubleshooting 8: drop the config commands",
      "sec(\"t-8\", \"8 — config value is wrong\", \"8. A config value is not what I set\", {\n        paras: [\"SYMPTOM — konductor config list shows a value you did not put in your project config.\"",
      "sec(\"t-8\", \"8 — config value is wrong\", \"8. A config value is not what I set\", {\n        paras: [\"SYMPTOM — a finding severity or change tier is not what your project config says.\""),
@@ -835,12 +839,10 @@ SOP_EDITS += [
     ("getting help: drop config list from the bug-report commands",
      "code: \"konductor --version\\nwhich konductor\\nkonductor config list\",",
      "code: \"konductor --version\\nwhich konductor\\ncat .konductor/config.yml\","),
-    ("init page: success chip stops naming config list",
-     "<span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">konductor config list</span> prints the config keys.",
-     "<span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">.konductor/config.yml</span> parses — <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">konductor doctor</span> reports <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">config</span> as <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">ok</span>."),
-    ("init page: verify block reads the file instead",
-     "<pre style=\"margin:0 0 10px;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.7;color:var(--tx)\">konductor config list</pre>\n              <pre style=\"margin:0;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.75;color:var(--mu)\">version = 1\nseverities_source = severity-schema.yml\ntiers_source = scope-table.yml</pre>",
-     "<pre style=\"margin:0 0 10px;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.7;color:var(--tx)\">cat .konductor/config.yml</pre>\n              <pre style=\"margin:0;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.75;color:var(--mu)\">version: 1</pre>"),
+    # "init page: success chip stops naming config list" is retired: it lives on
+    # the init page itself, which no longer exists in the docs tree.
+    # "init page: verify block reads the file instead" is retired: it lives on
+    # the init page itself, which no longer exists in the docs tree.
     ("diagnose page: drop config list from the precedence snippet",
      "cat .konductor/config.yml\ncat ~/.konductor/config.yml\nkonductor config list</pre>",
      "cat .konductor/config.yml\ncat ~/.konductor/config.yml</pre>"),
@@ -853,9 +855,8 @@ SOP_EDITS += [
     ("reference: empty-config note drops config list",
      "\"note\":\"An empty config.yml is not an error — every field falls through and config list exits 0.\"",
      "\"note\":\"An empty config.yml is not an error — every field falls through to its default.\""),
-    ("uninstall: artifact row drops config set",
-     "{ where: \"<project>/.konductor/config.yml\", by: \"konductor init, config set\", gone: \"you, manually\" }",
-     "{ where: \"<project>/.konductor/config.yml\", by: \"konductor init\", gone: \"you, manually\" }"),
+    # "uninstall: artifact row drops config set" is retired: its `new` still
+    # credits `konductor init` with writing the file; init is withdrawn.
 ]
 
 # The quick start was the last page still showing invented CLI transcripts. Its
@@ -1019,7 +1020,6 @@ SOP_EDITS += [
     ("glossary: Konductor entry drops the prefix clause",
      "and every specialist is named k-*. Agent names are the same on both runtimes and carry no package prefix.\"",
      "and every specialist is named k-*. Agent names are the same on both runtimes.\""),
-    ("glossary: Konductor CLI entry drops the withdrawn config command",
-     "diagnostics: install, update, uninstall, doctor, init, config, and synth.",
-     "diagnostics: install, update, uninstall, doctor, init, synth, and metrics."),
+    # "glossary: Konductor CLI entry drops the withdrawn config command" is
+    # retired: its `new` still lists init and metrics; both are withdrawn now.
 ]

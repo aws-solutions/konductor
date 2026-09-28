@@ -67,11 +67,61 @@ readers who want a pinned commit or a platform outside the release build matrix.
 (`#[command(hide = true)]`) and gated at dispatch (dispatch.rs's `Commands::Config` arm
 returns a usage error instead of calling `dispatch_config`) rather than removed. It is
 withheld from general use and from the guide's documentation, not absent from the CLI
-itself. **`.konductor/config.yml` itself is still documented**, schema included, because
-`konductor init` writes it and `konductor doctor` validates it — removing the file too
-would leave both of those pointing at something the guide never describes.
+itself. **`.konductor/config.yml` itself is still documented**, schema included: its
+loading mechanism (`config::load_config_with_home`) is real and active, falling back to
+preset defaults when the file is absent. `konductor doctor` has no live check for this file
+today — `check_config_with_home` exists in the CLI but is not wired into `doctor`'s active
+check suite. What's actually gone is a command-driven way to create
+one — `init` was the only command that ever wrote the file, and it's hidden too (see
+below), so there is currently no documented, command-driven way to create or customize
+`.konductor/config.yml`. A reader who wants to override a default has to hand-create or
+hand-edit the file against the schema in `reference.md`.
 
 `check-guide-facts.py` records this by keeping `config` in `WITHDRAWN_COMMANDS` rather than
+dropping its command-coverage check. That section asserts three things: every command in
+`cli/README.md` is documented, every name in `WITHDRAWN_COMMANDS` is **absent** from
+`reference.md`, `concepts.md` and `glossary.md`, and every name in `WITHDRAWN_COMMANDS` still
+exists in `cli/README.md`. So a future withdrawal nobody recorded, or a stale entry naming a
+command that no longer exists, both fail loudly instead of quietly widening the carve-out.
+
+**Adding or removing a name in `WITHDRAWN_COMMANDS` is a product decision, not a way to quiet
+the checker.**
+
+### `konductor init` is hidden, not deleted
+
+`init` still exists in the CLI as complete, tested, working code — it is deliberately
+hidden from `--help` (`#[command(hide = true)]`) and gated at dispatch (dispatch.rs's
+`Commands::Init` arm returns a usage error instead of calling `dispatch_init`) rather than
+removed. It is withheld from general use and from the guide's documentation, not absent
+from the CLI itself. **`.konductor/config.yml` itself is still documented**, schema
+included, because the file's loading mechanism is still real and active — defaults apply
+when the file is absent. `konductor doctor` has no live check for this file today —
+`check_config_with_home` exists in the CLI but is not wired into `doctor`'s active check
+suite — but `init` was the only command that ever wrote the file, so with it hidden
+there is currently no documented, command-driven way to create or customize
+`.konductor/config.yml`. This isn't a temporary single-path gap to route around; no
+command currently does this at all.
+
+`check-guide-facts.py` records this by keeping `init` in `WITHDRAWN_COMMANDS` rather than
+dropping its command-coverage check. That section asserts three things: every command in
+`cli/README.md` is documented, every name in `WITHDRAWN_COMMANDS` is **absent** from
+`reference.md`, `concepts.md` and `glossary.md`, and every name in `WITHDRAWN_COMMANDS` still
+exists in `cli/README.md`. So a future withdrawal nobody recorded, or a stale entry naming a
+command that no longer exists, both fail loudly instead of quietly widening the carve-out.
+
+**Adding or removing a name in `WITHDRAWN_COMMANDS` is a product decision, not a way to quiet
+the checker.**
+
+### `konductor metrics` is hidden, not deleted
+
+`metrics` is hidden from `--help` (`#[command(hide = true)]`) and gated at dispatch the
+same way as `config` and `init`, but its rationale is different: it is not a finished
+command being withheld — it is a genuine **stub**. It parses arguments and validates
+input correctly, but there is no real logic behind it yet to protect from general use.
+It is hidden now so that its eventual real implementation doesn't ship as a surprise
+new command with no prior notice, not because working functionality is being held back.
+
+`check-guide-facts.py` records this by keeping `metrics` in `WITHDRAWN_COMMANDS` rather than
 dropping its command-coverage check. That section asserts three things: every command in
 `cli/README.md` is documented, every name in `WITHDRAWN_COMMANDS` is **absent** from
 `reference.md`, `concepts.md` and `glossary.md`, and every name in `WITHDRAWN_COMMANDS` still

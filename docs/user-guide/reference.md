@@ -30,24 +30,20 @@ For the agents and skills themselves, see the [Agents reference](agents.md) and
 
 ## Command table
 
-Seven commands.
+Five commands.
 
 | Command | Purpose |
 | --- | --- |
 | `konductor install` | Register agents, skills, SOPs, and context files with the harness named by `--harness` (required) |
-| `konductor update` | Unconditionally overwrite a tracked install in place from `--from`; `--dry-run` previews it |
+| `konductor update` | With `--from`, unconditionally overwrites a tracked install in place; with no `--from`, fetches a release and skips the write if already current. `--dry-run` previews either path. See [Update an installation](tasks/update.md) |
 | `konductor uninstall` | Remove a tracked install's files and its index entry; `--dry-run` previews it |
-| `konductor doctor` | Check the runtime, the installed content, the project config, and available updates |
-| `konductor init` | Create `.konductor/` and write a starter `config.yml` |
+| `konductor doctor` | Check the runtime, the installed content, and available updates |
 | `konductor synth` | Parse `agents/`, `skills/`, and `agent-sops/` and write per-runtime output to `<source>/dist/` |
-| `konductor metrics` | Show quality trends from recent runs |
 
 `update` and `uninstall` both accept `--target <dir>`, `--all`, and `--dry-run`, and share one
 target-selection table — see [Update an installation](tasks/update.md#choosing-which-install-to-update).
 Neither prompts for confirmation: `--dry-run` is the only preview, and it is the only way to see
 **which** files carry local edits that a real run would destroy.
-
-`konductor metrics` is a **stub** in this release — it prints "not yet implemented."
 
 **`install` fetches its content from a GitHub Release, and whether it succeeds depends on one
 being published.** It looks for one asset — `konductor-v<version>.tar.gz` — plus a `.sha256`
@@ -107,16 +103,14 @@ Accepted before or after a subcommand.
 | `doctor` | `--from <PATH>` | path | No | Source tree to check. Conflicts with `--all` |
 | `doctor` | `--target <DIR>` | path | No | Install directory to check. Defaults to `$HOME`. Conflicts with `--all` |
 | `doctor` | `--all` | flag | No | Check every tracked install. Conflicts with `--from` and `--target` |
-| `init` | `--preset <PRESET>` | enum | No | `solo`, `team`, `org` |
-| `init` | `--force` | flag | No | Overwrite an existing `.konductor/` instead of failing |
 | `synth` | `--from <PATH>` | path | No | Synthesize this source tree instead of the current directory. Output goes to `<PATH>/dist/` |
-| `metrics` | `--since <WINDOW>` | string | No | Limit the report to runs within a time window. `metrics` is a stub in this release |
 
 
 ## Configuration file
 
-**Path:** `.konductor/config.yml`, relative to the current working directory. `konductor init`
-writes it and `konductor doctor` validates it; edit it by hand.
+**Path:** `.konductor/config.yml`, relative to the current working directory. Not currently used
+by the CLI — the command that reads and writes it (`get`/`set`/`list`) is hidden/gated like
+`init`/`metrics`.
 **Format:** a YAML mapping at the top level, with flat scalar keys. Nested dotted keys are not
 supported.
 
@@ -161,7 +155,6 @@ All exit `64`.
 | `config version <n> is not supported by this CLI (expected 1)` | `version` is not `1` |
 | `config file <path> is not valid YAML: …` | Syntax error, or a value of the wrong type for its field |
 | `config file <path> is not valid YAML: invalid type: sequence, expected struct RawConfig` | The top level is a list rather than key-value pairs |
-| `<path> already exists. Re-run with --force to overwrite it.` | `init` on an existing `.konductor/` |
 
 An **empty** `config.yml` is not an error — every field falls through to its default.
 
@@ -194,9 +187,7 @@ rather than lumping every non-zero code together.
 | Unknown subcommand | `konductor instal` |
 | Unknown flag | `konductor --bogus` |
 | Missing required argument | `konductor install` without `--harness` |
-| Invalid enum value | `konductor init --preset enterprise` |
 | Malformed config on load | Any command, against a broken `.konductor/config.yml` |
-| `init` without `--force` on an existing `.konductor/` | `konductor init` |
 | `synth` parse failure | A malformed `agents/*.agent-spec.json` |
 | Current directory cannot be resolved | — |
 
@@ -211,7 +202,7 @@ konductor instal
 ```text
 error: unrecognized subcommand 'instal'
 
-  tip: some similar subcommands exist: 'init', 'uninstall', 'install'
+  tip: some similar subcommands exist: 'uninstall', 'install', 'update'
 
 Usage: konductor [OPTIONS] [COMMAND]
 
@@ -338,7 +329,7 @@ JSON or Markdown you can read and change — see
 
 | Path | Created by | Gitignored? |
 | --- | --- | --- |
-| `.konductor/config.yml` | `konductor init` | No |
+| `.konductor/config.yml` | You, by hand | No |
 | `dist/` | `konductor synth` | **Yes** |
 | `~/.konductor/logs/konductor.log` | Every CLI invocation | Outside the repo |
 | `~/.konductor/config.yml` | You, by hand | Outside the repo |

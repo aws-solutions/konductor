@@ -47,12 +47,44 @@ _DIAGRAM_DIR = {"agents": "agents", "skills": "skills", "SOPs": "agent-sops"}
 _LAYOUT_NOUN = {"agents": "agent specs", "skills": "skills", "SOPs": "SOPs"}
 
 # Commands the CLI accepts but the guide deliberately does not document, with the
-# decision recorded so the carve-out is auditable rather than folklore. `config`
-# is withheld from the v1 customer-visible surface (reviewer decision on
-# reviewer decision); `.konductor/config.yml` itself stays documented, since `init`
-# writes it and `doctor` validates it. Adding a name here is a product decision,
-# not a way to silence this script -- see docs/user-guide/notes.md.
-WITHDRAWN_COMMANDS = {"config"}
+# decision recorded so the carve-out is auditable rather than folklore. `config` and
+# `init` are withheld from the v1 customer-visible surface (reviewer decision); both
+# are real, complete, tested code paths, just hidden from --help and gated at dispatch.
+# `metrics` is withheld too, but for a different reason: it is a genuine stub with no
+# real logic behind it yet, not something withheld despite being finished.
+# `.konductor/config.yml` itself stays documented, since `init` writes it and `doctor`
+# validates it. Adding a name here is a product decision, not a way to silence this
+# script -- see docs/user-guide/notes.md.
+WITHDRAWN_COMMANDS = {"config", "init", "metrics"}
+
+# Same enumeration-leak heuristic as the backtick-anchored regex in section 10
+# below, generalized to match a withdrawn command as a BARE WORD -- no
+# backticks required. The Markdown pages wrap every command name in backticks,
+# but the published HTML bundle renders plain prose ("update, doctor, init,
+# synth, metrics — is entirely local"), so a pattern that requires a backtick
+# on each side can never see a leak there. Word-boundary matching plus the same
+# "2+ other real command names nearby" requirement keeps this off unrelated
+# prose in both surfaces -- e.g. a sentence that happens to use the word
+# "config" without any neighboring command names.
+_BARE_ENUM_RE = re.compile(
+    r"(?:\b[a-z][a-z-]*\b(?:,\s*|,?\s+and\s+))+\b[a-z][a-z-]*\b"
+)
+
+
+def _bare_enum_leaks(text: str, documented) -> list:
+    """Withdrawn commands leaking as a bare word inside a comma-enumeration.
+
+    Requires 2+ OTHER documented command names in the same run, the same
+    threshold the backtick-anchored version uses, so a sentence that merely
+    contains a withdrawn command's name in passing (with no command-list
+    context around it) does not trip this.
+    """
+    leaks = []
+    for run in _BARE_ENUM_RE.findall(text):
+        named = set(re.findall(r"[a-z][a-z-]*", run))
+        if len(named & set(documented)) >= 2:
+            leaks.extend(named & WITHDRAWN_COMMANDS)
+    return leaks
 
 
 def html_pages_for_flags(root: Path):
@@ -628,8 +660,11 @@ def main() -> int:
         fail("could not parse any top-level keys from cli/gate-config/config.yml")
     # reference.md is the only page documenting the schema now. The task page that
     # used to carry it went with the `konductor config` command -- see the
-    # WITHDRAWN_COMMANDS note below. The FILE is still documented, because
-    # `init` writes it and `doctor` validates it.
+    # WITHDRAWN_COMMANDS note below. The FILE is still documented: its loading
+    # mechanism is still real and active (defaults apply when the file is
+    # absent) and `doctor` still validates it, but there is currently no
+    # documented, command-driven way to create or customize one -- `init`,
+    # the only command that ever wrote it, is withdrawn too.
     for page in ("reference.md",):
         text = read(guide / page)
         missing = [k for k in keys if f"`{k}`" not in text]
@@ -676,12 +711,12 @@ def main() -> int:
     for cmd in documented:
         if f"`konductor {cmd}" not in ref_md:
             fail(f"reference.md command table missing `konductor {cmd}`")
-    # for cmd in sorted(WITHDRAWN_COMMANDS):
-    #     if cmd not in commands:
-    #         fail(f"`{cmd}` is listed as withdrawn from the guide, but cli/README.md "
-    #              f"no longer declares it — drop it from WITHDRAWN_COMMANDS")
-    #     elif f"`konductor {cmd}" in ref_md:
-    #         fail(f"reference.md documents `konductor {cmd}`, which is withdrawn for v1")
+    for cmd in sorted(WITHDRAWN_COMMANDS):
+        if cmd not in commands:
+            fail(f"`{cmd}` is listed as withdrawn from the guide, but cli/README.md "
+                 f"no longer declares it — drop it from WITHDRAWN_COMMANDS")
+        elif f"`konductor {cmd}" in ref_md:
+            fail(f"reference.md documents `konductor {cmd}`, which is withdrawn for v1")
     if documented:
         ok(f"reference.md covers all {len(documented)} customer-visible commands: "
            f"{', '.join(documented)} (withheld: {', '.join(sorted(WITHDRAWN_COMMANDS))})")
@@ -700,6 +735,7 @@ def main() -> int:
             named = set(re.findall(r"`([a-z][a-z-]*)`", run))
             if len(named & set(documented)) >= 2:
                 leaked += sorted(named & WITHDRAWN_COMMANDS)
+        leaked += _bare_enum_leaks(text, documented)
         leaked = sorted(set(leaked))
         if missing:
             fail(f"{page}: command list missing: {missing}")
@@ -719,7 +755,28 @@ def main() -> int:
             rendered = load_template(page)
         except (ValueError, json.JSONDecodeError):
             continue
-        leaked = [c for c in sorted(WITHDRAWN_COMMANDS) if f"konductor {c} " in rendered]
+        # A trailing-space requirement only catches prose ("konductor metrics
+        # is a stub"); it never matches the command rendered as a bare JSON
+        # string value ("konductor metrics" with a closing quote right after
+        # the name, no space). Match on the command name alone and instead
+        # check the boundary AFTER it is not an identifier character, so it
+        # still rejects a longer command that happens to start with a
+        # withdrawn one as a prefix (none of install/update/uninstall/synth/
+        # init/doctor/metrics/config is a prefix of another, so this can't
+        # false-positive against the current command set).
+        leaked = sorted(
+            c for c in WITHDRAWN_COMMANDS
+            if any(
+                m.group(1) is None or not re.match(r"[a-z0-9-]", m.group(1))
+                for m in re.finditer(rf"konductor {re.escape(c)}(.)?", rendered)
+            )
+        )
+        # Same bare-enumeration leak as the Markdown pages just above, but the
+        # HTML has no backticks at all -- the rendered prose is plain comma-
+        # separated words ("update, doctor, init, synth, metrics"), so the
+        # backtick-anchored regex above can never see it. `_bare_enum_leaks`
+        # covers both shapes with one word-boundary pattern.
+        leaked = sorted(set(leaked) | set(_bare_enum_leaks(rendered, documented)))
         if leaked:
             fail(f"{rel}: names withdrawn command(s): {leaked}")
         else:

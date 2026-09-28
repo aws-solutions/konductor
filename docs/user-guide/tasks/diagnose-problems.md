@@ -22,7 +22,6 @@ cli_version        running konductor 1.0.0, which is current    ok
 source             parsed, all cross-references resolve        ok
 runtime            Kiro CLI detected                           ok
 manifest           complete, no hash drift                     ok
-config             .konductor/config.yml valid                 ok
 container_runtime  docker found on PATH                      info
 index_status       matches the manifest                        ok
 telemetry_state    telemetry reporting is on                   ok
@@ -42,8 +41,6 @@ runtime            no runtime detected at this target          failed
     fix: install Kiro CLI or Claude Code, or pass --target
 manifest           4 files differ from their recorded hash       warn
     fix: run `konductor update --from <repo-root> --dry-run` to see which
-config             .konductor/config.yml not found              info
-    fix: optional. Run `konductor init` to create one.
 container_runtime  none of docker/podman/nerdctl/finch on PATH  info
 index_status       index says complete, manifest says partial    warn
     fix: re-run the install; it was interrupted between the two writes
@@ -78,7 +75,6 @@ konductor doctor --json
     { "name": "source", "status": "ok", "summary": "..." },
     { "name": "runtime", "status": "ok", "summary": "..." },
     { "name": "manifest", "status": "ok", "summary": "..." },
-    { "name": "config", "status": "ok", "summary": "..." },
     { "name": "container_runtime", "status": "info", "summary": "..." },
     { "name": "index_status", "status": "ok", "summary": "..." },
     { "name": "telemetry_state", "status": "ok", "summary": "..." },
@@ -239,4 +235,4 @@ See [Contributing and customizing](../appendix/contributing.md#validating-your-c
 
 ---
 
-[← Initialize a project](initialize-a-project.md) · [Next: Update →](update.md)
+[← Install for Claude Code](install-claude-code.md) · [Next: Update →](update.md)

@@ -129,7 +129,7 @@ the software development lifecycle they automate, and the names are the same on 
 ### Konductor CLI
 
 The `konductor` command-line program. Handles setup, content build, lifecycle, and diagnostics:
-`install`, `update`, `uninstall`, `doctor`, `init`, `synth`, and `metrics`. It does
+`install`, `update`, `uninstall`, `doctor`, and `synth`. It does
 **not** run SDLC workflows — that is the **agents**' job.
 
 
@@ -162,12 +162,6 @@ file write and shell command.
 A skill present in `skills/` that **no agent declares**, and therefore cannot be loaded by any agent —
 which matters most when a SOP instructs an agent to use it. Something to check after adding a skill;
 see [Contributing and customizing](appendix/contributing.md#check-skill-coverage).
-
-
-### Preset
-
-`konductor init --preset solo|team|org` — selects the starter configuration that matches how the
-project is worked on. See [Initialize a project](tasks/initialize-a-project.md#the---preset-flag).
 
 
 ### Read-only

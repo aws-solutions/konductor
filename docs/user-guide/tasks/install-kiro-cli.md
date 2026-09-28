@@ -51,7 +51,7 @@ if no release is published. Both sources are verified the same way.
 konductor doctor
 ```
 
-It runs nine checks — `source`, `runtime`, `manifest`, `config`, `container_runtime`,
+It runs eight checks — `source`, `runtime`, `manifest`, `container_runtime`,
 `index_status`, `cli_version`, `telemetry_state`, and `content_version` — and prints a status per
 check plus remediation for anything that is not `ok`. Exit code `0` when nothing failed. Full
 status vocabulary in [Diagnose problems](diagnose-problems.md).

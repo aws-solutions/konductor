@@ -182,10 +182,12 @@ the usual culprit, since it applies everywhere and nothing surfaces it. See
 
 ## Is any of my data sent anywhere?
 
-The CLI touches the network in one place only: `install`, fetching the release it installs from.
-Everything else — `update`, `doctor`, `init`, `synth`, `metrics` — is entirely local.
-Neither `update` nor `doctor` makes any release call: neither has version
-awareness. It writes to `.konductor/`, `dist/`, your runtime's configuration directory,
+The CLI touches the network in more than one place. `install` always fetches the release it
+installs from. `doctor` fetches the latest release tag by default too, to check whether your
+install is current — pass `--no-version-check` to skip that. A no-`--from` `update` fetches a
+release by design, since that's how it gets the content to update to; `update --cli` additionally
+reaches the network for its own self-replace step. `synth` alone is entirely local — no release
+or version-check call. It writes to `.konductor/`, `dist/`, your runtime's configuration directory,
 and `~/.konductor/` — nowhere else.
 
 Three things to be aware of nonetheless:
