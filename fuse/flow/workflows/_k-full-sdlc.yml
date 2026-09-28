@@ -1,18 +1,19 @@
 # SPDX-License-Identifier: Apache-2.0
 # Default fuse-flow workflow: the k-full-sdlc phases as ordered, gated steps.
-# Install into a project with:  fuse-flow start <slug> --workflow <this file>
-# which copies it to .konductor/workflow.yml. Edit the copy, not this file.
+# Start a workstream with:  fuse-flow start <slug> --workflow _k-full-sdlc
+# To change it, copy it to .konductor/workflows/ under a new name and edit the copy.
 #
 # Fields per step:
 #   id          lowercase identifier, used in fuse-flow commands
 #   skill       SKILL.md to read first, relative to the skills directory
 #               (FUSE_SKILLS_DIR, else skills/, .kiro/skills, .konductor/skills,
-#               .claude/skills, ~/.kiro/skills, ~/.konductor/skills,
+#               .claude/skills, $SKILLS_HOME, ~/.kiro/skills, ~/.konductor/skills,
 #               ~/.claude/skills), or an absolute path
 #   instruction inline guidance printed by `fuse-flow next`
 #   produces    artifacts that must exist before `fuse-flow done` is accepted
 #   gate        none | owner | "check: <command run from the repository root>"
-#   depends_on  step ids; omitted means "the previous step", [] means independent
+#   depends_on  ids of steps listed earlier; omitted means "the previous step",
+#               [] means independent
 #
 # Artifacts live under .konductor/<phase>/; implementation code follows the
 # project's own layout. Steps 0 to 11 of the former k-full-sdlc SOP map onto
@@ -27,7 +28,9 @@
 #
 # Steps 6 to 9 run per feature: each feature from feature-split.md goes through
 # specs, implementation, code review and testing on its own branch, and each
-# step's artifact covers every feature.
+# step's artifact covers every feature. Fix cycles are counted per step, not per
+# feature, and implementation, code review and testing do not share one retry
+# budget the way the SOP's per-feature fix_cycles_used does.
 version: 1
 name: k-full-sdlc
 description: Requirements through documentation for one feature or project (the twelve k-full-sdlc steps).

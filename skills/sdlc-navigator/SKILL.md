@@ -89,10 +89,10 @@ For one phase, ask the current session to load the named skill by reading its in
 - Claude Code installs ordinary skills and SOPs under `.claude/skills/`. Start a plain `claude` session and invoke an SOP as `/sop-<name>`.
 - Kiro CLI installs ordinary skills and the `sop-<name>` SOP conversions under `.kiro/skills/`, where a plain `kiro-cli chat` session discovers them natively.
 
-For the complete chain in one agent session, use fuse-flow with either `fuse/flow/workflows/_k-full-sdlc.yml` or the lighter `fuse/flow/workflows/_k-phase-chain.yml`:
+For the complete chain in one agent session, use fuse-flow with either `fuse/flow/workflows/_k-full-sdlc.yml` or the lighter `fuse/flow/workflows/_k-phase-chain.yml`. Run the script by its path, `<konductor-checkout>/fuse/flow/fuse-flow`; the commands below abbreviate it:
 
 ```bash
-fuse-flow start <slug> --workflow <path>
+fuse-flow start <slug> --workflow <name or path>
 fuse-flow next <slug>
 fuse-flow done <slug> <step> --artifact <path>
 fuse-flow gate <slug> <step> --owner-approved

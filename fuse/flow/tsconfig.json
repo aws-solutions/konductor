@@ -5,6 +5,11 @@
     "moduleResolution": "bundler",
     "strict": true,
     "noEmit": true,
+    // Lets Node 22.18+ run the sources as they are: imports name the .ts
+    // file, and only TypeScript syntax that Node can strip is allowed.
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "erasableSyntaxOnly": true,
     "skipLibCheck": true,
     "types": ["bun-types"]
   },

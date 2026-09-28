@@ -3,13 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Deterministic workflow runner for Konductor workstreams: one workflow.yml, one state file per workstream, executable gates.",
+  "description": "Deterministic workflow runner for Konductor workstreams: each workstream follows a named workflow and keeps one state file; executable gates.",
   "license": "Apache-2.0",
   "scripts": {
     "test": "bun test",
     "flow": "bun run src/cli.ts"
   },
   "dependencies": {
+    "yaml": "2.9.1",
     "zod": "4.1.11"
   },
   "devDependencies": {

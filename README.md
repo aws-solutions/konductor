@@ -104,19 +104,19 @@ claude
 
 ### First run
 
-**Full SDLC pass with fuse-flow.** The workflow runner lives in this repository under [`fuse/flow/`](fuse/flow/README.md) and needs [Bun](https://bun.sh). It is not part of the installed package, so run it from your checkout:
+**Full SDLC pass with fuse-flow.** The workflow runner lives in this repository under [`fuse/flow/`](fuse/flow/README.md) and needs [Bun](https://bun.sh) or Node 22.18+, 23.6+ or 24+ (see [`fuse/flow/README.md`](fuse/flow/README.md) for the dependency install). It is not part of the installed package, so run it from your checkout:
 
 ```bash
-export PATH="<konductor-checkout>/fuse/flow:$PATH"
 cd <your-project>
-fuse-flow start my-feature --workflow <konductor-checkout>/fuse/flow/workflows/_k-full-sdlc.yml
+<konductor-checkout>/fuse/flow/fuse-flow start my-feature --workflow _k-full-sdlc
 ```
 
 Then, in a Kiro CLI or Claude Code session in that project, ask:
 
 ```text
-Run `fuse-flow next my-feature` and do what it says. Repeat until the workflow is complete.
-Stop at each owner gate and show me the artifact.
+Run `<konductor-checkout>/fuse/flow/fuse-flow next my-feature` and do what it says. Each `done`
+prints the next step. Repeat until the workflow is complete. Stop at each owner gate and show me
+the artifact.
 ```
 
 Each step names its skill and the artifact it must produce under `.konductor/`. `fuse-flow done` refuses a step until its artifacts exist, and a gated step waits until you approve it with `fuse-flow gate my-feature <step> --owner-approved`. fuse-flow finds skills in `FUSE_SKILLS_DIR`, `skills/`, `.kiro/skills/`, `.konductor/skills/`, `.claude/skills/`, `~/.kiro/skills/`, `~/.konductor/skills/` and `~/.claude/skills/`, so an install into `$HOME` is found without extra setup.

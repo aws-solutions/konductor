@@ -40,7 +40,7 @@ Onboards a new or lost user: install the CLI, start a normal Kiro CLI or Claude 
 - For "what should I use next", use `sdlc-navigator` to preserve phase and artifact handoffs.
 - For a focused phase, name the applicable skill or SOP and explain how the active runtime loads it.
 - For a complete lifecycle pass, offer fuse-flow with `fuse/flow/workflows/_k-full-sdlc.yml` or the lighter `fuse/flow/workflows/_k-phase-chain.yml`.
-- State the fuse-flow command sequence accurately: `fuse-flow start <slug> --workflow <path>`, followed by `next`, `done`, `gate`, and `status` commands that include the workstream slug.
+- State the fuse-flow command sequence accurately: `fuse-flow start <slug> --workflow <name or path>`, followed by `next`, `done`, `gate`, and `status` commands that include the workstream slug.
 - State that fuse-flow searches `FUSE_SKILLS_DIR`, `skills/`, `.kiro/skills`, `.konductor/skills`, `.claude/skills`, `~/.kiro/skills`, `~/.konductor/skills`, and `~/.claude/skills`.
 - For CLI subcommands, point to `about-konductor`'s CLI table and tell the user to confirm with `konductor --help` or `konductor <subcommand> --help` on their build.
 

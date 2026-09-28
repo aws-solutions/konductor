@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # Demo workflow, medium: one feature in an existing codebase.
-# Analysis and requirements run in parallel, then a short design, one owner
-# gate on the design, and testing alongside code review.
+# Analysis and requirements do not depend on each other, then a short design,
+# one owner gate on the design, and testing and code review, which both follow
+# the implementation.
 version: 1
 name: custom-example-medium
 description: One feature, known codebase, one design checkpoint.

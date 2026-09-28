@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Demo workflow, ambiguous: the request is unclear, so the weight sits up front.
-# Heavy discovery (elicitation, research, analysis in parallel), two competing
+# Heavy discovery (elicitation, then research and analysis, which do not depend
+# on each other), two competing
 # options and a spike before the owner picks a direction; the build after that
 # is kept light.
 version: 1

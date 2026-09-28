@@ -3,8 +3,8 @@
 # Workflow" and "Verification Protocol" sections of the konductor agent prompt,
 # which has since been removed together with the other agent specs),
 # with its code review side loop as a step of its own.
-# Install into a project with:  fuse-flow start <slug> --workflow <this file>
-# which copies it to .konductor/workflow.yml. Edit the copy, not this file.
+# Start a workstream with:  fuse-flow start <slug> --workflow _k-phase-chain
+# To change it, copy it to .konductor/workflows/ under a new name and edit the copy.
 # Field reference: see _k-full-sdlc.yml next to this file.
 #
 # Compared with _k-full-sdlc.yml this chain has no intake elicitation, codebase

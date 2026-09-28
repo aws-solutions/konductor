@@ -1,8 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # Demo workflow, large: a multi-feature project with review at every stage.
-# Everything in k-full-sdlc, plus a threat model, a design review that runs
-# alongside it, independent security and UI testing, and a release readiness
-# gate. Several branches fan out and join again.
+# Everything in k-full-sdlc, plus a threat model, a design review that does not
+# depend on it, independent security and UI testing, and a release readiness
+# gate. Several steps share a dependency and join again later; fuse-flow hands
+# them out one at a time.
 version: 1
 name: custom-example-large
 description: Multi-feature project, heavy review, security and release gates.

@@ -27,6 +27,11 @@ not per individual commit.
   a SOP's `sop-<name>` conversion is refused in that layout.
 - fuse-flow also looks for skills in `.kiro/skills/` and `~/.kiro/skills/`, before
   `.konductor/skills/`, so a copy an older install left there does not shadow the current one.
+- fuse-flow workstreams each record the workflow they follow, given to `start --workflow` as a
+  path or as a name looked up in `.konductor/workflows/`, `~/.konductor/workflows/` and the shipped
+  workflows. `start` no longer copies a workflow to `.konductor/workflow.yml`. A successful `done`
+  or `gate` prints the next step. fuse-flow also runs on Node 22.18+, 23.6+ or 24+ when Bun is
+  not installed.
 - The `persistent-memory` and `legacy-to-agentic-estimate` script lookups also try
   `.kiro/skills/` and `.claude/skills/`, in the project and in `$HOME`.
 - `konductor install` and `konductor update` now remove files the previous install of the same

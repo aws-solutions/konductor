@@ -1,102 +1,91 @@
 // SPDX-License-Identifier: Apache-2.0
-// Test helpers: a throwaway git repository per test and a runner that
-// invokes the real CLI as a subprocess.
+// Test harness: every test gets a throwaway git repository and drives the
+// real fuse-flow command line in a subprocess, exactly as an agent would.
 
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 export const FLOW_DIR = resolve(import.meta.dir, "..");
-export const CLI = join(FLOW_DIR, "src", "cli.ts");
-export const SHIM = join(FLOW_DIR, "fuse-flow");
-export const SDLC_WORKFLOW = join(FLOW_DIR, "workflows", "_k-full-sdlc.yml");
-export const PHASE_CHAIN_WORKFLOW = join(FLOW_DIR, "workflows", "_k-phase-chain.yml");
+export const REPO_SKILLS = resolve(FLOW_DIR, "..", "..", "skills");
+const CLI = join(FLOW_DIR, "src", "cli.ts");
 
-export interface Run {
+export interface Result {
   code: number;
   out: string;
 }
 
 export class Repo {
   readonly root: string;
-  env: Record<string, string>;
+  readonly env: Record<string, string>;
 
   constructor() {
-    const base = process.env.KIROCREW_SCRATCH ?? process.env.TMPDIR ?? tmpdir();
+    const base = process.env.KIROCREW_SCRATCH ?? tmpdir();
     this.root = realpathSync(mkdtempSync(join(base, "fuse-flow-test-")));
     mkdirSync(join(this.root, ".git"));
-    this.env = {
-      ...(process.env as Record<string, string>),
-      HOME: join(this.root, "home"),
-      FUSE_FLOW_LOCK_TIMEOUT_MS: "300",
-    };
-    mkdirSync(this.env.HOME);
+    // A private HOME, so skills installed on the test machine are not found.
+    this.env = { ...(process.env as Record<string, string>), HOME: join(this.root, "home") };
+    delete this.env.FUSE_SKILLS_DIR;
+    delete this.env.SKILLS_HOME;
+    delete this.env.FUSE_FLOW_COMMAND;
   }
 
-  write(rel: string, content = "x\n"): string {
-    const p = join(this.root, rel);
-    mkdirSync(join(p, ".."), { recursive: true });
-    writeFileSync(p, content);
-    return p;
+  write(path: string, content = "x\n"): string {
+    const full = join(this.root, path);
+    mkdirSync(dirname(full), { recursive: true });
+    writeFileSync(full, content);
+    return full;
   }
 
-  workflow(yaml: string): string {
-    return this.write("wf.yml", yaml);
+  read(path: string): string {
+    return readFileSync(join(this.root, path), "utf8");
   }
 
-  run(args: string[], cwd = this.root): Run {
-    const proc = Bun.spawnSync([process.execPath, "run", CLI, ...args], {
-      cwd,
-      env: this.env,
-      stdout: "pipe",
-      stderr: "pipe",
-    });
-    const out = new TextDecoder().decode(proc.stdout) + new TextDecoder().decode(proc.stderr);
-    return { code: proc.exitCode, out };
+  // Run `fuse-flow <args>` in `cwd` (the repository root by default).
+  run(args: string[], cwd = this.root, command = [process.execPath, "run", CLI]): Result {
+    const proc = Bun.spawnSync([...command, ...args], { cwd, env: this.env, stdout: "pipe", stderr: "pipe" });
+    return { code: proc.exitCode, out: proc.stdout.toString() + proc.stderr.toString() };
   }
 
-  ok(args: string[]): string {
+  // The same, without waiting: for commands that must overlap.
+  async runInBackground(args: string[]): Promise<Result> {
+    const proc = Bun.spawn([process.execPath, "run", CLI, ...args], { cwd: this.root, env: this.env, stdout: "pipe", stderr: "pipe" });
+    const [code, out, err] = await Promise.all([proc.exited, new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
+    return { code, out: out + err };
+  }
+
+  ok(...args: string[]): string {
+    return this.expect(0, args);
+  }
+
+  refused(...args: string[]): string {
+    return this.expect(1, args);
+  }
+
+  usage(...args: string[]): string {
+    return this.expect(64, args);
+  }
+
+  private expect(code: number, args: string[]): string {
     const r = this.run(args);
-    if (r.code !== 0) throw new Error(`expected exit 0 for ${args.join(" ")}, got ${r.code}:\n${r.out}`);
+    if (r.code !== code) throw new Error(`fuse-flow ${args.join(" ")}: expected exit ${code}, got ${r.code}\n${r.out}`);
     return r.out;
   }
 
-  fail(args: string[], code = 1): string {
-    const r = this.run(args);
-    if (r.code !== code) throw new Error(`expected exit ${code} for ${args.join(" ")}, got ${r.code}:\n${r.out}`);
-    return r.out;
-  }
-
-  statePath(slug: string): string {
-    return join(this.root, ".konductor", "workstreams", `${slug}.yml`);
-  }
-
-  lockPath(slug: string): string {
-    return join(this.root, ".konductor", "workstreams", `${slug}.lock`);
+  // Install `yaml` as the workflow and mint workstream `slug`.
+  start(slug: string, yaml: string): string {
+    return this.ok("start", slug, "--workflow", this.write("workflow-source.yml", yaml));
   }
 
   state(slug: string): any {
-    return Bun.YAML.parse(readFileSync(this.statePath(slug), "utf8"));
+    return Bun.YAML.parse(this.read(`.konductor/workstreams/${slug}.yml`));
+  }
+
+  status(slug: string, step: string): string {
+    return this.state(slug).steps[step].status;
   }
 
   cleanup(): void {
     rmSync(this.root, { recursive: true, force: true });
   }
 }
-
-// A three-step workflow: b follows a by default, c is independent.
-export const ABC = `version: 1
-name: abc
-steps:
-  - id: a
-    instruction: do a
-    produces: [out/a.md]
-  - id: b
-    skill: some-skill/SKILL.md
-    produces: [out/b.md]
-    gate: owner
-  - id: c
-    instruction: do c
-    produces: [out/c.md]
-    depends_on: []
-`;

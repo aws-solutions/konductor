@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: Apache-2.0
-# Shim so agents can call `fuse-flow ...` from any directory. Put the
-# directory containing this file on PATH (or symlink the file into one).
-# Runs the TypeScript entry point directly with Bun; no build step.
+# Shim so an agent can run fuse-flow by this file's path from any directory.
+# Runs the TypeScript entry point directly, with Bun when it is installed and
+# otherwise with Node 22.18+, 23.6+ or 24+; no build step.
 set -euo pipefail
 
 self="${BASH_SOURCE[0]}"
@@ -21,9 +21,14 @@ elif [ -x "${BUN_INSTALL:-$HOME/.bun}/bin/bun" ]; then
   bun_bin="${BUN_INSTALL:-$HOME/.bun}/bin/bun"
 elif [ -x "$HOME/.local/bin/bun" ]; then
   bun_bin="$HOME/.local/bin/bun"
+elif command -v node >/dev/null 2>&1 &&
+  node -e 'const [a, b] = process.versions.node.split(".").map(Number); process.exit(a >= 24 || (a === 23 && b >= 6) || (a === 22 && b >= 18) ? 0 : 1)'; then
+  # Node runs .ts files without a flag from 22.18, 23.6 and 24.0 on.
+  FUSE_FLOW_COMMAND="$here/fuse-flow" exec node --no-warnings=ExperimentalWarning "$here/src/cli.ts" "$@"
 else
-  echo "fuse-flow: bun not found on PATH, in \$BUN_INSTALL/bin, ~/.bun/bin or ~/.local/bin" >&2
+  echo "fuse-flow: needs bun, or node 22.18, 23.6, 24 or later; found neither" >&2
   exit 69
 fi
 
-exec "$bun_bin" run "$here/src/cli.ts" "$@"
+# Printed follow-up commands use this script's path, so they work without PATH.
+FUSE_FLOW_COMMAND="$here/fuse-flow" exec "$bun_bin" run "$here/src/cli.ts" "$@"

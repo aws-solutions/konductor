@@ -66,17 +66,17 @@ Use the system-design-patterns skill to design a service that ingests IoT sensor
 Use the user-story-writing skill to write user stories for a self-service password reset flow.
 ```
 
-For a complete multi-phase pass in one agent session, use fuse-flow:
+For a complete multi-phase pass in one agent session, use fuse-flow. Run the script by its path, `<konductor-checkout>/fuse/flow/fuse-flow`; the commands below abbreviate it, and the follow-up commands fuse-flow prints carry the full path:
 
 ```bash
-fuse-flow start <slug> --workflow fuse/flow/workflows/_k-full-sdlc.yml
+fuse-flow start <slug> --workflow _k-full-sdlc
 fuse-flow next <slug>
 fuse-flow done <slug> <step> --artifact <path>
 fuse-flow gate <slug> <step> --owner-approved
 fuse-flow status <slug>
 ```
 
-Use `fuse/flow/workflows/_k-phase-chain.yml` for the lighter six-phase chain. fuse-flow resolves step skills from `FUSE_SKILLS_DIR`, `skills/`, `.kiro/skills`, `.konductor/skills`, `.claude/skills`, `~/.kiro/skills`, `~/.konductor/skills`, and `~/.claude/skills`.
+Use `--workflow _k-phase-chain` for the lighter six-phase chain. A successful `done` or `gate` prints the next step, so `next` is only needed to resume. fuse-flow resolves step skills from `FUSE_SKILLS_DIR`, `skills/`, `.kiro/skills`, `.konductor/skills`, `.claude/skills`, `~/.kiro/skills`, `~/.konductor/skills`, and `~/.claude/skills`.
 
 ## 5. The model, in one paragraph
 
