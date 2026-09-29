@@ -537,38 +537,40 @@ pub(super) fn apply_claude_settings_grant(
 // not START -- both are real, distinct hooks legitimately in play in
 // the same file for two different purposes).
 //
-// Scope boundary (disclosed, not silent), reachable path: this pass is
-// wired ONLY into `KiroCliInstallStrategy`'s own `AgentInstallPhase`
-// (`phases.rs`), immediately after `apply_claude_settings_grant`
-// succeeds there -- the dual-marker install (a target where BOTH
-// `.kiro` and `.claude` already exist, e.g. a reinstall/update; per
-// that phase's own tests, "not hypothetical, this package's own
-// workspace is set up exactly this way"). Two narrowings follow from
-// reusing that exact call site rather than adding a new one:
-// - Gated the same way the grant is: `any_mcp_server_injected &&
-//   detect_runtimes(target_dir).has(Runtime::ClaudeCode)`, AND fires
-//   only when the grant call immediately before it succeeded (not
-//   independently) -- so a foreign, deny-shadowed, or malformed
-//   pre-existing `settings.json` that skips the grant also skips
-//   hooks wiring for that same run, leaving the foreign file
-//   completely untouched (verified by
+// Scope, two reachable paths:
+// - `KiroCliInstallStrategy`/`KiroCliV3InstallStrategy` (`phases.rs`'s
+//   `AgentInstallPhase`, `kiro_cli_v3.rs`): wired via the combined
+//   `apply_claude_settings_grant_and_hooks`, immediately after
+//   `apply_claude_settings_grant` succeeds there, gated on
+//   `any_mcp_server_injected && detect_runtimes(target_dir).has(Runtime::
+//   ClaudeCode)` -- the dual-marker install (a target where BOTH `.kiro`
+//   and `.claude` already exist, e.g. a reinstall/update; per that
+//   phase's own tests, "not hypothetical, this package's own workspace
+//   is set up exactly this way"). Fires only when the grant call
+//   immediately before it succeeded (not independently) -- so a
+//   foreign, deny-shadowed, or malformed pre-existing `settings.json`
+//   that skips the grant also skips hooks wiring for that same run,
+//   leaving the foreign file completely untouched (verified by
 //   `install_from_local_does_not_abort_when_claude_grant_fails_on_foreign_content`
 //   in `kiro_cli.rs`) rather than partially mutating it via a second,
 //   independent write.
-// - `ClaudeInstallStrategy` (`claude.rs`) -- the OTHER real install
-//   path, reachable for a `.claude`-only target with no pre-existing
-//   `.kiro` -- does NOT get this pass in this revision. Wiring it
-//   there needs its own write-ahead-plan entry, and `claude.rs`'s
-//   `plan_all_files` is also the exact function `would_fail_as_noop`
-//   uses to decide "nothing to install" -- an unconditional new planned
-//   entry there would make that check permanently non-empty, breaking
-//   its own "no synthed agent or skill files" error path. A real fix
-//   needs a plan function scoped to `install_from_local`'s own
-//   write-ahead call, separate from the no-op pre-check's, which is a
-//   real follow-up left out of this revision rather than risking that
-//   existing, separately-tested contract.
-// Widening either boundary is real follow-up work, not implemented
-// here.
+// - `ClaudeInstallStrategy` (`claude.rs`), for a pure Claude-Code-only
+//   install with no pre-existing `.kiro` marker: wired via
+//   `apply_claude_settings_hooks_only` below, called directly rather
+//   than through `apply_claude_settings_grant_and_hooks` -- this
+//   install path never registers `konductor-skills` as an MCP server
+//   for Claude Code at all (`claude.rs`'s own `install_agents` does a
+//   verbatim Markdown copy, no `mcpServers` injection, no
+//   `resource_rewrite` pass), so the `permissions.allow` grant
+//   `apply_claude_settings_grant` would write is legitimately inert
+//   here: it would authorize calls to a server nothing ever registers.
+//   Gated only on `!no_telemetry`, with its own scoped write-ahead-plan
+//   function (`plan_claude_settings_hooks_only` in `claude.rs`) rather
+//   than folding into `claude.rs`'s own `plan_all_files` -- that
+//   function is also what `would_fail_as_noop` uses to decide "nothing
+//   to install", so an unconditional planned entry there would make
+//   that check permanently non-empty, breaking its own "no synthed
+//   agent or skill files" error path.
 //
 // Kiro CLI: no equivalent hook-registration point exists in this
 // codebase today for the V2 (JSON agent-spec) surface. `hooks.stop`/
@@ -1084,6 +1086,55 @@ pub(super) fn apply_claude_settings_hooks(
         CLAUDE_SETTINGS_RELATIVE_PATH.to_string(),
         super::super::artifact::sha256_hex(&bytes),
     ))
+}
+
+/// Performs ONLY the telemetry-hook wiring (`apply_claude_settings_hooks`)
+/// for a whole install run, gated on `!no_telemetry`, with no
+/// accompanying `permissions.allow` grant -- unlike
+/// `apply_claude_settings_grant_and_hooks`, which always performs the
+/// grant first and only wires hooks after that grant succeeds.
+///
+/// For `ClaudeInstallStrategy` (`claude.rs`), a pure Claude-Code-only
+/// install: that path never registers `konductor-skills` as an MCP
+/// server for Claude Code (`claude.rs`'s own `install_agents` is a
+/// verbatim Markdown copy, no `mcpServers` injection), so the
+/// `permissions.allow` grant would be inert there -- calling
+/// `apply_claude_settings_grant_and_hooks` would write a real,
+/// misleading grant for a server nothing on this install path ever
+/// registers. Deliberately non-fatal, same rationale as
+/// `apply_claude_settings_grant_and_hooks`: a symlinked
+/// `.claude`/`settings.json` or a malformed pre-existing settings.json
+/// must not abort an otherwise-successful Claude install.
+pub(in crate::cli::install) fn apply_claude_settings_hooks_only(
+    target_dir: &Path,
+    no_telemetry: bool,
+) -> Option<ManifestFile> {
+    if no_telemetry {
+        return None;
+    }
+    match apply_claude_settings_hooks(target_dir) {
+        Ok((path, sha256)) => Some(ManifestFile {
+            path,
+            sha256: Some(sha256),
+            provenance: Provenance::Created,
+        }),
+        Err(ClaudeGrantError::DenyShadowed(_)) => {
+            // No hooks analog of the permissions side's deny-shadow --
+            // `merge_claude_settings_hooks` never returns this variant
+            // (see `merge_claude_settings_hooks`'s own doc comment).
+            // Unreachable in practice; handled defensively rather than
+            // with an `unreachable!()` that would panic if that ever
+            // changes.
+            None
+        }
+        Err(ClaudeGrantError::Other(message)) => {
+            eprintln!(
+                "warning: Claude Code telemetry hook wiring skipped ({message}) -- the \
+                 Claude Code portion of this install is unaffected"
+            );
+            None
+        }
+    }
 }
 
 /// Performs the additive, `.claude`-marker-gated Claude/V3 settings.json
