@@ -56,6 +56,7 @@ The framework itself ships as `konductor-bench`, a separate binary built from th
 - Cadence is a `--frequency` flag, defaulting to monthly. A scheduled pipeline job invokes the runner with this flag on that cadence; a person can also invoke it manually between scheduled runs.
 - Scenario counts are config: `bench.scenarios.core`, defaulting to 3, is the core set size; `bench.scenarios.min_coverage`, defaulting to 5, is the floor on the coverage set size. There is no upper cap on the coverage set.
 - Council size is config: `bench.council.size`, defaulting to 3, and `bench.council.escalate_to`, defaulting to 5. Setting both to the same value gives a fixed-size council.
+- The ablation stage's routed arm is config: `bench.ablation.routed_arm`, defaulting to `true`. Setting it `false` skips the routed arm for every candidate; the report then states that routed effects were not checked for that run.
 - A budget cap, `bench.budget.max_runs`, bounds total runs per invocation and is the only limit on how large a coverage set can grow.
 - Claude Code's model provider is config: `bench.providers.claude`, either `bedrock` (default) or `anthropic`. Each council judge's provider is config too (see [Model access and credentials](#model-access-and-credentials)).
 
@@ -71,17 +72,25 @@ flowchart LR
     B --> C[Stage 1: Screen]
     C -->|"env A: konductor
     vs env B: vanilla"| D[Candidate Selection]
-    D --> E[Stage 2: Ablation]
-    E -->|"env A vs
-    A-minus-X / A-trimmed-X"| F[Council]
-    F --> G[Report + Plan]
+    D --> E[Stage 2a: Ablation, direct arm]
+    E -->|"specialist agent
+    A vs A-minus-X / A-trimmed-X"| F[Council]
+    F -->|"prune or trim"| E2[Stage 2b: Ablation, routed arm]
+    E2 -->|"konductor orchestrator
+    A vs A-minus-X / A-trimmed-X"| F2[Council]
+    F2 --> G[Report + Plan]
 
     style A fill:#64a0dc,color:#fff
     style F fill:#dc9632,color:#fff
+    style F2 fill:#dc9632,color:#fff
     style G fill:#50b464,color:#fff
 ```
 
-Two stages exist because they answer different questions. The screen compares the full Konductor stack (env A) against a vanilla harness with no Konductor install (env B). A difference there says the stack as a whole helps or does not, but env A and env B differ in the orchestrator agent and every skill at once, so a screen result cannot be pinned on one skill. Its only job is to narrow 82 skills down to a candidate list. The ablation stage then removes or trims one candidate at a time from a copy of env A and compares that copy against unmodified env A. Each ablation scenario invokes the specialist agent that owns the candidate skill directly (`k-architect` for `threat-modeling`, `k-developer` for `backend-development`, and so on), never the top-level `konductor` orchestrator, so the run does not depend on the orchestrator's own delegation choice: removing the skill cannot change which agent the scenario reaches, only what that named agent does with it. Before a pair counts as evidence, the runner checks the env A run's session log for a skill-load event naming the candidate skill (see [Open Questions](#open-questions) on log reliability); a run where the skill never loaded is excluded rather than counted as a "not worse" result. That combination, a fixed target agent plus a load check, is what isolates one skill's effect, and isolating that effect is what makes ablation, not the screen, the stage that decides prune, trim, or keep.
+Two stages exist because they answer different questions. The screen compares the full Konductor stack (env A) against a vanilla harness with no Konductor install (env B). A difference there says the stack as a whole helps or does not, but env A and env B differ in the orchestrator agent and every skill at once, so a screen result cannot be pinned on one skill. Its only job is to narrow 82 skills down to a candidate list. The ablation stage then removes or trims one candidate at a time from a copy of env A and compares that copy against unmodified env A, in two arms.
+
+The **direct arm** runs first and decides most candidates on its own. Each direct-arm scenario invokes the specialist agent that owns the candidate skill directly (`k-architect` for `threat-modeling`, `k-developer` for `backend-development`, and so on), never the top-level `konductor` orchestrator, so the run does not depend on the orchestrator's own delegation choice: removing the skill cannot change which agent the scenario reaches, only what that named agent does with it. Before a direct-arm pair counts as evidence, the runner checks the env A run's session log for a skill-load event naming the candidate skill (see [Open Questions](#open-questions) on log reliability); a run where the skill never loaded is excluded rather than counted as a "not worse" result. That combination, a fixed target agent plus a load check, is what isolates one skill's effect in this arm.
+
+The **routed arm** runs only for a candidate whose direct arm already resolved to prune or trim (see [Verdict rules](#verdict-rules)), and is the final gate before a candidate reaches the plan. It runs the same coverage scenarios and variants through the top-level `konductor` orchestrator instead of the named specialist agent, on both sides of the pair. This answers a different question than the direct arm: not whether skill X's content helps the agent that owns it, but whether removing or trimming X changes what a user gets through the entry point they actually use, including any change in which agent or skills the orchestrator routes the request to. The routed arm has no skill-load exclusion, since a routing shift away from the skill's owning agent is itself part of what this arm measures, not noise to filter out. See [Environments](#environments) for how a routed-arm run records the reached agent and skills.
 
 ## How It Works
 
@@ -149,7 +158,7 @@ Environments are states of one dedicated **benchmark HOME** per harness, toggled
 
 - **Env B (vanilla).** The benchmark HOME with no Konductor install, invoked through the harness's own default agent.
 - **Env A (konductor).** The benchmark HOME after running `konductor synth --from <repo-root>` and then `konductor install --from <repo-root> --harness <kiro-cli-v2|claude> --target <bench-home> --no-telemetry`, both as subprocesses of the installed `konductor` binary, invoked through the `konductor` agent. This is always the `--from <repo-root>` path against the checkout being benchmarked; the no-`--from` GitHub-release install path is never used, per [Requirements](#requirements).
-- **Ablation variants.** The runner copies the source tree to a temp directory and edits the copy. For `A-minus-X` it removes skill X and every reference to X in agent specs. For `A-trimmed-X` it applies the trim patch to X's `SKILL.md`. It then runs `konductor synth --from <tmp-src>` as a subprocess of the installed `konductor` binary and installs that output into the benchmark HOME the same way as env A. An ablation run invokes the specialist agent that owns skill X directly (for example `k-architect` for `threat-modeling`), on both the unmodified-A side and the variant side of the pair, instead of the top-level `konductor` orchestrator: a scenario aimed at a named agent reaches that agent's skill set regardless of how `konductor` would have routed it, so removing or trimming X cannot change which agent runs the scenario. If synth fails on the edited copy, the candidate goes to needs human review. The temp source copy is deleted after the variant's runs finish.
+- **Ablation variants.** The runner copies the source tree to a temp directory and edits the copy. For `A-minus-X` it removes skill X and every reference to X in agent specs. For `A-trimmed-X` it applies the trim patch to X's `SKILL.md`. It then runs `konductor synth --from <tmp-src>` as a subprocess of the installed `konductor` binary and installs that output into the benchmark HOME the same way as env A. A **direct-arm** run invokes the specialist agent that owns skill X directly (for example `k-architect` for `threat-modeling`), on both the unmodified-A side and the variant side of the pair, instead of the top-level `konductor` orchestrator: a scenario aimed at a named agent reaches that agent's skill set regardless of how `konductor` would have routed it, so removing or trimming X cannot change which agent runs the scenario. A **routed-arm** run instead invokes the top-level `konductor` orchestrator on both sides, so a routing or delegation shift caused by removing or trimming X is visible rather than bypassed; the runner records which specialist agent and which skills each routed-arm run reached, from the session log, and reports any shift between the two sides as a diagnostic alongside the pair's verdict. If synth fails on the edited copy, the candidate goes to needs human review. The temp source copy is deleted after the variant's runs finish.
 
 Every run record, and the report header, carry the checkout's commit SHA and whether its working tree was dirty at the time of the run. A dirty tree is allowed, since a contributor benchmarking a change in progress should not be forced to commit first, but the report flags it: results from a dirty-tree run do not map to a single commit, so they cannot be compared against a later run the same way a clean-tree run can.
 
@@ -224,7 +233,9 @@ Rules:
 
 ### Run matrix
 
-The screen runs the core set: `bench.scenarios.core x harnesses x models x 2 environments`, per skill. The ablation stage runs the full coverage set, per candidate: `that skill's coverage scenarios x harnesses x models x bench.repeats.ablation x {A, ablation variant}`. `bench.repeats.screen` (default 1) and `bench.repeats.ablation` (default 2) exist because model output is nondeterministic and a single sample should not decide a prune. `bench.repeats.ablation` is lower than the scenario count is high: more distinct coverage scenarios catch more of a skill's behavior than more repeats of the same one.
+The screen runs the core set: `bench.scenarios.core x harnesses x models x 2 environments`, per skill. The ablation stage's direct arm runs the full coverage set, per candidate: `that skill's coverage scenarios x harnesses x models x bench.repeats.ablation x {A, ablation variant}`. `bench.repeats.screen` (default 1) and `bench.repeats.ablation` (default 2) exist because model output is nondeterministic and a single sample should not decide a prune. `bench.repeats.ablation` is lower than the scenario count is high: more distinct coverage scenarios catch more of a skill's behavior than more repeats of the same one.
+
+The ablation stage's routed arm runs only for a candidate whose direct arm already resolved to prune or trim (see [Verdict rules](#verdict-rules)). When it runs, it uses the identical shape as the direct arm, same coverage scenarios, same variants, same harness/model cells, and the same `bench.repeats.ablation` repeat count, but invoked through `konductor` instead of the named specialist agent. Because it only runs for candidates the direct arm has already narrowed down, its run count is bounded by how many candidates clear the direct arm, not by the full candidate count from the screen (see [Run Cost](#run-cost) for a worked example).
 
 ### Council judging
 
@@ -256,11 +267,11 @@ For each pair, both outputs are relabeled X/Y in randomized order with no indica
 The council starts at `bench.council.size` (default 3) judges. Whether a pair resolves at that size, and how a resolved pair escalates, differs by stage:
 
 - **Screen pairs.** Three judges, no escalation. The pair outcome is the preference held by at least two of the three live votes. Fewer than two live votes, two live votes that disagree, or a one-one-one split all count as unresolved. The screen only narrows the candidate list, so it does not pay for escalation.
-- **Ablation pairs.** This is the deciding stage, so it escalates rather than accepting a split verdict. A pair resolves at three judges only if all three live votes agree. Any disagreement among the three, or any abstention, triggers escalation: two more judges are added, for `bench.council.escalate_to` (default 5) total. The outcome is then the preference held by at least three of the five live votes; if no preference reaches three, the pair is unresolved. Escalation judges receive the same scenario prompt, fixtures, and judge notes as the base three, and the same relabeled X/Y order, so all five judges grade the identical presentation.
+- **Ablation pairs.** This is the deciding stage, so it escalates rather than accepting a split verdict. A pair resolves at three judges only if all three live votes agree. Any disagreement among the three, or any abstention, triggers escalation: two more judges are added, for `bench.council.escalate_to` (default 5) total. The outcome is then the preference held by at least three of the five live votes; if no preference reaches three, the pair is unresolved. Escalation judges receive the same scenario prompt, fixtures, and judge notes as the base three, and the same relabeled X/Y order, so all five judges grade the identical presentation. The routed arm's pairs go through this identical process; a pair is always relabeled and judged within its own arm, never mixed with a pair from the other arm.
 
 Setting `bench.council.size` and `bench.council.escalate_to` to the same value gives a fixed-size council with no escalation step.
 
-The sequence below traces one ablation pair for a candidate skill X, from the edited source copy through to a resolved outcome. It shows the pipeline that the flowchart above starts partway through: how the pair the flowchart judges gets built, and where the base three's disagreement triggers the two escalation judges.
+The sequence below traces one ablation pair for a candidate skill X, from the edited source copy through to a resolved outcome. It shows the pipeline that the flowchart above starts partway through: how the pair the flowchart judges gets built, and where the base three's disagreement triggers the two escalation judges. It shows the direct arm, where `Sub` runs the specialist agent that owns X. The routed arm follows the identical sequence, with `Sub` running the `konductor` orchestrator instead on both the `run A` and `run variant` steps, and an extra step after each run to record which agent and skills the orchestrator reached.
 
 ```mermaid
 sequenceDiagram
@@ -303,7 +314,7 @@ The base three judges are mixed-family and must include Opus. There is no exclus
 
 ### Verdict rules
 
-A skill's ablation verdict is a deterministic rule applied to its resolved pair outcomes; the council decides each pair, the rule aggregates across pairs for one skill. The aggregation splits pairs by `kind` (from the [scenario record](#scenario-record)): `own` and `overlap` pairs measure whether removing the skill hurts on the scenarios it is supposed to help with, and `near_miss` pairs measure whether the skill correctly stays silent. A near-miss pair is near-guaranteed to read as "not worse," since neither side should have used the skill in the first place, so folding it into the same ratio as `own`/`overlap` pairs would make Prune and Trim easier to reach without saying anything about whether the skill helps where it should fire. Both conditions below must hold; a near-miss failure (the skill did activate and changed the ablated side's output) blocks a Prune or Trim verdict even if the `own`/`overlap` ratio passes.
+A skill's ablation verdict is a deterministic rule applied to its resolved pair outcomes; the council decides each pair, the rule aggregates across pairs for one skill. This rule applies the same way within each arm: the direct arm aggregates its own pairs into a direct-arm verdict, and, when it runs, the routed arm aggregates its own pairs into a routed-arm verdict, using the identical Prune/Trim/Keep/needs-human-review logic below on its own pair set. The aggregation splits pairs by `kind` (from the [scenario record](#scenario-record)): `own` and `overlap` pairs measure whether removing the skill hurts on the scenarios it is supposed to help with, and `near_miss` pairs measure whether the skill correctly stays silent. A near-miss pair is near-guaranteed to read as "not worse," since neither side should have used the skill in the first place, so folding it into the same ratio as `own`/`overlap` pairs would make Prune and Trim easier to reach without saying anything about whether the skill helps where it should fire. Both conditions below must hold; a near-miss failure (the skill did activate and changed the ablated side's output) blocks a Prune or Trim verdict even if the `own`/`overlap` ratio passes.
 
 - **Prune.** Both hold: the ablated variant (`A-minus-X`) is not worse in at least `bench.thresholds.no_regression` (config, default 0.9) of resolved `own`/`overlap` pairs, with no pair showing env A strongly better; and at least `bench.thresholds.no_regression` of resolved `near_miss` pairs show no difference between env A and `A-minus-X` (the skill did not activate on either side).
 - **Trim.** The same two-part rule, applied against `A-trimmed-X` instead of `A-minus-X`. A trim candidate is valid only for `SKILL.md` sections that some coverage-set scenario's `covers_sections` named, and that the ablation showed were not needed. A section no scenario covered is reported as untested, not as a trim candidate: absence of evidence that a section helps is not evidence that it does not.
@@ -312,9 +323,11 @@ A skill's ablation verdict is a deterministic rule applied to its resolved pair 
 
 These three defaults (`bench.thresholds.no_regression` at 0.9, `bench.thresholds.max_unresolved` at 0.2, and `bench.thresholds.skill_tokens` at 2,000, used by candidate rule (d) below) are rationale-backed starting points, not measured values: they exist so the rule has a concrete boundary to review before Phase 4, and the Phase 1 pilot is expected to revise them once real pair outcomes exist to check them against.
 
-A pair counts toward any of the ratios above only if the env A side's session log shows a skill-load event naming skill X; a run where the log shows no load is excluded rather than counted as "not worse," since an unloaded skill cannot have been isolated by the ablation (see [Open Questions](#open-questions) on how reliable that log evidence is per harness and model).
+A pair counts toward any of the ratios above only if, for a direct-arm pair, the env A side's session log shows a skill-load event naming skill X; a run where the log shows no load is excluded rather than counted as "not worse," since an unloaded skill cannot have been isolated by the ablation (see [Open Questions](#open-questions) on how reliable that log evidence is per harness and model). The routed arm has no equivalent exclusion: a routed-arm run where the orchestrator never reaches skill X's owning agent still counts, since that non-routing is itself the effect this arm measures.
 
-Within one candidate's coverage set, `bench.repeats.ablation` (default 2) samples the same `(scenario, harness, model)` cell more than once. If a scenario's repeats resolve to different pair outcomes (for example, one repeat reads "not worse" and the other reads "env A better"), the runner does not fold both into the ratio as ordinary independent votes: it flags that scenario in the report as repeat-unstable, alongside its resolved outcomes, so a person can distinguish a scenario that is genuinely borderline from one where two judged repeats simply landed differently. Both repeats still count toward `bench.thresholds.max_unresolved` and the Prune/Trim ratios; the flag is additional, not a substitute for aggregation.
+Within one candidate's coverage set, `bench.repeats.ablation` (default 2) samples the same `(scenario, harness, model)` cell more than once, in both arms. If a scenario's repeats resolve to different pair outcomes (for example, one repeat reads "not worse" and the other reads "env A better"), the runner does not fold both into the ratio as ordinary independent votes: it flags that scenario in the report as repeat-unstable, alongside its resolved outcomes, so a person can distinguish a scenario that is genuinely borderline from one where two judged repeats simply landed differently. Both repeats still count toward `bench.thresholds.max_unresolved` and the Prune/Trim ratios; the flag is additional, not a substitute for aggregation.
+
+**Combining the two arms.** The direct arm runs first for every candidate. Direct-arm Keep or needs human review ends the candidate there: the routed arm never runs for it, since there is nothing left for a routing check to gate. Only a direct-arm Prune or Trim triggers the routed arm, controlled by `bench.ablation.routed_arm` (config, default `true`); setting it `false` skips the routed arm entirely, and the report then states that routed effects were not checked for that run. When the routed arm runs, a candidate reaches the plan only if both arms resolve to the same Prune or Trim action under the identical rule above, each judged against its own pairs. If the direct arm resolves to Prune or Trim but the routed arm resolves to Keep or shows a regression, the candidate goes to needs human review with reason `routing regression`, and the report shows both arms' verdicts and evidence side by side rather than picking one. A routed-arm needs human review outcome (unresolved-pair ratio, single-family escalation, or incomplete coverage) also holds the candidate at needs human review, with the direct arm's own passing result shown alongside it.
 
 Candidate selection into the ablation stage uses screen results, which are evaluated against the core set only, and is separate from this verdict rule. A skill becomes a candidate if any of the following fire on the screen:
 
@@ -334,7 +347,7 @@ The framework runs as `konductor bench`, a subcommand of the existing `konductor
 - `konductor bench run [--stage screen|ablation|all] [--frequency <cron-or-interval>] [--resume <YYYY-MM>] [--bench-dir <path>]` executes a run. `--stage` selects the screen, the ablation stage, or both in sequence; `--frequency` is the cadence flag from [Requirements](#requirements) (a scheduled pipeline job passes this, a person invokes the command without it for an ad hoc run); `--resume` continues a `partial` run from its last completed stage, per [Failure Handling](#failure-handling); `--bench-dir` overrides the default `<repo-root>/benchmarking` location for the benchmark HOME and data described in [Environments](#environments), and defaults to the repository root's `benchmarking/` directory when omitted.
 - `konductor bench report [<YYYY-MM>]` renders the report and plan for a completed run, defaulting to the most recent month. This is the read path over `results/<YYYY-MM>/`, `reports/`, and `plans/` from [Artifacts](#artifacts).
 
-Configuration for all four lives under a `bench:` key in `.konductor/config.yml`, alongside the CLI's other top-level config sections. Every config key referenced elsewhere in this design (`bench.models.*`, `bench.council.*`, `bench.scenarios.*`, `bench.budget.max_runs`, `bench.providers.claude`, `bench.thresholds.*`, `bench.repeats.*`, `bench.corpus_path`) resolves under that key.
+Configuration for all four lives under a `bench:` key in `.konductor/config.yml`, alongside the CLI's other top-level config sections. Every config key referenced elsewhere in this design (`bench.models.*`, `bench.council.*`, `bench.scenarios.*`, `bench.budget.max_runs`, `bench.providers.claude`, `bench.thresholds.*`, `bench.repeats.*`, `bench.corpus_path`, `bench.ablation.routed_arm`) resolves under that key.
 
 ## Run Cost
 
@@ -350,7 +363,11 @@ Combined illustrative totals: 1,968 + 2,560 = 4,528 runs, and 2,952 + 4,352 = 7,
 
 For comparison, a fixed five-judge council with no screen-stage saving on the same example would cost 984 x 5 + 1,280 x 5 = 4,920 + 6,400 = 11,320 judge calls, against this design's 7,304. The escalation rate assumed above, 20 percent, is illustrative only; the actual rate must be measured on the Phase 1 pilot before it is used to size a real run.
 
-`bench.budget.max_runs` caps total runs per invocation, defaulting to 6,000: enough to cover the combined illustrative total of 4,528 runs above with headroom for retries, without being large enough to let a single invocation run unbounded. On hit, the runner stops dispatching new runs, marks the current stage `partial`, and judges whatever finished. Any skill whose ablation is incomplete when the cap hits is held at needs human review rather than judged on partial evidence.
+**Routed arm.** The routed arm only runs for a candidate whose direct arm already resolved to prune or trim (see [Verdict rules](#verdict-rules)), so its cost scales with that narrower count, not with the full 20 candidates above. Continuing the same illustrative example: assume 10 of the 20 candidates pass the direct arm. Routed-arm pairs = 10 candidates x 8 average coverage scenarios x 4 harness-model cells x `bench.repeats.ablation` of 2 = 640 pairs, so 640 x 2 = 1,280 routed-arm runs. Base judge calls are 640 x 3 = 1,920; at the same illustrative 20 percent escalation rate, 640 x 0.20 = 128 pairs escalate, adding 128 x 2 = 256 escalation judge calls, for a routed-arm total of 1,920 + 256 = 2,176 judge calls.
+
+Adding the routed arm to the combined totals above: 4,528 + 1,280 = 5,808 runs, and 7,304 + 2,176 = 9,480 judge calls. The fixed-five comparison grows the same way: 11,320 + 640 x 5 = 11,320 + 3,200 = 14,520 judge calls, against this design's 9,480.
+
+`bench.budget.max_runs` caps total runs per invocation, defaulting to 7,000: enough to cover the combined illustrative total of 5,808 runs above (direct plus routed arm) with headroom for retries, without being large enough to let a single invocation run unbounded. 6,000, the prior default sized against the direct arm alone, no longer leaves meaningful retry headroom once the routed arm's 1,280 runs are added, so this design raises it. On hit, the runner stops dispatching new runs, marks the current stage `partial`, and judges whatever finished. Any skill whose ablation is incomplete when the cap hits is held at needs human review rather than judged on partial evidence.
 
 ## Failure Handling
 
@@ -460,29 +477,34 @@ The Anthropic client reuses the CLI's existing `ureq` (`=2.10.1`) plus `rustls` 
 - Recommended for pruning: N
 - Recommended for trimming: N
 - Needs human review: N
+- Routed arm checked: yes/no (`bench.ablation.routed_arm`; if no, routed effects were not checked this run)
 
 ## Recommendations
 
 ### Prune: <skill-name>
 - Screen candidate rule(s) fired: <a/b/c/d>
-- Ablation evidence: N of M resolved pairs not-worse, 0 pairs strongly-better-A
+- Direct arm: N of M resolved pairs not-worse, 0 pairs strongly-better-A
+- Routed arm: N of M resolved pairs not-worse, 0 pairs strongly-better-A
 - Coverage scenarios run: N
+- Routing shift: <none, or a short description of which agent/skills each side reached>
 - Justification: <one paragraph>
 
 ### Trim: <skill-name>
 - Affected lines: L<start>-L<end>
-- Ablation evidence: N of M resolved pairs not-worse against the trimmed variant
+- Direct arm: N of M resolved pairs not-worse against the trimmed variant
+- Routed arm: N of M resolved pairs not-worse against the trimmed variant
 - Coverage scenarios run: N
 - Sections trimmed: <headings, each covered by a scenario and shown not needed>
 - Sections untested: <headings no coverage scenario exercised, not claimed as safe to trim>
+- Routing shift: <none, or a short description of which agent/skills each side reached>
 - Justification: <one paragraph>
 
 ## Needs Human Review
-- <skill-name>: reason (unresolved-pair ratio, run_failed ratio, or incomplete ablation)
+- <skill-name>: reason (unresolved-pair ratio, run_failed ratio, incomplete ablation, or routing regression: direct arm passed, routed arm did not)
 
 ## Metrics Appendix
-| Skill | Verdict | Core Scenarios | Coverage Scenarios | Screen A-vs-B | Ablation Pairs (resolved/unresolved) | Escalated Pairs | Token Delta (A vs B, per harness/model) | Same-Family vs Cross-Family Judge Agreement |
-|---|---|---|---|---|---|---|---|---|
+| Skill | Verdict | Core Scenarios | Coverage Scenarios | Screen A-vs-B | Direct-Arm Pairs (resolved/unresolved) | Routed-Arm Pairs (resolved/unresolved) | Escalated Pairs | Token Delta (A vs B, per harness/model) | Same-Family vs Cross-Family Judge Agreement |
+|---|---|---|---|---|---|---|---|---|---|
 
 Any skill whose coverage-set scenario count exceeds `bench.scenarios.review_flag` (config) is flagged here as a possible split candidate: a skill that broad usually covers ground better split into two.
 ```
@@ -574,7 +596,7 @@ Use the Konductor-versus-vanilla screen only to select candidates, via the four 
 
 **Bad:** A skill can pass the screen's candidate rules yet still be worth keeping once ablation isolates it, so some ablation runs confirm a keep rather than a prune. This is the intended trade for correctness.
 
-**Neutral:** The screen's per-skill signal is diagnostic input to candidate selection, not a verdict in its own right, so the report needs to state clearly which numbers come from which stage.
+**Neutral:** The screen's per-skill signal is diagnostic input to candidate selection, not a verdict in its own right, so the report needs to state clearly which numbers come from which stage. The routed arm (see [Solution Overview](#solution-overview)) deliberately re-introduces the orchestrator that this ADR's isolated ablation stage otherwise removes, but only after the direct arm has already isolated skill X's effect and reached prune or trim; it answers whether that isolated effect still holds once routing is back in the picture, rather than reopening the isolation question this ADR settles.
 
 ### ADR-3: Directory layout by lifecycle
 
@@ -645,7 +667,7 @@ Build the framework as `konductor-bench`, a separate binary in its own crate, `c
 | Phase 1 | Scenario bank: `src/scenarios.rs`, generator and judge prompt templates, the shared fixture library, the draft generator, and the review workflow | None | A pilot set of 10 skills, chosen to span the skill categories, each has `bench.scenarios.core` approved core-set scenarios with fixtures and judge notes |
 | Phase 2 | The `cli/konductor-bench/` crate, the `shared/konductor-bench-config` crate, and the `konductor bench` dispatcher in the main CLI; checkout detection; `src/home.rs` and `src/runner.rs`: benchmark HOME setup (one-time login, vanilla snapshot), install/uninstall toggling via `konductor` subprocess calls with snapshot checks, ablation variant synth from an edited source copy, the `konductor --version` compatibility check against the checkout's `VERSION` file, provider config and credential handling, and the run matrix; the `make bench` target | Phase 1 | `konductor bench` locates and execs `konductor-bench`, passing its exit code through. A screen run executes the pilot core-set scenarios for at least one harness x model cell in both environments, with snapshot checks passing, for both `bench.providers.claude` values. `cargo test` for `src/home.rs` and `src/runner.rs` is hermetic: no network access, no real harness invocation; harness, model, and `konductor` subprocess calls sit behind traits with fakes standing in for all three |
 | Phase 3 | `src/council.rs` and `src/verdict.rs`: the judge prompt, per-pair aggregation, the screen's live-vote and unresolved rules, and the ablation stage's escalation and unresolved rules | Phase 2 | The pilot screen produces pair outcomes, with correct unresolved handling for a synthetic one-one-one split, and a synthetic pilot ablation run correctly escalates a disagreeing three-judge pair to five and resolves it. `cargo test` for `src/council.rs` and `src/verdict.rs` is hermetic, with judge calls behind the same trait-and-fake pattern as Phase 2 |
-| Phase 4 | Candidate selection against the four rules; drafting and reviewing coverage-set scenarios for each pilot candidate; ablation runs for both prune and trim variants against the full coverage set | Phase 3 | At least one pilot candidate has an approved coverage set meeting the `bench.scenarios.min_coverage` floor, and an ablation run against it executes for both `A-minus-X` and `A-trimmed-X`, producing a verdict via the deterministic rule |
+| Phase 4 | Candidate selection against the four rules; drafting and reviewing coverage-set scenarios for each pilot candidate; ablation runs for both prune and trim variants against the full coverage set, in both the direct and routed arms | Phase 3 | At least one pilot candidate has an approved coverage set meeting the `bench.scenarios.min_coverage` floor, and a direct-arm ablation run against it executes for both `A-minus-X` and `A-trimmed-X`, producing a verdict via the deterministic rule; that same candidate, having resolved to prune or trim on the direct arm, also has a routed-arm run against the same coverage set, producing its own verdict via the identical rule |
 | Phase 5 | `src/report.rs`: report and plan rendering, including the field-level plan schema | Phase 4 | A pilot report matches the report skeleton in this design; a generated plan defaults to dry-run and requires per-entry confirmation. `cargo test` for `src/report.rs` is hermetic, using fixture run data rather than a live run |
 | Phase 6 | Full rollout: approved core-set scenarios for all 82 skills, a `bench.corpus_path` check, `cli/README.md` documentation for `konductor bench`, and `benchmarking/results/` added to `.gitignore` | Phase 5 | A full screen run completes within `bench.budget.max_runs`, a run against a non-default `bench.corpus_path` produces the same artifact shapes as a `skills/` run, and `cli/README.md` documents `konductor bench` and its subcommands |
 
@@ -667,7 +689,7 @@ Phases 1 through 6 build the framework and the scenario bank; sizing each into t
 - Is the Claude Code `Skill` tool-call event reliable across every subject model in `bench.models.claude`, or only some?
 - Are trim variants written by an LLM, a human, or either, and does that choice affect how much a confirmed trim can be trusted?
 - What are the default values for `bench.thresholds.no_regression`, `bench.thresholds.max_unresolved`, and the token-size threshold behind candidate rule (d)? This design now proposes 0.9, 0.2, and 2,000 tokens respectively (see [Verdict rules](#verdict-rules)) as rationale-backed starting points; whether they are the *right* values is still open until the Phase 1 pilot's real pair outcomes can check them.
-- What is the default value for `bench.budget.max_runs`, and does it vary by cadence? This design now proposes 6,000 (see [Run Cost](#run-cost)), sized against the illustrative 4,528-run example with retry headroom; whether that holds for a real corpus and cadence is still open.
+- What is the default value for `bench.budget.max_runs`, and does it vary by cadence? This design now proposes 7,000 (see [Run Cost](#run-cost)), sized against the illustrative 5,808-run combined direct-plus-routed-arm example with retry headroom; whether that holds for a real corpus and cadence is still open.
 - What default value should `bench.scenarios.review_flag` use for flagging a skill's coverage set as a possible split candidate? No default is proposed in this design.
 - Is a floor of 5 for `bench.scenarios.min_coverage` right, or should it scale with a skill's actual capability count?
 - The 20 percent ablation-pair escalation rate used in [Run Cost](#run-cost) is illustrative only. What is the real escalation rate, and does it justify the design's cost savings over a fixed five-judge council? This must be measured on the Phase 1 pilot before it is used to size a full run.
@@ -675,3 +697,4 @@ Phases 1 through 6 build the framework and the scenario bank; sizing each into t
 - Should a dirty working tree at run time be refused outright, rather than allowed and flagged in the report (see [Environments](#environments))? Refusing forces a clean commit before every run, which guarantees every result maps to a single SHA; flagging lets a contributor benchmark work in progress, at the cost of a result that cannot be directly compared to a later clean-tree run.
 - This benchmark covers the `kiro-cli-v2` and `claude` harness values. Does `kiro-v3` need its own coverage, and if so, on what timeline relative to the two covered here?
 - What are the exact non-interactive invocation flags for a `kiro-cli` and a `claude` subject run inside `runner.rs` (model selection, working-directory override, no-resume)? Not verified against either CLI's real flag set in this design.
+- Should a routed-arm regression block a candidate outright instead of routing it to needs human review (see [Verdict rules](#verdict-rules))? This design chooses needs human review on the reasoning that a direct-arm prune or trim is still real evidence the skill's own content does not help, even when routing shifts the outcome; an outright block would discard that evidence rather than surface it for a person to weigh.
