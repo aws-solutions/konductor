@@ -291,7 +291,7 @@ Aggregation splits pairs by `kind` (see [Scenario Record](#scenario-record)). `o
 
 **Section dependency check.** After a trim variant is drafted, `konductor-bench` scans the remaining `SKILL.md` text for any reference to a removed heading, matching case-insensitively on the heading text. A hit is flagged in the report next to that trim recommendation; the flag does not block the trim on its own, since a reference may be stale prose rather than a real dependency, and the reviewer decides whether to fix it, drop the trim, or accept it as-is.
 
-The three threshold defaults above, plus `bench.thresholds.skill_tokens` at 2,000 (candidate rule (d) below), are rationale-backed starting points, not measured values, expected to be revised once the Phase 1 pilot's real pair outcomes exist to check them against.
+The three threshold defaults above, plus `bench.thresholds.skill_tokens` at 4,000 (candidate rule (d) below; measured against the current 82 skills, whose median is about 2,100 tokens, 4,000 flags the 17 largest rather than half the corpus), are rationale-backed starting points, not measured values, expected to be revised once the Phase 1 pilot's real pair outcomes exist to check them against.
 
 **Skill-load exclusion (direct arm only).** A direct-arm pair counts toward any ratio above only if the env A side's session log shows a skill-load event for skill X; a run with no logged load is excluded rather than counted "not worse," since an unloaded skill was never isolated (see [Open Questions](#open-questions) on log reliability). The routed arm has no equivalent exclusion for `own` and `overlap` pairs: a run where the orchestrator never reaches X's owning agent still counts, since that non-routing is itself the effect this arm measures. Near-miss pairs in both arms follow the near-miss qualification above.
 
@@ -304,7 +304,7 @@ The three threshold defaults above, plus `bench.thresholds.skill_tokens` at 2,00
 - (a) The skill did not activate in env A on its own scenarios.
 - (b) Env A is not better than env B on the skill's scenarios. This comparison is whole-stack, not skill-scoped: the screen's env A includes every skill and the orchestrator at once (see [Solution Overview](#solution-overview)), so a hit is evidence the stack did not help, not evidence this specific skill failed; ablation is what isolates the skill's own effect.
 - (c) A different skill activated on the skill's scenarios (an overlap prompt fired the wrong skill, or two fired).
-- (d) The skill's rendered `SKILL.md` body exceeds `bench.thresholds.skill_tokens` (default 2,000 tokens), a trim candidate specifically.
+- (d) The skill's rendered `SKILL.md` body exceeds `bench.thresholds.skill_tokens` (default 4,000 tokens), a trim candidate specifically.
 
 Any single rule firing makes a skill a candidate. Only ablation results, never screen results, feed plan actions. Rules (a) and (c) read env A's session log for skill-load and attribution events; that log evidence's reliability per harness and model is not yet verified (see [Open Questions](#open-questions)).
 
@@ -316,7 +316,7 @@ Any single rule firing makes a skill a candidate. Only ablation results, never s
 |---|---|
 | `konductor bench scenarios draft [--skill <name>] [--set core\|coverage]` | Runs the [scenario generation](#scenario-generation) draft step. `--set coverage` requires the skill to already be a candidate. Drafts land in the bank with `status: draft`. |
 | `konductor bench scenarios review` | Lists pending drafts. There is no separate approve/reject flag: a scenario's `status` field in its bank YAML is what review edits, so review works in any text editor or as a PR diff against `benchmarking/scenarios/bank/`. |
-| `konductor bench run [--stage screen\|ablation\|all] [--frequency <cron-or-interval>] [--resume <YYYY-MM>] [--bench-dir <path>]` | Executes a run. `--stage` selects screen, ablation, or both; `--frequency` is the cadence flag from [Requirements](#requirements); `--resume` continues a `partial` run from its last completed stage (see [Failure Handling](#failure-handling)); `--bench-dir` overrides the default `<repo-root>/benchmarking` location. |
+| `konductor bench run [--stage screen\|ablation\|all] [--frequency <cron-or-interval>] [--resume <YYYY-MM>] [--bench-dir <path>] [--estimate] [--yes]` | Executes a run, after printing the [pre-run estimate](#run-cost) (`--estimate` prints it and exits; `--yes` confirms a plan over the cap without prompting). `--stage` selects screen, ablation, or both; `--frequency` is the cadence flag from [Requirements](#requirements); `--resume` continues a `partial` run from its last completed stage (see [Failure Handling](#failure-handling)); `--bench-dir` overrides the default `<repo-root>/benchmarking` location. |
 | `konductor bench report [<YYYY-MM>]` | Renders the report and plan for a completed run, defaulting to the most recent month. Reads `results/<YYYY-MM>/`, `reports/`, and `plans/` from [Artifacts](#artifacts). |
 
 Config for all four lives under `bench:` in `.konductor/config.yml`. Every config key referenced elsewhere in this design (`bench.harnesses`, `bench.models.*`, `bench.council.*`, `bench.scenarios.*`, `bench.budget.max_runs`, `bench.providers.claude`, `bench.thresholds.*`, `bench.repeats.*`, `bench.corpus_path`, `bench.ablation.routed_arm`) resolves under that key, including `bench.council.judges[]`, `bench.council.escalation_judges[]`, and `bench.council.region` under `bench.council.*`.
@@ -340,7 +340,9 @@ Illustrative example, not a target, at an illustrative 20 percent ablation-pair 
 
 For comparison, a fixed five-judge council with no screen-stage saving costs `984 x 5 + 1,280 x 5 + 640 x 5 = 14,520` judge calls on the same example, against this design's 9,480.
 
-`bench.budget.max_runs` caps total runs per invocation, defaulting to 7,000: enough to cover the 5,808-run example above with retry headroom, without letting one invocation run unbounded. The prior default of 6,000, sized against the direct arm alone, does not leave meaningful headroom once the routed arm's 1,280 runs are added, hence the increase. On hit, the runner stops dispatching new runs, marks the current stage `partial`, and judges whatever finished; any skill whose ablation is incomplete when the cap hits goes to needs human review rather than being judged on partial evidence.
+`bench.budget.max_runs` caps total runs per invocation, defaulting to 15,000: about 2.5 times the 5,808-run example, leaving room for larger coverage sets (there is no cap on coverage), retries, and the per-variant install and uninstall cycles. The pilot's measured run counts replace this guess.
+
+**Pre-run estimate.** Before dispatching anything, `konductor bench run` computes the planned run count and judge-call count from the current bank, candidate list, and config, and prints both. If the plan exceeds `bench.budget.max_runs`, it stops and asks for confirmation; `--yes` accepts the plan non-interactively, for scheduled runs. `--estimate` prints the plan and exits without running. On hit, the runner stops dispatching new runs, marks the current stage `partial`, and judges whatever finished; any skill whose ablation is incomplete when the cap hits goes to needs human review rather than being judged on partial evidence.
 
 ## Failure Handling
 
@@ -505,7 +507,7 @@ This is a local batch tool. Its untrusted boundary is the model-provider APIs (A
 | Subject credential exposure | A subject model reads its credentials through a tool call and they end up in a transcript | Credentials are short-lived and scoped to the configured models only; passed as subprocess environment variables, not files; the benchmark HOME is mode `0700` and never included in an artifact; transcripts are scanned for credential patterns before being written under `results/`, and a match is redacted and flagged |
 | Judge credential exposure | A subject model gains access to the judge role and calls judge models directly | Judge credentials live only in the runner process, never set on a harness subprocess; the judge role is separate from the subject role |
 | Overly broad AWS access | A developer's full `~/.aws` profile is used for runs | Dedicated subject and judge roles with `bedrock:InvokeModel`/`InvokeModelWithResponseStream` on listed ARNs only; `~/.aws` is never copied into a benchmark HOME |
-| Cost overrun | Unbounded spend on model calls | `bench.budget.max_runs` caps total runs per invocation; on hit, the stage marks `partial` and dispatch stops |
+| Cost overrun | Unbounded spend on model calls | The pre-run estimate prints planned runs and judge calls and asks for confirmation when the plan exceeds `bench.budget.max_runs`; on hit during a run, the stage marks `partial` and dispatch stops |
 | Accidental artifact corruption | A downstream stage reads a partial or malformed prior-stage file | Content hashes on the scenario snapshot, and a `status` field per stage, let a resumed run detect and skip a corrupted or incomplete prior stage |
 | Unsafe plan execution | An automated consumer applies a prune or trim without review | The plan format requires dry-run by default and explicit per-entry confirmation; there is no auto-execution path |
 
@@ -606,8 +608,8 @@ Sizing each phase into task-level tickets happens in a later pass. The pilot kee
 - Is Kiro CLI's (v3 engine) skill-load evidence in session logs reliable enough for candidate rules (a)/(c) and the ablation load check in [Verdict Rules](#verdict-rules), or does it need a dedicated log level?
 - What is the vanilla Kiro CLI (v3 engine) installation's default agent name? Not asserted as fact here.
 - Is the Claude Code `Skill` tool-call event reliable across every subject model in `bench.models.claude`, or only some?
-- Are `bench.thresholds.no_regression` (0.9), `max_unresolved` (0.2), and `skill_tokens` (2,000) the right values, or just rationale-backed starting points to check against the Phase 1 pilot's real pair outcomes (see [Verdict Rules](#verdict-rules))?
-- Does `bench.budget.max_runs`'s proposed 7,000 default hold for a real corpus and cadence, or need adjusting once the pilot's actual escalation rate is known?
+- Are `bench.thresholds.no_regression` (0.9), `max_unresolved` (0.2), and `skill_tokens` (4,000) the right values, or just rationale-backed starting points to check against the Phase 1 pilot's real pair outcomes (see [Verdict Rules](#verdict-rules))?
+- Does `bench.budget.max_runs`'s proposed 15,000 default hold for a real corpus and cadence, or need adjusting once the pilot's actual run counts and escalation rate are known?
 - Is a floor of 5 for `bench.scenarios.min_coverage` right, or should it scale with a skill's actual capability count?
 - The 20 percent ablation escalation rate in [Run Cost](#run-cost) is illustrative only; the real rate must be measured on the Phase 1 pilot before it sizes anything real.
 - Which Bedrock client should `providers/bedrock.rs` use: the full async AWS SDK for Rust, or a lighter synchronous SigV4 crate over `ureq`? All five default judges support the Converse API on `bedrock-runtime`, so one Converse client covers all of them; the crate choice itself is still open. Affects only `konductor-bench` (see [ADR-4](#adr-4-separate-konductor-bench-binary-invoked-by-konductor-bench)); no crate is asserted.
