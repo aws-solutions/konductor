@@ -91,7 +91,7 @@ Ablation removes or trims one candidate skill at a time from a copy of env A and
 | Direct | The specialist agent that owns the skill (`k-architect` for `threat-modeling`), never `konductor` | Does the skill's own content help the agent that owns it | Always, first |
 | Routed | The `konductor` orchestrator, both sides | Does removing or trimming the skill change what a real user gets, including any routing shift | Only if the direct arm resolves to prune or trim |
 
-The direct arm targets a named agent so the run does not depend on the orchestrator's own delegation choice: removing the skill cannot change which agent the scenario reaches, only what that agent does with it. The routed arm has no fixed target and no skill-load exclusion (see [Ablation and Verdict Rules](#ablation-and-verdict-rules)): a routing shift away from the owning agent is itself part of what it measures. It is the final gate before a candidate reaches the plan.
+The direct arm targets a named agent so the run does not depend on the orchestrator's own delegation choice: removing the skill cannot change which agent the scenario reaches, only what that agent does with it. The routed arm has no fixed target and no skill-load exclusion (see [Ablation and Verdict Rules](#ablation-and-verdict-rules)): a routing shift away from the owning agent is itself part of what it measures. When it runs, it is the final gate before a candidate reaches the plan; see [Ablation and verdict rules](#ablation-and-verdict-rules) for what happens when `bench.ablation.routed_arm` is false.
 
 ## How It Works
 
@@ -138,7 +138,7 @@ Every run record and the report header carry the checkout's commit SHA and dirty
 
 **Accepted risk: cache carryover.** Session-history and cache directories are excluded by design, not because they are verified clean. A harness's model-response cache or an MCP server's state directory can persist across a toggle without appearing in either check above. Randomizing which environment runs first within each shard spreads this bias rather than removing it. Exact cache paths per harness are still open; see [Open Questions](#open-questions).
 
-`KONDUCTOR_TELEMETRY=off` is set for every subprocess, alongside `--no-telemetry` on install. One screen cell (one scenario, harness, model) on one benchmark HOME runs env B first; other shards run env A first, same steps in between: snapshot check, run, install (env A only), manifest check, run, uninstall, record.
+`KONDUCTOR_TELEMETRY=off` is set for every subprocess, alongside `--no-telemetry` on install. One screen cell (one scenario, harness, model) on one benchmark HOME runs env B first; other shards run env A first, same steps in between: snapshot check, run, synth and install (env A only), manifest check, run, uninstall, record.
 
 ```mermaid
 sequenceDiagram
@@ -237,7 +237,20 @@ Pairs split by `kind`: `own` and `overlap` pairs measure whether removing X hurt
 
 **Trim patches.** An LLM drafts the trimmed `SKILL.md`, limited to sections a coverage scenario covered and the direct arm showed unneeded. A person approves the patch before the variant runs; the patch is stored with the run. After drafting, the runner scans the remaining text for a reference to a removed heading and flags a hit next to the trim recommendation, non-blocking, since a reference may be stale prose rather than a real dependency.
 
-**Combining the two arms.** The direct arm runs first. Direct-arm keep or needs human review ends the candidate there; the routed arm never runs. Only prune or trim triggers it (`bench.ablation.routed_arm`, default true; false skips it and the report states routed effects were not checked). A candidate reaches the plan only if both arms independently resolve to the same action. Direct pass plus routed regression (routed resolves to keep, or unresolved above `max_unresolved`) goes to needs human review, reason `routing regression`, both arms' evidence shown side by side. A direct/routed mismatch between prune and trim (either arm recommends the stronger action while the other recommends the weaker one) is not a routing regression, since both arms still agree the skill should not stay as-is; it goes to needs human review, reason `arm mismatch`, with both arms' evidence shown side by side, since which action is correct depends on the two arms' own trim-versus-prune reasoning, not something this rule set can arbitrate. Pairs never cross arms.
+**Combining the two arms.** The direct arm runs first. The routed arm runs only when the direct arm resolves to prune or trim, and only if `bench.ablation.routed_arm` is true (the default; when false, the report states routed effects were not checked). Each arm reaches its verdict on its own pairs; pairs never cross arms.
+
+| Direct arm | Routed arm | Final outcome |
+|---|---|---|
+| Keep | Not run | Keep |
+| Needs human review | Not run | Needs human review, with the direct arm's reason |
+| Prune | Prune | Prune, enters the plan |
+| Trim | Trim | Trim, enters the plan |
+| Prune | Trim | Needs human review, reason `arm mismatch` |
+| Trim | Prune | Needs human review, reason `arm mismatch` |
+| Prune or Trim | Keep, or unresolved above `max_unresolved` | Needs human review, reason `routing regression` |
+| Prune or Trim | Not run (`routed_arm: false`) | The direct arm's verdict enters the plan, marked "routed effects not checked" |
+
+For both human-review reasons the report shows the two arms' evidence side by side. An `arm mismatch` is kept separate from a `routing regression` because both arms still agree the skill should not stay as it is; they only disagree on how much to remove.
 
 One direct-arm ablation pair for candidate X is below. The routed arm runs the same sequence with `Sub` running the `konductor` agent on both sides, skips the skill-load exclusion for `own`/`overlap` pairs, and records which agents and skills each run reached.
 
