@@ -44,3 +44,6 @@ browser-output/
 # .konductor/handoff/: they quote internal context and must not reach
 # this public package.
 .reviews/
+
+/docs/research/
+/docs/specs/
