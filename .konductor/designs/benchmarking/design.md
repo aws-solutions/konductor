@@ -91,11 +91,19 @@ A content hash per skill is recorded alongside the generated scenarios. If a ski
 
 ### Environments
 
-- **Env A (konductor).** An isolated temp HOME, mode `0700`, with `konductor install --harness <kiro-cli-v2|claude> --target <tmpA>` applied, invoked through the `konductor` agent.
-- **Env B (vanilla).** An isolated temp HOME with no Konductor install, invoked through the harness's own default agent.
-- **Ablation variants.** `A-minus-X` is a temporary copy of env A with skill X removed, used for a prune test. `A-trimmed-X` is a temporary copy of env A with a trimmed `SKILL.md` variant for X applied, used for a trim test. Both are torn down after judging; neither is a third standing environment.
+Environments are states of one dedicated **benchmark HOME** per harness, toggled with the real `konductor install` and `konductor uninstall` commands. The benchmark HOME is never the developer's own HOME. It is created once, mode `0700`, and the harness is logged in there once; that login persists across every toggle because `uninstall` removes only the files its manifest tracks. Each harness needs its own benchmark HOME because an install target is locked to one `--harness` value.
 
-Before every run, the runner checks that the target HOME contains no agents, skills, steering, or SOP files beyond what that environment is supposed to have: none for env B, only the Konductor install for env A. This catches a developer's own `~/.kiro/skills` or `~/.kiro/steering` leaking into an otherwise isolated run.
+- **Env B (vanilla).** The benchmark HOME with no Konductor install, invoked through the harness's own default agent.
+- **Env A (konductor).** The same HOME after `konductor install --harness <kiro-cli-v2|claude> --target <bench-home> --no-telemetry`, invoked through the `konductor` agent.
+- **Ablation variants.** The runner copies the source tree to a temp directory and edits the copy. For `A-minus-X` it removes skill X and every reference to X in agent specs. For `A-trimmed-X` it applies the trim patch to X's `SKILL.md`. It then runs `konductor synth --from <tmp-src>` and installs that output into the benchmark HOME the same way as env A. If synth fails on the edited copy, the candidate goes to needs human review. The temp source copy is deleted after the variant's runs finish.
+
+**Vanilla snapshot.** Right after the one-time login, the runner records a manifest of the benchmark HOME: every path with its content hash, excluding the harness's own session history and cache directories. After every `uninstall`, the runner compares the HOME against that snapshot. Any leftover or missing file stops further runs on that benchmark HOME and marks the stage `partial`. Before every env A or variant run, it checks the installed files match the expected install manifest. No agents, skills, steering, or SOP files outside those two sets are allowed. This also catches content copied in from a developer's own `~/.kiro` or `~/.claude`.
+
+**Run ordering.** Runs are grouped by environment state so each state is installed once per harness: all env B cells, then install and all env A cells, then one install, run, and uninstall cycle per ablation variant. One benchmark HOME runs sequentially. For parallelism the runner shards cells across several benchmark HOMEs per harness, each with its own one-time login and snapshot.
+
+**Per-run hygiene.** Every run starts a new session (no resume or continue flags) in a fresh, empty working directory. That keeps repo-level files such as `AGENTS.md` or `.konductor/memory/` out of the comparison, and stops one run's memory writes from reaching the next.
+
+**Telemetry.** Benchmark installs pass `--no-telemetry`, and the runner sets `KONDUCTOR_TELEMETRY=off`, so thousands of install and uninstall cycles never reach Konductor's usage metrics.
 
 Credentials follow the rules in [Model access and credentials](#model-access-and-credentials).
 
@@ -109,13 +117,13 @@ Three callers need model access, and each gets its own credentials.
 |---|---|---|---|
 | Claude Code, env A and env B | `providers.claude: bedrock` (default) | Short-lived AWS credentials from a dedicated subject role | Environment variables on the harness subprocess: `CLAUDE_CODE_USE_BEDROCK=1`, `AWS_REGION`, the temporary AWS keys, and the Bedrock model ID from `models.claude` |
 | Claude Code, env A and env B | `providers.claude: anthropic` | Anthropic API key | `ANTHROPIC_API_KEY` on the harness subprocess, with the model from `models.claude` |
-| Kiro CLI, env A and env B | Kiro's own backend | The Kiro CLI login | Copied into each temp HOME, identically for env A and env B (mechanism is an open question) |
+| Kiro CLI, env A and env B | Kiro's own backend | The Kiro CLI login | Done once in each benchmark HOME and kept across install and uninstall toggles |
 | Council judges | Per judge in `council.judges[]`: `bedrock` (default) or `anthropic` | Short-lived AWS credentials from a separate judge role, or an Anthropic API key | Held by the runner process only |
 
 Rules:
 
-- **Least privilege on Bedrock.** The subject role and the judge role each allow only `bedrock:InvokeModel` and `bedrock:InvokeModelWithResponseStream` on the model and inference-profile ARNs listed in config. The runner never copies a developer's `~/.aws` into a temp HOME.
-- **Environment variables, not files.** Subject credentials reach the harness as subprocess environment variables, so nothing is written into a temp HOME that a transcript or artifact could capture. Kiro CLI is the exception until its login mechanism is confirmed.
+- **Least privilege on Bedrock.** The subject role and the judge role each allow only `bedrock:InvokeModel` and `bedrock:InvokeModelWithResponseStream` on the model and inference-profile ARNs listed in config. The runner never copies a developer's `~/.aws` into a benchmark HOME.
+- **Environment variables, not files.** Subject credentials reach the harness as subprocess environment variables, so nothing is written into a benchmark HOME that a transcript or artifact could capture. The Kiro CLI login is the exception: it lives in the benchmark HOME, which is why that HOME is mode `0700` and excluded from every artifact.
 - **Judge credentials never reach a subject.** A subject model can run tools and read its own environment. Judge credentials are therefore never set on a harness subprocess.
 - **Same provider on both sides.** Every run record carries harness, provider, and the resolved model ID. A pair is valid only if both sides match on all three. Bedrock and the Anthropic API can serve different versions of a model, so the report states the provider for each harness/model cell and the runner never mixes providers within a pair.
 - **Anthropic-only customers.** With `anthropic` as the only judge provider, every judge is a Claude model and the council is single-family. The run proceeds, and the report marks the council as single-family so readers can weigh the self-preference risk described in [Council judging](#council-judging).
@@ -191,6 +199,7 @@ Combined illustrative totals: 1,968 + 1,440 = 3,408 runs, and 4,920 + 3,600 = 8,
 ## Failure Handling
 
 - A run against any environment gets one retry on timeout or crash; a second failure marks that run `run_failed` rather than omitting it.
+- A failed `konductor install` or `uninstall`, or a vanilla-snapshot mismatch after uninstall, stops every remaining run on that benchmark HOME and marks the stage `partial`. The runner does not hand-delete leftover files; a person restores the HOME, since a silent cleanup would hide an uninstall bug.
 - A council member that times out or returns an unparseable response is recorded as an abstention, not excluded from the pair's denominator.
 - A pair with fewer than three live votes is unresolved, regardless of cause.
 - A scenario whose source skill's content hash no longer matches at run time is excluded as `stale_snapshot` and regenerated on the next run.
@@ -287,10 +296,10 @@ This is a local batch tool with no external attacker surface beyond one real tru
 | Threat | Impact | Mitigation |
 |--------|--------|------------|
 | Prompt injection from a `SKILL.md` or from a subject model's own output, aimed at a judge | A skill author or a subject model's output steers a judge away from an accurate verdict | Both outputs are passed to judges as delimited data blocks with an explicit instruction to treat their content as data, not instructions; judging uses rubric scores, not free-form judge reasoning alone; a pair where either output contains judge-directed text is flagged in the report; every plan action still requires human confirmation regardless of vote outcome. Relabeling randomizes which side a judge sees as X or Y; it does not prevent injected text from being read by the judge in the first place. |
-| Environment contamination (env B, an ablation copy, or env A itself carries files it should not) | The comparison for that run is invalid | The runner checks each target HOME against the expected file set for its environment before every run and aborts a mismatched run as a setup failure |
-| Subject credential exposure | A subject model reads its Bedrock credentials or API key through a tool call and they end up in a transcript or artifact | Credentials are short-lived and scoped to invoking the configured models only; they are passed as subprocess environment variables, not files; temp HOMEs are mode `0700` and deleted at teardown; transcripts are scanned for credential patterns before being written under `results/`, and a match is redacted and flagged |
+| Environment contamination (env B, an ablation copy, or env A itself carries files it should not) | The comparison for that run is invalid | The runner compares the benchmark HOME against the vanilla snapshot after every uninstall and against the expected install manifest before every env A or variant run; any mismatch stops that HOME's queue. Every run uses a fresh working directory and a new session, so no repo files or prior session state carry over |
+| Subject credential exposure | A subject model reads its Bedrock credentials or API key through a tool call and they end up in a transcript or artifact | Credentials are short-lived and scoped to invoking the configured models only; they are passed as subprocess environment variables, not files; the benchmark HOME is mode `0700` and never included in an artifact; transcripts are scanned for credential patterns before being written under `results/`, and a match is redacted and flagged |
 | Judge credential exposure | A subject model gains access to the judge role and can call judge models directly | Judge credentials live only in the runner process and are never set on a harness subprocess; the judge role is separate from the subject role |
-| Overly broad AWS access | A developer's full `~/.aws` profile is used for runs | The runner uses dedicated subject and judge roles with `bedrock:InvokeModel` and `bedrock:InvokeModelWithResponseStream` on listed ARNs only, and never copies `~/.aws` into a temp HOME |
+| Overly broad AWS access | A developer's full `~/.aws` profile is used for runs | The runner uses dedicated subject and judge roles with `bedrock:InvokeModel` and `bedrock:InvokeModelWithResponseStream` on listed ARNs only, and never copies `~/.aws` into a benchmark HOME |
 | Cost overrun | Unbounded spend on model calls | `budget.max_runs` caps total runs per invocation; on hit the stage is marked `partial` and dispatch stops |
 | Accidental artifact corruption | A downstream stage reads a partial or malformed prior-stage file | Content hashes on the scenario snapshot, and a `status` field per stage, let a resumed run detect and skip a corrupted or incomplete prior stage instead of proceeding on bad data |
 | Unsafe plan execution | An automated consumer applies a prune or trim without review | The plan format requires dry-run by default and explicit per-entry confirmation; there is no auto-execution path |
@@ -393,7 +402,7 @@ Three top-level directories, each keyed by `YYYY-MM/` where applicable: `scenari
 | Phase | Scope | Depends on | Exit Criteria |
 |---|---|---|---|
 | Phase 0 | Remove the existing harness: the `tests/` subsets used only by it, `tests/judges/`, `tests/registry.json`, `scripts/benchmark.js` | None | Old harness files removed; no other package references them |
-| Phase 1 | Environment provisioning for env A and env B, the isolation check, provider config and credential handling, and the run matrix runner | Phase 0 | A screen run executes for at least one scenario x harness x model cell in both environments, with the isolation check passing before each run, for both `providers.claude` values |
+| Phase 1 | Benchmark HOME setup (one-time login, vanilla snapshot), install/uninstall toggling with snapshot checks, ablation variant synth from an edited source copy, provider config and credential handling, and the run matrix runner | Phase 0 | A screen run executes for at least one scenario x harness x model cell in both environments, with the isolation check passing before each run, for both `providers.claude` values |
 | Phase 2 | Council judging and per-pair aggregation, including the live-vote and unresolved rules | Phase 1 | A sample screen produces pair outcomes with correct unresolved handling for a synthetic 2/2/1 split |
 | Phase 3 | Candidate selection against the four rules, and ablation runs for both prune and trim variants | Phase 2 | An ablation run executes against at least one candidate for both `A-minus-X` and `A-trimmed-X`, producing a verdict via the deterministic rule |
 | Phase 4 | Report and plan rendering, including the field-level plan schema | Phase 3 | A generated report matches the report skeleton in this design; a generated plan defaults to dry-run and requires per-entry confirmation |
@@ -408,7 +417,9 @@ Phases 1 through 5 are scope only in this design; sizing each into task-level ti
 
 ## Open Questions
 
-- Where does Kiro CLI store its login, and can it be supplied to an isolated temp HOME through environment variables instead of copied files?
+- Where does Kiro CLI store its login, and does it survive `konductor uninstall` untouched? The design assumes yes, because uninstall removes only manifest-tracked files, but this is not verified.
+- Which directories do Kiro CLI and Claude Code use for session history and caches? They are excluded from the vanilla snapshot, so the exact paths need confirming.
+- Does `konductor uninstall` also honor the target's telemetry opt-out, or does the runner rely on `KONDUCTOR_TELEMETRY=off` alone?
 - Should `providers.claude` also support other gateways customers use for Claude (for example Google Vertex AI), or only Bedrock and the Anthropic API?
 - Is the Kiro CLI skill-load evidence in session logs reliable enough to use as candidate rule (a) and (c) evidence, or does it need a dedicated log level?
 - What is the vanilla Kiro CLI installation's default agent name? Not asserted as fact in this design.
