@@ -933,14 +933,24 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
   for that gap plus two further caveats (GitHub API rate limiting; no GPG/sigstore
   provenance check — SHA-256 transport-integrity only). `--from <repo-root>` remains
   an alternative for installing from a local checkout.
-- SOPs are installed on both the `--from` and no-`--from` paths: every staged
-  `.sop.md` file is copied verbatim into `.konductor/sops/` and converted into a
-  `.kiro/skills/sop-<name>/SKILL.md` file, so a runtime discovery path exists for
-  both. `konductor install`'s own summary line still calls this count "skipped ...
-  (no runtime discovery path yet)" specifically on the `--from` path; that wording
-  predates the current install behavior and is deliberately left as-is (see
-  `format_install_summary`'s own doc comment in `install.rs`), while the
-  no-`--from` path correctly reports "installed N SOP(s)".
+- SOPs are installed on every install path and harness: every staged `.sop.md`
+  file is copied verbatim into `.konductor/sops/` (Kiro harnesses) and/or
+  converted into a `sop-<name>/SKILL.md` file under the runtime's own skills
+  root (`.kiro/skills/` for Kiro, `.claude/skills/` for Claude Code — Claude's
+  `SopInstallPhase` branch never writes `.konductor/sops/` at all, only the
+  conversion), so a runtime discovery path always exists. `konductor install`'s
+  summary reports this as a single, always-accurate `N SOP(s)` count/field —
+  never worded as "skipped" on any path, since SOPs are genuinely installed on
+  every one this codebase supports. The count is the number of distinct SOPs
+  observed across whichever artifact form(s) landed for each, not a raw file
+  count, so a SOP present in both the raw and converted form (the normal Kiro
+  case) still counts once, and one present only in the converted form (the
+  Claude case) still counts. The SOP-derived `sop-<name>/SKILL.md` conversion
+  itself is excluded from the summary's separate `N skill(s)` count — detected
+  by the `<agent-sop name="...">` marker its body always carries, not by the
+  `sop-` filename prefix alone, since a genuinely hand-authored skill can also
+  be named `sop-<something>` (e.g. `skills/sop-state-management/` in this
+  package) and must still count as a skill.
 - `metrics` is a stub (see above).
 - `update` and `uninstall` have no same-target concurrency protection: running two
   `konductor` invocations against the same target directory at once is unsupported and
