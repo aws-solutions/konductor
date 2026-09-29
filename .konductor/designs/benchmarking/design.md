@@ -16,49 +16,45 @@ tags:
 
 Konductor ships 82 skills under `skills/`. Nothing measures whether a skill earns its token cost, whether it activates when its description says it should, or whether another skill already covers the same ground.
 
-The existing harness under `tests/` addresses related ground but is not sufficient. It consists of `scripts/benchmark.js`, `tests/judges/claude-code-agent-runner.js`, `tests/registry.json`, and per-agent scenario sets under `tests/asdlc-*/`. It runs one subject model against hand-written scenarios and checks pass/fail. It does not compare against a baseline, and cannot attribute a result to one skill. `tests/registry.json` is a subset registry, two entries naming a dataset path, subject model, and default judge, not a per-scenario record store; it has no field for a second environment's output, a pair verdict, or an ablation variant's identity, so this design replaces the harness rather than extending its schema.
+The existing harness under `tests/` (`scripts/benchmark.js` at the repo root, `tests/judges/claude-code-agent-runner.js`, `tests/registry.json`, per-agent scenario sets under `tests/asdlc-*/`) runs one subject model against hand-written scenarios and checks pass or fail. It has no baseline to compare against, so it cannot say whether a skill helped. `tests/registry.json` is a two-entry subset registry naming a dataset path, subject model, and default judge, not a per-scenario record store; it has no field for a second environment's output, a pair verdict, or an ablation variant's identity. This design replaces the harness rather than extending it.
 
-The framework ships as `konductor-bench`, a separate binary built from the same checkout as `konductor`, invoked through `konductor bench`. See [CLI Surface](#cli-surface), [Build and Invocation](#build-and-invocation), and [Module Layout](#module-layout).
+`konductor-bench`, a separate binary built from the same checkout as `konductor`, runs it. See [CLI Surface](#cli-surface) and [Build and Invocation](#build-and-invocation).
+
 
 ## Goals and Non-Goals
 
 **Goals**
 
-- Decide, per skill, whether to keep, prune, or trim it, backed by quality evidence rather than a description read.
-- Cover more than one harness (Kiro CLI, Claude Code) and more than one model per harness, since a skill's effect can vary by both.
-- Separate "does the whole Konductor stack help" from "does this one skill help," since the first cannot answer the second.
-- Build the benchmark framework itself: the scenario generator, the environment runner, the council judge, and the report and plan renderers (see [Implementation Plan](#implementation-plan)). No working version of this exists today.
-- Build a reviewed scenario bank with test prompts, input fixtures, and judge notes for every skill.
-- Treat skill coverage as more important than run cost. Cost is controlled through `bench.repeats.ablation`, the models configured per harness, and `bench.budget.max_runs`, never by dropping a scenario from a skill's coverage set. A candidate whose coverage set did not fully run is held at needs human review rather than decided on partial evidence (see [Run Cost](#run-cost), [Verdict Rules](#verdict-rules)).
+- Decide, per skill, whether to keep, prune, or trim it, backed by quality evidence instead of a description read.
+- Cover more than one harness (Kiro CLI, Claude Code) and more than one model per harness, since a skill's effect can vary by both. Separate "does the whole stack help" from "does this one skill help": the first cannot answer the second.
+- Build the framework itself: scenario generator, environment runner, council judge, report and plan renderers. Nothing like this exists today. Build a reviewed scenario bank with prompts, fixtures, and judge notes for every skill.
+- Treat coverage as more important than run cost. Cost is controlled by repeat count, models per harness, and the run cap, never by dropping a coverage scenario. A candidate whose coverage set does not fully run goes to needs human review.
 
 **Non-Goals**
 
-- Running continuously or per commit. The framework runs on a configured cadence, not on every change.
+- Running continuously or per commit. The framework runs on a configured cadence.
 - Weighting verdicts by real usage or invocation telemetry. Scenario evidence only, for now.
 
 ## Requirements
 
 | # | Requirement |
 |---|---|
-| F1 | Generate draft scenarios for every skill, review once, reuse the approved set on every run. A new or changed skill needs one review, not manual curation per run. |
-| F2 | Run a screening stage that compares a full Konductor environment against a vanilla baseline, per scenario, harness, and model. |
-| F3 | Select ablation candidates from the screen using the four rules in [Verdict Rules](#verdict-rules). |
-| F4 | Run an ablation stage per candidate that isolates that skill's effect, in a direct arm and a routed arm (see [Solution Overview](#solution-overview)). |
-| F5 | Judge every A/B pair blind and pairwise with a council of `bench.council.size` (default 3); on ablation, escalate to `bench.council.escalate_to` (default 5) on disagreement (see [Council Judging](#council-judging)). |
+| F1 | Generate draft scenarios for every skill, review once, reuse the approved set on every run. |
+| F2 | Run a screening stage comparing a full Konductor environment against a vanilla baseline, per scenario, harness, and model. |
+| F3 | Select ablation candidates from the screen using the rules in [Ablation and Verdict Rules](#ablation-and-verdict-rules). |
+| F4 | Run an ablation stage per candidate, in a direct arm and a routed arm, isolating that skill's effect. |
+| F5 | Judge every pair blind and pairwise with a council that starts at three judges and escalates to five on disagreement (ablation only). |
 | F6 | Render a human-readable report and an implementation plan a person can act on. |
 
 **Constraints**
 
-- `konductor-bench` runs only inside a git checkout of the Konductor repository. It reads the scenario bank, fixtures, and prompts from `<repo-root>/benchmarking/`, and writes results, reports, and plans back to the same tree. There is no mode against a released `konductor` binary or content fetched from GitHub: neither carries the scenario bank, and a released binary has no repository tree to write a report into.
-- The corpus to benchmark is `bench.corpus_path`, defaulting to `skills/`.
-- Models per harness are config: `bench.models.kiro` and `bench.models.claude`, each defaulting to at least two models.
-- Harnesses benchmarked are config: `bench.harnesses`, defaulting to `[kiro-v3, claude]`. The CLI's own `--harness` flag accepts `kiro-cli-v2`, `kiro-v3`, and `claude` (see [`README.md`](../../../README.md)); `kiro-cli-v2` is being deprecated in favor of `kiro-v3` but can still be listed in `bench.harnesses` for as long as it exists.
-- Cadence is a `--frequency` flag, defaulting to monthly. A scheduled pipeline job invokes the runner on that cadence; a person can also invoke it manually.
-- Scenario counts are config: `bench.scenarios.core` (default 3) is the core set size; `bench.scenarios.min_coverage` (default 5) is the coverage set floor, with no upper cap; `bench.scenarios.review_flag` (default 15) flags a coverage set that broad as a possible split candidate.
-- Council size is config: `bench.council.size` (default 3), `bench.council.escalate_to` (default 5). Setting both equal gives a fixed-size council. Council region is config: `bench.council.region` (default `us-west-2`).
-- The routed arm is config: `bench.ablation.routed_arm` (default `true`). `false` skips it for every candidate; the report then states routed effects were not checked.
-- `bench.budget.max_runs` bounds total runs per invocation and is the only limit on coverage-set size.
-- Claude Code's model provider is config: `bench.providers.claude`, `bedrock` (default) or `anthropic`. This is setup only: subject provider is not part of pair validity or verdict grouping (see [Model Access and Credentials](#model-access-and-credentials)). Council judges run on Amazon Bedrock only (see [Council Judging](#council-judging)).
+- `konductor-bench` runs only inside a git checkout of Konductor. It reads the scenario bank, fixtures, and prompts from `<repo-root>/benchmarking/`, and writes results, reports, and plans there. There is no mode against a released `konductor` binary: a release carries no scenario bank and no repository tree to write a report into.
+- The corpus to benchmark is `bench.corpus_path`, default `skills/`.
+- Harnesses are config: `bench.harnesses`, default `[kiro-v3, claude]`. `kiro-cli-v2` is being deprecated in favor of `kiro-v3` but can still be listed while it exists.
+- Models per harness are config: `bench.models.kiro`, `bench.models.claude`, each defaulting to at least two models.
+- Claude Code's provider is config: `bench.providers.claude`, `bedrock` (default) or `anthropic`. Setup only, recorded for traceability; it never splits pairs or verdicts. See [Model Access and Credentials](#model-access-and-credentials).
+- Cadence is a `--frequency` flag, default monthly. A scheduled job invokes the runner on that cadence; a person can also run it manually.
+- Scenario counts, council composition, threshold values, and the run cap are all config; see the tables in [How It Works](#how-it-works), [CLI Surface](#cli-surface), and [Run Cost](#run-cost).
 
 **Non-Functional**
 
@@ -86,75 +82,63 @@ flowchart LR
     style G fill:#50b464,color:#fff
 ```
 
-Two stages answer two different questions. The screen compares the full Konductor stack (env A) against a vanilla harness with no Konductor install (env B), through the `konductor` orchestrator on the env A side. A difference there says the stack as a whole helps or does not, but the screen's result is whole-stack: env A and env B differ in the orchestrator agent and every skill at once, and the orchestrator is on the request path for every screen scenario, so a screen result cannot be pinned on one skill's own content versus a routing effect. The screen's only job is to narrow 82 skills to a candidate list; only the ablation stage below decides a skill's fate.
+Two stages answer two different questions. The screen compares the full Konductor stack (env A, through the `konductor` orchestrator) against a vanilla harness with no Konductor install (env B). A difference there is whole-stack: env A and env B differ in the orchestrator and every skill at once, and the orchestrator sits on the request path for every screen scenario, so a screen result cannot be pinned on one skill's own content versus a routing effect. The screen's only job is narrowing 82 skills to a candidate list; only ablation decides a skill's fate.
 
-The ablation stage removes or trims one candidate skill at a time from a copy of env A and compares that copy against unmodified env A, in two arms:
+Ablation removes or trims one candidate skill at a time from a copy of env A and compares that copy against unmodified env A, in two arms:
 
-| Arm | Invokes | Question it answers | When it runs |
+| Arm | Invokes | Question | Runs when |
 |---|---|---|---|
-| **Direct** | The specialist agent that owns the candidate skill (`k-architect` for `threat-modeling`, `k-developer` for `backend-development`) directly, never `konductor` | Does the skill's own content help the agent that owns it | Always, first, for every candidate |
-| **Routed** | The `konductor` orchestrator, on both sides of the pair | Does removing or trimming the skill change what a user gets through the entry point they actually use, including any routing shift | Only if the direct arm resolves to Prune or Trim (see [Verdict Rules](#verdict-rules)) |
+| Direct | The specialist agent that owns the skill (`k-architect` for `threat-modeling`), never `konductor` | Does the skill's own content help the agent that owns it | Always, first |
+| Routed | The `konductor` orchestrator, both sides | Does removing or trimming the skill change what a real user gets, including any routing shift | Only if the direct arm resolves to prune or trim |
 
-The direct arm targets a named agent so the run does not depend on the orchestrator's own delegation choice: removing the skill cannot change which agent the scenario reaches, only what that agent does with it. The routed arm has no such fixed target and no skill-load exclusion (see [Verdict Rules](#verdict-rules)): a routing shift away from the skill's owning agent is itself part of what this arm measures, not noise to filter out. It is the final gate before a candidate reaches the plan, catching the case where the direct arm's isolated verdict does not survive contact with real routing. See [Environments](#environments) for how a routed-arm run records the reached agent and skills.
+The direct arm targets a named agent so the run does not depend on the orchestrator's own delegation choice: removing the skill cannot change which agent the scenario reaches, only what that agent does with it. The routed arm has no fixed target and no skill-load exclusion (see [Ablation and Verdict Rules](#ablation-and-verdict-rules)): a routing shift away from the owning agent is itself part of what it measures. It is the final gate before a candidate reaches the plan.
 
 ## How It Works
 
-### Scenario generation
+### Scenarios
 
-A scenario is more than a prompt: `code-review` needs a diff, `dynamodb-validation` needs a table design, `threat-modeling` needs a system description. Without that input, env A and env B both produce generic answers and the comparison says nothing. Each scenario carries:
+A scenario is more than a prompt: `code-review` needs a diff, `dynamodb-validation` needs a table design, `threat-modeling` needs a system description. Each scenario carries a prompt (the request, phrased the way a developer would ask), fixtures (input files from `benchmarking/fixtures/`, copied into a fresh working directory), and judge notes (what a strong answer covers).
 
-- **Prompt.** The user request, written the way a developer would actually ask.
-- **Fixtures.** Input files copied into the fresh working directory: a small repo, a diff, a design doc, a CloudFormation template. Fixtures live in `benchmarking/fixtures/` so several skills can reuse one realistic project.
-- **Judge notes.** What a strong answer covers, drafted from a plain description of the task before the generator reads the skill's body, then reconciled against the skill's stated capabilities. Task-first drafting guards against notes that silently encode the skill's own section headings as the definition of a good answer, scoring "looks like this skill's output" over "solves the task well." Notes go through the same review as their scenario, so a vanilla output covering the same points gets full credit.
+Judge notes are drafted from a plain description of the task before the generator reads the skill's body, then reconciled against the skill's stated capabilities. Task-first drafting stops the notes from encoding the skill's own section headings as the definition of a good answer, which would score "looks like this skill's output" over "solves the task well." Notes go through the same review as their scenario.
 
-Every skill gets two scenario sets, drafted at different times:
+Every skill gets two sets:
 
 | Set | Size | Built | Runs against |
 |---|---|---|---|
-| **Core** | `bench.scenarios.core`, default 3: the stated trigger, one realistic variation, one near-miss (see [Near-miss scenarios](#near-miss-scenarios)) | For every skill from the start | The screen |
-| **Coverage** | Floor `bench.scenarios.min_coverage`, default 5, no cap; includes the core set | Only once a skill becomes a candidate (see [Verdict Rules](#verdict-rules)) | Ablation |
+| Core | `bench.scenarios.core`, default 3: trigger, variation, near-miss | Every skill, up front | The screen |
+| Coverage | Floor `bench.scenarios.min_coverage`, default 5, no cap; includes the core set | Only once a skill becomes a candidate | Ablation |
 
-The generator builds the coverage set by enumerating the skill's distinct capabilities (modes, major sections, edge cases the body calls out), then drafting one scenario per capability. Near-misses come from neighbouring skills, as below. Below the floor it fills with realistic variations of an existing capability, never a scenario for a capability the skill does not claim. Ablation runs against the full coverage set, since deciding a skill's fate needs evidence against everything it claims to do, not just its headline trigger.
+The generator builds the coverage set by enumerating the skill's distinct capabilities (modes, major sections, called-out edge cases) from the full `SKILL.md`, drafting one scenario per capability. Below the floor it fills with variations of an existing capability, never an invented one. A coverage set over `bench.scenarios.review_flag` (default 15) is flagged in the report as a possible split candidate.
+
+Each scenario records `covers_sections`: the `SKILL.md` headings it exercises. Every name must match a heading at the entry's `skill_hash`, case- and whitespace-insensitive. `konductor bench scenarios review` lists any mismatch next to pending drafts, and `konductor bench run` re-checks every approved entry before dispatch, exiting `64` if one fails.
+
+A generator model drafts, a person reviews once, and approved scenarios move to `benchmarking/scenarios/bank/<skill>/`, checked in and keyed by `skill_hash`. A changed hash marks the entry stale: excluded from runs and re-drafted for review. The generator is never the only author, since a scenario written purely from a skill's own text mostly tests the generator, not the skill.
 
 #### Near-miss scenarios
 
-A near-miss sounds related to skill X but belongs to another skill, so X should not change the output. For example, "design a DynamoDB table" is a near-miss for `dynamodb-validation` because it belongs to `dynamodb-design`.
+A near-miss sounds related to skill X but belongs to another skill, so X should not change the output. "Design a DynamoDB table" is a near-miss for `dynamodb-validation` because it belongs to `dynamodb-design`.
 
-- **Source.** A skill's near-misses are the approved core trigger scenarios of the skills in its overlap cluster. `dynamodb-design`'s trigger scenario serves as a near-miss for `dynamodb-validation`, and the reverse. The generator drafts a near-miss only for a skill with no neighbour, and a reviewer approves it like any other scenario. Borrowed near-misses are already reviewed and are the confusions most likely to happen in real use.
-- **What they test.** Whether X changes output on requests it should not touch. They are not prune evidence on their own: Prune and Trim rest on X's own scenarios (see [Verdict rules](#verdict-rules)).
-- **Load rate.** The report shows how often X loaded on its near-misses. A high rate means X's description triggers too broadly, a candidate for rewording the description even when the skill is kept.
+Near-misses are borrowed from the approved core trigger scenarios of skills in X's overlap cluster (`near_miss_source: borrowed`, `borrowed_from: <skill>`). Borrowed near-misses are already reviewed and are the confusions most likely in real use. A skill with no neighbour gets no drafted near-miss by default; the report says "near-miss untested," never "well-scoped." A reviewer may instead add a boundary-mutation near-miss: one element of the skill's own approved trigger scenario changed to move it out of scope (`near_miss_source: mutation`), with judge notes stating the changed element and why it is now out of scope.
 
-Build steps: (1) **Draft.** A generator model reads the skill's full `SKILL.md`; core-set drafting uses `benchmarking/prompts/generate-scenario.md`, coverage-set drafting (candidates only) lists capabilities first, then drafts against them. Where two skills cover related ground (`dynamodb-design` and `dynamodb-validation`), the generator also drafts a shared overlap scenario marked `kind: overlap`, feeding candidate rule (c) below. Each scenario records which `SKILL.md` sections it exercises, in `covers_sections`. (2) **Review.** A person approves, edits, or rejects each draft once, including its judge notes: a note that reads as skill-shaped rather than task-shaped is edited or rejected alongside it. Approved scenarios move to `benchmarking/scenarios/bank/<skill>/`, checked in and versioned like any other source. **Section check.** Every name in `covers_sections` must match a Markdown heading in the skill's `SKILL.md` at the entry's `skill_hash`, compared after trimming whitespace and ignoring case. `konductor bench scenarios review` lists any entry with an unmatched name next to the pending drafts, and `konductor bench run` re-checks every approved entry before dispatch and refuses to start (exit `64`) if any fails, naming the entry and the unmatched heading. A renamed heading already changes the skill's hash and marks the entry stale; the section check catches the case the hash cannot, a name misspelled when the entry was written. (3) **Reuse.** Every run uses the approved bank as-is. Each entry records the content hash of the skill version it was written against; when that hash changes, the entry is marked stale, excluded from runs, and re-drafted for review.
-
-Review load is split by schedule: core sets are reviewed once, up front, for every skill (82 skills x 3 core scenarios is 246 scenarios before Phase 6's rollout). Coverage sets are drafted and reviewed only when a skill first becomes a candidate; after that, only a changed skill's coverage set needs re-review. The generator is never the only author, since a scenario written purely from a skill's own text risks testing the skill against itself.
+In the direct arm, a near-miss pair counts only if X loaded in env A, matching the skill-load exclusion's scope (see [Ablation and Verdict Rules](#ablation-and-verdict-rules)). If X loaded on no qualifying near-miss, the near-miss condition is met and X is reported "well-scoped." There is no minimum-pairs floor. In the routed arm, "loaded" has no session-log signal to check against, since that arm skips the skill-load check entirely: a routed-arm near-miss pair counts whenever the orchestrator reached X's owning agent, using the same reached-agent signal the routed arm already records for `own`/`overlap` pairs. On a harness with unreliable load evidence (see [Open Questions](#open-questions)), near-miss pairs from it are reported only. The report shows X's near-miss load rate per arm; a high direct-arm rate suggests an over-broad description even when the skill is kept.
 
 ### Environments
 
-`konductor-bench` runs only inside a git checkout (see [Requirements](#requirements)). At startup it walks up from the working directory, or from `--bench-dir`'s parent, for a directory containing `.git`, `skills/`, `agents/`, and `benchmarking/`. Reaching the filesystem root without finding one exits `64` (`EXIT_USAGE_ERROR`). This check runs before the version check below, since neither means anything outside a checkout.
+`konductor-bench` runs only inside a git checkout. At startup it walks up from the working directory, or from `--bench-dir`'s parent, for a directory containing `.git`, `skills/`, `agents/`, and `benchmarking/`. Reaching the filesystem root without finding one exits `64`. Before any run, it also checks installed `konductor --version` against the checkout's `VERSION` file; a mismatch exits `64` rather than running an install, uninstall, or synth subprocess call whose behavior the harness was not written against.
 
-Before any run, `konductor-bench` checks the installed `konductor --version` against the checkout's `VERSION` file. A mismatch refuses the run and exits `64`, rather than running an `install`/`uninstall`/`synth` subprocess call whose behavior the harness code was not written against.
+Environments are states of one dedicated **benchmark HOME** per harness (mode `0700`, logged in once), toggled with real `konductor install`/`uninstall` subprocess calls, never the developer's own HOME. Each harness needs its own HOME because an install target is locked to one `--harness` value.
 
-Environments are states of one dedicated **benchmark HOME** per harness, toggled with real `konductor install`/`uninstall` commands run as subprocesses. The benchmark HOME is never the developer's own HOME, created once at mode `0700`, with the harness logged in there once. Each harness needs its own HOME because an install target is locked to one `--harness` value.
+- Env B (vanilla): no Konductor install, invoked through the harness's own default agent.
+- Env A (konductor): after `konductor synth --from <repo-root>` and `konductor install --from <repo-root> --harness <h> --target <bench-home> --no-telemetry`, invoked through the `konductor` agent.
+- Ablation variants: the runner copies the source tree to a temp directory and edits it, `A-minus-X` removing skill X and every reference to it, `A-trimmed-X` applying the trim patch to X's `SKILL.md`, then synths and installs the copy the same way. Synth failure sends the candidate to needs human review. The temp copy is deleted once the variant's runs finish.
 
-- **Env B (vanilla).** No Konductor install, invoked through the harness's own default agent.
-- **Env A (konductor).** After `konductor synth --from <repo-root>` and `konductor install --from <repo-root> --harness <kiro-v3|claude> --target <bench-home> --no-telemetry`, invoked through the `konductor` agent. Always the `--from <repo-root>` path against the checkout under test; the no-`--from` GitHub-release path is never used (see [Requirements](#requirements)).
-- **Ablation variants.** The runner copies the source tree to a temp directory and edits it: `A-minus-X` removes skill X and every reference to it in agent specs; `A-trimmed-X` applies the trim patch to X's `SKILL.md`. It then synths and installs that copy into the benchmark HOME the same way as env A. Synth failure sends the candidate to needs human review. The temp copy is deleted after the variant's runs finish.
+Every run record and the report header carry the checkout's commit SHA and dirty-tree flag. A dirty tree is allowed and flagged rather than blocked, but its result does not map to one commit.
 
-Every run record and the report header carry the checkout's commit SHA and whether its tree was dirty at run time. A dirty tree is allowed, so a contributor is not forced to commit first, but the report flags it: a dirty-tree result does not map to one commit and cannot be directly compared to a later clean-tree run.
+**Hygiene checks.** Right after login, the runner snapshots the benchmark HOME (every path, content hash), excluding session-history and cache directories. After every uninstall it diffs against that snapshot; a mismatch stops that HOME's queue and marks the stage partial. Before every env A or variant run it checks installed files against the expected manifest; anything outside agents, skills, steering, and SOPs is a mismatch, which also catches content copied in from a developer's own `~/.kiro` or `~/.claude`. Every run starts a new session in a fresh, empty working directory, so repo files like `AGENTS.md` or `.konductor/memory/` never carry over.
 
-**Hygiene checks and their known gap.** Right after login, the runner snapshots the benchmark HOME (every path, content hash), excluding session-history and cache directories. After every `uninstall`, it diffs the HOME against that snapshot; a mismatch stops further runs on that HOME and marks the stage `partial`. Before every env A or variant run, it checks installed files against the expected manifest; nothing outside agents/skills/steering/SOPs is allowed, which also catches content copied in from a developer's own `~/.kiro` or `~/.claude`.
+**Accepted risk: cache carryover.** Session-history and cache directories are excluded by design, not because they are verified clean. A harness's model-response cache or an MCP server's state directory can persist across a toggle without appearing in either check above. Randomizing which environment runs first within each shard spreads this bias rather than removing it. Exact cache paths per harness are still open; see [Open Questions](#open-questions).
 
-The session-history and cache exclusion is a design choice, not a verified-clean guarantee: a harness's model-response cache or an MCP server's state directory can persist across a toggle without appearing in any manifest mismatch, and neither check above is built to see it. A cache carrying content from one environment into the next on the same HOME biases results toward whichever environment ran first there. This is the design's highest-residual-risk gap: the exact cache paths are still open (see [Open Questions](#open-questions)), so the one check that could rule this out directly does not exist yet.
-
-**Run ordering mitigates, does not close, that gap.** Within one benchmark HOME shard, the runner randomizes whether env B or env A runs first, and randomizes each ablation variant's order the same way, so a cache effect cannot systematically favor one side across every shard. This spreads the bias rather than removing it: a single shard's own pair can still be affected by whichever side ran first there. One HOME runs sequentially; the runner shards cells across several HOMEs per harness for parallelism, each with its own login and snapshot.
-
-**Per-run hygiene.** Every run starts a new session (no resume flags) in a fresh, empty working directory, so repo-level files like `AGENTS.md` or `.konductor/memory/` stay out of the comparison and one run's memory writes never reach the next.
-
-**Telemetry.** Benchmark installs pass `--no-telemetry`, and the runner sets `KONDUCTOR_TELEMETRY=off` (see [Open Questions](#open-questions) on whether `uninstall` itself also needs this, or the env var alone covers it).
-
-Credentials follow [Model Access and Credentials](#model-access-and-credentials). An LLM drafts each trim variant's patch to the candidate's `SKILL.md`, removing only sections a coverage-set scenario's `covers_sections` named and the direct arm showed were not needed. A person approves the patch before the trim variant runs; the approved patch is stored alongside the ablation run. The council judges the outputs the patch produces, never the patch text.
-
-One screen cell (one scenario, harness, and model) on one benchmark HOME, with env B first. On other shards the randomized order runs env A first, with the same steps in between.
+`KONDUCTOR_TELEMETRY=off` is set for every subprocess, alongside `--no-telemetry` on install. One screen cell (one scenario, harness, model) on one benchmark HOME runs env B first; other shards run env A first, same steps in between: snapshot check, run, install (env A only), manifest check, run, uninstall, record.
 
 ```mermaid
 sequenceDiagram
@@ -185,26 +169,16 @@ sequenceDiagram
 
 ### Model access and credentials
 
-| Caller | Provider | Credential | How supplied |
+| Caller | Provider | Credential | Supplied as |
 |---|---|---|---|
-| Claude Code, env A/B | `bench.providers.claude: bedrock` (default) | Short-lived AWS credentials, dedicated subject role | Subprocess env vars: `CLAUDE_CODE_USE_BEDROCK=1`, `AWS_REGION`, temporary AWS keys, model ID from `bench.models.claude` |
-| Claude Code, env A/B | `bench.providers.claude: anthropic` | Anthropic API key | `ANTHROPIC_API_KEY` on the subprocess, model from `bench.models.claude` |
-| Kiro CLI, env A/B | Kiro's own backend | The Kiro CLI login | Assumed done once per benchmark HOME, persisting across toggles; not verified (see [Open Questions](#open-questions)) |
-| Council judges | `bench.council.judges[]` and `bench.council.escalation_judges[]`, model IDs (as Bedrock inference profile IDs where applicable) only, no provider field | Short-lived AWS credentials, separate least-privilege Bedrock judge role, scoped to `us-west-2` by default (`bench.council.region`) | Held by the runner process only, never a subprocess |
+| Claude Code, env A/B | `bench.providers.claude: bedrock` (default) | Short-lived AWS credentials, dedicated subject role | Subprocess env vars: `CLAUDE_CODE_USE_BEDROCK=1`, `AWS_REGION`, temporary keys, model ID |
+| Claude Code, env A/B | `bench.providers.claude: anthropic` | Anthropic API key | `ANTHROPIC_API_KEY` on the subprocess |
+| Kiro CLI, env A/B | Kiro's own backend | The Kiro CLI login | Done once per benchmark HOME, assumed to persist across toggles; not verified. If a Kiro CLI session on that HOME returns an auth-required response mid-run, the runner treats it as `run_failed` for that cell (one retry, per [Failure Handling](#failure-handling)) rather than re-logging in automatically, since an unattended re-login is out of scope for this design |
+| Council judges | `bench.council.judges[]` / `escalation_judges[]` | Short-lived AWS credentials, separate least-privilege Bedrock judge role | Held by the runner process only, never a subprocess |
 
-Rules:
+Subject and judge roles allow only `bedrock:InvokeModel`/`InvokeModelWithResponseStream` on listed ARNs, including both the judges' inference profile ARNs and the underlying foundation-model ARNs a profile resolves to at call time. `~/.aws` is never copied into a benchmark HOME. Judge credentials never reach a subject: a subject model can run tools and read its own environment, so judge credentials stay off every harness subprocess. Judges run on Amazon Bedrock only regardless of `bench.providers.claude`, so benchmarking needs Bedrock access even when Claude Code itself uses the Anthropic API.
 
-- **Least privilege on Bedrock.** Subject and judge roles allow only `bedrock:InvokeModel`/`InvokeModelWithResponseStream` on listed ARNs. The judge role must allow invoking both the judges' inference profile ARNs and the underlying foundation-model ARNs in the profiles' destination regions, since an inference profile resolves to a model ARN at call time. The runner never copies `~/.aws` into a benchmark HOME.
-- **Environment variables, not files.** Subject credentials reach the harness as subprocess env vars, so nothing lands in a HOME a transcript could capture. The Kiro CLI login is the exception, which is why the HOME is mode `0700` and excluded from every artifact.
-- **Judge credentials never reach a subject.** A subject model can run tools and read its own environment; judge credentials are never set on a harness subprocess. Judges run on Amazon Bedrock only, so this holds regardless of `bench.providers.claude`.
-- **Same harness, model, and run on both sides.** Every run record carries harness, subject provider, and resolved model ID. A pair is valid if both sides come from the same run, harness, and configured model. Subject provider is recorded for traceability, shown in the report header, and is not a pairing condition: pairs from runs with different `bench.providers.claude` values can be pooled into one verdict.
-- **Judges run on Amazon Bedrock only.** Running a benchmark needs Amazon Bedrock access for the judges even when Claude Code itself uses the Anthropic API. All default judges (see [Council Judging](#council-judging)) are available from `bench.council.region`'s default, `us-west-2`; `us-east-1` and `us-east-2` also work.
-
-### Run matrix
-
-The screen runs the core set: `bench.scenarios.core x harnesses x models_per_harness x 2 environments`, per skill. The direct arm runs the full coverage set per candidate: `coverage scenarios x harnesses x models x bench.repeats.ablation x {A, variant}`. `bench.repeats.screen` (default 1) and `bench.repeats.ablation` (default 2) exist because model output is nondeterministic and a single sample should not decide a prune; the repeat count is kept low relative to scenario count since more distinct coverage scenarios catch more of a skill's behavior than more repeats of one.
-
-The routed arm runs only for a candidate whose direct arm already resolved to prune or trim (see [Verdict Rules](#verdict-rules)), in the identical shape (scenarios, variants, cells, repeats) but through `konductor` instead of the named agent. Its run count is bounded by how many candidates clear the direct arm, not the full candidate count (see [Run Cost](#run-cost)).
+A pair is valid if both sides come from the same run, harness, and configured model. `bench.providers.claude` is recorded for traceability and shown in the report header, but pairs from different provider values pool into one verdict. Transcripts are scanned for credential patterns before writing to `results/`; a match is redacted and flagged.
 
 ### Council judging
 
@@ -231,20 +205,41 @@ flowchart TD
     style O fill:#50b464,color:#fff
 ```
 
-Both outputs in a pair are relabeled X/Y in randomized order, with no indication of which side produced which. Each judge returns a preference (X, Y, or no meaningful difference), a strength (slight, clear, strong), and rubric scores for correctness, completeness, adherence, and actionable detail, against the same instructions in `benchmarking/prompts/judge-pair.md` plus the scenario's prompt, fixtures, and notes.
+Both outputs in a pair are relabeled X/Y in randomized order. Each judge returns a preference (X, Y, or no meaningful difference), a strength, and rubric scores for correctness, completeness, adherence, and actionable detail, against `benchmarking/prompts/judge-pair.md` plus the scenario's prompt, fixtures, and notes.
 
-All judges run on Amazon Bedrock, on the `bedrock-runtime` endpoint, and support the Converse API. The base council (`bench.council.judges[]`, default size `bench.council.size` = 3) defaults to three Bedrock models from three different model families: Claude Opus 5.5 (inference profile `us.anthropic.claude-opus-5-5`), GPT-6 Astra (`us.openai.gpt-6-astra`), and DeepSeek V3.2 (`deepseek.v3.2`, in-Region only). Escalation judges 4 and 5 (`bench.council.escalation_judges[]`, sized by `bench.council.escalate_to`, default 5) default to Kimi K3 (`us.moonshotai.kimi-k3`) and Mistral Large 3 (`mistral.mistral-large-3-675b-instruct`, in-Region only), giving five different model families across the full panel. All five defaults are swappable in config. Verified against Amazon Bedrock model cards on 2026-09-29: all five are available from `us-west-2` (default `bench.council.region`; `us-east-1` and `us-east-2` also work). `bench.council.judges[]` and `bench.council.escalation_judges[]` hold model IDs only; there is no provider field, since a judge provider other than Bedrock is not supported.
+All judges run on Amazon Bedrock via Converse on `bedrock-runtime`, region `bench.council.region` (default `us-west-2`). The base council, `bench.council.judges[]`, is Claude Opus 5.5 (`us.anthropic.claude-opus-5-5`), GPT-6 Astra (`us.openai.gpt-6-astra`), and DeepSeek V3.2 (`deepseek.v3.2`). Escalation judges, `bench.council.escalation_judges[]`, are Kimi K3 (`us.moonshotai.kimi-k3`) and Mistral Large 3 (`mistral.mistral-large-3-675b-instruct`), five model families across the full panel. Verified against Bedrock model cards on 2026-09-29. Two caveats: Mistral Large 3's lifecycle states end-of-life no sooner than December 2, 2026, and the judge IAM role must allow both the inference profile ARNs and the underlying foundation-model ARNs.
 
-Two caveats on the defaults. Mistral Large 3's lifecycle states end-of-life no sooner than December 2, 2026, so it may need replacing before then. The judge IAM role must allow invoking both the judges' inference profile ARNs and the underlying foundation-model ARNs in the profiles' destination regions (see [Model Access and Credentials](#model-access-and-credentials)).
-
-| Stage | Base panel | Resolves at 3 when | Escalates when | Resolves at 5 when |
+| Stage | Panel | Resolves at 3 when | Escalates when | Resolves at 5 when |
 |---|---|---|---|---|
-| **Screen** | 3, no escalation | At least 2 of 3 live votes agree | Never | n/a |
-| **Ablation** | 3, escalates to `bench.council.escalate_to` (default 5) | All 3 live votes agree | Any disagreement or abstention among the 3 | At least 3 of 5 live votes agree; otherwise unresolved |
+| Screen | 3, no escalation | At least 2 of 3 live votes agree | Never | n/a |
+| Ablation | 3, escalates to `bench.council.escalate_to` (default 5) | All 3 live votes agree | Any disagreement or abstention | At least 3 of 5 live votes agree; otherwise unresolved |
 
-The screen only narrows the candidate list, so it does not pay for escalation. Ablation is the deciding stage, so a close 2-1 split there buys two more judges rather than being averaged away; escalation judges see the same relabeled pair, prompt, fixtures, and notes as the base three. The routed arm's pairs go through this identical process, judged within their own arm, never mixed with a direct-arm pair. Setting `bench.council.size` and `bench.council.escalate_to` equal gives a fixed-size council with no escalation.
+A judge timeout or unparseable reply is an abstention. The screen only narrows the candidate list, so it does not pay for escalation; ablation decides a skill's fate, so a close 2-1 split there buys two more judges. Same-family judging is allowed: both sides of a pair always come from the same subject model, so any self-preference bias applies equally to both sides, and blind relabeling removes the identity cues a biased judge would use. The report tracks same-family versus cross-family agreement and flags any skill where they disagree.
 
-One direct-arm ablation pair for candidate skill X. The routed arm runs the same sequence with `Sub` running the `konductor` agent on both sides, skips the skill-load check, and records which agents and skills each run reached.
+One direct-arm ablation pair for candidate X: run unmodified A on the owning specialist agent, skill-load check, uninstall and diff against the vanilla snapshot, synth and install the edited copy (`A-minus-X` or `A-trimmed-X`), run the variant on the same agent in a fresh working directory, then dispatch the relabeled pair to the base three judges, escalating to the two escalation judges on disagreement or abstention per the panel table above. The routed arm runs the same sequence with `konductor` on both sides, skips the skill-load check, and records reached agents and skills.
+
+### Ablation and verdict rules
+
+Pairs split by `kind`: `own` and `overlap` pairs measure whether removing X hurts where it should help and carry the prune evidence; `near_miss` pairs measure whether X changed output where it should not, and never pool into the `own`/`overlap` ratio.
+
+| Verdict | Rule | Runs |
+|---|---|---|
+| Prune | Ablated variant not worse in at least `bench.thresholds.no_regression` (0.9) of resolved `own`/`overlap` pairs, no pair strongly favors A, and the near-miss condition holds | Against `A-minus-X` |
+| Trim | Same rule, and valid only for sections a coverage scenario's `covers_sections` named and the direct arm showed unneeded; untested sections are reported untested, not trimmed | Against `A-trimmed-X` |
+| Keep | Neither rule met | n/a |
+| Needs human review | More than `bench.thresholds.max_unresolved` (0.2) of pairs unresolved or `run_failed`; coverage incomplete; synth failed; or routing regression | n/a |
+
+**Candidate selection (screen only, not ablation).** A skill becomes a candidate if any rule fires: (a) it did not activate in env A on its own scenarios; (b) env A is not better than env B on the skill's scenarios, whole-stack, not skill-scoped; (c) another skill activated on its scenarios (overlap); (d) its rendered `SKILL.md` exceeds `bench.thresholds.skill_tokens` (default 4,000 tokens). The "median skill is about 2,100 tokens, so 4,000 flags around 17 of 82" framing used to justify that default is a rough character-count estimate, not a token count run through the actual model tokenizer; see [Open Questions](#open-questions). Any single rule firing is enough. Only ablation results feed plan actions.
+
+**Skill-load exclusion (direct arm only).** A direct-arm pair counts only if the env A session log shows a load event for X; an unloaded run is excluded, since an unloaded skill was never isolated. The routed arm has no such exclusion for `own`/`overlap` pairs, since a run where the orchestrator never reaches X's agent is itself the effect this arm measures. If every direct-arm pair for a candidate is excluded this way, none of its coverage scenarios produced a usable pair; that candidate goes to needs human review, reason `coverage incomplete`, the same reason used when a coverage set does not fully run. It is not reported as keep, since keep requires the direct arm to have actually resolved the candidate, and it is not reported as trim for any section, since trim requires the direct arm to have shown that section unneeded.
+
+**Repeat instability.** `bench.repeats.ablation` (default 2; `bench.repeats.screen` default 1) samples the same cell more than once. If a scenario's repeats disagree, the runner flags it repeat-unstable in the report alongside its resolved outcomes; both repeats still count toward the ratios.
+
+**Trim patches.** An LLM drafts the trimmed `SKILL.md`, limited to sections a coverage scenario covered and the direct arm showed unneeded. A person approves the patch before the variant runs; the patch is stored with the run. After drafting, the runner scans the remaining text for a reference to a removed heading and flags a hit next to the trim recommendation, non-blocking, since a reference may be stale prose rather than a real dependency.
+
+**Combining the two arms.** The direct arm runs first. Direct-arm keep or needs human review ends the candidate there; the routed arm never runs. Only prune or trim triggers it (`bench.ablation.routed_arm`, default true; false skips it and the report states routed effects were not checked). A candidate reaches the plan only if both arms independently resolve to the same action. Direct pass plus routed regression (routed resolves to keep, or unresolved above `max_unresolved`) goes to needs human review, reason `routing regression`, both arms' evidence shown side by side. A direct/routed mismatch between prune and trim (either arm recommends the stronger action while the other recommends the weaker one) is not a routing regression, since both arms still agree the skill should not stay as-is; it goes to needs human review, reason `arm mismatch`, with both arms' evidence shown side by side, since which action is correct depends on the two arms' own trim-versus-prune reasoning, not something this rule set can arbitrate. Pairs never cross arms.
+
+One direct-arm ablation pair for candidate X is below. The routed arm runs the same sequence with `Sub` running the `konductor` agent on both sides, skips the skill-load exclusion for `own`/`overlap` pairs, and records which agents and skills each run reached.
 
 ```mermaid
 sequenceDiagram
@@ -253,7 +248,7 @@ sequenceDiagram
     participant Home as benchmark HOME
     participant Sub as harness subprocess
     participant J3 as base 3 judges
-    participant J5 as judges 4 and 5
+    participant J5 as escalation judges 4 and 5
 
     Bench->>Sub: run unmodified A, owning specialist agent
     Sub-->>Bench: A output and session log
@@ -274,104 +269,65 @@ sequenceDiagram
     end
 ```
 
-The base three judges are mixed-family and must include Opus. No rule bars a judge from grading a model in its own family: both sides of every pair come from the same subject model, so any self-preference bias applies equally to both sides, and blind relabeling removes the identity cues a biased judge would use. The report calls out judge-versus-subject family in its metrics appendix and flags any skill where same-family and cross-family judges disagree.
-
-### Verdict rules
-
-A skill's ablation verdict is a deterministic rule over its resolved pair outcomes, aggregated separately per arm; when the routed arm runs, it aggregates its own pairs into its own verdict using the identical logic below, independent of the direct arm's, then the two are combined (see **Combining the two arms**).
-
-Aggregation splits pairs by `kind` (see [Scenario Record](#scenario-record)). `own` and `overlap` pairs measure whether removing X hurts where X should help; they carry the prune evidence. `near_miss` pairs measure whether X changes output where it should not, and are never pooled into the `own`/`overlap` ratio.
-
-**Near-miss qualification (both arms).** A near-miss pair counts only if X actually loaded in the env A run, using the same load evidence as the direct arm's skill-load exclusion. If X never loaded, "no difference" was guaranteed, so the pair is excluded and reported as "did not load." If X loaded on no near-miss at all, the near-miss condition is met: removing a skill that never loads on neighbouring requests cannot change their output, and the report marks X "well-scoped." On a harness where load evidence is not reliable (see [Open Questions](#open-questions)), near-miss pairs from that harness are reported only and do not count.
-
-- **Prune.** Both hold: the ablated variant is not worse in at least `bench.thresholds.no_regression` (default 0.9) of resolved `own`/`overlap` pairs, with no pair showing env A strongly better; and at least that fraction of qualifying `near_miss` pairs show no difference (met automatically when none qualify).
-- **Trim.** The same rule, against `A-trimmed-X`. Valid only for `SKILL.md` sections some coverage-set scenario's `covers_sections` named and ablation showed were not needed. An untested section is reported untested, not trimmed: absence of evidence a section helps is not evidence it does not.
-- **Keep.** Neither rule is met.
-- **Needs human review.** More than `bench.thresholds.max_unresolved` (default 0.2) of pairs are unresolved or `run_failed`; or the coverage set did not finish running (see [Run Cost](#run-cost)). Coverage always outranks cost: a skill here is never decided on partial evidence.
-
-**Section dependency check.** After a trim variant is drafted, `konductor-bench` scans the remaining `SKILL.md` text for any reference to a removed heading, matching case-insensitively on the heading text. A hit is flagged in the report next to that trim recommendation; the flag does not block the trim on its own, since a reference may be stale prose rather than a real dependency, and the reviewer decides whether to fix it, drop the trim, or accept it as-is.
-
-The three threshold defaults above, plus `bench.thresholds.skill_tokens` at 4,000 (candidate rule (d) below; measured against the current 82 skills, whose median is about 2,100 tokens, 4,000 flags the 17 largest rather than half the corpus), are rationale-backed starting points, not measured values, expected to be revised once the Phase 1 pilot's real pair outcomes exist to check them against.
-
-**Skill-load exclusion (direct arm only).** A direct-arm pair counts toward any ratio above only if the env A side's session log shows a skill-load event for skill X; a run with no logged load is excluded rather than counted "not worse," since an unloaded skill was never isolated (see [Open Questions](#open-questions) on log reliability). The routed arm has no equivalent exclusion for `own` and `overlap` pairs: a run where the orchestrator never reaches X's owning agent still counts, since that non-routing is itself the effect this arm measures. Near-miss pairs in both arms follow the near-miss qualification above.
-
-**Repeat instability.** `bench.repeats.ablation` (default 2) samples the same `(scenario, harness, model)` cell more than once, in both arms. If a scenario's repeats disagree, the runner does not fold both into the ratio as ordinary votes without comment: it flags the scenario repeat-unstable in the report alongside its resolved outcomes, so a person can distinguish a genuinely borderline scenario from two judged repeats that simply landed differently. Both repeats still count toward the ratios; the flag is additional, not a substitute. A repeat count of 2 is the minimum that can detect this instability at all and the weakest sample for resolving it: a 2-of-2 disagreement is one flagged data point, not a majority vote, which is why the flag exists as a distinct signal rather than being silently smoothed into the ratio.
-
-**Combining the two arms.** The direct arm runs first. Direct-arm Keep or needs human review ends the candidate there; the routed arm never runs, since there is nothing left for a routing check to gate. Only Prune or Trim triggers the routed arm (`bench.ablation.routed_arm`, default `true`; `false` skips it and the report states routed effects were not checked). A candidate reaches the plan only if both arms independently resolve to the same action. If the direct arm resolves to Prune or Trim but the routed arm resolves to Keep or a regression, the candidate goes to needs human review with reason `routing regression`, both arms' verdicts and evidence shown side by side. A routed-arm needs-human-review outcome also holds the candidate there, with the direct arm's result shown alongside.
-
-**Candidate selection (screen, not ablation).** Evaluated against the core set only, separate from the verdict rule above. A skill becomes an ablation candidate if any rule fires:
-
-- (a) The skill did not activate in env A on its own scenarios.
-- (b) Env A is not better than env B on the skill's scenarios. This comparison is whole-stack, not skill-scoped: the screen's env A includes every skill and the orchestrator at once (see [Solution Overview](#solution-overview)), so a hit is evidence the stack did not help, not evidence this specific skill failed; ablation is what isolates the skill's own effect.
-- (c) A different skill activated on the skill's scenarios (an overlap prompt fired the wrong skill, or two fired).
-- (d) The skill's rendered `SKILL.md` body exceeds `bench.thresholds.skill_tokens` (default 4,000 tokens), a trim candidate specifically.
-
-Any single rule firing makes a skill a candidate. Only ablation results, never screen results, feed plan actions. Rules (a) and (c) read env A's session log for skill-load and attribution events; that log evidence's reliability per harness and model is not yet verified (see [Open Questions](#open-questions)).
+The threshold defaults above are rationale-backed starting points, not measured values, expected to be revised once the Phase 1 pilot's real pair outcomes exist to check them against.
 
 ## CLI Surface
 
-`konductor bench` is a subcommand of the existing `konductor` CLI (see [Module Layout](#module-layout)). Four subcommands, each mapping to a step already in this design:
-
 | Command | Does |
 |---|---|
-| `konductor bench scenarios draft [--skill <name>] [--set core\|coverage]` | Runs the [scenario generation](#scenario-generation) draft step. `--set coverage` requires the skill to already be a candidate. Drafts land in the bank with `status: draft`. |
-| `konductor bench scenarios review` | Lists pending drafts. There is no separate approve/reject flag: a scenario's `status` field in its bank YAML is what review edits, so review works in any text editor or as a PR diff against `benchmarking/scenarios/bank/`. |
-| `konductor bench run [--stage screen\|ablation\|all] [--frequency <cron-or-interval>] [--resume <YYYY-MM>] [--bench-dir <path>] [--estimate] [--yes]` | Executes a run, after printing the [pre-run estimate](#run-cost) (`--estimate` prints it and exits; `--yes` confirms a plan over the cap without prompting). `--stage` selects screen, ablation, or both; `--frequency` is the cadence flag from [Requirements](#requirements); `--resume` continues a `partial` run from its last completed stage (see [Failure Handling](#failure-handling)); `--bench-dir` overrides the default `<repo-root>/benchmarking` location. |
-| `konductor bench report [<YYYY-MM>]` | Renders the report and plan for a completed run, defaulting to the most recent month. Reads `results/<YYYY-MM>/`, `reports/`, and `plans/` from [Artifacts](#artifacts). |
+| `konductor bench scenarios draft [--skill <name>] [--set core\|coverage]` | Drafts scenarios. `--set coverage` requires the skill to already be a candidate. Drafts land in the bank with `status: draft`. |
+| `konductor bench scenarios review` | Lists pending drafts. A scenario's `status` field in its bank YAML is what review edits; works in any text editor or as a PR diff. |
+| `konductor bench run [--stage screen\|ablation\|all] [--frequency <cron-or-interval>] [--resume <YYYY-MM>] [--bench-dir <path>] [--estimate] [--yes]` | Executes a run after printing the pre-run estimate (see [Run Cost](#run-cost)). `--stage ablation` runs both ablation arms per the combining rule in [Ablation and Verdict Rules](#ablation-and-verdict-rules), not the direct arm alone. `--estimate` prints and exits; `--yes` confirms a plan over the cap non-interactively; `--resume` continues a `partial` run from its last completed stage. |
+| `konductor bench report [<YYYY-MM>]` | Renders the report and plan for a completed run, default most recent month. |
 
-Config for all four lives under `bench:` in `.konductor/config.yml`. Every config key referenced elsewhere in this design (`bench.harnesses`, `bench.models.*`, `bench.council.*`, `bench.scenarios.*`, `bench.budget.max_runs`, `bench.providers.claude`, `bench.thresholds.*`, `bench.repeats.*`, `bench.corpus_path`, `bench.ablation.routed_arm`) resolves under that key, including `bench.council.judges[]`, `bench.council.escalation_judges[]`, and `bench.council.region` under `bench.council.*`.
+Config lives under `bench:` in `.konductor/config.yml`: `bench.harnesses`, `bench.models.*`, `bench.providers.claude`, `bench.corpus_path`, `bench.scenarios.*`, `bench.council.*` (`judges[]`, `escalation_judges[]`, `escalate_to`, `region`), `bench.ablation.routed_arm`, `bench.thresholds.*`, `bench.repeats.*`, `bench.budget.max_runs`. Council size is not its own key; it is `len(bench.council.judges[])` for the base panel and `len(bench.council.judges[]) + len(bench.council.escalation_judges[])` after escalation.
 
 ## Run Cost
 
-| Stage | Runs formula | Judge calls formula |
+| Stage | Runs | Judge calls |
 |---|---|---|
-| Screen | `skills x bench.scenarios.core x harnesses x models_per_harness x 2` | `pairs x bench.council.size` (never escalates) |
-| Ablation, direct arm | `candidates x coverage scenarios x harness-model cells x bench.repeats.ablation x 2` | `pairs x bench.council.size`, plus 2 per escalating pair |
-| Ablation, routed arm | Same shape, over only the candidates the direct arm resolved to prune or trim | Same formula, over that narrower pair count |
+| Screen | `skills x core scenarios x harnesses x models_per_harness x 2` | `pairs x council size` (never escalates) |
+| Ablation, direct arm | `candidates x coverage scenarios x harness-model cells x repeats x 2` | `pairs x council size`, plus 2 per escalating pair |
+| Ablation, routed arm | Same shape, only over candidates the direct arm resolved to prune or trim | Same formula, over that narrower pair count |
 
-Illustrative example, not a target, at an illustrative 20 percent ablation-pair escalation rate (must be measured on the Phase 1 pilot before it sizes anything real; see [Open Questions](#open-questions)):
+Illustrative example, not a target, at an illustrative 20 percent ablation escalation rate (must be measured on the Phase 1 pilot; see [Open Questions](#open-questions)):
 
 | | Cells/pairs | Runs | Base judge calls | Escalation calls | Judge calls |
 |---|---|---|---|---|---|
-| Screen: 82 skills x 3 core scenarios, 2 harnesses x 2 models | 984 pairs | 984 x 2 = 1,968 | 984 x 3 = 2,952 | 0 | 2,952 |
-| Ablation direct: 20 candidates x 8 avg. coverage scenarios, 4 harness-model cells, repeats 2 | 160 x 4 x 2 = 1,280 pairs | 1,280 x 2 = 2,560 | 1,280 x 3 = 3,840 | 256 x 2 = 512 | 4,352 |
-| Ablation routed: 10 of 20 candidates pass direct arm, same shape | 10 x 8 x 4 x 2 = 640 pairs | 640 x 2 = 1,280 | 640 x 3 = 1,920 | 128 x 2 = 256 | 2,176 |
-| **Total** | | **5,808** | | | **9,480** |
+| Screen: 82 skills x 3 core, 2 harnesses x 2 models | 984 pairs | 1,968 | 2,952 | 0 | 2,952 |
+| Ablation direct: 20 candidates x 8 coverage x 4 cells x 2 repeats | 1,280 pairs | 2,560 | 3,840 | 512 | 4,352 |
+| Ablation routed: 10 of 20 candidates, same shape | 640 pairs | 1,280 | 1,920 | 256 | 2,176 |
+| Total | | 5,808 | | | 9,480 |
 
-For comparison, a fixed five-judge council with no screen-stage saving costs `984 x 5 + 1,280 x 5 + 640 x 5 = 14,520` judge calls on the same example, against this design's 9,480.
+For comparison, a fixed five-judge council with no screen-stage saving costs 984x5 + 1,280x5 + 640x5 = 14,520 judge calls on the same example, against 9,480 here.
 
-`bench.budget.max_runs` caps total runs per invocation, defaulting to 15,000: about 2.5 times the 5,808-run example, leaving room for larger coverage sets (there is no cap on coverage), retries, and the per-variant install and uninstall cycles. The pilot's measured run counts replace this guess.
-
-**Pre-run estimate.** Before dispatching anything, `konductor bench run` computes the planned run count and judge-call count from the current bank, candidate list, and config, and prints both. If the plan exceeds `bench.budget.max_runs`, it stops and asks for confirmation; `--yes` accepts the plan non-interactively, for scheduled runs. `--estimate` prints the plan and exits without running. On hit, the runner stops dispatching new runs, marks the current stage `partial`, and judges whatever finished; any skill whose ablation is incomplete when the cap hits goes to needs human review rather than being judged on partial evidence.
+`bench.budget.max_runs` defaults to 15,000, about 2.5x the example, leaving room for larger coverage sets, retries, and per-variant install/uninstall cycles. `konductor bench run` prints the planned run and judge-call count before dispatching; it stops and asks for confirmation if the plan exceeds the cap, unless `--yes` is set. `--estimate` prints and exits without running. If the cap is hit mid-run, dispatch stops, the stage marks partial, and any candidate whose coverage set did not finish goes to needs human review.
 
 ## Failure Handling
 
-- A run against any environment gets one retry on timeout or crash; a second failure marks it `run_failed` rather than omitting it.
-- A failed `konductor install`/`uninstall`, or a vanilla-snapshot mismatch after uninstall, stops every remaining run on that benchmark HOME and marks the stage `partial`. The runner does not hand-delete leftover files; a person restores the HOME, since a silent cleanup would hide an uninstall bug.
-- A council member that times out or returns an unparseable response is recorded as an abstention, counted in the pair's denominator. On an ablation pair, an abstention among the base three counts as a disagreement and triggers escalation.
-- A screen pair with fewer than two live votes, or two disagreeing live votes, is unresolved. An ablation pair that fails to resolve at three, then fails to reach three of five after escalation, is unresolved. Both cases are unresolved regardless of cause.
+- A run against any environment gets one retry on timeout or crash; a second failure marks it `run_failed`.
+- A failed install/uninstall, or a vanilla-snapshot mismatch after uninstall, stops every remaining run on that benchmark HOME and marks the stage partial. The runner does not hand-delete leftover files; a person restores the HOME.
+- A council member that times out or returns an unparseable response is an abstention, counted in the pair's denominator. An abstention among the ablation base three counts as a disagreement and escalates. A screen pair with fewer than two live votes, or two disagreeing votes, is unresolved. An ablation pair that fails to resolve at three, then fails to reach three of five, is unresolved.
 - A scenario whose source skill's content hash no longer matches at run time is excluded as `stale_snapshot` and regenerated on the next run.
-- Each stage writes its own `status` (`ok`, `partial`, `failed`) and `duration_seconds` on completion, and writes its output before the next stage starts, so a run resumes from the last completed stage rather than restarting.
-- Exit codes follow the CLI's own table: `0` for `ok`, `EXIT_SUCCESS_WITH_WARNINGS` (`6`) for `partial`, `EXIT_HALTED` (`1`) when a stage fails, `EXIT_USAGE_ERROR` (`64`) for a bad invocation before any run starts. `EXIT_CRITICAL_GATE` (`2`) is reserved elsewhere in the CLI for its unresolved-CRITICAL-gate signal; `bench` has no equivalent gate concept, and this design does not define any path that emits it.
-- `bench.budget.max_runs` bounds cost, never coverage. A candidate cut off before its coverage set finishes goes to needs human review, the same as an unresolved-pair ratio breach (see [Verdict Rules](#verdict-rules)), never decided on partial evidence.
+- Each stage writes its own `status` (`ok`, `partial`, `failed`) and `duration_seconds` on completion, and writes output before the next stage starts, so a run resumes from the last completed stage.
+- Exit codes: `0` ok, `6` (`EXIT_SUCCESS_WITH_WARNINGS`) partial, `1` (`EXIT_HALTED`) stage failed, `64` (`EXIT_USAGE_ERROR`) usage error, including no checkout, version mismatch, missing binary, or a section-check failure. `2` (`EXIT_CRITICAL_GATE`) is reserved elsewhere in the CLI and `bench` never emits it. `65` is unused.
+- `bench.budget.max_runs` bounds cost, never coverage. A candidate cut off before its coverage set finishes goes to needs human review, never decided on partial evidence.
 
 ## Artifacts
 
 ### Directory layout
 
-All benchmark data and output live under `<repo-root>/benchmarking` (overridable with `--bench-dir`; see [CLI Surface](#cli-surface)):
-
 ```
 benchmarking/
 ├── prompts/
-│   ├── generate-scenario.md         # generator templates
-│   └── judge-pair.md                # judge rubric and instructions
-├── fixtures/                        # shared input projects, diffs, docs
+│   ├── generate-scenario.md
+│   └── judge-pair.md
+├── fixtures/
 ├── scenarios/
 │   ├── bank/
-│   │   └── <skill>/*.yaml           # reviewed, versioned scenarios
+│   │   └── <skill>/*.yaml
 │   └── YYYY-MM/
-│       ├── scenarios.json           # the bank entries used by this run
+│       ├── scenarios.json
 │       └── corpus-snapshot.json
 ├── results/
 │   └── YYYY-MM/
@@ -385,233 +341,199 @@ benchmarking/
     └── YYYY-MM-implementation.json
 ```
 
-`prompts/`, `fixtures/`, and `scenarios/bank/` are checked in, as are `reports/` and `plans/` once a person commits a run's output through a pull request (see [Build and Invocation](#build-and-invocation)). `results/` is gitignored: large, fully regenerable raw run data, not something meant to sit in version control. The framework's own code lives in its own crate, not under `benchmarking/` (see [Module Layout](#module-layout)).
+`prompts/`, `fixtures/`, and `scenarios/bank/` are checked in, as are `reports/` and `plans/` once a person commits a run's output through a pull request. `results/` is gitignored: large, regenerable raw run data.
 
 ### Module layout
 
-`konductor-bench` is its own crate, `cli/konductor-bench/`, a sibling of `cli/konductor-rs/`. Proposed for Phase 2, following the `shared/konductor-telemetry` precedent: a small `shared/konductor-bench-config` crate holding the `bench:` config types and exit-code constants both binaries need, so neither duplicates them. Neither this crate nor its `Cargo.toml` entry exists yet (see [ADR-4](#adr-4-separate-konductor-bench-binary-invoked-by-konductor-bench)). Model-client and harness code stay in `konductor-bench` only, since `konductor-rs` never needs them:
+`konductor-bench` is its own crate, `cli/konductor-bench/`, sibling of `cli/konductor-rs/`. Proposed: a small `shared/konductor-bench-config` crate holding `bench:` config types and exit-code constants, following the `shared/konductor-telemetry` precedent, so neither binary duplicates them. Neither the crate nor its `Cargo.toml` entry exists yet.
 
 ```
-cli/konductor-bench/
-└── src/
-    ├── main.rs          # subcommand dispatch: scenarios draft/review, run, report
-    ├── scenarios.rs      # draft generation, the review workflow, bank read/write
-    ├── home.rs           # benchmark HOME lifecycle: one-time login, vanilla snapshot, manifest checks
-    ├── runner.rs         # run matrix dispatch, harness subprocess invocation
-    ├── council.rs        # judge dispatch, relabeling, escalation
-    ├── verdict.rs         # per-skill aggregation against the Prune/Trim/Keep/needs-human-review rules
-    ├── report.rs          # report and plan rendering
-    └── providers/
-        ├── bedrock.rs     # Bedrock model client (subject and judge roles)
-        └── anthropic.rs   # Anthropic API client
-
-shared/konductor-bench-config/  # proposed, not yet created
-└── src/
-    └── lib.rs           # bench: config types, exit-code constants shared with konductor-rs
+cli/konductor-bench/src/
+├── main.rs           # subcommand dispatch
+├── scenarios.rs       # draft generation, review workflow, bank read/write
+├── home.rs            # benchmark HOME lifecycle: login, vanilla snapshot, manifest checks
+├── runner.rs          # run matrix dispatch, harness subprocess invocation
+├── council.rs         # judge dispatch, relabeling, escalation
+├── verdict.rs         # per-skill aggregation against the verdict rules
+├── report.rs          # report and plan rendering
+└── providers/
+    ├── bedrock.rs     # Bedrock model client (subject and judge roles)
+    └── anthropic.rs   # Anthropic API client, subject setup only
 ```
 
-`konductor-bench` calls the installed `konductor` binary's `install`, `uninstall`, and `synth` as subprocesses, telemetry disabled, the same commands a user runs directly, so every benchmark cycle exercises the real install code path. The harness subprocesses under test (`kiro-cli`, `claude`) are genuine subprocesses too, since they are the subject being measured. Harness, model-provider, and `konductor` subprocess calls all sit behind traits with fakes for hermetic tests (see [Implementation Plan](#implementation-plan) Phase 2).
+`shared/konductor-bench-config/` (proposed, not yet created) holds `bench:` config types and exit-code constants shared with `konductor-rs`.
+
+Model-provider and harness code stay in `konductor-bench` only; `konductor-rs` never needs them. Harness, model-provider, and `konductor` subprocess calls all sit behind traits with fakes for hermetic tests.
 
 ### Build and invocation
 
-`konductor` gains only a thin `bench` dispatcher, with no model-client or harness dependencies of its own. `konductor bench <args>` looks for `konductor-bench` next to the running `konductor` binary; then, inside a checkout, at `cli/konductor-bench/target/release/konductor-bench`; then on `PATH`. If found, it execs it and passes its exit code through unchanged; otherwise it prints the command to build it (`make bench`) and exits `64`.
+`konductor` gains only a thin `bench` dispatcher, with no model or harness dependencies of its own. `konductor bench <args>` looks next to the running `konductor` binary, then at `cli/konductor-bench/target/release/konductor-bench` inside a checkout, then on `PATH`. If found, it execs it and passes the exit code through; otherwise it prints `make bench` and exits `64`.
 
-`konductor-bench` is built from source inside the checkout, never distributed as a release asset: a clone is already required to run a benchmark at all (see [Requirements](#requirements)). A `make bench` target runs `cargo build --release` in `cli/konductor-bench/`. There is no per-platform release asset, `.sha256` sidecar, or checksum step for it; `EXIT_VERIFY_FAILED` (`65`) stays reserved for the main `konductor` binary's own release-asset verification and is unused in this design.
+`konductor-bench` is built from source inside the checkout, never distributed as a release asset: a clone is already required to run a benchmark. `make bench` runs `cargo build --release` in `cli/konductor-bench/`. Proposed: `make link` (today only symlinks `konductor` into `~/.local/bin`) would gain a matching `konductor-bench` symlink, skipped silently when that build does not exist; this extension does not exist in the Makefile today. `EXIT_VERIFY_FAILED` (`65`) stays reserved for the main binary's release-asset verification and is unused here.
 
-`make bench` only builds; it does not install. Proposed: `make link`, which today only symlinks `konductor` into `~/.local/bin`, would gain a matching `konductor-bench` symlink, skipped silently when that build does not exist. This extension does not exist in the Makefile today. `konductor bench` reaches the symlink through the `PATH` step of the lookup order above; whether "next to the running `konductor` binary" resolves the real path or the symlink is listed under [Open Questions](#open-questions).
+The Anthropic client reuses the CLI's existing `ureq` (`=2.10.1`) and `rustls` (`=0.23.43`) stack, since the Anthropic API needs only a bearer header. Bedrock needs AWS SigV4 signing and the AWS credential chain; the choice between the full async AWS SDK for Rust and a lighter synchronous SigV4 crate over `ureq` is open, see [Open Questions](#open-questions). New dependencies are exact-pinned, matching the rest of the workspace.
 
-The Anthropic client reuses the CLI's existing `ureq` (`=2.10.1`) plus `rustls` (`=0.23.43`) stack, since the Anthropic API needs only a bearer header. Bedrock needs AWS SigV4 signing and the AWS credential chain, which `ureq` does not provide; the choice between the full async AWS SDK for Rust and a lighter synchronous SigV4 crate over `ureq` is deferred to [ADR-4](#adr-4-separate-konductor-bench-binary-invoked-by-konductor-bench) and [Open Questions](#open-questions). New dependencies are exact-pinned, matching the rest of the workspace.
-
-### Results and reports live in the checkout
-
-`benchmarking/results/` holds raw screen and ablation records, council votes, per-run logs: large, fully regenerable, gitignored. `benchmarking/reports/` and `benchmarking/plans/` hold the rendered output a person reads and acts on, committed through a pull request after reviewing the run. `konductor-bench` never runs `git add`, `git commit`, or `git push`: it writes files to disk and leaves what to commit, and when, to the person running it.
+`konductor-bench` never runs `git add`, `git commit`, or `git push`. It writes files to disk and leaves what to commit, and when, to the person running it.
 
 ### Scenario record
 
 | Field | Type | Meaning |
 |---|---|---|
 | `scenario_id` | string | stable ID, `<skill>-NNN` |
-| `skill` | string | source skill path, or a list of paths for `overlap` |
+| `skill` | string | source skill path, or a list for `overlap` |
 | `set` | string | `core` or `coverage` |
-| `kind` | string | `own` (single-skill), `overlap` (shared across a cluster), or `near_miss` (should not change the skill's output) |
-| `borrowed_from` | string or null | for a `near_miss`, the neighbouring skill whose approved core trigger scenario it reuses; null if drafted for a skill with no neighbour |
+| `kind` | string | `own`, `overlap`, or `near_miss` |
+| `near_miss_source` | string or null | `borrowed`, `mutation`, or null |
+| `borrowed_from` | string or null | for a borrowed near-miss, the neighbouring skill |
 | `prompt` | string | the user request text |
-| `fixtures` | list of paths | files under `benchmarking/fixtures/` copied into the run's working directory |
-| `judge_notes` | string | what a strong answer covers, shown to judges |
-| `covers_sections` | list of strings | the `SKILL.md` headings this scenario exercises; each must match a heading at `skill_hash` (see the section check in [Scenario generation](#scenario-generation)) |
+| `fixtures` | list of paths | files under `benchmarking/fixtures/` |
+| `judge_notes` | string | what a strong answer covers |
+| `covers_sections` | list of strings | `SKILL.md` headings exercised, checked against `skill_hash` |
 | `skill_hash` | string | content hash of the skill version the scenario was written against |
 | `status` | string | `draft`, `approved`, or `stale`; runs use `approved` only |
 | `reviewed_by` | string | who approved it |
 
 ### Report
 
-```markdown
-# Skill Benchmark Report: <Month Year>
-
-## Summary
-- Skills screened: N
-- Candidates selected: N
-- Recommended for pruning: N
-- Recommended for trimming: N
-- Needs human review: N
-- Routed arm checked: yes/no (`bench.ablation.routed_arm`; if no, routed effects were not checked this run)
-
-## Recommendations
-
-### Prune: <skill-name>
-- Screen candidate rule(s) fired: <a/b/c/d>
-- Direct arm: N of M resolved pairs not-worse, 0 pairs strongly-better-A
-- Routed arm: N of M resolved pairs not-worse, 0 pairs strongly-better-A
-- Coverage scenarios run: N
-- Near-misses: loaded on N of M (well-scoped if 0); N of the qualifying pairs showed no difference
-- Routing shift: <none, or a short description of which agent/skills each side reached>
-- Justification: <one paragraph>
-
-### Trim: <skill-name>
-- Affected lines: L<start>-L<end>
-- Direct arm: N of M resolved pairs not-worse against the trimmed variant
-- Routed arm: N of M resolved pairs not-worse against the trimmed variant
-- Coverage scenarios run: N
-- Sections trimmed: <headings, each covered by a scenario and shown not needed>
-- Sections untested: <headings no coverage scenario exercised, not claimed as safe to trim>
-- Section dependency flags: <none, or which remaining text still references a removed heading>
-- Routing shift: <none, or a short description of which agent/skills each side reached>
-- Justification: <one paragraph>
-
-## Needs Human Review
-- <skill-name>: reason (unresolved-pair ratio, run_failed ratio, incomplete ablation, or routing regression: direct arm passed, routed arm did not)
-
-## Metrics Appendix
-| Skill | Verdict | Core Scenarios | Coverage Scenarios | Screen A-vs-B | Direct-Arm Pairs (resolved/unresolved) | Routed-Arm Pairs (resolved/unresolved) | Escalated Pairs | Near-Miss Load Rate | Same-Family vs Cross-Family Judge Agreement |
-|---|---|---|---|---|---|---|---|---|---|
-
-Any skill whose coverage-set scenario count exceeds `bench.scenarios.review_flag` (default 15) is flagged here as a possible split candidate: a skill that broad usually covers ground better split into two.
-```
+A per-run report at `benchmarking/reports/YYYY-MM-report.md` opens with a summary (skills screened, candidates selected, recommended prunes and trims, needs human review, whether the routed arm ran). Each recommendation lists the candidate rules that fired, both arms' resolved-pair ratios, coverage scenarios run, near-miss load rate, any routing shift, and a one-paragraph justification. A needs-human-review entry names its reason. A metrics appendix table covers every skill: verdict, scenario counts, per-arm pair counts, escalated pairs, near-miss load rate, and same-family versus cross-family judge agreement. A coverage set over `bench.scenarios.review_flag` is flagged as a possible split candidate. "Well-scoped" and "near-miss untested" both mean no near-miss pair produced a verdict, but for different reasons: "well-scoped" means a qualifying near-miss ran and did not trigger X, while "near-miss untested" means no qualifying near-miss ran at all (no neighbour, or no qualifying pair on an unreliable-load harness). Neither implies the other.
 
 ### Plan format
 
-The plan is prose, not JSON: one entry per ablation-confirmed prune or trim action, naming the skill path, the action, a reference to the trim patch where applicable, and a short evidence summary tying back to the ablation pairs that produced it. A candidate that never reached ablation, or that landed at needs human review, has no entry. Field-level schema for a machine-readable version is a Phase 5 deliverable, not fixed here.
-
-Any consumer of this plan must default to dry-run and require explicit per-entry confirmation before applying a change. There is no auto-execution path in this design.
+The plan is prose, not JSON: one entry per ablation-confirmed prune or trim, naming the skill path, the action, a reference to the trim patch where applicable, and a short evidence summary tying back to the pairs that produced it. A candidate that never reached ablation, or that landed at needs human review, has no entry. Field-level schema for a machine-readable version is a Phase 5 deliverable. Any consumer of this plan defaults to dry-run and requires explicit per-entry confirmation; there is no auto-execution path.
 
 ## Threat Model
 
-This is a local batch tool. Its untrusted boundary is the model-provider APIs (Amazon Bedrock, the Anthropic API, Kiro's backend): every run and council vote crosses into a third-party model, and the response text is untrusted content the framework does not control. Inside the local run, the harness subprocess is less trusted than the runner, since the subject model can execute tools there. The local run directory, from scenario generation through report rendering, is a trusted channel between stages, protected by corruption controls rather than an adversary model.
-
-**Assets:** `scenarios.json` and `corpus-snapshot.json`, raw screen and ablation results, `council-votes.json`, the rendered report, the implementation plan.
+This is a local batch tool. The model-provider APIs (Amazon Bedrock, the Anthropic API, Kiro's backend) are the untrusted boundary: every run and council vote crosses into a third-party model, and the response text is untrusted. Inside the local run, the harness subprocess is less trusted than the runner, since the subject model can execute tools there.
 
 | Threat | Impact | Mitigation |
-|--------|--------|------------|
-| Prompt injection from a `SKILL.md` or a subject model's output, aimed at a judge | Steers a judge away from an accurate verdict | Outputs pass to judges as delimited data blocks with an instruction to treat content as data, not instructions; judging uses rubric scores, not free-form reasoning; a pair whose output contains judge-directed imperative phrasing (a pattern scan, e.g. "ignore the other response") is flagged in the report; every plan action still requires human confirmation regardless of vote outcome |
-| Environment contamination (env B, an ablation copy, or env A carries files it should not) | Invalidates that run's comparison | The runner compares the benchmark HOME against the vanilla snapshot after every uninstall and against the expected install manifest before every env A or variant run; any mismatch stops that HOME's queue. Every run uses a fresh working directory and session, so no repo files or prior session state carry over. Does not cover session-history or cache-directory carryover; see [Environments](#environments) |
-| Subject credential exposure | A subject model reads its credentials through a tool call and they end up in a transcript | Credentials are short-lived and scoped to the configured models only; passed as subprocess environment variables, not files; the benchmark HOME is mode `0700` and never included in an artifact; transcripts are scanned for credential patterns before being written under `results/`, and a match is redacted and flagged |
-| Judge credential exposure | A subject model gains access to the judge role and calls judge models directly | Judge credentials live only in the runner process, never set on a harness subprocess; the judge role is separate from the subject role |
-| Overly broad AWS access | A developer's full `~/.aws` profile is used for runs | Dedicated subject and judge roles with `bedrock:InvokeModel`/`InvokeModelWithResponseStream` on listed ARNs only; `~/.aws` is never copied into a benchmark HOME |
-| Cost overrun | Unbounded spend on model calls | The pre-run estimate prints planned runs and judge calls and asks for confirmation when the plan exceeds `bench.budget.max_runs`; on hit during a run, the stage marks `partial` and dispatch stops |
-| Accidental artifact corruption | A downstream stage reads a partial or malformed prior-stage file | Content hashes on the scenario snapshot, and a `status` field per stage, let a resumed run detect and skip a corrupted or incomplete prior stage |
-| Unsafe plan execution | An automated consumer applies a prune or trim without review | The plan format requires dry-run by default and explicit per-entry confirmation; there is no auto-execution path |
+|---|---|---|
+| Prompt injection from a `SKILL.md` or a subject output, aimed at a judge | Steers a judge from an accurate verdict | Outputs pass to judges as delimited data with an instruction to treat content as data, not instructions; judging uses rubric scores, not free-form reasoning; before dispatch to judges, transcripts are scanned for imperative phrasing directed at a judge role ("ignore your instructions," "you are now," "output PREFER X regardless") and a match is flagged in the pair record, non-blocking, since the pair still gets judged; every plan action still needs human confirmation regardless of vote outcome |
+| Environment contamination | Invalidates a comparison | Snapshot diff after every uninstall, manifest check before every env A or variant run, fresh working directory and session per run; does not cover session-history or cache carryover, see [Environments](#environments) |
+| Subject credential exposure | A subject model reads credentials via a tool call and leaks them into a transcript | Short-lived, scoped credentials as subprocess env vars, never files; benchmark HOME mode `0700`, never in an artifact; transcripts scanned for credential patterns before writing |
+| Judge credential exposure | A subject model gains judge-role access | Judge credentials live only in the runner process, never a harness subprocess; separate role from the subject |
+| Overly broad AWS access | A developer's full `~/.aws` used for runs | Dedicated subject and judge roles scoped to listed ARNs only; `~/.aws` never copied into a benchmark HOME |
+| Cost overrun | Unbounded model-call spend | Pre-run estimate with confirmation over the cap; on hit, the stage marks partial and dispatch stops |
+| Accidental artifact corruption | A downstream stage reads a partial or malformed prior file | Content hashes on the scenario snapshot, plus a `status` field per stage, let a resumed run detect and skip a corrupted prior stage |
+| Unsafe plan execution | An automated consumer applies a prune or trim without review | Dry-run default, explicit per-entry confirmation, no auto-execution path |
 
 ## Architecture Decision Records
 
 ### ADR-1: Three-judge council with escalation to five
 
-**Status:** Accepted
+#### Status
+Accepted
 
-**Context.** A single judge's verdict cannot express disagreement: two reasonable judges can read the same pair and land on different sides, and averaging that away hides the exact signal this framework needs to surface. A fixed five-judge council catches that but pays the full cost on every pair, including ones where three judges already agree.
+#### Context
+A single judge cannot express disagreement; averaging two opposed verdicts hides the signal this framework needs. A fixed five-judge council catches that but pays full cost on every pair, including ones three judges already agree on.
 
-**Decision.** Every pair is judged blind and pairwise, starting with three council members voting independently. On the screen, three judges are final; the pair outcome is the preference held by at least two of three, and the screen never escalates. On ablation, a pair resolves at three only if all three agree; any disagreement or abstention escalates to five, and the outcome becomes the preference held by at least three of five. Verdicts aggregate per skill across resolved pairs.
+#### Decision
+Screen pairs use three judges, final, resolving on 2 of 3 agreement. Ablation pairs resolve at three only on full agreement; disagreement or abstention escalates to five, resolving on 3 of 5.
 
-| Option | Pros | Cons / why not chosen |
-|---|---|---|
-| Single judge | Cheapest | Cannot capture disagreement; hides the signal the framework exists to surface |
-| Fixed council of five | Surfaces disagreement; no single blind spot decides a skill's fate | Five times the cost of one judge on every pair, even ones three already agree on |
-| Fixed council of three | Cheaper than five on every pair | A close 2-1 split on the deciding stage gets no extra scrutiny, exactly when it needs one |
-| Three with escalation to five (chosen) | Cheap when three agree; buys more evidence exactly where they do not | Adds an escalation branch to judging and reporting |
+#### Alternatives Considered
 
-**Consequences.** Good: disagreement among the base three triggers escalation instead of being silently averaged; no single judge model can unilaterally decide a skill's fate. Bad: judgment cost still reaches five times a single judge's on any pair that escalates, accepted because the framework runs monthly and escalation is the exception. Neutral: the report needs an explicit unresolved/needs-human-review state plus an escalated-pair count.
+| Option | Why Not Chosen |
+|---|---|
+| Single judge | Hides the exact disagreement signal this framework exists to surface |
+| Fixed council of five | Pays full cost even where three already agree |
+| Fixed council of three | A 2-1 split gets no additional evidence |
+| Three, escalate to five (chosen) | None material |
+
+#### Consequences
+Good: disagreement among the base three triggers escalation instead of silent averaging; no single judge model decides a skill's fate alone. Bad: cost still reaches five times a single judge's on an escalating pair, accepted since the framework runs monthly and escalation is the exception. Neutral: the report needs an explicit unresolved and escalated-pair count.
 
 ### ADR-2: Screen with Konductor versus vanilla, decide with per-skill ablation
 
-**Status:** Accepted
+#### Status
+Accepted
 
-**Context.** Comparing the full stack against a vanilla baseline is cheap relative to testing every skill individually, but a screen result cannot be attributed to one skill: env A and env B differ in the orchestrator and all 82 skills at once. Deciding a prune or trim needs a result isolated to one skill.
+#### Context
+Comparing the full stack against a vanilla baseline is cheap relative to testing every skill individually, but a screen result cannot be attributed to one skill: env A and env B differ in the orchestrator and all 82 skills at once.
 
-**Decision.** Use the screen only to select candidates, via the four candidate rules. Decide each candidate's fate with a second, isolated ablation stage comparing unmodified env A against a copy with only that one skill removed or trimmed.
+#### Decision
+Use the screen only to select candidates via the four candidate rules. Decide each candidate's fate with an isolated ablation stage comparing unmodified env A against a copy with only that one skill removed or trimmed.
 
-| Option | Pros | Cons / why not chosen |
-|---|---|---|
-| Screen, then per-candidate ablation (chosen) | Cheap first pass narrows scope; ablation isolates one skill | Two stages instead of one |
-| Env A versus env B only, no ablation | Single stage, cheapest | Cannot attribute any result to one skill |
-| Description-derived pass or fail | No second environment needed | Circular: the scenario is generated from the description, so matching back mostly checks the generator, not the skill |
-| Leave-one-out ablation for all 82 up front | Directly isolates every skill, no screen needed | Cost scales with the full skill count before any narrowing; prohibitive across a harness/model matrix |
+#### Alternatives Considered
 
-**Consequences.** Good: prune and trim verdicts are grounded in a result isolated to one skill, not a whole-stack comparison. Bad: a skill can pass the screen's candidate rules yet still be worth keeping once ablation isolates it, so some ablation runs confirm a keep rather than a prune; this is the intended trade for correctness. Neutral: the screen's per-skill signal is diagnostic input, not a verdict. The routed arm (see [Solution Overview](#solution-overview)) deliberately reintroduces the orchestrator this ADR's isolated ablation stage otherwise removes, but only after the direct arm has already isolated skill X's effect and reached prune or trim; it checks whether that effect holds once routing is back, rather than reopening the isolation question this ADR settles.
+| Option | Why Not Chosen |
+|---|---|
+| Screen, then per-candidate ablation (chosen) | None material |
+| Env A versus env B only | Cannot attribute a result to one skill; fails the core requirement |
+| Description-derived pass or fail | Circular: the scenario is generated from the description, mostly testing the generator |
+| Leave-one-out ablation for all 82 up front | Cost scales with full skill count before narrowing, prohibitive across a harness/model matrix |
+
+#### Consequences
+Good: prune and trim verdicts rest on a result isolated to one skill, not a whole-stack comparison. Bad: a skill can pass the screen's candidate rules yet still be worth keeping once isolated; some ablation runs confirm a keep. Accepted as the cost of correctness. Neutral: the routed arm reintroduces the orchestrator this ADR's isolated stage removes, but only after the direct arm has already isolated X and reached prune or trim, checking whether that effect survives real routing rather than reopening the isolation question.
 
 ### ADR-3: Directory layout by lifecycle
 
-**Status:** Accepted
+#### Status
+Accepted
 
-**Context.** Scenario generation, screen and ablation results, and the two rendered output artifacts have different reuse needs: scenarios can be reused across a re-score, results are tied to one run, reports and plans are the final dated artifacts a person reads.
+#### Context
+Scenario generation, screen and ablation results, and the rendered output artifacts have different reuse needs: scenarios can be reused across a re-score, results are tied to one run, reports and plans are the final dated artifacts a person reads.
 
-**Decision.** Three top-level directories, each keyed by `YYYY-MM/` where applicable: `scenarios/` for generator output, `results/` for screen and ablation output, `reports/` plus `plans/` for the final artifacts, named by date rather than nested in a date directory.
+#### Decision
+Three top-level directories, keyed by `YYYY-MM/` where applicable: `scenarios/` for generator output, `results/` for screen and ablation output, `reports/` and `plans/` for the final artifacts, named by date rather than nested in a date directory.
 
-| Option | Pros | Cons / why not chosen |
-|---|---|---|
-| Separate by lifecycle (chosen) | Scenarios reusable across a re-score without duplication | One more top-level directory to track |
-| Single flat run directory | Simpler at a glance | Re-judging a scenario set means duplicating it or breaking the one-run-one-directory convention |
-| No date partitioning | Fewest files on disk | Loses the ability to compare a skill's verdict period over period, the reason to run on a cadence at all |
+#### Alternatives Considered
 
-**Consequences.** Good: a scenario set can be re-judged (new council member, retried pairs) without regenerating it. Bad: `corpus-snapshot.json` has to independently track a content hash per skill, since `skills/` carries no date. Neutral: report and plan filenames carry the date instead of a directory.
+| Option | Why Not Chosen |
+|---|---|
+| Separate by lifecycle (chosen) | None material |
+| Single flat run directory | Re-judging means duplicating the set or breaking the one-run convention, losing reuse |
+| No date partitioning | Loses period-over-period comparison, defeating the point of a cadence |
+
+#### Consequences
+Good: a scenario set can be re-judged without regenerating it. Bad: `corpus-snapshot.json` must independently track a content hash per skill, since `skills/` carries no date. Neutral: report and plan filenames carry the date instead of a directory.
 
 ### ADR-4: Separate konductor-bench binary invoked by konductor bench
 
-**Status:** Accepted
+#### Status
+Accepted
 
-**Context.** The framework needs to toggle `konductor install`/`uninstall`/`synth` many times per run, call two model providers, and run harness subprocesses on a scheduled cadence. Most users never run a benchmark, so its dependencies should not weigh down the binary everyone installs. Precedent: `mcp/servers/skill-lookup` is already its own separately built binary; `shared/konductor-telemetry` is already a shared crate linked into `konductor`, reached from harness hooks via the hidden `konductor __telemetry-hook <event-type>` subcommand.
+#### Context
+The framework toggles install, uninstall, and synth many times per run, calls two model providers, and runs on a scheduled cadence. Most users never run a benchmark, so its dependencies should not weigh down the binary everyone installs. `mcp/servers/skill-lookup` is already a separately built binary; `shared/konductor-telemetry` is already a shared crate linked into `konductor`.
 
-**Decision.** Build the framework as `konductor-bench`, a separate binary in its own crate, invoked by a thin `konductor bench` dispatcher, calling `konductor`'s `install`/`uninstall`/`synth` as subprocesses. Proposed: the `bench:` config types and exit-code constants would live in a new `shared/konductor-bench-config` crate, following the `konductor-telemetry` pattern (see [Module Layout](#module-layout) for what exists today versus what Phase 2 adds).
+#### Decision
+Build the framework as `konductor-bench`, a separate binary in its own crate, invoked by a thin `konductor bench` dispatcher, calling `konductor`'s install, uninstall, and synth as subprocesses.
 
-| Option | Pros | Cons / why not chosen |
-|---|---|---|
-| Feature-gated module in the main binary | One binary; no version-compatibility check | A gated-on build still ships the dependency weight; does not keep it out of a build that enables the feature |
-| Standalone Python tool | Faster prompt iteration; official SDKs available directly | A second runtime alongside the CLI's Rust toolchain; no shared build |
-| Node script extending the old harness | Reuses some `claude-code-agent-runner.js` logic | `tests/registry.json` has no environment axis, pair verdict, or ablation-variant identity (see [Problem](#problem)); Phase 0 removes the old harness rather than building on it |
-| Separate Rust binary, `konductor bench` dispatcher (chosen) | Main binary unchanged; exercises the real install/uninstall/synth path via subprocess; matches the `skill-lookup` precedent | Two binaries to build and version, needing the compatibility check in [Environments](#environments) |
+#### Alternatives Considered
 
-**Consequences.** Good: main binary size and dependencies unchanged; every benchmark cycle exercises the real install/uninstall/synth path through a subprocess. Bad: two binaries to build and version, needing the compatibility check in [Environments](#environments); `konductor-bench` is a contributor tool, not something an end user runs from an ordinary install. Neutral: judge and scenario prompts stay data files in `benchmarking/prompts/`, not Rust string literals.
+| Option | Why Not Chosen |
+|---|---|
+| Feature-gated module in the main binary | A gated-in build still ships the dependency weight, not keeping it out of a build that enables the feature |
+| Standalone Python tool | A second runtime alongside the Rust toolchain, no shared build, fragmenting the build |
+| Node script extending the old harness | `tests/registry.json` has no environment axis, pair verdict, or variant identity; Phase 0 removes the old harness rather than building on it |
+| Separate Rust binary (chosen) | Needs the compatibility check in [Environments](#environments), accepted |
+
+#### Consequences
+Good: main binary size and dependencies unchanged; every benchmark cycle exercises the real install, uninstall, and synth path through a subprocess. Bad: two binaries to build and version, needing the compatibility check; `konductor-bench` is a contributor tool, not something an end user runs from an ordinary install. Neutral: judge and scenario prompts stay data files in `benchmarking/prompts/`, not Rust string literals.
 
 ## Implementation Plan
 
 | Phase | Scope | Depends on | Exit criteria |
 |---|---|---|---|
-| 0 | Remove the existing harness: `tests/` subsets used only by it, `tests/judges/`, `tests/registry.json`, `scripts/benchmark.js` | None | Old harness files removed; no other package references them |
-| 1 | Scenario bank: `src/scenarios.rs`, generator/judge prompt templates, shared fixture library, draft generator, review workflow | None | A pilot set of 10 skills, spanning the skill categories, each has approved core-set scenarios with fixtures and judge notes |
-| 2 | `cli/konductor-bench/` crate, `shared/konductor-bench-config` crate, `konductor bench` dispatcher, checkout detection, `make bench` and the `make link` extension, `src/home.rs` and `src/runner.rs` (benchmark HOME setup, install/uninstall toggling, ablation variant synth, version-compatibility check, provider config, run matrix) | Phase 1 | `konductor bench` locates and execs `konductor-bench`, passing its exit code through. A screen run executes the pilot core-set scenarios for at least one harness x model cell in both environments, snapshot checks passing, for both `bench.providers.claude` values. `cargo test` for `home.rs`/`runner.rs` is hermetic: no network, no real harness invocation, all three call types behind traits with fakes |
-| 3 | `src/council.rs` and `src/verdict.rs`: judge prompt, per-pair aggregation, screen live-vote/unresolved rules, ablation escalation/unresolved rules | Phase 2 | The pilot screen produces pair outcomes with correct unresolved handling for a synthetic one-one-one split; a synthetic pilot ablation run correctly escalates a disagreeing three-judge pair to five and resolves it. `cargo test` hermetic, same trait-and-fake pattern |
-| 4 | Candidate selection against the four rules; coverage-set drafting/review per pilot candidate; ablation runs for both prune and trim variants, direct and routed arms | Phase 3 | At least one pilot candidate has an approved coverage set meeting the floor; a direct-arm run against it produces a verdict for both `A-minus-X` and `A-trimmed-X`; that same candidate, having resolved to prune or trim, also has a routed-arm run against the same coverage set producing its own verdict |
-| 5 | `src/report.rs`: report and plan rendering, field-level plan schema | Phase 4 | A pilot report matches this design's report skeleton; a generated plan defaults to dry-run with per-entry confirmation. `cargo test` hermetic, using fixture run data |
-| 6 | Full rollout: core-set scenarios for all 82 skills, `bench.corpus_path` check, `cli/README.md` documentation, `benchmarking/results/` added to `.gitignore` | Phase 5 | A full screen run completes within `bench.budget.max_runs`; a run against a non-default `bench.corpus_path` produces the same artifact shapes as a `skills/` run; `cli/README.md` documents `konductor bench` |
+| 0 | Remove the existing harness (`tests/` subsets used only by it, `tests/judges/`, `tests/registry.json`, `scripts/benchmark.js`) | None | Old harness files removed; no other package references them; the superseded design doc and its stale PE review are removed |
+| 1 | Scenario bank, prompt templates, fixtures, 10-skill pilot core sets | None | 10 skills across categories have approved core-set scenarios with fixtures and judge notes |
+| 2 | `konductor-bench` crate, shared config crate, dispatcher, checkout detection, version check, `make bench`/`make link`, benchmark HOME and runner | Phase 1 | `konductor bench` locates and execs `konductor-bench`. A screen run executes the pilot core set for at least one Kiro CLI harness x model cell and at least one Claude Code harness x model cell in both environments, snapshot checks passing; the Claude Code cell runs once for each `bench.providers.claude` value, since only Claude Code has a provider axis. Subprocess calls hermetic under `cargo test` |
+| 3 | Council judging | Phase 2 | The pilot screen produces pair outcomes with correct unresolved handling for a synthetic split; a synthetic ablation run correctly escalates a disagreeing three-judge pair to five |
+| 4 | Candidate selection, coverage sets, both ablation arms, trim patches | Phase 3 | At least one pilot candidate has an approved coverage set at the floor; a direct-arm run produces a verdict for both variants; that candidate, having resolved to prune or trim, has a routed-arm run producing its own verdict |
+| 5 | Report and plan rendering, including plan schema | Phase 4 | A pilot report matches the report skeleton; a generated plan defaults to dry-run with per-entry confirmation |
+| 6 | Full rollout: all 82 core sets, `corpus_path` check, `cli/README.md` docs, `.gitignore` for `results/` | Phase 5 | A full screen run completes within `bench.budget.max_runs`; a non-default `corpus_path` run produces the same artifact shapes; `cli/README.md` documents `konductor bench` |
 
-Sizing each phase into task-level tickets happens in a later pass. The pilot keeps early runs cheap and lets prompt templates, fixtures, and judge instructions be tuned on 10 skills before applying to all 82.
+The pilot keeps early runs cheap and lets prompts, fixtures, and judge instructions be tuned on 10 skills before applying to all 82.
 
 ## Decision Requested
 
-1. Approve deleting the existing harness (`tests/` subsets, `tests/judges/`, `tests/registry.json`, `scripts/benchmark.js`) as Phase 0, independent of when the rest of this design lands.
-2. Approve the architecture: a two-stage benchmark that screens Konductor against a vanilla baseline to select candidates, then decides each candidate's fate with an isolated, two-arm ablation run judged by a council that starts at three and escalates to five on disagreement, producing a report and a human-confirmed implementation plan. The numeric thresholds this design proposes (`bench.thresholds.*`, `bench.budget.max_runs`, the 20 percent escalation-rate assumption behind the Run Cost figures) are separate from this architectural approval: they are rationale-backed starting points the doc itself calls unmeasured, and are approved as Phase 1 pilot inputs subject to revision once the pilot's real pair outcomes exist, not as fixed final values.
+1. Delete the existing harness (`tests/` subsets, `tests/judges/`, `tests/registry.json`, `scripts/benchmark.js`) as Phase 0, independent of when the rest of this design lands.
+2. Approve the architecture: a two-stage benchmark that screens Konductor against a vanilla baseline to select candidates, then decides each candidate's fate with an isolated, two-arm ablation run judged by a council that starts at three and escalates to five on disagreement, producing a report and a human-confirmed plan.
+3. Accept the numeric thresholds (`bench.thresholds.*`, `bench.budget.max_runs`, the 20 percent escalation-rate assumption behind Run Cost) as Phase 1 pilot starting points, not fixed final values, subject to revision once the pilot's real pair outcomes exist.
 
 ## Open Questions
 
-- Does the CLI resolve "next to the running `konductor` binary" from the `~/.local/bin` symlink or the resolved real path? If the real path, `PATH` is what actually finds the `make link` symlink.
-- Where does Kiro CLI (v3 engine) store its login, and does it survive `konductor uninstall`? Assumed yes (uninstall removes only manifest-tracked files), not verified.
-- Which directories do Kiro CLI (v3 engine) and Claude Code use for session history and caches? Excluded from the vanilla snapshot; exact paths need confirming (see [Environments](#environments)).
-- Does `konductor uninstall` honor the target's telemetry opt-out, or does the runner rely on `KONDUCTOR_TELEMETRY=off` alone?
-- Is Kiro CLI's (v3 engine) skill-load evidence in session logs reliable enough for candidate rules (a)/(c) and the ablation load check in [Verdict Rules](#verdict-rules), or does it need a dedicated log level?
-- What is the vanilla Kiro CLI (v3 engine) installation's default agent name? Not asserted as fact here.
-- Is the Claude Code `Skill` tool-call event reliable across every subject model in `bench.models.claude`, or only some?
-- Are `bench.thresholds.no_regression` (0.9), `max_unresolved` (0.2), and `skill_tokens` (4,000) the right values, or just rationale-backed starting points to check against the Phase 1 pilot's real pair outcomes (see [Verdict Rules](#verdict-rules))?
-- Does `bench.budget.max_runs`'s proposed 15,000 default hold for a real corpus and cadence, or need adjusting once the pilot's actual run counts and escalation rate are known?
-- Is a floor of 5 for `bench.scenarios.min_coverage` right, or should it scale with a skill's actual capability count?
-- The 20 percent ablation escalation rate in [Run Cost](#run-cost) is illustrative only; the real rate must be measured on the Phase 1 pilot before it sizes anything real.
-- Which Bedrock client should `providers/bedrock.rs` use: the full async AWS SDK for Rust, or a lighter synchronous SigV4 crate over `ureq`? All five default judges support the Converse API on `bedrock-runtime`, so one Converse client covers all of them; the crate choice itself is still open. Affects only `konductor-bench` (see [ADR-4](#adr-4-separate-konductor-bench-binary-invoked-by-konductor-bench)); no crate is asserted.
-- What are the exact non-interactive invocation flags for a Kiro CLI (v3 engine)/`claude` subject run in `runner.rs` (model selection, working-directory override, no-resume)? Not verified against either CLI's real flag set here.
-- Borrowed near-misses and human review make it likely, not certain, that a near-miss sits at a skill's real boundary. Is that enough, or does a skill with no neighbour need a stricter review criterion for its drafted near-misses?
+- **Kiro CLI v3 integration.** Does the CLI resolve "next to the running `konductor` binary" from the `~/.local/bin` symlink or the resolved real path? Where does Kiro CLI v3 store its login, and does it survive `konductor uninstall`? What is the vanilla Kiro CLI v3 installation's default agent name? Does `konductor uninstall` honor the target's telemetry opt-out, or does the runner rely on `KONDUCTOR_TELEMETRY=off` alone?
+- **Session-history and cache paths.** Which directories do Kiro CLI v3 and Claude Code use for session history and caches? Excluded from the vanilla snapshot; exact paths need confirming.
+- **Skill-load evidence reliability.** Is Kiro CLI v3's skill-load evidence in session logs reliable enough for candidate rules (a)/(c) and the ablation load check, or does it need a dedicated log level? If it proves unreliable, the fallback is to treat every pair on that harness as loaded (skip the exclusion rather than mis-exclude on a false negative) and flag every report row built from that harness's data as `load_evidence: unverified`; whether that fallback is adequate for a launch decision, or blocks Kiro CLI v3 from the corpus until a dedicated log level exists, is still open. Is the Claude Code `Skill` tool-call event reliable across every subject model in `bench.models.claude`, or only some?
+- **Threshold and budget defaults.** Do `bench.thresholds.no_regression` (0.9), `max_unresolved` (0.2), and `skill_tokens` (4,000) hold once checked against the Phase 1 pilot's real pair outcomes? Is the "median skill is about 2,100 tokens, so 4,000 flags around 17 of 82" figure behind `skill_tokens`'s default a measured token count from the model tokenizer, or does it need a proper run before Phase 1? Does `bench.budget.max_runs`'s 15,000 default hold for a real corpus and cadence, or need adjusting once the pilot's actual counts and escalation rate are known? Is a floor of 5 for `bench.scenarios.min_coverage` right, or should it scale with a skill's actual capability count? What is the real ablation escalation rate, once measured on the Phase 1 pilot? The 20 percent in [Run Cost](#run-cost) is illustrative only.
+- **Implementation choices.** Which Bedrock client should `providers/bedrock.rs` use: the full async AWS SDK for Rust, or a lighter synchronous SigV4 crate over `ureq`? What are the exact non-interactive invocation flags for a Kiro CLI v3 or Claude Code subject run in `runner.rs` (model selection, working-directory override, no-resume)?
+- Is the current rough estimate of about 16 of 82 skills having no overlap neighbour accurate once real clusters exist from running the pilot?
