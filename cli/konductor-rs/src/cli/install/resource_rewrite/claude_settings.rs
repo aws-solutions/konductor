@@ -1129,8 +1129,8 @@ pub(in crate::cli::install) fn apply_claude_settings_hooks_only(
         }
         Err(ClaudeGrantError::Other(message)) => {
             eprintln!(
-                "warning: Claude Code telemetry hook wiring skipped ({message}) -- the \
-                 Claude Code portion of this install is unaffected"
+                "warning: telemetry hooks were not wired for this Claude Code install: \
+                 {message}"
             );
             None
         }
