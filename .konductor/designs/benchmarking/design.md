@@ -25,11 +25,11 @@ An existing harness lives under `tests/`: `scripts/benchmark.js` at the repo roo
 - Decide, per skill, whether to keep, prune, or trim it, backed by quality evidence rather than a description read.
 - Cover more than one harness (Kiro CLI, Claude Code) and more than one model per harness, since a skill's effect can vary by both.
 - Separate "does the whole Konductor stack help" from "does this one skill help," since the first cannot answer the second.
+- Build the benchmark framework itself. None exists today: this project delivers the scenario generator, the environment runner, the council judge, and the report and plan renderers (see [Implementation Plan](#implementation-plan)).
+- Build a reviewed scenario bank with test prompts and input fixtures for every skill, plus the prompt templates the generator and judges use.
 
 **Non-Goals**
 
-- Writing the runner, judge, or renderer code. This design specifies behavior; implementation is a later phase.
-- Authoring the actual scenario prompts. The design specifies how scenarios are generated, not their content.
 - Running continuously or per commit. The framework runs on a configured cadence, not on every change.
 - Weighting verdicts by real usage or invocation telemetry. Scenario evidence only, for now.
 
@@ -37,7 +37,7 @@ An existing harness lives under `tests/`: `scripts/benchmark.js` at the repo roo
 
 **Functional**
 
-- Generate scenarios from the skill corpus with no manual curation per run.
+- Generate draft scenarios for every skill, review them once, and reuse the approved set on every run. A run needs no manual curation; a new or changed skill needs one review.
 - Run a screening stage that compares a full Konductor environment against a vanilla baseline, per scenario, harness, and model.
 - Select candidates from the screen using a fixed set of rules.
 - Run an ablation stage for each candidate that isolates that one skill's effect.
@@ -81,13 +81,19 @@ Two stages exist because they answer different questions. The screen compares th
 
 ### Scenario generation
 
-Every scenario traces back to one line in one skill's `SKILL.md`. `scenarios.per_skill` (default 3) prompts are generated per skill:
+A scenario is more than a prompt. Many skills need something to work on: `code-review` needs a diff, `dynamodb-validation` needs a table design, `threat-modeling` needs a system description. Without that input, env A and env B both produce generic answers and the comparison says nothing. Each scenario therefore carries three parts:
 
-1. Parse `name`, `description`, and `tags` from the skill's frontmatter.
-2. A trigger-clause description ("Use when X") becomes a first-person request built from X. A behavior-summary description ("Does X") becomes a synthesized request that would plausibly need X. Both use a template transform, not free generation, so the mapping from description line to prompt stays traceable.
-3. Optionally, a shared overlap prompt is generated for a cluster of skills whose descriptions cover related ground (for example `dynamodb-design` and `dynamodb-validation`). An overlap prompt is marked `kind: overlap` in the scenario record and feeds candidate rule (c) below.
+- **Prompt.** The user request, written the way a developer would actually ask.
+- **Fixtures.** Input files the run starts with, copied into the fresh working directory: a small repo, a diff, a design doc, a CloudFormation template. Fixtures live in a shared library under `benchmarking/fixtures/` so several skills can reuse one realistic project.
+- **Judge notes.** What a strong answer covers for this task, written from the skill's body. Judges see these notes alongside the two outputs. They describe the task, not the skill, so a vanilla output that covers the same points gets full credit.
 
-A content hash per skill is recorded alongside the generated scenarios. If a skill changes between generation and evaluation, its scenarios are marked stale and excluded from that run.
+Scenarios are built in three steps:
+
+1. **Draft.** A generator model reads the skill's full `SKILL.md`, frontmatter and body, and drafts `scenarios.per_skill` (default 3) scenarios using the templates in `benchmarking/prompts/generate-scenario.md`. The templates ask for one scenario that matches the skill's stated trigger, one realistic variation, and one edge case the body calls out. Where two skills cover related ground (for example `dynamodb-design` and `dynamodb-validation`), it also drafts a shared overlap scenario marked `kind: overlap`, which feeds candidate rule (c).
+2. **Review.** A person approves, edits, or rejects each draft once. Approved scenarios move into the scenario bank at `benchmarking/scenarios/bank/<skill>/`, which is checked in and versioned like any other source.
+3. **Reuse.** Every run uses the approved bank as-is. Each bank entry records the content hash of the skill version it was written against. When a skill's hash changes, its scenarios are marked stale: they are excluded from runs and re-drafted for review, not scored against a skill they no longer describe.
+
+The generator is never the only author. A scenario written purely from a skill's own text risks testing the skill against itself, and the review step is where a person catches prompts that only the skill could answer.
 
 ### Environments
 
@@ -158,7 +164,7 @@ flowchart TD
     style O fill:#50b464,color:#fff
 ```
 
-For each pair, both outputs are relabeled X/Y in randomized order with no indication of which side produced which. Each of five judges returns a preference (X, Y, or no meaningful difference), a strength (slight, clear, strong), and rubric scores for correctness, completeness, adherence to the request, and actionable detail.
+For each pair, both outputs are relabeled X/Y in randomized order with no indication of which side produced which. Each of five judges returns a preference (X, Y, or no meaningful difference), a strength (slight, clear, strong), and rubric scores for correctness, completeness, adherence to the request, and actionable detail. Every judge gets the same instructions from `benchmarking/prompts/judge-pair.md`, plus the scenario's prompt, its fixtures, and its judge notes, so all five grade against the same description of a good answer.
 
 The pair outcome is the majority of live votes. A pair needs at least three live votes; fewer than that makes it unresolved. Five live votes can still fail to produce a majority: two X, two Y, and one no-difference is a three-way split with no side reaching three votes, so that pair is also unresolved, not a tie broken some other way.
 
@@ -213,9 +219,15 @@ Combined illustrative totals: 1,968 + 1,440 = 3,408 runs, and 4,920 + 3,600 = 8,
 
 ```
 benchmarking/
+├── prompts/
+│   ├── generate-scenario.md         # generator templates
+│   └── judge-pair.md                # judge rubric and instructions
+├── fixtures/                        # shared input projects, diffs, docs
 ├── scenarios/
+│   ├── bank/
+│   │   └── <skill>/*.yaml           # reviewed, versioned scenarios
 │   └── YYYY-MM/
-│       ├── scenarios.json
+│       ├── scenarios.json           # the bank entries used by this run
 │       └── corpus-snapshot.json
 ├── results/
 │   └── YYYY-MM/
@@ -227,7 +239,7 @@ benchmarking/
 │   └── YYYY-MM-report.md
 ├── plans/
 │   └── YYYY-MM-implementation.json
-└── scripts/
+└── scripts/                         # the framework, built in Phases 1 to 5
     ├── generate-scenarios.*
     ├── run-screen.*
     ├── run-ablation.*
@@ -235,17 +247,21 @@ benchmarking/
     └── render-report.*
 ```
 
-`scripts/` are placeholders; no implementation ships with this design.
+The framework under `scripts/` does not exist yet; the [Implementation Plan](#implementation-plan) builds it. `prompts/`, `fixtures/`, and `scenarios/bank/` are checked in. Run output under `results/`, `reports/`, and `plans/` is generated.
 
 ### Scenario record
 
 | Field | Type | Meaning |
 |---|---|---|
-| `scenario_id` | string | `YYYY-MM-NNN`, unique per run |
-| `skill` | string | source skill path |
-| `prompt` | string | the generated user request text |
-| `source_description_line` | string | the exact frontmatter line the prompt was derived from |
+| `scenario_id` | string | stable ID, `<skill>-NNN` |
+| `skill` | string | source skill path, or a list of paths for `overlap` |
 | `kind` | string | `own` (single-skill scenario) or `overlap` (shared across a skill cluster) |
+| `prompt` | string | the user request text |
+| `fixtures` | list of paths | files under `benchmarking/fixtures/` copied into the run's working directory |
+| `judge_notes` | string | what a strong answer to this task covers, shown to judges |
+| `skill_hash` | string | content hash of the skill version the scenario was written against |
+| `status` | string | `draft`, `approved`, or `stale`; runs use `approved` only |
+| `reviewed_by` | string | who approved it |
 
 ### Report
 
@@ -281,7 +297,7 @@ benchmarking/
 
 ### Implementation plan
 
-The plan is prose, not JSON: one entry per ablation-confirmed prune or trim action, naming the skill path, the action, a reference to the trim patch where applicable, and a short evidence summary tying back to the ablation pairs that produced it. A candidate that never reached ablation, or that landed at needs human review, has no entry. Field-level schema for a machine-readable version is a Phase 1 deliverable, not fixed here.
+The plan is prose, not JSON: one entry per ablation-confirmed prune or trim action, naming the skill path, the action, a reference to the trim patch where applicable, and a short evidence summary tying back to the ablation pairs that produced it. A candidate that never reached ablation, or that landed at needs human review, has no entry. Field-level schema for a machine-readable version is a Phase 5 deliverable, not fixed here.
 
 Any consumer of this plan must default to dry-run and require explicit per-entry confirmation before applying a change. There is no auto-execution path in this design.
 
@@ -402,13 +418,14 @@ Three top-level directories, each keyed by `YYYY-MM/` where applicable: `scenari
 | Phase | Scope | Depends on | Exit Criteria |
 |---|---|---|---|
 | Phase 0 | Remove the existing harness: the `tests/` subsets used only by it, `tests/judges/`, `tests/registry.json`, `scripts/benchmark.js` | None | Old harness files removed; no other package references them |
-| Phase 1 | Benchmark HOME setup (one-time login, vanilla snapshot), install/uninstall toggling with snapshot checks, ablation variant synth from an edited source copy, provider config and credential handling, and the run matrix runner | Phase 0 | A screen run executes for at least one scenario x harness x model cell in both environments, with the isolation check passing before each run, for both `providers.claude` values |
-| Phase 2 | Council judging and per-pair aggregation, including the live-vote and unresolved rules | Phase 1 | A sample screen produces pair outcomes with correct unresolved handling for a synthetic 2/2/1 split |
-| Phase 3 | Candidate selection against the four rules, and ablation runs for both prune and trim variants | Phase 2 | An ablation run executes against at least one candidate for both `A-minus-X` and `A-trimmed-X`, producing a verdict via the deterministic rule |
-| Phase 4 | Report and plan rendering, including the field-level plan schema | Phase 3 | A generated report matches the report skeleton in this design; a generated plan defaults to dry-run and requires per-entry confirmation |
-| Phase 5 | `corpus_path` parameterization check | Phase 4 | A run against a non-default `corpus_path` produces the same artifact shapes as a `skills/` run |
+| Phase 1 | Scenario bank: generator and judge prompt templates, the shared fixture library, the draft generator, and the review workflow | None | A pilot set of 10 skills, chosen to span the skill categories, each has `scenarios.per_skill` approved scenarios with fixtures and judge notes |
+| Phase 2 | Framework runner: benchmark HOME setup (one-time login, vanilla snapshot), install/uninstall toggling with snapshot checks, ablation variant synth from an edited source copy, provider config and credential handling, and the run matrix | Phase 1 | A screen run executes the pilot scenarios for at least one harness x model cell in both environments, with snapshot checks passing, for both `providers.claude` values |
+| Phase 3 | Council judging: the judge prompt, per-pair aggregation, and the live-vote and unresolved rules | Phase 2 | The pilot screen produces pair outcomes, with correct unresolved handling for a synthetic 2/2/1 split |
+| Phase 4 | Candidate selection against the four rules, and ablation runs for both prune and trim variants | Phase 3 | An ablation run executes against at least one pilot candidate for both `A-minus-X` and `A-trimmed-X`, producing a verdict via the deterministic rule |
+| Phase 5 | Report and plan rendering, including the field-level plan schema | Phase 4 | A pilot report matches the report skeleton in this design; a generated plan defaults to dry-run and requires per-entry confirmation |
+| Phase 6 | Full rollout: approved scenarios for all 82 skills, and a `corpus_path` check | Phase 5 | A full run completes within `budget.max_runs`, and a run against a non-default `corpus_path` produces the same artifact shapes as a `skills/` run |
 
-Phases 1 through 5 are scope only in this design; sizing each into task-level tickets happens in a later pass.
+Phases 1 through 6 build the framework and the scenario bank; sizing each into task-level tickets happens in a later pass. The pilot keeps early runs cheap and lets the prompt templates, fixtures, and judge instructions be tuned on 10 skills before they are applied to all 82.
 
 ## Decision Requested
 
