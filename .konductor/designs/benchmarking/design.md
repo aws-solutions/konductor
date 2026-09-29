@@ -111,12 +111,18 @@ Every skill gets two scenario sets, drafted at different times:
 
 | Set | Size | Built | Runs against |
 |---|---|---|---|
-| **Core** | `bench.scenarios.core`, default 3: the stated trigger, one realistic variation, one near-miss | For every skill from the start | The screen |
+| **Core** | `bench.scenarios.core`, default 3: the stated trigger, one realistic variation, one near-miss (see [Near-miss scenarios](#near-miss-scenarios)) | For every skill from the start | The screen |
 | **Coverage** | Floor `bench.scenarios.min_coverage`, default 5, no cap; includes the core set | Only once a skill becomes a candidate (see [Verdict Rules](#verdict-rules)) | Ablation |
 
-The generator builds the coverage set by enumerating the skill's distinct capabilities (modes, major sections, edge cases the body calls out), then drafting one scenario per capability plus one or two near-miss scenarios. Below the floor it fills with realistic variations of an existing capability, never a scenario for a capability the skill does not claim. Ablation runs against the full coverage set, since deciding a skill's fate needs evidence against everything it claims to do, not just its headline trigger.
+The generator builds the coverage set by enumerating the skill's distinct capabilities (modes, major sections, edge cases the body calls out), then drafting one scenario per capability. Near-misses come from neighbouring skills, as below. Below the floor it fills with realistic variations of an existing capability, never a scenario for a capability the skill does not claim. Ablation runs against the full coverage set, since deciding a skill's fate needs evidence against everything it claims to do, not just its headline trigger.
 
-A near-miss scenario sounds related to the skill but should not trigger it. If the skill activates anyway, that is evidence of token cost without benefit on the scenario tested.
+#### Near-miss scenarios
+
+A near-miss sounds related to skill X but belongs to another skill, so X should not change the output. For example, "design a DynamoDB table" is a near-miss for `dynamodb-validation` because it belongs to `dynamodb-design`.
+
+- **Source.** A skill's near-misses are the approved core trigger scenarios of the skills in its overlap cluster. `dynamodb-design`'s trigger scenario serves as a near-miss for `dynamodb-validation`, and the reverse. The generator drafts a near-miss only for a skill with no neighbour, and a reviewer approves it like any other scenario. Borrowed near-misses are already reviewed and are the confusions most likely to happen in real use.
+- **What they test.** Whether X changes output on requests it should not touch. They are not prune evidence on their own: Prune and Trim rest on X's own scenarios (see [Verdict rules](#verdict-rules)).
+- **Load rate.** The report shows how often X loaded on its near-misses. A high rate means X's description triggers too broadly, a candidate for rewording the description even when the skill is kept.
 
 Build steps: (1) **Draft.** A generator model reads the skill's full `SKILL.md`; core-set drafting uses `benchmarking/prompts/generate-scenario.md`, coverage-set drafting (candidates only) lists capabilities first, then drafts against them. Where two skills cover related ground (`dynamodb-design` and `dynamodb-validation`), the generator also drafts a shared overlap scenario marked `kind: overlap`, feeding candidate rule (c) below. Each scenario records which `SKILL.md` sections it exercises, in `covers_sections`. (2) **Review.** A person approves, edits, or rejects each draft once, including its judge notes: a note that reads as skill-shaped rather than task-shaped is edited or rejected alongside it. Approved scenarios move to `benchmarking/scenarios/bank/<skill>/`, checked in and versioned like any other source. **Section check.** Every name in `covers_sections` must match a Markdown heading in the skill's `SKILL.md` at the entry's `skill_hash`, compared after trimming whitespace and ignoring case. `konductor bench scenarios review` lists any entry with an unmatched name next to the pending drafts, and `konductor bench run` re-checks every approved entry before dispatch and refuses to start (exit `64`) if any fails, naming the entry and the unmatched heading. A renamed heading already changes the skill's hash and marks the entry stale; the section check catches the case the hash cannot, a name misspelled when the entry was written. (3) **Reuse.** Every run uses the approved bank as-is. Each entry records the content hash of the skill version it was written against; when that hash changes, the entry is marked stale, excluded from runs, and re-drafted for review.
 
@@ -272,16 +278,18 @@ The base three judges are mixed-family and must include Opus. No rule bars a jud
 
 A skill's ablation verdict is a deterministic rule over its resolved pair outcomes, aggregated separately per arm; when the routed arm runs, it aggregates its own pairs into its own verdict using the identical logic below, independent of the direct arm's, then the two are combined (see **Combining the two arms**).
 
-Aggregation splits pairs by `kind` (see [Scenario Record](#scenario-record)): `own`/`overlap` pairs measure whether removing the skill hurts on scenarios it should help with; `near_miss` pairs measure whether the skill correctly stays silent. A near-miss pair is near-guaranteed to read "not worse," since neither side should have used the skill, so folding it into the same ratio as `own`/`overlap` would make Prune and Trim easier to reach without saying anything about whether the skill helps where it should fire. Both conditions below must hold; a near-miss failure blocks Prune or Trim even if the `own`/`overlap` ratio passes.
+Aggregation splits pairs by `kind` (see [Scenario Record](#scenario-record)). `own` and `overlap` pairs measure whether removing X hurts where X should help; they carry the prune evidence. `near_miss` pairs measure whether X changes output where it should not, and are never pooled into the `own`/`overlap` ratio.
 
-- **Prune.** Both hold: the ablated variant is not worse in at least `bench.thresholds.no_regression` (default 0.9) of resolved `own`/`overlap` pairs, with no pair showing env A strongly better; and at least that fraction of resolved `near_miss` pairs show no difference.
+**Near-miss qualification (both arms).** A near-miss pair counts only if X actually loaded in the env A run, using the same load evidence as the direct arm's skill-load exclusion. If X never loaded, "no difference" was guaranteed, so the pair is excluded and reported as "did not load." If X loaded on no near-miss at all, the near-miss condition is met: removing a skill that never loads on neighbouring requests cannot change their output, and the report marks X "well-scoped." On a harness where load evidence is not reliable (see [Open Questions](#open-questions)), near-miss pairs from that harness are reported only and do not count.
+
+- **Prune.** Both hold: the ablated variant is not worse in at least `bench.thresholds.no_regression` (default 0.9) of resolved `own`/`overlap` pairs, with no pair showing env A strongly better; and at least that fraction of qualifying `near_miss` pairs show no difference (met automatically when none qualify).
 - **Trim.** The same rule, against `A-trimmed-X`. Valid only for `SKILL.md` sections some coverage-set scenario's `covers_sections` named and ablation showed were not needed. An untested section is reported untested, not trimmed: absence of evidence a section helps is not evidence it does not.
 - **Keep.** Neither rule is met.
 - **Needs human review.** More than `bench.thresholds.max_unresolved` (default 0.2) of pairs are unresolved or `run_failed`; or the coverage set did not finish running (see [Run Cost](#run-cost)). Coverage always outranks cost: a skill here is never decided on partial evidence.
 
 The three threshold defaults above, plus `bench.thresholds.skill_tokens` at 2,000 (candidate rule (d) below), are rationale-backed starting points, not measured values, expected to be revised once the Phase 1 pilot's real pair outcomes exist to check them against.
 
-**Skill-load exclusion (direct arm only).** A direct-arm pair counts toward any ratio above only if the env A side's session log shows a skill-load event for skill X; a run with no logged load is excluded rather than counted "not worse," since an unloaded skill was never isolated (see [Open Questions](#open-questions) on log reliability). The routed arm has no equivalent exclusion: a run where the orchestrator never reaches X's owning agent still counts, since that non-routing is itself the effect this arm measures.
+**Skill-load exclusion (direct arm only).** A direct-arm pair counts toward any ratio above only if the env A side's session log shows a skill-load event for skill X; a run with no logged load is excluded rather than counted "not worse," since an unloaded skill was never isolated (see [Open Questions](#open-questions) on log reliability). The routed arm has no equivalent exclusion for `own` and `overlap` pairs: a run where the orchestrator never reaches X's owning agent still counts, since that non-routing is itself the effect this arm measures. Near-miss pairs in both arms follow the near-miss qualification above.
 
 **Repeat instability.** `bench.repeats.ablation` (default 2) samples the same `(scenario, harness, model)` cell more than once, in both arms. If a scenario's repeats disagree, the runner does not fold both into the ratio as ordinary votes without comment: it flags the scenario repeat-unstable in the report alongside its resolved outcomes, so a person can distinguish a genuinely borderline scenario from two judged repeats that simply landed differently. Both repeats still count toward the ratios; the flag is additional, not a substitute. A repeat count of 2 is the minimum that can detect this instability at all and the weakest sample for resolving it: a 2-of-2 disagreement is one flagged data point, not a majority vote, which is why the flag exists as a distinct signal rather than being silently smoothed into the ratio.
 
@@ -419,7 +427,8 @@ The Anthropic client reuses the CLI's existing `ureq` (`=2.10.1`) plus `rustls` 
 | `scenario_id` | string | stable ID, `<skill>-NNN` |
 | `skill` | string | source skill path, or a list of paths for `overlap` |
 | `set` | string | `core` or `coverage` |
-| `kind` | string | `own` (single-skill), `overlap` (shared across a cluster), or `near_miss` (should not trigger the skill) |
+| `kind` | string | `own` (single-skill), `overlap` (shared across a cluster), or `near_miss` (should not change the skill's output) |
+| `borrowed_from` | string or null | for a `near_miss`, the neighbouring skill whose approved core trigger scenario it reuses; null if drafted for a skill with no neighbour |
 | `prompt` | string | the user request text |
 | `fixtures` | list of paths | files under `benchmarking/fixtures/` copied into the run's working directory |
 | `judge_notes` | string | what a strong answer covers, shown to judges |
@@ -448,6 +457,7 @@ The Anthropic client reuses the CLI's existing `ureq` (`=2.10.1`) plus `rustls` 
 - Direct arm: N of M resolved pairs not-worse, 0 pairs strongly-better-A
 - Routed arm: N of M resolved pairs not-worse, 0 pairs strongly-better-A
 - Coverage scenarios run: N
+- Near-misses: loaded on N of M (well-scoped if 0); N of the qualifying pairs showed no difference
 - Routing shift: <none, or a short description of which agent/skills each side reached>
 - Justification: <one paragraph>
 
@@ -465,8 +475,8 @@ The Anthropic client reuses the CLI's existing `ureq` (`=2.10.1`) plus `rustls` 
 - <skill-name>: reason (unresolved-pair ratio, run_failed ratio, incomplete ablation, or routing regression: direct arm passed, routed arm did not)
 
 ## Metrics Appendix
-| Skill | Verdict | Core Scenarios | Coverage Scenarios | Screen A-vs-B | Direct-Arm Pairs (resolved/unresolved) | Routed-Arm Pairs (resolved/unresolved) | Escalated Pairs | Same-Family vs Cross-Family Judge Agreement |
-|---|---|---|---|---|---|---|---|---|
+| Skill | Verdict | Core Scenarios | Coverage Scenarios | Screen A-vs-B | Direct-Arm Pairs (resolved/unresolved) | Routed-Arm Pairs (resolved/unresolved) | Escalated Pairs | Near-Miss Load Rate | Same-Family vs Cross-Family Judge Agreement |
+|---|---|---|---|---|---|---|---|---|---|
 
 Any skill whose coverage-set scenario count exceeds `bench.scenarios.review_flag` (config) is flagged here as a possible split candidate: a skill that broad usually covers ground better split into two.
 ```
@@ -603,6 +613,6 @@ Sizing each phase into task-level tickets happens in a later pass. The pilot kee
 - Does `kiro-v3` need its own coverage, and on what timeline relative to `kiro-cli-v2` and `claude`?
 - What are the exact non-interactive invocation flags for a `kiro-cli`/`claude` subject run in `runner.rs` (model selection, working-directory override, no-resume)? Not verified against either CLI's real flag set here.
 - Should a routed-arm regression block a candidate outright instead of routing it to needs human review (see [Verdict Rules](#verdict-rules))? This design chooses needs human review: a direct-arm prune or trim is still real evidence, even when routing shifts the outcome, and a block would discard it rather than surface it.
-- What review criterion should a near-miss scenario meet before supporting a Prune/Trim verdict, beyond `kind: near_miss` and the ratio in [Verdict Rules](#verdict-rules)? A too-easy near-miss passes the ratio without exercising the skill's actual boundary; no strength check is defined here.
+- Borrowed near-misses and human review make it likely, not certain, that a near-miss sits at a skill's real boundary. Is that enough, or does a skill with no neighbour need a stricter review criterion for its drafted near-misses?
 - Does trim eligibility need a cross-reference check, so trimming one section cannot silently break another section that refers to it? The section check in [Scenario generation](#scenario-generation) only verifies heading names exist, not dependencies between sections.
 - Is Amazon Bedrock model availability, by region, confirmed for every model chosen for `bench.council.judges[]` and the two escalation judges? Not verified here.
