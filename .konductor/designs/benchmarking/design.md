@@ -19,7 +19,6 @@ Konductor ships 82 skills under `skills/`. Nothing measures whether a skill earn
 Two prior artifacts address related ground and neither is sufficient:
 
 - **`tests/`** is a working harness: `scripts/benchmark.js`, `tests/judges/claude-code-agent-runner.js`, `tests/registry.json`, and per-agent scenario sets under `tests/asdlc-*/`. It runs one subject model against hand-written scenarios and checks pass/fail. It does not compare against a baseline, and cannot attribute a result to one skill. `tests/registry.json` is a subset registry, two entries naming a dataset path, subject model, and default judge, not a per-scenario record store; it has no field for a second environment's output, a pair verdict, or an ablation variant's identity, so this design replaces the harness rather than extending its schema.
-- **`benchmarking/DESIGN.md`** is an earlier design for this same problem, already checked in. It proposes a single-baseline (no environment comparison) scenario generator driven by frontmatter parsing, with `scripts/` left as placeholders. This document supersedes it: the earlier design has no A/B environment, no ablation, and no council escalation, all of which the rest of this document argues are necessary to attribute a result to one skill (see [Solution Overview](#solution-overview)). `benchmarking/DESIGN.md` should be deleted in the same change that lands this design, alongside the Phase 0 harness removal below.
 
 The framework ships as `konductor-bench`, a separate binary built from the same checkout as `konductor`, invoked through `konductor bench`. See [CLI Surface](#cli-surface), [Build and Invocation](#build-and-invocation), and [Module Layout](#module-layout).
 
@@ -30,7 +29,7 @@ The framework ships as `konductor-bench`, a separate binary built from the same 
 - Decide, per skill, whether to keep, prune, or trim it, backed by quality evidence rather than a description read.
 - Cover more than one harness (Kiro CLI, Claude Code) and more than one model per harness, since a skill's effect can vary by both.
 - Separate "does the whole Konductor stack help" from "does this one skill help," since the first cannot answer the second.
-- Build the benchmark framework itself: the scenario generator, the environment runner, the council judge, and the report and plan renderers (see [Implementation Plan](#implementation-plan)). No working version of this exists; `benchmarking/DESIGN.md` is a prior design for it, not an implementation, and this document supersedes it (see [Problem](#problem)).
+- Build the benchmark framework itself: the scenario generator, the environment runner, the council judge, and the report and plan renderers (see [Implementation Plan](#implementation-plan)). No working version of this exists today.
 - Build a reviewed scenario bank with test prompts, input fixtures, and judge notes for every skill.
 - Treat skill coverage as more important than run cost. Cost is controlled through `bench.repeats.ablation`, the models configured per harness, and `bench.budget.max_runs`, never by dropping a scenario from a skill's coverage set. A candidate whose coverage set did not fully run is held at needs human review rather than decided on partial evidence (see [Run Cost](#run-cost), [Verdict Rules](#verdict-rules)).
 
@@ -570,7 +569,7 @@ This is a local batch tool. Its untrusted boundary is the model-provider APIs (A
 
 | Phase | Scope | Depends on | Exit criteria |
 |---|---|---|---|
-| 0 | Remove the existing harness: `tests/` subsets used only by it, `tests/judges/`, `tests/registry.json`, `scripts/benchmark.js`; delete `benchmarking/DESIGN.md` (superseded, see [Problem](#problem)) | None | Old harness and prior design file removed; no other package references them |
+| 0 | Remove the existing harness: `tests/` subsets used only by it, `tests/judges/`, `tests/registry.json`, `scripts/benchmark.js` | None | Old harness files removed; no other package references them |
 | 1 | Scenario bank: `src/scenarios.rs`, generator/judge prompt templates, shared fixture library, draft generator, review workflow | None | A pilot set of 10 skills, spanning the skill categories, each has approved core-set scenarios with fixtures and judge notes |
 | 2 | `cli/konductor-bench/` crate, `shared/konductor-bench-config` crate, `konductor bench` dispatcher, checkout detection, `make bench` and the `make link` extension, `src/home.rs` and `src/runner.rs` (benchmark HOME setup, install/uninstall toggling, ablation variant synth, version-compatibility check, provider config, run matrix) | Phase 1 | `konductor bench` locates and execs `konductor-bench`, passing its exit code through. A screen run executes the pilot core-set scenarios for at least one harness x model cell in both environments, snapshot checks passing, for both `bench.providers.claude` values. `cargo test` for `home.rs`/`runner.rs` is hermetic: no network, no real harness invocation, all three call types behind traits with fakes |
 | 3 | `src/council.rs` and `src/verdict.rs`: judge prompt, per-pair aggregation, screen live-vote/unresolved rules, ablation escalation/unresolved rules | Phase 2 | The pilot screen produces pair outcomes with correct unresolved handling for a synthetic one-one-one split; a synthetic pilot ablation run correctly escalates a disagreeing three-judge pair to five and resolves it. `cargo test` hermetic, same trait-and-fake pattern |
@@ -582,7 +581,7 @@ Sizing each phase into task-level tickets happens in a later pass. The pilot kee
 
 ## Decision Requested
 
-1. Approve deleting the existing harness (`tests/` subsets, `tests/judges/`, `tests/registry.json`, `scripts/benchmark.js`) and the superseded `benchmarking/DESIGN.md` as Phase 0, independent of when the rest of this design lands.
+1. Approve deleting the existing harness (`tests/` subsets, `tests/judges/`, `tests/registry.json`, `scripts/benchmark.js`) as Phase 0, independent of when the rest of this design lands.
 2. Approve the architecture: a two-stage benchmark that screens Konductor against a vanilla baseline to select candidates, then decides each candidate's fate with an isolated, two-arm ablation run judged by a council that starts at three and escalates to five on disagreement, producing a report and a human-confirmed implementation plan. The numeric thresholds this design proposes (`bench.thresholds.*`, `bench.budget.max_runs`, the 20 percent escalation-rate assumption behind the Run Cost figures) are separate from this architectural approval: they are rationale-backed starting points the doc itself calls unmeasured, and are approved as Phase 1 pilot inputs subject to revision once the pilot's real pair outcomes exist, not as fixed final values.
 
 ## Open Questions
