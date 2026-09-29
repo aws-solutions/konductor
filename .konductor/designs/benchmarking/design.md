@@ -16,9 +16,7 @@ tags:
 
 Konductor ships 82 skills under `skills/`. Nothing measures whether a skill earns its token cost, whether it activates when its description says it should, or whether another skill already covers the same ground.
 
-Two prior artifacts address related ground and neither is sufficient:
-
-- **`tests/`** is a working harness: `scripts/benchmark.js`, `tests/judges/claude-code-agent-runner.js`, `tests/registry.json`, and per-agent scenario sets under `tests/asdlc-*/`. It runs one subject model against hand-written scenarios and checks pass/fail. It does not compare against a baseline, and cannot attribute a result to one skill. `tests/registry.json` is a subset registry, two entries naming a dataset path, subject model, and default judge, not a per-scenario record store; it has no field for a second environment's output, a pair verdict, or an ablation variant's identity, so this design replaces the harness rather than extending its schema.
+The existing harness under `tests/` addresses related ground but is not sufficient. It consists of `scripts/benchmark.js`, `tests/judges/claude-code-agent-runner.js`, `tests/registry.json`, and per-agent scenario sets under `tests/asdlc-*/`. It runs one subject model against hand-written scenarios and checks pass/fail. It does not compare against a baseline, and cannot attribute a result to one skill. `tests/registry.json` is a subset registry, two entries naming a dataset path, subject model, and default judge, not a per-scenario record store; it has no field for a second environment's output, a pair verdict, or an ablation variant's identity, so this design replaces the harness rather than extending its schema.
 
 The framework ships as `konductor-bench`, a separate binary built from the same checkout as `konductor`, invoked through `konductor bench`. See [CLI Surface](#cli-surface), [Build and Invocation](#build-and-invocation), and [Module Layout](#module-layout).
 
