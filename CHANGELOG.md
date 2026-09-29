@@ -6,6 +6,16 @@ This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Entries are consolidated per release,
 not per individual commit.
 
+## [1.0.3] - 2026-09-29
+
+### Fixed
+
+- A standalone Claude-Code-only install (`ClaudeInstallStrategy`, no pre-existing Kiro CLI
+  marker) never wired the `SessionStart`/`SubagentStart` telemetry hooks into
+  `.claude/settings.json`, unlike the Kiro CLI v2/v3 dual-marker install paths. `konductor
+  install --harness claude` now wires those hooks too, gated on the same `!no_telemetry`
+  convention the Kiro CLI paths already use.
+
 ## [1.0.2] - 2026-09-28
 
 ### Security
