@@ -621,7 +621,12 @@ mod tests {
         .expect("self_update_cli must succeed with valid fake seams");
 
         assert_eq!(outcome.installed_version, "9.9.9");
-        assert_eq!(outcome.binary_path, live_binary_path);
+        // Canonicalize both sides: macOS temp_dir is /var/... symlinked to
+        // /private/var/..., and `binary_path` comes back canonicalized.
+        assert_eq!(
+            outcome.binary_path,
+            live_binary_path.canonicalize().unwrap()
+        );
         assert_eq!(fs::read(&live_binary_path).unwrap(), verified_bytes);
 
         let temp_file_path = dir.join(format!(".konductor-update-{}.tmp", std::process::id()));
@@ -737,7 +742,11 @@ mod tests {
         .expect("self_update_cli must succeed with a real by-tag fetch");
 
         assert_eq!(outcome.installed_version, requested_tag);
-        assert_eq!(outcome.binary_path, live_binary_path);
+        // Canonicalize both sides (macOS /var -> /private/var); see sibling above.
+        assert_eq!(
+            outcome.binary_path,
+            live_binary_path.canonicalize().unwrap()
+        );
         assert_eq!(fs::read(&live_binary_path).unwrap(), verified_bytes);
 
         fs::remove_dir_all(&dir).ok();
