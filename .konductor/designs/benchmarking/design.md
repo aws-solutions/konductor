@@ -51,6 +51,7 @@ An existing harness lives under `tests/`: `scripts/benchmark.js` at the repo roo
 - Cadence is a `--frequency` flag, defaulting to monthly.
 - Scenario count per skill is config: `scenarios.per_skill`, defaulting to 3.
 - A budget cap, `budget.max_runs`, bounds total runs per invocation.
+- Claude Code's model provider is config: `providers.claude`, either `bedrock` (default) or `anthropic`. Each council judge's provider is config too (see [Model access and credentials](#model-access-and-credentials)).
 
 **Non-Functional**
 
@@ -96,9 +97,28 @@ A content hash per skill is recorded alongside the generated scenarios. If a ski
 
 Before every run, the runner checks that the target HOME contains no agents, skills, steering, or SOP files beyond what that environment is supposed to have: none for env B, only the Konductor install for env A. This catches a developer's own `~/.kiro/skills` or `~/.kiro/steering` leaking into an otherwise isolated run.
 
-Only the harness credential material needed to call the model is copied or linked into each HOME, identically for env A and env B, and removed at teardown. The exact per-harness mechanism is listed under Open Questions.
+Credentials follow the rules in [Model access and credentials](#model-access-and-credentials).
 
 Trim variants are proposed by an LLM or a human as a patch stored alongside the ablation run. The council judges the outputs the patch produces, never the patch text itself.
+
+### Model access and credentials
+
+Three callers need model access, and each gets its own credentials.
+
+| Caller | Provider | Credential | How it is supplied |
+|---|---|---|---|
+| Claude Code, env A and env B | `providers.claude: bedrock` (default) | Short-lived AWS credentials from a dedicated subject role | Environment variables on the harness subprocess: `CLAUDE_CODE_USE_BEDROCK=1`, `AWS_REGION`, the temporary AWS keys, and the Bedrock model ID from `models.claude` |
+| Claude Code, env A and env B | `providers.claude: anthropic` | Anthropic API key | `ANTHROPIC_API_KEY` on the harness subprocess, with the model from `models.claude` |
+| Kiro CLI, env A and env B | Kiro's own backend | The Kiro CLI login | Copied into each temp HOME, identically for env A and env B (mechanism is an open question) |
+| Council judges | Per judge in `council.judges[]`: `bedrock` (default) or `anthropic` | Short-lived AWS credentials from a separate judge role, or an Anthropic API key | Held by the runner process only |
+
+Rules:
+
+- **Least privilege on Bedrock.** The subject role and the judge role each allow only `bedrock:InvokeModel` and `bedrock:InvokeModelWithResponseStream` on the model and inference-profile ARNs listed in config. The runner never copies a developer's `~/.aws` into a temp HOME.
+- **Environment variables, not files.** Subject credentials reach the harness as subprocess environment variables, so nothing is written into a temp HOME that a transcript or artifact could capture. Kiro CLI is the exception until its login mechanism is confirmed.
+- **Judge credentials never reach a subject.** A subject model can run tools and read its own environment. Judge credentials are therefore never set on a harness subprocess.
+- **Same provider on both sides.** Every run record carries harness, provider, and the resolved model ID. A pair is valid only if both sides match on all three. Bedrock and the Anthropic API can serve different versions of a model, so the report states the provider for each harness/model cell and the runner never mixes providers within a pair.
+- **Anthropic-only customers.** With `anthropic` as the only judge provider, every judge is a Claude model and the council is single-family. The run proceeds, and the report marks the council as single-family so readers can weigh the self-preference risk described in [Council judging](#council-judging).
 
 ### Run matrix
 
@@ -262,13 +282,15 @@ This is a local batch tool with no external attacker surface beyond one real tru
 
 **Assets:** `scenarios.json` and `corpus-snapshot.json`, raw screen and ablation results, `council-votes.json`, the rendered report, and the implementation plan.
 
-**Trust boundaries.** The model-provider API is the only untrusted boundary: every run and every council vote crosses into a third-party model, and the response text is untrusted content the framework does not control. The local run directory, from scenario generation through report rendering, is a trusted channel between stages, protected by corruption controls rather than an adversary model.
+**Trust boundaries.** The model-provider APIs (Amazon Bedrock, the Anthropic API, and Kiro's backend) are the untrusted boundary: every run and every council vote crosses into a third-party model, and the response text is untrusted content the framework does not control. Inside the local run, the harness subprocess is less trusted than the runner, because the subject model can execute tools there. The local run directory, from scenario generation through report rendering, is a trusted channel between stages, protected by corruption controls rather than an adversary model.
 
 | Threat | Impact | Mitigation |
 |--------|--------|------------|
 | Prompt injection from a `SKILL.md` or from a subject model's own output, aimed at a judge | A skill author or a subject model's output steers a judge away from an accurate verdict | Both outputs are passed to judges as delimited data blocks with an explicit instruction to treat their content as data, not instructions; judging uses rubric scores, not free-form judge reasoning alone; a pair where either output contains judge-directed text is flagged in the report; every plan action still requires human confirmation regardless of vote outcome. Relabeling randomizes which side a judge sees as X or Y; it does not prevent injected text from being read by the judge in the first place. |
 | Environment contamination (env B, an ablation copy, or env A itself carries files it should not) | The comparison for that run is invalid | The runner checks each target HOME against the expected file set for its environment before every run and aborts a mismatched run as a setup failure |
-| Credential exposure in temp HOMEs | Harness auth material leaks into a committed artifact | Temp HOMEs are mode `0700`, hold only the auth material needed to call the model, are deleted at teardown, and credential material is never written to any file under `results/`, `reports/`, or `plans/` |
+| Subject credential exposure | A subject model reads its Bedrock credentials or API key through a tool call and they end up in a transcript or artifact | Credentials are short-lived and scoped to invoking the configured models only; they are passed as subprocess environment variables, not files; temp HOMEs are mode `0700` and deleted at teardown; transcripts are scanned for credential patterns before being written under `results/`, and a match is redacted and flagged |
+| Judge credential exposure | A subject model gains access to the judge role and can call judge models directly | Judge credentials live only in the runner process and are never set on a harness subprocess; the judge role is separate from the subject role |
+| Overly broad AWS access | A developer's full `~/.aws` profile is used for runs | The runner uses dedicated subject and judge roles with `bedrock:InvokeModel` and `bedrock:InvokeModelWithResponseStream` on listed ARNs only, and never copies `~/.aws` into a temp HOME |
 | Cost overrun | Unbounded spend on model calls | `budget.max_runs` caps total runs per invocation; on hit the stage is marked `partial` and dispatch stops |
 | Accidental artifact corruption | A downstream stage reads a partial or malformed prior-stage file | Content hashes on the scenario snapshot, and a `status` field per stage, let a resumed run detect and skip a corrupted or incomplete prior stage instead of proceeding on bad data |
 | Unsafe plan execution | An automated consumer applies a prune or trim without review | The plan format requires dry-run by default and explicit per-entry confirmation; there is no auto-execution path |
@@ -371,7 +393,7 @@ Three top-level directories, each keyed by `YYYY-MM/` where applicable: `scenari
 | Phase | Scope | Depends on | Exit Criteria |
 |---|---|---|---|
 | Phase 0 | Remove the existing harness: the `tests/` subsets used only by it, `tests/judges/`, `tests/registry.json`, `scripts/benchmark.js` | None | Old harness files removed; no other package references them |
-| Phase 1 | Environment provisioning for env A and env B, the isolation check, and the run matrix runner | Phase 0 | A screen run executes for at least one scenario x harness x model cell in both environments, with the isolation check passing before each run |
+| Phase 1 | Environment provisioning for env A and env B, the isolation check, provider config and credential handling, and the run matrix runner | Phase 0 | A screen run executes for at least one scenario x harness x model cell in both environments, with the isolation check passing before each run, for both `providers.claude` values |
 | Phase 2 | Council judging and per-pair aggregation, including the live-vote and unresolved rules | Phase 1 | A sample screen produces pair outcomes with correct unresolved handling for a synthetic 2/2/1 split |
 | Phase 3 | Candidate selection against the four rules, and ablation runs for both prune and trim variants | Phase 2 | An ablation run executes against at least one candidate for both `A-minus-X` and `A-trimmed-X`, producing a verdict via the deterministic rule |
 | Phase 4 | Report and plan rendering, including the field-level plan schema | Phase 3 | A generated report matches the report skeleton in this design; a generated plan defaults to dry-run and requires per-entry confirmation |
@@ -386,7 +408,8 @@ Phases 1 through 5 are scope only in this design; sizing each into task-level ti
 
 ## Open Questions
 
-- What is the exact per-harness credential mechanism for populating an isolated temp HOME with only the auth material needed to call the model?
+- Where does Kiro CLI store its login, and can it be supplied to an isolated temp HOME through environment variables instead of copied files?
+- Should `providers.claude` also support other gateways customers use for Claude (for example Google Vertex AI), or only Bedrock and the Anthropic API?
 - Is the Kiro CLI skill-load evidence in session logs reliable enough to use as candidate rule (a) and (c) evidence, or does it need a dedicated log level?
 - What is the vanilla Kiro CLI installation's default agent name? Not asserted as fact in this design.
 - Is the Claude Code `Skill` tool-call event reliable across every subject model in `models.claude`, or only some?
