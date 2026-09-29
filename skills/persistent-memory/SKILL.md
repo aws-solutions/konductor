@@ -33,15 +33,16 @@ Load `.konductor/memory/MEMORY.md` and `.konductor/memory/USER.md` via `fs_read`
 
 1. Re-read the target file from disk.
 2. Prepare the **full file content**: all existing entries plus the new/updated one.
-3. Pipe through the validator:
+3. Pipe through the validator. It is `scripts/memory-validator.sh` in the directory this `SKILL.md` was loaded from; use that path when you know it. Otherwise search the install locations. The validator needs `bash` and `bun`.
 
    ```bash
    VALIDATOR="$(git rev-parse --show-toplevel 2>/dev/null)/skills/persistent-memory/scripts/memory-validator.sh"
    if [[ ! -x "$VALIDATOR" ]]; then
-     # Installed copies: .konductor/skills (packages with agents), .kiro/skills
-     # (Kiro CLI without agents), .claude/skills (Claude Code).
-     for dir in "${SKILLS_HOME:-$HOME/.konductor/skills}" .kiro/skills .claude/skills \
-       "$HOME/.kiro/skills" "$HOME/.claude/skills"; do
+     # Project installs (.agents/skills, .kiro/skills, .claude/skills), then
+     # user-level installs for each supported harness.
+     for dir in .agents/skills .kiro/skills .claude/skills "${SKILLS_HOME:-$HOME/.konductor/skills}" \
+       "$HOME/.claude/skills" "$HOME/.codex/skills" "$HOME/.config/opencode/skills" \
+       "$HOME/.kiro/skills" "$HOME/.agents/skills"; do
        VALIDATOR="$dir/persistent-memory/scripts/memory-validator.sh"
        [[ -x "$VALIDATOR" ]] && break
      done

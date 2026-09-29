@@ -1,36 +1,27 @@
 ---
 name: about-konductor
-description: Use when a user is new to Konductor or asks what it is, how to install it, what they can ask it, or how skills, SOPs, and workflows differ, even if they only say "how do I get started". Walks from installing the `konductor` CLI to using the installed content.
-version: 4.0.0
-tags: [skill, help, onboarding, model, cli, install]
+description: Use when a user is new to Konductor or asks what it is, how to install it, what they can ask it, or how skills and workflows differ, even if they only say "how do I get started". Walks from installing the skills to using them.
+version: 5.0.0
+tags: [skill, help, onboarding, model, install]
 ---
 
 # About Konductor
 
-Five steps from nothing to installed skills, SOPs, and workflows: install the CLI, install the content, start a normal session, give it real work, and read the model. Everything past that is reference material.
+Five steps from nothing to installed skills and workflows: install, check the install, start a normal session, give it real work, and read the model. Everything past that is reference material.
 
-## 1. Install the CLI
-
-```bash
-git clone <this-repository's-URL>
-cd <cloned-dir>
-make build
-make link
-command -v konductor && konductor --version
-```
-
-Building from a local checkout is how you get the CLI onto your machine.
-
-## 2. Install the content
+## 1. Install
 
 ```bash
-konductor synth --from .
-konductor install --from . --harness kiro-cli-v2
+git clone -b fuse https://github.com/aws-solutions/konductor.git fuse-konductor
+cd fuse-konductor
+./install.sh --project <your-project>     # or: ./install.sh --global ~/.claude/CLAUDE.md
 ```
 
-`synth` builds the pipeline/config artifacts from the repo root you cloned; `install` copies the 79 skills and 18 SOPs into a target (`$HOME` unless you pass `--target`). `--harness` is required. Use `kiro-cli-v2` or `kiro-v3` for Kiro CLI, or `claude` for Claude Code; there is no auto-detection. Run `konductor doctor` afterward to confirm the install and get remediation guidance for anything wrong.
+`--project` copies the skills and the always-on block into one project, which commits them. `--global` takes the user-level instruction file of each harness (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`, `~/.config/opencode/AGENTS.md`, `~/.kiro/steering/AGENTS.md`) and copies the skills next to it (with `--link`, it links them to the clone instead, for editing skills in the clone). `INSTALL.md` in the clone has the details.
 
-See `cli/README.md` for the full walkthrough, prerequisites, and installing into a directory other than `$HOME`.
+## 2. Check the install
+
+Confirm that the skills are present in your harness's skills directory, for example `.agents/skills/` in the project or `~/.claude/skills/`.
 
 ## 3. Start a session
 
@@ -46,20 +37,14 @@ or:
 claude
 ```
 
-On Claude Code, all ordinary skills and converted SOPs land under `.claude/skills/`. A plain `claude` session discovers them, and you invoke a SOP as `/sop-<name>`.
-
-On Kiro CLI, ordinary skills and the converted SOPs (`sop-<name>`) both land under `.kiro/skills/`, where a plain `kiro-cli chat` session discovers them natively. (A package that ships agent specs installs its ordinary skills under `.konductor/skills/` instead, scoped per agent; this package ships none.)
+A plain session discovers the installed skills: Claude Code reads `.claude/skills/`, Kiro CLI reads `.kiro/skills/`, and Codex, Cursor and OpenCode read `.agents/skills/`.
 
 ## 4. Give the session real work
 
-Describe the outcome and name the relevant skill or SOP when needed:
+Describe the outcome and name the relevant skill when needed:
 
 ```text
 Use the system-design-patterns skill to design a service that ingests IoT sensor events and alerts on anomalies.
-```
-
-```text
-/sop-k-code-review-workflow
 ```
 
 ```text
@@ -76,57 +61,30 @@ fuse-flow gate <slug> <step> --owner-approved
 fuse-flow status <slug>
 ```
 
-Use `--workflow _k-phase-chain` for the lighter six-phase chain. A successful `done` or `gate` prints the next step, so `next` is only needed to resume. fuse-flow resolves step skills from `FUSE_SKILLS_DIR`, `skills/`, `.kiro/skills`, `.konductor/skills`, `.claude/skills`, `~/.kiro/skills`, `~/.konductor/skills`, and `~/.claude/skills`.
+Use `--workflow _k-phase-chain` for the lighter six-phase chain. A successful `done` or `gate` prints the next step, so `next` is only needed to resume. fuse-flow resolves step skills from `FUSE_SKILLS_DIR`, the repository's `skills/`, `.kiro/skills`, `.konductor/skills`, `.claude/skills` and `.agents/skills`, then `SKILLS_HOME` and the same directories under the home directory plus `~/.codex/skills` and `~/.config/opencode/skills`.
 
 ## 5. The model, in one paragraph
 
-Konductor packages reusable skills, named multi-step SOPs, and fuse-flow workflow definitions. The CLI builds, installs, updates, diagnoses, and removes that content. Your existing Kiro CLI or Claude Code session runs the content; fuse-flow adds deterministic phase and artifact tracking when one task spans a complete workflow.
+Konductor packages reusable skills and fuse-flow workflow definitions. Your existing harness session runs the skills; fuse-flow adds deterministic phase and artifact tracking when one task spans a complete workflow.
 
 ## What the package can take on
 
-The installed content covers the software development lifecycle, from requirements and design through implementation, testing, review, and operational diagnosis. Use one skill for focused guidance, invoke a SOP for a named procedure, or use fuse-flow to chain phases and enforce artifact handoffs in one session.
+The installed content covers the software development lifecycle, from requirements and design through implementation, testing, review, and operational diagnosis. Use one skill for focused guidance, or use fuse-flow to chain phases and enforce artifact handoffs in one session.
 
-## The `konductor` CLI
-
-The CLI installs and manages the package on disk. Verify its exact command surface with `konductor --help` and `konductor <subcommand> --help`; flags and defaults can drift across versions.
-
-| Subcommand  | What it does                                                                                                                                                                             |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `init`      | Create `.konductor/config.yml` in the current directory from a preset (`solo`, `team`, or `org`).                                                                                        |
-| `install`   | Install Konductor into a target directory from a `--from <repo-root>` source. `--from` (source) and `--target` (destination) are distinct flags; do not conflate them.                   |
-| `update`    | Re-run the same file-copy `install` uses against a tracked install, unconditionally overwriting every tracked file. No diffing, no `--force` flag, no protection for a hand-edited file. |
-| `uninstall` | Remove a tracked install.                                                                                                                                                                |
-| `synth`     | Synthesize pipeline/config artifacts from a repo root without installing anywhere.                                                                                                       |
-| `doctor`    | Inspect an install or checkout and print remediation guidance for problems it finds.                                                                                                     |
-| `metrics`   | Show usage/run metrics (still a stub as of this writing; verify with `--help`, do not assume it stayed one).                                                                             |
-
-Every subcommand takes `-v`/`--verbose`, `--json`, and `--no-color`; `install`, `update`, `uninstall`, and `doctor` also take `--target` for the destination or tracked install to act on, and all but `install` can act on one tracked target or `--all` of them at once. Use `konductor <subcommand> --help` as the source of truth for exact details.
-
-### Fixing a broken install
-
-Run `konductor doctor` against the target. It checks the installed files and manifest and prints actionable remediation guidance. For a missing skill or SOP, compare the expected runtime layout below with the target and reinstall or update from the source checkout.
-
-## The skill / SOP / workflow model, in more detail
+## The skill / workflow model, in more detail
 
 - **Skill**: reusable guidance for one capability. Read its `SKILL.md` before applying it.
-- **SOP (Standard Operating Procedure)**: a named, multi-step procedure packaged as a runtime skill. Invoke it deliberately.
 - **Workflow**: an ordered set of skill-backed steps, artifacts, dependencies, and gates run by fuse-flow inside one agent session.
 
-The practical difference: skills answer "what guidance applies," SOPs answer "run this specific procedure," and workflows preserve state across a phase chain.
+The practical difference: skills answer "what guidance applies," and workflows preserve state across a phase chain. The SOPs in `agent-sops/` are not installed; fuse-flow workflows replace them.
 
 ## Checking what's actually installed
 
-The installed content depends on the selected harness:
-
-- **Kiro CLI ordinary skills:** `.kiro/skills/<name>/SKILL.md`, available through native skill discovery.
-- **Kiro CLI SOPs:** `.kiro/skills/sop-<name>/SKILL.md`, available through native skill discovery.
-- **Claude Code ordinary skills:** `.claude/skills/<name>/SKILL.md`, available in a plain `claude` session.
-- **Claude Code SOPs:** `.claude/skills/sop-<name>/SKILL.md`, invoked as `/sop-<name>`.
-- **fuse-flow workflows:** `fuse/flow/workflows/`, including `_k-full-sdlc.yml` and `_k-phase-chain.yml`.
+- **Skills:** `<skills directory>/<name>/SKILL.md`, available through native skill discovery.
+- **fuse-flow workflows:** `fuse/flow/workflows/` in the clone, including `_k-full-sdlc.yml` and `_k-phase-chain.yml`.
 
 ## Getting unstuck
 
 - If you do not know which focused capability applies, use `sdlc-navigator` or inspect the installed skill directories.
-- If you want a named multi-step procedure, inspect the installed `sop-<name>` skills and invoke the matching SOP.
 - If you want the complete lifecycle in one session, start one of the fuse-flow workflows and follow `next`, `done`, `gate`, and `status`.
-- If the install or checkout looks broken, run `konductor doctor`.
+- If the install looks broken, run the same `install.sh` command again; it reports what it skipped and why.

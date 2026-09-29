@@ -8,7 +8,7 @@ This guide is Kiro CLI only. Crew has no Claude Code equivalent, and it requires
 
 ## Prerequisites
 
-- konductor installed for Kiro CLI: see the [Quick Start](../../README.md#quick-start), building from source with `konductor synth` / `konductor install`
+- fuse-konductor installed for Kiro CLI: see [INSTALL.md](../../INSTALL.md)
 - A working `kiro-cli chat --agent konductor` session, confirmed before adding Crew on top
 - Kiro Crew installed and a Kiro account signed in
 

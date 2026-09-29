@@ -20,31 +20,14 @@ Konductor is an open-source package of skills, SOPs and workflows that automate 
 ```
 skills/        # Skill definitions (SKILL.md + optional scripts)
 agent-sops/    # Standard operating procedures (user-invoked workflows)
-cli/           # Konductor CLI; see cli/README.md
 fuse/flow/     # fuse-flow workflow runner and workflow definitions; see fuse/flow/README.md
+install.sh     # Installer; see INSTALL.md
+AGENTS.fuse.md # Always-on block that install.sh writes into harness instruction files
 ```
 
 ## Setup & Commands
 
-Run from the repo root (`make synth`'s `konductor synth` defaults its source tree to
-the current working directory, and the `build/cli/konductor` path below is relative
-to it):
-
-```bash
-# Build cli/ + mcp/, synth skill and SOP content, then install from this checkout
-make build
-make synth
-build/cli/konductor install --from . --harness kiro-cli-v2
-```
-
-`make build` first is required, not optional: `make synth` on its own only builds
-`cli/` (it needs the `konductor` binary, nothing from `mcp/`), so skipping this step
-and going straight to `make synth` leaves `mcp/`'s MCP server binary unbuilt --
-`install` auto-discovers that binary and silently skips it if missing (no error),
-producing an install whose skills cannot be loaded at runtime.
-
-See [`cli/README.md`](cli/README.md) for the full build, PATH setup, and install
-instructions.
+Run every test suite from the repository root with `make test`. It needs Bun.
 
 ## Code Style & Conventions
 
@@ -71,8 +54,8 @@ instructions.
 ## Pull Requests
 
 Write commit messages and pull request titles as [Conventional Commits](https://www.conventionalcommits.org):
-`type(scope): summary`, for example `fix(cli): reject unknown harness names`. Use a component name
-(`cli`, `mcp`, `skills`, `agents`) as the scope where one applies. Skills, agent specs, SOPs and
+`type(scope): summary`, for example `fix(skills): tighten a skill description`. Use a component name
+(`skills`, `agents`, `fuse-flow`) as the scope where one applies. Skills, agent specs, SOPs and
 context files are shipped product: use `feat` or `fix` when they change agent behavior and
 `refactor` when they do not, never `docs`. Changes to this file or `CLAUDE.md` are `chore`.
 This convention is inferred from the existing history and is not enforced by CI.
@@ -101,18 +84,6 @@ describes the result.
   most candidates are discarded, and a selected candidate replaces `fuse` as a whole. Replacing
   `fuse` is the owner's call; tag the previous tip first (`git tag fuse-before-<NAME> fuse`) so it
   stays reachable.
-
-## Konductor CLI (`cli/`)
-
-The `cli/` tree is the Konductor CLI: the command-line utility for installing, configuring,
-and diagnosing a Konductor-managed repository, covering an 8-command surface.
-**Read `cli/README.md` before working on it** (commands, conventions, current state).
-
-Non-negotiable conventions:
-
-- **Usage errors exit `64` (`EX_USAGE`)**; exit code `2` is reserved for the "unresolved
-  CRITICAL gate" signal and must never be emitted for a bad CLI invocation.
-- When changing the command surface, keep `cli/README.md`'s command list in sync.
 
 ## Authoring Agents & Skills
 

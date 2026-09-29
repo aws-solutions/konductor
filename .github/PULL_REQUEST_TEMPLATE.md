@@ -14,7 +14,7 @@ Example format:
 - `fuse/flow/workflows/_k-phase-chain.yml`: renamed skill reference `bar` → `baz` — avoids a naming collision
 
 **CLI / Docs / Other:**
-- Updated `cli/README.md` — documents the new `--flag` option
+- Updated `README.md` — documents the new install option
 - Added `docs/guides/foo-integration.md` — walkthrough for the new opt-in integration
 -->
 
@@ -29,20 +29,15 @@ Fixes # (issue)
 - New or updated agent SOP
 - New or updated fuse-flow workflow
 - Design document
-- Dependency change (`package.json`, `Cargo.toml`, or CLI dependency)
-- CLI (`cli/`) change — Rust or Python
+- Dependency change (`package.json` or `fuse/flow/package.json`)
 - Infrastructure / pipeline
 - Documentation
 - Other (describe below)
 
 ## Testing
 
-- [ ] `npm test` passes (runs `tests/scripts/**/*.test.js`)
-- [ ] If `cli/` changed: `cd cli && make test` passes (Rust + Python + conformance suites)
-- [ ] If a skill or SOP changed: built and installed via `cli/README.md`'s `synth`/`install`
-      steps, then exercised the changed skill or SOP in Kiro CLI or Claude Code
-- [ ] If how skills are installed for Kiro changed: `bash tests/integration/kiro-agentless-discovery.sh`
-      passes (needs an authenticated `kiro-cli`; not run in CI)
+- [ ] `make test` passes (installer, fuse-flow and script tests)
+- [ ] If a skill or SOP changed: installed it and exercised it in Kiro CLI or Claude Code
 - [ ] New or changed code files carry the required SPDX header (see AGENTS.md's License headers
       rule); formats without comment syntax (e.g. JSON) are exempt
 
@@ -52,8 +47,7 @@ Fixes # (issue)
 - [ ] I have performed a self-review of my own changes
 - [ ] I have commented my code where necessary
 - [ ] I have made corresponding changes to the documentation
-- [ ] My changes generate no new warnings — build is clean, and for `cli/` changes,
-      `cd cli && make lint` passes (`cargo clippy -- -D warnings` + `cargo fmt --check`)
+- [ ] My changes generate no new warnings
 - [ ] I have added or updated tests that prove my change works (see Testing above for the exact commands)
 
 ## Skills, SOPs and Workflows Affected

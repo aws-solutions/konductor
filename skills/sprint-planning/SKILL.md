@@ -53,7 +53,6 @@ Rules:
 
 - Tasks above 5 points should be broken down
 - Set the **Estimate** attribute for story points, never put estimates in description
-- To convert a raw story-point estimate into an AI-adjusted (agentic) effort band, apply the `legacy-to-agentic-estimate` skill. Pass the assigned points as the legacy value and the task description; use the returned mid-band for capacity tracking.
 
 ### Capacity Tracking
 

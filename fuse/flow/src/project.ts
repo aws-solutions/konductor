@@ -72,10 +72,14 @@ export function skillDirs(root: string): string[] {
     join(root, ".kiro", "skills"),
     join(root, ".konductor", "skills"),
     join(root, ".claude", "skills"),
+    join(root, ".agents", "skills"),
     ...(process.env.SKILLS_HOME ? [process.env.SKILLS_HOME] : []),
     join(home, ".kiro", "skills"),
     join(home, ".konductor", "skills"),
     join(home, ".claude", "skills"),
+    join(home, ".codex", "skills"),
+    join(home, ".config", "opencode", "skills"),
+    join(home, ".agents", "skills"),
   ];
 }
 

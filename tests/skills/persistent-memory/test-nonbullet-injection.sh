@@ -45,7 +45,7 @@ log_fail() { echo "FAIL: $1"; FAIL=$((FAIL + 1)); }
 # $WORKDIR itself, rather than falling through to memory-validator.sh's
 # ". " fallback -- which, if $TMPDIR happens to sit under some ancestor
 # git repo, would resolve there instead and pick up unrelated config. This
-# also lets us supply a deterministic .asdlc/memory-config.json with a URL
+# also lets us supply a deterministic .konductor/memory-config.json with a URL
 # allowlist, which is required to make the URL-rejection scenario
 # meaningful (with no allowlist configured, the validator permits all
 # URLs).
@@ -53,8 +53,8 @@ WORKDIR="$(mktemp -d)"
 git init -q "$WORKDIR"
 trap 'rm -rf "$WORKDIR"' EXIT
 
-mkdir -p "$WORKDIR/.asdlc"
-cat > "$WORKDIR/.asdlc/memory-config.json" <<'EOF'
+mkdir -p "$WORKDIR/.konductor"
+cat > "$WORKDIR/.konductor/memory-config.json" <<'EOF'
 {
   "limits": { "memory_max_chars": 2200, "user_max_chars": 1375 },
   "allowlist_patterns": ["*.example.com"]

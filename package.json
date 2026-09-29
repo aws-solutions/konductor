@@ -2,10 +2,10 @@
   "name": "asdlc-core-ai-capabilities-benchmark",
   "version": "0.1.0",
   "private": true,
-  "description": "Node.js scripts and tests for the Konductor repository: NOTICE generation and installer script tests.",
+  "description": "Node.js tests for the Konductor repository.",
   "scripts": {
-    "generate-notice": "node scripts/generate-notice.js",
-    "test": "node --test \"tests/scripts/**/*.test.js\""
+    "test": "node --test tests/scripts/*.test.js",
+    "test:install": "bun test ./tests/install"
   },
   "engines": {
     "node": ">=22"

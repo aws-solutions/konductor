@@ -23,7 +23,7 @@ The longest sequence of dependent milestones determining minimum program duratio
 
 ### Timeline Estimation
 
-Convert T-shirt sizes to calendar ranges: XS (1-2d), S (3-5d), M (1-2w), L (3-4w), XL (5-8w). Apply buffer: 20% for well-understood work (the floor, applied to all work; there is no zero-buffer tier), 40% for novel, complex, unfamiliar, or otherwise uncertain work. This is the same estimation-uncertainty buffer the plan SOP's Step 5 (Estimate Timeline) applies ahead of its agentic-conversion projection. Account for holidays, on-call rotations, and team availability.
+Convert T-shirt sizes to calendar ranges: XS (1-2d), S (3-5d), M (1-2w), L (3-4w), XL (5-8w). Apply buffer: 20% for well-understood work (the floor, applied to all work; there is no zero-buffer tier), 40% for novel, complex, unfamiliar, or otherwise uncertain work. This is the same estimation-uncertainty buffer the plan SOP's Step 5 (Estimate Timeline) applies. Account for holidays, on-call rotations, and team availability.
 
 ## Output Format
 
@@ -49,7 +49,7 @@ Generate a program plan with these sections:
 
 **IMPORTANT (should fix):**
 
-- No buffer applied to estimates (see Timeline Estimation above; the plan SOP's Step 5 carries the equivalent buffer, kept independent of its agentic projection)
+- No buffer applied to estimates (see Timeline Estimation above; the plan SOP's Step 5 carries the equivalent buffer)
 - Dependencies missing risk assessment
 - Resource over-allocation (>100% utilization)
 

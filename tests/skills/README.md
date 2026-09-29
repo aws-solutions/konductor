@@ -25,8 +25,8 @@ convention below.
 
 ## Running
 
-Prerequisites: `bash` (4+), `python3` (3.6+, stdlib only — no extra
-packages). No build or install step; run any file directly:
+Prerequisites: `bash` (4+) and `bun`. No build or install step; run any
+file directly:
 
 ```bash
 bash tests/skills/persistent-memory/test-nonbullet-injection.sh

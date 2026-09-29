@@ -118,6 +118,10 @@ describe("finding skills", () => {
     const where = () => repo.ok("next", "feat").split("\n")[1];
     expect(where()).toBe("read: demo/SKILL.md   (not found; set FUSE_SKILLS_DIR)");
 
+    repo.write("home/.config/opencode/skills/demo/SKILL.md");
+    expect(where()).toBe(`read: ${join(repo.root, "home/.config/opencode/skills/demo/SKILL.md")}`);
+    repo.write("home/.codex/skills/demo/SKILL.md");
+    expect(where()).toBe(`read: ${join(repo.root, "home/.codex/skills/demo/SKILL.md")}`);
     repo.write("home/.claude/skills/demo/SKILL.md");
     expect(where()).toBe(`read: ${join(repo.root, "home/.claude/skills/demo/SKILL.md")}`);
     repo.write("custom-skills/demo/SKILL.md");

@@ -75,8 +75,9 @@ Exit codes: 0 success, 1 refused (the reason is printed), 64 usage error.
   step one fix cycle. After `max_fix_cycles` of them the step is `blocked`, and only the owner can
   release it with `gate`.
 - **Skills.** A relative skill path is looked up in `FUSE_SKILLS_DIR`, then `skills/`,
-  `.kiro/skills/`, `.konductor/skills/` and `.claude/skills/` in the repository, then
-  `SKILLS_HOME`, then `~/.kiro/skills/`, `~/.konductor/skills/` and `~/.claude/skills/`.
+  `.kiro/skills/`, `.konductor/skills/`, `.claude/skills/` and `.agents/skills/` in the
+  repository, then `SKILLS_HOME`, then `~/.kiro/skills/`, `~/.konductor/skills/`,
+  `~/.claude/skills/`, `~/.codex/skills/`, `~/.config/opencode/skills/` and `~/.agents/skills/`.
 - **Running at the same time.** A check command runs outside the lock on the state file, so a long
   test run does not hold up `done` for another step. If two `done` commands for the same step run at
   once, both run its check, and only the first to finish records the step; the other is refused

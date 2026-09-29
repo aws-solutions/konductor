@@ -4,7 +4,7 @@
 
 Konductor is an open-source package of skills, standard operating procedures (SOPs) and workflows that automate the software development lifecycle (SDLC). A single agent session in Kiro CLI or Claude Code runs a workflow one step at a time and loads the skill each step names, so a request can move from requirements through design, specs, implementation, code review, testing and documentation with the same quality gates at every step.
 
-> **Note:** Konductor used to ship agent specs: eight specialists and three orchestrators that routed work between them. They were removed, together with the skills and the SOP that only routed work to subagents; see [docs/research/2026-09-26-orchestration-skills-and-sops.md](docs/research/2026-09-26-orchestration-skills-and-sops.md). The user guide under [`docs/user-guide/`](docs/user-guide/), its HTML bundles in `docs/`, and the integration guides under [`docs/guides/`](docs/guides/) still describe the agent-based layout and have not been rewritten yet.
+> **Note:** Konductor used to ship agent specs: eight specialists and three orchestrators that routed work between them. They were removed, together with the skills and the SOP that only routed work to subagents; see [docs/research/2026-09-26-orchestration-skills-and-sops.md](docs/research/2026-09-26-orchestration-skills-and-sops.md). The user guide, which described the agents and the removed `konductor` command line tool, is not on this branch. The integration guides under [`docs/guides/`](docs/guides/) still describe the agent-based layout and have not been rewritten yet. To install, use [INSTALL.md](INSTALL.md).
 
 The package ships as static configuration compatible with [Kiro](https://kiro.dev) and [Claude Code](https://claude.ai/download). No runtime infrastructure is required beyond the AI runtime itself.
 
@@ -20,12 +20,11 @@ The package ships as static configuration compatible with [Kiro](https://kiro.de
 6. [SOPs](#sops-standard-operating-procedures)
 7. [Usage Examples](#usage-examples)
 8. [Optional Integrations](#optional-integrations)
-9. [Roadmap: The Konductor CLI](#roadmap-the-konductor-cli)
-10. [Project Structure](#project-structure)
-11. [Contributing](#contributing)
-12. [Security](#security)
-13. [License](#license)
-14. [Data Collection](#data-collection)
+9. [Project Structure](#project-structure)
+10. [Contributing](#contributing)
+11. [Security](#security)
+12. [License](#license)
+13. [Data Collection](#data-collection)
 
 ---
 
@@ -37,70 +36,18 @@ You get this by installing one package. No servers to run and no infrastructure 
 
 ## Quick Start
 
-### Quick install (single command)
+### Installing
+
+Clone the `fuse` branch and run `install.sh`, into one project or for yourself across projects:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/aws-solutions/konductor/refs/heads/main/scripts/konductor-bootstrap.sh | bash
+git clone -b fuse https://github.com/aws-solutions/konductor.git fuse-konductor
+cd fuse-konductor
+./install.sh --project /path/to/your/project
+./install.sh --global ~/.claude/CLAUDE.md
 ```
 
-This fetches [`scripts/konductor-bootstrap.sh`](scripts/konductor-bootstrap.sh), a small script whose only job is to download the real installer, [`scripts/konductor-install.sh`](scripts/konductor-install.sh), verify it against the checksum GitHub's own Contents API reports for that file, and run it. Requires `jq`, used to pull that checksum out of the API's JSON response.
-
-Piping a remote script into `bash` runs code you haven't read, so (as with any curl-pipe-to-shell installer) read [`scripts/konductor-bootstrap.sh`](scripts/konductor-bootstrap.sh) and [`scripts/konductor-install.sh`](scripts/konductor-install.sh) yourself first if you want to audit what you're running before you run it.
-
-`konductor-install.sh` detects your OS and architecture, resolves the latest published release, downloads that platform's `konductor` binary plus its `.sha256` checksum sidecar, verifies the checksum, and symlinks the verified binary into `~/.local/bin`. No additional authentication or access beyond an unauthenticated GitHub release download is needed, so anyone will be able to run it as-is. It then runs `konductor install` with no `--from` flag against `$HOME` (or wherever `HOME` points for the invocation), which fetches the rest of what it needs (the packaged skill and SOP content and the platform's `skill-lookup-mcp` MCP server binary) directly from the same release. It installs for `kiro-cli-v2`, the default runtime target, unless you set `KONDUCTOR_HARNESS=claude` (or `kiro-v3`) to target a different one.
-
-Supported platforms are Linux (`x86_64` or `aarch64`) and macOS on Apple Silicon (`arm64`): the same three the release build matrix publishes binaries for. On any other platform (Intel macOS, Windows, or anything else), the script fails with a clear error naming the three it supports; use [Installing from source](#installing-from-source) below instead.
-
-Re-running the script later always installs whatever release is currently latest: it re-downloads, re-verifies, and overwrites both the versioned binary and the `~/.local/bin/konductor` symlink every time, so there's no persistent checkout to keep in sync. Set `KONDUCTOR_TAG=v0.1.2` (or any published release tag) to pin the install to that release instead of latest.
-
-If `~/.local/bin` isn't already on your `PATH`, the script prints a note at the end telling you to add it (e.g. `export PATH="$HOME/.local/bin:$PATH"` in your shell profile) — otherwise the `konductor` command it just linked won't resolve.
-
-### How installing Konductor works
-
-Getting Konductor running is two steps against your own checkout: `synth`, then `install`.
-
-`konductor synth --from <repo-root>` reads this repo's agent/skill/SOP source and renders it into a runtime-ready output tree. `konductor install --from <repo-root>` then copies the agent, skill, and SOP output into your runtime's config directories and records a manifest so a later `konductor update` or `konductor uninstall` knows what it's responsible for. SOPs land differently per runtime: Kiro CLI gets the rendered `.sop.md` files copied as-is into `.konductor/sops/`, while Claude Code gets each one converted into its own `sop-<name>/SKILL.md` under `.claude/skills/`.
-
-Both commands work today for Kiro CLI and Claude Code. `install` requires an explicit `--harness <kiro-cli-v2|kiro-v3|claude>` flag naming which runtime's synthed output to install — there is no destination-marker auto-detection and no default; omitting `--harness` is a usage error. `--harness kiro-cli-v2` installs skills under `.kiro/skills/<name>/`, where Kiro CLI discovers them (a package that ships agent specs installs agents under `.kiro/agents/` and skills under `.konductor/skills/<name>/` instead, so Kiro CLI doesn't expose every installed skill to every agent); `--harness claude` installs agents and skills under `.claude/agents/` and `.claude/skills/`; `--harness kiro-v3` installs for Kiro CLI's V3 (KAS) engine. Every one of these paths is relative to the install target — `--target <dir>` if given, else `$HOME` — not hardcoded to your home directory.
-
-A target directory tracks a single strategy once installed: re-running `install` with a different `--harness` value against an already-tracked target is refused rather than silently switching strategies, since that would overwrite the manifest and drop the original strategy's files from tracking. Install a second harness into a separate target directory instead.
-
-`konductor install` also works without `--from`, fetching a published GitHub release directly — including the platform-specific `skill-lookup-mcp` MCP server binary the CLI's own skill lookups depend on (Linux x86_64/aarch64 and Apple Silicon macOS; a platform with no published binary degrades gracefully, install still succeeds, only skill lookups are unavailable). Either install path's summary reports the installed content's version. See [`cli/README.md`](cli/README.md#installing-without---from-the-github-release--main-branch-dist-fallback-chain) for the exact fallback chain and its caveats.
-
-### Installing from source
-
-Choose this over the quick install above when you want a pinned commit rather than the latest release, need a platform the release build matrix doesn't publish a binary for (Intel macOS, Windows), or want to build or audit the source before installing it.
-
-The CLI itself has no dependency that only runs inside Amazon to build or run — once you have a checkout, it's a plain `cargo build`, nothing else required. This sequence works with a plain `git clone` of the public repo. Build and `synth` are the same regardless of which runtime you're targeting; `install` and the verification step differ, so they're split out below.
-
-[`scripts/konductor-clone-install.sh`](scripts/konductor-clone-install.sh) is a convenience one-liner that does what this section's walkthrough does by hand (clone, build, link the binary onto your `PATH`, `synth`, `install`) in a single command, updating a persistent checkout under `~/.konductor/git/konductor` on each re-run instead of re-cloning from scratch. It takes the same `KONDUCTOR_HARNESS` environment variable as `scripts/konductor-install.sh` above.
-
-```bash
-git clone https://github.com/aws-solutions/konductor.git
-cd konductor
-make build
-make link
-konductor synth --from .
-```
-
-**Kiro CLI** — no `--target` is needed against a fresh, empty target:
-
-```bash
-konductor install --from . --harness kiro-cli-v2
-kiro-cli chat
-```
-
-**Claude Code** — pass `--target` at a directory that already has a `.claude/` marker (Claude Code itself creates one on first run in a project):
-
-```bash
-konductor install --from . --harness claude --target <dir-with-.claude-marker>
-claude
-```
-
-> This is the short version. For prerequisites, the PATH-setup check, and a fully
-> spelled-out numbered walkthrough (build → link → verify → synth → install → chat),
-> see [`cli/README.md`](cli/README.md#getting-started). That doc also covers installing
-> into a directory other than `$HOME` via `--target`.
+[INSTALL.md](INSTALL.md) covers every supported harness, update, uninstall and customer forks.
 
 ### First run
 
@@ -119,7 +66,7 @@ prints the next step. Repeat until the workflow is complete. Stop at each owner 
 the artifact.
 ```
 
-Each step names its skill and the artifact it must produce under `.konductor/`. `fuse-flow done` refuses a step until its artifacts exist, and a gated step waits until you approve it with `fuse-flow gate my-feature <step> --owner-approved`. fuse-flow finds skills in `FUSE_SKILLS_DIR`, `skills/`, `.kiro/skills/`, `.konductor/skills/`, `.claude/skills/`, `~/.kiro/skills/`, `~/.konductor/skills/` and `~/.claude/skills/`, so an install into `$HOME` is found without extra setup.
+Each step names its skill and the artifact it must produce under `.konductor/`. `fuse-flow done` refuses a step until its artifacts exist, and a gated step waits until you approve it with `fuse-flow gate my-feature <step> --owner-approved`. fuse-flow finds skills in every directory `install.sh` writes to, so it needs no extra setup; [`fuse/flow/README.md`](fuse/flow/README.md) lists them.
 
 ---
 
@@ -133,16 +80,16 @@ The workflow definitions in [`fuse/flow/workflows/`](fuse/flow/workflows/) are t
 | `_k-phase-chain.yml`       | The lighter chain: requirements, design, feature splitting, specs, implementation, code review and QA, with no owner gates.                                                |
 | `custom-example-*.yml`     | Examples of project-specific workflows at different sizes.                                                                                                                 |
 
-For a single task, invoke a SOP or ask the session to use a skill directly; see [Usage Examples](#usage-examples).
+For a single task, ask the session to use a skill directly; see [Usage Examples](#usage-examples).
 
 ## Skills
 
-Skills are modular knowledge packages that a session loads when a task needs them. On Claude Code, installed skills live in `.claude/skills/`: only their names and descriptions are in context at session start, and the full content loads when a skill is invoked. On Kiro CLI, skills are installed to `.kiro/skills/`, where Kiro CLI's native skill discovery finds them. (A package that ships agent specs installs its skills under `.konductor/skills/` instead, so that each agent sees only the skills it declares; this package ships none.) The package ships **79 skills** across 8 capability areas:
+Skills are modular knowledge packages that a session loads when a task needs them. On Claude Code, installed skills live in `.claude/skills/`: only their names and descriptions are in context at session start, and the full content loads when a skill is invoked. On Kiro CLI, skills are installed to `.kiro/skills/`, where Kiro CLI's native skill discovery finds them. (A package that ships agent specs installs its skills under `.konductor/skills/` instead, so that each agent sees only the skills it declares; this package ships none.) The package ships **78 skills** across 8 capability areas:
 
 | Category                          | Count | Representative skills                                                                                                                       | Covers                                                                                                                                                                                    |
 | --------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Architecture & Design             | 22    | `system-design-patterns`, `threat-modeling`, `dynamodb-design`, `iam-policy-design`, `smithy-modeling`, `cost-estimation`, `adr-generator`  | System design docs, STRIDE threat models, data models, least-privilege IAM, Smithy API models, AWS cost scenarios, trade-off scoring, ADRs, adversarial design review, design elicitation |
-| Planning & Tracking               | 14    | `user-story-writing`, `task-decomposition`, `sprint-planning`, `risk-management`, `program-planning`, `progress-tracking`                   | Requirements → user stories → task/sprint breakdown, program plans and decision docs, RAID logs, status reports, legacy-to-agentic effort re-estimation, plan critique                    |
+| Planning & Tracking               | 13    | `user-story-writing`, `task-decomposition`, `sprint-planning`, `risk-management`, `program-planning`, `progress-tracking`                   | Requirements → user stories → task/sprint breakdown, program plans and decision docs, RAID logs, status reports, plan critique                                                            |
 | Architecture & Development Review | 14    | `backend-development`, `frontend-development`, `infra-validation`, `code-review`, `git-workflow`, `adversarial-code-review`                 | Backend/frontend implementation, CDK/CloudFormation validation, IAM/security policy validation, standard and adversarial code review, git workflow                                        |
 | Testing & QA                      | 8     | `test-coverage-analysis`, `e2e-test-strategy`, `cypress-test-implementation`, `security-test-generation`                                    | Coverage gap analysis, prioritized E2E test matrices, Cypress/Playwright planning, OWASP-based security test plans, web app/DOM discovery                                                 |
 | Orchestration & Delegation        | 9     | `sdlc-navigator`, `pre-planning-analysis`, `persistent-memory`, `workspace-skills`, `sop-state-management`, `asdlc-aspect-review`          | SDLC phase flow, ambiguous-request triage, cross-session memory, reusable workspace skills, resumable SOP state, parallel n-aspect review                                                 |
@@ -152,7 +99,7 @@ Skills are modular knowledge packages that a session loads when a task needs the
 
 ## Persistent Memory
 
-Sessions that load the `persistent-memory` skill (see the Orchestration & Delegation row in [Skills](#skills) above) keep a small local scratchpad across sessions. It needs **no setup** — the skill creates the directory on first write and appends it to `.gitignore` itself.
+Sessions that load the `persistent-memory` skill (see the Orchestration & Delegation row in [Skills](#skills) above) keep a small local scratchpad across sessions. It needs `bash` and [Bun](https://bun.sh), and no other setup: the skill creates the directory on first write and appends it to `.gitignore` itself.
 
 Two files, split by what they hold:
 
@@ -171,11 +118,11 @@ Every write is checked by a validator script — an entry that exceeds a limit o
 
 ## SOPs (Standard Operating Procedures)
 
-`konductor install` converts each SOP below into a `sop-<name>` skill: in Claude Code it is invoked as `/sop-<name>`, and in Kiro CLI it is installed to `.kiro/skills/sop-<name>/SKILL.md`, next to the ordinary skills. The `sop-` prefix keeps SOPs distinct from ordinary skills.
+The SOPs below live in `agent-sops/`. The installer does not install them; they are being replaced by fuse-flow workflows.
 
 | SOP                                  | What it does                                                                                                                                      |
 | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `about-konductor`                    | Onboards a new or lost user: install the CLI, then find and run the skills, SOPs and workflows                                                   |
+| `about-konductor`                    | Onboards a new or lost user: install, then find and use the skills and workflows                                                                  |
 | `k-plan`                             | Work breakdown with success criteria, task dependencies, skill assignments, and timeline estimates                                                |
 | `k-context-gathering`                | Pre-implementation context gathering for unfamiliar code, complex multi-system changes, or after repeated debugging failures                      |
 | `k-comprehensive-search`             | Exhaustive codebase and documentation search, with code and documentation searches run in parallel where the runtime offers subagents            |
@@ -196,54 +143,22 @@ Every write is checked by a validator script — an entry that exceeds a limit o
 
 ## Usage Examples
 
-**Review a diff before opening a PR (Claude Code):**
+**Review a diff before opening a PR:**
 
 ```bash
 claude
-> /sop-k-code-review-workflow
+> Use the code-review skill to review my current branch against main.
 ```
 
-**The same in Kiro CLI:**
-
-```bash
-kiro-cli chat
-> Read .kiro/skills/sop-k-code-review-workflow/SKILL.md and run it against my current branch.
-```
-
-**Targeted request that uses one skill (Claude Code):**
+**Targeted request that uses one skill:**
 
 ```bash
 claude -p "Use the threat-modeling skill to create a threat model for a public REST API backed by DynamoDB."
 ```
 
-**Run the full-SDLC SOP (Claude Code):**
+**Run the full SDLC workflow:** start the `_k-full-sdlc` workflow with fuse-flow as described in [First run](#first-run), then let the session follow `fuse-flow next`. It runs every phase, requirements through documentation, and writes its artifacts under `.konductor/`.
 
-```bash
-claude
-> /sop-k-full-sdlc <project_description> [codebase_path] [skip_phases] [output_dir] [elicitation_depth] [max_fix_cycles] [deployed_url] [credentials_file] [feature_isolation]
-```
-
-`<>` = required, `[]` = optional:
-
-| Parameter             | Required? | Default           | Notes                                                                                                                                                                                     |
-| --------------------- | --------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `project_description` | required  | —                 | the project or feature to build                                                                                                                                                           |
-| `codebase_path`       | optional  | current directory |                                                                                                                                                                                           |
-| `skip_phases`         | optional  | none              | comma-separated: `elicitation`, `codebase-analysis`, `requirements`, `design`, `design-review`, `feature-splitting`, `specs`, `implementation`, `code-review`, `testing`, `documentation` |
-| `output_dir`          | optional  | `.konductor/`     |                                                                                                                                                                                           |
-| `elicitation_depth`   | optional  | `standard`        | `quick`, `standard`, `deep`                                                                                                                                                               |
-| `max_fix_cycles`      | optional  | `2`               |                                                                                                                                                                                           |
-| `deployed_url`        | optional  | none              | only used by the UI/functional test phase                                                                                                                                                 |
-| `credentials_file`    | optional  | none              | same phase                                                                                                                                                                                |
-| `feature_isolation`   | optional  | `branch`          | `branch`, `worktree`                                                                                                                                                                      |
-
-A bare positional string is parsed positionally and can land words in the wrong slot (`output_dir: parser`, `skip_phases: json` is a real failure mode), so use named parameters:
-
-```bash
-claude -p "/sop-k-full-sdlc project_description: 'a CLI tool that tails a log file and alerts on error spikes' max_fix_cycles: 5"
-```
-
-The SOP runs every phase, codebase analysis through documentation, and writes its artifacts under `.konductor/`. In Kiro CLI, ask the session to read `.kiro/skills/sop-k-full-sdlc/SKILL.md` and run it with the same parameters, or use the `_k-full-sdlc.yml` workflow described in [First run](#first-run).
+The same prompts work in Kiro CLI, Codex, Cursor and OpenCode sessions.
 
 ## Optional Integrations
 
@@ -256,33 +171,14 @@ Konductor registers none of these MCP servers for you. Register each one you nee
 | `external-research`                                             | Slack search                                                                                                   | Opt-in; requires registering your own Slack app against the official Slack MCP server. See [docs/guides/slack-integration.md](docs/guides/slack-integration.md). |
 | `asana-sprint-planning`                                         | Asana sprint planning                                                                                          | Opt-in; requires an Asana MCP server (`https://mcp.asana.com/v2/mcp`). See [docs/guides/asana-integration.md](docs/guides/asana-integration.md).                  |
 
-## Roadmap: The Konductor CLI
-
-Konductor's engineering design defines a standalone `konductor` CLI — a thin orchestration wrapper with no model dependency of its own — as the external-facing install path.
-
-The `konductor` CLI provides the following commands:
-
-| Command               | Purpose                                                                                             |
-| --------------------- | --------------------------------------------------------------------------------------------------- |
-| `konductor install`   | Copy a local `synth` output tree's skills and SOPs into the detected runtime (`.kiro/` or `.claude/`) |
-| `konductor update`    | Overwrite a tracked install in place from a fresh `synth` source                                    |
-| `konductor uninstall` | Remove a tracked install's files and its entry from `~/.konductor/installs`                         |
-| `konductor synth`     | Transform source skills and SOPs into per-runtime output (`kiro-cli-v2`, `kiro-v3`, `claude`)       |
-| `konductor init`      | Scaffold `.konductor/` and a starter `config.yml` from a preset (`solo`, `team`, `org`)             |
-| `konductor doctor`    | Inspect an install/checkout for problems and report remediation guidance                            |
-| `konductor config`    | Get/set/list configuration values                                                                   |
-
-Get `konductor` today via the quick install script or a from-source build (see [Quick Start](#quick-start) above) and run it with an explicit `konductor install --harness <kiro-cli-v2|kiro-v3|claude>`: `--harness` is required, naming which runtime's output to install, rather than auto-detecting it from the destination.
-
 ## Project Structure
 
 ```text
 konductor/
 ├── agent-sops/            # 18 SOPs (.sop.md)
-├── skills/                # 79 skills (skills/<name>/SKILL.md)
+├── skills/                # 78 skills (skills/<name>/SKILL.md)
 ├── fuse/flow/             # fuse-flow workflow runner and workflow definitions
 ├── docs/guides/           # Getting-started and integration guides
-├── cli/                   # Konductor CLI
 ├── .github/               # Issue and PR templates
 ├── CHANGELOG.md
 ├── CODE_OF_CONDUCT.md
@@ -308,21 +204,7 @@ Licensed under the Apache License, Version 2.0 — see [LICENSE.txt](LICENSE.txt
 
 ## Data Collection
 
-`konductor` sends operational metrics to AWS about how this solution is used. This is not anonymous: every event carries a persistent identifier.
-
-**What's collected.** Seven event types: `agent_invocation`, `subagent_invocation`, `mcp_tool_call`, `cli_error`, `package_installed`, `package_version_updated`, `package_uninstalled`. Each event carries an agent or sub-agent name, the CLI subcommand that failed (for errors), which harness ran it (`kiro-cli-v2`, `kiro-v3`, or `claude`), the CLI's own version, and — for install/update events — the installed content's own version. A session identifier is included when the harness exposes one (Claude Code; Kiro CLI does not), but never the raw value — it's hashed together with that project's own per-install identifier first, so the same underlying session ID produces a different value on a different install. Project paths, directory names, and file contents are never collected. See [`docs/telemetry-schema.json`](docs/telemetry-schema.json) for the exact schema.
-
-**The identifier is machine-scoped, not per-project.** The first time Konductor successfully reports a telemetry event anywhere on a machine — typically the first `konductor install` that isn't run with `--no-telemetry` — it mints one UUID and stores it at `$HOME/.konductor/telemetry.json`. That same UUID is then sent on every event from every project you install Konductor into on that machine — a receiving service can tell that events from several different projects came from the same machine, even though it can't tell which projects.
-
-**Opting out.** `konductor install --no-telemetry` disables reporting for that install — the identity file it would otherwise write is never created, and no telemetry event is ever sent for that target. This is per-project: it applies to the specific target directory that install ran against, not the whole machine.
-
-To decline for the whole machine, edit `$HOME/.konductor/telemetry.json` and set `"telemetry_consent": false`. This file is created the first time any telemetry event actually gets reported on the machine (a successful install, an agent invocation, and so on — never a `--no-telemetry` install, which reports nothing) — if it doesn't exist yet, there's nothing to edit. Once it exists, just flip that one field; Konductor reads this file but never resets an existing value, so a consent you set by hand stays in place across later installs and updates on that machine. A record missing any of its four fields (`schema_version`, `UUID`, `created_at`, `telemetry_consent`) or carrying a `UUID` that isn't exactly 64 lowercase hex characters is treated as unreadable — but it does not get replaced. Konductor never deletes or overwrites this file once it exists, so a malformed record is permanent: every subsequent event silently drops to an untraceable placeholder identifier and no consent flag is read until you repair the JSON or delete the file by hand.
-
-Reporting for any given install requires both the per-project flag and this machine-level setting to allow it; either one being off is enough to suppress it. `konductor doctor` reports which of these is in effect for the current install, including whether a machine-level decline is the reason a project that never opted out isn't reporting.
-
-This solution sends operational metrics to AWS (the "Data") about the use of this solution. We use this Data to better understand how customers use this solution and related services and products. AWS's collection of this Data is subject to the [AWS Privacy Notice](https://aws.amazon.com/privacy/).
-
-To opt out, pass `--no-telemetry` to `konductor install`/`konductor update`, set `telemetry.enabled: false` in `.konductor/config.yml`, or set `KONDUCTOR_TELEMETRY=off` in your environment.
+fuse-konductor collects no data. The installer and fuse-flow send nothing over the network.
 
 ---
 
