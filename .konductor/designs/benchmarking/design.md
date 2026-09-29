@@ -1,3 +1,15 @@
+---
+name: Skill Benchmarking Framework
+description: A monthly skill evaluation framework that identifies redundant/trimmable skills via a council of models
+tags:
+  - benchmarking
+  - quality-gate
+  - skill-management
+---
+
+# Skill Benchmarking Framework — Design
+
+## Problem
 # Skill Benchmarking Framework — Design
 
 ## Problem
@@ -296,6 +308,37 @@ One entry per majority-agreed action (delete/trim only — "needs human review" 
 ```
 
 This file is structured for direct machine parsing, not direct machine execution: an agent can read `skill_path` and the proposed `action` without additional interpretation, but every entry requires human confirmation before anything runs. Concretely: an executing agent MUST default to a dry-run mode that prints the proposed change (file removed, or line range removed) without touching disk, and MUST require an explicit per-entry or per-run confirmation flag before it checks for dangling references (`delete`) or re-validates the trimmed file (`trim`) and writes the result. There is no auto-execution path in this design; the confirmation gate is a required behavior of any agent that consumes this file, not an optional safeguard left to that agent's own future spec.
+
+## Threat Model
+
+**Assets.**
+- `scenarios.json` — the scenario set, which defines what each skill is asked to do
+- `corpus-snapshot.json` — the skill inventory with content hashes, used to detect staleness
+- `results/YYYY-MM/raw/*.json` — raw evaluation transcripts and metrics
+- `council-votes.json` — council verdicts and dissent records
+- `reports/YYYY-MM-report.md` — human-readable conclusions
+- `plans/YYYY-MM-implementation.json` — machine-readable action plan
+
+**Threats.**
+| Threat | Impact | Mitigation |
+|--------|--------|------------|
+| Scenario tampering (change `scenarios.json` between generation and evaluation) | False pass/fail; skills scored against wrong expectations | `corpus-snapshot.json` content hashes detect staleness; scenarios regenerated if source changed |
+| Council vote manipulation (alter `council-votes.json`) | Incorrect recommendations; `delete`/`trim` on wrong skills | Council votes logged with member identity; `council-votes.json` stored in results directory keyed by run timestamp |
+| Baseline agent run manipulation (modify `kiro-default.json` or `claude-default.json`) | Skewed metrics; pass rate/inflation or deflation | Raw transcripts stored per scenario per baseline; independent replay possible from `scenarios.json` |
+| Report forgery (substitute wrong `reports/YYYY-MM-report.md`) | Wrong decisions; wrong skills deleted/trimmed | Report hash recorded in `plans/YYYY-MM-implementation.json`; plan execution requires report match |
+| Council member bias (one model systematically favors certain skills) | Skewed outcomes toward that model's preferences | Council uses 5 members; dissent recorded; majority required; no single member can unilaterally decide |
+| Token budget threshold manipulation (external config change mid-run) | Applicable skills change unexpectedly | Threshold is external config; run health signal (`status` field) flags configuration changes as a precautionary note in the report |
+
+**Trust boundaries.**
+- Scenario generation → evaluation: trusted channel (same `YYYY-MM` run directory)
+- Evaluation → council: trusted channel (same `YYYY-MM` run directory)
+- Council → report/plan: trusted channel (same `YYYY-MM` run directory)
+- External config (token budget threshold): untrusted input; logged in report if changed mid-run
+
+**High-severity risks.**
+1. **Scenario staleness** — skill frontmatter changed after scenarios generated but before evaluation: mitigated by content hash comparison and `stale_snapshot` exclusion.
+2. **Council bias without detection** — 3 of 5 members share a blind spot: mitigated by 2-2 split detection (plurality-only result forces "needs human review").
+3. **Report tampering without detection** — substituted report leads to wrong action: mitigated by plan-report hash linkage.
 
 ## Decision Requested
 
