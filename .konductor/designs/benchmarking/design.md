@@ -52,10 +52,10 @@ The framework ships as `konductor-bench`, a separate binary built from the same 
 - `konductor-bench` runs only inside a git checkout of the Konductor repository. It reads the scenario bank, fixtures, and prompts from `<repo-root>/benchmarking/`, and writes results, reports, and plans back to the same tree. There is no mode against a released `konductor` binary or content fetched from GitHub: neither carries the scenario bank, and a released binary has no repository tree to write a report into.
 - The corpus to benchmark is `bench.corpus_path`, defaulting to `skills/`.
 - Models per harness are config: `bench.models.kiro` and `bench.models.claude`, each defaulting to at least two models.
-- Harness scope: the CLI's own `--harness` flag accepts `kiro-cli-v2`, `kiro-v3`, and `claude` (see [`README.md`](../../../README.md)). This benchmark covers `kiro-cli-v2` and `claude` only; `kiro-v3` coverage is an open question (see [Open Questions](#open-questions)).
+- Harnesses benchmarked are config: `bench.harnesses`, defaulting to `[kiro-v3, claude]`. The CLI's own `--harness` flag accepts `kiro-cli-v2`, `kiro-v3`, and `claude` (see [`README.md`](../../../README.md)); `kiro-cli-v2` is being deprecated in favor of `kiro-v3` but can still be listed in `bench.harnesses` for as long as it exists.
 - Cadence is a `--frequency` flag, defaulting to monthly. A scheduled pipeline job invokes the runner on that cadence; a person can also invoke it manually.
-- Scenario counts are config: `bench.scenarios.core` (default 3) is the core set size; `bench.scenarios.min_coverage` (default 5) is the coverage set floor, with no upper cap.
-- Council size is config: `bench.council.size` (default 3), `bench.council.escalate_to` (default 5). Setting both equal gives a fixed-size council.
+- Scenario counts are config: `bench.scenarios.core` (default 3) is the core set size; `bench.scenarios.min_coverage` (default 5) is the coverage set floor, with no upper cap; `bench.scenarios.review_flag` (default 15) flags a coverage set that broad as a possible split candidate.
+- Council size is config: `bench.council.size` (default 3), `bench.council.escalate_to` (default 5). Setting both equal gives a fixed-size council. Council region is config: `bench.council.region` (default `us-west-2`).
 - The routed arm is config: `bench.ablation.routed_arm` (default `true`). `false` skips it for every candidate; the report then states routed effects were not checked.
 - `bench.budget.max_runs` bounds total runs per invocation and is the only limit on coverage-set size.
 - Claude Code's model provider is config: `bench.providers.claude`, `bedrock` (default) or `anthropic`. This is setup only: subject provider is not part of pair validity or verdict grouping (see [Model Access and Credentials](#model-access-and-credentials)). Council judges run on Amazon Bedrock only (see [Council Judging](#council-judging)).
@@ -137,10 +137,10 @@ Before any run, `konductor-bench` checks the installed `konductor --version` aga
 Environments are states of one dedicated **benchmark HOME** per harness, toggled with real `konductor install`/`uninstall` commands run as subprocesses. The benchmark HOME is never the developer's own HOME, created once at mode `0700`, with the harness logged in there once. Each harness needs its own HOME because an install target is locked to one `--harness` value.
 
 - **Env B (vanilla).** No Konductor install, invoked through the harness's own default agent.
-- **Env A (konductor).** After `konductor synth --from <repo-root>` and `konductor install --from <repo-root> --harness <kiro-cli-v2|claude> --target <bench-home> --no-telemetry`, invoked through the `konductor` agent. Always the `--from <repo-root>` path against the checkout under test; the no-`--from` GitHub-release path is never used (see [Requirements](#requirements)).
+- **Env A (konductor).** After `konductor synth --from <repo-root>` and `konductor install --from <repo-root> --harness <kiro-v3|claude> --target <bench-home> --no-telemetry`, invoked through the `konductor` agent. Always the `--from <repo-root>` path against the checkout under test; the no-`--from` GitHub-release path is never used (see [Requirements](#requirements)).
 - **Ablation variants.** The runner copies the source tree to a temp directory and edits it: `A-minus-X` removes skill X and every reference to it in agent specs; `A-trimmed-X` applies the trim patch to X's `SKILL.md`. It then synths and installs that copy into the benchmark HOME the same way as env A. Synth failure sends the candidate to needs human review. The temp copy is deleted after the variant's runs finish.
 
-Every run record and the report header carry the checkout's commit SHA and whether its tree was dirty at run time. A dirty tree is allowed, so a contributor is not forced to commit first, but the report flags it: a dirty-tree result does not map to one commit and cannot be directly compared to a later clean-tree run (see [Open Questions](#open-questions) on whether this should instead be refused outright).
+Every run record and the report header carry the checkout's commit SHA and whether its tree was dirty at run time. A dirty tree is allowed, so a contributor is not forced to commit first, but the report flags it: a dirty-tree result does not map to one commit and cannot be directly compared to a later clean-tree run.
 
 **Hygiene checks and their known gap.** Right after login, the runner snapshots the benchmark HOME (every path, content hash), excluding session-history and cache directories. After every `uninstall`, it diffs the HOME against that snapshot; a mismatch stops further runs on that HOME and marks the stage `partial`. Before every env A or variant run, it checks installed files against the expected manifest; nothing outside agents/skills/steering/SOPs is allowed, which also catches content copied in from a developer's own `~/.kiro` or `~/.claude`.
 
@@ -152,7 +152,7 @@ The session-history and cache exclusion is a design choice, not a verified-clean
 
 **Telemetry.** Benchmark installs pass `--no-telemetry`, and the runner sets `KONDUCTOR_TELEMETRY=off` (see [Open Questions](#open-questions) on whether `uninstall` itself also needs this, or the env var alone covers it).
 
-Credentials follow [Model Access and Credentials](#model-access-and-credentials). Trim variants are proposed by an LLM or a human as a patch stored alongside the ablation run; the council judges the outputs the patch produces, never the patch text.
+Credentials follow [Model Access and Credentials](#model-access-and-credentials). An LLM drafts each trim variant's patch to the candidate's `SKILL.md`, removing only sections a coverage-set scenario's `covers_sections` named and the direct arm showed were not needed. A person approves the patch before the trim variant runs; the approved patch is stored alongside the ablation run. The council judges the outputs the patch produces, never the patch text.
 
 One screen cell (one scenario, harness, and model) on one benchmark HOME, with env B first. On other shards the randomized order runs env A first, with the same steps in between.
 
@@ -190,15 +190,15 @@ sequenceDiagram
 | Claude Code, env A/B | `bench.providers.claude: bedrock` (default) | Short-lived AWS credentials, dedicated subject role | Subprocess env vars: `CLAUDE_CODE_USE_BEDROCK=1`, `AWS_REGION`, temporary AWS keys, model ID from `bench.models.claude` |
 | Claude Code, env A/B | `bench.providers.claude: anthropic` | Anthropic API key | `ANTHROPIC_API_KEY` on the subprocess, model from `bench.models.claude` |
 | Kiro CLI, env A/B | Kiro's own backend | The Kiro CLI login | Assumed done once per benchmark HOME, persisting across toggles; not verified (see [Open Questions](#open-questions)) |
-| Council judges | `bench.council.judges[]`, model IDs only, no provider field | Short-lived AWS credentials, separate least-privilege Bedrock judge role | Held by the runner process only, never a subprocess |
+| Council judges | `bench.council.judges[]` and `bench.council.escalation_judges[]`, model IDs (as Bedrock inference profile IDs where applicable) only, no provider field | Short-lived AWS credentials, separate least-privilege Bedrock judge role, scoped to `us-west-2` by default (`bench.council.region`) | Held by the runner process only, never a subprocess |
 
 Rules:
 
-- **Least privilege on Bedrock.** Subject and judge roles allow only `bedrock:InvokeModel`/`InvokeModelWithResponseStream` on listed ARNs. The runner never copies `~/.aws` into a benchmark HOME.
+- **Least privilege on Bedrock.** Subject and judge roles allow only `bedrock:InvokeModel`/`InvokeModelWithResponseStream` on listed ARNs. The judge role must allow invoking both the judges' inference profile ARNs and the underlying foundation-model ARNs in the profiles' destination regions, since an inference profile resolves to a model ARN at call time. The runner never copies `~/.aws` into a benchmark HOME.
 - **Environment variables, not files.** Subject credentials reach the harness as subprocess env vars, so nothing lands in a HOME a transcript could capture. The Kiro CLI login is the exception, which is why the HOME is mode `0700` and excluded from every artifact.
 - **Judge credentials never reach a subject.** A subject model can run tools and read its own environment; judge credentials are never set on a harness subprocess. Judges run on Amazon Bedrock only, so this holds regardless of `bench.providers.claude`.
 - **Same harness, model, and run on both sides.** Every run record carries harness, subject provider, and resolved model ID. A pair is valid if both sides come from the same run, harness, and configured model. Subject provider is recorded for traceability, shown in the report header, and is not a pairing condition: pairs from runs with different `bench.providers.claude` values can be pooled into one verdict.
-- **Judges run on Amazon Bedrock only.** Running a benchmark needs Amazon Bedrock access for the judges even when Claude Code itself uses the Anthropic API.
+- **Judges run on Amazon Bedrock only.** Running a benchmark needs Amazon Bedrock access for the judges even when Claude Code itself uses the Anthropic API. All default judges (see [Council Judging](#council-judging)) are available from `bench.council.region`'s default, `us-west-2`; `us-east-1` and `us-east-2` also work.
 
 ### Run matrix
 
@@ -233,7 +233,9 @@ flowchart TD
 
 Both outputs in a pair are relabeled X/Y in randomized order, with no indication of which side produced which. Each judge returns a preference (X, Y, or no meaningful difference), a strength (slight, clear, strong), and rubric scores for correctness, completeness, adherence, and actionable detail, against the same instructions in `benchmarking/prompts/judge-pair.md` plus the scenario's prompt, fixtures, and notes.
 
-All judges run on Amazon Bedrock. The base council (`bench.council.judges[]`, default size `bench.council.size` = 3) is three different Bedrock model IDs from three different model families, one of them Claude Opus. Escalation judges 4 and 5 (`bench.council.escalate_to`, default 5) are two more Bedrock models, distinct from the base three and from each other. `bench.council.judges[]` holds model IDs only; there is no provider field, since a judge provider other than Bedrock is not supported.
+All judges run on Amazon Bedrock, on the `bedrock-runtime` endpoint, and support the Converse API. The base council (`bench.council.judges[]`, default size `bench.council.size` = 3) defaults to three Bedrock models from three different model families: Claude Opus 5.5 (inference profile `us.anthropic.claude-opus-5-5`), GPT-6 Astra (`us.openai.gpt-6-astra`), and DeepSeek V3.2 (`deepseek.v3.2`, in-Region only). Escalation judges 4 and 5 (`bench.council.escalation_judges[]`, sized by `bench.council.escalate_to`, default 5) default to Kimi K3 (`us.moonshotai.kimi-k3`) and Mistral Large 3 (`mistral.mistral-large-3-675b-instruct`, in-Region only), giving five different model families across the full panel. All five defaults are swappable in config. Verified against Amazon Bedrock model cards on 2026-09-29: all five are available from `us-west-2` (default `bench.council.region`; `us-east-1` and `us-east-2` also work). `bench.council.judges[]` and `bench.council.escalation_judges[]` hold model IDs only; there is no provider field, since a judge provider other than Bedrock is not supported.
+
+Two caveats on the defaults. Mistral Large 3's lifecycle states end-of-life no sooner than December 2, 2026, so it may need replacing before then. The judge IAM role must allow invoking both the judges' inference profile ARNs and the underlying foundation-model ARNs in the profiles' destination regions (see [Model Access and Credentials](#model-access-and-credentials)).
 
 | Stage | Base panel | Resolves at 3 when | Escalates when | Resolves at 5 when |
 |---|---|---|---|---|
@@ -287,6 +289,8 @@ Aggregation splits pairs by `kind` (see [Scenario Record](#scenario-record)). `o
 - **Keep.** Neither rule is met.
 - **Needs human review.** More than `bench.thresholds.max_unresolved` (default 0.2) of pairs are unresolved or `run_failed`; or the coverage set did not finish running (see [Run Cost](#run-cost)). Coverage always outranks cost: a skill here is never decided on partial evidence.
 
+**Section dependency check.** After a trim variant is drafted, `konductor-bench` scans the remaining `SKILL.md` text for any reference to a removed heading, matching case-insensitively on the heading text. A hit is flagged in the report next to that trim recommendation; the flag does not block the trim on its own, since a reference may be stale prose rather than a real dependency, and the reviewer decides whether to fix it, drop the trim, or accept it as-is.
+
 The three threshold defaults above, plus `bench.thresholds.skill_tokens` at 2,000 (candidate rule (d) below), are rationale-backed starting points, not measured values, expected to be revised once the Phase 1 pilot's real pair outcomes exist to check them against.
 
 **Skill-load exclusion (direct arm only).** A direct-arm pair counts toward any ratio above only if the env A side's session log shows a skill-load event for skill X; a run with no logged load is excluded rather than counted "not worse," since an unloaded skill was never isolated (see [Open Questions](#open-questions) on log reliability). The routed arm has no equivalent exclusion for `own` and `overlap` pairs: a run where the orchestrator never reaches X's owning agent still counts, since that non-routing is itself the effect this arm measures. Near-miss pairs in both arms follow the near-miss qualification above.
@@ -315,7 +319,7 @@ Any single rule firing makes a skill a candidate. Only ablation results, never s
 | `konductor bench run [--stage screen\|ablation\|all] [--frequency <cron-or-interval>] [--resume <YYYY-MM>] [--bench-dir <path>]` | Executes a run. `--stage` selects screen, ablation, or both; `--frequency` is the cadence flag from [Requirements](#requirements); `--resume` continues a `partial` run from its last completed stage (see [Failure Handling](#failure-handling)); `--bench-dir` overrides the default `<repo-root>/benchmarking` location. |
 | `konductor bench report [<YYYY-MM>]` | Renders the report and plan for a completed run, defaulting to the most recent month. Reads `results/<YYYY-MM>/`, `reports/`, and `plans/` from [Artifacts](#artifacts). |
 
-Config for all four lives under `bench:` in `.konductor/config.yml`. Every config key referenced elsewhere in this design (`bench.models.*`, `bench.council.*`, `bench.scenarios.*`, `bench.budget.max_runs`, `bench.providers.claude`, `bench.thresholds.*`, `bench.repeats.*`, `bench.corpus_path`, `bench.ablation.routed_arm`) resolves under that key.
+Config for all four lives under `bench:` in `.konductor/config.yml`. Every config key referenced elsewhere in this design (`bench.harnesses`, `bench.models.*`, `bench.council.*`, `bench.scenarios.*`, `bench.budget.max_runs`, `bench.providers.claude`, `bench.thresholds.*`, `bench.repeats.*`, `bench.corpus_path`, `bench.ablation.routed_arm`) resolves under that key, including `bench.council.judges[]`, `bench.council.escalation_judges[]`, and `bench.council.region` under `bench.council.*`.
 
 ## Run Cost
 
@@ -468,6 +472,7 @@ The Anthropic client reuses the CLI's existing `ureq` (`=2.10.1`) plus `rustls` 
 - Coverage scenarios run: N
 - Sections trimmed: <headings, each covered by a scenario and shown not needed>
 - Sections untested: <headings no coverage scenario exercised, not claimed as safe to trim>
+- Section dependency flags: <none, or which remaining text still references a removed heading>
 - Routing shift: <none, or a short description of which agent/skills each side reached>
 - Justification: <one paragraph>
 
@@ -478,7 +483,7 @@ The Anthropic client reuses the CLI's existing `ureq` (`=2.10.1`) plus `rustls` 
 | Skill | Verdict | Core Scenarios | Coverage Scenarios | Screen A-vs-B | Direct-Arm Pairs (resolved/unresolved) | Routed-Arm Pairs (resolved/unresolved) | Escalated Pairs | Near-Miss Load Rate | Same-Family vs Cross-Family Judge Agreement |
 |---|---|---|---|---|---|---|---|---|---|
 
-Any skill whose coverage-set scenario count exceeds `bench.scenarios.review_flag` (config) is flagged here as a possible split candidate: a skill that broad usually covers ground better split into two.
+Any skill whose coverage-set scenario count exceeds `bench.scenarios.review_flag` (default 15) is flagged here as a possible split candidate: a skill that broad usually covers ground better split into two.
 ```
 
 ### Plan format
@@ -595,24 +600,16 @@ Sizing each phase into task-level tickets happens in a later pass. The pilot kee
 ## Open Questions
 
 - Does the CLI resolve "next to the running `konductor` binary" from the `~/.local/bin` symlink or the resolved real path? If the real path, `PATH` is what actually finds the `make link` symlink.
-- Where does Kiro CLI store its login, and does it survive `konductor uninstall`? Assumed yes (uninstall removes only manifest-tracked files), not verified.
-- Which directories do Kiro CLI and Claude Code use for session history and caches? Excluded from the vanilla snapshot; exact paths need confirming (see [Environments](#environments)).
+- Where does Kiro CLI (v3 engine) store its login, and does it survive `konductor uninstall`? Assumed yes (uninstall removes only manifest-tracked files), not verified.
+- Which directories do Kiro CLI (v3 engine) and Claude Code use for session history and caches? Excluded from the vanilla snapshot; exact paths need confirming (see [Environments](#environments)).
 - Does `konductor uninstall` honor the target's telemetry opt-out, or does the runner rely on `KONDUCTOR_TELEMETRY=off` alone?
-- Should `bench.providers.claude` support other Claude gateways (e.g. Google Vertex AI), or only Bedrock and Anthropic?
-- Is Kiro CLI's skill-load evidence in session logs reliable enough for candidate rules (a)/(c) and the ablation load check in [Verdict Rules](#verdict-rules), or does it need a dedicated log level?
-- What is the vanilla Kiro CLI installation's default agent name? Not asserted as fact here.
+- Is Kiro CLI's (v3 engine) skill-load evidence in session logs reliable enough for candidate rules (a)/(c) and the ablation load check in [Verdict Rules](#verdict-rules), or does it need a dedicated log level?
+- What is the vanilla Kiro CLI (v3 engine) installation's default agent name? Not asserted as fact here.
 - Is the Claude Code `Skill` tool-call event reliable across every subject model in `bench.models.claude`, or only some?
-- Are trim variants written by an LLM, a human, or either, and does that affect how much a confirmed trim can be trusted?
 - Are `bench.thresholds.no_regression` (0.9), `max_unresolved` (0.2), and `skill_tokens` (2,000) the right values, or just rationale-backed starting points to check against the Phase 1 pilot's real pair outcomes (see [Verdict Rules](#verdict-rules))?
 - Does `bench.budget.max_runs`'s proposed 7,000 default hold for a real corpus and cadence, or need adjusting once the pilot's actual escalation rate is known?
-- What default should `bench.scenarios.review_flag` use for flagging a coverage set as a split candidate? None is proposed.
 - Is a floor of 5 for `bench.scenarios.min_coverage` right, or should it scale with a skill's actual capability count?
 - The 20 percent ablation escalation rate in [Run Cost](#run-cost) is illustrative only; the real rate must be measured on the Phase 1 pilot before it sizes anything real.
-- Which Bedrock client should `providers/bedrock.rs` use: the full async AWS SDK, or a lighter synchronous SigV4 crate over `ureq`? Affects only `konductor-bench` (see [ADR-4](#adr-4-separate-konductor-bench-binary-invoked-by-konductor-bench)); no crate is asserted.
-- Should a dirty working tree be refused outright rather than allowed and flagged (see [Environments](#environments))? Refusing guarantees every result maps to one SHA; flagging lets a contributor benchmark in-progress work at the cost of comparability.
-- Does `kiro-v3` need its own coverage, and on what timeline relative to `kiro-cli-v2` and `claude`?
-- What are the exact non-interactive invocation flags for a `kiro-cli`/`claude` subject run in `runner.rs` (model selection, working-directory override, no-resume)? Not verified against either CLI's real flag set here.
-- Should a routed-arm regression block a candidate outright instead of routing it to needs human review (see [Verdict Rules](#verdict-rules))? This design chooses needs human review: a direct-arm prune or trim is still real evidence, even when routing shifts the outcome, and a block would discard it rather than surface it.
+- Which Bedrock client should `providers/bedrock.rs` use: the full async AWS SDK for Rust, or a lighter synchronous SigV4 crate over `ureq`? All five default judges support the Converse API on `bedrock-runtime`, so one Converse client covers all of them; the crate choice itself is still open. Affects only `konductor-bench` (see [ADR-4](#adr-4-separate-konductor-bench-binary-invoked-by-konductor-bench)); no crate is asserted.
+- What are the exact non-interactive invocation flags for a Kiro CLI (v3 engine)/`claude` subject run in `runner.rs` (model selection, working-directory override, no-resume)? Not verified against either CLI's real flag set here.
 - Borrowed near-misses and human review make it likely, not certain, that a near-miss sits at a skill's real boundary. Is that enough, or does a skill with no neighbour need a stricter review criterion for its drafted near-misses?
-- Does trim eligibility need a cross-reference check, so trimming one section cannot silently break another section that refers to it? The section check in [Scenario generation](#scenario-generation) only verifies heading names exist, not dependencies between sections.
-- Is Amazon Bedrock model availability, by region, confirmed for every model chosen for `bench.council.judges[]` and the two escalation judges? Not verified here.
