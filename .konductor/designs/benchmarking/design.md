@@ -58,7 +58,7 @@ The framework ships as `konductor-bench`, a separate binary built from the same 
 - Council size is config: `bench.council.size` (default 3), `bench.council.escalate_to` (default 5). Setting both equal gives a fixed-size council.
 - The routed arm is config: `bench.ablation.routed_arm` (default `true`). `false` skips it for every candidate; the report then states routed effects were not checked.
 - `bench.budget.max_runs` bounds total runs per invocation and is the only limit on coverage-set size.
-- Claude Code's model provider is config: `bench.providers.claude`, `bedrock` (default) or `anthropic`. Each council judge's provider is separately configurable (see [Model Access and Credentials](#model-access-and-credentials)).
+- Claude Code's model provider is config: `bench.providers.claude`, `bedrock` (default) or `anthropic`. This is setup only: subject provider is not part of pair validity or verdict grouping (see [Model Access and Credentials](#model-access-and-credentials)). Council judges run on Amazon Bedrock only (see [Council Judging](#council-judging)).
 
 **Non-Functional**
 
@@ -184,15 +184,15 @@ sequenceDiagram
 | Claude Code, env A/B | `bench.providers.claude: bedrock` (default) | Short-lived AWS credentials, dedicated subject role | Subprocess env vars: `CLAUDE_CODE_USE_BEDROCK=1`, `AWS_REGION`, temporary AWS keys, model ID from `bench.models.claude` |
 | Claude Code, env A/B | `bench.providers.claude: anthropic` | Anthropic API key | `ANTHROPIC_API_KEY` on the subprocess, model from `bench.models.claude` |
 | Kiro CLI, env A/B | Kiro's own backend | The Kiro CLI login | Assumed done once per benchmark HOME, persisting across toggles; not verified (see [Open Questions](#open-questions)) |
-| Council judges | Per-judge in `bench.council.judges[]`: `bedrock` (default) or `anthropic` | Short-lived AWS credentials, separate judge role, or an Anthropic API key | Held by the runner process only, never a subprocess |
+| Council judges | `bench.council.judges[]`, model IDs only, no provider field | Short-lived AWS credentials, separate least-privilege Bedrock judge role | Held by the runner process only, never a subprocess |
 
 Rules:
 
 - **Least privilege on Bedrock.** Subject and judge roles allow only `bedrock:InvokeModel`/`InvokeModelWithResponseStream` on listed ARNs. The runner never copies `~/.aws` into a benchmark HOME.
 - **Environment variables, not files.** Subject credentials reach the harness as subprocess env vars, so nothing lands in a HOME a transcript could capture. The Kiro CLI login is the exception, which is why the HOME is mode `0700` and excluded from every artifact.
-- **Judge credentials never reach a subject.** A subject model can run tools and read its own environment; judge credentials are never set on a harness subprocess.
-- **Same provider on both sides.** Every run record carries harness, provider, and resolved model ID. A pair is valid only if both sides match on all three, since Bedrock and the Anthropic API can serve different versions of the same model name.
-- **Anthropic-only customers.** With `anthropic` as the only judge provider, every judge, including escalation judges, is a Claude model, single-family. See [Council Judging](#council-judging) for how the report flags this.
+- **Judge credentials never reach a subject.** A subject model can run tools and read its own environment; judge credentials are never set on a harness subprocess. Judges run on Amazon Bedrock only, so this holds regardless of `bench.providers.claude`.
+- **Same harness, model, and run on both sides.** Every run record carries harness, subject provider, and resolved model ID. A pair is valid if both sides come from the same run, harness, and configured model. Subject provider is recorded for traceability, shown in the report header, and is not a pairing condition: pairs from runs with different `bench.providers.claude` values can be pooled into one verdict.
+- **Judges run on Amazon Bedrock only.** Running a benchmark needs Amazon Bedrock access for the judges even when Claude Code itself uses the Anthropic API.
 
 ### Run matrix
 
@@ -226,6 +226,8 @@ flowchart TD
 ```
 
 Both outputs in a pair are relabeled X/Y in randomized order, with no indication of which side produced which. Each judge returns a preference (X, Y, or no meaningful difference), a strength (slight, clear, strong), and rubric scores for correctness, completeness, adherence, and actionable detail, against the same instructions in `benchmarking/prompts/judge-pair.md` plus the scenario's prompt, fixtures, and notes.
+
+All judges run on Amazon Bedrock. The base council (`bench.council.judges[]`, default size `bench.council.size` = 3) is three different Bedrock model IDs from three different model families, one of them Claude Opus. Escalation judges 4 and 5 (`bench.council.escalate_to`, default 5) are two more Bedrock models, distinct from the base three and from each other. `bench.council.judges[]` holds model IDs only; there is no provider field, since a judge provider other than Bedrock is not supported.
 
 | Stage | Base panel | Resolves at 3 when | Escalates when | Resolves at 5 when |
 |---|---|---|---|---|
@@ -266,8 +268,6 @@ sequenceDiagram
 
 The base three judges are mixed-family and must include Opus. No rule bars a judge from grading a model in its own family: both sides of every pair come from the same subject model, so any self-preference bias applies equally to both sides, and blind relabeling removes the identity cues a biased judge would use. The report calls out judge-versus-subject family in its metrics appendix and flags any skill where same-family and cross-family judges disagree.
 
-**Anthropic-only customers.** With `anthropic` as the only judge provider, every judge is a Claude model, single-family through escalation. The run proceeds, and the report marks the council single-family so readers can weigh the self-preference risk. A single-family council that also escalated is downgraded to needs human review rather than resolved from the five-judge vote, since escalation already means the base three could not agree, and a single-family panel is the least trustworthy tie-breaker for that disagreement.
-
 ### Verdict rules
 
 A skill's ablation verdict is a deterministic rule over its resolved pair outcomes, aggregated separately per arm; when the routed arm runs, it aggregates its own pairs into its own verdict using the identical logic below, independent of the direct arm's, then the two are combined (see **Combining the two arms**).
@@ -277,7 +277,7 @@ Aggregation splits pairs by `kind` (see [Scenario Record](#scenario-record)): `o
 - **Prune.** Both hold: the ablated variant is not worse in at least `bench.thresholds.no_regression` (default 0.9) of resolved `own`/`overlap` pairs, with no pair showing env A strongly better; and at least that fraction of resolved `near_miss` pairs show no difference.
 - **Trim.** The same rule, against `A-trimmed-X`. Valid only for `SKILL.md` sections some coverage-set scenario's `covers_sections` named and ablation showed were not needed. An untested section is reported untested, not trimmed: absence of evidence a section helps is not evidence it does not.
 - **Keep.** Neither rule is met.
-- **Needs human review.** More than `bench.thresholds.max_unresolved` (default 0.2) of pairs are unresolved or `run_failed`; the coverage set did not finish running (see [Run Cost](#run-cost)); or any resolved pair was decided by a single-family council after escalation. Coverage always outranks cost: a skill here is never decided on partial evidence.
+- **Needs human review.** More than `bench.thresholds.max_unresolved` (default 0.2) of pairs are unresolved or `run_failed`; or the coverage set did not finish running (see [Run Cost](#run-cost)). Coverage always outranks cost: a skill here is never decided on partial evidence.
 
 The three threshold defaults above, plus `bench.thresholds.skill_tokens` at 2,000 (candidate rule (d) below), are rationale-backed starting points, not measured values, expected to be revised once the Phase 1 pilot's real pair outcomes exist to check them against.
 
@@ -605,4 +605,4 @@ Sizing each phase into task-level tickets happens in a later pass. The pilot kee
 - Should a routed-arm regression block a candidate outright instead of routing it to needs human review (see [Verdict Rules](#verdict-rules))? This design chooses needs human review: a direct-arm prune or trim is still real evidence, even when routing shifts the outcome, and a block would discard it rather than surface it.
 - What review criterion should a near-miss scenario meet before supporting a Prune/Trim verdict, beyond `kind: near_miss` and the ratio in [Verdict Rules](#verdict-rules)? A too-easy near-miss passes the ratio without exercising the skill's actual boundary; no strength check is defined here.
 - Does trim eligibility need a cross-reference check, so trimming one section cannot silently break another section that refers to it? The section check in [Scenario generation](#scenario-generation) only verifies heading names exist, not dependencies between sections.
-- Should verdict aggregation ever pool pairs across `bench.providers.claude` values at the skill-verdict level, given pair-level mixing is already forbidden (see [Model Access and Credentials](#model-access-and-credentials))? Not addressed here; the rule is silent on whether a skill run under both providers gets one verdict or two.
+- Is Amazon Bedrock model availability, by region, confirmed for every model chosen for `bench.council.judges[]` and the two escalation judges? Not verified here.
