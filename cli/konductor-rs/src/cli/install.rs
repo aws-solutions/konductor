@@ -337,6 +337,82 @@ pub(super) fn fallback_chain_error_code(
 pub(super) const NO_REMOTE_RELEASE_MESSAGE: &str =
     "remote release installation is not yet available; pass --from <repo-root>";
 
+/// Records this target's telemetry opt-in, and warns when the global
+/// install's hooks predate per-install dedup. Best-effort: a failure
+/// here never unwinds an install that already succeeded. Clearing the
+/// record on `install --no-telemetry` happens in install's own dispatch,
+/// not here: `update --no-telemetry` shares this path but is a per-run
+/// override that keeps the target opted in.
+pub(super) fn finalize_install_telemetry(
+    target_dir: &Path,
+    repo_root: &Path,
+    harness: &str,
+    installed_at: &str,
+    no_telemetry: bool,
+) {
+    if !no_telemetry {
+        if let Err(err) =
+            crate::cli::telemetry::write_install_info(target_dir, repo_root, harness, installed_at)
+        {
+            eprintln!(
+                "konductor install: warning: could not write install-info.json at {}: {err}",
+                target_dir.display()
+            );
+        }
+    }
+    let home = std::env::var_os("HOME").map(PathBuf::from);
+    if let Some(warning) = home
+        .as_deref()
+        .and_then(|home| outdated_global_hook_warning(home, target_dir, no_telemetry))
+    {
+        eprintln!("konductor install: warning: {warning}");
+    }
+}
+
+/// Hook files an install writes into `$HOME` that the harness also loads
+/// for sessions in any project.
+const GLOBAL_TELEMETRY_HOOK_FILES: [&str; 2] = [
+    ".kiro/hooks/konductor-telemetry-hooks.json",
+    ".claude/settings.json",
+];
+
+/// A warning when `home` holds telemetry hooks written before hooks
+/// carried `--install-root`. Those fire in every project and can't defer
+/// to a project install, so they double-count its agents, or report
+/// them after the project opted out. `None` for the global install
+/// itself, or when every global hook is current.
+fn outdated_global_hook_warning(
+    home: &Path,
+    target_dir: &Path,
+    no_telemetry: bool,
+) -> Option<String> {
+    let canonical =
+        |path: &Path| std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+    if canonical(home) == canonical(target_dir) {
+        return None;
+    }
+    let outdated = GLOBAL_TELEMETRY_HOOK_FILES.iter().any(|relative| {
+        std::fs::read_to_string(home.join(relative)).is_ok_and(|text| {
+            text.lines()
+                .any(|line| line.contains("__telemetry-hook ") && !line.contains("--install-root"))
+        })
+    });
+    if !outdated {
+        return None;
+    }
+    let effect = if no_telemetry {
+        "can still report this project's agents despite --no-telemetry"
+    } else {
+        "count this project's agent invocations a second time"
+    };
+    Some(format!(
+        "the global install in {} has telemetry hooks from an older Konductor version, which \
+         {effect}. Run `konductor update --target {}` to fix.",
+        home.display(),
+        home.display()
+    ))
+}
+
 /// What `InstallStrategy::install_from_local` can fail with.
 /// `Manifest` preserves the structured `manifest::ManifestError` a
 /// strategy encountered while reading a target's existing manifest
@@ -1300,6 +1376,17 @@ fn dispatch_install_with_remote_installer(
 
     match install_result {
         Ok(()) => {
+            // `install --no-telemetry` is the durable opt-out: clearing
+            // the opt-in record here keeps a target installed earlier
+            // with telemetry on from reporting after it opts out.
+            if no_telemetry {
+                if let Err(err) = crate::cli::telemetry::remove_install_info(&destination) {
+                    eprintln!(
+                        "konductor install: warning: could not remove {}: {err}",
+                        crate::cli::telemetry::install_info_path(&destination).display()
+                    );
+                }
+            }
             // Computed BEFORE `canonical_target_dir` is moved into the
             // index-finalize write below -- reuses the SAME
             // canonicalized target_dir string and the SAME `installed_at`
@@ -1953,6 +2040,71 @@ mod tests {
             }
             let _ = fs::remove_dir_all(&self.scratch);
         }
+    }
+
+    #[test]
+    fn install_no_telemetry_clears_an_earlier_opt_in() {
+        let _home = HomeGuard::new("no-telemetry-clears-opt-in-home");
+        let target = scratch_dir("no-telemetry-clears-opt-in-target");
+        let repo_root = scratch_dir("no-telemetry-clears-opt-in-repo");
+        seed_synthed_agent(&repo_root, "k-example");
+        let install = |no_telemetry: bool| {
+            dispatch_install_with(
+                Some(repo_root.display().to_string()),
+                Some(target.display().to_string()),
+                "kiro-cli-v2".to_string(),
+                false,
+                no_telemetry,
+                false,
+                None,
+                false,
+                false,
+                false,
+                ColorMode::disabled(),
+            )
+        };
+
+        assert_eq!(install(false), 0);
+        assert!(crate::cli::telemetry::install_info_exists(&target));
+        assert_eq!(install(true), 0);
+        assert!(
+            !crate::cli::telemetry::install_info_exists(&target),
+            "install --no-telemetry must remove the earlier opt-in record"
+        );
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn outdated_global_hooks_are_flagged_only_for_project_installs() {
+        let home = scratch_dir("outdated-hook-home");
+        let project = scratch_dir("outdated-hook-project");
+        let hooks = home.join(".kiro/hooks");
+        fs::create_dir_all(&hooks).unwrap();
+        let hook_file = hooks.join("konductor-telemetry-hooks.json");
+
+        fs::write(
+            &hook_file,
+            r#"{"hooks":[{"action":{"command":"/bin/konductor __telemetry-hook agent-invocation"}}]}"#,
+        )
+        .unwrap();
+        let warning = outdated_global_hook_warning(&home, &project, false).unwrap();
+        assert!(warning.contains("a second time") && warning.contains("konductor update --target"));
+        assert!(outdated_global_hook_warning(&home, &project, true)
+            .unwrap()
+            .contains("--no-telemetry"));
+        assert_eq!(outdated_global_hook_warning(&home, &home, false), None);
+
+        fs::write(
+            &hook_file,
+            r#"{"hooks":[{"action":{"command":"/bin/konductor __telemetry-hook agent-invocation --install-root /h"}}]}"#,
+        )
+        .unwrap();
+        assert_eq!(outdated_global_hook_warning(&home, &project, false), None);
+
+        fs::remove_dir_all(&home).ok();
+        fs::remove_dir_all(&project).ok();
     }
 
     /// Same role as `dispatch_install_with_fake_remote_installer`, but

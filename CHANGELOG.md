@@ -23,6 +23,14 @@ not per individual commit.
   `.claude/settings.json`, unlike the Kiro CLI v2/v3 dual-marker install paths. `konductor
   install --harness claude` now wires those hooks too, gated on the same `!no_telemetry`
   convention the Kiro CLI paths already use.
+- A global install in `$HOME` and a project install each wired their own telemetry hook, and
+  Kiro v3 and Claude Code load both, so one invocation was reported twice. Each hook now carries
+  the install that wrote it, and only the nearest install that owns the agent reports. A project
+  install warns when the global install's hooks are from an older version, since those still
+  double-count until the global install is updated.
+- `konductor install --no-telemetry` over a target that was installed with telemetry on left the
+  opt-in record (`.konductor/install-info.json`) in place, so that target kept reporting. It is
+  now removed.
 
 ### Changed
 

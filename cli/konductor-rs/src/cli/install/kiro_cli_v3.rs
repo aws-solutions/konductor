@@ -439,19 +439,13 @@ impl InstallStrategy for KiroCliV3InstallStrategy {
 
         // Same call, same rationale, as `kiro_cli.rs`'s own identical
         // call site.
-        if !no_telemetry {
-            if let Err(err) = crate::cli::telemetry::write_install_info(
-                target_dir,
-                repo_root,
-                self.name(),
-                installed_at,
-            ) {
-                eprintln!(
-                    "konductor install: warning: could not write install-info.json at {}: {err}",
-                    target_dir.display()
-                );
-            }
-        }
+        super::finalize_install_telemetry(
+            target_dir,
+            repo_root,
+            self.name(),
+            installed_at,
+            no_telemetry,
+        );
         Ok(())
     }
 }

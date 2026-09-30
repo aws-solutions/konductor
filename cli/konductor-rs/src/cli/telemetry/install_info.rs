@@ -109,6 +109,18 @@ pub(crate) fn write_install_info(
     write_record(target_dir, &record)
 }
 
+/// Removes the opt-in record, so a `--no-telemetry` run over a target
+/// that was installed with telemetry on actually opts it out. Leaving
+/// the file would keep every `report_*` gate open and make the next
+/// plain `update` carry telemetry forward as enabled. An absent file is
+/// not an error.
+pub(crate) fn remove_install_info(target_dir: &Path) -> std::io::Result<()> {
+    match std::fs::remove_file(install_info_path(target_dir)) {
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        other => other,
+    }
+}
+
 /// Concurrent installs to the same `target_dir` with different
 /// harnesses each call this independently, after their own
 /// `manifest::upsert_strategy` call has already returned (dropping

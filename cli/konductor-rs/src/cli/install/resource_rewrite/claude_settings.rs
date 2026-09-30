@@ -757,6 +757,36 @@ pub(super) fn stable_hook_command_suffix(command: &str) -> Option<&str> {
     Some(&command[idx..])
 }
 
+/// The event argument of a telemetry hook command, so two commands that
+/// differ only in exe path or trailing arguments identify the same hook.
+pub(super) fn telemetry_hook_event(command: &str) -> Option<&str> {
+    stable_hook_command_suffix(command)?
+        .strip_prefix("__telemetry-hook ")?
+        .split_whitespace()
+        .next()
+}
+
+/// `<exe> __telemetry-hook <event> [--agent <name>] [--install-root <dir>]`.
+/// `quoted_exe` is already shell-quoted; the other values are quoted here.
+pub(super) fn telemetry_hook_command(
+    quoted_exe: &str,
+    event_type: &str,
+    agent: Option<&str>,
+    install_root: Option<&Path>,
+) -> String {
+    let mut command = format!("{quoted_exe} __telemetry-hook {event_type}");
+    if let Some(agent) = agent {
+        command.push_str(" --agent ");
+        command.push_str(&shell_quote_for_hook_command(agent));
+    }
+    if let Some(root) = install_root {
+        let root = std::fs::canonicalize(root).unwrap_or_else(|_| root.to_path_buf());
+        command.push_str(" --install-root ");
+        command.push_str(&shell_quote_for_hook_command(&root.display().to_string()));
+    }
+    command
+}
+
 /// The result of searching an existing `"hooks".<event>"` array for a
 /// block matching `matcher`, used by `merge_claude_settings_hooks` to
 /// decide whether to skip, self-heal, or append fresh.
@@ -802,7 +832,7 @@ enum HookArrayMatch {
 /// with this function's own caller never disturbing pre-existing
 /// content it doesn't own).
 fn find_hook_match(array: &[serde_json::Value], matcher: &str, command: &str) -> HookArrayMatch {
-    let wanted_suffix = stable_hook_command_suffix(command);
+    let wanted_event = telemetry_hook_event(command);
     // Scans the ENTIRE array for an exact match before committing to a
     // `Stale` self-heal candidate: an exact `UpToDate` match can appear
     // anywhere in the array, not necessarily before a stale-suffix
@@ -828,8 +858,8 @@ fn find_hook_match(array: &[serde_json::Value], matcher: &str, command: &str) ->
                 return HookArrayMatch::UpToDate;
             }
             if stale_candidate.is_none()
-                && wanted_suffix.is_some()
-                && stable_hook_command_suffix(existing_command) == wanted_suffix
+                && wanted_event.is_some()
+                && telemetry_hook_event(existing_command) == wanted_event
             {
                 stale_candidate = Some(HookArrayMatch::Stale {
                     block_index,
@@ -970,7 +1000,8 @@ fn merge_claude_settings_hooks_with_exe(
 
     let mut any_changed = false;
     for entry in entries {
-        let command = format!("{quoted_exe} __telemetry-hook {}", entry.event_type_arg);
+        let command =
+            telemetry_hook_command(&quoted_exe, entry.event_type_arg, None, Some(target_dir));
         let event_array = hooks_obj
             .entry(entry.event)
             .or_insert_with(|| serde_json::Value::Array(Vec::new()));
@@ -1187,7 +1218,6 @@ fn remove_claude_settings_hooks(
 
     let mut any_removed = false;
     for entry in entries {
-        let wanted_suffix = format!("__telemetry-hook {}", entry.event_type_arg);
         let Some(event_val) = hooks_obj.get_mut(entry.event) else {
             continue;
         };
@@ -1207,11 +1237,10 @@ fn remove_claude_settings_hooks(
             };
             let before = inner.len();
             inner.retain(|hook| {
-                !hook
-                    .get("command")
+                hook.get("command")
                     .and_then(|c| c.as_str())
-                    .and_then(stable_hook_command_suffix)
-                    .is_some_and(|suffix| suffix == wanted_suffix)
+                    .and_then(telemetry_hook_event)
+                    != Some(entry.event_type_arg)
             });
             if inner.len() != before {
                 any_removed = true;
@@ -1853,18 +1882,22 @@ mod tests {
         // assertion tracks production's shell-quoting instead of
         // assuming the resolved exe path never needs it.
         let quoted_exe = shell_quote_for_hook_command(&exe);
+        let root = format!(
+            " --install-root {}",
+            std::fs::canonicalize(&dir).unwrap().display()
+        );
         assert_eq!(
             parsed["hooks"]["SessionStart"],
             serde_json::json!([{
                 "matcher": "startup|clear",
-                "hooks": [{"type": "command", "command": format!("{quoted_exe} __telemetry-hook agent-invocation")}]
+                "hooks": [{"type": "command", "command": format!("{quoted_exe} __telemetry-hook agent-invocation{root}")}]
             }])
         );
         assert_eq!(
             parsed["hooks"]["SubagentStart"],
             serde_json::json!([{
                 "matcher": ".*",
-                "hooks": [{"type": "command", "command": format!("{quoted_exe} __telemetry-hook subagent-invocation")}]
+                "hooks": [{"type": "command", "command": format!("{quoted_exe} __telemetry-hook subagent-invocation{root}")}]
             }])
         );
         assert!(
@@ -2022,6 +2055,55 @@ mod tests {
     /// block remains after `apply_claude_settings_hooks` runs, and that
     /// its command carries the NEW (current) path, not the old one.
     #[test]
+    fn claude_settings_hooks_upgrades_a_pre_install_root_command_in_place() {
+        let dir = scratch_dir("claude-hooks-upgrade-install-root");
+        fs::create_dir_all(dir.join(".claude")).unwrap();
+        let exe = resolve_konductor_exe_path();
+        let quoted = shell_quote_for_hook_command(&exe);
+        fs::write(
+            dir.join(".claude/settings.json"),
+            serde_json::to_vec(&serde_json::json!({"hooks": {"SessionStart": [{
+                "matcher": "startup|clear",
+                "hooks": [{"type": "command", "command": format!("{quoted} __telemetry-hook agent-invocation")}]
+            }]}}))
+            .unwrap(),
+        )
+        .unwrap();
+
+        apply_claude_settings_hooks(&dir).expect("hook wiring must succeed");
+
+        let parsed: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(dir.join(".claude/settings.json")).unwrap())
+                .unwrap();
+        let blocks = parsed["hooks"]["SessionStart"].as_array().unwrap();
+        assert_eq!(
+            blocks.len(),
+            1,
+            "the old entry must be upgraded, not duplicated"
+        );
+        assert!(blocks[0]["hooks"][0]["command"]
+            .as_str()
+            .unwrap()
+            .contains(" --install-root "));
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn telemetry_hook_event_ignores_exe_path_and_trailing_arguments() {
+        assert_eq!(
+            telemetry_hook_event(
+                "'/a b/konductor' __telemetry-hook agent-invocation --install-root /p"
+            ),
+            Some("agent-invocation")
+        );
+        assert_eq!(
+            telemetry_hook_event("konductor __telemetry-hook subagent-invocation"),
+            Some("subagent-invocation")
+        );
+        assert_eq!(telemetry_hook_event("some-other-hook --flag"), None);
+    }
+
+    #[test]
     fn claude_settings_hooks_self_heals_a_relocated_binarys_stale_command() {
         let dir = scratch_dir("claude-hooks-relocated-binary-self-heals");
         let claude_dir = dir.join(".claude");
@@ -2029,6 +2111,10 @@ mod tests {
         let settings_path = claude_dir.join("settings.json");
 
         let current_exe = resolve_konductor_exe_path();
+        let root = format!(
+            " --install-root {}",
+            std::fs::canonicalize(&dir).unwrap().display()
+        );
         let stale_exe = "/old/relocated/path/to/konductor";
         assert_ne!(
             stale_exe, current_exe,
@@ -2065,7 +2151,7 @@ mod tests {
         );
         assert_eq!(
             session_start[0]["hooks"][0]["command"],
-            format!("{current_exe} __telemetry-hook agent-invocation"),
+            format!("{current_exe} __telemetry-hook agent-invocation{root}"),
             "the self-healed command must carry the CURRENT resolved exe path, not the stale one"
         );
 
@@ -2078,7 +2164,7 @@ mod tests {
         );
         assert_eq!(
             subagent_start[0]["hooks"][0]["command"],
-            format!("{current_exe} __telemetry-hook subagent-invocation"),
+            format!("{current_exe} __telemetry-hook subagent-invocation{root}"),
             "the self-healed command must carry the CURRENT resolved exe path, not the stale one"
         );
 
@@ -2109,7 +2195,11 @@ mod tests {
             "the stale path fixture must genuinely differ from this process's own resolved path"
         );
         let stale_command = format!("{stale_exe} __telemetry-hook agent-invocation");
-        let current_command = format!("{current_exe} __telemetry-hook agent-invocation");
+        let root = format!(
+            " --install-root {}",
+            std::fs::canonicalize(&dir).unwrap().display()
+        );
+        let current_command = format!("{current_exe} __telemetry-hook agent-invocation{root}");
         let seeded = serde_json::json!({
             "hooks": {
                 "SessionStart": [{
@@ -2313,9 +2403,13 @@ mod tests {
         let written = fs::read_to_string(dir.join(".claude/settings.json")).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&written).unwrap();
         let expected_quoted = shell_quote_for_hook_command(space_exe);
+        let root = format!(
+            " --install-root {}",
+            std::fs::canonicalize(&dir).unwrap().display()
+        );
         assert_eq!(
             parsed["hooks"]["SessionStart"][0]["hooks"][0]["command"],
-            format!("{expected_quoted} __telemetry-hook agent-invocation"),
+            format!("{expected_quoted} __telemetry-hook agent-invocation{root}"),
             "the wired command must embed the SHELL-QUOTED exe path, not the raw one \
              containing an unescaped space"
         );
@@ -2434,11 +2528,15 @@ mod tests {
         // `find_hook_match` resolves to `UpToDate` against the command
         // production would actually build, not an unquoted stand-in.
         let quoted_exe = shell_quote_for_hook_command(&exe);
+        let root = format!(
+            " --install-root {}",
+            std::fs::canonicalize(&dir).unwrap().display()
+        );
         let original = format!(
             "{{\"hooks\":{{\"SessionStart\":[{{\"matcher\":\"startup|clear\",\"hooks\":\
-             [{{\"type\":\"command\",\"command\":\"{quoted_exe} __telemetry-hook agent-invocation\"}}]}}],\
+             [{{\"type\":\"command\",\"command\":\"{quoted_exe} __telemetry-hook agent-invocation{root}\"}}]}}],\
              \"SubagentStart\":[{{\"matcher\":\".*\",\"hooks\":\
-             [{{\"type\":\"command\",\"command\":\"{quoted_exe} __telemetry-hook subagent-invocation\"}}]}}]}}}}"
+             [{{\"type\":\"command\",\"command\":\"{quoted_exe} __telemetry-hook subagent-invocation{root}\"}}]}}]}}}}"
         );
         fs::write(&settings_path, &original).unwrap();
 

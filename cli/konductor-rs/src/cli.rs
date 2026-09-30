@@ -593,6 +593,11 @@ pub enum Commands {
         /// own config, so install knows the name).
         #[arg(long)]
         agent: Option<String>,
+        /// The install that wired this hook. When a harness loads hooks
+        /// from more than one install, only the nearest install that
+        /// owns the agent reports, so each invocation counts once.
+        #[arg(long)]
+        install_root: Option<std::path::PathBuf>,
     },
 }
 

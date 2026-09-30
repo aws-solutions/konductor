@@ -129,9 +129,13 @@ fn read_manifest_bytes(dir: &Path) -> Vec<u8> {
 /// second writer to race against, so it always observes an empty
 /// destination and always classifies `created`; comparing raw
 /// `provenance` values against the raced result would therefore fail
-/// on a legitimate, non-corrupt outcome. `sha256` and every other field
-/// stay directly comparable -- a torn/interleaved write would still be
-/// caught by a hash or structural mismatch.
+/// on a legitimate, non-corrupt outcome. Every other field stays
+/// directly comparable.
+///
+/// `sha256` is compared against each file's own bytes on disk instead
+/// (`assert_hashes_match_disk`), because agent files embed their own
+/// target directory (the telemetry hook's `--install-root`), so hashes
+/// legitimately differ between the reference and raced targets.
 fn normalize_race_dependent_fields(json: &serde_json::Value) -> serde_json::Value {
     let mut normalized = json.clone();
     // The manifest is now `{schema_version,
@@ -166,12 +170,35 @@ fn normalize_race_dependent_fields(json: &serde_json::Value) -> serde_json::Valu
                             "provenance".to_string(),
                             serde_json::Value::String("<normalized>".to_string()),
                         );
+                        file_obj.insert(
+                            "sha256".to_string(),
+                            serde_json::Value::String("<normalized>".to_string()),
+                        );
                     }
                 }
             }
         }
     }
     normalized
+}
+
+/// Every manifest entry's `sha256` must match that file's bytes on disk,
+/// so a torn manifest write is still caught after `sha256` is
+/// normalized out of the cross-target comparison.
+fn assert_hashes_match_disk(target: &Path, manifest: &serde_json::Value, label: &str) {
+    use sha2::Digest as _;
+    for slot in manifest["strategies"].as_array().unwrap() {
+        for file in slot["files"].as_array().unwrap() {
+            let path = file["path"].as_str().unwrap();
+            let bytes = std::fs::read(target.join(path)).unwrap();
+            let actual = format!("{:x}", sha2::Sha256::digest(&bytes));
+            assert_eq!(
+                file["sha256"].as_str(),
+                Some(actual.as_str()),
+                "{label}: {path}'s recorded sha256 doesn't match its bytes on disk"
+            );
+        }
+    }
 }
 
 /// Runs `ITERATIONS` independent rounds. Each round:
@@ -217,6 +244,11 @@ fn concurrent_install_writes_never_produce_a_corrupt_manifest() {
             serde_json::from_slice(&read_manifest_bytes(&reference_dir))
                 .expect("round {i}: reference manifest must be valid JSON");
         let reference_normalized = normalize_race_dependent_fields(&reference_json);
+        assert_hashes_match_disk(
+            &reference_dir,
+            &reference_json,
+            &format!("round {i} reference"),
+        );
 
         let round_repo = seed_synthed_repo(&format!("round-{i}"));
         let round_local = round_repo.display().to_string();
@@ -295,6 +327,7 @@ fn concurrent_install_writes_never_produce_a_corrupt_manifest() {
             )
         });
         let raced_normalized = normalize_race_dependent_fields(&parsed);
+        assert_hashes_match_disk(&round_dir, &parsed, &format!("round {i} raced"));
 
         // The real discriminator: the raced result must be exactly the
         // same document a real, uncontended solo write produces this

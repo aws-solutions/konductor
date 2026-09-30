@@ -71,9 +71,9 @@ impl ResourceRewritePass for TelemetryHookPass {
         true
     }
 
-    fn rewrite(&self, value: &mut serde_json::Value, _ctx: &RewriteContext<'_>) {
+    fn rewrite(&self, value: &mut serde_json::Value, ctx: &RewriteContext<'_>) {
         let exe = super::claude_settings::resolve_konductor_exe_path();
-        merge_agent_spawn_hook(value, AGENT_SPAWN_TRIGGER_V2, &exe);
+        merge_agent_spawn_hook_for_install(value, AGENT_SPAWN_TRIGGER_V2, &exe, ctx.install_root());
     }
 
     fn verify(
@@ -135,8 +135,15 @@ pub(crate) const V3_STANDALONE_HOOK_LOCK_FILE_NAME: &str =
 /// session's own agent; `PreToolUse` on the delegation tools reports
 /// each delegated agent (a delegated child never fires its own
 /// `SessionStart` in v3).
-fn build_v3_standalone_hook_document(quoted_exe: &str) -> serde_json::Value {
-    let command = |event_type: &str| format!("{quoted_exe} __telemetry-hook {event_type}");
+fn build_v3_standalone_hook_document(quoted_exe: &str, install_root: &Path) -> serde_json::Value {
+    let command = |event_type: &str| {
+        super::claude_settings::telemetry_hook_command(
+            quoted_exe,
+            event_type,
+            None,
+            Some(install_root),
+        )
+    };
     serde_json::json!({
         "version": "v1",
         "hooks": [
@@ -204,7 +211,7 @@ pub(super) fn write_v3_standalone_telemetry_hook_file(
         .map_err(|e| format!("failed to create {}: {e}", hooks_dir.display()))?;
 
     let quoted_exe = super::claude_settings::shell_quote_for_hook_command(exe);
-    let document = build_v3_standalone_hook_document(&quoted_exe);
+    let document = build_v3_standalone_hook_document(&quoted_exe, target_dir);
 
     let mut bytes = serde_json::to_vec_pretty(&document)
         .map_err(|e| format!("failed to serialize {}: {e}", file_path.display()))?;
@@ -378,24 +385,30 @@ fn read_existing_hook_entries<'a>(
 /// resolved: `exe_is_absolute` is checked before any mutation, so a
 /// skipped wiring never creates so much as an empty `"hooks"`/`"hooks.
 /// <trigger>"` scaffold.
+#[cfg(test)]
 fn merge_agent_spawn_hook(value: &mut serde_json::Value, trigger: &str, exe: &str) {
+    merge_agent_spawn_hook_for_install(value, trigger, exe, None);
+}
+
+fn merge_agent_spawn_hook_for_install(
+    value: &mut serde_json::Value,
+    trigger: &str,
+    exe: &str,
+    install_root: Option<&Path>,
+) {
     let quoted_exe = super::claude_settings::shell_quote_for_hook_command(exe);
     // v2's agentSpawn payload doesn't name the agent, so the hook carries
     // it: this hook lives in the agent's own config file.
-    let agent_arg = value
+    let agent = value
         .get("name")
         .and_then(|name| name.as_str())
         .filter(|name| !name.is_empty())
-        .map(|name| {
-            format!(
-                " --agent {}",
-                super::claude_settings::shell_quote_for_hook_command(name)
-            )
-        })
-        .unwrap_or_default();
-    let command = format!(
-        "{quoted_exe} __telemetry-hook {}{agent_arg}",
-        crate::cli::telemetry_hook::AGENT_INVOCATION
+        .map(str::to_string);
+    let command = super::claude_settings::telemetry_hook_command(
+        &quoted_exe,
+        crate::cli::telemetry_hook::AGENT_INVOCATION,
+        agent.as_deref(),
+        install_root,
     );
 
     let Ok(existing_entries) = read_existing_hook_entries(value, trigger) else {
@@ -788,7 +801,8 @@ mod tests {
 
     #[test]
     fn v3_standalone_hook_document_uses_session_start_trigger() {
-        let document = build_v3_standalone_hook_document("/usr/local/bin/konductor");
+        let document =
+            build_v3_standalone_hook_document("/usr/local/bin/konductor", Path::new("/proj"));
         assert_eq!(
             document["hooks"][0]["trigger"],
             serde_json::json!("SessionStart")
@@ -798,7 +812,8 @@ mod tests {
 
     #[test]
     fn v3_standalone_hook_document_golden_exact_shape() {
-        let document = build_v3_standalone_hook_document("/opt/konductor/bin/konductor");
+        let document =
+            build_v3_standalone_hook_document("/opt/konductor/bin/konductor", Path::new("/proj"));
         assert_eq!(
             document,
             serde_json::json!({
@@ -809,7 +824,7 @@ mod tests {
                         "trigger": "SessionStart",
                         "action": {
                             "type": "command",
-                            "command": "/opt/konductor/bin/konductor __telemetry-hook agent-invocation"
+                            "command": "/opt/konductor/bin/konductor __telemetry-hook agent-invocation --install-root /proj"
                         },
                         "enabled": true
                     },
@@ -819,7 +834,7 @@ mod tests {
                         "matcher": "^(subagent_.+|orchestrate_subagent)$",
                         "action": {
                             "type": "command",
-                            "command": "/opt/konductor/bin/konductor __telemetry-hook subagent-invocation"
+                            "command": "/opt/konductor/bin/konductor __telemetry-hook subagent-invocation --install-root /proj"
                         },
                         "enabled": true
                     }
@@ -842,7 +857,10 @@ mod tests {
         let parsed: serde_json::Value = serde_json::from_slice(&on_disk).unwrap();
         assert_eq!(
             parsed["hooks"][0]["action"]["command"],
-            serde_json::json!("/usr/local/bin/konductor __telemetry-hook agent-invocation")
+            serde_json::json!(format!(
+                "/usr/local/bin/konductor __telemetry-hook agent-invocation --install-root {}",
+                std::fs::canonicalize(&dir).unwrap().display()
+            ))
         );
         std::fs::remove_dir_all(&dir).ok();
     }
@@ -891,7 +909,10 @@ mod tests {
         );
         assert_eq!(
             hooks[0]["action"]["command"],
-            serde_json::json!("/new/current/path/konductor __telemetry-hook agent-invocation")
+            serde_json::json!(format!(
+                "/new/current/path/konductor __telemetry-hook agent-invocation --install-root {}",
+                std::fs::canonicalize(&dir).unwrap().display()
+            ))
         );
         std::fs::remove_dir_all(&dir).ok();
     }

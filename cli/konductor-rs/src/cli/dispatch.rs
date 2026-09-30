@@ -159,7 +159,11 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool, color: ColorMode) 
             println!("{}", crate::cli::schema::dump_schema_json());
             0
         }
-        Commands::TelemetryHook { event_type, agent } => {
+        Commands::TelemetryHook {
+            event_type,
+            agent,
+            install_root,
+        } => {
             // Unlike every other arm above, a cwd-resolution failure
             // here must never surface at all: the `__telemetry-hook`
             // contract (see telemetry_hook.rs's module docstring)
@@ -183,6 +187,7 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool, color: ColorMode) 
                 &cwd,
                 &event_type,
                 agent.as_deref(),
+                install_root.as_deref(),
             );
             0
         }

@@ -409,19 +409,13 @@ impl InstallStrategy for KiroCliInstallStrategy {
         // unwind an install that already succeeded. Gated on
         // `no_telemetry` like `ensure_identity`: an opted-out install
         // writes neither file.
-        if !no_telemetry {
-            if let Err(err) = crate::cli::telemetry::write_install_info(
-                target_dir,
-                repo_root,
-                self.name(),
-                installed_at,
-            ) {
-                eprintln!(
-                    "konductor install: warning: could not write install-info.json at {}: {err}",
-                    target_dir.display()
-                );
-            }
-        }
+        super::finalize_install_telemetry(
+            target_dir,
+            repo_root,
+            self.name(),
+            installed_at,
+            no_telemetry,
+        );
         Ok(())
     }
 }
@@ -3402,11 +3396,15 @@ mod tests {
         // `resolve_konductor_exe_path`), not the bare word "konductor",
         // so this is computed the same way, not hand-typed.
         let exe = std::env::current_exe().unwrap().display().to_string();
+        let root = format!(
+            " --install-root {}",
+            std::fs::canonicalize(&target_dir).unwrap().display()
+        );
         assert_eq!(
             claude_settings["hooks"]["SessionStart"],
             serde_json::json!([{
                 "matcher": "startup|clear",
-                "hooks": [{"type": "command", "command": format!("{exe} __telemetry-hook agent-invocation")}]
+                "hooks": [{"type": "command", "command": format!("{exe} __telemetry-hook agent-invocation{root}")}]
             }]),
             "SessionStart must invoke the hidden __telemetry-hook subcommand for agent_invocation"
         );
@@ -3414,7 +3412,7 @@ mod tests {
             claude_settings["hooks"]["SubagentStart"],
             serde_json::json!([{
                 "matcher": ".*",
-                "hooks": [{"type": "command", "command": format!("{exe} __telemetry-hook subagent-invocation")}]
+                "hooks": [{"type": "command", "command": format!("{exe} __telemetry-hook subagent-invocation{root}")}]
             }]),
             "SubagentStart must invoke the hidden __telemetry-hook subcommand for subagent_invocation"
         );

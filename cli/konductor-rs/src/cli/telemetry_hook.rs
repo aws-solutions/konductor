@@ -344,9 +344,26 @@ fn env_non_empty(name: &str) -> Option<String> {
     non_empty(std::env::var(name).ok())
 }
 
+/// Compares through symlinks (macOS `/tmp` is `/private/tmp`).
+fn same_dir(a: &Path, b: &Path) -> bool {
+    let canonical =
+        |path: &Path| std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+    canonical(a) == canonical(b)
+}
+
 /// Never panics and never surfaces an error to the harness: bad input
 /// or a non-Konductor agent just means nothing is reported.
-pub(crate) fn dispatch_telemetry_hook(cwd: &Path, event_type: &str, agent_arg: Option<&str>) {
+///
+/// `own_install` is the install that wired this hook. A harness can load
+/// hooks from several installs (global plus project), and each fires for
+/// the same invocation; only the nearest install that owns the agent
+/// reports. Hooks from older installs don't pass it and always report.
+pub(crate) fn dispatch_telemetry_hook(
+    cwd: &Path,
+    event_type: &str,
+    agent_arg: Option<&str>,
+    own_install: Option<&Path>,
+) {
     if event_type != AGENT_INVOCATION && event_type != SUBAGENT_INVOCATION {
         eprintln!(
             "warning: konductor __telemetry-hook received an unrecognized event_type \
@@ -383,6 +400,9 @@ pub(crate) fn dispatch_telemetry_hook(cwd: &Path, event_type: &str, agent_arg: O
         let Some(target_dir) = index.install_for(&invocation.agent) else {
             continue;
         };
+        if own_install.is_some_and(|own| !same_dir(own, target_dir)) {
+            continue;
+        }
         match invocation.kind {
             InvocationKind::Agent => telemetry::report_agent_invocation(
                 target_dir,

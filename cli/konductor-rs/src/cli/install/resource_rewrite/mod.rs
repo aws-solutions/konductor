@@ -124,6 +124,18 @@ pub(super) struct RewriteContext<'a> {
     pub(super) agent_skill_names: &'a std::collections::HashMap<String, Vec<String>>,
 }
 
+impl RewriteContext<'_> {
+    /// The install target, recovered from `context_dir`
+    /// (`<target_dir>/.kiro/context`). `None` when `context_dir` isn't a
+    /// real two-level path, as in unit tests that leave it empty.
+    pub(super) fn install_root(&self) -> Option<&Path> {
+        self.context_dir
+            .parent()
+            .and_then(Path::parent)
+            .filter(|root| !root.as_os_str().is_empty())
+    }
+}
+
 /// One self-contained install-time mutation over a parsed agent JSON:
 /// what it matches, what it mutates, and how it verifies its own
 /// mutation. Each method is independently callable with a hand-built

@@ -3552,17 +3552,32 @@ mod tests {
             updated_manifest.strategies[0].status,
             fresh_manifest.strategies[0].status
         );
-        let updated_paths_and_hashes: Vec<(&str, &Option<String>)> = updated_manifest.strategies[0]
+        let updated_paths: Vec<&str> = updated_manifest.strategies[0]
             .files
             .iter()
-            .map(|f| (f.path.as_str(), &f.sha256))
+            .map(|f| f.path.as_str())
             .collect();
-        let fresh_paths_and_hashes: Vec<(&str, &Option<String>)> = fresh_manifest.strategies[0]
+        let fresh_paths: Vec<&str> = fresh_manifest.strategies[0]
             .files
             .iter()
-            .map(|f| (f.path.as_str(), &f.sha256))
+            .map(|f| f.path.as_str())
             .collect();
-        assert_eq!(updated_paths_and_hashes, fresh_paths_and_hashes);
+        assert_eq!(updated_paths, fresh_paths);
+        // Installed files may embed their own target's path (the telemetry
+        // hook's --install-root), so compare contents with it normalized.
+        let normalized = |target: &std::path::Path, path: &str| {
+            let root = fs::canonicalize(target).unwrap().display().to_string();
+            String::from_utf8(fs::read(target.join(path)).unwrap())
+                .unwrap()
+                .replace(&root, "<target>")
+        };
+        for path in updated_paths {
+            assert_eq!(
+                normalized(&updated_target, path),
+                normalized(&fresh_target, path),
+                "{path} differs between update and fresh install"
+            );
+        }
 
         fs::remove_dir_all(&updated_target).ok();
         fs::remove_dir_all(&fresh_target).ok();
