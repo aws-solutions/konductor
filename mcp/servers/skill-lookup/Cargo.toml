@@ -1,6 +1,6 @@
 [package]
 name = "skill-lookup-mcp"
-version = "1.0.3"
+version = "1.0.4"
 edition = "2021"
 description = "skill-lookup-mcp -- stdio MCP server scaffold for Konductor skill lookup"
 license.workspace = true
