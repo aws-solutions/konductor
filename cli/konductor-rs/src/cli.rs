@@ -257,10 +257,9 @@ pub enum Commands {
         #[arg(long = "link-bin", action = ArgAction::SetTrue, display_order = 3)]
         link_bin: bool,
 
-        /// Opt out of usage-analytics telemetry for this install.
-        /// Structural: when passed, the identity-file write and
-        /// hook-injection steps are never reached at all -- there is no
-        /// disabled artifact left behind to inspect.
+        /// Opt out of usage-analytics telemetry for this install. No
+        /// install record or telemetry hook is written, and any a prior
+        /// install at this target wrote is removed.
         #[arg(long, display_order = 4)]
         no_telemetry: bool,
 
@@ -361,10 +360,9 @@ pub enum Commands {
         /// `.konductor/config.yml` opt-out is already resolved
         /// independently.
         ///
-        /// Structural, same as `install --no-telemetry`: whenever the
-        /// effective opt-out applies (explicit or carried forward), the
-        /// Claude Code telemetry-hook re-wiring step is never reached
-        /// at all for this run.
+        /// Whenever the effective opt-out applies (explicit or carried
+        /// forward), no telemetry hook is wired this run, and any a prior
+        /// run wired is removed.
         #[arg(long)]
         no_telemetry: bool,
 
