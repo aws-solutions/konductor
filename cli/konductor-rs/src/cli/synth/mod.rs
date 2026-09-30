@@ -322,7 +322,10 @@ pub fn dispatch_synth_with(
         if let Some(config) = &bundled_mcp_config {
             for (name, def) in config {
                 if agent.dependencies.mcp_registry.contains_key(name) {
-                    agent.dependencies.mcp_registry.insert(name.clone(), def.clone());
+                    agent
+                        .dependencies
+                        .mcp_registry
+                        .insert(name.clone(), def.clone());
                 }
             }
         }
@@ -784,7 +787,8 @@ mod tests {
     #[test]
     fn dispatch_synth_returns_zero_on_empty_source_tree() {
         let root = scratch_dir("empty-ok");
-        let code = dispatch_synth_with(&root, None, None, None, false, false, ColorMode::disabled());
+        let code =
+            dispatch_synth_with(&root, None, None, None, false, false, ColorMode::disabled());
         assert_eq!(code, 0);
         fs::remove_dir_all(&root).ok();
     }
@@ -1185,7 +1189,8 @@ mod tests {
         )
         .unwrap();
 
-        let code = dispatch_synth_with(&root, None, None, None, false, false, ColorMode::disabled());
+        let code =
+            dispatch_synth_with(&root, None, None, None, false, false, ColorMode::disabled());
         assert_eq!(code, 0);
 
         let written = fs::read_to_string(root.join("dist/claude/agents/k-example.md")).unwrap();
@@ -1204,7 +1209,15 @@ mod tests {
         let root = scratch_dir("source-is-file");
         let file_path = root.join("not-a-dir");
         fs::write(&file_path, b"not a directory").unwrap();
-        let code = dispatch_synth_with(&file_path, None, None, None, false, false, ColorMode::disabled());
+        let code = dispatch_synth_with(
+            &file_path,
+            None,
+            None,
+            None,
+            false,
+            false,
+            ColorMode::disabled(),
+        );
         assert_eq!(code, EXIT_USAGE_ERROR);
         fs::remove_dir_all(&root).ok();
     }
@@ -1213,7 +1226,8 @@ mod tests {
     fn dispatch_synth_copies_root_version_file_into_dist_output_root() {
         let root = scratch_dir("version-copy");
         fs::write(root.join("VERSION"), "1.2.3\n").unwrap();
-        let code = dispatch_synth_with(&root, None, None, None, false, false, ColorMode::disabled());
+        let code =
+            dispatch_synth_with(&root, None, None, None, false, false, ColorMode::disabled());
         assert_eq!(code, 0);
         let copied = fs::read_to_string(root.join("dist").join("VERSION")).unwrap();
         assert_eq!(copied, "1.2.3\n");
@@ -1223,7 +1237,8 @@ mod tests {
     #[test]
     fn dispatch_synth_succeeds_without_writing_dist_version_when_root_version_is_absent() {
         let root = scratch_dir("no-version-at-root");
-        let code = dispatch_synth_with(&root, None, None, None, false, false, ColorMode::disabled());
+        let code =
+            dispatch_synth_with(&root, None, None, None, false, false, ColorMode::disabled());
         assert_eq!(code, 0);
         assert!(!root.join("dist").join("VERSION").exists());
         fs::remove_dir_all(&root).ok();
@@ -1326,7 +1341,8 @@ mod tests {
         // succeeding.
         fs::create_dir_all(root.join("dist").join("VERSION")).unwrap();
 
-        let code = dispatch_synth_with(&root, None, None, None, false, false, ColorMode::disabled());
+        let code =
+            dispatch_synth_with(&root, None, None, None, false, false, ColorMode::disabled());
 
         assert_eq!(
             code, 0,
@@ -1355,7 +1371,8 @@ mod tests {
     fn dispatch_synth_packages_dist_version_into_the_tarball_artifact() {
         let root = scratch_dir("version-in-tarball");
         fs::write(root.join("VERSION"), "9.9.9\n").unwrap();
-        let code = dispatch_synth_with(&root, None, None, None, false, false, ColorMode::disabled());
+        let code =
+            dispatch_synth_with(&root, None, None, None, false, false, ColorMode::disabled());
         assert_eq!(code, 0);
 
         let artifact_bytes = fs::read(root.join("dist").join(artifact_filename())).unwrap();
@@ -1983,7 +2000,8 @@ mod tests {
         fs::write(&legacy_artifact, b"leftover legacy artifact bytes").unwrap();
         fs::write(&legacy_sidecar, b"leftover legacy sidecar bytes").unwrap();
 
-        let code = dispatch_synth_with(&root, None, None, None, false, false, ColorMode::disabled());
+        let code =
+            dispatch_synth_with(&root, None, None, None, false, false, ColorMode::disabled());
         assert_eq!(code, 0, "synth must succeed against an empty source tree");
 
         assert!(
