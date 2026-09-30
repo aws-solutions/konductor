@@ -5,8 +5,8 @@
 // as Claude Code output (agent markdown with YAML frontmatter,
 // `SKILL.md` + auxiliary files, `.sop.md`).
 //
-// Agent output shape is grounded against AIM's own live Claude Code
-// materialization for this package, not a written spec: YAML
+// Agent output shape is grounded against this package's own real,
+// installed Claude Code output, not a written spec: YAML
 // frontmatter with `name`/`description`/`model`/`tools`/`skills`,
 // followed by the system prompt as a plain markdown body with no
 // wrapping heading.
@@ -207,9 +207,9 @@ fn json_value_to_yaml_value(value: &serde_json::Value) -> serde_yaml::Value {
 /// finite range necessarily loses precision through the `f64`
 /// fallback -- an inherent limitation of `serde_yaml::Number` itself,
 /// not something this function can avoid. No real hook field is
-/// expected to carry such a value (see the `aim-agent-authoring`
-/// skill's hooks schema: the only documented numeric field is
-/// `timeout`, capped at 300).
+/// expected to carry such a value (Claude Code's own hooks schema
+/// documents `timeout` as the only numeric field, capped at 300
+/// seconds).
 ///
 /// A literal whose magnitude overflows `f64`'s own finite range
 /// entirely (reachable via this crate's `arbitrary_precision` parsing
@@ -641,7 +641,7 @@ mod tests {
         assert_eq!(body.trim_start_matches('\n'), "You are a test agent.");
         assert!(
             !rendered.contains("# System Prompt"),
-            "must not insert a heading the real AIM-produced files don't have"
+            "must not insert a heading a real installed Claude Code agent file doesn't have"
         );
     }
 
@@ -847,8 +847,8 @@ mod tests {
 
     /// Regression guard for the arbitrary_precision/serde_yaml Number
     /// mismatch `hooks_to_yaml` exists to close: a hook field containing
-    /// a JSON number (e.g. `timeout`, the one numeric field the
-    /// `aim-agent-authoring` skill's hooks schema documents) must render
+    /// a JSON number (e.g. `timeout`, the one numeric field Claude
+    /// Code's own hooks schema documents) must render
     /// as a plain YAML scalar, not the `$serde_json::private::Number`
     /// nested-map artifact `serde_json::Number`'s `Serialize` impl
     /// produces under this crate's `arbitrary_precision` feature when

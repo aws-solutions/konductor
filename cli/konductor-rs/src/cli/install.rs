@@ -3868,8 +3868,8 @@ mod tests {
             .join(harness_dir)
             .join(SOPS_CONTENT_TYPE_DIR);
         fs::create_dir_all(&sops_dir).unwrap();
-        fs::write(sops_dir.join("asdlc-plan.sop.md"), b"# Plan\n").unwrap();
-        fs::write(sops_dir.join("asdlc-verify.sop.md"), b"# Verify\n").unwrap();
+        fs::write(sops_dir.join("k-plan.sop.md"), b"# Plan\n").unwrap();
+        fs::write(sops_dir.join("k-verify.sop.md"), b"# Verify\n").unwrap();
         // A non-`.sop.md` file must not be counted.
         fs::write(sops_dir.join("README.md"), b"notes\n").unwrap();
 

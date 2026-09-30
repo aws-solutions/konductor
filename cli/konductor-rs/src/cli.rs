@@ -22,7 +22,7 @@
 // implemented" message, then exits 0. No real business logic, no
 // network calls, no filesystem mutation for it.
 //
-// ── Exit-code contract (Engineering Design §6) ─────────────────────────────
+// ── Exit-code contract ──────────────────────────────────────────────────────
 //   0 = all passed        1 = halted        2 = unresolved CRITICAL gate
 //   3 = budget exceeded    4 = user aborted a paused verdict
 //
