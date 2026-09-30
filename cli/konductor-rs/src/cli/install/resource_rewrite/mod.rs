@@ -44,7 +44,9 @@ pub(super) use mcp_server::{McpServerPass, MCP_SERVER_BINARY_NAME, MCP_SERVER_NA
 use mcp_server::McpServerPassV3;
 use telemetry_hook_pass::TelemetryHookPass;
 
-pub(super) use telemetry_hook_pass::apply_v3_standalone_telemetry_hook;
+pub(super) use telemetry_hook_pass::{
+    apply_v3_standalone_telemetry_hook, remove_v3_standalone_telemetry_hook,
+};
 // `pub(crate)`, not `pub(super)`: `uninstall.rs` (a sibling of `install`,
 // not a descendant) also needs both names to clean up the untracked
 // lock file alongside the manifest-tracked hook document -- see

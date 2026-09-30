@@ -59,8 +59,8 @@ use super::kiro_cli::{
 use super::manifest::{classify_provenance, ManifestFile, Provenance, Status, StrategyManifest};
 use super::resource_rewrite::{
     apply_all, apply_claude_settings_grant_and_hooks, apply_v3_standalone_telemetry_hook,
-    standard_passes_v3, RewriteContext, MCP_SERVER_NAME, SKILL_RESOURCE_PREFIX,
-    V3_STANDALONE_HOOKS_RELATIVE_PATH,
+    remove_v3_standalone_telemetry_hook, standard_passes_v3, RewriteContext, MCP_SERVER_NAME,
+    SKILL_RESOURCE_PREFIX, V3_STANDALONE_HOOKS_RELATIVE_PATH,
 };
 use super::runtime::{detect_runtimes, Runtime};
 use super::InstallError;
@@ -373,6 +373,28 @@ impl InstallStrategy for KiroCliV3InstallStrategy {
                          ({err}) -- the rest of this install is unaffected"
                     );
                 }
+            }
+        } else {
+            // `--no-telemetry`: tear down a hook document a prior
+            // telemetry-enabled install left at this target. Install
+            // replaces the manifest slot rather than diffing prior vs.
+            // new files, so this file would otherwise persist and keep
+            // firing despite the opt-out (the write above is simply
+            // skipped, never reversed). Not added to `raw_files` -- it
+            // is deliberately absent from the plan this run, so the
+            // finalized manifest slot no longer claims it. Non-fatal,
+            // matching the write branch above.
+            match remove_v3_standalone_telemetry_hook(target_dir) {
+                Ok(true) => eprintln!(
+                    "konductor install: removed a previously-installed telemetry hook at {} \
+                     (--no-telemetry)",
+                    target_dir.join(V3_STANDALONE_HOOKS_RELATIVE_PATH).display()
+                ),
+                Ok(false) => {}
+                Err(err) => eprintln!(
+                    "konductor install: warning: could not remove a previously-installed \
+                     telemetry hook ({err}) -- the rest of this install is unaffected"
+                ),
             }
         }
 

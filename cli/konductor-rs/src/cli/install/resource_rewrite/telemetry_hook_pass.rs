@@ -218,6 +218,65 @@ pub(in crate::cli::install) fn apply_v3_standalone_telemetry_hook(
     )
 }
 
+/// Removes the V3 standalone telemetry-hook document (and its sibling
+/// lock file) from `target_dir`, so a `--no-telemetry` install run
+/// tears down a hook a prior telemetry-enabled run left behind.
+///
+/// Without this, `install_from_local` only ever SKIPS writing the hook
+/// under `--no-telemetry`; it never removes an existing one. Install
+/// replaces the manifest slot rather than diffing the prior file list
+/// against the new one, so a file that drops out of the plan is not
+/// deleted the way `uninstall`/`update` would delete it. The sequence
+/// `install` (telemetry on) then `install --no-telemetry` against the
+/// same target would otherwise leave `.kiro/hooks/konductor-telemetry-
+/// hooks.json` on disk, still firing on every session despite the
+/// opt-out.
+///
+/// The whole file is Konductor-owned (see `V3_STANDALONE_HOOKS_
+/// RELATIVE_PATH`'s own doc comment), so removing it outright carries
+/// none of the "preserve someone else's content" concern the shared
+/// `.claude/settings.json` does -- this is a plain file delete, not a
+/// merge-and-strip.
+///
+/// Best-effort and idempotent: an already-absent file is a no-op, not
+/// an error, and a delete failure is reported to the caller as a
+/// warning rather than aborting an otherwise-successful install
+/// (mirroring the write side's own non-fatal philosophy). Removes the
+/// sibling lock file the same way `uninstall.rs`'s `delete_eligible_
+/// files` does -- unconditionally, since it is never manifest-tracked
+/// and would otherwise be stranded.
+///
+/// `Ok(true)` means the hook document existed and was removed this run;
+/// `Ok(false)` means there was nothing to remove.
+pub(in crate::cli::install) fn remove_v3_standalone_telemetry_hook(
+    target_dir: &Path,
+) -> Result<bool, String> {
+    let file_path = target_dir.join(V3_STANDALONE_HOOKS_RELATIVE_PATH);
+    let hooks_dir = file_path
+        .parent()
+        .expect("V3_STANDALONE_HOOKS_RELATIVE_PATH always has a parent");
+
+    // Held across the read-and-delete for the same reason the write
+    // side holds it: two concurrent installs against one target must
+    // not race on this exact path.
+    let _lock_guard =
+        crate::cli::config_lock::acquire_named(hooks_dir, V3_STANDALONE_HOOK_LOCK_FILE_NAME)
+            .map_err(|source| format!("failed to lock {}: {source}", hooks_dir.display()))?;
+
+    let existed = file_path.is_file();
+    if existed {
+        std::fs::remove_file(&file_path)
+            .map_err(|e| format!("failed to remove {}: {e}", file_path.display()))?;
+    }
+
+    // Drop the lock guard before removing the lock file it points at,
+    // so the file we delete is not one another waiter is mid-acquire on.
+    drop(_lock_guard);
+    let _ = std::fs::remove_file(hooks_dir.join(V3_STANDALONE_HOOK_LOCK_FILE_NAME));
+
+    Ok(existed)
+}
+
 /// Same as `apply_v3_standalone_telemetry_hook`, but takes the resolved
 /// `konductor` exe path as a parameter rather than resolving it
 /// internally -- lets a test exercise the absolute-path guard below
@@ -901,6 +960,56 @@ mod tests {
         let err = write_v3_standalone_telemetry_hook_file(&dir, "/usr/local/bin/konductor")
             .expect_err("a concurrent writer must be refused while the lock is held");
         assert!(err.contains("failed to lock"));
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    // ── V3: --no-telemetry removes a previously-installed hook ────────
+
+    #[test]
+    fn remove_v3_standalone_hook_deletes_a_previously_written_file_and_lock() {
+        let dir = scratch_dir("remove-existing");
+        write_v3_standalone_telemetry_hook_file(&dir, "/usr/local/bin/konductor")
+            .expect("seed write must succeed");
+        assert!(dir.join(V3_STANDALONE_HOOKS_RELATIVE_PATH).is_file());
+
+        let removed = remove_v3_standalone_telemetry_hook(&dir)
+            .expect("removal must succeed when the hook exists");
+        assert!(removed, "removal must report that a hook was present");
+        assert!(
+            !dir.join(V3_STANDALONE_HOOKS_RELATIVE_PATH).exists(),
+            "the hook document must be gone after removal"
+        );
+        let hooks_dir = dir.join(".kiro/hooks");
+        assert!(
+            !hooks_dir.join(V3_STANDALONE_HOOK_LOCK_FILE_NAME).exists(),
+            "the sibling lock file must be cleaned up too"
+        );
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn remove_v3_standalone_hook_is_a_noop_when_nothing_was_installed() {
+        let dir = scratch_dir("remove-absent");
+        let removed = remove_v3_standalone_telemetry_hook(&dir)
+            .expect("removing an absent hook must succeed as a no-op");
+        assert!(!removed, "an absent hook must report nothing was removed");
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn write_then_remove_leaves_no_hook_behind_the_reinstall_transition() {
+        // The exact leak this fix targets: an install with telemetry
+        // writes the hook, then a reinstall with `--no-telemetry`
+        // removes it, so nothing keeps firing after the opt-out.
+        let dir = scratch_dir("transition");
+        write_v3_standalone_telemetry_hook_file(&dir, "/usr/local/bin/konductor")
+            .expect("telemetry-on install must write the hook");
+        remove_v3_standalone_telemetry_hook(&dir)
+            .expect("no-telemetry reinstall must remove the hook");
+        assert!(
+            !dir.join(V3_STANDALONE_HOOKS_RELATIVE_PATH).exists(),
+            "after install-then-reinstall-with-no-telemetry, no hook document may remain"
+        );
         std::fs::remove_dir_all(&dir).ok();
     }
 }

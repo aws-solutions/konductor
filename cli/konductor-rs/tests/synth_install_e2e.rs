@@ -302,6 +302,99 @@ fn real_synth_then_real_install_agree_on_output_path_and_bytes() {
     std::fs::remove_dir_all(&target_dir).ok();
 }
 
+/// Regression test for the `--no-telemetry` re-install leak: a first
+/// Kiro V3 install with telemetry enabled writes the standalone
+/// `.kiro/hooks/konductor-telemetry-hooks.json` document, and a second
+/// install of the SAME target with `--no-telemetry` must REMOVE it --
+/// not merely skip rewriting it. Install replaces the manifest slot
+/// rather than diffing prior vs. new files, so without an explicit
+/// removal the hook would persist and keep firing despite the opt-out.
+#[test]
+fn v3_reinstall_with_no_telemetry_removes_a_previously_installed_hook() {
+    let sink = telemetry_test_sink::TelemetrySink::start();
+    let repo_root = scratch_dir("repo-v3-notele");
+    seed_agent_spec_source(&repo_root);
+    seed_skill_source(&repo_root);
+
+    let synth_result = run_konductor(
+        &repo_root,
+        &sink,
+        &[CMD_SYNTH, "--from", &repo_root.display().to_string()],
+    );
+    assert!(
+        synth_result.status.success(),
+        "real `synth --from <repo>` must succeed: stderr={}",
+        String::from_utf8_lossy(&synth_result.stderr)
+    );
+
+    let target_dir = scratch_dir("target-v3-notele");
+    let hook_path = target_dir.join(".kiro/hooks/konductor-telemetry-hooks.json");
+
+    // First install, telemetry enabled (no `--no-telemetry`): the
+    // standalone hook document must land on disk.
+    let install_on = run_konductor(
+        &target_dir,
+        &sink,
+        &[
+            CMD_INSTALL,
+            "--from",
+            &repo_root.display().to_string(),
+            "--target",
+            &target_dir.display().to_string(),
+            "--harness",
+            "kiro-v3",
+        ],
+    );
+    assert!(
+        install_on.status.success(),
+        "telemetry-on V3 install must succeed: stderr={}",
+        String::from_utf8_lossy(&install_on.stderr)
+    );
+    assert!(
+        hook_path.is_file(),
+        "the standalone telemetry hook document must exist after a telemetry-on install, \
+         expected at {}",
+        hook_path.display()
+    );
+
+    // Second install of the same target with `--no-telemetry`: the hook
+    // document (and its sibling lock file) must be gone afterward.
+    let install_off = run_konductor(
+        &target_dir,
+        &sink,
+        &[
+            CMD_INSTALL,
+            "--from",
+            &repo_root.display().to_string(),
+            "--target",
+            &target_dir.display().to_string(),
+            "--harness",
+            "kiro-v3",
+            "--no-telemetry",
+        ],
+    );
+    assert!(
+        install_off.status.success(),
+        "no-telemetry V3 reinstall must succeed: stderr={}",
+        String::from_utf8_lossy(&install_off.stderr)
+    );
+    assert!(
+        !hook_path.exists(),
+        "the standalone telemetry hook document must be REMOVED after a --no-telemetry \
+         reinstall, but it still exists at {}",
+        hook_path.display()
+    );
+    assert!(
+        !target_dir
+            .join(".kiro/hooks/.konductor-telemetry-session-start.lock")
+            .exists(),
+        "the sibling hook lock file must also be cleaned up after a --no-telemetry reinstall"
+    );
+
+    std::fs::remove_dir_all(&repo_root).ok();
+    std::fs::remove_dir_all(&target_dir).ok();
+}
+
 /// Recursively finds every file named exactly `file_name` under `root`.
 fn find_files_named(root: &Path, file_name: &str) -> Vec<PathBuf> {
     let mut found = Vec::new();
