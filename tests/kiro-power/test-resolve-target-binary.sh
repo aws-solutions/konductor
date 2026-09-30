@@ -2,28 +2,26 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # test-resolve-target-binary.sh -- pins lib.sh's konductor_resolve_target_
-# binary and konductor_write_power_cli_record (adversarial-review finding
-# C2, then its own regression fix): update/uninstall must verify the
-# binary they are about to run actually matches THIS target's own
-# recorded CLI binary, rather than trusting the shared
+# binary and konductor_write_power_cli_record: update/uninstall must
+# verify the binary they are about to run actually matches THIS target's
+# own recorded CLI binary, rather than trusting the shared
 # ~/.local/bin/konductor symlink -- which may have been re-pointed by a
 # DIFFERENT project's onboarding/update run since this target was last
 # touched.
 #
-# REGRESSION THIS FILE NOW PINS: an earlier version of this resolver
-# compared power-cli.json's would-be cli_version against install-info.
-# json's own `agent_version` field -- but `agent_version` is the
-# installed CONTENT's own version (confirmed directly against
-# install_info.rs's own header comment), completely independent of which
-# CLI binary ran the command; `update --version <v>` (cli.rs's
-# `release_version` field) changes ONLY that content version, on
-# whichever CLI binary happens to be resolved. Comparing the two
-# conflated two unrelated axes and locked every LATER update/uninstall
-# out entirely the moment a single legitimate `--version` content bump
-# ran on a perfectly good CLI binary. The fix tracks the CLI-binary axis
+# `agent_version` in install-info.json is the installed CONTENT's own
+# version (confirmed directly against install_info.rs's own header
+# comment), completely independent of which CLI binary ran the command;
+# `update --version <v>` (cli.rs's `release_version` field) changes ONLY
+# that content version, on whichever CLI binary happens to be resolved.
+# Comparing power-cli.json's cli_version against that field instead would
+# conflate two unrelated axes and lock every LATER update/uninstall out
+# entirely the moment a single legitimate `--version` content bump ran on
+# a perfectly good CLI binary. power-cli.json tracks the CLI-binary axis
 # in its own file, <target>/.konductor/power-cli.json, entirely separate
-# from install-info.json, and this file's own Scenario G is the direct
-# reproduction of that regression and its fix.
+# from install-info.json, and this file's own Scenario G directly pins
+# that a content-only version bump never locks out a later update or
+# uninstall.
 #
 # Stubs multiple distinct konductor binary versions under a scratch HOME
 # (never the real one) and exercises every branch of the resolution
@@ -35,7 +33,7 @@ TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=helpers.sh
 source "${TEST_DIR}/helpers.sh"
 
-# KONDUCTOR_SETUP_SCRIPTS_DIR (adversarial-review finding I4): see
+# KONDUCTOR_SETUP_SCRIPTS_DIR: see
 # test-fail-stop.sh's identical header comment for the full rationale.
 SCRIPTS_DIR="${KONDUCTOR_SETUP_SCRIPTS_DIR:-${TEST_DIR}/../../powers/konductor/skills/konductor-setup/scripts}"
 
@@ -293,14 +291,13 @@ t_run env HOME="$FAKE_HOME" bash -c "source '${SCRIPTS_DIR}/lib.sh'; konductor_r
 t_assert_status "a malformed cli_version is rejected" 1
 t_assert_contains "the rejection names the expected bare-semver shape" "expected a bare semver"
 
-# ── Scenario G: THE REGRESSION REPRODUCTION -- a legitimate content-only
-# `--version 2.0.0` update, run on a target whose own CLI binary is (and
-# stays) 1.0.2, must NEVER lock out a later update or uninstall. This is
-# the exact scenario the coordinator's report reproduced against the
-# earlier, buggy resolver (which compared power-cli.json's would-be
+# ── Scenario G: a legitimate content-only `--version 2.0.0` update, run
+# on a target whose own CLI binary is (and stays) 1.0.2, must NEVER lock
+# out a later update or uninstall. Comparing power-cli.json's would-be
 # cli_version against install-info.json's own `agent_version` -- the
-# CONTENT version -- and found nothing on the machine reporting `--version`
-# as "2.0.0", since that string never named a real CLI release at all).
+# CONTENT version -- would find nothing on the machine reporting
+# `--version` as "2.0.0", since that string never names a real CLI
+# release at all; it names a content release only.
 TARGET_G="${SCRATCH}/project-g"
 make_target "$TARGET_G" "1.0.2"
 make_power_cli_json "$TARGET_G" "1.0.2" "$BIN_1_0_2"

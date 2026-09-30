@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: Apache-2.0
 #
-# test-uninstall-confirm.sh -- pins run-uninstall.sh's I2 fix
-# (adversarial-review finding I2): a REAL removal (no --dry-run) must
-# refuse without --confirmed, exactly mirroring run-onboarding.sh's own
+# test-uninstall-confirm.sh -- pins run-uninstall.sh's consent gate:
+# a REAL removal (no --dry-run) must refuse without --confirmed, exactly
+# mirroring run-onboarding.sh's own
 # consent backstop; --dry-run itself must stay completely unguarded, since
 # it never touches the filesystem and gating it would only make the
 # agent's own "show the user what would happen first" step harder to run.
@@ -15,7 +15,7 @@ TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=helpers.sh
 source "${TEST_DIR}/helpers.sh"
 
-# KONDUCTOR_SETUP_SCRIPTS_DIR (adversarial-review finding I4): see
+# KONDUCTOR_SETUP_SCRIPTS_DIR: see
 # test-fail-stop.sh's identical header comment for the full rationale.
 SCRIPTS_DIR="${KONDUCTOR_SETUP_SCRIPTS_DIR:-${TEST_DIR}/../../powers/konductor/skills/konductor-setup/scripts}"
 SCRIPT="${SCRIPTS_DIR}/run-uninstall.sh"
@@ -32,10 +32,10 @@ JSON
 UNINSTALL_MARKER="${SCRATCH}/real-uninstall-was-called.marker"
 # Placed directly under cli-releases, with the shared bin as a SYMLINK
 # into it -- matching link-binary.sh's own real convention, and required
-# by konductor_resolve_target_binary's own trust boundary (adversarial-
-# review finding C2's own hardening): the shared bin is only ever trusted
-# once RESOLVED to a direct-child regular file under cli-releases, never
-# as a bare regular file/copy sitting directly at ~/.local/bin/konductor.
+# by konductor_resolve_target_binary's own trust boundary: the shared bin
+# is only ever trusted once RESOLVED to a direct-child regular file under
+# cli-releases, never as a bare regular file/copy sitting directly at
+# ~/.local/bin/konductor.
 STUB_BIN="${FAKE_HOME}/.konductor/cli-releases/konductor-v1.0.2-x86_64-unknown-linux-musl"
 cat > "$STUB_BIN" <<STUB
 #!/usr/bin/env bash

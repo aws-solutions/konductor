@@ -2,28 +2,27 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # detect-platform.sh -- konductor-setup step 1: detect OS + architecture and
-# classify the host into one of three buckets (design §5.3 steps 1-4):
+# classify the host into one of three buckets:
 #
 #   SUPPORTED:<triple>       one of the three published release triples
 #                            (aarch64-apple-darwin, aarch64-unknown-linux-musl,
 #                            x86_64-unknown-linux-musl) -- go download+verify
 #                            a binary (step 2).
 #   SOURCE_FALLBACK:<triple> Intel Mac (x86_64-apple-darwin): no binary is
-#                            published (design §12.3) -- go build from source
-#                            instead (step 3).
+#                            published -- go build from source instead
+#                            (step 3).
 #   WINDOWS_UNSUPPORTED      running under a native-Windows bash (Git Bash /
 #                            MSYS2 / Cygwin, detected via `uname -s`'s own
 #                            MINGW*/MSYS*/CYGWIN* prefix) -- out of scope for
 #                            v1 (step 4). WSL is NOT this case: under WSL,
 #                            `uname -s` reports "Linux" and the normal Linux
 #                            detection below applies exactly as it would on a
-#                            native Linux host (design §5.3 step 4).
+#                            native Linux host.
 #
 # Anything else (e.g. Linux on an architecture other than x86_64/aarch64, or
-# an OS this script cannot identify at all) is a hard, explicit stop -- the
-# design's own sequence diagram (§5.2) enumerates exactly the three buckets
-# above and nothing else, so this script does not invent a fourth fallback
-# for a platform the design never described.
+# an OS this script cannot identify at all) is a hard, explicit stop -- this
+# script recognizes exactly the three buckets above and nothing else, and
+# does not invent a fourth fallback for a platform it cannot classify.
 #
 # Mirrors scripts/konductor-install.sh's own `map_target_triple` table
 # byte-for-byte for the SUPPORTED case, so this script and `konductor
@@ -73,7 +72,7 @@ detect_platform() {
       ;;
     Darwin/x86_64)
       # Intel Mac: no free-tier Intel macOS GitHub runner, so no binary is
-      # published for this triple (design §12.3) -- source-build fallback.
+      # published for this triple -- source-build fallback.
       echo "SOURCE_FALLBACK:x86_64-apple-darwin"
       ;;
     *)

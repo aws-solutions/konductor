@@ -3,7 +3,7 @@
 #
 # resolve-version.sh -- finds this Power's own pinned `plugin.json`, reads
 # its bare-semver `version` field, and constructs the matching GitHub
-# release tag by prepending "v" (design §5.3 step 2, §13.1).
+# release tag by prepending "v".
 #
 # Tag construction is NOT optional and must match exactly: `plugin.json`'s
 # `version` is bare semver (e.g. "1.0.2"); GitHub's release tags carry a "v"

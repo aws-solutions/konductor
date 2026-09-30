@@ -222,15 +222,14 @@ truth for this server) rather than assumed:
 
 This skill documents CLI-level answers you can act on **today** --
 `konductor __dump_schema`, `konductor doctor`, and reading SOP files
-directly all work right now, with no missing infrastructure. The design
-this Power follows (`konductor-power-design.md` §7/§11) additionally
-specifies a dedicated help/diagnostics **MCP server** (`describe_commands`,
-`doctor`, `list_sops`, `get_sop` as structured tools, plus a deferred
+directly all work right now, with no missing infrastructure. A dedicated
+help/diagnostics **MCP server** is planned (`describe_commands`, `doctor`,
+`list_sops`, `get_sop` as structured tools, plus a deferred
 `find_docs`/`get_doc_section` pair for a larger document corpus). That
 server -- and the `mcp/lib/` shared-core extraction it depends on -- does
-not exist in this repo yet; building it is real, separate engineering work
-(see the design's §14 steps 4-5), not something this skill can shim around
-by itself. Until it ships, this skill's own guidance above is the
+not exist in this repo yet; building it is real, separate engineering
+work, not something this skill can shim around by itself. Until it
+ships, this skill's own guidance above is the
 implementation: the same underlying facts (the nine `doctor` checks, the
 three hidden-schema caveats, where SOPs actually live) that the future MCP
 tools would also need to get right.

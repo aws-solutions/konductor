@@ -3,10 +3,9 @@
 #
 # link-binary.sh -- konductor-setup step 5: put the verified (or built)
 # `konductor` binary onto PATH via a symlink at `~/.local/bin/konductor` --
-# symlink only, never a copy, and never an edit to any shell rc file
-# (design §5.3 step 5). If `~/.local/bin` is not already on PATH, this
-# prints the export line for the user to add themselves; it does not touch
-# `.bashrc`/`.zshrc`/etc.
+# symlink only, never a copy, and never an edit to any shell rc file. If
+# `~/.local/bin` is not already on PATH, this prints the export line for
+# the user to add themselves; it does not touch `.bashrc`/`.zshrc`/etc.
 #
 # Usage:
 #   link-binary.sh <binary-path> [local-bin-dir]
@@ -23,27 +22,26 @@
 # binary re-creates the same symlink; re-running after a rebuild repoints
 # it.
 #
-# Fails closed rather than writing anywhere unexpected (adversarial-review
-# finding I1): if <local-bin-dir>/konductor already exists as a directory
-# -- a REAL one, OR a symlink that itself RESOLVES to one -- or as
-# anything else (a regular file, FIFO, socket, device node, etc.) that is
-# not a symlink this Power itself created, this function refuses and
-# returns non-zero -- it never overwrites a foreign file, and it never
-# falls into the directory-clobbering gotcha both
-# `ln -sf` AND plain `mv` share: `ln -sf target existing-dir` silently
-# creates `existing-dir/<basename of target>` INSTEAD of replacing
-# `existing-dir` (reproduced directly against this host's own `ln`), and
-# `mv src existing-dir` does the exact same "move src INSIDE me" thing
-# for ANY existing-dir, symlink or not, since `mv` decides "is the
-# destination a directory" the same way `-d` does: by following a
-# symlink straight through to what it resolves to. The `mv -f "$tmp_link"
-# "$link_path"` step below would otherwise hit this identical footgun
-# whenever $link_path was a symlink pointing AT a directory (a case the
-# original I1 fix's directory check missed, since that check required
-# `! -L` and a symlink IS `-L` -- residual gap, closed by the explicit
-# `-L && -d` check below) -- which is exactly a "writes somewhere else"
-# bug this file's own header claims cannot happen, regardless of which of
-# `ln -sf`'s or `mv`'s two independent codepaths would have caused it.
+# Fails closed rather than writing anywhere unexpected: if
+# <local-bin-dir>/konductor already exists as a directory -- a REAL one,
+# OR a symlink that itself RESOLVES to one -- or as anything else (a
+# regular file, FIFO, socket, device node, etc.) that is not a symlink
+# this Power itself created, this function refuses and returns non-zero
+# -- it never overwrites a foreign file, and it never falls into the
+# directory-clobbering gotcha both `ln -sf` AND plain `mv` share: `ln -sf
+# target existing-dir` silently creates `existing-dir/<basename of
+# target>` INSTEAD of replacing `existing-dir` (reproduced directly
+# against this host's own `ln`), and `mv src existing-dir` does the exact
+# same "move src INSIDE me" thing for ANY existing-dir, symlink or not,
+# since `mv` decides "is the destination a directory" the same way `-d`
+# does: by following a symlink straight through to what it resolves to.
+# The `mv -f "$tmp_link" "$link_path"` step below would otherwise hit
+# this identical footgun whenever $link_path was a symlink pointing AT a
+# directory -- a case a bare `! -L` directory check would miss, since a
+# symlink IS `-L`; the explicit `-L && -d` check below closes that gap --
+# which is exactly a "writes somewhere else" bug this file's own header
+# claims cannot happen, regardless of which of `ln -sf`'s or `mv`'s two
+# independent codepaths would have caused it.
 #
 # The actual replacement is atomic: a new symlink is created at a
 # same-directory temp name, then `mv`d onto the real link path in one
@@ -51,8 +49,7 @@
 # and then creates the new one as two separate syscalls, leaving a window
 # where a concurrent reader (a second onboarding run in a different
 # project, invoked at the same moment) could observe the link briefly
-# missing entirely (design review finding C2's "concurrent-onboarding
-# race"). A rename onto an existing filename is atomic on every POSIX
+# missing entirely. A rename onto an existing filename is atomic on every POSIX
 # filesystem this Power supports, on both Linux and macOS -- no GNU-only
 # `mv -T` needed, since every directory-shaped case above (real directory
 # or symlink-to-directory) is already refused before this point is ever
@@ -79,9 +76,9 @@ link_binary() {
   mkdir -p "$local_bin"
 
   # Fail closed on anything at $link_path this function did not itself
-  # create -- see this file's header for exactly why (I1: never fall into
-  # the directory gotcha `ln -sf` and `mv` both share, never clobber a
-  # foreign file).
+  # create -- see this file's header for exactly why: never fall into the
+  # directory gotcha `ln -sf` and `mv` both share, never clobber a
+  # foreign file.
   if [[ -d "$link_path" && ! -L "$link_path" ]]; then
     konductor_die "${link_path} already exists as a DIRECTORY, not a file this Power created -- refusing to link there (an in-place \`ln -sf\` would silently write inside it instead of replacing it). Remove or rename it, then re-run."
     return 1

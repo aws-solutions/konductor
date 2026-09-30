@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: Apache-2.0
 #
-# test-source-redirection-gate.sh -- pins run-onboarding.sh's C1 fix
-# (adversarial-review finding C1): a non-default --repo, and/or a resolved
+# test-source-redirection-gate.sh -- pins run-onboarding.sh's
+# source-redirection gate: a non-default --repo, and/or a resolved
 # tag that differs from plugin.json's own default (whether from --tag or
 # KONDUCTOR_POWER_VERSION), must be refused before any network or
 # filesystem action unless --allow-non-default-repo is also passed, and
@@ -16,12 +16,12 @@ TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=helpers.sh
 source "${TEST_DIR}/helpers.sh"
 
-# KONDUCTOR_SETUP_SCRIPTS_DIR (adversarial-review finding I4): see
+# KONDUCTOR_SETUP_SCRIPTS_DIR: see
 # test-fail-stop.sh's identical header comment for the full rationale.
 SCRIPTS_DIR="${KONDUCTOR_SETUP_SCRIPTS_DIR:-${TEST_DIR}/../../powers/konductor/skills/konductor-setup/scripts}"
 ORCHESTRATOR="${SCRIPTS_DIR}/run-onboarding.sh"
 
-# Deliberately NOT a hardcoded "v1.0.2" -- same I5 drift rationale as
+# Deliberately NOT a hardcoded "v1.0.2" -- same drift rationale as
 # test-fail-stop.sh's identical DEFAULT_TAG derivation.
 REPO_ROOT_VERSION="$(tr -d '[:space:]' < "${TEST_DIR}/../../VERSION")"
 DEFAULT_TAG="v${REPO_ROOT_VERSION}"
@@ -74,8 +74,8 @@ t_assert_not_contains "a --tag equal to the default is never refused at the gate
 t_assert_contains "the disclosure line reports --tag as the tag source even when it matches the default" "tag source: --tag"
 
 # ── Test 6: KONDUCTOR_POWER_VERSION differing from the default is gated
-# exactly like --tag (finding I3 + C1 interaction: an env-var override is
-# not exempt from the same source-redirection check a --tag override gets).
+# exactly like --tag: an env-var override is not exempt from the same
+# source-redirection check a --tag override gets.
 t_run env HOME="$FAKE_HOME" KONDUCTOR_POWER_VERSION="2.5.0" bash "$ORCHESTRATOR" --target "$TARGET_DIR" --confirmed
 t_assert_status "KONDUCTOR_POWER_VERSION differing from plugin.json's default is refused without the opt-in" 64
 t_assert_contains "the refusal names the KONDUCTOR_POWER_VERSION-derived tag" "v2.5.0"

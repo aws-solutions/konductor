@@ -3,18 +3,17 @@
 #
 # build-from-source.sh -- konductor-setup step 3: the Intel Mac
 # (x86_64-apple-darwin) fallback. No binary is published for this triple
-# (design §12.3: no free-tier Intel macOS GitHub runner), so this clones
-# the pinned release tag and builds the `konductor` CLI binary locally via
-# the repo's own root Makefile.
+# (no free-tier Intel macOS GitHub runner), so this clones the pinned
+# release tag and builds the `konductor` CLI binary locally via the
+# repo's own root Makefile.
 #
 # Only the CLI binary needs this fallback -- the packaged content artifact
 # (agents/skills/SOPs) is architecture-independent and still downloads
 # normally via `konductor install`'s own no-`--from` GitHub-release path,
 # so this script does NOT run `synth`/`install` itself; it only produces a
 # working `konductor` binary for the caller to use in place of a
-# downloaded one (design §5.4's reuse-over-reinvention resolution: mirror
-# scripts/konductor-clone-install.sh's clone+build logic, but stop short of
-# its own final `install` line).
+# downloaded one, mirroring scripts/konductor-clone-install.sh's own
+# clone+build logic but stopping short of its final `install` line.
 #
 # Usage:
 #   build-from-source.sh <repo-url> <tag> <clone-dir>
@@ -25,7 +24,7 @@
 #
 # Requires a Rust toolchain (cargo) on PATH. If missing, this is a clear,
 # named stop pointing at https://rustup.rs -- this script never tries to
-# install a toolchain on the user's behalf (design §5.3 step 3).
+# install a toolchain on the user's behalf.
 #
 # On success, sets BUILD_FROM_SOURCE_RESULT to the path of the built,
 # executable `konductor` binary and returns 0. That path is under a STABLE
@@ -39,8 +38,8 @@
 # dangling within moments of a SUCCESSFUL build, not just a failed one.
 #
 # Separately: `git clone`'s and `make build`'s own real output must stream
-# straight to the terminal (design §9), not be captured away by a caller
-# trying to retrieve this function's result -- same rationale as
+# straight to the terminal, not be captured away by a caller trying to
+# retrieve this function's result -- same rationale as
 # fetch-verify-binary.sh's FETCH_VERIFY_BINARY_RESULT.
 set -euo pipefail
 

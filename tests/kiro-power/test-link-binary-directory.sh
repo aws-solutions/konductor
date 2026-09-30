@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: Apache-2.0
 #
-# test-link-binary-directory.sh -- reproduction test for adversarial-review
-# finding I1: `ln -sf <target> <existing-dir>` silently creates
-# <existing-dir>/<basename of target> INSTEAD of replacing <existing-dir>
-# -- a real "writes somewhere else" bug, reproduced here directly against
-# this host's own `ln`, that link_binary's I1 fix must refuse rather than
-# fall into. Also pins the foreign-regular-file case and the atomic
-# happy-path replace (temp symlink + rename), so this file covers every
-# branch link-binary.sh's own header comment claims.
+# test-link-binary-directory.sh -- `ln -sf <target> <existing-dir>`
+# silently creates <existing-dir>/<basename of target> INSTEAD of
+# replacing <existing-dir> -- a real "writes somewhere else" hazard,
+# reproduced here directly against this host's own `ln`, that
+# link_binary must refuse rather than fall into. Also pins the
+# foreign-regular-file case and the atomic happy-path replace (temp
+# symlink + rename), so this file covers every branch link-binary.sh's
+# own header comment claims.
 set -uo pipefail
 
 TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=helpers.sh
 source "${TEST_DIR}/helpers.sh"
 
-# KONDUCTOR_SETUP_SCRIPTS_DIR (adversarial-review finding I4): see
+# KONDUCTOR_SETUP_SCRIPTS_DIR: see
 # test-fail-stop.sh's identical header comment for the full rationale.
 SCRIPTS_DIR="${KONDUCTOR_SETUP_SCRIPTS_DIR:-${TEST_DIR}/../../powers/konductor/skills/konductor-setup/scripts}"
 SCRIPT="${SCRIPTS_DIR}/link-binary.sh"
@@ -42,13 +42,12 @@ ln -sf "$BINARY" "$REPRO_DIR" 2>/dev/null || true
 if [[ -e "${REPRO_DIR}/$(basename "$BINARY")" ]]; then
   t_pass "(reproduction) ln -sf into an existing directory writes INSIDE it, confirming the gotcha this fix guards against is real"
 else
-  t_fail "(reproduction) expected ln -sf's own directory-clobbering gotcha to reproduce on this host; it did not -- re-examine whether the I1 fix is still needed" "checked for: ${REPRO_DIR}/$(basename "$BINARY")"
+  t_fail "(reproduction) expected ln -sf's own directory-clobbering gotcha to reproduce on this host; it did not -- re-examine whether link_binary's directory guard is still needed" "checked for: ${REPRO_DIR}/$(basename "$BINARY")"
 fi
 rm -rf "$REPRO_DIR"
 
 # ── Test 1: link_binary refuses when the link path is an existing
-# DIRECTORY -- must fail closed and must NOT write anything inside it
-# (the actual I1 bug this file is named for).
+# DIRECTORY -- must fail closed and must NOT write anything inside it.
 DIR_AT_LINK_PATH="${LOCAL_BIN}/konductor"
 mkdir -p "$DIR_AT_LINK_PATH"
 touch "${DIR_AT_LINK_PATH}/pre-existing-unrelated-file"
@@ -58,7 +57,7 @@ t_assert_status "link_binary refuses when the link path is a directory" 1
 t_assert_contains "the refusal names it as a directory, not a generic failure" "already exists as a DIRECTORY"
 
 if [[ -e "${DIR_AT_LINK_PATH}/$(basename "$BINARY")" ]]; then
-  t_fail "link_binary must NEVER write the binary's basename inside the pre-existing directory (the exact I1 bug)" "found: ${DIR_AT_LINK_PATH}/$(basename "$BINARY")"
+  t_fail "link_binary must NEVER write the binary's basename inside the pre-existing directory" "found: ${DIR_AT_LINK_PATH}/$(basename "$BINARY")"
 else
   t_pass "link_binary wrote nothing inside the pre-existing directory"
 fi
@@ -75,9 +74,8 @@ fi
 rm -rf "$DIR_AT_LINK_PATH"
 
 # ── Test 1b: link_binary refuses when the link path is a PRE-EXISTING
-# SYMLINK that itself RESOLVES to a directory (adversarial-review finding
-# I1, residual gap) -- must fail closed the same way Test 1's real
-# directory does, must NOT write anything inside the directory the
+# SYMLINK that itself RESOLVES to a directory -- must fail closed the
+# same way Test 1's real directory does, must NOT write anything inside the
 # symlink points at, and must leave no stray temp-symlink file behind. A
 # symlink-to-a-directory has `-L` true (it IS a symlink) but ALSO `-d`
 # true (it RESOLVES to a directory) -- Test 1's own check (`-d && !-L`)

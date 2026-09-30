@@ -3,7 +3,7 @@
 #
 # check-plugin-json-version-drift.sh -- fails closed if the checked-in
 # powers/konductor/plugin.json's own "version" field has drifted from the
-# repo-root VERSION file (adversarial-review finding I5).
+# repo-root VERSION file.
 #
 # Why both copies exist at all: VERSION is this repo's single source of
 # truth for the released version (Cargo.toml, the packaged tarball name,

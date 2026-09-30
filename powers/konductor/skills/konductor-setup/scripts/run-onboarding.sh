@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: Apache-2.0
 #
-# run-onboarding.sh -- konductor-setup's main orchestrator (design §5.3
-# steps 1-2/3/5-7). Runs AFTER step 0's consent has already been obtained
-# in chat -- this script itself never prompts; the calling agent is
+# run-onboarding.sh -- konductor-setup's main orchestrator. Runs AFTER
+# step 0's consent has already been obtained in chat -- this script
+# itself never prompts; the calling agent is
 # responsible for stating the plan and getting one explicit confirmation
 # before invoking this script at all (see skills/konductor-setup/SKILL.md).
 #
@@ -19,11 +19,10 @@
 #
 # Every step's real command is printed before it runs and its real
 # stdout/stderr streams directly -- never captured and re-summarized (see
-# lib.sh's konductor_run, and design §9's direct contrast with a
-# capture-and-summarize pattern). `set -euo pipefail` plus lib.sh's helpers
-# together implement design §5.3's fail-stop rule: any non-zero exit from
-# anything this script runs stops the whole flow immediately, with that
-# command's own error text intact -- never softened, retried, or masked.
+# lib.sh's konductor_run). `set -euo pipefail` plus lib.sh's helpers
+# together implement the fail-stop rule: any non-zero exit from anything
+# this script runs stops the whole flow immediately, with that command's
+# own error text intact -- never softened, retried, or masked.
 #
 # Usage:
 #   run-onboarding.sh --target <dir> --confirmed [--tag <v...>]
@@ -32,7 +31,7 @@
 #
 #   --target <dir>   REQUIRED. The current project directory the user
 #                     confirmed in step 0 -- this script has no implicit
-#                     $HOME default of its own (design §5.3 step 6, decided).
+#                     $HOME default of its own.
 #   --confirmed      REQUIRED. A lightweight, cheap backstop for step 0's
 #                     consent: this script refuses to touch the network or
 #                     the filesystem at all without it (see the check right
@@ -48,11 +47,10 @@
 #   --tag <v...>     Override the resolved release tag. Highest precedence
 #                     of the three tag sources -- see "Resolve the pinned
 #                     tag" below and resolve-version.sh's own doc comment
-#                     for the full precedence order (adversarial-review
-#                     finding I3). A --tag that differs from plugin.json's
-#                     own version is a source-redirection deviation, gated
-#                     by --allow-non-default-repo below (finding C1) exactly
-#                     like a non-default --repo is.
+#                     for the full precedence order. A --tag that differs
+#                     from plugin.json's own version is a source-redirection
+#                     deviation, gated by --allow-non-default-repo below
+#                     exactly like a non-default --repo is.
 #   --repo <owner/name>  Override the GitHub repo (default:
 #                     aws-solutions/konductor); for testing against a fork.
 #                     A non-default value is refused unless
@@ -60,9 +58,9 @@
 #   --allow-non-default-repo  Opt in to a non-default --repo, and/or a
 #                     resolved tag that differs from plugin.json's own
 #                     version (whether from --tag or from
-#                     KONDUCTOR_POWER_VERSION) -- adversarial-review finding
-#                     C1. Without this flag, EITHER deviation is a hard
-#                     refusal before any network or filesystem action: this
+#                     KONDUCTOR_POWER_VERSION). Without this flag, EITHER
+#                     deviation is a hard refusal before any network or
+#                     filesystem action: this
 #                     Power fetches and runs a released binary, so silently
 #                     accepting a different repo or tag is silently
 #                     accepting a different, unverified source of code to
@@ -96,8 +94,8 @@
 # design), then re-runs `konductor install`, whose own content-version
 # tracking reports "already at version X, nothing to do" and writes
 # nothing -- this script does not add a redundant idempotency check on top
-# of that; it only needs to not swallow that message (design §5.3 step 8),
-# which konductor_run's un-captured streaming already guarantees.
+# of that; it only needs to not swallow that message, which
+# konductor_run's un-captured streaming already guarantees.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -174,21 +172,21 @@ if [[ -z "$CONFIRMED" ]]; then
   konductor_die "refusing to run without --confirmed. This script never asks for consent itself -- state the plan (platform, pinned release, exactly what gets written and where) in chat first, get an explicit yes from the user, THEN pass --confirmed. See konductor-setup/SKILL.md Step 0." || exit 64
 fi
 
-# ── Resolve the pinned tag (adversarial-review finding I3) ─────────────────
+# ── Resolve the pinned tag ──────────────────────────────────────────────────
 # Precedence: --tag (highest) > KONDUCTOR_POWER_VERSION > plugin.json's own
 # version (default). PLUGIN_VERSION/DEFAULT_TAG are always resolved from
 # plugin.json alone, regardless of either override -- this is the "what
-# would happen with no deviation at all" baseline the C1 check right below
-# compares the actually-resolved TAG against, so a KONDUCTOR_POWER_VERSION
-# override is caught as a deviation exactly like --tag is, not silently
-# exempted from it.
+# would happen with no deviation at all" baseline the source-redirection
+# check right below compares the actually-resolved TAG against, so a
+# KONDUCTOR_POWER_VERSION override is caught as a deviation exactly like
+# --tag is, not silently exempted from it.
 #
 # resolve_plugin_version itself does NOT read KONDUCTOR_POWER_VERSION (that
 # env-var check lives only in resolve-version.sh's own standalone
-# entrypoint) -- calling it directly, as this script does, bypassed that
-# check entirely, which is exactly the I3 bug. The precedence is
-# implemented here instead, explicitly, colocated with the C1 deviation
-# check that needs to distinguish these three sources anyway.
+# entrypoint), so calling it directly, as this script does, would bypass
+# that check entirely. The precedence is implemented here instead,
+# explicitly, colocated with the deviation check that needs to
+# distinguish these three sources anyway.
 PLUGIN_VERSION="$(resolve_plugin_version "$SCRIPT_DIR")"
 DEFAULT_TAG="$(construct_tag "$PLUGIN_VERSION")"
 
@@ -203,7 +201,7 @@ else
   TAG_SOURCE="plugin.json"
 fi
 
-# ── Mandatory Step 0 disclosure + source-redirection gate (finding C1) ─────
+# ── Mandatory Step 0 disclosure + source-redirection gate ──────────────────
 # This line is NOT optional and prints unconditionally, before any network
 # or filesystem action, for every run, default or not: exactly which repo
 # and tag this run is about to fetch and RUN a released binary from. It
@@ -245,7 +243,7 @@ trap cleanup EXIT
 # variable (FETCH_VERIFY_BINARY_RESULT / BUILD_FROM_SOURCE_RESULT) rather
 # than a captured `$(...)` echo -- see fetch-verify-binary.sh's header for
 # why: capturing the whole function's stdout to get its result would also
-# swallow that real, supposed-to-be-visible command output (design §9).
+# swallow that real, supposed-to-be-visible command output.
 case "$CLASSIFICATION" in
   SUPPORTED:*)
     TRIPLE="${CLASSIFICATION#SUPPORTED:}"
@@ -300,8 +298,8 @@ konductor_run_cli "${INSTALL_ARGS[@]}"
 konductor_run_cli "$LINKED_BIN" doctor --target "$TARGET_DIR"
 
 # ── Record this run's own CLI binary for konductor_resolve_target_binary ──
-# Written only once the whole flow above has actually succeeded (adversarial-
-# review finding C2) -- BINARY_PATH is the real, verified/built file under
+# Written only once the whole flow above has actually succeeded --
+# BINARY_PATH is the real, verified/built file under
 # the stable ~/.konductor/cli-releases cache (never the mutable
 # ~/.local/bin/konductor symlink LINKED_BIN, which every OTHER project's own
 # onboarding/update run can and does repoint). run-update.sh/run-uninstall.sh

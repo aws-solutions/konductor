@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: Apache-2.0
 #
-# test-fail-stop.sh -- pins design §5.3's fail-stop rule end to end through
+# test-fail-stop.sh -- pins the fail-stop rule end to end through
 # run-onboarding.sh: "Any non-zero exit stops the flow ... relays that
 # command's stderr to the user word for word ... never continues to the
 # next step after a failed one." Uses a fully stubbed environment (fake
@@ -13,7 +13,7 @@ TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=helpers.sh
 source "${TEST_DIR}/helpers.sh"
 
-# KONDUCTOR_SETUP_SCRIPTS_DIR (adversarial-review finding I4): defaults to
+# KONDUCTOR_SETUP_SCRIPTS_DIR: defaults to
 # this repo's own source tree, but a caller (make kiro-power-check, the CI
 # publish job) can point it at the ASSEMBLED tree instead, so the test
 # suite actually exercises what gets published rather than only the
@@ -22,13 +22,13 @@ SCRIPTS_DIR="${KONDUCTOR_SETUP_SCRIPTS_DIR:-${TEST_DIR}/../../powers/konductor/s
 ORCHESTRATOR="${SCRIPTS_DIR}/run-onboarding.sh"
 
 # Deliberately NOT a hardcoded "v1.0.2" -- same drift rationale as
-# test-resolve-version.sh (adversarial-review finding I5): derived from the
-# repo-root VERSION file at test-run time, so a future version bump can
-# never make every `--tag "$DEFAULT_TAG"` call below silently start
-# tripping the C1 non-default-source gate in run-onboarding.sh (that gate
-# refuses whenever the resolved tag differs from plugin.json's own default
-# -- an accidentally-stale hardcoded tag here would look exactly like a
-# real deviation to that check).
+# test-resolve-version.sh: derived from the repo-root VERSION file at
+# test-run time, so a future version bump can never make every `--tag
+# "$DEFAULT_TAG"` call below silently start tripping the non-default-source
+# gate in run-onboarding.sh (that gate refuses whenever the resolved tag
+# differs from plugin.json's own default -- an accidentally-stale
+# hardcoded tag here would look exactly like a real deviation to that
+# check).
 REPO_ROOT_VERSION="$(tr -d '[:space:]' < "${TEST_DIR}/../../VERSION")"
 DEFAULT_TAG="v${REPO_ROOT_VERSION}"
 
@@ -106,7 +106,7 @@ fi
 # (--tag with a "curl" that always fails the asset fetch -- simulates a
 # 404 / tag-not-found, and confirms nothing downstream (link, install,
 # doctor) ever runs. This --tag deliberately differs from plugin.json's
-# own default, so --allow-non-default-repo is required to get past the C1
+# own default, so --allow-non-default-repo is required to get past the
 # source-redirection gate and actually reach the download step this test
 # exercises -- exactly what a real caller testing against a nonexistent
 # tag would also need to pass.)

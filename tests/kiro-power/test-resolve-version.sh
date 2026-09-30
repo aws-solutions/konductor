@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: Apache-2.0
 #
-# test-resolve-version.sh -- pins resolve-version.sh's tag construction
-# (design §5.3 step 2: "Tag construction is not optional and must match the
-# CLI's own scheme exactly" -- "v${plugin_version}", never a bare version).
+# test-resolve-version.sh -- pins resolve-version.sh's tag construction:
+# tag construction is not optional and must match the CLI's own scheme
+# exactly -- "v${plugin_version}", never a bare version.
 set -uo pipefail
 
 TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=helpers.sh
 source "${TEST_DIR}/helpers.sh"
 
-# KONDUCTOR_SETUP_SCRIPTS_DIR (adversarial-review finding I4): defaults to
+# KONDUCTOR_SETUP_SCRIPTS_DIR: defaults to
 # this repo's own source tree, but a caller (make kiro-power-check, the CI
 # publish job) can point it at the ASSEMBLED tree instead, so the test
 # suite actually exercises what gets published rather than only the
@@ -50,8 +50,8 @@ else
 fi
 
 # ── resolve_plugin_version: walks up to this Power's own plugin.json ─────
-# Deliberately NOT a hardcoded "v1.0.2" (adversarial-review finding I5):
-# reads the repo-root VERSION file at test-run time and derives the
+# Deliberately NOT a hardcoded "v1.0.2": reads the repo-root VERSION file
+# at test-run time and derives the
 # expected tag from it, so this assertion stays correct across a future
 # version bump with no edit to this test file needed. This is also a
 # second, independent check against plugin.json/VERSION drift, alongside

@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # run-update.sh -- konductor-setup step 9: upgrade an already-onboarded
-# target, always with an explicit --target (design §5.3 step 9). Never a
-# bare `konductor update`: a user who has tried this Power in more than one
+# target, always with an explicit --target. Never a bare `konductor
+# update`: a user who has tried this Power in more than one
 # project has more than one entry in `~/.konductor/installs`, and
 # cli/README.md's own selection table treats a bare `update`/`uninstall`
 # against 2+ tracked installs as a usage error demanding `--target`/`--all`
@@ -66,16 +66,16 @@ fi
 # NOT a bare `~/.local/bin/konductor` assumption: that symlink is shared
 # across every project on the machine and re-pointed by every onboarding
 # run elsewhere, so it may no longer match THIS target's own recorded CLI
-# binary by the time `update` runs against it (adversarial-review finding
-# C2). konductor_resolve_target_binary verifies the actual match against
-# this target's own power-cli.json record -- deliberately NOT install-
-# info.json's `agent_version`, which is the installed CONTENT's own
-# version and independent of which CLI binary ran the command (a
-# `--version <v>` bump below changes ONLY that content version, on
-# whichever CLI binary happens to be resolved; comparing it against a CLI
-# binary's own `--version` output would be comparing two unrelated axes --
-# see lib.sh's konductor_write_power_cli_record for the full rationale and
-# the exact regression this avoids). Falls back to this target's own
+# binary by the time `update` runs against it. konductor_resolve_target_
+# binary verifies the actual match against this target's own
+# power-cli.json record -- deliberately NOT install-info.json's
+# `agent_version`, which is the installed CONTENT's own version and
+# independent of which CLI binary ran the command (a `--version <v>`
+# bump below changes ONLY that content version, on whichever CLI binary
+# happens to be resolved; comparing it against a CLI binary's own
+# `--version` output would be comparing two unrelated axes -- see
+# lib.sh's konductor_write_power_cli_record for the full rationale).
+# Falls back to this target's own
 # cached, previously-verified binary under ~/.konductor/cli-releases/, or
 # the shared binary, before ever failing closed -- see lib.sh's own doc
 # comment on konductor_resolve_target_binary for the full resolution order.

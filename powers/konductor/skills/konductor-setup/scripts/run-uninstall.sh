@@ -3,10 +3,9 @@
 #
 # run-uninstall.sh -- konductor-setup step 10: remove Konductor from a
 # target, always with an explicit --target, same multi-tracked-install
-# reasoning as run-update.sh (design §5.3 step 10). This is a separate,
-# explicitly-confirmed action from the agent's side -- never bundled into a
-# "start over" step that also reinstalls, since uninstall removes real
-# files.
+# reasoning as run-update.sh. This is a separate, explicitly-confirmed
+# action from the agent's side -- never bundled into a "start over" step
+# that also reinstalls, since uninstall removes real files.
 #
 # Usage:
 #   run-uninstall.sh --target <dir> [--dry-run] [--confirmed]
@@ -20,8 +19,8 @@
 #                     itself offers --dry-run precisely so a user can see
 #                     what would be removed before it is).
 #   --confirmed      REQUIRED for a REAL removal (i.e. whenever --dry-run
-#                     is NOT also given) -- adversarial-review finding I2.
-#                     Same consent-backstop rationale as run-onboarding.sh's
+#                     is NOT also given). Same consent-backstop rationale
+#                     as run-onboarding.sh's
 #                     identical flag (see that script's own doc comment and
 #                     SKILL.md's "Consent is prose, not a provable gate"
 #                     section): this script refuses to actually delete
@@ -65,7 +64,7 @@ if [[ -z "$TARGET_DIR" ]]; then
   konductor_die "usage: run-uninstall.sh --target <dir> [--dry-run] [--confirmed]" || exit 64
 fi
 
-# ── Consent backstop for a REAL removal only (I2) ──────────────────────────
+# ── Consent backstop for a REAL removal only ────────────────────────────────
 # --dry-run is deliberately exempt: it never touches the filesystem, so
 # gating it behind --confirmed would just make the agent's own "show the
 # user what would happen first" step harder to run. A real removal without
@@ -77,7 +76,7 @@ if [[ -z "$DRY_RUN" && -z "$CONFIRMED" ]]; then
   konductor_die "refusing to run a REAL uninstall without --confirmed. Run with --dry-run first, show the user exactly what would be removed, get an explicit yes, THEN re-run with --confirmed (no --dry-run). See konductor-setup/SKILL.md's uninstall flow." || exit 64
 fi
 
-# NOT a bare `~/.local/bin/konductor` assumption -- same C2 rationale as
+# NOT a bare `~/.local/bin/konductor` assumption -- same rationale as
 # run-update.sh's identical resolution (see that script's own comment and
 # lib.sh's konductor_resolve_target_binary doc comment for the full
 # resolution order).

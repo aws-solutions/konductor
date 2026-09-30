@@ -2,16 +2,16 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # test-detect-platform.sh -- pins detect-platform.sh's classification for
-# every case the design (konductor-power-design.md §5.3 steps 1-4) names:
-# the three supported release triples, the Intel Mac source-fallback case,
-# Windows-with-bash, and an explicit stop for anything else.
+# every case this Power supports: the three supported release triples,
+# the Intel Mac source-fallback case, Windows-with-bash, and an explicit
+# stop for anything else.
 set -uo pipefail
 
 TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=helpers.sh
 source "${TEST_DIR}/helpers.sh"
 
-# KONDUCTOR_SETUP_SCRIPTS_DIR (adversarial-review finding I4): defaults to
+# KONDUCTOR_SETUP_SCRIPTS_DIR: defaults to
 # this repo's own source tree, but a caller (make kiro-power-check, the CI
 # publish job) can point it at the ASSEMBLED tree instead, so the test
 # suite actually exercises what gets published rather than only the

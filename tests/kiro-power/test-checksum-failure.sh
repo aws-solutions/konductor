@@ -2,17 +2,17 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # test-checksum-failure.sh -- pins fetch-verify-binary.sh's behavior on a
-# corrupted/tampered download (design §5.3 step 2, §9: "checksum
-# verification, every time, no exceptions"). Uses a stubbed `curl` on a
-# scratch PATH, so this never makes a real network call and never depends
-# on a specific real release existing.
+# corrupted/tampered download: checksum verification, every time, no
+# exceptions. Uses a stubbed `curl` on a scratch PATH, so this never
+# makes a real network call and never depends on a specific real release
+# existing.
 set -uo pipefail
 
 TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=helpers.sh
 source "${TEST_DIR}/helpers.sh"
 
-# KONDUCTOR_SETUP_SCRIPTS_DIR (adversarial-review finding I4): defaults to
+# KONDUCTOR_SETUP_SCRIPTS_DIR: defaults to
 # this repo's own source tree, but a caller (make kiro-power-check, the CI
 # publish job) can point it at the ASSEMBLED tree instead, so the test
 # suite actually exercises what gets published rather than only the

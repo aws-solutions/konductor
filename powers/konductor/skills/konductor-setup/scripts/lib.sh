@@ -7,12 +7,11 @@
 #   # shellcheck source=lib.sh
 #   source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 #
-# Every helper here exists to enforce the design's fail-stop rule (see
-# konductor-power-design.md §5.3, §9): a command's real stdout/stderr is
-# always streamed, never captured into a variable and re-summarized, and
-# a non-zero exit stops the whole flow immediately with that command's
-# own error text intact -- never softened, retried against a fallback, or
-# swallowed.
+# Every helper here exists to enforce this Power's fail-stop rule: a
+# command's real stdout/stderr is always streamed, never captured into a
+# variable and re-summarized, and a non-zero exit stops the whole flow
+# immediately with that command's own error text intact -- never
+# softened, retried against a fallback, or swallowed.
 
 # `set -u` here (not `-e`/`-o pipefail`) so a caller that sources this file
 # before setting its own `set -euo pipefail` still gets unset-variable
@@ -41,8 +40,8 @@ KONDUCTOR_RESOLVE_AND_CHECK_BINARY_RESULT=""
 
 # konductor_log <message...>
 # A single, greppable "=== [konductor-setup] ... ===" line, matching the
-# visible-progress style scripts/konductor-bootstrap.sh already uses (see
-# design §6). Every step prints one of these BEFORE it does anything.
+# visible-progress style scripts/konductor-bootstrap.sh already uses.
+# Every step prints one of these BEFORE it does anything.
 #
 # Written to STDERR, deliberately: several functions in this file's sibling
 # scripts (fetch_verify_binary, build_from_source, link_binary) return their
@@ -176,18 +175,17 @@ KONDUCTOR_CLI_VERSION_REGEX='^[0-9]+\.[0-9]+\.[0-9]+$'
 # separately from the running binary's version") -- and `update --version
 # <v>` (cli.rs's `release_version` field on `Commands::Update`) changes
 # that CONTENT version on purpose, on ANY CLI binary, with no effect on
-# and no relationship to which binary ran the command. An earlier version
-# of konductor_resolve_target_binary compared power-cli.json's would-be
-# `cli_version` against install-info.json's `agent_version` directly --
-# conflating two independent axes -- which meant a single
-# `run-update.sh --version 2.0.0` (a legitimate content-version bump, run
-# with the SAME, perfectly good 1.0.2 CLI binary) locked every LATER
-# update/uninstall out entirely, since nothing on the machine reports
-# `--version` as "2.0.0" (that string names a content release, not a CLI
-# release, and 2.0.0 may not even be a real CLI release at all).
-# power-cli.json exists specifically so this Power tracks the CLI-binary
-# axis on its own, never inferring it from a field that was never about
-# the CLI binary in the first place.
+# and no relationship to which binary ran the command. Comparing
+# power-cli.json's `cli_version` against install-info.json's
+# `agent_version` directly would conflate two independent axes: a
+# legitimate content-version bump such as `run-update.sh --version 2.0.0`
+# (run with the SAME, perfectly good 1.0.2 CLI binary) would then lock
+# every LATER update/uninstall out entirely, since nothing on the machine
+# reports `--version` as "2.0.0" (that string names a content release,
+# not a CLI release, and 2.0.0 may not even be a real CLI release at
+# all). power-cli.json exists specifically so this Power tracks the
+# CLI-binary axis on its own, never inferring it from a field that was
+# never about the CLI binary in the first place.
 #
 # Called only after a REAL success (a completed `konductor install`/
 # `update` run) -- never on a failed run, so a failure never overwrites a
@@ -287,12 +285,12 @@ konductor_resolve_and_check_binary() {
 # konductor_resolve_target_binary <target-dir>
 # Resolves the `konductor` binary that ACTUALLY matches a given target's
 # OWN recorded CLI binary, rather than assuming the machine-wide
-# `~/.local/bin/konductor` symlink is still that binary (adversarial-
-# review finding C2). That symlink is shared across every project on the
-# machine and re-pointed by every onboarding run -- a project onboarded
-# weeks ago, then left alone while OTHER projects were onboarded/updated
-# with newer pinned releases, ends up with a shared binary that no longer
-# matches what THIS target actually needs.
+# `~/.local/bin/konductor` symlink is still that binary. That symlink is
+# shared across every project on the machine and re-pointed by every
+# onboarding run -- a project onboarded weeks ago, then left alone while
+# OTHER projects were onboarded/updated with newer pinned releases, ends
+# up with a shared binary that no longer matches what THIS target
+# actually needs.
 #
 # Reads <target-dir>/.konductor/power-cli.json (see
 # konductor_write_power_cli_record's own doc comment for exactly why this

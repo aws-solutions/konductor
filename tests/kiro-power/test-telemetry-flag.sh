@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: Apache-2.0
 #
-# test-telemetry-flag.sh -- pins run-onboarding.sh's --no-telemetry opt-out
-# (adversarial-review TELEMETRY DISCLOSURE finding): telemetry is enabled
-# by default (no flag forwarded at all); --no-telemetry is forwarded
+# test-telemetry-flag.sh -- pins run-onboarding.sh's --no-telemetry opt-out:
+# telemetry is enabled by default (no flag forwarded at all); --no-telemetry
+# is forwarded
 # verbatim to `konductor install`'s own --no-telemetry flag (confirmed
 # against cli.rs's Commands::Install variant) only when explicitly passed.
 # Uses a stubbed curl+konductor on a scratch PATH/HOME; no real network
@@ -14,7 +14,7 @@ TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=helpers.sh
 source "${TEST_DIR}/helpers.sh"
 
-# KONDUCTOR_SETUP_SCRIPTS_DIR (adversarial-review finding I4): see
+# KONDUCTOR_SETUP_SCRIPTS_DIR: see
 # test-fail-stop.sh's identical header comment for the full rationale.
 SCRIPTS_DIR="${KONDUCTOR_SETUP_SCRIPTS_DIR:-${TEST_DIR}/../../powers/konductor/skills/konductor-setup/scripts}"
 ORCHESTRATOR="${SCRIPTS_DIR}/run-onboarding.sh"
@@ -37,8 +37,8 @@ DEFAULT_TAG="v${REPO_ROOT_VERSION}"
 # rather than asserting on any narration text. Also handles `--version`
 # (run-onboarding.sh's own final step calls it directly, on the real
 # downloaded binary path, to record this run's own CLI binary+version in
-# power-cli.json -- adversarial-review finding C2's own regression fix)
-# and `doctor`, since a full successful onboarding run reaches all three.
+# power-cli.json) and `doctor`, since a full successful onboarding run
+# reaches all three.
 cat > "${FAKE_BIN}/fake-konductor-body.sh" <<STUB
 #!/usr/bin/env bash
 case "\$1" in

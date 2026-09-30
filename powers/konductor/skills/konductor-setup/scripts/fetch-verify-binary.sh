@@ -4,7 +4,7 @@
 # fetch-verify-binary.sh -- konductor-setup step 2: download the pinned
 # release's `konductor` binary for one of the three published platform
 # triples, plus its `.sha256` sidecar, and verify the download before it is
-# ever executed or linked onto PATH (design §5.3 step 2, §9).
+# ever executed or linked onto PATH.
 #
 # Asset naming and download URL shape mirror scripts/konductor-install.sh
 # exactly: `konductor-<tag>-<triple>` and `<same>.sha256`, fetched directly
@@ -40,8 +40,8 @@
 #
 # Deliberately NOT "prints the path on stdout, capture with $(...)": curl's
 # and sha256sum's own real output must stream straight to the terminal
-# per design §9 ("visible commands only" -- never captured into a variable
-# and replaced with a summary), and capturing this function's whole stdout
+# ("visible commands only" -- never captured into a variable and
+# replaced with a summary), and capturing this function's whole stdout
 # to retrieve its result would swallow that same real output instead of
 # showing it. A global result variable keeps the two concerns separate:
 # real command output stays live on the terminal, and the actual return
@@ -52,9 +52,9 @@
 #
 # On any failure -- network error, missing asset (tag/platform not
 # published), or checksum mismatch -- prints a clear error to stderr and
-# exits non-zero. Per design §5.3 step 2's failure note: a tag that does
-# not resolve (e.g. plugin.json's version has drifted from what was
-# actually tagged) is a hard stop here -- this script NEVER falls back to
+# exits non-zero. A tag that does not resolve (e.g. plugin.json's version
+# has drifted from what was actually tagged) is a hard stop here -- this
+# script NEVER falls back to
 # "latest" as a silent substitute for a 404, since that would install a
 # version this Power was not validated against.
 set -euo pipefail
@@ -103,8 +103,8 @@ fetch_verify_binary() {
   # file's header for why <dest_dir> itself is never safe to hand back to
   # a caller that may remove it once the whole script exits.
   #
-  # (MINOR, noted during adversarial review): `mv -f` here is only
-  # guaranteed ATOMIC when <dest_dir> and <releases_dir> are on the same
+  # Note: `mv -f` here is only guaranteed ATOMIC when <dest_dir> and
+  # <releases_dir> are on the same
   # filesystem -- true for run-onboarding.sh's own caller, since both are
   # ordinary paths under the same $HOME/$TMPDIR mount in the common case,
   # but not a property this line enforces or verifies. A cross-filesystem

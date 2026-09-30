@@ -13,7 +13,7 @@ TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=helpers.sh
 source "${TEST_DIR}/helpers.sh"
 
-# KONDUCTOR_SETUP_SCRIPTS_DIR (adversarial-review finding I4): defaults to
+# KONDUCTOR_SETUP_SCRIPTS_DIR: defaults to
 # this repo's own source tree, but a caller (make kiro-power-check, the CI
 # publish job) can point it at the ASSEMBLED tree instead, so the test
 # suite actually exercises what gets published rather than only the

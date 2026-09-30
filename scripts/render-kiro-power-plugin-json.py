@@ -6,12 +6,11 @@ scripts/kiro-power.template.json, overriding only one field:
 - `version`: read from the repo's root VERSION file, which is this repo's
   single source of truth for the released version (see
   scripts/validate-version-semver.sh and .github/workflows/release.yml's
-  check-version job). konductor-power-design.md §11/§13.1 is explicit that
-  this field must be generated, never hand-maintained, and that
-  scripts/generate-agent-files.js is NOT the right place to do it (that
-  script renders Claude Code agent .md files from agents/*.agent-spec.json
-  and has no notion of the Agent Plugins schema at all) -- hence this
-  small, purpose-built script instead.
+  check-version job). This field must be generated, never hand-maintained,
+  and scripts/generate-agent-files.js is NOT the right place to do it
+  (that script renders Claude Code agent .md files from
+  agents/*.agent-spec.json and has no notion of the Agent Plugins schema
+  at all) -- hence this small, purpose-built script instead.
 
 Every other field (name, description, author, homepage, repository,
 license, keywords) is carried through from the template unchanged, in its
