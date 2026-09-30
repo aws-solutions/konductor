@@ -51,6 +51,18 @@ jobs:
             exit 1
           fi
 
+      - name: Validate the Kiro Power (powers/konductor/)
+        # Users import the Power directly from
+        # github.com/aws-solutions/konductor/tree/main/powers/konductor -- the
+        # committed tree IS the published artifact, so every PR must keep it
+        # passing: VERSION/plugin.json drift, the Agent Plugins v1.0.0 schema,
+        # both skills' SKILL.md frontmatter, shellcheck across
+        # konductor-setup's scripts/, and the full tests/kiro-power/ suite.
+        # `make kiro-power-check` needs only python3 and shellcheck, both
+        # preinstalled on ubuntu-latest -- no Rust toolchain required, so this
+        # runs before the toolchain setup below rather than depending on it.
+        run: make kiro-power-check
+
       - name: Require a CHANGELOG.md entry alongside any VERSION bump
         # CHANGELOG.md's own convention (entries consolidated per release,
         # not per commit) is otherwise unenforced -- a PR could bump VERSION

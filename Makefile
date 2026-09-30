@@ -31,9 +31,27 @@
 #                     on cli's build)
 #   clean             Remove build artifacts in cli/, mcp/, and shared/
 #   help              Show this usage summary
+#
+#   kiro-power        Render powers/konductor/plugin.json in place from
+#                     scripts/kiro-power.template.json + the repo-root
+#                     VERSION file. Run this after editing the template or
+#                     bumping VERSION, then commit the result -- users
+#                     import the Power directly from
+#                     github.com/aws-solutions/konductor/tree/main/powers/konductor,
+#                     so the checked-in plugin.json IS the published
+#                     artifact; there is no separate assembly/publish step.
+#   kiro-power-check  Check VERSION/plugin.json for drift, then validate the
+#                     COMMITTED powers/konductor/ tree in place: plugin.json
+#                     against the Agent Plugins v1.0.0 schema, every skill's
+#                     SKILL.md frontmatter, shellcheck across
+#                     konductor-setup's scripts/, and the full
+#                     tests/kiro-power/ suite (each test's own default
+#                     KONDUCTOR_SETUP_SCRIPTS_DIR already resolves to
+#                     powers/konductor/skills/konductor-setup/scripts, so no
+#                     override is needed here). No commits, no push.
 
 .PHONY: all build fmt lint install link synth test test-rust test-schema-dump clean help \
-        guide guide-check guide-sync guide-html guide-record
+        guide guide-check guide-sync guide-html guide-record kiro-power kiro-power-check
 
 all: build
 
@@ -53,6 +71,13 @@ help:
 	@echo "  make test-rust          Run Rust unit tests, cli/mcp/shared (no internet required)"
 	@echo "  make test-schema-dump   Smoke-check __dump_schema (cli only)"
 	@echo "  make clean              Remove build artifacts in cli/, mcp/, and shared/"
+	@echo ""
+	@echo "  Konductor Kiro Power (powers/konductor/, imported by users directly from main)"
+	@echo "  make kiro-power         Render powers/konductor/plugin.json in place from"
+	@echo "                          VERSION -- commit the result"
+	@echo "  make kiro-power-check   Drift check + validate the committed tree in place"
+	@echo "                          (schema, skill frontmatter, shellcheck, full test"
+	@echo "                          suite) -- no commits, no push"
 	@echo ""
 	@echo "  User guide (docs/user-guide/ + docs/site/, docs/index.html)"
 	@echo "  make guide-check        Report drift between the guide and the source tree"
@@ -143,6 +168,62 @@ clean:
 	$(MAKE) -C cli clean
 	$(MAKE) -C mcp clean
 	$(MAKE) -C shared clean
+
+# ── kiro-power ────────────────────────────────────────────────────────────────
+# Renders powers/konductor/plugin.json IN PLACE from
+# scripts/kiro-power.template.json + the repo-root VERSION file, overwriting
+# the checked-in copy directly. Users import the Power straight from
+# github.com/aws-solutions/konductor/tree/main/powers/konductor -- that
+# directory already has the flat shape Kiro's GitHub import expects
+# (plugin.json at its own root, skills/ alongside it) -- so there is no
+# separate publish branch or assembly step; the committed tree here IS what
+# gets imported. Run this whenever the template or VERSION changes, then
+# commit the result.
+kiro-power:
+	@echo "=== [kiro-power] Rendering powers/konductor/plugin.json from VERSION ==="; \
+	python3 scripts/render-kiro-power-plugin-json.py \
+		--template scripts/kiro-power.template.json \
+		--version-file VERSION \
+		--output powers/konductor/plugin.json; \
+	echo "=== [kiro-power] Done -- powers/konductor/plugin.json is up to date ==="
+
+# ── kiro-power-check ──────────────────────────────────────────────────────────
+# PR-time smoke test: checks VERSION/plugin.json for drift, then validates the
+# COMMITTED powers/konductor/ tree directly, in place -- plugin.json against
+# the Agent Plugins v1.0.0 schema, every skill's SKILL.md frontmatter,
+# shellcheck across konductor-setup's scripts/, and the full
+# tests/kiro-power/ suite. No commits, no push; this is read-only validation
+# of the tree that ships on main.
+#
+# The shellcheck step below `cd`s into the scripts directory first rather
+# than shellchecking a subdirectory-qualified or absolute path: `shellcheck
+# -x` resolves a `source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"`-shaped
+# line relative to the CURRENT DIRECTORY it's invoked from, not the checked
+# file's own directory -- a bare `./*.sh` glob run from inside that
+# directory is what actually makes `-x` follow the source; anything else
+# reports a false SC1091 "not following" for every such line.
+#
+# KONDUCTOR_SETUP_SCRIPTS_DIR (adversarial-review finding I4) is left unset
+# here on purpose: every test-*.sh file's own default already resolves to
+# powers/konductor/skills/konductor-setup/scripts -- the committed,
+# in-place tree -- when the variable is unset, so an override would be
+# redundant now that there is no separate assembled copy to point at.
+kiro-power-check:
+	@echo "=== [kiro-power-check] Checking VERSION/plugin.json for drift ==="; \
+	scripts/check-plugin-json-version-drift.sh || exit 1; \
+	echo "=== [kiro-power-check] Validating plugin.json against the Agent Plugins v1.0.0 schema ==="; \
+	python3 scripts/validate-kiro-power-plugin-json.py powers/konductor/plugin.json || exit 1; \
+	echo "=== [kiro-power-check] Validating skill frontmatter ==="; \
+	python3 scripts/validate-kiro-power-skill-frontmatter.py powers/konductor || exit 1; \
+	echo "=== [kiro-power-check] Shellchecking konductor-setup's scripts/ ==="; \
+	if command -v shellcheck >/dev/null 2>&1; then \
+		(cd powers/konductor/skills/konductor-setup/scripts && shellcheck -x ./*.sh) || exit 1; \
+	else \
+		echo "notice: [kiro-power-check] 'shellcheck' not found on PATH -- skipping" >&2; \
+	fi; \
+	echo "=== [kiro-power-check] Running tests/kiro-power/ against the committed tree ==="; \
+	bash tests/kiro-power/run-all.sh || exit 1; \
+	echo "=== [kiro-power-check] All checks passed ==="
 
 # ── user guide ────────────────────────────────────────────────────────────────
 # The guide is authored, not compiled, so these keep the FACTS in step with the
