@@ -300,52 +300,12 @@ fn apply_v3_standalone_telemetry_hook_with_exe(
     ))
 }
 
-/// The result of searching an existing `hooks.<trigger>` array (a flat
-/// array of `{command}` entries -- Kiro's own inline shape) for an
-/// entry identifying the same hook as `command`. Identity is solely the
-/// command's stable suffix (`super::claude_settings::stable_hook_
-/// command_suffix`).
-enum HookEntryMatch {
-    /// No entry with a matching stable command suffix exists -- a
-    /// fresh entry must be appended.
-    Absent,
-    /// An entry already carries the exact command already wired --
-    /// nothing to do.
-    UpToDate,
-    /// An entry's stable command suffix matches, but its full command
-    /// differs (a stale absolute exe path from a relocated or
-    /// previously-unresolved binary) -- the entry at `entries[index]
-    /// ["command"]` must be rewritten in place, self-healing the stale
-    /// path rather than appending a duplicate entry.
-    Stale { index: usize },
-}
-
-/// Searches `entries` (an existing `hooks.<trigger>` array) for an
-/// entry identifying the same hook as `command`, exact-match-first then
-/// falling back to a stale-suffix candidate (scanning the whole array
-/// first, since an exact match can appear anywhere, not necessarily
-/// before a stale-suffix entry).
-fn find_agent_spawn_hook_entry(entries: &[serde_json::Value], command: &str) -> HookEntryMatch {
-    let wanted_suffix = super::claude_settings::stable_hook_command_suffix(command);
-    let mut stale_candidate: Option<usize> = None;
-    for (index, entry) in entries.iter().enumerate() {
-        let Some(existing_command) = entry.get("command").and_then(|c| c.as_str()) else {
-            continue;
-        };
-        if existing_command == command {
-            return HookEntryMatch::UpToDate;
-        }
-        if stale_candidate.is_none()
-            && wanted_suffix.is_some()
-            && super::claude_settings::stable_hook_command_suffix(existing_command) == wanted_suffix
-        {
-            stale_candidate = Some(index);
-        }
-    }
-    match stale_candidate {
-        Some(index) => HookEntryMatch::Stale { index },
-        None => HookEntryMatch::Absent,
-    }
+/// Whether `entries` (an existing `hooks.<trigger>` array) already
+/// carries `command` verbatim.
+fn hook_command_already_wired(entries: &[serde_json::Value], command: &str) -> bool {
+    entries
+        .iter()
+        .any(|entry| entry.get("command").and_then(|c| c.as_str()) == Some(command))
 }
 
 /// Reads `value["hooks"][trigger]` without creating either key --
@@ -388,9 +348,8 @@ fn read_existing_hook_entries<'a>(
 /// turns that no-op into a hard `Err` for the whole install.
 ///
 /// Also leaves `value` untouched when the exe path could not be
-/// resolved and there is no existing entry to self-heal or match:
-/// `exe_is_absolute` is checked before any mutation, so a skipped
-/// wiring never creates so much as an empty `"hooks"`/`"hooks.
+/// resolved: `exe_is_absolute` is checked before any mutation, so a
+/// skipped wiring never creates so much as an empty `"hooks"`/`"hooks.
 /// <trigger>"` scaffold.
 fn merge_agent_spawn_hook(value: &mut serde_json::Value, trigger: &str, exe: &str) {
     let quoted_exe = super::claude_settings::shell_quote_for_hook_command(exe);
@@ -398,57 +357,36 @@ fn merge_agent_spawn_hook(value: &mut serde_json::Value, trigger: &str, exe: &st
         "{quoted_exe} __telemetry-hook {}",
         crate::cli::telemetry_hook::AGENT_INVOCATION
     );
-    let exe_is_absolute = super::claude_settings::is_resolved_absolute_exe_path(exe);
 
     let Ok(existing_entries) = read_existing_hook_entries(value, trigger) else {
         return;
     };
-
-    match find_agent_spawn_hook_entry(existing_entries, &command) {
-        HookEntryMatch::UpToDate => {}
-        HookEntryMatch::Stale { index } => {
-            // Only self-heal when `exe` is a genuine absolute path: a
-            // transient current_exe() failure must never downgrade an
-            // already-correct absolute-path command to the bare
-            // $PATH-dependent fallback.
-            if exe_is_absolute {
-                if let Some(entries_array) = value
-                    .get_mut("hooks")
-                    .and_then(|h| h.get_mut(trigger))
-                    .and_then(|t| t.as_array_mut())
-                {
-                    entries_array[index]["command"] = serde_json::Value::String(command);
-                }
-            }
-        }
-        HookEntryMatch::Absent => {
-            // Same absolute-path guard, applied to fresh creation: a
-            // fresh entry has no prior command to fall back on, so
-            // skipping the push here leaves the trigger's array with no
-            // matching entry. `verify_agent_spawn_hook_command`
-            // degrades that to a non-fatal warning (see this module's
-            // header comment). `value`'s `hooks` structure is only
-            // created/mutated past this guard.
-            if exe_is_absolute {
-                let Some(root_obj) = value.as_object_mut() else {
-                    return;
-                };
-                let hooks = root_obj
-                    .entry("hooks")
-                    .or_insert_with(|| serde_json::Value::Object(serde_json::Map::new()));
-                let Some(hooks_obj) = hooks.as_object_mut() else {
-                    return;
-                };
-                let entries = hooks_obj
-                    .entry(trigger)
-                    .or_insert_with(|| serde_json::Value::Array(Vec::new()));
-                let Some(entries_array) = entries.as_array_mut() else {
-                    return;
-                };
-                entries_array.push(serde_json::json!({ "command": command }));
-            }
-        }
+    if hook_command_already_wired(existing_entries, &command) {
+        return;
     }
+    // A fresh entry has no prior command to fall back on, so a
+    // non-absolute exe skips the push; `verify_agent_spawn_hook_command`
+    // degrades the missing entry to a non-fatal warning.
+    if !super::claude_settings::is_resolved_absolute_exe_path(exe) {
+        return;
+    }
+
+    let Some(root_obj) = value.as_object_mut() else {
+        return;
+    };
+    let hooks = root_obj
+        .entry("hooks")
+        .or_insert_with(|| serde_json::Value::Object(serde_json::Map::new()));
+    let Some(hooks_obj) = hooks.as_object_mut() else {
+        return;
+    };
+    let entries = hooks_obj
+        .entry(trigger)
+        .or_insert_with(|| serde_json::Value::Array(Vec::new()));
+    let Some(entries_array) = entries.as_array_mut() else {
+        return;
+    };
+    entries_array.push(serde_json::json!({ "command": command }));
 }
 
 /// Confirms `value["hooks"][trigger]` carries an entry whose stable
@@ -619,34 +557,6 @@ mod tests {
             value["hooks"]["agentSpawn"].as_array().unwrap().len(),
             1,
             "a second merge with the same resolved exe path must not duplicate the entry"
-        );
-    }
-
-    // ── Self-heal: a relocated binary rewrites the stale entry in place ──
-
-    #[test]
-    fn rewrite_self_heals_a_relocated_binarys_stale_command() {
-        let mut value = serde_json::json!({
-            "hooks": {
-                "agentSpawn": [
-                    {"command": "/old/relocated/path/to/konductor __telemetry-hook agent-invocation"}
-                ]
-            }
-        });
-        merge_agent_spawn_hook(
-            &mut value,
-            AGENT_SPAWN_TRIGGER_V2,
-            "/new/current/path/konductor",
-        );
-        let entries = value["hooks"]["agentSpawn"].as_array().unwrap();
-        assert_eq!(
-            entries.len(),
-            1,
-            "self-heal must rewrite the existing entry in place, never append a duplicate"
-        );
-        assert_eq!(
-            entries[0]["command"],
-            serde_json::json!("/new/current/path/konductor __telemetry-hook agent-invocation")
         );
     }
 
