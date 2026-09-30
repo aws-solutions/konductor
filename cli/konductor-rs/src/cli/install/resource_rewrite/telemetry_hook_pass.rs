@@ -256,9 +256,17 @@ pub(in crate::cli::install) fn remove_v3_standalone_telemetry_hook(
         .parent()
         .expect("V3_STANDALONE_HOOKS_RELATIVE_PATH always has a parent");
 
-    // Held across the read-and-delete for the same reason the write
-    // side holds it: two concurrent installs against one target must
-    // not race on this exact path.
+    // Checked before taking the lock: acquiring it creates `.kiro/hooks/`,
+    // which a fresh `--no-telemetry` install would otherwise leave behind
+    // empty.
+    if !file_path.is_file() {
+        let _ = std::fs::remove_file(hooks_dir.join(V3_STANDALONE_HOOK_LOCK_FILE_NAME));
+        return Ok(false);
+    }
+
+    // Held across the delete for the same reason the write side holds
+    // it: two concurrent installs against one target must not race on
+    // this exact path.
     let _lock_guard =
         crate::cli::config_lock::acquire_named(hooks_dir, V3_STANDALONE_HOOK_LOCK_FILE_NAME)
             .map_err(|source| format!("failed to lock {}: {source}", hooks_dir.display()))?;
@@ -273,6 +281,9 @@ pub(in crate::cli::install) fn remove_v3_standalone_telemetry_hook(
     // so the file we delete is not one another waiter is mid-acquire on.
     drop(_lock_guard);
     let _ = std::fs::remove_file(hooks_dir.join(V3_STANDALONE_HOOK_LOCK_FILE_NAME));
+    // The removed file is no longer manifest-tracked, so `uninstall` won't
+    // clean up the directory later. `remove_dir` only succeeds if empty.
+    let _ = std::fs::remove_dir(hooks_dir);
 
     Ok(existed)
 }
@@ -894,6 +905,10 @@ mod tests {
             !hooks_dir.join(V3_STANDALONE_HOOK_LOCK_FILE_NAME).exists(),
             "the sibling lock file must be cleaned up too"
         );
+        assert!(
+            !hooks_dir.exists(),
+            "an emptied .kiro/hooks/ must be removed too"
+        );
         std::fs::remove_dir_all(&dir).ok();
     }
 
@@ -903,6 +918,10 @@ mod tests {
         let removed = remove_v3_standalone_telemetry_hook(&dir)
             .expect("removing an absent hook must succeed as a no-op");
         assert!(!removed, "an absent hook must report nothing was removed");
+        assert!(
+            !dir.join(".kiro/hooks").exists(),
+            "a no-op removal must not create .kiro/hooks/"
+        );
         std::fs::remove_dir_all(&dir).ok();
     }
 
