@@ -193,9 +193,8 @@ user about:
    (`source`, `runtime`, `manifest`, `config`, `container_runtime`,
    `index_status`, `telemetry_state`, `cli_version`, `content_version`),
    each `ok`/`info`/`warn`/`failed`/`stale`. (`telemetry_state` is real in
-   the actual CLI but not yet reflected in this design's own §7.2 table or
-   in `cli/README.md`'s -- see `konductor-help/SKILL.md` for the verified
-   correction.)
+   the actual CLI but not yet reflected in `cli/README.md`'s own `doctor`
+   table -- see `konductor-help/SKILL.md` for the verified correction.)
 
 `--harness kiro-v3` is not a choice to make per-run: Powers only run on
 Kiro CLI's v3 engine and the unified Kiro IDE that shares it, so this is

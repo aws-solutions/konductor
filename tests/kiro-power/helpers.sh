@@ -3,11 +3,11 @@
 #
 # helpers.sh -- tiny, dependency-free assertion harness for
 # tests/kiro-power/*.sh. Written as plain shell rather than against
-# bats-core: this host's own `bats` on PATH is a different, unrelated
-# tool (a "BATS Transform" CLI, not bats-core -- confirmed via `bats
-# --help`), so depending on it here would silently test against the wrong
-# tool wherever that collision holds. Plain shell has no such ambiguity
-# and needs nothing installed beyond what these scripts already require
+# bats-core: a `bats` binary on PATH is not guaranteed to be bats-core at
+# all -- other, unrelated tools ship a same-named `bats` CLI -- so
+# depending on it here would silently test against the wrong tool
+# wherever that collision holds. Plain shell has no such ambiguity and
+# needs nothing installed beyond what these scripts already require
 # (bash, coreutils).
 #
 # Meant to be sourced by each test-*.sh file:

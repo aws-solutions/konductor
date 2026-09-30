@@ -203,8 +203,8 @@ kiro-power:
 # directory is what actually makes `-x` follow the source; anything else
 # reports a false SC1091 "not following" for every such line.
 #
-# KONDUCTOR_SETUP_SCRIPTS_DIR (adversarial-review finding I4) is left unset
-# here on purpose: every test-*.sh file's own default already resolves to
+# KONDUCTOR_SETUP_SCRIPTS_DIR is left unset here on purpose: every
+# test-*.sh file's own default already resolves to
 # powers/konductor/skills/konductor-setup/scripts -- the committed,
 # in-place tree -- when the variable is unset, so an override would be
 # redundant now that there is no separate assembled copy to point at.

@@ -83,12 +83,12 @@ non-`ok` line:
 | `content_version` | Per-target; compares that target's installed content version against latest |
 
 **`telemetry_state` is real and live in the actual v1.0.2 binary, but is
-not in `cli/README.md`'s own `doctor` table or in this Power's design
-doc's own table (both currently list eight checks, not nine) -- verified
-directly against a real installed target's `doctor` output and against
-`doctor.rs`'s own source, not assumed.** Treat this table, not either of
-those two, as current. If you're the one maintaining `cli/README.md` or
-the design doc, this is the one correction worth carrying back upstream.
+not in `cli/README.md`'s own `doctor` table (it currently lists eight
+checks, not nine) -- verified directly against a real installed target's
+`doctor` output and against `doctor.rs`'s own source, not assumed.** Treat
+this table, not `cli/README.md`'s, as current. If you're the one
+maintaining `cli/README.md`, this is the one correction worth carrying
+back upstream.
 
 **`telemetry_state` does NOT read `<target>/.konductor/config.yml`** --
 confirmed directly against `doctor.rs`'s own `check_telemetry_state`,
