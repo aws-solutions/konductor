@@ -84,36 +84,38 @@ serde_json = { version = "=1.0.150", features = ["preserve_order", "arbitrary_pr
 # BTreeMap, keeping source JSON key order like tools_settings already
 # does. `serde` feature enables Serialize/Deserialize on IndexMap itself
 # (distinct from serde_json's preserve_order, which only affects
-# serde_json::Value::Object). Verified fetchable from crates.io: already
-# present in Cargo.lock.
+# serde_json::Value::Object). Verified mirror-fetchable: already present
+# in Cargo.lock.
 indexmap = { version = "=2.14.0", features = ["serde"] }
 # Added for M1 (declarative contract): the config loader (src/config.rs)
 # derives Serialize/Deserialize on its Config struct to parse
 # `.konductor/config.yml` / the preset `cli/gate-config/config.yml`.
 # Exact-pinned per repo convention. Version bumped past serde_json's own
 # `^1.0.220` transitive requirement (1.0.215 conflicts; verified against
-# crates.io).
+# the internal crates.io mirror).
 serde = { version = "=1.0.228", features = ["derive"] }
 # YAML (de)serialization for the config loader. `serde_yaml` is
 # unmaintained upstream (archived by its author in 2024) but is still the
-# most widely-used option and has no known advisories; newer forks
-# (`serde_yml`, `serde_norway`) were not yet confirmed present on
-# crates.io at time of writing, so this stays with the well-known crate
-# rather than risking a fetch failure. Revisit if a maintained fork
-# becomes available and the team wants to migrate. Exact-pinned per repo
-# convention; verified fetchable against crates.io.
+# most mirror-compatible/widely-used option and has no known advisories;
+# newer forks (`serde_yml`, `serde_norway`) were not yet confirmed present
+# on the internal crates.io mirror at time of writing, so this stays with
+# the well-known crate rather than risking a mirror-fetch failure. Revisit
+# if a maintained fork becomes mirror-available and the team wants to
+# migrate. Exact-pinned per repo convention; verified fetchable against
+# the internal crates.io mirror.
 serde_yaml = "=0.9.34"
 # Advisory exclusive file lock used to serialize `config set`'s
 # read-merge-write cycle across concurrent CLI invocations (see
 # src/cli/config_lock.rs). `fs2` is unmaintained upstream (like
-# `serde_yaml` above) but is confirmed present on crates.io (confirmed via
-# a registry fetch unpacking `fs2 v0.4.3`), and its
-# `FileExt::try_lock_exclusive` / `unlock` API is exactly the small,
-# stable surface this needs. Exact-pinned per repo convention.
+# `serde_yaml` above) but is confirmed present on the internal crates.io
+# mirror (confirmed present via an internal mirror-fetch run
+# unpacking `fs2 v0.4.3`), and its `FileExt::try_lock_exclusive` /
+# `unlock` API is exactly the small, stable surface this needs. Exact-
+# pinned per repo convention.
 fs2 = "=0.4.3"
 # SHA-256 artifact-checksum verification for `konductor install` (task
 # 3.1). Exact-pinned per repo convention; verified fetchable against
-# crates.io.
+# the internal crates.io mirror.
 sha2 = "=0.10.8"
 # Unicode canonical (NFC) normalization for the case-insensitive
 # collision-detection fold shared by `parse_canonical.rs`/`path_safety.rs`
@@ -122,7 +124,7 @@ sha2 = "=0.10.8"
 # differently-composed but visually-identical names (e.g. NFC-precomposed
 # vs. NFD-decomposed) fold to different strings and bypass the collision
 # check outright. Exact-pinned per repo convention; verified fetchable
-# via `cargo add --dry-run` against the crates.io registry.
+# via `cargo add --dry-run` against the mirror-backed registry.
 unicode-normalization = "=0.1.25"
 # Host-allowlist DNS classification, DNS-rebinding pin construction,
 # the timeout-vs-failure resolution decision (`telemetry/report.rs`),
@@ -150,19 +152,20 @@ konductor-telemetry = { path = "../../shared/konductor-telemetry" }
 tar = "=0.4.46"
 # Gzip compression paired with tar above -- the standard Rust-ecosystem
 # combination (e.g. `cargo package` itself uses this same pairing).
-# Exact-pinned per repo convention; verify fetchable against crates.io
-# before merging.
+# Exact-pinned per repo convention; verify fetchable against the
+# internal crates.io mirror before merging.
 flate2 = "=1.1.5"
 # Sync HTTP client for `install::github`'s GitHub Release fetch/download.
 # Deliberately not `reqwest` -- no async runtime in this crate, and `ureq`
 # fits the existing sync I/O style (see `install/remote.rs`). Exact-pinned
-# per repo convention; verified fetchable against crates.io.
+# per repo convention; verified fetchable against the internal
+# crates.io mirror.
 ureq = "=2.10.1"
 # Direct dependency pinning `ureq`'s transitive `rustls` (open range) to
-# the newest patch confirmed on crates.io, so both resolve to one build
-# instead of two. Features match what `ureq` itself requests.
-# Exact-pinned per repo convention; verified fetchable against
-# crates.io.
+# the newest patch confirmed on the internal mirror, so both resolve to
+# one build instead of two. Features match what `ureq` itself requests.
+# Exact-pinned per repo convention; verified fetchable against the
+# internal crates.io mirror.
 rustls = { version = "=0.23.43", default-features = false, features = ["ring", "logging", "std", "tls12"] }
 # Percent-encoding for path segments in `install::github_branch`'s GitHub
 # Contents API URLs. Already resolved transitively via `url`; promoted to
