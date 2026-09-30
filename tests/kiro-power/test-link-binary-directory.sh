@@ -127,7 +127,7 @@ printf 'not a symlink this Power created\n' > "$FOREIGN_FILE"
 
 t_run link_binary "$BINARY" "$LOCAL_BIN"
 t_assert_status "link_binary refuses a foreign regular file at the link path" 1
-t_assert_contains "the refusal names it as a foreign, non-symlink file" "not a symlink this Power created"
+t_assert_contains "the refusal names it as something other than a symlink" "something other than a symlink this Power created"
 t_assert_equal "the foreign file's own content is untouched" "not a symlink this Power created" "$(cat "$FOREIGN_FILE")"
 rm -f "$FOREIGN_FILE"
 

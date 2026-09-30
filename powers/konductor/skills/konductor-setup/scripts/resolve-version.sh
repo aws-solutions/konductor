@@ -23,8 +23,18 @@
 # never guesses or falls back to a hardcoded default.
 set -euo pipefail
 
+# Computed once and reused below (for sourcing lib.sh, and as the explicit
+# argument to resolve_plugin_version's own standalone-invocation call site)
+# rather than re-running the same `dirname`/`pwd` subshell twice in this
+# file. Deliberately NOT named the generic "SCRIPT_DIR": this file is also
+# sourced (not just run standalone) by run-onboarding.sh, which already
+# declares its own top-level "SCRIPT_DIR" before sourcing this file --
+# reusing that name here would silently overwrite the caller's variable
+# the moment this file is sourced into the same shell.
+RESOLVE_VERSION_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # shellcheck source=lib.sh
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+source "${RESOLVE_VERSION_SCRIPT_DIR}/lib.sh"
 
 # construct_tag <bare-semver>
 # Pure string function: "1.0.2" -> "v1.0.2". Rejects empty input rather
@@ -81,7 +91,18 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ -n "${KONDUCTOR_POWER_VERSION:-}" ]]; then
     PLUGIN_VERSION="$KONDUCTOR_POWER_VERSION"
   else
-    PLUGIN_VERSION="$(resolve_plugin_version)"
+    # Pass the already-computed script dir explicitly rather than relying
+    # on resolve_plugin_version's own [script-dir] default: this is the
+    # only call site in this file, so leaving it bare made ShellCheck
+    # 0.9.0 (the version pinned on GitHub-hosted ubuntu-latest runners --
+    # see the Makefile's own kiro-power-check comment) flag SC2120 on the
+    # function definition and SC2119 here, even though a newer local
+    # ShellCheck (0.11.0+) no longer flags a $1 with a ${1:-default}
+    # fallback. The function keeps its own default -- it is still a
+    # legitimate, documented [script-dir] optional argument for any other
+    # caller that sources this file and calls it bare -- this call site
+    # just stops being that caller.
+    PLUGIN_VERSION="$(resolve_plugin_version "$RESOLVE_VERSION_SCRIPT_DIR")"
   fi
   construct_tag "$PLUGIN_VERSION"
 fi

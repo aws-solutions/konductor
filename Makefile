@@ -208,6 +208,22 @@ kiro-power:
 # powers/konductor/skills/konductor-setup/scripts -- the committed,
 # in-place tree -- when the variable is unset, so an override would be
 # redundant now that there is no separate assembled copy to point at.
+#
+# KIRO_POWER_SHELLCHECK_VERSION pins the ShellCheck version GitHub-hosted
+# ubuntu-latest runners ship (actions/runner-images' own
+# Ubuntu2404-Readme.md software manifest lists shellcheck 0.9.0-1) -- not
+# because a newer local install is unsupported, but because 0.9.0 and a
+# newer one (confirmed on 0.11.0) can DISAGREE on SC2119/SC2120 for a
+# function whose only parameter has a `${1:-default}` fallback and is
+# never otherwise called with an argument in the same file: 0.9.0 still
+# flags it, a newer ShellCheck silently does not. There is no ShellCheck
+# flag that restores the old behavior on a newer binary -- it is a version
+# difference, not a settings difference -- so the check below only warns
+# on a mismatch rather than trying to force it. A version-pinned download
+# is deliberately not done here either: CI's own binary is already
+# preinstalled at 0.9.0, and this repo has non-Linux/non-x86_64
+# contributors for whom a Linux x86_64 binary wouldn't even run.
+KIRO_POWER_SHELLCHECK_VERSION := 0.9.0
 kiro-power-check:
 	@echo "=== [kiro-power-check] Checking VERSION/plugin.json for drift ==="; \
 	scripts/check-plugin-json-version-drift.sh || exit 1; \
@@ -215,9 +231,14 @@ kiro-power-check:
 	python3 scripts/validate-kiro-power-plugin-json.py powers/konductor/plugin.json || exit 1; \
 	echo "=== [kiro-power-check] Validating skill frontmatter ==="; \
 	python3 scripts/validate-kiro-power-skill-frontmatter.py powers/konductor || exit 1; \
-	echo "=== [kiro-power-check] Shellchecking konductor-setup's scripts/ ==="; \
+	echo "=== [kiro-power-check] Shellchecking konductor-setup's scripts/ and tests/kiro-power/ ==="; \
 	if command -v shellcheck >/dev/null 2>&1; then \
+		installed_ver="$$(shellcheck --version | awk '/^version:/{print $$2}')"; \
+		if [ "$$installed_ver" != "$(KIRO_POWER_SHELLCHECK_VERSION)" ]; then \
+			echo "warning: [kiro-power-check] shellcheck $$installed_ver is on PATH; CI runs $(KIRO_POWER_SHELLCHECK_VERSION). A newer ShellCheck has been observed to miss an SC2119/SC2120 case that 0.9.0 still flags -- a function param with a default-value fallback, never otherwise called with an argument in the same file -- so a clean run here is not a guarantee CI will also pass." >&2; \
+		fi; \
 		(cd powers/konductor/skills/konductor-setup/scripts && shellcheck -x ./*.sh) || exit 1; \
+		(cd tests/kiro-power && shellcheck -x ./*.sh) || exit 1; \
 	else \
 		echo "notice: [kiro-power-check] 'shellcheck' not found on PATH -- skipping" >&2; \
 	fi; \

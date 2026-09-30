@@ -25,10 +25,11 @@
 #
 # Fails closed rather than writing anywhere unexpected (adversarial-review
 # finding I1): if <local-bin-dir>/konductor already exists as a directory
-# -- a REAL one, OR a symlink that itself RESOLVES to one -- or as a
-# regular file that is not a symlink this Power itself created, this
-# function refuses and returns non-zero -- it never overwrites a foreign
-# file, and it never falls into the directory-clobbering gotcha both
+# -- a REAL one, OR a symlink that itself RESOLVES to one -- or as
+# anything else (a regular file, FIFO, socket, device node, etc.) that is
+# not a symlink this Power itself created, this function refuses and
+# returns non-zero -- it never overwrites a foreign file, and it never
+# falls into the directory-clobbering gotcha both
 # `ln -sf` AND plain `mv` share: `ln -sf target existing-dir` silently
 # creates `existing-dir/<basename of target>` INSTEAD of replacing
 # `existing-dir` (reproduced directly against this host's own `ln`), and
@@ -100,8 +101,13 @@ link_binary() {
     konductor_die "${link_path} already exists as a DIRECTORY, not a file this Power created -- refusing to link there (an in-place \`ln -sf\` would silently write inside it instead of replacing it). Remove or rename it, then re-run."
     return 1
   fi
+  # `-e && ! -L` matches ANY existing, non-symlink node at $link_path --
+  # a regular file, but also a FIFO, socket, or device node -- so the
+  # message says "something other than a symlink", not "a regular file",
+  # which would be wrong for the non-regular-file cases this same check
+  # also catches.
   if [[ -e "$link_path" && ! -L "$link_path" ]]; then
-    konductor_die "${link_path} already exists as a regular file that is not a symlink this Power created -- refusing to overwrite it. Remove or rename it, then re-run."
+    konductor_die "${link_path} already exists as something other than a symlink this Power created -- refusing to overwrite it. Remove or rename it, then re-run."
     return 1
   fi
 
