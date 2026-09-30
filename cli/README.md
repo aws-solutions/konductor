@@ -724,7 +724,9 @@ not complete.
 
 ### Checking every tracked install with `--all`
 
-`--all` runs the full check suite (all six checks above) against **every** target in
+`--all` runs the full 8-check suite (the table above: source, runtime, manifest,
+container_runtime, index_status, cli_version, telemetry_state, content_version)
+against **every** target in
 `~/.konductor/installs`, one at a time — the same "act on every tracked entry"
 semantics `update --all`/`uninstall --all` use, applied to diagnostics instead of a
 write operation. Plain-text output is grouped per target under a `== <target_dir> ==`
