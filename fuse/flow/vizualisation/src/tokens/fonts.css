@@ -1,0 +1,7 @@
+/* On Coding — Webfonts
+   Display: Space Grotesk (sharp, technical, energetic)
+   Body/UI: IBM Plex Sans (readable, engineered)
+   Mono:    JetBrains Mono (code, labels, kickers)
+   NOTE: loaded from the Google Fonts CDN (not bundled binaries). See readme.md. */
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap');

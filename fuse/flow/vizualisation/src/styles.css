@@ -1,0 +1,361 @@
+/* SPDX-License-Identifier: Apache-2.0
+   Layout and components from the workflow editor design handoff (left lane and the
+   read-only part of the steps flow). Colors come from the tokens; the only literal
+   colors are the gate pills and the on-fail amber, as the handoff specifies. */
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--text-body);
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+input,
+textarea,
+button {
+  font-family: inherit;
+}
+* {
+  box-sizing: border-box;
+}
+
+.mono {
+  font-family: "JetBrains Mono", monospace;
+}
+
+.screen {
+  height: 100vh;
+  min-width: 672px;
+  display: grid;
+  grid-template-columns: 232px minmax(440px, 1fr);
+  background: var(--surface-subtle);
+}
+
+/* Left: workflow list */
+.lane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+}
+.lane-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  height: 52px;
+  flex: none;
+  border-bottom: 1px solid var(--border);
+}
+.brand-disc {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--brand-gradient);
+}
+.brand-name {
+  font: 700 15px "Space Grotesk", sans-serif;
+  letter-spacing: -0.01em;
+  color: var(--text-strong);
+}
+.lane-search {
+  padding: 12px;
+  display: flex;
+  gap: 8px;
+}
+.input {
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-strong);
+  outline: none;
+  transition:
+    box-shadow 0.12s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.12s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.input:focus {
+  box-shadow: 0 0 0 3px var(--ring);
+  border-color: var(--accent);
+}
+.lane-search .input {
+  flex: 1;
+  min-width: 0;
+  font-size: 13.5px;
+}
+.lane-list {
+  flex: 1;
+  overflow: auto;
+  padding: 0 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.lane-group {
+  padding: 10px 10px 4px;
+  font: 500 11px "JetBrains Mono", monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.lane-row {
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  background: transparent;
+}
+.lane-row:hover {
+  background: var(--surface-subtle);
+}
+.lane-row.is-current {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.lane-row-name {
+  font: 500 13px "JetBrains Mono", monospace;
+  color: var(--text-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lane-row-meta {
+  font: 400 11.5px "JetBrains Mono", monospace;
+  color: var(--text-muted);
+}
+.lane-empty {
+  padding: 12px;
+  font-size: 13px;
+  color: var(--text-faint);
+}
+.lane-foot {
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  font: 400 11px "JetBrains Mono", monospace;
+  color: var(--text-faint);
+}
+
+/* Center: steps flow */
+.center {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+.center-head {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 20px;
+  height: 52px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.center-title {
+  font: 700 18px "Space Grotesk", sans-serif;
+  letter-spacing: -0.01em;
+  color: var(--text-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.center-body {
+  overflow: auto;
+  flex: 1;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+.center-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 400 13px "JetBrains Mono", monospace;
+  color: var(--text-faint);
+}
+.fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font: 500 11px "JetBrains Mono", monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.field .input {
+  font: 400 14px "IBM Plex Sans", sans-serif;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.field .input.mono {
+  font-family: "JetBrains Mono", monospace;
+}
+.error {
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: oklch(0.95 0.04 25);
+  color: oklch(0.5 0.18 25);
+  font: 400 12.5px "JetBrains Mono", monospace;
+  white-space: pre-wrap;
+}
+
+.steps-kicker {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 6px;
+  font: 500 11px "JetBrains Mono", monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: var(--text-faint);
+}
+.legend-line {
+  width: 16px;
+  height: 0;
+  border-top: 1.25px solid var(--text-faint);
+}
+.legend.on-fail {
+  color: oklch(0.55 0.13 65);
+}
+.legend.on-fail .legend-line {
+  border-top: 1.25px dashed oklch(0.62 0.13 65);
+}
+
+.flow {
+  position: relative;
+  padding: 0 40px;
+}
+.flow-svg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.seam {
+  height: 16px;
+}
+.card {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  padding: 8px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-xs);
+}
+.badge {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 600 12px "JetBrains Mono", monospace;
+  background: var(--surface-sunken);
+  color: var(--text-body);
+}
+.card-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-top: 4px;
+}
+.card-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.card-title {
+  min-width: 0;
+  font: 600 14px "IBM Plex Sans", sans-serif;
+  color: var(--text-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.card-id {
+  flex: 1;
+  min-width: 0;
+  font: 400 11px "JetBrains Mono", monospace;
+  color: var(--text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gate {
+  flex: none;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font: 500 11px "JetBrains Mono", monospace;
+  white-space: nowrap;
+}
+.gate.owner {
+  background: oklch(0.94 0.06 85);
+  color: oklch(0.45 0.11 70);
+}
+.gate.check {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.gate.review {
+  background: oklch(0.94 0.05 160);
+  color: oklch(0.42 0.1 160);
+}
+.chips {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.chip {
+  height: 20px;
+  display: flex;
+  align-items: center;
+  padding: 0 7px;
+  border-radius: 999px;
+  font: 500 11px "JetBrains Mono", monospace;
+}
+.chip.skill {
+  background: var(--surface-sunken);
+  color: var(--text-body);
+}
+.chip.artifact {
+  gap: 4px;
+  border: 1px solid var(--border);
+  font-weight: 400;
+  color: var(--text-muted);
+}
+.chip.artifact .arrow {
+  color: var(--text-faint);
+}
