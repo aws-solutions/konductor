@@ -194,12 +194,7 @@ Three things to be aware of nonetheless:
    behavior, not Konductor's, and it applies whether or not Konductor is installed.
 2. **The AWS MCP integration reaches an AWS endpoint** — `https://aws-mcp.us-east-1.api.aws/mcp`,
    declared in the `k-architect` and `k-developer` specs — when those agents look up AWS
-   documentation. It needs `uvx` and credentials present to actually connect. Both agents grant
-   the whole server, every tool it exposes, including the AWS-API-acting ones
-   (`aws___run_script`, `aws___get_presigned_url`, `aws___get_tasks`); use the
-   `aws:ViaAWSMCPService`/`aws:CalledViaAWSMCP` IAM condition keys to scope what an
-   agent-initiated call can do under your own credentials — see
-   [Install for Claude Code](tasks/install-claude-code.md#optional-integrations).
+   documentation. It is opt-in in the sense that it needs `uvx` and credentials present.
 3. **The project's `README.md` includes a data-collection notice** stating that the solution sends
    operational metrics to AWS about its use, subject to the
    [AWS Privacy Notice](https://aws.amazon.com/privacy/).

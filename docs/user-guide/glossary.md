@@ -143,8 +143,7 @@ by `Fix these issues? [y/n]`.
 
 A standard for exposing external tools to an AI agent. Konductor declares MCP servers in an agent
 spec's `dependencies.mcpRegistry`. Two are pre-declared: `aws-mcp` (on `k-architect` and
-`k-developer`, launched via the package the [Agent Toolkit for AWS](https://github.com/aws/agent-toolkit-for-aws)'s
-own server key) and `playwright-mcp` (on `k-browser`).
+`k-developer`) and `playwright-mcp` (on `k-browser`).
 
 ### Mermaid
 

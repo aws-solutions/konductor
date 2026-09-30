@@ -689,8 +689,13 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git commit -q -m "Publish Claude Code plugin for $RELEASE_VERSION"
-          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
-          git push --force origin "HEAD:$TARGET_BRANCH"
+          # Remote URL carries no credential -- the token is sent as a
+          # per-request Basic-auth header instead (below), so it never lands
+          # in `git remote -v`, `.git/config`, or any log line that echoes
+          # the remote URL.
+          git remote add origin "https://github.com/${{ github.repository }}.git"
+          AUTH_HEADER="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          git -c http.extraHeader="$AUTH_HEADER" push --force origin "HEAD:$TARGET_BRANCH"
 
       - name: Tag the release (immutable, one tag per release, never moved)
         # A per-release tag on the exact commit just force-pushed above lets a
@@ -731,7 +736,8 @@ jobs:
           fi
 
           git tag -a "$TAG" -m "Claude Code plugin release $RELEASE_VERSION" HEAD
-          git push origin "refs/tags/$TAG"
+          AUTH_HEADER="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          git -c http.extraHeader="$AUTH_HEADER" push origin "refs/tags/$TAG"
           echo "Tagged $TARGET_BRANCH at $(git rev-parse HEAD) as $TAG"
 
       - name: Dry run summary

@@ -119,7 +119,7 @@ What is deliberately *absent*, and why:
 | --- | --- |
 | `git push`, `git reset`, `git clean` | Agents commit locally. Pushing to remotes and destructive history rewrites should require a human action. |
 | `rm`, `sudo`, `curl`, unscoped `sh` / `bash` | Arbitrary destructive or network commands. |
-| `aws-mcp` | Cloud mutations. |
+| `aws` | Cloud mutations. |
 
 Two entries in the allowlist deserve a second look before you accept them: `Bash(npm *)` runs
 arbitrary package lifecycle scripts, and `Bash(find *)` supports `-exec`. Neither is read-only.

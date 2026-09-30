@@ -98,17 +98,18 @@ See `scripts/generate-claude-plugin.sh` (called from the root `Makefile`'s
    `skills/sop-*/SKILL.md` from that output, skipping `sop-state-management`
    for the reason given above. This is fully deterministic: re-running with
    no source changes produces byte-identical output.
-5. Regenerates `.claude-plugin/plugin.json`: `version` comes from the
+5. Regenerates `.claude-plugin/plugin.json` via `render-claude-plugin-json.py
+   --template scripts/claude-plugin.template.json`: `version` comes from the
    repo's root `VERSION` file (this repo's single source of truth for the
    released version -- see `.github/workflows/release.yml`'s
    `check-version` job), and the `agents` list is the sorted set of `.md`
    files this run just wrote to `agents/`. Every other field in
    `plugin.json` (description, author, keywords, `metadata.sourceRepo`,
-   etc.) is carried through unchanged from whatever is already committed
-   at `.claude-plugin/plugin.json` -- but since that file is gitignored on
-   `main` (see above), the very first run after a fresh clone needs a seed
-   copy to carry those static fields forward from; ask a maintainer or
-   check out the `claude-plugin` branch's own copy if you need one. The
+   etc.) is carried through unchanged from `scripts/claude-plugin.template.json`,
+   which IS committed to `main` (unlike the generated `plugin.json` itself,
+   which is gitignored -- see above). Because the template is real,
+   committed source, a fresh clone works out of the box: there is no seed
+   copy to fetch and nothing to ask a maintainer for. The
    same script call also writes `.mcp.json` at the repo root, as the
    deduplicated union of every `agents/*.agent-spec.json`'s
    `dependencies.mcpRegistry` entries, sorted by server name for
@@ -292,8 +293,8 @@ themselves (`claude mcp add playwright-mcp -- npx -y
 @playwright/mcp@latest` for Claude Code; a manual `~/.kiro/settings/
 mcp.json` entry for Kiro CLI). See the root `README.md`'s "Optional
 Integrations" table and `docs/user-guide/tasks/install-claude-code.md` /
-`docs/user-guide/tasks/install-kiro-cli.md` for the exact per-harness setup
-commands, and the toolkit's own OAuth-direct-connect and official-plugin
+`docs/user-guide/tasks/install-kiro-cli.md` for per-harness setup steps,
+and the toolkit's own OAuth-direct-connect and official-plugin
 alternatives.
 
 `.mcp.json` is gitignored on `main` the same way `.claude-plugin/
@@ -354,9 +355,10 @@ parser.rs`) but not yet read by either Kiro transformer
 `dependencies.mcpRegistry` declares, for EVERY server including `aws-mcp`.
 This is a pre-existing, Kiro-side gap, out of scope for the Claude-harness
 work above; tracked separately. Set both servers up manually under
-`~/.kiro/settings/mcp.json` in the meantime -- see
-`docs/user-guide/tasks/install-kiro-cli.md#optional-integrations`. The
-agent's own `clientConfig.kiroCli.tools` already carries a bare `@aws-mcp`
+`~/.kiro/settings/mcp.json` in the meantime -- `docs/user-guide/tasks/
+install-kiro-cli.md` does not yet spell out the exact block for either
+server, so ask a maintainer or check an existing config if you need one.
+The agent's own `clientConfig.kiroCli.tools` already carries a bare `@aws-mcp`
 collection grant, so all eight tools load once you've configured the
 server; `allowedTools` narrows only AUTO-APPROVAL to the five explicit
 `@aws-mcp/<tool>` knowledge entries, so the three API-acting tools still

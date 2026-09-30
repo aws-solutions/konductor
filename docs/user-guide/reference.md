@@ -381,16 +381,11 @@ Only the three orchestrators declare a context file
 
 | Entry | Declared by | Definition |
 | --- | --- | --- |
-| `aws-mcp` | `k-architect`, `k-developer` | `command: uvx`, args `mcp-proxy-for-aws-cli@latest`, `https://aws-mcp.us-east-1.api.aws/mcp`, `--metadata`, `AWS_REGION=us-east-1` — matches the [Agent Toolkit for AWS](https://github.com/aws/agent-toolkit-for-aws)'s own recommended config (package, endpoint, args); this repo keeps its own `aws-mcp` server key rather than the toolkit README's `aws`, for continuity with AWS's own getting-started docs, OAuth commands, and existing configs |
+| `aws-mcp` | `k-architect`, `k-developer` | `command: uvx`, args `mcp-proxy-for-aws@latest`, `https://aws-mcp.us-east-1.api.aws/mcp`, `--metadata`, `AWS_REGION=us-east-1` |
 | `playwright-mcp` | `k-browser` | args `-y`, `@playwright/mcp@latest` |
 
-In Claude Code both `k-browser` and `k-architect`/`k-developer` request their server via a glob
-(`mcp__playwright-mcp__*`, `mcp__aws-mcp__*`) rather than naming individual tools — the whole
-server is granted, every tool it exposes, including the AWS-API-acting ones (`aws___run_script`,
-`aws___get_presigned_url`, `aws___get_tasks`). Use the `aws:ViaAWSMCPService`/`aws:CalledViaAWSMCP`
-IAM condition keys to scope what an agent-initiated call can actually do under your own
-credentials — see
-[Install for Claude Code](tasks/install-claude-code.md#optional-integrations).
+In Claude Code these agents request the corresponding tools via globs — `mcp__aws-mcp__*` and
+`mcp__playwright-mcp__*` — rather than launching the servers themselves.
 
 ---
 

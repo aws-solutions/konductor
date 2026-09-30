@@ -196,16 +196,11 @@ A design with only IMPORTANT issues is still READY; the SOP's own troubleshootin
 None specific to these SOPs — both behave the same in Kiro CLI and Claude Code once you are talking
 to `k-architect`.
 
-One thing to know about Phase 3: the AWS validation step uses the architect's `aws-mcp` MCP server —
-the same package and setup the [Agent Toolkit for AWS](https://github.com/aws/agent-toolkit-for-aws)
-itself recommends. In Claude Code it is pre-wired: Konductor renders it into the agent's own
-`mcpServers:` frontmatter for a standalone install, or the plugin's `.mcp.json` for the Claude
-plugin install, so there is nothing more to configure beyond `uvx` and AWS credentials. **In Kiro
-CLI you must configure the `aws-mcp` server yourself** in `~/.kiro/settings/mcp.json` — the agent's
-own tool grant (a bare `@aws-mcp` collection grant in `tools`, with the five knowledge tools
-auto-approved via `allowedTools`) is already there, but `konductor synth` does not write your
-Kiro CLI's global MCP server list. Either way,
-with no AWS credentials the step degrades to UNVERIFIED findings rather than failing.
+One thing to know about Phase 3: the AWS validation step uses the architect's `aws-mcp` server. In
+Kiro CLI that server is declared and launched from the agent spec. **In Claude Code the agent only
+requests the tools via the `mcp__aws-mcp__*` glob — you must configure an `aws-mcp` server
+yourself** or those tools will not resolve. Either way, with no AWS credentials the step degrades to
+UNVERIFIED findings rather than failing.
 
 ---
 
