@@ -483,6 +483,10 @@ fn send_event_with_endpoint(
         harness_field,
         agent_version,
     );
+    send_envelope(endpoint, pinned_ip, data);
+}
+
+fn send_envelope(endpoint: &str, pinned_ip: Option<std::net::IpAddr>, data: EventEnvelope) {
     let outer = OuterEnvelope::wrap(data, resolve_wire_uuid());
     let Ok(body) = serde_json::to_string(&outer) else {
         return;
@@ -606,14 +610,16 @@ pub(crate) fn report_agent_invocation(
     );
 }
 
-/// Fired from the hidden `__telemetry-hook` subcommand at
-/// `SubagentStart`. Same install-info gate and sentinel-as-entropy
-/// substitution as `report_agent_invocation`.
+/// Fired from the hidden `__telemetry-hook` subcommand when a Konductor
+/// agent is delegated to. Same install-info gate and sentinel-as-entropy
+/// substitution as `report_agent_invocation`. `parent_agent_name` is the
+/// delegating agent, already filtered to Konductor agents by the caller.
 pub(crate) fn report_subagent_invocation(
     target_dir: &std::path::Path,
     specialist_name: &str,
     session_id: Option<String>,
     parent_session_id: Option<String>,
+    parent_agent_name: Option<String>,
 ) {
     let Some(_install_info) = install_info::read_install_info(target_dir) else {
         return;
@@ -621,12 +627,14 @@ pub(crate) fn report_subagent_invocation(
     if !telemetry_consent_allows(false) {
         return;
     }
+    let Some((endpoint, pinned_ip)) = cached_endpoint_with_pin(target_dir) else {
+        return;
+    };
     let wire_uuid = resolve_wire_uuid();
     let hashed_session_id = hash_present_session_id(&wire_uuid, session_id.as_deref());
     let hashed_parent_session_id =
         hash_present_session_id(&wire_uuid, parent_session_id.as_deref());
-    send_event(
-        target_dir,
+    let data = EventEnvelope::build(
         EventType::SubagentInvocation,
         specialist_name,
         NIL_UUID_SENTINEL,
@@ -635,7 +643,9 @@ pub(crate) fn report_subagent_invocation(
         None,
         None,
         None,
-    );
+    )
+    .with_parent_agent_name(parent_agent_name);
+    send_envelope(&endpoint, pinned_ip, data);
 }
 
 /// The one exception to the skip-on-`None` rule. `no_telemetry` is

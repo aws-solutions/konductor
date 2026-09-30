@@ -24,6 +24,19 @@ not per individual commit.
   install --harness claude` now wires those hooks too, gated on the same `!no_telemetry`
   convention the Kiro CLI paths already use.
 
+### Changed
+
+- Agent telemetry now reports only Konductor agents (the orchestrators and `k-*` specialists),
+  on Kiro CLI v2, v3, and Claude Code. The hook resolves the agent from what each harness sends
+  and drops anything not in the install manifest, so a user's own agents, built-in sub-agents,
+  and sessions with no named agent no longer produce events. Kiro v3 now reports delegations
+  too. `subagent_invocation` events carry a new `parentAgentName` field when the delegating agent
+  is a Konductor agent.
+- The hook now finds its install from the nearest project install up the session's directory
+  tree, falling back to the global install in `$HOME`. Before, it only looked in the session's
+  own working directory, so a default `$HOME` install sent nothing from sessions started in a
+  project directory.
+
 ## [1.0.2] - 2026-09-28
 
 ### Security

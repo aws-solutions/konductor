@@ -1,30 +1,24 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // install/resource_rewrite/telemetry_hook_pass.rs — Kiro CLI
-// telemetry-hook wiring for both Kiro engines, mirroring the
-// `agent_invocation` wiring Claude Code already gets from
-// `claude_settings.rs`'s `TELEMETRY_HOOK_ENTRIES`/`apply_claude_
-// settings_hooks`:
+// telemetry-hook wiring for both Kiro engines. `telemetry_hook.rs`
+// resolves the agent name from what each engine sends and reports only
+// Konductor agents.
 //
 // - V2 (`TelemetryHookPass`): merges an entry into the installed
 //   agent's own inline `hooks.agentSpawn` array -- a per-agent
 //   `ResourceRewritePass`, run once per agent through
-//   `resource_rewrite::apply_all`/`standard_passes`. Wires `konductor
-//   __telemetry-hook agent-invocation` under `agentSpawn`, V2's trigger
-//   name for "a new agent/session invocation begins".
+//   `resource_rewrite::apply_all`/`standard_passes`. The payload doesn't
+//   name the agent, so the command carries it: `konductor
+//   __telemetry-hook agent-invocation --agent <name>`. A delegated
+//   child fires its own `agentSpawn`, so this one hook covers both
+//   primary and delegated runs.
 // - V3/KAS (`apply_v3_standalone_telemetry_hook`): writes one
 //   standalone `.kiro/hooks/<name>.json` document shared by every agent
-//   at the install target, since KAS 3.0 moved hooks out of embedded
-//   agent-config fields into standalone `.kiro/hooks/*.json` files.
-//   Wires the same event under `SessionStart`, KAS 3.0's PascalCase
-//   rename of V2's `agentSpawn`.
-//
-// Scope: only the confirmed top-level `agent_invocation` event.
-// Sub-agent-delegation telemetry (`subagent_invocation`) is not wired
-// here -- Kiro's PreToolUse/sub-agent-name payload shape isn't
-// confirmed against `telemetry_hook.rs::resolve_agent_name`, and
-// inventing a matcher without that confirmation risks misattributing
-// or double-counting events.
+//   at the install target, since KAS 3.0 has no per-agent hooks.
+//   `SessionStart` reports the session's agent (looked up from KAS's
+//   session store); `PreToolUse` on the delegation tools reports each
+//   delegated agent, because a v3 child never fires `SessionStart`.
 //
 // V3's standalone document is an install-target-level artifact, not
 // one agent's own JSON, so `apply_v3_standalone_telemetry_hook` is a
@@ -34,15 +28,15 @@
 // `standard_passes_v3` never carries a telemetry-hook pass.
 //
 // A transient `current_exe()` failure is non-fatal on both sides:
-// `merge_agent_spawn_hook`'s `Absent` branch never persists a
-// `$PATH`-dependent fallback command when the exe path didn't resolve
-// to an absolute path this run, and `verify_agent_spawn_hook_command`
-// re-checks resolvability before erroring -- still unresolvable
-// degrades to a warning; resolvable but still missing means the
-// agent's pre-existing `hooks` shape is genuinely malformed, which
-// stays a hard error. Mirrors `claude_settings.rs`'s handling of the
-// same root cause, and `apply_v3_standalone_telemetry_hook_with_exe`'s
-// refusal on the V3 side.
+// `merge_agent_spawn_hook` never persists a `$PATH`-dependent fallback
+// command when the exe path didn't resolve to an absolute path this
+// run, and `verify_agent_spawn_hook_command` re-checks resolvability
+// before erroring -- still unresolvable degrades to a warning;
+// resolvable but still missing means the agent's pre-existing `hooks`
+// shape is genuinely malformed, which stays a hard error. Mirrors
+// `claude_settings.rs`'s handling of the same root cause, and
+// `apply_v3_standalone_telemetry_hook_with_exe`'s refusal on the V3
+// side.
 
 use std::path::Path;
 
@@ -60,6 +54,10 @@ const AGENT_SPAWN_TRIGGER_V2: &str = "agentSpawn";
 /// below), not as an inline `hooks.<trigger>` object key the way
 /// `AGENT_SPAWN_TRIGGER_V2` is.
 const V3_SESSION_START_TRIGGER: &str = "SessionStart";
+
+/// V3 trigger for the delegation entry; its matcher is tested against
+/// the tool name.
+const V3_PRE_TOOL_USE_TRIGGER: &str = "PreToolUse";
 
 /// Wires `konductor __telemetry-hook agent-invocation` into a Kiro CLI
 /// V2 agent's inline `hooks.agentSpawn` array.
@@ -112,6 +110,14 @@ pub(crate) const V3_STANDALONE_HOOKS_RELATIVE_PATH: &str =
 /// array, not the file).
 const V3_STANDALONE_HOOK_SESSION_START_NAME: &str = "konductor-telemetry-session-start";
 
+/// The `"name"` field of the delegation (`PreToolUse`) entry.
+const V3_STANDALONE_HOOK_DELEGATION_NAME: &str = "konductor-telemetry-subagent-invocation";
+
+/// Matches both v3 delegation tools: `subagent_<agent>` and
+/// `orchestrate_subagent`. `PreToolUse` matchers are tested against the
+/// tool name.
+const V3_DELEGATION_TOOL_MATCHER: &str = "^(subagent_.+|orchestrate_subagent)$";
+
 /// Lock file name (within the shared `.kiro/hooks/` directory) guarding
 /// `write_v3_standalone_telemetry_hook_file`'s create-dir-plus-write
 /// sequence. Dedicated to this one file, per `config_lock::acquire_named`'s
@@ -124,9 +130,13 @@ const V3_STANDALONE_HOOK_SESSION_START_NAME: &str = "konductor-telemetry-session
 pub(crate) const V3_STANDALONE_HOOK_LOCK_FILE_NAME: &str =
     ".konductor-telemetry-session-start.lock";
 
-/// Builds the standalone hook document this module writes, for a given
-/// fully-formed `session_start_command` string.
-fn build_v3_standalone_hook_document(session_start_command: String) -> serde_json::Value {
+/// Builds the standalone hook document this module writes, for an
+/// already shell-quoted `konductor` exe path. `SessionStart` reports the
+/// session's own agent; `PreToolUse` on the delegation tools reports
+/// each delegated agent (a delegated child never fires its own
+/// `SessionStart` in v3).
+fn build_v3_standalone_hook_document(quoted_exe: &str) -> serde_json::Value {
+    let command = |event_type: &str| format!("{quoted_exe} __telemetry-hook {event_type}");
     serde_json::json!({
         "version": "v1",
         "hooks": [
@@ -135,7 +145,17 @@ fn build_v3_standalone_hook_document(session_start_command: String) -> serde_jso
                 "trigger": V3_SESSION_START_TRIGGER,
                 "action": {
                     "type": "command",
-                    "command": session_start_command
+                    "command": command(crate::cli::telemetry_hook::AGENT_INVOCATION)
+                },
+                "enabled": true
+            },
+            {
+                "name": V3_STANDALONE_HOOK_DELEGATION_NAME,
+                "trigger": V3_PRE_TOOL_USE_TRIGGER,
+                "matcher": V3_DELEGATION_TOOL_MATCHER,
+                "action": {
+                    "type": "command",
+                    "command": command(crate::cli::telemetry_hook::SUBAGENT_INVOCATION)
                 },
                 "enabled": true
             }
@@ -184,11 +204,7 @@ pub(super) fn write_v3_standalone_telemetry_hook_file(
         .map_err(|e| format!("failed to create {}: {e}", hooks_dir.display()))?;
 
     let quoted_exe = super::claude_settings::shell_quote_for_hook_command(exe);
-    let session_start_command = format!(
-        "{quoted_exe} __telemetry-hook {}",
-        crate::cli::telemetry_hook::AGENT_INVOCATION
-    );
-    let document = build_v3_standalone_hook_document(session_start_command);
+    let document = build_v3_standalone_hook_document(&quoted_exe);
 
     let mut bytes = serde_json::to_vec_pretty(&document)
         .map_err(|e| format!("failed to serialize {}: {e}", file_path.display()))?;
@@ -364,8 +380,21 @@ fn read_existing_hook_entries<'a>(
 /// <trigger>"` scaffold.
 fn merge_agent_spawn_hook(value: &mut serde_json::Value, trigger: &str, exe: &str) {
     let quoted_exe = super::claude_settings::shell_quote_for_hook_command(exe);
+    // v2's agentSpawn payload doesn't name the agent, so the hook carries
+    // it: this hook lives in the agent's own config file.
+    let agent_arg = value
+        .get("name")
+        .and_then(|name| name.as_str())
+        .filter(|name| !name.is_empty())
+        .map(|name| {
+            format!(
+                " --agent {}",
+                super::claude_settings::shell_quote_for_hook_command(name)
+            )
+        })
+        .unwrap_or_default();
     let command = format!(
-        "{quoted_exe} __telemetry-hook {}",
+        "{quoted_exe} __telemetry-hook {}{agent_arg}",
         crate::cli::telemetry_hook::AGENT_INVOCATION
     );
 
@@ -401,7 +430,7 @@ fn merge_agent_spawn_hook(value: &mut serde_json::Value, trigger: &str, exe: &st
 }
 
 /// Confirms `value["hooks"][trigger]` carries an entry whose stable
-/// command suffix ends with `__telemetry-hook agent-invocation`.
+/// command suffix starts with `__telemetry-hook agent-invocation`.
 fn hooks_array_has_telemetry_entry(value: &serde_json::Value, trigger: &str) -> bool {
     let entries = value
         .get("hooks")
@@ -414,7 +443,7 @@ fn hooks_array_has_telemetry_entry(value: &serde_json::Value, trigger: &str) -> 
                 .and_then(|c| c.as_str())
                 .is_some_and(|c| {
                     super::claude_settings::stable_hook_command_suffix(c).is_some_and(|suffix| {
-                        suffix.ends_with(&format!(
+                        suffix.starts_with(&format!(
                             "__telemetry-hook {}",
                             crate::cli::telemetry_hook::AGENT_INVOCATION
                         ))
@@ -534,7 +563,21 @@ mod tests {
         );
         assert_eq!(
             value["hooks"]["agentSpawn"],
-            serde_json::json!([{"command": "/usr/local/bin/konductor __telemetry-hook agent-invocation"}])
+            serde_json::json!([{"command": "/usr/local/bin/konductor __telemetry-hook agent-invocation --agent k-example"}])
+        );
+    }
+
+    #[test]
+    fn v2_rewrite_omits_the_agent_argument_when_the_agent_has_no_name() {
+        let mut value = serde_json::json!({});
+        merge_agent_spawn_hook(
+            &mut value,
+            AGENT_SPAWN_TRIGGER_V2,
+            "/usr/local/bin/konductor",
+        );
+        assert_eq!(
+            value["hooks"]["agentSpawn"][0]["command"],
+            serde_json::json!("/usr/local/bin/konductor __telemetry-hook agent-invocation")
         );
     }
 
@@ -745,9 +788,7 @@ mod tests {
 
     #[test]
     fn v3_standalone_hook_document_uses_session_start_trigger() {
-        let document = build_v3_standalone_hook_document(
-            "/usr/local/bin/konductor __telemetry-hook agent-invocation".to_string(),
-        );
+        let document = build_v3_standalone_hook_document("/usr/local/bin/konductor");
         assert_eq!(
             document["hooks"][0]["trigger"],
             serde_json::json!("SessionStart")
@@ -757,9 +798,7 @@ mod tests {
 
     #[test]
     fn v3_standalone_hook_document_golden_exact_shape() {
-        let document = build_v3_standalone_hook_document(
-            "/opt/konductor/bin/konductor __telemetry-hook agent-invocation".to_string(),
-        );
+        let document = build_v3_standalone_hook_document("/opt/konductor/bin/konductor");
         assert_eq!(
             document,
             serde_json::json!({
@@ -771,6 +810,16 @@ mod tests {
                         "action": {
                             "type": "command",
                             "command": "/opt/konductor/bin/konductor __telemetry-hook agent-invocation"
+                        },
+                        "enabled": true
+                    },
+                    {
+                        "name": "konductor-telemetry-subagent-invocation",
+                        "trigger": "PreToolUse",
+                        "matcher": "^(subagent_.+|orchestrate_subagent)$",
+                        "action": {
+                            "type": "command",
+                            "command": "/opt/konductor/bin/konductor __telemetry-hook subagent-invocation"
                         },
                         "enabled": true
                     }
@@ -816,8 +865,8 @@ mod tests {
         .unwrap();
         assert_eq!(
             parsed["hooks"].as_array().unwrap().len(),
-            1,
-            "reinstalling must never duplicate the hook entry within the file"
+            2,
+            "reinstalling must never duplicate the hook entries within the file"
         );
         std::fs::remove_dir_all(&dir).ok();
     }
@@ -837,8 +886,8 @@ mod tests {
         let hooks = parsed["hooks"].as_array().unwrap();
         assert_eq!(
             hooks.len(),
-            1,
-            "must not append a second copy of the entry for a relocated binary"
+            2,
+            "must not append second copies of the entries for a relocated binary"
         );
         assert_eq!(
             hooks[0]["action"]["command"],

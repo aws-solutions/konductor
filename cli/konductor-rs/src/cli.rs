@@ -588,6 +588,11 @@ pub enum Commands {
     TelemetryHook {
         /// Which event this hook firing represents.
         event_type: String,
+        /// The agent this hook belongs to, for harnesses whose payload
+        /// does not name it (Kiro CLI v2 embeds the hook in each agent's
+        /// own config, so install knows the name).
+        #[arg(long)]
+        agent: Option<String>,
     },
 }
 

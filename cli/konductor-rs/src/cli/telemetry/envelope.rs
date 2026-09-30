@@ -57,6 +57,10 @@ pub(crate) struct EventEnvelope {
     pub session_id: Option<String>,
     #[serde(rename = "parentSessionId")]
     pub parent_session_id: Option<String>,
+    /// The delegating agent's name on a `subagent_invocation`, when the
+    /// harness exposes it and it is a Konductor agent. Null otherwise.
+    #[serde(rename = "parentAgentName")]
+    pub parent_agent_name: Option<String>,
     #[serde(rename = "errorCode")]
     pub error_code: Option<String>,
     pub harness: Option<String>,
@@ -90,11 +94,17 @@ impl EventEnvelope {
             target_name: target_name.into(),
             session_id,
             parent_session_id,
+            parent_agent_name: None,
             error_code,
             harness,
             agent_version,
             time_stamp: utc_now_iso_millis(),
         }
+    }
+
+    pub(crate) fn with_parent_agent_name(mut self, parent_agent_name: Option<String>) -> Self {
+        self.parent_agent_name = parent_agent_name;
+        self
     }
 }
 
