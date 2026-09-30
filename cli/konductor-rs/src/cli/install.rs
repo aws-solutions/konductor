@@ -1615,13 +1615,21 @@ impl InstallCounts {
         // file -- otherwise a skill with scripts would inflate the
         // count. Agents, context, and bin entries are one file each.
         //
-        // Keyed by `(root, name)`, not bare `name`: `.konductor/skills/`
-        // and `.kiro/skills/` can both be written on the same Kiro
-        // install (a plain skill under the former, e.g.), so a plain
-        // skill and a SOP-derived skill sharing a basename could in
-        // principle be two PHYSICALLY DISTINCT directories that must
-        // both be considered -- keying on the bare name alone would
-        // collapse them into one HashSet entry.
+        // Keyed by `(root, name)`, not bare `name`: `.kiro/skills/` and
+        // `.claude/skills/` DO collide on a shared basename on the same
+        // install -- see `InstallCounts`'s own doc comment above for the
+        // confirmed case this defends against (Claude's `install_skills`
+        // writing the real, hand-authored `skills/sop-state-management/`
+        // to the identical `.claude/skills/sop-state-management/SKILL.md`
+        // path shape a SOP conversion would use). Keying on the bare name
+        // alone would collapse that pair into one HashSet entry, losing
+        // one of the two physically distinct directories. `.konductor/skills/`
+        // is included in the key for the same reason it's included in the
+        // loop below -- not because it currently collides with anything
+        // (per the sibling comment, it's never an actual conversion
+        // target), but because keying by root is what makes adding a
+        // fourth skill-writing root later safe by construction, with no
+        // separate reminder to widen the key at that point.
         let mut agents = 0;
         let mut context = 0;
         let mut bin = 0;
