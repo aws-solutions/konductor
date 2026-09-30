@@ -173,7 +173,7 @@ fn build_v3_standalone_hook_document(quoted_exe: &str, install_root: &Path) -> s
 /// Writes (or rewrites, on reinstall) `<target_dir>/<V3_STANDALONE_
 /// HOOKS_RELATIVE_PATH>`, unconditionally overwriting any pre-existing
 /// content with the fresh document `build_v3_standalone_hook_document`
-/// produces for the current `exe`. Unlike `merge_claude_settings_hooks`
+/// produces for the current `exe`. Unlike `merge_claude_settings_hooks_with_exe`
 /// or this file's own V2 `merge_agent_spawn_hook`, this never reads or
 /// merges pre-existing content: the file's Konductor-owned name means
 /// there is no "preserve someone else's hooks" concern the way there is

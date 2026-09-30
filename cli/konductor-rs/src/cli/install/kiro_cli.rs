@@ -292,7 +292,11 @@ impl InstallStrategy for KiroCliInstallStrategy {
         // closes the crash-safety gap).
         let claude_plan =
             plan_claude_settings_grant(&harness_dir, target_dir, &plan, prior_manifest.as_ref())?;
+        let wires_claude_hooks = !no_telemetry && !claude_plan.is_empty();
         plan.extend(claude_plan);
+        if wires_claude_hooks {
+            plan_claude_hooks_file(&mut plan, target_dir, prior_manifest.as_ref());
+        }
         // Predicts the additive Claude-side SOP-skill conversion files
         // `SopInstallPhase::run`'s dual-marker branch writes when this
         // target ALSO has a pre-existing `.claude` marker (see that
@@ -438,8 +442,8 @@ pub(super) use copy::{
 pub(super) use fs_util::{reject_unsafe_file_name, set_executable};
 pub(super) use plan::{
     attach_provenance, content_manifest_path, plan_additive_claude_sop_skill_files, plan_all_files,
-    plan_claude_settings_grant, plan_skill_dir_recursive, read_skill_scopes_sidecar,
-    read_sop_scopes_sidecar, PlannedFile,
+    plan_claude_hooks_file, plan_claude_settings_grant, plan_skill_dir_recursive,
+    read_skill_scopes_sidecar, read_sop_scopes_sidecar, PlannedFile,
 };
 
 #[cfg(test)]
@@ -3387,14 +3391,13 @@ mod tests {
             ])
         );
 
-        // The telemetry hook wiring lands
-        // in the SAME write, gated on the grant above having just
-        // succeeded (`phases.rs`'s `AgentInstallPhase::run`) -- asserts
-        // the real hook entries, not just that SOME hooks key exists.
-        // The command embeds the resolved absolute path to the
-        // currently-running binary (`resource_rewrite/claude_settings.rs`'s
-        // `resolve_konductor_exe_path`), not the bare word "konductor",
-        // so this is computed the same way, not hand-typed.
+        // The hooks land in the personal settings.local.json, wired only
+        // after the grant above succeeded, never in the shared file.
+        assert!(claude_settings.get("hooks").is_none());
+        let claude_settings: serde_json::Value = serde_json::from_str(
+            &fs::read_to_string(target_dir.join(".claude/settings.local.json")).unwrap(),
+        )
+        .unwrap();
         let exe = std::env::current_exe().unwrap().display().to_string();
         let root = format!(
             " --install-root {}",
@@ -3411,7 +3414,7 @@ mod tests {
         assert_eq!(
             claude_settings["hooks"]["SubagentStart"],
             serde_json::json!([{
-                "matcher": ".*",
+                "matcher": "^(k-example)$",
                 "hooks": [{"type": "command", "command": format!("{exe} __telemetry-hook subagent-invocation{root}")}]
             }]),
             "SubagentStart must invoke the hidden __telemetry-hook subcommand for subagent_invocation"
@@ -3428,23 +3431,23 @@ mod tests {
         let manifest = super::super::manifest::read_manifest(&target_dir)
             .unwrap()
             .expect("manifest must exist after install");
-        let claude_entry = manifest.strategies[0]
-            .files
-            .iter()
-            .find(|f| f.path == ".claude/settings.json")
-            .expect(".claude/settings.json must be recorded in the final manifest");
-        assert_eq!(
-            claude_entry.sha256,
-            Some(sha256_hex(
-                &fs::read(target_dir.join(".claude/settings.json")).unwrap()
-            )),
-            "the recorded hash must match the actual written content"
-        );
-        assert_eq!(
-            claude_entry.provenance,
-            super::super::manifest::Provenance::Created,
-            "a settings.json that didn't exist before this run must be classified Created"
-        );
+        for tracked in [".claude/settings.json", ".claude/settings.local.json"] {
+            let claude_entry = manifest.strategies[0]
+                .files
+                .iter()
+                .find(|f| f.path == tracked)
+                .unwrap_or_else(|| panic!("{tracked} must be recorded in the final manifest"));
+            assert_eq!(
+                claude_entry.sha256,
+                Some(sha256_hex(&fs::read(target_dir.join(tracked)).unwrap())),
+                "the recorded hash for {tracked} must match the actual written content"
+            );
+            assert_eq!(
+                claude_entry.provenance,
+                super::super::manifest::Provenance::Created,
+                "{tracked} didn't exist before this run, so it must be classified Created"
+            );
+        }
 
         fs::remove_dir_all(&target_dir).ok();
         fs::remove_dir_all(&repo_root).ok();
@@ -3524,6 +3527,56 @@ mod tests {
             "--no-telemetry must suppress the SessionStart/SubagentStart telemetry-hook \
              wiring entirely; got: {claude_settings:?}"
         );
+        assert!(!target_dir.join(".claude/settings.local.json").exists());
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// A `--no-telemetry` reinstall over a dual-marker target strips the
+    /// hooks a prior install wired, from the current `settings.local.json`
+    /// and from an earlier release's shared `settings.json`.
+    #[test]
+    fn no_telemetry_reinstall_strips_prior_claude_hooks_on_dual_marker_target() {
+        let target_dir = scratch_dir("no-telemetry-reinstall-strips-hooks-target");
+        fs::create_dir_all(target_dir.join(".kiro")).unwrap();
+        fs::create_dir_all(target_dir.join(".claude")).unwrap();
+        let repo_root = scratch_dir("no-telemetry-reinstall-strips-hooks-repo");
+        seed_synthed_agent_with_skill_resource(&repo_root, "k-example", "constraints");
+        seed_synthed_skill(
+            &repo_root,
+            "constraints",
+            b"---\nname: constraints\n---\nBody\n",
+            &[],
+        );
+        seed_mcp_binary(&repo_root, "skill-lookup-mcp", b"binary bytes\n");
+        let install = |no_telemetry: bool| {
+            KiroCliInstallStrategy
+                .install_from_local(
+                    &target_dir,
+                    Some(repo_root.to_str().unwrap()),
+                    "2026-01-01T00:00:00Z",
+                    no_telemetry,
+                )
+                .expect("install must succeed");
+        };
+        let read = |relative: &str| -> serde_json::Value {
+            serde_json::from_str(&fs::read_to_string(target_dir.join(relative)).unwrap()).unwrap()
+        };
+
+        install(false);
+        let legacy_hooks = read(".claude/settings.local.json")["hooks"].clone();
+        let mut shared = read(".claude/settings.json");
+        shared["hooks"] = legacy_hooks;
+        fs::write(target_dir.join(".claude/settings.json"), shared.to_string()).unwrap();
+
+        install(true);
+
+        for relative in [".claude/settings.json", ".claude/settings.local.json"] {
+            let settings = read(relative);
+            assert!(settings.get("hooks").is_none(), "{relative}: {settings}");
+        }
+        assert!(read(".claude/settings.json")["permissions"]["allow"].is_array());
 
         fs::remove_dir_all(&target_dir).ok();
         fs::remove_dir_all(&repo_root).ok();

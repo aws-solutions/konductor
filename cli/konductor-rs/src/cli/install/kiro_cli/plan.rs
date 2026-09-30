@@ -426,6 +426,33 @@ pub(in crate::cli::install) fn plan_claude_settings_grant(
     }])
 }
 
+/// Adds the Claude telemetry hooks file to `plan` for a run that wires
+/// the hooks, unless it is already planned (a `$HOME` install shares
+/// `settings.json` with the grant).
+pub(in crate::cli::install) fn plan_claude_hooks_file(
+    plan: &mut Vec<PlannedFile>,
+    target_dir: &Path,
+    prior_manifest: Option<&StrategyManifest>,
+) {
+    let manifest_path =
+        super::super::resource_rewrite::claude_hooks_settings_relative_path(target_dir).to_string();
+    if plan
+        .iter()
+        .any(|planned| planned.manifest_path == manifest_path)
+    {
+        return;
+    }
+    let provenance = classify_provenance(
+        &target_dir.join(&manifest_path),
+        &manifest_path,
+        prior_manifest,
+    );
+    plan.push(PlannedFile {
+        manifest_path,
+        provenance,
+    });
+}
+
 /// Predicts the additive Claude-side SOP-skill conversion files
 /// `SopInstallPhase::run`'s dual-marker branch (see `phases.rs`'s own
 /// doc comment) writes when this run's Kiro chain reaches a target that

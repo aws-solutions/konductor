@@ -3039,7 +3039,7 @@ mod tests {
         );
 
         let in_settings: serde_json::Value = serde_json::from_str(
-            &fs::read_to_string(opted_in_target.join(".claude/settings.json")).unwrap(),
+            &fs::read_to_string(opted_in_target.join(".claude/settings.local.json")).unwrap(),
         )
         .unwrap();
         assert!(
@@ -3103,7 +3103,7 @@ mod tests {
         assert!(!crate::cli::telemetry::install_info_exists(&target));
         assert!(crate::cli::telemetry::identity_path(&target).is_file());
 
-        let claude_settings_path = target.join(".claude/settings.json");
+        let claude_settings_path = target.join(".claude/settings.local.json");
         let mut settings: serde_json::Value =
             serde_json::from_str(&fs::read_to_string(&claude_settings_path).unwrap()).unwrap();
         settings.as_object_mut().unwrap().remove("hooks");
@@ -3183,7 +3183,7 @@ mod tests {
             "a plain install must write install-info.json"
         );
 
-        let claude_settings_path = target.join(".claude/settings.json");
+        let claude_settings_path = target.join(".claude/settings.local.json");
         let after_install: serde_json::Value =
             serde_json::from_str(&fs::read_to_string(&claude_settings_path).unwrap()).unwrap();
         assert!(

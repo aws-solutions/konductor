@@ -255,7 +255,7 @@ fn agent_name_from_manifest_path(path: &str) -> Option<&str> {
 
 /// Agent names Konductor installed at `root`, per its manifest (every
 /// strategy slot). Empty when there is no readable manifest.
-fn installed_agent_names(root: &Path) -> Vec<String> {
+pub(crate) fn installed_agent_names(root: &Path) -> Vec<String> {
     let Ok(Some(manifest)) = crate::cli::install::manifest::read_manifest(root) else {
         return Vec::new();
     };

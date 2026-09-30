@@ -53,8 +53,9 @@ use std::path::Path;
 use super::kiro_cli::{
     attach_provenance, content_manifest_path, install_context, install_kiro_sop_skills,
     install_skills, install_sops, list_agent_files, plan_additive_claude_sop_skill_files,
-    plan_all_files, plan_claude_settings_grant, read_skill_scopes_sidecar, read_sop_scopes_sidecar,
-    reject_unsafe_file_name, PlannedFile, KIRO_DESTINATION_ROOT, KONDUCTOR_DESTINATION_ROOT,
+    plan_all_files, plan_claude_hooks_file, plan_claude_settings_grant, read_skill_scopes_sidecar,
+    read_sop_scopes_sidecar, reject_unsafe_file_name, PlannedFile, KIRO_DESTINATION_ROOT,
+    KONDUCTOR_DESTINATION_ROOT,
 };
 use super::manifest::{classify_provenance, ManifestFile, Provenance, Status, StrategyManifest};
 use super::resource_rewrite::{
@@ -229,7 +230,11 @@ impl InstallStrategy for KiroCliV3InstallStrategy {
         // gap).
         let claude_plan =
             plan_claude_settings_grant(&harness_dir, target_dir, &plan, prior_manifest.as_ref())?;
+        let wires_claude_hooks = !no_telemetry && !claude_plan.is_empty();
         plan.extend(claude_plan);
+        if wires_claude_hooks {
+            plan_claude_hooks_file(&mut plan, target_dir, prior_manifest.as_ref());
+        }
         // Predicts the additive Claude-side SOP-skill conversion files
         // the dual-marker branch further down writes when this target
         // also has a pre-existing `.claude` marker -- must run before
@@ -408,11 +413,11 @@ impl InstallStrategy for KiroCliV3InstallStrategy {
         // via `apply_claude_settings_grant_and_hooks` rather than each
         // keeping its own copy.
         if any_mcp_server_injected && detect_runtimes(target_dir).has(Runtime::ClaudeCode) {
-            if let Some(claude_settings_file) =
-                apply_claude_settings_grant_and_hooks(target_dir, no_telemetry, "Kiro CLI V3")
-            {
-                raw_files.push(claude_settings_file);
-            }
+            raw_files.extend(apply_claude_settings_grant_and_hooks(
+                target_dir,
+                no_telemetry,
+                "Kiro CLI V3",
+            ));
         }
 
         let files = attach_provenance(raw_files, &plan)?;

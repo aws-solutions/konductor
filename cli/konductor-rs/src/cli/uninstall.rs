@@ -46,8 +46,8 @@ use super::install::kiro_cli::{
 };
 use super::install::manifest::{self, ManifestError, Provenance, StrategyManifest};
 use super::install::resource_rewrite::{
-    CLAUDE_SETTINGS_RELATIVE_PATH, V3_STANDALONE_HOOKS_RELATIVE_PATH,
-    V3_STANDALONE_HOOK_LOCK_FILE_NAME,
+    claude_hooks_settings_relative_path, is_claude_settings_path, remove_claude_telemetry_hooks,
+    V3_STANDALONE_HOOKS_RELATIVE_PATH, V3_STANDALONE_HOOK_LOCK_FILE_NAME,
 };
 use crate::cli::output::ColorMode;
 use crate::cli::synth::kiro_cli_v2::SKILLS_CONTENT_TYPE_DIR;
@@ -812,7 +812,7 @@ struct PreviewFile {
 /// `uninstall_one` run against `harness`'s resolved slot, applying the
 /// identical eligibility rule `delete_eligible_files` itself uses
 /// (`Created`/`ReplacedOurs`, never `ReplacedForeign`, never
-/// `CLAUDE_SETTINGS_RELATIVE_PATH`), and -- per file -- whether it has
+/// a Claude settings file), and -- per file -- whether it has
 /// diverged from its manifest-recorded hash, via the same hash
 /// comparison `delete_eligible_files` itself performs before deleting.
 /// Returns the paths that would be removed, or an `UninstallError` for
@@ -863,9 +863,7 @@ fn preview_uninstall(
     let mut would_delete = Vec::new();
     for file in &selected.files {
         let rel = validate_relative_path(&file.path).map_err(UninstallError::usage)?;
-        if file.provenance == Provenance::ReplacedForeign
-            || file.path == CLAUDE_SETTINGS_RELATIVE_PATH
-        {
+        if file.provenance == Provenance::ReplacedForeign || is_claude_settings_path(&file.path) {
             continue;
         }
         let path = target_path.join(rel);
@@ -1369,6 +1367,27 @@ fn uninstall_one_impl(
             .map_err(|err| UninstallError::from_index(target_dir, err))?;
     }
 
+    // The Claude hooks stay only while a surviving strategy still tracks
+    // the hooks file. Non-fatal: every tracked file is already gone.
+    let hooks_path = claude_hooks_settings_relative_path(target_path);
+    let hooks_still_owned = !target_fully_removed
+        && manifest::read_manifest(target_path)
+            .ok()
+            .flatten()
+            .is_some_and(|remaining| {
+                remaining
+                    .strategies
+                    .iter()
+                    .flat_map(|strategy| strategy.files.iter())
+                    .any(|file| file.path == hooks_path)
+            });
+    if !hooks_still_owned {
+        let (_, hook_errors) = remove_claude_telemetry_hooks(target_path);
+        for err in hook_errors {
+            eprintln!("konductor uninstall: warning: could not remove a telemetry hook: {err}");
+        }
+    }
+
     Ok(counts)
 }
 
@@ -1406,18 +1425,11 @@ pub(super) fn validate_relative_path(raw: &str) -> Result<&Path, String> {
 /// which is skipped from deletion but must still never be joined
 /// unvalidated.
 ///
-/// `CLAUDE_SETTINGS_RELATIVE_PATH` (`.claude/settings.json`) is also
-/// skipped here regardless of provenance, even `Created`/
-/// `ReplacedOurs`. Every other content type owns the whole file at its
-/// manifest path, so those provenances correctly mean "safe to delete,
-/// we wrote every byte." This file breaks that assumption:
-/// `resource_rewrite/claude_settings.rs`'s `merge_claude_settings_permissions` only
-/// merges a handful of `permissions.allow` grants into what is, by
-/// design, a shared file that may carry a user's own `hooks` or other
-/// MCP servers' grants. There's no `Provenance` variant for "partially
-/// ours, strip only our own entries" to build finer-grained removal
-/// on, so the safe default is to leave the whole file alone, matching
-/// this function's `ReplacedForeign` handling.
+/// The Claude settings files (`is_claude_settings_path`) are also
+/// skipped regardless of provenance. Konductor merges a grant or hooks
+/// into them but does not own the rest of their content, so uninstall
+/// strips its hooks (`remove_claude_telemetry_hooks`, once no remaining
+/// strategy tracks the hooks file) and leaves the files in place.
 fn delete_eligible_files(
     target_dir: &Path,
     manifest: &StrategyManifest,
@@ -1426,9 +1438,7 @@ fn delete_eligible_files(
 ) -> Result<(), String> {
     for file in &manifest.files {
         let rel = validate_relative_path(&file.path)?;
-        if file.provenance == Provenance::ReplacedForeign
-            || file.path == CLAUDE_SETTINGS_RELATIVE_PATH
-        {
+        if file.provenance == Provenance::ReplacedForeign || is_claude_settings_path(&file.path) {
             continue;
         }
         let path = target_dir.join(rel);
@@ -2186,6 +2196,102 @@ mod tests {
         let counts = uninstall_one(target.to_str().unwrap(), None, true, false).unwrap();
         assert!(counts.stale);
         assert!(!manifest::manifest_path(&target).exists());
+        fs::remove_dir_all(&target).ok();
+    }
+
+    // ── Claude telemetry hooks ───────────────────────────────────────
+
+    const FOREIGN_HOOK: &str = "/usr/bin/env my-own-hook";
+
+    /// Both Claude settings files, each carrying a Konductor telemetry hook
+    /// next to a foreign one.
+    fn claude_settings_with_hooks() -> Vec<u8> {
+        serde_json::json!({"hooks": {"SessionStart": [
+            {"matcher": "startup", "hooks": [{"type": "command", "command": FOREIGN_HOOK}]},
+            {"matcher": "startup|clear", "hooks": [{"type": "command",
+                "command": "/opt/konductor __telemetry-hook agent-invocation --install-root /t"}]}
+        ]}})
+        .to_string()
+        .into_bytes()
+    }
+
+    fn session_start_commands(path: &Path) -> Vec<String> {
+        let settings: serde_json::Value = serde_json::from_slice(&fs::read(path).unwrap()).unwrap();
+        settings["hooks"]["SessionStart"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|block| block["hooks"][0]["command"].as_str().unwrap().to_string())
+            .collect()
+    }
+
+    #[test]
+    fn uninstall_strips_claude_telemetry_hooks_and_keeps_the_settings_files() {
+        let _home = HomeGuard::new("uninstall-strips-claude-hooks-home");
+        let target = scratch_home("uninstall-strips-claude-hooks");
+        let settings = claude_settings_with_hooks();
+        seed_target(
+            &target,
+            vec![
+                (
+                    ".claude/agents/k-example.md",
+                    b"agent",
+                    Provenance::Created,
+                    None,
+                ),
+                (
+                    ".claude/settings.local.json",
+                    &settings,
+                    Provenance::Created,
+                    None,
+                ),
+            ],
+        );
+        fs::write(target.join(".claude/settings.json"), &settings).unwrap();
+
+        uninstall_one(target.to_str().unwrap(), None, true, false).unwrap();
+
+        assert!(!target.join(".claude/agents/k-example.md").exists());
+        for relative in [".claude/settings.json", ".claude/settings.local.json"] {
+            assert_eq!(
+                session_start_commands(&target.join(relative)),
+                [FOREIGN_HOOK],
+                "{relative}"
+            );
+        }
+        fs::remove_dir_all(&target).ok();
+    }
+
+    #[test]
+    fn partial_uninstall_keeps_hooks_a_remaining_strategy_still_tracks() {
+        let _home = HomeGuard::new("partial-uninstall-keeps-hooks-home");
+        let target = scratch_home("partial-uninstall-keeps-hooks");
+        let settings = claude_settings_with_hooks();
+        seed_multi_strategy_target(
+            &target,
+            "kiro-cli-v2",
+            vec![
+                (".kiro/agents/k-example.json", b"{}", Provenance::Created),
+                (
+                    ".claude/settings.local.json",
+                    &settings,
+                    Provenance::Created,
+                ),
+            ],
+        );
+        seed_multi_strategy_target(
+            &target,
+            "claude",
+            vec![(".claude/agents/k-example.md", b"agent", Provenance::Created)],
+        );
+
+        uninstall_one(target.to_str().unwrap(), Some("claude"), true, false).unwrap();
+
+        assert_eq!(
+            session_start_commands(&target.join(".claude/settings.local.json")).len(),
+            2,
+            "the surviving kiro-cli-v2 slot still owns the hooks"
+        );
         fs::remove_dir_all(&target).ok();
     }
 

@@ -122,6 +122,8 @@ use crate::cli::install::index::{self, IndexEntryStatus};
 use crate::cli::install::manifest::{self, Status, StrategyManifest};
 use crate::cli::install::registry;
 use crate::cli::install::resolve_destination;
+use crate::cli::install::resource_rewrite::is_claude_settings_path;
+#[cfg(test)]
 use crate::cli::install::resource_rewrite::CLAUDE_SETTINGS_RELATIVE_PATH;
 use crate::cli::install::runtime::{self, Runtime};
 use crate::cli::output::ColorMode;
@@ -1531,23 +1533,15 @@ fn check_manifest(destination: &Path) -> CheckResult {
 /// leftover `None` hash on an otherwise-`Complete` manifest has nothing
 /// meaningful to compare against.
 ///
-/// `CLAUDE_SETTINGS_RELATIVE_PATH` (`.claude/settings.json`) is ALSO
-/// skipped here regardless of its recorded hash -- the same
-/// shared-ownership carve-out `uninstall.rs`'s `delete_eligible_files`
-/// already applies to this exact path, for the same reason: the
-/// recorded hash reflects only the handful of `permissions.allow`
-/// grant strings this codebase's own merge added, not the whole file.
-/// The user adding a hook, another MCP server's grant, or anything
-/// else to their own settings.json afterward is expected, ordinary
-/// use of a file they own -- not drift a "re-run install" remediation
-/// applies to -- so it must never surface here the way a real
-/// hash mismatch on a file Konductor fully owns would.
+/// The Claude settings files (`is_claude_settings_path`) are also
+/// skipped: Konductor merges only a grant or hooks into them, and the
+/// user editing the rest is ordinary use, not drift.
 fn drifted_files(destination: &Path, manifest: &StrategyManifest) -> Vec<String> {
     manifest
         .files
         .iter()
         .filter_map(|file| {
-            if file.path == CLAUDE_SETTINGS_RELATIVE_PATH {
+            if is_claude_settings_path(&file.path) {
                 return None;
             }
             let Some(expected) = &file.sha256 else {

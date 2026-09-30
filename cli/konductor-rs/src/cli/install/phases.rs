@@ -720,15 +720,13 @@ impl InstallPhase for AgentInstallPhase {
             // there (this fires but planning predicted it wouldn't)
             // fails loudly via `attach_provenance`'s own internal-error
             // check rather than silently mis-tracking.
-            if let Some(claude_settings_file) =
+            files.extend(
                 super::resource_rewrite::apply_claude_settings_grant_and_hooks(
                     target_dir,
                     no_telemetry,
                     "Kiro CLI",
-                )
-            {
-                files.push(claude_settings_file);
-            }
+                ),
+            );
         }
 
         Ok(files)
