@@ -263,7 +263,7 @@ The most capable agent in the package, on the strongest model.
 | **Model** | `claude-sonnet-5` — the same model every agent runs |
 | **SOPs** (4) | `k-design-doc-creation`, `k-existing-design-review`, `k-principal-engineer-design-review`, `k-adversarial-pull-request-review` |
 | **Skills** | **38** — the largest share of any agent. See [Architecture and design](skills.md#architecture-and-design), [Design quality gates](skills.md#design-quality-gates), [API and data modelling](skills.md#api-and-data-modelling) |
-| **MCP** | `aws-mcp` — launched via `uvx mcp-proxy-for-aws@latest`; `allowedTools` grants five tools: documentation search, documentation read, skill retrieval, region list, and regional availability |
+| **MCP** | `aws-mcp` — launched via `uvx mcp-proxy-for-aws-cli@latest`, the package the [Agent Toolkit for AWS](https://github.com/aws/agent-toolkit-for-aws) recommends (its own README uses the key `aws`; Konductor keeps `aws-mcp` for continuity with AWS's docs, OAuth commands, and existing configs); grants the whole server, every tool it exposes — the [IAM condition keys](https://aws.amazon.com/blogs/security/understanding-iam-for-managed-aws-mcp-servers/) `aws:ViaAWSMCPService`/`aws:CalledViaAWSMCP` are the recommended way to scope what an agent-initiated call can do |
 | **Can mutate?** | Write and shell in both runtimes — pre-approved in Kiro CLI, granted in Claude Code |
 | **Can delegate to** | `k-developer`, `k-quality-assurance` — in both runtimes |
 
@@ -366,7 +366,7 @@ images, and diagrams — not a skill library. Point it at a file and ask a quest
 | --- | --- | --- |
 | Agent name | `konductor` | `konductor` |
 | Cross-agent delegation | 7 agents have `subagent`, 5 with real targets | `konductor`, `k-architect`, and `k-quality-assurance` hold `Agent(...)` |
-| MCP servers | declared and launched from `dependencies.mcpRegistry` | requested via tool globs (`mcp__aws-mcp__*`); you configure the server yourself |
+| MCP servers | bring-your-own for every server, including AWS MCP — `dependencies.mcpRegistry` documents the setup, but neither Kiro transformer reads it yet; add both `aws-mcp` and `playwright-mcp` yourself under `~/.kiro/settings/mcp.json` | AWS MCP (`aws-mcp`) ships pre-wired — Konductor's one packaged exception, using the package the [Agent Toolkit for AWS](https://github.com/aws/agent-toolkit-for-aws) recommends — via each agent's own rendered `mcpServers:` frontmatter for a standalone `konductor install --harness claude` install, or a plugin-level `.mcp.json` (with the granted tool rewritten to its real plugin-scoped name) for the packaged plugin. The whole server is granted, every tool it exposes; use the `aws:ViaAWSMCPService`/`aws:CalledViaAWSMCP` IAM condition keys to scope agent-initiated calls. Playwright (`playwright-mcp`) is bring-your-own here too: `claude mcp add playwright-mcp -- npx -y @playwright/mcp@latest`. See [`generated/claude-plugin/README.md`](../../generated/claude-plugin/README.md#mcp-servers-bring-your-own-with-one-packaged-exception) |
 | Tool naming | `fs_read`, `fs_write`, `shell` | `Read`, `Write`, `Edit`, `Bash` |
 | Permission model | two lists: `tools` grants with a prompt, `allowedTools` pre-approves | one list: `clientConfig.claudeCli.tools` is the ceiling, and your `settings.json` decides what prompts |
 | `k-browser` / `k-media-analyzer` | reads pre-approved; writes and shell ask first | write and shell granted |

@@ -1,0 +1,32 @@
+{
+  "name": "konductor",
+  "displayName": "Konductor",
+  "version": "0.0.0",
+  "description": "Konductor is an open-source AI agent framework that automates the software development lifecycle (SDLC). It ships a coordinated team of specialist agents -- product manager, architect, developer, QA, researcher, technical program manager, browser, media analyzer, plus three orchestrators -- each with scoped tools, skills, and standard operating procedures (SOPs). Agents hand work to each other through a structured delegation protocol.",
+  "author": {
+    "name": "AWS Solutions",
+    "url": "https://github.com/aws-solutions"
+  },
+  "homepage": "https://aws-solutions.github.io/konductor/",
+  "repository": "https://github.com/aws-solutions/konductor",
+  "license": "Apache-2.0",
+  "keywords": [
+    "sdlc",
+    "ai-agents",
+    "subagents",
+    "orchestration",
+    "aws-solutions",
+    "software-development-lifecycle",
+    "kiro"
+  ],
+  "defaultEnabled": true,
+  "agents": [],
+  "skills": [
+    "./generated/claude-plugin/skills/"
+  ],
+  "metadata": {
+    "sourceRepo": "https://github.com/aws-solutions/konductor",
+    "generatedFrom": "agents/*.agent-spec.json, skills/*/SKILL.md, agent-sops/*.sop.md",
+    "generatedBy": "konductor synth --from . (agents) and konductor install --harness claude (SOP-to-skill conversion); see generated/claude-plugin/README.md"
+  }
+}

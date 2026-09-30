@@ -97,6 +97,25 @@ jobs:
             fi
           done
 
+      - name: Verify the Claude Code plugin still generates (make claude-plugin-check)
+        # PR-time smoke test for a change to agents/*.agent-spec.json,
+        # skills/*/SKILL.md, or agent-sops/*.sop.md: confirms
+        # scripts/generate-claude-plugin.sh and
+        # scripts/assemble-claude-plugin-branch.sh still produce a plugin in
+        # both shapes (repo-root and the flat tree published to the
+        # claude-plugin branch -- see that target's own comment in the root
+        # Makefile). The CLI is already built by the `make synth` step
+        # above, so this re-invocation of `make -C cli build` inside the
+        # target is a fast no-op. Deliberately does not install the
+        # `claude` CLI here (unlike release.yml's publish-claude-plugin
+        # job, which does, to run the real `claude plugin validate`) --
+        # this check is meant to be fast on every PR, and the generation
+        # step alone already catches the far more likely regression (a
+        # broken agent-spec/skill/SOP that fails to synth or install at
+        # all); it prints a notice and soft-skips the validation step
+        # instead of failing when `claude` isn't on PATH.
+        run: make claude-plugin-check
+
       - name: Verify packaged tarball asset count and version
         # PR-time analog of two release.yml checks that otherwise only run
         # after merge: check-version's TARBALL_MATCH_COUNT/

@@ -22,6 +22,40 @@
 #                     tree, producing per-harness output under dist/. Used
 #                     by the GitHub Actions release workflow
 #                     (.github/workflows/release.yml).
+#   claude-plugin       Regenerate generated/claude-plugin/{agents,skills}/,
+#                     .claude-plugin/plugin.json, and .mcp.json from
+#                     agents/*.agent-spec.json, skills/*/SKILL.md, and
+#                     agent-sops/*.sop.md, via `konductor synth` and
+#                     `konductor install --harness claude` against a
+#                     throwaway scratch HOME/target -- see
+#                     generated/claude-plugin/README.md and
+#                     scripts/generate-claude-plugin.sh for the full
+#                     procedure. Runs `claude plugin validate
+#                     .claude-plugin/plugin.json` afterward when the `claude`
+#                     CLI is on PATH (targets the plugin manifest FILE
+#                     directly, not the repo-root directory, since a
+#                     directory validate picks .claude-plugin/marketplace.json
+#                     over plugin.json whenever both exist -- no --strict
+#                     here, since this repo's own top-level CLAUDE.md makes
+#                     a strict repo-root plugin validate permanently warn;
+#                     see claude-plugin-check's own comment below). Output is
+#                     gitignored -- see .gitignore -- so this is a local/CI
+#                     build step, never something to commit on main. The
+#                     published plugin is built and force-pushed to the
+#                     `claude-plugin` branch by .github/workflows/release.yml's
+#                     `publish-claude-plugin` job (scripts/
+#                     assemble-claude-plugin-branch.sh).
+#   claude-plugin-check PR-time smoke test: re-runs claude-plugin's own
+#                     generation, then also assembles the flat branch tree
+#                     (scripts/assemble-claude-plugin-branch.sh) into a
+#                     scratch directory. Validates the repo-root
+#                     marketplace.json (--strict) AND plugin.json (plain --
+#                     see this target's own comment below for why) as
+#                     separate manifest FILE targets, plus the flat branch
+#                     tree (--strict), when the CLI is on PATH. Not a drift
+#                     check -- nothing generated is committed on main to
+#                     diff against; this only confirms the pipeline still
+#                     produces a valid plugin after a source change.
 #   test-rust         Run Rust unit tests (cargo test) in cli/, mcp/, and shared/
 #   test-schema-dump  Smoke-check __dump_schema produces valid JSON
 #                     (cli/ only -- mcp/ and shared/ have no equivalent target)
@@ -32,7 +66,8 @@
 #   clean             Remove build artifacts in cli/, mcp/, and shared/
 #   help              Show this usage summary
 
-.PHONY: all build fmt lint install link synth test test-rust test-schema-dump clean help \
+.PHONY: all build fmt lint install link synth claude-plugin claude-plugin-check \
+        test test-rust test-schema-dump clean help \
         guide guide-check guide-sync guide-html guide-record
 
 all: build
@@ -49,6 +84,8 @@ help:
 	@echo "  make link               Symlink cli binary into ~/.local/bin (cli only)"
 	@echo "  make synth              Build the konductor CLI and run 'konductor synth',"
 	@echo "                          producing per-harness output under dist/ (cli only)"
+	@echo "  make claude-plugin      Regenerate generated/claude-plugin/ + .claude-plugin/plugin.json + .mcp.json (gitignored)"
+	@echo "  make claude-plugin-check  Regenerate + validate both plugin tree shapes (no commits, no push)"
 	@echo "  make test               Run test in cli/, mcp/, and shared/"
 	@echo "  make test-rust          Run Rust unit tests, cli/mcp/shared (no internet required)"
 	@echo "  make test-schema-dump   Smoke-check __dump_schema (cli only)"
@@ -111,12 +148,98 @@ KONDUCTOR_BIN := build/cli/konductor
 # (`make synth TARGET=...`) to child `$(MAKE)` invocations on its own, only
 # an actual environment variable (`TARGET=... make synth`) does. This makes
 # both invocation styles behave the same.
+# --claude-bundled-mcp-servers pre-wires AWS MCP into dist/claude/agents/*.md
+# for the STANDALONE Claude Code install too, not just the plugin path --
+# see scripts/claude-plugin-mcp-servers.json (the single source of truth
+# scripts/read-bundled-mcp-servers.sh reads) and cli/konductor-rs/src/cli.rs's
+# own doc comment on this flag. --claude-bundled-mcp-config points synth at
+# that same JSON file so the launch command/args baked into dist/claude's
+# frontmatter come from its "bundled" object, not from whatever an agent
+# spec's own dependencies.mcpRegistry entry happens to say. Everything else
+# (e.g. k-browser's playwright-mcp) stays bring-your-own.
 synth:
 	$(MAKE) -C cli build TARGET=$(TARGET)
 	@test -x "$(KONDUCTOR_BIN)" || { echo "error: $(KONDUCTOR_BIN) not found — run 'make build' first" >&2; exit 1; }
 	@echo "=== [konductor] Running konductor synth ==="
-	$(KONDUCTOR_BIN) synth
+	$(KONDUCTOR_BIN) synth --claude-bundled-mcp-servers "$$(scripts/read-bundled-mcp-servers.sh)" --claude-bundled-mcp-config scripts/claude-plugin-mcp-servers.json
 	@echo "=== [konductor] Synth complete -- output in dist/ ==="
+
+# ── claude-plugin ───────────────────────────────────────────────────────────
+# Regenerates generated/claude-plugin/{agents,skills}/,
+# .claude-plugin/plugin.json, and .mcp.json -- see
+# generated/claude-plugin/README.md for what each piece is and why two
+# different CLI subcommands produce it.
+#
+# All of the synth/install/copy/render/validate logic lives in
+# scripts/generate-claude-plugin.sh, not here -- this target only builds the
+# CLI first (cli's own `build` target, same pattern `synth` above uses, so
+# `make claude-plugin` never forces an unrelated mcp/ rebuild) and then hands
+# off to the script.
+claude-plugin:
+	$(MAKE) -C cli build TARGET=$(TARGET)
+	@test -x "$(KONDUCTOR_BIN)" || { echo "error: $(KONDUCTOR_BIN) not found — run 'make -C cli build' first" >&2; exit 1; }
+	KONDUCTOR_BIN=$(KONDUCTOR_BIN) scripts/generate-claude-plugin.sh
+
+# ── claude-plugin-check ──────────────────────────────────────────────────────
+# PR-time smoke test, not a drift check: nothing generated is committed on
+# main (see .gitignore), so there is nothing to diff against. Instead this
+# confirms the generation pipeline still succeeds and still produces a
+# valid plugin, in both shapes users can encounter:
+#   1. The repo-root shape (agents/skills nested under
+#      generated/claude-plugin/) -- `scripts/generate-claude-plugin.sh`
+#      itself already runs `claude plugin validate .claude-plugin/plugin.json`
+#      at the end when the `claude` CLI is present, so this target's own
+#      call below is a second, explicit check of that same result.
+#      Validates .claude-plugin/marketplace.json too, with --strict, as its
+#      own separate target -- `claude plugin validate .` run against the
+#      repo root would pick marketplace.json over plugin.json whenever both
+#      exist in the same directory (they do here), so passing each manifest
+#      FILE explicitly is what actually exercises the plugin's own
+#      agent/skill/MCP content, not just the marketplace shape. plugin.json
+#      itself is intentionally validated WITHOUT --strict here: this repo's
+#      own top-level CLAUDE.md makes `claude plugin validate` permanently
+#      warn "CLAUDE.md at the plugin root is not loaded as project context"
+#      whenever the plugin root and repo root are the same directory --
+#      true regardless of this plugin's own content -- and --strict would
+#      turn that permanent, environment-driven warning into a permanent
+#      failure. See scripts/generate-claude-plugin.sh's own comment on its
+#      matching validate call for the full explanation.
+#   2. The flat branch shape actually published to `claude-plugin` --
+#      assembled fresh into a scratch directory by
+#      scripts/assemble-claude-plugin-branch.sh and validated there WITH
+#      --strict: that tree has no top-level CLAUDE.md (see
+#      scripts/assemble-claude-plugin-branch.sh's own file list), so
+#      nothing structural stops it from being held to the stricter bar.
+# Fails on either generation step failing, or (when `claude` is on PATH) on
+# marketplace.json or the flat tree failing `--strict` validation, or
+# plugin.json failing plain (non-strict) validation.
+claude-plugin-check:
+	$(MAKE) -C cli build TARGET=$(TARGET)
+	@test -x "$(KONDUCTOR_BIN)" || { echo "error: $(KONDUCTOR_BIN) not found — run 'make -C cli build' first" >&2; exit 1; }
+	KONDUCTOR_BIN=$(KONDUCTOR_BIN) scripts/generate-claude-plugin.sh
+	@if command -v claude >/dev/null 2>&1; then \
+		echo "=== [claude-plugin-check] Validating repo-root marketplace.json ==="; \
+		claude plugin validate .claude-plugin/marketplace.json --strict || exit 1; \
+		echo "=== [claude-plugin-check] Validating repo-root plugin.json (+ .mcp.json) ==="; \
+		claude plugin validate .claude-plugin/plugin.json || exit 1; \
+	else \
+		echo "notice: [claude-plugin-check] 'claude' CLI not found on PATH -- skipping validation" >&2; \
+	fi
+	@scratch=$$(mktemp -d)/claude-plugin-branch; \
+	KONDUCTOR_BIN=$(KONDUCTOR_BIN) scripts/assemble-claude-plugin-branch.sh --out "$$scratch"; \
+	status=0; \
+	if command -v claude >/dev/null 2>&1; then \
+		echo "=== [claude-plugin-check] Validating flat branch plugin shape ==="; \
+		claude plugin validate "$$scratch" --strict || status=1; \
+	else \
+		echo "notice: [claude-plugin-check] 'claude' CLI not found on PATH -- skipping validation" >&2; \
+	fi; \
+	rm -rf "$$(dirname "$$scratch")"; \
+	if [ "$$status" -ne 0 ]; then \
+		echo "=== [claude-plugin-check] FAILED: the flat branch plugin tree did not validate ===" >&2; \
+		exit 1; \
+	fi
+	@echo "=== [claude-plugin-check] Both plugin tree shapes generated and validated successfully ==="
 
 # ── test-rust ─────────────────────────────────────────────────────────────────
 test-rust:

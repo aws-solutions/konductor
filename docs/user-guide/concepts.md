@@ -44,9 +44,12 @@ covers both — there is no separate CLI-versus-IDE choice to make.
 Konductor ships each agent with per-runtime settings, so the same agent behaves correctly in
 any of them. In `agents/*.agent-spec.json` these live under `clientConfig.kiroCli` and
 `clientConfig.claudeCli`. The two differ in real ways — for example, the Kiro CLI
-configuration for `k-architect` lists tools as `["@builtin", "subagent", "@aws-mcp"]`,
-while the Claude Code configuration lists `["Read", "Write", "Edit", "Bash", "Glob", "Grep",
-"WebFetch", "WebSearch", "TodoWrite", "mcp__aws-mcp__*"]`.
+configuration for `k-architect` lists tools as `["@builtin", "subagent",
+"@aws-mcp/aws___search_documentation", "@aws-mcp/aws___retrieve_skill", ...]` (five explicit
+knowledge-tool grants, not a bare `@aws-mcp` collection grant), while the Claude Code
+configuration lists `["Read", "Write", "Edit", "Bash", "Glob", "Grep", "WebFetch",
+"WebSearch", "TodoWrite", "mcp__aws-mcp__aws___search_documentation", ...]` (the same five,
+explicit rather than a `mcp__aws-mcp__*` wildcard).
 
 ## Agent
 

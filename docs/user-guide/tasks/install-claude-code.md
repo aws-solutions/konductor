@@ -119,7 +119,7 @@ What is deliberately *absent*, and why:
 | --- | --- |
 | `git push`, `git reset`, `git clean` | Agents commit locally. Pushing to remotes and destructive history rewrites should require a human action. |
 | `rm`, `sudo`, `curl`, unscoped `sh` / `bash` | Arbitrary destructive or network commands. |
-| `aws` | Cloud mutations. |
+| `aws-mcp` | Cloud mutations. |
 
 Two entries in the allowlist deserve a second look before you accept them: `Bash(npm *)` runs
 arbitrary package lifecycle scripts, and `Bash(find *)` supports `-exec`. Neither is read-only.
@@ -206,13 +206,56 @@ This is no longer the default as of Claude Code v2.1.179 and requires tmux or iT
 
 ## Optional integrations
 
-**AWS documentation lookups** — `k-architect` and `k-developer` request AWS MCP tools via
-the glob `mcp__aws-mcp__*`. Unlike their Kiro CLI configuration, the Claude Code configuration does
-**not** launch the server itself, so you must configure an `aws-mcp` MCP server in Claude Code
-yourself for those tools to resolve.
+MCP servers are bring-your-own on Claude Code, with one packaged exception: AWS MCP.
+Everything else you configure yourself, the same way you would for any other MCP server.
+Konductor's AWS MCP setup follows the [Agent Toolkit for AWS](https://github.com/aws/agent-toolkit-for-aws),
+the upstream source of truth for the package (`mcp-proxy-for-aws-cli`) and args. Konductor keeps
+its own `aws-mcp` server key rather than the toolkit README's `aws` key, for continuity with
+AWS's own getting-started docs, OAuth commands, and existing configs.
 
-**Browser automation** — `k-browser` requests `mcp__playwright-mcp__*`, with the same caveat.
-Install the browser binary:
+**AWS documentation lookups** — `k-architect` and `k-developer` request the whole `aws-mcp`
+server via the `mcp__aws-mcp__*` glob, so every tool it exposes is granted, including the
+AWS-API-acting ones (see Tool grant below). Each agent's rendered `.md` file carries an
+`mcpServers:` entry (built from `dependencies.mcpRegistry`, filtered to just this server,
+launched via `uvx mcp-proxy-for-aws-cli@latest`), so this `konductor install --harness claude`
+install launches the server itself — no separate MCP server configuration needed. This is also
+true if you installed via the [Claude Code plugin marketplace](install-claude-plugin-marketplace.md)
+instead: the plugin ships a plugin-level `.mcp.json` for the same server, with the granted
+tool rewritten to its real plugin-scoped name Claude Code resolves for a plugin subagent. The
+server auto-starts as soon as the plugin (or standalone install) is enabled, launching
+`mcp-proxy-for-aws-cli@latest` per the toolkit's own guidance — install `uvx` and configure AWS
+credentials (`~/.aws/credentials` or environment variables) so the agent has something to
+authenticate with; it degrades gracefully if credentials are absent.
+
+**Tool grant: the whole server.** `k-architect`/`k-developer` grant every tool the server
+exposes — the five AWS knowledge/documentation tools (`aws___search_documentation`,
+`aws___retrieve_skill`, `aws___read_documentation`, `aws___list_regions`,
+`aws___get_regional_availability`) and the three AWS-API-acting tools (`aws___run_script`,
+which runs sandboxed Python with AWS API access; `aws___get_presigned_url`; `aws___get_tasks`).
+Once a tool call runs, it runs under your own IAM credentials — use the `aws:ViaAWSMCPService`
+(boolean) and `aws:CalledViaAWSMCP` (string, `aws-mcp.amazonaws.com` for this server) global IAM
+condition keys to scope or audit what an agent can do through the MCP server specifically; see
+[Understanding IAM for managed AWS MCP servers](https://aws.amazon.com/blogs/security/understanding-iam-for-managed-aws-mcp-servers/).
+
+**Alternatives the toolkit documents** (not what Konductor's own `.mcp.json`/`mcpServers:` uses,
+but valid ways to reach the same server): `claude mcp add aws-mcp
+https://aws-mcp.us-east-1.api.aws/mcp --transport http` connects directly over OAuth with no
+local `uvx` process at all (requires the `AWSMCPSignInOAuthAccessPolicy` managed policy).
+`/plugin install aws-core@claude-plugins-official` installs AWS's own official plugin, which
+bundles the server config and the toolkit's agent skills together, maintained by AWS rather
+than by this repo. `npx skills add aws/agent-toolkit-for-aws/skills` installs the toolkit's own
+skills independently of Konductor's `aws-service-validator`.
+
+**Browser automation** — `k-browser` requests `mcp__playwright-mcp__*`, but nothing installs
+or launches `playwright-mcp` for you — it is bring-your-own on every harness, standalone
+install or plugin alike. Register it yourself:
+
+```bash
+claude mcp add playwright-mcp -- npx -y @playwright/mcp@latest
+```
+
+Add `--scope user` if you want it available across every project rather than just the
+current one (the default `local` scope). Also install the browser binary:
 
 ```bash
 npx playwright install chromium
@@ -229,6 +272,11 @@ See [docs/guides/slack-integration.md](../../guides/slack-integration.md) for de
 
 ---
 
+## Related
+
+- [Install via the Claude Code plugin marketplace](install-claude-plugin-marketplace.md) — an
+  alternative to the steps above, once the first release publishes the `claude-plugin` branch
+- [Install for Kiro CLI](install-kiro-cli.md) — the other runtime
 
 ---
 

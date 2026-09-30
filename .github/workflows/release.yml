@@ -5,18 +5,33 @@ name: Release
 # GitHub-hosted infrastructure, so it needs no AWS credentials or OIDC role --
 # the built-in GITHUB_TOKEN is sufficient.
 #
-# Three jobs: `check-version` decides whether a release is needed; `build`
+# Four jobs: `check-version` decides whether a release is needed; `build`
 # compiles konductor and skill-lookup-mcp for linux/x86_64, linux/aarch64, and
 # macos/aarch64 (Apple Silicon). Both Linux legs target `*-unknown-linux-musl`
 # (static libc, no runtime glibc version dependency) natively on their own
 # runner -- no cross-architecture compilation. No Intel/x86_64 macOS leg:
 # GitHub retired its free-tier Intel macOS runner and this org has no paid
 # larger-runner entitlement. `publish` downloads every leg's assets and
-# creates the release exactly once.
+# creates the release exactly once. `publish-claude-plugin` runs after
+# `publish` succeeds: it builds the Claude Code plugin tree (`make
+# claude-plugin` via scripts/generate-claude-plugin.sh, then
+# scripts/assemble-claude-plugin-branch.sh for the flat layout Claude Code
+# expects) and force-pushes it as a single squashed commit to the dedicated
+# `claude-plugin` branch -- `main` itself never carries generated plugin
+# output (see .gitignore and generated/claude-plugin/README.md).
 
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      dry_run_claude_plugin:
+        description: >-
+          Build and validate the Claude Code plugin tree without force-pushing
+          to the claude-plugin branch. Has no effect on the release/build/publish
+          jobs above -- those still run their normal should_publish gating.
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -538,3 +553,187 @@ jobs:
             --target "${{ github.sha }}" \
             --title "konductor $RELEASE_VERSION" \
             --notes "Synthesized by $BINARY_VERSION (release $RELEASE_VERSION) from ${{ github.sha }} at ${BUILD_TIMESTAMP}."
+
+  publish-claude-plugin:
+    name: Publish Claude Code plugin (claude-plugin branch)
+    needs: [check-version, publish]
+    # Runs after `publish` actually succeeds (the normal post-release path),
+    # OR on a manual dry_run_claude_plugin dispatch -- which must still proceed even when
+    # `publish` was skipped because should_publish was false (e.g. testing
+    # dry_run_claude_plugin against a VERSION that's already released, so there's nothing
+    # new to publish on the binary/release side). `always()` is required for
+    # this job's `if:` to be evaluated at all: without it, GitHub Actions'
+    # default behavior skips a job whenever any of its `needs` didn't
+    # succeed, and that includes a "skipped" (not "failed") upstream job.
+    if: |
+      always() &&
+      needs.check-version.result == 'success' &&
+      (needs.publish.result == 'success' || (github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run_claude_plugin == 'true'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    # Job-scoped: a second claude-plugin publish attempt (e.g. a re-run)
+    # must not race the first one's force-push. Independent of the
+    # workflow-level `release-${{ github.ref }}` group above -- that group
+    # only prevents a second concurrent *release*, not a second concurrent
+    # push to this specific branch (e.g. from a future manual dispatch
+    # overlapping a push-triggered run).
+    concurrency:
+      group: claude-plugin-branch-publish
+      cancel-in-progress: false
+    env:
+      RELEASE_VERSION: ${{ needs.check-version.outputs.release_version }}
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run_claude_plugin == 'true' }}
+      # Hardcoded literal, not sourced from any input -- the guard step
+      # below is defense in depth against a future edit that parameterizes
+      # this incorrectly, not a check against anything reachable today.
+      TARGET_BRANCH: claude-plugin
+    steps:
+      - name: Refuse to target main/mainline
+        run: |
+          set -e
+          case "$TARGET_BRANCH" in
+            main|mainline)
+              echo "FATAL: refusing to publish the Claude Code plugin to '$TARGET_BRANCH' -- generated plugin output must never land on main/mainline." >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Checkout
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
+        with:
+          # A real post-release run checks out the tag `publish` just
+          # created -- the exact commit that was released. A dry_run_claude_plugin
+          # dispatch checks out the current ref instead: the release tag may
+          # not exist yet (e.g. testing dry_run_claude_plugin against a VERSION that
+          # hasn't shipped), and dry_run_claude_plugin never pushes, so pinning to a real
+          # tag isn't required for it. `env` is not available in `with:`,
+          # so this repeats the same expression `env.DRY_RUN`/
+          # `env.RELEASE_VERSION` would otherwise hold, using only the
+          # `github`/`needs` contexts (both available here).
+          ref: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run_claude_plugin == 'true') && github.sha || needs.check-version.outputs.release_version }}
+          fetch-depth: 0
+
+      - name: Set VERSION from the release tag
+        # RELEASE_VERSION is "v<version>" (check-version's own convention).
+        # This is normally a no-op -- check-version already read VERSION
+        # from this same commit to derive RELEASE_VERSION in the first
+        # place -- but re-deriving it here from the tag actually checked
+        # out (rather than trusting the file unconditionally) is cheap
+        # insurance against the two ever disagreeing. Skipped under
+        # dry_run_claude_plugin: that mode checks out github.sha, not a release tag, so
+        # there is no tag version to derive VERSION from.
+        if: env.DRY_RUN != 'true'
+        run: |
+          set -e
+          TAG_VERSION="${RELEASE_VERSION#v}"
+          scripts/validate-version-semver.sh "$TAG_VERSION"
+          echo "$TAG_VERSION" > VERSION
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+
+      - name: Build the konductor CLI
+        # scripts/generate-claude-plugin.sh (called by
+        # scripts/assemble-claude-plugin-branch.sh below) assumes an
+        # already-built binary and fails closed if it's missing -- it never
+        # builds one itself. This is the same `cli` build target `make
+        # build`/`make synth`/`make claude-plugin` all use; no musl target
+        # needed here, since this binary only runs transiently on this
+        # runner to drive synth/install, and is never uploaded as a release
+        # asset.
+        run: make -C cli build
+
+      - name: Assemble the flat Claude Code plugin tree
+        # Reuses scripts/generate-claude-plugin.sh and
+        # scripts/assemble-claude-plugin-branch.sh for all of the actual
+        # synth/install/render logic -- no duplicated logic in this
+        # workflow. Locally, `make claude-plugin-check` runs the identical
+        # two scripts.
+        run: |
+          set -e
+          ASSEMBLE_DIR="$RUNNER_TEMP/claude-plugin-branch"
+          rm -rf "$ASSEMBLE_DIR"
+          scripts/assemble-claude-plugin-branch.sh --out "$ASSEMBLE_DIR"
+          echo "ASSEMBLE_DIR=$ASSEMBLE_DIR" >> "$GITHUB_ENV"
+
+      - name: Install claude CLI for validation
+        # `claude plugin validate` is the real, authoritative check -- it's
+        # what a user's own `claude` CLI runs against this exact tree, so it
+        # catches more than a hand-rolled JSON Schema check could
+        # (frontmatter shape, cross-references between agents/skills/
+        # plugin.json, etc.). A schema-only check was the fallback
+        # considered, but this package is a real, public npm package
+        # (@anthropic-ai/claude-code) that installs cleanly on a plain
+        # ubuntu-latest runner, so there's no reason to settle for the
+        # weaker check. Pinned, not @latest, so a change in the CLI's own
+        # validation behavior can't silently start failing (or silently
+        # start passing) this job on an unrelated CLI release.
+        run: npm install --global @anthropic-ai/claude-code@2.1.284
+
+      - name: Validate the assembled plugin tree
+        # --strict: treat warnings as errors, so unrecognized fields and
+        # missing metadata that the runtime tolerates fail this job too --
+        # not just a hard error.
+        run: claude plugin validate "$ASSEMBLE_DIR" --strict
+
+      - name: Force-push to claude-plugin branch (single squashed commit)
+        if: env.DRY_RUN != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          cd "$ASSEMBLE_DIR"
+          git init -q -b "$TARGET_BRANCH"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Publish Claude Code plugin for $RELEASE_VERSION"
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
+          git push --force origin "HEAD:$TARGET_BRANCH"
+
+      - name: Tag the release (immutable, one tag per release, never moved)
+        # A per-release tag on the exact commit just force-pushed above lets a
+        # marketplace.json plugin entry pin `ref` to a specific, permanent
+        # release instead of the `claude-plugin` branch's own moving HEAD --
+        # see generated/claude-plugin/README.md's "Rollback" section for why
+        # that matters and how to roll one back. Skipped entirely under
+        # dry_run_claude_plugin, same as the force-push above: there is no
+        # branch commit to tag in that mode.
+        if: env.DRY_RUN != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          cd "$ASSEMBLE_DIR"
+          TAG="claude-plugin-v${RELEASE_VERSION#v}"
+
+          # Fail closed: `git ls-remote --exit-code` exits 0 when the ref IS
+          # found, 2 when the remote was reached but the ref genuinely does
+          # not exist, and any other code (network error, auth failure, ...)
+          # on a real query failure. Only the exit-2 case is safe to proceed
+          # on -- treat exit 0 (tag already exists) AND any non-2 failure the
+          # same way: abort, never guess. This is what makes the tag
+          # immutable: a re-run against an already-tagged RELEASE_VERSION
+          # fails instead of silently re-tagging (which would move it) or
+          # silently skipping (which would hide that nothing new was
+          # published).
+          set +e
+          git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1
+          LS_REMOTE_STATUS=$?
+          set -e
+          if [ "$LS_REMOTE_STATUS" -eq 0 ]; then
+            echo "FATAL: tag '$TAG' already exists on origin -- refusing to move an existing immutable release tag. If this release needs republishing, cut a new RELEASE_VERSION and re-run." >&2
+            exit 1
+          elif [ "$LS_REMOTE_STATUS" -ne 2 ]; then
+            echo "FATAL: could not confirm tag '$TAG' is free on origin (git ls-remote exited $LS_REMOTE_STATUS) -- refusing to proceed without that confirmation." >&2
+            exit 1
+          fi
+
+          git tag -a "$TAG" -m "Claude Code plugin release $RELEASE_VERSION" HEAD
+          git push origin "refs/tags/$TAG"
+          echo "Tagged $TARGET_BRANCH at $(git rev-parse HEAD) as $TAG"
+
+      - name: Dry run summary
+        if: env.DRY_RUN == 'true'
+        run: echo "dry_run_claude_plugin=true -- built and validated the Claude Code plugin tree at $ASSEMBLE_DIR without pushing to $TARGET_BRANCH or creating a claude-plugin-v* tag."
