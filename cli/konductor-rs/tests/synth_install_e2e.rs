@@ -34,6 +34,7 @@ use std::process::{Command, Output};
 
 const CMD_SYNTH: &str = "synth";
 const CMD_INSTALL: &str = "install";
+const CMD_UPDATE: &str = "update";
 
 fn bin() -> &'static str {
     env!("CARGO_BIN_EXE_konductor")
@@ -389,6 +390,86 @@ fn v3_reinstall_with_no_telemetry_removes_a_previously_installed_hook() {
             .join(".kiro/hooks/.konductor-telemetry-session-start.lock")
             .exists(),
         "the sibling hook lock file must also be cleaned up after a --no-telemetry reinstall"
+    );
+
+    std::fs::remove_dir_all(&repo_root).ok();
+    std::fs::remove_dir_all(&target_dir).ok();
+}
+
+/// Same leak, reached through `konductor update --no-telemetry` instead
+/// of a second `install`. `update` routes through the same
+/// `install_from_local` with `no_telemetry` threaded, so it must remove
+/// a V3 hook a prior telemetry-enabled install wrote, just as a
+/// `--no-telemetry` reinstall does.
+#[test]
+fn v3_update_with_no_telemetry_removes_a_previously_installed_hook() {
+    let sink = telemetry_test_sink::TelemetrySink::start();
+    let repo_root = scratch_dir("repo-v3-update-notele");
+    seed_agent_spec_source(&repo_root);
+    seed_skill_source(&repo_root);
+
+    let synth_result = run_konductor(
+        &repo_root,
+        &sink,
+        &[CMD_SYNTH, "--from", &repo_root.display().to_string()],
+    );
+    assert!(
+        synth_result.status.success(),
+        "real `synth --from <repo>` must succeed: stderr={}",
+        String::from_utf8_lossy(&synth_result.stderr)
+    );
+
+    let target_dir = scratch_dir("target-v3-update-notele");
+    let hook_path = target_dir.join(".kiro/hooks/konductor-telemetry-hooks.json");
+
+    // Install with telemetry on, so the hook lands and the target is
+    // tracked in the index `update` reads.
+    let install_on = run_konductor(
+        &target_dir,
+        &sink,
+        &[
+            CMD_INSTALL,
+            "--from",
+            &repo_root.display().to_string(),
+            "--target",
+            &target_dir.display().to_string(),
+            "--harness",
+            "kiro-v3",
+        ],
+    );
+    assert!(
+        install_on.status.success(),
+        "telemetry-on V3 install must succeed: stderr={}",
+        String::from_utf8_lossy(&install_on.stderr)
+    );
+    assert!(
+        hook_path.is_file(),
+        "hook must exist after the telemetry-on install"
+    );
+
+    // `update --no-telemetry` against the same target must strip it.
+    let update_off = run_konductor(
+        &target_dir,
+        &sink,
+        &[
+            CMD_UPDATE,
+            "--from",
+            &repo_root.display().to_string(),
+            "--target",
+            &target_dir.display().to_string(),
+            "--no-telemetry",
+        ],
+    );
+    assert!(
+        update_off.status.success(),
+        "no-telemetry V3 update must succeed: stderr={}",
+        String::from_utf8_lossy(&update_off.stderr)
+    );
+    assert!(
+        !hook_path.exists(),
+        "the V3 hook document must be REMOVED after `update --no-telemetry`, but it still \
+         exists at {}",
+        hook_path.display()
     );
 
     std::fs::remove_dir_all(&repo_root).ok();

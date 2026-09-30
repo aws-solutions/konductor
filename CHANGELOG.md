@@ -12,10 +12,12 @@ not per individual commit.
 
 - Kiro CLI installs (v2 and v3/KAS) had no telemetry hook wiring at all, so `agent_invocation`
   events never fired for either runtime — only Claude Code's install path had this. `konductor
-  install` now wires a `SessionStart` hook into every installed agent: inline under
-  `hooks.agentSpawn` for v2, and as a standalone `.kiro/hooks/*.json` file for v3. Gated on
-  `!no_telemetry`, removed on uninstall, and degrades to a non-fatal warning (instead of failing
-  the install) when the running binary's own path can't be resolved.
+  install` now wires a session-start hook: for v2, one entry per installed agent under that
+  agent's own `hooks.agentSpawn`; for v3, a single standalone `.kiro/hooks/konductor-telemetry-hooks.json`
+  file for the whole install target. Gated on `!no_telemetry`, and degrades to a non-fatal
+  warning (instead of failing the install) when the running binary's own path can't be resolved.
+  A `--no-telemetry` install or update removes a hook a prior telemetry-enabled run wrote (the v3
+  file, or the v2 `agentSpawn` entry), and `uninstall` removes it too.
 
 ## [1.0.2] - 2026-09-28
 
