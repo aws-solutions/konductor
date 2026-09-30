@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: Apache-2.0
 #
-# read-bundled-mcp-servers.sh -- prints the comma-joined "bundled" MCP
+# read-bundled-mcp-servers.sh: prints the comma-joined "bundled" MCP
 # server allowlist from scripts/claude-plugin-mcp-servers.json to stdout.
 #
 # Single source of truth for which MCP servers Konductor packages with the
-# Claude Code target (today: just aws-mcp -- everything else, e.g.
+# Claude Code target (today: just aws-mcp; everything else, e.g.
 # k-browser's playwright-mcp, is bring-your-own). Both `konductor synth
 # --claude-bundled-mcp-servers` (cli/konductor-rs/src/cli.rs) and
 # render-claude-plugin-json.py's --bundled-mcp-servers flag need the exact
 # same comma-separated list; this script is the one place that reads
 # scripts/claude-plugin-mcp-servers.json's "bundled" object so
-# generate-claude-plugin.sh and assemble-claude-plugin-branch.sh -- and the
-# root Makefile's plain `synth` target -- can never pass the two callers a
+# generate-claude-plugin.sh and assemble-claude-plugin-branch.sh, and the
+# root Makefile's plain `synth` target, can never pass the two callers a
 # different list from the same config file. "bundled" is an object keyed
 # by server name (each value is that server's own launch definition, read
 # separately by --claude-bundled-mcp-config/--bundled-mcp-config); this
@@ -24,7 +24,7 @@
 # Prints an empty string (not an error) when the "bundled" key is absent,
 # so a caller that forgets to update its own config after an upstream
 # schema change fails open into "nothing bundled" rather than aborting the
-# whole build -- the same default `--claude-bundled-mcp-servers`/
+# whole build, the same default `--claude-bundled-mcp-servers`/
 # `--bundled-mcp-servers` already use when omitted entirely.
 set -euo pipefail
 

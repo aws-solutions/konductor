@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: Apache-2.0
 #
-# copy-skills-with-collision-guard.sh -- assembles a flat skills/ directory
+# copy-skills-with-collision-guard.sh: assembles a flat skills/ directory
 # from two sources: this repo's native skills/*/SKILL.md directories, and
 # the SOP-derived sop-*/SKILL.md directories konductor install --harness
 # claude produces (see generated/claude-plugin/README.md for why two
@@ -25,11 +25,11 @@
 # Collision guard: `cp -r src dst` MERGES into an existing dst directory
 # instead of failing, so a sop-* name colliding with a native skill name
 # already copied from --native would silently interleave the two
-# directories' files rather than error -- e.g. a native skill and a
+# directories' files rather than error, e.g. a native skill and a
 # converted SOP both named "sop-something" would end up sharing one
 # directory, with whichever SKILL.md copied second winning. Every name is
 # expected to be new (agent-sops/*.sop.md are all named distinctly from
-# skills/*), so this check should never fire in practice -- it exists to
+# skills/*), so this check should never fire in practice. It exists to
 # fail loudly the moment that stops being true, instead of producing a
 # silently merged skill directory that looks fine until Claude Code loads
 # the wrong SKILL.md.
@@ -96,7 +96,7 @@ for d in "$SOP"/*/; do
   [ -d "$d" ] || continue
   name="$(basename "$d")"
   if [ -e "$OUT/$name" ]; then
-    echo "error: [copy-skills-with-collision-guard] skills/$name already exists (copied from --native above) -- refusing to merge the SOP-derived skills/$name/ directory into it. Rename the colliding native skill directory or the agent-sops/*.sop.md that produces this name so the two don't share a skill name." >&2
+    echo "error: [copy-skills-with-collision-guard] skills/$name already exists (copied from --native above); refusing to merge the SOP-derived skills/$name/ directory into it. Rename the colliding native skill directory or the agent-sops/*.sop.md that produces this name so the two don't share a skill name." >&2
     exit 1
   fi
   cp -r "$d" "$OUT/$name"

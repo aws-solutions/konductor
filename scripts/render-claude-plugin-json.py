@@ -6,13 +6,13 @@ scripts/claude-plugin.template.json, overriding only two fields:
 - `version`: read from the repo's root VERSION file, which is this repo's
   single source of truth for the released version (see
   scripts/validate-version-semver.sh and .github/workflows/release.yml's
-  check-version job -- the CLI's own Cargo.toml version is required to
+  check-version job; the CLI's own Cargo.toml version is required to
   match VERSION before a release, never the other way around).
 - `agents`: the sorted list of *.md files under
   generated/claude-plugin/agents/, so the manifest always reflects exactly
-  what synth produced -- never hand-maintained.
+  what synth produced, never hand-maintained.
 
-Also strips two keys from `metadata`, if present -- defensively: the
+Also strips two keys from `metadata`, if present, defensively: the
 committed template never carries either key, but a hand-edit could
 reintroduce one, and neither belongs in the rendered output:
 
@@ -20,14 +20,14 @@ reintroduce one, and neither belongs in the rendered output:
   no meaning outside this repo's own internal mirror; it does not belong in
   a public artifact.
 - `generatedAt`: a real timestamp would make every regeneration
-  byte-different for no benefit -- `make claude-plugin-check` (and anyone
+  byte-different for no benefit. `make claude-plugin-check` (and anyone
   diffing two runs) depends on byte-identical re-runs when nothing in the
   source content actually changed.
 
 Every other field (name, displayName, description, author, homepage,
 repository, license, keywords, defaultEnabled, skills, and the remaining
 metadata fields) is carried through from the template unchanged, in its
-original key order -- this script does not know or need to know what those
+original key order. This script does not know or need to know what those
 fields mean; it only knows how to compute `version` and `agents`, and (with
 --path-prefix) rewrite path-shaped fields.
 
@@ -52,8 +52,8 @@ Necessary because Claude Code ignores an agent's own `mcpServers:`
 frontmatter when that agent is loaded from a plugin (unlike a standalone
 `.claude/agents/` install, where `konductor install --harness claude`
 already renders `mcpServers:` per agent from the same
-dependencies.mcpRegistry source -- see cli/konductor-rs/src/cli/synth/
-claude.rs's own module docstring) -- so the plugin needs this file to
+dependencies.mcpRegistry source. See cli/konductor-rs/src/cli/synth/
+claude.rs's own module docstring. So the plugin needs this file to
 declare the identical servers at the plugin level instead. Two agents
 declaring the SAME server name with DIFFERENT definitions is an error, not
 a silently-resolved conflict: which one wins would depend on directory
@@ -65,7 +65,7 @@ consistency even though it is filtered out of the written .mcp.json.
 
 --bundled-mcp-servers (optional) is a comma-separated allowlist that
 filters the union computed above down to only the servers Konductor
-actually packages -- MCP servers are bring-your-own by default (the user
+actually packages. MCP servers are bring-your-own by default (the user
 configures them under the same name the agent's tool grant already
 names), and today only aws-mcp is packaged for Claude Code. Sourced from
 scripts/claude-plugin-mcp-servers.json's "bundled" object (keys only),
@@ -73,21 +73,21 @@ the single source of truth this flag and `konductor synth
 --claude-bundled-mcp-servers` (cli/konductor-rs/src/cli.rs) both read, so
 the Rust-side agent-file rendering and this script's plugin-level
 .mcp.json never disagree about which servers are packaged. Omitting it
-is an empty allowlist -- .mcp.json's "mcpServers" is written empty --
+is an empty allowlist: .mcp.json's "mcpServers" is written empty,
 matching `--claude-bundled-mcp-servers`'s own documented default.
 
 --bundled-mcp-config (optional) points at that same
 scripts/claude-plugin-mcp-servers.json file (or a compatible one) to
 source the actual launch DEFINITION (command/args/url) for each
 allowlisted server from its "bundled" object, instead of from the
-agent-spec union computed above -- so the pinned command Konductor
+agent-spec union computed above, so the pinned command Konductor
 recommends always wins over whatever an individual agent spec's own
 dependencies.mcpRegistry entry happens to say for that server. A name
 present in --bundled-mcp-servers but absent from this file's "bundled"
 object still falls back to the agent-spec union unchanged.
 
 Called by scripts/generate-claude-plugin.sh and
-scripts/assemble-claude-plugin-branch.sh -- not meant to be run directly.
+scripts/assemble-claude-plugin-branch.sh. Not meant to be run directly.
 """
 import argparse
 import json
@@ -100,7 +100,7 @@ DEFAULT_PREFIX = "./generated/claude-plugin/"
 # "command"/"args" are required (the launch shape every entry uses today);
 # "url" is optional and documented here for a future HTTP-based bundled
 # server, matching the third field of the Rust side's McpServerDef struct
-# (cli/konductor-rs/src/cli/synth/parser.rs) -- no other key is allowed.
+# (cli/konductor-rs/src/cli/synth/parser.rs). No other key is allowed.
 _BUNDLED_CONFIG_ENTRY_KEYS = {"command", "args", "url"}
 
 
@@ -108,7 +108,7 @@ def _validate_bundled_config(config_bundled) -> str | None:
     """Validates the shape of --bundled-mcp-config's top-level "bundled"
     value. Returns None on success, or a human-readable error string
     describing the first shape violation found (the caller prints it to
-    stderr and exits non-zero) -- never raises, so a malformed config
+    stderr and exits non-zero). Never raises, so a malformed config
     fails cleanly instead of with a Python traceback."""
     if not isinstance(config_bundled, dict):
         return (
@@ -189,7 +189,7 @@ def main() -> int:
         help=(
             "scripts/claude-plugin.template.json (or a compatible file) to use as the "
             "base for every field other than version/agents. Its own version/agents "
-            "values are placeholders always overwritten -- kept in the template only "
+            "values are placeholders always overwritten, kept in the template only "
             "so the rendered output preserves their original key position."
         ),
     )
@@ -250,7 +250,7 @@ def main() -> int:
             "Comma-separated allowlist of dependencies.mcpRegistry server names to "
             "include in --mcp-output (e.g. 'aws-mcp'). Servers not in this list are "
             "still validated for cross-spec definition conflicts, but dropped from "
-            "the written .mcp.json -- see scripts/claude-plugin-mcp-servers.json, "
+            "the written .mcp.json. See scripts/claude-plugin-mcp-servers.json, "
             "the file this list is normally sourced from. Only meaningful together "
             "with --agent-specs-dir/--mcp-output. Omitting it is an empty "
             "allowlist, matching --claude-bundled-mcp-servers' own default on the "
@@ -267,7 +267,7 @@ def main() -> int:
             "launch definition (command/args/url). When given, the definition "
             "written to --mcp-output for each allowlisted name that also appears "
             "in this file's \"bundled\" object comes from HERE, not from the union "
-            "of agent specs' own dependencies.mcpRegistry entries -- so the launch "
+            "of agent specs' own dependencies.mcpRegistry entries, so the launch "
             "command/args/pin this file declares always wins over whatever an "
             "individual agent spec happens to say for that same server name. A "
             "name only present in --bundled-mcp-servers but absent from this "

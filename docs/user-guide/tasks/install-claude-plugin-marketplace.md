@@ -21,10 +21,10 @@ add below has nothing to fetch.
 
 | Requirement | Verify with |
 | --- | --- |
-| Claude Code installed and authenticated | `claude --version` — agent teams need **v2.1.178 or later**, same as [Install for Claude Code](install-claude-code.md) |
+| Claude Code installed and authenticated | `claude --version`. Agent teams need **v2.1.178 or later**, same as [Install for Claude Code](install-claude-code.md) |
 | Git on your `PATH` | `git --version` |
 
-You do **not** need the `konductor` CLI for this path — the plugin marketplace mechanism
+You do **not** need the `konductor` CLI for this path. The plugin marketplace mechanism
 downloads and registers everything directly from GitHub.
 
 ---
@@ -39,7 +39,7 @@ downloads and registers everything directly from GitHub.
 
 This reads `.claude-plugin/marketplace.json` from the `main` branch of
 [aws-solutions/konductor](https://github.com/aws-solutions/konductor) and registers a
-marketplace named `konductor`. That manifest lists one plugin — also named `konductor` — whose
+marketplace named `konductor`. That manifest lists one plugin, also named `konductor`, whose
 actual content is fetched from this repository's separate `claude-plugin` branch (a flat tree
 with no `generated/` nesting; see
 [`generated/claude-plugin/README.md`](../../../generated/claude-plugin/README.md) for how that
@@ -51,7 +51,7 @@ branch gets built).
 /plugin install konductor@konductor
 ```
 
-The `konductor@konductor` form is `<plugin-name>@<marketplace-name>` — both happen to be named
+The `konductor@konductor` form is `<plugin-name>@<marketplace-name>`. Both happen to be named
 `konductor` here, since the marketplace has exactly one plugin. On success, Claude Code reports
 the plugin as installed and lists its agents.
 
@@ -70,14 +70,14 @@ Or for a single non-interactive request, routed through the orchestrator:
 claude --agent konductor:konductor -p "Create a threat model for a public REST API backed by DynamoDB."
 ```
 
-Every specialist is reachable the same way — `konductor:k-architect`, `konductor:k-developer`,
+Every specialist is reachable the same way: `konductor:k-architect`, `konductor:k-developer`,
 `konductor:k-browser`, and so on.
 
 ### 4. Enable agent-teams mode and grant tool permissions
 
 Plugin agents are ordinary Claude Code subagents once installed, so they need the same two
-settings a standalone install does — see
-[Install for Claude Code, steps 2–3](install-claude-code.md#2-enable-agent-teams-mode) for the
+settings a standalone install does. See
+[Install for Claude Code, steps 2-3](install-claude-code.md#2-enable-agent-teams-mode) for the
 exact environment variable and the `permissions.allow` block. Nothing about installing via the
 plugin marketplace changes what those two settings need to contain.
 
@@ -90,7 +90,7 @@ plugin marketplace changes what those two settings need to contain.
 ```
 
 Re-fetches the `claude-plugin` branch's current content. There is no separate `konductor update`
-step to run — that CLI command only manages a CLI-tracked install (`~/.konductor/installs`),
+step to run. That CLI command only manages a CLI-tracked install (`~/.konductor/installs`),
 which a plugin-marketplace install never creates an entry in.
 
 To remove it:
@@ -108,7 +108,7 @@ To remove it:
 | Plugin marketplace (this page) | `konductor:konductor` | `konductor:k-architect` |
 | Standalone (`konductor install --harness claude`) | `konductor` | `k-architect` |
 
-The `konductor:` prefix is Claude Code's own plugin-namespacing convention — every agent a plugin
+The `konductor:` prefix is Claude Code's own plugin-namespacing convention. Every agent a plugin
 ships is addressed as `<plugin-name>:<agent-name>`, whether or not the plugin name and the agent
 name happen to collide (as they do for the orchestrator here). If you have documentation, scripts,
 or muscle memory built around the bare `konductor`/`k-architect` names from a standalone install,
@@ -118,23 +118,23 @@ budget a moment to adjust them.
 
 ## MCP servers: mostly bring-your-own, one exception
 
-The plugin ships a plugin-level `.mcp.json` declaring **AWS MCP** (`aws-mcp`) — Konductor's one
+The plugin ships a plugin-level `.mcp.json` declaring **AWS MCP** (`aws-mcp`), Konductor's one
 packaged MCP server, because `k-architect` and `k-developer` depend on it closely enough to ship
 pre-wired. The package (`mcp-proxy-for-aws-cli`) and args match the [Agent Toolkit
 for AWS](https://github.com/aws/agent-toolkit-for-aws)'s own recommended config; Konductor keeps
 its own `aws-mcp` server key rather than the toolkit README's `aws`, for continuity with AWS's
-getting-started docs, OAuth commands, and existing configs — this repo does
+getting-started docs, OAuth commands, and existing configs. This repo does
 not invent its own. It launches automatically once you've installed the plugin; install `uvx`
 and configure AWS credentials (`~/.aws/credentials` or environment variables) so it has
-something to authenticate with — both agents work without credentials, just without AWS
+something to authenticate with. Both agents work without credentials, just without AWS
 lookups. The whole server is granted (`mcp__aws-mcp__*`), every tool it exposes, including the
-AWS-API-acting ones (`aws___run_script`, `aws___get_presigned_url`, `aws___get_tasks`) — use the
+AWS-API-acting ones (`aws___run_script`, `aws___get_presigned_url`, `aws___get_tasks`). Use the
 `aws:ViaAWSMCPService`/`aws:CalledViaAWSMCP` IAM condition keys (see [Install for Claude
 Code's Optional integrations](install-claude-code.md#optional-integrations)) to scope what an
 agent-initiated call can do under your own credentials. The plugin build also rewrites the
 granted tool to its real plugin-scoped name Claude Code resolves for a plugin
 subagent (`mcp__plugin_konductor_aws-mcp__*`, not the bare
-`mcp__aws-mcp__*` a standalone install uses) — see
+`mcp__aws-mcp__*` a standalone install uses). See
 [`generated/claude-plugin/README.md`](../../../generated/claude-plugin/README.md#plugin-scoped-mcp-tool-names-resolved-for-bundled-servers)
 for how that was confirmed.
 
@@ -164,9 +164,9 @@ for the equivalent Kiro CLI setup.
 
 ## Related
 
-- [Install for Claude Code](install-claude-code.md) — the CLI-driven standalone install path
-- [Install for Kiro CLI](install-kiro-cli.md) — the other runtime
-- [`generated/claude-plugin/README.md`](../../../generated/claude-plugin/README.md) — how the
+- [Install for Claude Code](install-claude-code.md): the CLI-driven standalone install path
+- [Install for Kiro CLI](install-kiro-cli.md): the other runtime
+- [`generated/claude-plugin/README.md`](../../../generated/claude-plugin/README.md): how the
   `claude-plugin` branch this page installs from actually gets built
 - Project docs site: <https://aws-solutions.github.io/konductor/>
 

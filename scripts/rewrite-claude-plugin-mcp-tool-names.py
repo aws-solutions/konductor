@@ -4,7 +4,7 @@
 files from their bare standalone-install form (`mcp__<server>__<tool>`) to
 the real plugin-scoped tool name Claude Code actually resolves when that
 agent is loaded from a plugin: `mcp__plugin_<pluginName>_<server>__<tool>`
-(confirmed live against a local, zero-network mock MCP server -- hyphens in
+(confirmed live against a local, zero-network mock MCP server; hyphens in
 both the plugin name and the server name are preserved literally, never
 normalized to underscores).
 
@@ -22,18 +22,18 @@ would never be able to call it.
 
 Scope: ONLY servers named in --bundled-mcp-servers (sourced from
 scripts/claude-plugin-mcp-servers.json's "bundled" list, e.g. "aws-mcp")
-are rewritten. Everything else -- e.g. k-browser's playwright-mcp -- is
+are rewritten. Everything else (e.g. k-browser's playwright-mcp) is
 bring-your-own: the user configures it themselves under the bare
 `playwright-mcp` name on every harness, so its `mcp__playwright-mcp__*`
 grant is left untouched here, matching the standalone install's own bare
 grant for the same server.
 
 Scope: ONLY the YAML frontmatter block (between the two `---` fences) of
-each *.md file is rewritten -- never the agent's own prompt body below it,
+each *.md file is rewritten, never the agent's own prompt body below it,
 even if that body happens to mention the same substring in prose. Within
 the frontmatter, every list/scalar value under `tools:`, `allowedTools:`,
 and `disallowedTools:` is rewritten (today, in practice, only `tools:` is
-ever populated for k-architect/k-developer -- see this script's own test
+ever populated for k-architect/k-developer. See this script's own test
 file for the empirical confirmation that `allowedTools:`/`disallowedTools:`
 are unmodeled and `hooks:` is unset for every agent this repo ships). This
 is implemented as a literal substring replacement, not a YAML parse: the
@@ -48,7 +48,7 @@ output is a no-op the second time, since the OLD prefix
 
 Called by scripts/generate-claude-plugin.sh, after
 render-claude-plugin-json.py has written .claude-plugin/plugin.json (this
-script's own --plugin-json source for the plugin name) -- not meant to be
+script's own --plugin-json source for the plugin name). Not meant to be
 run standalone, though it works that way too.
 """
 import argparse
@@ -73,7 +73,7 @@ def _split_frontmatter(text: str):
     re-joining frontmatter + body always reproduces the original file
     when frontmatter is unchanged. `has_frontmatter` is False (and
     frontmatter is "") when `text` does not open with a `---` fence on
-    its first line -- callers must leave such files untouched rather
+    its first line. Callers must leave such files untouched rather
     than guessing at a fence that isn't there."""
     lines = text.split("\n")
     if not lines or lines[0].strip() != FRONTMATTER_FENCE:
@@ -118,7 +118,7 @@ def main() -> int:
         required=True,
         type=Path,
         help="Rendered .claude-plugin/plugin.json to read the plugin's \"name\" field "
-        "from -- the plugin name comes from here, never a hardcoded string",
+        "from. The plugin name comes from here, never a hardcoded string",
     )
     parser.add_argument(
         "--bundled-mcp-servers",
@@ -138,7 +138,7 @@ def main() -> int:
     bundled_servers = [s.strip() for s in args.bundled_mcp_servers.split(",") if s.strip()]
     if not bundled_servers:
         print("notice: [rewrite-claude-plugin-mcp-tool-names] no bundled MCP servers "
-              "configured -- nothing to rewrite")
+              "configured; nothing to rewrite")
         return 0
 
     try:

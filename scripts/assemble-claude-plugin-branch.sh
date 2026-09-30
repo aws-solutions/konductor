@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: Apache-2.0
 #
-# assemble-claude-plugin-branch.sh -- build the flat plugin tree published to
+# assemble-claude-plugin-branch.sh: build the flat plugin tree published to
 # the `claude-plugin` branch by .github/workflows/release.yml's
 # `publish-claude-plugin` job. Reuses `scripts/generate-claude-plugin.sh`
 # (and therefore `make claude-plugin`) for all of the synth/install/render
 # work; this script only reshapes that output into the flat layout Claude
-# Code expects when installing a plugin straight from a repository ref --
+# Code expects when installing a plugin straight from a repository ref:
 # `.claude-plugin/plugin.json`, `agents/`, and `skills/` all at the tree
 # root, with no `generated/claude-plugin/` nesting. See
 # https://code.claude.com/docs/en/plugins/marketplace-reference's `github`
@@ -15,45 +15,45 @@
 # Usage: assemble-claude-plugin-branch.sh --out <dir>
 #
 #   --out <dir>   Required. Directory to assemble the flat plugin tree
-#                 into. Must not already exist -- this script creates it,
+#                 into. Must not already exist. This script creates it,
 #                 and refuses to overwrite one that's already there so a
 #                 caller can never mistake a stale prior assembly for a
 #                 fresh one.
 #
 # What ends up under <dir>:
-#   .claude-plugin/plugin.json   -- rendered with agents/skills paths
+#   .claude-plugin/plugin.json   : rendered with agents/skills paths
 #                                   rewritten to "./agents/..."/"./skills/"
 #                                   (see render-claude-plugin-json.py
 #                                   --path-prefix)
-#   .mcp.json                    -- the plugin-level MCP server declaration
+#   .mcp.json                    : the plugin-level MCP server declaration
 #                                   (https://code.claude.com/docs/en/plugins/
 #                                   components#mcp-servers), rendered by the
 #                                   same render-claude-plugin-json.py call as
 #                                   the union of every agents/*.agent-spec.json's
-#                                   dependencies.mcpRegistry entry, FILTERED to
+#                                   dependencies.mcpRegistry entry, filtered to
 #                                   scripts/claude-plugin-mcp-servers.json's
 #                                   "bundled" allowlist (--bundled-mcp-servers,
-#                                   below) -- today just aws-mcp; everything
+#                                   below; today just aws-mcp). Everything
 #                                   else (e.g. playwright-mcp) is bring-your-own
 #                                   and never written here. Needed because
 #                                   Claude Code ignores an agent's own
-#                                   `mcpServers:` frontmatter -- which the
-#                                   agents/*.md files below already carry --
+#                                   `mcpServers:` frontmatter (which the
+#                                   agents/*.md files below already carry)
 #                                   when that agent is loaded from a plugin.
-#   agents/*.md                  -- the same 11 files `make claude-plugin`
+#   agents/*.md                  : the same 11 files `make claude-plugin`
 #                                   writes to generated/claude-plugin/agents/,
 #                                   COPIED VERBATIM including
 #                                   generate-claude-plugin.sh's own
 #                                   plugin-scoped tool-name rewrite for
 #                                   bundled servers (see that script and
 #                                   scripts/rewrite-claude-plugin-mcp-tool-
-#                                   names.py) -- this script does not repeat
+#                                   names.py). This script does not repeat
 #                                   that rewrite itself.
-#   skills/<name>/                -- every native skills/*/SKILL.md
+#   skills/<name>/                : every native skills/*/SKILL.md
 #                                   directory from the repo root, PLUS every
 #                                   sop-*/SKILL.md directory
-#                                   generated/claude-plugin/skills/ holds --
-#                                   i.e. the union `.claude-plugin/plugin.json`
+#                                   generated/claude-plugin/skills/ holds:
+#                                   the union `.claude-plugin/plugin.json`
 #                                   would otherwise assemble via two separate
 #                                   fields (a default skills/ scan plus a
 #                                   sop-* addition), flattened into one real
@@ -63,11 +63,11 @@
 #                                   guard.sh (see that script for the
 #                                   collision guard between the two
 #                                   sources).
-#   README.md, LICENSE.txt        -- copied from the repo root unchanged
+#   README.md, LICENSE.txt        : copied from the repo root unchanged
 #
 # No `.claude-plugin/marketplace.json` is written here: the marketplace
 # manifest lives on `main` (see .claude-plugin/marketplace.json there),
-# pointing its plugin entry's `source` at this branch by `ref` -- it is not
+# pointing its plugin entry's `source` at this branch by `ref`. It is not
 # itself part of what gets published to this branch.
 set -euo pipefail
 
@@ -97,7 +97,7 @@ if [ -z "$OUT" ]; then
   exit 64
 fi
 if [ -e "$OUT" ]; then
-  echo "assemble-claude-plugin-branch.sh: $OUT already exists -- refusing to overwrite" >&2
+  echo "assemble-claude-plugin-branch.sh: $OUT already exists; refusing to overwrite" >&2
   exit 1
 fi
 
@@ -115,7 +115,7 @@ mkdir -p "$OUT/agents" "$OUT/skills" "$OUT/.claude-plugin"
 cp generated/claude-plugin/agents/*.md "$OUT/agents/"
 
 # Native skills/*/SKILL.md directories, PLUS every sop-*/SKILL.md
-# directory konductor install --harness claude produced -- see
+# directory konductor install --harness claude produced. See
 # generated/claude-plugin/README.md for why two different tools produce
 # these, and scripts/copy-skills-with-collision-guard.sh's own header for
 # the collision guard between the two sources (a sop-* name colliding
@@ -143,4 +143,4 @@ python3 "$REPO_ROOT/scripts/render-claude-plugin-json.py" \
   --bundled-mcp-config "$BUNDLED_MCP_CONFIG" \
   --output "$OUT/.claude-plugin/plugin.json"
 
-echo "=== [assemble-claude-plugin] Done -- flat plugin tree at $OUT ==="
+echo "=== [assemble-claude-plugin] Done: flat plugin tree at $OUT ==="
