@@ -1428,11 +1428,11 @@ mod tests {
             }],
             sops: vec![
                 model::SopDef {
-                    name: "k-plan".to_string(),
+                    name: "asdlc-plan".to_string(),
                     body: String::new(),
                 },
                 model::SopDef {
-                    name: "k-verify".to_string(),
+                    name: "asdlc-verify".to_string(),
                     body: String::new(),
                 },
             ],
@@ -1506,8 +1506,8 @@ mod tests {
             vec![
                 "  agent: k-example",
                 "  skill: code-review",
-                "  sop: k-plan",
-                "  sop: k-verify",
+                "  sop: asdlc-plan",
+                "  sop: asdlc-verify",
                 "  context: routing-rules.md",
             ]
         );

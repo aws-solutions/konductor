@@ -296,6 +296,7 @@ konductor/
 ├── LICENSE.txt            # Apache-2.0
 ├── NOTICE.txt             # Third-party attribution
 ├── SECURITY.md
+├── aim.json               # Package/plugin build metadata
 └── README.md
 ```
 
