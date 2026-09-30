@@ -21,7 +21,11 @@
         "subagents",
         "orchestration",
         "aws-solutions",
-        "software-development-lifecycle"
+        "software-development-lifecycle",
+        "multi agent orchestration",
+        "sdlc workflow",
+        "ai sdlc workflow",
+        "end to end development"
       ]
     }
   ]
