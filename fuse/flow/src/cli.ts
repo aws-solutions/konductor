@@ -22,7 +22,8 @@ const USAGE = `usage:
   fuse-flow status <slug>                       show every step's state
 
 workflows: a name is looked up as <name>.yml in .konductor/workflows/, ~/.konductor/workflows/,
-           then the workflows that ship with fuse-flow
+           then the workflows that ship with fuse-flow; in each, at the top level and in the
+           folders directly inside it (personal/, team/)
 state:     .konductor/workstreams/<slug>.yml
 env:       FUSE_SKILLS_DIR is searched first for the skill files steps name`;
 

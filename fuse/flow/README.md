@@ -75,6 +75,13 @@ Exit codes: 0 success, 1 refused (the reason is printed), 64 usage error.
   - A name is looked up as `<name>.yml` in the project's `.konductor/workflows/`, then in
     `~/.konductor/workflows/`, then in the workflows that ship with fuse-flow in
     [`workflows/`](workflows/). A team adds its own workflows to the first or second directory.
+  - In each of these directories, fuse-flow looks at the top level and in the folders directly
+    inside it, such as `personal/` and `team/`. The first directory that has the name wins. A name
+    found twice in the same directory is refused, and the message lists both files.
+  - You can edit the workflows in [`workflows/`](workflows/) or add your own there. Put personal
+    workflows that you do not want to share in `workflows/personal/`, which is gitignored. To share
+    workflows with a group but not with everybody, keep them in a separate repository and add a
+    symlink to it named `workflows/team`, which is gitignored as well.
   - fuse-flow reads the workflow again on every command, so an edit takes effect straight away, and
     a step added to it is pending.
 - `.konductor/workstreams/<slug>.yml` is the state of one workstream: the workflow it follows, and

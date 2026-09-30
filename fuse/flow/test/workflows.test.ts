@@ -4,7 +4,7 @@
 // workflows shipped in fuse/flow/workflows.
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { FLOW_DIR, REPO_SKILLS, Repo } from "./helpers";
 
@@ -57,6 +57,27 @@ describe("choosing the workflow", () => {
     expect(repo.ok("status", "feat")).toStartWith("workstream feat (from-project)");
 
     expect(repo.refused("start", "other", "--workflow", "nope")).toContain('no workflow named "nope" in');
+  });
+
+  test("a name is also found in a subfolder of a workflows directory, including a symlinked one", () => {
+    repo.write(".konductor/workflows/personal/mine.yml", ONE_STEP.replace("name: one", "name: personal"));
+    repo.ok("start", "feat", "--workflow", "mine");
+    expect(repo.state("feat").workflow).toBe("mine");
+    expect(repo.ok("status", "feat")).toStartWith("workstream feat (personal)");
+
+    repo.write("team-repo/shared.yml", ONE_STEP.replace("name: one", "name: team"));
+    symlinkSync(join(repo.root, "team-repo"), join(repo.root, ".konductor/workflows/team"));
+    repo.ok("start", "other", "--workflow", "shared");
+    expect(repo.ok("status", "other")).toStartWith("workstream other (team)");
+  });
+
+  test("a name found twice in one workflows directory is refused with both paths", () => {
+    const top = repo.write(".konductor/workflows/mine.yml", ONE_STEP);
+    const personal = repo.write(".konductor/workflows/personal/mine.yml", ONE_STEP);
+    const out = repo.refused("start", "feat", "--workflow", "mine");
+    expect(out).toContain('workflow name "mine" is ambiguous');
+    expect(out).toContain(top);
+    expect(out).toContain(personal);
   });
 
   test("workstreams in one repository can follow different workflows", () => {

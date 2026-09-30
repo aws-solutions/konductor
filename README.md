@@ -82,6 +82,8 @@ The workflow definitions in [`fuse/flow/workflows/`](fuse/flow/workflows/) are t
 
 For a single task, ask the session to use a skill directly; see [Usage Examples](#usage-examples).
 
+You can edit these workflows or add your own in the same folder. Personal workflows that you do not want to share go in `fuse/flow/workflows/personal/`, which is gitignored. To share workflows with a group but not with everybody, keep them in a separate repository and add a symlink to it named `fuse/flow/workflows/team`, which is gitignored too. fuse-flow finds a workflow by name in either folder; [`fuse/flow/README.md`](fuse/flow/README.md) gives the lookup order.
+
 ## Skills
 
 Skills are modular knowledge packages that a session loads when a task needs them. On Claude Code, installed skills live in `.claude/skills/`: only their names and descriptions are in context at session start, and the full content loads when a skill is invoked. On Kiro CLI, skills are installed to `.kiro/skills/`, where Kiro CLI's native skill discovery finds them. (A package that ships agent specs installs its skills under `.konductor/skills/` instead, so that each agent sees only the skills it declares; this package ships none.) The package ships **78 skills** across 8 capability areas:
