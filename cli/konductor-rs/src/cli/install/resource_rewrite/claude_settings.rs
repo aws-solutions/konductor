@@ -537,38 +537,40 @@ pub(super) fn apply_claude_settings_grant(
 // not START -- both are real, distinct hooks legitimately in play in
 // the same file for two different purposes).
 //
-// Scope boundary (disclosed, not silent), reachable path: this pass is
-// wired ONLY into `KiroCliInstallStrategy`'s own `AgentInstallPhase`
-// (`phases.rs`), immediately after `apply_claude_settings_grant`
-// succeeds there -- the dual-marker install (a target where BOTH
-// `.kiro` and `.claude` already exist, e.g. a reinstall/update; per
-// that phase's own tests, "not hypothetical, this package's own
-// workspace is set up exactly this way"). Two narrowings follow from
-// reusing that exact call site rather than adding a new one:
-// - Gated the same way the grant is: `any_mcp_server_injected &&
-//   detect_runtimes(target_dir).has(Runtime::ClaudeCode)`, AND fires
-//   only when the grant call immediately before it succeeded (not
-//   independently) -- so a foreign, deny-shadowed, or malformed
-//   pre-existing `settings.json` that skips the grant also skips
-//   hooks wiring for that same run, leaving the foreign file
-//   completely untouched (verified by
+// Scope, two reachable paths:
+// - `KiroCliInstallStrategy`/`KiroCliV3InstallStrategy` (`phases.rs`'s
+//   `AgentInstallPhase`, `kiro_cli_v3.rs`): wired via the combined
+//   `apply_claude_settings_grant_and_hooks`, immediately after
+//   `apply_claude_settings_grant` succeeds there, gated on
+//   `any_mcp_server_injected && detect_runtimes(target_dir).has(Runtime::
+//   ClaudeCode)` -- the dual-marker install (a target where BOTH `.kiro`
+//   and `.claude` already exist, e.g. a reinstall/update; per that
+//   phase's own tests, "not hypothetical, this package's own workspace
+//   is set up exactly this way"). Fires only when the grant call
+//   immediately before it succeeded (not independently) -- so a
+//   foreign, deny-shadowed, or malformed pre-existing `settings.json`
+//   that skips the grant also skips hooks wiring for that same run,
+//   leaving the foreign file completely untouched (verified by
 //   `install_from_local_does_not_abort_when_claude_grant_fails_on_foreign_content`
 //   in `kiro_cli.rs`) rather than partially mutating it via a second,
 //   independent write.
-// - `ClaudeInstallStrategy` (`claude.rs`) -- the OTHER real install
-//   path, reachable for a `.claude`-only target with no pre-existing
-//   `.kiro` -- does NOT get this pass in this revision. Wiring it
-//   there needs its own write-ahead-plan entry, and `claude.rs`'s
-//   `plan_all_files` is also the exact function `would_fail_as_noop`
-//   uses to decide "nothing to install" -- an unconditional new planned
-//   entry there would make that check permanently non-empty, breaking
-//   its own "no synthed agent or skill files" error path. A real fix
-//   needs a plan function scoped to `install_from_local`'s own
-//   write-ahead call, separate from the no-op pre-check's, which is a
-//   real follow-up left out of this revision rather than risking that
-//   existing, separately-tested contract.
-// Widening either boundary is real follow-up work, not implemented
-// here.
+// - `ClaudeInstallStrategy` (`claude.rs`), for a pure Claude-Code-only
+//   install with no pre-existing `.kiro` marker: wired via
+//   `apply_claude_settings_hooks_only` below, called directly rather
+//   than through `apply_claude_settings_grant_and_hooks` -- this
+//   install path never registers `konductor-skills` as an MCP server
+//   for Claude Code at all (`claude.rs`'s own `install_agents` does a
+//   verbatim Markdown copy, no `mcpServers` injection, no
+//   `resource_rewrite` pass), so the `permissions.allow` grant
+//   `apply_claude_settings_grant` would write is legitimately inert
+//   here: it would authorize calls to a server nothing ever registers.
+//   Gated only on `!no_telemetry`, with its own scoped write-ahead-plan
+//   function (`plan_claude_settings_hooks_only` in `claude.rs`) rather
+//   than folding into `claude.rs`'s own `plan_all_files` -- that
+//   function is also what `would_fail_as_noop` uses to decide "nothing
+//   to install", so an unconditional planned entry there would make
+//   that check permanently non-empty, breaking its own "no synthed
+//   agent or skill files" error path.
 //
 // Kiro CLI: no equivalent hook-registration point exists in this
 // codebase today for the V2 (JSON agent-spec) surface. `hooks.stop`/
@@ -1084,6 +1086,244 @@ pub(super) fn apply_claude_settings_hooks(
         CLAUDE_SETTINGS_RELATIVE_PATH.to_string(),
         super::super::artifact::sha256_hex(&bytes),
     ))
+}
+
+/// Strips the Konductor telemetry hook blocks from
+/// `<target_dir>/.claude/settings.json`, leaving every other hook,
+/// event, and top-level key untouched. The inverse of
+/// `merge_claude_settings_hooks`, and the counterpart a `--no-telemetry`
+/// install needs so a hook a prior telemetry-enabled install wired does
+/// not linger.
+///
+/// A telemetry block is identified structurally, not by position: a
+/// block under one of `entries`' events whose inner `hooks` array
+/// carries a command whose stable suffix (`stable_hook_command_suffix`)
+/// equals `__telemetry-hook <event_type_arg>` for that event. This
+/// matches regardless of the leading binary path, so a block wired by a
+/// since-relocated binary is still recognized and removed. A block's
+/// matching inner entry is removed; a block left with an empty inner
+/// `hooks` array is dropped whole; an event left with an empty array is
+/// removed; and a now-empty top-level `hooks` object is removed too --
+/// so a settings file Konductor populated only with telemetry hooks is
+/// returned to the shape it had before, rather than left with empty
+/// scaffolding.
+///
+/// `.claude/settings.json` is a SHARED file (see this module's own
+/// "V3/Claude Code permission grant" section), so this never deletes
+/// the file itself and never touches a foreign hook, a foreign event,
+/// or any other top-level key. Mirrors `merge_claude_settings_hooks`'s
+/// symlink safety, advisory lock, mode preservation, and
+/// skip-write-when-unchanged behavior exactly -- when there is nothing
+/// to strip, the file's own bytes are returned unchanged and its mtime
+/// is not bumped.
+///
+/// Returns the bytes now on disk (freshly written when something was
+/// stripped, the file's own pre-existing bytes otherwise), plus whether
+/// the file exists at all -- `Ok(None)` when there is no settings file
+/// to strip from, so the caller can skip producing a `ManifestFile`
+/// entry for a file that was never there.
+fn remove_claude_settings_hooks(
+    target_dir: &Path,
+    entries: &[TelemetryHookEntry],
+) -> Result<Option<Vec<u8>>, ClaudeGrantError> {
+    let settings_relative = Path::new(CLAUDE_SETTINGS_RELATIVE_PATH);
+    let claude_dir_relative = settings_relative
+        .parent()
+        .expect("CLAUDE_SETTINGS_RELATIVE_PATH always has a parent (\".claude\")");
+    let claude_dir = target_dir.join(claude_dir_relative);
+    reject_symlink(&claude_dir, "directory")?;
+
+    let settings_path = target_dir.join(settings_relative);
+    reject_symlink(&settings_path, "file")?;
+
+    // Nothing to strip from a file that does not exist -- and no reason
+    // to take the lock or create `.claude/` just to discover that.
+    if !settings_path.is_file() {
+        return Ok(None);
+    }
+
+    // Same advisory lock the merge side holds, for the same reason: this
+    // read-modify-write must not interleave with another writer of the
+    // same shared file.
+    let _lock_guard = crate::cli::config_lock::acquire_named(&claude_dir, ".settings.lock")
+        .map_err(|source| format!("failed to lock {}: {source}", claude_dir.display()))?;
+
+    let original_mode = std::fs::metadata(&settings_path)
+        .map_err(|e| format!("failed to stat {}: {e}", settings_path.display()))?
+        .permissions()
+        .mode();
+    let original_text = std::fs::read_to_string(&settings_path)
+        .map_err(|e| format!("failed to read {}: {e}", settings_path.display()))?;
+
+    let mut root: serde_json::Value = serde_json::from_str(&original_text).map_err(|e| {
+        format!(
+            "failed to parse {} as JSON: {e} -- fix or remove the file before installing",
+            settings_path.display()
+        )
+    })?;
+
+    let Some(root_obj) = root.as_object_mut() else {
+        return Err(format!(
+            "{} does not contain a JSON object at its top level -- fix or remove the file \
+             before installing",
+            settings_path.display()
+        )
+        .into());
+    };
+
+    // A file with no "hooks" key has nothing to strip. Absence is fine
+    // (return unchanged); a non-object "hooks" is the same malformed
+    // shape the merge side rejects.
+    let Some(hooks_val) = root_obj.get_mut("hooks") else {
+        return Ok(Some(original_text.into_bytes()));
+    };
+    let Some(hooks_obj) = hooks_val.as_object_mut() else {
+        return Err(format!(
+            "{}'s \"hooks\" key is not a JSON object -- fix or remove the file before installing",
+            settings_path.display()
+        )
+        .into());
+    };
+
+    let mut any_removed = false;
+    for entry in entries {
+        let wanted_suffix = format!("__telemetry-hook {}", entry.event_type_arg);
+        let Some(event_val) = hooks_obj.get_mut(entry.event) else {
+            continue;
+        };
+        let Some(event_array) = event_val.as_array_mut() else {
+            return Err(format!(
+                "{}'s \"hooks.{}\" key is not a JSON array -- fix or remove the file before \
+                 installing",
+                settings_path.display(),
+                entry.event
+            )
+            .into());
+        };
+
+        for block in event_array.iter_mut() {
+            let Some(inner) = block.get_mut("hooks").and_then(|h| h.as_array_mut()) else {
+                continue;
+            };
+            let before = inner.len();
+            inner.retain(|hook| {
+                !hook
+                    .get("command")
+                    .and_then(|c| c.as_str())
+                    .and_then(stable_hook_command_suffix)
+                    .is_some_and(|suffix| suffix == wanted_suffix)
+            });
+            if inner.len() != before {
+                any_removed = true;
+            }
+        }
+
+        // Drop blocks whose inner "hooks" array is now empty (Konductor
+        // wrote them as single-entry blocks, so an emptied one was ours
+        // alone), then drop the event entirely if nothing is left.
+        event_array.retain(|block| {
+            block
+                .get("hooks")
+                .and_then(|h| h.as_array())
+                .is_none_or(|inner| !inner.is_empty())
+        });
+        if event_array.is_empty() {
+            hooks_obj.remove(entry.event);
+        }
+    }
+
+    // A "hooks" object left empty by the strips above was scaffolding
+    // Konductor created -- remove it so the file returns to its
+    // pre-install shape rather than keeping an empty "hooks": {}.
+    if hooks_obj.is_empty() {
+        root_obj.remove("hooks");
+    }
+
+    if !any_removed {
+        return Ok(Some(original_text.into_bytes()));
+    }
+
+    let mut bytes = serde_json::to_vec_pretty(&root)
+        .map_err(|e| format!("failed to serialize {}: {e}", settings_path.display()))?;
+    bytes.push(b'\n');
+
+    reject_symlink(&claude_dir, "directory")?;
+    reject_symlink(&settings_path, "file")?;
+    crate::cli::atomic_write::write_atomic_with_mode(&settings_path, &bytes, original_mode)
+        .map_err(|e| format!("failed to write {}: {e}", settings_path.display()))?;
+
+    Ok(Some(bytes))
+}
+
+/// Performs ONLY the telemetry-hook wiring (`apply_claude_settings_hooks`)
+/// for a whole install run, gated on `!no_telemetry`, with no
+/// accompanying `permissions.allow` grant -- unlike
+/// `apply_claude_settings_grant_and_hooks`, which always performs the
+/// grant first and only wires hooks after that grant succeeds.
+///
+/// For `ClaudeInstallStrategy` (`claude.rs`), a pure Claude-Code-only
+/// install: that path never registers `konductor-skills` as an MCP
+/// server for Claude Code (`claude.rs`'s own `install_agents` is a
+/// verbatim Markdown copy, no `mcpServers` injection), so the
+/// `permissions.allow` grant would be inert there -- calling
+/// `apply_claude_settings_grant_and_hooks` would write a real,
+/// misleading grant for a server nothing on this install path ever
+/// registers. Deliberately non-fatal, same rationale as
+/// `apply_claude_settings_grant_and_hooks`: a symlinked
+/// `.claude`/`settings.json` or a malformed pre-existing settings.json
+/// must not abort an otherwise-successful Claude install.
+pub(in crate::cli::install) fn apply_claude_settings_hooks_only(
+    target_dir: &Path,
+    no_telemetry: bool,
+) -> Option<ManifestFile> {
+    if no_telemetry {
+        // Strip any telemetry hook a prior telemetry-enabled install
+        // wired into this shared settings file, rather than merely
+        // skipping the write -- otherwise the hook lingers and keeps
+        // firing despite the opt-out. Non-fatal, same rationale as the
+        // wiring branch below.
+        //
+        // Always returns `None`: this run deliberately owns no
+        // telemetry hook, so `.claude/settings.json` must not appear in
+        // this strategy's manifest slot -- and `plan_claude_settings_
+        // hooks_only` correctly plans nothing for it under
+        // `no_telemetry`, so pushing a `ManifestFile` here would fail
+        // `attach_provenance`'s "copied but not planned" check. The
+        // strip is a disk side effect on a shared, foreign-owned file
+        // (which `uninstall` never deletes wholesale regardless), not a
+        // tracked artifact of this install.
+        match remove_claude_settings_hooks(target_dir, TELEMETRY_HOOK_ENTRIES) {
+            Ok(_) => {}
+            Err(message) => eprintln!(
+                "warning: could not remove a previously-installed telemetry hook from this \
+                 Claude Code install: {message}"
+            ),
+        }
+        return None;
+    }
+    match apply_claude_settings_hooks(target_dir) {
+        Ok((path, sha256)) => Some(ManifestFile {
+            path,
+            sha256: Some(sha256),
+            provenance: Provenance::Created,
+        }),
+        Err(ClaudeGrantError::DenyShadowed(_)) => {
+            // No hooks analog of the permissions side's deny-shadow --
+            // `merge_claude_settings_hooks` never returns this variant
+            // (see `merge_claude_settings_hooks`'s own doc comment).
+            // Unreachable in practice; handled defensively rather than
+            // with an `unreachable!()` that would panic if that ever
+            // changes.
+            None
+        }
+        Err(ClaudeGrantError::Other(message)) => {
+            eprintln!(
+                "warning: telemetry hooks were not wired for this Claude Code install: \
+                 {message}"
+            );
+            None
+        }
+    }
 }
 
 /// Performs the additive, `.claude`-marker-gated Claude/V3 settings.json
@@ -2262,5 +2502,118 @@ mod tests {
         );
         fs::remove_dir_all(&dir).ok();
         fs::remove_dir_all(&real_elsewhere).ok();
+    }
+
+    // ── --no-telemetry strips only Konductor's telemetry hooks ────────
+
+    #[test]
+    fn remove_claude_settings_hooks_strips_konductor_entries_and_preserves_foreign() {
+        let dir = scratch_dir("claude-hooks-remove-preserve");
+        fs::create_dir_all(dir.join(".claude")).unwrap();
+        // Wire Konductor's own telemetry hooks first.
+        apply_claude_settings_hooks(&dir).expect("seed wiring must succeed");
+
+        // Seed a foreign SessionStart hook and an unrelated top-level
+        // key alongside them.
+        let settings_path = dir.join(CLAUDE_SETTINGS_RELATIVE_PATH);
+        let mut root: serde_json::Value =
+            serde_json::from_slice(&fs::read(&settings_path).unwrap()).unwrap();
+        root["hooks"]["SessionStart"]
+            .as_array_mut()
+            .unwrap()
+            .push(serde_json::json!({
+                "matcher": "startup",
+                "hooks": [{"type": "command", "command": "/usr/bin/env my-own-hook"}]
+            }));
+        root["permissions"] = serde_json::json!({"allow": ["Read(*)"]});
+        fs::write(&settings_path, serde_json::to_vec_pretty(&root).unwrap()).unwrap();
+
+        remove_claude_settings_hooks(&dir, TELEMETRY_HOOK_ENTRIES).expect("removal must succeed");
+
+        let after: serde_json::Value =
+            serde_json::from_slice(&fs::read(&settings_path).unwrap()).unwrap();
+        // The foreign SessionStart block survives; Konductor's is gone.
+        let session_start = after["hooks"]["SessionStart"].as_array().unwrap();
+        assert_eq!(
+            session_start.len(),
+            1,
+            "only the foreign SessionStart block may remain, got: {session_start:?}"
+        );
+        assert_eq!(
+            session_start[0]["hooks"][0]["command"],
+            serde_json::json!("/usr/bin/env my-own-hook")
+        );
+        // The SubagentStart event had only Konductor's block, so it is
+        // removed entirely.
+        assert!(
+            after["hooks"].get("SubagentStart").is_none(),
+            "an event left empty after the strip must be removed, got: {}",
+            after["hooks"]
+        );
+        // The unrelated top-level key is untouched.
+        assert_eq!(
+            after["permissions"],
+            serde_json::json!({"allow": ["Read(*)"]})
+        );
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn remove_claude_settings_hooks_removes_empty_hooks_scaffold() {
+        // A file whose ONLY hooks were Konductor's telemetry ones is
+        // returned to a shape with no "hooks" key at all.
+        let dir = scratch_dir("claude-hooks-remove-scaffold");
+        fs::create_dir_all(dir.join(".claude")).unwrap();
+        apply_claude_settings_hooks(&dir).expect("seed wiring must succeed");
+
+        remove_claude_settings_hooks(&dir, TELEMETRY_HOOK_ENTRIES).expect("removal must succeed");
+
+        let after: serde_json::Value =
+            serde_json::from_slice(&fs::read(dir.join(CLAUDE_SETTINGS_RELATIVE_PATH)).unwrap())
+                .unwrap();
+        assert!(
+            after.get("hooks").is_none(),
+            "a hooks object emptied by the strip must be removed, got: {after}"
+        );
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn remove_claude_settings_hooks_is_a_noop_when_no_file_exists() {
+        let dir = scratch_dir("claude-hooks-remove-absent");
+        fs::create_dir_all(dir.join(".claude")).unwrap();
+        let result = remove_claude_settings_hooks(&dir, TELEMETRY_HOOK_ENTRIES)
+            .expect("removing from an absent file must succeed");
+        assert!(
+            result.is_none(),
+            "an absent settings file has nothing to strip"
+        );
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn apply_claude_settings_hooks_only_with_no_telemetry_strips_a_prior_hook() {
+        // The install-level entry point: a telemetry-on wiring followed
+        // by a --no-telemetry reinstall leaves no telemetry hook behind
+        // and tracks nothing (returns None so the file stays out of the
+        // manifest slot).
+        let dir = scratch_dir("claude-hooks-only-transition");
+        fs::create_dir_all(dir.join(".claude")).unwrap();
+        apply_claude_settings_hooks_only(&dir, false)
+            .expect("telemetry-on wiring must produce an entry");
+
+        let tracked = apply_claude_settings_hooks_only(&dir, true);
+        assert!(
+            tracked.is_none(),
+            "a --no-telemetry run must not track .claude/settings.json in the manifest slot"
+        );
+        let after: serde_json::Value =
+            serde_json::from_slice(&fs::read(dir.join(CLAUDE_SETTINGS_RELATIVE_PATH)).unwrap())
+                .unwrap();
+        assert!(
+            after.get("hooks").is_none(),
+            "no telemetry hook may remain after the --no-telemetry reinstall, got: {after}"
+        );
+        fs::remove_dir_all(&dir).ok();
     }
 }

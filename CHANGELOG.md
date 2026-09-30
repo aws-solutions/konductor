@@ -18,6 +18,11 @@ not per individual commit.
   warning (instead of failing the install) when the running binary's own path can't be resolved.
   A `--no-telemetry` install or update removes a hook a prior telemetry-enabled run wrote (the v3
   file, or the v2 `agentSpawn` entry), and `uninstall` removes it too.
+- A standalone Claude-Code-only install (`ClaudeInstallStrategy`, no pre-existing Kiro CLI
+  marker) never wired the `SessionStart`/`SubagentStart` telemetry hooks into
+  `.claude/settings.json`, unlike the Kiro CLI v2/v3 dual-marker install paths. `konductor
+  install --harness claude` now wires those hooks too, gated on the same `!no_telemetry`
+  convention the Kiro CLI paths already use.
 
 ## [1.0.2] - 2026-09-28
 

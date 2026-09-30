@@ -62,6 +62,7 @@ use super::kiro_cli::{
 };
 use super::manifest::{classify_provenance, ManifestFile, Status, StrategyManifest};
 use super::phases::{run_all_phases, InstallPhase, PhaseOutputs, SopInstallPhase};
+use super::resource_rewrite::{apply_claude_settings_hooks_only, CLAUDE_SETTINGS_RELATIVE_PATH};
 use super::runtime::{detect_runtimes, Runtime};
 use super::InstallError;
 use super::InstallStrategy;
@@ -183,7 +184,7 @@ impl InstallStrategy for ClaudeInstallStrategy {
             .and_then(|full| super::manifest::effective_prior_slot(full, self.name()))
             .cloned();
 
-        let plan = plan_all_files(&harness_dir, target_dir, prior_manifest.as_ref())?;
+        let mut plan = plan_all_files(&harness_dir, target_dir, prior_manifest.as_ref())?;
         if plan.is_empty() {
             return Err(InstallError::Message(format!(
                 "no synthed agent or skill files found under {} -- run `konductor synth --from {}` first",
@@ -191,6 +192,21 @@ impl InstallStrategy for ClaudeInstallStrategy {
                 repo_root.display()
             )));
         }
+        // Additive telemetry-hook wiring, scoped to its own plan
+        // function (not folded into `plan_all_files` above): that
+        // function is also what `would_fail_as_noop` uses to decide
+        // "nothing to install", so an unconditional planned entry there
+        // would make that check permanently non-empty, breaking its own
+        // "no synthed agent or skill files" error path. Checked here,
+        // AFTER the emptiness check above, so it can never mask a real
+        // no-op. See `plan_claude_settings_hooks_only`'s own doc comment
+        // for why this predicts, rather than recomputes, whether the
+        // hooks pass will fire.
+        plan.extend(plan_claude_settings_hooks_only(
+            target_dir,
+            no_telemetry,
+            prior_manifest.as_ref(),
+        ));
 
         let in_progress_files: Vec<ManifestFile> = plan
             .iter()
@@ -210,7 +226,7 @@ impl InstallStrategy for ClaudeInstallStrategy {
         );
         super::manifest::upsert_strategy(target_dir, write_ahead)?;
 
-        let raw_files = run_all_phases(
+        let mut raw_files = run_all_phases(
             &standard_claude_install_phases(),
             &harness_dir,
             target_dir,
@@ -218,6 +234,39 @@ impl InstallStrategy for ClaudeInstallStrategy {
             prior_manifest.as_ref(),
             no_telemetry,
         )?;
+
+        // Additive, gated only on `!no_telemetry`: writes the
+        // `SessionStart`/`SubagentStart` telemetry hooks into
+        // `.claude/settings.json` for this pure Claude-Code-only
+        // install path -- the gap the combined
+        // `apply_claude_settings_grant_and_hooks` (used by the Kiro CLI
+        // V2/V3 dual-marker paths) deliberately doesn't cover here,
+        // since that function's `permissions.allow` grant half is
+        // inert on a target where nothing ever registers
+        // `konductor-skills` as an MCP server. See
+        // `apply_claude_settings_hooks_only`'s own doc comment.
+        //
+        // Pushed into `raw_files` BEFORE `attach_provenance` runs below
+        // -- mirrors `phases.rs`'s `AgentInstallPhase::run`, which
+        // pushes its own Claude/V3 settings file into that phase's
+        // returned `Vec<ManifestFile>` before `attach_provenance` ever
+        // sees it, rather than after. `apply_claude_settings_hooks_only`
+        // returns a placeholder provenance (`Provenance::Created`) on
+        // its `ManifestFile`, same as every phase's own placeholder
+        // (see `InstallPhase::run`'s doc comment): `attach_provenance`
+        // overwrites it with the real value it looks up from `plan`
+        // (already populated above via `plan_claude_settings_hooks_only`),
+        // which correctly classifies `Created`/`ReplacedOurs`/
+        // `ReplacedForeign` -- so a reinstall over a target where
+        // Konductor previously created `.claude/settings.json` is
+        // recorded as `ReplacedOurs`, not hardcoded to `Created`
+        // regardless of reality.
+        if let Some(claude_settings_file) =
+            apply_claude_settings_hooks_only(target_dir, no_telemetry)
+        {
+            raw_files.push(claude_settings_file);
+        }
+
         let files = attach_provenance(raw_files, &plan)?;
 
         let complete = StrategyManifest::new(
@@ -317,6 +366,44 @@ impl InstallPhase for ClaudeAgentInstallPhase {
     ) -> Result<Vec<ManifestFile>, InstallError> {
         Ok(install_agents(staged_root, target_dir)?)
     }
+}
+
+/// Predicts the write-ahead-plan entry for `apply_claude_settings_hooks_only`
+/// -- the same manifest path (`CLAUDE_SETTINGS_RELATIVE_PATH`) that
+/// function's real call would produce, when `!no_telemetry`, without
+/// touching disk. Scoped to its own function rather than folded into
+/// `plan_all_files`: that function is also what `would_fail_as_noop`
+/// uses to decide "nothing to install" (see this module's own
+/// `would_fail_as_noop` doc comment), so an unconditional entry there
+/// would make that check permanently non-empty.
+///
+/// Unlike `kiro_cli.rs`'s `plan_claude_settings_grant`, this needs no
+/// per-agent `McpServerPass::matches` prediction: `ClaudeInstallStrategy`
+/// injects no `mcpServers`/skill resources into any agent file at all
+/// (see `install_agents`'s own doc comment), so there is no analogous
+/// "did this run's copy pass touch a matching agent" question to
+/// predict here -- the hooks pass fires unconditionally on this
+/// strategy's own `install_from_local` whenever telemetry isn't
+/// opted out, since `ClaudeInstallStrategy::matches` already requires
+/// a `.claude` marker to exist before this is ever reached.
+fn plan_claude_settings_hooks_only(
+    target_dir: &Path,
+    no_telemetry: bool,
+    prior_manifest: Option<&StrategyManifest>,
+) -> Option<PlannedFile> {
+    if no_telemetry {
+        return None;
+    }
+    let manifest_path = CLAUDE_SETTINGS_RELATIVE_PATH.to_string();
+    let provenance = classify_provenance(
+        &target_dir.join(&manifest_path),
+        &manifest_path,
+        prior_manifest,
+    );
+    Some(PlannedFile {
+        manifest_path,
+        provenance,
+    })
 }
 
 /// Builds the full write-ahead plan across both content types (skills,
@@ -1441,6 +1528,138 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
+    /// The gap this fix closes: a fresh, pure Claude-Code-only install
+    /// (no pre-existing `.kiro` marker at all) run end to end through
+    /// the real, unmodified `ClaudeInstallStrategy::install_from_local`
+    /// -- not a mock, not a direct call to
+    /// `apply_claude_settings_hooks_only` -- must still write the
+    /// `SessionStart`/`SubagentStart` telemetry hooks into
+    /// `.claude/settings.json`, matching what the Kiro CLI V2/V3
+    /// dual-marker install paths already get via
+    /// `apply_claude_settings_grant_and_hooks`. Mirrors
+    /// `kiro_cli.rs`'s own
+    /// `install_from_local_grants_claude_settings_permissions_when_claude_marker_dir_present`
+    /// hook-assertion shape exactly, minus the (inapplicable here)
+    /// `permissions.allow` grant assertions -- see
+    /// `apply_claude_settings_hooks_only`'s own doc comment for why this
+    /// path never writes that grant.
+    #[test]
+    fn install_from_local_writes_telemetry_hooks_for_fresh_claude_only_install() {
+        let target_dir = scratch_dir("install-fresh-hooks-target");
+        let repo_root = scratch_dir("install-fresh-hooks-repo");
+        seed_synthed_agent(
+            &repo_root,
+            "k-example",
+            b"---\nname: k-example\n---\nBody\n",
+        );
+
+        assert!(
+            !target_dir.join(".kiro").exists(),
+            "this test's whole point is a target with no pre-existing Kiro CLI marker"
+        );
+
+        ClaudeInstallStrategy
+            .install_from_local(
+                &target_dir,
+                Some(repo_root.to_str().unwrap()),
+                "2026-01-01T00:00:00Z",
+                false,
+            )
+            .expect("install must succeed");
+
+        let claude_settings: serde_json::Value = serde_json::from_str(
+            &fs::read_to_string(target_dir.join(".claude/settings.json"))
+                .expect(".claude/settings.json must be written by a fresh Claude-only install run"),
+        )
+        .unwrap();
+
+        // The command embeds the resolved absolute path to the
+        // currently-running binary (`resource_rewrite/claude_settings.rs`'s
+        // `resolve_konductor_exe_path`), not the bare word "konductor",
+        // computed the same way here, not hand-typed.
+        let exe = std::env::current_exe().unwrap().display().to_string();
+        assert_eq!(
+            claude_settings["hooks"]["SessionStart"],
+            serde_json::json!([{
+                "matcher": "startup|clear",
+                "hooks": [{"type": "command", "command": format!("{exe} __telemetry-hook agent-invocation")}]
+            }]),
+            "SessionStart must invoke the hidden __telemetry-hook subcommand for agent_invocation"
+        );
+        assert_eq!(
+            claude_settings["hooks"]["SubagentStart"],
+            serde_json::json!([{
+                "matcher": ".*",
+                "hooks": [{"type": "command", "command": format!("{exe} __telemetry-hook subagent-invocation")}]
+            }]),
+            "SubagentStart must invoke the hidden __telemetry-hook subcommand for subagent_invocation"
+        );
+        assert!(
+            claude_settings.get("permissions").is_none(),
+            "a pure Claude-only install must never write a permissions.allow grant -- \
+             nothing on this install path registers konductor-skills as an MCP server, \
+             so that grant would be inert; got: {claude_settings:?}"
+        );
+
+        // Tracked in the final manifest, same as the Kiro dual-marker
+        // path's identical assertion.
+        let manifest = super::super::manifest::read_manifest(&target_dir)
+            .unwrap()
+            .expect("manifest must exist after install");
+        let claude_entry = manifest.strategies[0]
+            .files
+            .iter()
+            .find(|f| f.path == ".claude/settings.json")
+            .expect(".claude/settings.json must be recorded in the final manifest");
+        assert_eq!(
+            claude_entry.provenance,
+            super::super::manifest::Provenance::Created,
+            "a settings.json that didn't exist before this run must be classified Created"
+        );
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// The `--no-telemetry` regression counterpart: the same fresh
+    /// Claude-only install, run end to end with `no_telemetry: true`,
+    /// must still copy the agent (unaffected -- not a telemetry side
+    /// effect) but must write NO `.claude/settings.json` at all, since
+    /// telemetry-hook wiring is this install path's ONLY reason to
+    /// touch that file.
+    #[test]
+    fn install_from_local_no_telemetry_skips_claude_hook_wiring_for_claude_only_install() {
+        let target_dir = scratch_dir("install-no-telemetry-hooks-target");
+        let repo_root = scratch_dir("install-no-telemetry-hooks-repo");
+        seed_synthed_agent(
+            &repo_root,
+            "k-example",
+            b"---\nname: k-example\n---\nBody\n",
+        );
+
+        ClaudeInstallStrategy
+            .install_from_local(
+                &target_dir,
+                Some(repo_root.to_str().unwrap()),
+                "2026-01-01T00:00:00Z",
+                true,
+            )
+            .expect("install must succeed with --no-telemetry");
+
+        assert!(
+            target_dir.join(".claude/agents/k-example.md").is_file(),
+            "the agent copy is unaffected by --no-telemetry"
+        );
+        assert!(
+            !target_dir.join(".claude/settings.json").exists(),
+            "--no-telemetry must suppress the SessionStart/SubagentStart telemetry-hook \
+             wiring entirely, leaving no .claude/settings.json at all on this install path"
+        );
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
     #[test]
     fn install_from_local_copies_skill_directory_recursively() {
         let target_dir = scratch_dir("install-skill-target");
@@ -2421,6 +2640,147 @@ mod tests {
             .find(|s| s.strategy == "claude")
             .expect("a claude strategy slot must exist");
         assert_eq!(claude_slot.status, Status::Complete);
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// The Claude-only-strategy counterpart to `kiro_cli.rs`'s
+    /// `install_from_local_does_not_abort_when_claude_grant_fails_on_foreign_content`:
+    /// a `.claude/settings.json` that already carries unrelated,
+    /// hand-authored content (here: a `permissions.deny` rule and a
+    /// sibling top-level key) before this install runs must merge
+    /// cleanly -- the install must not abort, the pre-existing
+    /// unrelated content must survive verbatim, and the new
+    /// `SessionStart`/`SubagentStart` hooks must be added alongside it.
+    #[test]
+    fn install_from_local_merges_hooks_into_preexisting_foreign_claude_settings() {
+        let target_dir = scratch_dir("install-foreign-settings-target");
+        let claude_dir = target_dir.join(".claude");
+        fs::create_dir_all(&claude_dir).unwrap();
+        let original_settings = serde_json::json!({
+            "permissions": {"deny": ["Bash(rm -rf /)"]},
+            "someOtherTool": {"enabled": true}
+        });
+        fs::write(
+            claude_dir.join("settings.json"),
+            original_settings.to_string(),
+        )
+        .unwrap();
+
+        let repo_root = scratch_dir("install-foreign-settings-repo");
+        seed_synthed_agent(
+            &repo_root,
+            "k-example",
+            b"---\nname: k-example\n---\nBody\n",
+        );
+
+        ClaudeInstallStrategy
+            .install_from_local(
+                &target_dir,
+                Some(repo_root.to_str().unwrap()),
+                "2026-01-01T00:00:00Z",
+                false,
+            )
+            .expect("install must succeed when .claude/settings.json already has foreign content");
+
+        let written: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(claude_dir.join("settings.json")).unwrap())
+                .unwrap();
+        assert_eq!(
+            written["permissions"]["deny"],
+            serde_json::json!(["Bash(rm -rf /)"]),
+            "the pre-existing unrelated permissions.deny rule must survive the merge"
+        );
+        assert_eq!(
+            written["someOtherTool"],
+            serde_json::json!({"enabled": true}),
+            "the pre-existing unrelated top-level key must survive the merge"
+        );
+        let exe = std::env::current_exe().unwrap().display().to_string();
+        assert_eq!(
+            written["hooks"]["SessionStart"],
+            serde_json::json!([{
+                "matcher": "startup|clear",
+                "hooks": [{"type": "command", "command": format!("{exe} __telemetry-hook agent-invocation")}]
+            }]),
+            "SessionStart must be added alongside the pre-existing unrelated content"
+        );
+        assert_eq!(
+            written["hooks"]["SubagentStart"],
+            serde_json::json!([{
+                "matcher": ".*",
+                "hooks": [{"type": "command", "command": format!("{exe} __telemetry-hook subagent-invocation")}]
+            }]),
+            "SubagentStart must be added alongside the pre-existing unrelated content"
+        );
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// The failure counterpart to the test above: when the merge write
+    /// itself fails (here: `.claude/settings.json` is a symlink, the
+    /// same rejection `reject_symlink` performs for the Kiro-side grant
+    /// path), the install must still return `Ok(())` -- non-fatal, per
+    /// `apply_claude_settings_hooks_only`'s own disclosed design -- and,
+    /// after Finding 1's reorder fix, the final manifest must carry NO
+    /// entry for `.claude/settings.json`, since this run never actually
+    /// wrote it.
+    #[cfg(unix)]
+    #[test]
+    fn install_from_local_does_not_abort_when_hooks_only_merge_fails_on_symlinked_settings() {
+        use std::os::unix::fs::symlink;
+
+        let target_dir = scratch_dir("install-symlinked-settings-target");
+        let claude_dir = target_dir.join(".claude");
+        fs::create_dir_all(&claude_dir).unwrap();
+        // A dangling symlink is enough: `reject_symlink` rejects on the
+        // file type alone, without following it.
+        symlink(
+            claude_dir.join("does-not-exist"),
+            claude_dir.join("settings.json"),
+        )
+        .unwrap();
+
+        let repo_root = scratch_dir("install-symlinked-settings-repo");
+        seed_synthed_agent(
+            &repo_root,
+            "k-example",
+            b"---\nname: k-example\n---\nBody\n",
+        );
+
+        ClaudeInstallStrategy
+            .install_from_local(
+                &target_dir,
+                Some(repo_root.to_str().unwrap()),
+                "2026-01-01T00:00:00Z",
+                false,
+            )
+            .expect("a symlinked settings.json must not abort an otherwise-successful install");
+
+        assert!(
+            target_dir.join(".claude/agents/k-example.md").is_file(),
+            "the agent copy must still land despite the failed hooks merge"
+        );
+
+        let manifest = super::super::manifest::read_manifest(&target_dir)
+            .unwrap()
+            .expect("manifest must exist after install");
+        let claude_slot = manifest
+            .strategies
+            .iter()
+            .find(|s| s.strategy == "claude")
+            .expect("a claude strategy slot must exist");
+        assert_eq!(claude_slot.status, Status::Complete);
+        assert!(
+            !claude_slot
+                .files
+                .iter()
+                .any(|f| f.path == ".claude/settings.json"),
+            "a hooks merge that failed against a symlinked settings.json must leave no \
+             manifest entry behind -- this run never actually wrote that file"
+        );
 
         fs::remove_dir_all(&target_dir).ok();
         fs::remove_dir_all(&repo_root).ok();

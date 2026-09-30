@@ -476,6 +476,151 @@ fn v3_update_with_no_telemetry_removes_a_previously_installed_hook() {
     std::fs::remove_dir_all(&target_dir).ok();
 }
 
+/// Seeds an agent that targets the Claude Code harness, so `synth`
+/// writes it under `dist/claude/agents/` and a `--harness claude`
+/// install has something to install.
+fn seed_claude_agent_spec_source(repo_root: &Path) {
+    let agents_dir = repo_root.join("agents");
+    std::fs::create_dir_all(&agents_dir).unwrap();
+    std::fs::write(
+        agents_dir.join("k-example.agent-spec.json"),
+        br#"{
+  "schemaVersion": "1",
+  "name": "k-example",
+  "config": {
+    "description": "An example agent.",
+    "model": "claude-sonnet-5",
+    "systemPrompt": "You are a helpful agent."
+  },
+  "clientConfig": {
+    "claudeCli": {}
+  }
+}
+"#,
+    )
+    .unwrap();
+}
+
+/// Regression test for the `--no-telemetry` re-install leak on the pure
+/// Claude-Code-only install path: a first install with telemetry
+/// enabled wires the `SessionStart`/`SubagentStart` telemetry hooks into
+/// the shared `.claude/settings.json`, and a second install of the same
+/// target with `--no-telemetry` must STRIP them -- not merely skip
+/// re-wiring. Because that file is shared, the strip must leave any
+/// foreign hook and any unrelated top-level key intact.
+#[test]
+fn claude_reinstall_with_no_telemetry_strips_previously_installed_hooks() {
+    let sink = telemetry_test_sink::TelemetrySink::start();
+    let repo_root = scratch_dir("repo-claude-notele");
+    seed_claude_agent_spec_source(&repo_root);
+    seed_skill_source(&repo_root);
+
+    let synth_result = run_konductor(
+        &repo_root,
+        &sink,
+        &[CMD_SYNTH, "--from", &repo_root.display().to_string()],
+    );
+    assert!(
+        synth_result.status.success(),
+        "real `synth --from <repo>` must succeed: stderr={}",
+        String::from_utf8_lossy(&synth_result.stderr)
+    );
+
+    // A pure Claude install requires a pre-existing `.claude` marker at
+    // the target (`ClaudeInstallStrategy::matches`).
+    let target_dir = scratch_dir("target-claude-notele");
+    std::fs::create_dir_all(target_dir.join(".claude")).unwrap();
+    let settings_path = target_dir.join(".claude/settings.json");
+
+    let install_on = run_konductor(
+        &target_dir,
+        &sink,
+        &[
+            CMD_INSTALL,
+            "--from",
+            &repo_root.display().to_string(),
+            "--target",
+            &target_dir.display().to_string(),
+            "--harness",
+            "claude",
+        ],
+    );
+    assert!(
+        install_on.status.success(),
+        "telemetry-on Claude install must succeed: stderr={}",
+        String::from_utf8_lossy(&install_on.stderr)
+    );
+    let after_on: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&settings_path).unwrap()).unwrap();
+    assert!(
+        after_on["hooks"]["SessionStart"].is_array()
+            && after_on["hooks"]["SubagentStart"].is_array(),
+        "telemetry-on install must wire both telemetry hook events, got: {}",
+        after_on["hooks"]
+    );
+
+    // Seed a foreign hook and an unrelated top-level key that the strip
+    // must preserve.
+    let mut seeded = after_on.clone();
+    seeded["hooks"]["SessionStart"]
+        .as_array_mut()
+        .unwrap()
+        .push(serde_json::json!({
+            "matcher": "startup",
+            "hooks": [{"type": "command", "command": "/usr/bin/env my-own-hook"}]
+        }));
+    seeded["permissions"] = serde_json::json!({"allow": ["Read(*)"]});
+    std::fs::write(&settings_path, serde_json::to_vec_pretty(&seeded).unwrap()).unwrap();
+
+    let install_off = run_konductor(
+        &target_dir,
+        &sink,
+        &[
+            CMD_INSTALL,
+            "--from",
+            &repo_root.display().to_string(),
+            "--target",
+            &target_dir.display().to_string(),
+            "--harness",
+            "claude",
+            "--no-telemetry",
+        ],
+    );
+    assert!(
+        install_off.status.success(),
+        "no-telemetry Claude reinstall must succeed: stderr={}",
+        String::from_utf8_lossy(&install_off.stderr)
+    );
+
+    let after_off: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&settings_path).unwrap()).unwrap();
+    // No Konductor telemetry command may remain anywhere in the file.
+    let serialized = serde_json::to_string(&after_off).unwrap();
+    assert!(
+        !serialized.contains("__telemetry-hook"),
+        "no telemetry hook may remain after a --no-telemetry reinstall, got: {after_off}"
+    );
+    // The foreign hook and the unrelated top-level key survive.
+    let session_start = after_off["hooks"]["SessionStart"].as_array().unwrap();
+    assert_eq!(
+        session_start.len(),
+        1,
+        "the foreign SessionStart block must survive, got: {session_start:?}"
+    );
+    assert_eq!(
+        session_start[0]["hooks"][0]["command"],
+        serde_json::json!("/usr/bin/env my-own-hook")
+    );
+    assert_eq!(
+        after_off["permissions"],
+        serde_json::json!({"allow": ["Read(*)"]}),
+        "an unrelated top-level key must be untouched by the strip"
+    );
+
+    std::fs::remove_dir_all(&repo_root).ok();
+    std::fs::remove_dir_all(&target_dir).ok();
+}
+
 /// Recursively finds every file named exactly `file_name` under `root`.
 fn find_files_named(root: &Path, file_name: &str) -> Vec<PathBuf> {
     let mut found = Vec::new();
