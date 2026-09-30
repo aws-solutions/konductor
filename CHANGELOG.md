@@ -6,44 +6,27 @@ This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Entries are consolidated per release,
 not per individual commit.
 
-## [1.0.3] - 2026-09-28
+## [1.0.3] - 2026-10-01
 
 ### Fixed
 
-- Kiro CLI installs (v2 and v3/KAS) had no telemetry hook wiring at all, so `agent_invocation`
-  events never fired for either runtime — only Claude Code's install path had this. `konductor
-  install` now wires a session-start hook: for v2, one entry per installed agent under that
-  agent's own `hooks.agentSpawn`; for v3, a single standalone `.kiro/hooks/konductor-telemetry-hooks.json`
-  file for the whole install target. Gated on `!no_telemetry`, and degrades to a non-fatal
-  warning (instead of failing the install) when the running binary's own path can't be resolved.
-  A `--no-telemetry` install or update removes a hook a prior telemetry-enabled run wrote (the v3
-  file, or the v2 `agentSpawn` entry), and `uninstall` removes it too.
-- A standalone Claude-Code-only install (`ClaudeInstallStrategy`, no pre-existing Kiro CLI
-  marker) never wired the `SessionStart`/`SubagentStart` telemetry hooks into
-  `.claude/settings.json`, unlike the Kiro CLI v2/v3 dual-marker install paths. `konductor
-  install --harness claude` now wires those hooks too, gated on the same `!no_telemetry`
-  convention the Kiro CLI paths already use.
-- A global install in `$HOME` and a project install each wired their own telemetry hook, and
-  Kiro v3 and Claude Code load both, so one invocation was reported twice. Each hook now carries
-  the install that wrote it, and only the nearest install that owns the agent reports. A project
-  install warns when the global install's hooks are from an older version, since those still
-  double-count until the global install is updated.
-- `konductor install --no-telemetry` over a target that was installed with telemetry on left the
-  opt-in record (`.konductor/install-info.json`) in place, so that target kept reporting. It is
-  now removed.
+- Telemetry now works on Kiro CLI v2 and v3. Before, only Claude Code sent agent usage events.
+- `konductor install --harness claude` now sets up telemetry, so Claude-Code-only installs
+  report too.
+- Each agent run is counted once, even with both a global install (in `$HOME`) and a project
+  install. Before, Kiro v3 and Claude Code counted it twice. If your global install is from an
+  older version, `konductor install` warns you to run `konductor update --target ~`.
+- `--no-telemetry` now turns telemetry off for a project completely: also when the project was
+  installed with telemetry on before, and when a global install is present.
+- Sessions started in a project directory now report when Konductor is installed globally, the
+  default. Before, they sent nothing.
 
 ### Changed
 
-- Agent telemetry now reports only Konductor agents (the orchestrators and `k-*` specialists),
-  on Kiro CLI v2, v3, and Claude Code. The hook resolves the agent from what each harness sends
-  and drops anything not in the install manifest, so a user's own agents, built-in sub-agents,
-  and sessions with no named agent no longer produce events. Kiro v3 now reports delegations
-  too. `subagent_invocation` events carry a new `parentAgentName` field when the delegating agent
-  is a Konductor agent.
-- The hook now finds its install from the nearest project install up the session's directory
-  tree, falling back to the global install in `$HOME`. Before, it only looked in the session's
-  own working directory, so a default `$HOME` install sent nothing from sessions started in a
-  project directory.
+- Telemetry now covers only Konductor's own agents (the orchestrators and `k-*` specialists). Your
+  own agents, a harness's built-in agents, and sessions with no named agent send nothing.
+- Delegations to Konductor agents are reported on every harness, including the name of the
+  delegating Konductor agent when the harness provides it.
 
 ## [1.0.2] - 2026-09-28
 
