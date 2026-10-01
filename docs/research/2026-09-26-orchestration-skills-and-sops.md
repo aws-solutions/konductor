@@ -1,6 +1,7 @@
 # Orchestration skills and SOPs
 
 Date: 2026-09-26
+Updated: 2026-10-01
 Branch: `agents/defiant-claude-2`, based on `7c95c51`
 
 ## Scope
@@ -96,6 +97,12 @@ The SOPs sit beside this layer rather than inside it. Each SOP was written for a
 names the specialist that should run each step, but the steps themselves are the substance. The
 fuse-flow workflows in `fuse/flow/workflows/` already show the alternative: one agent runs every
 step and loads the step's skill directly.
+
+Today, step-to-step orchestration is the fuse-flow step function's job, while the default agent does
+all work because specialist agents are not inherently better at a job; they are only artificially
+limited from doing other work. The agent may still spawn subagents to parallelize work or preserve
+a clean context, but it can decide when that is useful without our instructions, and it does not
+need agent specs to spawn subagents.
 
 ## Risks and open questions
 

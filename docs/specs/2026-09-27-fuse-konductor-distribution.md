@@ -1,4 +1,4 @@
-Status: Approved 2026-09-28 - ready for implementation
+Status: Implemented 2026-09-29; historical design record, superseded where current code and installation docs differ
 
 # fuse-konductor distribution and installation
 
