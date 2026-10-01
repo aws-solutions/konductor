@@ -6,6 +6,14 @@ This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Entries are consolidated per release,
 not per individual commit.
 
+## [Unreleased]
+
+### Fixed
+
+- `update --no-telemetry` now opts a project out for good: it removes the project's telemetry
+  record instead of only skipping that one run's write, so a later plain `update` can't quietly
+  turn telemetry back on. Pass the new `--enable-telemetry` flag to opt back in.
+
 ## [1.0.3] - 2026-10-01
 
 ### Fixed

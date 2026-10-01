@@ -1528,14 +1528,15 @@ fn check_telemetry_state(destination: &Path, home_dir: Option<&Path>) -> CheckRe
             return CheckResult::info(
                 "telemetry_state",
                 format!(
-                    "telemetry reporting is off for {} (either opted out at install, or {} \
-                     was never installed)",
+                    "telemetry reporting is off for {} (opted out at install or a later \
+                     update, or {} was never installed)",
                     destination.display(),
                     destination.display()
                 ),
-                "if this was opted out, re-run `konductor install` without --no-telemetry to \
-                 opt back in; if it was never installed, run `konductor install` to install \
-                 it -- see the index check's own result to tell which"
+                "if this was opted out, run `konductor update --enable-telemetry` to opt back \
+                 in (or re-run `konductor install` without --no-telemetry); if it was never \
+                 installed, run `konductor install` to install it -- see the index check's own \
+                 result to tell which"
                     .to_string(),
             );
         }

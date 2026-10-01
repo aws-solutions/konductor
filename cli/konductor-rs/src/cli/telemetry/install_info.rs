@@ -143,7 +143,10 @@ fn write_record(target_dir: &Path, record: &InstallInfoRecord) -> std::io::Resul
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum InstallInfoAbsence {
     /// No file at `install_info_path(target_dir)` -- the target's own
-    /// `--no-telemetry` choice at install.
+    /// `--no-telemetry` choice, made either at install or at a later
+    /// `update --no-telemetry` (which deletes an existing record over
+    /// an enabled target, rather than merely skipping that run's own
+    /// write -- see `update.rs`'s carry-forward block).
     NotFound,
     /// A file exists but is not a record anyone chose to write this
     /// way: unreadable (I/O error), not valid JSON, or a

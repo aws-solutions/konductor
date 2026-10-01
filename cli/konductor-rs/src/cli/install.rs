@@ -296,9 +296,13 @@ pub(super) const NO_REMOTE_RELEASE_MESSAGE: &str =
 /// Records this target's telemetry opt-in, and warns when the global
 /// install's hooks predate per-install dedup. Best-effort: a failure
 /// here never unwinds an install that already succeeded. Clearing the
-/// record on `install --no-telemetry` happens in install's own dispatch,
-/// not here: `update --no-telemetry` shares this path but is a per-run
-/// override that keeps the target opted in.
+/// record on an explicit `--no-telemetry` happens in each dispatch's own
+/// caller, not here: `install.rs`'s own dispatch removes it after a
+/// successful install, and `update.rs`'s carry-forward block removes it
+/// (when the record currently reads as enabled) before this function is
+/// ever reached -- durably opting the target out for a later plain
+/// `update` too, not just skipping the write this run would otherwise
+/// make.
 pub(super) fn finalize_install_telemetry(
     target_dir: &Path,
     repo_root: &Path,

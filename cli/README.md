@@ -455,7 +455,7 @@ itself lives outside any one `--target`).
 
 ```bash
 konductor update [--from <repo-root>] [--target <dir>] [--all] [--use-github-token]
-                 [--dry-run] [--version <v>] [--force]
+                 [--dry-run] [--version <v>] [--force] [--no-telemetry | --enable-telemetry]
 konductor update --cli [--version <v>] [--use-github-token]
 ```
 
@@ -485,6 +485,22 @@ the last `--from` value."
 above) — read `GITHUB_TOKEN` from the environment and send it on the same
 `api.github.com` requests the no-`--from` path makes. It has no effect on a `--from
 <repo-root>` update, which never touches GitHub's API at all.
+
+### `--no-telemetry` and `--enable-telemetry`: sticky opt-out/opt-in
+
+`--no-telemetry` opts a target out for this run, and durably: if the target's own
+`.konductor/install-info.json` currently exists (telemetry was enabled), this run deletes
+it, so the opt-out carries forward to a later plain `update` too, instead of silently
+re-enabling telemetry the moment the flag is omitted. Without the flag, `update` carries
+forward the target's earlier choice the same way: a missing `install-info.json` already
+means opted out, with nothing left to carry forward differently.
+
+`--enable-telemetry` is the reverse: it forces telemetry on for this run regardless of any
+carried-forward opt-out, and durably re-creates `install-info.json`, the same way a fresh
+`install` without `--no-telemetry` would. A later plain `update` then also sees the target
+as enabled, not just this one run. The two flags are mutually exclusive (usage error, exit
+`64`, if both are passed). An `--all` batch resolves this independently per target, the
+same way each target's own `.konductor/config.yml` opt-out is resolved independently.
 
 ### `--dry-run`
 

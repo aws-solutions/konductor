@@ -245,14 +245,32 @@ pub enum Commands {
         #[arg(long, value_parser = harness_value_parser())]
         harness: Option<String>,
 
-        /// Opt out of usage-analytics telemetry for this update run,
-        /// regardless of the target's own history. When NOT passed,
-        /// `update` carries forward the target's earlier choice: the
+        /// Opt out of usage-analytics telemetry for this update run, and
+        /// durably: if the target's own `.konductor/install-info.json`
+        /// currently exists (telemetry was enabled), this run deletes it,
+        /// so the opt-out carries forward to a LATER plain `update` (no
+        /// flag re-passed) too, instead of silently re-enabling telemetry
+        /// the moment this flag is omitted. When NOT passed, `update`
+        /// carries forward the target's earlier choice the same way: the
         /// absence of `.konductor/install-info.json` on an existing
-        /// install means it opted out at install time. An `--all` batch
-        /// resolves this independently per target.
-        #[arg(long)]
+        /// install means it is opted out, with nothing left to carry
+        /// forward differently. Pass `--enable-telemetry` to reverse an
+        /// opt-out. An `--all` batch resolves this independently per
+        /// target. Mutually exclusive with `--enable-telemetry`.
+        #[arg(long, conflicts_with = "enable_telemetry")]
         no_telemetry: bool,
+
+        /// Opt in to usage-analytics telemetry for this update run,
+        /// overriding any carried-forward opt-out (an absent or broken
+        /// `.konductor/install-info.json`) regardless of the target's own
+        /// history. Durably re-creates the record, the same way a fresh
+        /// `install` without `--no-telemetry` would, so a LATER plain
+        /// `update` also sees telemetry as enabled, not just this one
+        /// run -- the mirror image of `--no-telemetry`'s own
+        /// sticky-delete. An `--all` batch resolves this independently
+        /// per target. Mutually exclusive with `--no-telemetry`.
+        #[arg(long = "enable-telemetry", action = ArgAction::SetTrue, conflicts_with = "no_telemetry")]
+        enable_telemetry: bool,
 
         /// Report exactly what would be overwritten for each selected
         /// target without touching the filesystem or making any network
@@ -897,6 +915,71 @@ mod tests {
             }
             other => panic!("expected Update, got {other:?}"),
         }
+    }
+
+    // ── update --no-telemetry / --enable-telemetry ──────────────────────
+
+    #[test]
+    fn parses_update_with_enable_telemetry_flag() {
+        let cli =
+            Cli::try_parse_from(["konductor", Commands::UPDATE, "--enable-telemetry"]).unwrap();
+        match cli.command {
+            Some(Commands::Update {
+                enable_telemetry,
+                no_telemetry,
+                ..
+            }) => {
+                assert!(enable_telemetry);
+                assert!(
+                    !no_telemetry,
+                    "--enable-telemetry must not implicitly set --no-telemetry"
+                );
+            }
+            other => panic!("expected Update, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn update_enable_telemetry_defaults_to_false_when_omitted() {
+        let cli = Cli::try_parse_from(["konductor", Commands::UPDATE]).unwrap();
+        match cli.command {
+            Some(Commands::Update {
+                enable_telemetry, ..
+            }) => {
+                assert!(!enable_telemetry);
+            }
+            other => panic!("expected Update, got {other:?}"),
+        }
+    }
+
+    /// `--no-telemetry` and `--enable-telemetry` are mutually exclusive:
+    /// passing both must be a usage error, not a silent pick of one over
+    /// the other.
+    #[test]
+    fn update_no_telemetry_conflicts_with_enable_telemetry() {
+        let result = Cli::try_parse_from([
+            "konductor",
+            Commands::UPDATE,
+            "--no-telemetry",
+            "--enable-telemetry",
+        ]);
+        let err = result
+            .expect_err("--no-telemetry and --enable-telemetry together must be a usage error");
+        assert_eq!(err.kind(), clap::error::ErrorKind::ArgumentConflict);
+    }
+
+    /// Same conflict, flags given in the opposite order.
+    #[test]
+    fn update_enable_telemetry_conflicts_with_no_telemetry_reverse_order() {
+        let result = Cli::try_parse_from([
+            "konductor",
+            Commands::UPDATE,
+            "--enable-telemetry",
+            "--no-telemetry",
+        ]);
+        let err = result
+            .expect_err("--enable-telemetry and --no-telemetry together must be a usage error");
+        assert_eq!(err.kind(), clap::error::ErrorKind::ArgumentConflict);
     }
 
     // ── update --cli and its conflict matrix ────────────────────────────
