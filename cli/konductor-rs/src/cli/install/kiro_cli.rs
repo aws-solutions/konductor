@@ -289,7 +289,9 @@ impl InstallStrategy for KiroCliInstallStrategy {
         // for the MCP binary's own planned path to predict whether the
         // Claude grant applies (see its own doc comment for why this
         // prediction, not the real run-time computation, is what
-        // closes the crash-safety gap).
+        // closes the crash-safety gap). The hooks settings file is
+        // planned only when the grant is (the hooks are wired only after
+        // it succeeds) and telemetry is on.
         let claude_plan =
             plan_claude_settings_grant(&harness_dir, target_dir, &plan, prior_manifest.as_ref())?;
         let wires_claude_hooks = !no_telemetry && !claude_plan.is_empty();
@@ -355,11 +357,12 @@ impl InstallStrategy for KiroCliInstallStrategy {
         // hand-written call chain -- ordering is enforced by
         // `standard_install_phases()` and `InstallPhase::dependencies()`,
         // not by this call site. This also covers the Claude/V3 settings
-        // grant (see `resource_rewrite/claude_settings.rs`'s "V3/Claude Code permission
-        // grant" section): `AgentInstallPhase::run` applies it itself,
-        // right after calling `install_agents`, since that is the one
-        // place that already holds the `any_mcp_server_injected` signal
-        // the grant is gated on -- see that phase's own doc comment.
+        // grant and telemetry hooks (see `resource_rewrite/claude_settings.rs`'s
+        // "V3/Claude Code permission grant" section): `AgentInstallPhase::run`
+        // applies them itself, right after calling `install_agents`, since
+        // that is the one place that already holds the
+        // `any_mcp_server_injected` signal they are gated on -- see that
+        // phase's own doc comment.
         let raw_files = super::phases::run_all_phases(
             &super::phases::standard_install_phases(),
             &harness_dir,
@@ -377,10 +380,12 @@ impl InstallStrategy for KiroCliInstallStrategy {
         // `.claude/`. This is narrower than "anything under `.claude/`":
         // Kiro's chain also legitimately writes `.claude/settings.json`
         // (the additive Claude/V3 settings-grant merge, a separate,
-        // unrelated mechanism -- see `resource_rewrite/claude_settings.rs`), which DOES
-        // stay tracked in this slot exactly as before, since that file
-        // is a genuinely shared, Kiro-authored grant, not another
-        // strategy's own content. Only the SOP-skill conversion path is
+        // unrelated mechanism -- see `resource_rewrite/claude_settings.rs`)
+        // and, unless `--no-telemetry`, the hooks settings file
+        // (`.claude/settings.local.json`, or `~/.claude/settings.json`
+        // for a `$HOME` install). Both DO stay tracked in this slot,
+        // since they are genuinely shared, Kiro-authored merges, not
+        // another strategy's own content. Only the SOP-skill conversion path is
         // excluded from THIS strategy's own manifest slot, so Kiro's own
         // `uninstall` never deletes it. `claude`'s own slot, if and
         // when it is separately installed at this target, owns and
@@ -611,7 +616,7 @@ mod tests {
         let installed = target_dir.join(".kiro/agents/k-example.json");
         assert!(installed.is_file());
         // `TelemetryHookPass` re-serializes every installed agent file
-        // to inject the SessionStart hook, so check the parsed field
+        // to inject the `agentSpawn` telemetry hook, so check the parsed field
         // rather than raw bytes.
         let installed_bytes = fs::read(&installed).unwrap();
         let installed_value: serde_json::Value = serde_json::from_slice(&installed_bytes).unwrap();
@@ -3314,10 +3319,10 @@ mod tests {
     }
 
     /// Reachability proof for the Claude/V3 `permissions.allow` grant
-    /// (`resource_rewrite/mcp_server.rs`'s `McpServerPass::verify`): there is no
-    /// separate Claude `InstallStrategy` yet (`registry::STRATEGIES`
-    /// registers only `KiroCliInstallStrategy`), but that grant does
-    /// not depend on one existing -- it fires through THIS unmodified
+    /// (`resource_rewrite/mcp_server.rs`'s `McpServerPass::verify`) and
+    /// the telemetry hooks wired after it: neither depends on
+    /// `ClaudeInstallStrategy` (which wires hooks only, never the
+    /// grant) -- both fire through THIS unmodified
     /// strategy's own `install_from_local` whenever the target directory
     /// already has a `.claude` marker dir alongside `.kiro`, which is
     /// exactly the real "I use both Kiro CLI and Claude Code in this
@@ -3325,7 +3330,9 @@ mod tests {
     /// `KiroCliInstallStrategy::matches` still claims such a target
     /// because it only ever special-cases a Claude-ONLY target (see its
     /// own doc comment above); it does not care whether `.claude` is
-    /// ALSO present alongside `.kiro`.
+    /// ALSO present alongside `.kiro`. The grant lands in the shared
+    /// `.claude/settings.json`, the hooks in `.claude/settings.local.json`,
+    /// and both are tracked in the manifest.
     #[test]
     fn install_from_local_grants_claude_settings_permissions_when_claude_marker_dir_present() {
         let target_dir = scratch_dir("mcp-inject-claude-target");
@@ -3373,8 +3380,8 @@ mod tests {
 
         // The V3/Claude grant also exists, written through the real,
         // unmodified `KiroCliInstallStrategy::install_from_local` entry
-        // point -- proving this is reachable today, not dead code
-        // waiting on a future Claude InstallStrategy.
+        // point -- proving this path writes it, since
+        // `ClaudeInstallStrategy` never does.
         let claude_settings: serde_json::Value = serde_json::from_str(
             &fs::read_to_string(target_dir.join(".claude/settings.json")).expect(
                 ".claude/settings.json must be written by this same install run when a \
@@ -3425,9 +3432,9 @@ mod tests {
              depends on $PATH at hook-fire time: {exe:?}"
         );
 
-        // The write is also tracked in the final manifest, so it is
-        // visible to `konductor doctor`/`update` and accounted for if
-        // the install had failed partway through.
+        // Both settings writes are also tracked in the final manifest, so
+        // they are visible to `konductor doctor`/`update` and accounted
+        // for if the install had failed partway through.
         let manifest = super::super::manifest::read_manifest(&target_dir)
             .unwrap()
             .expect("manifest must exist after install");
@@ -3459,13 +3466,14 @@ mod tests {
     /// `install_from_local_grants_claude_settings_permissions_when_claude_marker_dir_present`
     /// above) run end to end through the real, unmodified
     /// `KiroCliInstallStrategy::install_from_local` -- not a mock, not a
-    /// direct call to `apply_claude_settings_hooks` -- with
+    /// direct call to `apply_claude_settings_grant_and_hooks` -- with
     /// `no_telemetry: true`. The V2 Kiro `mcpServers` injection and the
     /// V3/Claude `permissions.allow` grant must still land (neither is a
     /// telemetry side effect), but `.claude/settings.json` must carry NO
     /// `hooks.SessionStart`/`hooks.SubagentStart` telemetry-hook block at
-    /// all -- proving the opt-out actually reaches
-    /// `AgentInstallPhase::run`'s `apply_claude_settings_hooks` call, not
+    /// all and no `.claude/settings.local.json` may be written -- proving
+    /// the opt-out actually reaches `AgentInstallPhase::run`'s
+    /// `apply_claude_settings_grant_and_hooks` call, not
     /// only the top-level `report_package_installed`/`report_cli_error`
     /// calls `dispatch_install_with` already gated on this same flag.
     #[test]
@@ -3520,8 +3528,9 @@ mod tests {
 
         // The telemetry hook wiring itself must be completely absent --
         // not an empty array, not a key with no entries: no `hooks` key
-        // at all, since this is a fresh target with nothing else that
-        // would have written one.
+        // in the shared file and no personal settings file at all, since
+        // this is a fresh target with nothing else that would have
+        // written either.
         assert!(
             claude_settings.get("hooks").is_none(),
             "--no-telemetry must suppress the SessionStart/SubagentStart telemetry-hook \
@@ -3622,17 +3631,14 @@ mod tests {
     /// Claude-ONLY target by `detect_runtimes`'s reckoning (this run
     /// would be the one to CREATE `.kiro`, and `matches()` is evaluated
     /// before any of that happens) -- `KiroCliInstallStrategy::matches`
-    /// rejects it outright (see its own doc comment), so with today's
-    /// registry (`KiroCliInstallStrategy` is the only entry) NO strategy
-    /// claims it and install fails before `McpServerPass` ever runs.
-    /// This is the real, narrower-than-it-first-looks scope of the
-    /// Claude/V3 grant added above: it fires on a target where `.kiro`
-    /// ALREADY exists (a reinstall/update, or `.kiro` created by hand)
-    /// alongside `.claude`, not on a brand-new "first install ever, this
-    /// target only has Claude Code" target -- that case has no install
-    /// path at all yet, Claude grant or otherwise, pending a real Claude
-    /// `InstallStrategy` (the same "task 3.8" gap `matches`'s doc
-    /// comment already names).
+    /// rejects it outright (see its own doc comment), leaving it to
+    /// `ClaudeInstallStrategy`, which wires the telemetry hooks but
+    /// never the `permissions.allow` grant. This is the real,
+    /// narrower-than-it-first-looks scope of the Claude/V3 grant added
+    /// above: it fires on a target where `.kiro` ALREADY exists (a
+    /// reinstall/update, or `.kiro` created by hand) alongside
+    /// `.claude`, not on a brand-new "this target only has Claude Code"
+    /// target.
     #[test]
     fn install_from_local_rejects_claude_only_target_with_no_preexisting_kiro_dir() {
         let target_dir = scratch_dir("mcp-inject-claude-only-target");
@@ -3660,7 +3666,8 @@ mod tests {
     /// Kiro side of the install -- that content already landed on disk
     /// before the Claude grant is even attempted, and aborting the
     /// whole run over an unrelated foreign file would throw it away for
-    /// no benefit. The grant is skipped (with a warning), the rest of
+    /// no benefit. The grant is skipped (with a warning), so the hooks
+    /// that are wired only after it are skipped too, the rest of
     /// the install completes normally, and the untouched foreign file
     /// is never recorded in the manifest.
     #[test]

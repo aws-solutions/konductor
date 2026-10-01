@@ -275,7 +275,10 @@ fn plan_agent_files(
 /// window between `apply_claude_settings_grant`'s own write and the
 /// final `Status::Complete` manifest rewrite: without it, a crash in
 /// that window would leave the mutation completely unrecorded in any
-/// manifest on disk, invisible to `konductor doctor`.
+/// manifest on disk, invisible to `konductor doctor`. The telemetry
+/// hooks file, written after the grant, is planned separately by
+/// `plan_claude_hooks_file`, which callers invoke only when this returns
+/// a non-empty plan and telemetry is on.
 ///
 /// Mirrors the exact two conditions the real run computes:
 /// `already_planned` (the combined agent + bin plan, built just before

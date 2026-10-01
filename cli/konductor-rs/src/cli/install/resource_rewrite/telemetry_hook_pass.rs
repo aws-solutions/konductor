@@ -8,35 +8,43 @@
 // - V2 (`TelemetryHookPass`): merges an entry into the installed
 //   agent's own inline `hooks.agentSpawn` array -- a per-agent
 //   `ResourceRewritePass`, run once per agent through
-//   `resource_rewrite::apply_all`/`standard_passes`. The payload doesn't
+//   `resource_rewrite::apply_all`/`standard_passes`, and left out of
+//   that pipeline entirely under `--no-telemetry`. The payload doesn't
 //   name the agent, so the command carries it: `konductor
-//   __telemetry-hook agent-invocation --agent <name>`. A delegated
-//   child fires its own `agentSpawn`, so this one hook covers both
-//   primary and delegated runs.
+//   __telemetry-hook agent-invocation --agent <name> --install-root
+//   <target>`. A delegated child fires its own `agentSpawn`, so this one
+//   hook covers both primary and delegated runs.
 // - V3/KAS (`apply_v3_standalone_telemetry_hook`): writes one
-//   standalone `.kiro/hooks/<name>.json` document shared by every agent
-//   at the install target, since KAS 3.0 has no per-agent hooks.
-//   `SessionStart` reports the session's agent (looked up from KAS's
-//   session store); `PreToolUse` on the delegation tools reports each
-//   delegated agent, because a v3 child never fires `SessionStart`.
+//   standalone `.kiro/hooks/konductor-telemetry-hooks.json` document
+//   shared by every agent at the install target, since KAS 3.0 has no
+//   per-agent hooks. `SessionStart` reports the session's agent (looked
+//   up from KAS's session store); `PreToolUse` on the delegation tools
+//   reports each delegated agent, because a v3 child never fires
+//   `SessionStart`. Under `--no-telemetry`,
+//   `remove_v3_standalone_telemetry_hook` deletes a document an earlier
+//   install left behind.
+//
+// Every command passes `--install-root`, so a hook reports only for the
+// install that wired it and an invocation is counted once even when
+// several installs are visible from the working directory.
 //
 // V3's standalone document is an install-target-level artifact, not
-// one agent's own JSON, so `apply_v3_standalone_telemetry_hook` is a
-// plain function called once per install from `kiro_cli_v3.rs`'s
-// `install_from_local`, at the same call-site level as
-// `write_install_info`/`apply_claude_settings_grant_and_hooks`.
+// one agent's own JSON, so the V3 write and remove are plain functions
+// called once per install from `kiro_cli_v3.rs`'s `install_from_local`,
+// next to its `apply_claude_settings_grant_and_hooks` call.
 // `standard_passes_v3` never carries a telemetry-hook pass.
 //
-// A transient `current_exe()` failure is non-fatal on both sides:
-// `merge_agent_spawn_hook` never persists a `$PATH`-dependent fallback
-// command when the exe path didn't resolve to an absolute path this
-// run, and `verify_agent_spawn_hook_command` re-checks resolvability
-// before erroring -- still unresolvable degrades to a warning;
-// resolvable but still missing means the agent's pre-existing `hooks`
-// shape is genuinely malformed, which stays a hard error. Mirrors
-// `claude_settings.rs`'s handling of the same root cause, and
-// `apply_v3_standalone_telemetry_hook_with_exe`'s refusal on the V3
-// side.
+// A transient `current_exe()` failure is non-fatal on both sides.
+// `merge_agent_spawn_hook_for_install` never persists a
+// `$PATH`-dependent fallback command, and
+// `verify_agent_spawn_hook_command` re-checks resolvability before
+// erroring: still unresolvable degrades to a warning; resolvable but
+// still missing means the agent's pre-existing `hooks` shape is
+// malformed, which stays a hard error. On the V3 side,
+// `apply_v3_standalone_telemetry_hook_with_exe` refuses the write and
+// the caller warns. (Claude's `merge_claude_settings_hooks_with_exe`
+// differs: it writes the bare fallback for a fresh hook and only
+// refuses to let it replace an existing absolute one.)
 
 use std::path::Path;
 
@@ -92,8 +100,8 @@ impl ResourceRewritePass for TelemetryHookPass {
 /// the standalone SessionStart telemetry hook document this module
 /// writes. A dedicated, Konductor-namespaced filename under the shared
 /// `.kiro/hooks/` directory. This path is fully owned by Konductor
-/// (never merged with unrelated hand-authored hooks the way
-/// `.claude/settings.json` is), so the generic `Created`/`ReplacedOurs`/
+/// (never merged with unrelated hand-authored hooks the way Claude's
+/// settings files are), so the generic `Created`/`ReplacedOurs`/
 /// `ReplacedForeign` provenance model needs no special-casing here --
 /// except for the dedicated lock file this module also writes into the
 /// same directory (see `V3_STANDALONE_HOOK_LOCK_FILE_NAME`), which is
@@ -126,12 +134,15 @@ const V3_DELEGATION_TOOL_MATCHER: &str = "^(subagent_.+|orchestrate_subagent)$";
 /// `claude_settings.rs`'s `.settings.lock`) sharing the same directory.
 /// `pub(crate)`: this file is never manifest-tracked, so
 /// `uninstall.rs`'s `delete_eligible_files` reads this name directly to
-/// remove it as a best-effort sibling of the tracked hook document.
+/// remove it as a best-effort sibling of the tracked hook document
+/// (`remove_v3_standalone_telemetry_hook` does the same on
+/// `--no-telemetry`).
 pub(crate) const V3_STANDALONE_HOOK_LOCK_FILE_NAME: &str =
     ".konductor-telemetry-session-start.lock";
 
 /// Builds the standalone hook document this module writes, for an
-/// already shell-quoted `konductor` exe path. `SessionStart` reports the
+/// already shell-quoted `konductor` exe path. Both commands pass
+/// `install_root` as `--install-root`. `SessionStart` reports the
 /// session's own agent; `PreToolUse` on the delegation tools reports
 /// each delegated agent (a delegated child never fires its own
 /// `SessionStart` in v3).
@@ -174,10 +185,10 @@ fn build_v3_standalone_hook_document(quoted_exe: &str, install_root: &Path) -> s
 /// HOOKS_RELATIVE_PATH>`, unconditionally overwriting any pre-existing
 /// content with the fresh document `build_v3_standalone_hook_document`
 /// produces for the current `exe`. Unlike `merge_claude_settings_hooks_with_exe`
-/// or this file's own V2 `merge_agent_spawn_hook`, this never reads or
-/// merges pre-existing content: the file's Konductor-owned name means
-/// there is no "preserve someone else's hooks" concern the way there is
-/// for a genuinely shared file like `.claude/settings.json` -- it's
+/// or this file's own V2 `merge_agent_spawn_hook_for_install`, this never
+/// reads or merges pre-existing content: the file's Konductor-owned name
+/// means there is no "preserve someone else's hooks" concern the way
+/// there is for Claude's shared settings files -- it's
 /// rewritten fresh on every install, the same as `.kiro/agents/
 /// <name>.json`. That full overwrite also makes idempotency and
 /// self-healing automatic: a relocated binary or a second install run
@@ -245,26 +256,24 @@ pub(in crate::cli::install) fn apply_v3_standalone_telemetry_hook(
 /// lock file) from `target_dir`, so a `--no-telemetry` install run
 /// tears down a hook a prior telemetry-enabled run left behind.
 ///
-/// Without this, `install_from_local` only ever SKIPS writing the hook
-/// under `--no-telemetry`; it never removes an existing one. Install
-/// replaces the manifest slot rather than diffing the prior file list
-/// against the new one, so a file that drops out of the plan is not
-/// deleted the way `uninstall`/`update` would delete it. The sequence
-/// `install` (telemetry on) then `install --no-telemetry` against the
-/// same target would otherwise leave `.kiro/hooks/konductor-telemetry-
-/// hooks.json` on disk, still firing on every session despite the
-/// opt-out.
+/// Skipping the write alone is not enough: install replaces the manifest
+/// slot rather than diffing the prior file list against the new one, so
+/// a file that drops out of the plan is not deleted the way
+/// `uninstall`/`update` would delete it. Without this call in
+/// `install_from_local`'s `--no-telemetry` branch, `install` (telemetry
+/// on) then `install --no-telemetry` against the same target would leave
+/// `.kiro/hooks/konductor-telemetry-hooks.json` on disk, still firing on
+/// every session despite the opt-out.
 ///
 /// The whole file is Konductor-owned (see `V3_STANDALONE_HOOKS_
-/// RELATIVE_PATH`'s own doc comment), so removing it outright carries
-/// none of the "preserve someone else's content" concern the shared
-/// `.claude/settings.json` does -- this is a plain file delete, not a
-/// merge-and-strip.
+/// RELATIVE_PATH`'s own doc comment), so this is a plain file delete,
+/// not the merge-and-strip `remove_claude_telemetry_hooks` does for
+/// Claude's shared settings files.
 ///
-/// Best-effort and idempotent: an already-absent file is a no-op, not
-/// an error, and a delete failure is reported to the caller as a
-/// warning rather than aborting an otherwise-successful install
-/// (mirroring the write side's own non-fatal philosophy). Removes the
+/// Idempotent: an already-absent file is a no-op, not an error. A lock
+/// or delete failure returns `Err`, which the caller prints as a warning
+/// rather than aborting an otherwise-successful install (mirroring the
+/// write side's own non-fatal handling). Removes the
 /// sibling lock file the same way `uninstall.rs`'s `delete_eligible_
 /// files` does -- unconditionally, since it is never manifest-tracked
 /// and would otherwise be stranded.
@@ -344,12 +353,12 @@ fn hook_command_already_wired(entries: &[serde_json::Value], command: &str) -> b
 
 /// Reads `value["hooks"][trigger]` without creating either key --
 /// `Ok(&[])` when `hooks` or `hooks.<trigger>` is simply absent, `Err(())`
-/// for the same malformed-shape no-op contract `merge_agent_spawn_hook`
-/// uses. Letting the caller match against an existing entry BEFORE
-/// deciding whether to mutate `value` is the point of this being a
-/// separate, read-only step: a skipped wiring (a non-absolute `exe`)
-/// must never leave behind an empty `hooks`/`hooks.<trigger>` scaffold
-/// just because this lookup ran.
+/// for the same malformed-shape no-op contract
+/// `merge_agent_spawn_hook_for_install` uses. Letting the caller match
+/// against an existing entry BEFORE deciding whether to mutate `value`
+/// is the point of this being a separate, read-only step: a skipped
+/// wiring (a non-absolute `exe`) must never leave behind an empty
+/// `hooks`/`hooks.<trigger>` scaffold just because this lookup ran.
 fn read_existing_hook_entries<'a>(
     value: &'a serde_json::Value,
     trigger: &str,
@@ -369,12 +378,21 @@ fn read_existing_hook_entries<'a>(
     entries_val.as_array().map(Vec::as_slice).ok_or(())
 }
 
+/// Test shorthand for `merge_agent_spawn_hook_for_install` with no
+/// install root.
+#[cfg(test)]
+fn merge_agent_spawn_hook(value: &mut serde_json::Value, trigger: &str, exe: &str) {
+    merge_agent_spawn_hook_for_install(value, trigger, exe, None);
+}
+
 /// Ensures `value["hooks"][trigger]` carries an entry running `exe
-/// __telemetry-hook agent-invocation` -- creates `hooks`/`hooks.
-/// <trigger>` fresh when either is absent, or merges into existing
-/// content otherwise. Operates directly on an in-memory
-/// `serde_json::Value` already parsed by the caller's `apply_all`; no
-/// file to read/lock/write here.
+/// __telemetry-hook agent-invocation`, plus `--agent <value["name"]>`
+/// and `--install-root <install_root>` when those are known. Creates
+/// `hooks`/`hooks.<trigger>` fresh when either is absent, or merges into
+/// existing content otherwise; an identical command already present is
+/// left as is. Operates directly on an in-memory `serde_json::Value`
+/// already parsed by the caller's `apply_all`; no file to
+/// read/lock/write here.
 ///
 /// Leaves `value` untouched (a documented no-op, not a panic) when its
 /// top level, its pre-existing `"hooks"` key, or `"hooks.<trigger>"` is
@@ -382,14 +400,9 @@ fn read_existing_hook_entries<'a>(
 /// turns that no-op into a hard `Err` for the whole install.
 ///
 /// Also leaves `value` untouched when the exe path could not be
-/// resolved: `exe_is_absolute` is checked before any mutation, so a
-/// skipped wiring never creates so much as an empty `"hooks"`/`"hooks.
-/// <trigger>"` scaffold.
-#[cfg(test)]
-fn merge_agent_spawn_hook(value: &mut serde_json::Value, trigger: &str, exe: &str) {
-    merge_agent_spawn_hook_for_install(value, trigger, exe, None);
-}
-
+/// resolved: `is_resolved_absolute_exe_path` is checked before any
+/// mutation, so a skipped wiring never creates so much as an empty
+/// `"hooks"`/`"hooks.<trigger>"` scaffold.
 fn merge_agent_spawn_hook_for_install(
     value: &mut serde_json::Value,
     trigger: &str,
@@ -474,14 +487,13 @@ fn hooks_array_has_telemetry_entry(value: &serde_json::Value, trigger: &str) -> 
 ///   `verify` back-to-back against the same `value`). The missing entry
 ///   is the expected consequence of that transient, environment-level
 ///   condition, so this degrades to a non-fatal warning and `Ok(())`,
-///   matching how `apply_v3_standalone_telemetry_hook_with_exe` and
-///   `claude_settings.rs`'s `apply_claude_settings_grant_and_hooks`
-///   treat the identical root cause.
+///   matching how `apply_v3_standalone_telemetry_hook_with_exe`'s caller
+///   treats the identical root cause.
 /// - `current_exe()` resolved fine, yet the entry is still missing: the
 ///   agent file's own pre-existing `"hooks"`/`"hooks.<trigger>"` field
-///   was not the JSON shape `merge_agent_spawn_hook` expects -- a real,
-///   fixable problem with this agent's content, so this remains a hard
-///   `Err` that fails the whole install.
+///   was not the JSON shape `merge_agent_spawn_hook_for_install` expects
+///   -- a real, fixable problem with this agent's content, so this
+///   remains a hard `Err` that fails the whole install.
 fn verify_agent_spawn_hook_command(
     value: &serde_json::Value,
     trigger: &str,
@@ -679,8 +691,7 @@ mod tests {
             )
             .is_ok(),
             "a current_exe()-unresolvable missing entry must be a non-fatal warning, not an \
-             install-aborting Err, matching V3/Claude Code's own handling of this exact \
-             condition"
+             install-aborting Err"
         );
     }
 
@@ -997,7 +1008,7 @@ mod tests {
 
     #[test]
     fn write_then_remove_leaves_no_hook_behind_the_reinstall_transition() {
-        // The exact leak this fix targets: an install with telemetry
+        // The leak this guards against: an install with telemetry
         // writes the hook, then a reinstall with `--no-telemetry`
         // removes it, so nothing keeps firing after the opt-out.
         let dir = scratch_dir("transition");

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // telemetry/install_info.rs — `<target_dir>/.konductor/install-info.json`
-// schema, `agent_version` derivation, and write mechanics.
+// schema, `agent_version` derivation, and write and removal mechanics.
 //
 // `agent_version` is the installed content's own version, reported
 // separately from the running binary's version, which reaches every
@@ -109,7 +109,7 @@ pub(crate) fn write_install_info(
     write_record(target_dir, &record)
 }
 
-/// Removes the opt-in record, so a `--no-telemetry` run over a target
+/// Removes the opt-in record, so an `install --no-telemetry` over a target
 /// that was installed with telemetry on actually opts it out. Leaving
 /// the file would keep every `report_*` gate open and make the next
 /// plain `update` carry telemetry forward as enabled. An absent file is

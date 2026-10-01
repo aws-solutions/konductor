@@ -115,9 +115,10 @@ fn seed_skill_source(repo_root: &Path) {
 
 /// The heart of this test: runs a REAL `synth --from <repo_root>`,
 /// then a REAL `install --from <repo_root>` against a SEPARATE target
-/// directory, and asserts the installed agent file's bytes match
-/// whatever `synth` actually wrote -- read back from synth's own
-/// output, not a path either side of this test hand-computes. If synth
+/// directory, and asserts the installed agent file matches whatever
+/// `synth` actually wrote, apart from the telemetry hook install adds.
+/// synth's side is read back from its own output, not a path either
+/// side of this test hand-computes. If synth
 /// and install ever resolve different directories, `install` fails with
 /// "no synthed agent files found" and this test fails loudly rather
 /// than silently seeding around the mismatch.
@@ -240,9 +241,9 @@ fn real_synth_then_real_install_agree_on_output_path_and_bytes() {
     );
 
     // The specific location contract this test is meant to lock in --
-    // asserted AFTER establishing byte identity above (which alone
+    // asserted AFTER establishing content agreement above (which alone
     // already proves the file was actually found and copied), so a
-    // reader can see both "the bytes match" and "the well-known
+    // reader can see both "the contents match" and "the well-known
     // destination path is what got used".
     assert_eq!(
         installed_files[0],
@@ -504,10 +505,12 @@ fn seed_claude_agent_spec_source(repo_root: &Path) {
 /// Regression test for the `--no-telemetry` re-install leak on the pure
 /// Claude-Code-only install path: a first install with telemetry
 /// enabled wires the `SessionStart`/`SubagentStart` telemetry hooks into
-/// the shared `.claude/settings.json`, and a second install of the same
-/// target with `--no-telemetry` must STRIP them -- not merely skip
-/// re-wiring. Because that file is shared, the strip must leave any
-/// foreign hook and any unrelated top-level key intact.
+/// `.claude/settings.json` (the target is `$HOME` here, so the hooks go
+/// to the user-level file, not `settings.local.json`), and a second
+/// install of the same target with `--no-telemetry` must STRIP them --
+/// not merely skip re-wiring. Because the user owns the rest of that
+/// file, the strip must leave any foreign hook and any unrelated
+/// top-level key intact.
 #[test]
 fn claude_reinstall_with_no_telemetry_strips_previously_installed_hooks() {
     let sink = telemetry_test_sink::TelemetrySink::start();
@@ -682,14 +685,14 @@ fn seed_agent_spec_with_context_source(repo_root: &Path) {
 
 /// Unlike `real_synth_then_real_install_agree_on_output_path_and_bytes`
 /// (whose seeded agent declares no `contextNames`, so its installed
-/// bytes stay byte-identical to synth's own output), an agent WITH a
-/// `contextNames` entry is deliberately transformed during install: its
-/// `resources` entry is rewritten from a relative `file://context/...`
-/// (destination-agnostic, as `dist/` must stay) to an absolute
-/// `file://<install-root>/context/...` path. This test locks in that
-/// divergence against the REAL compiled binary rather than asserting
-/// byte identity, and additionally proves the context file itself was
-/// copied to the destination the rewritten path points at.
+/// copy matches synth's own output apart from the telemetry hook), an
+/// agent WITH a `contextNames` entry is deliberately transformed during
+/// install: its `resources` entry is rewritten from a relative
+/// `file://context/...` (destination-agnostic, as `dist/` must stay) to
+/// an absolute `file://<install-root>/context/...` path. This test locks
+/// in that divergence against the REAL compiled binary rather than
+/// asserting content equality, and additionally proves the context file
+/// itself was copied to the destination the rewritten path points at.
 #[test]
 fn real_synth_then_real_install_rewrites_context_resource_to_absolute_path() {
     let sink = telemetry_test_sink::TelemetrySink::start();

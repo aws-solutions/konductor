@@ -25,9 +25,12 @@
 // `RewriteContext`, `apply_all`, `standard_passes`/`standard_passes_v3`)
 // plus the two passes that implement it directly: `ContextResourcePass`
 // and `SkillResourcePass`. The MCP-server injection pass, shared by V2
-// and V3, lives in `mcp_server`; the one-time Claude Code
-// `.claude/settings.json`/hooks mutation, which never implements
-// `ResourceRewritePass`, lives in `claude_settings`.
+// and V3, lives in `mcp_server`; the V2 `TelemetryHookPass` and the V3
+// standalone telemetry-hook write/remove live in `telemetry_hook_pass`;
+// the one-time Claude Code settings mutation (the `.claude/settings.json`
+// permission grant, plus telemetry hooks in `.claude/settings.local.json`
+// or, for a `$HOME` install, `~/.claude/settings.json`), which never
+// implements `ResourceRewritePass`, lives in `claude_settings`.
 
 use std::path::Path;
 
@@ -152,22 +155,25 @@ pub(super) trait ResourceRewritePass {
     /// agent's own `ctx.agent_sop_names` entry: a SOP-only agent has no
     /// skill-resource shape in `value` at all, so `matches` cannot
     /// decide whether this agent needs the MCP server from `value`
-    /// alone. `ContextResourcePass`/`SkillResourcePass` ignore `ctx`;
-    /// their own matching condition is fully determined by `value`.
+    /// alone. `ContextResourcePass`/`SkillResourcePass`/`TelemetryHookPass`
+    /// ignore `ctx`; their own matching condition is fully determined by
+    /// `value` (or, for `TelemetryHookPass`, is always `true`).
     fn matches(&self, value: &serde_json::Value, ctx: &RewriteContext<'_>) -> bool;
 
     /// Applies this pass's mutation in place. Only called when
     /// `matches(value)` was just `true`.
     fn rewrite(&self, value: &mut serde_json::Value, ctx: &RewriteContext<'_>);
 
-    /// Confirms every target this pass's `rewrite` just pointed at
-    /// exists on disk, erroring with `agent_file` and the missing
-    /// target otherwise. Only called immediately after this pass's own
-    /// `rewrite`, so it never observes a later pass's mutation. Never
-    /// mutates disk itself -- check-only, by design: see this module's
-    /// own "V3/Claude Code permission grant" section for why that
-    /// grant is deliberately NOT implemented as a `verify`-time side
-    /// effect, even though its target also lives outside `value`.
+    /// Confirms this pass's `rewrite` took effect, erroring with
+    /// `agent_file` and what is missing otherwise: for the resource and
+    /// MCP passes, every target `rewrite` pointed at exists on disk; for
+    /// `TelemetryHookPass`, the hook entry is present in `value`. Only
+    /// called immediately after this pass's own `rewrite`, so it never
+    /// observes a later pass's mutation. Never mutates disk itself --
+    /// check-only, by design: see `claude_settings.rs`'s "V3/Claude Code
+    /// permission grant" section for why that grant is deliberately NOT
+    /// implemented as a `verify`-time side effect, even though its
+    /// target also lives outside `value`.
     fn verify(
         &self,
         value: &serde_json::Value,
@@ -204,13 +210,13 @@ pub(super) fn apply_all(
 /// one line here -- no existing line changes.
 ///
 /// `no_telemetry` gates `TelemetryHookPass` purely on this one flag,
-/// not on `McpServerPass`'s `matches` outcome the way the Claude/V3
-/// settings grant (`claude_settings.rs`) is gated on
-/// `any_mcp_server_injected`: that gate is specific to Claude's
-/// MCP-grant-triggered hook, while telemetry applies to every installed
-/// Kiro agent regardless of MCP usage. `TelemetryHookPass::matches` is
-/// itself unconditionally `true`, so omitting it from this `Vec` when
-/// `no_telemetry` is the entire gate.
+/// not on `McpServerPass`'s `matches` outcome the way the Claude
+/// settings grant and the hooks it carries on a Kiro install
+/// (`apply_claude_settings_grant_and_hooks`) are gated on
+/// `any_mcp_server_injected`: telemetry applies to every installed
+/// Kiro CLI V2 agent regardless of MCP usage.
+/// `TelemetryHookPass::matches` is itself unconditionally `true`, so
+/// omitting it from this `Vec` when `no_telemetry` is the entire gate.
 pub(super) fn standard_passes(no_telemetry: bool) -> Vec<Box<dyn ResourceRewritePass>> {
     let mut passes: Vec<Box<dyn ResourceRewritePass>> = vec![
         Box::new(ContextResourcePass),

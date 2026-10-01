@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// install/resource_rewrite/claude_settings.rs — one-time mutation of a
-// Claude Code install target's shared `.claude/settings.json`: the
-// `permissions.allow` grant for the `konductor-skills` MCP server's
-// tools, and the telemetry hook wiring. Neither implements
-// `ResourceRewritePass` -- unlike the passes in `mod.rs`/`mcp_server`,
-// these run once per install run against a plain `target_dir: &Path`,
-// not once per agent against a parsed agent JSON `Value` plus
-// `RewriteContext`, and they merge into one shared file rather than
-// rewriting a per-agent one.
+// install/resource_rewrite/claude_settings.rs — merges Konductor's
+// entries into a Claude Code target's settings files: the
+// `permissions.allow` grant for the `konductor-skills` MCP server's tools
+// (in `.claude/settings.json`), and the telemetry hooks (in the file
+// `claude_hooks_settings_relative_path` picks). Also strips those hooks
+// for `--no-telemetry` and uninstall. None of this is a
+// `ResourceRewritePass`: it runs once per install run against
+// `target_dir`, merging into files the user also owns, not once per
+// agent JSON.
 
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
@@ -16,117 +16,37 @@ use std::path::Path;
 use super::super::manifest::{ManifestFile, Provenance};
 use super::mcp_server::{MCP_SERVER_ALLOWED_TOOLS_GRANTS, MCP_SERVER_NAME};
 
-// ── V3/Claude Code permission grant (additive to the V2 pair above) ─────
+// ── V3/Claude Code permission grant ─────────────────────────────────────
 //
-// Kiro CLI V2 (above) grants access by writing `tools`/`allowedTools`
-// directly into each agent's own JSON file -- which, being manifest-
-// tracked as a whole file already, carries the grant's provenance for
-// free. Claude Code has no equivalent per-agent field at all: the
-// analogous grant lives in one shared, project-level settings file,
-// `<target_dir>/.claude/settings.json`'s `permissions.allow` array (see
-// <https://code.claude.com/docs/en/permissions#mcp>, and the real
-// `~/.claude/settings.json` / repo-local `.claude/settings.json`
-// examples this design was grounded in).
+// Kiro agents carry their `konductor-skills` grant in their own JSON
+// (`mcp_server.rs`). Claude Code has no per-agent field: the grant goes
+// in `<target_dir>/.claude/settings.json`'s `permissions.allow` (see
+// <https://code.claude.com/docs/en/permissions#mcp>), so it is applied
+// once per install run, not per agent.
 //
-// Because that file is shared rather than per-agent, this grant is
-// applied exactly ONCE per install run (`apply_claude_settings_grant`
-// below, called from `kiro_cli.rs`'s `install_agents`/
-// `install_from_local`), never once per skill-bearing agent -- unlike
-// the V2 side, which is naturally per-agent. The caller gates the call
-// on two conditions mirroring the V2 grant's own scope: `detect_runtimes`
-// finding a `.claude` marker at the target, AND at least one agent this
-// run actually having received the V2 `mcpServers` injection (checked
-// by the caller via `MCP_SERVER_NAME` above), so this can never fire on
-// a run where V2 injected nothing. The caller also constructs a real
-// `ManifestFile` entry for the written settings.json, classified with
-// `manifest::classify_provenance` against the file's state BEFORE this
-// grant runs -- so the mutation is always accounted for in
-// `.konductor/manifest`, visible to `konductor doctor`, and correctly
-// reflected even if a later agent in the same install run fails.
-// Deliberately NOT solved by that manifest entry: granular "remove
-// exactly these grant strings on uninstall" support. There is no
-// existing manifest concept for partial ownership of a shared file's
-// content to build that on, and a foreign-classified entry is correctly
-// left alone by `konductor uninstall` regardless (matching
-// `install_skills`'s own foreign-file-preservation philosophy elsewhere
-// in this codebase -- uninstall must never wholesale-delete a shared
-// file that may carry unrelated hand-authored content). Inventing that
-// mechanism is out of scope here.
+// `apply_claude_settings_grant_and_hooks` applies it for the Kiro V2
+// (`phases.rs`'s `AgentInstallPhase`) and V3 (`kiro_cli_v3.rs`) installs,
+// both gated on at least one agent receiving the `mcpServers` injection
+// this run and `detect_runtimes` finding a `.claude` marker. The file is
+// planned ahead (`kiro_cli/plan.rs`'s `plan_claude_settings_grant`) and
+// tracked in the manifest. Uninstall never deletes it and leaves the
+// grant strings in place; doctor skips it for drift
+// (`is_claude_settings_path`).
 //
-// `merge_claude_settings_permissions` below guards against two risks a
-// merge-into-a-pre-existing-file operation invites that the V2 side
-// (which only ever writes fresh, synthesized content) never faces:
-// - Symlink safety: both the `.claude` directory and `settings.json`
-//   itself are rejected outright if either is a symlink -- this is the
-//   only pass in this file that reads pre-existing content from the
-//   target and republishes it, so a symlinked `settings.json` would
-//   read and preserve whatever it points at, and a symlinked `.claude`
-//   directory would silently redirect the write through the parent-
-//   directory resolution `create_dir_all`/`rename` already follow.
-// - Deny-shadow detection: if the target's `permissions.deny` already
-//   covers a grant this pass is about to add (an exact match, this
-//   server's own wildcard forms, or the global `mcp__*`), the merge
-//   errors rather than silently writing an allow entry Claude Code
-//   would never actually honor.
+// `merge_claude_settings_permissions` refuses a symlinked `.claude` or
+// `settings.json`, and refuses a grant an existing `permissions.deny`
+// entry already shadows.
 //
-// Reachability today, precisely: there is no separate Claude
-// `InstallStrategy` (`install::registry::STRATEGIES` registers only
-// `KiroCliInstallStrategy`), so this fires only through THAT strategy's
-// `install_from_local` -- which requires `.kiro` to already exist at
-// the target (see `KiroCliInstallStrategy::matches`; a target with
-// `.claude` but no PRE-EXISTING `.kiro` is a Claude-only target by
-// `detect_runtimes`'s reckoning, since `.kiro` would be this same run's
-// own output, and no registered strategy claims that). So this grant
-// reaches disk on a reinstall/update over a target that already has
-// `.kiro` (from a prior konductor install, or created by hand) AND
-// already has `.claude` -- not on a from-scratch "first install ever,
-// Claude Code only" target, which has no install path at all yet
-// (Claude grant or otherwise), pending a real Claude `InstallStrategy`.
-// Verified directly, not assumed: see `kiro_cli.rs`'s
-// `install_from_local_grants_claude_settings_permissions_when_claude_marker_dir_present`
-// (the reachable case, through the real unmodified strategy entry
-// point) and its neighbor
-// `install_from_local_rejects_claude_only_target_with_no_preexisting_kiro_dir`
-// (the unreachable case).
-//
-// A further, deliberately unimplemented gap: this grants PERMISSION to
-// call `konductor-skills`'s tools, but nothing anywhere in this
-// codebase REGISTERS `konductor-skills` as an MCP server for Claude
-// Code (the equivalent of the V2 side's own `mcpServers` JSON
-// injection, which registers AND grants in one place because both live
-// in the same agent file). Without a `.mcp.json` entry or equivalent
-// server registration, an `mcp__konductor-skills__*` allow rule is
-// inert on any target that doesn't happen to have that server
-// registered through some out-of-band means. No concrete design for
-// how this codebase should write that registration exists anywhere in
-// this workspace -- the same "don't invent a schema from guesswork"
-// reasoning as the Kiro V3/KAS gap below applies equally here.
-//
-// There is no Kiro CLI V3/KAS equivalent implemented here either. No
-// concrete schema for a `.kiro/permissions` file -- the natural V3
-// counterpart -- exists anywhere in this workspace (searched both
-// packages' `docs/design/*.md` and `designs/*.md`, and the workspace
-// generally) to ground an implementation in -- unlike the Claude Code
-// side, which has two live, real examples on disk. Adding one here
-// would mean inventing a schema from guesswork. Both this and
-// the MCP-server-registration gap above remain open follow-ups pending
-// design decisions.
+// Known gap: nothing registers `konductor-skills` as an MCP server for
+// Claude Code, so the grant is inert unless the server is registered
+// some other way. That is why `ClaudeInstallStrategy` skips it.
 
-/// Relative path, under an install target directory, of Claude Code's
-/// shared-project settings file -- the "Shared project" tier documented
-/// at <https://code.claude.com/docs/en/settings>. Deliberately
-/// `.claude/settings.json`, not `.claude/settings.local.json` (personal,
-/// gitignored, wrong tier for a project-wide grant this install writes
-/// on every user's behalf) or `~/.claude/settings.json` (user-level,
-/// outside any install target this pass ever sees). `pub(crate)` (not
-/// just `pub(super)`): read by `kiro_cli.rs`, to build the destination
-/// path it passes to `manifest::classify_provenance` before calling
-/// `apply_claude_settings_grant`, AND by
-/// `uninstall.rs`'s `delete_eligible_files`, which special-cases this
-/// one manifest path to NEVER delete it regardless of `Provenance` --
-/// see the comment there for why this file's merge-into-a-shared-file
-/// write model breaks the whole-file-ownership assumption every other
-/// `Provenance::Created`/`ReplacedOurs` path in this codebase relies on.
+/// Claude Code's shared project settings file (the "Shared project" tier,
+/// <https://code.claude.com/docs/en/settings>). Carries the
+/// `permissions.allow` grant, and the telemetry hooks only for a `$HOME`
+/// install (`claude_hooks_settings_relative_path`). Konductor merges into
+/// it rather than owning it, so uninstall never deletes it and doctor
+/// never reports it as drift (`is_claude_settings_path`).
 pub(crate) const CLAUDE_SETTINGS_RELATIVE_PATH: &str = ".claude/settings.json";
 
 /// Claude Code's personal, uncommitted project settings file. A project
@@ -195,10 +115,10 @@ fn deny_entry_shadows_grant(deny_entry: &str, grant: &str) -> bool {
 }
 
 /// Errors if `path` exists and is a symlink (of any kind, dangling or
-/// not) -- never follows it. Called by `merge_claude_settings_permissions`
-/// twice for each of `.claude`/`settings.json`: once up front (rejecting
-/// the common case cheaply, before any parsing work), and again
-/// immediately before each disk-mutating call that path feeds into
+/// not) -- never follows it. Every settings merge and removal in this
+/// module calls it for `.claude` and the settings file twice: once up
+/// front, and again immediately before each disk-mutating call that path
+/// feeds into
 /// (`create_dir_all`, `write_atomic`) -- `create_dir_all`/`File::create`/
 /// `std::fs::read_to_string` all resolve symlinks transparently, so a
 /// symlinked `.claude` (a directory symlink, followed during normal
@@ -231,41 +151,13 @@ fn reject_symlink(path: &Path, kind: &str) -> Result<(), String> {
     }
 }
 
-/// Ensures `<target_dir>/.claude/settings.json` grants every string in
-/// `grants` under its `permissions.allow` array: creates the file (and
-/// its `permissions`/`allow` scaffolding) fresh when it does not exist,
-/// or merges into the existing content otherwise. Appends only entries
-/// not already present -- idempotent across reinstall, the same
-/// append-only philosophy `push_unique_str` gives the V2 side above.
-///
-/// Errors rather than silently overwriting or writing an ineffective
-/// grant when:
-/// - either `.claude` or `settings.json` is a symlink (see
-///   `reject_symlink`'s own doc comment for why);
-/// - the existing content at any step of the path -- `settings.json`
-///   itself, its `permissions` key, its `permissions.deny` key, or its
-///   `permissions.allow` key -- is not the JSON shape this expects;
-/// - an existing `permissions.deny` entry already shadows one of
-///   `grants` (see `deny_entry_shadows_grant`).
-///
-/// Never disturbs any other top-level key, any other key under
-/// `permissions`, or any pre-existing `allow`/`deny` entry (verified
-/// directly: see `claude_settings_grant_merges_preserving_unrelated_entries`
-/// below, seeded with both a sibling top-level key and a sibling
-/// `permissions.allow` entry).
-///
-/// Distinguishes why `merge_claude_settings_permissions`/
-/// `apply_claude_settings_grant` failed, so the caller can decide how
-/// to report it by matching on the variant rather than pattern-matching
-/// rendered error text (rendered text is not a reliable discriminator:
-/// more than one failure mode here can share overlapping substrings).
-/// `DenyShadowed` means the grant was correctly, deliberately not
-/// applied because the target owner already denies it; every other
-/// failure -- symlink, malformed JSON at any step, an I/O error -- is
-/// `Other`. `Deref<Target = str>` (to the same message either variant
-/// carries) keeps `err.contains(...)` call sites working unchanged;
-/// callers that need to distinguish the two cases match on the variant
-/// instead, as `kiro_cli.rs`'s non-fatal-warning branch does.
+/// Why a Claude settings merge failed, so callers match on the variant
+/// instead of the rendered text (several failure modes share substrings).
+/// `DenyShadowed` means the grant was deliberately not applied because
+/// the target already denies it; every other failure (symlink, malformed
+/// JSON, I/O) is `Other`. `Deref<Target = str>` keeps `err.contains(...)`
+/// working. `apply_claude_settings_grant_and_hooks` matches on the
+/// variant to pick its warning.
 #[derive(Debug)]
 pub(super) enum ClaudeGrantError {
     DenyShadowed(String),
@@ -304,27 +196,22 @@ impl From<String> for ClaudeGrantError {
     }
 }
 
-/// Returns, on success, the exact bytes now on disk at `settings_path`
-/// -- freshly written ones when a grant was actually added, or the
-/// file's own pre-existing bytes unchanged when every grant was
-/// already present and the write was skipped (see the `any_added`
-/// check below) -- so `apply_claude_settings_grant` can hash them
-/// directly instead of reading `settings_path` back a second time.
-/// That second, independent read (this function's own write, when it
-/// happens, is already durable and correct via `write_atomic` by the
-/// time this returns) could fail on its own for reasons unrelated to
-/// whether the grant itself succeeded, which would otherwise make the
-/// caller misreport a successful merge as a failed one.
+/// Ensures `<target_dir>/.claude/settings.json` grants every string in
+/// `grants` under `permissions.allow`, creating the file and scaffolding
+/// when missing. Appends only entries not already present, so reinstall
+/// is idempotent. Never disturbs any other key or pre-existing
+/// `allow`/`deny` entry.
 ///
-/// Errors as `ClaudeGrantError::DenyShadowed` specifically for the
-/// `permissions.deny`-shadow case (see `deny_entry_shadows_grant`) --
-/// every other failure below is `ClaudeGrantError::Other`. Returning a
-/// typed variant, rather than a shared `String` the caller would have
-/// to distinguish by sniffing rendered text for a substring, is
-/// deliberate: the "not a JSON array" error just below also contains
-/// the literal substring `"permissions.deny"`, so a substring-based
-/// check could not reliably tell that malformed-file case apart from a
-/// genuine deny-shadow.
+/// Errors rather than overwriting or writing an ineffective grant when
+/// `.claude` or `settings.json` is a symlink (`reject_symlink`), when
+/// the file, `permissions`, `permissions.deny` or `permissions.allow` is
+/// not the expected JSON shape, or when a `permissions.deny` entry
+/// shadows a grant (`deny_entry_shadows_grant`, reported as
+/// `ClaudeGrantError::DenyShadowed`).
+///
+/// Returns the bytes now on disk: the new content, or the original bytes
+/// when every grant was already present and the write was skipped. The
+/// caller hashes these directly rather than re-reading the file.
 fn merge_claude_settings_permissions(
     target_dir: &Path,
     grants: &[String],
@@ -339,24 +226,11 @@ fn merge_claude_settings_permissions(
     let settings_path = target_dir.join(settings_relative);
     reject_symlink(&settings_path, "file")?;
 
-    // Serializes this function's ENTIRE read-modify-write cycle against
-    // any other caller mutating the SAME `settings.json` -- either
-    // `merge_claude_settings_hooks_with_exe` (held under the identical lock
-    // file -- see that function's own doc comment) racing this one
-    // within the same or a different process, or this same function
-    // racing itself across two concurrent `konductor install` runs
-    // against the same target. Without this, two concurrent merges
-    // each read the same pre-update snapshot, each compute a rewrite
-    // reflecting only their own change, and whichever atomic-rename
-    // lands last silently discards the other's -- the exact
-    // lost-update race `config_lock.rs`'s own locking exists to
-    // prevent for `config set` against `.konductor/config.yml`,
-    // reproduced here for this file. Held for the rest of this function's
-    // scope (dropped automatically at return). Reuses `config_lock`'s
-    // exact advisory-lock-around-the-critical-section primitive
-    // (bounded retry, explicit permissions) rather than a second,
-    // independent locking mechanism -- see that module's own
-    // `acquire_named` doc comment.
+    // `.claude/.settings.lock` serializes every read-modify-write this
+    // module does under `.claude` (grant merge, hook merge, hook removal),
+    // across threads and concurrent `konductor install` runs. Without it,
+    // two merges read the same snapshot and the later rename drops the
+    // other's change. Held until return.
     let _lock_guard = crate::cli::config_lock::acquire_named(&claude_dir, ".settings.lock")
         .map_err(|source| format!("failed to lock {}: {source}", claude_dir.display()))?;
 
@@ -526,24 +400,11 @@ fn merge_claude_settings_permissions(
     Ok(bytes)
 }
 
-/// Performs the Claude/V3 settings grant for a whole install run and
-/// returns the resulting file's manifest-relative path and content
-/// hash, so the caller (`kiro_cli.rs`'s `install_from_local`) can add a
-/// real `ManifestFile` entry for it. Call this exactly once per install
-/// run (never per-agent, unlike the V2 grant, which is naturally
-/// per-agent because each agent owns its own JSON file) -- see this
-/// module's "V3/Claude Code permission grant" section above for why a
-/// single shared file makes per-agent writes both wasteful and racier
-/// than necessary.
-///
-/// Does not decide whether to call itself: the caller checks both
-/// "did the V2 side inject anything into at least one agent this run"
-/// and "is this target's `.claude` a detected Claude Code target"
-/// (`runtime::detect_runtimes`) before calling, and separately snapshots
-/// the settings file's pre-write state for provenance classification
-/// (`manifest::classify_provenance`) -- both of which must happen
-/// before this function runs, not after, since this function's own job
-/// is exactly the write those decisions gate.
+/// Applies the `permissions.allow` grant and returns `settings.json`'s
+/// manifest path and content hash. Called once per install run by
+/// `apply_claude_settings_grant_and_hooks`, whose callers decide whether
+/// the grant applies; provenance comes from the write-ahead plan
+/// (`plan_claude_settings_grant`) via `attach_provenance`.
 pub(super) fn apply_claude_settings_grant(
     target_dir: &Path,
 ) -> Result<(String, String), ClaudeGrantError> {
@@ -556,82 +417,33 @@ pub(super) fn apply_claude_settings_grant(
 
 // ── V3/Claude Code telemetry hook wiring ──
 //
-// Wires `konductor __telemetry-hook <event-type>` into the `"hooks"` key
-// of the target's hooks settings file (`claude_hooks_settings_relative_path`:
-// `.claude/settings.local.json` for a project, `~/.claude/settings.json`
-// for `$HOME`) so the runtime itself invokes the hidden `__telemetry-hook` subcommand at
-// `SessionStart` (agent invocation) and `SubagentStart` (sub-agent
-// delegation) -- `SessionStart`/`SubagentStart` fire at the START of an
-// agent/sub-agent invocation, distinct from `SubagentStop` (a DIFFERENT,
-// already-published workflow-level hook that fires at delegation END,
-// not START -- both are real, distinct hooks legitimately in play in
-// the same file for two different purposes).
+// Wires `<exe> __telemetry-hook <event> --install-root <target>` into the
+// `hooks` key of the file `claude_hooks_settings_relative_path` picks:
+// `.claude/settings.local.json` for a project (kept out of git), or
+// `~/.claude/settings.json` for a `$HOME` install. `SessionStart` reports
+// an agent invocation; `SubagentStart`, matched to the installed agent
+// names, reports a delegation.
 //
-// Scope, two reachable paths:
-// - `KiroCliInstallStrategy`/`KiroCliV3InstallStrategy` (`phases.rs`'s
-//   `AgentInstallPhase`, `kiro_cli_v3.rs`): wired via the combined
-//   `apply_claude_settings_grant_and_hooks`, immediately after
-//   `apply_claude_settings_grant` succeeds there, gated on
-//   `any_mcp_server_injected && detect_runtimes(target_dir).has(Runtime::
-//   ClaudeCode)` -- the dual-marker install (a target where BOTH `.kiro`
-//   and `.claude` already exist, e.g. a reinstall/update; per that
-//   phase's own tests, "not hypothetical, this package's own workspace
-//   is set up exactly this way"). Fires only when the grant call
-//   immediately before it succeeded (not independently) -- so a
-//   foreign, deny-shadowed, or malformed pre-existing `settings.json`
-//   that skips the grant also skips hooks wiring for that same run,
-//   leaving the foreign file completely untouched (verified by
-//   `install_from_local_does_not_abort_when_claude_grant_fails_on_foreign_content`
-//   in `kiro_cli.rs`) rather than partially mutating it via a second,
-//   independent write.
-// - `ClaudeInstallStrategy` (`claude.rs`), for a pure Claude-Code-only
-//   install with no pre-existing `.kiro` marker: wired via
-//   `apply_claude_settings_hooks_only` below, called directly rather
-//   than through `apply_claude_settings_grant_and_hooks` -- this
-//   install path never registers `konductor-skills` as an MCP server
-//   for Claude Code at all (`claude.rs`'s own `install_agents` does a
-//   verbatim Markdown copy, no `mcpServers` injection, no
-//   `resource_rewrite` pass), so the `permissions.allow` grant
-//   `apply_claude_settings_grant` would write is legitimately inert
-//   here: it would authorize calls to a server nothing ever registers.
-//   Gated only on `!no_telemetry`, with its own scoped write-ahead-plan
-//   function (`plan_claude_settings_hooks_only` in `claude.rs`) rather
-//   than folding into `claude.rs`'s own `plan_all_files` -- that
-//   function is also what `would_fail_as_noop` uses to decide "nothing
-//   to install", so an unconditional planned entry there would make
-//   that check permanently non-empty, breaking its own "no synthed
-//   agent or skill files" error path.
+// Two install paths wire them, both skipped under `--no-telemetry`:
+// - Kiro V2/V3 on a target with a `.claude` marker, when the grant
+//   applies: `apply_claude_settings_grant_and_hooks`, only after the
+//   grant succeeds, so a foreign, deny-shadowed or malformed
+//   `settings.json` is left untouched.
+// - `ClaudeInstallStrategy`: `apply_claude_settings_hooks_only`, with no
+//   grant (see the permission grant section above).
 //
-// Kiro CLI: no equivalent hook-registration point exists in this
-// codebase today for the V2 (JSON agent-spec) surface. `hooks.stop`/
-// `hooks.agentSpawn` are AIM-owned frontmatter fields on the SOURCE
-// agent spec, rewritten at SYNTH time (before `konductor install` ever
-// runs) -- not something `konductor install`'s own resource-rewrite
-// passes inject the way this pass injects into Claude's shared,
-// install-time-mutated `settings.json`. Wiring Kiro CLI hooks would
-// mean adding a NEW resource-rewrite pass that mutates
-// `hooks.agentSpawn`/`hooks.stop` on every installed Kiro agent JSON --
-// a real, larger change with its own open design questions (whether
-// `agentSpawn` re-fires on `invokeSubAgent` is not confirmed, and
-// whether a per-agent single-entry or append semantics is right).
-// Kiro CLI hook wiring is explicitly OUT OF SCOPE for this revision.
+// Both first strip hooks this run must not keep (`strip_hooks_not_owned_this_run`):
+// every hook under `--no-telemetry`, or an earlier release's hooks in the
+// shared `settings.json`. Uninstall strips them via
+// `remove_claude_telemetry_hooks` once no remaining strategy tracks the
+// hooks file. Kiro's own hooks live in `telemetry_hook_pass.rs`.
 
-/// One konductor-owned hook entry this pass ensures exists under
-/// of the target's hooks settings file -- one per event type that has
-/// a real Claude Code hook to fire from. `event_type_arg` is the
-/// `__telemetry-hook <event_type>` argument this entry's command
-/// invokes -- imported directly from `telemetry_hook.rs`'s own
-/// `AGENT_INVOCATION`/`SUBAGENT_INVOCATION` constants (never a
-/// hand-duplicated literal), so a rename on either side is a compile
-/// error here, not a silent runtime mismatch between what this pass
-/// wires in and what `dispatch_telemetry_hook`'s match actually
-/// recognizes. The full command string (with the resolved absolute
-/// binary path prepended -- see `resolve_konductor_exe_path`) is built
-/// at `merge_claude_settings_hooks_with_exe` call time, not stored here: it
-/// depends on `std::env::current_exe()`, which is not available in a
-/// `const` context. A hook is identified by its event argument, not its
-/// matcher or exe path, so a reinstall replaces a stale block (moved
-/// binary, changed agent set) instead of adding a second one.
+/// A Konductor telemetry hook to keep in the hooks settings file.
+/// `event_type_arg` comes from `telemetry_hook.rs`'s constants, so a
+/// rename there is a compile error here. The command is built at merge
+/// time because it embeds the resolved exe path and install root. A hook
+/// is identified by its event argument, so a reinstall replaces a stale
+/// block (moved binary, changed agent set) instead of adding another.
 struct TelemetryHookEntry {
     event: &'static str,
     matcher: HookMatcher,
@@ -687,52 +499,31 @@ fn installed_agents_matcher(agent_names: &[String]) -> Option<String> {
     Some(format!("^({})$", escaped.join("|")))
 }
 
-/// Resolves the absolute path to the currently-running `konductor`
-/// binary via `std::env::current_exe()`, so the hook command this pass
-/// wires into `.claude/settings.json` invokes THIS install's own
-/// binary directly rather than a bare `"konductor"` that depends on
-/// `$PATH` still resolving to the right binary whenever the hook later
-/// fires (a different shell, a different user, a CI container with no
-/// `$PATH` entry at all) -- mirrors `McpServerPass::rewrite`'s own
-/// absolute-path pattern for the MCP server binary a few lines below in
-/// this same file. Falls back to the bare `"konductor"` command (the
-/// prior, `$PATH`-dependent behavior) if resolution fails for any
-/// reason -- never fails the whole install over a diagnostics-only path
-/// display concern, matching `kiro_cli.rs`'s own `install_from_local`
-/// canonicalize fallback for its manifest `source` field.
+/// The absolute path of the running `konductor` binary, so a hook
+/// command invokes this install's binary without depending on `$PATH`
+/// when it fires. Shared with the Kiro hooks in `telemetry_hook_pass.rs`.
+/// Falls back to bare `"konductor"` if `current_exe()` fails, rather
+/// than failing the install.
 pub(super) fn resolve_konductor_exe_path() -> String {
     std::env::current_exe()
         .map(|path| path.display().to_string())
         .unwrap_or_else(|_| "konductor".to_string())
 }
 
-/// Whether `exe` looks like a genuinely resolved absolute executable
-/// path, as opposed to `resolve_konductor_exe_path`'s own bare-word
-/// `"konductor"` fallback (returned when `std::env::current_exe()`
-/// fails). Gates self-healing a stale hook command below: a run whose OWN `current_exe()` call fails
-/// transiently must not treat that failure as authoritative and
-/// downgrade an already-wired absolute path down to the bare,
-/// `$PATH`-dependent fallback -- the exact regression the self-healing
-/// logic below exists to prevent, in reverse. A
-/// non-absolute string is never a genuine `current_exe()` result on
-/// any platform this fallback runs on, so this check is exact, not a
-/// heuristic.
+/// Whether `exe` is an absolute path rather than
+/// `resolve_konductor_exe_path`'s bare `"konductor"` fallback. A run whose
+/// `current_exe()` failed must not replace an already-wired absolute path
+/// with the `$PATH`-dependent fallback.
 pub(super) fn is_resolved_absolute_exe_path(exe: &str) -> bool {
     Path::new(exe).is_absolute()
 }
 
-/// Shell-quotes `exe` for safe embedding in a hook `command` string
-/// that Claude Code executes as a shell command. `exe` comes from `resolve_konductor_exe_path()` ->
-/// `std::env::current_exe()`, which can legitimately be an absolute
-/// path containing a space or another shell metacharacter (e.g. an
-/// install under `Application Support` on macOS or `Program Files` on
-/// Windows) -- embedded unquoted, the shell that runs the hook
-/// mis-splits/mis-parses such a path and the hook silently breaks at
-/// fire time. Unlike `McpServerPass::rewrite`'s structured
-/// `{"command": <path>, "args": [...]}` shape (no shell involved, so no
-/// quoting hazard exists there), this pass builds a single command
-/// STRING Claude Code hands to a shell, so this quoting step is load-
-/// bearing.
+/// Shell-quotes `exe` (or any other value) for embedding in a hook
+/// `command` string, which Claude Code and Kiro run through a shell. An
+/// absolute path can contain a space or other metacharacter (e.g.
+/// `Application Support` on macOS), which would break the hook unquoted.
+/// `McpServerPass`'s structured `{"command", "args"}` shape needs no
+/// quoting; a single command string does.
 ///
 /// Only quotes when `exe` actually needs it -- a bare word made
 /// entirely of characters that are always safe unquoted on the
@@ -794,17 +585,10 @@ pub(super) fn shell_quote_for_hook_command(exe: &str) -> String {
     }
 }
 
-/// Extracts the STABLE part of a telemetry hook command -- the
-/// `__telemetry-hook <event-type>` subcommand invocation -- stripping
-/// the leading, environment-dependent absolute binary path
-/// (`resolve_konductor_exe_path()`'s own result, or its bare-word
-/// `"konductor"` fallback) that precedes it. Two commands that differ
-/// ONLY in that leading path (a relocated/reinstalled binary, or a
-/// first-install fallback-to-bare-`"konductor"` followed by a later run
-/// that resolves the real absolute path) must be treated as identifying
-/// the SAME hook, not two different ones -- this extraction is what makes that comparison
-/// possible. Returns `None` if `command` doesn't contain the marker at
-/// all (not a telemetry-hook command shape this pass recognizes).
+/// The `__telemetry-hook ...` part of a hook command, without the leading
+/// exe path, so commands that differ only in where the binary lives (or
+/// in the bare-`"konductor"` fallback) are recognized as the same hook.
+/// `None` when `command` is not a telemetry hook.
 pub(super) fn stable_hook_command_suffix(command: &str) -> Option<&str> {
     const MARKER: &str = "__telemetry-hook ";
     let idx = command.find(MARKER)?;
@@ -1412,12 +1196,8 @@ mod tests {
     }
 
     // ── Claude/V3 settings.json grant ────────────────────────────────
-    // (called once per install run via `apply_claude_settings_grant`,
-    // never through the `ResourceRewritePass` pipeline above -- see
-    // this module's own "V3/Claude Code permission grant" section for
-    // why. These tests exercise `merge_claude_settings_permissions` and
-    // `apply_claude_settings_grant` directly against a plain
-    // `target_dir`, with no `RewriteContext` involved at all.)
+    // Exercises `merge_claude_settings_permissions` and
+    // `apply_claude_settings_grant` directly against a plain `target_dir`.
 
     #[test]
     fn claude_mcp_permission_grants_derives_from_v2_allowed_tools_grants() {
@@ -1455,10 +1235,8 @@ mod tests {
 
     #[test]
     fn claude_settings_grant_creates_claude_dir_when_missing() {
-        // Unlike the reachable-in-practice case (where `.claude`
-        // already exists -- see kiro_cli.rs's reachability tests),
-        // this function itself has no opinion on whether `.claude`
-        // pre-exists; it must create it if asked to.
+        // This function creates `.claude` itself when asked; whether
+        // install ever calls it without one is the caller's concern.
         let dir = scratch_dir("claude-grant-creates-dir");
         assert!(!dir.join(".claude").exists());
         apply_claude_settings_grant(&dir).expect("grant must create .claude if missing");
@@ -2116,10 +1894,8 @@ mod tests {
 
     #[test]
     fn shell_quote_for_hook_command_leaves_a_safe_path_unquoted() {
-        // Every existing fixture path in this module's own hook tests
-        // (e.g. "/opt/konductor/bin/konductor") is made entirely of
-        // this safe character set, so this is what keeps those tests'
-        // exact-match assertions byte-for-byte unchanged by this fix.
+        // The hook-test fixture paths (e.g. "/opt/konductor/bin/konductor")
+        // use only this safe set, so their exact-match assertions hold.
         assert_eq!(
             shell_quote_for_hook_command("/opt/konductor/bin/konductor"),
             "/opt/konductor/bin/konductor"

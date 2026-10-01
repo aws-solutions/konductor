@@ -2,9 +2,10 @@
 //
 // End-to-end: agent telemetry is reported only for Konductor agents, for
 // each harness's payload shape, when the hook fires from a project
-// directory and the only install is the global one in `$HOME`. Payloads
-// are the shapes captured from live Kiro v2, Kiro v3, and Claude Code
-// sessions.
+// directory and the only install is the global one in `$HOME`; and when
+// both a global and a project install wire a hook, each invocation is
+// reported once. Payloads are the shapes captured from live Kiro v2,
+// Kiro v3, and Claude Code sessions.
 
 use std::io::Write as _;
 use std::path::{Path, PathBuf};

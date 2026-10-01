@@ -2844,8 +2844,8 @@ mod tests {
     }
 
     /// `.claude/settings.json` is a genuinely SHARED file (this install
-    /// only ever merges a few `permissions.allow` grant strings into
-    /// it -- see `resource_rewrite/claude_settings.rs`'s own
+    /// only merges its own grant, and for a `$HOME` install its
+    /// telemetry hooks, into it -- see `resource_rewrite/claude_settings.rs`'s own
     /// `claude_settings_grant_merges_preserving_unrelated_entries`
     /// test), but its manifest entry is classified `Created`/
     /// `ReplacedOurs` exactly like every other content type this

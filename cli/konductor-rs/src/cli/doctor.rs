@@ -2673,11 +2673,11 @@ mod tests {
 
     /// `.claude/settings.json` is exempt from the hash-drift check
     /// `dispatch_doctor_reports_stale_manifest_on_hash_mismatch` covers
-    /// above, since the recorded hash only reflects the handful of
-    /// `permissions.allow` grant strings this codebase's own merge
-    /// added -- not the whole file, which the user is expected to keep
-    /// editing (a hook, another server's grant, ...). A hash mismatch
-    /// on this specific path must never surface as `stale`.
+    /// above, since the recorded hash only reflects what Konductor
+    /// merged in (a grant, and for a `$HOME` install its hooks) -- not
+    /// the whole file, which the user is expected to keep editing (a
+    /// hook, another server's grant, ...). A hash mismatch on this
+    /// path must never surface as `stale`.
     #[test]
     fn dispatch_doctor_does_not_report_claude_settings_drift_on_hash_mismatch() {
         let source = scratch_dir("claude-settings-drift-source");

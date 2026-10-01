@@ -196,8 +196,9 @@ pub(super) trait InstallPhase {
     /// carries `install`'s own `--no-telemetry` flag (see
     /// `InstallStrategy::install_from_local`'s own doc comment) --
     /// every phase receives it, even though only `AgentInstallPhase`
-    /// today has a telemetry side effect to gate on it (the Claude Code
-    /// telemetry-hook wiring below), so a future phase that grows one
+    /// today has telemetry side effects to gate on it (the agent-file
+    /// `TelemetryHookPass` and the Claude Code telemetry-hook wiring
+    /// below), so a future phase that grows one
     /// of its own already has it in scope rather than needing the
     /// trait's signature widened again.
     fn run(
@@ -629,10 +630,11 @@ impl InstallPhase for ContextInstallPhase {
 /// that phase's doc comment). A future phase calling
 /// `phase_outputs.files_from("agents")` gets exactly what its name
 /// says, with no risk of also silently getting context files. The
-/// additive Claude/V3 settings-grant file (below) is folded into this
-/// same `"agents"` output rather than given its own name, mirroring how
-/// `install_agents`'s pre-phases caller used to fold it into its own
-/// `agent_files` list.
+/// additive Claude/V3 settings files (below: `settings.json` for the
+/// grant, plus the hooks settings file when it differs) are folded into
+/// this same `"agents"` output rather than given their own name,
+/// mirroring how `install_agents`'s pre-phases caller used to fold the
+/// grant file into its own `agent_files` list.
 ///
 /// Also applies the Claude/V3 settings grant (see `resource_rewrite/claude_settings.rs`'s
 /// "V3/Claude Code permission grant" section) when `install_agents`
@@ -698,7 +700,11 @@ impl InstallPhase for AgentInstallPhase {
         // `apply_claude_settings_grant_and_hooks`'s own doc comment
         // (`resource_rewrite/claude_settings.rs`) for the full rationale, shared
         // verbatim with `KiroCliV3InstallStrategy::install_from_local`'s
-        // identical call. `apply_claude_settings_grant`'s own failure
+        // identical call. The hooks go to `.claude/settings.local.json`
+        // for a project install (`~/.claude/settings.json` for a `$HOME`
+        // one), never the shared `settings.json`; under `--no-telemetry`
+        // the call strips a prior install's hooks from both files instead.
+        // `apply_claude_settings_grant`'s own failure
         // modes (symlink, `permissions.deny` shadow, malformed
         // pre-existing settings.json) leave that foreign file completely
         // untouched when the grant is skipped for one of those reasons
@@ -713,10 +719,11 @@ impl InstallPhase for AgentInstallPhase {
             // per-file provenance is attached once, over every phase's
             // combined output, by `install_from_local` after
             // `run_all_phases` returns (via `attach_provenance`), which
-            // matches this exact path against the write-ahead plan
-            // `plan_claude_settings_grant` already populated (see that
-            // function's own doc comment for why the plan must
-            // anticipate this file before any phase runs). A mismatch
+            // matches each returned path against the write-ahead plan
+            // `plan_claude_settings_grant` and `plan_claude_hooks_file`
+            // already populated (see `plan_claude_settings_grant`'s own
+            // doc comment for why the plan must anticipate these files
+            // before any phase runs). A mismatch
             // there (this fires but planning predicted it wouldn't)
             // fails loudly via `attach_provenance`'s own internal-error
             // check rather than silently mis-tracking.

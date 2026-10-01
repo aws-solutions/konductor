@@ -572,8 +572,9 @@ fn hash_present_session_id(uuid: &str, raw_session_id: Option<&str>) -> Option<S
         .map(|raw| hash_session_id(uuid, raw))
 }
 
-/// Fired from the hidden `__telemetry-hook` subcommand at
-/// `SessionStart`/`agentSpawn`. Gated on `install_info::read_install_info`
+/// Fired from the hidden `__telemetry-hook` subcommand when a Konductor
+/// agent starts a session (`SessionStart`, or Kiro v2's `agentSpawn` in
+/// a root session). Gated on `install_info::read_install_info`
 /// -- the per-target consent signal -- not the retired per-target
 /// identity.
 ///

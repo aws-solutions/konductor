@@ -569,7 +569,8 @@ mod tests {
 
         let installed = target_dir.join(".kiro/agents/k-example.json");
         assert!(installed.is_file());
-        // As above, TelemetryHookPass re-serializes the agent file.
+        // TelemetryHookPass re-serializes the agent file, so check the
+        // parsed field rather than raw bytes.
         let installed_value: serde_json::Value =
             serde_json::from_slice(&fs::read(&installed).unwrap()).unwrap();
         assert_eq!(installed_value["name"], serde_json::json!("k-example"));

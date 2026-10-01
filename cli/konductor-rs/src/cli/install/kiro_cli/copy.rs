@@ -212,8 +212,9 @@ pub(in crate::cli::install) fn install_kiro_sop_skills(
 /// The returned `bool` is whether the V2 `mcpServers.konductor-skills`
 /// grant was actually injected into at least one agent this run --
 /// `AgentInstallPhase::run` uses it to decide whether to also apply the
-/// Claude/V3 settings grant (see `resource_rewrite/claude_settings.rs`'s "V3/Claude
-/// Code permission grant" section), which must never fire on a run
+/// Claude/V3 settings grant and Claude telemetry hooks (see
+/// `resource_rewrite/claude_settings.rs`'s "V3/Claude Code permission grant"
+/// section), which must never fire on a run
 /// where the V2 side injected nothing.
 pub(in crate::cli::install) fn install_agents(
     harness_dir: &Path,

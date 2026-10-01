@@ -37,9 +37,9 @@ use std::path::{Path, PathBuf};
 use super::telemetry;
 
 /// `event_type` argument values this subcommand recognizes. `pub(crate)`
-/// so `install::resource_rewrite`'s `TELEMETRY_HOOK_ENTRIES` can
-/// reference these same constants when building the `__telemetry-hook`
-/// command strings it wires into `.claude/settings.json`, rather than
+/// so the install side (`claude_settings.rs`'s `TELEMETRY_HOOK_ENTRIES`
+/// and `telemetry_hook_pass.rs`'s Kiro hooks) builds its
+/// `__telemetry-hook` commands from these same constants, rather than
 /// duplicating the literal `"agent-invocation"`/`"subagent-invocation"`
 /// strings there -- a rename on either side is then a compile error on
 /// the other, not a silent runtime mismatch between what gets wired in
@@ -351,8 +351,10 @@ fn same_dir(a: &Path, b: &Path) -> bool {
     canonical(a) == canonical(b)
 }
 
-/// Never panics and never surfaces an error to the harness: bad input
-/// or a non-Konductor agent just means nothing is reported.
+/// Never panics and never fails the harness: bad input or a
+/// non-Konductor agent just means nothing is reported. The one thing it
+/// prints is a stderr warning for an unrecognized `event_type` (a stale
+/// or hand-edited hook command).
 ///
 /// `own_install` is the install that wired this hook. A harness can load
 /// hooks from several installs (global plus project), and each fires for

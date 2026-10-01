@@ -200,9 +200,7 @@ impl InstallStrategy for ClaudeInstallStrategy {
         // would make that check permanently non-empty, breaking its own
         // "no synthed agent or skill files" error path. Checked here,
         // AFTER the emptiness check above, so it can never mask a real
-        // no-op. See `plan_claude_settings_hooks_only`'s own doc comment
-        // for why this predicts, rather than recomputes, whether the
-        // hooks pass will fire.
+        // no-op.
         plan.extend(plan_claude_settings_hooks_only(
             target_dir,
             no_telemetry,
@@ -249,7 +247,7 @@ impl InstallStrategy for ClaudeInstallStrategy {
         //
         // Pushed into `raw_files` BEFORE `attach_provenance` runs below
         // -- mirrors `phases.rs`'s `AgentInstallPhase::run`, which
-        // pushes its own Claude/V3 settings file into that phase's
+        // pushes its own Claude/V3 settings files into that phase's
         // returned `Vec<ManifestFile>` before `attach_provenance` ever
         // sees it, rather than after. `apply_claude_settings_hooks_only`
         // returns a placeholder provenance (`Provenance::Created`) on
@@ -259,10 +257,12 @@ impl InstallStrategy for ClaudeInstallStrategy {
         // (already populated above via `plan_claude_settings_hooks_only`),
         // which correctly classifies `Created`/`ReplacedOurs`/
         // `ReplacedForeign` -- so a reinstall over a target where
-        // Konductor previously created `.claude/settings.json` is
+        // Konductor previously created the hooks settings file is
         // recorded as `ReplacedOurs`, not hardcoded to `Created`
-        // regardless of reality. Under `--no-telemetry` it strips a
-        // prior install's hooks from both settings files instead.
+        // regardless of reality. Every run first strips an earlier
+        // release's hooks from the shared `.claude/settings.json` (for a
+        // project install); under `--no-telemetry` it instead strips a
+        // prior install's hooks from both settings files and writes none.
         if let Some(claude_settings_file) =
             apply_claude_settings_hooks_only(target_dir, no_telemetry)
         {
@@ -1508,10 +1508,12 @@ mod tests {
     /// the real, unmodified `ClaudeInstallStrategy::install_from_local`
     /// -- not a mock, not a direct call to
     /// `apply_claude_settings_hooks_only` -- must still write the
-    /// `SessionStart`/`SubagentStart` telemetry hooks into
-    /// `.claude/settings.json`, matching what the Kiro CLI V2/V3
+    /// `SessionStart`/`SubagentStart` telemetry hooks into the personal
+    /// `.claude/settings.local.json` (never the shared
+    /// `.claude/settings.json`), matching what the Kiro CLI V2/V3
     /// dual-marker install paths already get via
-    /// `apply_claude_settings_grant_and_hooks`. Mirrors
+    /// `apply_claude_settings_grant_and_hooks`, and record that file in
+    /// the manifest. Mirrors
     /// `kiro_cli.rs`'s own
     /// `install_from_local_grants_claude_settings_permissions_when_claude_marker_dir_present`
     /// hook-assertion shape exactly, minus the (inapplicable here)
@@ -1608,9 +1610,7 @@ mod tests {
     /// The `--no-telemetry` regression counterpart: the same fresh
     /// Claude-only install, run end to end with `no_telemetry: true`,
     /// must still copy the agent (unaffected -- not a telemetry side
-    /// effect) but must write NO `.claude/settings.json` at all, since
-    /// telemetry-hook wiring is this install path's ONLY reason to
-    /// touch that file.
+    /// effect) but must write neither Claude settings file.
     #[test]
     fn install_from_local_no_telemetry_skips_claude_hook_wiring_for_claude_only_install() {
         let target_dir = scratch_dir("install-no-telemetry-hooks-target");
@@ -1638,6 +1638,10 @@ mod tests {
             !target_dir.join(".claude/settings.json").exists(),
             "--no-telemetry must suppress the SessionStart/SubagentStart telemetry-hook \
              wiring entirely, leaving no .claude/settings.json at all on this install path"
+        );
+        assert!(
+            !target_dir.join(".claude/settings.local.json").exists(),
+            "--no-telemetry must not write the hooks settings file either"
         );
 
         fs::remove_dir_all(&target_dir).ok();

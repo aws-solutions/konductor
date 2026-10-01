@@ -176,8 +176,8 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool, color: ColorMode) 
             // event as side effects of producing that `Err` -- both
             // visible before this arm ever sees the return value.
             // Resolve cwd directly instead, falling back to `$HOME`
-            // (the same scope-agnostic identity lookup `resolve_cwd`
-            // itself falls back to) with no side effects either way.
+            // (the default global install, which the install lookup
+            // checks anyway) with no side effects either way.
             let cwd = std::env::current_dir().unwrap_or_else(|_| {
                 std::env::var_os("HOME")
                     .map(PathBuf::from)

@@ -515,10 +515,10 @@ pub trait InstallStrategy: Sync {
     /// already computed for this run's index entry; the strategy must
     /// write it verbatim into the manifest's own `installed_at` so the
     /// index and manifest always agree on the same instant. `no_telemetry`
-    /// is `install`'s `--no-telemetry` flag (always `false` from
-    /// `update.rs`, which has no such flag); a strategy must thread it
-    /// through to every phase that can fire a telemetry side effect
-    /// (today only `AgentInstallPhase`'s Claude Code hook), so the
+    /// is the `--no-telemetry` flag of `install` or `update`; a strategy
+    /// must thread it through to every step that can fire a telemetry
+    /// side effect (the Kiro agent-file hooks, the V3 standalone hook
+    /// document, and the Claude Code settings hooks), so the
     /// opt-out covers the whole run, not just the top-level report
     /// calls. Returns `Ok(())` on success, or an `InstallError` on
     /// failure -- `InstallError::Manifest` when the failure came from
@@ -2162,8 +2162,8 @@ mod tests {
     /// fixed `FallbackChainError` -- no real network call. Every other
     /// code path runs exactly as it does in production; only the
     /// remote fetch/install step is replaced. `link_bin`/`verbose`/
-    /// `json`/`no_telemetry` are fixed to `false`, matching every
-    /// other `dispatch_install_with` call in this test module.
+    /// `json`/`no_telemetry` are fixed to `false`, matching most
+    /// other `dispatch_install_with` calls in this test module.
     fn dispatch_install_with_fake_remote_installer(
         from: Option<String>,
         target: Option<String>,

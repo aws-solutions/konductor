@@ -37,11 +37,14 @@
 // That does not extend to the two additive, `.claude`-marker-gated
 // mechanisms V2's `SopInstallPhase`/`AgentInstallPhase` also perform:
 // the dual-marker SOP-skill conversion and the Claude/V3
-// settings.json grant, both for a shared, potentially pre-existing
-// `.claude/` tree that isn't this strategy's own content.
+// settings.json grant plus telemetry hooks, both for a shared,
+// potentially pre-existing `.claude/` tree that isn't this strategy's
+// own content.
 // `install_from_local` calls the same shared functions those phases
 // call, inlined directly rather than routed through the phase
-// pipeline. Omitting them would leave `.claude/settings.json` and any
+// pipeline. Omitting them would leave `.claude/settings.json`, the
+// hooks settings file (`.claude/settings.local.json` for a project
+// install), and any
 // dual-marker `.claude/skills/sop-<name>/SKILL.md` files unclaimed by
 // any tracked slot after a `kiro-cli-v2` -> `kiro-v3` override switch,
 // since `manifest::upsert_strategy` removes the prior variant's slot
@@ -172,9 +175,10 @@ impl InstallStrategy for KiroCliV3InstallStrategy {
     /// Also applies the same two additive, `.claude`-marker-gated
     /// mechanisms V2 applies when this target also carries a
     /// pre-existing `.claude` marker: the dual-marker SOP-skill
-    /// conversion and the shared Claude/V3 settings grant. Without
-    /// these, a target that switches from `kiro-cli-v2` to this
-    /// strategy would leave `.claude/settings.json` and any dual-marker
+    /// conversion and the shared Claude/V3 settings grant plus telemetry
+    /// hooks. Without these, a target that switches from `kiro-cli-v2`
+    /// to this strategy would leave `.claude/settings.json`, the hooks
+    /// settings file, and any dual-marker
     /// SOP-skill files claimed by neither slot, since `kiro-cli-v2`'s
     /// slot is removed outright on the switch and this strategy's slot
     /// never wrote those paths. `no_telemetry` gates the telemetry-hook
@@ -227,7 +231,8 @@ impl InstallStrategy for KiroCliV3InstallStrategy {
         // for the MCP binary's planned path to predict whether the
         // Claude/V3 settings grant applies (this prediction, not the
         // real run-time computation, is what closes the crash-safety
-        // gap).
+        // gap). The hooks settings file is planned only when the grant
+        // is and telemetry is on.
         let claude_plan =
             plan_claude_settings_grant(&harness_dir, target_dir, &plan, prior_manifest.as_ref())?;
         let wires_claude_hooks = !no_telemetry && !claude_plan.is_empty();
@@ -406,7 +411,9 @@ impl InstallStrategy for KiroCliV3InstallStrategy {
         // Additive, Claude/V3-only settings grant, mirroring
         // `AgentInstallPhase::run`'s identical branch: applies the
         // shared `.claude/settings.json` MCP-tool authorization grant
-        // (and, unless `--no-telemetry`, the telemetry-hook wiring)
+        // (and, unless `--no-telemetry`, the telemetry hooks, written to
+        // `.claude/settings.local.json` for a project install; with
+        // `--no-telemetry` a prior install's hooks are stripped instead)
         // once for the whole run, only when this run injected an MCP
         // server grant into at least one agent and this target is a
         // detected Claude Code target. Both callers share this logic
@@ -1550,6 +1557,12 @@ mod tests {
             "kiro-v3's own slot must claim .claude/settings.json after the override switch \
              -- before this fix, it was claimed by NEITHER slot, permanently unreachable by a \
              future uninstall/update"
+        );
+        assert!(
+            slot.files
+                .iter()
+                .any(|f| f.path == ".claude/settings.local.json"),
+            "kiro-v3's own slot must also claim the hooks settings file after the switch"
         );
 
         // THE SECOND GAP: the dual-marker SOP-skill file must have been

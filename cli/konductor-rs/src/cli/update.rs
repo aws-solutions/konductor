@@ -1818,8 +1818,8 @@ fn run_update_one_target_with_remote_installer(
     // independently rather than shared across the batch.
     //
     // Threading the (possibly carried-forward) value through here is
-    // what makes the opt-out actually suppress `AgentInstallPhase`'s
-    // Claude Code telemetry-hook re-wiring step on this run.
+    // what keeps this run from wiring telemetry hooks on any harness,
+    // and makes it strip the hooks a prior run wired.
     //
     // Read unconditionally -- NOT `no_telemetry ||`-short-circuited --
     // so a broken record is always surfaced via `telemetry_state_warning`
@@ -2078,11 +2078,11 @@ fn run_update_one_target_with_remote_installer(
     // `if !no_telemetry { report_package_installed(...) }` gate. This is
     // the SAME `no_telemetry` the carry-forward above may have already
     // set to `true` on this target's behalf, so a target skipped via
-    // the carry-forward (no identity file, no explicit flag) also
+    // the carry-forward (no install-info record, no explicit flag) also
     // skips this event report through this explicit gate -- not merely
     // because the identity lookup underneath it happens to resolve to
     // nothing on its own. A target originally installed WITHOUT
-    // `--no-telemetry` (identity file present) but updated WITH
+    // `--no-telemetry` (install-info record present) but updated WITH
     // `--no-telemetry` on this run -- explicit or carried-forward --
     // must not report a version-updated event for this run: the flag
     // means "opt out of telemetry for this update run", not just "skip
@@ -2892,17 +2892,15 @@ mod tests {
             !crate::cli::telemetry::install_info_exists(&target_dir),
             "install --no-telemetry must never write install-info.json"
         );
-        let claude_settings_path = target_dir.join(".claude/settings.json");
-        let before_update: serde_json::Value =
-            serde_json::from_str(&fs::read_to_string(&claude_settings_path).unwrap()).unwrap();
+        let claude_hooks_path = target_dir.join(".claude/settings.local.json");
         assert!(
-            before_update.get("hooks").is_none(),
+            !claude_hooks_path.exists(),
             "install --no-telemetry must not write hook wiring in the first place"
         );
 
         // The fix under test: a PLAIN `update` -- no `--no-telemetry`
         // passed to this invocation -- must still honor the earlier
-        // opt-out via the target's own missing identity file.
+        // opt-out via the target's own missing install-info.json.
         let update_code = dispatch_update_with(
             Some(repo_root.to_str().unwrap().to_string()),
             Some(target_dir.to_str().unwrap().to_string()),
@@ -2921,13 +2919,11 @@ mod tests {
             ColorMode::disabled(),
         );
         assert_eq!(update_code, 0, "update must succeed");
-        let after_update: serde_json::Value =
-            serde_json::from_str(&fs::read_to_string(&claude_settings_path).unwrap()).unwrap();
         assert!(
-            after_update.get("hooks").is_none(),
+            !claude_hooks_path.exists(),
             "a plain `update` (no --no-telemetry passed) must keep the telemetry-hook \
              wiring suppressed for a target that was originally installed with \
-             --no-telemetry; got: {after_update:?}"
+             --no-telemetry"
         );
         assert!(
             !crate::cli::telemetry::install_info_exists(&target_dir),
@@ -3028,14 +3024,12 @@ mod tests {
         );
         assert_eq!(update_code, 0, "update --all must succeed");
 
-        let out_settings: serde_json::Value = serde_json::from_str(
-            &fs::read_to_string(opted_out_target.join(".claude/settings.json")).unwrap(),
-        )
-        .unwrap();
         assert!(
-            out_settings.get("hooks").is_none(),
+            !opted_out_target
+                .join(".claude/settings.local.json")
+                .exists(),
             "the originally-opted-out target must stay suppressed inside an --all batch \
-             that does not itself pass --no-telemetry; got: {out_settings:?}"
+             that does not itself pass --no-telemetry"
         );
 
         let in_settings: serde_json::Value = serde_json::from_str(
@@ -3142,11 +3136,10 @@ mod tests {
     /// hook re-wiring for a target that DOES have an install-info
     /// record -- the flag is an override in the "opt out now"
     /// direction, independent of what the persisted signal says. The
-    /// hooks block is removed between install and update to force a
-    /// genuine re-wiring opportunity (self-heal alone only fires for a
-    /// stale exe path), so a passing assertion actually distinguishes
-    /// "the flag suppressed this run's wiring" from "there was nothing
-    /// to wire anyway."
+    /// hooks block is removed between install and update, so the
+    /// assertion checks that this run wired nothing rather than that it
+    /// stripped hooks left in place; the companion run without the flag
+    /// shows there was something to wire.
     #[test]
     fn explicit_no_telemetry_still_suppresses_wiring_for_a_target_with_an_identity_file() {
         let _home = HomeGuard::new("update-explicit-override-home");
@@ -3198,7 +3191,7 @@ mod tests {
         fs::write(&claude_settings_path, settings.to_string()).unwrap();
 
         // Explicit `--no-telemetry` on `update`, for a target whose
-        // own identity file IS present -- the carry-forward signal
+        // own install-info record IS present -- the carry-forward signal
         // alone would NOT suppress this run; only the explicit flag
         // does.
         let update_code = dispatch_update_with(
