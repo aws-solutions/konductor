@@ -9,6 +9,9 @@ const gateCount = (w: Workflow) => w.steps.reduce((n, s) => n + s.gates.length, 
 const stem = (file: string) => file.replace(/\.yml$/, "");
 const fromHash = () => decodeURIComponent(location.hash.slice(1));
 
+const APP_NAME = "Fuse Komposer";
+document.title = APP_NAME;
+
 function WorkflowList({ current, onOpen }: { current: string; onOpen: (path: string) => void }) {
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
@@ -19,7 +22,7 @@ function WorkflowList({ current, onOpen }: { current: string; onOpen: (path: str
     <div className="lane">
       <div className="lane-head">
         <div className="brand-disc" />
-        <div className="brand-name">fuse-flow</div>
+        <div className="brand-name">{APP_NAME}</div>
       </div>
       <div className="lane-search">
         <input
@@ -52,12 +55,43 @@ function WorkflowList({ current, onOpen }: { current: string; onOpen: (path: str
   );
 }
 
+function YamlModal({ workflow, onClose }: { workflow: Workflow; onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal" role="dialog" aria-label={workflow.file} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <div className="modal-title">{workflow.file}</div>
+          <div className="modal-path">
+            {workflowsDir}/{workflow.path}
+          </div>
+          <button className="icon-button" onClick={onClose} title="Close" aria-label="Close">
+            ×
+          </button>
+        </div>
+        <pre className="yaml">{workflow.source}</pre>
+      </div>
+    </div>
+  );
+}
+
 function WorkflowView({ workflow }: { workflow: Workflow }) {
+  const [showYaml, setShowYaml] = useState(false);
   return (
     <div className="center">
       <div className="center-head">
         <div className="center-title">{workflow.file}</div>
+        <div style={{ flex: 1 }} />
+        <button className="button" onClick={() => setShowYaml(true)}>
+          View YAML
+        </button>
       </div>
+      {showYaml && <YamlModal workflow={workflow} onClose={() => setShowYaml(false)} />}
       <div className="center-body">
         {workflow.error && <div className="error">{workflow.error}</div>}
         <div className="fields">

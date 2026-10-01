@@ -18,6 +18,8 @@ export type Step = {
   // null: depends_on omitted, so the step runs after the one listed before it.
   dependsOn: string[] | null;
   onFail: string | null;
+  // Set only when the step overrides the workflow's max_fix_cycles.
+  maxFixCycles: number | null;
 };
 
 export type Workflow = {
@@ -29,6 +31,8 @@ export type Workflow = {
   maxFixCycles: number | null;
   steps: Step[];
   error: string | null;
+  // The file's text as it is on disk.
+  source: string;
 };
 
 const WORKFLOWS_DIR = "fuse/flow/workflows";
@@ -72,12 +76,14 @@ function parseStep(raw: Record<string, unknown>, i: number): Step {
   }
   return {
     id,
-    title: typeof raw.title === "string" ? raw.title : id,
+    // Drop a leading "0. " style number: the card already shows the step number.
+    title: typeof raw.title === "string" ? raw.title.replace(/^\d+\.\s+/, "") : id,
     skills: [...asStrings(raw.skill), ...asStrings(raw.skills)],
     produces: asStrings(raw.produces),
     gates,
     dependsOn: Array.isArray(raw.depends_on) ? asStrings(raw.depends_on) : null,
     onFail: typeof raw.on_fail === "string" ? raw.on_fail : null,
+    maxFixCycles: typeof raw.max_fix_cycles === "number" ? raw.max_fix_cycles : null,
   };
 }
 
@@ -91,6 +97,7 @@ function parseWorkflow(path: string, text: string): Workflow {
     maxFixCycles: null,
     steps: [],
     error: null,
+    source: text,
   };
   try {
     const doc = YAML.parse(text) as Record<string, unknown> | null;

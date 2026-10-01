@@ -123,20 +123,27 @@ function StepCard({ step, num }: { step: Step; num: number }) {
               {gateLabel(g)}
             </span>
           ))}
+          {step.maxFixCycles !== null && (
+            <span className="gate fix-cycles" title="max fix cycles for this step (overrides the workflow's)">
+              ↻ {step.maxFixCycles}
+            </span>
+          )}
         </div>
         {hasChips && (
           <div className="chips">
-            {step.skills.map((p) => (
-              <span key={p} className="chip skill" title={p}>
-                {skillName(p)}
-              </span>
-            ))}
             {step.produces.map((p) => (
               <span key={p} className="chip artifact" title={p}>
                 <span className="arrow">→</span>
                 {baseName(p)}
               </span>
             ))}
+            <span className="chips-skills">
+              {step.skills.map((p) => (
+                <span key={p} className="chip skill" title={p}>
+                  {skillName(p)}
+                </span>
+              ))}
+            </span>
           </div>
         )}
       </div>

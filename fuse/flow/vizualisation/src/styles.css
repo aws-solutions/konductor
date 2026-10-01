@@ -281,8 +281,9 @@ button {
   align-items: center;
   justify-content: center;
   font: 600 12px "JetBrains Mono", monospace;
-  background: var(--surface-sunken);
-  color: var(--text-body);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 .card-main {
   min-width: 0;
@@ -333,10 +334,21 @@ button {
   background: oklch(0.94 0.05 160);
   color: oklch(0.42 0.1 160);
 }
+.gate.fix-cycles {
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+}
 .chips {
   display: flex;
   gap: 4px;
   flex-wrap: wrap;
+}
+.chips-skills {
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 .chip {
   height: 20px;
@@ -358,4 +370,88 @@ button {
 }
 .chip.artifact .arrow {
   color: var(--text-faint);
+}
+
+/* Header button and the YAML modal */
+.button {
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-strong);
+  font: 600 13px "IBM Plex Sans", sans-serif;
+  cursor: pointer;
+}
+.button:hover {
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 14, 20, 0.5);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.modal {
+  width: 100%;
+  max-width: 760px;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+.modal-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 12px 0 20px;
+  height: 52px;
+  flex: none;
+  border-bottom: 1px solid var(--border);
+}
+.modal-title {
+  flex: 1;
+  min-width: 0;
+  font: 700 16px "Space Grotesk", sans-serif;
+  color: var(--text-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.modal-path {
+  font: 400 11.5px "JetBrains Mono", monospace;
+  color: var(--text-faint);
+}
+.icon-button {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 18px;
+  cursor: pointer;
+}
+.icon-button:hover {
+  background: var(--surface-sunken);
+}
+.yaml {
+  margin: 0;
+  padding: 20px;
+  flex: 1;
+  overflow: auto;
+  background: var(--surface-sunken);
+  font: 400 12.5px/1.65 "JetBrains Mono", monospace;
+  font-variant-ligatures: none;
+  color: var(--text-body);
+  white-space: pre;
 }
