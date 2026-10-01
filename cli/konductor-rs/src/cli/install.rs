@@ -1657,7 +1657,9 @@ impl InstallCounts {
         for file in &manifest.files {
             if let Some(rest) = file.path.strip_prefix(".konductor/skills/") {
                 if let Some(name) = rest.split('/').next().filter(|s| !s.is_empty()) {
-                    if let Some(sop_name) = sop_name_if_genuine_conversion(name, &file.path, destination) {
+                    if let Some(sop_name) =
+                        sop_name_if_genuine_conversion(name, &file.path, destination)
+                    {
                         sop_names.insert(sop_name);
                         sop_dirs.insert((".konductor/skills/", name));
                     } else {
@@ -1666,7 +1668,9 @@ impl InstallCounts {
                 }
             } else if let Some(rest) = file.path.strip_prefix(".kiro/skills/") {
                 if let Some(name) = rest.split('/').next().filter(|s| !s.is_empty()) {
-                    if let Some(sop_name) = sop_name_if_genuine_conversion(name, &file.path, destination) {
+                    if let Some(sop_name) =
+                        sop_name_if_genuine_conversion(name, &file.path, destination)
+                    {
                         sop_names.insert(sop_name);
                         sop_dirs.insert((".kiro/skills/", name));
                     } else {
@@ -1675,7 +1679,9 @@ impl InstallCounts {
                 }
             } else if let Some(rest) = file.path.strip_prefix(claude_skills_prefix.as_str()) {
                 if let Some(name) = rest.split('/').next().filter(|s| !s.is_empty()) {
-                    if let Some(sop_name) = sop_name_if_genuine_conversion(name, &file.path, destination) {
+                    if let Some(sop_name) =
+                        sop_name_if_genuine_conversion(name, &file.path, destination)
+                    {
                         sop_names.insert(sop_name);
                         sop_dirs.insert((claude_skills_prefix.as_str(), name));
                     } else {
@@ -1736,8 +1742,12 @@ fn sop_name_if_genuine_conversion<'a>(
     relative_path: &str,
     destination: &Path,
 ) -> Option<&'a str> {
-    let sop_name = skill_dir_name.strip_prefix("sop-").filter(|n| !n.is_empty())?;
-    if relative_path.ends_with("/SKILL.md") && file_contains_agent_sop_marker(destination, relative_path) {
+    let sop_name = skill_dir_name
+        .strip_prefix("sop-")
+        .filter(|n| !n.is_empty())?;
+    if relative_path.ends_with("/SKILL.md")
+        && file_contains_agent_sop_marker(destination, relative_path)
+    {
         Some(sop_name)
     } else {
         None

@@ -1673,9 +1673,8 @@ fn check_config_with_home(resolved: &ResolvedSource, home_dir: Option<&Path>) ->
                 // project config were the problem.
                 format!("config failed to load: {err}"),
             ),
-            "there is currently no supported command to inspect or re-scaffold config.yml -- \
-             back up the file, then hand-edit it against the schema in the CLI reference docs, \
-             or delete it entirely to fall back to preset defaults"
+            "config.yml is not read or written by any live command today -- there is nothing \
+             to remediate against, so no action is expected here"
                 .to_string(),
             err.to_string(),
         ),
