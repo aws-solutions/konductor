@@ -62,20 +62,19 @@ describe("choosing the workflow", () => {
   test("workstreams in one repository can follow different workflows", () => {
     repo.start("one", ONE_STEP);
     repo.ok("start", "two", "--workflow", "_k-phase-chain");
-    expect(repo.ok("next", "one")).toContain("step: only");
-    expect(repo.ok("next", "two")).not.toContain("step: only");
+    expect(repo.ok("start", "one")).toContain("step: only");
+    expect(repo.ok("start", "two")).not.toContain("step: only");
   });
 });
 
 describe("changing the workflow of a running workstream", () => {
   test("a step added to the workflow is pending straight away", () => {
     repo.start("feat", ONE_STEP);
-    repo.ok("done", "feat", "only");
-    expect(repo.ok("next", "feat")).toBe("workflow complete\n");
+    expect(repo.ok("continue", "feat")).toEndWith("workflow complete\n");
 
     repo.write("workflow-source.yml", ONE_STEP + "  - id: added\n    instruction: new work\n");
-    expect(repo.ok("next", "feat")).toContain("step: added");
-    repo.ok("start", "feat"); // start writes the new step into the state file
+    expect(repo.ok("status", "feat")).toContain("> added");
+    expect(repo.ok("start", "feat")).toContain("step: added"); // and writes the new step into the state file
     expect(repo.status("feat", "added")).toBe("pending");
   });
 });
@@ -115,7 +114,7 @@ steps:
 describe("finding skills", () => {
   test("FUSE_SKILLS_DIR comes first, then the repository, then SKILLS_HOME, then the home directory", () => {
     repo.start("feat", ONE_STEP);
-    const where = () => repo.ok("next", "feat").split("\n")[1];
+    const where = () => repo.ok("start", "feat").split("\n")[5];
     expect(where()).toBe("read: demo/SKILL.md   (not found; set FUSE_SKILLS_DIR)");
 
     repo.write("home/.config/opencode/skills/demo/SKILL.md");
@@ -157,7 +156,7 @@ describe("the workflows shipped in fuse/flow/workflows", () => {
       const workflow = Bun.YAML.parse(text) as { steps: Array<{ skill?: string }> };
       const skills = workflow.steps.flatMap((s) => s.skill ?? []);
       for (const skill of skills) expect(existsSync(join(REPO_SKILLS, skill))).toBe(true);
-      expect(repo.ok("next", "feat")).not.toContain("not found");
+      expect(repo.ok("start", "feat")).not.toContain("not found");
     });
   }
 });

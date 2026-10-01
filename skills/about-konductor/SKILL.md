@@ -55,13 +55,12 @@ For a complete multi-phase pass in one agent session, use fuse-flow. Run the scr
 
 ```bash
 fuse-flow start <slug> --workflow _k-full-sdlc
-fuse-flow next <slug>
-fuse-flow done <slug> <step> --artifact <path>
-fuse-flow gate <slug> <step> --owner-approved
+fuse-flow continue <slug> [--artifact <path>]
+fuse-flow continue <slug> --owner-approved
 fuse-flow status <slug>
 ```
 
-Use `--workflow _k-phase-chain` for the lighter six-phase chain. A successful `done` or `gate` prints the next step, so `next` is only needed to resume. fuse-flow resolves step skills from `FUSE_SKILLS_DIR`, the repository's `skills/`, `.kiro/skills`, `.konductor/skills`, `.claude/skills` and `.agents/skills`, then `SKILLS_HOME` and the same directories under the home directory plus `~/.codex/skills` and `~/.config/opencode/skills`.
+Use `--workflow _k-phase-chain` for the lighter six-phase chain. `start` prints the current step, and a successful `continue` prints the next one; run `start` again to resume a workstream in a new session. fuse-flow resolves step skills from `FUSE_SKILLS_DIR`, the repository's `skills/`, `.kiro/skills`, `.konductor/skills`, `.claude/skills` and `.agents/skills`, then `SKILLS_HOME` and the same directories under the home directory plus `~/.codex/skills` and `~/.config/opencode/skills`.
 
 ## 5. The model, in one paragraph
 
@@ -86,5 +85,5 @@ The practical difference: skills answer "what guidance applies," and workflows p
 ## Getting unstuck
 
 - If you do not know which focused capability applies, use `sdlc-navigator` or inspect the installed skill directories.
-- If you want the complete lifecycle in one session, start one of the fuse-flow workflows and follow `next`, `done`, `gate`, and `status`.
+- If you want the complete lifecycle in one session, start one of the fuse-flow workflows and follow `continue` until it prints `workflow complete`.
 - If the install looks broken, run the same `install.sh` command again; it reports what it skipped and why.

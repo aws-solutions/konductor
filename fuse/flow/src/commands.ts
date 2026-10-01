@@ -1,13 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
-// The five fuse-flow commands. Each returns the lines to print, or throws a
+// The three fuse-flow commands. Each returns the lines to print, or throws a
 // FlowError whose message says why the command was refused.
+//
+// A workstream is a state machine: the current step is the first step in file
+// order that is not done, and `continue` is the one input that moves it on.
 
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { FlowError } from "./errors.ts";
 import { findSkill, findWorkflow, workstreamFile } from "./project.ts";
-import { dependenciesOf, describeGate, findStep, loadWorkflow, type Step, type Workflow } from "./workflow.ts";
+import { describeGate, loadWorkflow, type Step, type Workflow } from "./workflow.ts";
 import { readWorkstream, stateOf, updateWorkstream, workstreamExists, type Workstream } from "./workstream.ts";
 
 // How the follow-up commands fuse-flow prints start. The fuse-flow script
@@ -24,19 +27,22 @@ function stamp(event: string): string {
   return `${new Date().toISOString()} ${event}`;
 }
 
-function unmetDependencies(wf: Workflow, ws: Workstream, step: Step): string[] {
-  return dependenciesOf(wf, step).filter((dep) => stateOf(ws, dep).status !== "done");
-}
-
 // The workflow a workstream follows, read fresh on every command, so an edit
 // to the workflow file takes effect straight away.
 function workflowOf(root: string, ws: Workstream): Workflow {
   return loadWorkflow(findWorkflow(root, ws.workflow));
 }
 
+// The step the workstream is on: the first one that is not done. Steps are
+// handed out one at a time, in file order. Undefined once every step is done.
+function currentStep(wf: Workflow, ws: Workstream): Step | undefined {
+  return wf.steps.find((step) => stateOf(ws, step.id).status !== "done");
+}
+
 // --------------------------------------------------------------------- start
 // Mint a workstream that follows `workflowRef` (a workflow name or an
-// absolute path), or resume the one that exists.
+// absolute path), or resume the one that exists. Either way it prints the
+// current step, so an agent that lost its context can pick the work up here.
 
 export function start(root: string, slug: string, workflowRef?: string): string[] {
   const resumed = workstreamExists(root, slug);
@@ -52,48 +58,41 @@ export function start(root: string, slug: string, workflowRef?: string): string[
   }
   const path = findWorkflow(root, ref);
   const wf = loadWorkflow(path);
-  // List every step in the state file, so it reads as a complete checklist.
-  updateWorkstream(root, slug, (ws) => wf.steps.forEach((step) => stateOf(ws, step.id)), { workflow: ref, steps: {} });
-  return [
-    `${resumed ? "resumed" : "minted"} workstream ${slug}`,
-    `workflow: ${path}`,
-    `state:    ${workstreamFile(root, slug)}`,
-    `next: ${FUSE_FLOW} next ${slug}`,
-  ];
+  let current: string[] = [];
+  updateWorkstream(
+    root,
+    slug,
+    (ws) => {
+      // List every step in the state file, so it reads as a complete checklist.
+      wf.steps.forEach((step) => stateOf(ws, step.id));
+      current = describeCurrent(root, slug, wf, ws);
+    },
+    { workflow: ref, steps: {} },
+  );
+  return [`${resumed ? "resumed" : "minted"} workstream ${slug}`, `workflow: ${path}`, `state:    ${workstreamFile(root, slug)}`, "", ...current];
 }
 
-// ---------------------------------------------------------------------- next
-// The next step is the first one in file order that is not done and whose
-// dependencies are all done. Because a step only depends on earlier steps,
-// such a step always exists until the whole workflow is done.
-
-export function next(root: string, slug: string): string[] {
-  const ws = readWorkstream(root, slug);
-  return describeNext(root, slug, workflowOf(root, ws), ws);
-}
-
-// `done` and `gate` call this while they hold the lock, with the workflow they
-// validated and the state they are about to write, so the step they print is
-// the one that is next when their change lands.
-function describeNext(root: string, slug: string, wf: Workflow, ws: Workstream): string[] {
-  const step = wf.steps.find((s) => stateOf(ws, s.id).status !== "done" && unmetDependencies(wf, ws, s).length === 0);
+// What the agent should do now. `start` and `continue` print this while they
+// hold the lock, with the state they are about to write, so the step they
+// print is the current one when their change lands.
+function describeCurrent(root: string, slug: string, wf: Workflow, ws: Workstream): string[] {
+  const step = currentStep(wf, ws);
   if (!step) return ["workflow complete"];
 
   const state = stateOf(ws, step.id);
-  const gateCommand = `${FUSE_FLOW} gate ${slug} ${step.id} --owner-approved`;
+  const approve = `${FUSE_FLOW} continue ${slug} --owner-approved`;
   switch (state.status) {
     case "awaiting-owner":
       return [
         `step: ${step.id} awaits owner approval`,
         `ask the owner to review: ${state.artifacts.join(", ") || "(no artifacts)"}`,
-        `after the owner approves, run: ${gateCommand} [--note "<what the owner said>"]`,
+        `after the owner approves, run: ${approve} [--note "<what the owner said>"]`,
       ];
     case "blocked":
       return [
         `step: ${step.id} is blocked after ${state.fix_cycles} refused attempts`,
         ...state.history.slice(-3).map((line) => `  ${line}`),
-        `ask the owner how to proceed; if the owner accepts the step as it is, run: ` +
-          `${gateCommand} --note "<the owner's decision>"`,
+        `ask the owner how to proceed; if the owner accepts the step as it is, run: ${approve} --note "<the owner's decision>"`,
       ];
     default: {
       const lines = [`step: ${step.id}${step.title ? ` (${step.title})` : ""}`];
@@ -104,31 +103,56 @@ function describeNext(root: string, slug: string, wf: Workflow, ws: Workstream):
       if (step.instruction) lines.push(`instruction: ${step.instruction.trim()}`);
       lines.push(`produce: ${step.produces.join(", ") || "(nothing declared)"}`);
       lines.push(`gate: ${describeGate(step.gate)}`);
-      lines.push(`then run: ${FUSE_FLOW} done ${slug} ${step.id}`);
+      lines.push(`then run: ${FUSE_FLOW} continue ${slug}`);
       return lines;
     }
   }
 }
 
-// ---------------------------------------------------------------------- done
-// Record that a pending step's work is finished. Accepted only when every
-// artifact exists and the step's check command (if any) exits 0. A refusal
-// for a missing artifact or a failed check costs one fix cycle; after
-// max_fix_cycles of them the step is blocked until the owner decides. On
-// success it prints what `next` would print, so the agent can carry on.
+// ------------------------------------------------------------------ continue
+// Move the workstream on from its current step, then print the new current
+// step. What that means depends on the step's status:
+//
+//   pending         the agent finished the work. Accepted only when every
+//                   artifact exists and the step's check command (if any)
+//                   exits 0; a refusal costs one fix cycle, and after
+//                   max_fix_cycles of them the step is blocked. A step with
+//                   gate: owner goes to awaiting-owner instead of done.
+//   awaiting-owner  needs --owner-approved: the owner has approved the step.
+//   blocked         needs --owner-approved: the owner accepts the step as it is.
 
-export function done(root: string, slug: string, stepId: string, extraArtifacts: string[]): string[] {
+export interface Continue {
+  ownerApproved: boolean;
+  note?: string;
+  extraArtifacts: string[];
+}
+
+export function continueWorkstream(root: string, slug: string, input: Continue): string[] {
   const initial = readWorkstream(root, slug);
   const wf = workflowOf(root, initial);
-  const step = findStep(wf, stepId);
-  requireRunnable(wf, initial, step);
+  const step = currentStep(wf, initial);
+  if (!step) throw new FlowError("workflow complete; there is nothing to continue");
 
+  if (stateOf(initial, step.id).status === "pending") {
+    if (input.ownerApproved) {
+      throw new FlowError(`step "${step.id}" is pending, not awaiting the owner; finish it and run continue without --owner-approved`);
+    }
+    return finishStep(root, slug, wf, step, input.extraArtifacts);
+  }
+  if (!input.ownerApproved) {
+    const status = stateOf(initial, step.id).status;
+    throw new FlowError(`step "${step.id}" is ${status}; only the owner can move it on, with continue --owner-approved`);
+  }
+  return approveStep(root, slug, wf, step, input.note);
+}
+
+function finishStep(root: string, slug: string, wf: Workflow, step: Step, extraArtifacts: string[]): string[] {
   const artifacts = [...new Set([...step.produces, ...extraArtifacts])];
   const missing = artifacts.filter((a) => !existsSync(resolve(root, a)));
   if (missing.length > 0) throw countRefusal(root, slug, wf, step, `missing artifact(s): ${missing.join(", ")}`);
 
   // The check runs without holding the state file's lock, so a long test run
-  // does not stall fuse-flow commands for other steps.
+  // does not stall fuse-flow commands for other workstreams.
   if (step.gate.kind === "check") {
     const check = runCheck(root, step.gate.command, slug, step.id);
     if (check.exitCode !== 0) {
@@ -138,29 +162,42 @@ export function done(root: string, slug: string, stepId: string, extraArtifacts:
   }
 
   const awaitsOwner = step.gate.kind === "owner";
-  let followUp: string[] = [];
+  let current: string[] = [];
   updateWorkstream(root, slug, (ws) => {
-    const state = requireRunnable(wf, ws, step); // unchanged while the check ran?
+    const state = requirePending(wf, ws, step); // unchanged while the check ran?
     state.artifacts = artifacts;
     state.status = awaitsOwner ? "awaiting-owner" : "done";
     state.history.push(stamp(awaitsOwner ? "artifacts recorded; awaiting owner approval" : "done"));
-    followUp = describeNext(root, slug, wf, ws);
+    current = describeCurrent(root, slug, wf, ws);
   });
   return [
     `recorded ${step.id}: ${artifacts.join(", ") || "(no artifacts)"}`,
     awaitsOwner ? `${step.id} now awaits owner approval` : `${step.id} done`,
     "",
-    ...followUp,
+    ...current,
   ];
 }
 
-// A step can take `done` only while it is pending with its dependencies done.
-// Refusing for any other reason costs no fix cycle.
-function requireRunnable(wf: Workflow, ws: Workstream, step: Step) {
+function approveStep(root: string, slug: string, wf: Workflow, step: Step, note?: string): string[] {
+  let current: string[] = [];
+  updateWorkstream(root, slug, (ws) => {
+    const state = stateOf(ws, step.id);
+    if (state.status !== "awaiting-owner" && state.status !== "blocked") {
+      throw new FlowError(`step "${step.id}" is ${state.status} now; run continue again`);
+    }
+    state.status = "done";
+    state.history.push(stamp(`owner approved${note ? `: ${note}` : ""}`));
+    current = describeCurrent(root, slug, wf, ws);
+  });
+  return [`${step.id}: owner approved; step done`, "", ...current];
+}
+
+// The step must still be the pending current step when the state is written:
+// another `continue` may have finished it while this one ran its check. That
+// refusal costs no fix cycle.
+function requirePending(wf: Workflow, ws: Workstream, step: Step) {
   const state = stateOf(ws, step.id);
-  if (state.status !== "pending") throw new FlowError(`step "${step.id}" is ${state.status}, not pending`);
-  const unmet = unmetDependencies(wf, ws, step);
-  if (unmet.length > 0) throw new FlowError(`step "${step.id}" waits on: ${unmet.join(", ")}`);
+  if (state.status !== "pending") throw new FlowError(`step "${step.id}" is ${state.status} now; run continue again`);
   return state;
 }
 
@@ -169,9 +206,9 @@ function requireRunnable(wf: Workflow, ws: Workstream, step: Step) {
 function countRefusal(root: string, slug: string, wf: Workflow, step: Step, reason: string, output = "") {
   let fixCycles = 0;
   updateWorkstream(root, slug, (ws) => {
-    const state = requireRunnable(wf, ws, step);
+    const state = requirePending(wf, ws, step);
     state.fix_cycles += 1;
-    state.history.push(stamp(`done refused: ${reason}`));
+    state.history.push(stamp(`continue refused: ${reason}`));
     if (state.fix_cycles >= wf.max_fix_cycles) state.status = "blocked";
     fixCycles = state.fix_cycles;
   });
@@ -198,46 +235,20 @@ function runCheck(root: string, command: string, slug: string, stepId: string) {
   return { exitCode: proc.status, output: text.split("\n").slice(-20).join("\n") };
 }
 
-// ---------------------------------------------------------------------- gate
-// Record the owner's approval of a step that awaits it, or the owner's
-// decision to accept a blocked step as it is. Either way the step is done,
-// and it prints what `next` would print.
-
-export function gate(root: string, slug: string, stepId: string, note?: string): string[] {
-  const wf = workflowOf(root, readWorkstream(root, slug));
-  const step = findStep(wf, stepId);
-  let followUp: string[] = [];
-  updateWorkstream(root, slug, (ws) => {
-    const state = stateOf(ws, step.id);
-    if (state.status !== "awaiting-owner" && state.status !== "blocked") {
-      throw new FlowError(
-        `step "${step.id}" is ${state.status}; only a step awaiting the owner or blocked can be approved`,
-      );
-    }
-    state.status = "done";
-    state.history.push(stamp(`owner approved${note ? `: ${note}` : ""}`));
-    followUp = describeNext(root, slug, wf, ws);
-  });
-  return [`${step.id}: owner approved; step done`, "", ...followUp];
-}
-
 // -------------------------------------------------------------------- status
 
 export function status(root: string, slug: string): string[] {
   const ws = readWorkstream(root, slug);
   const wf = workflowOf(root, ws);
   const width = Math.max(...wf.steps.map((s) => s.id.length));
+  const current = currentStep(wf, ws);
   const rows = wf.steps.map((step) => {
     const state = stateOf(ws, step.id);
-    const unmet = state.status === "pending" ? unmetDependencies(wf, ws, step) : [];
-    const details = [
-      state.fix_cycles > 0 ? `fix cycles ${state.fix_cycles}` : "",
-      unmet.length > 0 ? `waits on ${unmet.join(", ")}` : "",
-      state.artifacts.join(", "),
-    ].filter(Boolean);
+    const details = [state.fix_cycles > 0 ? `fix cycles ${state.fix_cycles}` : "", state.artifacts.join(", ")].filter(Boolean);
+    const marker = step === current ? "> " : "  ";
     const columns = [step.id.padEnd(width), state.status.padEnd(14), `gate ${describeGate(step.gate).padEnd(6)}`];
-    return `  ${[...columns, details.join("; ")].join("  ")}`.trimEnd();
+    return `${marker}${[...columns, details.join("; ")].join("  ")}`.trimEnd();
   });
-  const complete = wf.steps.every((step) => stateOf(ws, step.id).status === "done");
-  return [`workstream ${slug} (${wf.name})`, ...rows, complete ? "workflow complete" : `next: ${FUSE_FLOW} next ${slug}`];
+  const footer = current ? `current step: ${current.id}; ${FUSE_FLOW} start ${slug} prints what to do` : "workflow complete";
+  return [`workstream ${slug} (${wf.name})`, ...rows, footer];
 }

@@ -3,7 +3,8 @@
 // throwaway clone against a throwaway home directory and project.
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { chmodSync, cpSync, mkdirSync, readFileSync, readlinkSync, rmSync, statSync, symlinkSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { chmodSync, cpSync, mkdirSync, readFileSync, readlinkSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { REPO_ROOT, Sandbox, exists, isLink, snapshot } from "./helpers";
 
@@ -82,6 +83,88 @@ describe("arguments", () => {
     expect(result.status).toBe(1);
     expect(result.output).toContain("AGENTS.fuse.md");
     expect(snapshot(sb.root)).toEqual(before);
+  });
+});
+
+describe("the block", () => {
+  const BLOCK_WITH_CLONE = "# fuse-konductor\n\nThe clone is at {{CLONE}}; run {{CLONE}}/fuse/flow/fuse-flow.\n";
+  const CLONE_FILE = ".konductor/fuse-konductor-clone"; // under HOME
+
+  test("--global replaces {{CLONE}} with the clone's path, wherever it appears", () => {
+    sb.setBlock(BLOCK_WITH_CLONE);
+    const target = join(sb.home, ".claude", "CLAUDE.md");
+    sb.ok("--global", target);
+    expect(sb.read(target)).toBe(wrapped(`# fuse-konductor\n\nThe clone is at ${sb.clone}; run ${sb.clone}/fuse/flow/fuse-flow.\n`));
+  });
+
+  test("--project keeps AGENTS.md portable: {{CLONE}} points at a per-user file that holds the path", () => {
+    sb.setBlock(BLOCK_WITH_CLONE);
+    sb.ok("--project", sb.project);
+    const pointer = "the path in `~/.konductor/fuse-konductor-clone`, whose one line reads `clone=<path>`";
+    const agents = sb.read(join(sb.project, "AGENTS.md"));
+    expect(agents).toBe(wrapped(`# fuse-konductor\n\nThe clone is at ${pointer}; run ${pointer}/fuse/flow/fuse-flow.\n`));
+    expect(agents).not.toContain(sb.clone);
+    expect(sb.read(join(sb.home, CLONE_FILE))).toBe(`clone=${sb.clone}\n`);
+    expect(snapshot(join(sb.project, ".konductor"))).toEqual({});
+
+    // A teammate installs from a clone elsewhere: the committed block is unchanged, only their own file differs.
+    const other = new Sandbox([]);
+    try {
+      other.setBlock(BLOCK_WITH_CLONE);
+      expect(other.ok("--project", sb.project)).toContain("AGENTS.md is up to date");
+      expect(sb.read(join(sb.project, "AGENTS.md"))).toBe(agents);
+      expect(sb.read(join(other.home, CLONE_FILE))).toBe(`clone=${other.clone}\n`);
+      expect(sb.read(join(sb.home, CLONE_FILE))).toBe(`clone=${sb.clone}\n`);
+    } finally {
+      other.cleanup();
+    }
+
+    // Uninstalling one project leaves the pointer, which other projects on the machine use.
+    sb.ok("--project", sb.project, "--uninstall");
+    expect(sb.read(join(sb.home, CLONE_FILE))).toBe(`clone=${sb.clone}\n`);
+  });
+
+  test("something that is not the pointer file in its place refuses the install before anything changes", () => {
+    const refused = (message: string) => {
+      const before = snapshot(sb.project);
+      const result = sb.run("--project", sb.project);
+      expect(result.status).toBe(1);
+      expect(result.output).toContain(message);
+      expect(snapshot(sb.project)).toEqual(before);
+    };
+    sb.write(join(sb.home, CLONE_FILE), "line one\nline two\n");
+    refused("not a file fuse-konductor wrote");
+    sb.write(join(sb.home, CLONE_FILE), "not a path\n");
+    refused("not a file fuse-konductor wrote");
+    sb.write(join(sb.home, CLONE_FILE), "/some/other/tool/wrote/this\n");
+    refused("not a file fuse-konductor wrote");
+    rmSync(join(sb.home, CLONE_FILE));
+    symlinkSync("elsewhere", join(sb.home, CLONE_FILE));
+    refused("is a symlink");
+
+    rmSync(join(sb.home, ".konductor"), { recursive: true });
+    sb.write(join(sb.home, ".konductor"), "a file, not a directory\n");
+    refused("is not a directory");
+  });
+
+  test("a clone path that itself contains {{CLONE}} is inserted once, not expanded again", () => {
+    const odd = new Sandbox([]);
+    try {
+      const clone = join(odd.root, "a{{CLONE}}b");
+      cpSync(odd.clone, clone, { recursive: true });
+      odd.setBlock(BLOCK_WITH_CLONE);
+      writeFileSync(join(clone, "AGENTS.fuse.md"), BLOCK_WITH_CLONE);
+      const target = join(odd.home, ".claude", "CLAUDE.md");
+      const result = spawnSync("sh", [join(clone, "install.sh"), "--global", target], {
+        env: { PATH: process.env.PATH ?? "/usr/bin:/bin", HOME: odd.home },
+        encoding: "utf8",
+        timeout: 20_000,
+      });
+      expect(result.status).toBe(0);
+      expect(odd.read(target)).toBe(wrapped(`# fuse-konductor\n\nThe clone is at ${clone}; run ${clone}/fuse/flow/fuse-flow.\n`));
+    } finally {
+      odd.cleanup();
+    }
   });
 });
 
@@ -694,7 +777,12 @@ describe("this repository", () => {
         .map((line) => line.split(" ")[0]);
       const expected = [...new Bun.Glob("*/SKILL.md").scanSync(join(REPO_ROOT, "skills"))].map((p) => p.split("/")[0]).sort();
       expect(names).toEqual(expected);
-      expect(real.read(join(real.project, "AGENTS.md"))).toContain(readFileSync(join(REPO_ROOT, "AGENTS.fuse.md"), "utf8"));
+      const block = readFileSync(join(REPO_ROOT, "AGENTS.fuse.md"), "utf8");
+      expect(block).toContain("{{CLONE}}");
+      const written = real.read(join(real.project, "AGENTS.md"));
+      const pointer = "the path in `~/.konductor/fuse-konductor-clone`, whose one line reads `clone=<path>`";
+      expect(written).toContain(block.replaceAll("{{CLONE}}", pointer));
+      expect(written).not.toContain("{{CLONE}}");
     } finally {
       real.cleanup();
     }

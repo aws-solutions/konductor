@@ -22,7 +22,10 @@
 #
 # --uninstall reverses an install for the same arguments.
 #
-# The always-on block is AGENTS.fuse.md from this clone. It is written between
+# The always-on block is AGENTS.fuse.md from this clone, with every {{CLONE}}
+# replaced: by the clone's path in a global instruction file, and by a pointer
+# to ~/.konductor/fuse-konductor-clone in a project's AGENTS.md, which is shared.
+# The block is written between
 # markers inside a <GENERATED> wrapper that DCP and DCL share:
 #
 #   <GENERATED>
@@ -131,6 +134,43 @@ GEN_CLOSE='</GENERATED>'
 SEC_OPEN='<FUSE-KONDUCTOR>'
 SEC_CLOSE='</FUSE-KONDUCTOR>'
 COPY_MARK=.fuse-konductor-copy
+# Where a project install records this clone's path, one line, for the agent
+# block in the project's committed AGENTS.md to point at.
+#
+# Why in $HOME and not in the project (step-back note, review epoch 5, rounds
+# 1 to 3). The clone's path is a fact about this machine, not about the
+# project. The first design wrote it to <project>/.konductor/fuse-konductor-
+# clone and had to keep these invariants: the committed tree never carries a
+# machine path; the file is git-ignored by a rule the installer adds without
+# disturbing other rules or a last line without a newline; the install changes
+# nothing when the file cannot be written (symlinks, a .konductor that is not
+# a directory, a .gitignore that is not a file, a foreign file at the path);
+# only a pointer-shaped file is replaced, atomically; uninstall removes the
+# pointer only when it names this clone and the ignore rule only when it is
+# alone; any teammate's clone may re-point the project. Three review rounds
+# patched that list one guard at a time. The invariant family is removed
+# rather than patched: the pointer lives in the user's own $HOME/.konductor,
+# where fuse-flow already looks for the user's workflows and skills. What is
+# left: one line, "clone=<absolute path>", written by rename, refused when
+# something that is not that file is in the way (the prefix is the mark). The project tree gets nothing but the
+# committed block, which reads the same for every developer, and uninstalling
+# one project leaves the pointer, because other projects on the machine use
+# it too. Obligations E5-R2-F3, E5-R2-F5, E5-R2-F8 and E5-R3-F2 fell away with
+# the code they were about; round 4 confirmed them fixed.
+#
+# Round 4 left one thread (E5-R2-F4, E5-R3-F1, E5-R4-F1): a one-line absolute
+# path is the file's shape, not proof that this script wrote it, so a foreign
+# file of that shape would be replaced. Decision: continue patching, once,
+# with the smallest change that settles the question rather than a sidecar or
+# a versioned format: the line is "clone=<path>", and the prefix is the mark.
+# The invariant list is then complete: (1) the project tree carries no machine
+# path; (2) the pointer is $HOME/.konductor/fuse-konductor-clone, one line,
+# "clone=" followed by an absolute path, newline-terminated; (3) it is written
+# before anything in the project changes and by rename; (4) a file of any other
+# shape, a symlink, or a .konductor that is not a directory stops the install;
+# (5) install from any clone replaces the pointer, and uninstall leaves it.
+# That covers E5-R2-F4, E5-R3-F1 and E5-R4-F1.
+CLONE_FILE=$HOME/.konductor/fuse-konductor-clone
 LINK_HOP_LIMIT=64
 NL='
 '
@@ -301,7 +341,26 @@ if [ "$uninstall" -eq 0 ]; then
     fatal "$REPO/AGENTS.fuse.md contains a marker line; remove it and run again"
   fi
   tmpfile BLOCK
-  cat "$REPO/AGENTS.fuse.md" > "$BLOCK"
+  # {{CLONE}} in AGENTS.fuse.md says where the fuse-konductor clone is. A
+  # global instruction file belongs to one machine, so it gets this clone's
+  # path. A project's AGENTS.md is committed and shared, so it gets a pointer
+  # to the per-user file project_install writes (see CLONE_FILE), and stays
+  # the same whoever runs the installer. awk reads the replacement from the
+  # environment, so backslashes in a path stay literal, and builds each line
+  # left to right, so a replacement that itself contains {{CLONE}} is not
+  # replaced again.
+  if [ "$mode" = project ]; then
+    FUSE_CLONE="the path in \`~/.konductor/fuse-konductor-clone\`, whose one line reads \`clone=<path>\`"
+  else
+    FUSE_CLONE=$REPO
+  fi
+  FUSE_CLONE=$FUSE_CLONE awk '
+    { out = ""; rest = $0
+      while ((i = index(rest, "{{CLONE}}")) > 0) {
+        out = out substr(rest, 1, i - 1) ENVIRON["FUSE_CLONE"]
+        rest = substr(rest, i + 9)
+      }
+      print out rest }' "$REPO/AGENTS.fuse.md" > "$BLOCK"
   if [ -s "$BLOCK" ] && [ -n "$(tail -c1 "$BLOCK")" ]; then printf '\n' >> "$BLOCK"; fi
 fi
 
@@ -916,6 +975,8 @@ save_progress() {
 project_install() {
   project_paths
   say "$P"
+  # First, so the project is left as it was when the pointer cannot be written.
+  write_clone_file
   mkdir -p -- "$A"
   INSTALLING=1
   NEW=
@@ -971,6 +1032,26 @@ project_install() {
   INSTALLING=
   say "  .claude/skills and .kiro/skills point at .agents/skills"
   edit_block upsert "$P/AGENTS.md"
+}
+
+# Records this clone's path in $HOME/.konductor/fuse-konductor-clone, as one
+# line "clone=<path>", for the block in the project's AGENTS.md to point at.
+# The "clone=" prefix marks the file as this script's; any other content there
+# is someone else's file, and the install stops before the project changes.
+write_clone_file() {
+  _dir=${CLONE_FILE%/*}
+  [ ! -L "$CLONE_FILE" ] || fatal "$CLONE_FILE is a symlink; move it away and run again"
+  if [ -e "$_dir" ] && [ ! -d "$_dir" ]; then fatal "$_dir is not a directory; fuse-konductor cannot write $CLONE_FILE"; fi
+  if [ -e "$CLONE_FILE" ]; then
+    [ -f "$CLONE_FILE" ] && [ "$(wc -l < "$CLONE_FILE")" -le 1 ] &&
+      case $(cat "$CLONE_FILE") in clone=/*) true ;; *) false ;; esac ||
+      fatal "$CLONE_FILE is not a file fuse-konductor wrote; move it away and run again"
+  fi
+  mkdir -p -- "$_dir"
+  tmpfile _pointer "$_dir"
+  printf 'clone=%s\n' "$REPO" > "$_pointer"
+  mv -f -- "$_pointer" "$CLONE_FILE"
+  say "  $CLONE_FILE names this clone"
 }
 
 project_uninstall() {

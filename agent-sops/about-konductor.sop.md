@@ -39,7 +39,7 @@ Onboards a new or lost user: install with `install.sh`, start a normal harness s
 - For "what should I use next", use `sdlc-navigator` to preserve phase and artifact handoffs.
 - For a focused phase, name the applicable skill and explain how the active harness loads it.
 - For a complete lifecycle pass, offer fuse-flow with `fuse/flow/workflows/_k-full-sdlc.yml` or the lighter `fuse/flow/workflows/_k-phase-chain.yml`.
-- State the fuse-flow command sequence accurately: `fuse-flow start <slug> --workflow <name or path>`, followed by `next`, `done`, `gate`, and `status` commands that include the workstream slug.
+- State the fuse-flow command sequence accurately: `fuse-flow start <slug> --workflow <name or path>` prints the current step; `fuse-flow continue <slug>` records it finished and prints the next one; `fuse-flow continue <slug> --owner-approved` records the owner's approval of a waiting step; `fuse-flow status <slug>` lists every step.
 - State that fuse-flow searches `FUSE_SKILLS_DIR`, the repository's `skills/`, `.kiro/skills`, `.konductor/skills`, `.claude/skills` and `.agents/skills`, then `SKILLS_HOME` and the same directories under the home directory plus `~/.codex/skills` and `~/.config/opencode/skills`.
 
 **Expected Output:** The correct skill invocation or workflow command, sourced from the live install and repository.
@@ -49,7 +49,7 @@ Onboards a new or lost user: install with `install.sh`, start a normal harness s
 **Constraints:**
 
 - If the user names a concrete task, tell them which focused skill to load in their current session.
-- If the user wants a full lifecycle pass, give the appropriate fuse-flow `start` command and explain that subsequent `next`, `done`, `gate`, and `status` calls advance the same workstream.
+- If the user wants a full lifecycle pass, give the appropriate fuse-flow `start` command and explain that subsequent `continue` calls advance the same workstream, and `status` shows where it stands.
 - If the install looks broken, tell the user to run the same `install.sh` command again; it reports what it skipped and why.
 
 **Expected Output:** A focused skill invocation, a fuse-flow start command, or the `install.sh` command to run again.

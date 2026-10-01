@@ -9,7 +9,7 @@ import { FlowError } from "./errors.ts";
 
 // What must hold before a step counts as done, besides its artifacts existing.
 //   none              nothing else
-//   owner             the owner approves it with `fuse-flow gate`
+//   owner             the owner approves it with `fuse-flow continue --owner-approved`
 //   check: <command>  the shell command exits 0 when run from the repository root
 export type Gate = { kind: "none" } | { kind: "owner" } | { kind: "check"; command: string };
 
@@ -44,7 +44,8 @@ const StepSchema = z
         }
         return gate ?? z.NEVER;
       }),
-    // Omitted: the step runs after the step listed before it. []: no dependency.
+    // Which earlier steps this one builds on, for the reader and for a
+    // workflow's author. fuse-flow hands out steps in file order regardless.
     depends_on: z.array(id).optional(),
   })
   .strict()
@@ -55,14 +56,14 @@ const WorkflowSchema = z
     version: z.literal(1),
     name: z.string().min(1),
     description: z.string().optional(),
-    // How many refused `done` attempts a step gets before it is blocked.
+    // How many refused `continue` attempts a step gets before it is blocked.
     max_fix_cycles: z.number().int().min(1).default(2),
     steps: z.array(StepSchema).min(1),
   })
   .strict()
   .superRefine((wf, ctx) => {
-    // A step may only depend on steps listed before it. That rules out
-    // cycles, so the file order is always a valid order to run the steps in.
+    // A step may only depend on steps listed before it, so the file order,
+    // which is the order fuse-flow runs the steps in, respects every dependency.
     const earlier = new Set<string>();
     wf.steps.forEach((step, i) => {
       if (earlier.has(step.id)) {
@@ -98,16 +99,4 @@ export function loadWorkflow(path: string): Workflow {
     throw new FlowError(`${path} is not a valid workflow:\n${issues.join("\n")}`);
   }
   return parsed.data;
-}
-
-export function findStep(wf: Workflow, stepId: string): Step {
-  const step = wf.steps.find((s) => s.id === stepId);
-  if (!step) throw new FlowError(`unknown step "${stepId}"; the steps are: ${wf.steps.map((s) => s.id).join(", ")}`);
-  return step;
-}
-
-export function dependenciesOf(wf: Workflow, step: Step): string[] {
-  if (step.depends_on) return step.depends_on;
-  const i = wf.steps.indexOf(step);
-  return i > 0 ? [wf.steps[i - 1].id] : [];
 }

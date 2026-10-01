@@ -29,9 +29,20 @@ not per individual commit.
   `.konductor/skills/`, so a copy an older install left there does not shadow the current one.
 - fuse-flow workstreams each record the workflow they follow, given to `start --workflow` as a
   path or as a name looked up in `.konductor/workflows/`, `~/.konductor/workflows/` and the shipped
-  workflows. `start` no longer copies a workflow to `.konductor/workflow.yml`. A successful `done`
-  or `gate` prints the next step. fuse-flow also runs on Node 22.18+, 23.6+ or 24+ when Bun is
-  not installed.
+  workflows. `start` no longer copies a workflow to `.konductor/workflow.yml`. fuse-flow also runs
+  on Node 22.18+, 23.6+ or 24+ when Bun is not installed.
+- fuse-flow has three commands instead of five. `start` prints the current step, and the one
+  input `continue` moves the workstream on: it records the current step finished (the former
+  `done`), or with `--owner-approved` records the owner's approval (the former `gate`), and prints
+  the next step. `next` is gone; `start` resumes a workstream. Commands no longer take a step id:
+  steps run one at a time in file order, and `depends_on` documents what a step builds on.
+- The `fuse-flow` script installs its dependencies when `node_modules` lacks them, normally only
+  on first use, with `bun install` or, under Node, `npm install` (Node needs npm next to it). That
+  is the only time fuse-flow uses the network; offline, that run fails and names the command to run. `install.sh` replaces `{{CLONE}}` in `AGENTS.fuse.md`
+  so the installed rules say where the clone is instead of asking the user: a global instruction
+  file gets the clone's path; a project's `AGENTS.md`, which is committed, gets a pointer to
+  `~/.konductor/fuse-konductor-clone`, a one-line file (`clone=<path>`) the installer writes in
+  the user's home.
 - The `persistent-memory` and `legacy-to-agentic-estimate` script lookups also try
   `.kiro/skills/` and `.claude/skills/`, in the project and in `$HOME`.
 - `konductor install` and `konductor update` now remove files the previous install of the same

@@ -31,6 +31,11 @@ project's `AGENTS.md`, and links `.claude/skills` and `.kiro/skills` to `.agents
 the result. Your teammates get the skills and rules with `git pull`, and you can edit them with the
 rest of the project. This works for every supported harness, including Cursor.
 
+The script also writes the path of your clone to `~/.konductor/fuse-konductor-clone`, one line
+`clone=<path>` in your home directory, so the agent can find `fuse-flow` from any project. Each teammate runs
+`install.sh --project` once from their own clone to write theirs; `--uninstall` leaves the file,
+because other projects use it.
+
 ### For yourself, in every project
 
 Pass the user-level instruction file of each harness you use:

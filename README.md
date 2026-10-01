@@ -51,7 +51,7 @@ cd fuse-konductor
 
 ### First run
 
-**Full SDLC pass with fuse-flow.** The workflow runner lives in this repository under [`fuse/flow/`](fuse/flow/README.md) and needs [Bun](https://bun.sh) or Node 22.18+, 23.6+ or 24+ (see [`fuse/flow/README.md`](fuse/flow/README.md) for the dependency install). It is not part of the installed package, so run it from your checkout:
+**Full SDLC pass with fuse-flow.** The workflow runner lives in this repository under [`fuse/flow/`](fuse/flow/README.md) and needs [Bun](https://bun.sh) or Node 22.18+, 23.6+ or 24+ with npm; it installs its own dependencies on first use. `install.sh` does not copy it, so run it from your checkout:
 
 ```bash
 cd <your-project>
@@ -61,12 +61,12 @@ cd <your-project>
 Then, in a Kiro CLI or Claude Code session in that project, ask:
 
 ```text
-Run `<konductor-checkout>/fuse/flow/fuse-flow next my-feature` and do what it says. Each `done`
-prints the next step. Repeat until the workflow is complete. Stop at each owner gate and show me
-the artifact.
+Run `<konductor-checkout>/fuse/flow/fuse-flow start my-feature` and do what it says. When a step is
+done, run `continue`, which prints the next step. Repeat until the workflow is complete. Stop at
+each owner gate and show me the artifact.
 ```
 
-Each step names its skill and the artifact it must produce under `.konductor/`. `fuse-flow done` refuses a step until its artifacts exist, and a gated step waits until you approve it with `fuse-flow gate my-feature <step> --owner-approved`. fuse-flow finds skills in every directory `install.sh` writes to, so it needs no extra setup; [`fuse/flow/README.md`](fuse/flow/README.md) lists them.
+Each step names its skill and the artifact it must produce under `.konductor/`. `fuse-flow continue` refuses a step until its artifacts exist, and a gated step waits until you approve it with `fuse-flow continue my-feature --owner-approved`. fuse-flow finds skills in every directory `install.sh` writes to, so it needs no extra setup; [`fuse/flow/README.md`](fuse/flow/README.md) lists them.
 
 ---
 
@@ -156,7 +156,7 @@ claude
 claude -p "Use the threat-modeling skill to create a threat model for a public REST API backed by DynamoDB."
 ```
 
-**Run the full SDLC workflow:** start the `_k-full-sdlc` workflow with fuse-flow as described in [First run](#first-run), then let the session follow `fuse-flow next`. It runs every phase, requirements through documentation, and writes its artifacts under `.konductor/`.
+**Run the full SDLC workflow:** start the `_k-full-sdlc` workflow with fuse-flow as described in [First run](#first-run), then let the session follow the steps `fuse-flow start` and `continue` print. It runs every phase, requirements through documentation, and writes its artifacts under `.konductor/`.
 
 The same prompts work in Kiro CLI, Codex, Cursor and OpenCode sessions.
 
@@ -204,7 +204,7 @@ Licensed under the Apache License, Version 2.0 — see [LICENSE.txt](LICENSE.txt
 
 ## Data Collection
 
-fuse-konductor collects no data. The installer and fuse-flow send nothing over the network.
+fuse-konductor collects no data. The installer sends nothing over the network. fuse-flow downloads its two dependencies, zod and yaml, from the npm registry when they are missing from `fuse/flow/node_modules` in your clone, normally only the first time it runs; otherwise it sends nothing. Offline, that run fails and names the install command to run.
 
 ---
 

@@ -9,9 +9,9 @@ import { z } from "zod";
 import { FlowError } from "./errors.ts";
 import { workstreamFile, workstreamsDir } from "./project.ts";
 
-// pending         not done yet (the only status in which `done` is accepted)
-// awaiting-owner  artifacts recorded, waiting for `fuse-flow gate`
-// blocked         max_fix_cycles refused attempts; waiting for `fuse-flow gate`
+// pending         the agent is working on it; `continue` records it finished
+// awaiting-owner  artifacts recorded, waiting for `continue --owner-approved`
+// blocked         max_fix_cycles refused attempts; waiting for `continue --owner-approved`
 // done            finished
 const StepStateSchema = z
   .object({

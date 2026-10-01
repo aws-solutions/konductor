@@ -7,10 +7,11 @@ of each step with the user; `fuse-flow` decides the order.
 Each workstream's state is saved in `.konductor/workstreams/<slug>.yml` in the user's
 repository.
 
-`fuse-flow` is `fuse/flow/fuse-flow` in the fuse-konductor clone, and it needs Bun. The workflows
-are the `*.yml` files in `fuse/flow/workflows/` in the clone; each has a `name` and a
-`description`. If `fuse-flow` is not on the PATH, ask the user where the clone is and run it by its
-full path. If Bun is missing, tell the user to install it from https://bun.sh.
+The fuse-konductor clone is at {{CLONE}}. `fuse-flow` is `fuse/flow/fuse-flow` in the clone; run it
+by its full path. The workflows are the `*.yml` files in `fuse/flow/workflows/` in the clone; each
+has a `name` and a `description`. `fuse-flow` needs Bun and installs its own dependencies on first
+use. If Bun is missing, tell the user to install it from https://bun.sh. If the clone is not where
+this says, ask the user where it is.
 
 ## When to use it
 
@@ -34,14 +35,14 @@ full path. If Bun is missing, tell the user to install it from https://bun.sh.
 
 ## Run the workflow
 
-1. Run `fuse-flow next <slug>`. It prints the step, the skill to read, the instruction, the
-   artifacts to produce, the gate, and the `done` command.
+1. `fuse-flow start <slug>` prints the current step: the skill to read, the instruction, the
+   artifacts to produce, the gate, and the `continue` command.
 2. Read the skill. Guide the user through the step as the instruction says.
-3. When the step is finished, run the `done` command it printed. If `done` is refused, fix what
-   it names and try again.
-4. Repeat from 1 until `next` prints `workflow complete`.
+3. When the step is finished, run the `continue` command it printed. It checks the step, records
+   it, and prints the next step. If it is refused, fix what it names and try again.
+4. Repeat from 2 until `continue` prints `workflow complete`.
 
-If `next` says a step awaits the owner, or is blocked, show the user the artifacts and stop.
-Run `fuse-flow gate <slug> <step> --owner-approved` only after the user has approved.
+If the printed step awaits the owner, or is blocked, show the user the artifacts and stop. Run
+`fuse-flow continue <slug> --owner-approved` only after the user has approved.
 
 The state is saved after every command. A new session can continue the workstream at any time.

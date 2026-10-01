@@ -4,15 +4,16 @@
 # To change it, copy it to .konductor/workflows/ under a new name and edit the copy.
 #
 # Fields per step:
-#   id          lowercase identifier, used in fuse-flow commands
+#   id          lowercase identifier, shown in fuse-flow output
 #   skill       SKILL.md to read first, relative to the skills directory
 #               (see "Skills" in fuse/flow/README.md for the search order),
 #               or an absolute path
-#   instruction inline guidance printed by `fuse-flow next`
-#   produces    artifacts that must exist before `fuse-flow done` is accepted
+#   instruction inline guidance printed with the step
+#   produces    artifacts that must exist before `fuse-flow continue` accepts the step
 #   gate        none | owner | "check: <command run from the repository root>"
-#   depends_on  ids of steps listed earlier; omitted means "the previous step",
-#               [] means independent
+#   depends_on  ids of steps listed earlier whose output this step builds on;
+#               documentation for the reader. fuse-flow runs the steps in file
+#               order, one at a time, whatever depends_on says
 #
 # Artifacts live under .konductor/<phase>/; implementation code follows the
 # project's own layout. Steps 0 to 11 of the former k-full-sdlc SOP map onto

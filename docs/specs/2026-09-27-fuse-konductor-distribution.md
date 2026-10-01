@@ -336,7 +336,7 @@ The minimal first version tells the agent to:
 - check `.konductor/workstreams/` for a workstream in progress before starting a new one;
 - offer the installed workflows, and recommend one when it knows enough, starting only after the
   user agrees;
-- run the `fuse-flow` loop: `start`, then `next`, the step's skill and instruction, and `done`,
+- run the `fuse-flow` loop: `start`, then the step's skill and instruction, and `continue`,
   until the workflow is complete, stopping at owner gates.
 
 The owner refines this content later. The installer copies the block as it is, without
