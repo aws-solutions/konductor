@@ -13,10 +13,8 @@ use std::sync::OnceLock;
 
 use super::envelope::{EventEnvelope, EventType, OuterEnvelope};
 use crate::cli::install::index;
-// `identity` is otherwise unused in this module's own non-test code --
-// no production `report_*` gate reads the legacy per-target identity
-// file anymore -- but stays available for `#[cfg(test)]` call sites
-// below that simulate a developer machine predating its retirement.
+// Unused outside #[cfg(test)]: no production report_* gate reads the
+// legacy per-target identity file anymore.
 #[allow(unused_imports)]
 use super::identity;
 use super::install_info;
@@ -53,22 +51,12 @@ fn home_dir() -> Option<std::path::PathBuf> {
     index::env_home_dir()
 }
 
-/// The consent decision itself, as a pure function of its two inputs
-/// -- no I/O, no `HOME` lookup, no instance-file resolution. ANDed:
-/// either input being false suppresses reporting, unconditionally,
-/// and a per-target opt-out can never be overridden by machine
-/// consent.
-///
-/// Split out of `telemetry_consent_allows` so this AND logic is
-/// exercisable without a filesystem: `machine_consent` is exactly
-/// `InstanceRecord.telemetry_consent`, resolved by the caller.
+/// Either input being false suppresses reporting; a per-target
+/// opt-out can never be overridden by machine consent.
 fn consent_decision(target_already_opted_out: bool, machine_consent: bool) -> bool {
     !target_already_opted_out && machine_consent
 }
 
-/// Resolves this call's two consent inputs -- `HOME` and the instance
-/// record -- then applies `consent_decision`.
-///
 /// Always resolves/mints the instance record even when
 /// `target_already_opted_out` is true, so a later call for a
 /// different, opted-in target on the same machine finds a record
@@ -88,10 +76,6 @@ const TELEMETRY_ALLOW_LOCAL_ENDPOINT_ENV_VAR: &str = "KONDUCTOR_TELEMETRY_ALLOW_
 /// config), or no endpoint resolves. `KONDUCTOR_TELEMETRY=off` wins
 /// over a repo's own `.konductor/config.yml`. Endpoint resolution
 /// order: env var -> config.yml -> compile-time default.
-///
-/// Reads just the `telemetry:` key out of
-/// `<target_dir>/.konductor/config.yml`, deliberately not through the
-/// `cli::config::Config` machinery, which models an unrelated schema.
 /// `#[cfg(test)]`: production calls `resolve_endpoint_with_pin` directly.
 #[cfg(test)]
 fn resolve_endpoint(target_dir: &std::path::Path) -> Option<String> {
@@ -99,9 +83,9 @@ fn resolve_endpoint(target_dir: &std::path::Path) -> Option<String> {
 }
 
 /// Same resolution as `resolve_endpoint`, but also returns the address
-/// (if any) `spawn_and_send` must pin `curl` to via `--resolve` --
-/// closes a DNS-rebinding TOCTOU between this check's own resolution
-/// and curl's later, independent one.
+/// (if any) `spawn_and_send` must pin `curl` to via `--resolve`, to
+/// close a DNS-rebinding TOCTOU between this check and curl's later,
+/// independent resolution.
 fn resolve_endpoint_with_pin(
     target_dir: &std::path::Path,
 ) -> Option<(String, Option<std::net::IpAddr>)> {
@@ -143,15 +127,12 @@ fn resolve_endpoint_with_pin(
 
 /// Rejects a loopback (`127.0.0.1`/`::1`/`localhost`), link-local, or
 /// RFC 1918 private-range host, unless the debug-only
-/// `KONDUCTOR_TELEMETRY_ALLOW_LOCAL_ENDPOINT` escape hatch is set. A
-/// host this function cannot classify at all is not allowed.
-///
-/// Runs the cheap literal-string/IP-literal check first, then a real
-/// DNS resolution check -- the literal check alone is bypassable by a
-/// hostname like `127.0.0.1.nip.io`, which resolves to a loopback
-/// address without being one itself. A hostname that fails to resolve
-/// at all is NOT itself treated as disallowed. `#[cfg(test)]`:
-/// production calls `endpoint_host_is_allowed_with_pin` directly.
+/// `KONDUCTOR_TELEMETRY_ALLOW_LOCAL_ENDPOINT` escape hatch is set. Runs
+/// a real DNS resolution check too, not just a literal-string match --
+/// a hostname like `127.0.0.1.nip.io` resolves to a loopback address
+/// without being one itself. A hostname that fails to resolve at all
+/// is NOT treated as disallowed. `#[cfg(test)]`: production calls
+/// `endpoint_host_is_allowed_with_pin` directly.
 #[cfg(test)]
 fn endpoint_host_is_allowed(endpoint: &str) -> bool {
     endpoint_host_is_allowed_with_pin(endpoint).is_some()
@@ -159,13 +140,9 @@ fn endpoint_host_is_allowed(endpoint: &str) -> bool {
 
 /// Same allow/deny decision as `endpoint_host_is_allowed`, but also
 /// returns the address (if any) `spawn_and_send` must pin `curl` to.
-/// The pin comes from the SAME resolution this function's own
-/// allow/deny verdict is based on, never a second, independent lookup
-/// (which would just move the TOCTOU window).
-///
-/// The literal-check and escape-hatch handling is this crate's own
-/// glue; the resolution bound and allow/deny/pin decision are shared
-/// with `skill-lookup-core`'s own mirror.
+/// The pin comes from the SAME resolution this function's allow/deny
+/// verdict is based on, never a second, independent lookup, which
+/// would just move the TOCTOU window.
 ///
 /// Returns:
 /// - `None` -- disallowed; do not send. Also covers a resolution that
@@ -187,10 +164,9 @@ fn endpoint_host_is_allowed_with_pin(endpoint: &str) -> Option<Option<std::net::
     konductor_telemetry::decide_pin(outcome)
 }
 
-/// Resolves `host` via `konductor_telemetry::resolve_host_addrs_bounded` and
-/// checks whether the outcome would be flagged as disallowed. `TimedOut`
-/// folds into `true` here only because none of this test-only helper's
-/// own callers exercise a real timeout.
+/// Resolves `host` and checks whether the outcome would be flagged as
+/// disallowed. `TimedOut` folds into `true` here only because this
+/// test-only helper's callers never exercise a real timeout.
 #[cfg(test)]
 fn resolved_addresses_include_disallowed_host(host: &str) -> bool {
     match konductor_telemetry::resolve_host_addrs_bounded(host, DNS_RESOLUTION_TIMEOUT) {
@@ -202,11 +178,10 @@ fn resolved_addresses_include_disallowed_host(host: &str) -> bool {
     }
 }
 
-/// Upper bound on this module's DNS resolution. `report_error` reaches
-/// this resolution before printing the user-facing error line, so an
-/// un-timeboxed lookup here stalls every telemetry-enabled CLI error's
-/// output. A resolution error still fails open; a timeout does not --
-/// it is denied outright.
+/// Upper bound on this module's DNS resolution: an un-timeboxed lookup
+/// here would stall every telemetry-enabled CLI error's output. A
+/// resolution error still fails open; a timeout does not -- it is
+/// denied outright.
 const DNS_RESOLUTION_TIMEOUT: std::time::Duration = std::time::Duration::from_millis(500);
 
 #[derive(Debug, Default, serde::Deserialize)]
@@ -242,31 +217,19 @@ fn materialize_script() -> std::io::Result<std::path::PathBuf> {
     konductor_telemetry::materialize_script(&dir, MATERIALIZED_SCRIPT_NAME, TELEMETRY_REPORT_SCRIPT)
 }
 
-/// The transport seam `spawn_and_send_with_transport` sends through,
-/// injected explicitly rather than resolved via a global in this
-/// module's own test suite -- see `default_test_transport` below for
-/// the one place a `cfg(test)`-only global is used instead.
-///
-/// `send` takes the same arguments the real spawn always took: the
-/// resolved `endpoint`, an optional DNS-rebinding pin, and the
-/// serialized JSON `body`. Must never panic and never block its caller
-/// meaningfully -- the real implementation's "telemetry failure never
-/// propagates" contract applies to every implementation of this trait.
+/// The transport seam `spawn_and_send_with_transport` sends through.
+/// Must never panic and never block its caller meaningfully -- the
+/// "telemetry failure never propagates" contract applies to every
+/// implementation of this trait.
 trait Transport {
     fn send(&self, endpoint: &str, pinned_ip: Option<std::net::IpAddr>, body: &str);
 }
 
-/// Production's only implementation: byte-identical to what
-/// `spawn_and_send` always did before this seam existed. Materializes
-/// the script, spawns it detached with `endpoint` as its first argv
-/// (no shell interposed) and an optional `host:port:address` pin as
-/// its second, writes `body` to its stdin, and never `.wait()`s --
-/// any spawn error or later network failure is discarded.
-///
-/// `#[cfg(not(test))]`: this type does not exist in a test build --
-/// `spawn_and_send`'s own `#[cfg(test)]` arm never constructs it, so a
-/// test build has no code path that can reach a real spawn through
-/// this seam, structurally rather than by convention.
+/// Production's only implementation. Materializes the script, spawns
+/// it detached with `endpoint` as its first argv (no shell interposed)
+/// and an optional `host:port:address` pin as its second, writes
+/// `body` to its stdin, and never `.wait()`s -- any spawn error or
+/// later network failure is discarded.
 #[cfg(not(test))]
 struct RealTransport;
 
@@ -297,20 +260,16 @@ impl Transport for RealTransport {
         };
         if let Some(mut stdin) = child.stdin.take() {
             let _ = stdin.write_all(body.as_bytes());
-            // stdin is closed here, leaving the child detached, never
-            // .wait()-ed -- fire-and-forget.
+            // stdin closes here; the child is left detached, fire-and-forget.
         }
     }
 }
 
-/// Production entry point: every `send_event*` call site -- and
-/// through them, every `report_*` public function -- funnels through
-/// here. Outside `cfg(test)` this is unconditionally `RealTransport`.
-///
-/// Under `cfg(test)` only, this defers to `default_test_transport()`
-/// instead. A test that wants explicit control over what was sent
-/// must call `spawn_and_send_with_transport` directly with its own
-/// stub, which this module's own tests below do.
+/// Production entry point for every `send_event*` call site. Outside
+/// `cfg(test)` this is unconditionally `RealTransport`. Under
+/// `cfg(test)`, it defers to `default_test_transport()` instead; a
+/// test wanting explicit control calls `spawn_and_send_with_transport`
+/// directly with its own stub.
 fn spawn_and_send(endpoint: &str, pinned_ip: Option<std::net::IpAddr>, body: &str) {
     #[cfg(test)]
     {
@@ -323,9 +282,7 @@ fn spawn_and_send(endpoint: &str, pinned_ip: Option<std::net::IpAddr>, body: &st
 
 /// Same send as `spawn_and_send`, but through an explicitly injected
 /// `Transport` rather than always `RealTransport` -- the seam this
-/// module's own tests use directly, passing a `RecordingTransport`
-/// explicitly. Matches this codebase's `*_with_*` convention for an
-/// injectable variant sitting beneath a stable public wrapper.
+/// module's tests use directly.
 fn spawn_and_send_with_transport(
     transport: &dyn Transport,
     endpoint: &str,
@@ -335,16 +292,11 @@ fn spawn_and_send_with_transport(
     transport.send(endpoint, pinned_ip, body);
 }
 
-/// `#[cfg(test)]`-only global, and the one place in this module a
-/// global is used rather than explicit injection: dozens of unit
-/// tests in other files (`install.rs`, `update.rs`, `uninstall.rs`,
-/// `dispatch.rs`, `telemetry_hook.rs`) reach `spawn_and_send` only
-/// transitively, through unchanged public entry points with no
-/// parameter list to thread a `Transport` through. Safe here because
-/// every caller gets the identical, never-mutated-after-init
-/// `RecordingTransport` instance -- unlike `HOME`-mutation (see
-/// `HomeGuard`/`NoHomeGuard` below), there is no race to write
-/// different values to this slot.
+/// `#[cfg(test)]`-only global: dozens of unit tests in other files
+/// reach `spawn_and_send` only transitively, through public entry
+/// points with no parameter list to thread a `Transport` through.
+/// Safe here because every caller gets the identical,
+/// never-mutated-after-init `RecordingTransport` instance.
 #[cfg(test)]
 static DEFAULT_TEST_TRANSPORT: OnceLock<RecordingTransport> = OnceLock::new();
 
@@ -353,11 +305,9 @@ fn default_test_transport() -> &'static RecordingTransport {
     DEFAULT_TEST_TRANSPORT.get_or_init(RecordingTransport::new)
 }
 
-/// Test-only stub `Transport`: records every send it receives instead
-/// of spawning anything, so a test can assert on what would have been
-/// sent without a real process, DNS resolution, or network egress
-/// occurring. `Mutex`-guarded since `cargo test` runs concurrently by
-/// default and multiple tests may share this single instance.
+/// Test-only stub `Transport`: records every send instead of spawning
+/// anything. `Mutex`-guarded since `cargo test` runs concurrently and
+/// multiple tests may share this single instance.
 #[cfg(test)]
 #[derive(Default)]
 struct RecordingTransport {
@@ -379,9 +329,8 @@ impl RecordingTransport {
     }
 
     /// Snapshot of every send recorded so far, oldest first. Never
-    /// cleared automatically -- since `default_test_transport()` is
-    /// shared crate-wide, a test asserting on this must filter to its
-    /// own endpoint/body rather than assume an empty starting state.
+    /// cleared automatically -- a test asserting on this must filter
+    /// to its own endpoint/body rather than assume an empty start.
     fn recorded(&self) -> Vec<RecordedSend> {
         self.sent
             .lock()
@@ -404,10 +353,10 @@ impl Transport for RecordingTransport {
     }
 }
 
-/// Cached endpoint+pin resolution, once per process. Correct for a
-/// single-target invocation, wrong for a `--all` batch: each target
-/// has its own `.konductor/config.yml` opt-out. `_for_target` senders
-/// bypass this via `resolve_endpoint_with_pin_uncached`.
+/// Cached endpoint+pin resolution, once per process. Wrong for a
+/// `--all` batch, since each target has its own
+/// `.konductor/config.yml` opt-out -- `_for_target` senders bypass
+/// this via `resolve_endpoint_with_pin_uncached`.
 static ENDPOINT_CACHE: OnceLock<Option<(String, Option<std::net::IpAddr>)>> = OnceLock::new();
 
 fn cached_endpoint_with_pin(
@@ -426,8 +375,8 @@ fn cached_endpoint_with_pin(
     result
 }
 
-/// Bypasses `ENDPOINT_CACHE` -- for `_for_target` call sites, each
-/// with its own per-repo config and opt-out.
+/// Bypasses `ENDPOINT_CACHE` for `_for_target` call sites, each with
+/// its own per-repo config and opt-out.
 fn resolve_endpoint_with_pin_uncached(
     target_dir: &std::path::Path,
 ) -> Option<(String, Option<std::net::IpAddr>)> {
@@ -445,14 +394,8 @@ fn resolve_wire_uuid() -> String {
 
 /// `None` when the install-info record is missing, unreadable, an
 /// unrecognized schema version, or itself carries `agent_version:
-/// None`.
-///
-/// `#[allow(dead_code)]`: `report_package_installed`/
-/// `report_package_version_updated`(`_for_target`) now read
-/// `install_info::read_install_info` directly, reusing that single
-/// read for both their consent gate and `agent_version` -- calling
-/// this afterward would mean reading the same record twice. Kept, not
-/// retired -- still exercised by its own tests below.
+/// None`. Unused in production (callers now read `install_info` once
+/// directly instead), kept only for its own tests below.
 #[allow(dead_code)]
 fn agent_version_for_target(target_dir: &std::path::Path) -> Option<String> {
     install_info::read_install_info(target_dir).and_then(|record| record.agent_version)
@@ -471,8 +414,8 @@ fn send_event_with_endpoint(
     harness_field: Option<String>,
     agent_version: Option<String>,
 ) {
-    // identity_uuid is used only as eventId entropy -- the wire UUID
-    // is always the instance record's own value.
+    // identity_uuid is eventId entropy only; the wire UUID always
+    // comes from the instance record.
     let data = EventEnvelope::build(
         event_type,
         target_name,
@@ -494,8 +437,8 @@ fn send_envelope(endpoint: &str, pinned_ip: Option<std::net::IpAddr>, data: Even
     spawn_and_send(endpoint, pinned_ip, &body);
 }
 
-/// Resolves the endpoint via `cached_endpoint_with_pin` -- correct for
-/// a single-target invocation, wrong for a `--all` batch.
+/// Resolves the endpoint via `cached_endpoint_with_pin` -- wrong for a
+/// `--all` batch; see `send_event_for_target`.
 #[allow(clippy::too_many_arguments)]
 fn send_event(
     target_dir: &std::path::Path,
@@ -526,9 +469,8 @@ fn send_event(
 }
 
 /// Same as `send_event`, but resolves via
-/// `resolve_endpoint_with_pin_uncached` -- for `_for_target` call
-/// sites, so each target's own opt-out is honored rather than
-/// inherited from `ENDPOINT_CACHE`.
+/// `resolve_endpoint_with_pin_uncached`, so each target's own opt-out
+/// is honored rather than inherited from `ENDPOINT_CACHE`.
 #[allow(clippy::too_many_arguments)]
 fn send_event_for_target(
     target_dir: &std::path::Path,
@@ -574,16 +516,12 @@ fn hash_present_session_id(uuid: &str, raw_session_id: Option<&str>) -> Option<S
 
 /// Fired from the hidden `__telemetry-hook` subcommand when a Konductor
 /// agent starts a session (`SessionStart`, or Kiro v2's `agentSpawn` in
-/// a root session). Gated on `install_info::read_install_info`
-/// -- the per-target consent signal -- not the retired per-target
-/// identity.
+/// a root session). Gated on `install_info::read_install_info`, the
+/// per-target consent signal.
 ///
-/// `NIL_UUID_SENTINEL` stands in for the old `identity.uuid` as
-/// `eventId` entropy, matching `report_package_uninstalled`'s own
-/// precedent: the per-target identity UUID never reached the wire
-/// either (`resolve_wire_uuid` supplies that separately), so dropping
-/// it here loses no attribution. The session-hash salt is a separate
-/// role and uses `resolve_wire_uuid()` instead -- see
+/// `NIL_UUID_SENTINEL` stands in for `eventId` entropy -- the identity
+/// UUID never reached the wire anyway. The session-hash salt is a
+/// separate role using `resolve_wire_uuid()`; see
 /// `hash_present_session_id`.
 pub(crate) fn report_agent_invocation(
     target_dir: &std::path::Path,
@@ -612,9 +550,9 @@ pub(crate) fn report_agent_invocation(
 }
 
 /// Fired from the hidden `__telemetry-hook` subcommand when a Konductor
-/// agent is delegated to. Same install-info gate and sentinel-as-entropy
-/// substitution as `report_agent_invocation`. `parent_agent_name` is the
-/// delegating agent, already filtered to Konductor agents by the caller.
+/// agent is delegated to. Same gate and sentinel substitution as
+/// `report_agent_invocation`. `parent_agent_name` is the delegating
+/// agent, already filtered to Konductor agents by the caller.
 pub(crate) fn report_subagent_invocation(
     target_dir: &std::path::Path,
     specialist_name: &str,
@@ -672,12 +610,8 @@ pub(crate) fn report_cli_error(
     );
 }
 
-/// Same as `report_cli_error`, but resolves `install-info.json` fresh
-/// per call -- for `--all` batch call sites. `install_info` has no
-/// process-lifetime cache to split (see `report_package_uninstalled`'s
-/// own doc comment), so this differs from `report_cli_error` only in
-/// which `send_event*`/`report_cli_error_with_install_info_for_target`
-/// variant it calls.
+/// Same as `report_cli_error`, for `--all` batch call sites. Differs
+/// only in which `send_event*` variant it calls.
 pub(crate) fn report_cli_error_for_target(
     target_dir: &std::path::Path,
     command: &str,
@@ -718,8 +652,7 @@ fn report_cli_error_with_install_info(
             None,
         ),
         None => {
-            // Only "install" fires under the nil sentinel
-            // pre-install-info; no_telemetry is handled by the caller.
+            // Only "install" fires under the nil sentinel pre-install-info.
             if command == "install" {
                 send_event(
                     target_dir,
@@ -737,8 +670,7 @@ fn report_cli_error_with_install_info(
     }
 }
 
-/// Same fallback-sentinel contract as
-/// `report_cli_error_with_install_info`, sent via
+/// Same contract as `report_cli_error_with_install_info`, sent via
 /// `send_event_for_target`.
 fn report_cli_error_with_install_info_for_target(
     target_dir: &std::path::Path,
@@ -778,20 +710,11 @@ fn report_cli_error_with_install_info_for_target(
 
 /// Fired by `uninstall_one_impl` only after every fallible step has
 /// already succeeded, before `install-info.json`/`telemetry-id.json`
-/// are removed. `harness` comes from `install_info::read_install_info`
-/// -- the per-INSTALL record, not the (retired) per-target identity --
-/// via the process-global endpoint cache: correct for a single-target
-/// invocation, wrong for a `--all` batch (see
-/// `report_package_uninstalled_for_target`). `install_info` itself has
-/// no cache of its own to split; every read hits disk, so nothing here
-/// can inherit a sibling target's harness the way the old identity
-/// cache could.
+/// are removed. Uses the process-global endpoint cache, so this is
+/// wrong for a `--all` batch; see `report_package_uninstalled_for_target`.
 ///
-/// The `NIL_UUID_SENTINEL` passed as `identity_uuid` is `eventId`
-/// entropy only -- see `EventEnvelope::build`'s own doc comment --
-/// never the wire `UUID` (`resolve_wire_uuid` supplies that). The
-/// per-target record this used to read had a UUID that reached
-/// nothing on the wire either; dropping it here loses no attribution.
+/// `NIL_UUID_SENTINEL` passed as `identity_uuid` is `eventId` entropy
+/// only, never the wire `UUID` (`resolve_wire_uuid` supplies that).
 pub(crate) fn report_package_uninstalled(target_dir: &std::path::Path) {
     let Some(install_info) = install_info::read_install_info(target_dir) else {
         return;
@@ -813,7 +736,7 @@ pub(crate) fn report_package_uninstalled(target_dir: &std::path::Path) {
 }
 
 /// Same as `report_package_uninstalled`, but resolves the endpoint via
-/// `resolve_endpoint_with_pin_uncached` -- for a `--all` loop, so each
+/// `resolve_endpoint_with_pin_uncached` --for a `--all` loop, so each
 /// target's own `.konductor/config.yml` opt-out is honored rather than
 /// inherited from `ENDPOINT_CACHE`. `install_info::read_install_info`
 /// is already an uncached, per-call disk read on both paths, so this
@@ -951,9 +874,8 @@ mod tests {
         assert!(!consent_decision(true, false));
     }
 
-    /// Dedicated lock for tests mutating `TELEMETRY_OFF_ENV_VAR`/
-    /// `TELEMETRY_ENDPOINT_ENV_VAR`/`TELEMETRY_ALLOW_LOCAL_ENDPOINT_ENV_VAR`
-    /// -- `std::env::set_var` has no per-thread scoping.
+    /// Dedicated lock for tests mutating telemetry env vars --
+    /// `std::env::set_var` has no per-thread scoping.
     static TELEMETRY_ENV_LOCK: Mutex<()> = Mutex::new(());
 
     fn lock_telemetry_env() -> MutexGuard<'static, ()> {
@@ -1027,9 +949,8 @@ mod tests {
         );
     }
 
-    /// Reads the checked-in schema's own
-    /// `properties.sessionId.pattern` so this test fails loudly if it
-    /// ever drifts from what `hash_session_id` produces.
+    /// Reads the checked-in schema's `properties.sessionId.pattern` so
+    /// this test fails if it drifts from `hash_session_id`'s output.
     fn session_id_pattern_from_schema() -> String {
         let schema_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../docs/telemetry-schema.json");
@@ -1093,16 +1014,11 @@ mod tests {
         );
     }
 
-    /// Regression test for the salt/wire-attribution conflation that
-    /// let `report_agent_invocation`/`report_subagent_invocation` hash
-    /// `sessionId` with the public, compile-time `NIL_UUID_SENTINEL`
-    /// instead of `resolve_wire_uuid()`. A constant salt makes the
-    /// same raw session id hash identically on every machine --
-    /// linkable across installs and confirmable by anyone holding
-    /// ingested data plus a candidate session id. `resolve_wire_uuid`
-    /// reads each machine's own instance record, so this must differ
-    /// per machine for a future regression back to a constant salt to
-    /// fail here.
+    /// Regression: hashing sessionId with a constant salt (e.g.
+    /// `NIL_UUID_SENTINEL`) would make the same raw session id hash
+    /// identically on every machine, linkable across installs.
+    /// `resolve_wire_uuid` must differ per machine for this test to
+    /// catch a regression back to a constant salt.
     #[test]
     fn resolve_wire_uuid_salts_the_same_raw_session_id_differently_per_machine() {
         const RAW_SESSION_ID: &str = "same-raw-session-id-on-both-machines";
@@ -1387,13 +1303,10 @@ mod tests {
         assert_eq!(mode & 0o100, 0o100, "must be executable by owner");
     }
 
-    /// Pins both halves of `materialize_script`'s call site in this
-    /// crate: existence/executable-bit alone can't catch a `dir`/
-    /// `script_name`/`contents` transposition against
-    /// `mcp/lib/skill-lookup-core`'s own call, since both consumers
-    /// pass a private per-uid dir and a `String` argument in the same
-    /// position -- only reading the materialized name AND bytes back
-    /// tells the two calls apart.
+    /// Existence/executable-bit alone can't catch a `script_name`/
+    /// `contents` mix-up with `skill-lookup-core`'s own
+    /// `materialize_script` call -- only reading the materialized name
+    /// and bytes back tells the two apart.
     #[test]
     fn materialized_script_has_this_crates_own_name_and_contents() {
         let _home = HomeGuard::new("materialize-content-and-name-pin");
@@ -1415,18 +1328,12 @@ mod tests {
         );
     }
 
-    /// The shell-side half of the HTTPS-only guarantee: the Rust side
-    /// enforces it independently via `extract_host`'s own
-    /// `strip_prefix("https://")`, so if this `case` construct were
-    /// ever dropped from the script, that Rust gate would still hold
-    /// and every existing test would keep passing -- only reading the
-    /// materialized script's own contents catches the silent loss of
-    /// defence-in-depth. Lives here (once per consumer, not shared)
-    /// because it reads THIS crate's own materialized file, exactly
-    /// like the content-pin test above it -- a single shared test
-    /// reading one consumer's script contents would leave the other
-    /// consumer's own transposition-into-materialize_script bug
-    /// unguarded for this specific property.
+    /// Shell-side half of the HTTPS-only guarantee. The Rust side
+    /// enforces it independently via `extract_host`'s
+    /// `strip_prefix("https://")`, so dropping this `case` construct
+    /// from the script would not fail any other test -- only reading
+    /// the materialized script's contents catches that loss of
+    /// defence-in-depth.
     #[test]
     fn materialized_script_still_enforces_https_only() {
         let _home = HomeGuard::new("materialize-https-gate-pin");

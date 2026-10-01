@@ -16,34 +16,25 @@ use super::{InstallError, InstallStrategy};
 
 /// Hard ceiling on total decompressed archive bytes, enforced while
 /// streaming (see `CappedReader`). The real `dist/` tree this archives
-/// (agents/skills/agent-sops) is a few MB; 256MB is over 100x that,
-/// generous for growth while still bounding decompressed output.
-/// Hardcoded, no config override -- this is the live cap on every
-/// real GitHub-release install.
+/// is a few MB; 256MB is over 100x that, generous for growth while
+/// still bounding decompressed output. Hardcoded, no config override.
 const MAX_UNPACKED_BYTES: u64 = 256 * 1024 * 1024;
 
-/// Hard ceiling on total archive entry COUNT, enforced during the same
+/// Hard ceiling on total archive entry count, enforced during the same
 /// per-entry loop that already applies `MAX_UNPACKED_BYTES` to total
-/// bytes. A separate cap from the byte cap: many zero-byte entries
-/// cost memory and inodes per entry without ever approaching the byte
-/// cap, so entry count needs its own bound. A real `dist/` tree this
-/// archives today has on the order of a hundred files (123, measured
-/// against this repo's own `agents/`+`skills/`+`agent-sops/` trees);
-/// 50,000 is ~400x that -- generous for growth while keeping rejection
-/// cheap and bounded.
+/// bytes -- a separate cap from the byte cap, since many zero-byte
+/// entries cost memory and inodes per entry without approaching it. A
+/// real `dist/` tree today has on the order of a hundred files; 50,000
+/// is generous for growth while keeping rejection cheap.
 const MAX_ENTRY_COUNT: usize = 50_000;
 
 /// What `install_from_remote_bytes` can fail with. `VerifySidecar`/
 /// `VerifyChecksum` are split so a caller can map each to its own exit
-/// code (64 vs 65). `Unpack` covers a corrupt/unsafe
-/// archive or disk I/O. `Install` passes `install_from_local`'s error
-/// through unchanged. `McpBinaryFetch` covers a supported-platform MCP
-/// binary fetch/verify failure that is NOT the "platform unsupported"
-/// case (see `install_mcp_server_binary_into_remote_temp_dir`'s own
-/// doc comment for that distinction) -- carries only the already-
-/// rendered message text, mirroring `Unpack`'s own `std::io::Error`
-/// wrapping but for the `McpBinaryFetcher` seam's `std::io::Error`
-/// shape specifically.
+/// code. `Unpack` covers a corrupt/unsafe archive or disk I/O.
+/// `Install` passes `install_from_local`'s error through unchanged.
+/// `McpBinaryFetch` covers a supported-platform MCP binary fetch/verify
+/// failure that is NOT the "platform unsupported" case (see
+/// `install_mcp_server_binary_into_remote_temp_dir`'s own doc comment).
 #[derive(Debug)]
 pub enum RemoteInstallError {
     VerifySidecar(SidecarError),
@@ -70,10 +61,9 @@ impl std::fmt::Display for RemoteInstallError {
 impl std::error::Error for RemoteInstallError {}
 
 /// Verifies `sidecar_bytes` against `artifact_bytes` by sequencing the
-/// existing `parse_sidecar`/`verify_sha256` -- adds no verification
-/// logic of its own. `expected_filename` is the artifact's own
-/// filename, the same value `write_sidecar` embedded when the sidecar
-/// was produced.
+/// existing `parse_sidecar`/`verify_sha256`. `expected_filename` is the
+/// artifact's own filename, the same value `write_sidecar` embedded
+/// when the sidecar was produced.
 fn verify_artifact_pair(
     artifact_bytes: Vec<u8>,
     sidecar_bytes: &[u8],
@@ -90,71 +80,43 @@ fn verify_artifact_pair(
 /// Seam for the MCP server binary's own network fetch, mirroring
 /// `RemoteArtifactFetcher`'s shape: a boxed closure returning
 /// `(binary_bytes, sidecar_bytes, release_version)` or an I/O error.
-/// Production wires this to an already-resolved
-/// `github::McpServerAssetFetchError`/asset-bytes result -- resolved
-/// eagerly from the SAME release fetch the tarball asset was resolved
-/// from (see `remote_orchestrate::install_from_latest_github_release`'s
-/// own doc comment for why), mapped to `std::io::Error` -- see
-/// `install_mcp_server_binary_into_remote_temp_dir`'s own doc comment
-/// for how the "platform unsupported" vs. "fetch failed on a supported
-/// platform" distinction survives that mapping. Tests inject a fake
-/// closure instead, so no test in this codebase depends on network
-/// access, matching `RemoteArtifactFetcher`'s own precedent.
+/// Production wires this to an already-resolved asset-fetch result;
+/// tests inject a fake closure instead, so no test depends on network
+/// access.
 ///
-/// `FnOnce`, not `Fn`: this fetcher is threaded through by value
-/// (`Option<McpBinaryFetcher>`, never `Option<&McpBinaryFetcher>`) and
-/// invoked at most once per install, at the single call site inside
-/// `install_mcp_server_binary_into_remote_temp_dir`. The bound makes
-/// that single-call contract a compile-time property of the type
-/// itself, rather than a runtime invariant an implementation has to
-/// uphold with its own internal bookkeeping.
+/// `FnOnce`, not `Fn`: invoked at most once per install, at the single
+/// call site inside `install_mcp_server_binary_into_remote_temp_dir`.
+/// The bound makes that single-call contract a compile-time property
+/// of the type itself.
 pub(crate) type McpBinaryFetcher<'a> =
     Box<dyn FnOnce() -> std::io::Result<(Vec<u8>, Vec<u8>, String)> + 'a>;
 
 /// Sentinel prefix `install_mcp_server_binary_into_remote_temp_dir`
 /// looks for in a mapped fetcher error's message to recover the
 /// "platform unsupported" signal across the `std::io::Error` boundary
-/// `McpBinaryFetcher`'s closure shape imposes -- the closure can only
-/// return `std::io::Result`, which has no room for
-/// `github::McpServerAssetFetchError::is_unsupported_platform()`'s own
-/// typed distinction once it crosses that seam. Production's real
-/// fetcher (built in `remote_orchestrate.rs`) prefixes exactly this
-/// marker onto the mapped message whenever the underlying error IS
-/// `UnsupportedPlatform`, so the distinction survives the mapping
-/// intact; a fake test fetcher can reproduce the identical shape with
-/// no real network call.
+/// `McpBinaryFetcher`'s closure shape imposes. Production's real
+/// fetcher prefixes exactly this marker whenever the underlying error
+/// is `UnsupportedPlatform`, so the distinction survives the mapping.
 pub(crate) const MCP_BINARY_UNSUPPORTED_PLATFORM_MARKER: &str =
     "__konductor_mcp_binary_unsupported_platform__:";
 
 /// The one MCP server binary this remote-fetch path installs --
 /// `skill-lookup-mcp`, matching `mcp_server::MCP_SERVER_BINARY_NAMES`'s
-/// sole entry. A bare constant (not a re-export of that slice) since
-/// this module only ever needs the one name.
+/// sole entry.
 fn mcp_binary_name() -> &'static str {
     "skill-lookup-mcp"
 }
 
-/// The explicit, actionable warning printed (never panicking, never
-/// silent) when the current host has no published `skill-lookup-mcp`
-/// binary at all -- see `install_mcp_server_binary_into_remote_temp_dir`'s
-/// own doc comment for the degrade-vs-block decision this backs.
-/// `rendered_error_text` is the already-rendered
-/// `github::McpServerAssetFetchError::UnsupportedPlatform`'s own
-/// `Display` text (everything after the marker prefix at the call
-/// site), so this prints it verbatim rather than re-deriving
-/// `os`/`arch` a second time.
+/// The explicit, actionable warning printed when the current host has
+/// no published `skill-lookup-mcp` binary at all. `rendered_error_text`
+/// is the already-rendered `UnsupportedPlatform` error's own `Display`
+/// text, printed verbatim.
 fn unsupported_platform_warning(rendered_error_text: &str) -> String {
     format!("konductor install: warning: {rendered_error_text}")
 }
 
-/// Parses `sidecar_bytes` as a `sha256sum`-format sidecar (reusing
-/// `artifact::parse_sidecar`, the identical helper `verify_artifact_pair`
-/// already uses for the tarball) and returns just the hash, checked
-/// against `expected_filename`. Kept separate from `verify_artifact_pair`
-/// itself (which owns both the artifact bytes and the parsed hash
-/// together) since this call site verifies via `artifact::verify_sha256`
-/// directly, so it can distinguish a `SidecarError` from a
-/// `VerificationError` the same way `verify_artifact_pair` already does.
+/// Parses `sidecar_bytes` as a `sha256sum`-format sidecar and returns
+/// just the hash, checked against `expected_filename`.
 fn parse_mcp_sidecar_hash(
     sidecar_bytes: &[u8],
     expected_filename: &str,
@@ -166,49 +128,34 @@ fn parse_mcp_sidecar_hash(
 }
 
 /// Fetches the MCP server binary via `fetcher`, verifies it against
-/// its own fetched `.sha256` sidecar (reusing `parse_mcp_sidecar_hash`/
-/// `artifact::verify_sha256`, the identical verification primitives the
-/// tarball fetch already uses), and writes the verified bytes to
-/// `<temp_dir_path>/mcp/target/release/skill-lookup-mcp` -- the EXACT
+/// its own fetched `.sha256` sidecar, and writes the verified bytes to
+/// `<temp_dir_path>/mcp/target/release/skill-lookup-mcp` -- the exact
 /// path `mcp_server::mcp_binary_source_path`/`install_bin_files`
-/// already read from locally, reused here rather than duplicated, so
-/// `McpInstallPhase` (unchanged) picks the binary up transparently once
-/// `strategy.install_from_local` runs with `temp_dir_path` as its own
-/// `repo_root`. Sets the executable bit via the existing
-/// `kiro_cli::set_executable` helper, same as the local `--from` path.
+/// already read from locally, so `McpInstallPhase` picks the binary up
+/// transparently once `strategy.install_from_local` runs with
+/// `temp_dir_path` as its own `repo_root`. Sets the executable bit via
+/// the existing `kiro_cli::set_executable` helper.
 ///
-/// ── Degrade-vs-block decision (explicit, per this feature's design) ──
-/// Returns `Ok(None)` -- DEGRADE GRACEFULLY, never blocking the rest of
-/// the install -- when `fetcher()` fails with the unsupported-platform
-/// marker (see `MCP_BINARY_UNSUPPORTED_PLATFORM_MARKER`): a platform
-/// with no published binary at all is a permanent, expected condition
-/// (x86_64 macOS, Windows, or any other unmapped OS/ARCH), not a
-/// transient failure, so failing the WHOLE install over it would block
-/// every agent/skill/context install too, for a feature (skill lookup)
-/// that is optional at runtime -- `resource_rewrite/mcp_server.rs`'s own
-/// `McpServerPass` already tolerates "the binary was never installed"
-/// as a normal, non-fatal state for the identical LOCAL `--from` case
-/// (see that module's own doc comment: "a missing binary is not an
-/// error"). This function extends that tolerance to the new
-/// REMOTE-fetch path's own distinct failure mode, printing a clear
-/// warning via `unsupported_platform_warning` rather than the SILENT
-/// `continue` `mcp_server.rs`'s local path uses for its own (different)
-/// "not yet built" case.
+/// Returns `Ok(None)` -- degrades gracefully, never blocking the rest
+/// of the install -- when `fetcher()` fails with the unsupported-
+/// platform marker (see `MCP_BINARY_UNSUPPORTED_PLATFORM_MARKER`): a
+/// platform with no published binary at all is a permanent, expected
+/// condition, not a transient failure, so failing the whole install
+/// over it would block every agent/skill/context install too, for a
+/// feature (skill lookup) that is optional at runtime. Prints a clear
+/// warning via `unsupported_platform_warning` instead.
 ///
-/// Returns `Err(RemoteInstallError::McpBinaryFetch)` -- BLOCKING the
-/// whole install -- for every OTHER fetcher failure on a platform that
+/// Returns `Err(RemoteInstallError::McpBinaryFetch)` -- blocking the
+/// whole install -- for every other fetcher failure on a platform that
 /// IS mapped to a real target triple: a network error, or a release
-/// genuinely missing that platform's asset despite being mapped, are
-/// unexpected/transient conditions on a platform the release build
-/// matrix explicitly supports, distinguishable from the "not supported
-/// at all" case by NOT carrying the marker. A checksum mismatch instead
-/// maps to `RemoteInstallError::VerifyChecksum`/`VerifySidecar`, the
-/// same variants the tarball's own verification failure uses, so a
-/// caller mapping exit codes treats both identically.
+/// genuinely missing that platform's asset, are unexpected/transient
+/// conditions, distinguishable from the "not supported at all" case by
+/// not carrying the marker. A checksum mismatch instead maps to
+/// `RemoteInstallError::VerifyChecksum`/`VerifySidecar`.
 ///
 /// Returns `Ok(Some(release_version))` on success -- the release's own
-/// version string (its `tag_name`), threaded back so a caller can
-/// report the actually-installed content's version.
+/// version string, threaded back so a caller can report the
+/// actually-installed content's version.
 fn install_mcp_server_binary_into_remote_temp_dir(
     fetcher: McpBinaryFetcher,
     temp_dir_path: &Path,
@@ -226,18 +173,16 @@ fn install_mcp_server_binary_into_remote_temp_dir(
     };
 
     // The sidecar's own recorded filename must match the exact asset
-    // filename that was actually fetched -- reconstructed the same way
-    // `github::resolve_mcp_server_asset_from_release` built it, from
-    // (release_version, current host's own target triple). Valid
-    // because this function only ever runs on the SAME host that
-    // fetched the bytes, never a cross-host fetch-then-verify split.
+    // filename that was actually fetched, reconstructed the same way
+    // `github::resolve_mcp_server_asset_from_release` built it. Valid
+    // because this function only ever runs on the same host that
+    // fetched the bytes.
     let binary_filename = match super::target_triple::current_host_target_triple() {
         Some(triple) => super::github::expected_mcp_server_asset_filename(&release_version, triple),
         // Unreachable in practice: a fetcher that succeeded already
-        // proved the platform is supported (see the early return
-        // above). Falls back to a filename built from a bare name-only
-        // fallback rather than panicking, in case a future fake test
-        // fetcher exercises this path directly with a mismatched host.
+        // proved the platform is supported. Falls back rather than
+        // panicking, in case a future fake test fetcher exercises this
+        // path with a mismatched host.
         None => mcp_binary_name().to_string(),
     };
 
@@ -258,10 +203,7 @@ fn install_mcp_server_binary_into_remote_temp_dir(
 
 /// Rejects an archive entry path that would escape `dest_root` --
 /// absolute paths and any `..` component -- or that names `dest_root`
-/// itself rather than something inside it. Same discipline
-/// `synth/path_safety.rs` already applies to untrusted relative paths
-/// elsewhere in this codebase: never trust an archive-supplied path to
-/// stay put.
+/// itself rather than something inside it.
 fn is_safe_entry_path(path: &Path) -> bool {
     use std::path::Component;
     if path.is_absolute() {
@@ -274,20 +216,17 @@ fn is_safe_entry_path(path: &Path) -> bool {
         return false;
     }
     // An entry path of "" or "." (or any path made up entirely of
-    // `Component::CurDir` segments, e.g. "./.") has zero meaningful
-    // components once `CurDir` is filtered out. `dist_dir.join(path)`
-    // for such a path resolves to `dist_dir` itself, so unpacking it
-    // would overwrite/clobber the destination root rather than write
-    // something inside it -- reject it outright rather than let it
-    // reach `entry.unpack(...)`.
+    // `CurDir` segments) has zero meaningful components once `CurDir`
+    // is filtered out. `dist_dir.join(path)` for such a path resolves
+    // to `dist_dir` itself, so unpacking it would clobber the
+    // destination root rather than write something inside it.
     path.components().any(|c| !matches!(c, Component::CurDir))
 }
 
-/// Wraps a decompressing reader and fails once more than
-/// `limit` total bytes have been read from it, so a gzip/tar bomb is
-/// caught mid-stream rather than after fully materializing into memory
-/// or disk. Neither `flate2` nor `tar` provides this -- both leave
-/// bounding decompressed output to the caller.
+/// Wraps a decompressing reader and fails once more than `limit` total
+/// bytes have been read from it, so a gzip/tar bomb is caught
+/// mid-stream rather than after fully materializing into memory or
+/// disk. Neither `flate2` nor `tar` provides this.
 struct CappedReader<R> {
     inner: R,
     limit: u64,
@@ -327,21 +266,15 @@ impl<R: Read> Read for CappedReader<R> {
 /// exist.
 ///
 /// Rejects any entry with an absolute path, `..` segment, or a path
-/// that resolves to nothing (empty/`.`/`CurDir`-only, which would
-/// otherwise clobber `dist_dir` itself), and rejects symlink/hardlink
-/// entries outright, so an entry can never write outside `dest_root`
-/// or overwrite its root. Preserves the Unix executable bit via tar's
-/// own `unpack`. Bounds both total decompressed bytes (via
-/// `CappedReader` around the gzip decoder) and total entry count (via
-/// `MAX_ENTRY_COUNT`, counted in the same iteration loop), each cap
-/// checked mid-stream/mid-iteration rather than after the archive is
-/// fully consumed.
+/// that resolves to nothing (which would otherwise clobber `dist_dir`
+/// itself), and rejects symlink/hardlink entries outright, so an entry
+/// can never write outside `dest_root` or overwrite its root. Preserves
+/// the Unix executable bit via tar's own `unpack`. Bounds both total
+/// decompressed bytes (via `CappedReader`) and total entry count (via
+/// `MAX_ENTRY_COUNT`), each checked mid-stream/mid-iteration.
 ///
 /// Thin, test-only wrapper around `unpack_dist_archive_with_limit`
-/// fixed to the real `MAX_UNPACKED_BYTES`/`MAX_ENTRY_COUNT` caps --
-/// lets tests invoke those caps by name instead of repeating them at
-/// every call site. Production calls `unpack_dist_archive_with_limit`
-/// directly instead (see that function's own doc for why).
+/// fixed to the real caps. Production calls that function directly.
 #[allow(dead_code)]
 fn unpack_dist_archive(archive_bytes: &[u8], dest_root: &Path) -> Result<(), RemoteInstallError> {
     unpack_dist_archive_with_limit(
@@ -355,14 +288,11 @@ fn unpack_dist_archive(archive_bytes: &[u8], dest_root: &Path) -> Result<(), Rem
 /// Same as `unpack_dist_archive`, but with the decompressed-size cap
 /// and entry-count cap both parameterized instead of fixed. Lets tests
 /// exercise `CappedReader`'s mid-stream rejection and the entry-count
-/// cap's mid-iteration rejection against tiny limits and correspondingly
-/// tiny payloads, instead of allocating a real 256 MiB+ buffer or
-/// building 50,000+ real tar entries per test -- expensive to repeat
-/// across the parallel test runs Rust's harness runs by default, and a
-/// source of flakiness on constrained CI runners. This is the real
-/// production function despite not being `pub`:
-/// `install_from_remote_bytes_named_with_limit` calls it directly with
-/// the real fixed caps on every GitHub-release install.
+/// cap's mid-iteration rejection against tiny limits, instead of
+/// allocating a real 256 MiB+ buffer or building 50,000+ real tar
+/// entries per test. This is the real production function despite not
+/// being `pub`: `install_from_remote_bytes_named_with_limit` calls it
+/// directly with the real fixed caps on every GitHub-release install.
 /// `unpack_dist_archive` above only exists so tests can name those caps
 /// by their constants.
 fn unpack_dist_archive_with_limit(
@@ -401,10 +331,9 @@ fn unpack_dist_archive_with_limit(
                 ),
             )));
         }
-        // Rejects link entries outright: `is_safe_entry_path` only checks
-        // an entry's own path, not where a symlink or hardlink points,
-        // so a link with a benign path could still resolve outside
-        // `dest_root` at extraction time.
+        // Rejects link entries outright: `is_safe_entry_path` only
+        // checks an entry's own path, not where a symlink or hardlink
+        // points.
         let entry_type = entry.header().entry_type();
         if entry_type.is_symlink() || entry_type.is_hard_link() {
             return Err(RemoteInstallError::Unpack(std::io::Error::new(
@@ -424,8 +353,7 @@ fn unpack_dist_archive_with_limit(
 
 /// RAII guard for the scratch directory `install_from_remote_bytes`
 /// unpacks into: removes it (best-effort) on drop, so cleanup runs on
-/// every exit path -- verify failure, unpack failure, install failure,
-/// or success -- without a manual `remove_dir_all` at each return.
+/// every exit path without a manual `remove_dir_all` at each return.
 struct RemoteTempDir {
     path: PathBuf,
 }
@@ -442,13 +370,12 @@ impl RemoteTempDir {
             COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
             random_entropy_tag()
         ));
-        // `create_dir` (singular), not `create_dir_all`: `create_dir`
-        // fails with `AlreadyExists` if the path is already occupied
-        // (e.g. by a symlink), rather than silently following it the
-        // way `create_dir_all` would. That exclusivity check is the
-        // security boundary; the random tag folded into the path name
-        // below makes the path itself harder to predict or race
-        // against ahead of time, on top of it.
+        // `create_dir` (singular), not `create_dir_all`: fails with
+        // `AlreadyExists` if the path is already occupied (e.g. by a
+        // symlink), rather than silently following it. That
+        // exclusivity check is the security boundary; the random tag
+        // folded into the path name makes the path itself harder to
+        // predict or race against ahead of time.
         std::fs::create_dir(&path)?;
         Ok(Self { path })
     }
@@ -458,12 +385,7 @@ impl RemoteTempDir {
 /// scratch path name, on top of the existing timestamp+counter. Not
 /// cryptographically secure and doesn't need to be: the actual
 /// exclusivity guarantee is `create_dir`'s `AlreadyExists` check, not
-/// this value's secrecy -- it only needs to be hard to predict, so a
-/// std-only source is used instead of pulling in a dedicated RNG
-/// crate. `RandomState::new()` seeds from the OS's own random source
-/// once per call (the same per-process-unpredictable seeding
-/// `HashMap`/`HashSet`'s DoS-hardening already relies on), so the
-/// resulting value can't be predicted from the timestamp/counter alone.
+/// this value's secrecy -- it only needs to be hard to predict.
 fn random_entropy_tag() -> u64 {
     use std::collections::hash_map::RandomState;
     use std::hash::{BuildHasher, Hasher};
@@ -477,48 +399,34 @@ impl Drop for RemoteTempDir {
 }
 
 /// Fetches a release artifact and its sidecar as raw bytes. Return
-/// shape (`(artifact_bytes, sidecar_bytes)`) matches exactly what
-/// `install_from_remote_bytes` consumes. In production this is
-/// implemented by resolving the tarball asset from the release
-/// `install::github::fetch_latest_release_artifact_and_mcp_asset`
-/// fetched (a real GitHub Release fetch, wired into
-/// `dispatch_install_with` via `install::remote_orchestrate`); this
-/// type alias still exists as the closure shape tests use to inject a
-/// fake fetcher instead of a real
-/// network call. Modeled directly on `artifact::ArtifactFetcher`.
+/// shape matches exactly what `install_from_remote_bytes` consumes. In
+/// production this resolves the tarball asset from the fetched GitHub
+/// Release (wired via `install::remote_orchestrate`); this type alias
+/// also serves as the closure shape tests use to inject a fake fetcher.
 pub type RemoteArtifactFetcher<'a> = Box<dyn Fn() -> std::io::Result<(Vec<u8>, Vec<u8>)> + 'a>;
 
 /// What a successful `install_from_remote_bytes` call actually
 /// installed, beyond "it succeeded" -- today just the MCP server
 /// binary's own release version (`None` when no `mcp_binary_fetcher`
-/// was supplied, or when the current host has no published binary at
-/// all -- see `install_mcp_server_binary_into_remote_temp_dir`'s own
-/// degrade-vs-block doc comment for that second case). Named struct
-/// rather than a bare `Option<String>` return so a future additional
-/// piece of "what got installed" data has an obvious place to land
-/// without changing every existing call site's return type again.
+/// was supplied, or when the current host has no published binary).
+/// Named struct rather than a bare `Option<String>` return so a future
+/// additional piece of data has an obvious place to land.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct RemoteInstallOutcome {
     pub mcp_binary_version: Option<String>,
 }
 
 /// Verifies the pair, unpacks into a fresh temp directory, hands that
-/// directory's path to `strategy.install_from_local` UNCHANGED, then
+/// directory's path to `strategy.install_from_local` unchanged, then
 /// removes the temp directory before returning -- success or failure.
 /// `artifact_filename` is the sidecar-recorded filename passed through
-/// to verification (e.g. "konductor-dist.tar.gz"). Wired into
-/// `dispatch_install_with`'s no-`--from` branch via
-/// `install::remote_orchestrate::install_from_latest_github_release`,
-/// which does the real GitHub Release fetch before calling this.
+/// to verification. Wired into `dispatch_install_with`'s no-`--from`
+/// branch via `install::remote_orchestrate::install_from_latest_github_release`.
 ///
-/// `mcp_binary_fetcher` is `None` for a caller that doesn't want the
-/// additive MCP-binary fetch at all (e.g.
-/// `install_from_main_branch_dist`'s own main-branch-`dist/` source,
-/// which has no analogous per-platform release asset to fetch from a
-/// branch tree); `Some(fetcher)` for the real GitHub-release path,
-/// which always supplies a closure wrapping the already-resolved
-/// `github::McpServerAssetFetchError`/asset-bytes result (see
-/// `remote_orchestrate::mcp_binary_fetcher_from_resolved_asset`). See
+/// `mcp_binary_fetcher` is `None` for a caller with no analogous
+/// per-platform release asset to fetch (e.g.
+/// `install_from_main_branch_dist`'s main-branch-`dist/` source);
+/// `Some(fetcher)` for the real GitHub-release path. See
 /// `install_mcp_server_binary_into_remote_temp_dir`'s own doc comment
 /// for the fetch/verify/degrade-vs-block behavior once supplied.
 #[allow(clippy::too_many_arguments)]
@@ -548,16 +456,12 @@ pub fn install_from_remote_bytes(
 /// Same as `install_from_remote_bytes`, with the temp directory's own
 /// name tag exposed so tests can pass a unique-per-test tag and check
 /// for that exact directory's absence afterward, instead of racing
-/// against every OTHER concurrently-running test's own scratch
-/// directory under the same shared `konductor-remote-install-` prefix.
+/// against other concurrently-running tests' scratch directories under
+/// the same shared prefix.
 ///
 /// Thin wrapper around `install_from_remote_bytes_named_with_limit`
 /// fixed to the real `MAX_UNPACKED_BYTES` cap -- the only production
-/// call path. Parameterizing the cap here (rather than only inside
-/// `unpack_dist_archive`) lets a test exercise this function's own
-/// temp-dir-cleanup behavior end-to-end against a tiny limit/payload,
-/// instead of duplicating this function's body just to swap in
-/// `unpack_dist_archive_with_limit`.
+/// call path.
 #[allow(clippy::too_many_arguments)]
 fn install_from_remote_bytes_named(
     temp_name_tag: &str,
@@ -609,12 +513,10 @@ fn install_from_remote_bytes_named_with_limit(
 
     // Additive: fetches the platform-specific skill-lookup-mcp binary
     // into `<temp_dir>/mcp/target/release/skill-lookup-mcp` BEFORE
-    // `install_from_local` runs, so `McpInstallPhase` (unmodified)
-    // finds it exactly where it already looks for a local `--from`
-    // build. `None` (the main-branch-dist source) or an
-    // unsupported-platform outcome both leave this `None` -- never an
-    // error on their own; see the called function's own doc comment
-    // for the full degrade-vs-block decision.
+    // `install_from_local` runs, so `McpInstallPhase` finds it exactly
+    // where it already looks for a local `--from` build. `None` or an
+    // unsupported-platform outcome both leave this `None`, never an
+    // error on their own.
     let mcp_binary_version = match mcp_binary_fetcher {
         Some(fetcher) => install_mcp_server_binary_into_remote_temp_dir(fetcher, &temp_dir.path)?,
         None => None,
@@ -720,14 +622,10 @@ mod tests {
     }
 
     /// Whether any entry directly under `std::env::temp_dir()` has a
-    /// name containing `tag` -- used to assert a specific call's own
-    /// scratch directory is gone, by checking the real filesystem
-    /// rather than trusting the guard's `Drop` alone. Checking for an
-    /// exact per-call tag (rather than the shared
-    /// `konductor-remote-install-` prefix) avoids flapping under
-    /// parallel test execution, where another concurrently-running
-    /// test's still-alive temp directory would otherwise alias into
-    /// this one's "leftover" check.
+    /// name containing `tag` -- checks the real filesystem rather than
+    /// trusting the guard's `Drop` alone. Checking an exact per-call tag
+    /// (rather than the shared prefix) avoids flapping under parallel
+    /// test execution.
     fn any_temp_entry_contains(tag: &str) -> bool {
         let Ok(entries) = fs::read_dir(std::env::temp_dir()) else {
             return false;
@@ -800,9 +698,6 @@ mod tests {
 
         let err = unpack_dist_archive(&buf, &dest_root).expect_err("traversal must be rejected");
         assert!(matches!(err, RemoteInstallError::Unpack(_)));
-        // The entry path `../escape.txt` joins onto `dest_root/dist`, so
-        // a successful escape lands at `dest_root/escape.txt`, not
-        // `dest_root.parent()/escape.txt`.
         assert!(!dest_root.join("escape.txt").exists());
 
         fs::remove_dir_all(&dest_root).ok();
@@ -849,8 +744,6 @@ mod tests {
 
     #[test]
     fn unpack_dist_archive_accepts_real_archive_under_the_cap() {
-        // Regression check: a real, package_dist-built archive well
-        // under MAX_UNPACKED_BYTES must still unpack successfully.
         let dist_root = scratch_dir("unpack-under-cap-dist");
         seed_dist_agent(&dist_root, "small", b"{\"name\":\"small\"}\n");
         let (artifact_bytes, _) = build_real_artifact_and_sidecar(&dist_root);
@@ -871,16 +764,10 @@ mod tests {
 
     #[test]
     fn unpack_dist_archive_rejects_archive_exceeding_the_size_cap() {
-        // Real tar.gz built via the same tar::Builder/GzEncoder path as
-        // package_dist, with one entry's actual content (not just a
-        // declared header size) exceeding the cap, so the CappedReader's
-        // mid-stream rejection is exercised honestly rather than via a
-        // header-only size lie. Uses `unpack_dist_archive_with_limit`
-        // with a tiny limit/payload instead of a real 256 MiB+ buffer --
-        // exercises the identical cap-enforcement code path
-        // (`unpack_dist_archive` is a thin wrapper around this same
-        // function) without the memory/flakiness risk of allocating a
-        // real MAX_UNPACKED_BYTES+1 buffer per test.
+        // A real entry whose content (not just a declared header size)
+        // exceeds the cap, exercising CappedReader's mid-stream
+        // rejection. Uses a tiny limit/payload instead of a real
+        // 256 MiB+ buffer.
         let dest_root = scratch_dir("unpack-over-cap-dest");
         const TINY_LIMIT: u64 = 4 * 1024;
         let oversized_content = vec![0u8; (TINY_LIMIT + 1) as usize];
@@ -902,9 +789,8 @@ mod tests {
         let err = unpack_dist_archive_with_limit(&buf, &dest_root, TINY_LIMIT, MAX_ENTRY_COUNT)
             .expect_err("archive exceeding the size cap must be rejected");
         assert!(matches!(err, RemoteInstallError::Unpack(_)));
-        // Streaming extraction may leave a partially-written file behind
-        // (the point of streaming is to never buffer the whole entry
-        // first) -- what matters is it was never fully written.
+        // Streaming extraction may leave a partial file; what matters
+        // is it was never fully written.
         let partial_len = fs::metadata(dest_root.join("dist").join("huge.bin"))
             .map(|m| m.len())
             .unwrap_or(0);
@@ -918,15 +804,10 @@ mod tests {
 
     #[test]
     fn install_from_remote_bytes_cleans_up_temp_dir_on_size_cap_rejection() {
-        // End-to-end: an oversized archive that passes checksum
-        // verification (verify only proves transport integrity, not
-        // size) is still rejected at unpack, and RemoteTempDir's
-        // Drop-based cleanup still fires. Uses
-        // `install_from_remote_bytes_named_with_limit` with a tiny
-        // limit/payload instead of a real 256 MiB+ buffer -- exercises
-        // the identical end-to-end wiring `install_from_remote_bytes`
-        // uses (verify -> unpack -> cleanup) without the memory/flakiness
-        // risk of a real MAX_UNPACKED_BYTES+1 buffer per test.
+        // An oversized archive that passes checksum verification is
+        // still rejected at unpack, and RemoteTempDir's cleanup still
+        // fires. Uses a tiny limit/payload instead of a real
+        // 256 MiB+ buffer.
         const TINY_LIMIT: u64 = 4 * 1024;
         let oversized_content = vec![0u8; (TINY_LIMIT + 1) as usize];
         let mut artifact_bytes = Vec::new();
@@ -1004,9 +885,9 @@ mod tests {
             installed.is_file(),
             "expected file installed via existing copy logic"
         );
-        // With telemetry enabled (`no_telemetry: false` above),
-        // `TelemetryHookPass` re-serializes the agent file, so check
-        // the field that survives rather than the raw bytes.
+        // With telemetry enabled, `TelemetryHookPass` re-serializes the
+        // agent file, so check the field that survives rather than raw
+        // bytes.
         let installed_value: serde_json::Value =
             serde_json::from_slice(&fs::read(&installed).unwrap()).unwrap();
         assert_eq!(installed_value["name"], serde_json::json!("k-example"));
@@ -1016,9 +897,8 @@ mod tests {
             .expect("manifest must exist after remote install");
         assert_eq!(manifest.strategy_names(), vec!["kiro-cli-v2"]);
 
-        // Temp dir must be cleaned up on success -- check the real
-        // filesystem for this call's own uniquely-tagged temp dir,
-        // not just trust the Drop impl.
+        // Temp dir must be cleaned up on success -- check this call's
+        // own uniquely-tagged temp dir on the real filesystem.
         assert!(
             !any_temp_entry_contains(tag),
             "no leftover scratch temp directory should remain after a successful install"
@@ -1030,10 +910,9 @@ mod tests {
 
     /// The manifest's `source` field must be the stable
     /// `remote:<artifact_filename>` marker, never the ephemeral scratch
-    /// temp directory `install_from_local` was actually given -- that
-    /// directory is deleted (via `RemoteTempDir::drop`) the instant
-    /// this call returns, so a manifest recording it would make
-    /// `doctor` always report the source as missing.
+    /// temp directory `install_from_local` was given -- that directory
+    /// is deleted the instant this call returns, so recording it would
+    /// make `doctor` always report the source as missing.
     #[test]
     fn install_from_remote_bytes_records_a_stable_source_not_the_deleted_temp_dir() {
         let dist_root = scratch_dir("source-field-dist");
@@ -1078,26 +957,12 @@ mod tests {
     }
 
     /// The non-fatal `if let Ok(Some(...))` guard around the manifest
-    /// source-overwrite (in `install_from_remote_bytes_named_with_limit`)
-    /// tolerates `read_manifest` returning `Err` for a manifest that
-    /// `install_from_local` just wrote. This test confirms that failure
-    /// mode is reachable against a real manifest from this exact code
-    /// path, not merely a defensive branch guarding against something
-    /// that can never happen.
-    ///
-    /// This does NOT inject the corruption mid-call (there is no seam in
-    /// `install_from_remote_bytes_named_with_limit` to pause between
-    /// `install_from_local` returning and the source-overwrite block
-    /// running, and adding one purely for a test would be a bigger, riskier
-    /// change than the gap warrants). Instead it runs a real, successful
-    /// end-to-end install, then proves against the REAL manifest that
-    /// install just wrote: (a) corrupting those exact bytes on disk makes
-    /// `read_manifest` fail with a real `ManifestError`, confirming the
-    /// guard's failure branch is reachable against genuine on-disk content
-    /// from this exact code path, and (b) the success path really did set
-    /// the `remote:<filename>` marker beforehand, so this test is
-    /// distinguishing the failure branch from the success branch rather
-    /// than vacuously passing.
+    /// source-overwrite tolerates `read_manifest` returning `Err` for a
+    /// manifest `install_from_local` just wrote. This runs a real,
+    /// successful end-to-end install, then corrupts the written
+    /// manifest's bytes on disk to confirm `read_manifest` genuinely
+    /// fails against it -- proving the guard's failure branch is
+    /// reachable against real content from this exact code path.
     #[test]
     fn read_manifest_fails_on_the_real_manifest_a_remote_install_writes_once_corrupted() {
         let dist_root = scratch_dir("source-overwrite-fail-dist");
@@ -1121,10 +986,8 @@ mod tests {
         )
         .expect("end-to-end remote install must succeed even though this test then corrupts the manifest afterward");
 
-        // Confirm the success path already ran and set the stable source
-        // marker -- otherwise corrupting the manifest afterward wouldn't
-        // be distinguishing anything from a test that never exercised the
-        // success branch in the first place.
+        // Confirm the success path already ran and set the stable
+        // source marker.
         let manifest_before = crate::cli::install::manifest::read_manifest(&target_dir)
             .unwrap()
             .expect("manifest must exist after a successful install");
@@ -1134,12 +997,8 @@ mod tests {
             "sanity check: the success path must have already set the stable source marker"
         );
 
-        // Corrupt the manifest file `install_from_local` really wrote --
-        // non-JSON bytes -- and confirm `read_manifest` genuinely fails
-        // against it, the same failure shape the production
-        // `if let Ok(Some(...))` guard in
-        // `install_from_remote_bytes_named_with_limit` is designed to
-        // tolerate rather than unwind on.
+        // Corrupt the manifest file `install_from_local` really wrote
+        // and confirm `read_manifest` genuinely fails against it.
         fs::write(&manifest_path, b"not valid json at all")
             .expect("must be able to corrupt the manifest for this test");
         let read_result = crate::cli::install::manifest::read_manifest(&target_dir);
@@ -1151,7 +1010,7 @@ mod tests {
         );
 
         // Restore valid bytes so cleanup below doesn't leave a corrupted
-        // manifest on disk for anything scanning the temp tree afterward.
+        // manifest on disk.
         let manifest_json =
             serde_json::to_string_pretty(&manifest_before).expect("manifest must re-serialize");
         fs::write(&manifest_path, manifest_json).expect("must be able to restore the manifest");
@@ -1233,8 +1092,6 @@ mod tests {
 
     #[test]
     fn remote_temp_dir_create_succeeds_and_is_usable() {
-        // Normal call still creates a real, writable directory -- the
-        // exclusive-create fix must not regress the ordinary success path.
         let temp = RemoteTempDir::create("normal-create-tag")
             .expect("create must succeed when the path is free");
         assert!(temp.path.is_dir());
@@ -1246,9 +1103,7 @@ mod tests {
     fn remote_temp_dir_create_fails_instead_of_following_a_preplanted_symlink() {
         // A pre-planted symlink at the target path must fail with
         // `AlreadyExists`, not be silently followed the way
-        // `create_dir_all` would. Tests `create_dir` directly (the real
-        // path's nanosecond timestamp is unpredictable), since that's the
-        // primitive the fix relies on.
+        // `create_dir_all` would.
         let elsewhere = scratch_dir("preplant-target");
         let planted_path = std::env::temp_dir().join(format!(
             "konductor-remote-install-preplant-test-{}",
@@ -1267,8 +1122,7 @@ mod tests {
             .expect_err("create_dir must reject a pre-occupied path rather than following it");
         assert_eq!(err.kind(), std::io::ErrorKind::AlreadyExists);
 
-        // The planted symlink/dir must be untouched -- the fix must not
-        // have followed it or written into `elsewhere`.
+        // The planted symlink/dir must be untouched.
         assert!(elsewhere.is_dir());
         assert!(fs::read_dir(&elsewhere).unwrap().next().is_none());
 
@@ -1283,14 +1137,9 @@ mod tests {
     #[test]
     fn remote_temp_dir_create_paths_are_not_trivially_predictable() {
         // The scratch path name is timestamp+counter plus a random
-        // entropy suffix (see `random_entropy_tag`). This does not
-        // assert full unpredictability (impossible to prove from the
-        // outside), but pins the concrete property the entropy suffix
-        // adds: the same-name-tag path across two calls in quick
-        // succession differs in more than just the low-order
-        // nanosecond/counter fields -- i.e. it is not a sequential or
-        // otherwise trivially-derivable suffix of the previous call's
-        // path.
+        // entropy suffix. Pins the concrete property the entropy
+        // suffix adds: the same-name-tag path across two calls differs
+        // in more than just the low-order nanosecond/counter fields.
         let temp_a =
             RemoteTempDir::create("predictability-tag").expect("first create must succeed");
         let temp_b =
@@ -1314,14 +1163,8 @@ mod tests {
             "two calls must not collide on the same path"
         );
 
-        // Each name ends in a `-<16 hex digits>` random-entropy suffix
-        // (see `random_entropy_tag`). Extract it and assert it is not a
-        // simple increment/decrement of the other -- the property a
-        // purely sequential counter-based suffix would have, and the
-        // property injecting `RandomState`-derived entropy specifically
-        // breaks. (The per-process `COUNTER` field earlier in the name
-        // IS sequential by design; it's the random suffix, not that
-        // counter, that is under test here.)
+        // Each name ends in a `-<16 hex digits>` random-entropy suffix.
+        // Assert it is not a simple increment/decrement of the other.
         let suffix_a = name_a
             .rsplit('-')
             .next()
@@ -1347,11 +1190,8 @@ mod tests {
 
     #[test]
     fn random_entropy_tag_varies_across_calls() {
-        // Direct unit check on the entropy source itself, independent
-        // of path formatting: two calls in immediate succession must
-        // not produce the same value (a `RandomState::new()` reseeds
-        // per call, so a repeat would indicate the entropy source
-        // regressed to something constant/deterministic).
+        // Two calls in immediate succession must not produce the same
+        // value.
         let a = random_entropy_tag();
         let b = random_entropy_tag();
         assert_ne!(
@@ -1363,27 +1203,23 @@ mod tests {
     // --- Entry-ordering / multi-entry traversal adversarial tests ---
     //
     // These tests check whether a multi-entry archive can escape
-    // `dist_dir` through an interaction the single-entry checks
-    // (`is_safe_entry_path` plus the symlink/hardlink type rejection in
-    // `unpack_dist_archive_with_limit`) don't catch on their own -- one
-    // entry creating something at a path, a later entry traversing
-    // through/around it.
+    // `dist_dir` through an interaction the single-entry checks don't
+    // catch on their own -- one entry creating something at a path, a
+    // later entry traversing through/around it.
     //
     // One test below reproduces the entry ordering behind
-    // RUSTSEC-2026-0067 / CVE-2026-33056 (fixed upstream in `tar`
-    // 0.4.45): a symlink entry followed by a directory entry at the
-    // same path. Our own per-entry link-type rejection runs before any
-    // entry reaches `tar`'s internal unpack logic, so it intercepts
-    // that shape independently of which `tar` version is linked.
+    // RUSTSEC-2026-0067 / CVE-2026-33056: a symlink entry followed by a
+    // directory entry at the same path. Our own per-entry link-type
+    // rejection runs before any entry reaches `tar`'s internal unpack
+    // logic, intercepting that shape independently of which `tar`
+    // version is linked.
 
     #[test]
     fn unpack_dist_archive_rejects_cve_2026_33056_symlink_then_directory_ordering() {
-        // Reproduces the RUSTSEC-2026-0067 / CVE-2026-33056 entry
-        // ordering: a symlink entry pointing outside `dist_dir`,
-        // followed by a directory entry at the identical path. Our
-        // per-entry loop rejects the symlink entry on sight -- entry-type
-        // rejection fires on the first entry, before the second
-        // (directory) entry is ever unpacked.
+        // A symlink entry pointing outside `dist_dir`, followed by a
+        // directory entry at the identical path. Our per-entry loop
+        // rejects the symlink entry on sight, before the second entry
+        // is ever unpacked.
         let dest_root = scratch_dir("cve-2026-33056-dest");
         let outside_target = scratch_dir("cve-2026-33056-outside");
         let mut buf = Vec::new();
@@ -1437,14 +1273,11 @@ mod tests {
 
     #[test]
     fn unpack_dist_archive_rejects_directory_entry_then_hardlink_escape() {
-        // Entry 1: a benign, safe directory entry "d". Entry 2: a
-        // HARDLINK entry whose own path is nested inside that directory
-        // ("d/escape") but whose link target is outside dest_root.
-        // `is_safe_entry_path` alone would accept "d/escape"'s path (no
-        // `..`, not absolute) -- only the separate link-type check
-        // rejects it. This confirms the two checks are both required:
-        // path safety alone is not enough once a directory from a prior
-        // entry is in play.
+        // Entry 1: a benign directory "d". Entry 2: a hardlink entry
+        // whose own path is nested inside that directory ("d/escape")
+        // but whose link target is outside dest_root.
+        // `is_safe_entry_path` alone would accept "d/escape"'s path --
+        // only the separate link-type check rejects it.
         let dest_root = scratch_dir("dir-then-hardlink-dest");
         let outside_file = scratch_dir("dir-then-hardlink-outside").join("secret.txt");
         fs::write(&outside_file, b"do not touch").unwrap();
@@ -1490,14 +1323,8 @@ mod tests {
 
     #[test]
     fn unpack_dist_archive_rejects_parent_dir_component_buried_mid_path() {
-        // The existing `unpack_dist_archive_rejects_path_traversal_entry`
-        // test only exercises a LEADING `../escape.txt`. This confirms
-        // `is_safe_entry_path`'s `components().any(...)` scan also
-        // catches a `..` component buried in the MIDDLE of a
-        // multi-segment path (e.g. "safe/../../escape.txt"), not just
-        // at position 0 -- `Path::components()` is scanned in full via
-        // `.any(...)`, so position should not matter, but this is
-        // adversarial-tested rather than assumed.
+        // Confirms a `..` component buried mid-path (not just leading)
+        // is also caught.
         let dest_root = scratch_dir("mid-path-traversal-dest");
         let mut buf = Vec::new();
         {
@@ -1526,33 +1353,19 @@ mod tests {
 
     #[test]
     fn is_safe_entry_path_platform_scope_note_windows_style_shapes_are_inert_on_unix() {
-        // Documents a platform limitation rather than testing a real
-        // escape: `is_safe_entry_path` checks `Component::Prefix` -- a
-        // Windows-only concept (drive letters like "C:\", UNC paths
-        // like "\\server\share"). On Unix, `std::path::Path`'s parser
-        // never constructs a `Prefix` component for any input byte
-        // sequence -- there is no drive letter or UNC prefix in POSIX
-        // path syntax, so that arm of `is_safe_entry_path` is
-        // unreachable dead logic here, not a tested defense. A literal
-        // string like `"C:\\evil"` or `"\\\\server\\share\\evil"` is
-        // parsed on Unix as a single, ordinary `Normal` path component
-        // (backslash is a legal filename byte on Unix, not a separator)
-        // -- it is not absolute, has no `..`/`Prefix` component, and so
-        // passes `is_safe_entry_path`. That is correct and safe on this
-        // platform: `dist_dir.join("C:\\evil")` still creates a file
-        // literally named `C:\evil` inside `dist_dir` on Linux (backslash
-        // is not a directory separator here), so nothing escapes.
+        // Documents a platform limitation: `is_safe_entry_path` checks
+        // `Component::Prefix`, a Windows-only concept. On Unix,
+        // `std::path::Path` never constructs a `Prefix` component for
+        // any input, so that arm is unreachable here. A literal string
+        // like `"C:\\evil"` parses on Unix as one ordinary `Normal`
+        // component -- not absolute, no `..`/`Prefix`, so it passes
+        // `is_safe_entry_path`. That's safe on this platform:
+        // `dist_dir.join("C:\\evil")` still creates a file literally
+        // named `C:\evil` inside `dist_dir`.
         //
-        // This is asserted directly below so the assumption is pinned
-        // rather than left as a claim: any future change to
-        // path-separator handling that made this fail would be a real
-        // behavior change worth re-checking.
-        //
-        // A genuine test of the Windows-specific attack surface
-        // (`Component::Prefix` rejection actually firing, ADS `:`-suffix
-        // handling, etc.) requires running this suite on a Windows
-        // filesystem, which this Linux environment cannot provide --
-        // untestable here rather than faked.
+        // A genuine test of the Windows-specific attack surface requires
+        // running on a Windows filesystem, which this environment
+        // cannot provide.
         use std::path::Path;
 
         let windows_style_path = Path::new("C:\\evil");
@@ -1574,9 +1387,6 @@ mod tests {
 
     #[test]
     fn is_safe_entry_path_rejects_empty_path() {
-        // "" has zero components at all -- `dist_dir.join("")` resolves
-        // to `dist_dir` itself, so an entry with this path must never
-        // reach `entry.unpack(...)`.
         assert!(
             !is_safe_entry_path(Path::new("")),
             "an empty entry path must be rejected: it would clobber dist_dir itself"
@@ -1585,9 +1395,6 @@ mod tests {
 
     #[test]
     fn is_safe_entry_path_rejects_dot_path() {
-        // "." parses to a single `Component::CurDir` -- after filtering
-        // CurDir out, zero meaningful components remain, so this must be
-        // rejected for the same reason as "".
         assert!(
             !is_safe_entry_path(Path::new(".")),
             "a \".\" entry path must be rejected: it would clobber dist_dir itself"
@@ -1596,10 +1403,6 @@ mod tests {
 
     #[test]
     fn is_safe_entry_path_rejects_curdir_only_path() {
-        // "./." is entirely `CurDir` components (no `Normal` segment),
-        // so it must be rejected for the same reason as "." and "" --
-        // this confirms the filter isn't accidentally only checking the
-        // first component.
         assert!(
             !is_safe_entry_path(Path::new("./.")),
             "a CurDir-only entry path must be rejected: it would clobber dist_dir itself"
@@ -1608,9 +1411,6 @@ mod tests {
 
     #[test]
     fn is_safe_entry_path_still_accepts_a_normal_relative_path() {
-        // Regression guard: the "." rejection must not be so broad that
-        // it rejects an ordinary safe path containing a leading "./"
-        // component alongside a real, meaningful segment.
         assert!(
             is_safe_entry_path(Path::new("./real-file.txt")),
             "a path with a real segment alongside CurDir must still be accepted"
@@ -1623,13 +1423,10 @@ mod tests {
 
     #[test]
     fn unpack_dist_archive_rejects_dot_entry_path_before_any_unpack_call() {
-        // Hand-build a tar.gz with a single entry whose path is exactly
-        // "." -- without the Fix 2 check, `entry.unpack(dist_dir.join("."))`
-        // resolves to `dist_dir` itself, risking a silent clobber of the
-        // destination root. Assert the call is rejected and dist_dir is
-        // left as an ordinary, still-empty directory -- proving rejection
-        // happens before any unpack call is made, not as some partial
-        // clobber artifact.
+        // A single entry whose path is exactly "." -- without this
+        // check, `entry.unpack(dist_dir.join("."))` resolves to
+        // `dist_dir` itself, risking a silent clobber of the
+        // destination root.
         let dest_root = scratch_dir("unpack-dot-entry-dest");
         let mut buf = Vec::new();
         {
@@ -1648,9 +1445,6 @@ mod tests {
         let err = unpack_dist_archive(&buf, &dest_root)
             .expect_err("a \".\" entry path must be rejected before any unpack call");
         assert!(matches!(err, RemoteInstallError::Unpack(_)));
-        // dist_dir must still exist (created by create_dir_all above the
-        // loop) and remain an ordinary, empty directory -- not
-        // overwritten/clobbered by the rejected entry.
         let dist_dir = dest_root.join("dist");
         assert!(
             dist_dir.is_dir(),
@@ -1666,21 +1460,19 @@ mod tests {
 
     #[test]
     fn unpack_dist_archive_rejects_empty_entry_path_before_any_unpack_call() {
-        // Same as the "." case above, but for a literal empty path "" --
-        // set directly on the header bytes since `Header::set_path("")`
-        // itself may reject/normalize an empty string before it ever
-        // reaches our own check, and this test needs to prove OUR check
-        // rejects it, not just that the tar crate refuses to build it.
+        // Same as the "." case above, for a literal empty path "" --
+        // set directly on the header bytes since `set_path("")` may
+        // itself reject/normalize an empty string before reaching our
+        // own check.
         let dest_root = scratch_dir("unpack-empty-entry-dest");
         let mut buf = Vec::new();
         {
             let encoder = flate2::write::GzEncoder::new(&mut buf, flate2::Compression::default());
             let mut builder = tar::Builder::new(encoder);
             let mut header = tar::Header::new_gnu();
-            // Leave the header's name field all-zero (its default state)
-            // rather than calling `set_path`, so the entry's path parses
-            // to an empty `PathBuf` rather than being rejected/altered by
-            // `set_path`'s own validation.
+            // Leave the header's name field all-zero rather than
+            // calling `set_path`, so the entry's path parses to an
+            // empty `PathBuf`.
             header.set_entry_type(tar::EntryType::Regular);
             header.set_size(4);
             header.set_mode(0o644);
@@ -1691,11 +1483,8 @@ mod tests {
 
         let result = unpack_dist_archive(&buf, &dest_root);
         // An all-zero name field may be surfaced by `tar` itself as a
-        // parse/read error rather than reaching our `is_safe_entry_path`
-        // check at all -- either way, the archive must be rejected and
-        // dist_dir must never be clobbered. What matters for Fix 2 is
-        // that a truly empty resolved path can never reach
-        // `entry.unpack(...)`, regardless of which layer catches it.
+        // parse/read error rather than reaching our own check -- either
+        // way, dist_dir must never be clobbered.
         assert!(
             result.is_err(),
             "an empty entry path must never be unpacked"
@@ -1713,20 +1502,10 @@ mod tests {
 
     #[test]
     fn unpack_dist_archive_rejects_archive_exceeding_the_entry_count_cap() {
-        // Real tar.gz built via the same tar::Builder/GzEncoder path as
-        // package_dist, containing one more ZERO-BYTE entry than
-        // MAX_ENTRY_COUNT allows. Zero-byte entries deliberately never
-        // approach MAX_UNPACKED_BYTES -- this proves the entry-count cap
-        // is a genuinely independent defense, not a byte-cap side effect.
-        // Built via `unpack_dist_archive_with_limit` with a tiny per-test
-        // count-cap override so the test doesn't have to actually build
-        // and stream 50,001 real entries -- exercising the identical
-        // mid-iteration counting/rejection logic against a small,
-        // fast-to-build archive instead.
-        //
-        // Local override avoids materializing MAX_ENTRY_COUNT+1 (50,001)
-        // real tar entries in every test run; the counting/rejection code
-        // path exercised is identical regardless of the cap's value.
+        // One more zero-byte entry than a tiny per-test cap allows.
+        // Zero-byte entries never approach MAX_UNPACKED_BYTES, so this
+        // proves the entry-count cap is a genuinely independent
+        // defense from the byte cap.
         const TINY_ENTRY_CAP: usize = 5;
         let dest_root = scratch_dir("unpack-over-entry-cap-dest");
         let mut buf = Vec::new();
@@ -1751,9 +1530,7 @@ mod tests {
         assert!(matches!(err, RemoteInstallError::Unpack(_)));
 
         // Rejected mid-iteration: strictly fewer than TINY_ENTRY_CAP + 1
-        // entries (the full archive size) may have been materialized --
-        // proving the cap is enforced DURING iteration, not after the
-        // archive is fully consumed.
+        // entries may have been materialized.
         let materialized = fs::read_dir(dest_root.join("dist"))
             .map(|rd| rd.count())
             .unwrap_or(0);
@@ -1767,9 +1544,7 @@ mod tests {
 
     #[test]
     fn unpack_dist_archive_accepts_archive_at_exactly_the_entry_count_cap() {
-        // Boundary check: an archive with EXACTLY the capped number of
-        // entries (not one more) must succeed -- the cap must reject
-        // "exceeds", not "reaches", the limit.
+        // The cap must reject "exceeds", not "reaches", the limit.
         const TINY_ENTRY_CAP: usize = 5;
         let dest_root = scratch_dir("unpack-at-entry-cap-dest");
         let mut buf = Vec::new();
@@ -1798,11 +1573,8 @@ mod tests {
 
     #[test]
     fn unpack_dist_archive_rejects_real_package_dist_archive_exceeding_entry_count_cap() {
-        // End-to-end with a REAL package_dist-built archive (not a
-        // hand-built one) whose dist tree has more files than a tiny
-        // test-scoped cap allows -- proves the cap fires on ordinary,
-        // realistic archive construction too, not just hand-crafted
-        // adversarial ones.
+        // A real package_dist-built archive (not hand-built) whose
+        // dist tree has more files than a tiny test-scoped cap allows.
         const TINY_ENTRY_CAP: usize = 2;
         let dist_root = scratch_dir("real-over-entry-cap-dist");
         seed_dist_agent(&dist_root, "one", b"{}\n");
@@ -1826,16 +1598,10 @@ mod tests {
 
     // ── MCP server binary (skill-lookup-mcp) remote fetch tests ─────────
 
-    /// The sidecar-recorded filename `install_mcp_server_binary_into_remote_temp_dir`
-    /// re-derives internally from the CURRENT host's own target triple
-    /// (see that function's own doc comment) -- tests must build their
-    /// fake sidecars against that same real triple, not a hardcoded
-    /// one, so these tests pass regardless of which of the three
-    /// supported CI runner architectures actually executes them. Skips
-    /// (returns `None`) rather than asserting on an unsupported test
-    /// runner platform -- none of the three supported CI runners hit
-    /// that branch, and hardcoding a fallback string here would defeat
-    /// the whole point of re-deriving it for real.
+    /// The sidecar-recorded filename is re-derived internally from the
+    /// current host's own target triple -- tests must build fake
+    /// sidecars against that same real triple, not a hardcoded one.
+    /// Skips (returns `None`) on an unsupported test runner platform.
     fn current_host_mcp_binary_filename(release_version: &str) -> Option<String> {
         super::super::target_triple::current_host_target_triple().map(|triple| {
             super::super::github::expected_mcp_server_asset_filename(release_version, triple)
@@ -1844,9 +1610,7 @@ mod tests {
 
     /// Builds a real `(binary_bytes, sidecar_bytes)` pair with a
     /// matching sha256 sidecar, mirroring `build_real_artifact_and_sidecar`'s
-    /// own real-hash construction but for the MCP binary shape instead
-    /// of a packaged tarball. Sidecar filename is the CURRENT host's
-    /// own real triple (see `current_host_mcp_binary_filename`).
+    /// real-hash construction but for the MCP binary shape.
     fn build_real_mcp_binary_and_sidecar(contents: &[u8]) -> (Vec<u8>, Vec<u8>) {
         let filename = current_host_mcp_binary_filename("v0.1.1")
             .expect("test runner must be one of the three supported CI platforms");
@@ -1872,12 +1636,10 @@ mod tests {
         })
     }
 
-    /// (a) Correct asset filename construction per platform: pins that
-    /// this test module's own `MCP_BINARY_FILENAME` constant matches
-    /// `github::expected_mcp_server_asset_filename`'s real construction
-    /// -- proving the sidecar text this test builds is the SAME shape
-    /// production code expects, not a hand-guessed string that happens
-    /// to look right.
+    /// Pins that this test module's own filename construction matches
+    /// `github::expected_mcp_server_asset_filename`'s real
+    /// construction, proving the sidecar text this test builds matches
+    /// what production code expects.
     #[test]
     fn mcp_binary_filename_construction_matches_github_module_for_every_supported_platform() {
         let cases = [
@@ -1892,11 +1654,9 @@ mod tests {
         }
     }
 
-    /// (b) Checksum verification SUCCESS, end to end: a fake fetcher
-    /// returning real, checksum-matching bytes must land the binary,
-    /// executable, at `<temp_dir>/mcp/target/release/skill-lookup-mcp`
-    /// -- the exact path `mcp_server::mcp_binary_source_path` reads
-    /// from locally.
+    /// A fake fetcher returning real, checksum-matching bytes must land
+    /// the binary, executable, at
+    /// `<temp_dir>/mcp/target/release/skill-lookup-mcp`.
     #[cfg(unix)]
     #[test]
     fn install_mcp_server_binary_into_remote_temp_dir_succeeds_with_matching_checksum() {
@@ -1973,7 +1733,7 @@ mod tests {
     }
 
     /// (c) Unmapped-platform error path: a fetcher failing with the
-    /// unsupported-platform marker must DEGRADE GRACEFULLY -- return
+    /// unsupported-platform marker must degrade gracefully -- return
     /// `Ok(None)`, write nothing to disk, and never propagate as an
     /// install-blocking error.
     #[test]
@@ -2022,15 +1782,12 @@ mod tests {
     }
 
     /// (d) mcpServers injection on success, end to end through
-    /// `install_from_remote_bytes` itself (not just the inner fetch
-    /// helper): a real tarball install (with an agent declaring a
-    /// packaged-skill resource) PLUS a real, checksum-matching MCP
-    /// binary fetcher must result in an installed agent JSON carrying
-    /// an injected `mcpServers.konductor-skills` entry pointing at the
-    /// binary this run just fetched and installed -- proving
-    /// `McpInstallPhase`/`resource_rewrite::McpServerPass` (both
-    /// unmodified) transparently pick up the remotely-fetched binary
-    /// the same way they already do for a local `--from` build.
+    /// `install_from_remote_bytes`: a real tarball install (with an
+    /// agent declaring a packaged-skill resource) plus a real,
+    /// checksum-matching MCP binary fetcher must result in an
+    /// installed agent JSON carrying an injected
+    /// `mcpServers.konductor-skills` entry pointing at the binary this
+    /// run just fetched and installed.
     #[test]
     fn install_from_remote_bytes_injects_mcp_server_entry_when_binary_fetcher_supplied() {
         let dist_root = scratch_dir("mcp-e2e-dist");

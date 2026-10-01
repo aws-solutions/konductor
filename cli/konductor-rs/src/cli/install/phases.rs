@@ -4,128 +4,51 @@
 // replacing `install_from_local`'s previous fixed hand-written call
 // chain (context -> skills -> MCP binary -> agents).
 //
-// Mirrors patterns already established in this codebase: a free
-// function over a borrowed slice of trait objects, no wrapper type.
-// - `install::registry::STRATEGIES` (a static slice of `&dyn
-//   InstallStrategy`) + `install::dispatch_install_with` shares that
-//   free-function-over-a-slice shape, though `dispatch_install_with`
-//   iterates the slice to find the one strategy that applies, not to
-//   run every entry.
-// - `synth::registry::TRANSFORMERS` (a static slice of `&dyn
-//   HarnessTransformer`) + `synth::dispatch_synth_with`, and
-//   `resource_rewrite::standard_passes()` / `ResourceRewritePass` /
-//   `apply_all(passes: &[Box<dyn ResourceRewritePass>], ...)`, are the
-//   closer match for `InstallPhase` in one specific respect only: both
-//   run every entry in a fixed slice in order, failing fast on the
-//   first `Err` -- the same run-loop shape `run_all_phases` below uses
-//   for `InstallPhase`. The match stops there. `ResourceRewritePass`
-//   has no `name()` method and no dependency-declaration mechanism --
-//   its trait is `matches`/`rewrite`/`verify` over a `serde_json::Value`,
-//   a data-driven design where each pass self-checks whether it has
-//   anything to do, and its fixed order in `standard_passes()` is the
-//   only thing enforcing the skill-before-MCP-injection dependency that
-//   design has. `InstallPhase` adds `name()` and `dependencies()`
-//   precisely because `run_all_phases` validates that ordering
-//   explicitly instead of relying on a hand-maintained list order.
+// Mirrors `resource_rewrite::apply_all` and `synth::dispatch_synth_with`
+// in shape: a free function running every entry in a fixed slice in
+// order, failing fast on the first `Err`. `InstallPhase` additionally
+// has `name()` and `dependencies()`, since `run_all_phases` validates
+// ordering explicitly instead of relying on a hand-maintained list
+// order.
 //
-// `InstallPhase` bundles one self-contained install concern, run in
-// order by the free function `run_all_phases(phases: &[Box<dyn
-// InstallPhase>], ..., false)` below -- not a separate chain/wrapper type. No
-// new call is inserted into a growing sequential call chain inside
-// `install_from_local` itself (which is now a thin wrapper: build the
-// default phase list, run it, attach provenance, write the manifest);
-// see `standard_install_phases()`'s own doc comment for what adding a
-// new phase to that list actually takes.
-//
-// ── Signature: adapted, not copy-pasted, from the illustrative shape ────
 // `InstallPhase::run` takes `(staged_root, target_dir, repo_root,
-// prior_manifest, phase_outputs)` -- no `installed_at`: nothing about
-// copying files or classifying provenance depends on the install
-// timestamp, and every real implementation below would just ignore
-// it, so it is not part of this trait's contract (`Manifest::new`'s
-// own `installed_at` field is filled in once, by `install_from_local`
-// itself, after `run_all_phases` returns). `repo_root` is `Option<&Path>`,
-// not `Option<&str>`: `install_from_local` already parses the raw
-// `--from <repo-root>` string into a `Path` once, before calling
-// `run_all_phases` (see its own doc comment's write-ahead sequencing
-// step 2 and its call site below) -- threading the already-parsed
-// `Path` through means `McpInstallPhase`, the one phase that needs it,
-// never re-derives a `Path` from the original string. The two
-// parameters below ARE real, pre-existing data flow a bare
-// `(staged_root, target_dir, repo_root)` signature cannot express, so
-// both are threaded through explicitly:
+// prior_manifest, phase_outputs, no_telemetry)`:
+// - `prior_manifest` is read exactly once, before the write-ahead
+//   `Status::InProgress` manifest overwrites `.konductor/manifest` on
+//   disk, and passed to every phase by reference. A phase re-reading
+//   the manifest mid-chain would see that just-written in-progress
+//   state instead (every `sha256: None`).
+// - `phase_outputs: &PhaseOutputs` lets `AgentInstallPhase` know which
+//   MCP server binaries this install run actually copied, to decide
+//   whether to inject an `mcpServers` entry. Checking disk existence
+//   instead would be wrong: a prior install's copy can still be
+//   sitting on disk after the source binary was removed
+//   (`install_bin_files` never deletes a no-longer-sourced binary),
+//   which would re-inject a stale path. `files_from` returning an
+//   empty slice for a phase that has not run yet is a deliberate
+//   fail-safe matching `mcp_server.rs`'s "a missing binary is not an
+//   error" behavior.
 //
-// 1. `prior_manifest: Option<&StrategyManifest>` -- `install_skills`'s
-//    dropped-file cleanup and every phase's eventual provenance
-//    classification need the manifest as it existed BEFORE this
-//    install run touched anything. It is read exactly once, in
-//    `kiro_cli.rs`'s `install_from_local`, before the write-ahead
-//    `Status::InProgress` manifest overwrites `.konductor/manifest` on
-//    disk -- a phase re-reading the manifest mid-chain would read that
-//    just-written in-progress state instead (every `sha256: None`),
-//    corrupting the very classification it exists to perform. So it
-//    is captured once by the caller and passed to every phase by
-//    reference, never re-read.
-// 2. `phase_outputs: &PhaseOutputs` -- `AgentInstallPhase` needs to know
-//    exactly which MCP server binaries THIS install run actually
-//    copied, to decide whether to inject an `mcpServers` entry (see
-//    `mcp_server.rs`'s module docstring: "gate on the local build
-//    artifact existing, inject an absolute path"). Checking disk
-//    existence of `<target_dir>/.konductor/bin/<name>` instead would be
-//    WRONG: a prior install's copy can still be sitting on disk even
-//    after the SOURCE binary was removed (`install_bin_files` never
-//    deletes a no-longer-sourced binary), which would re-inject a
-//    now-stale path rather than dropping the entry -- see
-//    `install_from_local_removes_stale_mcp_server_entry_when_binary_becomes_absent`
-//    in `kiro_cli.rs`'s test module, which exists specifically to catch
-//    that mistake. `PhaseOutputs` is a typed, name-addressed handoff
-//    (`files_from(name)`) for exactly this kind of cross-phase data,
-//    mirroring `resource_rewrite::RewriteContext`'s typed-field
-//    approach rather than filtering a flat `&[ManifestFile]` by a
-//    `.konductor/bin/` path-string prefix, which would couple this
-//    lookup to the exact destination path a content type happens to
-//    use today. `files_from` returning an empty slice for a phase that
-//    has not run yet in this chain -- e.g. if a
-//    future phase list ever omitted `McpInstallPhase` -- is a deliberate
-//    fail-safe, not a bug: it reproduces exactly `mcp_server.rs`'s own
-//    "a missing binary is not an error" behavior (no `mcpServers` entry
-//    gets injected) rather than panicking.
-//
-// ── Default order deviates from a naive "Agent, Skill, Sop, Mcp" ────────
-// The dependency this module must preserve -- `AgentInstallPhase`'s
-// resource rewrite verifies every rewritten resource and injected
-// `mcpServers` target exists on disk, so skills, the MCP binary, and
-// context files must already be installed -- means `AgentInstallPhase`
-// cannot run first. `AgentInstallPhase` declares these three as its own
-// `InstallPhase::dependencies()` (see its doc comment), which
-// `run_all_phases` validates structurally, up front, before any phase
-// runs -- so the ordering constraint is enforced by the trait itself,
-// not only by `standard_install_phases()`'s own chosen order below.
 // `standard_install_phases()` runs skills and the MCP binary first,
-// then `ContextInstallPhase`, `AgentInstallPhase` last. Context gets its
-// own phase (rather than being folded into `AgentInstallPhase` as an
-// internal first step) specifically so `PhaseOutputs` records context
-// files and agent files under two distinct names -- see
-// `ContextInstallPhase` and `AgentInstallPhase`'s own doc comments for
-// why that separation matters. `SopInstallPhase` is its own phase for
-// the same reason: it needs to run in both runtimes' chains with its
-// own additive-branch behavior -- see that struct's own doc comment
-// for its real Kiro/Claude/dual-marker behavior.
+// then context, then agents last: `AgentInstallPhase`'s resource
+// rewrite verifies every rewritten resource and injected `mcpServers`
+// target exists on disk, so those three must already be installed.
+// This dependency is declared via `AgentInstallPhase::dependencies()`
+// and validated structurally by `run_all_phases` before any phase
+// runs. Context gets its own phase (rather than folding into
+// `AgentInstallPhase`) so `PhaseOutputs` records context files and
+// agent files under two distinct names. `SopInstallPhase` is its own
+// phase since it runs in both runtimes' chains with its own
+// additive-branch behavior.
 //
-// ── Partial-failure on-disk state is safe by design, not by luck ────────
-// Because `ContextInstallPhase`/`AgentInstallPhase` run LAST, a crash
-// mid-install can leave skills and the MCP binary already on disk
-// while context/agent installation has not started at all. This is
-// safe: the write-ahead `Status::InProgress` manifest (written before
-// ANY phase runs, from the full `plan_all_files` plan) already
-// anticipates an arbitrary partial on-disk state after an interrupted
-// run, and a rerun's `classify_provenance`/dropped-file-cleanup logic
-// is designed to converge regardless of which subset of files a prior
-// run actually reached -- proven directly by
-// `install_from_local_recovers_when_agent_phase_never_ran` in
-// `kiro_cli.rs`, which hand-crafts exactly this state (skills and the
-// MCP binary written, `.kiro/agents/`/`.kiro/context/` entirely
-// absent) and asserts a rerun still converges.
+// Because context/agent install run last, a crash mid-install can
+// leave skills and the MCP binary already on disk while context/agent
+// installation never started. This is safe: the write-ahead
+// `Status::InProgress` manifest already anticipates an arbitrary
+// partial on-disk state, and a rerun's provenance/dropped-file-cleanup
+// logic converges regardless of which subset of files a prior run
+// reached (see `install_from_local_recovers_when_agent_phase_never_ran`
+// in `kiro_cli.rs`).
 
 use std::collections::HashSet;
 use std::path::Path;
@@ -134,73 +57,45 @@ use super::manifest::{ManifestFile, StrategyManifest};
 use super::runtime::{detect_runtimes, Runtime};
 use super::InstallError;
 
-/// One self-contained step of `install_from_local`'s copy work: what it
-/// is called (used as the `PhaseOutputs` lookup key -- see `name()`'s
-/// own doc comment below) and what it does. Each implementation is
-/// independently callable -- with a real `staged_root`/`target_dir` --
-/// which is what makes every phase unit-testable without running the
-/// whole chain.
+/// One self-contained step of `install_from_local`'s copy work. Each
+/// implementation is independently callable, which is what makes
+/// every phase unit-testable without running the whole chain.
 pub(super) trait InstallPhase {
     /// Stable identifier for this phase: `run_all_phases` records each
     /// phase's output under this name into `PhaseOutputs`, so a later
     /// phase can look its predecessor's output up by name via
-    /// `PhaseOutputs::files_from` (see `AgentInstallPhase::run`'s lookup
-    /// of `McpInstallPhase.name()`). Must be unique within a given
-    /// phase list -- `run_all_phases` rejects a duplicate name up front
-    /// (see its own doc comment), so `standard_install_phases()`'s own
-    /// uniqueness is exercised on every real call, and separately
-    /// pinned by the `phase_names_are_unique` test.
+    /// `PhaseOutputs::files_from`. Must be unique within a given phase
+    /// list; `run_all_phases` rejects a duplicate name up front.
     fn name(&self) -> &'static str;
 
-    /// Checked for every phase, in order, BEFORE any phase's `run` is
-    /// called -- the phase-specific counterpart to `run_all_phases`'s
-    /// own upfront duplicate-name check, applying that same
-    /// "validate everything before doing any work" discipline to a
-    /// phase's own preconditions instead of leaving them to surface
-    /// only once that phase's `run` happens to execute (which, for a
-    /// phase ordered after others, could be after earlier phases have
-    /// already copied files). Default: no precondition. Only
-    /// `McpInstallPhase` overrides this today (it needs
-    /// `repo_root: Some(_)`) -- see its own doc comment.
+    /// Checked for every phase, in order, before any phase's `run` is
+    /// called. Default: no precondition. Only `McpInstallPhase`
+    /// overrides this today (it needs `repo_root: Some(_)`).
     fn check_preconditions(&self, _repo_root: Option<&Path>) -> Result<(), InstallError> {
         Ok(())
     }
 
-    /// Names of OTHER phases (by their own `name()`) that must appear
-    /// earlier than this one in the same `run_all_phases` call --
-    /// checked structurally, up front, before any phase runs (see that
-    /// function's own doc comment). Default: no dependency. Only
-    /// `AgentInstallPhase` overrides this today, declaring the three
-    /// phases its resource-rewrite verification needs already on disk
-    /// (see its own doc comment) -- so a future reorder or omission of
-    /// one of those three fails loudly here, rather than only much
-    /// later inside `AgentInstallPhase::run` itself, or not at all if
-    /// the reordered path happens not to be exercised by a test.
+    /// Names of other phases (by their own `name()`) that must appear
+    /// earlier than this one in the same `run_all_phases` call.
+    /// Default: no dependency. Only `AgentInstallPhase` overrides this
+    /// today, declaring the three phases its resource-rewrite
+    /// verification needs already on disk.
     fn dependencies(&self) -> &'static [&'static str] {
         &[]
     }
 
     /// Performs this phase's copy work and returns the `ManifestFile`
-    /// entries it wrote, with a placeholder provenance -- the real
+    /// entries it wrote, with a placeholder provenance; the real
     /// per-file provenance is attached once, over every phase's
     /// combined output, by `install_from_local` after `run_all_phases`
     /// returns (via `attach_provenance`).
     ///
     /// `staged_root` is the synthed `dist/<harness>/` tree; `repo_root`
     /// is the already-parsed `--from <repo-root>` path, `None` only if
-    /// validation was skipped (see this module's own doc comment for
-    /// why `Option<&Path>` rather than the raw `--from` string, and
-    /// `McpInstallPhase`'s own doc comment for how a phase that needs
-    /// it handles `None`). `prior_manifest` and `phase_outputs` are
-    /// documented on this module's own doc comment above. `no_telemetry`
-    /// carries `install`'s own `--no-telemetry` flag (see
-    /// `InstallStrategy::install_from_local`'s own doc comment) --
-    /// every phase receives it, even though only `AgentInstallPhase`
-    /// today has telemetry side effects to gate on it (the agent-file
-    /// `TelemetryHookPass` and the Claude Code telemetry-hook wiring
-    /// below), so a future phase that grows one
-    /// of its own already has it in scope rather than needing the
-    /// trait's signature widened again.
+    /// validation was skipped. `no_telemetry` carries `install`'s own
+    /// `--no-telemetry` flag; every phase receives it, even though
+    /// only `AgentInstallPhase` today has telemetry side effects to
+    /// gate on it.
     fn run(
         &self,
         staged_root: &Path,
@@ -212,11 +107,10 @@ pub(super) trait InstallPhase {
     ) -> Result<Vec<ManifestFile>, InstallError>;
 }
 
-/// The `ManifestFile`s every phase in THIS `run_all_phases` call has
-/// produced so far, addressable by phase name -- see this module's own
-/// doc comment ("Signature: adapted...", point 2) for why this exists.
-/// `run_all_phases` builds one as it iterates and passes it to each
-/// phase in turn; nothing outside this module constructs one directly.
+/// The `ManifestFile`s every phase in this `run_all_phases` call has
+/// produced so far, addressable by phase name. `run_all_phases` builds
+/// one as it iterates and passes it to each phase in turn; nothing
+/// outside this module constructs one directly.
 pub(super) struct PhaseOutputs {
     by_phase: Vec<(&'static str, Vec<ManifestFile>)>,
 }
@@ -230,18 +124,16 @@ impl PhaseOutputs {
 
     /// Records `phase_name`'s output. `run_all_phases` calls this
     /// exactly once per phase, immediately after that phase's `run`
-    /// returns and before the next phase's `run` is called -- so a
-    /// phase's own `files_from` lookup only ever sees EARLIER phases'
-    /// output, never its own or a later one's.
+    /// returns, so a phase's own `files_from` lookup only ever sees
+    /// earlier phases' output.
     fn record(&mut self, phase_name: &'static str, files: Vec<ManifestFile>) {
         self.by_phase.push((phase_name, files));
     }
 
     /// The files the phase named `phase_name` returned, or an empty
-    /// slice if that phase has not run (yet) in this call -- fails
-    /// safe rather than panicking, matching `mcp_server.rs`'s own "a
-    /// missing binary is not an error" convention (see this module's
-    /// own doc comment).
+    /// slice if that phase has not run (yet) in this call; fails safe
+    /// rather than panicking, matching `mcp_server.rs`'s own "a
+    /// missing binary is not an error" convention.
     pub(super) fn files_from(&self, phase_name: &str) -> &[ManifestFile] {
         self.by_phase
             .iter()
@@ -252,10 +144,7 @@ impl PhaseOutputs {
 
     /// Every file every phase recorded so far, flattened in recording
     /// order. `run_all_phases` calls this once, after the loop, to
-    /// build its own return value -- `PhaseOutputs`'s internal
-    /// per-phase grouping is what phases consume mid-run; the flat
-    /// list is what `install_from_local` consumes afterward (for
-    /// `attach_provenance` and the final manifest).
+    /// build its own return value.
     fn all_files(&self) -> Vec<ManifestFile> {
         self.by_phase
             .iter()
@@ -265,54 +154,20 @@ impl PhaseOutputs {
 }
 
 /// Runs every phase in `phases`, in order, feeding each one a
-/// `PhaseOutputs` containing every EARLIER phase's output from this
-/// same call (see this module's doc comment on why `AgentInstallPhase`
-/// needs this). Fails fast on the first `Err`, returning it
-/// immediately without running any later phase -- the same convention
-/// `synth::dispatch_synth_with` already applies across `TRANSFORMERS`,
-/// and the same convention `resource_rewrite::apply_all` applies
-/// across its own passes.
+/// `PhaseOutputs` containing every earlier phase's output from this
+/// same call. Fails fast on the first `Err`, returning it immediately
+/// without running any later phase.
 ///
 /// Validates every phase's preconditions up front, before running any
 /// of them:
 /// - Rejects `phases` if it contains two entries with the same
-///   `name()` -- the structural counterpart to
-///   `PhaseOutputs::files_from`'s fail-safe-on-*missing*-name design: a
-///   duplicate name would make `files_from`'s lookup silently resolve
-///   to only the first matching phase's output, so this function
-///   refuses to run rather than let that ambiguity happen.
-/// - Rejects `phases` if any phase's own `dependencies()` names a phase
-///   that has not appeared earlier in the same list -- either because
-///   that dependency is missing entirely, or merely ordered after the
-///   dependent phase, or because a phase names *itself* (checked against
-///   only the strictly-earlier names seen so far, before this phase's
-///   own name is recorded, so self-dependence can never trivially pass)
-///   (see `InstallPhase::dependencies`'s own doc comment for why this
-///   exists).
-/// - Calls each phase's own `check_preconditions(repo_root)` -- e.g.
-///   `McpInstallPhase`'s `repo_root: Some(_)` requirement -- so a
-///   phase-specific precondition is validated with the same eagerness
-///   as the structural checks above, rather than surfacing only once
-///   that phase's own `run` happens to execute (by which point an
-///   earlier phase may have already copied files).
-///
-/// This is the third hand-rolled duplicate-key check in this codebase,
-/// alongside `synth::parse_canonical::assert_unique_names` (fail-fast,
-/// like this one, but keyed on parsed-item names with a parallel file-
-/// label slice for its `ParseError`) and `install::index::duplicate_target_dirs`
-/// (collect-all, not fail-fast, keyed on `IndexEntry::target_dir`). The
-/// three do differ in error/report type and in fail-fast-vs-collect-all
-/// behavior, but the core "insert into a seen-set, detect the second
-/// occurrence of a key" logic each wraps is small and genuinely similar
-/// across all three -- a shared detection helper is a plausible follow-up,
-/// not ruled out by the type differences alone. It is not done here
-/// because `assert_unique_names` lives under `cli::synth`, which this
-/// diff does not touch, and factoring a helper that covers only this
-/// function and `duplicate_target_dirs` (both under `cli::install`)
-/// while leaving `assert_unique_names` as a third, still-separate
-/// implementation would not actually eliminate the duplication -- it
-/// would only move two-thirds of it into the new helper, leaving
-/// `assert_unique_names` duplicated on its own.
+///   `name()`.
+/// - Rejects `phases` if any phase's own `dependencies()` names a
+///   phase that has not appeared earlier in the same list, including
+///   a phase naming itself.
+/// - Calls each phase's own `check_preconditions(repo_root)` (e.g.
+///   `McpInstallPhase`'s `repo_root: Some(_)` requirement) up front
+///   rather than only once that phase's own `run` happens to execute.
 pub(super) fn run_all_phases(
     phases: &[Box<dyn InstallPhase>],
     staged_root: &Path,
@@ -323,12 +178,10 @@ pub(super) fn run_all_phases(
 ) -> Result<Vec<ManifestFile>, InstallError> {
     let mut seen_names = HashSet::with_capacity(phases.len());
     for phase in phases {
-        // Dependency check runs against `seen_names` *before* this
-        // phase's own name is inserted below, so `seen_names` here
-        // holds only strictly-earlier phases -- a phase that names
-        // itself in `dependencies()` is checked against a set that
-        // does not yet contain that name, and is correctly rejected
-        // rather than trivially satisfied.
+        // Dependency check runs against `seen_names` before this
+        // phase's own name is inserted below, so a phase that names
+        // itself in `dependencies()` is correctly rejected rather than
+        // trivially satisfied.
         for dep in phase.dependencies() {
             if !seen_names.contains(dep) {
                 return Err(InstallError::Message(format!(
@@ -368,17 +221,15 @@ pub(super) fn run_all_phases(
     Ok(outputs.all_files())
 }
 
-/// The default phase list: all 5 artifact categories `install_from_local`
-/// handles today, in the order their real dependencies require --
-/// skills, the MCP binary, and context before agents (see this
-/// module's own doc comment). `SopInstallPhase` copies every staged
-/// `.sop.md` file into `.konductor/sops/` (and, additively, converts
-/// them into `.claude/skills/sop-<name>/SKILL.md` when a `.claude`
-/// marker already exists at the target -- see its own doc comment);
-/// its position in the list is otherwise inert, since nothing else in
-/// this chain depends on it. Adding a sixth phase is a new `struct
-/// FooInstallPhase` plus one `Box::new(FooInstallPhase)` line here --
-/// no existing line changes.
+/// The default phase list: all 5 artifact categories
+/// `install_from_local` handles today, in the order their real
+/// dependencies require (skills, the MCP binary, and context before
+/// agents). `SopInstallPhase` copies every staged `.sop.md` file into
+/// `.konductor/sops/` (and additively converts them into
+/// `.claude/skills/sop-<name>/SKILL.md` when a `.claude` marker
+/// already exists at the target). Adding a sixth phase is a new
+/// `struct FooInstallPhase` plus one `Box::new(FooInstallPhase)` line
+/// here.
 pub(super) fn standard_install_phases() -> Vec<Box<dyn InstallPhase>> {
     vec![
         Box::new(SkillInstallPhase),
@@ -427,18 +278,11 @@ impl InstallPhase for SkillInstallPhase {
 /// `<target_dir>/.konductor/bin/<name>`. A missing binary is not an
 /// error (see `mcp_server.rs`'s own module doc comment).
 ///
-/// The only phase that needs `repo_root: Some(_)` -- overrides
-/// `check_preconditions` so `run_all_phases` validates this upfront,
-/// alongside its own duplicate-name check, rather than only once this
-/// phase's own `run` executes. `run` below calls `check_preconditions`
-/// itself as well, rather than re-checking `repo_root.is_none()`
-/// inline a second time -- `check_preconditions` is this phase's
-/// single source of truth for the requirement, so a caller that
-/// invokes `run` directly, bypassing `run_all_phases`, still gets the
-/// same rejection. By the time `run` unwraps `repo_root` below,
-/// `check_preconditions` has already confirmed it is `Some`; see the
-/// trait's own doc comment for why `run` takes an already-parsed
-/// `Path` rather than the raw `--from` string.
+/// The only phase that needs `repo_root: Some(_)`; overrides
+/// `check_preconditions` so `run_all_phases` validates this upfront.
+/// `run` below calls `check_preconditions` itself too, so a caller
+/// that invokes `run` directly, bypassing `run_all_phases`, still gets
+/// the same rejection.
 pub(super) struct McpInstallPhase;
 
 impl InstallPhase for McpInstallPhase {
@@ -474,59 +318,39 @@ impl InstallPhase for McpInstallPhase {
 // ── Phase: SOPs ──────────────────────────────────────────────────────────
 
 /// Shared verbatim across both `standard_install_phases()` (Kiro) and
-/// `standard_claude_install_phases()` (Claude) -- the only phase struct
-/// in either chain that is, rather than each runtime carrying its own
-/// dedicated phase the way skills/agents do (`SkillInstallPhase` vs
-/// `ClaudeSkillInstallPhase`, `AgentInstallPhase` vs
-/// `ClaudeAgentInstallPhase`). No new `InstallStrategy`/trait is
-/// introduced for this: one phase, one impl, internal branching, rather
-/// than a second SOP-specific strategy or trait.
+/// `standard_claude_install_phases()` (Claude), unlike skills/agents
+/// which each runtime handles with its own dedicated phase
+/// (`SkillInstallPhase` vs `ClaudeSkillInstallPhase`,
+/// `AgentInstallPhase` vs `ClaudeAgentInstallPhase`).
 ///
 /// `run` decides which chain invoked it from `staged_root`'s own name
-/// (`KiroCliV2Transformer.name()` vs `CLAUDE_HARNESS_DIR`) -- NOT from
-/// `detect_runtimes(target_dir)`, which is presence-only against
-/// PRE-EXISTING marker directories on disk (see `runtime.rs`'s own doc
-/// comment) and so cannot reliably distinguish "this run's own primary
-/// runtime" from "no marker yet, because this is that runtime's
-/// first-ever install and nothing has created its marker directory yet
-/// at the point this phase runs" -- this phase runs THIRD in Kiro's own
-/// `standard_install_phases()`, before `ContextInstallPhase`/
-/// `AgentInstallPhase` (the phases that actually create content under
-/// `.kiro/`), so a fresh, from-scratch Kiro install has no `.kiro`
-/// marker on disk yet at the point this phase's Kiro branch needs to
-/// decide whether to fire.
+/// (`KiroCliV2Transformer.name()` vs `CLAUDE_HARNESS_DIR`), not from
+/// `detect_runtimes(target_dir)`: that check is presence-only against
+/// pre-existing marker directories on disk, so it cannot reliably
+/// distinguish this run's own primary runtime from "no marker yet,
+/// because this is that runtime's first-ever install."
 ///
-/// - Kiro CLI branch (unconditional whenever `staged_root` is Kiro's own
-///   harness dir, i.e. this phase is running as part of Kiro's own
-///   chain): copies every staged `.sop.md` file verbatim into
-///   `.konductor/sops/` (via `kiro_cli::install_sops`), the raw files
-///   `--agent-sop-paths` (see `resource_rewrite/mcp_server.rs`'s `McpServerPass`)
-///   points the launched `skill-lookup-mcp` process at.
-/// - Claude Code branch (unconditional whenever `staged_root` is
-///   Claude's own harness dir): converts every staged `.sop.md` file
-///   into a `sop-<name>/SKILL.md` under `.claude/skills/` (via
-///   `claude::install_sop_skills`), since Claude Code has no MCP-prompt
+/// - Kiro CLI branch (whenever `staged_root` is Kiro's own harness
+///   dir): copies every staged `.sop.md` file verbatim into
+///   `.konductor/sops/` via `kiro_cli::install_sops`.
+/// - Claude Code branch (whenever `staged_root` is Claude's own
+///   harness dir): converts every staged `.sop.md` file into a
+///   `sop-<name>/SKILL.md` under `.claude/skills/` via
+///   `claude::install_sop_skills`, since Claude Code has no MCP-prompt
 ///   equivalent to serve `.sop.md` files directly.
-/// - Claude Code ADDITIVE branch, reached from WITHIN Kiro's own chain
-///   (mirrors `AgentInstallPhase`'s own additive Claude/V3
-///   settings-grant branch -- see that phase's doc comment for the same
-///   pattern applied to a different concern): when this run's `staged_root`
-///   is Kiro's, but the target ALSO has a PRE-EXISTING `.claude` marker
-///   (a genuine dual-marker reinstall/update target, where `detect_
-///   runtimes`'s presence-only check IS the right tool, unlike the
-///   primary-branch decision above), also runs the Claude conversion --
-///   always re-deriving its OWN source directory from `repo_root`
-///   (`<repo_root>/dist/claude/sops/`), never from `staged_root`, since
-///   `staged_root` here is Kiro's harness dir, not Claude's.
+/// - Claude Code additive branch, reached from within Kiro's own
+///   chain (mirrors `AgentInstallPhase`'s own additive Claude/V3
+///   settings-grant branch): when this run's `staged_root` is Kiro's,
+///   but the target also has a pre-existing `.claude` marker, also
+///   runs the Claude conversion, always re-deriving its own source
+///   directory from `repo_root` (`<repo_root>/dist/claude/sops/`),
+///   never from `staged_root`.
 ///
 /// Silently no-ops the additive Claude branch when `repo_root` is
 /// `None`: both real `InstallStrategy::install_from_local`
-/// implementations always pass `Some(repo_root)` into `run_all_phases`
-/// (see `kiro_cli.rs`'s and `claude.rs`'s own `install_from_local`), so
-/// this only matters for a test harness that constructs a phase chain
-/// directly with no repo root -- matching every other phase's own "no
-/// input, no output, not an error" convention (e.g. `mcp_server.rs`'s
-/// "a missing binary is not an error").
+/// implementations always pass `Some(repo_root)`, so this only
+/// matters for a test harness constructing a phase chain directly
+/// with no repo root.
 pub(super) struct SopInstallPhase;
 
 impl InstallPhase for SopInstallPhase {
@@ -551,17 +375,16 @@ impl InstallPhase for SopInstallPhase {
 
         if staged_root_name == Some(KiroCliV2Transformer.name()) {
             files.extend(super::kiro_cli::install_sops(staged_root, target_dir)?);
-            // Kiro-discoverable conversion, alongside the raw copy above
-            // -- see `install_kiro_sop_skills`'s own doc comment. Primary
-            // content type for this chain, not additive/marker-gated.
+            // Kiro-discoverable conversion, alongside the raw copy
+            // above. Primary content type for this chain, not
+            // additive/marker-gated.
             files.extend(super::kiro_cli::install_kiro_sop_skills(
                 staged_root,
                 target_dir,
             )?);
 
             // Additive Claude branch: this run is Kiro's own, but the
-            // target ALSO has a pre-existing `.claude` marker (a genuine
-            // dual-marker case) -- see this struct's own doc comment.
+            // target also has a pre-existing `.claude` marker.
             if detect_runtimes(target_dir).has(Runtime::ClaudeCode) {
                 if let Some(repo_root) = repo_root {
                     let claude_harness_dir = repo_root
@@ -585,13 +408,12 @@ impl InstallPhase for SopInstallPhase {
 
 /// Wraps the existing `install_context` logic: copies synthed context
 /// files into `<target_dir>/.kiro/context/`. Given its own phase
-/// (rather than being folded into `AgentInstallPhase` as an internal
-/// first step) specifically so `PhaseOutputs` records context files
-/// under their own `"context"` name, distinct from `"agents"` --
+/// Given its own phase (rather than being folded into
+/// `AgentInstallPhase`) so `PhaseOutputs` records context files under
+/// their own `"context"` name, distinct from `"agents"`.
 /// `AgentInstallPhase::run`'s resource rewrite needs the context
 /// directory to already exist on disk, which is why this phase still
-/// runs immediately before it, but the two no longer share one
-/// `PhaseOutputs` entry.
+/// runs immediately before it.
 pub(super) struct ContextInstallPhase;
 
 impl InstallPhase for ContextInstallPhase {
@@ -620,30 +442,19 @@ impl InstallPhase for ContextInstallPhase {
 /// verifying every rewritten target exists on disk.
 ///
 /// Must run after `SkillInstallPhase`, `McpInstallPhase`, and
-/// `ContextInstallPhase` -- declared via `dependencies()` below (see
-/// this module's own doc comment for why the resource-rewrite
-/// verification requires this ordering).
+/// `ContextInstallPhase`, declared via `dependencies()` below.
 ///
 /// `PhaseOutputs` contract: this phase's recorded output, under the
-/// name `"agents"`, is agent files ONLY -- context files are recorded
-/// separately, under `ContextInstallPhase`'s own `"context"` name (see
-/// that phase's doc comment). A future phase calling
-/// `phase_outputs.files_from("agents")` gets exactly what its name
-/// says, with no risk of also silently getting context files. The
-/// additive Claude/V3 settings files (below: `settings.json` for the
-/// grant, plus the hooks settings file when it differs) are folded into
-/// this same `"agents"` output rather than given their own name,
-/// mirroring how `install_agents`'s pre-phases caller used to fold the
-/// grant file into its own `agent_files` list.
+/// name `"agents"`, is agent files only; context files are recorded
+/// separately under `ContextInstallPhase`'s own `"context"` name. The
+/// additive Claude/V3 settings files are folded into this same
+/// `"agents"` output rather than given their own name.
 ///
-/// Also applies the Claude/V3 settings grant (see `resource_rewrite/claude_settings.rs`'s
-/// "V3/Claude Code permission grant" section) when `install_agents`
-/// reports it should fire. This lives HERE, not in `run_all_phases` or a
-/// later phase, because this is the one place that already holds
-/// `install_agents`'s own `any_mcp_server_injected` return value -- the
-/// single signal the grant is gated on -- with no need to thread it
-/// through `PhaseOutputs` (which carries `Vec<ManifestFile>`, not a
-/// `bool`) to reach a separate step.
+/// Also applies the Claude/V3 settings grant when `install_agents`
+/// reports it should fire. This lives here, not in `run_all_phases` or
+/// a later phase, because this is the one place that already holds
+/// `install_agents`'s own `any_mcp_server_injected` return value, the
+/// single signal the grant is gated on.
 pub(super) struct AgentInstallPhase;
 
 impl InstallPhase for AgentInstallPhase {
@@ -664,69 +475,42 @@ impl InstallPhase for AgentInstallPhase {
         phase_outputs: &PhaseOutputs,
         no_telemetry: bool,
     ) -> Result<Vec<ManifestFile>, InstallError> {
-        // The set of MCP server binaries THIS run actually copied --
-        // never re-derived from disk existence (see this module's own
-        // doc comment for why that would be wrong). Looked up by
-        // `McpInstallPhase`'s own name rather than a hardcoded literal,
-        // so the two can never drift apart.
+        // The set of MCP server binaries this run actually copied,
+        // never re-derived from disk existence. Looked up by
+        // `McpInstallPhase`'s own name so the two can never drift
+        // apart.
         let bin_files = phase_outputs.files_from(McpInstallPhase.name());
         let (mut files, any_mcp_server_injected) =
             super::kiro_cli::install_agents(staged_root, target_dir, bin_files, no_telemetry)?;
 
         // Additive, Claude/V3-only: mirrors the V2 grant's own scope
-        // exactly (only ever applies when V2 actually injected
-        // something into at least one agent this run) and is applied
-        // exactly ONCE for the whole run, not per-agent -- see
-        // `resource_rewrite/claude_settings.rs`'s "V3/Claude Code permission grant"
-        // section for why.
+        // (only applies when V2 actually injected something into at
+        // least one agent this run) and is applied exactly once for
+        // the whole run, not per-agent.
         //
         // Deliberately non-fatal: most of `apply_claude_settings_grant`'s
-        // own failure modes (a symlinked `.claude`/`settings.json`, a
+        // failure modes (a symlinked `.claude`/`settings.json`, a
         // `permissions.deny` shadow, a malformed pre-existing
-        // settings.json) are about PRE-EXISTING, user-owned content this
-        // install did not create -- not a defect in what this run itself
-        // is installing. Aborting the whole Kiro install over an
-        // unrelated problem in a foreign Claude-side file would be a
-        // worse outcome than skipping this one additive grant and
-        // warning about it; the Kiro side (the reason the user ran
-        // `konductor install` at all) already succeeded by the time this
-        // block runs -- `install_agents` above already propagated its
-        // own error via `?` before control ever reaches here.
+        // settings.json) are about pre-existing, user-owned content
+        // this install did not create. Aborting the whole Kiro install
+        // over an unrelated problem in a foreign Claude-side file would
+        // be worse than skipping this one additive grant with a
+        // warning; the Kiro side already succeeded by the time this
+        // block runs.
         //
-        // Telemetry hook wiring (usage-analytics design D.13): folded
-        // into the same shared call below, deliberately gated on the
-        // GRANT having just succeeded, not attempted independently, and
-        // ALSO gated on `!no_telemetry` -- see
-        // `apply_claude_settings_grant_and_hooks`'s own doc comment
-        // (`resource_rewrite/claude_settings.rs`) for the full rationale, shared
-        // verbatim with `KiroCliV3InstallStrategy::install_from_local`'s
-        // identical call. The hooks go to `.claude/settings.local.json`
+        // Telemetry hook wiring is folded into the same shared call
+        // below, gated on the grant having just succeeded and on
+        // `!no_telemetry`. The hooks go to `.claude/settings.local.json`
         // for a project install (`~/.claude/settings.json` for a `$HOME`
         // one), never the shared `settings.json`; under `--no-telemetry`
-        // the call strips a prior install's hooks from both files instead.
-        // `apply_claude_settings_grant`'s own failure
-        // modes (symlink, `permissions.deny` shadow, malformed
-        // pre-existing settings.json) leave that foreign file completely
-        // untouched when the grant is skipped for one of those reasons
-        // (verified by
-        // `install_from_local_does_not_abort_when_claude_grant_fails_on_foreign_content`
-        // in `kiro_cli.rs`) rather than partially writing it via a
-        // second, independent mutation.
+        // the call strips a prior install's hooks from both files
+        // instead.
         if any_mcp_server_injected && detect_runtimes(target_dir).has(Runtime::ClaudeCode) {
-            // Placeholder provenance (`Provenance::Created`), like every
-            // other file this phase (and every other phase) returns --
-            // see `InstallPhase::run`'s own doc comment: the real
-            // per-file provenance is attached once, over every phase's
-            // combined output, by `install_from_local` after
-            // `run_all_phases` returns (via `attach_provenance`), which
-            // matches each returned path against the write-ahead plan
-            // `plan_claude_settings_grant` and `plan_claude_hooks_file`
-            // already populated (see `plan_claude_settings_grant`'s own
-            // doc comment for why the plan must anticipate these files
-            // before any phase runs). A mismatch
-            // there (this fires but planning predicted it wouldn't)
-            // fails loudly via `attach_provenance`'s own internal-error
-            // check rather than silently mis-tracking.
+            // Placeholder provenance (`Provenance::Created`), like
+            // every other file this phase returns; the real per-file
+            // provenance is attached once, over every phase's combined
+            // output, by `install_from_local` after `run_all_phases`
+            // returns.
             files.extend(
                 super::resource_rewrite::apply_claude_settings_grant_and_hooks(
                     target_dir,
@@ -747,11 +531,8 @@ mod tests {
 
     /// A phase that records its own name into a shared log and either
     /// succeeds (returning one tagged `ManifestFile`) or fails with a
-    /// fixed message -- lets tests assert ordering and fail-fast
-    /// behavior without touching the real filesystem-backed phases.
-    /// `dependencies` lets a test exercise `run_all_phases`'s ordering
-    /// check directly (see `mock_with_dependencies` below) without
-    /// requiring the real `AgentInstallPhase`/filesystem phases.
+    /// fixed message. `dependencies` lets a test exercise
+    /// `run_all_phases`'s ordering check directly.
     struct MockPhase {
         name: &'static str,
         log: Arc<Mutex<Vec<&'static str>>>,
@@ -864,10 +645,9 @@ mod tests {
     }
 
     /// `run_all_phases` rejects a phase list containing two entries
-    /// with the same `name()` up front, before running any of them --
-    /// see the function's own doc comment for why. Pins both halves of
-    /// that behavior: the error is returned, and NEITHER same-named
-    /// phase ever runs (not even the first).
+    /// with the same `name()` up front, before running any of them.
+    /// Pins both halves: the error is returned, and neither same-named
+    /// phase ever runs.
     #[test]
     fn run_all_phases_rejects_a_duplicate_phase_name_before_running_any_phase() {
         let log = Arc::new(Mutex::new(Vec::new()));
@@ -917,12 +697,8 @@ mod tests {
         assert!(context_index < agent_index);
     }
 
-    /// Every phase `name()` in the default chain must be distinct --
-    /// `PhaseOutputs::files_from` looks a phase's recorded output up by
-    /// this exact name (see `AgentInstallPhase::run`'s lookup of
-    /// `McpInstallPhase.name()`), so a duplicate name would make that
-    /// lookup ambiguous. A dedup-based check (collect into a
-    /// `HashSet`, compare lengths) is the direct way to assert this.
+    /// Every phase `name()` in the default chain must be distinct, so
+    /// `PhaseOutputs::files_from` lookups by name are never ambiguous.
     #[test]
     fn phase_names_are_unique() {
         let phases = standard_install_phases();
@@ -936,8 +712,8 @@ mod tests {
     }
 
     /// `staged_root`'s own name is how `SopInstallPhase::run` decides
-    /// which branch (if any) to take -- an unrecognized name (neither
-    /// Kiro's nor Claude's own harness dir) is a no-op, not an error.
+    /// which branch to take; an unrecognized name is a no-op, not an
+    /// error.
     #[test]
     fn sop_install_phase_is_a_no_op_for_an_unrecognized_staged_root() {
         let files = SopInstallPhase
@@ -954,13 +730,10 @@ mod tests {
     }
 
     /// The Kiro branch fires whenever `staged_root` is Kiro's own
-    /// harness dir (`dist/kiro-cli-v2/`), copying every staged `.sop.md`
-    /// file verbatim into `.konductor/sops/` AND converting it into a
-    /// Kiro-discoverable `sop-<name>/SKILL.md` under `.kiro/skills/` --
-    /// both unconditional, not gated on `detect_runtimes` (see this
-    /// struct's own doc comment for why `detect_runtimes` alone would be
-    /// wrong for a from-scratch install, which has no `.kiro` marker on
-    /// disk yet at this point in the chain).
+    /// harness dir, copying every staged `.sop.md` file verbatim into
+    /// `.konductor/sops/` and converting it into a Kiro-discoverable
+    /// `sop-<name>/SKILL.md` under `.kiro/skills/`, both unconditional,
+    /// not gated on `detect_runtimes`.
     #[test]
     fn sop_install_phase_kiro_branch_copies_staged_sops_into_konductor_sops() {
         let dir = std::env::temp_dir().join(format!(
@@ -1051,10 +824,9 @@ mod tests {
 
     /// Additive dual-marker case, mirroring `AgentInstallPhase`'s own
     /// Claude/V3 settings-grant branch: when this run is Kiro's own
-    /// (`staged_root` is Kiro's harness dir) but the target ALREADY has
-    /// a pre-existing `.claude` marker, the Claude conversion ALSO runs,
-    /// sourced from `repo_root` (never from `staged_root`, which is
-    /// Kiro's harness dir here, not Claude's).
+    /// but the target already has a pre-existing `.claude` marker, the
+    /// Claude conversion also runs, sourced from `repo_root`, never
+    /// from `staged_root`.
     #[test]
     fn sop_install_phase_kiro_chain_additively_converts_claude_sops_when_claude_marker_preexists() {
         let dir = std::env::temp_dir().join(format!(
@@ -1122,8 +894,8 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
-    /// Most phases have no precondition -- the default `check_preconditions`
-    /// impl must accept `None` (and, symmetrically, `Some`) without error.
+    /// Most phases have no precondition; the default
+    /// `check_preconditions` impl must accept `None` without error.
     #[test]
     fn most_phases_have_no_precondition() {
         SopInstallPhase
@@ -1156,15 +928,11 @@ mod tests {
             .expect("McpInstallPhase accepts repo_root: Some(_)");
     }
 
-    /// `run_all_phases` must call each phase's `check_preconditions`
-    /// up front, before running ANY phase -- the same eagerness as its
-    /// own duplicate-name check (see
-    /// `run_all_phases_rejects_a_duplicate_phase_name_before_running_any_phase`
-    /// above). Uses the real `McpInstallPhase` (the only phase with a
-    /// real precondition) ordered AFTER a mock phase that would record
-    /// its own name if it ran, so a failure to reject `repo_root: None`
-    /// up front would be visible as the mock phase's name appearing in
-    /// the log.
+    /// `run_all_phases` must call each phase's `check_preconditions` up
+    /// front, before running any phase. Uses the real `McpInstallPhase`
+    /// ordered after a mock phase that would record its own name if it
+    /// ran, so a failure to reject `repo_root: None` up front would be
+    /// visible as the mock phase's name appearing in the log.
     #[test]
     fn run_all_phases_rejects_a_missing_precondition_before_running_any_phase() {
         let log = Arc::new(Mutex::new(Vec::new()));
@@ -1189,12 +957,9 @@ mod tests {
     }
 
     /// `McpInstallPhase::run` unwraps `repo_root` only after calling
-    /// `check_preconditions` itself (see the phase's own doc comment
-    /// for why there is no separately-maintained inline
-    /// `repo_root.is_none()` check) -- so calling `run` directly with
-    /// `repo_root: None`, bypassing `run_all_phases` entirely, must
-    /// still fail with the same message `check_preconditions` returns,
-    /// not panic on the `expect()` inside `run`.
+    /// `check_preconditions` itself, so calling `run` directly with
+    /// `repo_root: None`, bypassing `run_all_phases`, must still fail
+    /// with the same message, not panic.
     #[test]
     fn mcp_install_phase_run_rejects_a_missing_repo_root_even_when_called_directly() {
         let err = McpInstallPhase
@@ -1211,8 +976,8 @@ mod tests {
     }
 
     /// `AgentInstallPhase` declares the three phases its resource-
-    /// rewrite verification needs already on disk (see its own doc
-    /// comment) via `dependencies()`, not just via its position in
+    /// rewrite verification needs already on disk via
+    /// `dependencies()`, not just via its position in
     /// `standard_install_phases()`.
     #[test]
     fn agent_install_phase_declares_its_real_ordering_dependencies() {
@@ -1224,12 +989,7 @@ mod tests {
 
     /// `run_all_phases` rejects a phase list where a phase's declared
     /// `dependencies()` names a phase that has not appeared earlier in
-    /// the same list -- up front, before running any phase. This is
-    /// what makes the ordering constraint `AgentInstallPhase` declares
-    /// enforced by the trait itself: a future caller that reorders or
-    /// drops a dependency now fails loudly here, rather than only much
-    /// later inside the dependent phase's own `run`, or not at all if
-    /// that reordered path is never exercised by a test.
+    /// the same list, up front, before running any phase.
     #[test]
     fn run_all_phases_rejects_a_phase_ordered_before_its_declared_dependency() {
         let log = Arc::new(Mutex::new(Vec::new()));
@@ -1261,12 +1021,10 @@ mod tests {
         );
     }
 
-    /// `run_all_phases` rejects a phase that names *itself* in its own
-    /// `dependencies()`. The dependency check runs against `seen_names`
-    /// before this phase's own name is inserted into that set, so a
-    /// self-reference can never be trivially satisfied by the phase's
-    /// own not-yet-recorded name -- it is checked, and rejected, the
-    /// same way any other unmet dependency is.
+    /// `run_all_phases` rejects a phase that names itself in its own
+    /// `dependencies()`. The dependency check runs against
+    /// `seen_names` before this phase's own name is inserted, so a
+    /// self-reference can never be trivially satisfied.
     #[test]
     fn run_all_phases_rejects_a_phase_that_declares_itself_as_its_own_dependency() {
         let log = Arc::new(Mutex::new(Vec::new()));
@@ -1301,9 +1059,7 @@ mod tests {
 
     /// The positive counterpart to the rejection test above: every
     /// phase's declared `dependencies()` must actually be satisfied by
-    /// `standard_install_phases()`'s own chosen order. Walks the same
-    /// `name()`/`dependencies()` pair `run_all_phases` itself checks,
-    /// without running any phase's real filesystem-backed `run`.
+    /// `standard_install_phases()`'s own chosen order.
     #[test]
     fn standard_install_phases_satisfies_every_declared_dependency() {
         let phases = standard_install_phases();
@@ -1334,10 +1090,7 @@ mod tests {
         assert_eq!(ContextInstallPhase.name(), "context");
     }
 
-    /// A minimal `ManifestFile` for tests that only care about `path` --
-    /// mirrors `resource_rewrite/mcp_server.rs`'s own `bin_file_entry` test helper
-    /// for the same reason: every `PhaseOutputs` test below cares which
-    /// path came back, never the hash or provenance.
+    /// A minimal `ManifestFile` for tests that only care about `path`.
     fn mf(path: &str) -> ManifestFile {
         ManifestFile {
             path: path.to_string(),
@@ -1347,11 +1100,8 @@ mod tests {
     }
 
     /// `record`-ing the same phase name twice directly against a
-    /// `PhaseOutputs` (bypassing `run_all_phases`'s own upfront
-    /// uniqueness check -- see its doc comment) leaves the SECOND
-    /// recording unreachable via `files_from`, even though `all_files()`
-    /// still includes it. `.find()`'s first-match semantics, made
-    /// explicit rather than left implicit, for this lower-level type.
+    /// `PhaseOutputs` leaves the second recording unreachable via
+    /// `files_from`, even though `all_files()` still includes it.
     #[test]
     fn phase_outputs_files_from_returns_only_the_first_recorded_entry_for_a_duplicate_name() {
         let mut outputs = PhaseOutputs::new();
@@ -1385,12 +1135,8 @@ mod tests {
         );
     }
 
-    /// A phase that has not run yet in this chain (never recorded,
-    /// whether because a caller reordered the chain or omitted that
-    /// phase entirely) must look up as an empty slice, not panic -- the
-    /// fail-safe this module's own doc comment documents for
-    /// `AgentInstallPhase` looking up `McpInstallPhase`'s output in a
-    /// reordered or MCP-less chain.
+    /// A phase that has not run yet in this chain must look up as an
+    /// empty slice, not panic.
     #[test]
     fn phase_outputs_files_from_is_empty_for_a_phase_that_has_not_run_yet() {
         let outputs = PhaseOutputs::new();

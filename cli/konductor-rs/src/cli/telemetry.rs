@@ -17,17 +17,10 @@ mod report;
 
 // `doctor`'s telemetry-state check and `update`'s opt-out carry-forward
 // both gate on `install_info::read_install_info_detailed`, which says
-// WHY a read failed (absent vs. broken) so each can warn on a broken
-// record without mistaking it for a genuine opt-out. `report_*` still
-// gates on the plain `read_install_info` (via its own `install_info::`
-// module path, not this re-export -- see `report.rs`). `install.rs`'s
-// install summary also reads through this re-export, for the
-// installed content's `agent_version`: it only ever needs the record
-// or nothing, with no cause to distinguish absent from broken.
-// `install_info_exists` is re-exported here `#[cfg(test)]`-only: it
-// has callers, but only in this crate's own `update.rs` tests that
-// assert against install-info's raw presence rather
-// than going through the detailed read.
+// why a read failed (absent vs. broken) so each can warn on a broken
+// record without mistaking it for a genuine opt-out. `report_*` gates
+// on the plain `read_install_info` instead. `install_info_exists` is
+// re-exported here `#[cfg(test)]`-only, for `update.rs`'s tests.
 #[allow(unused_imports)]
 pub(crate) use identity::{ensure_identity, identity_path};
 #[cfg(test)]

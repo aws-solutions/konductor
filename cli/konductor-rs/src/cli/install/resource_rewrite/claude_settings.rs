@@ -11,7 +11,7 @@
 // agent JSON.
 
 use std::os::unix::fs::PermissionsExt;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use super::super::manifest::{ManifestFile, Provenance};
 use super::mcp_server::{MCP_SERVER_ALLOWED_TOOLS_GRANTS, MCP_SERVER_NAME};
@@ -196,6 +196,112 @@ impl From<String> for ClaudeGrantError {
     }
 }
 
+/// A settings file's full on-disk state, captured before any mutation:
+/// its parsed JSON root, the original bytes (for an unchanged no-op
+/// return), and the mode to preserve across the rewrite (this file is
+/// the user's, and may deliberately be narrower than the default, e.g.
+/// `0600`, since it can carry an `env` block or an `apiKeyHelper` path).
+/// `None` text/mode means the file did not exist yet.
+struct SettingsFileState {
+    root: serde_json::Value,
+    original_text: Option<String>,
+    original_mode: Option<u32>,
+}
+
+/// `target_dir.join(relative)` and its parent `.claude` directory,
+/// rejecting either if it is a symlink. Safe to call before acquiring
+/// `.settings.lock`, since it only resolves paths and does not read file
+/// content.
+fn settings_paths(
+    target_dir: &Path,
+    relative: &str,
+) -> Result<(PathBuf, PathBuf), ClaudeGrantError> {
+    let settings_path = target_dir.join(relative);
+    let claude_dir = settings_path
+        .parent()
+        .expect("Claude settings paths always have a parent (\".claude\")")
+        .to_path_buf();
+    reject_symlink(&claude_dir, "directory")?;
+    reject_symlink(&settings_path, "file")?;
+    Ok((settings_path, claude_dir))
+}
+
+/// Reads and parses `settings_path`, re-checking it and `claude_dir` for
+/// a symlink first. An absent file parses as an empty JSON object with
+/// no recorded mode. Must be called only after acquiring
+/// `.settings.lock` for `claude_dir`, since the read result is the basis
+/// for a subsequent write, and reading before the lock would let a
+/// concurrent writer's change be read, then silently overwritten.
+fn read_settings_file(
+    settings_path: &Path,
+    claude_dir: &Path,
+) -> Result<SettingsFileState, ClaudeGrantError> {
+    reject_symlink(claude_dir, "directory")?;
+    reject_symlink(settings_path, "file")?;
+
+    let original_mode: Option<u32> = if settings_path.is_file() {
+        Some(
+            std::fs::metadata(settings_path)
+                .map_err(|e| format!("failed to stat {}: {e}", settings_path.display()))?
+                .permissions()
+                .mode(),
+        )
+    } else {
+        None
+    };
+    let original_text: Option<String> = if settings_path.is_file() {
+        Some(
+            std::fs::read_to_string(settings_path)
+                .map_err(|e| format!("failed to read {}: {e}", settings_path.display()))?,
+        )
+    } else {
+        None
+    };
+    let root: serde_json::Value = match &original_text {
+        Some(text) => serde_json::from_str(text).map_err(|e| {
+            format!(
+                "failed to parse {} as JSON: {e} -- fix or remove the file before installing",
+                settings_path.display()
+            )
+        })?,
+        None => serde_json::Value::Object(serde_json::Map::new()),
+    };
+
+    Ok(SettingsFileState {
+        root,
+        original_text,
+        original_mode,
+    })
+}
+
+/// Serializes `root` and writes it to `settings_path` at `original_mode`
+/// (or the write helper's own default for a freshly-created file),
+/// re-checking for a symlink immediately before the disk-mutating calls
+/// to narrow the TOCTOU window since the earlier check in
+/// `read_settings_file`. Returns the bytes now on disk.
+fn write_settings_file(
+    settings_path: &Path,
+    claude_dir: &Path,
+    root: &serde_json::Value,
+    original_mode: Option<u32>,
+) -> Result<Vec<u8>, ClaudeGrantError> {
+    let mut bytes = serde_json::to_vec_pretty(root)
+        .map_err(|e| format!("failed to serialize {}: {e}", settings_path.display()))?;
+    bytes.push(b'\n');
+
+    reject_symlink(claude_dir, "directory")?;
+    reject_symlink(settings_path, "file")?;
+    std::fs::create_dir_all(claude_dir)
+        .map_err(|e| format!("failed to create {}: {e}", claude_dir.display()))?;
+    match original_mode {
+        Some(mode) => crate::cli::atomic_write::write_atomic_with_mode(settings_path, &bytes, mode),
+        None => crate::cli::atomic_write::write_atomic(settings_path, &bytes),
+    }
+    .map_err(|e| format!("failed to write {}: {e}", settings_path.display()))?;
+
+    Ok(bytes)
+}
+
 /// Ensures `<target_dir>/.claude/settings.json` grants every string in
 /// `grants` under `permissions.allow`, creating the file and scaffolding
 /// when missing. Appends only entries not already present, so reinstall
@@ -216,62 +322,24 @@ fn merge_claude_settings_permissions(
     target_dir: &Path,
     grants: &[String],
 ) -> Result<Vec<u8>, ClaudeGrantError> {
-    let settings_relative = Path::new(CLAUDE_SETTINGS_RELATIVE_PATH);
-    let claude_dir_relative = settings_relative
-        .parent()
-        .expect("CLAUDE_SETTINGS_RELATIVE_PATH always has a parent (\".claude\")");
-    let claude_dir = target_dir.join(claude_dir_relative);
-    reject_symlink(&claude_dir, "directory")?;
-
-    let settings_path = target_dir.join(settings_relative);
-    reject_symlink(&settings_path, "file")?;
+    let (settings_path, claude_dir) = settings_paths(target_dir, CLAUDE_SETTINGS_RELATIVE_PATH)?;
 
     // `.claude/.settings.lock` serializes every read-modify-write this
     // module does under `.claude` (grant merge, hook merge, hook removal),
-    // across threads and concurrent `konductor install` runs. Without it,
-    // two merges read the same snapshot and the later rename drops the
-    // other's change. Held until return.
+    // across threads and concurrent `konductor install` runs. Must be
+    // acquired before the read below: reading first and locking only for
+    // the write would let two merges both read the same pre-write
+    // snapshot, each compute a rewrite from it, and the later rename
+    // silently drop the other's change. Held until return.
     let _lock_guard = crate::cli::config_lock::acquire_named(&claude_dir, ".settings.lock")
         .map_err(|source| format!("failed to lock {}: {source}", claude_dir.display()))?;
 
-    // Captured up front, before any mutation, for two reasons this
-    // function needs later: (1) `original_mode` lets a pre-existing
-    // file's permissions survive `write_atomic`'s fixed `0o644` below
-    // -- right for a file Konductor generates itself, but this one is
-    // the user's and may deliberately be narrower (e.g. `0600`,
-    // since a Claude settings file can carry an `env` block or an
-    // `apiKeyHelper` path); (2) `original_text` is returned verbatim
-    // when the merge below finds every grant already present, so an
-    // idempotent reinstall doesn't reformat the user's file or bump
-    // its mtime for a run that changed nothing.
-    let original_mode: Option<u32> = if settings_path.is_file() {
-        Some(
-            std::fs::metadata(&settings_path)
-                .map_err(|e| format!("failed to stat {}: {e}", settings_path.display()))?
-                .permissions()
-                .mode(),
-        )
-    } else {
-        None
-    };
-    let original_text: Option<String> = if settings_path.is_file() {
-        Some(
-            std::fs::read_to_string(&settings_path)
-                .map_err(|e| format!("failed to read {}: {e}", settings_path.display()))?,
-        )
-    } else {
-        None
-    };
-
-    let mut root: serde_json::Value = match &original_text {
-        Some(text) => serde_json::from_str(text).map_err(|e| {
-            format!(
-                "failed to parse {} as JSON: {e} -- fix or remove the file before installing",
-                settings_path.display()
-            )
-        })?,
-        None => serde_json::Value::Object(serde_json::Map::new()),
-    };
+    let state = read_settings_file(&settings_path, &claude_dir)?;
+    let SettingsFileState {
+        mut root,
+        original_text,
+        original_mode,
+    } = state;
 
     let Some(root_obj) = root.as_object_mut() else {
         return Err(format!(
@@ -363,41 +431,7 @@ fn merge_claude_settings_permissions(
         return Ok(unchanged);
     }
 
-    let mut bytes = serde_json::to_vec_pretty(&root)
-        .map_err(|e| format!("failed to serialize {}: {e}", settings_path.display()))?;
-    bytes.push(b'\n');
-
-    // Re-check immediately before the disk-mutating calls below --
-    // narrows, per `reject_symlink`'s own doc comment, the window since
-    // the earlier up-front check at the top of this function.
-    reject_symlink(&claude_dir, "directory")?;
-    reject_symlink(&settings_path, "file")?;
-    std::fs::create_dir_all(&claude_dir)
-        .map_err(|e| format!("failed to create {}: {e}", claude_dir.display()))?;
-
-    // Writes directly at the file's own intended final mode: the
-    // pre-existing mode when there was one (this file is the user's,
-    // and may deliberately be narrower than `0o644`, e.g. `0600`, since
-    // it can carry an `env` block or an `apiKeyHelper` path -- see the
-    // `original_mode` capture above), or `write_atomic`'s own default
-    // for a freshly-created file. `write_atomic_with_mode` chmods the
-    // temp file to this mode BEFORE the rename, and `fs::rename`
-    // preserves that mode across the rename (see `atomic_write.rs`'s
-    // own "Explicit file permissions" module note), so `settings_path`
-    // is never visible, before or after, at any mode other than the one
-    // it is meant to end at. No separate post-rename chmod is needed:
-    // there is no window where a narrower file sits world-readable at
-    // `0o644`, and no possibility of that chmod call failing and
-    // leaving it there.
-    match original_mode {
-        Some(mode) => {
-            crate::cli::atomic_write::write_atomic_with_mode(&settings_path, &bytes, mode)
-        }
-        None => crate::cli::atomic_write::write_atomic(&settings_path, &bytes),
-    }
-    .map_err(|e| format!("failed to write {}: {e}", settings_path.display()))?;
-
-    Ok(bytes)
+    write_settings_file(&settings_path, &claude_dir, &root, original_mode)
 }
 
 /// Applies the `permissions.allow` grant and returns `settings.json`'s
@@ -699,45 +733,17 @@ fn merge_claude_settings_hooks_with_exe(
     exe: &str,
     agent_names: &[String],
 ) -> Result<Vec<u8>, ClaudeGrantError> {
-    let settings_path = target_dir.join(relative);
-    let claude_dir = settings_path
-        .parent()
-        .expect("Claude settings paths always have a parent (\".claude\")")
-        .to_path_buf();
-    reject_symlink(&claude_dir, "directory")?;
-    reject_symlink(&settings_path, "file")?;
+    let (settings_path, claude_dir) = settings_paths(target_dir, relative)?;
 
     let _lock_guard = crate::cli::config_lock::acquire_named(&claude_dir, ".settings.lock")
         .map_err(|source| format!("failed to lock {}: {source}", claude_dir.display()))?;
 
-    let original_mode: Option<u32> = if settings_path.is_file() {
-        Some(
-            std::fs::metadata(&settings_path)
-                .map_err(|e| format!("failed to stat {}: {e}", settings_path.display()))?
-                .permissions()
-                .mode(),
-        )
-    } else {
-        None
-    };
-    let original_text: Option<String> = if settings_path.is_file() {
-        Some(
-            std::fs::read_to_string(&settings_path)
-                .map_err(|e| format!("failed to read {}: {e}", settings_path.display()))?,
-        )
-    } else {
-        None
-    };
-
-    let mut root: serde_json::Value = match &original_text {
-        Some(text) => serde_json::from_str(text).map_err(|e| {
-            format!(
-                "failed to parse {} as JSON: {e} -- fix or remove the file before installing",
-                settings_path.display()
-            )
-        })?,
-        None => serde_json::Value::Object(serde_json::Map::new()),
-    };
+    let state = read_settings_file(&settings_path, &claude_dir)?;
+    let SettingsFileState {
+        mut root,
+        original_text,
+        original_mode,
+    } = state;
 
     let Some(root_obj) = root.as_object_mut() else {
         return Err(format!(
@@ -829,23 +835,7 @@ fn merge_claude_settings_hooks_with_exe(
         }
     }
 
-    let mut bytes = serde_json::to_vec_pretty(&root)
-        .map_err(|e| format!("failed to serialize {}: {e}", settings_path.display()))?;
-    bytes.push(b'\n');
-
-    reject_symlink(&claude_dir, "directory")?;
-    reject_symlink(&settings_path, "file")?;
-    std::fs::create_dir_all(&claude_dir)
-        .map_err(|e| format!("failed to create {}: {e}", claude_dir.display()))?;
-    match original_mode {
-        Some(mode) => {
-            crate::cli::atomic_write::write_atomic_with_mode(&settings_path, &bytes, mode)
-        }
-        None => crate::cli::atomic_write::write_atomic(&settings_path, &bytes),
-    }
-    .map_err(|e| format!("failed to write {}: {e}", settings_path.display()))?;
-
-    Ok(bytes)
+    write_settings_file(&settings_path, &claude_dir, &root, original_mode)
 }
 
 /// Wires the telemetry hooks into `target_dir`'s hooks settings file
@@ -940,13 +930,7 @@ fn remove_claude_settings_hooks(
     relative: &str,
     entries: &[TelemetryHookEntry],
 ) -> Result<bool, ClaudeGrantError> {
-    let settings_path = target_dir.join(relative);
-    let claude_dir = settings_path
-        .parent()
-        .expect("Claude settings paths always have a parent (\".claude\")")
-        .to_path_buf();
-    reject_symlink(&claude_dir, "directory")?;
-    reject_symlink(&settings_path, "file")?;
+    let (settings_path, claude_dir) = settings_paths(target_dir, relative)?;
     if !settings_path.is_file() {
         return Ok(false);
     }
@@ -984,6 +968,28 @@ fn remove_claude_settings_hooks(
         .into());
     };
 
+    let removed = strip_entries_from_hooks(hooks_obj, entries, &settings_path)?;
+    if removed == 0 {
+        return Ok(false);
+    }
+    if hooks_obj.is_empty() {
+        root_obj.remove("hooks");
+    }
+
+    write_settings_file(&settings_path, &claude_dir, &root, Some(original_mode))?;
+    Ok(true)
+}
+
+/// Removes every Konductor telemetry hook listed in `entries` from
+/// `hooks_obj` (a settings file's parsed `"hooks"` object), dropping an
+/// event's array once it has no blocks left. Returns how many hooks were
+/// removed in total, across every event. Errors if an event's value is
+/// present but not a JSON array.
+fn strip_entries_from_hooks(
+    hooks_obj: &mut serde_json::Map<String, serde_json::Value>,
+    entries: &[TelemetryHookEntry],
+    settings_path: &Path,
+) -> Result<usize, ClaudeGrantError> {
     let mut removed = 0;
     for entry in entries {
         let Some(event_val) = hooks_obj.get_mut(entry.event) else {
@@ -1002,21 +1008,7 @@ fn remove_claude_settings_hooks(
             hooks_obj.remove(entry.event);
         }
     }
-    if removed == 0 {
-        return Ok(false);
-    }
-    if hooks_obj.is_empty() {
-        root_obj.remove("hooks");
-    }
-
-    let mut bytes = serde_json::to_vec_pretty(&root)
-        .map_err(|e| format!("failed to serialize {}: {e}", settings_path.display()))?;
-    bytes.push(b'\n');
-    reject_symlink(&claude_dir, "directory")?;
-    reject_symlink(&settings_path, "file")?;
-    crate::cli::atomic_write::write_atomic_with_mode(&settings_path, &bytes, original_mode)
-        .map_err(|e| format!("failed to write {}: {e}", settings_path.display()))?;
-    Ok(true)
+    Ok(removed)
 }
 
 /// Strips the Konductor telemetry hooks from both Claude settings files at

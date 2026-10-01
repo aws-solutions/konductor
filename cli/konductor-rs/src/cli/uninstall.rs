@@ -3,36 +3,26 @@
 // uninstall.rs -- `konductor uninstall` dispatch (Rust implementation).
 //
 // `--target`/`--all` are supported alongside the flagless bare
-// invocation. No interactive TTY picker, and no implicit resolve-to-
-// $HOME destructive-confirmation gate either: a bare invocation
-// (`--target` omitted, `--all` not passed) against 2+ tracked entries
-// is an immediate usage error naming every tracked install, matching
-// design §3's own table exactly and mirroring `update.rs`'s identical
-// ambiguous-selection error (`report_ambiguous_targets`) -- see that
-// function's own doc comment. A single tracked entry is always
-// uninstalled directly with no flag needed, unchanged from the
-// design's own 1-entry row.
+// invocation. A bare invocation (`--target` omitted, `--all` not
+// passed) against 2+ tracked entries is an immediate usage error
+// naming every tracked install, mirroring `update.rs`'s identical
+// ambiguous-selection error (`report_ambiguous_targets`). A single
+// tracked entry is always uninstalled directly with no flag needed.
 //
-// `harness` (design doc §9.6) is a SEPARATE selection axis from target
-// resolution: once a target is resolved (by whichever path above), if
-// that target tracks 2+ STRATEGIES, `harness` (or an interactive
-// picker, or a usage error) selects exactly one of them; see
-// `harness_select::select_harness`.
+// `harness` is a separate selection axis from target resolution: once
+// a target is resolved, if that target tracks 2+ strategies, `harness`
+// (or an interactive picker, or a usage error) selects exactly one of
+// them; see `harness_select::select_harness`.
 //
-// Manifest writes are locked and fresh-read; file copies are not. Every
-// manifest write here goes through the same `config_lock`-backed
+// Manifest writes are locked and fresh-read; file copies are not.
+// Every manifest write here goes through the same `config_lock`-backed
 // advisory lock `install.rs`/`update.rs` use, and re-reads the manifest
 // fresh under that lock rather than trusting an earlier unlocked read
-// used only to drive harness selection. A concurrent install/uninstall
-// of a different, coexisting strategy at the same target can no longer
-// corrupt or lose its slot. What remains unsupported: two invocations
-// racing on the exact same strategy slot's on-disk files -- this
-// module's delete loop and `update.rs`'s copy loop each touch the
-// filesystem outside the manifest-write critical section, so they can
-// still interleave and corrupt files even though the manifest stays
-// consistent. Callers must still serialize same-slot invocations
-// themselves -- same accepted-risk posture as the cross-target index
-// race (design doc §2).
+// used only to drive harness selection. What remains unsupported: two
+// invocations racing on the exact same strategy slot's on-disk files --
+// this module's delete loop and `update.rs`'s copy loop each touch the
+// filesystem outside the manifest-write critical section, so callers
+// must still serialize same-slot invocations themselves.
 
 use std::path::{Component, Path, PathBuf};
 
@@ -86,14 +76,12 @@ fn index_error_exit_code(err: &index::IndexError) -> u8 {
 }
 
 /// `uninstall_one`'s error type. Carries a human-readable message, the
-/// exit code that produced it (`EXIT_VERIFY_FAILED` for an unsupported
-/// manifest/index schema version, `EXIT_USAGE_ERROR` otherwise), and
-/// whether this is specifically the "target doesn't track the
-/// requested `--harness`" case (`harness_not_tracked`). Only
-/// `dispatch_all`'s batch loop inspects `harness_not_tracked`, treating
-/// it as a per-target skip rather than a failure.
-/// `dispatch_target`'s single-target path still surfaces it as an
-/// ordinary usage error -- there's no sibling target to skip to.
+/// exit code that produced it, and whether this is specifically the
+/// "target doesn't track the requested `--harness`" case
+/// (`harness_not_tracked`). Only `dispatch_all`'s batch loop inspects
+/// `harness_not_tracked`, treating it as a per-target skip rather than
+/// a failure. `dispatch_target`'s single-target path still surfaces it
+/// as an ordinary usage error.
 #[derive(Debug)]
 struct UninstallError {
     message: String,
@@ -118,8 +106,7 @@ impl UninstallError {
 
     /// Specifically the "target does not track the requested
     /// `--harness`" case `harness_select::select_harness` reports via
-    /// `HarnessSelectionError::NotTracked` (see this struct's doc for
-    /// why it's split out from `usage`).
+    /// `HarnessSelectionError::NotTracked`.
     fn harness_not_tracked(message: impl Into<String>) -> Self {
         UninstallError {
             message: message.into(),
@@ -150,111 +137,76 @@ impl UninstallError {
 // shorter local names) so the values can't drift between modules.
 
 /// One target's uninstall outcome: how many files were deleted, how
-/// many of those had a diverged hash (design §5's disclosure
-/// requirement), how many now-empty directories were removed, and
-/// whether this target was **stale** -- tracked in the index
-/// but with no manifest found on disk. A stale result's
-/// `files_deleted`/`diverged_deleted`/`dirs_removed` are always all 0
-/// (there was nothing to read, so nothing was deleted), which is
-/// exactly why `stale` exists as its own field: a real, successful
-/// uninstall that also happens to delete 0 files (e.g. every file was
-/// already independently removed while the manifest itself remained)
-/// would otherwise be indistinguishable in the report from a stale
-/// index entry that never had a manifest to begin with. `stale: true`
-/// is the caller's signal to report this target as "stale (no manifest
-/// found); cleared its tracked install entry" rather than blending it
-/// into a real 0-file uninstall's message.
+/// many of those had a diverged hash (disclosure requirement), how
+/// many now-empty directories were removed, and whether this target
+/// was **stale** -- tracked in the index but with no manifest found on
+/// disk. A stale result's counts are always 0, which is why `stale`
+/// exists as its own field: a real, successful 0-file uninstall would
+/// otherwise be indistinguishable from a stale index entry.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct UninstallCounts {
     pub files_deleted: usize,
     pub diverged_deleted: usize,
     /// The specific relative paths counted in `diverged_deleted`, in
-    /// the order `delete_eligible_files` encountered them -- design
-    /// §5's disclosure requirement made concrete: a bare count tells
-    /// the user HOW MANY hand-edited files were deleted anyway, but not
-    /// WHICH ones, so there is nothing to check before trusting the
-    /// count. Populated alongside `diverged_deleted`'s increment in
-    /// `delete_eligible_files`, never independently -- the two must
-    /// always agree in length. Surfaced verbatim in `--json` output and
-    /// listed by name in the plain-text success message when non-empty.
+    /// the order `delete_eligible_files` encountered them -- tells the
+    /// user WHICH files were hand-edited but deleted anyway, not just
+    /// how many. Populated alongside `diverged_deleted`'s increment,
+    /// never independently.
     pub diverged_paths: Vec<PathBuf>,
     pub dirs_removed: usize,
     pub stale: bool,
     /// Whether this target had a `--link-bin`-created symlink tracked
     /// in `$HOME/.konductor/bin-links`, and that tracking entry was
     /// dropped as part of this uninstall. `false` for a target that
-    /// never requested `--link-bin` (the common case), not an error.
-    /// Does not imply the physical symlink was deleted -- see
-    /// `bin_link_symlink_removed`, since another still-installed
-    /// target can share the same physical symlink.
+    /// never requested `--link-bin`, not an error. Does not imply the
+    /// physical symlink was deleted -- see `bin_link_symlink_removed`,
+    /// since another still-installed target can share the same
+    /// physical symlink.
     pub bin_link_untracked: bool,
-    /// Whether the on-disk `--link-bin` symlink was actually deleted --
-    /// `bin_link::BinLinkRemoval::physically_removed` passed through.
-    /// Always `false` when `bin_link_untracked` is `false`; can also be
-    /// `false` even when `bin_link_untracked` is `true`, e.g. when
-    /// another still-installed target's tracking entry names the same
-    /// physical symlink. Reporting must key its "removed its
-    /// --link-bin symlink" message off this field, not
-    /// `bin_link_untracked`.
+    /// Whether the on-disk `--link-bin` symlink was actually deleted.
+    /// Always `false` when `bin_link_untracked` is `false`; can also
+    /// be `false` even when `bin_link_untracked` is `true` (e.g.
+    /// another still-installed target's entry names the same physical
+    /// symlink). Reporting must key its "removed its --link-bin
+    /// symlink" message off this field, not `bin_link_untracked`.
     pub bin_link_symlink_removed: bool,
     /// The error, if `bin_link::remove_bin_link` failed for this
-    /// target. `None` on the ordinary path -- either nothing was tracked
-    /// (`bin_link_untracked` stays `false` too) or removal succeeded.
-    /// Carried back as data rather than printed directly at the failure
-    /// site (mirrors `update.rs`'s own `finalize_index_warning` field
-    /// and its "no printing in the core function" rationale): a
-    /// `--json` consumer that only reads stdout must be able to see
-    /// this failure too, not just a plain-text `eprintln!` on stderr --
-    /// and `Some(failure)` here is distinguishable from "this target
-    /// never requested `--link-bin`" in a way a bare `false` on
-    /// `bin_link_untracked` alone is not.
+    /// target. `None` on the ordinary path. Carried back as data
+    /// rather than printed directly, so a `--json` consumer reading
+    /// only stdout can still see it, distinct from "never requested
+    /// `--link-bin`".
     ///
-    /// A `BinLinkFailure` (message + exit code), not a bare `String` --
-    /// CR comment r1p6's regression: `bin_link.rs` already splits
-    /// `BinLinkError` into `EXIT_VERIFY_FAILED` (65, for
-    /// `UnsupportedSchemaVersion`/`RollbackAlsoFailed`) vs
-    /// `EXIT_USAGE_ERROR` (64, every other variant) via
-    /// `bin_link::bin_link_error_exit_code`, but a bare `String` throws
-    /// that distinction away before `exit_code_for_counts` ever runs --
-    /// every bin-link failure flattened to `EXIT_SUCCESS_WITH_WARNINGS`
-    /// (6), silently downgrading a real state-consistency concern (a
-    /// `BIN_LINK_SCHEMA_VERSION` bump, or a rollback that itself failed)
-    /// to a mere warning. The exit code is derived once, at construction
-    /// time in `uninstall_one_impl` (the one place that still has the
-    /// real `BinLinkError` value), rather than re-derived from the
+    /// A `BinLinkFailure` (message + exit code), not a bare `String`:
+    /// `bin_link.rs` splits `BinLinkError` into `EXIT_VERIFY_FAILED`
+    /// (65, for `UnsupportedSchemaVersion`/`RollbackAlsoFailed`) vs
+    /// `EXIT_USAGE_ERROR` (64, every other variant); a bare `String`
+    /// would throw that distinction away before `exit_code_for_counts`
+    /// ever runs. The exit code is derived once, at construction time
+    /// in `uninstall_one_impl`, rather than re-derived from the
     /// message string later.
     pub bin_link_error: Option<BinLinkFailure>,
 }
 
 /// `UninstallCounts.bin_link_error`'s payload: a `bin_link::BinLinkError`
 /// reduced to what a report/exit-code call site actually needs -- the
-/// rendered message, and the correct exit code for THIS non-fatal
+/// rendered message, and the correct exit code for this non-fatal
 /// context. Not the `BinLinkError` itself: that type carries
 /// `std::io::Error`/`serde_json::Error` sources with no
-/// `Clone`/`PartialEq`/`Eq`, which `UninstallCounts`'s own derives require;
-/// reducing to (message, exit_code) at construction time keeps this struct
-/// exactly as inspectable as the plain `String` it replaces, while never
-/// losing the variant-specific exit code the way that bare `String` did.
+/// `Clone`/`PartialEq`/`Eq`, which `UninstallCounts`'s own derives
+/// require.
 ///
 /// The exit code here is NOT `bin_link::bin_link_error_exit_code`'s raw
-/// output taken verbatim: that function was written for a context where
-/// a `BinLinkError` is the PRIMARY failure of the whole command (its own
-/// doc comment's "reserved for a future caller... e.g. a standalone
-/// `--link-bin` command"), where every non-`UnsupportedSchemaVersion`/
-/// `RollbackAlsoFailed` variant is a real usage error (64). `uninstall`'s
-/// own bin-link removal is explicitly NON-FATAL (see
-/// `uninstall_one_impl`'s own doc comment) -- every file this uninstall
-/// was responsible for is still deleted and the index entry still
-/// removed regardless of this failure, so an ordinary `SymlinkFailed`/
-/// `ForeignFileExists`/etc. here must stay `EXIT_SUCCESS_WITH_WARNINGS`
-/// (6), a warning on top of a real success, not escalate to 64 as if
-/// the whole uninstall had failed. CR comment r1p6's actual complaint
-/// was narrower than "reuse `bin_link_error_exit_code` outright": it
-/// specifically named `UnsupportedSchemaVersion`/`RollbackAlsoFailed` as
-/// the two variants silently downgraded to 6 that should instead read as
-/// 65 (a state-consistency concern, not a mere warning) -- so only those
-/// two variants are escalated here; every other variant keeps the
-/// pre-existing non-fatal 6.
+/// output taken verbatim: that function assumes a `BinLinkError` is
+/// the primary failure of the whole command, where every
+/// non-`UnsupportedSchemaVersion`/`RollbackAlsoFailed` variant is a
+/// real usage error (64). `uninstall`'s own bin-link removal is
+/// explicitly non-fatal -- every file this uninstall was responsible
+/// for is still deleted regardless of this failure, so an ordinary
+/// `SymlinkFailed`/`ForeignFileExists`/etc. here must stay
+/// `EXIT_SUCCESS_WITH_WARNINGS` (6), a warning on top of a real
+/// success. Only `UnsupportedSchemaVersion`/`RollbackAlsoFailed` are
+/// escalated to 65 (a state-consistency concern); every other variant
+/// keeps the pre-existing non-fatal 6.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BinLinkFailure {
     pub message: String,
@@ -264,12 +216,9 @@ pub struct BinLinkFailure {
 impl BinLinkFailure {
     fn from_error(err: &bin_link::BinLinkError) -> Self {
         // Escalate to EXIT_VERIFY_FAILED (65) only for the two variants
-        // CR comment r1p6 named -- a state-consistency concern, not an
-        // ordinary bin-link removal hiccup. Every other variant keeps
-        // the pre-existing non-fatal EXIT_SUCCESS_WITH_WARNINGS (6) --
-        // see this struct's own doc comment for why
-        // `bin_link_error_exit_code`'s raw output (64 for everything
-        // else) is the wrong mapping in THIS non-fatal context.
+        // that are a state-consistency concern, not an ordinary
+        // bin-link removal hiccup. Every other variant keeps the
+        // pre-existing non-fatal EXIT_SUCCESS_WITH_WARNINGS (6).
         let exit_code = match err {
             bin_link::BinLinkError::UnsupportedSchemaVersion { .. }
             | bin_link::BinLinkError::RollbackAlsoFailed { .. } => EXIT_VERIFY_FAILED,
@@ -283,25 +232,24 @@ impl BinLinkFailure {
 }
 
 /// `konductor uninstall [--target <dir>] [--all] [--harness <name>]`.
-/// Reads `~/.konductor/installs` and applies the design §3 selection
-/// table: a bare invocation (`--target` omitted, `--all` not passed)
-/// against 2+ tracked entries is a usage error naming every tracked
-/// install -- see `report_ambiguous_targets` below, mirroring
-/// `update.rs`'s own equivalent ambiguity error. `harness` (design doc
-/// §9.6) is a SEPARATE selection axis from all of the above -- once a
-/// target is resolved, if it tracks 2+ strategies, `harness` (or an
-/// interactive picker, or a usage error) selects exactly one of them;
-/// see `harness_select::select_harness`. Returns 0 on success/no-op,
-/// `EXIT_USAGE_ERROR` (64) on any usage error (including the
-/// 2+-tracked-installs ambiguity case), `EXIT_VERIFY_FAILED` (65) on an
-/// unsupported index schema version, `EXIT_SUCCESS_WITH_WARNINGS` (6)
-/// on an otherwise-successful uninstall that hit a non-fatal
-/// `--link-bin` symlink-removal failure -- never exit code 2.
+/// Reads `~/.konductor/installs` and applies the selection table: a
+/// bare invocation (`--target` omitted, `--all` not passed) against
+/// 2+ tracked entries is a usage error naming every tracked install --
+/// see `report_ambiguous_targets` below. `harness` is a separate
+/// selection axis from all of the above -- once a target is resolved,
+/// if it tracks 2+ strategies, `harness` (or an interactive picker, or
+/// a usage error) selects exactly one of them; see
+/// `harness_select::select_harness`. Returns 0 on success/no-op,
+/// `EXIT_USAGE_ERROR` (64) on any usage error, `EXIT_VERIFY_FAILED`
+/// (65) on an unsupported index schema version,
+/// `EXIT_SUCCESS_WITH_WARNINGS` (6) on an otherwise-successful
+/// uninstall that hit a non-fatal `--link-bin` symlink-removal failure
+/// -- never exit code 2.
 ///
 /// `dry_run` reports exactly what would be removed for each resolved
 /// target (via `preview_uninstall`) without touching the filesystem at
-/// all -- a dry run is non-destructive by definition. There is no
-/// confirmation prompt: a real (non-dry-run) run proceeds directly.
+/// all. There is no confirmation prompt: a real (non-dry-run) run
+/// proceeds directly.
 pub fn dispatch_uninstall(
     target: Option<String>,
     all: bool,
@@ -310,10 +258,8 @@ pub fn dispatch_uninstall(
     json: bool,
     color: ColorMode,
 ) -> u8 {
-    // No single target is in scope yet at this point in dispatch --
-    // `report_error`'s `target_dir` param
-    // falls back to $HOME here, the closest thing to a scope-agnostic
-    // telemetry target this global index read has.
+    // No single target is in scope yet at this point -- fall back to
+    // $HOME, the closest scope-agnostic telemetry target available.
     let home_dir_fallback = std::env::var_os("HOME")
         .map(std::path::PathBuf::from)
         .unwrap_or_default();
@@ -335,15 +281,12 @@ pub fn dispatch_uninstall(
         }
     };
 
-    // The "0 tracked installs is a no-op, not an error" rule only holds
-    // for a BARE invocation, where the caller asked for "whatever is
-    // tracked". An explicit `--target <dir>` on an empty index must
+    // The "0 tracked installs is a no-op" rule only holds for a bare
+    // invocation. An explicit `--target <dir>` on an empty index must
     // still fall through to `dispatch_target`'s own not-found usage
-    // error (64) below, rather than silently reporting success for a
-    // target that was never uninstalled purely because nothing was
-    // tracked at all -- this matters for scripts that check `$?`.
-    // `--all` on an empty index has nothing to iterate either way, so
-    // it stays a 0 no-op.
+    // error (64), rather than silently reporting success for a target
+    // that was never uninstalled. `--all` on an empty index has
+    // nothing to iterate either way, so it stays a 0 no-op.
     if index.installs.is_empty() && target.is_none() && !all {
         report_no_tracked_installs("uninstall", json, color);
         return 0;
@@ -351,8 +294,8 @@ pub fn dispatch_uninstall(
 
     // A hand-edited or otherwise corrupted index can carry the same
     // target_dir more than once, which write_index's own upsert path
-    // can never itself produce. Refuse to proceed with ANY operation on
-    // a corrupted index rather than silently picking one duplicate as
+    // can never produce. Refuse to proceed with any operation on a
+    // corrupted index rather than silently picking one duplicate as
     // authoritative.
     let duplicates = index::duplicate_target_dirs(&index.installs);
     if !duplicates.is_empty() {
@@ -398,28 +341,20 @@ pub fn dispatch_uninstall(
     }
 
     // 2+ tracked entries, neither `--target` nor `--all` given: usage
-    // error naming every tracked install, mirroring `update.rs`'s own
-    // `report_ambiguous_targets` for its identical ambiguous-selection
-    // case -- the caller must disambiguate with `--target <dir>` or
-    // `--all`.
+    // error naming every tracked install -- the caller must
+    // disambiguate with `--target <dir>` or `--all`.
     report_ambiguous_targets(&index.installs, json, color);
     EXIT_USAGE_ERROR
 }
 
 /// Maps a successful `uninstall_one`/`uninstall_one_for_batch` result
-/// to its exit code: the failure's own carried exit code (see
-/// `BinLinkFailure`) when this target hit a non-fatal `--link-bin`
-/// symlink-removal failure (`counts.bin_link_error.is_some()`) -- 65
-/// (`EXIT_VERIFY_FAILED`) for `UnsupportedSchemaVersion`/
-/// `RollbackAlsoFailed`, `EXIT_SUCCESS_WITH_WARNINGS` (6) for every
-/// other `BinLinkError` variant (CR comment r1p6's fix: this used to
-/// assume 6 unconditionally, flattening a real state-consistency
-/// concern into a mere warning) -- 0 otherwise. Shared by every
-/// `Ok(counts)` call site in this module (the single-entry shortcut in
-/// `dispatch_uninstall`, `dispatch_target`'s matched-entry arm) so the
-/// mapping cannot drift between them. `dispatch_all`'s own batch
-/// tie-break additionally folds this into `worst_exit_code`'s
-/// precedence ordering -- see that function's own doc comment.
+/// to its exit code: the failure's own carried exit code when this
+/// target hit a non-fatal `--link-bin` symlink-removal failure (65 for
+/// `UnsupportedSchemaVersion`/`RollbackAlsoFailed`, 6 for every other
+/// `BinLinkError` variant), 0 otherwise. Shared by every `Ok(counts)`
+/// call site in this module so the mapping cannot drift between them.
+/// `dispatch_all`'s own batch tie-break additionally folds this into
+/// `worst_exit_code`'s precedence ordering.
 fn exit_code_for_counts(counts: &UninstallCounts) -> u8 {
     match &counts.bin_link_error {
         Some(failure) => failure.exit_code,
@@ -430,11 +365,7 @@ fn exit_code_for_counts(counts: &UninstallCounts) -> u8 {
 /// Builds `report_ambiguous_targets`'s plain-text message: the
 /// ambiguity error plus a listing of every tracked install's
 /// `target_dir`, one per line. Named so tests bind to the real
-/// construction -- mirrors `dispatch_target_no_match_message`'s own
-/// split exactly (see that function's doc comment): pulling the
-/// message/listing construction out of its call site is what lets a
-/// test assert specific target names actually appear in the rendered
-/// output, rather than only confirming the call site doesn't panic.
+/// construction.
 fn build_ambiguous_targets_message(entries: &[index::IndexEntry]) -> String {
     let message = "multiple installs are tracked; pass --target <dir> or --all";
     let listed = entries
@@ -447,8 +378,7 @@ fn build_ambiguous_targets_message(entries: &[index::IndexEntry]) -> String {
 
 /// Reports the 2+-tracked-installs-no-flag ambiguity error, listing
 /// every tracked install so the user knows what `--target <dir>`
-/// values are valid. Mirrors `update.rs`'s own `report_ambiguous_targets`
-/// message/shape exactly -- there is no implicit `$HOME` resolution or
+/// values are valid. There is no implicit `$HOME` resolution or
 /// picker to fall back to; the caller must disambiguate with
 /// `--target <dir>` or `--all`.
 fn report_ambiguous_targets(entries: &[index::IndexEntry], json: bool, color: ColorMode) {
@@ -471,21 +401,18 @@ fn report_ambiguous_targets(entries: &[index::IndexEntry], json: bool, color: Co
     );
 }
 
-// `build_error_json`/`report_error`/`report_no_tracked_installs` moved
-// to `cli/report.rs` once a third and fourth caller (install, synth)
-// needed them -- see that module's doc comment. Re-imported below so
-// this module's own call sites don't need touching. `build_error_json`
-// itself is only referenced by this module's own tests (`mod tests`
-// below imports it too via `use super::*`), so it is `#[cfg(test)]`-
-// gated here to avoid an unused-import warning on a non-test build.
+// `build_error_json`/`report_error`/`report_no_tracked_installs`
+// live in `cli/report.rs`, shared across command modules.
+// `build_error_json` itself is only referenced by this module's own
+// tests, so it's `#[cfg(test)]`-gated to avoid an unused-import warning
+// on a non-test build.
 #[cfg(test)]
 use super::report::build_error_json;
 use super::report::{report_error, report_no_tracked_installs};
 
-/// Reports a corrupted index (duplicate `target_dir` entries)
-/// and refuses to proceed with any operation, naming exactly which
-/// tracked install(s) are duplicated. Splits plain-text/`--json` output
-/// the same way `report_single`/`report_batch` do.
+/// Reports a corrupted index (duplicate `target_dir` entries) and
+/// refuses to proceed with any operation, naming exactly which
+/// tracked install(s) are duplicated.
 fn report_corrupted_index(duplicates: &[String], json: bool, color: ColorMode) {
     let message = "the tracked-install index is corrupted: duplicate tracked install \
                     entries found; fix ~/.konductor/installs by hand before running uninstall";
@@ -511,20 +438,13 @@ fn report_corrupted_index(duplicates: &[String], json: bool, color: ColorMode) {
     );
 }
 
-/// Every tracked install's `target_dir` OTHER than `resolved_home`,
-/// preserving index order, formatted `  - <target_dir>` one per line
-/// (matching `update.rs`'s own `report_ambiguous_targets` listing
-/// convention). `None` when there is nothing else to list -- either
-/// `resolved_home` is the index's only entry, or the index is empty.
+/// Every tracked install's `target_dir` other than `resolved_home`,
+/// preserving index order, formatted `  - <target_dir>` one per line.
+/// `None` when there is nothing else to list.
 ///
-/// Used by `dispatch_target`'s NOT-FOUND usage error, so a resolved
+/// Used by `dispatch_target`'s not-found usage error, so a resolved
 /// path that matches nothing tracked also tells the user what IS
-/// tracked, rather than naming only the path that failed to match.
-///
-/// `resolved_home` is excluded by exact string match against each
-/// entry's `target_dir` -- on the not-found call site it matches
-/// nothing tracked by definition, so nothing is excluded and every
-/// tracked install is listed.
+/// tracked.
 fn format_other_tracked_installs(index: &Index, resolved_home: &str) -> Option<String> {
     let others: Vec<&str> = index
         .installs
@@ -546,17 +466,13 @@ fn format_other_tracked_installs(index: &Index, resolved_home: &str) -> Option<S
 
 /// Builds the "does not match any tracked install" usage-error message
 /// `dispatch_target`'s no-match branch reports. Named so tests bind to
-/// the real construction -- including the `format_other_tracked_installs`
-/// listing appended when the index has other tracked installs to name
-/// -- rather than reconstructing the message by hand and never
-/// exercising that append at all.
+/// the real construction, including the `format_other_tracked_installs`
+/// listing appended when there's something else to name.
 ///
-/// Ends with a softened clause acknowledging uncertainty rather than
-/// asserting `target` was never tracked: a directory that WAS
-/// previously installed but has since been fully uninstalled resolves
-/// identically to one that was never installed at all, and this
-/// message cannot tell the two apart -- both simply match nothing in
-/// the current index.
+/// Ends with a softened clause acknowledging uncertainty: a directory
+/// that WAS previously installed but has since been fully uninstalled
+/// resolves identically to one that was never installed at all, and
+/// this message can't tell the two apart.
 fn dispatch_target_no_match_message(index: &Index, target: &str, resolved_display: &str) -> String {
     let mut message =
         format!("{target} does not match any tracked install (resolved to {resolved_display})");
@@ -572,17 +488,14 @@ fn dispatch_target_no_match_message(index: &Index, target: &str, resolved_displa
 /// non-matching target is a usage error, never a silent no-op.
 ///
 /// If canonicalization fails (a tracked directory that no longer
-/// exists -- exactly the stale case `uninstall_one` is built to prune),
-/// fall back to matching `target` as given against every tracked
-/// `target_dir` -- either verbatim, or resolved to an absolute (but
-/// not existence-requiring) path via `std::path::absolute` so a
-/// relative `--target` spelling can still match an absolute index
-/// entry -- before giving up. Without this fallback, a stale entry
-/// could only ever be cleaned up via `--all`, since `--target <dir>`
-/// would always fail before it got a chance to match. A genuinely
-/// wrong/unrelated path still matches nothing in either the
-/// canonical-path attempt or this fallback, so it still falls through
-/// to the same usage error as before.
+/// exists -- the stale case `uninstall_one` is built to prune), fall
+/// back to matching `target` as given against every tracked
+/// `target_dir`, either verbatim or resolved to an absolute (but not
+/// existence-requiring) path via `std::path::absolute`, before giving
+/// up. Without this fallback a stale entry could only ever be cleaned
+/// up via `--all`. A genuinely wrong/unrelated path still matches
+/// nothing in either attempt, so it still falls through to the same
+/// usage error as before.
 fn dispatch_target(
     index: &Index,
     target: &str,
@@ -601,12 +514,11 @@ fn dispatch_target(
         Err(_) => {
             // Fallback: the path may no longer exist on disk (a stale
             // tracked install) -- try matching it another way before
-            // reporting a usage error. `std::path::absolute` does not
-            // require the path to exist (unlike `canonicalize`), and
-            // performs no symlink resolution -- it is purely lexical,
-            // so this can only match an index entry that was itself
-            // recorded via the same non-existence-requiring form for a
-            // path that has since disappeared out from under it.
+            // reporting a usage error. `std::path::absolute` doesn't
+            // require the path to exist and performs no symlink
+            // resolution, so this can only match an index entry
+            // recorded the same way for a path that has since
+            // disappeared.
             let absolute = std::path::absolute(Path::new(target))
                 .ok()
                 .map(|p| p.to_string_lossy().into_owned());
@@ -1316,14 +1228,11 @@ fn uninstall_one_impl(
             .map_err(|err| UninstallError::from_index(target_dir, err))?;
 
         // Telemetry: report only after every fallible operation above
-        // has already succeeded -- reporting success for an uninstall
-        // that goes on to fail with an `UninstallError` would be a
-        // false signal. `harness` is read from `install-info.json` --
-        // the per-install record -- which is still on disk at this
-        // point; fires before that file (and `telemetry-id.json`, if
-        // present) are removed below. Every failure mode this call can
-        // hit is folded into `report_package_uninstalled`'s own
-        // best-effort tolerance -- never becomes an `UninstallError`.
+        // has already succeeded. `harness` is read from install-info.json,
+        // still on disk at this point; fires before that file is
+        // removed below. Every failure mode this call can hit is
+        // folded into `report_package_uninstalled`'s own best-effort
+        // tolerance, never becomes an `UninstallError`.
         if uncached_identity {
             crate::cli::telemetry::report_package_uninstalled_for_target(target_path);
         } else {
@@ -1333,14 +1242,11 @@ fn uninstall_one_impl(
         // Remove both per-target telemetry records last, so a
         // crash/interruption before this point leaves them in place
         // and a retried uninstall re-reports (accepted at-least-once
-        // delivery). Both removals are best-effort: a target that
-        // opted out at install time, or one installed before
-        // `telemetry-id.json` was retired as a read source, may be
-        // missing either file already -- a genuine `NotFound` is fine
-        // and silent. Any other removal error (permissions, I/O) is
-        // warned, not swallowed: it means a stale record survives this
-        // uninstall, which a later `install` at the same target_dir
-        // would otherwise silently inherit.
+        // delivery). Both removals are best-effort: a missing file is
+        // fine and silent. Any other removal error (permissions, I/O)
+        // is warned, not swallowed: it means a stale record survives
+        // this uninstall and would be silently inherited by a later
+        // install at the same target_dir.
         let install_info_path = crate::cli::telemetry::install_info_path(target_path);
         if let Err(err) = std::fs::remove_file(&install_info_path) {
             if err.kind() != std::io::ErrorKind::NotFound {
@@ -1392,16 +1298,12 @@ fn uninstall_one_impl(
 }
 
 /// Validates that a manifest-recorded relative path stays within
-/// `target_dir` before it is ever joined against it -- a corrupted or
-/// hand-edited manifest must never cause a write/delete outside the
-/// intended tree. Rejects an absolute path (`Path::join` replaces the
-/// base entirely when the joined path is absolute, e.g.
-/// `target_dir.join("/etc/foo") == /etc/foo`) and any path containing a
-/// `..` component (`Path::join` doesn't normalize `..`, so a lexical
-/// `starts_with` check on the joined result alone isn't sufficient --
-/// `target_dir/../../etc` still starts with `target_dir` by
-/// component). A `./`-prefixed but otherwise safe relative path is
-/// accepted unchanged.
+/// `target_dir` before it is ever joined against it. Rejects an
+/// absolute path (`Path::join` replaces the base entirely when the
+/// joined path is absolute) and any path containing a `..` component
+/// (`Path::join` doesn't normalize `..`, so a lexical `starts_with`
+/// check alone isn't sufficient). A `./`-prefixed but otherwise safe
+/// relative path is accepted unchanged.
 pub(super) fn validate_relative_path(raw: &str) -> Result<&Path, String> {
     let rel = Path::new(raw);
     if rel.is_absolute() || rel.components().any(|c| c == Component::ParentDir) {
@@ -1415,21 +1317,15 @@ pub(super) fn validate_relative_path(raw: &str) -> Result<&Path, String> {
 /// hash (that preserve-on-divergence rule is `update`-only). Never
 /// deletes a `ReplacedForeign` path. Records each deleted file's
 /// parent directory in `touched_dirs` for later empty-directory
-/// cleanup, and counts how many deleted files had a diverged hash -- a
-/// missing on-disk file doesn't count as diverged, since there's
-/// nothing to disclose losing.
+/// cleanup, and counts how many deleted files had a diverged hash.
 ///
 /// `validate_relative_path` runs before `file.provenance` is even
 /// inspected, so an unsafe path can never reach path computation
-/// regardless of provenance -- including a `ReplacedForeign` entry,
-/// which is skipped from deletion but must still never be joined
-/// unvalidated.
+/// regardless of provenance.
 ///
 /// The Claude settings files (`is_claude_settings_path`) are also
-/// skipped regardless of provenance. Konductor merges a grant or hooks
-/// into them but does not own the rest of their content, so uninstall
-/// strips its hooks (`remove_claude_telemetry_hooks`, once no remaining
-/// strategy tracks the hooks file) and leaves the files in place.
+/// skipped regardless of provenance: Konductor merges a grant or hooks
+/// into them but does not own the rest of their content.
 fn delete_eligible_files(
     target_dir: &Path,
     manifest: &StrategyManifest,
@@ -1443,16 +1339,12 @@ fn delete_eligible_files(
         }
         let path = target_dir.join(rel);
 
-        // The V3 standalone telemetry-hook document shares its directory
-        // with a dedicated lock file (`V3_STANDALONE_HOOK_LOCK_FILE_NAME`,
-        // see its own doc comment) that is never manifest-tracked, so it
-        // never appears as its own loop iteration here. Removed
-        // unconditionally alongside the tracked hook document's entry,
-        // regardless of whether that entry's `path` still exists on disk
-        // or whether removing it below succeeds -- otherwise the lock
-        // file (and, transitively, `.kiro/hooks/`) would be stranded
-        // whenever the tracked document was deleted out-of-band before
-        // uninstall ran.
+        // The V3 standalone telemetry-hook document shares its
+        // directory with a dedicated lock file that is never
+        // manifest-tracked, so it never appears as its own loop
+        // iteration. Removed unconditionally alongside the tracked
+        // hook document's entry, otherwise the lock file (and
+        // transitively `.kiro/hooks/`) would be stranded.
         if file.path == V3_STANDALONE_HOOKS_RELATIVE_PATH {
             if let Some(parent) = path.parent() {
                 let _ = std::fs::remove_file(parent.join(V3_STANDALONE_HOOK_LOCK_FILE_NAME));
@@ -1482,35 +1374,20 @@ fn delete_eligible_files(
 }
 
 /// Removes any directory in `touched_dirs` (and, transitively, any of
-/// its now-empty ancestors up to but not including `target_dir`) that is
-/// now empty, walking up from each touched directory. Never removes
-/// `<target_dir>/.kiro`, `<target_dir>/.konductor`, or
-/// `<target_dir>/.claude` themselves, regardless of emptiness --
-/// those are each runtime's own namespace root, not something uninstall
-/// owns the lifecycle of. Protecting `.claude` here matters even though
-/// `ClaudeInstallStrategy` installs both its content types under that
-/// one root (see `install::claude`'s own "Two install roots, collapsed
-/// to one" doc comment): without this, uninstalling every tracked
-/// Claude Code file would leave `.claude/` empty and this function would
-/// delete it outright, unlike the `.kiro`/`.konductor` roots it already
-/// protects unconditionally. Returns the count of directories actually
-/// removed. Best-effort: a directory that fails to remove (e.g.
-/// permissions) is simply left in place rather than aborting the whole
-/// uninstall over cleanup.
+/// its now-empty ancestors up to but not including `target_dir`) that
+/// is now empty, walking up from each touched directory. Never
+/// removes `<target_dir>/.kiro`, `<target_dir>/.konductor`, or
+/// `<target_dir>/.claude` themselves, regardless of emptiness -- those
+/// are each runtime's own namespace root. Returns the count of
+/// directories actually removed. Best-effort: a directory that fails
+/// to remove is left in place rather than aborting the whole uninstall.
 ///
-/// `.kiro/skills/` (`kiro_skills_root` below) is protected the same way
-/// `.kiro`/`.konductor`/`.claude` are, even though it is a SUBDIRECTORY of
-/// an already-protected root, not a root of its own: unlike every other
-/// path this codebase installs, `.kiro/skills/sop-<name>/SKILL.md` shares
-/// its parent directory with Kiro IDE's own general-purpose skills
-/// directory, which legitimately holds skills this install never created
-/// (see `install::kiro_cli::install_kiro_sop_skills`'s own doc comment).
-/// Deleting every tracked `sop-<name>/` subdirectory can leave
-/// `.kiro/skills/` itself empty, and without this explicit protection
-/// this function would then remove it outright -- destroying a directory
-/// that may still be relied on (e.g. as a mount point for symlinked
-/// third-party skills) even though this install owns nothing under it
-/// anymore.
+/// `.kiro/skills/` is protected the same way, even though it's a
+/// subdirectory of an already-protected root: it shares its parent
+/// with Kiro IDE's own general-purpose skills directory, which may
+/// hold skills this install never created. Deleting every tracked
+/// `sop-<name>/` subdirectory can leave `.kiro/skills/` itself empty,
+/// and without this protection it would be removed outright.
 fn cleanup_empty_dirs(target_dir: &Path, touched_dirs: &[PathBuf]) -> usize {
     let mut removed = 0usize;
     let mut seen: std::collections::HashSet<PathBuf> = std::collections::HashSet::new();
@@ -1696,10 +1573,9 @@ fn report_batch(
             serde_json::json!({
                 "command": "uninstall",
                 "succeeded": succeeded.iter().map(|(dir, counts)| {
-                    // Same conditional-insert as `report_single` -- see
-                    // that function's comment for why `bin_link_error`
-                    // must land in this SAME stdout document rather
-                    // than only on stderr.
+                    // Same conditional-insert as `report_single`:
+                    // `bin_link_error` must land in this same stdout
+                    // document, not only on stderr.
                     let mut entry = serde_json::json!({
                         "target_dir": dir,
                         "stale": counts.stale,
@@ -1729,9 +1605,8 @@ fn report_batch(
         return;
     }
     for (dir, counts) in succeeded {
-        // Same field choice as `report_single` -- see that function's
-        // comment for why `bin_link_symlink_removed`, not
-        // `bin_link_untracked`, is the correct gate for this message.
+        // Same field choice as `report_single`: `bin_link_symlink_removed`,
+        // not `bin_link_untracked`, is the correct gate for this message.
         let bin_link_note = if counts.bin_link_symlink_removed {
             "; removed its --link-bin symlink"
         } else if counts.bin_link_untracked {
@@ -1810,28 +1685,17 @@ mod tests {
     }
 
     /// Serializes every test in this module that calls `uninstall_one`/
-    /// `dispatch_target`/`dispatch_all` end to end. `uninstall_one`
-    /// unconditionally calls `index::remove_index_entry` in its last
-    /// step (see its own body), which -- like `write_index` -- always
-    /// resolves the REAL, process-global `$HOME/.konductor/installs`
-    /// for the index's LOCATION, regardless of what target_dir the
-    /// uninstall itself addresses (an older revision of this module's
-    /// docstring claimed `uninstall_one` could be exercised "without
-    /// touching the real `~/.konductor/installs`" by never calling
-    /// `dispatch_uninstall` -- that was never true once
-    /// `remove_index_entry` was added to `uninstall_one`'s own body;
-    /// only `dispatch_uninstall` was ever bypassed, not the index
-    /// write). `HomeGuard` below acquires the CRATE-WIDE
-    /// `test_home_lock::HOME_ENV_LOCK` for its entire lifetime and
-    /// repoints `HOME` at a scratch dir, so these tests stop depending
-    /// on a real, writable ambient `$HOME` -- required in some internal
-    /// CI sandboxes, where `$HOME` cannot be resolved at all. Uses the
-    /// SHARED, crate-wide lock rather than a module-private one -- see
-    /// `crate::cli::test_home_lock`'s own doc comment for why a
-    /// module-private lock is insufficient: it explains that
-    /// module-private `HOME_ENV_LOCK`s did NOT serialize across
-    /// modules and caused a real intermittent failure in `update.rs`,
-    /// which is exactly why this crate-wide lock exists.
+    /// `dispatch_target`/`dispatch_all` end to end: `uninstall_one`
+    /// unconditionally calls `index::remove_index_entry`, which --
+    /// like `write_index` -- always resolves the real, process-global
+    /// `$HOME/.konductor/installs` for the index's location, regardless
+    /// of which target_dir the uninstall itself addresses. `HomeGuard`
+    /// below acquires the crate-wide `test_home_lock::HOME_ENV_LOCK`
+    /// for its entire lifetime and repoints `HOME` at a scratch dir, so
+    /// these tests don't depend on a real, writable ambient `$HOME`.
+    /// Uses the shared, crate-wide lock rather than a module-private
+    /// one, since a module-private lock would not serialize across
+    /// modules (see `crate::cli::test_home_lock`'s own doc comment).
     ///
     /// RAII guard for tests that mutate the process-global `HOME` env
     /// var. Points `HOME` at a fresh scratch temp dir, and on `Drop`
@@ -2065,12 +1929,10 @@ mod tests {
         fs::remove_dir_all(&parent).ok();
     }
 
-    /// A `ReplacedForeign` entry with an unsafe path must ALSO be
-    /// rejected -- the validation runs before the provenance check, so
-    /// a malicious/corrupted manifest entry can never cause any path
-    /// computation involving an unsafe path at all, regardless of
-    /// provenance (even though a *safe* `ReplacedForeign` entry is
-    /// always skipped from deletion).
+    /// A `ReplacedForeign` entry with an unsafe path must also be
+    /// rejected -- validation runs before the provenance check, so an
+    /// unsafe path can never reach path computation regardless of
+    /// provenance.
     #[test]
     fn delete_eligible_files_rejects_unsafe_path_even_for_replaced_foreign_entry() {
         let target = scratch_home("traversal-replaced-foreign");
@@ -2432,32 +2294,23 @@ mod tests {
         fs::remove_dir_all(&target).ok();
     }
 
-    /// Regression (CR comment finding `f-dd9ebe8a`): a `bin_link::
-    /// remove_bin_link` failure must be captured into
-    /// `counts.bin_link_error` -- data a `--json` consumer reading only
-    /// stdout can see -- rather than only ever reaching an operator via
-    /// a stderr `eprintln!` (which the pre-fix code did unconditionally,
-    /// with no `--json`-visible trace at all). Corrupts the sidecar file
+    /// A `bin_link::remove_bin_link` failure must be captured into
+    /// `counts.bin_link_error` -- visible to a `--json` consumer
+    /// reading only stdout -- rather than only ever reaching an
+    /// operator via a stderr `eprintln!`. Corrupts the sidecar file
     /// `remove_bin_link` reads so it returns `Err`, then confirms
     /// `uninstall_one` still succeeds overall (non-fatal posture
     /// preserved) but reports the failure in `bin_link_error`, distinct
-    /// from the untouched `bin_link_untracked`/`bin_link_symlink_removed`
-    /// fields (which must stay `false`, not be conflated with "this
-    /// target never requested `--link-bin`").
+    /// from `bin_link_untracked`/`bin_link_symlink_removed` (which must
+    /// stay `false`, not be conflated with "never requested
+    /// `--link-bin`").
     ///
-    /// A REAL tracked bin-link entry is seeded first (CR comment
-    /// r1p4's fix): `remove_bin_link` now folds an undeterminable
-    /// lock/read failure into "not tracked" for a target with no
-    /// evidence of a tracked link, which is the correct fix but means
-    /// this test's ORIGINAL untracked-target setup no longer reproduces
-    /// a captured failure at all (see
-    /// `uninstall_one_untracked_bin_link_survives_a_corrupt_sidecar`
-    /// below for that corrected, opposite case). Seeding a real entry
-    /// first, then injecting a permission-denial AFTER `remove_bin_link`'s
-    /// own `position()` match (rather than corrupting the sidecar, which
-    /// is undeterminable by construction and would fold to "not tracked"
-    /// regardless of this seed) is what still makes this target's
-    /// tracked status genuinely known before the injected failure.
+    /// A real tracked bin-link entry is seeded first: `remove_bin_link`
+    /// folds an undeterminable lock/read failure into "not tracked" for
+    /// a target with no evidence of a tracked link, so seeding a real
+    /// entry and injecting a permission denial after the lookup match
+    /// is what makes this target's tracked status genuinely known
+    /// before the injected failure.
     #[test]
     fn uninstall_one_captures_a_bin_link_removal_failure_instead_of_swallowing_it() {
         use std::os::unix::fs::PermissionsExt;
@@ -2550,25 +2403,16 @@ mod tests {
         fs::remove_dir_all(&target).ok();
     }
 
-    /// `EXIT_SUCCESS_WITH_WARNINGS` (6): unlike `uninstall_one`'s own
-    /// unit test above (which only confirms `Ok(counts).bin_link_error`
-    /// is populated), this exercises the DISPATCH layer end to end --
-    /// `dispatch_target` and `dispatch_uninstall`'s single-entry
-    /// shortcut must both map a bin-link removal failure with no other
-    /// failure to exit code 6, not 0.
+    /// `EXIT_SUCCESS_WITH_WARNINGS` (6): exercises the dispatch layer
+    /// end to end -- `dispatch_target` and `dispatch_uninstall`'s
+    /// single-entry shortcut must both map a bin-link removal failure
+    /// with no other failure to exit code 6, not 0.
     ///
-    /// Regression (CR comment r1p4): a REAL tracked bin-link entry is
-    /// seeded first, and the failure this test injects happens AFTER
-    /// the `position()` lookup succeeds (a symlink stat failure on the
-    /// bin directory itself, not a corrupt/unreadable sidecar) -- so
+    /// A real tracked bin-link entry is seeded first, and the injected
+    /// failure happens after the tracking lookup succeeds (a symlink
+    /// stat failure on the bin directory, not a corrupt sidecar), so
     /// this target's tracking status is genuinely determinable as
-    /// "tracked" before the injected failure ever occurs, unlike the
-    /// r1p4 fix's own "sidecar itself unreadable" case (see
-    /// `dispatch_target_untracked_bin_link_survives_a_corrupt_sidecar`
-    /// below), which is undeterminable by construction and therefore
-    /// MUST fold to "not tracked" regardless of whether this target
-    /// happens to have a real entry -- there is no way to check
-    /// `position()` against content that never parsed.
+    /// "tracked" before the injected failure occurs.
     #[test]
     fn dispatch_target_returns_exit_code_6_when_bin_link_error_present_with_no_other_failure() {
         use std::os::unix::fs::PermissionsExt;
@@ -4184,15 +4028,13 @@ mod tests {
     // locked delete-and-remove sequence is verified deterministically
     // rather than by chance.
 
-    /// Manually runs an UNLOCKED-delete-then-locked-remove sequence
-    /// (`delete_eligible_files` against a stale slot, THEN
-    /// `manifest::remove_strategy_locked`) using only functions this
-    /// crate still exposes today, to pin -- as a real running assertion
-    /// rather than only prose -- exactly what corruption that sequence
-    /// produces when a concurrent install's KIRO_VARIANT_FAMILY override
-    /// lands in the gap between the stale read and the delete. This is
-    /// not itself the regression test for the locked delete-and-remove
-    /// sequence; see the next test for that.
+    /// Manually runs an unlocked-delete-then-locked-remove sequence
+    /// (`delete_eligible_files` against a stale slot, then
+    /// `manifest::remove_strategy_locked`) to pin exactly what
+    /// corruption that sequence produces when a concurrent install's
+    /// KIRO_VARIANT_FAMILY override lands in the gap between the stale
+    /// read and the delete. Not itself the regression test for the
+    /// locked delete-and-remove sequence; see the next test for that.
     #[test]
     fn old_unlocked_delete_then_locked_remove_sequence_corrupts_a_racing_kiro_variant_override() {
         let _home = HomeGuard::new("kiro-variant-race-old-sequence-home");
@@ -4912,35 +4754,20 @@ mod tests {
 
     /// A directory that is not yet eligible for removal on its first
     /// pass (because it is still non-empty) must still be removable on
-    /// a LATER pass, once whatever was keeping it non-empty is gone --
+    /// a later pass, once whatever was keeping it non-empty is gone --
     /// proving `seen` is never marked for a directory this function
-    /// merely skipped without attempting `remove_dir` on it at all
-    /// (the `!is_empty` short-circuit runs strictly before `seen` is
-    /// ever consulted or inserted for that directory -- see this
-    /// function's own body above). Two sibling directories `a/` and
-    /// `b/` share a parent `mid/`; `a/`'s pass runs first while `mid/`
-    /// itself is kept deliberately non-empty by a blocker file placed
-    /// directly inside it, so the walk-up from `a` reaches `mid`, finds
-    /// it non-empty, and breaks WITHOUT ever calling `remove_dir(mid)`
-    /// -- `mid` must NOT be marked `seen` at that point. The blocker is
-    /// removed before `b`'s pass, which must then still be able to
-    /// remove `mid`.
+    /// merely skipped without attempting `remove_dir` on it (the
+    /// `!is_empty` short-circuit runs before `seen` is consulted). Two
+    /// sibling directories `a/` and `b/` share a parent `mid/`; `a/`'s
+    /// pass runs first while `mid/` is kept non-empty by a blocker file,
+    /// so the walk-up from `a` reaches `mid`, finds it non-empty, and
+    /// breaks without ever calling `remove_dir(mid)` -- `mid` must not
+    /// be marked `seen` at that point. The blocker is removed before
+    /// `b`'s pass, which must then still be able to remove `mid`.
     ///
-    /// The non-emptiness is induced by leaving a real file inside `mid`
-    /// -- unconditionally true for every uid including root, unlike the
-    /// previous mechanism (chmod'ing the parent to `0o555`), which root
-    /// bypasses on Unix (root ignores directory permission bits), so
-    /// under a root test runner (common in CI containers / an internal
-    /// CI sandbox) `remove_dir(mid)` would have unexpectedly succeeded on
-    /// the first pass and made this test fail spuriously.
-    ///
-    /// Falsifiability: confirmed this test fails against the pre-fix
-    /// code (`seen.insert` before the `remove_dir` attempt) -- if `mid`
-    /// were instead skipped via a failed `remove_dir` call under that
-    /// ordering, `mid` would get marked seen on `a`'s failed attempt, so
-    /// `b`'s later pass would hit the `!seen.insert(...)` short-circuit
-    /// and break without ever retrying `remove_dir(mid)`, leaving `mid`
-    /// on disk.
+    /// The non-emptiness is induced by a real file inside `mid` --
+    /// unconditionally true for every uid including root, unlike
+    /// chmod'ing the parent (which root bypasses on Unix).
     #[test]
     fn cleanup_empty_dirs_retries_directory_after_earlier_remove_dir_failure() {
         let target = scratch_home("cleanup-retry-after-failure");

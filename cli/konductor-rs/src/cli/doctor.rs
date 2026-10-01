@@ -2,116 +2,53 @@
 //
 // doctor.rs — `konductor doctor` diagnostics (Rust implementation).
 //
-// ── Scope ────────────────────────────────────────────────────────────────
 // Inspects a Konductor installation/checkout for problems and prints
-// actionable remediation guidance. Every check is REUSE-ONLY: it calls
-// the same functions `install`/`synth`/`config` already use, rather than
-// re-implementing any validation logic. Seven checks run today, in this
-// order:
+// actionable remediation guidance. Every check is reuse-only: it calls
+// the same functions `install`/`synth`/`config` already use, rather
+// than re-implementing any validation logic. Seven checks run today,
+// in this order: source, runtime, manifest, config, container_runtime,
+// index_status, telemetry_state.
 //
-//   1. source                  — `parse_canonical` against the resolved
-//                                 source tree (see "Source resolution"
-//                                 below); the same parse `synth`/
-//                                 `install --from` run.
-//   2. runtime                 — `install::runtime::detect_runtimes`
-//                                 against `--target`/`$HOME`. `info`
-//                                 (not `failed`) when no runtime is
-//                                 found -- that alone isn't a broken
-//                                 install.
-//   3. manifest                — `install::manifest::{read_manifest,
-//                                 manifest_path}` against the same
-//                                 target: presence, `status` (a
-//                                 leftover `InProgress` means a prior
-//                                 install crashed mid-copy), and a hash
-//                                 check of every recorded file via
-//                                 `install::artifact::sha256_hex`.
-//   4. config                  — `cli::config::load_config_with_home`
-//                                 against the same resolved source tree
-//                                 as check 1 and `--target`/`$HOME` (or
-//                                 a test-only override) as the user tier.
-//   5. container_runtime        — probes `docker`/`podman`/`nerdctl`/
-//                                 `finch` on PATH, in that order (the
-//                                 design's documented `auto` probe
-//                                 order). Always `info` -- absence is
-//                                 not a failure, same pattern as
-//                                 `runtime`.
-//   6. index_status             — `install::index::read_index` against
-//                                 `~/.konductor/installs`, compared
-//                                 against the same target's manifest
-//                                 `status` from check 3. `info` when the
-//                                 target isn't tracked at all (an install
-//                                 predating the index, or one from a
-//                                 build without index support); `warn`
-//                                 when the cached index status disagrees
-//                                 with the real manifest status (the
-//                                 index is a CACHE, refreshed on every
-//                                 install/update -- see `index.rs`'s own
-//                                 `IndexEntry::status` doc comment).
-//   7. telemetry_state          — the effective telemetry state for
-//                                 `destination`, read through
-//                                 `install_info::read_install_info`
-//                                 (the per-target opt-out signal) and
-//                                 `konductor_telemetry::read_instance`
-//                                 (the machine-scoped consent record) --
-//                                 the same two reads `report.rs`'s own
-//                                 AND gate consults, never re-derived.
-//                                 `ok` when both allow reporting; `info`
-//                                 when this target opted out, or no
-//                                 machine record exists yet; `warn` when
-//                                 the machine record declines and would
-//                                 otherwise suppress an opted-in target
-//                                 -- the case a design review flagged as
-//                                 silent.
+// Three additional checks (`gitignore`, `provider_model_access`,
+// `role_allowlists`) are fully implemented and unit-tested below, but
+// are intentionally not called from `dispatch_doctor_with` and so
+// never appear in live `doctor` output today. See the comment at that
+// call site for why each is dormant, and the doc comment on each
+// function for the re-enable condition.
 //
-// Three additional checks — `gitignore`, `provider_model_access`, and
-// `role_allowlists` — are fully implemented and unit-tested below, but
-// are intentionally NOT called from `dispatch_doctor_with` and so never
-// appear in live `doctor` output today. See the comment at that call
-// site for why each is dormant, and the doc comment on each function
-// (`check_gitignore`/`check_provider_model_access`/
-// `check_role_allowlists`) for the re-enable condition.
+// `source`/`config` validate that the repo/project config an install is
+// built from is well-formed, useful mainly when a local `--from`
+// checkout exists to point at. Anyone installing from a published
+// release artifact has no such checkout, so a `Warn`/`Info` fallback
+// here is the normal, expected outcome for them. `manifest`/`runtime`
+// are the checks that answer "is my installation healthy" regardless
+// of install method, since they only ever inspect the installed
+// destination.
 //
-// ── What `source`/`config` are FOR ──────────────────────────────────────
-// These two validate that the REPO/PROJECT CONFIG an install is built
-// from is well-formed -- useful mainly when a local `--from` checkout
-// exists to point at. Anyone installing from a published release
-// artifact has no such checkout, so a `Warn`/`Info` fallback here (see
-// `legacy_manifest_no_source`/`missing_recorded_source` below) is the
-// NORMAL, expected outcome for them, not a sign of a broken install.
-// `manifest`/`runtime` are the checks that answer "is my installation
-// healthy" regardless of install method, since they only ever inspect
-// the installed DESTINATION.
-//
-// ── Source resolution (`source`/`config` checks) ──────────────────────
-// Like `runtime`/`manifest`, these default to validating what was
-// actually INSTALLED, not whatever `--from`/cwd happens to be when
-// `doctor` runs. Resolution order, in `resolve_source_for_checks` below:
-//
-//   1. Explicit `--from <repo-root>` -- always wins outright, regardless
-//      of any manifest.
+// Source resolution (`source`/`config` checks), in
+// `resolve_source_for_checks` below:
+//   1. Explicit `--from <repo-root>` always wins outright.
 //   2. No `--from`: read the manifest at the resolved install
-//      destination (`--target`/`$HOME`) via `manifest::read_manifest`.
-//      If it exists and its `source` field is recorded, use that path.
+//      destination. If it exists and its `source` field is recorded,
+//      use that path.
 //   3. No `--from`, and no usable recorded source: fall back to
-//      `target_dir` (the cwd). Never silent -- the check's summary/
-//      detail always states that a fallback occurred and why.
+//      `target_dir` (the cwd). Never silent; the check's
+//      summary/detail always states that a fallback occurred and why.
 //
-// ── Output ───────────────────────────────────────────────────────────────
-// One summary line per check: `ok: <check>`, `info/warn/stale/failed:
-// <check> — <detail>`, each non-`ok` line followed by an indented
-// remediation hint. `-v` appends full detail. `--json` emits one compact
-// object mirroring install/synth's JSON shape, with a per-check `status`
-// and, on non-ok checks, a `detail` array.
+// Output: one summary line per check (`ok: <check>`,
+// `info/warn/stale/failed: <check> — <detail>`), each non-`ok` line
+// followed by an indented remediation hint. `-v` appends full detail.
+// `--json` emits one compact object mirroring install/synth's JSON
+// shape, with a per-check `status` and, on non-ok checks, a `detail`
+// array.
 //
-// ── Exit codes ───────────────────────────────────────────────────────────
-// 0 when every check is `ok`/`info`/`warn`; `EXIT_HALTED` (1) when at
-// least one check is `failed` or `stale`. Never exit code 2 -- see
-// cli.rs's module docstring. `EXIT_USAGE_ERROR` (64) is reserved for a
-// genuine CLI usage error -- an unresolvable `--target`/`$HOME` (no
-// destination to check at all). An unresolvable `--from` is NOT a usage
-// error: it flows into `check_source`'s `parse_canonical` call like any
-// other bad source tree and surfaces as that check's `Failed` result,
-// which maps to `EXIT_HALTED` (1), same as every other failed check.
+// Exit codes: 0 when every check is `ok`/`info`/`warn`; `EXIT_HALTED`
+// (1) when at least one check is `failed` or `stale`. Never exit code
+// 2 (see cli.rs's module docstring). `EXIT_USAGE_ERROR` (64) is
+// reserved for a genuine CLI usage error, an unresolvable
+// `--target`/`$HOME` destination. An unresolvable `--from` is not a
+// usage error: it flows into `check_source`'s `parse_canonical` call
+// and surfaces as that check's `Failed` result instead.
 
 use std::path::{Path, PathBuf};
 
@@ -130,23 +67,16 @@ use crate::cli::output::ColorMode;
 use crate::cli::synth::parse_canonical;
 
 /// The `--harness <value>` fragment every "re-run `konductor install`"
-/// remediation string in this file embeds -- kept in exactly one place
+/// remediation string in this file embeds, kept in exactly one place
 /// so those remediation strings can't independently drift from the
-/// three values `cli.rs`'s `--harness` clap `value_parser` actually
-/// accepts (that allowlist carries the same "hardcoded, can drift"
-/// risk).
+/// three values `cli.rs`'s `--harness` clap `value_parser` accepts.
 const HARNESS_PLACEHOLDER: &str = "--harness <kiro-cli-v2|kiro-v3|claude>";
 
-/// Best-effort `--harness <value>` remediation fragment for a manifest's
-/// recorded `strategy` (an `InstallStrategy::name()`, e.g. `"kiro-cli-v2"`)
-/// so a "re-run `konductor install`" remediation for an install `doctor`
-/// can already see on disk names the harness that produced it, instead
-/// of the generic `HARNESS_PLACEHOLDER`. `name()` and `harness_dir()`
-/// are identical by construction (the harness/strategy name unification
-/// -- see `install.rs`'s `InstallStrategy` trait doc comment), so this
-/// no longer needs to look up a DIFFERENT value to display -- only
-/// whether `strategy_name` is still a REGISTERED strategy at all,
-/// falling back to `HARNESS_PLACEHOLDER` when it is not (e.g. a
+/// Best-effort `--harness <value>` remediation fragment for a
+/// manifest's recorded `strategy`, so a remediation hint names the
+/// harness that produced it instead of the generic
+/// `HARNESS_PLACEHOLDER`. Falls back to `HARNESS_PLACEHOLDER` when the
+/// recorded strategy isn't a registered strategy at all (e.g. a
 /// manifest written by a newer `konductor` build this binary doesn't
 /// know about).
 fn harness_hint(strategy_name: &str) -> String {
@@ -160,11 +90,9 @@ fn harness_hint(strategy_name: &str) -> String {
     }
 }
 
-/// Every failure path in `dispatch_doctor_with` that is NOT a check
-/// result (i.e. an unresolvable `--target`/`$HOME` destination) maps to
-/// this exit code, same as `install`/`synth`. Never exit code 2. An
-/// unresolvable `--from` is NOT one of these paths -- see this module's
-/// "Exit codes" doc comment above.
+/// Every failure path in `dispatch_doctor_with` that is not a check
+/// result (an unresolvable `--target`/`$HOME` destination) maps to
+/// this exit code, same as `install`/`synth`. Never exit code 2.
 const EXIT_USAGE_ERROR: u8 = 64;
 
 /// At least one check came back `failed` or `stale`. Reuses cli.rs's own
@@ -175,15 +103,12 @@ const EXIT_HALTED: u8 = 1;
 
 /// One check's outcome. `Ok`/`Info`/`Warn` never affect the exit code;
 /// `Failed`/`Stale` both map to `EXIT_HALTED`. `Stale` is distinct from
-/// `Failed` so the manifest hash-drift case (files changed on disk since
-/// install) reads clearly as "needs a re-install", not "something is
-/// broken", while still failing the overall run. `Warn` is distinct
+/// `Failed` so the manifest hash-drift case (files changed on disk
+/// since install) reads as "needs a re-install" rather than "something
+/// is broken", while still failing the overall run. `Warn` is distinct
 /// from `Info` so the "manifest unreadable, falling back to an
-/// unvalidated cwd" case (see `resolve_source_for_checks`'s `Err(_)`
-/// branch) reads as visibly more severe than the benign "no manifest
-/// exists yet, nothing installed there" fallback -- both are non-failing
-/// fallbacks, but only one of them means the check may have validated
-/// an arbitrary, unrelated directory instead of the installation.
+/// unvalidated cwd" case reads as more severe than the benign "no
+/// manifest exists yet" fallback.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum CheckStatus {
     Ok,
@@ -206,8 +131,7 @@ impl CheckStatus {
 
     /// One glyph per status, prefixed onto each report line alongside
     /// the colorized label. `Failed`/`Stale` share ✗ since both are
-    /// already red via `status::error`. Always printed regardless of
-    /// `ColorMode` -- the icon is content, not a color affordance.
+    /// already red. Always printed regardless of `ColorMode`.
     fn icon(self) -> &'static str {
         match self {
             CheckStatus::Ok => "✓",
@@ -224,27 +148,22 @@ impl CheckStatus {
     }
 
     /// Whether this status is a non-failing but visibly-flagged
-    /// condition (`Warn`). Never affects the exit code (see
-    /// `is_failing`), but a `--json` consumer that only inspects the
-    /// top-level `ok` field would otherwise see `ok: true` on a report
-    /// that DOES contain a `Warn` -- e.g. the `unvalidated_cwd`
-    /// fallback case, or the `.konductor/.gitignore` hygiene check --
-    /// since `Warn` is deliberately not `is_failing()`.
-    /// `format_report_json`'s `warnings` field surfaces this distinctly.
+    /// condition (`Warn`). Never affects the exit code, but a `--json`
+    /// consumer that only inspects the top-level `ok` field would
+    /// otherwise see `ok: true` on a report that does contain a
+    /// `Warn`. `format_report_json`'s `warnings` field surfaces this
+    /// distinctly.
     fn is_warning(self) -> bool {
         matches!(self, CheckStatus::Warn)
     }
 }
 
-/// One check's full result: its name, status, a one-line summary (used
-/// in the default-mode output and as the JSON `detail`'s first line
-/// when `detail` is empty), remediation guidance (indented under a
-/// non-ok summary line; omitted entirely for `Ok`), and the full set of
-/// individual problems found (only ever more than one entry for the
-/// `source` check, whose underlying `parse_canonical` aborts on the
-/// FIRST failure -- so `detail` here holds just that one entry today,
-/// but the shape stays a `Vec` so a future multi-error parse doesn't
-/// need a shape change).
+/// One check's full result: its name, status, a one-line summary,
+/// remediation guidance (indented under a non-ok summary line, omitted
+/// for `Ok`), and the full set of individual problems found (only
+/// ever more than one entry for the `source` check, whose underlying
+/// `parse_canonical` aborts on the first failure, but the shape stays
+/// a `Vec` so a future multi-error parse doesn't need a shape change).
 struct CheckResult {
     name: &'static str,
     status: CheckStatus,
@@ -337,33 +256,19 @@ impl CheckResult {
 /// deliberately NOT included in the `results` vec below -- see the
 /// comment at that call site.
 ///
-/// `target_dir` is the cwd in real use (passed explicitly, same
-/// test-isolation reason as dispatch.rs's other real commands); `from`
-/// overrides it as the source tree root, same precedence `synth` uses.
-/// `target` overrides `$HOME` as the install destination the
-/// runtime/manifest checks inspect, same precedence `install` uses.
-/// `home_dir_override` is the user-tier config's home directory (the
-/// `config` check's `~/.konductor/config.yml` tier) -- same
-/// test-isolation seam `check_config_with_home` already provides at
-/// the unit level, threaded through here so end-to-end callers (tests)
-/// can isolate it too. The real CLI dispatch path (`dispatch.rs`)
-/// passes the real `$HOME` explicitly so production behavior is
-/// unchanged; pass `None` to fall back to it directly (only test
-/// callers that don't care about the `config` check's user tier need
-/// to do that, and even they get real, not-faked-away behavior since
-/// `None` here means "resolve `$HOME` normally," not "skip the tier").
+/// `target_dir` is the cwd in real use; `from` overrides it as the
+/// source tree root, same precedence `synth` uses. `target` overrides
+/// `$HOME` as the install destination the runtime/manifest checks
+/// inspect, same precedence `install` uses. `home_dir_override` is the
+/// user-tier config's home directory (the `config` check's
+/// `~/.konductor/config.yml` tier); pass `None` to resolve `$HOME`
+/// normally.
 ///
-/// `all`: run the full check suite against EVERY target tracked in
+/// `all`: run the full check suite against every target tracked in
 /// `~/.konductor/installs`, instead of the single `--target`/`$HOME`
-/// destination -- mirrors `update`/`uninstall`'s own `--all` (same flag
-/// name, same "iterate every tracked target, one at a time" semantics).
-/// `cli.rs` already makes `--all` mutually exclusive with `--from`/
-/// `--target` (a single source/destination override doesn't make sense
-/// across multiple targets with potentially different recorded
-/// sources), so this function never sees `all: true` together with a
-/// non-`None` `from`/`target` -- see `dispatch_doctor_all` for the
-/// iteration/reporting path this delegates to. Not passing `--all`
-/// preserves the exact prior single-target behavior (purely additive).
+/// destination. `cli.rs` already makes `--all` mutually exclusive with
+/// `--from`/`--target`, so this function never sees `all: true`
+/// together with a non-`None` `from`/`target`.
 #[allow(clippy::too_many_arguments)]
 pub fn dispatch_doctor_with(
     target_dir: &Path,
@@ -437,8 +342,7 @@ pub fn dispatch_doctor_with(
 /// The full active check suite (source, runtime, manifest, config,
 /// container_runtime, index_status, telemetry_state) against one
 /// resolved source-tree/destination pair. Shared by the single-target
-/// path (`dispatch_doctor_with`) and the `--all` path
-/// (`dispatch_doctor_all`) below, so the two can never drift on which
+/// path and the `--all` path, so the two can never drift on which
 /// checks run or in what order.
 fn run_checks(
     target_dir: &Path,
@@ -460,59 +364,33 @@ fn run_checks(
         check_container_runtime(),
         check_index_status(destination, home_dir.as_deref()),
         check_telemetry_state(destination, home_dir.as_deref()),
-        // `gitignore`, `provider_model_access`, and `role_allowlists` are
-        // implemented and unit-tested below, but intentionally NOT
+        // `gitignore`, `provider_model_access`, and `role_allowlists`
+        // are implemented and unit-tested below, but intentionally not
         // surfaced in live doctor output yet:
         //   - `check_gitignore` warns about `runs/`/`overrides.yml`
         //     being absent from `.gitignore`, but nothing in this
-        //     codebase can create those paths yet -- `runs/` belongs to
-        //     unimplemented run-state persistence (Feature 4.3) and
-        //     `overrides.yml` belongs to the post-launch override
-        //     mechanism (Feature 4.12/M7). Today the check is a
-        //     false-positive-style nag, not a real signal.
+        //     codebase can create those paths yet.
         //   - `check_provider_model_access`/`check_role_allowlists` are
-        //     honest not-yet-applicable stubs with no real signal at
-        //     all (provider/model-access and role-scoped allowlists,
-        //     Feature 4.9.1 / design doc Task 4.11, M6/M7).
-        // Re-enable each call below once its owning feature actually
-        // exists. The functions, `GITIGNORE_PATTERNS`, and their unit
-        // tests stay intact and exercised directly (see the
-        // `#[allow(dead_code)]` annotations on the functions themselves)
-        // so this isn't dead code -- just not wired into the live
-        // dispatch path yet.
+        //     honest not-yet-applicable stubs with no real signal yet.
+        // Re-enable each call below once its owning feature exists.
     ]
 }
 
 /// `--all` path: reads `~/.konductor/installs` and runs `run_checks`
-/// against EVERY tracked target, in tracked order -- mirroring
-/// `update.rs`'s `dispatch_update_with`/`uninstall.rs`'s `dispatch_all`
-/// exactly: zero tracked targets is a no-op (0, via
-/// `report::report_no_tracked_installs`, reused rather than
-/// duplicated), a corrupted index (duplicate `target_dir` entries) is
-/// refused outright via `uninstall::report_corrupted_index`'s twin here
-/// (see `report_corrupted_index_doctor` below -- doctor needs its own
-/// copy since `uninstall::report_corrupted_index` is private to that
-/// module and named for `uninstall`'s own command string), and each
-/// target's own check suite runs with NO `--from` override (an `--all`
-/// run always uses that target's own recorded source resolution, same
-/// as a bare single-target `doctor` invocation would for that
-/// directory -- `--from` is unavailable here since `cli.rs` makes it
-/// `conflicts_with = "all"`).
+/// against every tracked target, in tracked order, mirroring
+/// `update.rs`/`uninstall.rs`'s own `--all` handling: zero tracked
+/// targets is a no-op, a corrupted index (duplicate `target_dir`
+/// entries) is refused outright, and each target's own check suite
+/// runs with no `--from` override.
 ///
-/// Plain-text output is grouped per target with a clear header line,
-/// one `print_report` call per target -- same "grouped by target,
-/// clear per-target headers" convention `update`/`uninstall`'s own
-/// `--all` plain-text path uses. `--json` mode collects every target's
-/// checks into ONE batched document (mirroring `update`'s own
-/// `dispatch_update_all_json`/`report_update_batch`, which exists for
-/// exactly this reason: a `--json` consumer parsing a single
-/// `serde_json::from_str` call would break on N concatenated top-level
-/// documents).
+/// Plain-text output is grouped per target with a clear header line.
+/// `--json` mode collects every target's checks into one batched
+/// document (a `--json` consumer parsing a single
+/// `serde_json::from_str` call would break on N concatenated
+/// top-level documents).
 ///
 /// Returns 0 only if every target's every check is non-failing;
-/// `EXIT_HALTED` (1) if any target has any `failed`/`stale` check --
-/// mirrors a single-target run's own exit-code contract, just OR'd
-/// across every target rather than computed once.
+/// `EXIT_HALTED` (1) if any target has any `failed`/`stale` check.
 fn dispatch_doctor_all(
     target_dir: &Path,
     verbose: bool,
@@ -522,12 +400,8 @@ fn dispatch_doctor_all(
     color: ColorMode,
 ) -> u8 {
     // Same home override `run_checks` below threads to `config`/
-    // `index_status`/`telemetry_state` -- the tracked-install
-    // enumeration itself must respect it too, or `--all` walks the
-    // real machine's index while every check it runs is pointed at a
-    // test's scratch home (the same `index_status`/live-`$HOME`
-    // mismatch `check_index_status` has on its own; see that
-    // function's docstring).
+    // `index_status`/`telemetry_state`; the tracked-install
+    // enumeration itself must respect it too.
     let resolved_home: Option<PathBuf> = home_dir_override
         .map(PathBuf::from)
         .or_else(index::env_home_dir);
@@ -562,15 +436,10 @@ fn dispatch_doctor_all(
 
     let mut per_target: Vec<(String, Vec<CheckResult>)> = Vec::new();
     let mut exit_code = 0u8;
-    // The latest release tag is resolved exactly ONCE for the whole
-    // `--all` batch and shared by `cli_version` (machine-wide) and
-    // EVERY per-target `content_version` check below -- see
-    // `check_content_version`'s own doc comment for why re-fetching
-    // per target would risk exhausting GitHub's unauthenticated rate
-    // limit. `cli_version` itself is still computed exactly ONCE here,
-    // never per-target, even under `--all`. `warn` severity only, so
-    // it never affects `exit_code` on its own (see `check_cli_version`'s
-    // own doc comment).
+    // The latest release tag is resolved exactly once for the whole
+    // `--all` batch and shared by `cli_version` and every per-target
+    // `content_version` check below. `cli_version` itself is computed
+    // exactly once here, never per-target.
     let latest_release_tag = resolve_latest_release_tag(no_version_check);
     let cli_version_result = check_cli_version(no_version_check, &latest_release_tag);
     for entry in &entries {
@@ -607,11 +476,9 @@ fn dispatch_doctor_all(
 }
 
 /// Doctor's own copy of `uninstall::report_corrupted_index`'s
-/// plain-text/`--json` shape, naming `"doctor"` as the command --
+/// plain-text/`--json` shape, naming `"doctor"` as the command.
 /// `uninstall::report_corrupted_index` is private to that module and
-/// hardcodes `"uninstall"` in both its message text and remediation, so
-/// it cannot be reused verbatim the way `report_no_tracked_installs`
-/// (which already takes `command` as a parameter) is above.
+/// hardcodes `"uninstall"`, so it cannot be reused verbatim.
 fn report_corrupted_index_doctor(duplicates: &[String], json: bool, color: ColorMode) {
     let message = "install index is corrupted: duplicate target_dir entries found; \
                     fix ~/.konductor/installs by hand before running doctor --all";
@@ -639,10 +506,7 @@ fn report_corrupted_index_doctor(duplicates: &[String], json: bool, color: Color
 
 /// `--all` + `--json`'s batched document: one object per target
 /// (`target_dir` plus that target's own `ok`/`warnings`/`checks`
-/// fields, i.e. `format_report_json`'s own shape reused per-entry)
-/// under a single top-level `targets` array -- mirrors
-/// `update.rs`'s `report_update_batch` rationale exactly (a single
-/// parseable JSON document, not N concatenated ones).
+/// fields) under a single top-level `targets` array.
 fn format_report_json_all(per_target: &[(String, Vec<CheckResult>)]) -> String {
     let targets: Vec<serde_json::Value> = per_target
         .iter()
@@ -666,9 +530,8 @@ fn format_report_json_all(per_target: &[(String, Vec<CheckResult>)]) -> String {
 
 /// Same batched document as `format_report_json_all`, plus the
 /// machine-wide `cli_version` check folded in as its own top-level
-/// `cli_version` object (NOT nested inside any one target, since it
-/// has no per-target dimension) alongside the existing `targets`
-/// array.
+/// `cli_version` object (not nested inside any one target, since it
+/// has no per-target dimension).
 fn format_report_json_all_with_cli_version(
     cli_version_result: &CheckResult,
     per_target: &[(String, Vec<CheckResult>)],
@@ -719,14 +582,9 @@ fn check_result_to_json(result: &CheckResult) -> serde_json::Value {
 }
 
 /// Resolves the latest published GitHub release tag exactly once, for
-/// callers that need to share the SAME result across `cli_version` and
-/// every per-target `content_version` check (see `check_content_version`'s
-/// own doc comment for why re-fetching per target is unsafe against
-/// GitHub's unauthenticated rate limit). Returns `None` under
-/// `--no-version-check` -- the caller is expected to also skip
-/// invoking `check_cli_version`/`check_content_version`'s real
-/// comparison logic in that case, matching each check's own existing
-/// `no_version_check` short-circuit.
+/// callers that need to share the same result across `cli_version` and
+/// every per-target `content_version` check. Returns `None` under
+/// `--no-version-check`.
 fn resolve_latest_release_tag(
     no_version_check: bool,
 ) -> Option<Result<String, super::install::github::GithubFetchError>> {
@@ -741,29 +599,21 @@ fn resolve_latest_release_tag(
 }
 
 /// `doctor`'s `cli_version` check: machine-wide, runs exactly once
-/// even under `--all` (both `dispatch_doctor_with` and
-/// `dispatch_doctor_all` call this directly rather than folding it
-/// into `run_checks`, which is the per-target suite). Compares this
-/// binary's own `CARGO_PKG_VERSION` against the latest published
-/// GitHub release tag.
+/// even under `--all`. Compares this binary's own `CARGO_PKG_VERSION`
+/// against the latest published GitHub release tag.
 ///
-/// `warn` severity ONLY when stale -- never `failed`, and never
-/// affects `doctor`'s own overall exit code (`CheckStatus::is_failing`
-/// excludes `Warn`). The `fix:` line points at `konductor update
-/// --cli`.
+/// `warn` severity only when stale, never `failed`, and never affects
+/// `doctor`'s own overall exit code. The `fix:` line points at
+/// `konductor update --cli`.
 ///
 /// The network call this check makes is entirely independent of
 /// telemetry: it carries no UUID, and is unaffected by
-/// `--no-telemetry`/`telemetry.enabled`/`KONDUCTOR_TELEMETRY=off`.
-/// Gated by its own separate mechanism -- the `--no-version-check`
-/// flag -- rather than any telemetry opt-out.
+/// `--no-telemetry`/`telemetry.enabled`. Gated by its own separate
+/// `--no-version-check` flag.
 ///
-/// `latest_release_tag` is `None` exactly when `--no-version-check`
-/// was passed (see `resolve_latest_release_tag`); `Some(..)` is the
-/// SAME resolved tag every per-target `check_content_version` call
-/// receives, resolved once by the caller rather than fetched here, so
-/// `cli_version` and `content_version` never issue separate requests
-/// for what is repo-wide, not per-check, information.
+/// `latest_release_tag` is resolved once by the caller rather than
+/// fetched here, so `cli_version` and `content_version` never issue
+/// separate requests for the same repo-wide information.
 fn check_cli_version(
     no_version_check: bool,
     latest_release_tag: &Option<Result<String, super::install::github::GithubFetchError>>,
@@ -802,12 +652,9 @@ fn check_cli_version(
         ),
         None => {
             // `no_version_check` already returned early above for this
-            // case; `resolve_latest_release_tag` only returns `None`
-            // when that flag is set. Kept as an explicit, reachable
-            // arm (rather than `unreachable!()`) since this function's
-            // own `no_version_check` parameter and the caller's
-            // `latest_release_tag` argument are two separate values a
-            // caller could, in principle, pass inconsistently.
+            // case; kept as an explicit, reachable arm rather than
+            // `unreachable!()` since the two values could, in
+            // principle, be passed inconsistently.
             CheckResult::info(
                 "cli_version",
                 "CLI version check skipped (--no-version-check)",
@@ -818,27 +665,17 @@ fn check_cli_version(
 }
 
 /// `doctor`'s `content_version` check: per-target, runs once per
-/// tracked target under `--all` (folded in alongside `run_checks`'s
-/// own per-target suite by both call sites), fully independent of
-/// `cli_version` -- no shared check name, summary line, or comparison
-/// logic. Compares `destination`'s recorded `agent_version` (read from
-/// `install-info.json`) against the latest published GitHub release
-/// tag, the best available proxy for "latest available content
-/// version" without a local `--from` checkout's own `dist/VERSION` to
-/// compare against.
+/// tracked target under `--all`, fully independent of `cli_version`.
+/// Compares `destination`'s recorded `agent_version` against the
+/// latest published GitHub release tag, the best available proxy for
+/// "latest available content version" without a local `--from`
+/// checkout's own `dist/VERSION` to compare against.
 ///
-/// `latest_release_tag` is resolved ONCE by the caller
-/// (`dispatch_doctor_with`/`dispatch_doctor_all`) rather than fetched
-/// here -- the latest release is repo-wide, not per-target, so
-/// re-fetching it inside a per-target loop would issue one identical
-/// unauthenticated GitHub API request per tracked install (plus the
-/// one `cli_version` already makes). Unauthenticated GitHub API is
-/// rate-limited to 60 req/hr, and `doctor --all` over several tracked
-/// installs could exhaust that quota well before every target's own
-/// `content_version` check runs. `cli_version` already resolves this
-/// exact same tag for its own comparison, so the caller fetches it
-/// once and passes the SAME `Result` into both `check_cli_version` and
-/// every per-target `check_content_version` call.
+/// `latest_release_tag` is resolved once by the caller rather than
+/// fetched here: re-fetching it inside a per-target loop would issue
+/// one identical unauthenticated GitHub API request per tracked
+/// install, and GitHub's unauthenticated API is rate-limited to 60
+/// req/hr.
 fn check_content_version(
     destination: &Path,
     no_version_check: bool,
@@ -896,9 +733,8 @@ fn check_content_version(
             "check again later, or pass --no-version-check to skip this check",
         ),
         None => {
-            // `no_version_check` already returned early above for this
-            // case; see `check_cli_version`'s identical `None` arm for
-            // why this is kept explicit rather than `unreachable!()`.
+            // `no_version_check` already returned early above for
+            // this case.
             CheckResult::info(
                 "content_version",
                 "content version check skipped (--no-version-check)",
@@ -910,42 +746,32 @@ fn check_content_version(
 
 /// The source tree the `source`/`config` checks validate, plus (when
 /// resolution did not come from an explicit `--from`) a human-readable
-/// note explaining which fallback rule fired and why. See this module's
-/// docstring, "Source resolution", for the three-step precedence this
-/// implements.
+/// note explaining which fallback rule fired and why. See this
+/// module's docstring, "Source resolution", for the three-step
+/// precedence this implements.
 ///
-/// The four flags below distinguish DIFFERENT reasons a fallback to
-/// `target_dir` (the cwd) can fire, in increasing order of risk, each
-/// with its own wording in `escalate_for_fallback`/
-/// `failed_or_downgraded_for_fallback`:
+/// The four flags below distinguish different reasons a fallback to
+/// `target_dir` (the cwd) can fire, in increasing order of risk:
 ///
 /// - `legacy_manifest_no_source`: the manifest exists, is fully
-///   readable, and records a real completed install -- but it predates
-///   the `source` field (or ran with no `--from` on record). Riskier
-///   than "no manifest at all" (a real install did happen here, so the
-///   cwd fallback may not be the tree that produced it), but the
-///   manifest itself is trustworthy and this is still a benign, expected
-///   fallback. Reports `Info`.
-/// - `missing_recorded_source`: the manifest exists, is readable, and
-///   DOES record a `source` path -- but that path no longer exists on
-///   disk (moved, deleted, or a different host than the one that
-///   installed). Without this flag, `resolve_source_for_checks` would
-///   hand a nonexistent path to `parse_canonical`, turning a healthy
-///   install into a hard `Failed` instead of a fallback. Same `Info`
-///   tier as `legacy_manifest_no_source`, with its own wording naming
-///   the stale path.
-/// - `unvalidated_cwd`: the manifest exists but could not be READ at
-///   all (corrupt/unreadable JSON, or an I/O error). The fallback tree
-///   may have NO relationship at all to the actual installation --
-///   materially worse than the two cases above, so it gets its own
-///   `Warn` with an unmistakable "UNVALIDATED cwd" summary prefix (see
-///   `with_fallback_prefix`).
+///   readable, and records a real completed install, but it predates
+///   the `source` field (or ran with no `--from` on record). A benign,
+///   expected fallback. Reports `Info`.
+/// - `missing_recorded_source`: the manifest records a `source` path,
+///   but that path no longer exists on disk. Without this flag,
+///   `resolve_source_for_checks` would hand a nonexistent path to
+///   `parse_canonical`, turning a healthy install into a hard `Failed`
+///   instead of a fallback. Same `Info` tier as above, naming the
+///   stale path.
+/// - `unvalidated_cwd`: the manifest exists but could not be read at
+///   all. The fallback tree may have no relationship to the actual
+///   installation, so it gets its own `Warn` with an unmistakable
+///   "unvalidated cwd" summary prefix.
 /// - `unsupported_schema_version`: set only on the
-///   `ManifestError::UnsupportedSchemaVersion` fallback arm. Lets
-///   `escalate_for_fallback` point `source`/`config`'s remediation at
-///   the `manifest` check's own (more specific) advice instead of the
-///   generic "re-run `konductor install`" wording, which is actively
-///   wrong for a schema_version skew.
+///   `ManifestError::UnsupportedSchemaVersion` fallback arm. Points
+///   `source`/`config`'s remediation at the `manifest` check's own
+///   advice instead of the generic "re-run `konductor install`"
+///   wording, which is wrong for a schema_version skew.
 struct ResolvedSource {
     path: PathBuf,
     fallback_note: Option<String>,
@@ -958,24 +784,20 @@ struct ResolvedSource {
 /// Implements the "Source resolution" precedence documented in this
 /// module's docstring:
 ///   1. explicit `--from` always wins outright;
-///   2. else the manifest at `destination` is read via
-///      `manifest::read_manifest` (reused, not re-implemented), and
-///      its recorded `source` field is used if present;
+///   2. else the manifest at `destination` is read, and its recorded
+///      `source` field is used if present;
 ///   3. else (no manifest, or one predating/lacking `source`) falls
 ///      back to `target_dir` (the cwd), with an explicit
 ///      `fallback_note` naming which sub-case fired.
 ///
 /// A `read_manifest` error always falls back to `target_dir` rather
-/// than aborting -- `check_manifest` is the check responsible for
-/// surfacing that failure loudly. Not every `ManifestError` variant is
-/// equally untrustworthy, though, so `unvalidated_cwd` is set
-/// per-variant: `Malformed`/`ReadFailed`/the write-path variants mean
-/// the manifest's content (including `source`) could not be obtained
-/// at all, so `unvalidated_cwd: true`. `UnsupportedSchemaVersion` means
-/// the JSON parsed fine and is a real, readable record -- this build
-/// just can't deserialize it into `Manifest` -- so it stays
-/// `unvalidated_cwd: false` with its own distinct fallback note naming
-/// the version mismatch.
+/// than aborting; `check_manifest` is the check responsible for
+/// surfacing that failure loudly. `unvalidated_cwd` is set per-variant:
+/// `Malformed`/`ReadFailed`/the write-path variants mean the
+/// manifest's content could not be obtained at all, so
+/// `unvalidated_cwd: true`. `UnsupportedSchemaVersion` means the JSON
+/// parsed fine and is a real, readable record, this build just can't
+/// deserialize it, so it stays `unvalidated_cwd: false`.
 fn resolve_source_for_checks(
     target_dir: &Path,
     from: Option<&str>,
@@ -993,32 +815,21 @@ fn resolve_source_for_checks(
     }
 
     match manifest::read_manifest(destination) {
-        // A target's manifest can now track more than
-        // one strategy. Doctor's source resolution is a diagnostic, not
-        // a mutating operation, so it resolves against the FIRST
-        // tracked slot rather than requiring a strategy to be named --
-        // in the overwhelmingly common single-strategy case this is
-        // exactly the same slot that always existed; a target with 2+
-        // strategies gets a diagnostic scoped to just one of them
-        // rather than a hard failure.
+        // A target's manifest can now track more than one strategy.
+        // Doctor's source resolution is a diagnostic, not a mutating
+        // operation, so it resolves against the first tracked slot
+        // rather than requiring a strategy to be named.
         Ok(Some(manifest)) => match manifest.strategies.first().and_then(|s| s.source.clone()) {
             Some(source) => {
                 let source_path = PathBuf::from(&source);
-                // Deliberately `exists()`, not `is_dir()`: this check only
-                // decides whether to fall back at all, not whether the
-                // recorded path is a USABLE source tree. A recorded path
-                // that degraded into a plain file (rather than vanishing
-                // outright) still passes `exists()`, so it flows through
-                // to the `path: source_path` arm below and on into
-                // `check_source`/`check_config`, which call
-                // `parse_canonical`/`config::load_config` against it and
-                // get THEIR specific, more informative "not a directory"
-                // `Failed` -- not this function's generic `Warn`-tier
-                // "moved away" fallback. That asymmetry is intentional: a
-                // file-in-place-of-a-directory is a more precise diagnosis
-                // than "missing", so it is left to surface as the sharper
-                // downstream error rather than being caught here and
-                // flattened into the same wording as a fully-absent path.
+                // Deliberately `exists()`, not `is_dir()`: this check
+                // only decides whether to fall back at all, not
+                // whether the recorded path is a usable source tree.
+                // A path that degraded into a plain file still passes
+                // `exists()` and flows on into
+                // `check_source`/`check_config`, which get their own
+                // more precise "not a directory" `Failed` instead of
+                // this function's generic "moved away" fallback.
                 if source_path.exists() {
                     ResolvedSource {
                         path: source_path,
@@ -1029,14 +840,10 @@ fn resolve_source_for_checks(
                         unsupported_schema_version: false,
                     }
                 } else {
-                    // The manifest is fully trustworthy and does record
-                    // a source -- it is just stale (the recorded tree
-                    // was moved/deleted, or this is a different host
-                    // than the one that installed). See
-                    // `ResolvedSource::missing_recorded_source`'s own
-                    // doc comment for why this must fall back rather
-                    // than let `parse_canonical` hard-fail on a
-                    // nonexistent path.
+                    // The manifest is fully trustworthy and does
+                    // record a source, it is just stale (moved,
+                    // deleted, or a different host than the one that
+                    // installed).
                     ResolvedSource {
                         path: target_dir.to_path_buf(),
                         fallback_note: Some(format!(
@@ -1053,9 +860,9 @@ fn resolve_source_for_checks(
                     }
                 }
             }
-            // A real, completed install happened here, but it predates
-            // the `source` field or ran with no `--from` on record --
-            // see `ResolvedSource::legacy_manifest_no_source`.
+            // A real, completed install happened here, but it
+            // predates the `source` field or ran with no `--from` on
+            // record.
             None => ResolvedSource {
                 path: target_dir.to_path_buf(),
                 fallback_note: Some(format!(
@@ -1137,12 +944,9 @@ fn resolve_source_for_checks(
             unsupported_schema_version: false,
         },
         // `CreateDirFailed`/`WriteFailed`/`Lock`/`DeleteFailed` are
-        // write-path errors (`Lock` specifically from `upsert_strategy`'s
-        // manifest-lock acquisition; `DeleteFailed`
-        // from `delete_and_remove_strategy_locked`'s caller-supplied
-        // delete step) that `read_manifest` never
-        // returns -- unreachable in practice, but handled the same
-        // conservative way rather than panicking if that ever changes.
+        // write-path errors that `read_manifest` never returns in
+        // practice, but handled the same conservative way rather than
+        // panicking if that ever changes.
         Err(manifest::ManifestError::CreateDirFailed { .. })
         | Err(manifest::ManifestError::WriteFailed { .. })
         | Err(manifest::ManifestError::Lock(_))
@@ -1162,23 +966,18 @@ fn resolve_source_for_checks(
     }
 }
 
-/// The `source` check: source well-formedness, via `parse_canonical` -- the exact
-/// function `synth`/`install --from` call. `Ok` reports what parsed
-/// (agent/skill/SOP/context counts); `Failed` surfaces the same
+/// The `source` check: source well-formedness, via `parse_canonical`,
+/// the exact function `synth`/`install --from` call. `Ok` reports what
+/// parsed (agent/skill/SOP/context counts); `Failed` surfaces the same
 /// `ParseError` message `synth` would print on the same source tree,
 /// plus a remediation hint pointing at the failing file.
 ///
-/// This check answers "is the REPO CHECKOUT well-formed", not "is my
-/// installation healthy" -- see this module's docstring ("What
-/// `source`/`config` are FOR") for why that distinction matters. Most
-/// users, especially anyone installing from a published release
-/// artifact rather than a local `--from` checkout, should expect a
-/// `Warn`/`Info` fallback here as the normal outcome, not evidence of a
-/// problem; `check_manifest`/`check_runtime` are what actually answer
-/// the installation-health question.
-///
-/// The missing/non-directory `source_dir` guard lives in `parse_canonical`
-/// itself; this check delegates entirely rather than duplicating it.
+/// This check answers "is the repo checkout well-formed", not "is my
+/// installation healthy". Most users, especially anyone installing
+/// from a published release artifact rather than a local `--from`
+/// checkout, should expect a `Warn`/`Info` fallback here as the normal
+/// outcome, not evidence of a problem; `check_manifest`/`check_runtime`
+/// are what actually answer the installation-health question.
 fn check_source(resolved: &ResolvedSource) -> CheckResult {
     let source_dir = resolved.path.as_path();
 
@@ -1196,8 +995,7 @@ fn check_source(resolved: &ResolvedSource) -> CheckResult {
                     model.context.len()
                 ),
             );
-            // A fallback occurred but parsing still succeeded --
-            // delegated to `escalate_for_fallback`'s Ok/Info/Warn logic.
+            // A fallback occurred but parsing still succeeded.
             escalate_for_fallback("source", resolved, summary)
         }
         Err(err) => failed_or_downgraded_for_fallback(
@@ -1219,10 +1017,9 @@ fn check_source(resolved: &ResolvedSource) -> CheckResult {
     }
 }
 
-/// Prefixes `summary` with `resolved.fallback_note` (own line via `; `)
-/// when a fallback occurred, so a fallback is never buried only in
-/// `-v`/`--verbose` detail -- the default, non-verbose summary line
-/// itself says which tree was actually checked and why.
+/// Prefixes `summary` with `resolved.fallback_note` when a fallback
+/// occurred, so the default, non-verbose summary line itself says
+/// which tree was actually checked and why.
 fn with_fallback_prefix(resolved: &ResolvedSource, summary: String) -> String {
     match &resolved.fallback_note {
         Some(note) => format!("{note}; {summary}"),
@@ -1230,10 +1027,9 @@ fn with_fallback_prefix(resolved: &ResolvedSource, summary: String) -> String {
     }
 }
 
-/// Prepends `resolved.fallback_note` (if any) as this check's FIRST
-/// detail entry, so `-v`/`--verbose` and `--json`'s `detail` array both
-/// carry the fallback reasoning verbatim, ahead of whatever problem(s)
-/// were found against the fallback tree.
+/// Prepends `resolved.fallback_note` (if any) as this check's first
+/// detail entry, so `-v`/`--verbose` and `--json`'s `detail` array
+/// both carry the fallback reasoning verbatim.
 fn fallback_detail(resolved: &ResolvedSource, mut detail: Vec<String>) -> Vec<String> {
     if let Some(note) = &resolved.fallback_note {
         detail.insert(0, note.clone());
@@ -1243,17 +1039,14 @@ fn fallback_detail(resolved: &ResolvedSource, mut detail: Vec<String>) -> Vec<St
 
 /// Shared by `check_source`/`check_config`'s `Err` arm: a parse/load
 /// failure against a `legacy_manifest_no_source`/`missing_recorded_source`
-/// fallback tree does NOT mean the installation is broken -- the
-/// manifest is fully readable and the install it describes is healthy;
-/// the fallback cwd is merely "maybe not the tree that produced it"
-/// (see `ResolvedSource`). Downgrades to `Info` in exactly those two
-/// cases rather than `Failed` -- both are benign, expected fallbacks
-/// (see this module's docstring), so neither should read as a warning
-/// -- still surfacing the real error text via `remediation`.
+/// fallback tree does not mean the installation is broken, the
+/// manifest is fully readable and the install it describes is
+/// healthy. Downgrades to `Info` in exactly those two cases rather
+/// than `Failed`, still surfacing the real error text via
+/// `remediation`.
 ///
-/// `unvalidated_cwd` is deliberately NOT downgraded: `check_manifest`
-/// already reports that case as its own `Failed`. Every other tier (or
-/// no fallback) keeps the caller's original `Failed` result.
+/// `unvalidated_cwd` is deliberately not downgraded: `check_manifest`
+/// already reports that case as its own `Failed`.
 fn failed_or_downgraded_for_fallback(
     name: &'static str,
     resolved: &ResolvedSource,
@@ -1286,22 +1079,10 @@ fn failed_or_downgraded_for_fallback(
 /// Shared by `check_source`/`check_config`: given the underlying
 /// operation already succeeded against `resolved.path`, picks the
 /// right non-failing `CheckResult` for whichever fallback tier
-/// `resolved` represents:
-///   - no fallback -> `Ok`.
-///   - `unvalidated_cwd` -> `Warn`, strongest remediation (fix/remove
-///     the manifest).
-///   - `legacy_manifest_no_source` -> `Info`, remediation points at
-///     re-installing to record a source.
-///   - `missing_recorded_source` -> `Info`, remediation names the stale
-///     path.
-///   - `unsupported_schema_version` -> `Info`, but cross-references the
-///     `manifest` check's own remediation instead of the generic
-///     "re-run `konductor install`" wording, which doesn't fix a
-///     schema_version skew.
-///   - any other fallback -> `Info` with the generic re-run wording.
-///
-/// Kept as one shared function (rather than duplicated per check) so
-/// the escalation logic has one place to get right and test.
+/// `resolved` represents (no fallback, `unvalidated_cwd`,
+/// `legacy_manifest_no_source`, `missing_recorded_source`,
+/// `unsupported_schema_version`, or the generic case). Kept as one
+/// shared function rather than duplicated per check.
 fn escalate_for_fallback(
     name: &'static str,
     resolved: &ResolvedSource,
@@ -1339,9 +1120,8 @@ fn escalate_for_fallback(
             ),
         ),
         // The generic `Some(_) =>` arm's "run `konductor install`"
-        // wording is actively wrong here -- the manifest's
-        // schema_version is the problem, not a missing source, and
-        // `check_manifest` already names the real fix.
+        // wording is wrong here: the manifest's schema_version is the
+        // problem, not a missing source.
         Some(_) if resolved.unsupported_schema_version => CheckResult::info(
             name,
             summary,
@@ -1360,17 +1140,17 @@ fn escalate_for_fallback(
         ),
         None => return CheckResult::ok(name, summary),
     };
-    // Every Warn/Info branch above has a fallback note -- carry it
-    // into `detail` too, so `--json` documents the fallback reason for
-    // every non-ok status, not only failing ones.
+    // Every Warn/Info branch above has a fallback note; carry it into
+    // `detail` too, so `--json` documents the fallback reason for
+    // every non-ok status.
     result.detail = fallback_detail(resolved, result.detail);
     result
 }
 
-/// The `runtime` check: which agent runtime(s) `install::runtime::detect_runtimes`
-/// finds under the install destination. Neither runtime present is
-/// `Info`, not `Failed` -- a target with no runtime yet is not a broken
-/// install, just one `konductor install` hasn't been pointed at.
+/// The `runtime` check: which agent runtime(s) `detect_runtimes` finds
+/// under the install destination. No runtime present is `Info`, not
+/// `Failed`, since a target with no runtime yet is not a broken
+/// install.
 fn check_runtime(destination: &Path) -> CheckResult {
     let result = runtime::detect_runtimes(destination);
     if result.detected.is_empty() {
@@ -1399,16 +1179,15 @@ fn check_runtime(destination: &Path) -> CheckResult {
     )
 }
 
-/// The `manifest` check: manifest presence, `status`, and per-file hash drift.
-/// Absent manifest is `Info` (nothing installed yet); `Status::InProgress`
-/// is `Failed` (a prior install crashed mid-copy); any recorded file
-/// missing on disk or whose `sha256_hex` no longer matches is `Stale`
-/// (drifted, needs a re-install, not necessarily a bug). A read/parse
-/// failure is `Failed` with the generic "re-run `konductor install`"
-/// remediation. `UnsupportedSchemaVersion` is ALSO `Failed`, but with
-/// its own remediation naming the version mismatch and pointing at
-/// updating `konductor` -- re-running install is wrong advice for a
-/// well-formed but version-skewed manifest.
+/// The `manifest` check: manifest presence, `status`, and per-file
+/// hash drift. Absent manifest is `Info`; `Status::InProgress` is
+/// `Failed` (a prior install crashed mid-copy); any recorded file
+/// missing on disk or whose hash no longer matches is `Stale`. A
+/// read/parse failure is `Failed` with the generic "re-run `konductor
+/// install`" remediation. `UnsupportedSchemaVersion` is also `Failed`,
+/// but with its own remediation naming the version mismatch, since
+/// re-running install is wrong advice for a well-formed but
+/// version-skewed manifest.
 fn check_manifest(destination: &Path) -> CheckResult {
     let manifest_path = manifest::manifest_path(destination);
     let manifest = match manifest::read_manifest(destination) {
@@ -1425,11 +1204,11 @@ fn check_manifest(destination: &Path) -> CheckResult {
                 ),
             );
         }
-        // Version-skew, not corruption: the manifest is well-formed
-        // JSON from a schema_version this build doesn't recognize.
-        // "Re-run `konductor install`" would just reproduce the
-        // failure (or silently downgrade a newer manifest), so this
-        // gets its own remediation pointing at updating the binary.
+        // Version-skew, not corruption: well-formed JSON from a
+        // schema_version this build doesn't recognize. "Re-run
+        // `konductor install`" would just reproduce the failure, so
+        // this gets its own remediation pointing at updating the
+        // binary.
         Err(err @ manifest::ManifestError::UnsupportedSchemaVersion { .. }) => {
             return CheckResult::failed(
                 "manifest",
@@ -1459,15 +1238,10 @@ fn check_manifest(destination: &Path) -> CheckResult {
         }
     };
 
-    // Aggregated across every tracked strategy slot -- `check_manifest`
-    // is read-only diagnostics, not a mutating operation, so (unlike
-    // update/uninstall) there is no need to refuse on 2+ tracked
-    // strategies; it simply reports on all of them. The remediation
+    // Aggregated across every tracked strategy slot. The remediation
     // hint names whichever slot actually triggered the condition below
     // (InProgress, or the first slot with drifted files), not just
-    // `manifest.strategies.first()` -- a target with an unrelated
-    // healthy first slot must not get a hint pointing at reinstalling
-    // that healthy slot instead of the broken one.
+    // the first slot.
     if let Some(slot) = manifest
         .strategies
         .iter()
@@ -1567,54 +1341,32 @@ fn drifted_files(destination: &Path, manifest: &StrategyManifest) -> Vec<String>
 }
 
 /// The `index_status` check: compares `~/.konductor/installs`'s cached
-/// `IndexEntryStatus` for `destination` against that same target's real
-/// manifest `Status` (already read by `check_manifest`, re-read here
-/// independently so this check has no ordering dependency on it).
+/// `IndexEntryStatus` for `destination` against that same target's
+/// real manifest `Status`.
 ///
-/// Not every install needs to be tracked -- `index.rs`'s own
-/// `IndexEntryStatus`/`IndexEntry::status` doc comments describe the
-/// index as a back-compat-safe CACHE, and a target predating index
-/// support (or installed by a `konductor` build without it) simply has
-/// no entry at all. That is `Info`, not a problem to fix.
+/// Not every install needs to be tracked: the index is a back-compat-
+/// safe cache, and a target predating index support simply has no
+/// entry at all. That is `Info`, not a problem to fix.
 ///
-/// When an entry IS present, its cached `status` is a snapshot from the
-/// last install/update write, refreshed on every one of those calls but
-/// never otherwise reconciled -- so it can only ever drift out of sync
-/// with the manifest if a run crashed between the two writes (the
-/// manifest's own `Status::Complete` rewrite and the index's matching
-/// `write_index` call; see `update.rs`'s `run_update_one_target`/
-/// `finalize_index_warning` for the exact ordering). A real
-/// `IndexEntryStatus::InProgress` vs. `Status::InProgress` disagreement
-/// therefore always means an install/update was interrupted -- this is
-/// `Warn`, mirroring `check_manifest`'s own `Stale`/`Warn` split:
-/// `check_manifest` reserves `Failed`/`Stale` for problems it can
-/// observe directly on disk (an in-progress manifest, a hash drift);
-/// this check only observes a SECOND record's disagreement with the
-/// first, so it stays non-failing (`Warn`) rather than flipping the
-/// overall run to `EXIT_HALTED` for a condition `check_manifest`
-/// already reports on its own when the manifest itself is the one
-/// that's `InProgress`.
+/// A real `IndexEntryStatus::InProgress` vs. `Status::InProgress`
+/// disagreement means an install/update was interrupted between the
+/// manifest's own rewrite and the index's matching write. This is
+/// `Warn`: this check only observes a second record's disagreement
+/// with the first, so it stays non-failing rather than flipping the
+/// overall run to `EXIT_HALTED`, a condition `check_manifest` already
+/// reports on its own when the manifest itself is `InProgress`.
 ///
-/// A read failure on the index itself (corrupt JSON, unsupported
-/// schema version) is `Warn`, not `Failed` -- same non-failing
-/// posture as the "index missing an entry" case, since this check's
-/// job is advisory drift-detection, not index integrity (a genuinely
-/// corrupted `~/.konductor/installs` is `update`'s/`uninstall`'s
-/// problem to refuse to proceed on, not `doctor`'s to fail the whole
-/// run over).
+/// A read failure on the index itself is `Warn`, not `Failed`: this
+/// check's job is advisory drift-detection, not index integrity.
 ///
 /// `home_dir` is the same resolved home `run_checks` threads to
-/// `check_config_with_home`/`check_telemetry_state` -- reads the index
-/// via `index::read_index_at_home` rather than the bare `read_index`,
-/// so a test pointed at a scratch home sees that home's index instead
-/// of the real machine's.
+/// `check_config_with_home`/`check_telemetry_state`.
 fn check_index_status(destination: &Path, home_dir: Option<&Path>) -> CheckResult {
     let canonical = match index::canonicalize_target_dir(destination) {
         Ok(canonical) => canonical,
         // `destination` doesn't exist (or some other canonicalization
-        // failure) -- nothing to look up in the index either way. Not
-        // this check's job to report a missing destination (`manifest`/
-        // `runtime` already do), so this is a quiet `Info`.
+        // failure); not this check's job to report a missing
+        // destination, so this is a quiet `Info`.
         Err(_) => {
             return CheckResult::info(
                 "index_status",
@@ -1657,13 +1409,9 @@ fn check_index_status(destination: &Path, home_dir: Option<&Path>) -> CheckResul
     };
 
     // Retains a strategy name alongside the aggregated status so the
-    // disagreement branch below can name the harness that produced this
-    // install via `harness_hint`, instead of the generic
-    // `HARNESS_PLACEHOLDER`. Aggregated across every
-    // tracked slot -- `InProgress` if ANY slot is, `Complete` only if
-    // every slot is -- and the FIRST tracked strategy's name is used
-    // for the hint (a target with 2+ strategies gets a hint scoped to
-    // just one of them, matching `check_manifest`'s own simplification).
+    // disagreement branch below can name the harness that produced
+    // this install. Aggregated across every tracked slot: `InProgress`
+    // if any slot is, `Complete` only if every slot is.
     let (manifest_status, manifest_strategy) = match manifest::read_manifest(destination) {
         Ok(Some(manifest)) => {
             let status = if manifest
@@ -1682,10 +1430,9 @@ fn check_index_status(destination: &Path, home_dir: Option<&Path>) -> CheckResul
                 .unwrap_or_default();
             (status, strategy)
         }
-        // No manifest, or unreadable -- `check_manifest` already
-        // surfaces this loudly on its own. Nothing for THIS check to
-        // compare against, so it stays a quiet `Info` rather than
-        // duplicating that failure under a second check name.
+        // No manifest, or unreadable: `check_manifest` already
+        // surfaces this on its own. Nothing for this check to compare
+        // against, so it stays a quiet `Info`.
         Ok(None) | Err(_) => {
             return CheckResult::info(
                 "index_status",
@@ -1742,63 +1489,37 @@ fn check_index_status(destination: &Path, home_dir: Option<&Path>) -> CheckResul
 
 /// The `telemetry_state` check: the effective telemetry state for
 /// `destination`, read through the exact two signals `report.rs`'s own
-/// AND gate consults -- `install_info::read_install_info_detailed`
-/// (the per-target opt-out signal, in its error-distinguishing form)
-/// and `konductor_telemetry::read_instance(home_dir)` (the
-/// machine-scoped consent record) -- never re-derived, so this check
-/// cannot drift from the gate it reports on.
+/// AND gate consults: `install_info::read_install_info_detailed` (the
+/// per-target opt-out signal) and `konductor_telemetry::read_instance`
+/// (the machine-scoped consent record). Never re-derived, so this
+/// check cannot drift from the gate it reports on.
 ///
-/// The per-target signal is now ONE filesystem access:
-/// `install_info::read_install_info_detailed` returns either the
-/// record or an `InstallInfoAbsence` naming why it didn't --
-/// `NotFound` (no record: either this target's own `--no-telemetry`
-/// choice, or it was never installed here at all -- the absence alone
-/// cannot tell those apart) or `Broken` (present but unreadable,
-/// unparseable, or schema-mismatched: nobody chose this). A second,
-/// separate existence check on the same path used to run after this
-/// read to pick the message; a concurrent `uninstall` removing the
-/// file between the two reads (nothing serializes `doctor` against it
-/// -- `uninstall`'s manifest lock is already released by the time it
-/// deletes install-info.json) could make a target that was simply
-/// concurrently uninstalled misreport as this target's own opt-out
-/// choice. One read closes that window: whichever variant the SAME
-/// read returns is both the consent decision and the message.
+/// The per-target signal is one filesystem access:
+/// `read_install_info_detailed` returns either the record or an
+/// `InstallInfoAbsence` naming why it didn't: `NotFound` (no record,
+/// either this target's own `--no-telemetry` choice or it was never
+/// installed here, the absence alone cannot tell those apart) or
+/// `Broken` (present but unreadable, unparseable, or
+/// schema-mismatched; nobody chose this). A single read closes the
+/// window a two-step existence-then-read check would otherwise leave
+/// for a concurrent `uninstall`.
 ///
-/// The consent decision itself is unchanged from before this fix:
-/// anything other than `Ok(record)` is not opted in, matching
-/// `report.rs`'s own gate, which also treats a schema-mismatched or
-/// corrupted record as opted out. Only the MESSAGE differs by which
-/// `InstallInfoAbsence` variant fired -- `NotFound` names both
-/// possible causes rather than asserting opt-out as fact (an absent
-/// record is exactly as consistent with "never installed" as with
-/// "opted out," and `check_index_status` is the check that can tell
-/// them apart); `Broken` gets its own `Warn` naming the file's path,
-/// since that case is not a choice the user made.
+/// The consent decision itself matches `report.rs`'s own gate, which
+/// also treats a schema-mismatched or corrupted record as opted out.
+/// Only the message differs by which `InstallInfoAbsence` variant
+/// fired.
 ///
 /// `home_dir` mirrors `report.rs`'s own `home_dir()`: an unresolvable
 /// `HOME` has no anchor to read a machine record from, so it fails
 /// closed to the same "reporting is off, no record" wording as a
-/// missing `telemetry.json` -- never `Ok`.
+/// missing `telemetry.json`.
 ///
-/// Five cases, in the order the design calls for:
-/// - no install-info record at all -> `Info`: either this target opted
-///   out at install, or it was never installed -- an absent record
-///   cannot distinguish the two, so the message names both and points
-///   at the index check to tell which.
-/// - an install-info record is present but fails the validated read
-///   (unreadable or an unrecognized schema) -> `Warn`: this is not a
-///   choice the user made, and it also silently suppresses reporting,
-///   so it gets the same visibility as the machine-decline case below.
-/// - no machine record at all -> `Info`: nothing has reported on this
-///   machine yet.
-/// - the machine record declines (`telemetry_consent: false`) while
-///   this target opted in -> `Warn`: reporting is off for every
-///   project on this machine, including this one, naming the record's
-///   path so the user can change it. This is the case a design review
-///   named as silent -- a machine-level decline suppressing an
-///   opted-in project must be visible, not folded into ordinary `Ok`.
-/// - machine consent allows and this target opted in -> `Ok`:
-///   reporting is on.
+/// Five cases: no install-info record at all (`Info`, names both
+/// possible causes); a record present but fails validation (`Warn`,
+/// not a choice the user made); no machine record at all (`Info`,
+/// nothing has reported yet); the machine record declines while this
+/// target opted in (`Warn`, the case a design review flagged as
+/// silent); machine consent allows and this target opted in (`Ok`).
 fn check_telemetry_state(destination: &Path, home_dir: Option<&Path>) -> CheckResult {
     use crate::cli::telemetry::InstallInfoAbsence;
 
@@ -1883,27 +1604,22 @@ fn check_telemetry_state(destination: &Path, home_dir: Option<&Path>) -> CheckRe
     }
 }
 
-/// `config::load_config_with_home` -- the same loading logic
-/// `config get`/`config list`/`config set` use via `config::load_config`.
-/// A source tree with no `.konductor/config.yml` at all still loads (the
-/// preset defaults alone are a valid config -- see config.rs's merge
-/// semantics), so this only fails on a genuinely malformed/invalid
-/// project or user config, never merely on one being absent.
+/// `config::load_config_with_home`, the same loading logic
+/// `config get`/`config list`/`config set` use. A source tree with no
+/// `.konductor/config.yml` at all still loads (preset defaults alone
+/// are a valid config), so this only fails on a genuinely
+/// malformed/invalid project or user config, never merely on one
+/// being absent.
 ///
-/// Same caveat as `check_source` above: this validates the REPO's
-/// project config, which only exists to check when a local checkout is
-/// available. A `Warn`/`Info` fallback here is expected and benign for
-/// most install methods -- `check_manifest`/`check_runtime` are the
-/// checks that answer "is my installation healthy".
+/// Same caveat as `check_source`: this validates the repo's project
+/// config, which only exists to check when a local checkout is
+/// available. A `Warn`/`Info` fallback is expected and benign for most
+/// install methods.
 ///
 /// `home_dir` is the user-tier config's home directory, passed in
-/// explicitly rather than resolved from the `HOME` env var here -- same
-/// test-isolation motivation as `config::load_config_with_home` itself
-/// (which this calls directly, bypassing `config::load_config`'s own
-/// `HOME` resolution), threaded up through `dispatch_doctor_with`'s own
-/// `home_dir_override` parameter so end-to-end tests can point the user
-/// tier at a scratch directory without mutating the process-global
-/// `HOME` env var. Production callers pass the real `$HOME`.
+/// explicitly rather than resolved from the `HOME` env var here, so
+/// end-to-end tests can point the user tier at a scratch directory.
+/// Production callers pass the real `$HOME`.
 fn check_config_with_home(resolved: &ResolvedSource, home_dir: Option<&Path>) -> CheckResult {
     let source_dir = resolved.path.as_path();
     match config::load_config_with_home(source_dir, home_dir) {
@@ -1922,15 +1638,12 @@ fn check_config_with_home(resolved: &ResolvedSource, home_dir: Option<&Path>) ->
             resolved,
             with_fallback_prefix(
                 resolved,
-                // Deliberately no hardcoded path in this prefix -- `err`'s
-                // own `Display` (see `config::ConfigError`) already names
-                // whichever specific tier's file actually failed to load
-                // (the project tier at `source_dir`, OR the user tier at
-                // `~/.konductor/config.yml` -- `load_config` merges both
-                // and either can be the broken one). Prefixing with
-                // `source_dir` unconditionally would misreport a broken
-                // user-tier config as if the PROJECT config were the
-                // problem.
+                // Deliberately no hardcoded path in this prefix:
+                // `err`'s own `Display` already names whichever
+                // specific tier's file actually failed to load.
+                // Prefixing with `source_dir` unconditionally would
+                // misreport a broken user-tier config as if the
+                // project config were the problem.
                 format!("config failed to load: {err}"),
             ),
             "run `konductor config list` for the full merged view, or `konductor init --force` \
@@ -2034,26 +1747,17 @@ fn is_executable_file(path: &Path) -> std::io::Result<bool> {
 }
 
 /// Check (dormant, not wired into `dispatch_doctor_with`'s live check
-/// list): `.konductor/.gitignore` (as written by `konductor init`)
-/// exists at the resolved source tree and contains every pattern in
-/// `init::GITIGNORE_PATTERNS` -- reused, not re-declared, so this check
-/// and `init`'s writer can never drift apart on what the "documented
-/// patterns" actually are.
+/// list): `.konductor/.gitignore` exists at the resolved source tree
+/// and contains every pattern in `init::GITIGNORE_PATTERNS`.
 ///
-/// `Warn`, not `Failed`: a missing/incomplete `.gitignore` is a hygiene
-/// issue (secrets/state could end up committed), not a broken install.
+/// `Warn`, not `Failed`: a missing/incomplete `.gitignore` is a
+/// hygiene issue, not a broken install.
 ///
-/// INTENTIONALLY DORMANT: not called from `dispatch_doctor_with` today
-/// (see the comment at that call site). Two of `GITIGNORE_PATTERNS`'
-/// five patterns (`runs/`, `overrides.yml`) guard paths this codebase
-/// cannot yet create -- `runs/` belongs to unimplemented run-state
-/// persistence (Feature 4.3), `overrides.yml` to the post-launch
-/// override mechanism (Feature 4.12/M7) -- so today this check would
-/// only ever produce a false-positive-style nag, never a real signal.
-/// Kept fully implemented and unit-tested (see the `check_gitignore_*`
-/// tests below) so it is ready to re-enable the moment either feature
-/// lands. `#[allow(dead_code)]` because nothing calls it outside tests
-/// while dormant.
+/// Intentionally dormant: two of `GITIGNORE_PATTERNS`'s five patterns
+/// (`runs/`, `overrides.yml`) guard paths this codebase cannot yet
+/// create, so today this check would only ever produce a
+/// false-positive-style nag. Kept fully implemented and unit-tested so
+/// it is ready to re-enable once those features land.
 #[allow(dead_code)]
 fn check_gitignore(resolved: &ResolvedSource) -> CheckResult {
     let gitignore_path = resolved
@@ -2108,17 +1812,9 @@ fn check_gitignore(resolved: &ResolvedSource) -> CheckResult {
 
 /// Check (dormant, not wired into `dispatch_doctor_with`'s live check
 /// list): honest not-yet-applicable stub. This build has no
-/// provider/model-access validation to run -- access is inherited from
-/// whichever runtime (Kiro CLI / Claude Code) is installed, which is out
-/// of scope for this CLI utility today. Always `Info`; never fabricates
-/// a check against a concept this build doesn't implement.
-///
-/// INTENTIONALLY DORMANT: not called from `dispatch_doctor_with` today
-/// (see the comment at that call site) -- there is no real signal to
-/// surface (Feature 4.9.1). Kept fully implemented and unit-tested
-/// (`check_provider_model_access_is_always_info_stub` below) so it is
-/// ready to re-enable once that feature lands. `#[allow(dead_code)]`
-/// because nothing calls it outside tests while dormant.
+/// provider/model-access validation to run; access is inherited from
+/// whichever runtime is installed, out of scope for this CLI utility
+/// today. Always `Info`.
 #[allow(dead_code)]
 fn check_provider_model_access() -> CheckResult {
     CheckResult::info(
@@ -2132,16 +1828,8 @@ fn check_provider_model_access() -> CheckResult {
 
 /// Check (dormant, not wired into `dispatch_doctor_with`'s live check
 /// list): honest not-yet-applicable stub. Role-scoped allowlist
-/// validation (design doc Task 4.11, milestone M6) is a planned
-/// post-launch feature, not present in this build. Always `Info`; never
-/// fabricates a check against a concept this build doesn't implement.
-///
-/// INTENTIONALLY DORMANT: not called from `dispatch_doctor_with` today
-/// (see the comment at that call site) -- there is no real signal to
-/// surface (design doc Task 4.11, M6/M7). Kept fully implemented and
-/// unit-tested (`check_role_allowlists_is_always_info_stub` below) so
-/// it is ready to re-enable once that feature lands. `#[allow(dead_code)]`
-/// because nothing calls it outside tests while dormant.
+/// validation is a planned post-launch feature, not present in this
+/// build. Always `Info`.
 #[allow(dead_code)]
 fn check_role_allowlists() -> CheckResult {
     CheckResult::info(
@@ -2155,10 +1843,7 @@ fn check_role_allowlists() -> CheckResult {
 
 /// Prints the default-mode (non-JSON) report: one summary line per
 /// check, each non-`Ok` line followed by an indented remediation hint.
-/// `-v` additionally prints every entry in that check's `detail` list,
-/// indented further, so nothing is hidden behind "the first error only"
-/// (relevant chiefly for a future multi-error `parse_canonical`, but
-/// applied uniformly to every check for consistency).
+/// `-v` additionally prints every entry in that check's `detail` list.
 fn print_report(results: &[CheckResult], verbose: bool, color: ColorMode) {
     for result in results {
         let label = result.status.label();
@@ -2188,16 +1873,13 @@ fn print_report(results: &[CheckResult], verbose: bool, color: ColorMode) {
 
 /// Builds the `--json` equivalent of `print_report`: one compact JSON
 /// object mirroring `install`/`synth`'s flat JSON shape, with a
-/// `checks` array carrying each check's `name`/`status`/`summary`, plus
-/// `detail` (non-empty only on a non-`ok` check) and `remediation`
-/// (only when set).
+/// `checks` array carrying each check's `name`/`status`/`summary`,
+/// plus `detail` (non-empty only on a non-`ok` check) and
+/// `remediation` (only when set).
 ///
-/// IMPORTANT fix: `ok` alone reads `true` even when a check is `Warn`
-/// (which never fails the run, see `CheckStatus::is_failing`) -- a
-/// `--json` consumer inspecting only `ok` would otherwise miss a fired
-/// fallback. `warnings` (`true` if any check is `Warn`) lets a machine
-/// consumer detect that without parsing every `status` string. See
-/// cli/README.md's `--json` section.
+/// `ok` alone reads `true` even when a check is `Warn` (which never
+/// fails the run). `warnings` (`true` if any check is `Warn`) lets a
+/// machine consumer detect that without parsing every `status` string.
 fn format_report_json(results: &[CheckResult]) -> String {
     let checks: Vec<serde_json::Value> = results
         .iter()
@@ -2242,18 +1924,10 @@ mod tests {
     use std::sync::MutexGuard;
 
     /// RAII guard for tests seeding `~/.konductor/installs` through
-    /// `index::write_index` (not yet home-aware -- unlike
-    /// `index::read_index_at_home`, there is no `write_index_at_home`
-    /// exposed to this module). Mirrors `install.rs`'s/`update.rs`'s
-    /// own `HomeGuard` exactly -- acquires the crate-wide
+    /// `index::write_index`. Acquires the crate-wide
     /// `test_home_lock::HOME_ENV_LOCK` for its entire lifetime so no
     /// other `HOME`-mutating test anywhere in this crate observes an
-    /// interleaved value. `check_index_status`/`dispatch_doctor_all`
-    /// themselves are home-aware now (see their own docstrings); tests
-    /// below pass this guard's own `scratch` home to them explicitly,
-    /// the same way `run_checks` threads its resolved home, rather than
-    /// relying on the mutated `$HOME` those two functions no longer
-    /// fall back to.
+    /// interleaved value.
     struct HomeGuard {
         _lock: MutexGuard<'static, ()>,
         scratch: PathBuf,
@@ -2307,11 +1981,10 @@ mod tests {
     }
 
     /// Test-only helper: opts `destination` in to telemetry the same
-    /// way a real `konductor install` (no `--no-telemetry`) does --
-    /// writes `.konductor/install-info.json`, the signal
-    /// `check_telemetry_state` now reads. `source_root` has no
-    /// `dist/VERSION`, which degrades `agent_version` to `None`; every
-    /// caller here only cares about the file's presence.
+    /// way a real `konductor install` (no `--no-telemetry`) does.
+    /// `source_root` has no `dist/VERSION`, which degrades
+    /// `agent_version` to `None`; every caller here only cares about
+    /// the file's presence.
     fn opt_in_to_telemetry(destination: &Path) {
         let source_root = scratch_dir("opt-in-to-telemetry-source");
         crate::cli::telemetry::write_install_info(
@@ -2324,13 +1997,10 @@ mod tests {
         fs::remove_dir_all(&source_root).ok();
     }
 
-    /// Healthy/no-issues case: an empty-but-valid source tree (no
-    /// agents/skills/agent-sops — a valid, empty CanonicalModel, same as
-    /// `dispatch_synth_returns_zero_on_empty_source_tree`), no
-    /// `.konductor/config.yml` (preset defaults alone are valid), and an
-    /// install destination with nothing installed at all. Every check
-    /// must be `ok` or `info`, never `failed`/`stale`, and the overall
-    /// exit code must be 0.
+    /// Healthy/no-issues case: an empty-but-valid source tree, no
+    /// `.konductor/config.yml`, and an install destination with
+    /// nothing installed. Every check must be `ok` or `info`, never
+    /// `failed`/`stale`, and the overall exit code must be 0.
     #[test]
     fn dispatch_doctor_is_all_clear_on_a_healthy_empty_project() {
         let source = scratch_dir("healthy-source");
@@ -2358,8 +2028,7 @@ mod tests {
 
     /// A malformed agent spec (invalid JSON) makes `parse_canonical`
     /// fail, which the `source` check must surface as `failed` and the
-    /// overall run must map to `EXIT_HALTED` (1), never exit 0 and never
-    /// exit code 2.
+    /// overall run must map to `EXIT_HALTED` (1).
     #[test]
     fn dispatch_doctor_reports_failed_source_on_malformed_agent_spec() {
         let source = scratch_dir("malformed-agent-source");
@@ -2392,15 +2061,13 @@ mod tests {
         fs::remove_dir_all(&home).ok();
     }
 
-    /// A `--from` (source) path that does not exist AT ALL must be
+    /// A `--from` (source) path that does not exist at all must be
     /// reported `failed` for the `source` check, and the overall exit
-    /// code must be `EXIT_HALTED` (1) -- never 0 ("all clear") and
-    /// never 2 (the reserved CRITICAL-gate code). Regression test for
-    /// the bug where `parse_canonical`'s subdirectory walks
-    /// (`agents/`, `skills/`, `agent-sops/`, `context/`) each treat a
+    /// code must be `EXIT_HALTED` (1). Regression test for the bug
+    /// where `parse_canonical`'s subdirectory walks each treat a
     /// missing directory as "zero entries" rather than an error, so a
     /// nonexistent source tree parsed as a valid-but-empty
-    /// `CanonicalModel` and `check_source` reported `ok`.
+    /// `CanonicalModel`.
     #[test]
     fn dispatch_doctor_reports_failed_source_on_nonexistent_from_path() {
         let destination = scratch_dir("nonexistent-from-destination");
@@ -2527,14 +2194,12 @@ mod tests {
         fs::remove_dir_all(&home).ok();
     }
 
-    /// An agent referencing a skill that does not exist under `skills/`
-    /// (e.g. a renamed or deleted skill) is `parse_canonical`'s
-    /// "dangling skill reference" failure (see
-    /// `synth::parse_canonical::check_dangling_skill_references`) --
-    /// `doctor`'s `check_source` calls the SAME shared `parse_canonical`
-    /// as `synth`/`install --from`, so this failure surfaces here
-    /// identically, not as a doctor-only special case. Must surface as
-    /// `failed`, naming the agent, field, and missing skill.
+    /// An agent referencing a skill that does not exist under
+    /// `skills/` is `parse_canonical`'s "dangling skill reference"
+    /// failure. `doctor`'s `check_source` calls the same shared
+    /// `parse_canonical` as `synth`/`install --from`, so this failure
+    /// surfaces here identically. Must surface as `failed`, naming the
+    /// agent, field, and missing skill.
     #[test]
     fn dispatch_doctor_reports_failed_source_on_dangling_skill_reference() {
         let source = scratch_dir("dangling-skill-source");
@@ -2590,15 +2255,14 @@ mod tests {
 
     /// A destination directory that simply has nothing installed under
     /// it must report `info`, not `failed`, for both the `runtime` and
-    /// `manifest` checks -- and the overall exit code must still be 0.
+    /// `manifest` checks, and the overall exit code must still be 0.
     #[test]
     fn dispatch_doctor_reports_info_not_failed_on_missing_install_directory() {
         let source = scratch_dir("missing-dir-source");
         let destination = scratch_dir("missing-dir-destination");
         let home = scratch_dir("missing-dir-home");
-        // Destination exists (scratch_dir creates it) but has no
-        // .kiro/.claude/.konductor content at all -- the "missing
-        // directory" case this test's name refers to.
+        // Destination exists but has no .kiro/.claude/.konductor
+        // content at all.
 
         let code = dispatch_doctor_with(
             &source,
@@ -2647,8 +2311,8 @@ mod tests {
         );
         write_manifest_for_test(&destination, &written);
 
-        // Mutate the on-disk file after the manifest was written, so its
-        // real content hash no longer matches what was recorded.
+        // Mutate the on-disk file after the manifest was written, so
+        // its real content hash no longer matches what was recorded.
         fs::write(&tracked_path, b"drifted content").unwrap();
 
         let code = dispatch_doctor_with(
@@ -2671,13 +2335,10 @@ mod tests {
         fs::remove_dir_all(&home).ok();
     }
 
-    /// `.claude/settings.json` is exempt from the hash-drift check
-    /// `dispatch_doctor_reports_stale_manifest_on_hash_mismatch` covers
-    /// above, since the recorded hash only reflects what Konductor
-    /// merged in (a grant, and for a `$HOME` install its hooks) -- not
-    /// the whole file, which the user is expected to keep editing (a
-    /// hook, another server's grant, ...). A hash mismatch on this
-    /// path must never surface as `stale`.
+    /// `.claude/settings.json` is exempt from the hash-drift check,
+    /// since the recorded hash only reflects what Konductor merged in,
+    /// not the whole file, which the user is expected to keep editing.
+    /// A hash mismatch on this path must never surface as `stale`.
     #[test]
     fn dispatch_doctor_does_not_report_claude_settings_drift_on_hash_mismatch() {
         let source = scratch_dir("claude-settings-drift-source");
@@ -2703,10 +2364,9 @@ mod tests {
         );
         write_manifest_for_test(&destination, &written);
 
-        // The user added a hook (or another server's grant) to their own
-        // settings.json after install -- ordinary use of a file they
-        // own, so its real content hash no longer matches what was
-        // recorded.
+        // The user added a hook (or another server's grant) to their
+        // own settings.json after install, ordinary use of a file they
+        // own.
         fs::write(&tracked_path, b"user-edited content").unwrap();
 
         let code = dispatch_doctor_with(
@@ -2731,9 +2391,8 @@ mod tests {
         fs::remove_dir_all(&home).ok();
     }
 
-    /// An `InProgress` manifest (a prior install crashed mid-copy, per
-    /// manifest.rs's write-ahead-status design) must be reported
-    /// `failed`, not `stale` and not silently `ok`.
+    /// An `InProgress` manifest (a prior install crashed mid-copy)
+    /// must be reported `failed`, not `stale` and not silently `ok`.
     #[test]
     fn dispatch_doctor_reports_failed_manifest_when_still_in_progress() {
         let source = scratch_dir("in-progress-source");
@@ -2773,12 +2432,10 @@ mod tests {
         fs::remove_dir_all(&home).ok();
     }
 
-    /// Review fix regression: with 2+ tracked strategy slots, the
-    /// `InProgress` remediation hint must name the slot that is
-    /// ACTUALLY `InProgress` -- not `manifest.strategies.first()`. Here
-    /// the first slot (`claude`) is healthy and the second (`kiro-v3`)
-    /// is the broken one; a hint pointing at reinstalling `claude`
-    /// would not fix anything.
+    /// With 2+ tracked strategy slots, the `InProgress` remediation
+    /// hint must name the slot that is actually `InProgress`, not the
+    /// first slot. Here the first slot (`claude`) is healthy and the
+    /// second (`kiro-v3`) is the broken one.
     #[test]
     fn check_manifest_names_the_actually_in_progress_strategy_not_the_first() {
         let destination = scratch_dir("check-manifest-in-progress-not-first");
@@ -2889,16 +2546,11 @@ mod tests {
         fs::remove_dir_all(&destination).ok();
     }
 
-    /// CRITICAL fix regression: `check_manifest` on a manifest with an
-    /// `UnsupportedSchemaVersion` must be `Failed` (this build cannot
-    /// read it), but with a summary/remediation DISTINCT from the
-    /// generic malformed-JSON path -- naming the version mismatch and
-    /// pointing at updating `konductor`, never "re-run `konductor
-    /// install`" (which the review correctly flagged as actively wrong
-    /// advice: re-installing with a binary that still doesn't
-    /// understand this schema_version reproduces the same failure).
-    /// Direct unit test against `check_manifest` -- this branch has no
-    /// other coverage.
+    /// `check_manifest` on a manifest with an `UnsupportedSchemaVersion`
+    /// must be `Failed`, but with a summary/remediation distinct from
+    /// the generic malformed-JSON path: naming the version mismatch
+    /// and pointing at updating `konductor`, never "re-run `konductor
+    /// install`" (which reproduces the same failure).
     #[test]
     fn check_manifest_reports_distinct_remediation_for_unsupported_schema_version() {
         let destination = scratch_dir("check-manifest-unsupported-schema");
@@ -2935,17 +2587,12 @@ mod tests {
         fs::remove_dir_all(&destination).ok();
     }
 
-    /// Sibling of the malformed-manifest/corrupt-JSON case
-    /// (`dispatch_doctor_falls_back_to_cwd_with_warning_when_manifest_is_corrupt`):
-    /// a manifest with an `UnsupportedSchemaVersion` is well-formed
-    /// JSON and a real, readable record of a real install -- just one
-    /// this binary's schema doesn't recognize -- so
-    /// `resolve_source_for_checks` must NOT escalate to
+    /// A manifest with an `UnsupportedSchemaVersion` is well-formed
+    /// JSON and a real, readable record of a real install, just one
+    /// this binary's schema doesn't recognize, so
+    /// `resolve_source_for_checks` must not escalate to
     /// `unvalidated_cwd: true` the way a corrupt/unreadable manifest
-    /// does. It still falls back to `target_dir` (this build cannot
-    /// read `source` out of it either), but with its own fallback note
-    /// naming the version mismatch specifically, and `check_source`/
-    /// `check_config` stay `Info`, not `Warn`.
+    /// does.
     #[test]
     fn resolve_source_for_checks_does_not_escalate_unsupported_schema_version_to_unvalidated_cwd() {
         let cwd = scratch_dir("unsupported-schema-fallback-cwd");
@@ -2990,10 +2637,9 @@ mod tests {
         let config_result = check_config_with_home(&resolved, Some(&home));
         assert_eq!(config_result.status, CheckStatus::Info);
 
-        // The overall run is still EXIT_HALTED: `check_manifest` itself
-        // reports the unsupported schema version as a real Failed,
-        // even though source/config are only Info about their own
-        // fallback.
+        // The overall run is still EXIT_HALTED: `check_manifest`
+        // itself reports the unsupported schema version as a real
+        // Failed, even though source/config are only Info.
         let code = dispatch_doctor_with(
             &cwd,
             None,
@@ -3013,8 +2659,9 @@ mod tests {
         fs::remove_dir_all(&home).ok();
     }
 
-    /// `--json` output parses as valid JSON, carries `ok: false` when a
-    /// check failed, and includes a `detail` array on the failing check.
+    /// `--json` output parses as valid JSON, carries `ok: false` when
+    /// a check failed, and includes a `detail` array on the failing
+    /// check.
     #[test]
     fn dispatch_doctor_json_output_is_valid_and_reports_failure_detail() {
         let source = scratch_dir("json-source");
@@ -3065,14 +2712,11 @@ mod tests {
         fs::remove_dir_all(&home).ok();
     }
 
-    /// IMPORTANT fix regression: the review correctly noted that `ok`
-    /// alone reads `true` even when a `Warn` check is present (`Warn`
-    /// deliberately never fails the run). The new `warnings` field
+    /// `ok` alone reads `true` even when a `Warn` check is present
+    /// (`Warn` deliberately never fails the run). The `warnings` field
     /// must be `true` whenever any check is `Warn`, independent of
-    /// `ok` -- exercised here against a report with only `Ok`/`Warn`
-    /// checks (no `Failed`/`Stale` at all), so `ok: true` and
-    /// `warnings: true` hold SIMULTANEOUSLY, proving a consumer that
-    /// only checks `ok` would otherwise miss the warning entirely.
+    /// `ok`, proving a consumer that only checks `ok` would otherwise
+    /// miss the warning entirely.
     #[test]
     fn format_report_json_warnings_field_is_true_when_a_check_is_warn_even_though_ok_is_true() {
         let results = vec![
@@ -3114,10 +2758,8 @@ mod tests {
         assert_eq!(parsed["warnings"], false);
     }
 
-    /// `resolve_destination` mirrors `install`'s own precedence: explicit
-    /// `--target` wins outright, independent of `$HOME`. Exercises the
-    /// re-exported `install::resolve_destination` (see the `use` import
-    /// at the top of this module) through `doctor`'s own call site.
+    /// `resolve_destination` mirrors `install`'s own precedence:
+    /// explicit `--target` wins outright, independent of `$HOME`.
     #[test]
     fn resolve_destination_prefers_explicit_target_over_home() {
         let resolved = resolve_destination(Some("/tmp/explicit-target")).unwrap();
@@ -3126,9 +2768,7 @@ mod tests {
 
     /// Test-only helper: writes a `Manifest` directly to
     /// `<dir>/.konductor/manifest`, bypassing `install`'s real
-    /// `install_from_local` path (this module has no dependency on any
-    /// `InstallStrategy` -- these tests only need a manifest file to
-    /// exist with specific content, not a real end-to-end install run).
+    /// `install_from_local` path.
     fn write_manifest_for_test(dir: &Path, written: &StrategyManifest) {
         let full = manifest::Manifest {
             schema_version: 2,
@@ -3142,14 +2782,11 @@ mod tests {
     // ── Manifest-based source resolution (check_source/check_config) ────
 
     /// (a) A manifest at the destination records a `source` path, and
-    /// no `--from` is given: `check_source`/`check_config` must resolve
-    /// against the MANIFEST's recorded path, not `target_dir` (the
-    /// cwd) -- proven by pointing the manifest's recorded `source` at a
-    /// real, well-formed tree while `target_dir` itself is a
-    /// deliberately DIFFERENT, malformed one; a pass here can only
-    /// happen if resolution actually followed the manifest, since
-    /// falling back to `target_dir` would report `source`/`config` as
-    /// `failed`.
+    /// no `--from` is given: `check_source`/`check_config` must
+    /// resolve against the manifest's recorded path, not `target_dir`,
+    /// proven by pointing the manifest's recorded `source` at a real,
+    /// well-formed tree while `target_dir` itself is a deliberately
+    /// different, malformed one.
     #[test]
     fn dispatch_doctor_check_source_and_check_config_use_manifest_recorded_source_by_default() {
         let cwd = scratch_dir("manifest-source-cwd");
@@ -3167,9 +2804,7 @@ mod tests {
         )
         .unwrap();
 
-        // The REAL, well-formed source the manifest will record --
-        // empty-but-valid, same as the healthy-project fixture
-        // elsewhere in this file.
+        // The real, well-formed source the manifest will record.
         let written = StrategyManifest::new(
             "kiro-cli-v2",
             "2026-01-15T09:30:00Z",
@@ -3213,17 +2848,11 @@ mod tests {
     }
 
     /// (a.1) A manifest at the destination records a `source` path,
-    /// but that path no longer exists on disk (moved, deleted, or
-    /// `doctor` running on a different host than the one that
-    /// installed): `resolve_source_for_checks` must fall back to
-    /// `target_dir` with an `Info`-tier note naming the stale path,
-    /// rather than handing `check_source`/`check_config` a nonexistent
-    /// path that `parse_canonical` hard-rejects -- see
-    /// `ResolvedSource::missing_recorded_source`'s own doc comment.
-    /// Regression coverage: without this fallback, a stale recorded
-    /// source path would surface a healthy installation as
-    /// `EXIT_HALTED` with the misleading remediation "fix the reported
-    /// error in <stale path>".
+    /// but that path no longer exists on disk:
+    /// `resolve_source_for_checks` must fall back to `target_dir` with
+    /// an `Info`-tier note naming the stale path, rather than handing
+    /// `check_source`/`check_config` a nonexistent path that
+    /// `parse_canonical` hard-rejects.
     #[test]
     fn resolve_source_for_checks_falls_back_when_recorded_source_no_longer_exists() {
         let cwd = scratch_dir("missing-recorded-source-cwd");
@@ -3231,8 +2860,8 @@ mod tests {
         let stale_source = scratch_dir("missing-recorded-source-stale");
         let home = scratch_dir("missing-recorded-source-home");
 
-        // `cwd` is a real, well-formed source tree -- proves resolution
-        // actually fell back to it rather than merely avoiding a crash.
+        // `cwd` is a real, well-formed source tree, proving
+        // resolution actually fell back to it.
         fs::create_dir_all(cwd.join("agents")).unwrap();
         fs::create_dir_all(cwd.join("skills")).unwrap();
         fs::create_dir_all(cwd.join("agent-sops")).unwrap();
@@ -3248,8 +2877,7 @@ mod tests {
         );
         write_manifest_for_test(&destination, &written);
         // The recorded source path is "stale" by construction: create
-        // it via `scratch_dir` (for a unique, collision-free path) then
-        // remove it immediately, so it is guaranteed absent on disk.
+        // it via `scratch_dir`, then remove it immediately.
         fs::remove_dir_all(&stale_source).unwrap();
         assert!(!stale_source.exists());
 
@@ -3308,17 +2936,15 @@ mod tests {
 
     /// (b) No manifest exists at the destination, and no `--from` is
     /// given: `check_source`/`check_config` must fall back to
-    /// `target_dir` (the cwd), and the fallback must be stated
-    /// EXPLICITLY in the check's own summary -- never a silent mix of
-    /// "validated what's installed" and "validated whatever's on disk"
-    /// semantics.
+    /// `target_dir`, and the fallback must be stated explicitly in the
+    /// check's own summary.
     #[test]
     fn dispatch_doctor_falls_back_to_cwd_with_explicit_note_when_no_manifest_exists() {
         let cwd = scratch_dir("no-manifest-fallback-cwd");
         let destination = scratch_dir("no-manifest-fallback-destination");
         let home = scratch_dir("no-manifest-fallback-home");
-        // Destination exists but nothing has ever been installed there
-        // -- no manifest at all.
+        // Destination exists but nothing has ever been installed
+        // there.
 
         let resolved = resolve_source_for_checks(&cwd, None, &destination);
         assert_eq!(resolved.path, cwd);
@@ -3370,15 +2996,12 @@ mod tests {
     }
 
     /// (b') Distinct sibling of the test above: the manifest at the
-    /// destination EXISTS but is corrupt/unreadable (malformed JSON), so
-    /// `check_source`/`check_config` ALSO fall back to `target_dir` (the
-    /// cwd) -- but this fallback reason is materially worse (the cwd may
-    /// have no relationship at all to what was installed) and must be
-    /// visibly, not just textually, distinguishable from the benign
-    /// "no manifest exists yet" case: a different `CheckStatus`
-    /// (`Warn`, not `Info`) and an unmistakable `WARNING:`/`UNVALIDATED`
-    /// marker in the summary line itself, never buried only in `-v`
-    /// detail.
+    /// destination exists but is corrupt/unreadable, so
+    /// `check_source`/`check_config` also fall back to `target_dir`,
+    /// but this fallback reason must be visibly distinguishable from
+    /// the benign "no manifest exists yet" case: a different
+    /// `CheckStatus` (`Warn`, not `Info`) and an unmistakable
+    /// `WARNING:`/`UNVALIDATED` marker in the summary line itself.
     #[test]
     fn dispatch_doctor_falls_back_to_cwd_with_warning_when_manifest_is_corrupt() {
         let cwd = scratch_dir("corrupt-manifest-fallback-cwd");
@@ -3451,10 +3074,9 @@ mod tests {
         fs::remove_dir_all(&home).ok();
     }
 
-    /// (c) An explicit `--from` is given: it must be honored regardless
-    /// of what the manifest at the destination records -- even when
-    /// that manifest records a DIFFERENT, real source path. `--from` is
-    /// the escape hatch and always wins outright.
+    /// (c) An explicit `--from` is given: it must be honored
+    /// regardless of what the manifest at the destination records,
+    /// even when that manifest records a different, real source path.
     #[test]
     fn dispatch_doctor_explicit_from_overrides_manifest_recorded_source() {
         let cwd = scratch_dir("explicit-from-override-cwd");
@@ -3505,21 +3127,15 @@ mod tests {
         fs::remove_dir_all(&home).ok();
     }
 
-    /// (d) Backward-compat: a manifest written in the OLD format (no
-    /// `source` field at all -- predates this change) must still be
-    /// read successfully, and resolution must fall back to `target_dir`
-    /// with an explicit note naming the missing-field case specifically
-    /// (distinct from the no-manifest-at-all case in test (b) above),
-    /// never crashing or silently mixing semantics.
+    /// (d) Backward-compat: a manifest written in the old format (no
+    /// `source` field at all) must still be read successfully, and
+    /// resolution must fall back to `target_dir` with an explicit note
+    /// naming the missing-field case specifically.
     ///
-    /// This is a real, completed install (unlike test (b)'s "nothing
-    /// installed yet" case), but the manifest itself is fully readable
-    /// and trustworthy -- only silent on `source` -- so this remains a
-    /// benign, expected fallback and is reported `Info`, same as the
-    /// no-manifest-at-all case; `legacy_manifest_no_source` is the flag
-    /// that distinguishes it for wording purposes only, not severity.
-    /// `unvalidated_cwd` (an unreadable manifest) is the only tier that
-    /// escalates to `Warn`.
+    /// This is a real, completed install, but the manifest itself is
+    /// fully readable and trustworthy, only silent on `source`, so
+    /// this remains a benign, expected fallback and is reported
+    /// `Info`, same as the no-manifest-at-all case.
     #[test]
     fn dispatch_doctor_falls_back_with_info_note_for_legacy_manifest_missing_source_field() {
         let cwd = scratch_dir("legacy-manifest-cwd");
@@ -3527,10 +3143,7 @@ mod tests {
         let home = scratch_dir("legacy-manifest-home");
 
         // Hand-write an old-format v1 manifest with no `source` key at
-        // all (predates this field), mirroring
-        // manifest.rs's own `read_manifest_defaults_status_and_provenance_for_legacy_v1_manifest`
-        // fixture for the equivalent `status`/`provenance` back-compat
-        // guarantee.
+        // all.
         let path = manifest::manifest_path(&destination);
         fs::create_dir_all(path.parent().unwrap()).unwrap();
         fs::write(
@@ -3607,14 +3220,9 @@ mod tests {
 
     // ── Fallback detail + Warn-not-Failed downgrade ──
 
-    /// Finding 2: a `Warn`/`Info` fallback's `--json` output must carry
-    /// `detail` with the fallback note as its FIRST entry, not just in
-    /// `summary` -- `escalate_for_fallback` must route its non-`Ok`
-    /// branches through `fallback_detail`, the same helper the
-    /// `Failed`/`Stale` path already uses, so the README's documented
-    /// `--json` contract ("`detail` ... carries every individual
-    /// problem found, plus the fallback note (if any) as its first
-    /// entry") actually holds for every check status.
+    /// A `Warn`/`Info` fallback's `--json` output must carry `detail`
+    /// with the fallback note as its first entry, not just in
+    /// `summary`.
     #[test]
     fn escalate_for_fallback_populates_json_detail_with_fallback_note_for_info() {
         let cwd = scratch_dir("escalate-detail-cwd");
@@ -3670,13 +3278,11 @@ mod tests {
         fs::remove_dir_all(&destination).ok();
     }
 
-    /// Regression (review finding): `check_config`'s error summary must
-    /// name the ACTUAL broken config file, not unconditionally assume
-    /// the project tier is the culprit. This scenario malforms only the
-    /// `$HOME`-tier (`~/.konductor/config.yml`) file, leaving the
-    /// project tier absent entirely (a valid, common state -- no local
-    /// `.konductor/config.yml` yet), and asserts the reported summary
-    /// names the user-tier path, never the project `source_dir`.
+    /// `check_config`'s error summary must name the actual broken
+    /// config file, not unconditionally assume the project tier is
+    /// the culprit. This malforms only the `$HOME`-tier file, leaving
+    /// the project tier absent entirely, and asserts the reported
+    /// summary names the user-tier path.
     #[test]
     fn check_config_names_the_actual_broken_home_tier_file_not_the_project_path() {
         let source_dir = scratch_dir("config-broken-home-tier-source");
@@ -3724,13 +3330,10 @@ mod tests {
         fs::remove_dir_all(&home_dir).ok();
     }
 
-    /// `missing_recorded_source` fallback tiers specifically, a
-    /// parse/load failure against the fallback tree must downgrade to
-    /// `Info`, not `Failed` -- the manifest itself is fully readable
-    /// and the install it describes is healthy, so this must not map
-    /// to `EXIT_HALTED`. Exercised here via `missing_recorded_source`
-    /// (a manifest recording a now-deleted source path) with a
-    /// deliberately malformed fallback tree at `target_dir`.
+    /// `missing_recorded_source` fallback tier: a parse/load failure
+    /// against the fallback tree must downgrade to `Info`, not
+    /// `Failed`, since the manifest itself is fully readable and the
+    /// install it describes is healthy.
     #[test]
     fn check_source_downgrades_failed_to_info_for_missing_recorded_source_fallback() {
         let cwd = scratch_dir("downgrade-missing-recorded-cwd");
@@ -3807,15 +3410,10 @@ mod tests {
         fs::remove_dir_all(&home).ok();
     }
 
-    /// Regression carve-out: the
-    /// `unvalidated_cwd` tier (corrupt/unreadable manifest) must NOT be
-    /// downgraded the same way -- `check_manifest` already reports that
-    /// case as its own independent `Failed`, so the overall run must
-    /// stay `EXIT_HALTED` regardless of what `check_source`/
-    /// `check_config` report for their own fallback. Confirms the
-    /// downgrade in `failed_or_downgraded_for_fallback` is gated
-    /// specifically on `legacy_manifest_no_source`/
-    /// `missing_recorded_source`, not on "any fallback tier".
+    /// The `unvalidated_cwd` tier (corrupt/unreadable manifest) must
+    /// not be downgraded the same way: `check_manifest` already
+    /// reports that case as its own independent `Failed`, so the
+    /// overall run must stay `EXIT_HALTED`.
     #[test]
     fn check_source_does_not_downgrade_unvalidated_cwd_and_run_stays_halted() {
         let cwd = scratch_dir("no-downgrade-unvalidated-cwd");
@@ -3827,8 +3425,7 @@ mod tests {
         fs::create_dir_all(manifest_path.parent().unwrap()).unwrap();
         fs::write(&manifest_path, b"{ not valid json").unwrap();
 
-        // The fallback tree (`cwd`) is ALSO malformed, so `check_source`
-        // hits the same `Err` arm `missing_recorded_source` would.
+        // The fallback tree (`cwd`) is also malformed.
         fs::create_dir_all(cwd.join("agents")).unwrap();
         fs::write(
             cwd.join("agents/broken.agent-spec.json"),
@@ -3876,10 +3473,7 @@ mod tests {
     // ── role_allowlists (dormant -- see dispatch_doctor_with) ───────────
 
     /// `check_container_runtime` must always report `Info` and never
-    /// panic/crash, regardless of what's actually on the test machine's
-    /// PATH -- either it names a detected runtime (one of the exact
-    /// `CONTAINER_RUNTIME_PROBE_ORDER` candidates) or it reports "none
-    /// found" naming all four candidates it checked.
+    /// panic, regardless of what's on the test machine's PATH.
     #[test]
     fn check_container_runtime_reports_info_and_names_a_runtime_or_none_found() {
         let result = check_container_runtime();
@@ -3899,9 +3493,8 @@ mod tests {
     // ── cli_version / content_version ───────────────────────────────────
 
     /// `--no-version-check` skips the network call entirely for
-    /// `cli_version`, reporting `Info` (never `Warn`/`Failed`) and
-    /// never affecting the exit code -- deterministic, no network
-    /// dependency, so this test runs identically in any sandbox.
+    /// `cli_version`, reporting `Info` and never affecting the exit
+    /// code.
     #[test]
     fn check_cli_version_with_no_version_check_skips_the_network_call() {
         let result = check_cli_version(true, &None);
@@ -3911,10 +3504,9 @@ mod tests {
         assert!(result.summary.contains("skipped"));
     }
 
-    /// Same skip behavior for `content_version`, keyed on the SAME
+    /// Same skip behavior for `content_version`, keyed on the same
     /// `--no-version-check` flag, but with its own distinct check
-    /// name/summary/comparison logic -- no shared wording with
-    /// `cli_version`'s own skip message beyond the flag name itself.
+    /// name/summary.
     #[test]
     fn check_content_version_with_no_version_check_skips_the_network_call() {
         let destination = scratch_dir("content-version-skip-check-dest");
@@ -3927,13 +3519,9 @@ mod tests {
     }
 
     /// `cli_version`'s check name/severity contract: whatever the real
-    /// network outcome is (this test does not mock the fetch), the
-    /// result must never be `Failed`/`Stale` -- `warn` is the ceiling
-    /// severity for a stale CLI, per this check's own design. Runs
-    /// against the real network call (best-effort; a network failure
-    /// degrades to `Info`, which this assertion also accepts) rather
-    /// than skip entirely, so at least one test exercises the real,
-    /// non-skipped code path.
+    /// network outcome is, the result must never be `Failed`/`Stale`.
+    /// Runs against the real network call rather than skip entirely,
+    /// so at least one test exercises the non-skipped code path.
     #[test]
     fn check_cli_version_never_reports_failed_or_stale() {
         let latest_release_tag = resolve_latest_release_tag(false);
@@ -3946,9 +3534,8 @@ mod tests {
         );
     }
 
-    /// `content_version`'s own equivalent severity ceiling, on a target
-    /// with no recorded version at all (the common case for a fresh
-    /// scratch dir in this test) -- reports `Info`, never
+    /// `content_version`'s own equivalent severity ceiling, on a
+    /// target with no recorded version at all: reports `Info`, never
     /// `Failed`/`Stale`.
     #[test]
     fn check_content_version_never_reports_failed_or_stale() {
@@ -3964,9 +3551,9 @@ mod tests {
         fs::remove_dir_all(&destination).ok();
     }
 
-    /// `content_version` on a target with NO recorded `agent_version`
-    /// at all reports `Info` naming that fact, independent of network
-    /// reachability -- this branch never even reaches the network call.
+    /// `content_version` on a target with no recorded `agent_version`
+    /// at all reports `Info` naming that fact; this branch never even
+    /// reaches the network call.
     #[test]
     fn check_content_version_reports_info_when_no_version_recorded() {
         let destination = scratch_dir("content-version-no-record-dest");
@@ -3976,11 +3563,9 @@ mod tests {
         fs::remove_dir_all(&destination).ok();
     }
 
-    /// `cli_version` and `content_version` share no check name, summary
-    /// wording, or comparison logic -- confirmed directly against two
-    /// results produced under the SAME `--no-version-check` skip (the
-    /// deterministic case), which would be the easiest place for
-    /// accidental sharing to show up.
+    /// `cli_version` and `content_version` share no check name,
+    /// summary wording, or comparison logic, confirmed under the same
+    /// `--no-version-check` skip.
     #[test]
     fn cli_version_and_content_version_share_no_name_or_summary_wording() {
         let destination = scratch_dir("no-shared-logic-dest");
@@ -3991,11 +3576,9 @@ mod tests {
         fs::remove_dir_all(&destination).ok();
     }
 
-    /// `run_checks`' own live check list must include `content_version`
-    /// -- per-target, alongside every other per-target check -- while
-    /// `cli_version` must NOT appear in it (it is machine-wide and
-    /// computed separately by `dispatch_doctor_with`/
-    /// `dispatch_doctor_all`, never folded into the per-target suite).
+    /// `run_checks`' own live check list must include
+    /// `content_version`, while `cli_version` must not appear in it
+    /// (it is machine-wide and computed separately).
     #[test]
     fn run_checks_includes_content_version_but_not_cli_version() {
         let source = scratch_dir("run-checks-content-version-source");
@@ -4016,9 +3599,7 @@ mod tests {
         assert!(
             !names.contains(&"content_version"),
             "run_checks itself must not include content_version -- it is appended \
-             separately by dispatch_doctor_with/dispatch_doctor_all, per those \
-             functions' own wiring, keeping run_checks a pure per-target suite that both \
-             callers extend identically"
+             separately by dispatch_doctor_with/dispatch_doctor_all"
         );
         assert!(
             !names.contains(&"cli_version"),
@@ -4031,10 +3612,9 @@ mod tests {
     }
 
     /// End-to-end: a single-target `dispatch_doctor_with` call with
-    /// `--no-version-check` must include BOTH `cli_version` (exactly
-    /// once) and `content_version` (exactly once) in its live output,
-    /// and neither may affect the exit code (both report `Info` under
-    /// the skip).
+    /// `--no-version-check` must include both `cli_version` and
+    /// `content_version` exactly once, and neither may affect the
+    /// exit code.
     #[test]
     fn dispatch_doctor_with_includes_both_new_checks_under_no_version_check() {
         let source = scratch_dir("dispatch-doctor-new-checks-source");
@@ -4060,8 +3640,7 @@ mod tests {
 
         // Re-derive the same results dispatch_doctor_with itself
         // produces, to inspect the check list directly (this module
-        // has no stdout-capture mechanism, matching every other
-        // end-to-end test's established pattern in this file).
+        // has no stdout-capture mechanism).
         let mut results = vec![check_cli_version(true, &None)];
         results.extend(run_checks(
             &source,
@@ -4088,14 +3667,10 @@ mod tests {
         fs::remove_dir_all(&home).ok();
     }
 
-    /// Regression test for the JSON-shape inconsistency AutoSDE flagged:
-    /// the single-target path must lift `cli_version` to a top-level
+    /// The single-target path must lift `cli_version` to a top-level
     /// `cli_version` object, exactly like `--all`'s own
-    /// `format_report_json_all_with_cli_version`, rather than folding it
-    /// into the `checks` array alongside per-target checks. Both shapes
-    /// must now agree: a `--json` consumer finds the machine-wide
-    /// `cli_version` check at the SAME top-level key regardless of
-    /// whether `--all` was passed.
+    /// `format_report_json_all_with_cli_version`, rather than folding
+    /// it into the `checks` array.
     #[test]
     fn format_report_json_with_cli_version_lifts_cli_version_to_the_top_level() {
         let cli_version_result = check_cli_version(true, &None);
@@ -4106,8 +3681,7 @@ mod tests {
         let doc = format_report_json_with_cli_version(&cli_version_result, &results);
         let parsed: serde_json::Value = serde_json::from_str(&doc).unwrap();
 
-        // cli_version appears exactly once, at the top level -- never
-        // inside `checks`.
+        // cli_version appears exactly once, at the top level.
         assert!(parsed.get("cli_version").is_some());
         assert_eq!(parsed["cli_version"]["name"], "cli_version");
         let checks = parsed["checks"].as_array().unwrap();
@@ -4167,8 +3741,7 @@ mod tests {
         assert_eq!(code, 0);
 
         // Re-derive the batched document the same way
-        // dispatch_doctor_all's own body does, to inspect its shape
-        // directly.
+        // dispatch_doctor_all's own body does.
         let cli_version_result = check_cli_version(true, &None);
         let mut per_target: Vec<(String, Vec<CheckResult>)> = Vec::new();
         for dest in [&dest_a, &dest_b] {
@@ -4183,7 +3756,8 @@ mod tests {
         assert!(parsed.get("cli_version").is_some());
         assert_eq!(parsed["cli_version"]["name"], "cli_version");
 
-        // content_version appears inside EACH target's own checks array.
+        // content_version appears inside each target's own checks
+        // array.
         let targets = parsed["targets"].as_array().unwrap();
         assert_eq!(targets.len(), 2);
         for target in targets {
@@ -4235,10 +3809,9 @@ mod tests {
         path
     }
 
-    /// A fake `PATH` entry containing an executable named `podman` (one
-    /// of the real probe candidates, not first in
-    /// `CONTAINER_RUNTIME_PROBE_ORDER`) must be detected by a pure
-    /// filesystem scan -- no real `docker`/`podman`/etc. involved.
+    /// A fake `PATH` entry containing an executable named `podman`
+    /// must be detected by a pure filesystem scan, no real
+    /// `docker`/`podman`/etc. involved.
     #[test]
     #[cfg(unix)]
     fn check_container_runtime_detects_a_fake_binary_on_a_mocked_path() {
@@ -4282,14 +3855,11 @@ mod tests {
         fs::remove_dir_all(&empty_path_dir).ok();
     }
 
-    /// Regression (review finding, hang risk): proves the container
-    /// runtime check never executes a candidate binary. Plants a
-    /// `docker` "binary" that is actually a shell script which would
-    /// hang forever (`sleep infinity`) if ever run, points a mocked
-    /// `PATH` at it, and asserts the check completes (this test itself
-    /// finishing at all is the proof no subprocess was spawned) and
-    /// still correctly reports the binary as present by name -- a pure
-    /// filesystem scan identifies presence without executing anything.
+    /// Proves the container runtime check never executes a candidate
+    /// binary. Plants a `docker` "binary" that is actually a shell
+    /// script that would hang forever if run, points a mocked `PATH`
+    /// at it, and asserts the check completes and still correctly
+    /// reports the binary as present by name.
     #[test]
     #[cfg(unix)]
     fn check_container_runtime_never_executes_a_candidate_even_if_it_would_hang() {
@@ -4300,8 +3870,8 @@ mod tests {
         fs::set_permissions(&script_path, fs::Permissions::from_mode(0o755)).unwrap();
 
         let path_var = std::ffi::OsString::from(fake_path_dir.display().to_string());
-        // If this ever spawned the script, the test would hang forever
-        // instead of reaching this assertion.
+        // If this ever spawned the script, the test would hang
+        // forever instead of reaching this assertion.
         let result = check_container_runtime_with_path(Some(path_var));
 
         assert_eq!(result.status, CheckStatus::Info);
@@ -4432,15 +4002,11 @@ mod tests {
         assert!(!result.status.is_warning());
     }
 
-    /// End-to-end: a healthy install with no recorded source (the
-    /// benign fallback case) must produce a LIVE report with zero
-    /// `Warn`/`Failed`/`Stale` entries (the zero-warnings acceptance
-    /// criterion) and exit code 0. The check LIST itself is pinned by
-    /// calling `run_checks` -- the actual live dispatch function, not a
-    /// hand-copied inline list -- so this test tracks `run_checks`
-    /// automatically instead of drifting from it. Dormant checks
-    /// (`gitignore`/`provider_model_access`/`role_allowlists`) must not
-    /// appear; see the comment in `run_checks` for why they're dormant.
+    /// End-to-end: a healthy install with no recorded source must
+    /// produce a live report with zero `Warn`/`Failed`/`Stale`
+    /// entries and exit code 0. The check list itself is pinned by
+    /// calling `run_checks` directly rather than a hand-copied inline
+    /// list. Dormant checks must not appear.
     #[test]
     fn dispatch_doctor_reports_run_checks_output_with_zero_warnings_on_healthy_install() {
         let source = scratch_dir("zero-warnings-source");
@@ -4451,9 +4017,8 @@ mod tests {
         fs::create_dir_all(source.join("agent-sops")).unwrap();
         fs::create_dir_all(source.join("context")).unwrap();
         // A complete .konductor/.gitignore too, even though the
-        // (dormant) `gitignore` check won't run against it via
-        // dispatch -- kept so this fixture is unambiguously a
-        // genuinely healthy, zero-warnings install by every measure.
+        // dormant `gitignore` check won't run against it, kept so this
+        // fixture is unambiguously a genuinely healthy install.
         let konductor_dir = source.join(config::KONDUCTOR_DIR_NAME);
         fs::create_dir_all(&konductor_dir).unwrap();
         fs::write(
@@ -4461,10 +4026,8 @@ mod tests {
             format!("{}\n", init::GITIGNORE_PATTERNS.join("\n")),
         )
         .unwrap();
-        // The target never opted out (install-info.json is present),
-        // and the machine has no telemetry.json at all yet -- both are
-        // Info-tier outcomes for telemetry_state, not Warn, so this
-        // fixture stays a genuine zero-warnings case.
+        // The target never opted out, and the machine has no
+        // telemetry.json yet, both Info-tier outcomes, not Warn.
         opt_in_to_telemetry(&destination);
 
         let code = dispatch_doctor_with(
@@ -4481,9 +4044,8 @@ mod tests {
         assert_eq!(code, 0);
         assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
 
-        // Pin against the real dispatch path: call `run_checks` itself
-        // rather than re-deriving its contents, so this test cannot
-        // pass while `run_checks` disagrees with it.
+        // Pin against the real dispatch path: call `run_checks`
+        // itself rather than re-deriving its contents.
         let results = run_checks(
             &source,
             Some(&source.display().to_string()),
@@ -4548,20 +4110,11 @@ mod tests {
         fs::remove_dir_all(&home).ok();
     }
 
-    /// Sibling of the test above, proving the three DORMANT checks
-    /// Regression test: a MALFORMED `$HOME`-tier
-    /// `.konductor/config.yml` in a scratch home-dir override must
-    /// (a) actually surface through the full `dispatch_doctor_with`
-    /// dispatch path as a real `Failed`/`EXIT_HALTED` result -- proving
-    /// the override seam actually reaches the live `config` check, not
-    /// just the direct-call unit test
-    /// (`check_config_names_the_actual_broken_home_tier_file_not_the_project_path`)
-    /// -- and (b) not leak into a SEPARATE `dispatch_doctor_with` run
-    /// against an unrelated healthy scratch home dir. (b) is the actual
-    /// isolation proof: it fails if the override seam were somehow
-    /// mutating real process-global `HOME`, or if two runs' scratch
-    /// dirs collided, since either would make the healthy run see the
-    /// broken config too.
+    /// A malformed `$HOME`-tier `.konductor/config.yml` in a scratch
+    /// home-dir override must surface through the full
+    /// `dispatch_doctor_with` path as a real `Failed`/`EXIT_HALTED`
+    /// result, and must not leak into a separate `dispatch_doctor_with`
+    /// run against an unrelated healthy scratch home dir.
     #[test]
     fn dispatch_doctor_with_malformed_home_config_is_isolated_and_does_not_affect_other_runs() {
         let broken_source = scratch_dir("isolation-broken-source");
@@ -4593,9 +4146,8 @@ mod tests {
         assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
 
         // A second, unrelated run against a genuinely healthy scratch
-        // home dir (no config.yml at all) must be completely unaffected
-        // by the broken run above -- proving the override is isolated
-        // per call, not a shared/global state.
+        // home dir must be completely unaffected by the broken run
+        // above.
         let healthy_source = scratch_dir("isolation-healthy-source");
         let healthy_destination = scratch_dir("isolation-healthy-destination");
         let healthy_home = scratch_dir("isolation-healthy-home");
@@ -4625,16 +4177,11 @@ mod tests {
         fs::remove_dir_all(&healthy_home).ok();
     }
 
-    /// (`gitignore`, `provider_model_access`, `role_allowlists`) are
-    /// not dead/rotting code even though `dispatch_doctor_with` never
-    /// calls them: called DIRECTLY against the same healthy fixture,
-    /// each still produces a correct, non-failing result. This is the
-    /// direct-function-call proof that complements
-    /// `check_gitignore_ok_when_file_is_complete`,
-    /// `check_provider_model_access_is_always_info_stub`, and
-    /// `check_role_allowlists_is_always_info_stub` above -- here all
-    /// three run together against one realistic healthy install
-    /// fixture rather than in isolation.
+    /// The three dormant checks (`gitignore`, `provider_model_access`,
+    /// `role_allowlists`) are not dead code even though
+    /// `dispatch_doctor_with` never calls them: called directly
+    /// against the same healthy fixture, each still produces a
+    /// correct, non-failing result.
     #[test]
     fn dormant_checks_still_work_correctly_when_called_directly_on_a_healthy_install() {
         let source = scratch_dir("dormant-checks-direct-source");
@@ -4676,11 +4223,9 @@ mod tests {
 
     // ── check_index_status ──────────────────────────────────────────────
 
-    /// A target with no manifest at all -- `check_index_status` cannot
+    /// A target with no manifest at all: `check_index_status` cannot
     /// compare against anything, so this stays `Info`, not `Warn`,
-    /// even though the target is tracked (mirrors the "manifest
-    /// unreadable" fallback rule: `check_manifest` already surfaces a
-    /// missing manifest loudly on its own).
+    /// even though the target is tracked.
     #[test]
     fn check_index_status_is_info_when_target_not_in_index() {
         let home = HomeGuard::new("index-status-not-tracked-home");
@@ -4702,8 +4247,7 @@ mod tests {
     fn check_index_status_is_ok_when_index_and_manifest_agree_complete() {
         // `check_index_status` takes `home_dir` explicitly and never
         // falls back to the live `$HOME`, so seeding via
-        // `write_index_at_home` (rather than `HomeGuard` mutating the
-        // real env var) is both sufficient and strictly more isolated.
+        // `write_index_at_home` is both sufficient and more isolated.
         let home = scratch_dir("index-status-agree-complete-home");
         let destination = scratch_dir("index-status-agree-complete-dest");
 
@@ -4737,10 +4281,9 @@ mod tests {
         fs::remove_dir_all(&home).ok();
     }
 
-    /// Index and manifest agree (`InProgress`/`InProgress`) -- also
-    /// `Ok` for THIS check (`check_manifest` is the one that reports
-    /// `InProgress` as `Failed` on its own; `check_index_status` only
-    /// ever reports on a DISAGREEMENT between the two records).
+    /// Index and manifest agree (`InProgress`/`InProgress`): also `Ok`
+    /// for this check (`check_manifest` is the one that reports
+    /// `InProgress` as `Failed` on its own).
     #[test]
     fn check_index_status_is_ok_when_index_and_manifest_agree_in_progress() {
         let home = scratch_dir("index-status-agree-in-progress-home");
@@ -4775,11 +4318,9 @@ mod tests {
         fs::remove_dir_all(&home).ok();
     }
 
-    /// Disagreement case (finding's example): index says `Complete` but
-    /// the real manifest says `InProgress` -- an install/update was
-    /// interrupted between the manifest rewrite and the index refresh.
-    /// Must be `Warn`, and must name BOTH recorded states plus the word
-    /// "interrupted" so the disagreement is unambiguous.
+    /// Disagreement case: index says `Complete` but the real manifest
+    /// says `InProgress`. Must be `Warn`, naming both recorded states
+    /// plus the word "interrupted".
     #[test]
     fn check_index_status_is_warn_when_index_complete_but_manifest_in_progress() {
         let home = scratch_dir("index-status-disagree-home");
@@ -4833,10 +4374,9 @@ mod tests {
         fs::remove_dir_all(&home).ok();
     }
 
-    /// The reverse disagreement -- index says `InProgress` but the real
-    /// manifest says `Complete` (e.g. a crash between the manifest's
-    /// final rewrite and the index's own `write_index` refresh) -- must
-    /// also be `Warn`, naming both states.
+    /// The reverse disagreement: index says `InProgress` but the real
+    /// manifest says `Complete`. Must also be `Warn`, naming both
+    /// states.
     #[test]
     fn check_index_status_is_warn_when_index_in_progress_but_manifest_complete() {
         let home = scratch_dir("index-status-disagree-reverse-home");
@@ -4877,16 +4417,13 @@ mod tests {
     }
 
     /// `dispatch_doctor_with` wiring: a `Warn`-only index-status
-    /// disagreement must never flip the overall exit code away from 0
-    /// -- `Warn` is non-failing (mirrors `check_manifest`'s own
-    /// `Failed`-only failure contract).
+    /// disagreement must never flip the overall exit code away from 0.
     #[test]
     fn dispatch_doctor_with_index_status_warn_does_not_fail_overall_run() {
-        // `dispatch_doctor_with` below is called with `home_dir_override:
-        // None` on purpose, to exercise the live-`$HOME`-fallback path
-        // `run_checks` itself falls back to -- so this test still needs
-        // `HomeGuard` to mutate real `$HOME`, unlike the direct-call
-        // `check_index_status` tests above.
+        // `dispatch_doctor_with` below is called with
+        // `home_dir_override: None` on purpose, to exercise the
+        // live-`$HOME`-fallback path, so this test needs `HomeGuard`
+        // to mutate real `$HOME`.
         let home_guard = HomeGuard::new("dispatch-index-status-warn-home");
         let source = scratch_dir("dispatch-index-status-warn-source");
         let destination = scratch_dir("dispatch-index-status-warn-dest");
@@ -4910,12 +4447,8 @@ mod tests {
         .unwrap();
 
         // Manifest::InProgress also makes `check_manifest` itself
-        // report `Failed` -- so this run's overall exit code is
-        // dominated by THAT check, not by index_status. Assert the
-        // index_status check specifically stays Warn by calling it
-        // directly, then separately confirm dispatch's overall code is
-        // driven by manifest's Failed (EXIT_HALTED), never anything
-        // resembling exit code 2.
+        // report `Failed`, so this run's overall exit code is
+        // dominated by that check, not by index_status.
         let index_result = check_index_status(&destination, Some(&home_guard.scratch));
         assert_eq!(index_result.status, CheckStatus::Warn);
 
@@ -4963,12 +4496,9 @@ mod tests {
 
     /// Pins the absent-record wording itself: an absent install-info
     /// record is exactly as consistent with "never installed" as with
-    /// "opted out at install," so the summary must name both
+    /// "opted out at install", so the summary must name both
     /// possibilities and the hint must not tell the user to treat
-    /// either as certain. Ties `ssenior`'s outstanding review comment
-    /// down as a wording contract, not just a status-code assertion --
-    /// a future edit that swaps this back to asserting a single cause
-    /// must fail this test, not just look different in a manual check.
+    /// either as certain.
     #[test]
     fn check_telemetry_state_absent_record_names_both_possible_causes() {
         let destination = scratch_dir("telemetry-state-absent-record-wording-target");
@@ -5007,9 +4537,8 @@ mod tests {
         fs::remove_dir_all(&home).ok();
     }
 
-    /// Case: no machine record exists yet at all -- `Info`: nothing has
-    /// reported from this machine so far. The target itself never
-    /// opted out (install-info.json is present).
+    /// Case: no machine record exists yet at all: `Info`. The target
+    /// itself never opted out.
     #[test]
     fn check_telemetry_state_is_info_when_no_machine_record_exists_yet() {
         let destination = scratch_dir("telemetry-state-no-machine-record-target");
@@ -5031,7 +4560,7 @@ mod tests {
     }
 
     /// Positive control: machine consent allows and this target never
-    /// opted out -- `Ok`: reporting is on.
+    /// opted out: `Ok`.
     #[test]
     fn check_telemetry_state_is_ok_when_machine_consents_and_target_opted_in() {
         let destination = scratch_dir("telemetry-state-ok-target");
@@ -5040,10 +4569,8 @@ mod tests {
         konductor_telemetry::ensure_instance(&home, true, crate::cli::time::utc_now_iso_millis);
 
         // Precondition: names a write failure instead of asserting
-        // Ok/"reporting is on" on a machine whose telemetry.json never
-        // actually persisted -- ensure_instance fails closed to
-        // consent=false on a write failure, which check_telemetry_state
-        // would otherwise report as an ordinary opt-out.
+        // Ok on a machine whose telemetry.json never actually
+        // persisted.
         let instance_record = konductor_telemetry::read_instance(&home).unwrap_or_else(|| {
             panic!(
                 "telemetry.json did not persist at {} -- this is a write failure, not a \
@@ -5067,10 +4594,8 @@ mod tests {
     }
 
     /// The case a design review named as silent: the machine record
-    /// declines (`telemetry_consent: false`) while THIS target never
-    /// opted out -- must be `Warn`, visible rather than folded into
-    /// ordinary `Ok`, and must name where the machine record lives so
-    /// the user can change it.
+    /// declines while this target never opted out. Must be `Warn`,
+    /// and must name where the machine record lives.
     #[test]
     fn check_telemetry_state_warns_when_machine_decline_suppresses_an_opted_in_target() {
         let destination = scratch_dir("telemetry-state-machine-decline-opted-in-target");
@@ -5110,18 +4635,12 @@ mod tests {
         fs::remove_dir_all(&home).ok();
     }
 
-    /// The divergent case Fix 1 closes: `install-info.json` is present
-    /// but fails schema validation (a `schema_version` this binary
-    /// doesn't recognize -- the same shape a corrupted file collapses
-    /// to). `read_install_info_detailed` -- what `check_telemetry_state`
-    /// now reads once, and what `read_install_info` (the plain-`Option`
-    /// projection every `report_*` call and `update`'s carry-forward
-    /// use) is built on -- correctly calls this target not opted in, so
-    /// reporting stays off, matching what `report.rs`'s own gate would
-    /// do. But the record being present is exactly what makes this a
-    /// different problem than an ordinary opt-out: nobody chose this,
-    /// so the message must say the record is broken and where it
-    /// lives, not tell the user they opted out at install.
+    /// `install-info.json` is present but fails schema validation.
+    /// `read_install_info_detailed` correctly calls this target not
+    /// opted in, so reporting stays off. But the record being present
+    /// is what makes this different from an ordinary opt-out: nobody
+    /// chose this, so the message must say the record is broken and
+    /// where it lives, not tell the user they opted out at install.
     #[test]
     fn check_telemetry_state_warns_on_a_schema_invalid_record_instead_of_calling_it_opted_out() {
         let destination = scratch_dir("telemetry-state-schema-invalid-target");
@@ -5135,7 +4654,7 @@ mod tests {
         .unwrap();
 
         // Sanity: the record is genuinely present but fails the
-        // validated read -- this is what makes the case divergent.
+        // validated read.
         assert!(
             crate::cli::telemetry::install_info_exists(&destination),
             "sanity: the bare existence check must see the file"
@@ -5143,8 +4662,7 @@ mod tests {
         assert!(
             crate::cli::telemetry::read_install_info(&destination).is_none(),
             "sanity: a schema version this binary doesn't recognize must fail the \
-             validated read -- this is the same read report_cli_error/report_package_installed \
-             gate on, so it is what actually decides whether an event is sent"
+             validated read"
         );
         assert_eq!(
             crate::cli::telemetry::read_install_info_detailed(&destination),
@@ -5177,10 +4695,9 @@ mod tests {
         fs::remove_dir_all(&home).ok();
     }
 
-    /// Sibling of the case above: a target with no install-info record
-    /// at all -- the genuine opt-out -- must still get today's plain
-    /// "opted out at install" wording, unaffected by the new
-    /// broken-record branch that only fires when the file exists.
+    /// Sibling of the case above: a target with no install-info
+    /// record at all (the genuine opt-out) must still get today's
+    /// plain "opted out at install" wording.
     #[test]
     fn check_telemetry_state_still_reports_plain_opt_out_when_record_is_genuinely_absent() {
         let destination = scratch_dir("telemetry-state-genuinely-absent-target");
@@ -5214,15 +4731,10 @@ mod tests {
     }
 
     /// Third outcome sibling: a record present but genuinely
-    /// UNREADABLE -- a directory sitting where the file should be, so
-    /// `std::fs::read_to_string` fails with an error that is not
-    /// `NotFound` (a permission-style/`IsADirectory` I/O error). Must
-    /// classify as `Broken`, the same as invalid JSON or a schema
+    /// unreadable (a directory sitting where the file should be).
+    /// Must classify as `Broken`, the same as invalid JSON or a schema
     /// mismatch, and `check_telemetry_state` must warn rather than
-    /// report a plain opt-out -- this is the "present but unreadable"
-    /// outcome named in Fix 1's three-outcomes requirement, distinct
-    /// from both the malformed-JSON and schema-mismatch fixtures
-    /// exercised elsewhere in this file.
+    /// report a plain opt-out.
     #[test]
     fn check_telemetry_state_warns_when_install_info_path_is_unreadable() {
         let destination = scratch_dir("telemetry-state-unreadable-target");
@@ -5230,7 +4742,7 @@ mod tests {
         let konductor_dir = destination.join(config::KONDUCTOR_DIR_NAME);
         fs::create_dir_all(&konductor_dir).unwrap();
         // A directory, not a file, at the path read_to_string expects
-        // to open -- guarantees a non-NotFound I/O error on read.
+        // to open, guarantees a non-NotFound I/O error on read.
         fs::create_dir_all(konductor_dir.join("install-info.json")).unwrap();
 
         assert_eq!(
@@ -5256,21 +4768,12 @@ mod tests {
         fs::remove_dir_all(&home).ok();
     }
 
-    /// Fix 1's core guarantee, proven directly rather than inferred
-    /// from the three outcome tests above: `check_telemetry_state`'s
-    /// per-target decision and message both come from the SAME
-    /// `read_install_info_detailed` result, not two independent
-    /// filesystem accesses. There is no way to intercept the function
-    /// call itself here, so this proves it structurally instead --
-    /// by writing a schema-invalid record, capturing what
-    /// `read_install_info_detailed` reports for it up front, then
-    /// asserting `check_telemetry_state`'s own output is consistent
-    /// with that ONE captured result. A two-read implementation could
-    /// still pass this on an untouched filesystem; the real regression
-    /// coverage for the RACE itself is the four tests above pinning
-    /// each outcome plus this one pinning that the two now can never
-    /// desynchronize by construction, because there is only one call
-    /// site producing both the decision and the message.
+    /// `check_telemetry_state`'s per-target decision and message both
+    /// come from the same `read_install_info_detailed` result, not two
+    /// independent filesystem accesses. Proven structurally: writes a
+    /// schema-invalid record, captures what `read_install_info_detailed`
+    /// reports for it up front, then asserts `check_telemetry_state`'s
+    /// own output is consistent with that one captured result.
     #[test]
     fn check_telemetry_state_decision_and_message_derive_from_one_read() {
         let destination = scratch_dir("telemetry-state-single-read-target");
@@ -5292,9 +4795,7 @@ mod tests {
         let result = check_telemetry_state(&destination, Some(&home));
 
         // `check_telemetry_state` must agree with the single read
-        // captured above -- there is no second, independently-timed
-        // existence check that could disagree with it under a
-        // concurrent uninstall.
+        // captured above.
         assert_eq!(
             result.status,
             CheckStatus::Warn,
@@ -5311,12 +4812,10 @@ mod tests {
         fs::remove_dir_all(&home).ok();
     }
 
-    /// Sibling of the case above: a target that DID opt out is already
-    /// covered by its own `Info` outcome above regardless of the
-    /// machine record's value -- confirmed here by pairing an opted-out
-    /// target with a declining machine record, which must still report
-    /// as the target's own opt-out (`Info`), not the machine-wide `Warn`
-    /// -- the per-target signal is checked first.
+    /// Sibling of the case above: a target that did opt out is already
+    /// covered by its own `Info` outcome regardless of the machine
+    /// record's value. Confirmed by pairing an opted-out target with a
+    /// declining machine record.
     #[test]
     fn check_telemetry_state_reports_targets_own_opt_out_even_when_machine_also_declines() {
         let destination = scratch_dir("telemetry-state-both-opted-out-and-declined-target");
@@ -5341,9 +4840,7 @@ mod tests {
     }
 
     /// `home_dir: None` (an unresolvable `HOME`) must fail closed to
-    /// the same "no machine record" family of outcome -- never `Ok`,
-    /// mirroring `report.rs`'s own `telemetry_consent_allows` contract
-    /// that an unresolvable `HOME` has no anchor to read consent from.
+    /// the "no machine record" family of outcome, never `Ok`.
     #[test]
     fn check_telemetry_state_fails_closed_when_home_dir_is_unresolvable() {
         let destination = scratch_dir("telemetry-state-no-home-target");
@@ -5401,8 +4898,8 @@ mod tests {
 
     // ── --all ────────────────────────────────────────────────────────────
 
-    /// `--all` with zero tracked installs is a no-op (exit 0), mirroring
-    /// `update`/`uninstall`'s own "0 tracked installs" rule for `--all`.
+    /// `--all` with zero tracked installs is a no-op (exit 0),
+    /// mirroring `update`/`uninstall`'s own rule.
     #[test]
     fn dispatch_doctor_all_with_zero_tracked_installs_is_a_noop() {
         let _home = HomeGuard::new("doctor-all-zero-tracked-home");
@@ -5426,10 +4923,6 @@ mod tests {
 
     /// `HOME=""` must refuse the same way `update --all`/`uninstall
     /// --all` already do, not silently report zero tracked installs.
-    /// `index_path` turns an unfiltered empty `HOME` into a relative
-    /// `.konductor/installs`, so `--all`'s own tracked-install read
-    /// (through `run_checks`'s and `dispatch_doctor_all`'s home
-    /// resolution) previously never saw the real index at all.
     #[test]
     fn dispatch_doctor_all_with_home_set_to_empty_string_refuses_like_update_all() {
         let _lock = crate::cli::test_home_lock::lock_home();
@@ -5518,12 +5011,10 @@ mod tests {
         fs::remove_dir_all(&destination).ok();
     }
 
-    /// `--all` with 2+ tracked installs: every target is checked, and a
-    /// failure in ONE target's checks (a leftover `InProgress` manifest)
-    /// must still surface as an overall non-zero exit code, while the
-    /// other, healthy target's own success does not mask it -- mirrors
-    /// `update`/`uninstall`'s own "continue past a per-target failure,
-    /// report all of them" `--all` contract.
+    /// `--all` with 2+ tracked installs: every target is checked, and
+    /// a failure in one target's checks must still surface as an
+    /// overall non-zero exit code, while the other, healthy target's
+    /// own success does not mask it.
     #[test]
     fn dispatch_doctor_all_with_two_tracked_installs_checks_both_and_surfaces_failure() {
         let _home = HomeGuard::new("doctor-all-two-tracked-home");
@@ -5596,8 +5087,8 @@ mod tests {
         fs::remove_dir_all(&broken_dest).ok();
     }
 
-    /// `--all` + `--json` must emit exactly ONE parseable JSON document
-    /// (the batched `targets` array), not one document per target.
+    /// `--all` + `--json` must emit exactly one parseable JSON document,
+    /// not one document per target.
     #[test]
     fn dispatch_doctor_all_json_emits_one_batched_document() {
         let _home = HomeGuard::new("doctor-all-json-home");
@@ -5645,29 +5136,18 @@ mod tests {
     }
 
     /// `--all` combined with `--from` is a CLI-level (clap)
-    /// `conflicts_with` usage error, enforced entirely in `cli.rs` --
-    /// see `rejects_doctor_with_from_and_all_together` there. This test
-    /// confirms `dispatch_doctor_with` itself is never reachable with
-    /// `all: true` alongside a non-`None` `from`/`target` in the real
-    /// CLI path (`dispatch.rs` passes through whatever `cli.rs` parsed,
-    /// and clap refuses that combination before dispatch ever runs) --
-    /// documented here, at the dispatch layer, rather than re-asserted,
-    /// since `dispatch_doctor_with` has no independent validation of
-    /// its own for this combination (it simply takes the `--all`
-    /// branch and ignores `from`/`target`, same as `update`/
-    /// `uninstall`'s own dispatch functions do for their analogous
-    /// conflicting flags -- clap's parse-time rejection is the ONLY
-    /// enforcement point, by this codebase's existing convention).
+    /// `conflicts_with` usage error, enforced entirely in `cli.rs`.
+    /// This test confirms `dispatch_doctor_with` itself is never
+    /// reachable with `all: true` alongside a non-`None` `from`/`target`
+    /// in the real CLI path.
     #[test]
     fn dispatch_doctor_all_ignores_from_and_target_when_somehow_both_are_set() {
         let _home = HomeGuard::new("doctor-all-ignores-from-target-home");
         let cwd = scratch_dir("doctor-all-ignores-from-target-cwd");
 
-        // Zero tracked installs either way -- this test only pins that
+        // Zero tracked installs either way; this test only pins that
         // passing a non-None from/target alongside all: true does not
-        // panic or behave differently from the all-only call, since
-        // dispatch_doctor_with takes the `all` branch unconditionally
-        // before ever looking at `from`/`target`.
+        // panic or behave differently from the all-only call.
         let code = dispatch_doctor_with(
             &cwd,
             Some("/tmp/should-be-ignored".to_string()),
@@ -5684,12 +5164,10 @@ mod tests {
         fs::remove_dir_all(&cwd).ok();
     }
 
-    /// Confirms single-target (non---all) behavior with a target
-    /// TRACKED in the index: still exits 0 on a single-target,
-    /// non---all call, i.e. `check_index_status`'s `Ok` result does not
-    /// change the overall exit code for a healthy tracked target.
-    /// `dispatch_doctor_is_all_clear_on_a_healthy_empty_project` above
-    /// covers the untracked "empty project" fixture case.
+    /// Confirms single-target (non-`--all`) behavior with a target
+    /// tracked in the index: still exits 0, i.e. `check_index_status`'s
+    /// `Ok` result does not change the overall exit code for a healthy
+    /// tracked target.
     #[test]
     fn dispatch_doctor_single_target_unaffected_by_tracked_index_entry() {
         let _home = HomeGuard::new("doctor-single-target-tracked-home");

@@ -215,9 +215,6 @@ mod tests {
         );
     }
 
-    /// `Data.TimeStamp` must carry millisecond precision, matching
-    /// `docs/telemetry-schema.json`'s examples and the MCP-side
-    /// producer's `iso8601_now()`.
     #[test]
     fn event_envelope_time_stamp_has_millisecond_precision() {
         let env = EventEnvelope::build(

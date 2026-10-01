@@ -1,17 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// time.rs — shared ISO-8601 UTC timestamp formatting.
-//
-// `utc_now_iso` (second precision) is used by the invocation logger
-// (logging.rs), the install manifest writer (install/kiro_cli.rs,
-// install.rs), and update.rs's own index/manifest timestamp.
-// `utc_now_iso_millis` (millisecond precision) is a telemetry-specific
-// sibling used by telemetry/envelope.rs and telemetry/instance.rs, to
-// match the usage-analytics wire schema's documented `Data.TimeStamp`
-// precision -- see that function's own doc comment for why it is a separate function
-// rather than a change to `utc_now_iso` itself. No chrono/time
-// dependency pulled in solely for this: both format directly from
-// `SystemTime` via a standard civil-from-days algorithm.
+// time.rs — shared ISO-8601 UTC timestamp formatting. No chrono/time
+// dependency pulled in solely for this: both functions format directly
+// from `SystemTime` via a standard civil-from-days algorithm.
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -34,19 +25,10 @@ pub(crate) fn utc_now_iso() -> String {
 
 /// Formats the current time as an ISO-8601 UTC timestamp with
 /// millisecond precision (`YYYY-MM-DDTHH:MM:SS.sssZ`) -- the precision
-/// the usage-analytics telemetry wire schema
-/// (`docs/telemetry-schema.json`) uses for `Data.TimeStamp` in every one
-/// of its worked examples.
-///
-/// A telemetry-specific SIBLING to `utc_now_iso` above, not a change to
-/// that function's own second-precision output: `utc_now_iso` is shared
-/// by non-telemetry callers whose exact 20-character shape existing
-/// tests and on-disk formats already depend on -- the manifest/index
-/// `installed_at` timestamps (`install.rs`, `update.rs`) and the
-/// invocation logger (`logging.rs`). Widening `utc_now_iso` itself to
-/// millisecond precision would change those callers' on-disk formats
-/// and break `utc_now_iso_produces_parseable_shape`'s pinned 20-char
-/// length, for no benefit to any of them.
+/// the usage-analytics telemetry wire schema uses for `Data.TimeStamp`.
+/// A separate function from `utc_now_iso` rather than widening it,
+/// since other callers depend on that function's exact second-precision
+/// on-disk format.
 pub(crate) fn utc_now_iso_millis() -> String {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -65,10 +47,9 @@ pub(crate) fn utc_now_iso_millis() -> String {
 
 /// Converts a day count since the Unix epoch (1970-01-01) into a
 /// (year, month, day) civil calendar date, proleptic Gregorian. This is
-/// the well-known constant-time `civil_from_days` algorithm (Howard
-/// Hinnant's `chrono::civil_from_days`, public domain), reproduced here
-/// to avoid adding a datetime crate dependency for a single timestamp
-/// format.
+/// Howard Hinnant's public-domain `civil_from_days` algorithm, reproduced
+/// here to avoid adding a datetime crate dependency for a single
+/// timestamp format.
 pub(crate) fn civil_from_days(z: i64) -> (i64, u32, u32) {
     let z = z + 719_468;
     let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
@@ -87,8 +68,6 @@ pub(crate) fn civil_from_days(z: i64) -> (i64, u32, u32) {
 mod tests {
     use super::*;
 
-    /// "YYYY-MM-DDTHH:MM:SSZ" — 20 characters, separators at fixed
-    /// offsets regardless of the moment called.
     #[test]
     fn utc_now_iso_produces_parseable_shape() {
         let ts = utc_now_iso();
@@ -101,11 +80,6 @@ mod tests {
         assert_eq!(ts.as_bytes()[16], b':');
     }
 
-    /// "YYYY-MM-DDTHH:MM:SS.sssZ" — 24 characters, millisecond
-    /// precision, matching `docs/telemetry-schema.json`'s own worked
-    /// `Data.TimeStamp` examples (e.g. `"2026-09-03T20:41:07.312Z"`) --
-    /// distinct from `utc_now_iso`'s 20-character, second-precision
-    /// shape.
     #[test]
     fn utc_now_iso_millis_produces_parseable_shape() {
         let ts = utc_now_iso_millis();
@@ -121,14 +95,10 @@ mod tests {
 
     #[test]
     fn civil_from_days_matches_known_epoch_dates() {
-        // 1970-01-01 is day 0.
         assert_eq!(civil_from_days(0), (1970, 1, 1));
         // 2000-03-01 is a well-known checkpoint used to validate this
         // exact algorithm in Howard Hinnant's reference implementation.
         assert_eq!(civil_from_days(11_017), (2000, 3, 1));
-        // 2026-01-15 is 20468 days after the Unix epoch (verified via
-        // an independent date calculation) — pins the algorithm
-        // against a known real date rather than only round-tripping.
         assert_eq!(civil_from_days(20_468), (2026, 1, 15));
     }
 }

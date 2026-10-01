@@ -5,39 +5,23 @@
 // `{"command": ..., "error": ..., ...extra}` shape on stdout, plus the
 // telemetry side effect every such error also carries.
 //
-// Shared by install.rs, synth/mod.rs, doctor.rs, uninstall.rs,
-// update.rs, and dispatch.rs -- centralized here rather than owned by
-// any one command module, since every command follows this same
-// `--json` error-envelope convention AND the same telemetry `cli_error`
-// reporting convention.
-// `report_error` is the single place both conventions meet, so every
-// call site gets both for free rather than needing to remember to wire
-// telemetry in separately.
-//
-// The envelope invariant: under `--json`, every non-zero exit emits
-// this shape to stdout, and an invocation emits exactly one JSON
+// Invariant: under `--json`, an invocation emits exactly one JSON
 // document -- either the success document or this error envelope,
 // never both. `command`/`error` are guaranteed on every envelope --
 // `build_error_json` inserts `extra` first and `command`/`error`
-// last, so a colliding key in `extra` never overrides them. `extra`
-// is command-specific and not part of the stable cross-command
-// contract.
+// last, so a colliding key in `extra` never overrides them.
 //
-// NOT every error path in the codebase routes through `report_error`:
-// a failure that occurs AFTER the operation it's attached to has
-// already succeeded (e.g. install.rs's index-finalize write, which
-// runs after `install_from_local` has already returned `Ok`) must
-// never emit a second `--json` document on top of the success
-// envelope that follows -- that would violate the "exactly one JSON
-// document" invariant above. Those call sites report telemetry
-// directly via `crate::cli::telemetry::report_cli_error` and keep
-// their own plain-text `eprintln!`, bypassing this module entirely.
+// Not every error path routes through `report_error`: a failure that
+// occurs AFTER the operation it's attached to has already succeeded
+// (e.g. install.rs's index-finalize write, which runs after
+// `install_from_local` has already returned `Ok`) must never emit a
+// second `--json` document on top of the success envelope that
+// follows. Those call sites report telemetry directly via
+// `crate::cli::telemetry::report_cli_error` instead.
 
 /// Builds the `--json` error envelope: `{"command": ..., "error": ...,
-/// ...extra}`. Pure JSON construction, no I/O -- callers that need to
-/// print it use `report_error` below; this half exists on its own so
-/// tests can assert the exact shape/parseability without capturing
-/// stdout.
+/// ...extra}`. Pure JSON construction, no I/O, so tests can assert the
+/// exact shape without capturing stdout.
 pub(crate) fn build_error_json(
     command: &str,
     message: &str,
@@ -62,52 +46,27 @@ pub(crate) fn build_error_json(
     serde_json::Value::Object(object)
 }
 
-/// A json-aware error-reporting helper for every error path across
-/// `install`/`synth`/`update`/`uninstall`/`doctor`/`dispatch`: prints
+/// A json-aware error-reporting helper shared across commands: prints
 /// the `--json` envelope to stdout when `json` is true, or the
 /// plain-text `konductor {command}: {message}` line to stderr
-/// otherwise, AND reports a telemetry `cli_error` event via
-/// `crate::cli::telemetry::report_cli_error` -- folded
-/// in here so every call site gets both the envelope/plain-text
-/// report and the telemetry side effect from one call, rather than
-/// needing to remember to wire telemetry in separately at each site.
+/// otherwise, and reports a telemetry `cli_error` event via
+/// `crate::cli::telemetry::report_cli_error`.
 ///
-/// `error_code` is a stable, closed error-category string --
-/// never `message`/an error's own `Display` text, which routinely
-/// embeds a local filesystem path. `target_dir` is the target this
-/// error occurred against, where telemetry reads its install-info
-/// record and `.konductor/config.yml` opt-out; callers with no single
-/// target in scope yet (e.g. a global index read) pass their best
+/// `error_code` is a stable, closed error-category string, never
+/// `message`/an error's own `Display` text (which routinely embeds a
+/// local filesystem path). `target_dir` is the target this error
+/// occurred against, used to resolve telemetry's endpoint/opt-out;
+/// callers with no single target in scope yet pass their best
 /// scope-agnostic fallback (typically `$HOME`). `no_telemetry` carries
-/// `--no-telemetry`'s parsed value through to `report_cli_error`, which
-/// skips the event when it is set. Only `install` and `update` have a
-/// real flag value to pass; every other command passes `false`.
+/// `--no-telemetry` through to `report_cli_error`, which skips the
+/// event when set. `extra` lets a call site attach additional
+/// structured fields without a bespoke `serde_json::json!` call; a key
+/// named `"command"`/`"error"` is silently overwritten by the
+/// guaranteed field, so callers should avoid the collision.
 ///
-/// `message` is the plain-text wording each call site already used --
-/// when `json` is true, the same string becomes the envelope's
-/// `"error"` field; when `json` is false, `message` is printed
-/// verbatim, byte-identical to each call site's pre-existing
-/// plain-text wording. `extra` lets a call site attach additional
-/// structured fields (e.g. `duplicate_targets`) without a bespoke
-/// `serde_json::json!` call -- `build_error_json` inserts `command`/
-/// `error` after `extra`, so a field named `"command"`/`"error"`
-/// passed here is overwritten by the guaranteed field rather than
-/// overwriting it; callers should still avoid the collision, since
-/// the extra key is silently dropped rather than surfaced.
-///
-/// The `json` branch prints to stdout, not stderr: every success
-/// document these commands emit already goes to stdout, so a failure
-/// document staying on stdout too means a `--json` consumer only ever
-/// has to read one stream to see every outcome, success or failure.
-///
-/// Prints BEFORE reporting telemetry:
-/// `report_cli_error` reaches a host-allowlist DNS resolution
-/// (`telemetry::report.rs`'s `endpoint_host_is_allowed_with_pin`) that is now
-/// bounded (see that module's own `DNS_RESOLUTION_TIMEOUT`) but is
-/// never instantaneous -- printing the user-facing error line first
-/// means a slow-but-within-bound resolver delays only the fire-and-
-/// forget telemetry side effect, never the error output every caller
-/// of `report_error` exists to surface promptly.
+/// Prints the user-facing line before reporting telemetry: the
+/// telemetry call can block briefly on a bounded DNS resolution, and
+/// the error output should never wait on that.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn report_error(
     command: &str,
@@ -133,18 +92,12 @@ pub(crate) fn report_error(
 }
 
 /// Same as `report_error`, but for a `--all` batch call site that
-/// visits more than one `target_dir` in a single process -- routes the telemetry side effect through
-/// `telemetry::report_cli_error_for_target` (which resolves the
-/// endpoint per call, uncached) instead of `report_error`'s
-/// `telemetry::report_cli_error` (the process-global endpoint cache),
-/// so each target's own `.konductor/config.yml` opt-out is read fresh
-/// rather than inherited from whichever target the cache resolved
-/// first. Mirrors
-/// the existing `report_package_uninstalled`/`_for_target` and
-/// `report_package_version_updated`/`_for_target` sibling-function
-/// convention already established in `telemetry/report.rs`, rather
-/// than widening `report_error`'s own signature for every one of its
-/// ~20 call sites just to thread a flag only batch call sites need.
+/// visits more than one `target_dir` in a single process: routes the
+/// telemetry side effect through `telemetry::report_cli_error_for_target`
+/// (resolves the endpoint per call, uncached) instead of
+/// `report_error`'s process-global endpoint cache, so each target's own
+/// `.konductor/config.yml` opt-out is read fresh rather than inherited
+/// from whichever target the cache resolved first.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn report_error_for_target(
     command: &str,
@@ -172,8 +125,7 @@ pub(crate) fn report_error_for_target(
 /// Shared core for `report_error`/`report_error_for_target`: prints the
 /// envelope/plain-text line, then reports telemetry via whichever of
 /// `telemetry::report_cli_error`/`report_cli_error_for_target`
-/// `uncached_identity` selects -- kept as one function so the two
-/// callers' identical print logic can never drift apart.
+/// `uncached_identity` selects.
 #[allow(clippy::too_many_arguments)]
 fn report_error_impl(
     command: &str,

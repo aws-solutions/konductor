@@ -2,60 +2,26 @@
 //
 // install/kiro_cli.rs — `InstallStrategy` for the Kiro CLI runtime.
 //
-// ── Scope (tasks 3.2, 3.4) ──────────────────────────────────────────────────
-// Detection + strategy selection is task 3.2's deliverable (`matches()`
-// below); copying synthed Kiro CLI agent, skill, and context files from
-// a local synth output tree (`<repo_root>/dist/<harness>/agents/*.json`,
-// `<repo_root>/dist/<harness>/skills/<name>/**`,
-// `<repo_root>/dist/<harness>/context/*`, `--from <repo-root>`) into
-// this target's project-local `<target_dir>/` is task 3.4's
-// (`install_from_local()`). SOPs are staged under `dist/<harness>/sops/`
-// by synth but have no Kiro CLI install destination -- deliberately not
-// copied. Each installed file's real content is hashed with SHA-256,
-// and `.konductor/manifest` records the destination and per-file
-// hashes. Without `--from`, remote (GitHub Release) installation is
-// not yet implemented -- `install_from_local` fails with a clear
-// message rather than silently succeeding.
+// Copies synthed agent, skill, and context files from a local synth output
+// tree (`--from <repo-root>`) into the target's `.kiro/` and `.konductor/`.
+// SOPs under `dist/<harness>/sops/` have no Kiro CLI install destination and
+// are not copied. Remote (GitHub Release) installation is not yet
+// implemented; `install_from_local` fails with a clear message instead.
 //
-// ── Two install roots ────────────────────────────────────────────────────
-// Agents and context land under `<target_dir>/.kiro/` as before. Skills
-// land under `<target_dir>/.konductor/skills/`, NOT `.kiro/skills/`:
-// Kiro CLI's native skill discovery scans `.kiro/skills/`
-// unconditionally and makes every skill visible to every agent
-// regardless of what it declares, which defeats per-agent scoping.
-// Moving skills outside that scanned directory means a skill is only
-// visible to an agent that explicitly references it via a `skill://`
-// resource entry -- confirmed live against kiro-cli-v2 2.18.0 (see
-// ws-konductor-cli-notes.SKILL.md). `manifest.destination` reflects this
-// by rooting at `target_dir` itself (see manifest.rs's module
-// docstring); each `files[].path` carries its own `.kiro/` or
-// `.konductor/` prefix.
+// Skills land under `.konductor/skills/`, not `.kiro/skills/`: Kiro CLI's
+// native skill discovery scans `.kiro/skills/` unconditionally and makes
+// every skill visible to every agent, which defeats per-agent scoping.
+// Keeping skills outside that scanned directory means a skill is only
+// visible to an agent that references it via a `skill://` resource entry.
 //
-// Skill install MERGES into `.konductor/skills/`: a skill directory this
-// install did not emit (e.g. hand-authored) is left untouched, but a
-// skill directory it does own is fully replaced so a file removed from
-// the source doesn't linger in the destination.
+// Skill install merges into `.konductor/skills/`: a directory this install
+// did not emit is left untouched; one it does own is replaced wholesale so
+// removed files don't linger.
 //
-// No checksum verification is performed against a locally-synthed tree:
-// there is no published release checksum for output that was just
-// built on this machine, so `artifact.rs`'s `verify_sha256` (which
-// exists for a future real GitHub Release fetch) is not used here.
-// This is intentional, not an oversight -- verifying a local build
-// against a hash it cannot have is not meaningful.
-//
-// ── Module split ─────────────────────────────────────────────────────────
-// This file's own logic is split three ways under `kiro_cli/`, purely
-// for readability -- no behavior differs from before the split:
-//   - `kiro_cli/plan.rs`   -- write-ahead planning (`plan_all_files` and
-//     friends): what a run WOULD write, before anything is copied.
-//   - `kiro_cli/copy.rs`   -- copy/install execution: what actually reads
-//     from the synth tree and writes to `target_dir`.
-//   - `kiro_cli/fs_util.rs` -- small filesystem primitives shared by both
-//     (`is_executable`, `set_executable`, `reject_unsafe_file_name`).
-// This file itself keeps only the `InstallStrategy` impl and re-exports
-// everything sibling `install` modules (`claude`, `mcp_server`) and this
-// file's own tests already depended on, so none of their call sites
-// changed.
+// This file's logic is split under `kiro_cli/`: `plan.rs` (write-ahead
+// planning), `copy.rs` (copy/install execution), `fs_util.rs` (shared
+// filesystem primitives). This file keeps the `InstallStrategy` impl and
+// re-exports what sibling modules and tests depend on.
 
 use std::path::Path;
 
@@ -66,29 +32,17 @@ use super::InstallStrategy;
 use crate::cli::synth::kiro_cli_v2::KiroCliV2Transformer;
 use crate::cli::synth::HarnessTransformer as _;
 
-// ── MCP server binaries (skill-lookup) ──────────────────────────────────────
-//
-// See `mcp_server.rs`'s module doc comment for the source/destination
-// and design rationale -- those constants and helpers live there now.
-// The injection of an installed binary's absolute path into an agent's
-// `mcpServers` block still happens here (a third rewrite pass in
-// `copy_agent_files_rewriting_resources`), since it needs the same
-// parse/rewrite/verify/re-serialize machinery the other two use.
+// See `mcp_server.rs` for MCP server binary source/destination handling.
+// Injecting an installed binary's absolute path into an agent's
+// `mcpServers` block happens here instead, since it needs the same
+// parse/rewrite/verify/re-serialize machinery as the other rewrite passes.
 
-/// Destination roots, relative to `target_dir`, everything this
-/// strategy installs is rooted under. `target_dir` itself is resolved
-/// by the caller (`install::resolve_destination`) -- `$HOME` by
-/// default, or `--target <dir>` when given -- so this strategy has no
-/// opinion on whether the resulting trees end up project-local or
-/// under the user's home directory. Agents and context stay under
-/// `.kiro/` (Kiro's own config root).
+/// Destination root for agents and context, relative to `target_dir`
+/// (resolved by the caller; `$HOME` by default, or `--target <dir>`).
 pub(crate) const KIRO_DESTINATION_ROOT: &str = ".kiro";
-/// Skills live under `.konductor/` -- see module docstring's "Two
-/// install roots" section for why this is NOT `.kiro/skills/`.
-///
-/// Both constants are `pub(crate)`: `uninstall.rs` uses them to build
-/// the same runtime-root paths it must never delete, regardless of
-/// emptiness.
+/// Skills live under `.konductor/`, not `.kiro/skills/` (see module doc
+/// comment). `uninstall.rs` also uses both constants to build the same
+/// runtime-root paths it must never delete.
 pub(crate) const KONDUCTOR_DESTINATION_ROOT: &str = ".konductor";
 
 /// Installs Konductor for the Kiro CLI runtime: copies synthed agent
@@ -99,30 +53,20 @@ pub(crate) const KONDUCTOR_DESTINATION_ROOT: &str = ".konductor";
 pub struct KiroCliInstallStrategy;
 
 impl InstallStrategy for KiroCliInstallStrategy {
-    /// Matches `KiroCliV2Transformer::name()` (`"kiro-cli-v2"`) exactly
-    /// -- the harness/strategy name unification removes the translation
-    /// layer that used to exist between `--harness kiro-cli-v2` and this
-    /// strategy's own internal manifest-recorded name, which used to be
-    /// a distinct, shorter string. `harness_dir()` below now simply
-    /// delegates to this value.
+    /// Matches `KiroCliV2Transformer::name()` exactly.
     fn name(&self) -> &'static str {
         "kiro-cli-v2"
     }
 
-    /// Now identical to `name()` by construction (see this impl's own
-    /// `name()` doc comment) -- delegates directly rather than
-    /// re-deriving the same string from `KiroCliV2Transformer::name()`.
     fn harness_dir(&self) -> &'static str {
         self.name()
     }
 
-    /// Applies when Kiro CLI is detected at the target, or when NEITHER
-    /// known runtime is detected (Kiro CLI is this milestone's only
-    /// registered strategy, so an undetected target still gets a usable
-    /// default rather than failing with "no strategy matched"). Does
-    /// not claim a target where Claude Code alone is detected -- that
-    /// is reserved for a future Claude Code strategy (task 3.8), left
-    /// unclaimed here rather than silently mis-installed as Kiro.
+    /// Applies when Kiro CLI is detected at the target, or when no known
+    /// runtime is detected (Kiro CLI is the default rather than failing
+    /// with "no strategy matched"). Does not claim a target where Claude
+    /// Code alone is detected; that is reserved for a future Claude Code
+    /// strategy.
     fn matches(&self, target_dir: &Path) -> bool {
         let detection = detect_runtimes(target_dir);
         if detection.has(Runtime::KiroCli) {
@@ -131,42 +75,21 @@ impl InstallStrategy for KiroCliInstallStrategy {
         detection.detected.is_empty()
     }
 
-    /// Cheap, read-only mirror of `install_from_local`'s own no-op
-    /// checks -- missing `--from`, then a source with nothing to
-    /// install -- performed in the identical order and against the
-    /// identical conditions, but without reading any PRIOR manifest and
-    /// without writing anything at all. Returns the exact message
-    /// `install_from_local` would fail with in that case.
+    /// Cheap, read-only mirror of `install_from_local`'s no-op checks
+    /// (missing `--from`, then a source with nothing to install),
+    /// without reading any prior manifest or writing anything. Returns
+    /// the exact message `install_from_local` would fail with.
     ///
-    /// Deliberately re-derives `plan_all_files`'s inputs directly
-    /// (`harness_dir`, no `prior_manifest`) rather than calling
-    /// `plan_all_files` itself with a placeholder: passing `None` for
-    /// `prior_manifest` only affects each planned file's `provenance`
-    /// classification, never whether the plan is empty, so the emptiness
-    /// check this function needs is identical either way -- but plumbing
-    /// a real prior manifest through here would require the same
-    /// `read_manifest` call `install_from_local` makes, defeating the
-    /// point of a callable-before-any-work check.
+    /// Does not call `plan_claude_settings_grant`: that function can
+    /// only add an optional file to an otherwise-non-empty plan, never
+    /// turn an empty plan non-empty, so it cannot change this
+    /// function's verdict.
     ///
-    /// Deliberately does NOT also call `plan_claude_settings_grant`:
-    /// that function can only ever ADD an optional, additive file to
-    /// an otherwise-non-empty plan -- it never turns a plan that would
-    /// have been empty into a non-empty one (it early-returns `Vec::new()`
-    /// whenever the MCP binary itself is not already planned, and the
-    /// binary is one of the very inputs `plan.is_empty() && bin_plan.is_empty()`
-    /// already checks above). So it cannot change this function's
-    /// empty/non-empty verdict, and omitting it keeps this check-only
-    /// mirror doing exactly what its name says: mirroring
-    /// `install_from_local`'s no-op checks, not its full plan.
-    ///
-    /// DOES also call `plan_additive_claude_sop_skill_files`, unlike
-    /// `plan_claude_settings_grant` above: that function is gated only
-    /// on `target_dir` already having a `.claude` marker -- entirely
-    /// independent of `plan`/`bin_plan` -- so it CAN turn an otherwise-
-    /// empty plan into a non-empty one on its own (e.g. empty
-    /// `dist/kiro-cli-v2/`, no built binary, populated `dist/claude/sops/`,
-    /// `.claude` marker present). Omitting it would report a false no-op
-    /// for a target `install_from_local` would actually install into.
+    /// Does call `plan_additive_claude_sop_skill_files`: that function
+    /// is gated only on a pre-existing `.claude` marker, independent of
+    /// `plan`/`bin_plan`, so it can turn an otherwise-empty plan
+    /// non-empty on its own. Omitting it would report a false no-op for
+    /// a target `install_from_local` would actually install into.
     fn would_fail_as_noop(&self, target_dir: &Path, from: Option<&str>) -> Option<String> {
         let Some(repo_root) = from else {
             return Some(super::NO_REMOTE_RELEASE_MESSAGE.to_string());
@@ -198,34 +121,27 @@ impl InstallStrategy for KiroCliInstallStrategy {
         None
     }
 
-    /// Copies synthed agent files from `from`'s resolved source
-    /// directory into `<target_dir>/.kiro/agents/`, synthed skill
-    /// directories into `<target_dir>/.konductor/skills/` (merging: a
-    /// pre-existing skill directory this install did not emit is left
-    /// untouched), and synthed context files into
-    /// `<target_dir>/.kiro/context/`, then writes
-    /// `.konductor/manifest`. Fails with a clear message when `from` is
-    /// `None` (remote release installation is not yet available), when
-    /// no source directory yields anything to install, or on any I/O
-    /// failure while copying/writing.
+    /// Copies synthed agent files into `<target_dir>/.kiro/agents/`,
+    /// synthed skill directories into `<target_dir>/.konductor/skills/`
+    /// (merging: a pre-existing skill directory this install did not
+    /// emit is left untouched), and synthed context files into
+    /// `<target_dir>/.kiro/context/`, then writes `.konductor/manifest`.
+    /// Fails with a clear message when `from` is `None` (remote release
+    /// installation is not yet available), when no source directory
+    /// yields anything to install, or on any I/O failure.
     ///
-    /// ── Write-ahead sequencing (see manifest.rs's module docstring) ──────
-    /// 1. Read any prior manifest for this target BEFORE anything else
-    ///    (its `files[]` is the ground truth for "did a previous
-    ///    Konductor install own this path", used for provenance below).
-    /// 2. PLAN every file this run intends to write -- its final
-    ///    manifest-relative path and provenance (`classify_provenance`,
-    ///    stat + prior manifest, before any content changes) -- without
-    ///    copying anything yet.
+    /// Write-ahead sequencing (see manifest.rs's module docstring):
+    /// 1. Read any prior manifest for this target first; its `files[]`
+    ///    is the ground truth for provenance classification below.
+    /// 2. Plan every file this run intends to write, with its final
+    ///    manifest-relative path and provenance, before copying anything.
     /// 3. Write the plan as a `Status::InProgress` manifest (every
-    ///    `sha256` is `None` -- the real bytes don't exist at their
-    ///    destination yet). A crash/failure from here on always leaves a
+    ///    `sha256` is `None`). A crash from here on always leaves a
     ///    manifest naming exactly what may be on disk.
-    /// 4. Actually copy every file (the existing per-content-type copy
-    ///    functions, unchanged), attach each returned entry's already-
-    ///    planned provenance, and compute real hashes as each file lands.
-    /// 5. Rewrite the SAME manifest as `Status::Complete`, now with
-    ///    every real hash filled in.
+    /// 4. Copy every file, attach each entry's planned provenance, and
+    ///    compute real hashes as each file lands.
+    /// 5. Rewrite the same manifest as `Status::Complete` with every
+    ///    real hash filled in.
     fn install_from_local(
         &self,
         target_dir: &Path,
@@ -239,22 +155,11 @@ impl InstallStrategy for KiroCliInstallStrategy {
         let harness_dir = repo_root.join("dist").join(KiroCliV2Transformer.name());
 
         // Recorded into the manifest's `source` field so `konductor
-        // doctor` can later resolve `check_source`/`check_config`
-        // against the SAME tree that produced this install, not
-        // whatever `--from`/cwd happens to be when `doctor` runs (see
-        // manifest.rs's `Manifest` doc comment). Canonicalized so a
-        // later `doctor` run gets an absolute path regardless of its
-        // own cwd; falls back to joining `repo_root` onto this
-        // process's cwd if canonicalize fails (e.g. source since
-        // moved/removed), and to the raw string only if even that
-        // fails -- never aborting the install over a path-display
-        // concern.
-        //
-        // SUGGESTION (deferred): the `unwrap_or_else` below discards
-        // the specific `io::Error` from a failed canonicalize instead
-        // of logging it. Not a correctness bug -- install still
-        // succeeds with a usable path either way -- just a diagnostics
-        // gap; revisit if `install` grows a non-fatal warning channel.
+        // doctor` can later resolve checks against the same tree that
+        // produced this install, not whatever `--from`/cwd happens to
+        // be when `doctor` runs. Falls back to cwd-joined or the raw
+        // string if canonicalize fails, rather than aborting the
+        // install over a path-display concern.
         let source = Some(
             std::fs::canonicalize(repo_root)
                 .unwrap_or_else(|_| {
@@ -266,15 +171,12 @@ impl InstallStrategy for KiroCliInstallStrategy {
                 .to_string(),
         );
 
-        // `prior_manifest` is the ONE slot whose
-        // own prior `files` list this run's provenance classification
-        // consults -- normally this strategy's own tracked slot, but on
-        // a Kiro-variant override switch (installing `kiro-cli-v2` where
-        // `kiro-v3` is currently tracked, or vice versa), it is the
-        // OTHER variant's slot instead, since both write every
-        // destination path identically and the switch is a takeover of
-        // those same paths, not a fresh install (see
-        // `manifest::effective_prior_slot`'s own doc comment).
+        // `prior_manifest` is normally this strategy's own tracked slot,
+        // but on a Kiro-variant override switch (installing
+        // `kiro-cli-v2` where `kiro-v3` is currently tracked, or vice
+        // versa), it is the other variant's slot instead, since both
+        // write identical destination paths (see
+        // `manifest::effective_prior_slot`).
         let full_prior_manifest = super::manifest::read_manifest(target_dir)?;
         let prior_manifest: Option<StrategyManifest> = full_prior_manifest
             .as_ref()
@@ -285,13 +187,10 @@ impl InstallStrategy for KiroCliInstallStrategy {
         let bin_plan =
             super::mcp_server::plan_bin_files(repo_root, target_dir, prior_manifest.as_ref())?;
         plan.extend(bin_plan.iter().cloned());
-        // Must run AFTER the bin plan is folded in -- it checks `plan`
-        // for the MCP binary's own planned path to predict whether the
-        // Claude grant applies (see its own doc comment for why this
-        // prediction, not the real run-time computation, is what
-        // closes the crash-safety gap). The hooks settings file is
-        // planned only when the grant is (the hooks are wired only after
-        // it succeeds) and telemetry is on.
+        // Must run after the bin plan is folded in, since it checks
+        // `plan` for the MCP binary's planned path to predict whether
+        // the Claude grant applies. The hooks settings file is planned
+        // only when the grant is and telemetry is on.
         let claude_plan =
             plan_claude_settings_grant(&harness_dir, target_dir, &plan, prior_manifest.as_ref())?;
         let wires_claude_hooks = !no_telemetry && !claude_plan.is_empty();
@@ -300,14 +199,10 @@ impl InstallStrategy for KiroCliInstallStrategy {
             plan_claude_hooks_file(&mut plan, target_dir, prior_manifest.as_ref());
         }
         // Predicts the additive Claude-side SOP-skill conversion files
-        // `SopInstallPhase::run`'s dual-marker branch writes when this
-        // target ALSO has a pre-existing `.claude` marker (see that
-        // struct's own doc comment) -- must run before the write-ahead
-        // `Status::InProgress` manifest is written below, for the same
-        // crash-safety reason `plan_claude_settings_grant` does (see its
-        // own doc comment). Without this, `attach_provenance` fails with
-        // an internal-error message the first time that dual-marker
-        // branch actually produces a file that was never in the plan.
+        // `SopInstallPhase::run` writes when this target also carries a
+        // pre-existing `.claude` marker. Must run before the
+        // write-ahead manifest is written below, for the same
+        // crash-safety reason as `plan_claude_settings_grant` above.
         let claude_sop_skill_plan =
             plan_additive_claude_sop_skill_files(repo_root, target_dir, prior_manifest.as_ref())?;
         plan.extend(claude_sop_skill_plan);
@@ -320,12 +215,11 @@ impl InstallStrategy for KiroCliInstallStrategy {
             )));
         }
 
-        // This slot must never claim `.claude/skills/sop-<name>/SKILL.md`,
-        // at any status (see the `complete` manifest write below for the
-        // full rationale). Excluded here too, before `in_progress_files`
-        // is built: otherwise a crash before the `Status::Complete` write
-        // leaves this slot's `InProgress` manifest claiming the path, and
-        // `uninstall` -- which has no status gate -- would delete it even
+        // This slot must never claim `.claude/skills/sop-<name>/SKILL.md`
+        // at any status (see the `complete` manifest write below).
+        // Excluded here too so a crash before the `Status::Complete`
+        // write doesn't leave this slot's `InProgress` manifest
+        // claiming the path, which `uninstall` would then delete even
         // though `claude`'s slot may own it.
         const DUAL_MARKER_SOP_SKILL_PREFIX: &str = ".claude/skills/sop-";
 
@@ -352,17 +246,12 @@ impl InstallStrategy for KiroCliInstallStrategy {
         );
         super::manifest::upsert_strategy(target_dir, write_ahead)?;
 
-        // The actual copy work is a list of `InstallPhase`s (see
-        // `phases.rs`) run in order by `run_all_phases`, rather than a
-        // hand-written call chain -- ordering is enforced by
-        // `standard_install_phases()` and `InstallPhase::dependencies()`,
-        // not by this call site. This also covers the Claude/V3 settings
-        // grant and telemetry hooks (see `resource_rewrite/claude_settings.rs`'s
-        // "V3/Claude Code permission grant" section): `AgentInstallPhase::run`
-        // applies them itself, right after calling `install_agents`, since
-        // that is the one place that already holds the
-        // `any_mcp_server_injected` signal they are gated on -- see that
-        // phase's own doc comment.
+        // The actual copy work runs as a list of `InstallPhase`s (see
+        // `phases.rs`) in order via `run_all_phases`. This also covers
+        // the Claude/V3 settings grant and telemetry hooks:
+        // `AgentInstallPhase::run` applies them right after
+        // `install_agents`, since that is where the
+        // `any_mcp_server_injected` signal they are gated on is held.
         let raw_files = super::phases::run_all_phases(
             &super::phases::standard_install_phases(),
             &harness_dir,
@@ -373,28 +262,17 @@ impl InstallStrategy for KiroCliInstallStrategy {
         )?;
         let files = attach_provenance(raw_files, &plan)?;
 
-        // `SopInstallPhase::run`'s additive dual-marker
-        // branch writes `.claude/skills/sop-<name>/SKILL.md` when this
-        // target ALSO carries a pre-existing `.claude` marker -- the ONE
-        // path shape reachable from Kiro's own chain that lands under
-        // `.claude/`. This is narrower than "anything under `.claude/`":
-        // Kiro's chain also legitimately writes `.claude/settings.json`
-        // (the additive Claude/V3 settings-grant merge, a separate,
-        // unrelated mechanism -- see `resource_rewrite/claude_settings.rs`)
-        // and, unless `--no-telemetry`, the hooks settings file
-        // (`.claude/settings.local.json`, or `~/.claude/settings.json`
-        // for a `$HOME` install). Both DO stay tracked in this slot,
-        // since they are genuinely shared, Kiro-authored merges, not
-        // another strategy's own content. Only the SOP-skill conversion path is
-        // excluded from THIS strategy's own manifest slot, so Kiro's own
-        // `uninstall` never deletes it. `claude`'s own slot, if and
-        // when it is separately installed at this target, owns and
-        // manages that path completely on its own (its own
-        // `install_sop_skills` call regenerates it on every run, and
-        // its own `uninstall` is the only thing that ever deletes it).
-        // `DUAL_MARKER_SOP_SKILL_PREFIX` is defined once, above, before
-        // `in_progress_files` -- see that definition's own doc comment
-        // for why the write-ahead record needs the identical exclusion.
+        // `SopInstallPhase::run`'s additive dual-marker branch writes
+        // `.claude/skills/sop-<name>/SKILL.md` when this target also
+        // carries a pre-existing `.claude` marker. This is narrower
+        // than "anything under `.claude/`": Kiro's chain also
+        // legitimately writes `.claude/settings.json` (the Claude/V3
+        // settings-grant merge) and, unless `--no-telemetry`, the hooks
+        // settings file. Both stay tracked in this slot, since they are
+        // genuinely shared, Kiro-authored merges. Only the SOP-skill
+        // conversion path is excluded, so Kiro's own `uninstall` never
+        // deletes it; `claude`'s own slot, when separately installed,
+        // owns and manages that path on its own.
         let (files, _dual_marker_claude_sop_skills): (Vec<ManifestFile>, Vec<ManifestFile>) = files
             .into_iter()
             .partition(|f| !f.path.starts_with(DUAL_MARKER_SOP_SKILL_PREFIX));
@@ -433,11 +311,8 @@ mod fs_util;
 mod plan;
 
 // Re-exports so sibling `install` modules (`claude`, `mcp_server`) and this
-// module's own tests can keep using `super::kiro_cli::<name>` /
-// `<name>` unqualified paths, exactly as before this file was split into
-// `kiro_cli/{plan,copy,fs_util}.rs` -- see this file's own module doc
-// comment ("Module split" section above) for the 3-way split this cuts
-// across.
+// module's own tests can keep using unqualified paths after the split into
+// `kiro_cli/{plan,copy,fs_util}.rs`.
 pub(super) use copy::{
     copy_agent_files, copy_skill_dir_recursive, install_agents, install_context,
     install_kiro_sop_skills, install_skills, install_sops, list_agent_files, list_agent_files_like,
@@ -713,19 +588,12 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// Simulates an interruption between `install_bin_files` and
-    /// `install_agents` in `install_from_local` (bin copy lands,
-    /// agent-JSON rewrite never runs): after a normal first install
-    /// completes, hand-craft that exact on-disk state -- binary
-    /// present, agent JSON reverted to its pre-rewrite `mcpServers`-free
-    /// form -- then re-run `install_from_local` and assert it converges
-    /// to the fully-wired state on its own. A true mid-write process
-    /// kill can't be reproduced deterministically in-process (there's
-    /// no hook between the two calls to abort at), so this reconstructs
-    /// the resulting filesystem state directly and drives the
-    /// documented recovery path -- re-run -- against it, which is the
-    /// actual property that matters: does a subsequent install repair
-    /// the gap.
+    /// Simulates an interruption between the binary copy and the agent
+    /// rewrite in `install_from_local`: after a normal first install
+    /// completes, hand-crafts that exact state (binary present, agent
+    /// JSON reverted to its pre-rewrite form), then re-runs
+    /// `install_from_local` and asserts it converges to the fully-wired
+    /// state on its own.
     #[test]
     fn install_from_local_recovers_when_rerun_after_interrupted_agent_rewrite() {
         let target_dir = scratch_dir("target-interrupted-rewrite");
@@ -756,10 +624,8 @@ mod tests {
             "sanity check: the first install must have injected mcpServers"
         );
 
-        // Hand-craft the interrupted state: binary copy landed (left
-        // as-is), but the agent JSON is reverted to its pre-rewrite
-        // form, as if the process died before `install_agents` ran on
-        // this file.
+        // Hand-craft the interrupted state: binary copy landed, but the
+        // agent JSON is reverted to its pre-rewrite form.
         fs::write(
             &agent_path,
             br#"{"name":"k-example","resources":["skill://skills/constraints/SKILL.md"]}"#,
@@ -788,20 +654,12 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// Hand-crafts the partial-crash state `ContextInstallPhase`/
-    /// `AgentInstallPhase` running last (see `phases.rs`'s own module
-    /// doc comment) makes reachable: a write-ahead `Status::InProgress`
-    /// manifest exists and `SkillInstallPhase`/`McpInstallPhase` have
-    /// already written their files, but neither `ContextInstallPhase`
-    /// nor `AgentInstallPhase` ran at all -- `.kiro/agents/` and
-    /// `.kiro/context/` are both entirely absent, not merely stale.
-    /// Distinct from
-    /// `install_from_local_recovers_when_rerun_after_interrupted_agent_rewrite`
-    /// above, which starts from a full prior successful install with
-    /// one file hand-reverted to stale content. Asserts a rerun still
-    /// converges: the context and agent files land correctly, with
-    /// `mcpServers` injected, even though neither was ever written by
-    /// an earlier run.
+    /// Hand-crafts the partial-crash state where a write-ahead
+    /// `Status::InProgress` manifest exists and skills/MCP have already
+    /// been written, but neither context nor agent install ever ran:
+    /// `.kiro/agents/` and `.kiro/context/` are entirely absent, not
+    /// merely stale. Asserts a rerun still converges with `mcpServers`
+    /// injected, even though neither file was ever written before.
     #[test]
     fn install_from_local_recovers_when_agent_phase_never_ran() {
         let target_dir = scratch_dir("target-agent-phase-never-ran");
@@ -835,11 +693,8 @@ mod tests {
         );
         super::super::manifest::upsert_strategy(&target_dir, write_ahead).unwrap();
 
-        // Run only the phases a crash before `ContextInstallPhase`/
-        // `AgentInstallPhase` would have completed, directly --
-        // bypassing both of those entirely, so `.kiro/agents/` and
-        // `.kiro/context/` stay absent, exactly the state this reorder
-        // makes reachable.
+        // Run only the phases that would have completed before the
+        // crash point, bypassing agent and context install entirely.
         super::super::phases::run_all_phases(
             &[
                 Box::new(super::super::phases::SkillInstallPhase),
@@ -894,14 +749,9 @@ mod tests {
         assert!(reject_unsafe_file_name("safe-name").is_ok());
     }
 
-    /// Drives `copy_agent_files` -- the function `install_from_local`
-    /// itself calls to write files -- with a crafted entry list
-    /// containing a traversal-style name, bypassing normal directory
-    /// listing (which can never produce a `/`-containing name on a
-    /// real filesystem). Proves the guard fires on the real write path,
-    /// not only when `reject_unsafe_file_name` is called in isolation:
-    /// a source that becomes less trusted in the future (e.g. a remote
-    /// archive member list) would still be caught here.
+    /// Drives `copy_agent_files` directly with a crafted entry list
+    /// containing a traversal-style name, to prove the guard fires on
+    /// the real write path, not only in isolation.
     #[test]
     fn copy_agent_files_rejects_traversal_name_before_writing() {
         let source_dir = scratch_dir("copy-traversal-source");
@@ -983,8 +833,8 @@ mod tests {
     #[test]
     fn utc_now_iso_produces_parseable_shape() {
         let stamp = crate::cli::time::utc_now_iso();
-        // "YYYY-MM-DDTHH:MM:SSZ" -- 20 characters, matching
-        // run-state.json's documented `started_at` example shape.
+        // "YYYY-MM-DDTHH:MM:SSZ", matching run-state.json's documented
+        // `started_at` shape.
         assert_eq!(stamp.len(), 20);
         assert!(stamp.ends_with('Z'));
         assert_eq!(stamp.as_bytes()[4], b'-');
@@ -994,38 +844,26 @@ mod tests {
 
     #[test]
     fn civil_from_days_matches_known_epoch_date() {
-        // 2026-01-15 is 20468 days after the Unix epoch (verified via
-        // an independent date calculation) -- pins the algorithm
-        // against a known real date rather than only round-tripping.
+        // 2026-01-15 is 20468 days after the Unix epoch (verified
+        // independently) -- pins the algorithm against a known real
+        // date rather than only round-tripping.
         assert_eq!(civil_from_days(20468), (2026, 1, 15));
         // The epoch itself.
         assert_eq!(civil_from_days(0), (1970, 1, 1));
     }
 
     /// Regression test: `list_agent_files` filtered only on the
-    /// `.json` extension, with no file-type guard -- a DIRECTORY
-    /// literally named `foo.json` (e.g. a stray build artifact, or a
-    /// name collision from an unrelated tool) would be collected as if
-    /// it were an agent file, and the later `std::fs::read(&src)` in
-    /// `copy_agent_files` would then fail with an I/O error (reading a
-    /// directory as a file), aborting the WHOLE install over one
-    /// spurious extra entry -- even though a real agent file alongside
-    /// it would otherwise install fine.
-    /// Falsifiability: this test fails against the pre-fix
-    /// `list_agent_files` (confirmed by reverting the `is_file()` guard
-    /// locally and re-running: `list_agent_files` returns
-    /// `["k-example.json", "foo.json"]` including the directory,
-    /// and the subsequent `install_from_local` call then fails with a
-    /// "failed to read ... foo.json: Is a directory" error instead of
-    /// installing the one real agent file successfully).
+    /// `.json` extension with no file-type guard, so a directory
+    /// literally named `foo.json` would be collected as if it were an
+    /// agent file, and the later `fs::read` in `copy_agent_files` would
+    /// fail trying to read a directory, aborting the whole install.
     #[test]
     fn install_from_local_skips_directory_named_like_json_file() {
         let target_dir = scratch_dir("skip-dir-json-target");
         let repo_root = scratch_dir("skip-dir-json-repo");
         seed_synthed_agent(&repo_root, "k-example", b"{\"name\":\"k-example\"}\n");
         // A directory literally named "foo.json" alongside the real
-        // agent file, in the same source directory `list_agent_files`
-        // scans.
+        // agent file.
         let agents_dir = repo_root.join("dist").join("kiro-cli-v2").join("agents");
         fs::create_dir_all(agents_dir.join("foo.json")).unwrap();
 
@@ -1046,9 +884,8 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// Direct unit-level regression for `list_agent_files` itself
-    /// (rather than only through the higher-level `install_from_local`
-    /// integration test above), pinning the exact returned entry list.
+    /// Direct unit-level regression for `list_agent_files` itself,
+    /// pinning the exact returned entry list.
     #[test]
     fn list_agent_files_excludes_directories_named_like_json_files() {
         let dir = scratch_dir("list-agent-files-dir-guard");
@@ -1145,26 +982,11 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// Merge-safety proof against a POPULATED destination that mimics a
-    /// real, previously-used home directory (the highest-risk scenario
-    /// this change introduces -- a default install now writes into
-    /// `$HOME`): seeds SEVERAL unrelated pre-existing agent JSON files
-    /// and SEVERAL unrelated pre-existing skill directories directly
-    /// under `.kiro/agents/` and `.kiro/skills/`, runs a real install
-    /// alongside them, and asserts every single one survives
-    /// byte-for-byte -- not just one representative file, since a fix
-    /// that happens to preserve the first entry but not the rest would
-    /// pass a single-file check while still being broken.
-    ///
-    /// Falsifiability (non-vacuous, per task requirement): confirmed
-    /// this test fails if `_install_skills`'s per-skill-directory
-    /// removal is swapped for a wholesale
-    /// `fs::remove_dir_all(destination_root)` before copying -- every
-    /// unrelated skill assertion below then fails, since the whole
-    /// `.kiro/skills/` directory (not just the directory this install
-    /// owns) would be gone. Restored immediately after confirming the
-    /// failure; see this CR's report for the exact command run and
-    /// observed failure output.
+    /// Merge-safety proof against a populated destination mimicking a
+    /// real, previously-used home directory: seeds several unrelated
+    /// pre-existing agent files and skill directories, runs a real
+    /// install alongside them, and asserts every one survives
+    /// byte-for-byte.
     #[test]
     fn install_from_local_preserves_all_unrelated_files_in_populated_destination() {
         let target_dir = scratch_dir("populated-destination-target");
@@ -1212,9 +1034,9 @@ mod tests {
             )
             .expect("install into a populated destination must succeed");
 
-        // The newly-installed content landed correctly. As above,
-        // `TelemetryHookPass` re-serializes the agent file, so check
-        // the field that survives rather than the raw bytes.
+        // The newly-installed content landed correctly. `TelemetryHookPass`
+        // re-serializes the agent file, so check the field that
+        // survives rather than the raw bytes.
         let installed_agent: serde_json::Value = serde_json::from_slice(
             &fs::read(target_dir.join(".kiro/agents/k-example.json")).unwrap(),
         )
@@ -1245,11 +1067,8 @@ mod tests {
         }
 
         // The destination roots themselves were never removed/replaced
-        // wholesale -- confirmed indirectly above (their unrelated
-        // children still exist with original content), and directly
-        // here (both directories still exist as directories, not
-        // recreated-then-repopulated in a way that would still pass the
-        // content checks above by coincidence).
+        // wholesale, confirmed both indirectly (unrelated children
+        // still exist above) and directly here.
         assert!(agents_dir.is_dir());
         assert!(skills_dir.is_dir());
 
@@ -1544,9 +1363,10 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// Installing SOPs is explicitly out of scope: a staged
-    /// `dist/kiro-cli-v2/sops/` directory alongside agents must not
-    /// cause an error and must not be copied anywhere.
+    /// A staged `dist/kiro-cli-v2/sops/` directory alongside agents must
+    /// not cause an error, and is copied verbatim to `.konductor/sops/`
+    /// (not `.kiro/`, since SOPs are Konductor tooling shared across
+    /// runtimes).
     #[test]
     fn install_from_local_copies_staged_sops_directory_into_konductor_sops() {
         let target_dir = scratch_dir("sops-copied-target");
@@ -1565,9 +1385,8 @@ mod tests {
             )
             .expect("install must succeed with a staged sops/ directory");
 
-        // Not under `.kiro/` -- SOPs are Konductor tooling, shared across
-        // runtimes, not a Kiro CLI concept (mirrors `.konductor/skills/`,
-        // `.konductor/bin/`).
+        // SOPs are Konductor tooling shared across runtimes, not a
+        // Kiro CLI concept (mirrors `.konductor/skills/`, `.konductor/bin/`).
         assert!(!target_dir.join(".kiro/sops").exists());
         let installed = target_dir.join(".konductor/sops/asdlc-plan.sop.md");
         assert!(
@@ -1588,11 +1407,9 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// "Nothing at all to install" (no agents dir, no skills dir, no
-    /// sops dir -- an entirely empty or non-existent `dist/<harness>/`
-    /// tree) is an error, not a silent success: the caller must be told
-    /// to run `synth` first rather than getting a misleadingly-empty
-    /// manifest.
+    /// "Nothing at all to install" is an error, not a silent success:
+    /// the caller must be told to run `synth` first rather than getting
+    /// a misleadingly-empty manifest.
     #[test]
     fn install_from_local_fails_when_nothing_at_all_to_install() {
         let target_dir = scratch_dir("nothing-target");
@@ -1642,11 +1459,8 @@ mod tests {
     }
 
     /// Drives `copy_skill_dir_recursive` directly with a crafted
-    /// traversal-style entry name, bypassing normal directory listing
-    /// (which can never produce a `/`-containing name on a real
-    /// filesystem). Proves the per-entry guard fires on the real write
-    /// path, not only when `reject_unsafe_file_name` is called in
-    /// isolation.
+    /// traversal-style entry name, to prove the per-entry guard fires
+    /// on the real write path, not only in isolation.
     #[test]
     fn copy_skill_dir_recursive_rejects_traversal_name_before_writing() {
         let source = scratch_dir("copy-skill-traversal-source");
@@ -1658,8 +1472,7 @@ mod tests {
 
         // `read_dir` can never itself yield a "/"-containing name, so
         // this asserts the guard directly against the function's own
-        // predicate call, matching how `install_from_local_rejects_path_traversal_file_name`
-        // exercises the agent-copy guard above.
+        // predicate call.
         assert!(reject_unsafe_file_name("../copy-skill-escaped.txt").is_err());
         assert!(!escape_target.exists());
 
@@ -1667,24 +1480,15 @@ mod tests {
         fs::remove_dir_all(&destination).ok();
     }
 
-    /// Pins CURRENT, deliberate behavior for a hand-authored skill
-    /// auxiliary file whose basename contains a plain space (e.g. a
-    /// script named `my script.sh`): the whole install errors, it does
-    /// not skip or rename the one offending file. This is
-    /// `copy_skill_dir_recursive`'s delegation to `reject_unsafe_file_name`
-    /// -- the same shared `reject_unsafe_name_segment` check the
-    /// SOP-name/skill-name validation path uses -- applied unchanged to
-    /// arbitrary aux-file content read straight off disk via
-    /// `std::fs::read_dir`, content this crate's own synth-time checks
-    /// (`reject_unsafe_auxiliary_relative_path`) do not themselves reject
-    /// for plain whitespace. A workspace-wide scan across all three
-    /// packages found zero on-disk skill aux files with a
-    /// space/tab/control/Cf character in their basename, so this is not a
-    /// fix for an active regression -- it is intentional documentation
-    /// that the strictness choice on this call site is deliberate, not
-    /// accidental, and that a future loosening of
-    /// `reject_unsafe_name_segment` changes this test's expected outcome
-    /// on purpose.
+    /// Pins current, deliberate behavior for a hand-authored skill
+    /// auxiliary file whose basename contains a plain space: the whole
+    /// install errors rather than skipping or renaming the offending
+    /// file. `copy_skill_dir_recursive` delegates to the same
+    /// `reject_unsafe_file_name` check the SOP-name/skill-name
+    /// validation path uses, applied unchanged to arbitrary aux-file
+    /// content read off disk. Synth-time checks do not themselves
+    /// reject plain whitespace, so this pins the strictness choice at
+    /// this call site as intentional, not accidental.
     #[test]
     fn copy_skill_dir_recursive_rejects_aux_file_name_containing_a_space_pinned_strictness() {
         let target_dir = scratch_dir("skill-aux-space-target");
@@ -1711,20 +1515,15 @@ mod tests {
             err.contains("unsafe file name"),
             "expected the shared reject_unsafe_file_name error, got: {err}"
         );
-        // `SKILL.md` sorts ahead of `scripts/` (`copy_skill_dir_recursive`
-        // visits entries in sorted order) and is a safe name, so it is
-        // already written by the time the recursive descent into
-        // `scripts/` hits the space-named file and aborts -- the known,
-        // pre-existing partial-write behavior this module's own doc
-        // comments describe for `install_sop_skills`/`install_skills`.
-        // The guarantee this test actually pins is narrower: the unsafe
-        // file itself is never written.
+        // `SKILL.md` sorts ahead of `scripts/` and is a safe name, so
+        // it is already written by the time the recursive descent into
+        // `scripts/` hits the space-named file and aborts.
         assert!(
             target_dir
                 .join(".konductor/skills/example-skill/SKILL.md")
                 .exists(),
             "sanity check: SKILL.md is written before the recursive descent reaches the \
-             unsafe aux file, per this module's documented partial-write behavior"
+             unsafe aux file"
         );
         assert!(
             !target_dir
@@ -1861,15 +1660,13 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// The exact bug this feature exists to fix, mirrored at install
-    /// time: a synthed agent JSON declaring a `file://context/<name>`
+    /// A synthed agent JSON declaring a `file://context/<name>`
     /// resource with no corresponding file under
     /// `dist/kiro-cli-v2/context/` must fail the install loudly rather
-    /// than silently installing an agent whose resource points at
-    /// nothing. In practice `parse_canonical`'s dangling-reference check
-    /// (see `synth::parse_canonical`) already prevents this at synth
-    /// time, but install performs its own independent check (never
-    /// trusting a hand-edited or otherwise stale `dist/` tree).
+    /// than installing an agent whose resource points at nothing. Synth
+    /// time already catches this (`synth::parse_canonical`'s
+    /// dangling-reference check), but install performs its own
+    /// independent check in case `dist/` was hand-edited or stale.
     #[test]
     fn install_from_local_fails_when_context_target_is_missing() {
         let target_dir = scratch_dir("missing-target-target");
@@ -1892,18 +1689,9 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// Manifest coverage gap: omitting context files from
-    /// `manifest.files[]` while still copying them to disk passed the
-    /// entire suite before this test existed. Pins that every context
-    /// file lands in the manifest with a `path` prefixed
-    /// `context/` and a correct lowercase-hex sha256 of the exact bytes
-    /// on disk.
-    /// Falsifiability: confirmed this test fails when `install_context`'s
-    /// `files.extend(context_files)` line in `install_from_local` is
-    /// deleted (context files still land on disk via `install_context`'s
-    /// own copy, but no longer appear in `manifest.files[]` at all) --
-    /// `iter().find(...)` then returns `None` and the `expect` panics.
-    /// Restored immediately after confirming the failure.
+    /// Pins that every context file lands in the manifest with a
+    /// `path` prefixed `context/` and a correct lowercase-hex sha256 of
+    /// the exact bytes on disk.
     #[test]
     fn install_from_local_records_context_files_in_manifest_with_correct_hash() {
         let target_dir = scratch_dir("context-manifest-target");
@@ -1942,18 +1730,9 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// Regression guard for the runtime constraint this feature depends
-    /// on (see `rewrite_context_resources`): `kiro-cli-v2` does not
-    /// percent-decode `file://` resource paths, so an install root
-    /// containing a space and a non-ASCII character must still produce
-    /// a raw, unencoded path -- never `%20`/`%C3%A9` -- or context
-    /// loading would silently fail on the real runtime.
-    /// Falsifiability: confirmed this test fails if `rewrite_context_resources`'s
-    /// `format!("file://{}", ...)` is swapped for a percent-encoding
-    /// equivalent (e.g. routing the path through a `url`-crate-style
-    /// encoder) -- the resulting `resources` entry then contains `%20`
-    /// and the `assert!(!text.contains("%20"))` below fails. Restored
-    /// immediately after confirming the failure.
+    /// Regression guard: `kiro-cli-v2` does not percent-decode `file://`
+    /// resource paths, so an install root containing a space and a
+    /// non-ASCII character must still produce a raw, unencoded path.
     #[test]
     fn install_from_local_emits_raw_unencoded_path_for_root_with_space_and_non_ascii() {
         let target_root = scratch_dir("space-\u{e9}-target");
@@ -1997,13 +1776,12 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// A spec that declares BOTH a hand-authored absolute `file://`
-    /// resource AND a `contextNames` entry: the hand-authored entry
-    /// must pass through untouched, the relative context entry must be
-    /// rewritten to absolute, and the resulting array order must be
-    /// deterministic (hand-authored entry first, rewritten context
-    /// entry appended after -- the order synth itself writes them in,
-    /// per `render_agent_file`).
+    /// A spec declaring both a hand-authored absolute `file://`
+    /// resource and a `contextNames` entry: the hand-authored entry
+    /// must pass through untouched, the relative entry must be
+    /// rewritten to absolute, and array order must stay deterministic
+    /// (hand-authored first, rewritten entry appended after, matching
+    /// the order synth itself writes them in).
     #[test]
     fn install_from_local_preserves_preexisting_absolute_resource_alongside_context_names() {
         let target_dir = scratch_dir("mixed-resources-target");
@@ -2039,11 +1817,10 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// The same `dist/` tree installed into two separate roots in
-    /// sequence: each installed agent JSON must carry its OWN correct
-    /// absolute path (not the other root's, and not each other's stale
-    /// value from a shared static/global), and `dist/`'s own copy must
-    /// still hold the untouched relative form after both installs.
+    /// The same `dist/` tree installed into two separate roots: each
+    /// installed agent JSON must carry its own correct absolute path,
+    /// and `dist/`'s own copy must still hold the untouched relative
+    /// form after both installs.
     #[test]
     fn install_from_local_installs_same_dist_into_two_roots_independently() {
         let repo_root = scratch_dir("two-roots-repo");
@@ -2108,19 +1885,10 @@ mod tests {
         fs::remove_dir_all(&target_b).ok();
     }
 
-    /// Regression: a FOREIGN pre-existing skill
-    /// directory that happens to share a synthed skill's name must be
-    /// MERGED into, not wiped -- its extra files (not part of the
-    /// synthed skill, and never recorded in any prior manifest) must
-    /// survive, while the colliding file is overwritten with the
-    /// synthed content. The wholesale `remove_dir_all` predates the
-    /// write-ahead provenance system and would otherwise silently
-    /// delete foreign files the `ReplacedForeign`/uninstall-safety
-    /// contract promises to protect.
-    /// Falsifiability: confirmed this test fails against an
-    /// unconditional `remove_dir_all(&skill_destination)` (the extra
-    /// foreign file `notes.md` is gone after install); it passes once
-    /// the wholesale remove is gated on prior-manifest ownership.
+    /// A foreign pre-existing skill directory that happens to share a
+    /// synthed skill's name must be merged into, not wiped: its extra
+    /// files must survive, while the colliding file is overwritten
+    /// with the synthed content.
     #[test]
     fn install_from_local_merges_into_foreign_name_colliding_skill_dir_preserving_extra_files() {
         let target_dir = scratch_dir("foreign-collision-target");
@@ -2179,18 +1947,11 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// Regression: the foreign-preservation
-    /// contract must hold across REINSTALLS, not just the first install.
-    /// The first install records the synthed SKILL.md in the manifest,
-    /// which on the next install would make the skill dir look "owned";
-    /// a wholesale `remove_dir_all` at that point would wipe the foreign
-    /// `notes.md` the first install preserved. Installing twice must
-    /// leave `notes.md` intact both times.
-    /// Falsifiability: confirmed this fails against a wholesale
-    /// `remove_dir_all` gated on prior-manifest ownership -- `notes.md`
-    /// survives the first install but is gone after the second; it
-    /// passes with per-file stale cleanup (only prior-recorded files
-    /// this run didn't re-write are removed).
+    /// The foreign-preservation contract must hold across reinstalls,
+    /// not just the first install: once the synthed SKILL.md is
+    /// recorded in the manifest, the skill dir would look "owned", so a
+    /// wholesale remove at that point must not wipe the foreign
+    /// `notes.md` the first install preserved.
     #[test]
     fn install_from_local_reinstall_still_preserves_foreign_only_skill_files() {
         let target_dir = scratch_dir("foreign-reinstall-target");
@@ -2236,12 +1997,11 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// Regression: when a re-synthed skill drops an entire nested
-    /// subdirectory, the stale files AND the now-empty directories they
-    /// leave behind are removed, so the installed tree matches the
-    /// source exactly (the property the prior wholesale replace
-    /// guaranteed). `remove_dir` only removes empty dirs, so a sibling
-    /// holding a foreign file would still be preserved.
+    /// When a re-synthed skill drops a nested subdirectory, the stale
+    /// files and the now-empty directories they leave behind are both
+    /// removed, so the installed tree matches the source exactly.
+    /// `remove_dir` only removes empty dirs, so a sibling holding a
+    /// foreign file would still be preserved.
     #[test]
     fn install_from_local_prunes_empty_dirs_left_by_a_dropped_skill_subdir() {
         let target_dir = scratch_dir("prune-empty-target");
@@ -2304,16 +2064,9 @@ mod tests {
 
     // -- Skill resource rewrite (moving skills to .konductor/skills/). --
 
-    /// Skills must land under `.konductor/skills/`, NOT `.kiro/skills/`
-    /// -- the whole point of the move (Kiro's native discovery scans
-    /// `.kiro/skills/` unconditionally, which defeats per-agent
-    /// scoping).
-    ///
-    /// Falsifiability: confirmed this test fails (the `.kiro/skills/`
-    /// assertion trips) if `install_skills`'s
-    /// `KONDUCTOR_DESTINATION_ROOT` is swapped back for
-    /// `KIRO_DESTINATION_ROOT`. Restored immediately after confirming
-    /// the failure.
+    /// Skills must land under `.konductor/skills/`, not `.kiro/skills/`
+    /// (Kiro's native discovery scans `.kiro/skills/` unconditionally,
+    /// which defeats per-agent scoping).
     #[test]
     fn install_from_local_installs_skills_under_konductor_not_kiro() {
         let target_dir = scratch_dir("skill-under-konductor-target");
@@ -2679,9 +2432,8 @@ mod tests {
 
     // ── Write-ahead manifest + provenance (Part A) ──────────────────────
 
-    /// On success the FINAL manifest is marked `Status::Complete` and
-    /// every entry has a correct 64-char lowercase-hex hash -- no entry
-    /// is left `None`.
+    /// On success the final manifest is marked `Status::Complete` and
+    /// every entry has a correct 64-char lowercase-hex hash.
     #[test]
     fn install_from_local_final_manifest_is_complete_with_real_hashes() {
         let target_dir = scratch_dir("complete-status-target");
@@ -2722,23 +2474,14 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// Genuine crash-recovery proof: `install_from_local` writes its OWN
-    /// `Status::InProgress` write-ahead manifest BEFORE copying any file,
-    /// so a failure DURING the copy phase leaves that manifest on disk
-    /// naming what may have landed -- orphans stay recoverable, not
-    /// invisible. Driven through a REAL error path with no test-only seam
-    /// inside `install_from_local`: the agent DESTINATION dir
-    /// (`.kiro/agents/`) is pre-created and locked read-only (`0o555`)
-    /// while `.konductor/` is left writable, so install's write-ahead
-    /// manifest write succeeds but the subsequent agent-file copy into
-    /// `.kiro/agents/` fails.
-    ///
-    /// Falsifiability: if `install_from_local`'s write-ahead write were
-    /// removed (manifest written only at the end, on full success), the
-    /// forced copy failure would leave NO manifest at all and the final
-    /// `read_manifest(...).expect(...)` below would panic. The test wrote
-    /// no manifest itself, so a pass proves install recorded the
-    /// `InProgress` record up front.
+    /// Crash-recovery proof: `install_from_local` writes its own
+    /// `Status::InProgress` write-ahead manifest before copying any
+    /// file, so a failure during the copy phase leaves that manifest on
+    /// disk naming what may have landed. Driven through a real error
+    /// path: the agent destination dir (`.kiro/agents/`) is pre-created
+    /// and locked read-only while `.konductor/` stays writable, so the
+    /// write-ahead write succeeds but the subsequent agent-file copy
+    /// fails.
     #[test]
     #[cfg(unix)]
     fn install_from_local_leaves_in_progress_manifest_naming_orphans_on_forced_failure() {
@@ -2748,11 +2491,10 @@ mod tests {
         let repo_root = scratch_dir("forced-failure-repo");
         seed_synthed_agent(&repo_root, "k-example", b"{\"name\":\"k-example\"}\n");
 
-        // Pre-create the agent DESTINATION dir and lock it read-only
-        // (0o555) so the agent-file copy fails -- while leaving
-        // `.konductor/` untouched and writable so install's OWN
-        // write-ahead manifest write (which runs FIRST, before any copy)
-        // still succeeds and lands on disk.
+        // Pre-create the agent destination dir and lock it read-only so
+        // the agent-file copy fails, while leaving `.konductor/`
+        // writable so install's own write-ahead manifest write (which
+        // runs first) still lands on disk.
         let agents_dir = target_dir.join(".kiro/agents");
         fs::create_dir_all(&agents_dir).unwrap();
         fs::set_permissions(&agents_dir, fs::Permissions::from_mode(0o555)).unwrap();
@@ -2773,9 +2515,8 @@ mod tests {
             "install must fail when the agent copy cannot write into a read-only .kiro/agents/"
         );
 
-        // The manifest on disk is the one INSTALL wrote up front (its
-        // write-ahead InProgress record) -- the test wrote none. It must
-        // be InProgress and name the agent the copy was about to write.
+        // The manifest on disk is the one install wrote up front (its
+        // write-ahead InProgress record); the test wrote none.
         let on_disk = super::super::manifest::read_manifest(&target_dir)
             .unwrap()
             .expect("install's write-ahead manifest must remain after the forced copy failure");
@@ -2921,26 +2662,14 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// Defect-2 regression: a FAILED re-install must not leave a
-    /// manifest that hash-mismatches disk. Simulates the failure mode
-    /// by re-installing with a source that will fail deep into the
-    /// process (a missing skill target for a NEW agent added on the
-    /// second run) after context/skills for a FIRST, unrelated agent
-    /// have already been re-copied to disk with new bytes. Because
-    /// `install_from_local` now writes the write-ahead manifest BEFORE
-    /// any copy (naming the up-to-date destination paths for every
-    /// planned file, including ones about to be overwritten) rather
-    /// than only after a full success, the manifest on disk after the
-    /// failed run is never the STALE previous-run manifest -- it always
-    /// reflects the run that just (partially) executed.
-    ///
-    /// Falsifiability: confirmed this test fails under the pre-fix
-    /// behavior (manifest written only once, at the very end, after all
-    /// copying) -- there, a failed second run leaves the FIRST run's
-    /// manifest completely untouched, so `stable-agent.json`'s recorded
-    /// hash still matches its OLD (first-run) bytes while disk already
-    /// holds the NEW (second-run) bytes for that same file, a real hash
-    /// mismatch. Restored immediately after confirming the failure.
+    /// A failed re-install must not leave a manifest that
+    /// hash-mismatches disk. Re-installs with a source that fails deep
+    /// into the process (a missing skill target for a new agent added
+    /// on the second run) after a first, unrelated agent has already
+    /// been re-copied with new bytes. Because `install_from_local`
+    /// writes the write-ahead manifest before any copy, the manifest on
+    /// disk after a failed run always reflects the run that just
+    /// (partially) executed, never a stale previous-run manifest.
     #[test]
     fn install_from_local_failed_reinstall_does_not_leave_hash_mismatching_manifest() {
         let target_dir = scratch_dir("failed-reinstall-target");
@@ -2956,13 +2685,11 @@ mod tests {
             )
             .expect("first install must succeed");
 
-        // Second run: `stable-agent`'s content changes (so its on-disk
-        // bytes will differ from what any stale manifest would record),
-        // and a SECOND agent is added that declares a skill resource
-        // with no corresponding skill directory -- guaranteed to fail
-        // deep into `install_agents`, AFTER `stable-agent.json` (listed
-        // first, alphabetically) has already been recopied with its new
-        // bytes.
+        // Second run: `stable-agent`'s content changes, and a second
+        // agent is added that declares a skill resource with no
+        // corresponding skill directory, guaranteed to fail deep into
+        // `install_agents` after `stable-agent.json` (listed first,
+        // alphabetically) has already been recopied with its new bytes.
         fs::write(
             repo_root.join("dist/kiro-cli-v2/agents/stable-agent.json"),
             b"{\"v\":2}\n",
@@ -2978,10 +2705,9 @@ mod tests {
         );
         assert!(result.is_err(), "second install must fail");
 
-        // `stable-agent.json` on disk now holds the SECOND run's bytes
-        // (copied before the failure further down in `install_agents`).
-        // `TelemetryHookPass` re-serializes the agent file, so check
-        // the field that survives rather than the raw bytes.
+        // `stable-agent.json` on disk now holds the second run's bytes.
+        // `TelemetryHookPass` re-serializes the agent file, so check the
+        // field that survives rather than the raw bytes.
         let on_disk_bytes = fs::read(target_dir.join(".kiro/agents/stable-agent.json")).unwrap();
         let on_disk_value: serde_json::Value = serde_json::from_slice(&on_disk_bytes).unwrap();
         assert_eq!(
@@ -2990,12 +2716,10 @@ mod tests {
             "the SECOND run's own \"v\": 2 content must be on disk, not the first run's \"v\": 1"
         );
 
-        // The manifest on disk must NOT be the stale first-run manifest
-        // (which would record `stable-agent.json`'s OLD hash, mismatching
-        // the NEW bytes now on disk) -- it must be the write-ahead record
-        // from this second, failed run, which is `InProgress` and whose
-        // entries carry no hash at all yet (so there is nothing to
-        // mismatch).
+        // The manifest on disk must not be the stale first-run manifest
+        // (which would record the old hash, mismatching the new bytes
+        // now on disk); it must be the write-ahead record from this
+        // second, failed run, `InProgress`, with no hash yet to mismatch.
         let manifest = super::super::manifest::read_manifest(&target_dir)
             .unwrap()
             .expect("a manifest must exist after the failed second install");
@@ -3069,10 +2793,9 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// A repo with agents/skills/context but NO built MCP binary must
-    /// still install successfully -- an unbuilt binary is not an error,
-    /// exactly like the feature's design intent (the binary is a
-    /// separate, optional build step, not a synth output).
+    /// A repo with agents/skills/context but no built MCP binary must
+    /// still install successfully; an unbuilt binary is not an error
+    /// since the binary is a separate, optional build step.
     #[test]
     fn install_from_local_succeeds_without_mcp_binary_present() {
         let target_dir = scratch_dir("mcp-bin-absent-target");
@@ -3102,9 +2825,8 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// A repo with ONLY a built MCP binary (no agents, no skills, no
-    /// context) must still install successfully -- the binary alone is
-    /// enough to make the plan non-empty.
+    /// A repo with only a built MCP binary (no agents, skills, or
+    /// context) must still install successfully.
     #[test]
     fn install_from_local_succeeds_with_only_mcp_binary_present() {
         let target_dir = scratch_dir("mcp-bin-only-target");
@@ -3209,11 +2931,9 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// `would_fail_as_noop` must NOT report a no-op failure when the
-    /// only installable content is a built MCP binary -- it must stay
-    /// consistent with `install_from_local`'s own success in that same
-    /// scenario (`install_from_local_succeeds_with_only_mcp_binary_present`
-    /// above).
+    /// `would_fail_as_noop` must not report a no-op failure when the
+    /// only installable content is a built MCP binary, matching
+    /// `install_from_local`'s own success in that scenario.
     #[test]
     fn would_fail_as_noop_returns_none_when_only_mcp_binary_present() {
         let target_dir = scratch_dir("mcp-bin-noop-check-target");
@@ -3232,15 +2952,13 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// `would_fail_as_noop` must NOT report a no-op failure when the
+    /// `would_fail_as_noop` must not report a no-op failure when the
     /// only installable content is the additive Claude SOP-skill
-    /// conversion on a dual-marker target: empty `dist/kiro-cli-v2/`, no
+    /// conversion on a dual-marker target (empty `dist/kiro-cli-v2/`, no
     /// built binary, a populated `dist/claude/sops/`, and a pre-existing
-    /// `.claude` marker at the target. `plan_additive_claude_sop_skill_files`
-    /// is gated only on that marker, independent of `plan`/`bin_plan`, so
-    /// omitting it would return the "run `konductor synth` first" message
-    /// for a target `install_from_local` actually installs into -- exit
-    /// `EXIT_USAGE_ERROR` for work that would have succeeded.
+    /// `.claude` marker). That check is gated only on the marker,
+    /// independent of `plan`/`bin_plan`, so omitting it would return a
+    /// false no-op for a target install would actually install into.
     #[test]
     fn would_fail_as_noop_returns_none_when_only_additive_claude_sop_skill_content_present() {
         let target_dir = scratch_dir("claude-sop-noop-check-target");
@@ -3272,11 +2990,10 @@ mod tests {
 
     // ── Install-time mcpServers injection (rewrite_mcp_servers) ──────────
 
-    /// The core acceptance test: an agent declaring a `skill://skills/...`
-    /// resource, installed alongside a built `skill-lookup-mcp` binary,
-    /// gets an injected `mcpServers.konductor-skills.command` pointing at
-    /// the ABSOLUTE path of the just-installed binary -- never a bare
-    /// name, never a relative path.
+    /// An agent declaring a `skill://skills/...` resource, installed
+    /// alongside a built `skill-lookup-mcp` binary, gets an injected
+    /// `mcpServers.konductor-skills.command` pointing at the absolute
+    /// path of the just-installed binary.
     #[test]
     fn install_from_local_injects_absolute_mcp_server_path_for_skill_bearing_agent() {
         let target_dir = scratch_dir("mcp-inject-target");
@@ -3318,32 +3035,22 @@ mod tests {
     }
 
     /// Reachability proof for the Claude/V3 `permissions.allow` grant
-    /// (`resource_rewrite/mcp_server.rs`'s `McpServerPass::verify`) and
-    /// the telemetry hooks wired after it: neither depends on
-    /// `ClaudeInstallStrategy` (which wires hooks only, never the
-    /// grant) -- both fire through THIS unmodified
-    /// strategy's own `install_from_local` whenever the target directory
-    /// already has a `.claude` marker dir alongside `.kiro`, which is
-    /// exactly the real "I use both Kiro CLI and Claude Code in this
-    /// repo" scenario (this very package's own dev workspace is one).
+    /// and the telemetry hooks wired after it: both fire through this
+    /// unmodified strategy's `install_from_local` whenever the target
+    /// already has a `.claude` marker dir alongside `.kiro`.
     /// `KiroCliInstallStrategy::matches` still claims such a target
-    /// because it only ever special-cases a Claude-ONLY target (see its
-    /// own doc comment above); it does not care whether `.claude` is
-    /// ALSO present alongside `.kiro`. The grant lands in the shared
-    /// `.claude/settings.json`, the hooks in `.claude/settings.local.json`,
-    /// and both are tracked in the manifest.
+    /// since it only special-cases a Claude-only target. The grant
+    /// lands in the shared `.claude/settings.json`, the hooks in
+    /// `.claude/settings.local.json`, and both are tracked in the
+    /// manifest.
     #[test]
     fn install_from_local_grants_claude_settings_permissions_when_claude_marker_dir_present() {
         let target_dir = scratch_dir("mcp-inject-claude-target");
-        // The dual-runtime scenario this proves reachable: `.kiro`
-        // AND `.claude` already exist at the target BEFORE this run
-        // (a reinstall/update over a prior konductor install, on a
-        // target that also already has Claude Code set up) -- not
-        // hypothetical, this package's own workspace is set up exactly
-        // this way. `.kiro` must ALREADY exist here: `matches()` runs
-        // before this install creates anything, so a target with
-        // `.claude` alone (no pre-existing `.kiro`) is rejected outright
-        // -- see the negative-case test below.
+        // `.kiro` and `.claude` already exist at the target before this
+        // run. `.kiro` must already exist: `matches()` runs before this
+        // install creates anything, so a target with `.claude` alone
+        // (no pre-existing `.kiro`) is rejected outright, see the
+        // negative-case test below.
         fs::create_dir_all(target_dir.join(".kiro")).unwrap();
         fs::create_dir_all(target_dir.join(".claude")).unwrap();
         let repo_root = scratch_dir("mcp-inject-claude-repo");
@@ -3377,10 +3084,8 @@ mod tests {
             serde_json::from_str(&fs::read_to_string(&installed_agent).unwrap()).unwrap();
         assert!(value["mcpServers"]["konductor-skills"]["command"].is_string());
 
-        // The V3/Claude grant also exists, written through the real,
-        // unmodified `KiroCliInstallStrategy::install_from_local` entry
-        // point -- proving this path writes it, since
-        // `ClaudeInstallStrategy` never does.
+        // The V3/Claude grant also exists, proving this path writes it
+        // since `ClaudeInstallStrategy` never does.
         let claude_settings: serde_json::Value = serde_json::from_str(
             &fs::read_to_string(target_dir.join(".claude/settings.json")).expect(
                 ".claude/settings.json must be written by this same install run when a \
@@ -3459,21 +3164,11 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// `--no-telemetry` on a real dual-marker install (`.kiro` AND
-    /// `.claude` both already present, same fixture setup as
-    /// `install_from_local_grants_claude_settings_permissions_when_claude_marker_dir_present`
-    /// above) run end to end through the real, unmodified
-    /// `KiroCliInstallStrategy::install_from_local` -- not a mock, not a
-    /// direct call to `apply_claude_settings_grant_and_hooks` -- with
-    /// `no_telemetry: true`. The V2 Kiro `mcpServers` injection and the
-    /// V3/Claude `permissions.allow` grant must still land (neither is a
-    /// telemetry side effect), but `.claude/settings.json` must carry NO
-    /// `hooks.SessionStart`/`hooks.SubagentStart` telemetry-hook block at
-    /// all and no `.claude/settings.local.json` may be written -- proving
-    /// the opt-out actually reaches `AgentInstallPhase::run`'s
-    /// `apply_claude_settings_grant_and_hooks` call, not
-    /// only the top-level `report_package_installed`/`report_cli_error`
-    /// calls `dispatch_install_with` already gated on this same flag.
+    /// `--no-telemetry` on a dual-marker install (`.kiro` and `.claude`
+    /// both already present) run end to end: the V2 Kiro `mcpServers`
+    /// injection and the V3/Claude `permissions.allow` grant must still
+    /// land (neither is a telemetry side effect), but no telemetry-hook
+    /// block or `.claude/settings.local.json` may be written.
     #[test]
     fn install_from_local_no_telemetry_skips_claude_hook_wiring_but_keeps_permission_grant() {
         let target_dir = scratch_dir("no-telemetry-skips-hooks-target");
@@ -3498,8 +3193,7 @@ mod tests {
             )
             .expect("install must succeed with --no-telemetry");
 
-        // The V2 Kiro grant is unaffected -- not a telemetry side
-        // effect.
+        // The V2 Kiro grant is unaffected, not a telemetry side effect.
         let installed_agent = target_dir.join(".kiro/agents/k-example.json");
         let value: serde_json::Value =
             serde_json::from_str(&fs::read_to_string(&installed_agent).unwrap()).unwrap();
@@ -3512,8 +3206,7 @@ mod tests {
             ),
         )
         .unwrap();
-        // The V3/Claude permission grant is unaffected either -- also
-        // not a telemetry side effect.
+        // The V3/Claude permission grant is unaffected too.
         assert_eq!(
             claude_settings["permissions"]["allow"],
             serde_json::json!([
@@ -3524,11 +3217,9 @@ mod tests {
             "--no-telemetry must not affect the unrelated MCP permission grant"
         );
 
-        // The telemetry hook wiring itself must be completely absent --
-        // not an empty array, not a key with no entries: no `hooks` key
-        // in the shared file and no personal settings file at all, since
-        // this is a fresh target with nothing else that would have
-        // written either.
+        // The telemetry hook wiring itself must be completely absent:
+        // no `hooks` key in the shared file, and no personal settings
+        // file at all.
         assert!(
             claude_settings.get("hooks").is_none(),
             "--no-telemetry must suppress the SessionStart/SubagentStart telemetry-hook \
@@ -3624,18 +3315,10 @@ mod tests {
     }
 
     /// The reachability boundary the test above depends on: a target
-    /// with `.claude` present but NO pre-existing `.kiro` is a
-    /// Claude-ONLY target by `detect_runtimes`'s reckoning (this run
-    /// would be the one to CREATE `.kiro`, and `matches()` is evaluated
-    /// before any of that happens) -- `KiroCliInstallStrategy::matches`
-    /// rejects it outright (see its own doc comment), leaving it to
-    /// `ClaudeInstallStrategy`, which wires the telemetry hooks but
-    /// never the `permissions.allow` grant. This is the real,
-    /// narrower-than-it-first-looks scope of the Claude/V3 grant added
-    /// above: it fires on a target where `.kiro` ALREADY exists (a
-    /// reinstall/update, or `.kiro` created by hand) alongside
-    /// `.claude`, not on a brand-new "this target only has Claude Code"
-    /// target.
+    /// with `.claude` present but no pre-existing `.kiro` is a
+    /// Claude-only target, which `KiroCliInstallStrategy::matches`
+    /// rejects, leaving it to `ClaudeInstallStrategy`, which wires the
+    /// telemetry hooks but never the `permissions.allow` grant.
     #[test]
     fn install_from_local_rejects_claude_only_target_with_no_preexisting_kiro_dir() {
         let target_dir = scratch_dir("mcp-inject-claude-only-target");
@@ -3655,17 +3338,12 @@ mod tests {
         fs::remove_dir_all(&target_dir).ok();
     }
 
-    /// A foreign-content problem in `.claude/settings.json` (here: a
+    /// A foreign-content problem in `.claude/settings.json` (a
     /// pre-existing `permissions.deny` that shadows this server's own
-    /// grant, a condition entirely under the USER's control, not a
-    /// defect in what this install is writing) must never abort the
-    /// Kiro side of the install -- that content already landed on disk
-    /// before the Claude grant is even attempted, and aborting the
-    /// whole run over an unrelated foreign file would throw it away for
-    /// no benefit. The grant is skipped (with a warning), so the hooks
-    /// that are wired only after it are skipped too, the rest of
-    /// the install completes normally, and the untouched foreign file
-    /// is never recorded in the manifest.
+    /// grant) must never abort the Kiro side of the install. The grant
+    /// is skipped with a warning, the rest of the install completes
+    /// normally, and the untouched foreign file is never recorded in
+    /// the manifest.
     #[test]
     fn install_from_local_does_not_abort_when_claude_grant_fails_on_foreign_content() {
         let target_dir = scratch_dir("mcp-inject-claude-foreign-fail-target");
@@ -3725,9 +3403,8 @@ mod tests {
     }
 
     /// The negative case: with no built MCP binary present, an agent
-    /// declaring a skill resource installs successfully but gets NO
-    /// `mcpServers` entry injected at all -- there is nothing on disk
-    /// yet to point at.
+    /// declaring a skill resource installs successfully but gets no
+    /// `mcpServers` entry injected at all.
     #[test]
     fn install_from_local_injects_no_mcp_server_when_binary_absent() {
         let target_dir = scratch_dir("mcp-inject-no-binary-target");
@@ -3800,8 +3477,7 @@ mod tests {
     }
 
     /// Installing twice must not duplicate or corrupt the injected
-    /// `mcpServers` block -- the second install's re-read-from-`dist/`
-    /// + re-inject must produce byte-identical output to the first.
+    /// `mcpServers` block.
     #[test]
     fn install_from_local_mcp_server_injection_is_idempotent_across_two_installs() {
         let target_dir = scratch_dir("mcp-inject-idempotent-target");
@@ -3845,17 +3521,11 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// Covers the present -> absent MCP binary transition. Install once
-    /// with the binary present (a `mcpServers.konductor-skills` entry is
-    /// injected, and the binary is copied to
-    /// `.konductor/bin/skill-lookup-mcp`), then remove the binary from
-    /// the SOURCE (`mcp/target/release/skill-lookup-mcp`) and install
-    /// again. The stale copy this install previously wrote to
-    /// `.konductor/bin/skill-lookup-mcp` deliberately stays on disk --
-    /// `install_bin_files` never deletes a no-longer-sourced binary --
-    /// so this test specifically proves the `mcpServers` entry is
-    /// dropped on the rerun anyway, rather than being left dangling and
-    /// pointing at that now-orphaned file.
+    /// Covers the present-to-absent MCP binary transition: install once
+    /// with the binary present, remove it from the source, and install
+    /// again. The stale copy under `.konductor/bin/` deliberately stays
+    /// on disk, but the `mcpServers` entry must be dropped rather than
+    /// left dangling.
     #[test]
     fn install_from_local_removes_stale_mcp_server_entry_when_binary_becomes_absent() {
         let target_dir = scratch_dir("mcp-inject-becomes-absent-target");
@@ -3924,9 +3594,9 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// Two separate roots installed from the same `dist/`/binary source
-    /// must each carry their OWN absolute `mcpServers.konductor-skills.command`
-    /// path -- never the other root's, and never a shared/global value.
+    /// Two separate roots installed from the same source must each
+    /// carry their own absolute
+    /// `mcpServers.konductor-skills.command` path.
     #[test]
     fn install_from_local_mcp_server_injection_is_independent_across_two_roots() {
         let repo_root = scratch_dir("mcp-inject-two-roots-repo");
@@ -4195,21 +3865,13 @@ mod tests {
     }
 
     /// Every staged SOP also becomes a Kiro-discoverable
-    /// `sop-<name>/SKILL.md` under `.kiro/skills/` -- unconditional,
-    /// alongside the raw `.konductor/sops/` copy, and TRACKED under this
-    /// strategy's own manifest slot exactly like every other content
-    /// type this strategy writes (agents, skills, context, the MCP
-    /// binary). Unlike the Claude dual-marker case
-    /// (`.claude/skills/sop-<name>/SKILL.md`, deliberately excluded from
-    /// both Kiro variants' slots -- see `DUAL_MARKER_SOP_SKILL_PREFIX`),
-    /// this path is never excluded: `kiro-cli-v2` and `kiro-v3` are
-    /// mutually exclusive at a given target by construction
-    /// (`KIRO_VARIANT_FAMILY`), so ordinary manifest tracking plus the
-    /// existing override-switch mechanism (`effective_prior_slot`,
-    /// `upsert_strategy`) already gives this path the same safety a
-    /// dual-marker exclusion would, with no extra bookkeeping. See
-    /// `install_from_local_kiro_sop_skill_survives_variant_override_switch`
-    /// in `kiro_cli_v3.rs` for the switch case.
+    /// `sop-<name>/SKILL.md` under `.kiro/skills/`, tracked under this
+    /// strategy's own manifest slot like every other content type it
+    /// writes. Unlike the Claude dual-marker case
+    /// (`.claude/skills/sop-<name>/SKILL.md`, excluded from both Kiro
+    /// variants' slots), this path is never excluded, since
+    /// `kiro-cli-v2` and `kiro-v3` are mutually exclusive at a given
+    /// target by construction.
     #[test]
     fn install_from_local_kiro_sop_skill_is_tracked_in_kiro_cli_v2_own_slot() {
         let target_dir = scratch_dir("kiro-sop-skill-tracked-target");
@@ -4259,20 +3921,14 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// End-to-end regression test: a real run of
-    /// `KiroCliInstallStrategy::install_from_local`
-    /// against a target with BOTH `.kiro` and `.claude` markers
-    /// pre-existing (a genuine dual-runtime reinstall target) must
-    /// succeed, exercising the full write-ahead-plan -> phases ->
-    /// `attach_provenance` pipeline rather than calling
-    /// `SopInstallPhase::run` directly (which never touches `plan` or
-    /// `attach_provenance`, and so could not have caught this). Before
+    /// A real run of `install_from_local` against a target with both
+    /// `.kiro` and `.claude` markers pre-existing must succeed,
+    /// exercising the full write-ahead-plan to phases to
+    /// `attach_provenance` pipeline. Before
     /// `plan_additive_claude_sop_skill_files` was wired into this
-    /// strategy's own plan (see `install_from_local`'s own comment at the
-    /// call site), this exact scenario failed with
-    /// "internal error: .claude/skills/sop-ticket-sync/SKILL.md was
-    /// copied but not present in the write-ahead plan" the first time
-    /// the dual-marker branch produced a file.
+    /// strategy's plan, this exact scenario failed with "internal
+    /// error: ... was copied but not present in the write-ahead plan"
+    /// the first time the dual-marker branch produced a file.
     #[test]
     fn install_from_local_dual_marker_target_converts_claude_sop_skill_without_provenance_error() {
         let target_dir = scratch_dir("sop-dual-marker-e2e-target");
@@ -4354,19 +4010,10 @@ mod tests {
 
     /// The write-ahead (`InProgress`) manifest built from `plan` must
     /// exclude the dual-marker `.claude/skills/sop-<name>/SKILL.md`
-    /// path too, not just the complete manifest (covered above).
-    /// Without this exclusion, a crash between the write-ahead write
-    /// and the complete write would leave Kiro's own `InProgress` slot
-    /// claiming this path, and `uninstall` (no status gate) would
-    /// delete a file `claude`'s slot may own.
-    ///
-    /// Calls the same real plan-building functions `install_from_local`
-    /// calls, so this exercises real production planning code rather
-    /// than reimplementing it. The filter is duplicated inline since
-    /// `DUAL_MARKER_SOP_SKILL_PREFIX` is a function-local const; this
-    /// test's positive assertion (`plan` does contain the dual-marker
-    /// path before filtering) proves the filter is actually removing
-    /// something, not vacuously passing on an empty case.
+    /// path too, not just the complete manifest. Without this
+    /// exclusion, a crash between the write-ahead write and the
+    /// complete write would leave Kiro's `InProgress` slot claiming a
+    /// path `claude`'s slot may own.
     #[test]
     fn install_from_local_write_ahead_manifest_excludes_dual_marker_sop_skill_files() {
         let target_dir = scratch_dir("sop-dual-marker-write-ahead-target");
@@ -4605,9 +4252,9 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// Same backward-compatibility contract, sidecar-present-but-agent-
-    /// absent case: the sidecar exists and declares names for a
-    /// DIFFERENT agent, so this agent must still see no filter.
+    /// Same backward-compatibility contract, sidecar-present-but-
+    /// agent-absent case: the sidecar declares names for a different
+    /// agent, so this agent must still see no filter.
     #[test]
     fn install_from_local_omits_skill_name_filter_when_agent_absent_from_sidecar() {
         let target_dir = scratch_dir("skill-filter-other-agent-target");
@@ -4643,19 +4290,11 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// The circular-dependency fix this whole section exists for,
-    /// exercised end-to-end through the real `install_from_local` entry
-    /// point (not just `McpServerPass::matches` in isolation): an agent
-    /// that declares skill-name scoping in the sidecar but has NO
-    /// `skill://` resource at all -- the state every agent would be in
-    /// once the `skill://` resource entries are removed in favor of the
-    /// MCP server as the sole delivery path -- must still get
-    /// `mcpServers.konductor-skills` injected, with `--skill-name-filter`
-    /// appended. Without both this and the widened fast-path skip in
-    /// `copy_agent_files_rewriting_resources`, such an agent's JSON
-    /// contains neither `CONTEXT_RESOURCE_PREFIX` nor
-    /// `SKILL_RESOURCE_PREFIX`, so it would be copied verbatim and never
-    /// even reach `apply_all`.
+    /// The circular-dependency fix this section exists for: an agent
+    /// that declares skill-name scoping in the sidecar but has no
+    /// `skill://` resource at all must still get
+    /// `mcpServers.konductor-skills` injected, with
+    /// `--skill-name-filter` appended.
     #[test]
     fn install_from_local_injects_mcp_server_for_skill_names_only_agent_with_no_skill_resource() {
         let target_dir = scratch_dir("skill-filter-no-resource-target");

@@ -706,18 +706,17 @@ mod tests {
         std::fs::remove_file(&winner_tmp).ok();
 
         // First call in this process: read_instance_raw sees the
-        // pre-populated file directly as ReadOutcome::Ok and returns
-        // early -- it never reaches write_temp/hard_link at all. To
-        // exercise the loser path itself (not just an early-return),
-        // remove the file back out from under it immediately before
-        // calling, forcing this call through create_dir_all -> mint ->
-        // hard_link -> AlreadyExists -> publish_instance_loser.
+        // pre-populated file directly and returns early -- it never
+        // reaches write_temp/hard_link at all. To exercise the loser
+        // path itself, remove the file back out from under it
+        // immediately before calling, forcing this call through
+        // create_dir_all -> mint -> hard_link -> AlreadyExists ->
+        // publish_instance_loser.
         //
         // This models: process wins the mint, but by the time a LATER
-        // call in the same process runs, the file already exists again
-        // (the realistic shape being tested: this call takes the
-        // loser branch and must not leave its own temp behind for the
-        // next call to trip over).
+        // call in the same process runs, the file already exists
+        // again -- this call takes the loser branch and must not
+        // leave its own temp behind for the next call to trip over.
         let first = ensure_instance(&home, true, fixed_now);
         assert_eq!(
             first.uuid, winner.uuid,

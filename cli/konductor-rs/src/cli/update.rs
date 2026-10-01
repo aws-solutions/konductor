@@ -6,63 +6,21 @@
 // act on, then for each one calls the exact same
 // `InstallStrategy::install_from_local(target_dir, from)`
 // `install.rs`'s `dispatch_install_with` calls when `--from` is given.
-// No filtering, no reconciliation -- the manifest `install_from_local`
-// writes as a side effect of that call is the final manifest for this
-// run, verbatim. Reuses `manifest::read_manifest`, `index::{read_index,
-// write_index, canonicalize_target_dir}`, and `registry::STRATEGIES`
-// exactly as install does; never re-runs `matches()` selection against
-// the target.
-//
-// Without `--from`, each target's update instead tries the exact same
-// real remote fallback chain `install`'s own no-`--from` path uses
-// (`remote_orchestrate::install_from_remote_with_fallback`: GitHub
-// Release first, falling back to `main`'s `dist/` tree) -- see
-// `run_update_one_target`'s own doc comment for how the fetched tree is
-// then applied through the SAME strategy the target's manifest already
-// records, with no `--harness` re-prompt. `use_github_token` is
-// `update`'s own `--use-github-token` flag, threaded straight through
-// to that same call, identical in meaning and effect to
-// `install --use-github-token`. Every error-mapping helper this remote
-// path needs (`remote_orchestration_error_exit_code`,
-// `remote_orchestration_error_code`,
-// `main_branch_dist_orchestration_error_exit_code`,
-// `main_branch_dist_orchestration_error_code`,
-// `fallback_chain_error_exit_code`, `fallback_chain_error_code`) is
-// reused directly from `install.rs` (`pub(super)` there for exactly
-// this reason), never duplicated here.
-//
-// Hash-based divergence classification does exist here, but only under
-// `--dry-run` (`preview_update`/`is_diverged`, per file); a real run
-// computes the same hash comparison (`count_diverged_files`) purely for
-// an aggregate "how many were overwritten while diverged" count
-// reported after the fact -- it never gates or alters which files get
-// overwritten. `--dry-run` for a no-`--from` target never makes a
-// network call either (see `preview_update`'s own doc comment): it
-// reports the currently-tracked file list and its current divergence,
-// since fetching a fresh release just to preview it would give a
-// read-only inspection command a real external side effect.
+// No filtering, no reconciliation. Without `--from`, each target
+// instead goes through the same remote fallback chain `install`'s own
+// no-`--from` path uses (GitHub release, falling back to `main`'s
+// `dist/` tree), applied through the SAME strategy already recorded in
+// that target's manifest, with no `--harness` re-prompt.
 //
 // Manifest and index writes are locked and fresh-read; file copies are
-// not. Every manifest write here is serialized through the same
-// `config_lock`-backed advisory lock `install.rs`/`uninstall.rs` use,
-// and the finalize index write re-reads the manifest fresh rather than
-// reusing a pre-`install_from_local` snapshot -- a concurrent
-// install/uninstall of a different, coexisting strategy can no longer
-// have its slot silently dropped from either the manifest or the
-// index. What remains unsupported: two invocations racing on the exact
-// same strategy slot at the same target -- `install_from_local`'s
-// file-copy phase has no mutex of its own, so concurrent runs against
-// that one slot can still interleave their copies. Callers must still
+// not. Two invocations racing on the exact same strategy slot at the
+// same target can still interleave their copies -- callers must
 // serialize same-slot invocations themselves.
 //
-// Known limitation: no transactional rollback on a mid-copy failure.
-// `update_one_target` calls `install_from_local` (or, with no
-// `--from`, the remote fallback chain) with no transactional wrapper.
-// A mid-copy failure (disk full, permission error) can leave
-// the target with a mix of fresh and stale files, the manifest never
-// gets rewritten to reflect the failure, and the index entry can stay
-// `InProgress` until a future read self-heals it. No rollback exists or
-// is planned.
+// Known limitation: no transactional rollback on a mid-copy failure. A
+// mid-copy failure (disk full, permission error) can leave the target
+// with a mix of fresh and stale files, and the index entry can stay
+// `InProgress` until a future read self-heals it.
 
 use std::path::{Path, PathBuf};
 
@@ -167,19 +125,14 @@ fn cli_update_error_exit_code(err: &super::install::cli_self_update::CliSelfUpda
 /// `konductor update --cli [--version <v>] [--use-github-token]`:
 /// self-replaces the `konductor` binary on `PATH` from a GitHub
 /// release. Machine-wide -- no target resolution, no manifest/index
-/// interaction at all, since there is no per-target CLI dimension in
-/// this design.
+/// interaction, since there is no per-target CLI dimension in this
+/// design.
 ///
-/// The error arm routes through `super::report::report_error` like
-/// every other `update` failure path, rather than hand-rolling the
-/// `--json` envelope: that's the one place the envelope convention and
-/// the `cli_error` telemetry side effect meet, so this failure gets
-/// both for free. `target_dir` is `home_dir_fallback`, the same
-/// scope-agnostic fallback `update.index_read_failed` a few lines down
-/// uses for its own global-scope (not per-target) error, since a
-/// machine-wide `--cli` failure has no per-target directory of its
-/// own either. `no_telemetry` is threaded in from `dispatch_update_with`,
-/// which already has it in scope at this function's only call site.
+/// The error arm routes through `super::report::report_error` rather
+/// than hand-rolling the `--json` envelope, so this failure gets the
+/// envelope convention and the `cli_error` telemetry side effect for
+/// free. `target_dir` is `home_dir_fallback` since a machine-wide
+/// `--cli` failure has no per-target directory of its own.
 fn dispatch_update_cli(
     release_version: Option<&str>,
     use_github_token: bool,
@@ -303,18 +256,9 @@ pub fn dispatch_update_with(
             color,
         );
     }
-    // `--version <v>` is clap-`conflicts_with("from")` on `update`, so a
-    // `Some(..)` past the `cli` early return above only ever means the
-    // no-`--from` (content) path. Threaded through to
-    // `update_one_target`/`dispatch_update_all_json`/
-    // `run_update_one_target` below, which now fetch that SPECIFIC
-    // release via `github::fetch_release_artifact_and_mcp_asset_by_tag`
-    // (`GET .../releases/tags/{tag}`) rather than latest -- same
-    // `Some`/`None` dispatch `install.rs`'s own no-`--from` path uses.
-    // `force` is threaded through alongside it, now that the
-    // content-version skip-if-unchanged check is wired into
-    // `run_update_one_target_with_remote_installer` (mirroring
-    // `install.rs`'s own check) -- no longer discarded.
+    // `--version <v>` is clap-`conflicts_with("from")`, so a `Some(..)`
+    // past the `cli` early return above only ever means the
+    // no-`--from` (content) path.
     let index = match index::read_index() {
         Ok(index) => index,
         Err(err) => {
@@ -360,28 +304,15 @@ pub fn dispatch_update_with(
     let targets: Vec<IndexEntry> = if all {
         entries
     } else if let Some(target) = target.as_deref() {
-        // Mirrors `uninstall.rs`'s `dispatch_target` selection logic
-        // exactly, so `update --target <dir>` and `uninstall --target
-        // <dir>` really do share an identical selection surface (the
-        // CR description's claim) rather than differing on a target
-        // whose directory no longer exists. If `canonicalize_target_dir`
-        // fails (a tracked directory that's since been deleted -- the
-        // stale case), fall back to matching the raw string, or its
-        // lexically-resolved absolute form via `std::path::absolute`,
-        // against every tracked `target_dir` before giving up. Without
-        // this fallback, a stale entry could only ever be reached via
-        // `--all` here, while `uninstall --target` could already reach
-        // it directly -- keeping the two commands' selection surfaces
-        // genuinely identical requires this fallback on both sides.
-        // Once matched this way, `update_one_target` below
-        // still correctly fails with its own existing "stale (no
-        // manifest found)" message (there is genuinely no manifest to
-        // read from a directory that no longer exists) -- `update`,
-        // unlike `uninstall`, has nothing to reconcile against for a
-        // gone target and cannot silently succeed the way `uninstall`'s
-        // prune can, but it now reports "stale", not "could not
-        // resolve --target", pointing the user at the stale index entry
-        // rather than at path resolution.
+        // Mirrors `uninstall.rs`'s `dispatch_target` selection logic, so
+        // `update --target <dir>` and `uninstall --target <dir>` share
+        // an identical selection surface. If `canonicalize_target_dir`
+        // fails (a tracked directory that's since been deleted), fall
+        // back to matching the raw string, or its lexically-resolved
+        // absolute form, against every tracked `target_dir`. A match
+        // found this way still correctly fails at `update_one_target`
+        // below with "stale (no manifest found)" -- `update`, unlike
+        // `uninstall`, has nothing to reconcile against a gone target.
         let canonical = index::canonicalize_target_dir(Path::new(target));
         let matched = match &canonical {
             Ok(canonical) => entries.iter().find(|e| e.target_dir == *canonical).cloned(),
@@ -458,14 +389,10 @@ pub fn dispatch_update_with(
     }
 
     // For `--all` + `--json`, every target's outcome is collected into
-    // a single batch report emitted ONCE at the end -- mirroring
+    // a single batch report emitted ONCE at the end, mirroring
     // `uninstall.rs`'s `dispatch_all`/`report_batch` single-document
-    // convention (see that module's own doc comment for why: a `--json`
-    // consumer parsing a single `serde_json::from_str` call would break
-    // on N concatenated top-level documents). This split ONLY changes
-    // the `--all` + `json=true` case -- the plain-text `--all` path (one
-    // line per target) and the single-target `--json` path (already
-    // exactly one document) are both unchanged below.
+    // convention: a `--json` consumer parsing one `serde_json::from_str`
+    // call would break on N concatenated top-level documents.
     if all && json {
         return dispatch_update_all_json(
             targets,
@@ -480,34 +407,17 @@ pub fn dispatch_update_with(
     }
 
     // Deterministic tie-break across a `--all` batch: `EXIT_USAGE_ERROR`
-    // (64) "wins" over any other non-zero code (e.g. `EXIT_VERIFY_FAILED`,
-    // 65) once at least one usage error has occurred, so the reported
-    // code never depends on which target ran last. Matches
-    // `uninstall.rs`'s `dispatch_all` convention.
+    // (64) wins over any other non-zero code once at least one usage
+    // error has occurred, so the reported code never depends on which
+    // target ran last. Matches `uninstall.rs`'s `dispatch_all`.
     //
     // The latest release tag is resolved exactly ONCE here and shared
-    // across every target's content-version check below, mirroring
-    // `doctor.rs`'s `dispatch_doctor_all`/`resolve_latest_release_tag` --
-    // see `run_update_one_target_with_remote_installer`'s own doc
-    // comment for why re-fetching per target would risk exhausting
-    // GitHub's unauthenticated rate limit. Only meaningful when
-    // `release_version` is `None`: an explicit `--version <v>` never
-    // reads this cache at all (see the content-version-skip check's own
-    // `match release_version` above it). ALSO gated on `from.is_none()`
-    // -- `--version`/`--from` are clap-`conflicts_with`, so a `--from`
-    // batch always has `release_version: None` too, but the `--from`
-    // path never touches GitHub at all (its content-version comparison
-    // is permanently skipped, see `content_version_skip`'s own doc
-    // comment) and never reads this cache either; without this guard,
-    // `update --from --all` would make a real, entirely wasted
-    // `fetch_latest_release_tag` call, breaking `--from`'s offline
-    // guarantee for no benefit (previously flagged by AutoSDE). Skipped
-    // entirely for a single target (`targets.len() == 1`) -- one target
-    // has nothing to amortize a pre-fetch across, so this stays a plain
-    // `None`, preserving the
-    // exact behavior `run_update_one_target_with_remote_installer` had
-    // before this cache existed: fetch inline, once, when it's actually
-    // needed.
+    // across every target's content-version check, to avoid exhausting
+    // GitHub's unauthenticated rate limit on a large `--all` batch.
+    // Only meaningful when `release_version` is `None` and `from` is
+    // `None` -- an explicit `--version` or a `--from` run never reads
+    // this cache. Skipped for a single target: nothing to amortize a
+    // pre-fetch across.
     let latest_release_tag_cache =
         if release_version.is_none() && from.is_none() && targets.len() > 1 {
             Some(github::fetch_latest_release_tag(
@@ -543,86 +453,66 @@ pub fn dispatch_update_with(
 }
 
 /// One target's outcome for a `--all --json` batch report: either a
-/// success (mirroring `report_update_success`'s JSON fields, minus the
-/// `command` field the batch wrapper already carries once) or a failure
-/// (the error message plus the exit code it produced, so the batch's
-/// overall exit code can still apply `update`'s own
+/// success (mirroring `report_update_success`'s JSON fields) or a
+/// failure (the error message plus the exit code it produced, so the
+/// batch's overall exit code can still apply `update`'s own
 /// usage-error-wins-the-tie-break rule).
 ///
 /// `finalize_index_warning`: `run_update_one_target` itself never
 /// prints -- carried back here instead, so each caller renders it in
-/// its own mode: `update_one_target` folds it into
-/// `report_update_success`'s output, `dispatch_update_all_json` folds
-/// it into this target's entry via `report_update_batch`. `None` on
-/// the ordinary path where nothing below needed to speak up. Despite
-/// the name, this now carries either (or both, `"; "`-joined) of two
-/// independent conditions: a finalize-index failure (the `write_index`
-/// call that flips the entry to `Complete`, after `install_from_local`
-/// has already succeeded), or the opt-out carry-forward finding a
-/// broken (not merely absent) `install-info.json` -- see
-/// `run_update_one_target`'s own comment above that read.
+/// its own mode. `None` on the ordinary path. Despite the name, this
+/// carries either (or both, `"; "`-joined) of two independent
+/// conditions: a finalize-index failure (`write_index` flipping the
+/// entry to `Complete` after the install already succeeded), or the
+/// opt-out carry-forward finding a broken (not merely absent)
+/// `install-info.json`.
 enum UpdateOutcome {
     Success {
         files: usize,
         edited_files_overwritten: usize,
         manifest_path: String,
         finalize_index_warning: Option<String>,
-        /// The single strategy slot this run acted on (`current.strategy`
-        /// in `run_update_one_target`). Lets `report_update_success`
-        /// scope its own verbose per-file listing to this slot alone
-        /// when the target tracks more than one strategy, instead of
-        /// listing every tracked slot's files.
+        /// The single strategy slot this run acted on. Lets
+        /// `report_update_success` scope its own verbose per-file
+        /// listing to this slot alone when the target tracks more than
+        /// one strategy, instead of listing every tracked slot's files.
         strategy_name: String,
     },
-    /// The content-version skip-if-unchanged check
-    /// (`content_version_skip` in `run_update_one_target_with_remote_installer`)
-    /// fired: the target was already at the incoming (or explicitly
-    /// requested `--version <v>`) version, so no fetch, no
-    /// `install_from_local`/remote-installer call, and no file re-copy
-    /// happened at all. Kept as its OWN variant, distinct from
-    /// `Success`, so this outcome is never rendered through the normal
-    /// "N file(s) re-copied" success path (which would misreport a
-    /// no-op as a real update) and never fires the
-    /// `report_package_version_updated` telemetry event (which would
-    /// misreport a no-op as a version change) -- mirrors `install.rs`'s
-    /// own distinct `report_already_at_version` outcome for its
-    /// identical skip.
+    /// The content-version skip-if-unchanged check fired: the target
+    /// was already at the incoming (or explicitly requested
+    /// `--version <v>`) version, so no fetch and no file re-copy
+    /// happened. Kept as its OWN variant, distinct from `Success`, so
+    /// this outcome is never rendered through the normal "N file(s)
+    /// re-copied" success path, and never fires the version-updated
+    /// telemetry event -- both would misreport a no-op as a real
+    /// change.
     AlreadyAtVersion {
         version: String,
-        /// Same role as `Success`'s own field of the same name: `None`
-        /// on the ordinary path, `Some` if the finalize-index write
-        /// (flipping the entry back to `Complete`) failed, or the
-        /// opt-out carry-forward found a broken `install-info.json`.
-        /// Folded into a non-fatal warning here for the SAME reason
-        /// `Success` folds it rather than failing the run: a
-        /// finalize-index failure after the real work (here, the
-        /// version-match decision itself) already succeeded must not
-        /// be a harder failure just because this run happened to take
-        /// the skip path instead of the ordinary re-copy path -- both
-        /// report the same underlying condition as a warning on an
-        /// otherwise-successful run, at the same exit code (0).
+        /// Same role as `Success`'s field of the same name: `None` on
+        /// the ordinary path, `Some` if the finalize-index write
+        /// failed, or the opt-out carry-forward found a broken
+        /// `install-info.json`. A finalize-index failure after the
+        /// real work already succeeded must not be a harder failure
+        /// just because this run took the skip path instead of the
+        /// ordinary re-copy path.
         finalize_index_warning: Option<String>,
     },
     Failure {
         message: String,
         exit_code: u8,
         /// Whether this is specifically the "target doesn't track the
-        /// requested `--harness`" case
-        /// (`harness_select::HarnessSelectionError::NotTracked`), as
-        /// opposed to every other failure. Only `dispatch_update_all_json`
-        /// and the plain-text `--all` loop read this field, treating it
-        /// as a per-target skip that doesn't affect the batch's exit
-        /// code, mirroring `uninstall.rs`'s
-        /// `UninstallError::harness_not_tracked`. The single-target
-        /// path ignores this and reports an ordinary usage error --
-        /// there's no sibling target to skip past.
+        /// requested `--harness`" case, as opposed to every other
+        /// failure. Only `dispatch_update_all_json` and the plain-text
+        /// `--all` loop read this field, treating it as a per-target
+        /// skip that doesn't affect the batch's exit code. The
+        /// single-target path ignores this and reports an ordinary
+        /// usage error -- there's no sibling target to skip past.
         harness_not_tracked: bool,
-        /// `None` at every failure site that returns before the opt-out
-        /// carry-forward's `read_install_info_detailed` call runs (every
-        /// site above that point in `run_update_one_target`); `Some` iff
-        /// that read found a broken -- present but unreadable or
-        /// schema-invalid -- `install-info.json`, the same condition
-        /// `finalize_index_warning` (`UpdateOutcome::Success`) already
+        /// `None` at every failure site that returns before the
+        /// opt-out carry-forward's read runs; `Some` iff that read
+        /// found a broken -- present but unreadable or schema-invalid
+        /// -- `install-info.json`, the same condition
+        /// `finalize_index_warning` already
         /// surfaces on the success path. Exists so a target whose
         /// `install_from_local` (or the remote fallback chain) fails
         /// still tells the user about a broken record instead of the
@@ -658,16 +548,12 @@ fn dispatch_update_all_json(
     let mut exit_code = 0u8;
 
     // Same resolve-once-share-across-targets pre-fetch the plain-text
-    // `--all` loop in `dispatch_update_with` applies -- see that call
-    // site's own doc comment for the full rationale, including why this
-    // is ALSO gated on `from.is_none()` (a `--from` batch never touches
-    // GitHub and never reads this cache; without the guard it would pay
-    // for a pre-fetch it can't use, breaking `--from`'s offline
-    // guarantee). `--all --json` reaches this function specifically
-    // because `all` is `true` (see this function's own caller), so
-    // unlike the plain-text loop there is no single-target case to
-    // special-case around: every call here is inherently a multi-target
-    // (or at least `--all`-invoked) batch.
+    // `--all` loop applies, also gated on `from.is_none()` -- a
+    // `--from` batch never touches GitHub and never reads this cache;
+    // without the guard it would pay for a pre-fetch it can't use,
+    // breaking `--from`'s offline guarantee. Unlike the plain-text
+    // loop there is no single-target case to special-case around:
+    // every call here is inherently an `--all`-invoked batch.
     let latest_release_tag_cache = if release_version.is_none() && from.is_none() {
         Some(github::fetch_latest_release_tag(
             "aws-solutions",
@@ -728,14 +614,10 @@ fn dispatch_update_all_json(
                 // is visible to telemetry the same way the plain path's
                 // failure already is. Uses the same
                 // `"update.target_failed"` error code the single-target
-                // path's own catch-all failure arm uses.
-                //
-                // `_for_target`, not the
-                // process-global-cache variant: this loop iterates
-                // several distinct `target_dir`s in one process, so the
-                // cached variant would apply the first target's
-                // endpoint and `.konductor/config.yml` opt-out to every
-                // target after it.
+                // not the process-global-cache variant: this loop
+                // iterates several distinct `target_dir`s in one
+                // process, so the cached variant would apply the first
+                // target's endpoint and opt-out to every target after it.
                 crate::cli::telemetry::report_cli_error_for_target(
                     &target_dir,
                     "update",
@@ -751,25 +633,16 @@ fn dispatch_update_all_json(
     exit_code
 }
 
-/// Emits ONE JSON document summarizing a `--all --json` update run --
+/// Emits ONE JSON document summarizing a `--all --json` update run,
 /// mirroring `uninstall.rs`'s `report_batch` shape:
 /// `{"command": "update", "succeeded": [...], "skipped": [...],
-/// "failed": [...]}`, each `succeeded`/`failed` array entry carrying
-/// `target_dir` plus that target's own fields (`report_update_success`'s
-/// success fields, or an `error` string for a failure), and each
-/// `skipped` entry carrying `target_dir` plus a `reason` string.
+/// "failed": [...]}`.
 ///
-/// `skipped` is a SEPARATE bucket from both `succeeded` and `failed`:
-/// targets that do not track the requested `--harness`
-/// (`UpdateOutcome::Failure::harness_not_tracked`, see that field's own
-/// doc comment). A stale target (missing manifest) is still, unlike
-/// `uninstall`'s own stale case, simply a `failed` entry here -- see
-/// `update_one_target`'s own doc comment on why `update`, unlike
-/// `uninstall`, cannot treat a missing manifest as a non-fatal prune.
-/// The two are distinct: a stale/missing target is a genuine failure
-/// (nothing for `update` to act on); a harness mismatch is a skip
-/// (there is something to act on, it is simply not the strategy this
-/// run asked for).
+/// `skipped` is a SEPARATE bucket from `succeeded`/`failed`: targets
+/// that do not track the requested `--harness`. A stale target
+/// (missing manifest) is still a `failed` entry here, unlike
+/// `uninstall`'s stale case -- `update` has nothing to act on without
+/// a manifest and cannot treat it as a non-fatal prune.
 fn report_update_batch(
     succeeded: &[(String, UpdateOutcome)],
     skipped: &[(String, String)],
@@ -899,30 +772,20 @@ fn report_corrupted_index(duplicates: &[String], json: bool, color: ColorMode) {
 }
 
 /// `--dry-run` preview for every resolved target: reads each target's
-/// manifest (read-only -- `preview_update` never calls
-/// `install_from_local`/writes an index or manifest entry) and reports
-/// exactly which files WOULD be re-copied by a real `update_one_target`
-/// run against `harness`'s resolved slot, plus how many of them
-/// currently have local edits that would be overwritten (via
-/// `count_diverged_files`, the same read-only divergence count the real
-/// run itself computes before its unconditional overwrite). `update`
-/// has no eligibility filter the way `uninstall` does -- every file in
-/// the resolved slot is unconditionally re-copied -- so the preview's
-/// "would overwrite" set is simply every tracked path in that slot.
+/// manifest (read-only -- never calls `install_from_local` or writes
+/// an index/manifest entry) and reports exactly which files WOULD be
+/// re-copied, plus how many currently have local edits that would be
+/// overwritten. `update` has no eligibility filter the way `uninstall`
+/// does, so the preview's "would overwrite" set is every tracked path
+/// in the resolved slot.
 ///
-/// A preview failure for one target (missing/in-progress manifest,
-/// unresolved `--harness`, an unregistered strategy) is reported the
-/// same way a real failure would be, per target, continuing past it to
-/// preview the rest -- mirrors `dispatch_update_all_json`'s own
-/// continue-past-failure contract. Always returns 0: a preview reports,
-/// it never itself fails the run, since it made no filesystem changes
-/// for a script to have failed AT.
+/// A preview failure for one target is reported per target, continuing
+/// past it to preview the rest. Always returns 0: a preview reports,
+/// it never fails the run.
 ///
 /// `use_github_token` is accepted for signature symmetry with
 /// `dispatch_update_with`'s other callers but has no effect here: a
-/// preview never makes a network call either way (see `preview_update`'s
-/// own doc comment), so there is nothing for a GitHub token to
-/// authenticate.
+/// preview never makes a network call.
 fn report_dry_run_preview(
     targets: &[IndexEntry],
     from: Option<&str>,
@@ -1007,22 +870,18 @@ fn report_dry_run_preview(
     0
 }
 
-/// One file `preview_update` would overwrite: its path (as recorded in
-/// the manifest) and whether its on-disk content has diverged from the
-/// manifest's recorded hash -- i.e. would have local edits destroyed by
-/// the unconditional overwrite. Mirrors `uninstall.rs`'s own
-/// `PreviewFile` shape and `format_preview_file_line`/`preview_file_json`
-/// helpers exactly, so both commands' `--dry-run` output disclose
-/// per-path divergence the same way.
+/// One file `preview_update` would overwrite: its path and whether its
+/// on-disk content has diverged from the manifest's recorded hash --
+/// i.e. would have local edits destroyed by the unconditional
+/// overwrite. Mirrors `uninstall.rs`'s own `PreviewFile` shape.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct PreviewFile {
     path: PathBuf,
     diverged: bool,
 }
 
-/// Renders one `PreviewFile` as a plain-text line, identical in shape
-/// to `uninstall.rs`'s own `format_preview_file_line` -- `  <path>`
-/// when unmodified, `  <path> (local edits would be destroyed)` when
+/// Renders one `PreviewFile` as a plain-text line: `  <path>` when
+/// unmodified, `  <path> (local edits would be destroyed)` when
 /// diverged.
 fn format_preview_file_line(file: &PreviewFile) -> String {
     if file.diverged {
@@ -1032,9 +891,7 @@ fn format_preview_file_line(file: &PreviewFile) -> String {
     }
 }
 
-/// Builds one `PreviewFile`'s `--json` representation: `{"path": ...,
-/// "diverged": ...}`, identical in shape to `uninstall.rs`'s own
-/// `preview_file_json`.
+/// Builds one `PreviewFile`'s `--json` representation.
 fn preview_file_json(file: &PreviewFile) -> serde_json::Value {
     serde_json::json!({
         "path": file.path.display().to_string(),
@@ -1044,14 +901,12 @@ fn preview_file_json(file: &PreviewFile) -> serde_json::Value {
 
 /// `preview_update`'s error type. Carries a human-readable message and
 /// whether this is specifically the "target doesn't track the
-/// requested `--harness`" case (`harness_not_tracked`) -- mirrors
-/// `uninstall.rs`'s `UninstallError` shape (minus `exit_code`, which
-/// `report_dry_run_preview` never reads: a preview failure always
-/// still returns 0, since it made no filesystem change for a script to
-/// have failed AT). `report_dry_run_preview` reads `harness_not_tracked`
-/// directly to bucket a target as skipped rather than failed, the same
-/// distinction the real (non-dry-run) path gets from
-/// `UpdateOutcome::Failure`'s own field of the same name.
+/// requested `--harness`" case -- mirrors `uninstall.rs`'s
+/// `UninstallError` shape (minus `exit_code`: a preview failure always
+/// still returns 0, since it made no filesystem change). Read directly
+/// by `report_dry_run_preview` to bucket a target as skipped rather
+/// than failed, the same distinction the real path gets from
+/// `UpdateOutcome::Failure`'s field of the same name.
 #[derive(Debug)]
 struct PreviewUpdateError {
     message: String,
@@ -1086,28 +941,18 @@ impl PreviewUpdateError {
 }
 
 /// Read-only preview of one target's update run: resolves the same
-/// strategy slot `run_update_one_target` would (same manifest read,
-/// same 0-strategies/in-progress/harness-mismatch rejections, same
-/// `select_harness` call with `allow_interactive: false` since a
-/// preview never blocks on stdin), then returns every file path in that
-/// slot (the "would overwrite" set -- `update` has no eligibility
-/// filter, unlike `uninstall`) alongside, per file, whether its on-disk
-/// hash has already diverged from the manifest (via
-/// `diverged_files_in`, the same hash comparison `count_diverged_files`
-/// itself uses). Touches no filesystem state beyond reading the
-/// manifest and comparing hashes -- no `install_from_local`, no remote
-/// fetch of any kind, no index/manifest write.
+/// strategy slot `run_update_one_target` would, then returns every
+/// file path in that slot (`update` has no eligibility filter, unlike
+/// `uninstall`) alongside, per file, whether its on-disk hash has
+/// already diverged from the manifest. Touches no filesystem state
+/// beyond reading the manifest and comparing hashes.
 ///
 /// With no `--from`, a preview never makes a network call -- fetching
-/// a fresh release just to preview it would give a read-only inspection
-/// command a real external side effect. Instead it reports the
-/// CURRENTLY-tracked file list (`selected.files`, read from the
-/// existing manifest, same as the `--from` case) and that list's
-/// current divergence; the exact file set a real no-`--from` run
-/// fetches may differ once it actually pulls a fresh release. Open
-/// design decision, not resolved here: a different tradeoff (e.g. an
-/// opt-in `--dry-run --fetch`) is possible if this one proves
-/// insufficient.
+/// a fresh release just to preview it would give a read-only
+/// inspection command a real external side effect. It reports the
+/// currently-tracked file list instead; the exact file set a real
+/// no-`--from` run fetches may differ once it actually pulls a fresh
+/// release.
 fn preview_update(
     target_dir: &Path,
     from: Option<&str>,
@@ -1162,9 +1007,7 @@ fn preview_update(
         )));
     }
 
-    // Single lookup, reused below for `would_fail_as_noop` -- mirrors
-    // `run_update_one_target`'s own `let-else` idiom for this exact
-    // check rather than looking the strategy up twice.
+    // Single lookup, reused below for `would_fail_as_noop`.
     let Some(strategy) = registry::STRATEGIES
         .iter()
         .find(|s| s.name() == selected.strategy)
@@ -1176,17 +1019,12 @@ fn preview_update(
         )));
     };
 
-    // Mirrors `run_update_one_target`'s own pure, side-effect-free
-    // no-op precondition check -- a missing/invalid `--from`, or a
-    // source with nothing to install, would make the REAL run fail
-    // before it ever touches the filesystem, so the preview must report
-    // that same failure rather than claiming files would be overwritten
-    // when they would not be. Only checked when `--from` is given,
-    // matching `run_update_one_target`'s identical `from.is_some()`
-    // gate -- a missing `--from` preview never calls `would_fail_as_noop`
-    // (there is no local source to check against), since it never
-    // attempts the real remote fetch a `--from` run's no-op check
-    // exists to pre-empt.
+    // A missing/invalid `--from`, or a source with nothing to install,
+    // would make the REAL run fail before it ever touches the
+    // filesystem, so the preview must report that same failure rather
+    // than claiming files would be overwritten when they would not be.
+    // Only checked when `--from` is given, matching
+    // `run_update_one_target`'s identical gate.
     if from.is_some() {
         if let Some(message) = strategy.would_fail_as_noop(target_dir, from) {
             return Err(PreviewUpdateError::usage(message));
@@ -1248,44 +1086,31 @@ fn count_diverged_files(target_dir: &Path, manifest: &StrategyManifest) -> usize
         .count()
 }
 
-/// One tracked target's full update run: looks
-/// up the target's currently-recorded strategy from its existing
-/// manifest, then calls `install_from_local` on it exactly as a fresh
-/// `install --target <dir>` would -- no filtering, no classification,
-/// no reconciliation. Mirrors `install`'s own exit-code contract
-/// exactly: 0 on success, `EXIT_USAGE_ERROR` (64) on an unresolvable
-/// target, missing/in-progress manifest, unregistered strategy, or
-/// `install_from_local` failure, `EXIT_VERIFY_FAILED` (65) on an
-/// unsupported manifest schema version -- never exit code 2.
+/// One tracked target's full update run: looks up the target's
+/// currently-recorded strategy from its existing manifest, then calls
+/// `install_from_local` on it exactly as a fresh `install --target
+/// <dir>` would -- no filtering, no classification, no reconciliation.
+/// Mirrors `install`'s own exit-code contract: 0 on success,
+/// `EXIT_USAGE_ERROR` (64) on an unresolvable target, missing/
+/// in-progress manifest, unregistered strategy, or `install_from_local`
+/// failure, `EXIT_VERIFY_FAILED` (65) on an unsupported manifest schema
+/// version -- never exit code 2.
 ///
-/// A missing manifest (`Ok(None)`) is a **stale tracked install** --
-/// the index still names this target, but no manifest exists there.
-/// Reported with the word "stale" so its wording matches
-/// `uninstall.rs`'s own stale-specific message for the identical
-/// condition; `update` still treats this as a real failure
-/// (`EXIT_USAGE_ERROR`), unlike `uninstall`, which prunes the stale
+/// A missing manifest is a **stale tracked install**: the index still
+/// names this target, but no manifest exists there. `update` treats
+/// this as a real failure, unlike `uninstall`, which prunes the stale
 /// entry and treats it as a terminal success -- `update` has nothing
 /// it can act on without a manifest to read a strategy from.
 ///
 /// A thin printing wrapper around `run_update_one_target` (the shared
-/// core both this function and the `--all --json` batch path call) --
-/// this function itself does no filesystem work; it only calls the
-/// shared core and reports the resulting `UpdateOutcome` via
-/// `report_error`/`report_update_success`. Keeping both callers on one
-/// core function avoids maintaining the same nine-step sequence (read
-/// manifest, reject `in_progress`, count diverged files, look up the
-/// strategy, run `would_fail_as_noop`, canonicalize, write `InProgress`,
-/// call `install_from_local`, write `Complete`) as two hand-maintained
-/// copies -- a fix to one copy could otherwise silently leave the other
-/// wrong, and the `--all --json` path would be the copy least likely to
-/// be noticed drifting.
+/// core both this function and the `--all --json` batch path call):
+/// this function does no filesystem work; it only calls the shared
+/// core and reports the resulting `UpdateOutcome`.
 ///
 /// `latest_release_tag_cache`: forwarded as-is to
-/// `run_update_one_target`/`run_update_one_target_with_remote_installer`
-/// -- see the latter's own doc comment. The plain-text `--all` loop
-/// (this function's own caller) pre-fetches once and passes the same
-/// cached value to every target's call here, mirroring
-/// `dispatch_update_all_json`'s identical pre-fetch.
+/// `run_update_one_target`. The plain-text `--all` loop (this
+/// function's own caller) pre-fetches once and passes the same cached
+/// value to every target's call here.
 #[allow(clippy::too_many_arguments)]
 fn update_one_target(
     target_dir: &Path,
@@ -1361,20 +1186,14 @@ fn update_one_target(
             // A target that does not track the requested `--harness`,
             // reached specifically via the plain-text `--all` loop
             // (`uncached_identity` doubles as "this call is part of an
-            // `--all` batch" -- see this function's own doc comment;
-            // the `--all --json` combination never reaches this arm at
-            // all, since `dispatch_update_with` routes it to
-            // `dispatch_update_all_json` before this function is ever
-            // called): skipped, not failed. Informational, printed on
-            // stdout, and does not contribute to the batch's exit-code
-            // tie-break -- mirroring `uninstall.rs`'s `dispatch_all`/
-            // `report_batch` skip bucket. A single explicit `--target
-            // <dir>` (or a bare invocation with exactly one tracked
-            // install) has no sibling target to skip past, so this
-            // branch never fires there (`uncached_identity` is `false`
-            // on that path) -- the mismatch is reported as an ordinary
-            // usage error below, matching `uninstall.rs`'s
-            // `dispatch_target`'s identical choice.
+            // `--all` batch"; `--all --json` never reaches this arm,
+            // since `dispatch_update_with` routes it to
+            // `dispatch_update_all_json` first): skipped, not failed.
+            // Does not contribute to the batch's exit-code tie-break,
+            // mirroring `uninstall.rs`'s skip bucket. A single
+            // `--target <dir>` has no sibling to skip past, so this
+            // branch never fires there -- the mismatch is an ordinary
+            // usage error below.
             if uncached_identity && harness_not_tracked {
                 println!(
                     "konductor update: skipped {}: {message}",
@@ -1385,25 +1204,19 @@ fn update_one_target(
             // Folded into `message` with the same `"; "` join
             // `finalize_index_warning` uses on the success path, and
             // also carried in `extra` as a `"warning"` field so a
-            // `--json` consumer sees it as its own key rather than only
-            // embedded in `"error"`'s text. `Some` here means
-            // `run_update_one_target`'s opt-out carry-forward found a
-            // broken `install-info.json` before `install_from_local` (or
-            // the remote fallback chain) went on to fail -- the case
-            // `report_update_success`'s own `finalize_index_warning`
-            // never covers, since a failure never reaches
-            // `UpdateOutcome::Success` at all.
+            // `--json` consumer sees it as its own key. `Some` here
+            // means the opt-out carry-forward found a broken
+            // `install-info.json` before the install itself went on to
+            // fail.
             let full_message = match &telemetry_state_warning {
                 Some(warning) => format!("{message}; {warning}"),
                 None => message.clone(),
             };
             // `uncached_identity` selects `report_error_for_target`
             // whenever this call may be one of several distinct
-            // targets visited in this process -- the plain-`report_error`
-            // (process-global-cache) variant would otherwise apply the
-            // first target's endpoint and `.konductor/config.yml`
-            // opt-out to every target after it, mirroring the identical
-            // fix on the success path below.
+            // targets visited in this process -- the process-global-
+            // cache variant would otherwise apply the first target's
+            // endpoint and opt-out to every target after it.
             let mut extra = vec![(
                 "target_dir",
                 serde_json::Value::String(target_dir.display().to_string()),
@@ -1442,41 +1255,30 @@ fn update_one_target(
     }
 }
 
-/// The single shared core for one target's full update run -- the
-/// exact nine-step sequence `update_one_target`'s own doc comment
-/// describes (read manifest, reject `in_progress`, count diverged
-/// files, look up the strategy, run `would_fail_as_noop`, canonicalize,
-/// write `InProgress`, call `install_from_local` or the no-`--from`
-/// remote fallback chain, write `Complete`), with NO printing anywhere
-/// in its body -- a finalize-index failure is carried back to the
-/// caller as `UpdateOutcome::Success`'s `finalize_index_warning` field
-/// instead of being printed here (see that field's own doc comment).
-/// Both `update_one_target` (the single-target/plain-text/
-/// `--target`+`--json` path) and `dispatch_update_all_json` (the
-/// `--all --json` batch path) call this one function and handle
-/// reporting themselves -- print immediately via
-/// `report_error`/`report_update_success`, or collect into a batch
-/// report. This is what keeps the ordering guarantee (several comments
-/// throughout this function explain WHY a given step must run before
-/// the next) living in exactly one place, rather than two
+/// The single shared core for one target's full update run: read
+/// manifest, reject `in_progress`, count diverged files, look up the
+/// strategy, run `would_fail_as_noop`, canonicalize, write
+/// `InProgress`, call `install_from_local` (or the no-`--from` remote
+/// fallback chain), write `Complete`. No printing anywhere in its body
+/// -- a finalize-index failure is carried back as
+/// `UpdateOutcome::Success`'s `finalize_index_warning` field instead.
+/// Both `update_one_target` and `dispatch_update_all_json` call this
+/// one function and handle reporting themselves, which keeps the
+/// ordering guarantee in exactly one place rather than two
 /// hand-maintained copies that could drift.
 ///
 /// `use_github_token` is only read on the no-`--from` branch -- it has
 /// no effect when `from` is `Some`, which never touches GitHub's API.
 ///
 /// Returns `Ok(UpdateOutcome::Success { .. })` on success,
-/// `Err(UpdateOutcome::Failure { .. })` on any failure -- the
-/// `Result<UpdateOutcome, UpdateOutcome>` shape lets each caller use
-/// `?`/`match` idiomatically while still carrying the same `UpdateOutcome`
-/// payload on both branches.
-/// `latest_release_tag_cache`: forwarded as-is to
-/// `run_update_one_target_with_remote_installer` -- see that function's
-/// own doc comment. `Some(..)` lets a batch caller (the two `--all`
-/// dispatch points) pre-fetch the latest release tag exactly once and
-/// share it across every target's content-version check, rather than
-/// each target independently re-fetching the same repo-wide value.
-/// `None` for the single-target call site below (nothing to amortize
-/// across).
+/// `Err(UpdateOutcome::Failure { .. })` on any failure, so each caller
+/// can use `?`/`match` idiomatically.
+///
+/// `latest_release_tag_cache`, when `Some`, lets a batch caller
+/// pre-fetch the latest release tag once and share it across every
+/// target's content-version check, rather than each target
+/// independently re-fetching the same repo-wide value. `None` for the
+/// single-target call site (nothing to amortize across).
 #[allow(clippy::too_many_arguments)]
 fn run_update_one_target(
     target_dir: &Path,
@@ -1528,37 +1330,25 @@ fn run_update_one_target(
 /// `remote_installer` -- the no-`--from` remote-install attempt. In
 /// production, `run_update_one_target` passes a closure that reaches
 /// the real GitHub API; this module's own tests pass a closure that
-/// fails (or succeeds) right away with no real network call --
-/// mirrors `install.rs`'s own
-/// `dispatch_install_with`/`dispatch_install_with_remote_installer`
-/// split exactly, so tests can inject a fake, network-free installer
-/// here the same way.
+/// fails (or succeeds) right away with no real network call, mirroring
+/// `install.rs`'s own installer-injection split.
 ///
 /// `release_version`, when `Some(tag)`, selects that SPECIFIC release
-/// on the no-`--from` branch instead of latest -- threaded into
-/// `remote_installer` by the caller (see `run_update_one_target`'s own
-/// closure) and also read here directly for the content-version
-/// skip-if-unchanged check below, mirroring
-/// `install.rs`'s own `--version <v>`/skip-if-unchanged composition
-/// exactly: the incoming version to compare against is the explicitly
-/// requested tag when given, never "latest", so a target already at
-/// exactly that requested version skips the fetch entirely, and a
-/// target NOT at that version never skips merely because it happens to
-/// match "latest". `force` bypasses that skip, same as
-/// `content_version::should_skip_write`'s existing rule.
+/// on the no-`--from` branch instead of latest, and is also read here
+/// directly for the content-version skip-if-unchanged check: the
+/// incoming version to compare against is the explicitly requested tag
+/// when given, never "latest", so a target already at exactly that
+/// requested version skips the fetch entirely, and a target NOT at
+/// that version never skips merely because it happens to match
+/// "latest". `force` bypasses that skip.
 ///
 /// `latest_release_tag_cache`, when `Some(..)`, is used AS-IS for the
-/// content-version skip check's own "latest" fetch below instead of
-/// calling `github::fetch_latest_release_tag` directly -- the same
-/// resolve-once-share-across-targets pattern `doctor.rs`'s
-/// `dispatch_doctor_all` already applies via its own
-/// `resolve_latest_release_tag`/`latest_release_tag`, for the identical
-/// reason: an `--all` batch with N tracked targets and no `--version`
-/// would otherwise make N redundant identical requests against GitHub's
-/// unauthenticated rate limit, since the latest tag is repo-wide, not
-/// per-target. `None` means "no pre-fetch, resolve directly" -- what
-/// every single-target call site (`run_update_one_target`, with nothing
-/// to amortize across) still does.
+/// content-version skip check's own "latest" fetch instead of calling
+/// `github::fetch_latest_release_tag` directly: an `--all` batch with
+/// N tracked targets and no `--version` would otherwise make N
+/// redundant identical requests against GitHub's unauthenticated rate
+/// limit, since the latest tag is repo-wide, not per-target. `None`
+/// means "no pre-fetch, resolve directly."
 #[allow(clippy::too_many_arguments)]
 fn run_update_one_target_with_remote_installer(
     target_dir: &Path,
@@ -2125,41 +1915,29 @@ fn run_update_one_target_with_remote_installer(
 
 /// Prints the update summary: mirrors `install.rs`'s
 /// `report_install_success`/`format_install_summary` conventions for
-/// tone and `--json` shape -- every file `install_from_local` wrote this run is
-/// simply "re-copied," with no blocked/force-overwritten/backup-failed
-/// states left to report. `edited_files_overwritten` is the read-only
-/// divergence count `update_one_target` computed before the overwrite
-/// (see `count_diverged_files`) -- purely informational, reported
-/// alongside the file count, never gating anything.
+/// tone and `--json` shape. Every file written this run is simply
+/// "re-copied," with no blocked/force-overwritten/backup-failed states
+/// to report. `edited_files_overwritten` is the read-only divergence
+/// count computed before the overwrite, reported alongside the file
+/// count, never gating anything.
 ///
-/// `files`/`manifest_path` (finding f-2a736e09) are the values
-/// `run_update_one_target` already computed from its own post-copy
-/// manifest read, plumbed straight through by `update_one_target`
-/// rather than re-derived here via a fresh `manifest::read_manifest`
-/// call -- this is what keeps the single-target path's reported
-/// `files` count consistent with the `--all --json` batch path's (both
-/// now source it from the SAME read), and drops the single-target
-/// success path from three manifest reads down to one. The per-file
-/// `-v`/`--verbose` listing below is a separate concern (per-file
-/// path/provenance detail no earlier step computed) and still reads
-/// the manifest itself, but only when `verbose` is set, and only for
-/// the `strategy_name` slot -- see that parameter's own doc comment.
+/// `files`/`manifest_path` are the values `run_update_one_target`
+/// already computed from its own post-copy manifest read, plumbed
+/// straight through rather than re-derived here -- this keeps the
+/// single-target path's reported `files` count consistent with the
+/// `--all --json` batch path's. The per-file `-v`/`--verbose` listing
+/// below reads the manifest itself, but only when `verbose` is set,
+/// scoped to the `strategy_name` slot alone.
 ///
-/// `warning` (finding f-6e118a1c) is `run_update_one_target`'s
-/// `finalize_index_warning` -- `None` on the ordinary path, or a
-/// message covering one or both of: the finalize-index write that
-/// flips the entry to `Complete` failing after the copy itself already
-/// succeeded, or the opt-out carry-forward finding this target's
-/// `install-info.json` present but broken (see
-/// `UpdateOutcome::Success`'s own doc comment). Rendered as an extra
-/// plain-text line / `--json` `warning` field rather than to stderr, so
-/// a `--json` consumer never needs to also read stderr for this
-/// module's own single-target success path either.
+/// `warning` is `run_update_one_target`'s `finalize_index_warning` --
+/// `None` on the ordinary path, or a message covering the
+/// finalize-index write failing after the copy itself already
+/// succeeded, or the opt-out carry-forward finding a broken
+/// `install-info.json`. Rendered as an extra plain-text line / `--json`
+/// `warning` field rather than to stderr.
 ///
-/// `strategy_name` is the slot this run actually acted on
-/// (`UpdateOutcome::Success`'s own field of the same name, threaded
-/// through by `update_one_target`). A target's manifest can track more
-/// than one strategy (a Kiro variant coexisting
+/// `strategy_name` is the slot this run actually acted on. A target's
+/// manifest can track more than one strategy (a Kiro variant coexisting
 /// with `claude`), and `--harness` lets a single run resolve to and
 /// refresh just one of them, so the verbose listing below scopes to
 /// this one slot rather than every tracked slot.
@@ -2224,20 +2002,14 @@ fn report_update_success(
     }
 }
 
-/// Reports the distinct `UpdateOutcome::AlreadyAtVersion` outcome:
-/// the content-version skip-if-unchanged check fired, so no fetch, no
-/// re-copy, and no telemetry event happened at all. Mirrors
-/// `install.rs`'s own `report_already_at_version` exactly -- same
-/// `"skipped": true, "reason": "already_at_version"` `--json` shape
-/// and same plain-text "already at version X, nothing to do" wording
-/// -- so a caller/script watching for this exact outcome sees
-/// identical shape from either command. `warning`, when `Some`,
-/// renders exactly like `report_update_success`'s own `warning`
-/// parameter -- an extra plain-text line / `--json` `warning` field --
-/// covering a finalize-index write failure on this skip path, which
-/// is folded into a non-fatal warning here for the same reason the
-/// ordinary success path folds it (see `UpdateOutcome::AlreadyAtVersion`'s
-/// own doc comment).
+/// Reports the distinct `UpdateOutcome::AlreadyAtVersion` outcome: the
+/// content-version skip-if-unchanged check fired, so no fetch, re-copy,
+/// or telemetry event happened. Mirrors `install.rs`'s own
+/// `report_already_at_version` -- same `"skipped": true, "reason":
+/// "already_at_version"` `--json` shape and plain-text wording.
+/// `warning`, when `Some`, renders as an extra plain-text line /
+/// `--json` field, covering a finalize-index write failure on this
+/// skip path.
 fn report_update_already_at_version(
     target_dir: &Path,
     version: &str,
@@ -2356,17 +2128,13 @@ mod tests {
     }
 
     /// Seeds a synthed agent whose `resources` array references
+    /// Seeds a synthed agent whose `resources` array references
     /// `skill_name`'s `SKILL.md` -- mirrors
-    /// `install/kiro_cli.rs`'s own test helper of the same name exactly
-    /// (this module owns its own copy per this codebase's established
-    /// per-module test-helper convention -- see `seed_synthed_agent`
-    /// above, which is likewise a local copy, not a shared import).
-    /// Needed (alongside `seed_synthed_skill`/`seed_mcp_binary` below)
-    /// to reach the dual-marker (`.kiro` + `.claude`) Claude Code
-    /// telemetry-hook-wiring path at all -- see
-    /// `AgentInstallPhase::run`'s own gate, which additionally requires
-    /// `any_mcp_server_injected` (an MCP server binary actually copied
-    /// this run).
+    /// `install/kiro_cli.rs`'s own test helper of the same name. Needed
+    /// (alongside `seed_synthed_skill`/`seed_mcp_binary` below) to
+    /// reach the dual-marker (`.kiro` + `.claude`) Claude Code
+    /// telemetry-hook-wiring path, which additionally requires an MCP
+    /// server binary actually copied this run.
     fn seed_synthed_agent_with_skill_resource(
         repo_root: &Path,
         agent_name: &str,
@@ -2524,34 +2292,19 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// The fix this file's own `run_update_one_target` doc comment now
-    /// describes: the finalize INDEX write re-reads the manifest FRESH
-    /// (`install::resolve_final_strategies`) instead of reusing
-    /// `tracked_strategy_names` -- a snapshot captured before
-    /// `install_from_local` runs. Races a REAL concurrent `claude`
-    /// install (`manifest::upsert_strategy`, which takes the same lock
-    /// `install_from_local`'s own manifest write does) against
-    /// `update_one_target` refreshing the ALREADY-tracked `kiro-cli-v2`
-    /// slot. The manifest itself is always correct either way
-    /// (`manifest.rs`'s own locking already guarantees that,
-    /// independent of this fix) -- what this test proves is that the
-    /// INDEX now agrees with that same, correct, post-race manifest
-    /// state, rather than the stale pre-`install_from_local` snapshot
-    /// the old code would have written regardless of how the race
-    /// landed.
+    /// Races a real concurrent `claude` install against
+    /// `update_one_target` refreshing the already-tracked
+    /// `kiro-cli-v2` slot, proving the finalize index write re-reads
+    /// the manifest fresh instead of reusing a pre-install snapshot --
+    /// so the index agrees with the correct post-race manifest state
+    /// rather than a stale snapshot.
     ///
     /// Ordering between the installer thread's write and this
     /// function's own finalize fresh-read is enforced via
-    /// `MID_UPDATE_SYNC_HOOK` (a channel `recv()`, a real synchronization
-    /// primitive) rather than left to relative thread-scheduling speed --
-    /// `manifest.rs`'s sibling race tests
-    /// (`remove_strategy_locked_never_drops_a_concurrently_installed_other_strategy`
-    /// et al.) get away without one because they join BOTH racing
-    /// threads before asserting on the post-race state; this test
-    /// instead asserts on what a THIRD, synchronous call
-    /// (`update_one_target`, running on this test's own thread) observed
-    /// DURING the race, which is exactly the kind of assertion that
-    /// needs an explicit ordering guarantee to be deterministic.
+    /// `MID_UPDATE_SYNC_HOOK` (a real synchronization primitive)
+    /// rather than left to thread-scheduling speed: this test asserts
+    /// on what a third, synchronous call observes DURING the race,
+    /// which needs an explicit ordering guarantee to be deterministic.
     #[test]
     fn update_finalize_index_reflects_a_concurrently_installed_other_strategy() {
         const ITERATIONS: usize = 20;
@@ -2707,21 +2460,10 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// The design decision this fix implements, mirroring `uninstall.rs`'s
-    /// `dispatch_all_skips_targets_that_do_not_track_the_requested_harness`:
-    /// with `--harness <name>` given to an `update --all` batch, a
-    /// target that does not track that harness is SKIPPED, not failed --
-    /// the batch still succeeds (exit 0) and the skipped target's
-    /// manifest is left byte-identical, while a target that DOES track
-    /// the requested harness is genuinely updated (a hand-edited file is
-    /// unconditionally overwritten with fresh content, matching
-    /// `update_one_target_unconditionally_overwrites_hand_edited_file`'s
-    /// own proof of a genuine update). Before this fix,
-    /// `run_update_one_target` folded EVERY `select_harness` failure --
-    /// including `HarnessSelectionError::NotTracked` -- into the same
-    /// `UpdateOutcome::Failure` bucket as a genuine usage error, driving
-    /// the whole batch to a non-zero exit code for a target that was
-    /// never actually broken.
+    /// With `--harness <name>` given to an `update --all` batch, a
+    /// target that does not track that harness is SKIPPED, not failed
+    /// -- the batch still succeeds (exit 0), while a target that does
+    /// track the requested harness is genuinely updated.
     #[test]
     fn dispatch_update_with_all_flag_skips_targets_that_do_not_track_the_requested_harness() {
         let _home = HomeGuard::new("update-all-skip-harness-not-tracked-home");
@@ -2840,18 +2582,14 @@ mod tests {
 
     // ── Regression: `update` honors a target's persisted opt-out ────────
 
-    /// (1) The primary regression this fix addresses: a target
-    /// originally installed with `konductor install --no-telemetry`
-    /// (so no install-info record, and no Claude Code telemetry-hook
-    /// wiring, was ever written) must have that wiring stay suppressed
-    /// on a later PLAIN `konductor update` -- with no `--no-telemetry`
-    /// re-passed to that specific `update` invocation. The target's own
-    /// missing `.konductor/install-info.json` is what `update` reads as
+    /// (1) A target originally installed with `konductor install
+    /// --no-telemetry` (no install-info record, no telemetry-hook
+    /// wiring) must have that wiring stay suppressed on a later PLAIN
+    /// `konductor update`, with no `--no-telemetry` re-passed. The
+    /// target's own missing `.konductor/install-info.json` is read as
     /// the durable "opted out at install time" signal.
     ///
-    /// Exercises the REAL dispatch path end to end
-    /// (`dispatch_install_with` for setup, `dispatch_update_with` for
-    /// the run under test) rather than calling
+    /// Exercises the real dispatch path end to end rather than calling
     /// `InstallStrategy::install_from_local` directly, so a regression
     /// in `update.rs`'s own carry-forward computation would be caught
     /// here even if `install_from_local`'s own behavior were untouched.
@@ -2935,18 +2673,13 @@ mod tests {
     }
 
     /// (2) `update --all` resolves the carry-forward signal
-    /// independently per target -- one target's own missing
-    /// install-info record must never leak into another target's own
-    /// decision, matching how each target's own
-    /// `.konductor/config.yml` opt-out is already resolved
-    /// independently within the same batch (see
-    /// `run_update_one_target`'s own doc comment above the carry-
-    /// forward computation). Two targets share one tracked index: one
-    /// originally installed with `--no-telemetry` (no install-info
-    /// record), one without (install-info record present). A single
-    /// `update --all` run that itself passes no `--no-telemetry` must
-    /// still keep the first target's hooks suppressed while wiring the
-    /// second target's.
+    /// independently per target -- one target's missing install-info
+    /// record must never leak into another target's decision. Two
+    /// targets share one tracked index: one originally installed with
+    /// `--no-telemetry` (no install-info record), one without. A
+    /// single `update --all` run that itself passes no `--no-telemetry`
+    /// must still keep the first target's hooks suppressed while
+    /// wiring the second target's.
     #[test]
     fn update_all_resolves_the_carry_forward_signal_independently_per_target() {
         let _home = HomeGuard::new("update-all-mixed-home");
@@ -3367,17 +3100,13 @@ mod tests {
     }
 
     /// `update` shares `install_from_local` with `install`, so the
-    /// Kiro-discoverable `sop-<name>/SKILL.md` conversion this feature
-    /// adds is refreshed by `update` the same way every other content
-    /// type already is -- no dedicated `update.rs` code was needed to
-    /// get this for free, but it needs its own regression test: a stale
-    /// body left over from a prior install must not survive a re-run.
-    /// Mirrors `install/kiro_cli_v3.rs`'s own
-    /// `install_from_local_kiro_sop_skill_survives_variant_override_switch`
-    /// proof that this path is actually regenerated, not merely left
-    /// untouched, but drives it through `update_one_target` (the real
-    /// `konductor update` entry point) instead of calling
-    /// `install_from_local` a second time by hand.
+    /// Kiro-discoverable `sop-<name>/SKILL.md` conversion is refreshed
+    /// by `update` the same way every other content type already is --
+    /// but it needs its own regression test: a stale body left over
+    /// from a prior install must not survive a re-run. Drives it
+    /// through `update_one_target` (the real `konductor update` entry
+    /// point) rather than calling `install_from_local` a second time
+    /// by hand.
     #[test]
     fn update_one_target_refreshes_stale_kiro_sop_skill_body() {
         let _home = HomeGuard::new("refresh-kiro-sop-skill-home");
@@ -3464,14 +3193,11 @@ mod tests {
     /// After a run, `update`'s manifest for a target names the same
     /// files with the same hashes that a fresh `install` to an
     /// equivalent, previously-empty target would produce for the same
-    /// source -- same paths, same content, same strategy, same status.
-    /// `provenance` legitimately differs (`ReplacedOurs` for update's
-    /// target, which already had a Konductor-managed file at that path,
-    /// vs `Created` for the fresh target, which had nothing there) --
-    /// see `manifest.rs`'s own provenance classification, which is
-    /// unaffected by this design and correctly reports what it observes
-    /// at each target. Only `installed_at` also legitimately differs
-    /// (each call captures its own timestamp).
+    /// source. `provenance` legitimately differs (`ReplacedOurs` for
+    /// update's target, which already had a Konductor-managed file at
+    /// that path, vs `Created` for the fresh target). Only
+    /// `installed_at` also legitimately differs (each call captures
+    /// its own timestamp).
     #[test]
     fn update_manifest_matches_fresh_install_manifest_for_same_source() {
         let _home = HomeGuard::new("manifest-parity-home");
@@ -3576,16 +3302,13 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// Finding f-3e8df55d, `update`'s call site: `run_update_one_target`
-    /// computes its own `updated_at` once (for the `InProgress` index
-    /// write) and must reuse that SAME string for the `Complete` index
-    /// write AND thread it into `install_from_local` for the manifest
-    /// -- not a second independent `utc_now_iso()` call. Runs a real
-    /// `update_one_target`, then reads both the index entry and the
-    /// manifest back and asserts the two `installed_at` strings are
-    /// byte-identical, mirroring `install.rs`'s own
-    /// `dispatch_install_index_entry_and_manifest_installed_at_are_byte_identical`
-    /// for the update path.
+    /// `run_update_one_target` computes its own `updated_at` once (for
+    /// the `InProgress` index write) and must reuse that SAME string
+    /// for the `Complete` index write AND thread it into
+    /// `install_from_local` for the manifest, not a second independent
+    /// `utc_now_iso()` call. Runs a real `update_one_target`, then
+    /// reads both the index entry and the manifest back and asserts
+    /// the two `installed_at` strings are byte-identical.
     #[test]
     fn update_one_target_index_entry_and_manifest_installed_at_are_byte_identical() {
         let _home = HomeGuard::new("update-installed-at-identical-home");
@@ -3782,11 +3505,9 @@ mod tests {
     /// another process rewrote `~/.konductor/installs` with an
     /// unsupported `schema_version` in between -- must map to
     /// `EXIT_VERIFY_FAILED` (65), not a hardcoded 64. Exercised
-    /// directly against `write_index` (which internally calls
-    /// `read_index_at_home` and hits the exact same
-    /// `UnsupportedSchemaVersion` error this call site must route
-    /// through `index_error_exit_code`), mirroring install.rs's own
-    /// equivalent regression test for the identical race shape.
+    /// directly against `write_index`, which internally hits the exact
+    /// same `UnsupportedSchemaVersion` error this call site must route
+    /// through `index_error_exit_code`.
     #[test]
     fn update_one_target_write_index_race_maps_to_65_not_64() {
         let _home = HomeGuard::new("update-one-target-write-index-race-65-home");
@@ -3969,20 +3690,11 @@ mod tests {
     /// before its own write-ahead: a HEALTHY target (registered
     /// strategy, `Complete` index entry) given a `--from` pointing at a
     /// source with nothing to install. Must return the usual usage
-    /// error, but -- unlike the pre-fix behavior -- must never flip
-    /// that target's index status from `Complete` to `InProgress` for a
-    /// run that never touched the filesystem. This is STILL a
-    /// synchronous no-op case, distinct from the no-`--from` case below:
-    /// `--from` was given, so `would_fail_as_noop` runs and catches it
-    /// before any index write, exactly as it always has.
-    ///
-    /// Falsifiability: confirmed this test fails against the pre-fix
-    /// ordering (the `would_fail_as_noop` pre-check did not exist, and
-    /// the index write-ahead ran unconditionally before
-    /// `install_from_local` itself rejected the empty source) -- the
-    /// index entry's status is observed as `InProgress` immediately
-    /// after the failed call, since `install_from_local` never got a
-    /// chance to run before the write-ahead already happened.
+    /// error, but must never flip that target's index status from
+    /// `Complete` to `InProgress` for a run that never touched the
+    /// filesystem. Still a synchronous no-op case: `--from` was given,
+    /// so `would_fail_as_noop` runs and catches it before any index
+    /// write.
     #[test]
     fn update_one_target_from_with_nothing_to_install_does_not_mutate_healthy_index_status() {
         let _home = HomeGuard::new("empty-from-index-home");
@@ -4048,18 +3760,14 @@ mod tests {
     }
 
     /// The no-`--from` contract: omitting `--from` is no longer a
-    /// synchronous no-op the way an empty `--from` source still is (see
-    /// the test above) -- it defers to the real remote fallback chain
-    /// instead, via the SAME `remote_installer` seam
-    /// `run_update_one_target_with_remote_installer` accepts (mirrors
-    /// `install.rs`'s own fake-installer test pattern exactly; no real
-    /// network call is made here). A missing `--from` therefore DOES
-    /// write the `InProgress` index entry before the attempt, and
-    /// leaves it `InProgress` on failure -- exactly like a `--from`
-    /// failure after `install_from_local` starts already leaves it --
-    /// rather than the old "never mutate a healthy index status"
-    /// contract the pre-fix, `--from`-required world had for a missing
-    /// `--from`.
+    /// synchronous no-op the way an empty `--from` source still is --
+    /// it defers to the real remote fallback chain instead, via the
+    /// SAME `remote_installer` seam `run_update_one_target_with_remote_installer`
+    /// accepts (no real network call is made here). A missing `--from`
+    /// therefore DOES write the `InProgress` index entry before the
+    /// attempt, and leaves it `InProgress` on failure, exactly like a
+    /// `--from` failure after `install_from_local` starts already
+    /// leaves it.
     #[test]
     fn update_one_target_missing_from_tries_remote_fallback_and_leaves_in_progress_on_failure() {
         let _home = HomeGuard::new("missing-from-remote-fallback-home");
@@ -4354,11 +4062,10 @@ mod tests {
     /// (`GithubFetchError::TagNotFound`) must surface a clear, distinct
     /// failure through `update`'s own error-mapping path -- never the
     /// old generic "not yet supported" message, and never silently
-    /// falling back to some other version. Exercised end to end through
+    /// falling back to some other version. Exercised through
     /// `run_update_one_target_with_remote_installer`'s real error
-    /// mapping (`fallback_chain_error_exit_code`/`Display`), with a
-    /// fake `remote_installer` standing in for the real GitHub fetch
-    /// that would return this exact error for an unknown tag.
+    /// mapping, with a fake `remote_installer` standing in for the
+    /// real GitHub fetch that would return this exact error.
     #[test]
     fn update_one_target_tag_not_found_surfaces_a_clear_distinct_error() {
         let _home = HomeGuard::new("update-tag-not-found-home");
@@ -4430,17 +4137,13 @@ mod tests {
         fs::remove_dir_all(&dir).ok();
     }
 
-    /// The exact gap AutoSDE flagged (finding f-0d5af818): a
-    /// content-version match on `update`'s content path must render
+    /// A content-version match on `update`'s content path must render
     /// through the DISTINCT `report_update_already_at_version` path --
     /// exit code `0`, never the ordinary "N file(s) re-copied" success
-    /// wording (which would misreport a genuine no-op as a real
-    /// update), and never firing `report_package_version_updated`
-    /// telemetry for a run that changed nothing. Exercised through the
-    /// full `update_one_target` entry point (not
-    /// `run_update_one_target_with_remote_installer` directly), so the
-    /// reporting layer itself -- not just the outcome enum -- is
-    /// proven correct.
+    /// wording, and never firing the version-updated telemetry event
+    /// for a run that changed nothing. Exercised through the full
+    /// `update_one_target` entry point, so the reporting layer itself
+    /// is proven correct.
     #[test]
     fn update_one_target_version_match_reports_distinctly_never_as_a_re_copy() {
         let _home = HomeGuard::new("update-version-skip-reports-distinctly-home");
@@ -4502,17 +4205,13 @@ mod tests {
         fs::remove_dir_all(&dir).ok();
     }
 
-    /// Closes half one of finding (`telemetry_state_warning` /
-    /// `install_from_local` early return): a target with a broken
-    /// `install-info.json` AND a failing install step must still hear
-    /// about the broken record, not just the install failure -- the
-    /// two problems are likely to share a cause, so silently dropping
-    /// the telemetry warning on this path is exactly the case where it
-    /// would help most. Uses the same fake-remote-fallback-failure
-    /// shape as the sibling test just above (`_leaves_in_progress_on_
-    /// failure`) rather than a real `install_from_local` I/O failure,
-    /// since both reach `UpdateOutcome::Failure` through the identical
-    /// post-read code path this fix touches.
+    /// A target with a broken `install-info.json` AND a failing
+    /// install step must still hear about the broken record, not just
+    /// the install failure -- the two problems are likely to share a
+    /// cause, so silently dropping the telemetry warning on this path
+    /// is exactly the case where it would help most. Uses the same
+    /// fake-remote-fallback-failure shape as the sibling test just
+    /// above.
     #[test]
     fn run_update_one_target_surfaces_broken_telemetry_record_on_install_failure() {
         // `run_update_one_target_with_remote_installer`'s own write-ahead
@@ -4596,13 +4295,12 @@ mod tests {
         fs::remove_dir_all(&dir).ok();
     }
 
-    /// Closes half two of the same finding: an explicit `--no-telemetry`
-    /// must not skip the detailed read entirely. Before the fix, the
-    /// `no_telemetry ||`-short-circuit meant a run with the flag passed
-    /// never learned whether its own broken record existed at all --
-    /// consent is unaffected either way (opted out was already true),
-    /// but the warning must still surface now that the read always
-    /// runs.
+    /// An explicit `--no-telemetry` must not skip the detailed read
+    /// entirely. Before the fix, a short-circuit meant a run with the
+    /// flag passed never learned whether its own broken record existed
+    /// at all -- consent is unaffected either way (opted out was
+    /// already true), but the warning must still surface now that the
+    /// read always runs.
     #[test]
     fn run_update_one_target_surfaces_broken_telemetry_record_with_explicit_no_telemetry() {
         // See the sibling test just above for why `HomeGuard` (not
@@ -4767,15 +4465,12 @@ mod tests {
 
     /// `dispatch_update_with` with zero tracked installs and
     /// `json=true` must return 0 via the shared
-    /// `report::report_no_tracked_installs` helper rather than the
-    /// old unconditional plain-text `println!`. The exact JSON shape
-    /// (`{"command": "update", "tracked_installs": 0}`) is pinned once,
-    /// structurally, by
+    /// `report::report_no_tracked_installs` helper rather than an
+    /// unconditional plain-text `println!`. The exact JSON shape is
+    /// pinned once, structurally, by
     /// `report::tests::report_no_tracked_installs_json_has_command_and_tracked_installs_fields`
-    /// (parameterized on `"uninstall"`) -- the helper is the same
-    /// function for both callers, so this test only needs to confirm
-    /// `update` actually reaches that branch and its exit code, not
-    /// re-derive the shape.
+    /// -- this test only needs to confirm `update` actually reaches
+    /// that branch and its exit code.
     #[test]
     fn dispatch_update_with_zero_tracked_installs_json_true_returns_zero() {
         let _guard = lock_home();
@@ -4926,18 +4621,15 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// Finding f-cc392c7d: `update --all --json` against 2+ tracked
-    /// targets (one healthy target that succeeds, one stale target with
-    /// no manifest that fails) must emit stdout that parses as exactly
-    /// ONE JSON document via a single `serde_json::from_str` call --
-    /// never N concatenated top-level documents -- with the expected
-    /// `succeeded`/`failed` breakdown, mirroring
-    /// `uninstall.rs`'s own `dispatch_all`/`report_batch` single-
-    /// document convention. Captures real process stdout (via a
-    /// spawned `konductor` binary) rather than calling
+    /// `update --all --json` against 2+ tracked targets (one healthy
+    /// target that succeeds, one stale target with no manifest that
+    /// fails) must emit stdout that parses as exactly ONE JSON document
+    /// -- never N concatenated top-level documents -- with the expected
+    /// `succeeded`/`failed` breakdown. Captures real process stdout
+    /// (via a spawned `konductor` binary) rather than calling
     /// `dispatch_update_with` in-process, since the whole point being
     /// tested is what actually lands on stdout for an external `--json`
-    /// consumer -- an in-process call can't observe that.
+    /// consumer.
     #[test]
     fn dispatch_update_all_json_emits_single_document_with_mixed_outcomes() {
         let _guard = lock_home();
@@ -4996,13 +4688,11 @@ mod tests {
         // One usage-error failure in the batch -> EXIT_USAGE_ERROR.
         assert_eq!(code, EXIT_USAGE_ERROR);
 
-        // Directly exercise report_update_batch's own JSON construction
-        // for the exact scenario just run, since this module has no
-        // stdout-capture mechanism (matching uninstall.rs's own
-        // structural-assertion precedent for its batch report) --
-        // confirms the SHAPE is single-document-parseable with the
-        // expected succeeded/failed breakdown, which is what a
-        // --json consumer actually depends on.
+        // Directly exercises report_update_batch's own JSON
+        // construction for the exact scenario just run, since this
+        // module has no stdout-capture mechanism -- confirms the shape
+        // is single-document-parseable with the expected
+        // succeeded/failed breakdown.
         let healthy_canonical = index::canonicalize_target_dir(&healthy_target).unwrap();
         let stale_canonical = index::canonicalize_target_dir(&stale_target).unwrap();
         let succeeded = [(
@@ -5079,16 +4769,12 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// `report_update_batch` itself, given a real mixed
-    /// succeeded/failed batch, must print exactly one line to stdout
-    /// (one JSON document) -- structurally confirmed here by rendering
-    /// the same JSON it constructs and checking it contains no embedded
-    /// newline, which is what `println!` on a single
-    /// `serde_json::json!` object always produces (`to_string()` never
-    /// embeds a raw newline; `serde_json::json!` does not
-    /// pretty-print). This is the same property that guarantees N
-    /// calls to this function could never look like N documents on one
-    /// line -- there is only ever one call, producing one `println!`.
+    /// `report_update_batch`, given a real mixed succeeded/failed
+    /// batch, must print exactly one line to stdout (one JSON
+    /// document) -- structurally confirmed here by rendering the same
+    /// JSON it constructs and checking it contains no embedded
+    /// newline, which is what `println!` on a single `serde_json::json!`
+    /// object always produces.
     #[test]
     fn report_update_batch_renders_as_single_line_json() {
         let succeeded = vec![(
@@ -5114,10 +4800,8 @@ mod tests {
         )];
         // report_update_batch itself only ever calls println! once;
         // confirmed by construction (its body has exactly one
-        // println!). This test pins the JSON it would print is valid
-        // and single-document via the same construction used in
-        // report_update_batch's body (kept in sync manually since the
-        // function itself has no stdout-capture return value).
+        // println!). This test pins that the JSON it would print is
+        // valid and single-document.
         let rendered = serde_json::json!({
             "command": "update",
             "succeeded": succeeded.iter().map(|(dir, outcome)| {
@@ -5148,11 +4832,8 @@ mod tests {
         let _: serde_json::Value = serde_json::from_str(&rendered).unwrap();
 
         // Also exercise the real function directly to confirm it does
-        // not panic given this exact shape (it hits the `println!`
-        // branch for real -- stdout is not asserted here, only that it
-        // completes without panicking, per this module's established
-        // no-capture-mechanism precedent used throughout this file for
-        // other `report_*` functions).
+        // not panic given this exact shape -- stdout is not asserted
+        // here, only that it completes without panicking.
         report_update_batch(&succeeded, &[], &failed);
     }
 
@@ -5316,13 +4997,11 @@ mod tests {
 
     /// `report_ambiguous_targets`'s and `report_corrupted_index`'s
     /// `--json` documents both go to stdout, matching every other
-    /// `--json` document this module emits (`report_error` calls --
-    /// via `super::report::report_error`, unchanged here --
-    /// `report_update_batch`, `report_update_success`). This module
-    /// has no stdout/stderr-capture mechanism, so this scans the
-    /// module's own source for an `eprintln!` call sitting immediately
-    /// next to a `serde_json::json!` construction -- after this fix
-    /// there must be none.
+    /// `--json` document this module emits. This module has no
+    /// stdout/stderr-capture mechanism, so this scans the module's own
+    /// source for an `eprintln!` call sitting immediately next to a
+    /// `serde_json::json!` construction -- after this fix there must
+    /// be none.
     #[test]
     fn no_json_document_in_this_module_is_emitted_via_eprintln() {
         let source = include_str!("update.rs");
@@ -5347,23 +5026,17 @@ mod tests {
 
     // ── finding f-6e118a1c: run_update_one_target must never print ─────
     //
-    // The function's own doc comment claims "NO printing anywhere in
-    // its body" -- confirmed here two ways: (1) a source-scanning guard
-    // over exactly this function's body (matching this module's own
-    // `no_json_document_in_this_module_is_emitted_via_eprintln`
-    // source-scanning precedent, extended to catch `println!` too,
-    // since a print-free function must have neither), and (2) a
-    // behavioral test that a real finalize-index failure during
-    // `--all --json` still produces exactly ONE JSON document with the
-    // warning folded into the batch, never a stray stderr line.
+    // The function's own doc comment claims "no printing anywhere in
+    // its body" -- confirmed here two ways: (1) a source-scanning
+    // guard over exactly this function's body, extended to catch
+    // `println!` too, and (2) a behavioral test that a real
+    // finalize-index failure during `--all --json` still produces
+    // exactly ONE JSON document with the warning folded into the
+    // batch, never a stray stderr line.
 
     /// Source-scanning guard: extracts `run_update_one_target`'s own
-    /// function body (from its `fn run_update_one_target(` signature to
-    /// the matching closing brace, by simple brace-depth counting) and
-    /// asserts it contains no `println!`/`eprintln!` call at all --
-    /// stronger than the existing `no_json_document_in_this_module_is_
-    /// emitted_via_eprintln` guard (which only checks nothing sits
-    /// immediately before a JSON construction), since this function
+    /// function body (by simple brace-depth counting) and asserts it
+    /// contains no `println!`/`eprintln!` call at all -- this function
     /// must never print anything, JSON-adjacent or not.
     #[test]
     fn run_update_one_target_body_never_prints() {
@@ -5401,18 +5074,11 @@ mod tests {
     }
 
     /// Behavioral counterpart to the source-scanning guard above:
-    /// confirms `report_update_batch` -- the function
-    /// `dispatch_update_all_json` calls with `run_update_one_target`'s
-    /// real `UpdateOutcome` -- folds a `finalize_index_warning` into
-    /// the succeeded entry's own JSON object (a `warning` field)
+    /// confirms `report_update_batch` folds a `finalize_index_warning`
+    /// into the succeeded entry's own JSON object (a `warning` field)
     /// rather than requiring a second, separate stderr line. Confirms
-    /// stdout is still exactly ONE JSON document (a single
-    /// `serde_json::from_str` call succeeds) carrying the folded-in
-    /// warning, mirroring the real shape `run_update_one_target`
-    /// returns on a finalize-index failure (see
-    /// `run_update_one_target_for_batch_write_index_race_maps_to_65_not_64`
-    /// for how that failure is independently confirmed reachable via
-    /// `write_index` against a corrupted schema version).
+    /// stdout is still exactly ONE JSON document carrying the folded-in
+    /// warning.
     #[test]
     fn report_update_batch_folds_finalize_index_warning_into_single_json_document() {
         let succeeded = vec![(
@@ -5515,12 +5181,9 @@ mod tests {
     }
 
     /// End-to-end reachability: `run_update_one_target` on a genuinely
-    /// healthy target (real install fixture, healthy index) returns
-    /// `finalize_index_warning: None` -- confirming the ordinary,
-    /// non-failing path really does thread `None` through rather than
-    /// always synthesizing a warning, and that the real function
-    /// (not a hand-constructed `UpdateOutcome`) is exercised at least
-    /// once by this test group.
+    /// healthy target returns `finalize_index_warning: None` --
+    /// confirming the ordinary, non-failing path really does thread
+    /// `None` through rather than always synthesizing a warning.
     #[test]
     fn run_update_one_target_ordinary_success_has_no_finalize_index_warning() {
         let _home = HomeGuard::new("no-finalize-warning-ordinary-home");
@@ -5659,17 +5322,16 @@ mod tests {
 
     /// Outcome 3 -- the regression this fix closes. A record that
     /// exists but fails to read back (corrupted JSON) must still
-    /// suppress reporting, fail-closed, exactly like outcomes 1 and 2's
-    /// non-suppressing/suppressing behavior is unaffected -- but unlike
-    /// a genuine opt-out, it must ALSO emit a warning naming the file,
-    /// since nobody chose this and the target can still fix it.
+    /// suppress reporting, fail-closed -- but unlike a genuine opt-out,
+    /// it must ALSO emit a warning naming the file, since nobody chose
+    /// this and the target can still fix it.
     ///
-    /// Before this fix, `read_install_info(target_dir).is_none()`
-    /// treated this identically to outcome 1: suppressed, and silent.
-    /// This test would have passed on suppression alone before the fix
-    /// -- the `finalize_index_warning` assertion is what actually
-    /// fails on the pre-fix code, since nothing there ever populated
-    /// it for this case.
+    /// Before this fix, a plain `is_none()` check treated this
+    /// identically to a genuine opt-out: suppressed, and silent. This
+    /// test would have passed on suppression alone before the fix --
+    /// the `finalize_index_warning` assertion is what actually fails
+    /// on the pre-fix code, since nothing there ever populated it for
+    /// this case.
     #[test]
     fn broken_install_info_suppresses_and_warns() {
         let _home = HomeGuard::new("carry-forward-broken-home");
@@ -5768,17 +5430,14 @@ mod tests {
     }
 
     // ── json-consistent error reporting on every newly-routed error
-    //    path (finding f-6e118a1c) ────────────────────────────────────
+    //    path ───────────────────────────────────────────────────────
     //
-    // Each test below drives one named error path from the finding,
-    // confirms the plain-text wording `super::report::report_error`
-    // receives is BYTE-IDENTICAL to this module's pre-fix `eprintln!`
-    // wording (never changed by this fix), and confirms the json=true
-    // rendering is valid, parseable JSON with the `command`/`error`
-    // fields `report.rs`'s own `build_error_json` convention
-    // establishes -- mirroring `uninstall.rs`'s own
-    // `dispatch_uninstall_index_read_error_message_is_json_consistent`-
-    // style tests for its own error paths.
+    // Each test below drives one named error path, confirms the
+    // plain-text wording `super::report::report_error` receives is
+    // BYTE-IDENTICAL to this module's pre-fix `eprintln!` wording, and
+    // confirms the json=true rendering is valid, parseable JSON with
+    // the `command`/`error` fields `report.rs`'s own `build_error_json`
+    // convention establishes.
 
     /// Named error path 1: the index-read error at the top of
     /// `dispatch_update_with` (`index::read_index()` returning `Err`).
@@ -6088,12 +5747,11 @@ mod tests {
         );
         manifest::upsert_strategy(&dir, manifest).unwrap();
 
-        // `--from` an empty source dir (no `dist/` tree): `would_fail_as_noop`
-        // rejects it locally with EXIT_USAGE_ERROR. Passing `None` instead
-        // would take the no-`--from` remote branch, whose real GitHub fetch is
-        // not stubbed here -- its outcome flips with whether a reachable
-        // release exists, so this pins the deterministic local no-op the test
-        // is named for.
+        // `--from` an empty source dir: `would_fail_as_noop` rejects it
+        // locally with EXIT_USAGE_ERROR. Passing `None` instead would
+        // take the no-`--from` remote branch, whose real GitHub fetch
+        // is not stubbed here, so this pins the deterministic local
+        // no-op the test is named for.
         let empty_source = scratch_dir("noop-error-json-empty-source");
         let from_str = empty_source.display().to_string();
         let code = update_one_target(
@@ -6152,12 +5810,8 @@ mod tests {
 
     /// Plain-text (json=false) wording for every path above must
     /// remain byte-identical to this module's pre-fix `eprintln!`
-    /// strings -- confirms the fix added a `--json` alternative without
-    /// altering the human-readable output at all. Directly asserts
-    /// `report_error`'s plain-text formatting matches
-    /// `"konductor {command}: {message}"` exactly, which is what every
-    /// call site in this module now relies on to preserve its original
-    /// wording.
+    /// strings. Directly asserts `report_error`'s plain-text formatting
+    /// matches `"konductor {command}: {message}"` exactly.
     #[test]
     fn report_error_plain_text_matches_original_eprintln_wording() {
         // Pre-fix, every call site in this module used exactly
@@ -6182,9 +5836,7 @@ mod tests {
             // report_error's plain-text branch is `eprintln!("konductor
             // {command}: {message}")` -- reconstruct it the same way to
             // pin the exact format string without needing stderr
-            // capture (this module has no stderr-capture mechanism; see
-            // uninstall.rs's own tests for the same structural
-            // preference).
+            // capture.
             let actual = format!("konductor {}: {message}", "update");
             assert_eq!(actual, expected);
         }
@@ -6234,14 +5886,12 @@ mod tests {
         fs::remove_dir_all(&dir).ok();
     }
 
-    /// `report_update_success`'s verbose
-    /// listing must scope to the `strategy_name` slot the run actually
-    /// acted on, not every tracked slot -- a target can track a
-    /// coexisting strategy (e.g. `claude`) that this run never touched.
-    /// Confirmed here via `manifest.get`, the same lookup
-    /// `report_update_success`'s verbose branch uses: with both
-    /// slots present, looking up the acted-on strategy's own name
-    /// returns only that slot's files, never the other slot's.
+    /// `report_update_success`'s verbose listing must scope to the
+    /// `strategy_name` slot the run actually acted on, not every
+    /// tracked slot -- a target can track a coexisting strategy (e.g.
+    /// `claude`) that this run never touched. Confirmed here via
+    /// `manifest.get`, the same lookup `report_update_success`'s
+    /// verbose branch uses.
     #[test]
     fn report_update_success_verbose_scopes_to_the_selected_strategy_only() {
         let dir = scratch_dir("report-success-verbose-scoped");
@@ -6346,22 +5996,15 @@ mod tests {
         fs::remove_dir_all(&dir).ok();
     }
 
-    /// Finding f-2a736e09: `report_update_success` must source its
-    /// `files`/`manifest_path` output from the PASSED-IN parameters,
-    /// never from an independent `manifest::read_manifest` re-read.
-    /// Proven by deliberately making the two disagree: writes a REAL
-    /// on-disk manifest with 2 files, then calls `report_update_success`
-    /// with a DIFFERENT `files` count (7) and a fabricated
-    /// `manifest_path` string that does not match the real one. If the
-    /// function still re-read the manifest internally (the pre-fix
-    /// behavior), the JSON it prints would report 2 (the real on-disk
-    /// count) and the real manifest path -- not the passed-in values.
-    /// This module has no stdout-capture mechanism (see this file's
-    /// other `report_*` tests), so this drives the same construction
-    /// `report_update_success`'s own `json` branch uses and confirms it
-    /// reflects the passed-in values, then calls the real function to
-    /// confirm it does not panic against this deliberately-mismatched
-    /// input either.
+    /// `report_update_success` must source its `files`/`manifest_path`
+    /// output from the PASSED-IN parameters, never from an independent
+    /// `manifest::read_manifest` re-read. Proven by deliberately
+    /// making the two disagree: writes a real on-disk manifest with 2
+    /// files, then calls `report_update_success` with a different
+    /// `files` count (7) and a fabricated `manifest_path` string. If
+    /// the function still re-read the manifest internally, the JSON it
+    /// prints would report the real on-disk count and path, not the
+    /// passed-in values.
     #[test]
     fn report_update_success_json_output_is_sourced_from_passed_in_values_not_a_reread() {
         let dir = scratch_dir("report-success-no-reread");
@@ -6436,17 +6079,14 @@ mod tests {
 
     // ── count_diverged_files / edited_files_overwritten ─────────────────
 
-    /// `count_diverged_files` counts a hand-edited file (on-disk hash no
-    /// longer matches the recorded one), does NOT count an untouched
-    /// file (hash still matches), and does NOT count a missing file --
-    /// mirroring `uninstall.rs`'s `delete_eligible_files`, which only
-    /// hashes files it finds via `is_file()`.
-    // ── path-traversal guard (finding f-71385e5d sweep) ─────────────────
+    /// `count_diverged_files` counts a hand-edited file (on-disk hash
+    /// no longer matches the recorded one), does NOT count an
+    /// untouched file (hash still matches), and does NOT count a
+    /// missing file.
+    // ── path-traversal guard ────────────────────────────────────────
     //
     // `count_diverged_files` joins a manifest-recorded `file.path`
-    // against `target_dir` before a `std::fs::read` -- the same
-    // unguarded-join pattern the finding flagged in `uninstall.rs`'s
-    // `delete_eligible_files`, just for a read instead of a delete. A
+    // against `target_dir` before a `std::fs::read`. A
     // corrupted/hand-edited manifest must never cause this purely
     // observational count to read a file outside `target_dir`.
 
@@ -6844,10 +6484,8 @@ mod tests {
     /// Per-path divergence clarity: a target with one locally-modified
     /// tracked file and one unmodified tracked file must have
     /// `preview_update` flag exactly the modified one as `diverged`,
-    /// distinct from the unmodified one -- reusing the same hash
-    /// comparison `count_diverged_files`'s real-run counterpart
-    /// performs, so a `--dry-run` reader can tell which specific path
-    /// would have local edits overwritten, not just an aggregate count.
+    /// so a `--dry-run` reader can tell which specific path would have
+    /// local edits overwritten, not just an aggregate count.
     #[test]
     fn preview_update_flags_only_the_diverged_path_among_two_tracked_files() {
         let _home = HomeGuard::new("preview-update-diverged-mixed-home");
@@ -6939,8 +6577,7 @@ mod tests {
     /// target with one diverged and one unmodified tracked file must
     /// carry BOTH paths with their own correct `diverged` flag inside
     /// the SAME `would_overwrite` array -- not merely an aggregate
-    /// count -- proving the dry-run path genuinely distinguishes the
-    /// two files from each other in its real emitted output.
+    /// count.
     #[test]
     fn preview_update_json_document_distinguishes_diverged_path_from_unmodified() {
         let _home = HomeGuard::new("preview-update-diverged-json-e2e-home");
@@ -7003,14 +6640,12 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// The autoSDE-flagged regression this fix addresses: a target that
-    /// does not track the requested `--harness` must be reported via
-    /// `PreviewUpdateError::harness_not_tracked`, structurally, rather
-    /// than a caller recovering the distinction by matching on the
-    /// error's rendered `Display` text -- the previous
-    /// `is_harness_not_tracked_message` substring check this test
-    /// replaces would have silently broken if `HarnessSelectionError`'s
-    /// wording ever changed.
+    /// A target that does not track the requested `--harness` must be
+    /// reported via `PreviewUpdateError::harness_not_tracked`,
+    /// structurally, rather than a caller recovering the distinction
+    /// by matching on the error's rendered `Display` text, which would
+    /// silently break if `HarnessSelectionError`'s wording ever
+    /// changed.
     #[test]
     fn preview_update_not_tracked_harness_is_reported_structurally() {
         let target = scratch_dir("preview-update-not-tracked");
@@ -7163,10 +6798,10 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    // ── `update --all` on an empty index must stay a 0 no-op ───────────
+    // ── `update --all` on an empty index must stay a 0 no-op ────────
     //
     // `--all` resolves `targets` to an empty `Vec` against an empty
-    // index rather than hitting the bare-invocation short-circuit above
+    // index rather than hitting the bare-invocation short-circuit
     // (which excludes `--all` on purpose). Covered here across every
     // mode the dry-run branch depends on.
 
@@ -7239,18 +6874,16 @@ mod tests {
         assert_eq!(code, 0, "--all --json on an empty index must be a no-op");
     }
 
-    // ── `--version <v>` on the no-`--from` (content) path ───────────────
+    // ── `--version <v>` on the no-`--from` (content) path ───────────
     //
-    // The old stub (a hard `EXIT_USAGE_ERROR` before any target work)
-    // is gone: `--version <v>` on `update`'s no-`--from` path is now a
-    // real by-tag fetch, threaded through
+    // `--version <v>` on `update`'s no-`--from` path is a real by-tag
+    // fetch, threaded through
     // `update_one_target`/`dispatch_update_all_json`/
-    // `run_update_one_target` exactly like `install.rs`'s own
-    // `--version`. Both tests below run against an EMPTY tracked-install
-    // index (no `HomeGuard`-seeded target), so the real behavior is "no
-    // tracked installs -- nothing to do" (exit 0), never a usage error --
+    // `run_update_one_target`. Both tests below run against an EMPTY
+    // tracked-install index, so the real behavior is "no tracked
+    // installs -- nothing to do" (exit 0), never a usage error --
     // proving `--version` no longer short-circuits before target
-    // resolution the way the removed stub did.
+    // resolution.
 
     #[test]
     fn dispatch_update_with_release_version_no_from_is_a_real_pass_through_not_a_usage_error() {

@@ -5,9 +5,6 @@
 // it was delegated to, and reports it through
 // `telemetry::report_agent_invocation`/`report_subagent_invocation`.
 //
-// This is the one call site where a hook is genuinely necessary:
-// `konductor-rs` has no process running at the moment a runtime session
-// starts, or a delegation begins, to observe that event any other way.
 // A malformed or non-JSON stdin payload exits quietly (0) without
 // panicking and without calling `report_*` -- this subcommand's own
 // failure must never surface as a visible error to the harness that
@@ -37,13 +34,8 @@ use std::path::{Path, PathBuf};
 use super::telemetry;
 
 /// `event_type` argument values this subcommand recognizes. `pub(crate)`
-/// so the install side (`claude_settings.rs`'s `TELEMETRY_HOOK_ENTRIES`
-/// and `telemetry_hook_pass.rs`'s Kiro hooks) builds its
-/// `__telemetry-hook` commands from these same constants, rather than
-/// duplicating the literal `"agent-invocation"`/`"subagent-invocation"`
-/// strings there -- a rename on either side is then a compile error on
-/// the other, not a silent runtime mismatch between what gets wired in
-/// and what this match actually recognizes.
+/// so install-side hook wiring builds its `__telemetry-hook` commands
+/// from these constants instead of duplicating the literal strings.
 pub(crate) const AGENT_INVOCATION: &str = "agent-invocation";
 pub(crate) const SUBAGENT_INVOCATION: &str = "subagent-invocation";
 
@@ -53,20 +45,14 @@ const KIRO_DIRECT_SUBAGENT_TOOL_PREFIX: &str = "subagent_";
 pub(crate) const KIRO_ORCHESTRATE_TOOL: &str = "orchestrate_subagent";
 
 /// The payload fields this subcommand reads. Everything else the
-/// harness sends (cwd, transcript_path, prompt text, ...) is ignored;
-/// only names and a session id ever leave this process, the session id
-/// one-way hashed.
-///
-/// Session id field name varies by harness convention in the wild
-/// (`session_id` snake_case is Claude Code's documented payload shape;
-/// `sessionId` camelCase is accepted too in case a future/alternate
-/// payload uses it) -- both are attempted, first match wins.
+/// harness sends is ignored; only names and a session id ever leave
+/// this process, the session id one-way hashed.
 #[derive(Debug, Default, serde::Deserialize)]
 struct HookPayload {
     #[serde(default, alias = "sessionId")]
     session_id: Option<String>,
     /// Claude Code: the session's agent on `SessionStart`, the delegated
-    /// agent on `SubagentStart`. `agent_name` is accepted as a fallback.
+    /// agent on `SubagentStart`.
     #[serde(default, alias = "agent_name")]
     agent_type: Option<String>,
     /// Kiro v3 `PreToolUse`: the delegation tool's name.
@@ -322,14 +308,9 @@ impl InstallIndex {
 const MAX_HOOK_PAYLOAD_BYTES: u64 = 64 * 1024;
 
 /// Reads at most `MAX_HOOK_PAYLOAD_BYTES + 1` bytes from `reader` and
-/// returns the buffer only if it did NOT exceed the cap -- the `+1`
-/// lets this DETECT an over-limit input (buffer length strictly
-/// greater than the cap) rather than silently truncating it into
-/// whatever partial data happens to still look valid to a later
-/// parser. Returns `None` on any read error (e.g. invalid UTF-8) or on
-/// exceeding the cap. Generic over `Read` so this is directly
-/// unit-testable against an in-memory byte slice, without touching the
-/// real process stdin `dispatch_telemetry_hook` reads from.
+/// returns the buffer only if it did not exceed the cap. The `+1` lets
+/// this detect an over-limit input rather than silently truncating it.
+/// Returns `None` on a read error or on exceeding the cap.
 fn read_capped<R: std::io::Read>(mut reader: R) -> Option<String> {
     let mut buf = String::new();
     let mut limited = (&mut reader).take(MAX_HOOK_PAYLOAD_BYTES + 1);
@@ -771,7 +752,6 @@ mod tests {
 
     // ── Payload size cap ─────────────────────────────────────────────
 
-    /// A payload well under the cap round-trips unchanged.
     #[test]
     fn read_capped_returns_input_under_the_cap() {
         let input = br#"{"sessionId":"abc123"}"#;
@@ -781,8 +761,6 @@ mod tests {
         );
     }
 
-    /// A payload of EXACTLY the cap size must still succeed -- the
-    /// off-by-one boundary the `+1`-byte `Take` exists to get right.
     #[test]
     fn read_capped_returns_input_at_exactly_the_cap() {
         let input = vec![b'a'; MAX_HOOK_PAYLOAD_BYTES as usize];
@@ -790,18 +768,12 @@ mod tests {
         assert_eq!(result.as_ref().map(String::len), Some(input.len()));
     }
 
-    /// Fix regression: an oversized payload (one byte over the cap)
-    /// must be rejected (`None`), not silently truncated into a
-    /// shorter string that might still happen to parse as JSON.
     #[test]
     fn read_capped_rejects_input_one_byte_over_the_cap() {
         let input = vec![b'a'; MAX_HOOK_PAYLOAD_BYTES as usize + 1];
         assert_eq!(read_capped(&input[..]), None);
     }
 
-    /// A much larger oversized payload must also be rejected, not just
-    /// the exact boundary case -- confirms the cap does not merely
-    /// happen to work at one specific size.
     #[test]
     fn read_capped_rejects_a_much_larger_oversized_payload() {
         let input = vec![b'a'; MAX_HOOK_PAYLOAD_BYTES as usize * 4];
