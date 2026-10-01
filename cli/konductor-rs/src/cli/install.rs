@@ -6,9 +6,9 @@
 // `install::manifest`; strategy registration in `install::registry`;
 // local-source installation in `install::kiro_cli`.
 //
-// `dispatch_install_with` resolves the DESTINATION (`--target <dir>`
+// `dispatch_install_with` resolves the destination (`--target <dir>`
 // or `$HOME`), picks the `InstallStrategy` matching `--harness`, and
-// runs its `install_from_local()` against the SOURCE (`--from
+// runs its `install_from_local()` against the source (`--from
 // <repo-root>`'s synth output). Without `--from`, it tries the remote
 // fallback chain instead (`install::remote_orchestrate`): GitHub
 // Release first, then `main`'s `dist/` tree if the release has
@@ -17,11 +17,6 @@
 // eligibility rule. A checksum-mismatch failure maps to
 // `EXIT_VERIFY_FAILED` (65); every other failure maps to
 // `EXIT_USAGE_ERROR` (64), never exit code 2.
-//
-// On success, `dispatch_install` re-reads the manifest
-// `install_from_local` just wrote and reports the destination,
-// per-content-type counts, the manifest path, and how many files it
-// skipped or overwrote.
 
 use std::path::{Path, PathBuf};
 
@@ -84,13 +79,9 @@ const EXIT_USAGE_ERROR: u8 = 64;
 const EXIT_VERIFY_FAILED: u8 = 65;
 
 /// Maps an `index::read_index()` error to its correct exit code --
-/// `EXIT_VERIFY_FAILED` (65) specifically for
-/// `index::IndexError::UnsupportedSchemaVersion`, `EXIT_USAGE_ERROR`
-/// (64) for every other variant. Same mapping `update.rs`/
-/// `uninstall.rs` already apply via their own `index_error_exit_code`
-/// -- ports it here so `install`'s `read_index()` call site stops
-/// unconditionally returning 64 for a corrupted-schema index that
-/// `update`/`uninstall` would report as 65 for the identical index.
+/// `EXIT_VERIFY_FAILED` (65) for `UnsupportedSchemaVersion`,
+/// `EXIT_USAGE_ERROR` (64) otherwise. Same mapping `update.rs`/
+/// `uninstall.rs` apply via their own `index_error_exit_code`.
 fn index_error_exit_code(err: &index::IndexError) -> u8 {
     match err {
         index::IndexError::UnsupportedSchemaVersion { .. } => EXIT_VERIFY_FAILED,
@@ -99,19 +90,11 @@ fn index_error_exit_code(err: &index::IndexError) -> u8 {
 }
 
 /// Maps an `InstallStrategy::install_from_local` failure to its
-/// correct exit code -- `EXIT_VERIFY_FAILED` (65) when the failure
-/// traces back to an unsupported manifest `schema_version` (e.g.
-/// re-installing over a target whose `.konductor/manifest` a newer
-/// binary wrote), `EXIT_USAGE_ERROR` (64) for every other failure.
-/// Mirrors `manifest_error_exit_code` in `update.rs`/`uninstall.rs`,
-/// which apply the identical split to a manifest read they perform
-/// themselves; this is the same split applied to the read
-/// `install_from_local` performs internally, surfaced here via
-/// `InstallError` so `install`'s call site no longer has to flatten
-/// every failure to 64 regardless of cause. `pub(super)` (visible
-/// throughout `cli`) so `update.rs`'s own `install_from_local` call
-/// sites -- which hit the identical failure -- can apply the same
-/// mapping rather than hand-rolling their own.
+/// correct exit code -- `EXIT_VERIFY_FAILED` (65) when it traces back
+/// to an unsupported manifest `schema_version`, `EXIT_USAGE_ERROR`
+/// (64) otherwise. Mirrors `manifest_error_exit_code` in `update.rs`/
+/// `uninstall.rs`. `pub(super)` so `update.rs`'s own
+/// `install_from_local` call sites can apply the same mapping.
 pub(super) fn install_error_exit_code(err: &InstallError) -> u8 {
     match err {
         InstallError::Manifest(manifest::ManifestError::UnsupportedSchemaVersion { .. }) => {
@@ -122,16 +105,10 @@ pub(super) fn install_error_exit_code(err: &InstallError) -> u8 {
 }
 
 /// Maps a `remote_orchestrate::RemoteOrchestrationError` to an exit
-/// code: `EXIT_VERIFY_FAILED` (65) for a checksum-verification failure
-/// (`RemoteInstallError::VerifyChecksum`), `EXIT_USAGE_ERROR` (64) for
-/// everything else. Mirrors `install_error_exit_code`'s existing split,
-/// applied to the remote path.
-///
-/// `pub(super)` (visible throughout `cli`) so `update.rs`'s own
-/// no-`--from` remote-install path -- which reuses this same
-/// `remote_orchestrate::install_from_remote_with_fallback` call and
-/// hits the identical error shape -- can apply the same mapping rather
-/// than duplicating this match.
+/// code: `EXIT_VERIFY_FAILED` (65) for a checksum-verification
+/// failure, `EXIT_USAGE_ERROR` (64) otherwise. `pub(super)` so
+/// `update.rs`'s no-`--from` remote-install path can apply the same
+/// mapping.
 pub(super) fn remote_orchestration_error_exit_code(
     err: &remote_orchestrate::RemoteOrchestrationError,
 ) -> u8 {
@@ -147,10 +124,8 @@ pub(super) fn remote_orchestration_error_exit_code(
 /// `remote_orchestrate::RemoteOrchestrationError`, following
 /// `install_error_code`'s `"install.<category>"` convention. Never
 /// this error's own `Display` text, which can embed a URL, filename,
-/// or filesystem path.
-///
-/// `pub(super)`: shared with `update.rs`'s no-`--from` path, same
-/// reason as `remote_orchestration_error_exit_code` above.
+/// or filesystem path. `pub(super)`: shared with `update.rs`'s
+/// no-`--from` path.
 pub(super) fn remote_orchestration_error_code(
     err: &remote_orchestrate::RemoteOrchestrationError,
 ) -> &'static str {
@@ -197,12 +172,7 @@ pub(super) fn remote_orchestration_error_code(
 /// Maps a `remote_orchestrate::MainBranchDistOrchestrationError` to an
 /// exit code -- the same checksum-vs-everything-else split
 /// `remote_orchestration_error_exit_code` applies to the release path.
-/// A `VerifyChecksum` failure here means the fetched tarball's hash
-/// doesn't match the real sidecar also fetched from `dist/` on the
-/// branch -- mapped the same way as the release path's own check.
-///
-/// `pub(super)`: shared with `update.rs`'s no-`--from` path, same
-/// reason as `remote_orchestration_error_exit_code` above.
+/// `pub(super)`: shared with `update.rs`'s no-`--from` path.
 pub(super) fn main_branch_dist_orchestration_error_exit_code(
     err: &remote_orchestrate::MainBranchDistOrchestrationError,
 ) -> u8 {
@@ -215,14 +185,10 @@ pub(super) fn main_branch_dist_orchestration_error_exit_code(
 }
 
 /// A stable, closed error-category string for a
-/// `remote_orchestrate::MainBranchDistOrchestrationError`, following
-/// `remote_orchestration_error_code`'s naming convention. Prefixed
-/// `install.main_branch_dist_*` so a `--json` consumer can always tell
-/// which of the two sources an error came from without inspecting the
-/// message text.
-///
-/// `pub(super)`: shared with `update.rs`'s no-`--from` path, same
-/// reason as `remote_orchestration_error_code` above.
+/// `remote_orchestrate::MainBranchDistOrchestrationError`. Prefixed
+/// `install.main_branch_dist_*` so a `--json` consumer can tell which
+/// of the two sources an error came from without inspecting message
+/// text. `pub(super)`: shared with `update.rs`'s no-`--from` path.
 pub(super) fn main_branch_dist_orchestration_error_code(
     err: &remote_orchestrate::MainBranchDistOrchestrationError,
 ) -> &'static str {
@@ -263,20 +229,14 @@ pub(super) fn main_branch_dist_orchestration_error_code(
     }
 }
 
-/// Maps a `remote_orchestrate::FallbackChainError` (both no-`--from`
-/// sources having been tried, or the release source having failed with
-/// something other than a fallback-eligible error) to an exit code.
-/// `ReleaseOnly` delegates to `remote_orchestration_error_exit_code` --
-/// the fallback was never attempted. `BothFailed` maps to
-/// `EXIT_VERIFY_FAILED` (65) if either underlying error is a
-/// checksum-verification failure, `EXIT_USAGE_ERROR` (64) otherwise.
-/// This is deliberate: a checksum failure is confirmed corruption,
-/// while an unreachable-source failure on the other side could just be
-/// transient, so when both sides fail the exit code reflects the more
-/// serious of the two rather than whichever happened to fail.
-///
-/// `pub(super)`: shared with `update.rs`'s no-`--from` path, same
-/// reason as `remote_orchestration_error_exit_code` above.
+/// Maps a `remote_orchestrate::FallbackChainError` to an exit code.
+/// `ReleaseOnly` delegates to `remote_orchestration_error_exit_code`.
+/// `BothFailed` maps to `EXIT_VERIFY_FAILED` (65) if either underlying
+/// error is a checksum-verification failure, `EXIT_USAGE_ERROR` (64)
+/// otherwise: a checksum failure is confirmed corruption, while an
+/// unreachable-source failure could just be transient, so the exit
+/// code reflects the more serious of the two. `pub(super)`: shared
+/// with `update.rs`'s no-`--from` path.
 pub(super) fn fallback_chain_error_exit_code(err: &remote_orchestrate::FallbackChainError) -> u8 {
     match err {
         remote_orchestrate::FallbackChainError::ReleaseOnly(release_error) => {
@@ -303,12 +263,10 @@ pub(super) fn fallback_chain_error_exit_code(err: &remote_orchestrate::FallbackC
 /// A stable, closed error-category string for a
 /// `remote_orchestrate::FallbackChainError`. `ReleaseOnly` reuses
 /// `remote_orchestration_error_code` unchanged. `BothFailed` gets its
-/// own dedicated code -- `install.remote_and_main_branch_dist_both_failed`
-/// -- since neither underlying category alone would tell a `--json`
-/// consumer that two independent sources were tried and both failed.
-///
-/// `pub(super)`: shared with `update.rs`'s no-`--from` path, same
-/// reason as `remote_orchestration_error_code` above.
+/// own code -- `install.remote_and_main_branch_dist_both_failed` --
+/// since neither underlying category alone would tell a `--json`
+/// consumer that two sources were tried and both failed. `pub(super)`:
+/// shared with `update.rs`'s no-`--from` path.
 pub(super) fn fallback_chain_error_code(
     err: &remote_orchestrate::FallbackChainError,
 ) -> &'static str {
@@ -323,31 +281,101 @@ pub(super) fn fallback_chain_error_code(
 }
 
 /// The single wording for "no `--from <repo-root>` was given" at the
-/// `InstallStrategy` trait level -- shared by every call site that
-/// needs this exact message, so a future wording change only touches
-/// this one constant.
+/// `InstallStrategy` trait level, shared by every call site that
+/// needs this exact message.
 ///
 /// `dispatch_install_with`'s own no-`--from` branch does not return
-/// this message: it tries the real remote fallback chain instead (see
-/// `install::remote_orchestrate::install_from_remote_with_fallback`
-/// for the current caveats). This constant still applies wherever a
-/// strategy's `install_from_local`/`would_fail_as_noop` is invoked
-/// directly with `from: None` (e.g. from `update.rs`, or tests), which
-/// has no remote-fetch fallback of its own.
+/// this message: it tries the real remote fallback chain instead.
+/// This constant still applies wherever a strategy's
+/// `install_from_local`/`would_fail_as_noop` is invoked directly with
+/// `from: None` (e.g. from `update.rs`, or tests), which has no
+/// remote-fetch fallback of its own.
 pub(super) const NO_REMOTE_RELEASE_MESSAGE: &str =
     "remote release installation is not yet available; pass --from <repo-root>";
 
+/// Records this target's telemetry opt-in, and warns when the global
+/// install's hooks predate per-install dedup. Best-effort: a failure
+/// here never unwinds an install that already succeeded. Clearing the
+/// record on `install --no-telemetry` happens in install's own dispatch,
+/// not here: `update --no-telemetry` shares this path but is a per-run
+/// override that keeps the target opted in.
+pub(super) fn finalize_install_telemetry(
+    target_dir: &Path,
+    repo_root: &Path,
+    harness: &str,
+    installed_at: &str,
+    no_telemetry: bool,
+) {
+    if !no_telemetry {
+        if let Err(err) =
+            crate::cli::telemetry::write_install_info(target_dir, repo_root, harness, installed_at)
+        {
+            eprintln!(
+                "konductor install: warning: could not write install-info.json at {}: {err}",
+                target_dir.display()
+            );
+        }
+    }
+    let home = std::env::var_os("HOME").map(PathBuf::from);
+    if let Some(warning) = home
+        .as_deref()
+        .and_then(|home| outdated_global_hook_warning(home, target_dir, no_telemetry))
+    {
+        eprintln!("konductor install: warning: {warning}");
+    }
+}
+
+/// Hook files an install writes into `$HOME` that the harness also loads
+/// for sessions in any project.
+const GLOBAL_TELEMETRY_HOOK_FILES: [&str; 2] = [
+    ".kiro/hooks/konductor-telemetry-hooks.json",
+    ".claude/settings.json",
+];
+
+/// A warning when `home` holds telemetry hooks written before hooks
+/// carried `--install-root`. Those fire in every project and can't defer
+/// to a project install, so they double-count its agents, or report
+/// them after the project opted out. `None` for the global install
+/// itself, or when every global hook is current.
+fn outdated_global_hook_warning(
+    home: &Path,
+    target_dir: &Path,
+    no_telemetry: bool,
+) -> Option<String> {
+    let canonical =
+        |path: &Path| std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+    if canonical(home) == canonical(target_dir) {
+        return None;
+    }
+    let outdated = GLOBAL_TELEMETRY_HOOK_FILES.iter().any(|relative| {
+        std::fs::read_to_string(home.join(relative)).is_ok_and(|text| {
+            text.lines()
+                .any(|line| line.contains("__telemetry-hook ") && !line.contains("--install-root"))
+        })
+    });
+    if !outdated {
+        return None;
+    }
+    let effect = if no_telemetry {
+        "can still report this project's agents despite --no-telemetry"
+    } else {
+        "count this project's agent invocations a second time"
+    };
+    Some(format!(
+        "the global install in {} has telemetry hooks from an older Konductor version, which \
+         {effect}. Run `konductor update --target {}` to fix.",
+        home.display(),
+        home.display()
+    ))
+}
+
 /// What `InstallStrategy::install_from_local` can fail with.
-/// `Manifest` preserves the structured `manifest::ManifestError` a
-/// strategy encountered while reading a target's existing manifest
-/// (the read `install_from_local` performs before writing anything, to
-/// classify provenance) -- specifically so a caller can distinguish an
-/// unsupported `schema_version` from every other failure and map it to
-/// `EXIT_VERIFY_FAILED` (65) instead of the generic `EXIT_USAGE_ERROR`
-/// (64). `Message` covers every other failure (a missing `--from`, a
-/// source with nothing to install, an I/O error while copying), where
-/// no caller needs anything more specific than the human-readable
-/// text.
+/// `Manifest` preserves the structured `manifest::ManifestError` so a
+/// caller can distinguish an unsupported `schema_version` and map it
+/// to `EXIT_VERIFY_FAILED` (65) instead of the generic
+/// `EXIT_USAGE_ERROR` (64). `Message` covers every other failure,
+/// where no caller needs anything more specific than the
+/// human-readable text.
 #[derive(Debug)]
 pub enum InstallError {
     Manifest(manifest::ManifestError),
@@ -386,13 +414,12 @@ impl From<String> for InstallError {
     }
 }
 
-/// A stable, closed error-category string -- never
-/// this error's own `Display` text, which routinely embeds a local
-/// filesystem path. `InstallError::Message` has no structured variant
-/// of its own (it wraps arbitrary free text from `install_from_local`'s
-/// several distinct failure modes), so every `Message` collapses onto
-/// one generic code -- coarser than `ManifestError`'s own per-variant
-/// codes, but still a closed, non-message-derived string.
+/// A stable, closed error-category string, never this error's own
+/// `Display` text, which routinely embeds a local filesystem path.
+/// `InstallError::Message` has no structured variant of its own, so
+/// every `Message` collapses onto one generic code -- coarser than
+/// `ManifestError`'s own per-variant codes, but still closed and
+/// non-message-derived.
 fn install_error_code(err: &InstallError) -> &'static str {
     match err {
         InstallError::Manifest(manifest::ManifestError::UnsupportedSchemaVersion { .. }) => {
@@ -413,11 +440,9 @@ pub trait InstallStrategy: Sync {
     /// The harness directory this strategy reads synthed output from
     /// under `<from>/dist/<harness_dir>/` -- e.g. `kiro-cli-v2` for
     /// `KiroCliInstallStrategy`, `claude` for `ClaudeInstallStrategy`.
-    /// Distinct from `name()` (e.g. `"claude"`): this is the
-    /// on-disk directory a synth transformer writes to, which need not
-    /// match the strategy's own identifier. Lets strategy-agnostic
-    /// reporting code (`count_staged_sops`) read the right directory
-    /// for whichever strategy actually ran.
+    /// Distinct from `name()`: this is the on-disk directory a synth
+    /// transformer writes to, which need not match the strategy's own
+    /// identifier.
     fn harness_dir(&self) -> &'static str;
 
     /// Whether this strategy applies to the given install target
@@ -425,30 +450,24 @@ pub trait InstallStrategy: Sync {
     /// (`runtime::detect_runtimes`).
     ///
     /// `#[allow(dead_code)]`: strategy selection is now driven solely by
-    /// `--harness` (`dispatch_install_with` matches on `harness_dir()`),
-    /// so no production path calls this. Kept because each impl's own
-    /// unit tests still pin its behavior, and a future `--auto`-detect
-    /// mode or `doctor`-style diagnostic may want to reuse it.
+    /// `--harness`, so no production path calls this. Kept because each
+    /// impl's own unit tests still pin its behavior.
     #[allow(dead_code)]
     fn matches(&self, target_dir: &Path) -> bool;
 
     /// Installs from `from`'s resolved synth output (`--from
     /// <repo-root>`). `from` is `None` when the user omitted `--from`
-    /// -- a strategy must fail clearly in that case, not silently
-    /// succeed. `installed_at` is the one timestamp string the caller
-    /// already computed for this run's index entry; the strategy must
-    /// write it verbatim into the manifest's own `installed_at` so the
-    /// index and manifest always agree on the same instant. `no_telemetry`
-    /// is `install`'s `--no-telemetry` flag (always `false` from
-    /// `update.rs`, which has no such flag); a strategy must thread it
-    /// through to every phase that can fire a telemetry side effect
-    /// (today only `AgentInstallPhase`'s Claude Code hook), so the
+    /// -- a strategy must fail clearly in that case. `installed_at` is
+    /// the timestamp string the caller already computed for this run's
+    /// index entry; the strategy must write it verbatim into the
+    /// manifest's own `installed_at` so the index and manifest agree
+    /// on the same instant. `no_telemetry` must be threaded through to
+    /// every step that can fire a telemetry side effect, so the
     /// opt-out covers the whole run, not just the top-level report
     /// calls. Returns `Ok(())` on success, or an `InstallError` on
     /// failure -- `InstallError::Manifest` when the failure came from
-    /// reading an existing target manifest (so an unsupported
-    /// `schema_version` can map to `EXIT_VERIFY_FAILED` instead of the
-    /// generic `EXIT_USAGE_ERROR`), `InstallError::Message` otherwise.
+    /// reading an existing target manifest, `InstallError::Message`
+    /// otherwise.
     fn install_from_local(
         &self,
         target_dir: &Path,
@@ -464,31 +483,22 @@ pub trait InstallStrategy: Sync {
     /// message `install_from_local` would return in that case, or
     /// `None` if the run may actually touch the filesystem.
     ///
-    /// Callers (`install`'s `dispatch_install_with`, `update`'s
-    /// `update_one_target`) run this BEFORE writing an `InProgress`
-    /// index entry, so a no-op failure never mutates a target's index
-    /// -- mirroring the existing unregistered-strategy check in
-    /// `update.rs`, which runs before the same write-ahead for the same
-    /// reason. This performs no writes itself, and every check it
-    /// makes must stay in lockstep with `install_from_local`'s own
-    /// no-op conditions -- a mismatch here would only affect when the
-    /// index is mutated, never what `install_from_local` itself does.
+    /// Callers run this before writing an `InProgress` index entry, so
+    /// a no-op failure never mutates a target's index. This performs
+    /// no writes itself, and every check it makes must stay in
+    /// lockstep with `install_from_local`'s own no-op conditions.
     fn would_fail_as_noop(&self, target_dir: &Path, from: Option<&str>) -> Option<String>;
 }
 
-/// Resolves the install DESTINATION directory: `--target <dir>` if
+/// Resolves the install destination directory: `--target <dir>` if
 /// given, else `$HOME`. `--target .` reproduces the pre-`--target`
 /// cwd-as-destination behavior exactly. Fails clearly (rather than
 /// panicking) when no `--target` was given and `HOME` is unset or
-/// empty -- a sandboxed/misconfigured environment with no resolvable
-/// home directory has no sane implicit destination.
+/// empty.
 ///
-/// ── Shared with `doctor` ────────────────────────────────────────────
-/// `doctor.rs` imports and calls this same function directly for its
-/// own `--target`/`$HOME` destination resolution (see this module's
-/// re-export at the top of `doctor.rs`) rather than duplicating the
-/// precedence logic -- there is exactly one implementation to keep in
-/// sync.
+/// Shared with `doctor.rs`, which imports and calls this same function
+/// directly for its own destination resolution rather than duplicating
+/// the precedence logic.
 pub(crate) fn resolve_destination(target: Option<&str>) -> Result<PathBuf, String> {
     if let Some(dir) = target {
         return Ok(PathBuf::from(dir));
@@ -504,17 +514,12 @@ pub(crate) fn resolve_destination(target: Option<&str>) -> Result<PathBuf, Strin
 }
 
 /// Reports the `--harness <name>` scope gap: `name` is not the
-/// `harness_dir()` of any registered `InstallStrategy`
-/// (`registry::STRATEGIES`). `konductor synth` produces output for every
-/// registered `synth::registry::TRANSFORMERS` entry, and `install` today
-/// consumes all three of them (`KiroCliInstallStrategy`,
-/// `KiroCliV3InstallStrategy`, and `ClaudeInstallStrategy`) -- but a
-/// future synth harness (e.g. `kiro-ide` or `codex`, both reserved in
-/// `synth::registry`'s own table) can still land with no install-side
-/// consumer of its own. Distinguishes that case (a real, synthed
-/// harness with no install-side consumer) from a genuinely unknown
-/// string, so the message tells the caller which situation they hit
-/// rather than a generic "invalid choice".
+/// `harness_dir()` of any registered `InstallStrategy`. `konductor
+/// synth` produces output for every registered transformer, but
+/// `install` doesn't yet consume all of them, so a future synth
+/// harness can land with no install-side consumer. Distinguishes that
+/// case from a genuinely unknown string, so the message tells the
+/// caller which situation they hit.
 fn report_no_strategy_for_harness(
     destination: &Path,
     harness_name: &str,
@@ -558,15 +563,13 @@ fn report_no_strategy_for_harness(
 /// Projects the `strategies` names an install-index write-ahead entry
 /// should list for `incoming` being installed against a target whose
 /// manifest, before this run, is `existing` (`None` for a fresh
-/// target). This is a projection only, computed on a throwaway clone
-/// -- it never writes anything -- but it reuses the real
-/// `Manifest::upsert`/`remove` methods and `manifest`'s own
-/// `other_kiro_variant_tracked` override-selection helper, so the
-/// index's write-ahead display can't drift from what
-/// `manifest::upsert_strategy` actually decides once
-/// `install_from_local` reaches its real write. The final,
-/// authoritative index write re-reads the real manifest instead of
-/// relying on this projection.
+/// target). This is a projection only, computed on a throwaway clone --
+/// it never writes anything -- but it reuses the real
+/// `Manifest::upsert`/`remove` methods so the index's write-ahead
+/// display can't drift from what `manifest::upsert_strategy` actually
+/// decides once `install_from_local` reaches its real write. The
+/// final, authoritative index write re-reads the real manifest instead
+/// of relying on this projection.
 fn projected_strategy_names(existing: Option<&manifest::Manifest>, incoming: &str) -> Vec<String> {
     let mut projected = existing.cloned().unwrap_or_else(manifest::Manifest::empty);
     if let Some(other_name) = manifest::other_kiro_variant_tracked(&projected.strategies, incoming)
@@ -591,26 +594,20 @@ fn projected_strategy_names(existing: Option<&manifest::Manifest>, incoming: &st
 }
 
 /// Resolves the `strategies` the finalize index write should record,
+/// Resolves the `strategies` the finalize index write should record,
 /// given the manifest read attempted at that point (`manifest_read`)
 /// and the write-ahead projection already computed earlier in the
-/// same install run (`write_ahead`, the list `projected_strategy_names`
-/// produced).
+/// same install run (`write_ahead`).
 ///
 /// A successful, present read is authoritative: `install_from_local`
 /// has already written the real manifest by this point, so its
-/// `strategy_names()` is the definitive post-install list, reflecting
-/// whatever override/insert decision `manifest::upsert_strategy`
-/// actually made rather than a pre-computed guess. A failed or missing
-/// read falls back to `write_ahead` -- never a single-element vec
-/// naming only the strategy just installed, which would silently drop
-/// any other coexisting strategy's name from the index even though its
-/// manifest slot is still on disk.
+/// `strategy_names()` is the definitive post-install list. A failed or
+/// missing read falls back to `write_ahead` -- never a single-element
+/// vec naming only the strategy just installed, which would silently
+/// drop any other coexisting strategy's name from the index.
 ///
 /// `pub(super)`: `update.rs`'s `run_update_one_target` calls this same
-/// function for its own finalize index write, closing the identical
-/// staleness gap on the update side -- `update` used to always reuse a
-/// snapshot captured before `install_from_local` ran, never re-reading
-/// the manifest fresh at finalize time the way this function does.
+/// function for its own finalize index write.
 pub(super) fn resolve_final_strategies(
     manifest_read: Result<Option<manifest::Manifest>, manifest::ManifestError>,
     write_ahead: &[String],
@@ -625,20 +622,17 @@ pub(super) fn resolve_final_strategies(
 /// `konductor install --harness <name> [--from ...] [--target ...]
 /// [--link-bin]`: resolves the install destination
 /// (`resolve_destination`), selects the registered `InstallStrategy`
-/// whose `harness_dir()` matches the REQUIRED `--harness` argument, and
-/// installs from `from` -- the SOURCE repo root a strategy reads
+/// whose `harness_dir()` matches the required `--harness` argument,
+/// and installs from `from` -- the source repo root a strategy reads
 /// synthed agent files from. Without `--from`, it tries the real
 /// remote fallback chain instead (GitHub Release, then `main`'s
-/// `dist/` tree -- see `remote_orchestrate::install_from_remote_with_fallback`).
+/// `dist/` tree).
 ///
 /// `link_bin`, when true and the install succeeds, also symlinks the
 /// running `konductor` binary to `$HOME/.local/bin/konductor` via
-/// `bin_link::ensure_bin_link` (see that module's own doc for the
-/// design). Its outcome is folded into the same success report
-/// `report_install_success` prints, never a second `--json` document,
-/// and it never flips an otherwise-successful install's exit code --
-/// by the time it runs, the actual install `--target` asked for has
-/// already succeeded.
+/// `bin_link::ensure_bin_link`. Its outcome is folded into the same
+/// success report `report_install_success` prints, and it never flips
+/// an otherwise-successful install's exit code.
 ///
 /// `verbose`/`json` are `cli.verbose`/`cli.json`: `verbose` appends a
 /// per-file detail listing after the summary line; `json` replaces the
@@ -661,15 +655,9 @@ pub fn dispatch_install_with(
     json: bool,
     color: ColorMode,
 ) -> u8 {
-    // Cloned for the closure below: `release_version` is ALSO passed
-    // by value as this call's own 7th positional argument (read by
-    // `dispatch_install_with_remote_installer`'s own skip-if-unchanged
-    // check), and the closure captures it too (to thread through to
-    // `install_from_remote_with_fallback`) -- both need their own
-    // owned copy, since the positional argument and the closure
-    // argument are evaluated as part of the SAME call expression, with
-    // no ordering guarantee that would let one borrow from the other
-    // after a move.
+    // Cloned for the closure below: `release_version` is also passed
+    // by value as this call's own positional argument and the closure
+    // captures it too, so both need their own owned copy.
     let release_version_for_remote_installer = release_version.clone();
     dispatch_install_with_remote_installer(
         from,
@@ -687,19 +675,13 @@ pub fn dispatch_install_with(
         // hardcoded ONLY at this one call site.
         //
         // Tries the GitHub-release path first, falling back to
-        // `main`'s `dist/` tree on a fallback-eligible release failure
-        // -- see `remote_orchestrate::install_from_remote_with_fallback`
-        // for the exact selection rule. `release_version` is passed
-        // through as-is: `Some(tag)` fetches that specific release via
-        // `releases/tags/{tag}`, `None` fetches latest, same
-        // `Some`/`None` dispatch `self_update_cli` already uses. A
-        // by-tag fetch's fallback-eligibility is unaffected by this
-        // change -- `install_from_remote_with_fallback_using`'s
-        // eligibility rule already keys off the returned
-        // `GithubFetchError` variant, and `TagNotFound` is not one of
-        // the eligible variants (see that rule's own doc comment): a
-        // requested tag that doesn't exist must surface its own clear
-        // error, never silently fall back to whatever's on `main`.
+        // `main`'s `dist/` tree on a fallback-eligible release failure.
+        // `release_version` passes through as-is: `Some(tag)` fetches
+        // that specific release, `None` fetches latest. A by-tag
+        // fetch's fallback-eligibility is unaffected: `TagNotFound` is
+        // not a fallback-eligible variant, so a requested tag that
+        // doesn't exist surfaces its own clear error rather than
+        // silently falling back to `main`.
         move |strategy, destination, installed_at, no_telemetry| {
             remote_orchestrate::install_from_remote_with_fallback(
                 "aws-solutions",
@@ -723,30 +705,18 @@ pub fn dispatch_install_with(
 /// fails right away with a fixed, fake `FallbackChainError` -- no real
 /// network call -- exercising every other code path unchanged.
 ///
-/// `force` bypasses content-version skip-if-unchanged (see
-/// `content_version::should_skip_write`) -- checked only on the
-/// `--from` branch today: a `--from <repo-root>`'s `dist/VERSION` is
-/// directly readable before any network/unpack work happens, so the
-/// skip can be decided up front. The no-`--from` remote path installs
-/// through `remote_installer`'s own atomic fetch-unpack-install
-/// sequence, which does not yet expose a pre-install hook to compare
-/// the fetched `dist/VERSION` before `install_from_local` runs inside
-/// it -- extending version-skip to that path is a larger, separate
-/// change to `remote_orchestrate`/`remote`'s own internals.
+/// `force` bypasses content-version skip-if-unchanged, checked only on
+/// the `--from` branch today: a `--from <repo-root>`'s `dist/VERSION`
+/// is directly readable before any network/unpack work happens, so
+/// the skip can be decided up front. The no-`--from` remote path
+/// doesn't yet expose a pre-install hook for this.
 ///
 /// `release_version` is mutually exclusive with `--from` at the clap
-/// level (`--version <v>` `conflicts_with("from")`), so it is only
-/// ever `Some(..)` here on the no-`--from` (remote) branch. Neither
-/// `github.rs` nor `remote_orchestrate.rs` exposes a by-tag release
-/// fetch today -- every fetch helper only reaches `releases/latest` --
-/// so wiring a real by-version fetch through would be a separate,
-/// larger change to that layer. Silently ignoring the flag would leave
-/// `install --version <v>` installing latest with no indication to the
-/// user, which is a functional trap for an explicit version pin.
-/// Instead, `release_version.is_some()` short-circuits with an
-/// explicit "not yet supported" usage error before any network call,
-/// so the caller finds out immediately rather than getting a silent
-/// latest-install.
+/// level, so it's only ever `Some(..)` here on the no-`--from`
+/// (remote) branch. Neither `github.rs` nor `remote_orchestrate.rs`
+/// exposes a by-tag release fetch today, so `release_version.is_some()`
+/// short-circuits with an explicit "not yet supported" usage error
+/// before any network call, rather than silently installing latest.
 #[allow(clippy::too_many_arguments)]
 fn dispatch_install_with_remote_installer(
     from: Option<String>,
@@ -798,12 +768,10 @@ fn dispatch_install_with_remote_installer(
     );
 
     // Selection is by exact `harness_dir()` match against the required
-    // `--harness` value -- never by asking a strategy's own `matches()`
+    // `--harness` value, never by asking a strategy's own `matches()`
     // to inspect the destination. That avoids a target carrying both
     // `.kiro` and `.claude` markers being silently resolved by
-    // registration order (see `registry.rs`). `matches()`/
-    // `detect_runtimes()` are still used elsewhere (`kiro_cli/plan.rs`,
-    // `doctor.rs`), just not for selection here.
+    // registration order.
     let Some(strategy) = registry::STRATEGIES
         .iter()
         .find(|strategy| strategy.harness_dir() == harness)
@@ -820,30 +788,17 @@ fn dispatch_install_with_remote_installer(
     );
 
     // A hand-edited or otherwise corrupted index can carry the same
-    // target_dir more than once. write_index's upsert (find-first,
-    // replace-in-place) only fixes a duplicate that happens to match
-    // THIS install's own canonical_target_dir, and even then only
-    // replaces the first occurrence, leaving any further duplicate
-    // stale rather than removing it -- so install is not exempt from
-    // this guard; check and refuse exactly like update/uninstall do.
-    // Runs BEFORE create_dir_all below: this validation reads the
-    // whole index and does not depend on canonical_target_dir or the
-    // destination existing at all, so -- like the would_fail_as_noop
-    // check above it -- a rejection here must never leave a filesystem
-    // side effect (an empty target directory) from a run that did no
-    // real work.
+    // target_dir more than once; write_index's upsert only fixes a
+    // duplicate matching THIS install's own canonical_target_dir, and
+    // even then only the first occurrence. Check and refuse exactly
+    // like update/uninstall do.
     //
-    // MUST run before the `if from.is_some() { .. } else { .. }` block
-    // below: that block's no-`--from` branch has its own early
-    // `return 0` on a content-version skip-if-unchanged match (see
-    // `report_already_at_version`'s call site further down), and that
-    // early return must never bypass this validation -- a corrupted or
-    // unsupported-schema-version index must be rejected with
-    // `EXIT_USAGE_ERROR`/`EXIT_VERIFY_FAILED` on EVERY install
-    // invocation, not only the ones where the version happens to
-    // mismatch (previously flagged by AutoSDE: running this guard
-    // after the skip branch let index corruption silently pass through
-    // whenever the target was already at the matching version).
+    // Must run before create_dir_all below and before the
+    // `if from.is_some() { .. } else { .. }` block's own early return
+    // on a content-version skip-if-unchanged match: a corrupted or
+    // unsupported-schema-version index must be rejected on every
+    // install invocation, not only when the version happens to
+    // mismatch (previously flagged by AutoSDE).
     match index::read_index() {
         Ok(Some(index)) => {
             let duplicates = index::duplicate_target_dirs(&index.installs);
@@ -897,15 +852,12 @@ fn dispatch_install_with_remote_installer(
     // A missing `--from` has no local source to check with
     // `would_fail_as_noop` -- the no-`--from` case tries the real
     // remote install below instead, sharing every guard from this
-    // point on with the `--from` path, so a remote-sourced install
-    // gets tracked in `~/.konductor/installs` exactly like a local one.
+    // point on with the `--from` path.
     if from.is_some() {
         // Pure, side-effect-free check for a no-op usage failure (missing
         // --from, or a source with nothing to install) -- must run BEFORE
         // any index write below, so a run that never touches the
-        // filesystem never mutates a target's index entry either. Mirrors
-        // update.rs's unregistered-strategy check, which runs before its
-        // own write-ahead for the identical reason.
+        // filesystem never mutates a target's index entry either.
         if let Some(message) = strategy.would_fail_as_noop(&destination, from.as_deref()) {
             super::report::report_error(
                 "install",
@@ -922,83 +874,52 @@ fn dispatch_install_with_remote_installer(
 
         // No content-version skip-if-unchanged check on this branch:
         // `--from` ALWAYS overwrites unconditionally, regardless of
-        // `--force` -- deliberate and permanent, since a local
-        // checkout has no reliable version signal to compare against
-        // (see `content_version::compare_incoming_version`'s own doc
-        // comment, which states this rule in the one place it's
-        // enforced). This is not a gap to be closed later by adding a
-        // version-comparison call here.
+        // `--force` -- a local checkout has no reliable version signal
+        // to compare against (see `content_version::compare_incoming_version`'s
+        // own doc comment).
     } else {
-        // `--version <v>` on the no-`--from` (remote) path: fetches
-        // that SPECIFIC release's metadata via
-        // `github::fetch_release_artifact_and_mcp_asset_by_tag` (`GET
-        // .../releases/tags/{tag}`), reusing the identical
-        // token-attachment/asset-resolution machinery the latest-release
-        // path already proves out. Threaded into `remote_installer`
-        // below as a captured closure variable -- no change to
-        // `remote_installer`'s own call signature was needed for this.
+        // `--version <v>` on the no-`--from` (remote) path fetches that
+        // specific release's metadata via
+        // `github::fetch_release_artifact_and_mcp_asset_by_tag`, reusing
+        // the same token-attachment/asset-resolution machinery the
+        // latest-release path already proves out. Threaded into
+        // `remote_installer` below as a captured closure variable.
 
         // Content-version skip-if-unchanged applies on the no-`--from`
         // (remote) path: compares the incoming version (an explicitly
         // requested `--version <v>` tag, or "latest" via a metadata-only
         // pre-fetch) against this target's recorded `agent_version`.
-        // Only the `--version <v>` branch skips the network fetch
-        // entirely -- the incoming tag is already known without any
-        // call, so a match skips straight past `fetch_latest_release_tag`
-        // too. On the `None` ("latest") branch the pre-fetch itself IS
-        // the network call the skip decision depends on, so a match
-        // there only avoids the LARGER download/re-copy that would
-        // otherwise follow -- see the "recorded version is read BEFORE
-        // the pre-fetch" paragraph below for why that metadata pre-fetch
-        // still only runs when there is something recorded to compare
-        // it against. `force` bypasses the skip either way.
-        // `use_github_token` is threaded through here so this pre-fetch authenticates exactly
-        // like the real install below it -- an unauthenticated pre-fetch
-        // would silently fail against a private repo for token users
-        // (skip-if-unchanged never firing) and would otherwise burn a
-        // request against GitHub's unauthenticated rate limit even when
-        // the caller supplied a token.
+        // The `--version <v>` branch skips the network fetch entirely;
+        // on the `None` ("latest") branch the pre-fetch itself is the
+        // network call the skip decision depends on, so a match there
+        // only avoids the larger download/re-copy that follows. `force`
+        // bypasses the skip either way. `use_github_token` authenticates
+        // this pre-fetch exactly like the real install below it.
         //
         // `install-info.json` holds exactly one `agent_version` +
-        // `harness` pair per target (see `write_install_info`'s own doc
-        // comment: concurrent installs to the same target with
-        // different harnesses each overwrite it independently), while a
-        // single target can legitimately track 2+ harnesses at once in
-        // its manifest (`manifest::upsert_strategy`'s own coexistence
-        // support). So a version match recorded for a DIFFERENT harness
-        // than the one this run requested is not evidence that THIS
-        // harness's content is already installed -- it only proves some
-        // harness was, at some point. Gating the skip on
-        // `record.harness == harness` keeps `install --harness B` on a
-        // target that already recorded a matching version for harness A
-        // from wrongly skipping harness B's install entirely.
+        // `harness` pair per target, while a single target can
+        // legitimately track 2+ harnesses at once in its manifest. So a
+        // version match recorded for a DIFFERENT harness than the one
+        // this run requested doesn't prove THIS harness's content is
+        // already installed. Gating the skip on `record.harness ==
+        // harness` keeps `install --harness B` on a target that already
+        // recorded a matching version for harness A from wrongly
+        // skipping harness B's install entirely.
         //
-        // The recorded version is read BEFORE the pre-fetch, not after:
-        // on a first-time install (no `install-info.json` yet) or a
-        // different-harness target, there is nothing to compare the
-        // fetched tag against, so the pre-fetch would be entirely
-        // wasted -- `install_from_remote_with_fallback` below fetches
-        // release metadata again regardless of whether this check ran.
-        // Reading the recorded version first and skipping the pre-fetch
-        // entirely when none is comparable halves the GitHub metadata
-        // requests for exactly the case (first install, or a new
-        // harness at an existing target) where this check can never
-        // fire anyway.
+        // The recorded version is read BEFORE the pre-fetch: on a
+        // first-time install or a different-harness target there is
+        // nothing to compare the fetched tag against, so the pre-fetch
+        // would be wasted. Reading the recorded version first and
+        // skipping the pre-fetch when none is comparable halves the
+        // GitHub metadata requests for that case.
         //
         // `--version <v>` composes with this check by comparing against
-        // the EXPLICITLY REQUESTED version instead of "latest": when
-        // `release_version` is `Some(v)`, the incoming version is
-        // already known without any network call (it's the tag the
-        // caller asked for), so no pre-fetch happens on this branch at
-        // all -- only the `None` ("--version` not given, compare against
-        // whatever is actually latest") branch below ever calls
-        // `fetch_latest_release_tag`. This is what makes `install
-        // --version <v>` skip when the target is already at EXACTLY
-        // that requested version, rather than skipping (or not) based on
-        // whatever "latest" happens to be -- a target pinned to an older
-        // `--version <v>` that also happens to match "latest" must still
-        // skip correctly, and a target NOT at the requested version must
-        // never skip merely because it happens to already be at latest.
+        // the explicitly requested version instead of "latest": when
+        // `release_version` is `Some(v)`, no pre-fetch happens at all --
+        // only the `None` branch ever calls `fetch_latest_release_tag`.
+        // This is what makes `install --version <v>` skip only when the
+        // target is already at exactly that requested version, not
+        // merely because it happens to also match "latest".
         let recorded_for_this_harness = crate::cli::telemetry::read_install_info(&destination)
             .and_then(|record| (record.harness == harness).then_some(record.agent_version))
             .flatten();
@@ -1016,33 +937,16 @@ fn dispatch_install_with_remote_installer(
                     content_version::compare_known_versions(incoming_version, &recorded);
                 if content_version::should_skip_write(&comparison, force) {
                     let version = comparison.matched_version().unwrap_or("").to_string();
-                    // The index write-ahead below (registering this
-                    // target in `~/.konductor/installs`) must still run
-                    // on the skip path, same as it would on the ordinary
-                    // install path a few hundred lines down -- this
-                    // `return 0` happens BEFORE that write-ahead
-                    // (`canonical_target_dir`/`index::write_index` are
-                    // computed later in this function, past this early
-                    // return), so without this a skip never registers
-                    // the target at all. That only bites in a recovery
-                    // scenario -- a fresh install has no recorded
-                    // version yet, so it can never take this skip branch
-                    // in the first place -- but when it does bite, it's
-                    // the exact case `index_status`/the duplicate-index
-                    // guard already exist to catch: an index entry lost
-                    // or missing while `install-info.json` still records
-                    // a matching version leaves this target invisible to
-                    // `update --all`/`uninstall --all`/`doctor --all`
-                    // until `--force` is passed, with nothing in the
-                    // output pointing there. Written directly to
-                    // `Complete` (never `InProgress`) -- no manifest
-                    // write happens on this path, so there is nothing
-                    // for this entry to bracket. A write failure here is
-                    // non-fatal (exit 0 either way) and reported the
-                    // same way the ordinary path's OWN finalize-index
-                    // failure already is: an `eprintln!` warning plus
-                    // `report_cli_error`, never a harder failure --
-                    // the skip decision itself already succeeded.
+                    // The index write-ahead below must still run on
+                    // the skip path, same as the ordinary install path
+                    // further down -- this early return happens
+                    // before canonical_target_dir/write_index are
+                    // computed, so without this a skip never
+                    // registers the target. Written directly to
+                    // `Complete` since no manifest write happens on
+                    // this path. A write failure here is non-fatal
+                    // (exit 0 either way), reported the same way the
+                    // ordinary path's own finalize-index failure is.
                     if let Ok(canonical_target_dir) = index::canonicalize_target_dir(&destination) {
                         let write_ahead_strategies = projected_strategy_names(
                             manifest::read_manifest(&destination)
@@ -1071,26 +975,17 @@ fn dispatch_install_with_remote_installer(
                         }
                     }
                     // `--link-bin` must still take effect here: the
-                    // content write is skipped, but the caller explicitly
-                    // asked for the bin symlink, and skipping it too would
-                    // silently ignore that request while reporting a
-                    // successful "nothing to do" outcome (previously
-                    // flagged by AutoSDE). Canonicalizes `destination` and
-                    // reads a fresh timestamp locally (rather than reusing
-                    // the ones computed further down for the real-install
-                    // path, which this early return never reaches) --
-                    // `ensure_bin_link` only needs a valid target-dir
-                    // string and a timestamp to record, neither of which
-                    // depends on whether a content write actually
-                    // happened. A canonicalization failure here is folded
-                    // into the SAME `Result` shape `link_bin_report_line`/
-                    // `merge_link_bin_json` already expect, as
-                    // `BinLinkError::UnresolvableHome` -- not a precise
-                    // description of THIS failure, but `destination` was
-                    // already successfully resolved earlier in this same
-                    // function, so canonicalizing it again failing here
-                    // is not expected to occur in practice; this exists
-                    // so a `--link-bin` request never fails silently.
+                    // content write is skipped, but the caller
+                    // explicitly asked for the bin symlink, and
+                    // skipping it too would silently ignore that
+                    // request (previously flagged by AutoSDE). A
+                    // canonicalization failure here is folded into the
+                    // same `Result` shape as `BinLinkError::UnresolvableHome`
+                    // -- not a precise description of this failure, but
+                    // `destination` already resolved successfully
+                    // earlier, so this isn't expected to occur in
+                    // practice; it exists so `--link-bin` never fails
+                    // silently.
                     let link_bin_result = if link_bin {
                         Some(
                             index::canonicalize_target_dir(&destination)
@@ -1116,49 +1011,35 @@ fn dispatch_install_with_remote_installer(
                 }
             }
             // A failed version-check fetch (network error, etc.) never
-            // blocks the install itself -- it simply proceeds to the
-            // real fetch-and-install attempt below, which will surface
-            // its own, more specific error if that fetch also fails.
+            // blocks the install itself -- it proceeds to the real
+            // fetch-and-install attempt below, which surfaces its own
+            // error if that fetch also fails.
         }
     }
 
     // Two behaviors are selected inside `manifest::upsert_strategy`
     // itself, once `install_from_local` reaches the point of actually
-    // writing the manifest:
-    //
-    // - `strategy.name()` is a `KIRO_VARIANT_FAMILY` member and the
-    //   target already tracks the other family member:
-    //   `upsert_strategy` warns, then overwrites -- both variants write
-    //   every destination path identically, so this is a takeover, not
-    //   a coexistence question.
-    // - Otherwise (e.g. installing `claude` alongside an
-    //   already-tracked Kiro variant): `strategy.name()` gets its own
-    //   independent slot, since `claude` and a Kiro variant share no
-    //   destination path.
-    //
-    // No pre-check is needed here -- both cases are handled uniformly
-    // by `upsert_strategy`'s own read-modify-write.
+    // writing the manifest: a `KIRO_VARIANT_FAMILY` takeover (warn,
+    // then overwrite, since both variants write identical paths), or
+    // an independent slot for an unrelated strategy (e.g. `claude`
+    // alongside a tracked Kiro variant). No pre-check is needed here --
+    // both cases are handled uniformly by `upsert_strategy`'s own
+    // read-modify-write.
 
-    // Index write-ahead: brackets the strategy's
-    // own manifest write-ahead/complete sequence so a crash
-    // anywhere from here on always leaves an index entry naming this
-    // target -- never a fully-installed target invisible to `update`/
-    // `uninstall`. Canonicalize BEFORE upserting, so `--target .` and an
-    // equivalent absolute path register as the same entry. A failure to
-    // canonicalize or write the index here is a usage error, same as any
-    // other unresolvable-destination case -- install never proceeds with
-    // an index write it can't perform.
+    // Index write-ahead: brackets the strategy's own manifest
+    // write-ahead/complete sequence so a crash anywhere from here on
+    // always leaves an index entry naming this target. Canonicalize
+    // BEFORE upserting, so `--target .` and an equivalent absolute path
+    // register as the same entry.
     //
-    // Destination must exist before canonicalizing: `std::fs::canonicalize`
-    // errors on a path that doesn't exist yet, but a fresh, not-yet-created
-    // `--target <dir>` is the primary use of `--target` --
-    // `install_from_local` itself creates the destination on demand (every
-    // per-content-type copy function calls `create_dir_all` on it; see
-    // `kiro_cli.rs`). Create it first so canonicalization always has a real
-    // path to resolve, keeping the write-ahead index entry genuinely
-    // canonical (required for `update`/`uninstall`'s later exact-path
-    // lookups). This runs AFTER the index corruption/schema check above,
-    // so a rejection from that check never creates this directory either.
+    // Destination must exist before canonicalizing:
+    // `std::fs::canonicalize` errors on a path that doesn't exist yet,
+    // but a fresh, not-yet-created `--target <dir>` is the primary use
+    // of `--target` -- `install_from_local` itself creates the
+    // destination on demand. Create it first so canonicalization
+    // always has a real path to resolve. This runs AFTER the index
+    // corruption/schema check above, so a rejection from that check
+    // never creates this directory either.
     if let Err(err) = std::fs::create_dir_all(&destination) {
         super::report::report_error(
             "install",
@@ -1300,12 +1181,21 @@ fn dispatch_install_with_remote_installer(
 
     match install_result {
         Ok(()) => {
-            // Computed BEFORE `canonical_target_dir` is moved into the
-            // index-finalize write below -- reuses the SAME
-            // canonicalized target_dir string and the SAME `installed_at`
-            // clock read `index`/`manifest` already agree on (the design
-            // doc's single-clock-read rule), rather than a fresh
-            // `utc_now_iso()` call or a second canonicalization pass.
+            // `install --no-telemetry` is the durable opt-out: clearing
+            // the opt-in record here keeps a target installed earlier
+            // with telemetry on from reporting after it opts out.
+            if no_telemetry {
+                if let Err(err) = crate::cli::telemetry::remove_install_info(&destination) {
+                    eprintln!(
+                        "konductor install: warning: could not remove {}: {err}",
+                        crate::cli::telemetry::install_info_path(&destination).display()
+                    );
+                }
+            }
+            // Computed before `canonical_target_dir` is moved into the
+            // index-finalize write below -- reuses the same
+            // canonicalized target_dir string and the same
+            // `installed_at` clock read index/manifest already agree on.
             let link_bin_result = if link_bin {
                 Some(bin_link::ensure_bin_link(
                     &canonical_target_dir,
@@ -1315,15 +1205,12 @@ fn dispatch_install_with_remote_installer(
                 None
             };
 
-            // Index complete: upserts the SAME
-            // entry (by canonicalized target_dir) to Complete, after the
-            // strategy's own manifest has already reached Complete.
-            // Leaves the entry `InProgress` (self-healable via the
-            // target's own manifest) rather than
-            // failing the whole install over a write that happens after
-            // all real file-copy work already succeeded.
-            // See `resolve_final_strategies`'s own doc comment for the
-            // authoritative-read-vs-coexistence-aware-fallback rule.
+            // Index complete: upserts the same entry (by canonicalized
+            // target_dir) to Complete, after the strategy's own
+            // manifest has already reached Complete. Leaves the entry
+            // `InProgress` (self-healable) rather than failing the
+            // whole install over a write that happens after all real
+            // file-copy work already succeeded.
             let final_strategies = resolve_final_strategies(
                 manifest::read_manifest(&destination),
                 &write_ahead_strategies,
@@ -1345,8 +1232,8 @@ fn dispatch_install_with_remote_installer(
                     no_telemetry,
                 );
             }
-            // Fires report_package_installed alongside report_install_success,
-            // once everything above has already succeeded.
+            // Fires alongside report_install_success, once everything
+            // above has already succeeded.
             if !no_telemetry {
                 crate::cli::telemetry::report_package_installed(&destination, strategy.name());
             }
@@ -1382,25 +1269,19 @@ fn dispatch_install_with_remote_installer(
 }
 
 /// Prints the success-path report: re-reads the manifest
-/// `install_from_local` just wrote at `destination` (the sole on-disk
-/// record of what was installed) and formats it per `json`/`verbose`.
-/// A missing/unreadable manifest after a reported success would be an
-/// internal inconsistency, not a normal failure -- falls back to a
-/// fixed line in that case rather than panicking. `harness_dir` is the
-/// harness directory of whichever strategy actually ran, threaded
-/// through to `count_staged_sops` so the SOP-skip count reads that
-/// strategy's own staged source.
+/// `install_from_local` just wrote at `destination` and formats it per
+/// `json`/`verbose`. A missing/unreadable manifest after a reported
+/// success would be an internal inconsistency, not a normal failure --
+/// falls back to a fixed line in that case rather than panicking.
+/// `harness_dir` is the harness directory of whichever strategy
+/// actually ran, threaded through to `count_staged_sops`.
 ///
 /// `link_bin_result` is `Some(..)` only when `--link-bin` was
-/// requested; its outcome is folded into this same report (see
-/// `dispatch_install_with`'s doc comment for why it's never a second
-/// document). `remote_source` is `Some(..)` only on the no-`--from`
-/// fallback-chain path, naming which of the two remote sources
-/// produced the install -- `None` for a `--from` local install.
-/// `remote_outcome` is like `remote_source` `Some(..)` only on that
-/// same no-`--from` path; its own `mcp_binary_version` field is read
-/// here and surfaced in the summary distinctly from `agent_version`
-/// (see `format_install_summary`'s own doc comment on that parameter).
+/// requested; its outcome is folded into this same report.
+/// `remote_source` is `Some(..)` only on the no-`--from` fallback-chain
+/// path, naming which remote source produced the install. `remote_outcome`
+/// is likewise `Some(..)` only on that path; its `mcp_binary_version`
+/// field is surfaced distinctly from `agent_version`.
 #[allow(clippy::too_many_arguments)]
 fn report_install_success(
     destination: &Path,
@@ -1415,32 +1296,20 @@ fn report_install_success(
     color: ColorMode,
 ) {
     // The installed content's own version, read back from
-    // `.konductor/install-info.json` -- `install_from_local` (via
-    // `write_install_info`) already writes this for BOTH the `--from`
-    // local path (reading `<repo_root>/dist/VERSION`) and the
-    // no-`--from` remote path (reading `<temp_dir>/dist/VERSION`,
-    // where `temp_dir` is what `install_from_local` was actually
-    // handed as its own `repo_root` -- see `remote.rs`'s
-    // `install_from_remote_bytes_named_with_limit`), so this single
-    // read-back is correct for both paths with no extra plumbing:
-    // whichever content was ACTUALLY installed is what
-    // `write_install_info` already recorded, regardless of source.
+    // install-info.json -- `install_from_local` writes this for both
+    // the `--from` local path and the no-`--from` remote path, so this
+    // single read-back is correct for both with no extra plumbing.
+    // `--no-telemetry` writes no record, so the version is `None` then.
     let agent_version = crate::cli::telemetry::read_install_info(destination)
         .and_then(|record| record.agent_version);
     // The MCP server binary's own release version, read off
-    // `remote_outcome` -- `None` for a `--from` local install (no
-    // remote fetch happened) and for the no-`--from` graceful-degrade
-    // case (the current platform has no published binary; see
-    // `RemoteInstallOutcome`'s own doc comment). Distinct from
-    // `agent_version` above: confirms which MCP binary version was
-    // actually fetched/verified on the remote path, which is sourced
-    // from release metadata rather than the installed `dist/VERSION`
-    // file and can in principle differ from it.
+    // `remote_outcome` -- `None` for a `--from` local install and for
+    // the no-`--from` graceful-degrade case (no published binary for
+    // this platform). Distinct from `agent_version`: this is sourced
+    // from release metadata, not the installed dist/VERSION file.
     let mcp_binary_version = remote_outcome.and_then(|outcome| outcome.mcp_binary_version);
-    // The manifest now tracks possibly several
-    // strategies' slots; this report describes only the ONE this
-    // install run actually performed (`strategy_name`), never another
-    // already-tracked strategy's own slot.
+    // The manifest may track several strategies' slots; this report
+    // describes only the one this run actually performed.
     let slot = match manifest::read_manifest(destination) {
         Ok(Some(manifest)) => manifest.get(strategy_name).cloned(),
         _ => None,
@@ -1449,11 +1318,9 @@ fn report_install_success(
         Some(slot) => slot,
         None => {
             // Internal inconsistency (a strategy reported success but no
-            // manifest is readable). Still honor `--json`, and emit the
-            // SAME field shape as the normal path
-            // (`format_install_summary_json`) with zeroed counts, so a
-            // machine consumer never breaks on missing keys depending on
-            // which branch ran.
+            // manifest is readable). Still honor `--json`, with the
+            // same field shape as the normal path, zeroed, so a machine
+            // consumer never breaks on missing keys.
             if json {
                 let mut value = serde_json::json!({
                     "command": "install",
@@ -1497,9 +1364,7 @@ fn report_install_success(
     let manifest_path = manifest::manifest_path(destination);
     let counts = InstallCounts::from_manifest(&slot);
     // Count skipped SOPs from the source synth staged under the
-    // strategy that actually ran's own harness directory, not a
-    // hardcoded one, so the figure reflects this specific `--from`
-    // source and this specific strategy.
+    // strategy that actually ran, not a hardcoded harness.
     let sops_skipped = from.map(|f| count_staged_sops(f, harness_dir)).unwrap_or(0);
 
     if json {
@@ -1594,13 +1459,9 @@ fn report_already_at_version(
     }
 }
 
-/// Inserts a `"link_bin"` field into `value` (which must be a JSON
-/// object) describing `result` -- `{"requested": true, "link_path":
-/// ..., "outcome": ...}` on success, or `{"requested": true, "error":
-/// ...}` on failure. The single merge point every `--json` success
-/// report (both the normal path and the missing-manifest fallback
-/// above) uses, so the two never drift into different shapes for the
-/// same field.
+/// Inserts a `"link_bin"` field into `value` describing `result`:
+/// `{"requested": true, "link_path": ..., "outcome": ...}` on success,
+/// or `{"requested": true, "error": ...}` on failure.
 fn merge_link_bin_json(
     value: &mut serde_json::Value,
     result: &Result<(PathBuf, bin_link::BinLinkOutcome), bin_link::BinLinkError>,
@@ -1629,10 +1490,8 @@ fn bin_link_outcome_str(outcome: bin_link::BinLinkOutcome) -> &'static str {
     }
 }
 
-/// Plain-text equivalent of `merge_link_bin_json`'s success/failure
-/// content, printed as one extra line after the install summary line
-/// (never a second top-level document -- see this function's own
-/// callers).
+/// Plain-text equivalent of `merge_link_bin_json`'s content, printed
+/// as one extra line after the install summary line.
 fn link_bin_report_line(
     result: &Result<(PathBuf, bin_link::BinLinkOutcome), bin_link::BinLinkError>,
     color: ColorMode,
@@ -1663,23 +1522,15 @@ fn link_bin_report_line(
 }
 
 /// Per-content-type counts derived from a written manifest's
-/// `files[]`, plus how many were `Provenance::ReplacedForeign`. Content
-/// type is inferred from each file's path prefix -- `.kiro/agents/`,
-/// `.kiro/context/`, `.konductor/skills/`, `.kiro/skills/`, `.konductor/bin/`
-/// for `KiroCliInstallStrategy`/`KiroCliV3InstallStrategy`, and
-/// `.claude/agents/`, `.claude/skills/` for `ClaudeInstallStrategy`
-/// (built from that strategy's own `CLAUDE_DESTINATION_ROOT`/
-/// `AGENTS_CONTENT_TYPE_DIR`/`SKILLS_CONTENT_TYPE_DIR` constants, not a
-/// new hardcoded literal) -- the same prefixes each strategy's own copy
-/// functions always write, so this stays in sync with install's real
-/// output by construction rather than by a second hand-maintained list.
-/// `.kiro/skills/` holds only the Kiro-discoverable `sop-<name>/SKILL.md`
-/// conversion (see `install::kiro_cli::install_kiro_sop_skills`) -- every
-/// OTHER Kiro-runtime skill still lives under `.konductor/skills/`, kept
-/// separate for the reasons `kiro_cli.rs`'s own "Two install roots" doc
-/// comment explains. `skills` counts distinct skill DIRECTORIES (a
-/// skill may hold auxiliary files beyond `SKILL.md`) across all three
-/// skill roots; agents, context, and bin entries are one file each.
+/// `files[]`, plus how many were `Provenance::ReplacedForeign`.
+/// Content type is inferred from each file's path prefix, matching
+/// what each strategy's own copy functions always write, so this
+/// stays in sync with install's real output by construction. `.kiro/skills/`
+/// holds only the Kiro-discoverable `sop-<name>/SKILL.md` conversion;
+/// every other Kiro-runtime skill lives under `.konductor/skills/`.
+/// `skills` counts distinct skill directories (a skill may hold
+/// auxiliary files beyond `SKILL.md`); agents, context, and bin
+/// entries are one file each.
 struct InstallCounts {
     agents: usize,
     skills: usize,
@@ -1700,22 +1551,17 @@ impl InstallCounts {
             claude::CLAUDE_DESTINATION_ROOT
         );
 
-        // A skill is a DIRECTORY that may hold SKILL.md plus auxiliary
-        // files, so count DISTINCT skill directories (the `<name>`
-        // segment right after `.konductor/skills/`, `.kiro/skills/`, or
-        // `.claude/skills/`), not one per file -- otherwise a skill with
-        // scripts would inflate the count. Agents, context, and bin
-        // entries are one file each, so a per-file count is exact for
-        // them.
+        // A skill is a directory that may hold SKILL.md plus auxiliary
+        // files, so count distinct skill directories, not one per
+        // file -- otherwise a skill with scripts would inflate the
+        // count. Agents, context, and bin entries are one file each.
         //
         // Keyed by `(root, name)`, not bare `name`: `.konductor/skills/`
-        // and `.kiro/skills/` are both written by this same strategy on
-        // every Kiro install (a plain skill under the former, a
-        // Kiro-discoverable SOP-skill conversion under the latter), so a
-        // plain skill and a SOP-derived skill sharing a basename are two
-        // PHYSICALLY DISTINCT directories that must both count -- keying
-        // on the bare name alone would collapse them into one HashSet
-        // entry and undercount by one for every such collision.
+        // and `.kiro/skills/` are both written on every Kiro install (a
+        // plain skill under the former, a SOP-skill conversion under
+        // the latter), so a plain skill and a SOP-derived skill
+        // sharing a basename are two physically distinct directories
+        // that must both count.
         let mut agents = 0;
         let mut context = 0;
         let mut bin = 0;
@@ -1761,25 +1607,14 @@ impl InstallCounts {
 /// Builds the one-line default-mode summary `dispatch_install` prints
 /// on success: destination, per-content-type counts, manifest path,
 /// the SOP-skip note, the foreign-overwrite count, and the installed
-/// content's own version (from `.konductor/install-info.json`'s
-/// `agent_version`, `None` when no `VERSION` file was found under the
-/// synthed source's own `dist/` -- see `report_install_success`'s own
-/// doc comment for why this single field is correct for both the
-/// `--from` and no-`--from` install paths). `mcp_binary_version` is a
-/// SEPARATE, distinctly-labeled note -- the release `tag_name` the
-/// no-`--from` path actually fetched and checksum-verified the
-/// `skill-lookup-mcp` binary from (`RemoteInstallOutcome::
-/// mcp_binary_version`, threaded through by `report_install_success`).
-/// It can genuinely differ from `agent_version`: `github.rs`'s own doc
-/// comment on `expected_mcp_server_asset_filename` notes the release's
-/// `tag_name` is not necessarily equal to this binary's own
-/// `CARGO_PKG_VERSION`, and `agent_version` is read from the installed
-/// `dist/VERSION` file rather than from release metadata at all -- so
-/// this is never folded into `agent_version`'s own note. `None` on the
-/// `--from` local path (no remote fetch happened at all) and on the
-/// no-`--from` path when the current platform has no published binary
-/// (the graceful-degrade case) -- omitted entirely in that case,
-/// mirroring `agent_version`'s own omit-when-absent convention.
+/// content's own version (from install-info.json's `agent_version`,
+/// `None` when unavailable). `mcp_binary_version` is a separate,
+/// distinctly-labeled note: the release tag the no-`--from` path
+/// actually fetched and checksum-verified the MCP binary from. It can
+/// genuinely differ from `agent_version`, which is read from the
+/// installed `dist/VERSION` file rather than release metadata. `None`
+/// on the `--from` local path and on the no-`--from` graceful-degrade
+/// case (no published binary for this platform).
 fn format_install_summary(
     destination: &Path,
     manifest_path: &Path,
@@ -1826,17 +1661,11 @@ fn format_install_verbose_lines(manifest: &manifest::StrategyManifest) -> Vec<St
 }
 
 /// Builds the `--json` structured equivalent of `format_install_summary`:
-/// a JSON object carrying the same counts as the human-readable summary,
-/// plus an `"agent_version"` field (`null` when unavailable, mirroring
-/// `install-info.json`'s own `agent_version` field -- see
-/// `format_install_summary`'s own doc comment for the version source)
-/// and an `"mcp_binary_version"` field (`null` when unavailable, same
-/// omission rule and distinct-from-`agent_version` rationale as that
-/// function's own doc comment on its `mcp_binary_version` parameter).
-/// Returns the `serde_json::Value` itself (not a pre-serialized string)
-/// so `report_install_success` can merge in an additional `"link_bin"`
-/// field before printing -- one top-level JSON document per invocation,
-/// never two (see that function's own doc comment).
+/// the same counts as the human-readable summary, plus
+/// `"agent_version"`/`"mcp_binary_version"` fields (`null` when
+/// unavailable). Returns the `serde_json::Value` itself, not a
+/// pre-serialized string, so `report_install_success` can merge in an
+/// additional `"link_bin"` field before printing.
 fn format_install_summary_json(
     destination: &Path,
     manifest_path: &Path,
@@ -1955,6 +1784,71 @@ mod tests {
         }
     }
 
+    #[test]
+    fn install_no_telemetry_clears_an_earlier_opt_in() {
+        let _home = HomeGuard::new("no-telemetry-clears-opt-in-home");
+        let target = scratch_dir("no-telemetry-clears-opt-in-target");
+        let repo_root = scratch_dir("no-telemetry-clears-opt-in-repo");
+        seed_synthed_agent(&repo_root, "k-example");
+        let install = |no_telemetry: bool| {
+            dispatch_install_with(
+                Some(repo_root.display().to_string()),
+                Some(target.display().to_string()),
+                "kiro-cli-v2".to_string(),
+                false,
+                no_telemetry,
+                false,
+                None,
+                false,
+                false,
+                false,
+                ColorMode::disabled(),
+            )
+        };
+
+        assert_eq!(install(false), 0);
+        assert!(crate::cli::telemetry::install_info_exists(&target));
+        assert_eq!(install(true), 0);
+        assert!(
+            !crate::cli::telemetry::install_info_exists(&target),
+            "install --no-telemetry must remove the earlier opt-in record"
+        );
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn outdated_global_hooks_are_flagged_only_for_project_installs() {
+        let home = scratch_dir("outdated-hook-home");
+        let project = scratch_dir("outdated-hook-project");
+        let hooks = home.join(".kiro/hooks");
+        fs::create_dir_all(&hooks).unwrap();
+        let hook_file = hooks.join("konductor-telemetry-hooks.json");
+
+        fs::write(
+            &hook_file,
+            r#"{"hooks":[{"action":{"command":"/bin/konductor __telemetry-hook agent-invocation"}}]}"#,
+        )
+        .unwrap();
+        let warning = outdated_global_hook_warning(&home, &project, false).unwrap();
+        assert!(warning.contains("a second time") && warning.contains("konductor update --target"));
+        assert!(outdated_global_hook_warning(&home, &project, true)
+            .unwrap()
+            .contains("--no-telemetry"));
+        assert_eq!(outdated_global_hook_warning(&home, &home, false), None);
+
+        fs::write(
+            &hook_file,
+            r#"{"hooks":[{"action":{"command":"/bin/konductor __telemetry-hook agent-invocation --install-root /h"}}]}"#,
+        )
+        .unwrap();
+        assert_eq!(outdated_global_hook_warning(&home, &project, false), None);
+
+        fs::remove_dir_all(&home).ok();
+        fs::remove_dir_all(&project).ok();
+    }
+
     /// Same role as `dispatch_install_with_fake_remote_installer`, but
     /// this fake `remote_installer` closure SUCCEEDS: it runs a real
     /// `install_from_local` against `synth_source` (standing in for a
@@ -2007,11 +1901,7 @@ mod tests {
     /// Test-only stand-in for `dispatch_install_with`: calls the same
     /// production `dispatch_install_with_remote_installer`, but with a
     /// fake `remote_installer` closure that fails right away with a
-    /// fixed `FallbackChainError` -- no real network call. Every other
-    /// code path runs exactly as it does in production; only the
-    /// remote fetch/install step is replaced. `link_bin`/`verbose`/
-    /// `json`/`no_telemetry` are fixed to `false`, matching every
-    /// other `dispatch_install_with` call in this test module.
+    /// fixed `FallbackChainError` -- no real network call.
     fn dispatch_install_with_fake_remote_installer(
         from: Option<String>,
         target: Option<String>,
@@ -2056,17 +1946,11 @@ mod tests {
         fs::remove_dir_all(&dir).ok();
     }
 
-    /// A missing `--from` tries the real remote install path (GitHub
-    /// Release, then main-branch-`dist/` if that fails in a
-    /// fallback-eligible way) instead of a pure no-op -- so, like a
-    /// `--from` attempt, it creates the target directory and writes an
-    /// `InProgress` index entry before the attempt runs, and leaves
-    /// that entry `InProgress` on failure instead of rolling it back.
-    /// That's what makes a remote install trackable by
-    /// `update`/`uninstall`/`doctor --all` once it succeeds; leaving a
-    /// target directory and an `InProgress` entry behind on a failed
-    /// attempt is the same self-healable state a `--from` failure
-    /// after `install_from_local` starts already leaves.
+    /// A missing `--from` tries the real remote install path instead
+    /// of a pure no-op, so it creates the target directory and writes
+    /// an `InProgress` index entry before the attempt runs, leaving
+    /// that entry `InProgress` on failure instead of rolling it back --
+    /// the same self-healable state a `--from` failure leaves.
     #[test]
     fn dispatch_install_missing_from_writes_in_progress_index_entry_and_creates_target_dir() {
         let _home = HomeGuard::new("missing-from-in-progress-home");
@@ -2107,15 +1991,10 @@ mod tests {
     }
 
     /// A successful no-`--from` (remote/fallback) install must get
-    /// tracked in `~/.konductor/installs` -- the same index
-    /// `update`/`uninstall --all`/`doctor --all` read to discover
-    /// installed targets -- exactly like a `--from` install does. This
-    /// exercises the real production sequencing through
-    /// `dispatch_install_with_fake_successful_remote_installer` (a
-    /// fake remote fetch that still does a REAL `install_from_local`
-    /// write, standing in for "the remote fetch succeeded"), and
-    /// confirms the resulting index entry is present and `Complete`,
-    /// with the same `installed_at` the manifest itself recorded.
+    /// tracked in `~/.konductor/installs`, exactly like a `--from`
+    /// install does. Confirms the resulting index entry is present
+    /// and `Complete`, with the same `installed_at` the manifest
+    /// recorded.
     #[test]
     fn dispatch_install_successful_remote_install_is_tracked_complete_in_index() {
         let _home = HomeGuard::new("remote-install-tracked-home");
@@ -2230,20 +2109,12 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// AutoSDE regression: the index-corruption guard must run BEFORE
+    /// AutoSDE regression: the index-corruption guard must run before
     /// the `if from.is_some() { .. } else { .. }` split, so a corrupted
-    /// index is rejected on the no-`--from` path too -- not only when
-    /// `--from` is given. Exercised here with `--version <v>` ALSO
-    /// supplied (which the no-`--from` branch would otherwise reject
-    /// with its own `release_version_not_supported` usage error, and
-    /// which the network-dependent skip-if-unchanged check comes after
-    /// that): if the index guard ran any later than immediately after
-    /// destination/strategy resolution, this invocation could
-    /// conceivably fail with a DIFFERENT usage error (or attempt a real
-    /// network call) instead of failing on the corrupted index first.
-    /// Proves the guard is the very first thing checked once `--from`
-    /// is known to be absent, with no ordering dependency on which
-    /// other no-`--from` guard would otherwise fire.
+    /// index is rejected on the no-`--from` path too, not only when
+    /// `--from` is given. Proves the guard runs before any other
+    /// no-`--from` guard (like the `--version` rejection) could fire
+    /// instead.
     #[test]
     fn dispatch_install_duplicate_index_rejects_no_from_path_before_any_other_check() {
         let _home = HomeGuard::new("duplicate-index-no-from-home");
@@ -2669,27 +2540,11 @@ mod tests {
         fs::remove_dir_all(&kiro_repo_root).ok();
     }
 
-    /// On a coexistence target -- two strategies
-    /// (`claude` and `kiro-cli-v2`) already tracked -- a manifest read
-    /// error at finalize time must fall back to
-    /// the SAME coexistence-aware write-ahead projection, not a
-    /// single-element vec naming only the strategy just installed. A
-    /// single-element fallback would silently drop the other tracked
-    /// strategy's name from the index even though its manifest slot is
-    /// still on disk.
-    ///
-    /// `write_atomic` (the manifest's own crash-safe writer) always
-    /// finishes a successful write by renaming a fresh, freshly-permissioned
-    /// temp file over the manifest path -- so a real end-to-end dispatch
-    /// can never observe a read failure strictly between
-    /// `install_from_local`'s own successful manifest write and the
-    /// finalize block's separate read a few lines later: whatever made
-    /// the file unreadable before that write is undone by the write
-    /// itself. This calls `resolve_final_strategies` directly instead --
-    /// the exact function the finalize block calls -- with a REAL
-    /// `ManifestError` (malformed JSON, produced by a genuine
-    /// `manifest::read_manifest` call, not a hand-constructed enum
-    /// variant) standing in for that read failure.
+    /// On a coexistence target with two strategies already tracked, a
+    /// manifest read error at finalize time must fall back to the same
+    /// coexistence-aware write-ahead projection, not a single-element
+    /// vec naming only the strategy just installed -- that would
+    /// silently drop the other tracked strategy's name from the index.
     #[test]
     fn resolve_final_strategies_falls_back_to_write_ahead_on_manifest_read_error() {
         let dir = scratch_dir("resolve-final-strategies-read-error");
@@ -4131,9 +3986,13 @@ mod tests {
         );
         assert_eq!(second_code, 0);
         let agent_path = target.join(".kiro/agents/k-example.json");
+        // TelemetryHookPass re-serializes the agent file, so check the
+        // parsed field rather than raw bytes.
+        let agent_value: serde_json::Value =
+            serde_json::from_slice(&fs::read(&agent_path).unwrap()).unwrap();
         assert_eq!(
-            fs::read(&agent_path).unwrap(),
-            b"{\"fresh\":true}\n",
+            agent_value["fresh"],
+            serde_json::json!(true),
             "--from must always overwrite, even at a matching recorded version"
         );
 

@@ -6,6 +6,35 @@ This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Entries are consolidated per release,
 not per individual commit.
 
+## [1.0.3] - 2026-10-01
+
+### Fixed
+
+- Telemetry now works on Kiro CLI v2 and v3. Before, only Claude Code sent agent usage events.
+- `konductor install --harness claude` now sets up telemetry, so Claude-Code-only installs
+  report too.
+- Each agent run is counted once, even with both a global install (in `$HOME`) and a project
+  install. Before, Kiro v3 and Claude Code counted it twice. If your global install is from an
+  older version, `konductor install` warns you to run `konductor update --target ~`.
+- `--no-telemetry` now turns telemetry off for a project completely: also when the project was
+  installed with telemetry on before, and when a global install is present.
+- `konductor uninstall` now removes Konductor's Claude Code telemetry hooks. Before, they stayed
+  in `.claude/settings.json`.
+- Sessions started in a project directory now report when Konductor is installed globally, the
+  default. Before, they sent nothing.
+
+### Changed
+
+- A project install now writes its Claude Code telemetry hooks to `.claude/settings.local.json`
+  instead of the shared `.claude/settings.json`, and moves any hooks an earlier version put there.
+  The hooks carry this machine's paths, so they no longer get committed for teammates. If the
+  repository doesn't already ignore the file, it is added to `.git/info/exclude`. A global install
+  keeps its hooks in `~/.claude/settings.json`.
+- Telemetry now covers only Konductor's own agents (the orchestrators and `k-*` specialists). Your
+  own agents, a harness's built-in agents, and sessions with no named agent send nothing.
+- Delegations to Konductor agents are reported on every harness, including the name of the
+  delegating Konductor agent when the harness provides it.
+
 ## [1.0.2] - 2026-09-28
 
 ### Security

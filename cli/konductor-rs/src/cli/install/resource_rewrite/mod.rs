@@ -6,28 +6,25 @@
 //
 // Each `ResourceRewritePass` bundles matches/rewrite/verify for one
 // concern, so adding a pass means one new struct plus one line in
-// `standard_passes` -- not a new arm in a growing if-chain. A trait
-// (not an enum or a function-pointer table) because every pass needs
-// all three methods to travel together and be driven uniformly by
-// `apply_all`.
+// `standard_passes`. A trait (not an enum or function-pointer table)
+// because every pass needs all three methods to travel together and
+// be driven uniformly by `apply_all`.
 //
-// Ordering matters and is enforced structurally, not just documented:
-// `McpServerPass::matches` reads the `skill://<skills_dir>/...` shape
-// that `SkillResourcePass::rewrite` produces, so it must run after
-// that pass -- if reordered, it simply sees no match and skips,
-// failing safe rather than misbehaving. Likewise `bin_files` in
+// Ordering matters and is enforced structurally: `McpServerPass::matches`
+// reads the `skill://<skills_dir>/...` shape that `SkillResourcePass::rewrite`
+// produces, so it must run after that pass -- if reordered, it simply
+// sees no match and skips, failing safe. Likewise `bin_files` in
 // `RewriteContext` can only be populated once
-// `mcp_server::install_bin_files` has actually copied the binary, so
-// the binary-copy-before-agent-install ordering is a data-flow fact
-// (the caller can't construct the context otherwise), not a comment.
+// `mcp_server::install_bin_files` has actually copied the binary.
 //
 // This module holds the pass-pipeline abstraction (this trait,
 // `RewriteContext`, `apply_all`, `standard_passes`/`standard_passes_v3`)
-// plus the two passes that implement it directly: `ContextResourcePass`
-// and `SkillResourcePass`. The MCP-server injection pass, shared by V2
-// and V3, lives in `mcp_server`; the one-time Claude Code
-// `.claude/settings.json`/hooks mutation, which never implements
-// `ResourceRewritePass`, lives in `claude_settings`.
+// plus `ContextResourcePass` and `SkillResourcePass`. The MCP-server
+// injection pass, shared by V2 and V3, lives in `mcp_server`; the V2
+// `TelemetryHookPass` and the V3 standalone telemetry-hook write/remove
+// live in `telemetry_hook_pass`; the Claude Code settings mutation
+// (the `.claude/settings.json` permission grant plus telemetry hooks),
+// which never implements `ResourceRewritePass`, lives in `claude_settings`.
 
 use std::path::Path;
 
@@ -35,79 +32,85 @@ use super::manifest::ManifestFile;
 
 mod claude_settings;
 mod mcp_server;
+mod telemetry_hook_pass;
 
 pub(super) use claude_settings::apply_claude_settings_grant_and_hooks;
+pub(super) use claude_settings::apply_claude_settings_hooks_only;
 pub(crate) use claude_settings::CLAUDE_SETTINGS_RELATIVE_PATH;
+pub(crate) use claude_settings::{
+    claude_hooks_settings_relative_path, is_claude_settings_path, remove_claude_telemetry_hooks,
+};
 pub(super) use mcp_server::{McpServerPass, MCP_SERVER_BINARY_NAME, MCP_SERVER_NAME};
 
 use mcp_server::McpServerPassV3;
+use telemetry_hook_pass::TelemetryHookPass;
+
+pub(super) use telemetry_hook_pass::{
+    apply_v3_standalone_telemetry_hook, remove_v3_standalone_telemetry_hook,
+};
+// `pub(crate)`, not `pub(super)`: `uninstall.rs` (a sibling of `install`,
+// not a descendant) also needs both names to clean up the untracked
+// lock file alongside the manifest-tracked hook document -- see
+// `V3_STANDALONE_HOOK_LOCK_FILE_NAME`'s own doc comment.
+pub(crate) use telemetry_hook_pass::{
+    V3_STANDALONE_HOOKS_RELATIVE_PATH, V3_STANDALONE_HOOK_LOCK_FILE_NAME,
+};
 
 /// Everything a pass may need at install time beyond the JSON value
 /// itself. Built once per agent file and passed by reference to every
-/// pass in turn. All passes share one context type (rather than one
-/// per pass) so they can live in the same `Vec<Box<dyn
-/// ResourceRewritePass>>`; a pass that doesn't need a field just
-/// doesn't read it.
+/// pass in turn. All passes share one context type so they can live in
+/// the same `Vec<Box<dyn ResourceRewritePass>>`; a pass that doesn't
+/// need a field just doesn't read it.
 pub(super) struct RewriteContext<'a> {
     /// Destination dir context files were copied into
     /// (`<target_dir>/.kiro/context/`). Read by `ContextResourcePass`.
     pub(super) context_dir: &'a Path,
     /// Destination dir skills were copied into
     /// (`<target_dir>/.konductor/skills/`). Read by `SkillResourcePass`
-    /// and by `McpServerPass::matches`, which re-derives the same
-    /// `skill://<skills_dir>/` prefix to detect its scoping condition.
+    /// and by `McpServerPass::matches`.
     pub(super) skills_dir: &'a Path,
     /// Destination dir the MCP server binary was copied into
     /// (`<target_dir>/.konductor/bin/`). Read by `McpServerPass`.
     pub(super) bin_dir: &'a Path,
     /// Manifest entries for MCP server binaries THIS install run
-    /// actually copied (from `mcp_server::install_bin_files`, called
-    /// strictly before this pipeline runs). `McpServerPass::rewrite`
-    /// checks this rather than re-deriving "was a binary copied" some
-    /// other way, so it can never inject a path for a binary that
-    /// wasn't just copied to disk.
+    /// actually copied. `McpServerPass::rewrite` checks this rather
+    /// than re-deriving "was a binary copied" some other way, so it
+    /// can never inject a path for a binary that wasn't just copied.
     pub(super) bin_files: &'a [ManifestFile],
-    /// Per-agent SOP allowlists, from synth's `_sop_scopes.json` sidecar
-    /// (`kiro_cli_v2::SOP_SCOPES_SIDECAR_FILE`), keyed by agent name.
-    /// Read by `McpServerPass::matches`/`rewrite`, which look up the
-    /// CURRENT agent's own entry (from `value["name"]`, since neither
-    /// method takes a separate agent-name parameter) to decide whether
-    /// this agent needs the `konductor-skills` MCP server at all (an
-    /// agent with SOPs but no skill resources still needs it), and
-    /// whether to append `--agent-sop-paths`/`--agent-sop-filter` to its
-    /// launch args.
-    ///
-    /// Absent entry or an empty `Vec` are deliberately equivalent and
-    /// BOTH mean "this agent has no SOP scoping" -- the single most
-    /// important backward-compatibility rule for this field: an agent
-    /// with no `dependencies.agentSops.agentSopNames` declaration must
-    /// see zero behavior change from before this field existed.
-    /// `kiro_cli.rs`'s caller passes an empty map when the sidecar
-    /// itself is missing (e.g. a `dist/` tree from before synth started
-    /// emitting it), which falls through to this exact same no-op path.
-    pub(super) agent_sop_names: &'a std::collections::HashMap<String, Vec<String>>,
-    /// Per-agent Kiro-runtime skill allowlists, from synth's `_skill_
-    /// scopes.json` sidecar (`kiro_cli_v2::SKILL_SCOPES_SIDECAR_FILE`),
+    /// Per-agent SOP allowlists, from synth's `_sop_scopes.json` sidecar,
     /// keyed by agent name. Read by `McpServerPass::matches`/`rewrite`
-    /// via the shared `agent_has_skill_names` helper, which looks up the
-    /// CURRENT agent's own entry (from `value["name"]`, since neither
-    /// method takes a separate agent-name parameter) to decide whether
-    /// this agent needs the `konductor-skills` MCP server at all (an
-    /// agent with skill-name scoping but no `skill://` resource still
-    /// needs it), and whether to append `--skill-name-filter` to its
-    /// launch args.
+    /// to decide whether the current agent needs the
+    /// `konductor-skills` MCP server, and whether to append
+    /// `--agent-sop-paths`/`--agent-sop-filter` to its launch args.
     ///
-    /// Absent entry or an empty `Vec` are deliberately equivalent and
-    /// BOTH mean "do not pass `--skill-name-filter` at all" -- this is
-    /// the single most important backward-compatibility rule for this
-    /// field, mirroring `agent_sop_names`'s own rule exactly: every
-    /// agent that has not opted in by populating `dependencies.skills.
-    /// skillNames` must see zero behavior change from before this field
-    /// existed. `kiro_cli.rs`'s caller passes an empty map when the
-    /// sidecar itself is missing (e.g. a `dist/` tree from before synth
-    /// started emitting it), which falls through to this exact same
-    /// no-op path.
+    /// Absent entry and empty `Vec` are equivalent and both mean "no
+    /// SOP scoping" -- an agent with no
+    /// `dependencies.agentSops.agentSopNames` declaration sees zero
+    /// behavior change from before this field existed.
+    pub(super) agent_sop_names: &'a std::collections::HashMap<String, Vec<String>>,
+    /// Per-agent Kiro-runtime skill allowlists, from synth's
+    /// `_skill_scopes.json` sidecar, keyed by agent name. Read the
+    /// same way as `agent_sop_names`, via the shared
+    /// `agent_has_skill_names` helper, to decide whether the current
+    /// agent needs the MCP server and whether to append
+    /// `--skill-name-filter`.
+    ///
+    /// Same backward-compatibility rule as `agent_sop_names`: absent
+    /// entry and empty `Vec` both mean "do not pass
+    /// `--skill-name-filter` at all".
     pub(super) agent_skill_names: &'a std::collections::HashMap<String, Vec<String>>,
+}
+
+impl RewriteContext<'_> {
+    /// The install target, recovered from `context_dir`
+    /// (`<target_dir>/.kiro/context`). `None` when `context_dir` isn't a
+    /// real two-level path, as in unit tests that leave it empty.
+    pub(super) fn install_root(&self) -> Option<&Path> {
+        self.context_dir
+            .parent()
+            .and_then(Path::parent)
+            .filter(|root| !root.as_os_str().is_empty())
+    }
 }
 
 /// One self-contained install-time mutation over a parsed agent JSON:
@@ -123,22 +126,20 @@ pub(super) trait ResourceRewritePass {
     /// agent's own `ctx.agent_sop_names` entry: a SOP-only agent has no
     /// skill-resource shape in `value` at all, so `matches` cannot
     /// decide whether this agent needs the MCP server from `value`
-    /// alone. `ContextResourcePass`/`SkillResourcePass` ignore `ctx`;
-    /// their own matching condition is fully determined by `value`.
+    /// alone. The other passes ignore `ctx`.
     fn matches(&self, value: &serde_json::Value, ctx: &RewriteContext<'_>) -> bool;
 
     /// Applies this pass's mutation in place. Only called when
     /// `matches(value)` was just `true`.
     fn rewrite(&self, value: &mut serde_json::Value, ctx: &RewriteContext<'_>);
 
-    /// Confirms every target this pass's `rewrite` just pointed at
-    /// exists on disk, erroring with `agent_file` and the missing
-    /// target otherwise. Only called immediately after this pass's own
-    /// `rewrite`, so it never observes a later pass's mutation. Never
-    /// mutates disk itself -- check-only, by design: see this module's
-    /// own "V3/Claude Code permission grant" section for why that
-    /// grant is deliberately NOT implemented as a `verify`-time side
-    /// effect, even though its target also lives outside `value`.
+    /// Confirms this pass's `rewrite` took effect, erroring with
+    /// `agent_file` and what is missing otherwise. Only called
+    /// immediately after this pass's own `rewrite`, so it never
+    /// observes a later pass's mutation. Never mutates disk itself --
+    /// check-only, by design (see `claude_settings.rs`'s "V3/Claude Code
+    /// permission grant" section for why that grant is deliberately NOT
+    /// implemented as a `verify`-time side effect).
     fn verify(
         &self,
         value: &serde_json::Value,
@@ -147,10 +148,9 @@ pub(super) trait ResourceRewritePass {
     ) -> Result<(), String>;
 }
 
-/// Runs every pass in order: for each match, `rewrite` then
-/// immediately `verify` before moving on. Returns the first `Err`,
-/// stopping the pipeline there -- matching the pre-existing fail-fast
-/// behavior.
+/// Runs every pass in order: for each match, `rewrite` then `verify`
+/// before moving on. Returns the first `Err`, stopping the pipeline
+/// there -- matching the pre-existing fail-fast behavior.
 pub(super) fn apply_all(
     passes: &[Box<dyn ResourceRewritePass>],
     value: &mut serde_json::Value,
@@ -168,16 +168,25 @@ pub(super) fn apply_all(
 }
 
 /// The ordered pipeline: context resources, then skill resources, then
-/// MCP-server injection, which depends on the skill-resource pass
-/// having already run (see this module's own doc comment on why that
-/// can't be reordered). Adding a fourth pass is a new `struct FooPass`
-/// plus one `Box::new(FooPass)` line here -- no existing line changes.
-pub(super) fn standard_passes() -> Vec<Box<dyn ResourceRewritePass>> {
-    vec![
+/// MCP-server injection (which depends on the skill-resource pass
+/// having already run, see this module's doc comment), then -- unless
+/// `no_telemetry` -- the telemetry-hook injection last. Adding a pass
+/// is a new `struct FooPass` plus one line here.
+///
+/// `no_telemetry` gates `TelemetryHookPass` purely on this one flag,
+/// unlike the Claude settings grant (`apply_claude_settings_grant_and_hooks`),
+/// which is gated on `any_mcp_server_injected`: telemetry applies to
+/// every installed Kiro CLI V2 agent regardless of MCP usage.
+pub(super) fn standard_passes(no_telemetry: bool) -> Vec<Box<dyn ResourceRewritePass>> {
+    let mut passes: Vec<Box<dyn ResourceRewritePass>> = vec![
         Box::new(ContextResourcePass),
         Box::new(SkillResourcePass),
         Box::new(McpServerPass),
-    ]
+    ];
+    if !no_telemetry {
+        passes.push(Box::new(TelemetryHookPass));
+    }
+    passes
 }
 
 fn resources_contain_prefix(value: &serde_json::Value, prefix: &str) -> bool {
@@ -192,9 +201,8 @@ fn resources_contain_prefix(value: &serde_json::Value, prefix: &str) -> bool {
 }
 
 /// Appends `item` to `value[key]` (creating the array if absent)
-/// unless it's already present -- makes grant injection append-only,
-/// never overwriting a spec's own array, and idempotent across
-/// reinstall. A no-op if `key` exists but isn't an array.
+/// unless already present -- makes grant injection append-only and
+/// idempotent across reinstall.
 fn push_unique_str(value: &mut serde_json::Value, key: &str, item: &str) {
     let array = match value.get_mut(key) {
         Some(existing) => match existing.as_array_mut() {
@@ -215,8 +223,7 @@ fn push_unique_str(value: &mut serde_json::Value, key: &str, item: &str) {
 // ── Pass 1: context resources ───────────────────────────────────────────
 
 /// Prefix a synthed agent JSON's `resources` entry uses for a
-/// per-agent context file. Matched literally, never regex/glob, so an
-/// unrelated `file://` entry (e.g. `file://AGENTS.md`) is left alone.
+/// per-agent context file. Matched literally, never regex/glob.
 const CONTEXT_RESOURCE_PREFIX: &str = "file://context/";
 
 /// Rewrites `file://context/<name>` entries to an absolute
@@ -285,22 +292,17 @@ impl ResourceRewritePass for ContextResourcePass {
 
 /// Prefix a synthed agent JSON's `resources` entry uses for a
 /// normalized packaged-skill reference. Matched literally, never
-/// regex/glob, so the `ws-*` workspace-skills glob is never mistaken
-/// for one of these. `pub(super)`: also read by `kiro_cli.rs`'s
-/// pre-existing fast-path skip in `copy_agent_files_rewriting_resources`
-/// (mirroring this pass's own trigger), so that skip check stays tied
-/// to this one definition rather than a separately-declared copy that
-/// could silently drift from it.
+/// regex/glob, so the `ws-*` workspace-skills glob is never matched.
+/// `pub(super)`: also read by `kiro_cli.rs`'s fast-path skip in
+/// `copy_agent_files_rewriting_resources`.
 ///
 /// NOT used to predict the Claude/V3 grant (`plan_claude_settings_grant`
 /// in `kiro_cli.rs`) -- that grant's real trigger is
 /// `McpServerPass::matches` below, which is a deliberately BROADER
-/// check than this exact prefix (see its own doc comment: it also
-/// matches the post-rewrite absolute form). `plan_claude_settings_grant`
-/// calls `McpServerPass::matches` directly rather than re-deriving a
-/// narrower approximation from this prefix, so its prediction can never
-/// diverge from the real trigger (a divergence `attach_provenance`
-/// would otherwise catch only as a hard failure at install time).
+/// check than this exact prefix (it also matches the post-rewrite
+/// absolute form). `plan_claude_settings_grant` calls
+/// `McpServerPass::matches` directly so its prediction can never
+/// diverge from the real trigger.
 pub(super) const SKILL_RESOURCE_PREFIX: &str = "skill://skills/";
 const SKILL_RESOURCE_SUFFIX: &str = "/SKILL.md";
 
@@ -373,12 +375,11 @@ impl ResourceRewritePass for SkillResourcePass {
 }
 
 /// The V3 (KAS) ordered pipeline: reuses `ContextResourcePass` and
-/// `SkillResourcePass` UNCHANGED (V3's `resources` field is rendered in
-/// the identical shape as V2's -- see `kiro_cli_v3.rs`'s own
-/// `render_agent_file` doc comment), swapping only the MCP-wiring pass
-/// for `McpServerPassV3` (`permissions.rules[]`-based authorization
-/// instead of V2's `tools`/`allowedTools` pair). Ordering is identical
-/// to `standard_passes` for the identical reason: `McpServerPassV3::matches`
+/// `SkillResourcePass` unchanged (V3's `resources` field is rendered
+/// identically to V2's), swapping only the MCP-wiring pass for
+/// `McpServerPassV3` (`permissions.rules[]`-based authorization
+/// instead of V2's `tools`/`allowedTools` pair). Ordering matches
+/// `standard_passes` for the same reason: `McpServerPassV3::matches`
 /// reads `SkillResourcePass::rewrite`'s output.
 pub(super) fn standard_passes_v3() -> Vec<Box<dyn ResourceRewritePass>> {
     vec![
@@ -405,27 +406,16 @@ mod tests {
         dir
     }
 
-    /// Empty by construction (a `'static` empty map, so every `ctx()`
-    /// call site below can borrow it without needing its own live
-    /// binding) -- exercises the default "no agent has opted in"
-    /// backward-compatibility path for every existing test that doesn't
-    /// care about SOP scoping at all. Tests that DO care (see the
-    /// `agent_sop_names`-specific tests below) build their own map and
-    /// pass it to `RewriteContext` directly rather than through this
-    /// helper.
+    /// Exercises the default "no agent opted in" backward-compatibility
+    /// path for tests that don't care about SOP scoping. Tests that DO
+    /// care build their own map and pass it directly.
     fn empty_agent_sop_names() -> &'static std::collections::HashMap<String, Vec<String>> {
         static EMPTY: std::sync::OnceLock<std::collections::HashMap<String, Vec<String>>> =
             std::sync::OnceLock::new();
         EMPTY.get_or_init(std::collections::HashMap::new)
     }
 
-    /// Empty by construction, mirroring `empty_agent_sop_names` exactly
-    /// -- exercises the default "no agent has opted in" backward-
-    /// compatibility path for every existing test that doesn't care
-    /// about skill-name scoping at all. Tests that DO care (see the
-    /// `agent_skill_names`-specific tests below) build their own map and
-    /// pass it to `RewriteContext` directly rather than through this
-    /// helper.
+    /// Mirrors `empty_agent_sop_names` for skill-name scoping.
     fn empty_agent_skill_names() -> &'static std::collections::HashMap<String, Vec<String>> {
         static EMPTY: std::sync::OnceLock<std::collections::HashMap<String, Vec<String>>> =
             std::sync::OnceLock::new();
@@ -448,9 +438,8 @@ mod tests {
         }
     }
 
-    /// A minimal, empty-everything `RewriteContext` for `matches`-only
-    /// tests that don't exercise `rewrite`/`verify` and so don't need
-    /// real scratch directories.
+    /// `RewriteContext` for `matches`-only tests that don't need real
+    /// scratch directories.
     fn matches_only_ctx() -> RewriteContext<'static> {
         RewriteContext {
             context_dir: Path::new(""),
@@ -620,7 +609,7 @@ mod tests {
                 "skill://skills/constraints/SKILL.md"
             ]
         });
-        let passes = standard_passes();
+        let passes = standard_passes(true);
         apply_all(
             &passes,
             &mut value,
@@ -658,7 +647,7 @@ mod tests {
         let bin_files = [bin_file_entry()];
 
         let mut value = serde_json::json!({"resources": ["file://context/notes.md"]});
-        let passes = standard_passes();
+        let passes = standard_passes(true);
         apply_all(
             &passes,
             &mut value,
@@ -683,17 +672,14 @@ mod tests {
         let bin_dir = dir.join("bin");
         // Neither context/notes.md nor the skill dir exist on disk --
         // the context pass must fail first, and the skill/MCP passes
-        // must never even be attempted (there is nothing to assert
-        // about their output directly, but a real bug that ran them
-        // anyway would still return Ok for this same input, which the
-        // Err below rules out).
+        // must never even be attempted.
         let mut value = serde_json::json!({
             "resources": [
                 "file://context/notes.md",
                 "skill://skills/constraints/SKILL.md"
             ]
         });
-        let passes = standard_passes();
+        let passes = standard_passes(true);
         let err = apply_all(
             &passes,
             &mut value,
@@ -706,15 +692,80 @@ mod tests {
     }
 
     #[test]
-    fn standard_passes_returns_three_passes_in_documented_order() {
+    fn standard_passes_returns_three_passes_when_no_telemetry() {
         // Not a type-level assertion (trait objects erase concrete
-        // type), but pins the count so a future accidental duplicate-push
-        // or drop is caught immediately.
-        assert_eq!(standard_passes().len(), 3);
+        // type), but pins the count so a future duplicate-push or
+        // drop is caught immediately.
+        assert_eq!(standard_passes(true).len(), 3);
+    }
+
+    #[test]
+    fn standard_passes_includes_telemetry_hook_pass_unless_no_telemetry() {
+        assert_eq!(
+            standard_passes(false).len(),
+            4,
+            "TelemetryHookPass must be appended when telemetry is enabled"
+        );
+        assert_eq!(
+            standard_passes(true).len(),
+            3,
+            "TelemetryHookPass must be omitted entirely when --no-telemetry is set"
+        );
     }
 
     #[test]
     fn standard_passes_v3_returns_three_passes_in_documented_order() {
         assert_eq!(standard_passes_v3().len(), 3);
+    }
+
+    #[test]
+    fn apply_all_with_telemetry_enabled_wires_agent_spawn_hook_for_v2() {
+        let dir = scratch_dir("apply-all-telemetry-v2");
+        let context_dir = dir.join("context");
+        let skills_dir = dir.join("skills");
+        let bin_dir = dir.join("bin");
+        let mut value = serde_json::json!({"name": "k-example"});
+        let passes = standard_passes(false);
+        apply_all(
+            &passes,
+            &mut value,
+            &ctx(&context_dir, &skills_dir, &bin_dir, &[]),
+            Path::new("/tmp/agent.json"),
+        )
+        .expect("pipeline with telemetry enabled must succeed for a bare agent");
+        assert!(
+            value["hooks"]["agentSpawn"].is_array(),
+            "the V2 pipeline must wire the telemetry hook under 'agentSpawn' when telemetry \
+             is enabled, got: {value:?}"
+        );
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    /// The V3 per-agent pipeline never touches `hooks` at all -- V3's
+    /// telemetry hook is a standalone `.kiro/hooks/*.json` document,
+    /// written once per install run by
+    /// `resource_rewrite::apply_v3_standalone_telemetry_hook`, never
+    /// through this per-agent pipeline.
+    #[test]
+    fn apply_all_v3_never_touches_hooks_key_on_the_agent_json() {
+        let dir = scratch_dir("apply-all-v3-no-hooks");
+        let context_dir = dir.join("context");
+        let skills_dir = dir.join("skills");
+        let bin_dir = dir.join("bin");
+        let mut value = serde_json::json!({"name": "k-example"});
+        let passes = standard_passes_v3();
+        apply_all(
+            &passes,
+            &mut value,
+            &ctx(&context_dir, &skills_dir, &bin_dir, &[]),
+            Path::new("/tmp/agent.json"),
+        )
+        .expect("v3 pipeline must succeed for a bare agent");
+        assert!(
+            value.get("hooks").is_none(),
+            "the V3 per-agent pipeline must never write a \"hooks\" key on the agent's own \
+             JSON -- telemetry for V3 is a standalone file now, got: {value:?}"
+        );
+        fs::remove_dir_all(&dir).ok();
     }
 }

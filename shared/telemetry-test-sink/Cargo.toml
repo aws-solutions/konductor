@@ -1,6 +1,6 @@
 [package]
 name = "telemetry-test-sink"
-version = "0.1.0"
+version = "1.0.3"
 edition = "2021"
 description = "Test-only loopback HTTP sink standing in for the real telemetry endpoint, shared by cli/konductor-rs's and mcp/lib/skill-lookup-core's test suites so neither ever sends telemetry to a real endpoint during a test run"
 # Lives in the shared/ workspace, sibling to cli/ and mcp/, for the

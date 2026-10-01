@@ -2,10 +2,12 @@
 //
 // telemetry — usage-analytics telemetry.
 //
-// identity: per-project telemetry-id.json. instance: machine-scoped
+// identity: legacy per-project telemetry-id.json, no longer read for
+// reporting; uninstall still removes it. instance: machine-scoped
 // $HOME/.konductor/telemetry.json. install_info: per-target
-// install-info.json. envelope: event schema. report: report_*
-// call-site API, transport, consent gating.
+// install-info.json, the per-install record and opt-in signal.
+// envelope: event schema. report: report_* call-site API, transport,
+// consent gating.
 
 mod envelope;
 mod identity;
@@ -15,24 +17,17 @@ mod report;
 
 // `doctor`'s telemetry-state check and `update`'s opt-out carry-forward
 // both gate on `install_info::read_install_info_detailed`, which says
-// WHY a read failed (absent vs. broken) so each can warn on a broken
-// record without mistaking it for a genuine opt-out. `report_*` still
-// gates on the plain `read_install_info` (via its own `install_info::`
-// module path, not this re-export -- see `report.rs`). `install.rs`'s
-// install summary also reads through this re-export, for the
-// installed content's `agent_version`: it only ever needs the record
-// or nothing, with no cause to distinguish absent from broken.
-// `install_info_exists` is re-exported here `#[cfg(test)]`-only: it
-// has callers, but only in this crate's own tests (`doctor.rs`,
-// `update.rs`) that assert against install-info's raw presence rather
-// than going through the detailed read.
+// why a read failed (absent vs. broken) so each can warn on a broken
+// record without mistaking it for a genuine opt-out. `report_*` gates
+// on the plain `read_install_info` instead. `install_info_exists` is
+// re-exported here `#[cfg(test)]`-only, for `update.rs`'s tests.
 #[allow(unused_imports)]
 pub(crate) use identity::{ensure_identity, identity_path};
 #[cfg(test)]
 pub(crate) use install_info::install_info_exists;
 pub(crate) use install_info::{
     agent_version_from_source, install_info_path, read_install_info, read_install_info_detailed,
-    write_install_info, InstallInfoAbsence,
+    remove_install_info, write_install_info, InstallInfoAbsence,
 };
 pub(crate) use report::{
     report_agent_invocation, report_cli_error, report_cli_error_for_target,
