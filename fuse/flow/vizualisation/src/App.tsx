@@ -16,7 +16,6 @@ function WorkflowList({ current, onOpen }: { current: string; onOpen: (path: str
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
   const shown = workflows.filter((w) => !q || w.path.toLowerCase().includes(q));
-  const grouped = new Set(workflows.map((w) => w.dir)).size > 1;
 
   return (
     <div className="lane">
@@ -33,20 +32,27 @@ function WorkflowList({ current, onOpen }: { current: string; onOpen: (path: str
         />
       </div>
       <div className="lane-list">
-        {shown.map((w, i) => (
-          <div key={w.path} style={{ display: "contents" }}>
-            {grouped && w.dir !== shown[i - 1]?.dir && <div className="lane-group">{w.dir || "/"}</div>}
-            <button
-              className={`lane-row${w.path === current ? " is-current" : ""}`}
-              onClick={() => onOpen(w.path)}
-              title={`${workflowsDir}/${w.path}`}
-            >
+        {shown.map((w) => (
+          <button
+            key={w.path}
+            className={`lane-row${w.path === current ? " is-current" : ""}`}
+            onClick={() => onOpen(w.path)}
+            title={`${workflowsDir}/${w.path}`}
+          >
+            <span className="lane-row-head">
               <span className="lane-row-name">{stem(w.file)}</span>
-              <span className="lane-row-meta">
-                {w.error ? "invalid" : `${w.steps.length} steps · ${gateCount(w)} gates`}
-              </span>
-            </button>
-          </div>
+              {w.dir && (
+                <span
+                  className={`lane-row-dir${w.dir === "personal" ? " is-personal" : w.dir === "team" ? " is-team" : ""}`}
+                >
+                  {w.dir}
+                </span>
+              )}
+            </span>
+            <span className="lane-row-meta">
+              {w.error ? "invalid" : `${w.steps.length} steps · ${gateCount(w)} gates`}
+            </span>
+          </button>
         ))}
         {shown.length === 0 && <div className="lane-empty">No match.</div>}
       </div>

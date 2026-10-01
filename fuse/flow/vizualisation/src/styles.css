@@ -94,13 +94,6 @@ button {
   flex-direction: column;
   gap: 2px;
 }
-.lane-group {
-  padding: 10px 10px 4px;
-  font: 500 11px "JetBrains Mono", monospace;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
 .lane-row {
   text-align: left;
   display: flex;
@@ -119,12 +112,38 @@ button {
   border-color: var(--accent);
   background: var(--accent-soft);
 }
+.lane-row-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
 .lane-row-name {
+  min-width: 0;
+  flex: 1;
   font: 500 13px "JetBrains Mono", monospace;
   color: var(--text-strong);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.lane-row-dir {
+  flex: none;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font: 600 9px "JetBrains Mono", monospace;
+  line-height: 1.3;
+  text-transform: capitalize;
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+}
+.lane-row-dir.is-personal {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.lane-row-dir.is-team {
+  background: var(--success-soft);
+  color: var(--success);
 }
 .lane-row-meta {
   font: 400 11.5px "JetBrains Mono", monospace;
