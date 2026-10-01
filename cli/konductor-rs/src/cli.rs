@@ -257,6 +257,13 @@ pub enum Commands {
         /// forward differently. Pass `--enable-telemetry` to reverse an
         /// opt-out. An `--all` batch resolves this independently per
         /// target. Mutually exclusive with `--enable-telemetry`.
+        ///
+        /// Scoped to the whole target directory, NOT to `--harness`:
+        /// `install-info.json` is one file per target, shared by every
+        /// harness installed there, so `--harness <name> --no-telemetry`
+        /// still opts the ENTIRE target out, including every other
+        /// harness coexisting at that same target -- there is no
+        /// per-harness telemetry setting to opt only one of them out of.
         #[arg(long, conflicts_with = "enable_telemetry")]
         no_telemetry: bool,
 
@@ -269,6 +276,11 @@ pub enum Commands {
         /// run -- the mirror image of `--no-telemetry`'s own
         /// sticky-delete. An `--all` batch resolves this independently
         /// per target. Mutually exclusive with `--no-telemetry`.
+        ///
+        /// Scoped to the whole target directory, NOT to `--harness`, for
+        /// the same reason `--no-telemetry` is: `--harness <name>
+        /// --enable-telemetry` opts the ENTIRE target back in, not just
+        /// the named harness.
         #[arg(long = "enable-telemetry", action = ArgAction::SetTrue, conflicts_with = "no_telemetry")]
         enable_telemetry: bool,
 

@@ -26,8 +26,8 @@ pub(crate) use identity::{ensure_identity, identity_path};
 #[cfg(test)]
 pub(crate) use install_info::install_info_exists;
 pub(crate) use install_info::{
-    agent_version_from_source, install_info_path, read_install_info, read_install_info_detailed,
-    remove_install_info, write_install_info, InstallInfoAbsence,
+    agent_version_from_source, install_info_path, read_and_maybe_remove_locked, read_install_info,
+    read_install_info_detailed, remove_install_info, write_install_info, InstallInfoAbsence,
 };
 pub(crate) use report::{
     report_agent_invocation, report_cli_error, report_cli_error_for_target,

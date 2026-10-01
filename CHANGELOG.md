@@ -13,6 +13,12 @@ not per individual commit.
 - `update --no-telemetry` now opts a project out for good: it removes the project's telemetry
   record instead of only skipping that one run's write, so a later plain `update` can't quietly
   turn telemetry back on. Pass the new `--enable-telemetry` flag to opt back in.
+- If removing that record fails (for example, a read-only `.konductor/` directory), `update` now
+  warns about it in both plain-text and `--json` output instead of only printing to stderr, so the
+  risk of telemetry silently turning back on is visible.
+- The opt-out removal is now serialized against a concurrent install or update at the same
+  project, so a telemetry record a different harness just wrote can no longer be silently
+  destroyed by a race between reading and removing it.
 
 ## [1.0.3] - 2026-10-01
 

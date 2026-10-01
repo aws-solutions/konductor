@@ -502,6 +502,12 @@ as enabled, not just this one run. The two flags are mutually exclusive (usage e
 `64`, if both are passed). An `--all` batch resolves this independently per target, the
 same way each target's own `.konductor/config.yml` opt-out is resolved independently.
 
+Both flags are scoped to the **whole target directory**, not to `--harness`.
+`install-info.json` is a single file per target, shared by every harness installed there,
+so there is no per-harness telemetry setting. Opting out (or back in) via one harness's
+`update` invocation, for example `update --harness kiro-cli-v2 --no-telemetry`, affects
+every harness coexisting at that target, not just the one named on the command line.
+
 ### `--dry-run`
 
 `--dry-run` reports exactly which files would be overwritten for every selected target

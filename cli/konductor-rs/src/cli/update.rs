@@ -1615,16 +1615,13 @@ fn run_update_one_target_with_remote_installer(
     // and when passed it always suppresses telemetry for this run
     // regardless of the target's own history -- an explicit override
     // in either direction. When it is NOT passed, this target's own
-    // `.konductor/install-info.json` is read via
-    // `read_install_info_detailed` (not the plain `read_install_info`
-    // `report_*` uses, since this call site -- unlike those -- needs to
-    // tell the user WHY, not just whether) to resolve one of three
+    // `.konductor/install-info.json` is read to resolve one of three
     // outcomes, the same three `doctor`'s `check_telemetry_state` reads
     // from this file:
     //
     //   - `Ok`: an install-info record exists and validated. Not
     //     opted out; `no_telemetry` is left as the caller passed it
-    //     (see the deletion below for what an explicit `--no-telemetry`
+    //     (see the removal below for what an explicit `--no-telemetry`
     //     still does to this record).
     //   - `Err(NotFound)`: no record was ever written, either from a
     //     deliberate `--no-telemetry` choice at install or update, or an
@@ -1653,18 +1650,37 @@ fn run_update_one_target_with_remote_installer(
     // what keeps this run from wiring telemetry hooks on any harness,
     // and makes it strip the hooks a prior run wired.
     //
-    // Read unconditionally -- NOT `no_telemetry ||`-short-circuited --
-    // so a broken record is always surfaced via `telemetry_state_warning`
-    // even on a run where `--no-telemetry` was passed explicitly (which
-    // would otherwise skip this read entirely and never learn the
-    // record was broken rather than absent). The read's `Ok`/`NotFound`
-    // outcomes never affect `no_telemetry`: an explicit `--no-telemetry`
-    // already decided the opt-out on its own, and this read exists only
-    // to resolve that decision when the flag was NOT passed and to
-    // report whether the file backing that decision is trustworthy.
+    // The read and the sticky-opt-out removal just below it run as ONE
+    // locked critical section via `read_and_maybe_remove_locked`, not
+    // two separately unlocked steps -- composing an unlocked read with a
+    // later, separately unlocked removal would leave a gap for a
+    // concurrent `write_install_info` (a different harness's install or
+    // update, telemetry on) to land a fresh record in between the two,
+    // and the removal would then act on a decision made before that
+    // record ever existed; see `read_and_maybe_remove_locked`'s own doc
+    // comment for the TOCTOU gap this closes. An EXPLICIT
+    // `--no-telemetry` against a target whose record currently reads as
+    // enabled does not just suppress wiring for this one run -- it
+    // removes the record, the same effect `install --no-telemetry`
+    // already has over an opted-in target (see that call site's own doc
+    // comment). Without this, a target opted out via `update
+    // --no-telemetry` would have its record read as `Ok` again on the
+    // very next PLAIN `update` (no flag re-passed), silently re-enabling
+    // telemetry. The read itself runs unconditionally -- `no_telemetry`
+    // only gates whether a removal is REQUESTED, never whether the read
+    // happens -- so a broken record is always surfaced via
+    // `telemetry_state_warning` even on a run where `--no-telemetry` was
+    // passed explicitly. Requesting removal for a target that was
+    // ALREADY opted out is harmless: there is no record to remove, and
+    // removal is already a no-op for a missing file regardless.
+    // Best-effort, matching `install.rs`'s own handling of the identical
+    // call: a removal failure is folded into `telemetry_state_warning`
+    // below rather than failing the update outright -- an update that
+    // otherwise succeeded must not be reported as a hard failure just
+    // because this record survived.
     let mut telemetry_state_warning: Option<String> = None;
-    let install_info_read = crate::cli::telemetry::read_install_info_detailed(target_dir);
-    let record_currently_enabled = install_info_read.is_ok();
+    let (install_info_read, remove_error) =
+        crate::cli::telemetry::read_and_maybe_remove_locked(target_dir, no_telemetry);
     let carried_forward_opt_out = match install_info_read {
         Ok(_) => false,
         Err(crate::cli::telemetry::InstallInfoAbsence::NotFound) => true,
@@ -1680,30 +1696,26 @@ fn run_update_one_target_with_remote_installer(
             true
         }
     };
-
-    // Sticky opt-out: an EXPLICIT `--no-telemetry` against a target
-    // whose record currently reads as enabled (`Ok` above) does not
-    // just suppress wiring for this one run -- it deletes the record,
-    // the same `remove_install_info` call `install --no-telemetry`
-    // already makes over an opted-in target (see that call site's own
-    // doc comment). Without this, a target opted out via `update
-    // --no-telemetry` would have its record read as `Ok` again on the
-    // very next PLAIN `update` (no flag re-passed), silently
-    // re-enabling telemetry -- the bug this deletion closes. Gated on
-    // the flag the caller actually passed (`no_telemetry`, still
-    // unshadowed at this point), never on `carried_forward_opt_out`:
-    // a target that was ALREADY opted out has no record to remove, and
-    // `remove_install_info` is already a no-op for a missing file
-    // regardless. Best-effort, matching `install.rs`'s own handling: a
-    // failure here is only ever a warning, never a hard failure of an
-    // update that has otherwise not yet done anything irreversible.
-    if no_telemetry && record_currently_enabled {
-        if let Err(err) = crate::cli::telemetry::remove_install_info(target_dir) {
-            eprintln!(
-                "konductor update: warning: could not remove {}: {err}",
-                crate::cli::telemetry::install_info_path(target_dir).display()
-            );
-        }
+    // A failed removal leaves this target's record exactly as it was
+    // read above -- still `Ok`, still enabled -- so a later plain
+    // `update` (no `--no-telemetry` re-passed) will carry telemetry
+    // forward as on, exactly the bug this whole opt-out removal exists
+    // to close, just reached via a failure path instead of a missing
+    // one. Folded into `telemetry_state_warning` with the same `"; "`
+    // join `finalize_index_warning` uses below, rather than overwriting
+    // a `Broken`-record warning that may already be set: the two
+    // conditions are independent and either can fire alone.
+    if let Some(err) = remove_error {
+        let record_path = crate::cli::telemetry::install_info_path(target_dir);
+        let message = format!(
+            "could not remove {}: {err} -- a later plain `update` for this target may \
+             silently re-enable telemetry until this record is removed",
+            record_path.display()
+        );
+        telemetry_state_warning = Some(match telemetry_state_warning {
+            Some(existing) => format!("{existing}; {message}"),
+            None => message,
+        });
     }
 
     // `--enable-telemetry` is the mirror image: it forces telemetry ON
@@ -5818,6 +5830,144 @@ mod tests {
 
         fs::remove_dir_all(&target).ok();
         fs::remove_dir_all(&repo_root).ok();
+    }
+
+    // ── Sticky opt-out: a removal failure must warn, not be swallowed ───
+
+    /// The regression this fix closes: `update --no-telemetry` against
+    /// an enabled target whose `.konductor/` directory it cannot write
+    /// to (so the removal below genuinely fails) must still surface
+    /// that failure through `telemetry_state_warning` ->
+    /// `finalize_index_warning`, exactly like the three outcomes above,
+    /// rather than only to a bare `eprintln!` nobody capturing `--json`
+    /// output (or any non-interactive output at all) would ever see.
+    /// Before this fix, that failure was printed to stderr alone, so a
+    /// `--json` run reported clean success with exit code 0 while the
+    /// stale, still-enabled record silently survived.
+    ///
+    /// Drives this through the content-version skip-if-unchanged path
+    /// (a matching `--version`) rather than the ordinary re-copy path:
+    /// the skip path never calls `install_from_local`, so it never
+    /// needs to write this target's own manifest -- the only other
+    /// write under this read-only `.konductor/` directory this run
+    /// would otherwise attempt, which would fail for an unrelated
+    /// reason and mask the one failure this test targets.
+    #[test]
+    fn removal_failure_on_explicit_opt_out_warns_without_failing_the_run() {
+        use std::os::unix::fs::PermissionsExt;
+
+        if super::super::install::bin_link::running_as_root() {
+            eprintln!(
+                "skipping removal_failure_on_explicit_opt_out_warns_without_failing_the_run: \
+                 running as root, which bypasses the DAC permission denial this test depends \
+                 on"
+            );
+            return;
+        }
+
+        let _home = HomeGuard::new("removal-failure-home");
+        let target = scratch_dir("removal-failure-target");
+        let manifest = StrategyManifest::new(
+            "kiro-cli-v2",
+            "2026-01-01T00:00:00Z",
+            ".",
+            None,
+            Status::Complete,
+            vec![],
+        );
+        manifest::upsert_strategy(&target, manifest).unwrap();
+        seed_agent_version_for_harness(&target, "kiro-cli-v2", "1.5.0");
+        let record_path = crate::cli::telemetry::install_info_path(&target);
+        assert!(
+            record_path.is_file(),
+            "sanity check: the record must exist before the directory is locked down"
+        );
+
+        let canonical = index::canonicalize_target_dir(&target).unwrap();
+        index::write_index(IndexEntry {
+            target_dir: canonical,
+            strategies: vec!["kiro-cli-v2".to_string()],
+            installed_at: "2026-01-01T00:00:00Z".to_string(),
+            status: IndexEntryStatus::Complete,
+        })
+        .unwrap();
+
+        // Strip write permission from the target's own `.konductor/`
+        // directory -- `fs::remove_file` needs write permission on the
+        // PARENT directory, not the file's own permission bits, so this
+        // is what actually makes the removal below fail, not the
+        // record's own mode.
+        let konductor_dir = target.join(".konductor");
+        let mut perms = fs::metadata(&konductor_dir).unwrap().permissions();
+        perms.set_mode(0o555);
+        fs::set_permissions(&konductor_dir, perms).unwrap();
+
+        let outcome = run_update_one_target_with_remote_installer(
+            &target,
+            None,          /* from */
+            None,          /* harness */
+            false,         /* use_github_token */
+            Some("1.5.0"), /* release_version: matches the recorded version */
+            false,         /* force */
+            false,         /* uncached_identity */
+            false,         /* json */
+            true,          /* no_telemetry: --no-telemetry */
+            false,         /* enable_telemetry */
+            None,          /* latest_release_tag_cache */
+            |_strategy, _destination, _installed_at, _no_telemetry| {
+                panic!(
+                    "remote_installer must never be called when the target is already at \
+                     exactly the requested --version"
+                )
+            },
+        );
+
+        // Restore permissions before any assertion can panic and skip
+        // this cleanup, so a failing run never leaves a read-only
+        // directory behind for the next test using the same scratch
+        // root pattern.
+        let restored = std::fs::Permissions::from_mode(0o755);
+        let _ = fs::set_permissions(&konductor_dir, restored);
+
+        let Ok(UpdateOutcome::AlreadyAtVersion {
+            version,
+            finalize_index_warning,
+        }) = outcome
+        else {
+            panic!(
+                "update --no-telemetry must still succeed via AlreadyAtVersion even when the \
+                 removal fails -- a removal failure must stay non-fatal to the overall update, \
+                 exactly like the pre-fix eprintln!-only behavior"
+            );
+        };
+        assert_eq!(version, "1.5.0");
+
+        let warning = finalize_index_warning.expect(
+            "a removal failure must produce a warning via telemetry_state_warning, not be \
+             swallowed by a bare eprintln!",
+        );
+        assert!(
+            warning.contains(&record_path.display().to_string()),
+            "the warning must name the file that could not be removed; got: {warning}"
+        );
+        assert!(warning.contains("could not remove"), "got: {warning}");
+
+        // Detectable: the removal genuinely failed, so the stale record
+        // is still present and still reads as enabled -- exactly the
+        // precondition for a later plain `update` to silently carry
+        // telemetry forward, but now surfaced via the warning above
+        // instead of silently.
+        assert!(
+            crate::cli::telemetry::install_info_exists(&target),
+            "the removal must have genuinely failed, leaving the stale record behind"
+        );
+        assert!(
+            crate::cli::telemetry::read_install_info_detailed(&target).is_ok(),
+            "the surviving record must still read as enabled -- this is exactly the risk the \
+             warning above names"
+        );
+
+        fs::remove_dir_all(&target).ok();
     }
 
     #[test]

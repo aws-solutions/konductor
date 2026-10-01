@@ -12,12 +12,21 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
+use crate::cli::config_lock;
+
 use super::super::config::KONDUCTOR_DIR_NAME;
 
 /// Independent of `identity::SCHEMA_VERSION`/`instance::SCHEMA_VERSION`.
 pub(crate) const SCHEMA_VERSION: u64 = 1;
 
 const INSTALL_INFO_FILE_NAME: &str = "install-info.json";
+
+/// Per-target advisory lock guarding `install-info.json`'s write and its
+/// read-check-remove critical section (`read_and_maybe_remove_locked`).
+/// Independent of `manifest.rs`'s own `MANIFEST_LOCK_FILE_NAME` and
+/// `bin_link.rs`'s `.bin-links.lock` -- a different document, a
+/// different lock, so contention on one never blocks the other.
+const INSTALL_INFO_LOCK_FILE_NAME: &str = ".install-info.lock";
 
 /// `0o600`: owner read/write only. Matches the instance record's own
 /// mode (`shared/konductor-telemetry`'s `identity.rs`), not the
@@ -112,6 +121,15 @@ pub(crate) fn write_install_info(
 /// the file would keep every `report_*` gate open and make the next
 /// plain `update` carry telemetry forward as enabled. An absent file is
 /// not an error.
+///
+/// Unlocked: a direct `fs::remove_file`, safe to call standalone when the
+/// caller already holds `INSTALL_INFO_LOCK_FILE_NAME` itself (as
+/// `read_and_maybe_remove_locked` does) or doesn't need the TOCTOU
+/// guarantee that function provides. A caller that reads this record and
+/// then decides whether to remove it should use
+/// [`read_and_maybe_remove_locked`] instead of composing a read with this
+/// function directly -- see that function's own doc comment for the race
+/// doing so otherwise leaves open.
 pub(crate) fn remove_install_info(target_dir: &Path) -> std::io::Result<()> {
     match std::fs::remove_file(install_info_path(target_dir)) {
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(()),
@@ -119,15 +137,97 @@ pub(crate) fn remove_install_info(target_dir: &Path) -> std::io::Result<()> {
     }
 }
 
-/// Not protected by the manifest lock: concurrent installs with
-/// different harnesses each call this after their own
-/// `manifest::upsert_strategy` lock has already been released.
-/// `atomic_write::write_atomic_with_mode`'s temp-file-then-`rename`
-/// still guarantees a reader sees either the previous record or this
-/// one in full, never a torn write.
+/// Reads the install-info record and, when `remove_if_enabled` is true
+/// and that read currently finds a usable (`Ok`) record, removes it --
+/// both steps inside ONE critical section under
+/// `INSTALL_INFO_LOCK_FILE_NAME`, the same per-target lock `write_record`
+/// holds for its own write.
+///
+/// Composing an unlocked `read_install_info_detailed` with a later,
+/// separately unlocked `remove_install_info` call leaves a gap: a
+/// concurrent `write_install_info` (a different harness's install or
+/// update, telemetry on) can land a fresh record in between the two,
+/// and the later call would then remove that fresh record based on a
+/// decision made before it ever existed, rather than the one actually
+/// read. Locking only the removal, not the read, still leaves that same
+/// gap open -- the read and the removal decision it drives must share
+/// one lock acquisition so the removal always acts on what the lock
+/// holder itself just saw, never on a stale snapshot.
+///
+/// Returns the read's own three-way outcome (`Ok`/`NotFound`/`Broken`)
+/// unchanged, so callers resolve a carry-forward opt-out or a
+/// broken-record warning exactly as they would from a bare
+/// `read_install_info_detailed` call. `remove_error` is `Some` only when
+/// a removal was both called for and attempted (the locked read found an
+/// `Ok` record) and either the removal itself failed, or the lock could
+/// not be acquired at all with a removal pending.
+pub(crate) fn read_and_maybe_remove_locked(
+    target_dir: &Path,
+    remove_if_enabled: bool,
+) -> (
+    Result<InstallInfoRecord, InstallInfoAbsence>,
+    Option<std::io::Error>,
+) {
+    let dir = target_dir.join(KONDUCTOR_DIR_NAME);
+    let guard = match config_lock::acquire_named(&dir, INSTALL_INFO_LOCK_FILE_NAME) {
+        Ok(guard) => guard,
+        Err(err) => {
+            // Contention most plausibly means a concurrent writer holds
+            // this exact lock right now -- i.e. the race this lock
+            // exists to prevent is actually in progress. Skip the
+            // removal rather than racing it unlocked; the read below is
+            // still unlocked and best-effort here, matching this
+            // function's behavior before this lock existed.
+            let read = read_install_info_detailed(target_dir);
+            let remove_error =
+                (remove_if_enabled && read.is_ok()).then(|| std::io::Error::other(err.to_string()));
+            return (read, remove_error);
+        }
+    };
+    let read = read_install_info_detailed(target_dir);
+    #[cfg(test)]
+    if let Some(hook) = LOCKED_READ_SYNC_HOOK.with(|h| h.borrow_mut().take()) {
+        hook();
+    }
+    let remove_error = if remove_if_enabled && read.is_ok() {
+        remove_install_info(target_dir).err()
+    } else {
+        None
+    };
+    drop(guard);
+    (read, remove_error)
+}
+
+// Test-only hook invoked by `read_and_maybe_remove_locked` right after
+// it acquires its lock and performs the fresh read, but before any
+// removal -- lets a test hold the critical section open for a
+// controlled moment so a concurrent `write_install_info` call can be
+// proven to block on the SAME lock rather than racing it. A no-op in
+// every real build and in every test that never sets it, mirroring
+// `update.rs`'s own `MID_UPDATE_SYNC_HOOK` test-only pattern.
+#[cfg(test)]
+thread_local! {
+    static LOCKED_READ_SYNC_HOOK: std::cell::RefCell<Option<Box<dyn FnOnce()>>> =
+        std::cell::RefCell::new(None);
+}
+
+/// Locked under `INSTALL_INFO_LOCK_FILE_NAME` for the whole write, not
+/// just the rename: `write_atomic_with_mode`'s temp-file-then-`rename`
+/// alone guarantees a reader never observes a torn write, but says
+/// nothing about a concurrent [`read_and_maybe_remove_locked`] call
+/// removing the file this write is in the middle of producing. The two
+/// share this one lock so each one's critical section runs to
+/// completion before the other's begins -- see
+/// `read_and_maybe_remove_locked`'s own doc comment for the TOCTOU gap
+/// this closes. Independent of `manifest.rs`'s own
+/// `MANIFEST_LOCK_FILE_NAME`: a concurrent install's manifest write and
+/// this record's write touch two different documents and must not
+/// contend with each other.
 fn write_record(target_dir: &Path, record: &InstallInfoRecord) -> std::io::Result<()> {
     let dir = target_dir.join(KONDUCTOR_DIR_NAME);
     std::fs::create_dir_all(&dir)?;
+    let _lock = config_lock::acquire_named(&dir, INSTALL_INFO_LOCK_FILE_NAME)
+        .map_err(|err| std::io::Error::other(err.to_string()))?;
     let mut rendered =
         serde_json::to_string_pretty(record).expect("InstallInfoRecord must always serialize");
     rendered.push('\n');
@@ -443,7 +543,13 @@ mod tests {
             .filter_map(|e| e.ok())
             .filter(|e| e.path().is_file())
             .map(|e| e.file_name().to_string_lossy().into_owned())
-            .filter(|name| name != ".manifest.lock")
+            // `.manifest.lock` and `.install-info.lock` are per-target
+            // advisory lock sidecars `manifest::upsert_strategy` and
+            // `write_install_info` each leave behind on disk once
+            // acquired at least once -- real, expected artifacts of this
+            // test's own two writes above, but not part of the three
+            // content files this test's own invariant is about.
+            .filter(|name| name != ".manifest.lock" && name != ".install-info.lock")
             .collect();
         assert_eq!(
             names,
@@ -601,5 +707,169 @@ mod tests {
         let target = scratch_dir("exists-neither-file-target");
         assert!(!install_info_exists(&target));
         fs::remove_dir_all(&target).ok();
+    }
+
+    // ── Unlocked read-check-then-delete race vs. a concurrent write ─────
+    //
+    // Composing an unlocked `read_install_info_detailed` with a later,
+    // separately unlocked `remove_install_info` call -- as `update.rs`'s
+    // sticky opt-out would without `read_and_maybe_remove_locked` --
+    // leaves a gap for a concurrent `write_install_info` call to land a
+    // fresh record in between the two. `read_and_maybe_remove_locked`
+    // closes that gap by running both steps inside one critical section
+    // under `INSTALL_INFO_LOCK_FILE_NAME`, the same lock `write_record`
+    // holds for its own write. Mirrors `uninstall.rs`'s own
+    // `old_unlocked_delete_then_locked_remove_sequence_corrupts_a_racing_kiro_variant_override`
+    // / `delete_and_remove_strategy_locked_never_deletes_a_racing_kiro_variant_overrides_files`
+    // pair for the identical shape of race on a different document.
+
+    /// Manually sequences the OLD unprotected pattern -- an unlocked
+    /// read captured once, then an unlocked `remove_install_info` call
+    /// much later -- with a concurrent writer's successful
+    /// `write_install_info` landing in the gap between the two. Pins
+    /// exactly what that composition destroys; not itself the
+    /// regression test for the locked fix, see the next test for that.
+    #[test]
+    fn old_unlocked_read_then_delete_sequence_destroys_a_racing_concurrent_write() {
+        let target = scratch_dir("unlocked-race-old-sequence-target");
+        let source = scratch_dir("unlocked-race-old-sequence-source");
+        seed_dist_version(&source, "1.0.0\n");
+
+        // An existing enabled record, as if this target was installed
+        // earlier with telemetry on.
+        write_install_info(&target, &source, "kiro-cli-v2", "2026-01-10T00:00:00Z").unwrap();
+
+        // The UNLOCKED read the old carry-forward composition
+        // performed, captured here exactly as it would be.
+        let stale_read = read_install_info_detailed(&target);
+        assert!(
+            stale_read.is_ok(),
+            "sanity check: the stale read must see the existing record"
+        );
+
+        // A concurrent writer (e.g. `install --harness claude`,
+        // telemetry on) completing ENTIRELY in the gap: a fresh record
+        // superseding the one just read.
+        write_install_info(&target, &source, "claude", "2026-01-10T00:05:00Z").unwrap();
+        assert_eq!(
+            read_install_info(&target).map(|r| r.harness),
+            Some("claude".to_string()),
+            "sanity check: the concurrent writer's fresh record really did land"
+        );
+
+        // The old sequence: delete unconditionally, driven only by the
+        // STALE read's `Ok`-ness above, with no fresh re-check.
+        remove_install_info(&target).unwrap();
+
+        // The corruption: the concurrent writer's fresh, successfully
+        // committed record is gone -- destroyed by a delete decision
+        // made from a snapshot taken before that write ever happened.
+        assert!(
+            !install_info_exists(&target),
+            "CORRUPTED STATE reproduced: the concurrent writer's fresh record was destroyed \
+             by the stale-read-driven delete"
+        );
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&source).ok();
+    }
+
+    /// The regression test for the fix: races a REAL concurrent
+    /// `write_install_info` call against `read_and_maybe_remove_locked`
+    /// using two real OS threads, with `LOCKED_READ_SYNC_HOOK` holding
+    /// the locked function's critical section open for a controlled
+    /// moment. The concurrent write must block on the SAME lock rather
+    /// than racing the read-check-delete, and must land fully, visibly,
+    /// once the lock is released -- never silently lost.
+    #[test]
+    fn read_and_maybe_remove_locked_never_loses_a_racing_concurrent_write() {
+        let target = scratch_dir("locked-race-target");
+        let source = scratch_dir("locked-race-source");
+        seed_dist_version(&source, "1.0.0\n");
+
+        // An existing enabled record -- `read_and_maybe_remove_locked`'s
+        // fresh read must see this as `Ok`, triggering a removal
+        // attempt.
+        write_install_info(&target, &source, "kiro-cli-v2", "2026-01-01T00:00:00Z").unwrap();
+
+        let (paused_tx, paused_rx) = std::sync::mpsc::channel::<()>();
+        let (unblock_tx, unblock_rx) = std::sync::mpsc::channel::<()>();
+
+        // `LOCKED_READ_SYNC_HOOK` is a `thread_local!` -- it must be set
+        // on the SAME thread that will later call
+        // `read_and_maybe_remove_locked` and consult it, not on this
+        // (main) test thread. Setting it here would silently leave
+        // thread A's own copy at its default `None`, so A would never
+        // pause at all and `paused_rx.recv()` below would block forever
+        // waiting for a signal nothing ever sends.
+        let target_for_a = target.clone();
+        let handle_a = std::thread::spawn(move || {
+            LOCKED_READ_SYNC_HOOK.with(|hook| {
+                *hook.borrow_mut() = Some(Box::new(move || {
+                    // Signal the main thread that the lock is held and
+                    // the fresh read has completed, then block until
+                    // told to proceed -- holding the critical section
+                    // open for the whole pause.
+                    paused_tx.send(()).unwrap();
+                    unblock_rx.recv().unwrap();
+                }));
+            });
+            read_and_maybe_remove_locked(&target_for_a, true)
+        });
+
+        // Wait for A to be paused mid-critical-section, still holding
+        // the lock.
+        paused_rx.recv().unwrap();
+
+        // A concurrent writer attempting to write while A still holds
+        // the lock: must block on `write_record`'s own lock acquisition
+        // rather than racing A's in-flight read-check-delete.
+        let target_for_b = target.clone();
+        let source_for_b = source.clone();
+        let handle_b = std::thread::spawn(move || {
+            write_install_info(
+                &target_for_b,
+                &source_for_b,
+                "claude",
+                "2026-01-02T00:00:00Z",
+            )
+        });
+
+        // Not a correctness requirement (the assertions below hold
+        // regardless of real scheduling order once the lock is
+        // released) -- gives B a realistic chance to actually attempt,
+        // and block on, the lock before A is released, rather than B
+        // merely running entirely after A by scheduling luck alone.
+        std::thread::sleep(std::time::Duration::from_millis(50));
+
+        // Release A: it completes its fresh read-check-delete and drops
+        // the lock, which must let B's blocked write proceed.
+        unblock_tx.send(()).unwrap();
+
+        let (a_read, a_remove_error) = handle_a.join().expect("thread A must not panic");
+        assert!(
+            a_read.is_ok(),
+            "A's fresh read must see the seeded enabled record"
+        );
+        assert!(
+            a_remove_error.is_none(),
+            "A's removal must succeed: {a_remove_error:?}"
+        );
+
+        handle_b.join().expect("thread B must not panic").expect(
+            "B's write must succeed once A releases the lock, not be lost or blocked \
+                 forever",
+        );
+
+        // B's write is NOT silently lost: it is the final, observable
+        // state after both threads complete, exactly as a real serial
+        // A-then-B execution would leave it -- never a corrupted/partial
+        // result and never silently absent.
+        let final_record = read_install_info(&target)
+            .expect("B's write must still be readable after the race -- it must not be lost");
+        assert_eq!(final_record.harness, "claude");
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&source).ok();
     }
 }
