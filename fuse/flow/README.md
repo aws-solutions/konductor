@@ -94,7 +94,8 @@ Exit codes: 0 success, 1 refused (the reason is printed), 64 usage error.
   owner or is blocked.
 - **Fix cycles.** A `continue` refused because an artifact is missing or the check failed costs the
   step one fix cycle. After `max_fix_cycles` of them the step is `blocked`, and only the owner can
-  release it with `continue --owner-approved`.
+  release it with `continue --owner-approved`. The limit is set on the workflow (default 2), and a
+  step can override it with its own `max_fix_cycles`. Each step counts its own fix cycles.
 - **Skills.** A relative skill path is looked up in `FUSE_SKILLS_DIR`, then `skills/`,
   `.kiro/skills/`, `.konductor/skills/`, `.claude/skills/` and `.agents/skills/` in the
   repository, then `SKILLS_HOME`, then `~/.kiro/skills/`, `~/.konductor/skills/`,

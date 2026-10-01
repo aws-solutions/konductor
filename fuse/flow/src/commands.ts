@@ -116,7 +116,8 @@ function describeCurrent(root: string, slug: string, wf: Workflow, ws: Workstrea
 //   pending         the agent finished the work. Accepted only when every
 //                   artifact exists and the step's check command (if any)
 //                   exits 0; a refusal costs one fix cycle, and after
-//                   max_fix_cycles of them the step is blocked. A step with
+//                   max_fix_cycles of them (the step's own value, else
+//                   the workflow's) the step is blocked. A step with
 //                   gate: owner goes to awaiting-owner instead of done.
 //   awaiting-owner  needs --owner-approved: the owner has approved the step.
 //   blocked         needs --owner-approved: the owner accepts the step as it is.
@@ -204,17 +205,18 @@ function requirePending(wf: Workflow, ws: Workstream, step: Step) {
 // Record a refused attempt on the step, blocking it when that was the last
 // fix cycle, and return the error that tells the caller why.
 function countRefusal(root: string, slug: string, wf: Workflow, step: Step, reason: string, output = "") {
+  const limit = step.max_fix_cycles ?? wf.max_fix_cycles;
   let fixCycles = 0;
   updateWorkstream(root, slug, (ws) => {
     const state = requirePending(wf, ws, step);
     state.fix_cycles += 1;
     state.history.push(stamp(`continue refused: ${reason}`));
-    if (state.fix_cycles >= wf.max_fix_cycles) state.status = "blocked";
+    if (state.fix_cycles >= limit) state.status = "blocked";
     fixCycles = state.fix_cycles;
   });
-  const blocked = fixCycles >= wf.max_fix_cycles ? " (the step is now blocked)" : "";
+  const blocked = fixCycles >= limit ? " (the step is now blocked)" : "";
   return new FlowError(
-    [reason, output, `fix cycles used on ${step.id}: ${fixCycles} of ${wf.max_fix_cycles}${blocked}`]
+    [reason, output, `fix cycles used on ${step.id}: ${fixCycles} of ${limit}${blocked}`]
       .filter(Boolean)
       .join("\n"),
   );

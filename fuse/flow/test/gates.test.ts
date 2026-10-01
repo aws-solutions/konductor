@@ -129,6 +129,39 @@ test("a step blocks after max_fix_cycles refused attempts, and the owner can acc
   expect(accepted).toContain("step: release");
 });
 
+test("a step's own max_fix_cycles overrides the workflow's", () => {
+  const other = new Repo();
+  try {
+    other.start(
+      "feat",
+      `version: 1
+name: w
+max_fix_cycles: 2
+steps:
+  - id: build
+    instruction: Make the tests pass.
+    gate: "check: false"
+    max_fix_cycles: 3
+  - id: docs
+    instruction: Write the docs.
+    produces: [docs.md]
+    max_fix_cycles: 1
+`,
+    );
+    other.refused("continue", "feat");
+    expect(other.refused("continue", "feat")).toContain("fix cycles used on build: 2 of 3");
+    expect(other.status("feat", "build")).toBe("pending");
+    expect(other.refused("continue", "feat")).toContain("fix cycles used on build: 3 of 3 (the step is now blocked)");
+    expect(other.status("feat", "build")).toBe("blocked");
+
+    other.ok("continue", "feat", "--owner-approved", "--note", "accepted as it is");
+    expect(other.refused("continue", "feat")).toContain("fix cycles used on docs: 1 of 1 (the step is now blocked)");
+    expect(other.status("feat", "docs")).toBe("blocked");
+  } finally {
+    other.cleanup();
+  }
+});
+
 test("continue still succeeds and prints the next step when its check changes the workflow file", () => {
   const other = new Repo();
   try {

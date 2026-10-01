@@ -47,6 +47,8 @@ const StepSchema = z
     // Which earlier steps this one builds on, for the reader and for a
     // workflow's author. fuse-flow hands out steps in file order regardless.
     depends_on: z.array(id).optional(),
+    // Overrides the workflow's max_fix_cycles for this step.
+    max_fix_cycles: z.number().int().min(1).optional(),
   })
   .strict()
   .refine((step) => step.skill || step.instruction, "a step needs a skill, an instruction, or both");
@@ -56,7 +58,8 @@ const WorkflowSchema = z
     version: z.literal(1),
     name: z.string().min(1),
     description: z.string().optional(),
-    // How many refused `continue` attempts a step gets before it is blocked.
+    // How many refused `continue` attempts a step gets before it is blocked,
+    // unless the step sets its own max_fix_cycles.
     max_fix_cycles: z.number().int().min(1).default(2),
     steps: z.array(StepSchema).min(1),
   })

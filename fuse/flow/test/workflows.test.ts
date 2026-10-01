@@ -100,6 +100,7 @@ steps:
     ["bad gate", ONE_STEP + "    gate: sometimes\n", 'must be none, owner or "check: <command>"'],
     ["empty check", ONE_STEP + '    gate: "check:"\n', 'must be none, owner or "check: <command>"'],
     ["step with nothing to do", "version: 1\nname: x\nsteps:\n  - id: a\n", "a step needs a skill, an instruction, or both"],
+    ["step max_fix_cycles below 1", ONE_STEP + "    max_fix_cycles: 0\n", "max_fix_cycles"],
     ["bad step id", "version: 1\nname: x\nsteps:\n  - id: Design\n    instruction: x\n", "lowercase letters"],
   ];
   for (const [name, yaml, message] of cases) {
