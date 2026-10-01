@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// dispatch.rs — command dispatch for the Konductor CLI (Rust implementation).
+// dispatch.rs - command dispatch for the Konductor CLI (Rust implementation).
 //
 // Structural extraction of the top-level `match command { ... }` out of
 // cli.rs::run() into its own module, so cli.rs stays focused on argument

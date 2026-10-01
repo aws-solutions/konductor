@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// telemetry/install_info.rs — `<target_dir>/.konductor/install-info.json`
+// telemetry/install_info.rs - `<target_dir>/.konductor/install-info.json`
 // schema, `agent_version` derivation, and write and removal mechanics.
 //
 // `agent_version` is the installed content's own version, reported
@@ -176,8 +176,8 @@ pub(crate) fn read_and_maybe_remove_locked(
             // this exact lock right now -- i.e. the race this lock
             // exists to prevent is actually in progress. Skip the
             // removal rather than racing it unlocked; the read below is
-            // still unlocked and best-effort here, matching this
-            // function's behavior before this lock existed.
+            // still unlocked and best-effort, the same as calling
+            // `read_install_info_detailed` directly with no lock held.
             let read = read_install_info_detailed(target_dir);
             let remove_error =
                 (remove_if_enabled && read.is_ok()).then(|| std::io::Error::other(err.to_string()));

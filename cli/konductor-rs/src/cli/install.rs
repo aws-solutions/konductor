@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// install.rs — `konductor install` dispatch (Rust implementation).
+// install.rs - `konductor install` dispatch (Rust implementation).
 // Artifact fetch+verify lives in `install::artifact`; runtime
 // auto-detection in `install::runtime`; manifest read/write in
 // `install::manifest`; strategy registration in `install::registry`;

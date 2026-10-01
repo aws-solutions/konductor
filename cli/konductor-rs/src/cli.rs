@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// cli.rs — Konductor CLI command surface (clap derive macros, no separate
+// cli.rs - Konductor CLI command surface (clap derive macros, no separate
 // spec file). The hidden `__dump_schema` command (see cli/schema.rs) dumps
 // the live command tree as JSON for external validation.
 //

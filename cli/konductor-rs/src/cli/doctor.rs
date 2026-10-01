@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// doctor.rs — `konductor doctor` diagnostics (Rust implementation).
+// doctor.rs - `konductor doctor` diagnostics (Rust implementation).
 //
 // Inspects a Konductor installation/checkout for problems and prints
 // actionable remediation guidance. Every check is reuse-only: it calls
@@ -36,7 +36,7 @@
 //      summary/detail always states that a fallback occurred and why.
 //
 // Output: one summary line per check (`ok: <check>`,
-// `info/warn/stale/failed: <check> — <detail>`), each non-`ok` line
+// `info/warn/stale/failed: <check> - <detail>`), each non-`ok` line
 // followed by an indented remediation hint. `-v` appends full detail.
 // `--json` emits one compact object mirroring install/synth's JSON
 // shape, with a per-check `status` and, on non-ok checks, a `detail`
@@ -1856,7 +1856,7 @@ fn print_report(results: &[CheckResult], verbose: bool, color: ColorMode) {
             CheckStatus::Failed | CheckStatus::Stale => super::output::status::error(color, label),
         };
         println!(
-            "{icon} {colored_label}: {} — {}",
+            "{icon} {colored_label}: {} - {}",
             result.name, result.summary
         );
         if let Some(remediation) = &result.remediation {

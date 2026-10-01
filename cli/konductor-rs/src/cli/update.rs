@@ -3105,20 +3105,17 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// (4) The regression this fix closes, reproduced end to end: a
-    /// target installed WITH telemetry on, then `update --no-telemetry`
-    /// run exactly ONCE, then a PLAIN `update` (no flag re-passed at
-    /// all) -- hooks must stay OFF on that final plain run. This is the
-    /// inverse of
-    /// `explicit_no_telemetry_still_suppresses_wiring_for_a_target_with_an_identity_file`'s
-    /// own companion as it stood before this fix: that companion used
-    /// to assert the OPPOSITE (hooks getting re-wired on the later plain
-    /// run), which encoded the bug as the intended behavior. Before this
-    /// fix, `update --no-telemetry` only ever skipped WRITING a fresh
-    /// install-info.json for its own run -- it never deleted the
-    /// existing one -- so the very next plain `update` read that
-    /// untouched, still-valid record as `Ok` and silently carried
-    /// telemetry back on.
+    /// (4) End to end: a target installed WITH telemetry on, then
+    /// `update --no-telemetry` run exactly ONCE, then a PLAIN `update`
+    /// (no flag re-passed at all) -- hooks must stay OFF on that final
+    /// plain run. `update --no-telemetry` against a target whose record
+    /// currently reads as enabled removes that record rather than only
+    /// skipping the write for its own run, so the later plain `update`
+    /// finds no record to read as `Ok` and keeps the opt-out instead of
+    /// silently re-enabling telemetry. Companion to
+    /// `explicit_no_telemetry_still_suppresses_wiring_for_a_target_with_an_identity_file`,
+    /// which covers the single-run suppression this test extends to a
+    /// later plain run.
     #[test]
     fn update_no_telemetry_against_an_enabled_target_persists_the_opt_out_on_a_later_plain_update()
     {
@@ -5834,16 +5831,15 @@ mod tests {
 
     // ── Sticky opt-out: a removal failure must warn, not be swallowed ───
 
-    /// The regression this fix closes: `update --no-telemetry` against
-    /// an enabled target whose `.konductor/` directory it cannot write
-    /// to (so the removal below genuinely fails) must still surface
-    /// that failure through `telemetry_state_warning` ->
-    /// `finalize_index_warning`, exactly like the three outcomes above,
-    /// rather than only to a bare `eprintln!` nobody capturing `--json`
-    /// output (or any non-interactive output at all) would ever see.
-    /// Before this fix, that failure was printed to stderr alone, so a
-    /// `--json` run reported clean success with exit code 0 while the
-    /// stale, still-enabled record silently survived.
+    /// `update --no-telemetry` against an enabled target whose
+    /// `.konductor/` directory it cannot write to (so the removal below
+    /// genuinely fails) must still surface that failure through
+    /// `telemetry_state_warning` -> `finalize_index_warning`, exactly
+    /// like the three outcomes above, rather than only to a bare
+    /// `eprintln!` that a `--json` run (or any non-interactive output)
+    /// would never see. A `--json` run must not report clean success
+    /// with exit code 0 while the stale, still-enabled record silently
+    /// survives.
     ///
     /// Drives this through the content-version skip-if-unchanged path
     /// (a matching `--version`) rather than the ordinary re-copy path:
@@ -5936,8 +5932,7 @@ mod tests {
         else {
             panic!(
                 "update --no-telemetry must still succeed via AlreadyAtVersion even when the \
-                 removal fails -- a removal failure must stay non-fatal to the overall update, \
-                 exactly like the pre-fix eprintln!-only behavior"
+                 removal fails -- a removal failure must stay non-fatal to the overall update"
             );
         };
         assert_eq!(version, "1.5.0");
