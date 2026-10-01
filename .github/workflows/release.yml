@@ -23,15 +23,6 @@ name: Release
 on:
   push:
     branches: [main]
-  workflow_dispatch:
-    inputs:
-      dry_run_claude_plugin:
-        description: >-
-          Build and validate the Claude Code plugin tree without force-pushing
-          to the claude-plugin branch. Has no effect on the release/build/publish
-          jobs above -- those still run their normal should_publish gating.
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -557,18 +548,8 @@ jobs:
   publish-claude-plugin:
     name: Publish Claude Code plugin (claude-plugin branch)
     needs: [check-version, publish]
-    # Runs after `publish` actually succeeds (the normal post-release path),
-    # OR on a manual dry_run_claude_plugin dispatch -- which must still proceed even when
-    # `publish` was skipped because should_publish was false (e.g. testing
-    # dry_run_claude_plugin against a VERSION that's already released, so there's nothing
-    # new to publish on the binary/release side). `always()` is required for
-    # this job's `if:` to be evaluated at all: without it, GitHub Actions'
-    # default behavior skips a job whenever any of its `needs` didn't
-    # succeed, and that includes a "skipped" (not "failed") upstream job.
-    if: |
-      always() &&
-      needs.check-version.result == 'success' &&
-      (needs.publish.result == 'success' || (github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run_claude_plugin == 'true'))
+    # Runs only after `publish` actually succeeds.
+    if: needs.publish.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -576,14 +557,12 @@ jobs:
     # must not race the first one's force-push. Independent of the
     # workflow-level `release-${{ github.ref }}` group above -- that group
     # only prevents a second concurrent *release*, not a second concurrent
-    # push to this specific branch (e.g. from a future manual dispatch
-    # overlapping a push-triggered run).
+    # push to this specific branch.
     concurrency:
       group: claude-plugin-branch-publish
       cancel-in-progress: false
     env:
       RELEASE_VERSION: ${{ needs.check-version.outputs.release_version }}
-      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run_claude_plugin == 'true' }}
       # Hardcoded literal, not sourced from any input -- the guard step
       # below is defense in depth against a future edit that parameterizes
       # this incorrectly, not a check against anything reachable today.
@@ -602,16 +581,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
         with:
-          # A real post-release run checks out the tag `publish` just
-          # created -- the exact commit that was released. A dry_run_claude_plugin
-          # dispatch checks out the current ref instead: the release tag may
-          # not exist yet (e.g. testing dry_run_claude_plugin against a VERSION that
-          # hasn't shipped), and dry_run_claude_plugin never pushes, so pinning to a real
-          # tag isn't required for it. `env` is not available in `with:`,
-          # so this repeats the same expression `env.DRY_RUN`/
-          # `env.RELEASE_VERSION` would otherwise hold, using only the
-          # `github`/`needs` contexts (both available here).
-          ref: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run_claude_plugin == 'true') && github.sha || needs.check-version.outputs.release_version }}
+          # Checks out the tag `publish` just created -- the exact commit
+          # that was released.
+          ref: ${{ needs.check-version.outputs.release_version }}
           fetch-depth: 0
 
       - name: Set VERSION from the release tag
@@ -620,10 +592,7 @@ jobs:
         # from this same commit to derive RELEASE_VERSION in the first
         # place -- but re-deriving it here from the tag actually checked
         # out (rather than trusting the file unconditionally) is cheap
-        # insurance against the two ever disagreeing. Skipped under
-        # dry_run_claude_plugin: that mode checks out github.sha, not a release tag, so
-        # there is no tag version to derive VERSION from.
-        if: env.DRY_RUN != 'true'
+        # insurance against the two ever disagreeing.
         run: |
           set -e
           TAG_VERSION="${RELEASE_VERSION#v}"
@@ -678,7 +647,6 @@ jobs:
         run: claude plugin validate "$ASSEMBLE_DIR" --strict
 
       - name: Force-push to claude-plugin branch (single squashed commit)
-        if: env.DRY_RUN != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -702,10 +670,7 @@ jobs:
         # marketplace.json plugin entry pin `ref` to a specific, permanent
         # release instead of the `claude-plugin` branch's own moving HEAD --
         # see generated/claude-plugin/README.md's "Rollback" section for why
-        # that matters and how to roll one back. Skipped entirely under
-        # dry_run_claude_plugin, same as the force-push above: there is no
-        # branch commit to tag in that mode.
-        if: env.DRY_RUN != 'true'
+        # that matters and how to roll one back.
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -739,7 +704,3 @@ jobs:
           AUTH_HEADER="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
           git -c http.extraHeader="$AUTH_HEADER" push origin "refs/tags/$TAG"
           echo "Tagged $TARGET_BRANCH at $(git rev-parse HEAD) as $TAG"
-
-      - name: Dry run summary
-        if: env.DRY_RUN == 'true'
-        run: echo "dry_run_claude_plugin=true -- built and validated the Claude Code plugin tree at $ASSEMBLE_DIR without pushing to $TARGET_BRANCH or creating a claude-plugin-v* tag."

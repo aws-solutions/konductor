@@ -31,6 +31,11 @@ not per individual commit.
 - `k-architect`/`k-developer` still grant AWS MCP's full tool surface, unchanged. Use the
   `aws:ViaAWSMCPService`/`aws:CalledViaAWSMCP` IAM condition keys to scope or audit
   agent-originated calls.
+- `release.yml`'s `workflow_dispatch` trigger bypassed `check-version`'s branch gating: any
+  branch with an unreleased `VERSION` bump could trigger a real `gh release create`, and by
+  default, a force-push to the public `claude-plugin` branch. Removed the manual-dispatch path
+  entirely; `validate-pr.yml` now runs `claude plugin validate --strict` against the assembled
+  plugin tree on every PR instead, with no publish or push step anywhere in its job graph.
 
 ## [1.0.2] - 2026-09-28
 
