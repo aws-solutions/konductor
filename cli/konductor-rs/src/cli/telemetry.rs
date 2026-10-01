@@ -2,10 +2,12 @@
 //
 // telemetry — usage-analytics telemetry.
 //
-// identity: per-project telemetry-id.json. instance: machine-scoped
+// identity: legacy per-project telemetry-id.json, no longer read for
+// reporting; uninstall still removes it. instance: machine-scoped
 // $HOME/.konductor/telemetry.json. install_info: per-target
-// install-info.json. envelope: event schema. report: report_*
-// call-site API, transport, consent gating.
+// install-info.json, the per-install record and opt-in signal.
+// envelope: event schema. report: report_* call-site API, transport,
+// consent gating.
 
 mod envelope;
 mod identity;
@@ -23,8 +25,8 @@ mod report;
 // installed content's `agent_version`: it only ever needs the record
 // or nothing, with no cause to distinguish absent from broken.
 // `install_info_exists` is re-exported here `#[cfg(test)]`-only: it
-// has callers, but only in this crate's own tests (`doctor.rs`,
-// `update.rs`) that assert against install-info's raw presence rather
+// has callers, but only in this crate's own `update.rs` tests that
+// assert against install-info's raw presence rather
 // than going through the detailed read.
 #[allow(unused_imports)]
 pub(crate) use identity::{ensure_identity, identity_path};

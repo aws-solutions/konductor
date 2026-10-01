@@ -427,8 +427,8 @@ pub(super) fn apply_claude_settings_grant(
 // Two install paths wire them, both skipped under `--no-telemetry`:
 // - Kiro V2/V3 on a target with a `.claude` marker, when the grant
 //   applies: `apply_claude_settings_grant_and_hooks`, only after the
-//   grant succeeds, so a foreign, deny-shadowed or malformed
-//   `settings.json` is left untouched.
+//   grant succeeds, so no hooks are wired next to a foreign,
+//   deny-shadowed or malformed `settings.json`.
 // - `ClaudeInstallStrategy`: `apply_claude_settings_hooks_only`, with no
 //   grant (see the permission grant section above).
 //

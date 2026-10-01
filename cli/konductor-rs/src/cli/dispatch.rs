@@ -201,7 +201,7 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool, color: ColorMode) 
 /// <message>` prefix -- this path is command-agnostic, so it never
 /// gets the `konductor {command}: ` form other errors use), fires a
 /// `dispatch.cwd_unavailable` telemetry event against
-/// `$HOME` -- the closest scope-agnostic identity lookup available when
+/// `$HOME` -- the closest scope-agnostic install-info lookup available when
 /// cwd itself cannot be resolved -- and returns `EXIT_USAGE_ERROR`.
 ///
 /// `command` is the ACTUAL subcommand this call is being made on behalf

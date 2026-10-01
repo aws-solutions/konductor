@@ -1512,6 +1512,7 @@ fn report_install_success(
     // read-back is correct for both paths with no extra plumbing:
     // whichever content was ACTUALLY installed is what
     // `write_install_info` already recorded, regardless of source.
+    // `--no-telemetry` writes no record, so the version is `None` then.
     let agent_version = crate::cli::telemetry::read_install_info(destination)
         .and_then(|record| record.agent_version);
     // The MCP server binary's own release version, read off
@@ -1850,7 +1851,8 @@ impl InstallCounts {
 /// the SOP-skip note, the foreign-overwrite count, and the installed
 /// content's own version (from `.konductor/install-info.json`'s
 /// `agent_version`, `None` when no `VERSION` file was found under the
-/// synthed source's own `dist/` -- see `report_install_success`'s own
+/// synthed source's own `dist/` or `--no-telemetry` left no record --
+/// see `report_install_success`'s own
 /// doc comment for why this single field is correct for both the
 /// `--from` and no-`--from` install paths). `mcp_binary_version` is a
 /// SEPARATE, distinctly-labeled note -- the release `tag_name` the

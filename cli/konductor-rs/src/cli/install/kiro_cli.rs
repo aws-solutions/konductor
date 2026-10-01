@@ -415,9 +415,8 @@ impl InstallStrategy for KiroCliInstallStrategy {
 
         // The per-install record, written after the manifest is
         // finalized Complete. Best-effort: a failure here must not
-        // unwind an install that already succeeded. Gated on
-        // `no_telemetry` like `ensure_identity`: an opted-out install
-        // writes neither file.
+        // unwind an install that already succeeded. An opted-out
+        // install writes no install-info.json.
         super::finalize_install_telemetry(
             target_dir,
             repo_root,
@@ -3460,9 +3459,8 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// The `--no-telemetry` regression the CRITICAL fix above addresses:
-    /// a real dual-marker install (`.kiro` AND `.claude` both already
-    /// present, same fixture setup as
+    /// `--no-telemetry` on a real dual-marker install (`.kiro` AND
+    /// `.claude` both already present, same fixture setup as
     /// `install_from_local_grants_claude_settings_permissions_when_claude_marker_dir_present`
     /// above) run end to end through the real, unmodified
     /// `KiroCliInstallStrategy::install_from_local` -- not a mock, not a
@@ -3591,10 +3589,9 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// The install-info half of the same `--no-telemetry` contract:
-    /// `write_install_info` must be gated exactly like `ensure_identity`,
-    /// so an opted-out install leaves `.konductor/install-info.json`
-    /// unwritten too, not just the hook wiring above.
+    /// The install-info half of the same `--no-telemetry` contract: an
+    /// opted-out install leaves `.konductor/install-info.json` unwritten
+    /// too, not just the hook wiring above.
     #[test]
     fn install_from_local_no_telemetry_writes_no_install_info() {
         let target_dir = scratch_dir("no-telemetry-skips-install-info-target");
@@ -3648,8 +3645,7 @@ mod tests {
         assert!(
             !KiroCliInstallStrategy.matches(&target_dir),
             "a Claude-only target (no pre-existing .kiro) must NOT be claimed by \
-             KiroCliInstallStrategy -- with no other registered strategy, this target has no \
-             install path at all today"
+             KiroCliInstallStrategy -- it is left to ClaudeInstallStrategy"
         );
         assert!(
             !target_dir.join(".claude/settings.json").exists(),

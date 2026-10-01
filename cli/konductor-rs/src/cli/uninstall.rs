@@ -313,7 +313,7 @@ pub fn dispatch_uninstall(
     // No single target is in scope yet at this point in dispatch --
     // `report_error`'s `target_dir` param
     // falls back to $HOME here, the closest thing to a scope-agnostic
-    // identity lookup this global index read has.
+    // telemetry target this global index read has.
     let home_dir_fallback = std::env::var_os("HOME")
         .map(std::path::PathBuf::from)
         .unwrap_or_default();
@@ -1285,8 +1285,8 @@ fn uninstall_one_impl(
     );
 
     // Everything from here down is a property of the target as a
-    // whole (the $PATH bin-link, the index entry, the telemetry
-    // identity file), not of any one strategy's slot -- so it must
+    // whole (the $PATH bin-link, the index entry, the per-target
+    // telemetry records), not of any one strategy's slot -- so it must
     // only be torn down on a genuine full teardown
     // (`target_fully_removed`), never when another already-tracked
     // strategy (e.g. `claude`) survives this run's partial removal.

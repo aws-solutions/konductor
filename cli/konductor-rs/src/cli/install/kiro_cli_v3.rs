@@ -257,7 +257,7 @@ impl InstallStrategy for KiroCliV3InstallStrategy {
             )));
         }
 
-        // Predicts the standalone V3 SessionStart telemetry hook
+        // Predicts the standalone V3 telemetry hook
         // document this run writes (unless `--no-telemetry`). Folded in
         // after the no-op check above, not before: this file is written
         // unconditionally for every V3 install with telemetry enabled,
@@ -359,7 +359,7 @@ impl InstallStrategy for KiroCliV3InstallStrategy {
             install_agents(&harness_dir, target_dir, &bin_files)?;
         raw_files.extend(agent_files);
 
-        // The standalone V3 SessionStart telemetry hook document,
+        // The standalone V3 telemetry hook document,
         // written unconditionally for every V3 install unless
         // `--no-telemetry` -- unlike the block below, this has nothing
         // to do with Claude Code detection or `any_mcp_server_injected`.

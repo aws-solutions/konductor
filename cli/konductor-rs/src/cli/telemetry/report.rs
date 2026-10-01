@@ -2027,8 +2027,8 @@ mod tests {
 
         assert!(
             !allowed,
-            "a target with no telemetry-id.json (opted out at install) must not be \
-             allowed to report, even on a machine with no prior telemetry.json at all"
+            "an opted-out target must not be allowed to report, even on a machine \
+             with no prior telemetry.json at all"
         );
         fs::remove_dir_all(&home).ok();
         fs::remove_dir_all(&target).ok();
@@ -2425,7 +2425,7 @@ mod tests {
     /// opted out), no event is recorded at all -- `read_install_info`
     /// returning `None` is a plain skip, not a fallback to the
     /// nil-UUID sentinel path the way `report_cli_error` treats a
-    /// missing identity for "install".
+    /// missing install-info for "install".
     #[test]
     fn report_package_uninstalled_records_nothing_when_install_info_is_absent() {
         let _guard = lock_home();
@@ -2469,16 +2469,13 @@ mod tests {
         fs::remove_dir_all(&source).ok();
     }
 
-    /// Two-target batch, no cross-contamination: `install_info`'s own
-    /// reads are always uncached disk reads (there is no
-    /// process-lifetime `OnceLock` for this record the way
-    /// `IDENTITY_CACHE` gates `cached_identity`), so calling
+    /// Two-target batch, no cross-contamination: `install_info` reads
+    /// are uncached disk reads, so calling
     /// `report_package_uninstalled_for_target` for target A and then
-    /// target B in the SAME process must report each target's own
-    /// harness -- neither inherits the other's. This is the
-    /// regression `IDENTITY_CACHE`'s own doc comment warns an `--all`
-    /// batch is unsafe for; this test proves the install-info-sourced
-    /// path never reintroduces it.
+    /// target B in the same process must report each target's own
+    /// harness. Guards against a process-lifetime cache, like the
+    /// retired identity cache, leaking one target's harness into an
+    /// `--all` batch.
     #[test]
     fn two_target_batch_reports_each_targets_own_harness_without_cross_contamination() {
         let _guard = lock_home();

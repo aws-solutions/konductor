@@ -75,14 +75,13 @@ pub(crate) fn build_error_json(
 /// `error_code` is a stable, closed error-category string --
 /// never `message`/an error's own `Display` text, which routinely
 /// embeds a local filesystem path. `target_dir` is the target this
-/// error occurred against, needed to resolve telemetry's cached
-/// identity lookup; callers with no single target in scope
-/// yet (e.g. a global index read) pass their best scope-agnostic
-/// fallback (typically `$HOME`). `no_telemetry` carries `--no-telemetry`'s
-/// parsed value through to `report_cli_error` -- `install`'s call
-/// sites are the only ones that ever have a real flag value to pass;
-/// every other command passes `false` literally, a value
-/// `report_cli_error` never inspects for those commands.
+/// error occurred against, where telemetry reads its install-info
+/// record and `.konductor/config.yml` opt-out; callers with no single
+/// target in scope yet (e.g. a global index read) pass their best
+/// scope-agnostic fallback (typically `$HOME`). `no_telemetry` carries
+/// `--no-telemetry`'s parsed value through to `report_cli_error`, which
+/// skips the event when it is set. Only `install` and `update` have a
+/// real flag value to pass; every other command passes `false`.
 ///
 /// `message` is the plain-text wording each call site already used --
 /// when `json` is true, the same string becomes the envelope's
@@ -103,7 +102,7 @@ pub(crate) fn build_error_json(
 ///
 /// Prints BEFORE reporting telemetry:
 /// `report_cli_error` reaches a host-allowlist DNS resolution
-/// (`telemetry::report.rs`'s `endpoint_host_is_allowed`) that is now
+/// (`telemetry::report.rs`'s `endpoint_host_is_allowed_with_pin`) that is now
 /// bounded (see that module's own `DNS_RESOLUTION_TIMEOUT`) but is
 /// never instantaneous -- printing the user-facing error line first
 /// means a slow-but-within-bound resolver delays only the fire-and-
@@ -135,11 +134,11 @@ pub(crate) fn report_error(
 
 /// Same as `report_error`, but for a `--all` batch call site that
 /// visits more than one `target_dir` in a single process -- routes the telemetry side effect through
-/// `telemetry::report_cli_error_for_target` (which re-reads identity
-/// per call, uncached) instead of `report_error`'s
-/// `telemetry::report_cli_error` (the process-global cache), so each
-/// target's own `harness` and per-target opt-out signal are read
-/// fresh, rather than inheriting whichever identity the cache resolved
+/// `telemetry::report_cli_error_for_target` (which resolves the
+/// endpoint per call, uncached) instead of `report_error`'s
+/// `telemetry::report_cli_error` (the process-global endpoint cache),
+/// so each target's own `.konductor/config.yml` opt-out is read fresh
+/// rather than inherited from whichever target the cache resolved
 /// first. Mirrors
 /// the existing `report_package_uninstalled`/`_for_target` and
 /// `report_package_version_updated`/`_for_target` sibling-function

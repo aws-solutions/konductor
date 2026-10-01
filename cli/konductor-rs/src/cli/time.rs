@@ -6,9 +6,9 @@
 // (logging.rs), the install manifest writer (install/kiro_cli.rs,
 // install.rs), and update.rs's own index/manifest timestamp.
 // `utc_now_iso_millis` (millisecond precision) is a telemetry-specific
-// sibling used only by telemetry/envelope.rs, to match the usage-
-// analytics wire schema's documented `Data.TimeStamp` precision -- see
-// that function's own doc comment for why it is a separate function
+// sibling used by telemetry/envelope.rs and telemetry/instance.rs, to
+// match the usage-analytics wire schema's documented `Data.TimeStamp`
+// precision -- see that function's own doc comment for why it is a separate function
 // rather than a change to `utc_now_iso` itself. No chrono/time
 // dependency pulled in solely for this: both format directly from
 // `SystemTime` via a standard civil-from-days algorithm.

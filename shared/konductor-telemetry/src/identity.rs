@@ -5,9 +5,9 @@
 //
 // Owns the machine-scoped instance record at
 // `$HOME/.konductor/telemetry.json`, plus the nil-UUID sentinel and
-// UUID-shape validation. Does not own the per-target
-// `telemetry-id.json` (`IdentityRecord`) -- that mixes in `target_dir`
-// and has uninstall/update carry-forward semantics with no MCP analog.
+// UUID-shape validation. Does not own the legacy per-target
+// `telemetry-id.json` (`IdentityRecord`), which is no longer read;
+// uninstall only deletes a leftover copy.
 //
 // Every function takes `home_dir: &Path` explicitly and never
 // resolves `$HOME` itself.

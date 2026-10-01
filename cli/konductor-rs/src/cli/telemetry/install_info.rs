@@ -599,8 +599,9 @@ mod tests {
     /// and still true for a file whose content is corrupted -- it does
     /// not distinguish "wrote successfully" from "wrote something."
     /// This is exactly why no production consent decision reads it
-    /// anymore (see its own doc comment): `read_install_info` is the
-    /// validated read `update`, `doctor`, and `report_*` all consult.
+    /// anymore (see its own doc comment): `update`, `doctor`, and
+    /// `report_*` all consult the validated read
+    /// (`read_install_info_detailed` or its `read_install_info` projection).
     #[test]
     fn install_info_exists_reflects_plain_presence_including_corrupted_content() {
         let target = scratch_dir("exists-plain-presence-target");

@@ -733,9 +733,9 @@ fn dispatch_update_all_json(
                 // `_for_target`, not the
                 // process-global-cache variant: this loop iterates
                 // several distinct `target_dir`s in one process, so the
-                // cached variant would misattribute every target after
-                // the first to whichever target's own `harness`/opt-out
-                // signal the cache resolved first.
+                // cached variant would apply the first target's
+                // endpoint and `.konductor/config.yml` opt-out to every
+                // target after it.
                 crate::cli::telemetry::report_cli_error_for_target(
                     &target_dir,
                     "update",
@@ -1400,11 +1400,10 @@ fn update_one_target(
             // `uncached_identity` selects `report_error_for_target`
             // whenever this call may be one of several distinct
             // targets visited in this process -- the plain-`report_error`
-            // (process-global-cache) variant would otherwise
-            // misattribute every target after the first to whichever
-            // target's own `harness`/opt-out signal the cache resolved
-            // first, mirroring the identical fix on the success path
-            // below.
+            // (process-global-cache) variant would otherwise apply the
+            // first target's endpoint and `.konductor/config.yml`
+            // opt-out to every target after it, mirroring the identical
+            // fix on the success path below.
             let mut extra = vec![(
                 "target_dir",
                 serde_json::Value::String(target_dir.display().to_string()),
@@ -2067,12 +2066,12 @@ fn run_update_one_target_with_remote_installer(
     // has already succeeded, before the trailing manifest re-read below
     // -- reached by both the single-target/plain-`--all` path and the
     // `--all --json` batch path, since both funnel through this one
-    // shared core. `uncached_identity`
-    // (finding f-c144d780) resolves THIS target's own identity
-    // directly instead of via the process-global cache whenever more
-    // than one target may run in this process (every `--all` path,
-    // JSON or not) -- the cache only ever resolves the first target's
-    // UUID, silently misattributing every target after it.
+    // shared core. `uncached_identity` resolves THIS target's own
+    // telemetry endpoint and `.konductor/config.yml` opt-out directly
+    // instead of via the process-global cache whenever more than one
+    // target may run in this process (every `--all` path, JSON or not)
+    // -- the cache only ever resolves the first target's, silently
+    // applying it to every target after it.
     //
     // Gated on `!no_telemetry`, mirroring `dispatch_install_with`'s own
     // `if !no_telemetry { report_package_installed(...) }` gate. This is
@@ -2080,7 +2079,7 @@ fn run_update_one_target_with_remote_installer(
     // set to `true` on this target's behalf, so a target skipped via
     // the carry-forward (no install-info record, no explicit flag) also
     // skips this event report through this explicit gate -- not merely
-    // because the identity lookup underneath it happens to resolve to
+    // because the install-info read underneath it happens to find
     // nothing on its own. A target originally installed WITHOUT
     // `--no-telemetry` (install-info record present) but updated WITH
     // `--no-telemetry` on this run -- explicit or carried-forward --
@@ -3217,7 +3216,7 @@ mod tests {
         assert!(
             after_explicit_opt_out.get("hooks").is_none(),
             "explicit --no-telemetry must suppress hook re-wiring even for a target whose \
-             identity file is present; got: {after_explicit_opt_out:?}"
+             install-info.json is present; got: {after_explicit_opt_out:?}"
         );
 
         // Companion: without the flag, this same (opted-in) target's
@@ -3246,7 +3245,7 @@ mod tests {
         assert!(
             after_plain_update.get("hooks").is_some(),
             "an update run without --no-telemetry must re-wire hooks for a target whose \
-             identity file is present; got: {after_plain_update:?}"
+             install-info.json is present; got: {after_plain_update:?}"
         );
 
         fs::remove_dir_all(&target).ok();
@@ -5564,8 +5563,8 @@ mod tests {
     // can produce at this call site, matching `doctor.rs`'s own
     // `check_telemetry_state_*` trio for the same three-way read.
 
-    /// Outcome 1: a genuinely absent record (never opted out, never
-    /// installed with telemetry at all) is still carried forward as
+    /// Outcome 1: an absent record (installed with `--no-telemetry`, or
+    /// before install-info.json existed) is still carried forward as
     /// opted-out, silently -- the pre-existing, correct behavior for
     /// this case. No `finalize_index_warning` is synthesized.
     #[test]

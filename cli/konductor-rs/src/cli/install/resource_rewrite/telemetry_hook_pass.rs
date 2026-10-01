@@ -94,11 +94,12 @@ impl ResourceRewritePass for TelemetryHookPass {
     }
 }
 
-// ── V3/KAS: standalone SessionStart telemetry hook document ──────────
+// ── V3/KAS: standalone telemetry hook document ───────────────────────
 
 /// Relative path, under a Kiro CLI V3 (KAS) install target directory, of
-/// the standalone SessionStart telemetry hook document this module
-/// writes. A dedicated, Konductor-namespaced filename under the shared
+/// the standalone telemetry hook document (`SessionStart` plus
+/// `PreToolUse`) this module writes. A dedicated, Konductor-namespaced
+/// filename under the shared
 /// `.kiro/hooks/` directory. This path is fully owned by Konductor
 /// (never merged with unrelated hand-authored hooks the way Claude's
 /// settings files are), so the generic `Created`/`ReplacedOurs`/

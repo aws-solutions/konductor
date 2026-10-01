@@ -548,7 +548,8 @@ pub(in crate::cli::install) fn copy_agent_files(
 /// before writing it: rewrites `file://context/<name>` and
 /// `skill://skills/<name>/SKILL.md` resources to absolute paths, and
 /// injects an `mcpServers.konductor-skills` entry for a skill-bearing
-/// agent when the MCP binary was installed. See `resource_rewrite`'s
+/// agent when the MCP binary was installed, and, unless `no_telemetry`,
+/// adds the `hooks.agentSpawn` telemetry hook. See `resource_rewrite`'s
 /// module doc comment for how the passes are ordered.
 ///
 /// Always reads `src` fresh from `dist/` (pristine relative form), so

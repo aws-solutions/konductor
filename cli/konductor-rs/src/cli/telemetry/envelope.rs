@@ -2,10 +2,10 @@
 //
 // Per-invocation event schema and the ingestion API's outer envelope.
 //
-// `Data`'s seven fields have no documented counterpart to match by
-// name, so they're camelCase by convention. The outer four fields
-// (`Solution`/`Version`/`UUID`/`TimeStamp`) match the API's own
-// documented casing exactly.
+// `Data`'s fields other than `TimeStamp` have no documented
+// counterpart to match by name, so they're camelCase by convention.
+// The outer four fields (`Solution`/`Version`/`UUID`/`TimeStamp`)
+// match the API's own documented casing exactly.
 
 use serde::Serialize;
 

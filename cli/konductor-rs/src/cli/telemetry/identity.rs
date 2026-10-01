@@ -43,10 +43,10 @@
 // above have no production caller left. `identity_path` itself is the
 // exception -- `uninstall` still calls it to clean up a
 // `telemetry-id.json` left behind by an install that predates this
-// file's retirement. The rest stays as test-only infrastructure:
-// `uninstall`'s own tests need a way to simulate that same pre-
-// retirement machine. One module-level allow, not a function-by-
-// function scatter of the same justification.
+// file's retirement. The rest stays as test-only infrastructure: tests
+// (uninstall, update, report) use it to simulate a pre-retirement
+// machine. One module-level allow, not a function-by-function scatter
+// of the same justification.
 #![allow(dead_code)]
 
 use std::path::{Path, PathBuf};
@@ -382,10 +382,8 @@ const O_NOFOLLOW: i32 = 0o400;
 /// touched), this function skips the entire write/publish attempt --
 /// it never generates a UUID, never writes a temp file, and never
 /// touches the existing file. It returns the newer file's `UUID`
-/// read-only if that value was extractable, or a freshly-generated,
-/// unpersisted record otherwise (the same "absent" fallback shape
-/// `read_identity` callers already get elsewhere, just never written
-/// to disk here).
+/// read-only if that value was extractable, or an unpersisted record
+/// carrying `NIL_UUID_SENTINEL` otherwise.
 pub(crate) fn ensure_identity(target_dir: &Path, harness: &str) -> IdentityRecord {
     match read_identity_raw(target_dir) {
         ReadOutcome::Ok(existing) => return existing,
@@ -448,10 +446,8 @@ pub(crate) fn ensure_identity(target_dir: &Path, harness: &str) -> IdentityRecor
 /// file; if malformed, remove it and retry the
 /// `hard_link` exactly once (republishing this caller's own already-
 /// generated `UUID` from its still-intact temp file); if that retry also
-/// loses, read once more and either use that value or fall back to the
-/// nil-UUID sentinel path (by returning `own_record` unpersisted, which
-/// the report module's identity cache treats as "no identity" the same
-/// way a missing file would be).
+/// loses, read once more and either use that value or return
+/// `own_record` unpersisted.
 ///
 /// A `NewerSchema` destination is NOT "malformed" -- it's a real
 /// identity a newer binary already published, mid-write or otherwise.
