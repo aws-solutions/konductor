@@ -129,9 +129,9 @@ button {
 }
 .lane-row-dir {
   flex: none;
-  padding: 2px 6px;
+  padding: 3px 7px;
   border-radius: 999px;
-  font: 600 9px "JetBrains Mono", monospace;
+  font: 600 10px "JetBrains Mono", monospace;
   line-height: 1.3;
   text-transform: capitalize;
   background: var(--surface-sunken);
@@ -340,16 +340,19 @@ button {
   border-radius: 999px;
   font: 500 11px "JetBrains Mono", monospace;
   white-space: nowrap;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.gate.owner {
+.gate.owner-action {
   background: oklch(0.94 0.06 85);
   color: oklch(0.45 0.11 70);
 }
-.gate.check {
+.gate.script {
   background: var(--accent-soft);
   color: var(--accent-text);
 }
-.gate.review {
+.gate.agent {
   background: oklch(0.94 0.05 160);
   color: oklch(0.42 0.1 160);
 }

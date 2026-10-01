@@ -10,7 +10,7 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { FlowError } from "./errors.ts";
 import { findSkill, findWorkflow, workstreamFile } from "./project.ts";
-import { describeGate, loadWorkflow, type Step, type Workflow } from "./workflow.ts";
+import { describeGates, loadWorkflow, type Step, type Workflow } from "./workflow.ts";
 import { readWorkstream, stateOf, updateWorkstream, workstreamExists, type Workstream } from "./workstream.ts";
 
 // How the follow-up commands fuse-flow prints start. The fuse-flow script
@@ -85,7 +85,8 @@ function describeCurrent(root: string, slug: string, wf: Workflow, ws: Workstrea
     case "awaiting-owner":
       return [
         `step: ${step.id} awaits owner approval`,
-        `ask the owner to review: ${state.artifacts.join(", ") || "(no artifacts)"}`,
+        `ask the owner to: ${step.gates.filter((g) => g.kind === "owner-action").map((g) => g.description).join("; ") || "approve"}`,
+        `artifacts: ${state.artifacts.join(", ") || "(no artifacts)"}`,
         `after the owner approves, run: ${approve} [--note "<what the owner said>"]`,
       ];
     case "blocked":
@@ -96,13 +97,18 @@ function describeCurrent(root: string, slug: string, wf: Workflow, ws: Workstrea
       ];
     default: {
       const lines = [`step: ${step.id}${step.title ? ` (${step.title})` : ""}`];
-      if (step.skill) {
-        const path = findSkill(root, step.skill);
-        lines.push(`read: ${path ?? `${step.skill}   (not found; set FUSE_SKILLS_DIR)`}`);
+      for (const skill of step.skills) {
+        const path = findSkill(root, skill);
+        lines.push(`read: ${path ?? `${skill}   (not found; set FUSE_SKILLS_DIR)`}`);
       }
       if (step.instruction) lines.push(`instruction: ${step.instruction.trim()}`);
       lines.push(`produce: ${step.produces.join(", ") || "(nothing declared)"}`);
-      lines.push(`gate: ${describeGate(step.gate)}`);
+      for (const g of step.gates) {
+        if (g.kind === "agent") lines.push(`agent gate: before continuing, have an agent ${g.description}`);
+        if (g.kind === "script") lines.push(`script gate: ${g.description}   (runs on continue; must exit 0)`);
+        if (g.kind === "owner-action") lines.push(`owner gate: the owner must ${g.description}`);
+      }
+      lines.push(`gates: ${describeGates(step.gates)}`);
       lines.push(`then run: ${FUSE_FLOW} continue ${slug}`);
       return lines;
     }
@@ -154,15 +160,16 @@ function finishStep(root: string, slug: string, wf: Workflow, step: Step, extraA
 
   // The check runs without holding the state file's lock, so a long test run
   // does not stall fuse-flow commands for other workstreams.
-  if (step.gate.kind === "check") {
-    const check = runCheck(root, step.gate.command, slug, step.id);
+  for (const gate of step.gates) {
+    if (gate.kind !== "script") continue;
+    const check = runCheck(root, gate.description, slug, step.id);
     if (check.exitCode !== 0) {
-      const reason = `check failed (exit ${check.exitCode ?? "none, killed by a signal"}): ${step.gate.command}`;
+      const reason = `script failed (exit ${check.exitCode ?? "none, killed by a signal"}): ${gate.description}`;
       throw countRefusal(root, slug, wf, step, reason, check.output);
     }
   }
 
-  const awaitsOwner = step.gate.kind === "owner";
+  const awaitsOwner = step.gates.some((g) => g.kind === "owner-action");
   let current: string[] = [];
   updateWorkstream(root, slug, (ws) => {
     const state = requirePending(wf, ws, step); // unchanged while the check ran?
@@ -248,7 +255,7 @@ export function status(root: string, slug: string): string[] {
     const state = stateOf(ws, step.id);
     const details = [state.fix_cycles > 0 ? `fix cycles ${state.fix_cycles}` : "", state.artifacts.join(", ")].filter(Boolean);
     const marker = step === current ? "> " : "  ";
-    const columns = [step.id.padEnd(width), state.status.padEnd(14), `gate ${describeGate(step.gate).padEnd(6)}`];
+    const columns = [step.id.padEnd(width), state.status.padEnd(14), `gates ${describeGates(step.gates).padEnd(6)}`];
     return `${marker}${[...columns, details.join("; ")].join("  ")}`.trimEnd();
   });
   const footer = current ? `current step: ${current.id}; ${FUSE_FLOW} start ${slug} prints what to do` : "workflow complete";

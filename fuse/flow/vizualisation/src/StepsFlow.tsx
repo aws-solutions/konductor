@@ -16,7 +16,8 @@ const R = 5;
 
 const skillName = (p: string) => p.replace(/\/SKILL\.md$/, "").split("/").pop() ?? p;
 const baseName = (p: string) => p.split("/").pop() ?? p;
-const gateLabel = (g: Gate) => (g.kind === "check" ? `check: ${g.command}` : g.kind === "review" ? "review loop" : "owner");
+const GATE_ICON: Record<Gate["kind"], string> = { "owner-action": "owner", script: "script", agent: "agent" };
+const gateLabel = (g: Gate) => `${GATE_ICON[g.kind]}: ${g.description}`;
 
 // Greedy lanes: the shortest spans sit closest to the cards, and edges whose
 // spans overlap never share a lane.
@@ -119,7 +120,7 @@ function StepCard({ step, num }: { step: Step; num: number }) {
           <div className="card-title">{step.title}</div>
           <div className="card-id">{step.id}</div>
           {step.gates.map((g, k) => (
-            <span key={k} className={`gate ${g.kind}`} title={g.kind === "review" ? g.skill : undefined}>
+            <span key={k} className={`gate ${g.kind}`} title={`${g.kind}: ${g.description}`}>
               {gateLabel(g)}
             </span>
           ))}

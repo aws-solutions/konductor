@@ -4,10 +4,7 @@
 
 import YAML from "yaml";
 
-export type Gate =
-  | { kind: "owner" }
-  | { kind: "check"; command: string }
-  | { kind: "review"; skill: string; maxRounds?: number };
+export type Gate = { kind: "owner-action" | "script" | "agent"; description: string; maxRounds?: number };
 
 export type Step = {
   id: string;
@@ -46,28 +43,45 @@ const sources = import.meta.glob("../../workflows/**/*.yml", {
 const asStrings = (v: unknown): string[] =>
   Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : typeof v === "string" ? [v] : [];
 
+const KINDS = ["owner-action", "script", "agent"] as const;
+const isKind = (k: string): k is Gate["kind"] => (KINDS as readonly string[]).includes(k);
+
+// Same forms the engine accepts: `{ script: "…" }`, `script("…")`, `script: …`,
+// plus the older `owner`, `check: <command>` and `{ review: { skill } }`.
 function parseGate(v: unknown): Gate | null {
   if (typeof v === "string") {
     const s = v.trim();
-    if (s === "owner") return { kind: "owner" };
-    const command = /^check:(.*)$/s.exec(s)?.[1].trim();
-    if (command) return { kind: "check", command };
-    return null;
+    if (s === "owner") return { kind: "owner-action", description: "approve" };
+    const m = /^([a-z-]+)\s*(?:\(\s*"?(.*?)"?\s*\)|:(.*))$/s.exec(s);
+    if (!m) return null;
+    const kind = m[1] === "check" ? "script" : m[1];
+    const description = (m[2] ?? m[3] ?? "").trim();
+    return isKind(kind) && description ? { kind, description } : null;
   }
   if (v && typeof v === "object" && "review" in v) {
     const r = (v as { review: { skill?: unknown; max_rounds?: unknown } }).review ?? {};
     return {
-      kind: "review",
-      skill: typeof r.skill === "string" ? r.skill : "",
+      kind: "agent",
+      description: `review loop${typeof r.skill === "string" ? `: ${r.skill}` : ""}`,
       maxRounds: typeof r.max_rounds === "number" ? r.max_rounds : undefined,
     };
+  }
+  if (v && typeof v === "object" && !Array.isArray(v)) {
+    const entries = Object.entries(v);
+    if (entries.length !== 1) return null;
+    const [kind, description] = entries[0];
+    return isKind(kind) && typeof description === "string" && description.trim()
+      ? { kind, description: description.trim() }
+      : null;
   }
   return null;
 }
 
+const asList = (v: unknown): unknown[] => (v === undefined ? [] : Array.isArray(v) ? v : [v]);
+
 function parseStep(raw: Record<string, unknown>, i: number): Step {
   const id = typeof raw.id === "string" ? raw.id : `step-${i + 1}`;
-  const gates = [raw.gate, ...(Array.isArray(raw.gates) ? raw.gates : [])]
+  const gates = [...asList(raw.gate), ...asList(raw.gates)]
     .map(parseGate)
     .filter((g): g is Gate => g !== null);
   if (raw.review) {

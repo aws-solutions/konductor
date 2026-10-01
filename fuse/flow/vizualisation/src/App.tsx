@@ -41,13 +41,11 @@ function WorkflowList({ current, onOpen }: { current: string; onOpen: (path: str
           >
             <span className="lane-row-head">
               <span className="lane-row-name">{stem(w.file)}</span>
-              {w.dir && (
-                <span
-                  className={`lane-row-dir${w.dir === "personal" ? " is-personal" : w.dir === "team" ? " is-team" : ""}`}
-                >
-                  {w.dir}
-                </span>
-              )}
+              <span
+                className={`lane-row-dir${w.dir === "personal" ? " is-personal" : w.dir === "team" ? " is-team" : ""}`}
+              >
+                {w.dir || "Built-in"}
+              </span>
             </span>
             <span className="lane-row-meta">
               {w.error ? "invalid" : `${w.steps.length} steps · ${gateCount(w)} gates`}
