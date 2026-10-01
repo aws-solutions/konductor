@@ -100,6 +100,9 @@ Accepted before or after a subcommand.
 | `update` | `--all` | flag | No | Update every tracked install. Conflicts with `--target` |
 | `update` | `--dry-run` | flag | No | Report what would be overwritten, per path, flagging local edits. Writes nothing |
 | `update` | `--harness <NAME>` | enum | No | Narrow the selection to one harness |
+| `update` | `--cli` | flag | No | Self-replace the running binary from a published GitHub release instead of updating installed content. Conflicts with `--from`, `--target`, `--all`, `--harness`, and `--dry-run` |
+| `update` | `--version <v>` | string | No | Fetch a specific release tag instead of latest. Applies to both the content axis and `--cli`. Conflicts with `--from` |
+| `update` | `--force` | flag | No | Bypass the already-current skip on a no-`--from` content update. No effect on `--from` or `--cli` |
 | `uninstall` | `--target <DIR>` | path | No | Which tracked install to remove. Conflicts with `--all` |
 | `uninstall` | `--all` | flag | No | Remove every tracked install. Conflicts with `--target` |
 | `uninstall` | `--dry-run` | flag | No | Report what would be removed, per path, flagging local edits. Writes nothing |

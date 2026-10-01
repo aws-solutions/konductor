@@ -1,6 +1,6 @@
 ---
 name: about-konductor
-description: Gets a new user from nothing to a working Konductor session — install the CLI, start the orchestrator, and describe real work in plain language. Covers the real `konductor` CLI command surface, example orchestrator prompts, and the agent/skill/SOP model. Use when a user asks "what is Konductor", "how do I install this", "what can I ask it", or "what's the difference between an agent, a skill, and a SOP".
+description: Gets a new user from nothing to a working Konductor session, install the CLI, start the orchestrator, and describe real work in plain language. Covers the real `konductor` CLI command surface, example orchestrator prompts, and the agent/skill/SOP model. Use when a user asks "what is Konductor", "how do I install this", "what can I ask it", or "what's the difference between an agent, a skill, and a SOP".
 version: 4.0.0
 tags: [skill, help, onboarding, model, cli, install]
 ---
@@ -8,8 +8,8 @@ tags: [skill, help, onboarding, model, cli, install]
 # About Konductor
 
 Five steps from nothing to a working session: install the CLI, install the
-agent content, start the orchestrator, give it real work, and — if you want
-the one-paragraph version of how it all fits together — read the model.
+agent content, start the orchestrator, give it real work, and, if you want
+the one-paragraph version of how it all fits together, read the model.
 Everything past that is detail you can come back to.
 
 ## 1. Install the CLI
@@ -33,9 +33,9 @@ konductor install --from . --harness kiro-cli-v2
 
 `synth` builds the pipeline/config artifacts from the repo root you cloned;
 `install` copies them into a target (`$HOME` unless you pass `--target`).
-`--harness` is required — say `kiro-cli-v2` or `kiro-v3` for Kiro CLI, or
+`--harness` is required: say `kiro-cli-v2` or `kiro-v3` for Kiro CLI, or
 `claude` for Claude Code; there is no auto-detection. Run `konductor doctor`
-afterward to confirm everything registered — it inspects the install and
+afterward to confirm everything registered. It inspects the install and
 prints remediation guidance for anything wrong instead of a bare error.
 
 See `cli/README.md` for the fully spelled-out walkthrough, prerequisites,
@@ -48,14 +48,14 @@ kiro-cli chat --agent konductor
 ```
 
 `konductor install` targets both Kiro CLI and Claude Code, but `--harness`
-is required — it never auto-detects the runtime at the install target, so
+is required: it never auto-detects the runtime at the install target, so
 you say `kiro-cli-v2`, `kiro-v3`, or `claude` explicitly and it installs the
 matching agent/skill/SOP layout. On Claude Code, start the same orchestrator
 through the `claude` CLI's own `--agent` flag instead of `kiro-cli chat
 --agent`.
 
 That's the whole entry point. From here you never pick a
-specialist agent, never pick a skill, never hunt for a SOP — you describe
+specialist agent, never pick a skill, never hunt for a SOP; you describe
 what you want, and the orchestrator figures out what the task needs: which
 SOP fits, which specialist agent or agents own it, which skills they apply.
 That routing is the orchestrator's job, not yours.
@@ -64,10 +64,10 @@ Don't try to guess and invoke a specialist agent directly. The set of
 installed agents, skills, and SOPs changes with every install and every
 package update, so you don't need to know the fleet exists, name one, or
 know how many there are ahead of time. Run `/prompts` (Kiro CLI) or `/help`
-(Claude Code) any time you want to see what your own install actually has —
+(Claude Code) any time you want to see what your own install actually has;
 that's always current, unlike anything recalled from a prior session or
 another install. If you're curious which one handles a particular kind of
-work, ask the orchestrator — it will route you without you needing to look
+work, ask the orchestrator: it will route you without you needing to look
 anything up yourself.
 
 ## 4. Give it real work
@@ -88,7 +88,7 @@ Write user stories for a self-service password reset flow.
 ```
 
 ```text
-Our last deployment failed partway through — help me figure out why and fix it.
+Our last deployment failed partway through. Help me figure out why and fix it.
 ```
 
 ```text
@@ -96,19 +96,19 @@ Take this design doc and break it into implementation tasks two engineers can wo
 ```
 
 ```text
-Run a full pass on this feature — requirements through test coverage.
+Run a full pass on this feature: requirements through test coverage.
 ```
 
 Each of these spans different specialist work under the hood (design,
 security review, requirements, operations, task planning, or a full
-multi-phase pass) — the orchestrator resolves that from the sentence itself
+multi-phase pass); the orchestrator resolves that from the sentence itself
 and verifies each specialist's output before moving on. You don't have to
 know that structure to use it; naming an agent is optional, not required.
 
 ## 5. The model, in one paragraph
 
 Konductor is one orchestrator, backed by SOPs (named multi-step procedures)
-and specialist agents (each with their own skills — on-demand knowledge
+and specialist agents (each with their own skills, on-demand knowledge
 modules). You never address the SOPs, agents, or skills directly: you
 describe the outcome, the orchestrator picks the SOP if one fits, delegates
 to the specialist agent that owns it, and that agent draws on its skills to
@@ -132,7 +132,7 @@ operational issues. It:
   in progress, or blocked without re-explaining the task.
 
 If a request needs something outside SDLC work entirely, or you're not sure
-whether it's the right fit, just ask it — that's a routing question for the
+whether it's the right fit, just ask it: that's a routing question for the
 orchestrator, not something to resolve yourself first.
 
 ## The `konductor` CLI
@@ -140,7 +140,7 @@ orchestrator, not something to resolve yourself first.
 The CLI is a separate concern from the orchestrator above: it installs and
 manages the framework on disk, rather than doing any SDLC work itself.
 Naming its subcommands here is safe in a way naming agents/skills/SOPs is
-not — the CLI's command surface is compiled into the binary you're running,
+not: the CLI's command surface is compiled into the binary you're running,
 not part of an installable, changing content set. Verify against your own
 build with `konductor --help` and `konductor <subcommand> --help`; flags and
 defaults are the kind of detail that drifts across versions.
@@ -149,19 +149,19 @@ defaults are the kind of detail that drifts across versions.
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `init`      | Create `.konductor/config.yml` in the current directory from a preset (`solo`, `team`, or `org`). Hidden from `--help` and gated behind its own escape hatch.                             |
 | `config`    | Get, set, or list configuration values. Hidden from `--help` and gated behind its own escape hatch.                                                                                       |
-| `install`   | Install Konductor into a target directory from a `--from <repo-root>` source. `--from` (source) and `--target` (destination) are distinct flags — don't conflate them.                   |
+| `install`   | Install Konductor into a target directory from a `--from <repo-root>` source. `--from` (source) and `--target` (destination) are distinct flags: don't conflate them.                   |
 | `update`    | Re-run the same file-copy `install` uses against a tracked install, unconditionally overwriting every tracked file. No diffing, no `--force` flag, no protection for a hand-edited file. |
 | `uninstall` | Remove a tracked install.                                                                                                                                                                |
 | `synth`     | Synthesize pipeline/config artifacts from a repo root without installing anywhere.                                                                                                       |
 | `doctor`    | Inspect an install or checkout and print remediation guidance for problems it finds.                                                                                                     |
-| `metrics`   | Show usage/run metrics (still a stub as of this writing — verify with `--help`, don't assume it stayed one). Also hidden and gated behind its own escape hatch.                          |
+| `metrics`   | Show usage/run metrics (still a stub as of this writing, verify with `--help`, don't assume it stayed one). Also hidden and gated behind its own escape hatch.                          |
 
 Every subcommand takes `-v`/`--verbose`, `--json`, and
 `--no-color`; `install`, `update`, `uninstall`, and `doctor` also take
 `--target` for the destination/tracked install to act on, and all but
 `install` can act on one tracked target or `--all` of them at once. That
 shape is stable enough to describe here; exact flag names, defaults, and
-per-subcommand behavior are not — `konductor <subcommand> --help` is the
+per-subcommand behavior are not: `konductor <subcommand> --help` is the
 source of truth.
 
 ### Fixing a broken install
@@ -169,7 +169,7 @@ source of truth.
 `konductor doctor` inspects a target (or `--all` tracked targets) and prints
 actionable remediation guidance instead of a bare error. If a skill or SOP
 you expect isn't showing up on a specific agent, that's usually a
-registration gap rather than a missing file — a name has to be registered
+registration gap rather than a missing file: a name has to be registered
 on the exact agent that needs it, not just on a related one. Ask the
 orchestrator to fix the registration; diagnosing which slot is missing is
 an agent-spec-authoring task, not something this skill walks through.
@@ -183,17 +183,17 @@ than just knowing that it does.
 Three kinds of content compose to make the orchestrator (and each
 specialist) work:
 
-- **Agent** — a persona with a system prompt, a model, and a fixed set of
+- **Agent**: a persona with a system prompt, a model, and a fixed set of
   tool grants. One runs at a time as "the assistant" in a session.
-- **Skill** — a reusable capability an agent loads on demand. Skills
+- **Skill**: a reusable capability an agent loads on demand. Skills
   activate automatically when their description matches the task, or when
   explicitly requested by name.
-- **SOP (Standard Operating Procedure)** — a named, parameterized,
+- **SOP (Standard Operating Procedure)**: a named, parameterized,
   multi-step workflow an agent runs deliberately, not ambiently.
 
 The practical difference: skills answer "what do you know how to do," SOPs
 answer "run this specific procedure right now." You don't need to invoke
-either directly — describing the work to the orchestrator is what triggers
+either directly: describing the work to the orchestrator is what triggers
 the right one.
 
 Each agent spec is self-contained. This schema has no inheritance between
@@ -206,13 +206,13 @@ the same orchestrator doesn't grant it automatically.
 ## Checking what's actually installed
 
 The model above is stable; which agents and skills exist on a given install
-is not — it changes every time one is added, renamed, or removed. Don't
+is not: it changes every time one is added, renamed, or removed. Don't
 recite a remembered list:
 
 - **Agents:** `~/.kiro/agents/` (or `<target>/.kiro/agents/` for a
   `--target` install) is authoritative for what's installed. A remembered
   name will be wrong the moment an agent is added, renamed, or removed.
-- **Skills:** installed under `.konductor/skills/`, not `.kiro/skills/` —
+- **Skills:** installed under `.konductor/skills/`, not `.kiro/skills/`:
   they load automatically when their description matches the task, or when
   named explicitly in the conversation. There's no dedicated list command
   for skills specifically; on Claude Code an ordinary skill is also
