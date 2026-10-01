@@ -34,6 +34,7 @@ use std::process::{Command, Output};
 
 const CMD_SYNTH: &str = "synth";
 const CMD_INSTALL: &str = "install";
+const CMD_UPDATE: &str = "update";
 
 fn bin() -> &'static str {
     env!("CARGO_BIN_EXE_konductor")
@@ -114,9 +115,10 @@ fn seed_skill_source(repo_root: &Path) {
 
 /// The heart of this test: runs a REAL `synth --from <repo_root>`,
 /// then a REAL `install --from <repo_root>` against a SEPARATE target
-/// directory, and asserts the installed agent file's bytes match
-/// whatever `synth` actually wrote -- read back from synth's own
-/// output, not a path either side of this test hand-computes. If synth
+/// directory, and asserts the installed agent file matches whatever
+/// `synth` actually wrote, apart from the telemetry hook install adds.
+/// synth's side is read back from its own output, not a path either
+/// side of this test hand-computes. If synth
 /// and install ever resolve different directories, `install` fails with
 /// "no synthed agent files found" and this test fails loudly rather
 /// than silently seeding around the mismatch.
@@ -208,15 +210,40 @@ fn real_synth_then_real_install_agree_on_output_path_and_bytes() {
     );
     let installed_bytes = std::fs::read(&installed_files[0]).unwrap();
 
+    // With telemetry enabled (the default -- this invocation passes no
+    // `--no-telemetry`), a real `install` wires `resource_rewrite::
+    // TelemetryHookPass` into every installed agent's `hooks.agentSpawn`
+    // field, so the installed bytes diverge from synth's pristine output
+    // by exactly that one addition. Compare both sides with `"hooks"`
+    // stripped to confirm everything else agrees, then separately
+    // confirm the telemetry hook landed.
+    let mut synth_value: serde_json::Value = serde_json::from_slice(&synth_output_bytes).unwrap();
+    let mut installed_value: serde_json::Value = serde_json::from_slice(&installed_bytes).unwrap();
+    synth_value.as_object_mut().unwrap().remove("hooks");
+    installed_value.as_object_mut().unwrap().remove("hooks");
     assert_eq!(
-        installed_bytes, synth_output_bytes,
-        "installed file bytes must be byte-identical to what the real synth run emitted"
+        installed_value, synth_value,
+        "every field other than \"hooks\" must still agree between synth's pristine output and \
+         install's rewritten copy"
+    );
+    let installed_full: serde_json::Value = serde_json::from_slice(&installed_bytes).unwrap();
+    assert!(
+        installed_full["hooks"]["agentSpawn"]
+            .as_array()
+            .is_some_and(|entries| entries.iter().any(|entry| {
+                entry
+                    .get("command")
+                    .and_then(|c| c.as_str())
+                    .is_some_and(|c| c.contains("__telemetry-hook agent-invocation"))
+            })),
+        "install must have wired the telemetry hook into hooks.agentSpawn, got: {}",
+        installed_full["hooks"]
     );
 
     // The specific location contract this test is meant to lock in --
-    // asserted AFTER establishing byte identity above (which alone
+    // asserted AFTER establishing content agreement above (which alone
     // already proves the file was actually found and copied), so a
-    // reader can see both "the bytes match" and "the well-known
+    // reader can see both "the contents match" and "the well-known
     // destination path is what got used".
     assert_eq!(
         installed_files[0],
@@ -271,6 +298,326 @@ fn real_synth_then_real_install_agree_on_output_path_and_bytes() {
         installed_skill_files[0],
         target_dir.join(".konductor/skills/example-skill/SKILL.md"),
         "installed skill must land at the documented .konductor/skills/ destination"
+    );
+
+    std::fs::remove_dir_all(&repo_root).ok();
+    std::fs::remove_dir_all(&target_dir).ok();
+}
+
+/// Regression test for the `--no-telemetry` re-install leak: a first
+/// Kiro V3 install with telemetry enabled writes the standalone
+/// `.kiro/hooks/konductor-telemetry-hooks.json` document, and a second
+/// install of the SAME target with `--no-telemetry` must REMOVE it --
+/// not merely skip rewriting it. Install replaces the manifest slot
+/// rather than diffing prior vs. new files, so without an explicit
+/// removal the hook would persist and keep firing despite the opt-out.
+#[test]
+fn v3_reinstall_with_no_telemetry_removes_a_previously_installed_hook() {
+    let sink = telemetry_test_sink::TelemetrySink::start();
+    let repo_root = scratch_dir("repo-v3-notele");
+    seed_agent_spec_source(&repo_root);
+    seed_skill_source(&repo_root);
+
+    let synth_result = run_konductor(
+        &repo_root,
+        &sink,
+        &[CMD_SYNTH, "--from", &repo_root.display().to_string()],
+    );
+    assert!(
+        synth_result.status.success(),
+        "real `synth --from <repo>` must succeed: stderr={}",
+        String::from_utf8_lossy(&synth_result.stderr)
+    );
+
+    let target_dir = scratch_dir("target-v3-notele");
+    let hook_path = target_dir.join(".kiro/hooks/konductor-telemetry-hooks.json");
+
+    // First install, telemetry enabled (no `--no-telemetry`): the
+    // standalone hook document must land on disk.
+    let install_on = run_konductor(
+        &target_dir,
+        &sink,
+        &[
+            CMD_INSTALL,
+            "--from",
+            &repo_root.display().to_string(),
+            "--target",
+            &target_dir.display().to_string(),
+            "--harness",
+            "kiro-v3",
+        ],
+    );
+    assert!(
+        install_on.status.success(),
+        "telemetry-on V3 install must succeed: stderr={}",
+        String::from_utf8_lossy(&install_on.stderr)
+    );
+    assert!(
+        hook_path.is_file(),
+        "the standalone telemetry hook document must exist after a telemetry-on install, \
+         expected at {}",
+        hook_path.display()
+    );
+
+    // Second install of the same target with `--no-telemetry`: the hook
+    // document (and its sibling lock file) must be gone afterward.
+    let install_off = run_konductor(
+        &target_dir,
+        &sink,
+        &[
+            CMD_INSTALL,
+            "--from",
+            &repo_root.display().to_string(),
+            "--target",
+            &target_dir.display().to_string(),
+            "--harness",
+            "kiro-v3",
+            "--no-telemetry",
+        ],
+    );
+    assert!(
+        install_off.status.success(),
+        "no-telemetry V3 reinstall must succeed: stderr={}",
+        String::from_utf8_lossy(&install_off.stderr)
+    );
+    assert!(
+        !hook_path.exists(),
+        "the standalone telemetry hook document must be REMOVED after a --no-telemetry \
+         reinstall, but it still exists at {}",
+        hook_path.display()
+    );
+    assert!(
+        !target_dir
+            .join(".kiro/hooks/.konductor-telemetry-session-start.lock")
+            .exists(),
+        "the sibling hook lock file must also be cleaned up after a --no-telemetry reinstall"
+    );
+
+    std::fs::remove_dir_all(&repo_root).ok();
+    std::fs::remove_dir_all(&target_dir).ok();
+}
+
+/// Same leak, reached through `konductor update --no-telemetry` instead
+/// of a second `install`. `update` routes through the same
+/// `install_from_local` with `no_telemetry` threaded, so it must remove
+/// a V3 hook a prior telemetry-enabled install wrote, just as a
+/// `--no-telemetry` reinstall does.
+#[test]
+fn v3_update_with_no_telemetry_removes_a_previously_installed_hook() {
+    let sink = telemetry_test_sink::TelemetrySink::start();
+    let repo_root = scratch_dir("repo-v3-update-notele");
+    seed_agent_spec_source(&repo_root);
+    seed_skill_source(&repo_root);
+
+    let synth_result = run_konductor(
+        &repo_root,
+        &sink,
+        &[CMD_SYNTH, "--from", &repo_root.display().to_string()],
+    );
+    assert!(
+        synth_result.status.success(),
+        "real `synth --from <repo>` must succeed: stderr={}",
+        String::from_utf8_lossy(&synth_result.stderr)
+    );
+
+    let target_dir = scratch_dir("target-v3-update-notele");
+    let hook_path = target_dir.join(".kiro/hooks/konductor-telemetry-hooks.json");
+
+    // Install with telemetry on, so the hook lands and the target is
+    // tracked in the index `update` reads.
+    let install_on = run_konductor(
+        &target_dir,
+        &sink,
+        &[
+            CMD_INSTALL,
+            "--from",
+            &repo_root.display().to_string(),
+            "--target",
+            &target_dir.display().to_string(),
+            "--harness",
+            "kiro-v3",
+        ],
+    );
+    assert!(
+        install_on.status.success(),
+        "telemetry-on V3 install must succeed: stderr={}",
+        String::from_utf8_lossy(&install_on.stderr)
+    );
+    assert!(
+        hook_path.is_file(),
+        "hook must exist after the telemetry-on install"
+    );
+
+    // `update --no-telemetry` against the same target must strip it.
+    let update_off = run_konductor(
+        &target_dir,
+        &sink,
+        &[
+            CMD_UPDATE,
+            "--from",
+            &repo_root.display().to_string(),
+            "--target",
+            &target_dir.display().to_string(),
+            "--no-telemetry",
+        ],
+    );
+    assert!(
+        update_off.status.success(),
+        "no-telemetry V3 update must succeed: stderr={}",
+        String::from_utf8_lossy(&update_off.stderr)
+    );
+    assert!(
+        !hook_path.exists(),
+        "the V3 hook document must be REMOVED after `update --no-telemetry`, but it still \
+         exists at {}",
+        hook_path.display()
+    );
+
+    std::fs::remove_dir_all(&repo_root).ok();
+    std::fs::remove_dir_all(&target_dir).ok();
+}
+
+/// Seeds an agent that targets the Claude Code harness, so `synth`
+/// writes it under `dist/claude/agents/` and a `--harness claude`
+/// install has something to install.
+fn seed_claude_agent_spec_source(repo_root: &Path) {
+    let agents_dir = repo_root.join("agents");
+    std::fs::create_dir_all(&agents_dir).unwrap();
+    std::fs::write(
+        agents_dir.join("k-example.agent-spec.json"),
+        br#"{
+  "schemaVersion": "1",
+  "name": "k-example",
+  "config": {
+    "description": "An example agent.",
+    "model": "claude-sonnet-5",
+    "systemPrompt": "You are a helpful agent."
+  },
+  "clientConfig": {
+    "claudeCli": {}
+  }
+}
+"#,
+    )
+    .unwrap();
+}
+
+/// Regression test for the `--no-telemetry` re-install leak on the pure
+/// Claude-Code-only install path: a first install with telemetry
+/// enabled wires the `SessionStart`/`SubagentStart` telemetry hooks into
+/// `.claude/settings.json` (the target is `$HOME` here, so the hooks go
+/// to the user-level file, not `settings.local.json`), and a second
+/// install of the same target with `--no-telemetry` must STRIP them --
+/// not merely skip re-wiring. Because the user owns the rest of that
+/// file, the strip must leave any foreign hook and any unrelated
+/// top-level key intact.
+#[test]
+fn claude_reinstall_with_no_telemetry_strips_previously_installed_hooks() {
+    let sink = telemetry_test_sink::TelemetrySink::start();
+    let repo_root = scratch_dir("repo-claude-notele");
+    seed_claude_agent_spec_source(&repo_root);
+    seed_skill_source(&repo_root);
+
+    let synth_result = run_konductor(
+        &repo_root,
+        &sink,
+        &[CMD_SYNTH, "--from", &repo_root.display().to_string()],
+    );
+    assert!(
+        synth_result.status.success(),
+        "real `synth --from <repo>` must succeed: stderr={}",
+        String::from_utf8_lossy(&synth_result.stderr)
+    );
+
+    // A pure Claude install requires a pre-existing `.claude` marker at
+    // the target (`ClaudeInstallStrategy::matches`).
+    let target_dir = scratch_dir("target-claude-notele");
+    std::fs::create_dir_all(target_dir.join(".claude")).unwrap();
+    let settings_path = target_dir.join(".claude/settings.json");
+
+    let install_on = run_konductor(
+        &target_dir,
+        &sink,
+        &[
+            CMD_INSTALL,
+            "--from",
+            &repo_root.display().to_string(),
+            "--target",
+            &target_dir.display().to_string(),
+            "--harness",
+            "claude",
+        ],
+    );
+    assert!(
+        install_on.status.success(),
+        "telemetry-on Claude install must succeed: stderr={}",
+        String::from_utf8_lossy(&install_on.stderr)
+    );
+    let after_on: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&settings_path).unwrap()).unwrap();
+    assert!(
+        after_on["hooks"]["SessionStart"].is_array()
+            && after_on["hooks"]["SubagentStart"].is_array(),
+        "telemetry-on install must wire both telemetry hook events, got: {}",
+        after_on["hooks"]
+    );
+
+    // Seed a foreign hook and an unrelated top-level key that the strip
+    // must preserve.
+    let mut seeded = after_on.clone();
+    seeded["hooks"]["SessionStart"]
+        .as_array_mut()
+        .unwrap()
+        .push(serde_json::json!({
+            "matcher": "startup",
+            "hooks": [{"type": "command", "command": "/usr/bin/env my-own-hook"}]
+        }));
+    seeded["permissions"] = serde_json::json!({"allow": ["Read(*)"]});
+    std::fs::write(&settings_path, serde_json::to_vec_pretty(&seeded).unwrap()).unwrap();
+
+    let install_off = run_konductor(
+        &target_dir,
+        &sink,
+        &[
+            CMD_INSTALL,
+            "--from",
+            &repo_root.display().to_string(),
+            "--target",
+            &target_dir.display().to_string(),
+            "--harness",
+            "claude",
+            "--no-telemetry",
+        ],
+    );
+    assert!(
+        install_off.status.success(),
+        "no-telemetry Claude reinstall must succeed: stderr={}",
+        String::from_utf8_lossy(&install_off.stderr)
+    );
+
+    let after_off: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&settings_path).unwrap()).unwrap();
+    // No Konductor telemetry command may remain anywhere in the file.
+    let serialized = serde_json::to_string(&after_off).unwrap();
+    assert!(
+        !serialized.contains("__telemetry-hook"),
+        "no telemetry hook may remain after a --no-telemetry reinstall, got: {after_off}"
+    );
+    // The foreign hook and the unrelated top-level key survive.
+    let session_start = after_off["hooks"]["SessionStart"].as_array().unwrap();
+    assert_eq!(
+        session_start.len(),
+        1,
+        "the foreign SessionStart block must survive, got: {session_start:?}"
+    );
+    assert_eq!(
+        session_start[0]["hooks"][0]["command"],
+        serde_json::json!("/usr/bin/env my-own-hook")
+    );
+    assert_eq!(
+        after_off["permissions"],
+        serde_json::json!({"allow": ["Read(*)"]}),
+        "an unrelated top-level key must be untouched by the strip"
     );
 
     std::fs::remove_dir_all(&repo_root).ok();
@@ -338,14 +685,14 @@ fn seed_agent_spec_with_context_source(repo_root: &Path) {
 
 /// Unlike `real_synth_then_real_install_agree_on_output_path_and_bytes`
 /// (whose seeded agent declares no `contextNames`, so its installed
-/// bytes stay byte-identical to synth's own output), an agent WITH a
-/// `contextNames` entry is deliberately transformed during install: its
-/// `resources` entry is rewritten from a relative `file://context/...`
-/// (destination-agnostic, as `dist/` must stay) to an absolute
-/// `file://<install-root>/context/...` path. This test locks in that
-/// divergence against the REAL compiled binary rather than asserting
-/// byte identity, and additionally proves the context file itself was
-/// copied to the destination the rewritten path points at.
+/// copy matches synth's own output apart from the telemetry hook), an
+/// agent WITH a `contextNames` entry is deliberately transformed during
+/// install: its `resources` entry is rewritten from a relative
+/// `file://context/...` (destination-agnostic, as `dist/` must stay) to
+/// an absolute `file://<install-root>/context/...` path. This test locks
+/// in that divergence against the REAL compiled binary rather than
+/// asserting content equality, and additionally proves the context file
+/// itself was copied to the destination the rewritten path points at.
 #[test]
 fn real_synth_then_real_install_rewrites_context_resource_to_absolute_path() {
     let sink = telemetry_test_sink::TelemetrySink::start();

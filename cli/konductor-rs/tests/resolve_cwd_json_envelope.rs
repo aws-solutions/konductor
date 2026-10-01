@@ -43,10 +43,11 @@ fn scratch_dir(name: &str) -> PathBuf {
 /// the paths/args this test passes contain a `'`, so no escaping beyond
 /// that is needed.
 ///
-/// `resolve_cwd()`'s own failure path always reports a
-/// `dispatch.cwd_unavailable` `cli_error` event (see dispatch.rs),
-/// regardless of which command triggered it -- `sink` redirects that
-/// event to a loopback fixture rather than the real endpoint. Passed
+/// `resolve_cwd()`'s own failure path always attempts a
+/// `dispatch.cwd_unavailable` `cli_error` event against `$HOME` (see
+/// dispatch.rs), regardless of which command triggered it -- `sink`
+/// redirects any such send to a loopback fixture rather than the real
+/// endpoint. Passed
 /// through the shell wrapper as an env var (rather than
 /// `Command::env()` on the `sh` process directly) so the `exec`'d
 /// `konductor` process inherits it.

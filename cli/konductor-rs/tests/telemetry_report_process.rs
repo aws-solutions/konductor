@@ -162,10 +162,10 @@ fn run_install_would_fail_as_noop(
     output
 }
 
-/// The core regression test (see this file's own module docstring):
-/// with a pre-existing identity already on disk, `--no-telemetry` must
-/// suppress the report unconditionally -- not only when no identity
-/// exists yet.
+/// `--no-telemetry` must suppress the report even with a legacy
+/// `telemetry-id.json` on disk. Nothing reads that file anymore and no
+/// install-info is seeded, so this takes the same nil-sentinel branch as
+/// the no-identity test below.
 #[test]
 fn no_telemetry_suppresses_cli_error_report_even_with_a_preexisting_identity() {
     let sink = TelemetrySink::start();
@@ -193,9 +193,8 @@ fn no_telemetry_suppresses_cli_error_report_even_with_a_preexisting_identity() {
     // exited by the time this line runs.
     assert!(
         !sink.wait_for_bodies(1, Duration::from_millis(500)),
-        "--no-telemetry must suppress report_cli_error even when a valid identity already \
-         exists at the target ({}); the sink received a request body -- the opt-out must be \
-         checked unconditionally, not only in the branch taken when NO identity exists yet",
+        "--no-telemetry must suppress report_cli_error even when a legacy identity file \
+         exists at the target ({}); the sink received a request body",
         target_dir.join(IDENTITY_RELATIVE_PATH).display(),
     );
 
@@ -234,11 +233,9 @@ fn cli_error_report_fires_and_reaches_the_sink_without_no_telemetry() {
     std::fs::remove_dir_all(&target_dir).ok();
 }
 
-/// Same suppression, but for the OTHER branch `report_cli_error`
-/// serves: no pre-existing identity at all (a genuinely first-ever
-/// invocation). `--no-telemetry` must suppress the nil-UUID-sentinel
-/// report this branch would otherwise fire just as completely as
-/// it suppresses the pre-existing-identity branch above.
+/// Same suppression with nothing seeded at the target (a first-ever
+/// invocation). With no install-info, `install` reports under the
+/// nil-UUID sentinel; `--no-telemetry` must suppress that report.
 #[test]
 fn no_telemetry_suppresses_cli_error_report_with_no_preexisting_identity() {
     let sink = TelemetrySink::start();
@@ -261,21 +258,10 @@ fn no_telemetry_suppresses_cli_error_report_with_no_preexisting_identity() {
     std::fs::remove_dir_all(&target_dir).ok();
 }
 
-/// Positive control for the test above, and the missing case this fix
-/// adds: the documented nil-UUID-sentinel branch -- telemetry ON,
-/// error occurs before ANY identity file exists at the target -- is
-/// arguably the most common real-world scenario (a genuinely
-/// first-ever invocation against a target that has never been
-/// installed to before), yet no prior test exercised it. Every
-/// existing positive control in this file seeds a pre-existing
-/// identity first
-/// (`cli_error_report_fires_and_reaches_the_sink_without_no_telemetry`);
-/// this test deliberately does NOT, confirming `report_cli_error`
-/// still fires (under the nil-UUID sentinel) and reaches the sink even
-/// with no identity on disk at all -- without `--no-telemetry`, unlike
-/// `no_telemetry_suppresses_cli_error_report_with_no_preexisting_identity`
-/// above, which covers the identical no-identity setup but asserts the
-/// OPPOSITE (suppressed) outcome under the opt-out.
+/// Positive control for the test above: with nothing seeded at the
+/// target and no `--no-telemetry`, `install`'s `cli_error` still reports
+/// under the nil-UUID sentinel (no install-info yet) and reaches the
+/// sink.
 #[test]
 fn cli_error_report_fires_under_nil_uuid_sentinel_with_no_preexisting_identity() {
     let sink = TelemetrySink::start();
@@ -318,8 +304,8 @@ fn cli_error_report_fires_under_nil_uuid_sentinel_with_no_preexisting_identity()
 //
 // Before this fix, every `report_error` call site inside `update.rs`
 // hardcoded `no_telemetry: false` regardless of the real `--no-telemetry`
-// flag on the invocation -- unlike `install.rs`'s own 9 call sites,
-// which already thread the real value through. This section exercises
+// flag on the invocation -- unlike `install.rs`'s call sites, which
+// already thread the real value through. This section exercises
 // the "update.target_not_found" call site: `--target <dir>` naming a
 // directory the install index has never tracked -- the cheapest
 // deterministic way to make `dispatch_update_with` call
@@ -445,16 +431,11 @@ fn make_target_stale(target_dir: &Path) {
     });
 }
 
-/// The core regression test for this fix: two DISTINCT targets, each
-/// with its own on-disk identity file carrying a DIFFERENT `UUID`, both
-/// tracked in the same process's index and both failing as "stale" on
-/// `update --all --json`. Before this fix, the second target's
-/// `cli_error` telemetry report would have been attributed to the
-/// FIRST target's cached identity; this test cannot observe the wire
-/// UUID (see this section's own module comment), but it does prove the
-/// necessary precondition for that misattribution to even matter: BOTH
-/// targets' failures are individually reported in the batch output,
-/// neither silently dropped or merged.
+/// Two distinct targets, both tracked in the same process's index and
+/// both failing as "stale" on `update --all --json`. The wire UUID is
+/// the machine-scoped instance UUID, so this cannot check per-target
+/// attribution; it proves both failures are reported in the batch
+/// output, neither dropped nor merged.
 #[test]
 fn update_all_json_batch_reports_every_distinct_failing_target_not_just_the_first() {
     let sink = TelemetrySink::start();
@@ -489,12 +470,9 @@ fn update_all_json_batch_reports_every_distinct_failing_target_not_just_the_firs
         );
     }
 
-    // Overwrite each target's REAL (randomly-generated) identity with a
-    // deterministic, distinct UUID -- not needed for this test's own
-    // assertions (which never read a UUID back), but keeps this test's
-    // setup honest about the "each with its own on-disk identity file"
-    // precondition the finding describes, and matches what a caller
-    // reproducing this locally would want to inspect by hand.
+    // Install no longer writes `telemetry-id.json` and nothing reads it;
+    // these legacy files only make the two targets distinguishable when
+    // inspected by hand.
     seed_preexisting_identity_with_uuid(&target_a, &"1".repeat(64));
     seed_preexisting_identity_with_uuid(&target_b, &"2".repeat(64));
 
@@ -566,8 +544,8 @@ fn update_all_json_batch_reports_every_distinct_failing_target_not_just_the_firs
 // invocation, but a `--all` batch loop visiting N targets in one
 // process paid that bounded wait N times. An earlier revision of this
 // fix cached the resolved `(endpoint, pin)` once per process
-// (`ENDPOINT_CACHE`, mirroring `IDENTITY_CACHE`'s own once-per-process
-// contract) to collapse that cost back to one resolution per batch.
+// (`ENDPOINT_CACHE`) to collapse that cost back to one resolution per
+// batch.
 //
 // That caching was itself the CRITICAL regression `f-d87f3600` (below)
 // describes: `resolve_endpoint_with_pin` resolves BOTH the endpoint AND
@@ -577,9 +555,8 @@ fn update_all_json_batch_reports_every_distinct_failing_target_not_just_the_firs
 // silently ignored a later target's own opt-out. The fix below removes
 // this cache from every `_for_target` batch call site entirely
 // (`send_event_for_target`/`resolve_endpoint_with_pin_uncached`),
-// re-paying the bounded DNS wait per target -- the same
-// correctness-over-performance trade `read_identity_uncached` already
-// makes for identity. See `update_all_json_batch_honors_each_targets_own_telemetry_opt_out`
+// re-paying the bounded DNS wait per target. See
+// `update_all_json_batch_honors_each_targets_own_telemetry_opt_out`
 // below for the regression test.
 
 /// Same as `run_konductor`, but with `KONDUCTOR_LOG=debug` set so the

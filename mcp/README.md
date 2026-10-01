@@ -47,10 +47,61 @@ per this file's own "Adding a second server" guidance below on not guessing at a
   `lib/skill-lookup-core/src/model.rs` for the full list of conditions
   covered, and `skip_reason_message` in
   `lib/skill-lookup-core/src/frontmatter.rs` for how each renders). An
-  optional `--skill-name-filter` narrows the index after scanning. No
-  `find_skills`/`get_skill`/`reload_skills` MCP tools are implemented
-  yet — the index built here has no consumer besides this server's own
-  startup diagnostics until those land.
+  optional `--skill-name-filter` narrows the index after scanning.
+
+  Three MCP tools are implemented (`handlers.rs`, wired into
+  `call_tool`, tested end-to-end in `tests/full_tool_surface.rs`):
+
+  - `find_skills` — search the catalog by `name`/`keyword`/`tag`
+    (substring/exact filters, not a ranker). All inputs are optional
+    and combine with AND; with none given, every indexed skill is
+    returned. Returns metadata only, never a `SKILL.md` body.
+  - `get_skill` — fetch one skill's full body (including frontmatter)
+    by exact, case-insensitive name.
+  - `reload_skills` — force a full re-scan of every configured
+    `--skills-dir`, rebuilding the index from scratch, and return a
+    diagnostics report of what was indexed, skipped, or collided.
+
+### MCP prompts / agent SOPs
+
+Alongside the skill catalog, this server can also serve agent SOPs
+(`<name>.sop.md` files) as MCP prompts. `--agent-sop-paths` (repeatable,
+in precedence order) points the server at one or more SOP directories;
+unlike `--skills-dir` there is no default — if the flag is omitted, the
+server serves no prompts at all. An optional `--agent-sop-filter`
+narrows the set the same way `--skill-name-filter` does for skills,
+matching case-insensitively against each SOP's name (its filename with
+the `.sop.md` suffix stripped).
+
+Discovered SOPs are held in `sops.rs`'s `SopIndex`, built once at
+startup, and exposed over the standard MCP `prompts/list` and
+`prompts/get` handlers (`handlers.rs`). If `--agent-sop-paths` was never
+passed, `prompts/list` simply returns an empty list and every
+`prompts/get` call reports "prompt not found."
+
+## Usage / flags
+
+`skill-lookup-mcp` accepts:
+
+| Flag | Repeatable | Default | Purpose |
+| --- | --- | --- | --- |
+| `--skills-dir <DIR>` | yes | installed root (`~/.konductor/skills/`) + `<cwd>/.konductor/skills/` | Directory to scan for skills. First occurrence wins on a name collision. |
+| `--skill-name-filter <GLOB>` | no | none | Comma-separated glob(s), matched case-insensitively against each skill's frontmatter `name`; skills matching none are excluded from the index. |
+| `--agent-sop-paths <DIR>` | yes | none | Directory to scan for agent SOPs (`<name>.sop.md` files), served as MCP prompts. No default — omitting the flag means no prompts are served. |
+| `--agent-sop-filter <GLOB>` | no | none | Comma-separated glob(s), matched case-insensitively against each SOP's name; mirrors `--skill-name-filter`'s semantics for prompts. |
+| `--telemetry {on\|off}` | no | `on` | Enables or disables this server process's own usage-analytics telemetry. When `off`, the periodic flush task is never started. |
+
+## Telemetry
+
+This server reports anonymous, aggregated MCP tool-call counts on a
+periodic flush cycle (see `lib/skill-lookup-core/src/telemetry.rs`).
+Two independent opt-outs are available, either of which is sufficient:
+
+- `--telemetry off` disables it for this server process only.
+- `KONDUCTOR_TELEMETRY=off` disables it fleet-wide — the same
+  environment variable and value `cli/konductor-rs` recognizes for its
+  own opt-out — and takes effect regardless of the `--telemetry` flag's
+  value.
 
 ## Accepted risk: `rmcp` is pre-1.0
 
@@ -59,9 +110,10 @@ yet reached a 1.0 release, so it carries no semver stability guarantee --
 any future upgrade (e.g. to pick up the tool-registration APIs a planned
 follow-up server needs, which don't exist in a no-op form in this
 version) is a breaking-change risk. This scaffold's `ServerHandler`
-implementation (`initialize`, `get_info`) is written directly against
-`rmcp`'s current trait shape with no adapter/wrapper layer to absorb a
-future signature change. This is an accepted trade-off for this initial
+implementation (`initialize`, `get_info`, `list_tools`, `call_tool`,
+`list_prompts`, `get_prompt`) is written directly against `rmcp`'s
+current trait shape with no adapter/wrapper layer to absorb a future
+signature change. This is an accepted trade-off for this initial
 scaffold, not an oversight -- flagging it here so it stays visible rather
 than implicit.
 

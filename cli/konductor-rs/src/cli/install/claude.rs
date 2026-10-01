@@ -5,63 +5,42 @@
 // Installs agents and skills only, from a local synth output tree at
 // `<repo_root>/dist/claude/{agents,skills}/**` (`--from <repo-root>`)
 // into `<target_dir>/.claude/{agents,skills}/`. Both content types share
-// the single `.claude/` root: unlike Kiro CLI, which scans
-// `.kiro/skills/` unconditionally and so needs a separate
-// `.konductor/skills/` root to keep skills out of that scan, Claude Code
-// only loads a skill when an agent's own frontmatter names it or the
-// agent invokes the `Skill` tool on demand — there is no unconditional
-// directory scan to escape here. This `.claude/agents/`+`.claude/skills/`
-// convention is the same one documented in this codebase's own
-// `aim-agent-authoring`/`about-konductor` skill content
-// (`clientConfig.claudeCli.skills` -> `skills:` frontmatter;
-// `.claude/skills/<name>/SKILL.md` for the packaged bodies).
+// the single `.claude/` root, unlike Kiro CLI's split `.kiro/`+
+// `.konductor/` roots: Claude Code only loads a skill when an agent's
+// frontmatter names it or the agent invokes the `Skill` tool on demand,
+// so there is no unconditional directory scan to keep skills out of.
 //
-// No `resources`/`mcpServers` rewrite pass is needed the way
-// `kiro_cli.rs`'s `install_agents` needs one: a Claude Code agent file is
-// self-contained Markdown with no cross-file resource pointers, and its
-// `skills:` frontmatter already carries the resolved skill content synth
-// itself produced.
+// No `resources`/`mcpServers` rewrite pass is needed here: a Claude Code
+// agent file is self-contained Markdown with no cross-file resource
+// pointers, and its `skills:` frontmatter already carries the resolved
+// skill content synth produced.
 //
-// Out of scope on THIS (install) side: a separate context-install phase
-// or on-disk context directory. Unlike Kiro CLI (`.kiro/context/` +
-// `file://context/<name>` resource entries), Claude Code has no
-// runtime-scanned context directory to target at all -- the real
-// materialization behavior confirms this: context content is spliced
-// directly into the agent's rendered `.md` body at SYNTH time, wrapped in a
-// `<Context: filename.md>...</Context: filename.md>` marker (see
-// `synth/claude.rs`'s `render_agent_md`), not written as a sibling file
-// `install` would need its own phase to copy. So there is genuinely
-// nothing for `install` to do for context here -- it is already inline
-// in the same agent file `AgentInstallPhase`-equivalent copying already
-// handles. The MCP server binary / permission-grant wiring remains
-// separately out of scope (owned by a separate, still-in-progress
-// investigation).
+// Context has no separate install phase or on-disk directory on this
+// runtime: context content is spliced into the agent's rendered body at
+// synth time (see `synth/claude.rs`'s `render_agent_md`), not written as
+// a sibling file.
 //
-// SOPs ARE in scope, via `install_sop_skills` (called from `phases.rs`'s
-// shared `SopInstallPhase::run`, gated on `detect_runtimes` finding a
-// `.claude` marker at the target): each staged `<name>.sop.md` is
-// converted into a `sop-<name>/SKILL.md` under `.claude/skills/`, not
+// SOPs ARE in scope, via `install_sop_skills`: each staged `<name>.sop.md`
+// is converted into a `sop-<name>/SKILL.md` under `.claude/skills/`, not
 // copied verbatim -- Claude Code has no MCP-prompt equivalent to serve
-// `.sop.md` files directly the way `skill-lookup-mcp` does for Kiro CLI,
-// so each SOP becomes its own slash-invokable, non-model-triggered
-// skill instead (`disable-model-invocation: true`).
+// `.sop.md` files directly, so each SOP becomes its own slash-invokable,
+// non-model-triggered skill instead (`disable-model-invocation: true`).
 //
-// `ClaudeTransformer` — the synth side that produces `dist/claude/...`
-// (`name()` returns `"claude"`) — lives on a separate, unmerged branch
-// (`wt-synth-transformers`). This module does not import it, to avoid
-// stacking a second dependency on top of this CR's own existing one.
-// `CLAUDE_HARNESS_DIR` below is a hand-kept copy of that `name()` value,
-// and every test in this file seeds a `dist/claude/...` fixture tree
-// directly rather than depending on that branch's code.
+// `ClaudeTransformer`, the synth side that produces `dist/claude/...`,
+// lives on a separate, unmerged branch and is not imported here.
+// `CLAUDE_HARNESS_DIR` below is a hand-kept copy of its `name()` value;
+// tests seed a `dist/claude/...` fixture tree directly instead.
 
 use std::path::Path;
 
 use super::kiro_cli::{
     attach_provenance, copy_agent_files, copy_skill_dir_recursive, list_agent_files_like,
-    list_skill_dirs, plan_skill_dir_recursive, reject_unsafe_file_name, PlannedFile,
+    list_skill_dirs, plan_claude_hooks_file, plan_skill_dir_recursive, reject_unsafe_file_name,
+    PlannedFile,
 };
 use super::manifest::{classify_provenance, ManifestFile, Status, StrategyManifest};
 use super::phases::{run_all_phases, InstallPhase, PhaseOutputs, SopInstallPhase};
+use super::resource_rewrite::apply_claude_settings_hooks_only;
 use super::runtime::{detect_runtimes, Runtime};
 use super::InstallError;
 use super::InstallStrategy;
@@ -71,11 +50,8 @@ use crate::cli::synth::kiro_cli_v2::{
 use crate::cli::synth::path_safety::{reject_unsafe_skill_name, reject_unsafe_sop_name};
 
 /// Harness directory name `ClaudeTransformer` (not yet merged) stages
-/// synth output under (`dist/<name>/`). A local string literal, not an
-/// import of that transformer's own `name()` constant (unlike
-/// `kiro_cli.rs`, which imports `KiroCliV2Transformer.name()` directly),
-/// so it must be kept in sync by hand if that transformer's
-/// `name()` ever changes.
+/// synth output under (`dist/<name>/`). A local string literal, kept in
+/// sync by hand with that transformer's own `name()`.
 pub(crate) const CLAUDE_HARNESS_DIR: &str = "claude";
 
 /// Destination root, relative to `target_dir`, both agents and skills
@@ -89,18 +65,10 @@ pub(crate) const CLAUDE_DESTINATION_ROOT: &str = ".claude";
 pub struct ClaudeInstallStrategy;
 
 impl InstallStrategy for ClaudeInstallStrategy {
-    /// Matches `CLAUDE_HARNESS_DIR`/`ClaudeTransformer::name()`
-    /// (`"claude"`) exactly -- the harness/strategy name unification
-    /// removes the translation layer that used to exist between
-    /// `--harness claude` and this strategy's own internal
-    /// manifest-recorded name, which used to carry a `"-code"` suffix.
     fn name(&self) -> &'static str {
         "claude"
     }
 
-    /// Now identical to `name()` by construction (see this impl's own
-    /// `name()` doc comment) -- delegates directly rather than
-    /// returning the separately-declared `CLAUDE_HARNESS_DIR` constant.
     fn harness_dir(&self) -> &'static str {
         self.name()
     }
@@ -108,20 +76,14 @@ impl InstallStrategy for ClaudeInstallStrategy {
     /// Applies only when Claude Code is detected at the target (a
     /// `.claude` marker directory already exists). Unlike
     /// `KiroCliInstallStrategy::matches`, this never claims an
-    /// undetected/empty target as a default -- `KiroCliInstallStrategy`
-    /// is registered first in `registry::STRATEGIES` and already claims
-    /// every undetected target, so an empty target never reaches this
-    /// strategy's `matches` under the current registration order (see
-    /// `registry.rs`). Written this way regardless, so this strategy's
-    /// own contract does not silently depend on that ordering.
+    /// undetected/empty target as a default.
     fn matches(&self, target_dir: &Path) -> bool {
         detect_runtimes(target_dir).has(Runtime::ClaudeCode)
     }
 
     /// Same no-op pre-check contract as
-    /// `KiroCliInstallStrategy::would_fail_as_noop` (see that
-    /// implementation's own doc comment), scoped to this strategy's
-    /// two content types.
+    /// `KiroCliInstallStrategy::would_fail_as_noop`, scoped to this
+    /// strategy's two content types.
     fn would_fail_as_noop(&self, target_dir: &Path, from: Option<&str>) -> Option<String> {
         let Some(repo_root) = from else {
             return Some(super::NO_REMOTE_RELEASE_MESSAGE.to_string());
@@ -141,8 +103,7 @@ impl InstallStrategy for ClaudeInstallStrategy {
     }
 
     /// Same write-ahead sequencing as `KiroCliInstallStrategy`'s own
-    /// `install_from_local` (see that implementation's own doc
-    /// comment): plan every file first (no copy), write an
+    /// `install_from_local`: plan every file first (no copy), write an
     /// `InProgress` manifest naming the plan, run the phase chain,
     /// attach real provenance to what was actually copied, then
     /// rewrite the manifest as `Complete`.
@@ -158,8 +119,7 @@ impl InstallStrategy for ClaudeInstallStrategy {
         let repo_root = Path::new(repo_root);
         let harness_dir = repo_root.join("dist").join(CLAUDE_HARNESS_DIR);
 
-        // Recorded into the manifest's `source` field, same rationale as
-        // `kiro_cli.rs`'s own `install_from_local`.
+        // Recorded into the manifest's `source` field.
         let source = Some(
             std::fs::canonicalize(repo_root)
                 .unwrap_or_else(|_| {
@@ -171,19 +131,16 @@ impl InstallStrategy for ClaudeInstallStrategy {
                 .to_string(),
         );
 
-        // `claude` is not a `KIRO_VARIANT_FAMILY` member,
-        // so `effective_prior_slot` here always resolves to this
-        // strategy's own tracked slot (or `None`, on a fresh install) --
-        // never borrows another strategy's slot the way a Kiro-variant
-        // override switch does (see `kiro_cli.rs`'s own doc comment on
-        // the identical call).
+        // `claude` is not a `KIRO_VARIANT_FAMILY` member, so
+        // `effective_prior_slot` here always resolves to this strategy's
+        // own tracked slot (or `None`, on a fresh install).
         let full_prior_manifest = super::manifest::read_manifest(target_dir)?;
         let prior_manifest: Option<StrategyManifest> = full_prior_manifest
             .as_ref()
             .and_then(|full| super::manifest::effective_prior_slot(full, self.name()))
             .cloned();
 
-        let plan = plan_all_files(&harness_dir, target_dir, prior_manifest.as_ref())?;
+        let mut plan = plan_all_files(&harness_dir, target_dir, prior_manifest.as_ref())?;
         if plan.is_empty() {
             return Err(InstallError::Message(format!(
                 "no synthed agent or skill files found under {} -- run `konductor synth --from {}` first",
@@ -191,6 +148,17 @@ impl InstallStrategy for ClaudeInstallStrategy {
                 repo_root.display()
             )));
         }
+        // Additive telemetry-hook wiring, scoped to its own plan
+        // function (not folded into `plan_all_files` above): that
+        // function also backs `would_fail_as_noop`'s "nothing to
+        // install" check, which must stay empty whenever there is
+        // genuinely nothing to install. Checked AFTER the emptiness
+        // check above, so it can never mask a real no-op.
+        plan.extend(plan_claude_settings_hooks_only(
+            target_dir,
+            no_telemetry,
+            prior_manifest.as_ref(),
+        ));
 
         let in_progress_files: Vec<ManifestFile> = plan
             .iter()
@@ -210,7 +178,7 @@ impl InstallStrategy for ClaudeInstallStrategy {
         );
         super::manifest::upsert_strategy(target_dir, write_ahead)?;
 
-        let raw_files = run_all_phases(
+        let mut raw_files = run_all_phases(
             &standard_claude_install_phases(),
             &harness_dir,
             target_dir,
@@ -218,6 +186,30 @@ impl InstallStrategy for ClaudeInstallStrategy {
             prior_manifest.as_ref(),
             no_telemetry,
         )?;
+
+        // Additive, gated only on `!no_telemetry`: writes the
+        // `SessionStart`/`SubagentStart` telemetry hooks into this
+        // target's hooks settings file. See
+        // `apply_claude_settings_hooks_only`'s own doc comment for
+        // what it covers and why it is separate from the combined
+        // grant+hooks function the Kiro CLI V2/V3 dual-marker paths use.
+        //
+        // Pushed into `raw_files` BEFORE `attach_provenance` runs below,
+        // carrying a placeholder `Provenance::Created` that
+        // `attach_provenance` overwrites with the real value looked up
+        // from `plan` (populated above via
+        // `plan_claude_settings_hooks_only`) -- so a reinstall over a
+        // target where Konductor previously created this file is
+        // recorded as `ReplacedOurs`, not hardcoded to `Created`. Every
+        // run first strips an earlier release's hooks from the shared
+        // `.claude/settings.json`; under `--no-telemetry` it instead
+        // strips a prior install's hooks and writes none.
+        if let Some(claude_settings_file) =
+            apply_claude_settings_hooks_only(target_dir, no_telemetry)
+        {
+            raw_files.push(claude_settings_file);
+        }
+
         let files = attach_provenance(raw_files, &plan)?;
 
         let complete = StrategyManifest::new(
@@ -232,31 +224,21 @@ impl InstallStrategy for ClaudeInstallStrategy {
 
         // Same call, same rationale, as `kiro_cli.rs`'s own identical
         // call site.
-        if !no_telemetry {
-            if let Err(err) = crate::cli::telemetry::write_install_info(
-                target_dir,
-                repo_root,
-                self.name(),
-                installed_at,
-            ) {
-                eprintln!(
-                    "konductor install: warning: could not write install-info.json at {}: {err}",
-                    target_dir.display()
-                );
-            }
-        }
+        super::finalize_install_telemetry(
+            target_dir,
+            repo_root,
+            self.name(),
+            installed_at,
+            no_telemetry,
+        );
         Ok(())
     }
 }
 
 /// The Claude Code chain: skills, then the shared `SopInstallPhase`
-/// (reused unchanged from `phases.rs` -- converts every staged
-/// `.sop.md` into a `sop-<name>/SKILL.md` under `.claude/skills/`, see
-/// that struct's own doc comment), then agents. Skills before agents
-/// mirrors `kiro_cli.rs`'s own ordering, kept consistent so a future
-/// addition that needs skills on disk first (e.g. a
-/// reference-verification pass) does not have to also reorder this
-/// chain.
+/// (converts every staged `.sop.md` into a `sop-<name>/SKILL.md` under
+/// `.claude/skills/`), then agents. Skills before agents mirrors
+/// `kiro_cli.rs`'s own ordering.
 pub(super) fn standard_claude_install_phases() -> Vec<Box<dyn InstallPhase>> {
     vec![
         Box::new(ClaudeSkillInstallPhase),
@@ -269,9 +251,7 @@ pub(super) fn standard_claude_install_phases() -> Vec<Box<dyn InstallPhase>> {
 
 /// Wraps `install_skills` (below): copies every skill directory under
 /// `<staged_root>/skills/` into `<target_dir>/.claude/skills/<name>/`,
-/// merging exactly like `kiro_cli.rs`'s own `install_skills` (see that
-/// function's own doc comment for the merge/cleanup contract, which
-/// this one mirrors verbatim aside from the destination root).
+/// merging exactly like `kiro_cli.rs`'s own `install_skills`.
 pub(super) struct ClaudeSkillInstallPhase;
 
 impl InstallPhase for ClaudeSkillInstallPhase {
@@ -319,6 +299,23 @@ impl InstallPhase for ClaudeAgentInstallPhase {
     }
 }
 
+/// Predicts the write-ahead-plan entry for `apply_claude_settings_hooks_only`
+/// (the target's hooks settings file) when `!no_telemetry`, without
+/// touching disk. Kept out of `plan_all_files`: that function backs
+/// `would_fail_as_noop`'s "nothing to install" check, which must stay
+/// empty whenever there is genuinely nothing to install.
+fn plan_claude_settings_hooks_only(
+    target_dir: &Path,
+    no_telemetry: bool,
+    prior_manifest: Option<&StrategyManifest>,
+) -> Vec<PlannedFile> {
+    let mut plan = Vec::new();
+    if !no_telemetry {
+        plan_claude_hooks_file(&mut plan, target_dir, prior_manifest);
+    }
+    plan
+}
+
 /// Builds the full write-ahead plan across both content types (skills,
 /// agents), in the order `install_from_local`'s chain later copies them
 /// in, without copying or writing anything. Mirrors
@@ -342,18 +339,16 @@ fn plan_all_files(
 
 /// Plans every file `install_sop_skills` will write: one `SKILL.md` per
 /// staged `<name>.sop.md`, under a `sop-<name>/` directory -- same
-/// source listing (`list_agent_files_like`, since `.sop.md` isn't the
-/// `.md` extension `list_agent_files_md` expects) and same manifest-path
-/// construction, but only classifies provenance against the destination
-/// -- no read, no conversion, no write.
+/// source listing and manifest-path construction as the real
+/// conversion, but only classifies provenance against the destination --
+/// no read, no conversion, no write.
 ///
 /// `pub(super)`: also called directly from `kiro_cli.rs`'s own
-/// `plan_additive_claude_sop_skill_files`, which predicts these SAME
-/// files for the additive dual-marker case `SopInstallPhase::run`'s
-/// Kiro branch reaches into (see that struct's own doc comment) --
-/// reusing this function rather than re-deriving an approximation is
-/// what keeps that prediction from silently drifting out of sync with
-/// what `install_sop_skills` actually writes.
+/// `plan_additive_claude_sop_skill_files`, which predicts these same
+/// files for the additive dual-marker case. Reusing this function
+/// rather than re-deriving an approximation is what keeps that
+/// prediction from drifting out of sync with what `install_sop_skills`
+/// actually writes.
 pub(super) fn plan_sop_skill_files(
     harness_dir: &Path,
     target_dir: &Path,
@@ -368,12 +363,11 @@ pub(super) fn plan_sop_skill_files(
 }
 
 /// Generalized form of `plan_sop_skill_files`: plans the identical
-/// `sop-<name>/SKILL.md` conversion outputs, but under an arbitrary
-/// `destination_root` (e.g. `kiro_cli::KIRO_DESTINATION_ROOT`) instead of
-/// this module's own `CLAUDE_DESTINATION_ROOT`. `pub(super)`: `kiro_cli`
-/// reuses this directly for its own Kiro-discoverable SOP-skill plan
-/// (`plan_kiro_sop_skill_files`) rather than duplicating this listing
-/// and manifest-path logic under a second destination root.
+/// `sop-<name>/SKILL.md` conversion outputs under an arbitrary
+/// `destination_root` instead of this module's own
+/// `CLAUDE_DESTINATION_ROOT`. `pub(super)`: `kiro_cli` reuses this
+/// directly for its own Kiro-discoverable SOP-skill plan rather than
+/// duplicating this listing and manifest-path logic.
 pub(super) fn plan_sop_skill_files_into(
     harness_dir: &Path,
     target_dir: &Path,
@@ -414,9 +408,9 @@ pub(super) fn plan_sop_skill_files_into(
 }
 
 /// Plans every file `install_skills` will copy: same source listing
-/// (`list_skill_dirs`) and same manifest-path prefixing, but only
-/// classifies provenance against the destination -- no copy. Mirrors
-/// `kiro_cli::plan_skill_files`, using `CLAUDE_DESTINATION_ROOT`.
+/// and manifest-path prefixing, but only classifies provenance against
+/// the destination -- no copy. Mirrors `kiro_cli::plan_skill_files`,
+/// using `CLAUDE_DESTINATION_ROOT`.
 fn plan_skill_files(
     harness_dir: &Path,
     target_dir: &Path,
@@ -445,9 +439,9 @@ fn plan_skill_files(
 }
 
 /// Plans every file `install_agents` will copy: same source listing
-/// (`list_agent_files_md`) and same manifest-path prefixing, but only
-/// classifies provenance against the destination -- no copy. Mirrors
-/// `kiro_cli::plan_agent_files`, using `CLAUDE_DESTINATION_ROOT`.
+/// and manifest-path prefixing, but only classifies provenance against
+/// the destination -- no copy. Mirrors `kiro_cli::plan_agent_files`,
+/// using `CLAUDE_DESTINATION_ROOT`.
 fn plan_agent_files(
     harness_dir: &Path,
     target_dir: &Path,
@@ -475,26 +469,22 @@ fn plan_agent_files(
 }
 
 /// The manifest-relative path for a content item under this strategy's
-/// single `.claude/` root: `.claude/<content_dir>/<name>`. Spelled once
-/// so the write-ahead PLAN side and the COPY side can never build it
-/// differently -- delegates to `kiro_cli::content_manifest_path` (already
-/// generic over `root`) fixed to `CLAUDE_DESTINATION_ROOT`, rather than
-/// reimplementing the same one-line format string a second time.
+/// single `.claude/` root: `.claude/<content_dir>/<name>`. Delegates to
+/// `kiro_cli::content_manifest_path` fixed to `CLAUDE_DESTINATION_ROOT`,
+/// so the plan side and the copy side can never build it differently.
 fn content_manifest_path(content_dir: &str, name: &str) -> String {
     super::kiro_cli::content_manifest_path(CLAUDE_DESTINATION_ROOT, content_dir, name)
 }
 
 /// Copies each skill directory under `<harness_dir>/skills/` into
 /// `<target_dir>/.claude/skills/<name>/`, returning manifest entries for
-/// every file copied. Merges exactly like `kiro_cli::install_skills`
-/// (see that function's own doc comment for the full merge/cleanup
-/// contract -- copies the synthed skill in, overwriting colliding
-/// files, then deletes only files a prior Konductor install recorded
-/// under this exact skill that this run did not re-write, so a file
-/// dropped from the source doesn't linger; a foreign, hand-authored file
-/// sharing a synthed skill's name is never removed). Returns an empty
-/// `Vec` (not an error) when the source directory is missing or has no
-/// skill subdirectories.
+/// every file copied. Merges like `kiro_cli::install_skills`: copies the
+/// synthed skill in, overwriting colliding files, then deletes only
+/// files a prior Konductor install recorded under this exact skill that
+/// this run did not re-write, so a file dropped from the source doesn't
+/// linger; a foreign, hand-authored file sharing a synthed skill's name
+/// is never removed. Returns an empty `Vec` (not an error) when the
+/// source directory is missing or has no skill subdirectories.
 pub(super) fn install_skills(
     harness_dir: &Path,
     target_dir: &Path,
@@ -561,9 +551,9 @@ pub(super) fn install_skills(
 /// `<target_dir>/.claude/agents/`, returning their manifest entries.
 /// Returns an empty `Vec` (not an error) when the source directory is
 /// missing or has no agent files. Unlike `kiro_cli::install_agents`,
-/// this performs a plain verbatim copy (`copy_agent_files`) -- no
-/// `resources`/`mcpServers` rewrite pass, since a Claude Code agent
-/// Markdown file carries no such cross-file resource pointers.
+/// this performs a plain verbatim copy -- no `resources`/`mcpServers`
+/// rewrite pass, since a Claude Code agent file carries no such
+/// cross-file resource pointers.
 pub(super) fn install_agents(
     harness_dir: &Path,
     target_dir: &Path,
@@ -595,13 +585,11 @@ pub(super) fn install_agents(
 /// `Vec` (not an error) when the source directory is missing or has no
 /// staged SOPs.
 ///
-/// Unconditional over every staged SOP, not per-agent-filtered --
-/// mirrors `install_skills`'s own "copy everything staged" contract:
-/// Claude Code has no per-agent server-side filtering mechanism the way
-/// Kiro's `--agent-sop-filter` provides (see `resource_rewrite/mcp_server.rs`'s
-/// `McpServerPass`), so scoping which agent's frontmatter references
-/// which SOP-skill is left to synth/authoring, not to selective
-/// installation here.
+/// Unconditional over every staged SOP, not per-agent-filtered: Claude
+/// Code has no per-agent server-side filtering mechanism the way Kiro's
+/// `--agent-sop-filter` provides, so scoping which agent's frontmatter
+/// references which SOP-skill is left to synth/authoring, not to
+/// selective installation here.
 pub(super) fn install_sop_skills(
     harness_dir: &Path,
     target_dir: &Path,
@@ -611,16 +599,15 @@ pub(super) fn install_sop_skills(
 
 /// Generalized form of `install_sop_skills`: converts every staged
 /// `<name>.sop.md` file under `<harness_dir>/sops/` into a
-/// `sop-<name>/SKILL.md` file under `<target_dir>/<destination_root>/skills/`
-/// -- the identical conversion, parameterized over the destination root
-/// and whether the rendered frontmatter carries Claude Code's
-/// `disable-model-invocation: true` key (see `render_sop_skill_md`'s own
-/// doc comment for why Kiro-targeted callers pass `false`).
+/// `sop-<name>/SKILL.md` file under `<target_dir>/<destination_root>/skills/`,
+/// parameterized over the destination root and whether the rendered
+/// frontmatter carries Claude Code's `disable-model-invocation: true`
+/// key (see `render_sop_skill_md`'s own doc comment for why
+/// Kiro-targeted callers pass `false`).
 ///
 /// `pub(super)`: `kiro_cli` reuses this directly for its own
-/// Kiro-discoverable SOP-skill conversion (`install_kiro_sop_skills`),
-/// targeting `kiro_cli::KIRO_DESTINATION_ROOT` instead of this module's
-/// own `CLAUDE_DESTINATION_ROOT`, rather than duplicating the
+/// Kiro-discoverable SOP-skill conversion, targeting
+/// `kiro_cli::KIRO_DESTINATION_ROOT`, rather than duplicating the
 /// read/render/write loop under a second destination root.
 pub(super) fn install_sop_skills_into(
     harness_dir: &Path,
@@ -641,11 +628,7 @@ pub(super) fn install_sop_skills_into(
     let mut files = Vec::with_capacity(entries.len());
     for file_name in entries {
         let Some(sop_name) = file_name.strip_suffix(".sop.md") else {
-            // list_agent_files_like has no extension filter (unlike
-            // list_agent_files_md above) -- skip anything that isn't
-            // shaped like a SOP file rather than erroring, matching this
-            // codebase's "one spurious entry shouldn't abort the whole
-            // install" convention.
+            // Not shaped like a SOP file -- skip rather than error.
             continue;
         };
         reject_unsafe_sop_name(sop_name)?;
@@ -680,33 +663,19 @@ pub(super) fn install_sop_skills_into(
 }
 
 /// Renders a `.sop.md` body as a Claude Code `SKILL.md`, following
-/// AIM's own `SopToSkillConverter` contract, verified directly against a
-/// real installed `sop-*/SKILL.md` produced by that converter (e.g.
-/// `sop-about-konductor/SKILL.md`):
-/// - frontmatter `name:` -- `sop-<sopName>`, rendered as a YAML
-///   double-quoted scalar (see `yaml_double_quote`) for the same reason
-///   as `description:` below: `sop_name` comes from the staged file
-///   name minus `.sop.md` (see `install_sop_skills`), and
-///   `reject_unsafe_sop_name` only guards path safety, not YAML
-///   plain-scalar shape -- a name containing `#` or `:` would otherwise
-///   corrupt or silently truncate this line
-/// - frontmatter `description:` -- the source `.sop.md`'s own
-///   `## Overview` section, reflowed into a single logical paragraph (see
-///   `extract_overview_description`'s own doc comment) and bounded to
-///   `MAX_DESCRIPTION_CHARS` (see `truncate_description`), never a hard
-///   cut mid-word or mid-clause. Rendered as a YAML double-quoted scalar
-///   (see `yaml_double_quote`) so an embedded colon -- present in
-///   essentially every real SOP's first Overview line, e.g. "Onboards a
-///   new or lost user: install the CLI..." -- can never break frontmatter
-///   parsing.
-/// - an optional frontmatter `arguments: [...]` array (YAML flow-sequence
-///   syntax, matching AIM's own real output), scraped from a
-///   `## Parameters` section in the body (see
-///   `scrape_sop_parameters`'s own doc comment for the scraping rule and
-///   the invalid-identifier omission edge case). Emitted only when
-///   `disable_model_invocation` is `true` -- Claude Code's own schema, not
-///   Kiro's (see `render_sop_skill_md_with_options`'s own doc comment for
-///   why `arguments` has no place in a Kiro-targeted `SKILL.md`)
+/// AIM's own `SopToSkillConverter` contract:
+/// - frontmatter `name:` -- `sop-<sopName>`, YAML double-quoted (see
+///   `yaml_double_quote`) since `sop_name` is only guarded for path
+///   safety, not YAML plain-scalar shape
+/// - frontmatter `description:` -- the source's `## Overview` section,
+///   reflowed into one paragraph (see `extract_overview_description`)
+///   and bounded to `MAX_DESCRIPTION_CHARS` (see `truncate_description`),
+///   rendered as a YAML double-quoted scalar so an embedded colon can't
+///   break frontmatter parsing
+/// - an optional frontmatter `arguments: [...]` array, scraped from a
+///   `## Parameters` section (see `scrape_sop_parameters`), emitted only
+///   when `disable_model_invocation` is `true` (Claude Code's own
+///   schema, not Kiro's)
 /// - frontmatter `disable-model-invocation: true`
 /// - a body wrapping the original SOP text in
 ///   `<agent-sop name="...">`/`<content>`/`<user-input>` tags, with
@@ -714,25 +683,20 @@ pub(super) fn install_sop_skills_into(
 ///   literal `</content>`/`</agent-sop>` substring prematurely closing
 ///   the wrapper (see `escape_xml_attr`/`guard_sop_body`)
 ///
-/// `#[cfg(test)]`: only test code calls this fixed-`true` wrapper.
-/// Production code calls `render_sop_skill_md_with_options` directly
-/// (via `install_sop_skills_into`), passing `true` for Claude's own
-/// callers; this thin wrapper exists purely for the many existing
-/// tests below that don't care about the generalized parameter.
+/// `#[cfg(test)]`: production code calls
+/// `render_sop_skill_md_with_options` directly, passing `true` for
+/// Claude's own callers; this fixed-`true` wrapper exists only for
+/// tests that don't care about the generalized parameter.
 #[cfg(test)]
 fn render_sop_skill_md(sop_name: &str, body: &str) -> String {
     render_sop_skill_md_with_options(sop_name, body, true)
 }
 
 /// Upper bound, in characters, on the rendered skill's `description:`
-/// value (see `truncate_description`). Chosen from this repo's own
-/// existing `SKILL.md` descriptions, which run 350-550 chars for
-/// similarly detailed skills, and from the longest real `.sop.md`
-/// Overview paragraph observed across `agent-sops/` (381 chars) -- large
-/// enough that no current SOP needs truncation, while still bounding a
-/// pathologically long future Overview paragraph so it cannot blow past
-/// the skill-listing token budget every installed skill's description
-/// shares.
+/// value (see `truncate_description`). Chosen from this repo's existing
+/// `SKILL.md` descriptions (350-550 chars) and the longest real
+/// `.sop.md` Overview paragraph in `agent-sops/` (381 chars) -- large
+/// enough that no current SOP needs truncation.
 const MAX_DESCRIPTION_CHARS: usize = 400;
 
 /// Generalized form of `render_sop_skill_md`: identical frontmatter/body
@@ -740,43 +704,24 @@ const MAX_DESCRIPTION_CHARS: usize = 400;
 /// `disable-model-invocation: true` frontmatter key, and the `arguments`
 /// array, are emitted at all.
 ///
-/// Claude Code's own callers always pass `true` (see `render_sop_skill_md`
-/// above) -- these SOP-derived skills are meant to be explicitly
-/// `/`-selectable, not autonomously invoked by the model, and
-/// `disable-model-invocation: true` enforces exactly that.
+/// Claude Code's own callers always pass `true` -- these SOP-derived
+/// skills are meant to be explicitly `/`-selectable, not autonomously
+/// invoked by the model.
 ///
-/// Kiro has no `disable-model-invocation`-equivalent frontmatter key. Its
-/// skill frontmatter schema is limited to `name`, `description`,
-/// `license`, `compatibility`, and `metadata` (per kiro.dev's own skill
-/// frontmatter documentation -- confirmed directly against that page, not
-/// inferred -- and per the Agent Skills specification it defers to for
-/// field constraints, which lists the same five plus an unrelated
-/// experimental `allowed-tools` string), none of which gates autonomous
-/// invocation, and none of which is `arguments` either. Its steering
-/// documentation scopes `inclusion: manual` to steering files only, not
-/// to `SKILL.md`, and Kiro CLI does not support inclusion modes at all.
-/// No `SKILL.md` frontmatter anywhere in this repo or under
-/// `~/.kiro/skills/` carries a candidate key (`inclusion`, `manual`,
-/// `disable`, `auto`, `invocation`, `trigger`) for this purpose.
-/// `kiro_cli::install_kiro_sop_skills` therefore passes `false` here, and
-/// no `disable-model-invocation`-equivalent key is emitted (inventing an
-/// unrecognized key would either be silently ignored or could cause Kiro
-/// to skip the skill entirely -- worse than omitting it). The same
-/// reasoning is why the `arguments` array below is gated on
-/// `disable_model_invocation` too: it is not part of Kiro's schema
-/// either, so a Kiro-targeted `SKILL.md` never carries it, for the same
-/// "unrecognized key" reason.
+/// Kiro has no `disable-model-invocation`-equivalent frontmatter key:
+/// its skill frontmatter schema is limited to `name`, `description`,
+/// `license`, `compatibility`, `metadata`, and the unrelated
+/// `allowed-tools`, and none of them gate autonomous invocation.
+/// `kiro_cli::install_kiro_sop_skills` therefore passes `false` here,
+/// and no such key is emitted -- inventing an unrecognized key could
+/// cause Kiro to ignore it or skip the skill entirely. The `arguments`
+/// array is gated the same way, for the same "not part of Kiro's
+/// schema" reason.
 ///
-/// A Kiro-rendered SOP skill (`disable_model_invocation == false`)
-/// carries no advisory guard text of any kind. Nothing in this codebase
-/// attempts to discourage a Kiro-side agent from invoking a SOP skill on
-/// its own initiative; every skill under `.kiro/skills/` remains visible
-/// and invocable by every agent. There is no enforcement mechanism on
-/// Kiro that could gate this, and prose asking a model not to
-/// self-invoke has proven unreliable in practice -- a Kiro-side model
-/// can treat it as decisive on one task and ignore it entirely on
-/// another, depending on how the task is framed -- so it is not worth
-/// carrying text that only sometimes changes behavior.
+/// A Kiro-rendered SOP skill carries no advisory guard text discouraging
+/// self-invocation: there is no enforcement mechanism on Kiro that
+/// could gate this, and prose asking a model not to self-invoke has
+/// proven unreliable in practice.
 fn render_sop_skill_md_with_options(
     sop_name: &str,
     body: &str,
@@ -791,9 +736,8 @@ fn render_sop_skill_md_with_options(
         yaml_double_quote(&format!("sop-{sop_name}")),
         yaml_double_quote(&description)
     );
-    // Gated on `disable_model_invocation` (Claude Code's own schema): see
-    // this function's own doc comment above for why `arguments` has no
-    // place in a Kiro-targeted `SKILL.md`.
+    // `arguments` is gated on `disable_model_invocation`: it is not
+    // part of Kiro's schema, see this function's own doc comment.
     if disable_model_invocation {
         if let Some(arguments) = scrape_sop_parameters(body) {
             frontmatter.push_str(&format!("arguments: [{}]\n", arguments.join(", ")));
@@ -811,28 +755,12 @@ fn render_sop_skill_md_with_options(
 
 /// Extracts the generated skill's `description:` from `body`'s own
 /// `## Overview` section: every non-blank physical line of the section's
-/// first paragraph, reflowed into one logical line by joining them with a
-/// single space, then stripped of any remaining Unicode control character
-/// (`char::is_control` -- see the paragraph below for why). A real
-/// `.sop.md` Overview is often manually word-wrapped across several
-/// physical lines for source readability (e.g. `about-konductor.sop.md`'s
-/// Overview spans three lines), so reading only the first physical line
-/// would cut the description off mid-clause at whatever column the
-/// source happens to wrap at. Joining the whole paragraph first means the
-/// bound this function's caller applies (`truncate_description`, at
-/// `MAX_DESCRIPTION_CHARS`) is the only thing that can ever shorten the
-/// result, and it always does so at a sentence or word boundary rather
-/// than an arbitrary source line break.
-///
-/// The join above removes embedded newlines (each physical line's own
-/// line-break byte is consumed by `body.lines()` and never re-added), but
-/// a `.sop.md` Overview is externally authored content, and any OTHER
-/// control byte inside a physical line (not just `\n`) would otherwise
-/// reach `yaml_double_quote` -- which escapes only `\` and `"` -- and
-/// produce invalid YAML (a compliant parser rejects a raw control
-/// character inside a double-quoted scalar). Stripping every control
-/// character here, not only newlines, is what makes `yaml_double_quote`'s
-/// own control-character-free precondition actually hold for this path.
+/// first paragraph, reflowed into one logical line by joining them with
+/// a single space (a real `.sop.md` Overview is often manually
+/// word-wrapped across several lines for source readability, so reading
+/// only the first physical line would cut the description off mid-
+/// clause), then stripped of any remaining Unicode control character so
+/// `yaml_double_quote`'s control-character-free precondition holds.
 ///
 /// Returns `None` when there is no `## Overview` heading, or the section
 /// has no non-blank line before the next heading -- `render_sop_skill_md`
@@ -866,11 +794,10 @@ fn extract_overview_description(body: &str) -> Option<String> {
     Some(joined.chars().filter(|c| !c.is_control()).collect())
 }
 
-/// Bounds `text` to at most `max_chars` characters, never ending mid-word
-/// or mid-clause. Prefers cutting at the last whole-sentence boundary
-/// (see `split_into_sentences`) that still fits within `max_chars`; if
-/// even the first sentence exceeds `max_chars` (or `text` has no
-/// sentence-ending punctuation at all), falls back to the last
+/// Bounds `text` to at most `max_chars` characters, never ending
+/// mid-word or mid-clause. Prefers cutting at the last whole-sentence
+/// boundary (see `split_into_sentences`) that still fits; if even the
+/// first sentence exceeds `max_chars`, falls back to the last
 /// whole-word boundary within budget and appends an ellipsis (see
 /// `word_boundary_truncate`). Returns `text` unchanged when it already
 /// fits.
@@ -899,23 +826,18 @@ fn truncate_description(text: &str, max_chars: usize) -> String {
         return result;
     }
 
-    // Even the first sentence (or the whole text, if it has no
-    // sentence-ending punctuation at all) exceeds `max_chars`.
+    // Even the first sentence exceeds `max_chars`.
     let first = sentences.first().copied().unwrap_or(text);
     word_boundary_truncate(first, max_chars)
 }
 
 /// Splits `text` into sentences, each including its own trailing
 /// terminal punctuation (`.`, `!`, or `?`, and any immediately repeated
-/// terminal punctuation such as `?!` or `...`). A terminal punctuation
-/// run only ends a sentence when it is followed by whitespace or the end
-/// of `text` -- this keeps a mid-sentence abbreviation or a decimal
-/// point (neither of which this codebase's real `.sop.md` Overview text
-/// contains, but a defensive parser should not assume that) from
-/// splitting where it should not. `text` with no terminal punctuation at
-/// all yields a single "sentence" spanning the whole input, so callers
-/// (`truncate_description`) can treat "no punctuation" and "first
-/// sentence too long" as the same fallback case.
+/// run such as `?!` or `...`). A terminal punctuation run only ends a
+/// sentence when followed by whitespace or the end of `text`, so a
+/// mid-sentence abbreviation or decimal point doesn't split early.
+/// `text` with no terminal punctuation at all yields a single
+/// "sentence" spanning the whole input.
 fn split_into_sentences(text: &str) -> Vec<&str> {
     let bytes = text.as_bytes();
     let mut sentences = Vec::new();
@@ -947,13 +869,11 @@ fn split_into_sentences(text: &str) -> Vec<&str> {
 }
 
 /// Truncates `text` to at most `max_chars` characters at the last
-/// whole-word boundary within budget, then appends `"..."`. Never splits
-/// a word: searches backward from the truncation point for whitespace,
-/// falling back to a hard cut only when `text`'s first `max_chars` (minus
-/// the ellipsis) contains no whitespace at all (a single run-on "word"
-/// longer than the whole budget). Strips a trailing punctuation artifact
-/// (see `strip_trailing_punctuation_artifacts`) left dangling at the cut
-/// point so the result reads as a complete thought before the ellipsis.
+/// whole-word boundary within budget, then appends `"..."`. Never
+/// splits a word, falling back to a hard cut only when the budget
+/// contains no whitespace at all. Strips a trailing punctuation
+/// artifact (see `strip_trailing_punctuation_artifacts`) left dangling
+/// at the cut point.
 fn word_boundary_truncate(text: &str, max_chars: usize) -> String {
     let ellipsis = "...";
     let ellipsis_chars = ellipsis.chars().count();
@@ -982,31 +902,19 @@ fn word_boundary_truncate(text: &str, max_chars: usize) -> String {
 }
 
 /// Strips trailing punctuation that reads as an unfinished clause when
-/// left immediately before an appended ellipsis (a dangling comma or
-/// colon, most commonly -- the shape a word-boundary cut leaves behind
-/// when it lands right after one).
+/// left immediately before an appended ellipsis.
 fn strip_trailing_punctuation_artifacts(text: &str) -> &str {
     text.trim_end_matches([',', ':', ';'])
 }
 
 /// Renders `text` as a YAML double-quoted scalar: wraps it in `"..."`
 /// with every embedded `\` and `"` backslash-escaped. Safe for any
-/// single-line text with no control characters. Both callers meet that
-/// precondition, but for different reasons: a SOP's Overview line is
-/// reflowed through `extract_overview_description`, which both removes
-/// embedded newlines (via `join(" ")`) and strips every OTHER control
-/// character too (see that function's own doc comment for why a
-/// newline-only guarantee is not enough -- any other control byte in an
-/// externally authored Overview paragraph would otherwise reach this
-/// escaper, which handles only `\` and `"`, and produce YAML a compliant
-/// parser rejects); a SOP-name-derived value (the `name:` field, or the
-/// `sop_name` embedded in a fallback description or the Kiro invocation
-/// guard) is enforced control-character-free by `reject_unsafe_sop_name`,
-/// called on every `sop_name` before this function ever sees it. This is
-/// what makes an Overview line containing a colon (e.g. "Onboards a new
-/// or lost user: install the CLI...") safe as a YAML scalar: unlike a
-/// plain/unquoted scalar, `": "` inside a double-quoted string is never
-/// interpreted as a mapping separator.
+/// single-line text with no control characters -- both callers meet
+/// that precondition (`extract_overview_description` strips control
+/// characters, and `reject_unsafe_sop_name` enforces it on SOP-name-
+/// derived values). This is what makes an Overview line containing a
+/// colon safe as a YAML scalar: unlike a plain/unquoted scalar, `": "`
+/// inside a double-quoted string is never a mapping separator.
 fn yaml_double_quote(text: &str) -> String {
     let mut out = String::with_capacity(text.len() + 2);
     out.push('"');
@@ -1023,12 +931,8 @@ fn yaml_double_quote(text: &str) -> String {
 
 /// Escapes `text` for safe interpolation into a double-quoted XML/HTML-
 /// style attribute value (the `<agent-sop name="...">` wrapper this
-/// module renders) -- escapes `&` first (so it never double-escapes an
-/// entity this function itself just introduced), then `"`, `<`, `>`.
-/// `sop_name` is derived from a staged file name only validated by
-/// `reject_unsafe_sop_name` (path-traversal safety, not attribute
-/// safety), so a name containing `"` would otherwise prematurely close
-/// the attribute.
+/// module renders) -- escapes `&` first so it never double-escapes an
+/// entity it just introduced, then `"`, `<`, `>`.
 fn escape_xml_attr(text: &str) -> String {
     text.replace('&', "&amp;")
         .replace('"', "&quot;")
@@ -1037,55 +941,40 @@ fn escape_xml_attr(text: &str) -> String {
 }
 
 /// Guards a SOP body against the literal substrings `</content>` and
-/// `</agent-sop>` appearing in its own text (plausible for any SOP that
-/// documents this exact wrapper format, including this codebase's own
-/// SOP-authoring guidance) from prematurely closing the wrapper
-/// `render_sop_skill_md` builds around it. Breaks an exact match by
-/// inserting a zero-width space between `<` and `/` -- invisible to a
-/// reader or a model, but no longer byte-identical to either closing
-/// tag, so the wrapper's own real closing tags (appended after this
-/// guarded body, never containing the inserted character) remain the
-/// only ones that match.
+/// `</agent-sop>` appearing in its own text from prematurely closing the
+/// wrapper `render_sop_skill_md` builds around it. Breaks an exact
+/// match by inserting a zero-width space between `<` and `/`, invisible
+/// to a reader or a model but no longer byte-identical to either
+/// closing tag.
 fn guard_sop_body(body: &str) -> String {
     body.replace("</content>", "<\u{200b}/content>")
         .replace("</agent-sop>", "<\u{200b}/agent-sop>")
 }
 
 /// Scrapes parameter names from a `## Parameters` section in `body`, up
-/// to the next heading or the first line that fits neither of the two
-/// real conventions below. Confirmed against every real `.sop.md` file
-/// in `agent-sops/`, which use one of two shapes for this section:
+/// to the next heading or the first line that fits neither of two
+/// supported shapes:
 ///
 /// 1. **Bullet list** (`- **name** (required|optional[, default: ...]):
-///    description`, e.g. `- **question** (optional): The user's
-///    specific question...`) -- the name is the text between the first
-///    `**...**` pair. A bullet whose item does not start with `**` is
-///    skipped, not treated as invalidating the whole section: some real
-///    SOPs nest plain, non-bold detail bullets under a parameter's own
-///    description (e.g. `k-adversarial-pull-request-review.sop.md`'s
-///    `diff_input` lists three indented `- Git diff output...`-style
-///    sub-bullets), and those are never parameter declarations of their
-///    own.
-/// 2. **Markdown table** (`| Parameter | Required | Description |`,
-///    used by e.g. `k-e2e-test-generation.sop.md`) -- the name is the
-///    first cell of each DATA row (backtick-wrapped, e.g. `` `url` ``),
-///    skipping the header row and the `---`-style separator row that
-///    follows it.
+///    description`) -- the name is the text between the first `**...**`
+///    pair. A bullet whose item does not start with `**` is skipped
+///    (treated as a nested detail bullet), not treated as invalidating
+///    the whole section.
+/// 2. **Markdown table** (`| Parameter | Required | Description |`) --
+///    the name is the first cell of each data row, skipping the header
+///    row and its `---`-style separator.
 ///
-/// A line indented with leading whitespace is always a nested/continuation
-/// detail (never a parameter of its own, never ends the section) --
-/// checked against the RAW line, before any `trim()`, so indentation is
-/// what distinguishes a top-level parameter bullet from a nested detail
-/// bullet at the same "- " shape.
+/// A line indented with leading whitespace is always a nested/
+/// continuation detail, checked against the raw line before any
+/// `trim()`.
 ///
 /// Returns `None` (omit `arguments` from the rendered frontmatter
 /// entirely) when: no `## Parameters` section exists, the section
-/// yields no parameter names at all, ANY scraped name is not a valid
-/// identifier (`[A-Za-z_][A-Za-z0-9_]*`), or ANY scraped name is a YAML
-/// 1.1 plain-scalar reserved word (see `is_yaml_1_1_reserved_word`) --
-/// per AIM's own rule, a single malformed or unsafe-to-render parameter
-/// name invalidates the whole `arguments` array rather than silently
-/// emitting a partial/malformed one.
+/// yields no parameter names at all, any scraped name is not a valid
+/// identifier, or any scraped name is a YAML 1.1 plain-scalar reserved
+/// word (see `is_yaml_1_1_reserved_word`) -- a single malformed or
+/// unsafe-to-render parameter name invalidates the whole `arguments`
+/// array rather than emitting a partial one.
 fn scrape_sop_parameters(body: &str) -> Option<Vec<String>> {
     enum Format {
         Bullet,
@@ -1107,8 +996,7 @@ fn scrape_sop_parameters(body: &str) -> Option<Vec<String>> {
 
     for line in lines {
         if line.starts_with(' ') || line.starts_with('\t') {
-            // Indented continuation / nested detail bullet -- never a
-            // parameter of its own, never ends the section.
+            // Nested continuation / detail bullet -- never a parameter.
             continue;
         }
         let trimmed = line.trim();
@@ -1123,17 +1011,16 @@ fn scrape_sop_parameters(body: &str) -> Option<Vec<String>> {
             match format {
                 None => {
                     format = Some(Format::Table);
-                    table_header_consumed = true; // this row is the header
+                    table_header_consumed = true;
                 }
-                Some(Format::Bullet) => break, // shape mismatch mid-section
+                Some(Format::Bullet) => break,
                 Some(Format::Table) => {
                     if table_header_consumed && !table_separator_consumed {
                         table_separator_consumed = true;
                         if is_table_separator_row(row) {
                             continue;
                         }
-                        // Not actually a separator (malformed table) --
-                        // fall through and treat it as a data row.
+                        // Not actually a separator; treat as a data row.
                     }
                     if let Some(name) = table_row_first_cell(row) {
                         names.push(name);
@@ -1147,22 +1034,18 @@ fn scrape_sop_parameters(body: &str) -> Option<Vec<String>> {
             .strip_prefix("- ")
             .or_else(|| trimmed.strip_prefix("* "))
         else {
-            // A non-bullet, non-table, non-heading line (e.g.
-            // "**Constraints for parameter acquisition:**") marks the
-            // end of the Parameters list.
+            // Not a bullet, table, or heading -- ends the Parameters list.
             break;
         };
         match format {
-            Some(Format::Table) => break, // shape mismatch mid-section
+            Some(Format::Table) => break,
             _ => format = Some(Format::Bullet),
         }
         if let Some(name) = bullet_bold_name(item) {
             names.push(name);
         }
-        // A bullet whose item is not `**name**...` (e.g. a nested detail
-        // bullet at the top indentation level by mistake) is skipped
-        // rather than invalidating the section -- only a scraped name
-        // that fails `is_valid_identifier` below does that.
+        // A bullet not shaped `**name**...` is skipped, not treated as
+        // invalidating the section.
     }
 
     if names.is_empty() {
@@ -1224,12 +1107,9 @@ fn is_valid_identifier(name: &str) -> bool {
 
 /// Whether `name` (case-insensitively) is one of the YAML 1.1
 /// plain-scalar words a YAML 1.1-compliant loader resolves to a boolean
-/// or null rather than the literal string: `y`/`n`/`yes`/`no`/`true`/
-/// `false`/`on`/`off`/`null`. Every one of these is ASCII-alphabetic, so
-/// each also passes `is_valid_identifier` -- a parameter literally named
-/// one of them would render unquoted inside the `arguments: [...]` flow
-/// sequence (`render_sop_skill_md`) and silently corrupt to a boolean or
-/// null under such a loader instead of staying the string it was named.
+/// or null rather than the literal string. A parameter named one of
+/// these would render unquoted inside the `arguments: [...]` flow
+/// sequence and silently corrupt under such a loader.
 fn is_yaml_1_1_reserved_word(name: &str) -> bool {
     matches!(
         name.to_ascii_lowercase().as_str(),
@@ -1239,9 +1119,8 @@ fn is_yaml_1_1_reserved_word(name: &str) -> bool {
 
 /// Lists `*.md` file names directly under `dir`, sorted for
 /// deterministic install order. Mirrors `kiro_cli::list_agent_files`'s
-/// shape (extension filter, symlink/non-file skip), scoped to `.md`
-/// rather than `.json` -- Claude Code's own agent-file extension.
-/// Returns an empty `Vec` (not an error) when `dir` itself is missing.
+/// shape, scoped to `.md` instead of `.json`. Returns an empty `Vec`
+/// (not an error) when `dir` itself is missing.
 fn list_agent_files_md(dir: &Path) -> Result<Vec<String>, String> {
     if !dir.is_dir() {
         return Ok(Vec::new());
@@ -1255,10 +1134,8 @@ fn list_agent_files_md(dir: &Path) -> Result<Vec<String>, String> {
         if path.extension().and_then(|ext| ext.to_str()) != Some("md") {
             continue;
         }
-        // DirEntry file type (does not follow symlinks on Unix): skip
-        // symlinks and other non-regular entries, matching
-        // `kiro_cli::list_agent_files`'s own "synth output never
-        // contains symlinks" guarantee.
+        // DirEntry file type doesn't follow symlinks on Unix: skip
+        // symlinks and other non-regular entries.
         let file_type = entry
             .file_type()
             .map_err(|e| format!("failed to stat directory entry: {e}"))?;
@@ -1436,6 +1313,136 @@ mod tests {
             .files
             .iter()
             .any(|f| f.path == ".claude/agents/k-example.md"));
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// A fresh, pure Claude-Code-only install (no pre-existing `.kiro`
+    /// marker) must write the `SessionStart`/`SubagentStart` telemetry
+    /// hooks into the personal `.claude/settings.local.json` (never the
+    /// shared `.claude/settings.json`) and record that file in the
+    /// manifest.
+    #[test]
+    fn install_from_local_writes_telemetry_hooks_for_fresh_claude_only_install() {
+        let target_dir = scratch_dir("install-fresh-hooks-target");
+        let repo_root = scratch_dir("install-fresh-hooks-repo");
+        seed_synthed_agent(
+            &repo_root,
+            "k-example",
+            b"---\nname: k-example\n---\nBody\n",
+        );
+
+        assert!(
+            !target_dir.join(".kiro").exists(),
+            "this test's whole point is a target with no pre-existing Kiro CLI marker"
+        );
+
+        ClaudeInstallStrategy
+            .install_from_local(
+                &target_dir,
+                Some(repo_root.to_str().unwrap()),
+                "2026-01-01T00:00:00Z",
+                false,
+            )
+            .expect("install must succeed");
+
+        assert!(
+            !target_dir.join(".claude/settings.json").exists(),
+            "a project install must keep its hooks out of the shared settings.json"
+        );
+        let claude_settings: serde_json::Value = serde_json::from_str(
+            &fs::read_to_string(target_dir.join(".claude/settings.local.json")).expect(
+                ".claude/settings.local.json must be written by a fresh Claude-only install run",
+            ),
+        )
+        .unwrap();
+
+        // The command embeds the resolved absolute path to the
+        // currently-running binary, computed the same way here.
+        let exe = std::env::current_exe().unwrap().display().to_string();
+        let root = format!(
+            " --install-root {}",
+            std::fs::canonicalize(&target_dir).unwrap().display()
+        );
+        assert_eq!(
+            claude_settings["hooks"]["SessionStart"],
+            serde_json::json!([{
+                "matcher": "startup|clear",
+                "hooks": [{"type": "command", "command": format!("{exe} __telemetry-hook agent-invocation{root}")}]
+            }]),
+            "SessionStart must invoke the hidden __telemetry-hook subcommand for agent_invocation"
+        );
+        assert_eq!(
+            claude_settings["hooks"]["SubagentStart"],
+            serde_json::json!([{
+                "matcher": "^(k-example)$",
+                "hooks": [{"type": "command", "command": format!("{exe} __telemetry-hook subagent-invocation{root}")}]
+            }]),
+            "SubagentStart must invoke the hidden __telemetry-hook subcommand for subagent_invocation"
+        );
+        assert!(
+            claude_settings.get("permissions").is_none(),
+            "a pure Claude-only install must never write a permissions.allow grant -- \
+             nothing on this install path registers konductor-skills as an MCP server, \
+             so that grant would be inert; got: {claude_settings:?}"
+        );
+
+        // Tracked in the final manifest.
+        let manifest = super::super::manifest::read_manifest(&target_dir)
+            .unwrap()
+            .expect("manifest must exist after install");
+        let claude_entry = manifest.strategies[0]
+            .files
+            .iter()
+            .find(|f| f.path == ".claude/settings.local.json")
+            .expect(".claude/settings.local.json must be recorded in the final manifest");
+        assert_eq!(
+            claude_entry.provenance,
+            super::super::manifest::Provenance::Created,
+            "a settings file that didn't exist before this run must be classified Created"
+        );
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// The `--no-telemetry` regression counterpart: the same fresh
+    /// Claude-only install, run end to end with `no_telemetry: true`,
+    /// must still copy the agent (unaffected -- not a telemetry side
+    /// effect) but must write neither Claude settings file.
+    #[test]
+    fn install_from_local_no_telemetry_skips_claude_hook_wiring_for_claude_only_install() {
+        let target_dir = scratch_dir("install-no-telemetry-hooks-target");
+        let repo_root = scratch_dir("install-no-telemetry-hooks-repo");
+        seed_synthed_agent(
+            &repo_root,
+            "k-example",
+            b"---\nname: k-example\n---\nBody\n",
+        );
+
+        ClaudeInstallStrategy
+            .install_from_local(
+                &target_dir,
+                Some(repo_root.to_str().unwrap()),
+                "2026-01-01T00:00:00Z",
+                true,
+            )
+            .expect("install must succeed with --no-telemetry");
+
+        assert!(
+            target_dir.join(".claude/agents/k-example.md").is_file(),
+            "the agent copy is unaffected by --no-telemetry"
+        );
+        assert!(
+            !target_dir.join(".claude/settings.json").exists(),
+            "--no-telemetry must suppress the SessionStart/SubagentStart telemetry-hook \
+             wiring entirely, leaving no .claude/settings.json at all on this install path"
+        );
+        assert!(
+            !target_dir.join(".claude/settings.local.json").exists(),
+            "--no-telemetry must not write the hooks settings file either"
+        );
 
         fs::remove_dir_all(&target_dir).ok();
         fs::remove_dir_all(&repo_root).ok();
@@ -1645,29 +1652,24 @@ mod tests {
 
     // ── install_sop_skills / render_sop_skill_md / scrape_sop_parameters ──
     //
-    // Fixtures below are excerpts of REAL `.sop.md` files from
-    // `agent-sops/` (not synthetic), reproducing the two real
-    // `## Parameters` conventions found across all 19 real files at the
-    // time of writing: a bullet list (`about-konductor.sop.md`,
-    // `k-adversarial-pull-request-review.sop.md` -- the latter also
-    // exercises real nested, non-bold detail bullets under a parameter)
-    // and a Markdown table (`k-e2e-test-generation.sop.md`).
+    // Fixtures below are excerpts of real `.sop.md` files from
+    // `agent-sops/`, reproducing the two real `## Parameters`
+    // conventions: a bullet list and a Markdown table.
 
-    /// Excerpt of the real `about-konductor.sop.md`: single-line
-    /// Overview, one simple `- **name** (optional): description` bullet.
+    /// Excerpt of `about-konductor.sop.md`: single-line Overview, one
+    /// simple `- **name** (optional): description` bullet.
     const ABOUT_KONDUCTOR_EXCERPT: &str = "# About Konductor\n\n## Overview\n\nOnboards a new or lost user: install the CLI, talk to the orchestrator in\nplain language, and let it delegate.\n\n## Parameters\n\n- **question** (optional): The user's specific question, if any (e.g. \"how do I install this\", \"what can you take on\"). If omitted, give the general orientation below.\n\n## Steps\n\n1. Do it.\n";
 
-    /// Excerpt of the real `k-adversarial-pull-request-review.sop.md`:
-    /// its `diff_input` parameter has three real nested, non-bold detail
-    /// bullets (`  - Git diff output...`) -- exactly the shape that
-    /// broke the pre-fix parser, since a nested bullet's text (e.g.
-    /// "Git diff output (\`git diff\`...)") is not a valid identifier
-    /// and would have invalidated the whole array.
+    /// Excerpt of `k-adversarial-pull-request-review.sop.md`: its
+    /// `diff_input` parameter has three nested, non-bold detail bullets
+    /// -- exactly the shape that broke the pre-fix parser, since a
+    /// nested bullet's text is not a valid identifier and would have
+    /// invalidated the whole array.
     const ADVERSARIAL_PR_REVIEW_EXCERPT: &str = "# Adversarial CR Review\n\n## Overview\n\nRuns an adversarial review of code changes. Not a replacement for standard code review.\n\n## Parameters\n\n- **diff_input** (required on ASDLC): The changes to review. Accepts:\n  - Git diff output (`git diff` or `git diff HEAD~N`)\n  - File paths to read directly\n  - Raw pull request diff content\n- **pr_url** (optional, context only on ASDLC): Pull request URL. **Diff auto-fetch from `pr_url` is unsupported on ASDLC**.\n- **output_file** (optional, default: `adversarial-review-report.md`): Path to write the findings report\n\n**Constraints for parameter acquisition:**\n\n- You MUST have `diff_input`\n";
 
-    /// Excerpt of the real `k-e2e-test-generation.sop.md`: the
-    /// table-shaped `## Parameters` convention, header row + separator
-    /// row + data rows.
+    /// Excerpt of `k-e2e-test-generation.sop.md`: the table-shaped
+    /// `## Parameters` convention, header row + separator row + data
+    /// rows.
     const E2E_TEST_GENERATION_EXCERPT: &str = "# Web App Functional Test Generation\n\n## Overview\n\nDiscovers a deployed web application via browser automation.\n\n## Parameters\n\n| Parameter          | Required                                                      | Description                          |\n| ------------------ | ------------------------------------------------------------- | ------------------------------------- |\n| `url`              | Required unless `credentials_file` supplies it via `test_url` | URL of the deployed web application   |\n| `output_mode`      | Required                                                      | One of `unit-prompts` \\| `cypress` \\| `playwright` |\n\n**Parameter acquisition rules:**\n\n- If all required parameters are already provided, proceed\n";
 
     #[test]
@@ -1690,12 +1692,8 @@ mod tests {
     }
 
     /// Kiro has no `disable-model-invocation`-equivalent frontmatter key
-    /// (see `render_sop_skill_md_with_options`'s own doc comment), and it
-    /// also carries no advisory guard text of any kind: nothing on Kiro
-    /// enforces such a guard, and prose asking a model not to self-invoke
-    /// has proven unreliable in practice, so the Kiro path renders the
-    /// same plain description and body a `.sop.md` conversion would
-    /// carry with no advisory prose at all.
+    /// and carries no advisory guard text either: the Kiro path renders
+    /// the same plain description and body with no advisory prose.
     #[test]
     fn render_sop_skill_md_with_options_kiro_path_carries_no_advisory_guard() {
         let body = "# Ticket Sync\n\n## Overview\n\nSyncs tickets.\n\nBody text.\n";
@@ -1732,12 +1730,10 @@ mod tests {
         assert!(rendered.contains("description: \"Standard operating procedure: ticket-sync.\"\n"));
     }
 
-    /// `sop_name` comes from the staged file name minus `.sop.md`, and
-    /// `reject_unsafe_sop_name` only guards path safety (empty, `..`,
-    /// `/`, `\`) -- not YAML plain-scalar shape. A name containing `#`
-    /// would otherwise have its suffix silently eaten as a YAML comment,
-    /// and a name containing `:` would otherwise stop `name:` from
-    /// parsing as a mapping at all. Quoting closes both.
+    /// `sop_name` comes from the staged file name minus `.sop.md`;
+    /// `reject_unsafe_sop_name` only guards path safety, not YAML
+    /// plain-scalar shape. Quoting prevents `#`/`:` from corrupting the
+    /// `name:` line.
     #[test]
     fn render_sop_skill_md_quotes_a_sop_name_containing_yaml_metacharacters() {
         let rendered = render_sop_skill_md("plan #2", "# Plan\n\n## Overview\n\nPlans.\n");
@@ -1750,9 +1746,8 @@ mod tests {
         assert!(rendered.contains("name: \"sop-state: management\"\n"));
     }
 
-    /// A real bullet-format `## Parameters` section
-    /// (`about-konductor.sop.md`'s own shape) produces a non-empty
-    /// `arguments` array on the Claude path.
+    /// A real bullet-format `## Parameters` section produces a
+    /// non-empty `arguments` array on the Claude path.
     #[test]
     fn render_sop_skill_md_scrapes_arguments_from_real_bullet_format_sop() {
         let rendered = render_sop_skill_md("about-konductor", ABOUT_KONDUCTOR_EXCERPT);
@@ -1762,16 +1757,10 @@ mod tests {
         );
     }
 
-    /// Kiro's skill frontmatter schema has no `arguments` field (see
-    /// `render_sop_skill_md_with_options`'s own doc comment). The same
-    /// real bullet-format `## Parameters` section that produces
-    /// `arguments: [question]` on the Claude path above must produce no
-    /// `arguments` key at all on the Kiro path
-    /// (`disable_model_invocation = false`), even though
-    /// `scrape_sop_parameters(body)` itself still returns `Some` for this
-    /// body -- all 19 of this package's real `agent-sops/*.sop.md` files
-    /// have a `## Parameters` section, so this is the reachable case, not
-    /// a hypothetical one.
+    /// Kiro's skill frontmatter schema has no `arguments` field. The
+    /// same real bullet-format `## Parameters` section that produces
+    /// `arguments: [question]` on the Claude path must produce no
+    /// `arguments` key at all on the Kiro path.
     #[test]
     fn render_sop_skill_md_with_options_omits_arguments_on_the_kiro_path_even_with_a_real_parameters_section(
     ) {
@@ -1783,9 +1772,8 @@ mod tests {
              path, even when the body has a real ## Parameters section, got: {kiro_rendered}"
         );
 
-        // Sanity check: the same body on the Claude path DOES emit
-        // arguments, so this test is exercising the gate itself, not a
-        // body that never scrapes to `Some` in the first place.
+        // Sanity check: the same body on the Claude path does emit
+        // arguments.
         let claude_rendered =
             render_sop_skill_md_with_options("about-konductor", ABOUT_KONDUCTOR_EXCERPT, true);
         assert!(
@@ -1794,10 +1782,8 @@ mod tests {
         );
     }
 
-    /// Real nested, non-bold detail bullets under a parameter (see
-    /// `ADVERSARIAL_PR_REVIEW_EXCERPT`'s own doc comment) must be
-    /// skipped, not treated as invalidating the whole array -- this is
-    /// exactly the real-world case the pre-fix parser broke on.
+    /// Nested, non-bold detail bullets under a parameter must be
+    /// skipped, not treated as invalidating the whole array.
     #[test]
     fn render_sop_skill_md_skips_nested_detail_bullets_and_scrapes_real_top_level_names() {
         let rendered = render_sop_skill_md(
@@ -1810,8 +1796,7 @@ mod tests {
         );
     }
 
-    /// The real table-format `## Parameters` convention
-    /// (`k-e2e-test-generation.sop.md`'s own shape) must also produce a
+    /// The table-format `## Parameters` convention must also produce a
     /// non-empty `arguments` array.
     #[test]
     fn render_sop_skill_md_scrapes_arguments_from_real_table_format_sop() {
@@ -1822,10 +1807,8 @@ mod tests {
         );
     }
 
-    /// Per AIM's own rule: a single invalid-identifier parameter name
-    /// invalidates the WHOLE `arguments` array, not just that one entry
-    /// -- still exercised in the real `**name**` bold-bullet shape, not
-    /// the fictional `- name:` shape the pre-fix tests used.
+    /// A single invalid-identifier parameter name invalidates the whole
+    /// `arguments` array, not just that one entry.
     #[test]
     fn render_sop_skill_md_omits_arguments_when_any_parameter_name_is_not_a_valid_identifier() {
         let body = "# Sync tickets\n\n## Overview\n\nSyncs tickets.\n\n## Parameters\n\n- **ticket-id** (required): the ticket to sync\n- **dryRun** (optional): skip the write\n";
@@ -1837,12 +1820,10 @@ mod tests {
         );
     }
 
-    /// A parameter literally named `on` is a valid identifier
-    /// (`is_valid_identifier` only checks character shape), so this
-    /// exercises the separate YAML-1.1-reserved-word guard: the whole
-    /// `arguments` array must still be omitted rather than rendering
-    /// `arguments: [on]`, which a YAML 1.1-compliant loader would read
-    /// back as the boolean `true`, not the string `"on"`.
+    /// A parameter literally named `on` is a valid identifier, so this
+    /// exercises the separate YAML-1.1-reserved-word guard: a YAML
+    /// 1.1-compliant loader would read `arguments: [on]` back as the
+    /// boolean `true`, not the string `"on"`.
     #[test]
     fn render_sop_skill_md_omits_arguments_when_any_parameter_name_is_a_yaml_1_1_reserved_word() {
         let body = "# Toggle\n\n## Overview\n\nToggles a setting.\n\n## Parameters\n\n- **on** (required): whether to enable the setting\n";
@@ -1854,11 +1835,9 @@ mod tests {
         );
     }
 
-    /// The generated frontmatter, for every real fixture above, must
-    /// actually parse as YAML -- a substring `.contains()` check alone
-    /// cannot catch an unquoted colon breaking the mapping the way the
-    /// pre-fix implementation did. Uses `serde_yaml`, already a
-    /// workspace dependency (see `Cargo.toml`), not a newly-added crate.
+    /// The generated frontmatter must actually parse as YAML -- a
+    /// substring `.contains()` check alone cannot catch an unquoted
+    /// colon breaking the mapping.
     #[test]
     fn render_sop_skill_md_frontmatter_actually_parses_as_yaml_for_every_real_fixture() {
         for (name, body) in [
@@ -1893,15 +1872,9 @@ mod tests {
         }
     }
 
-    /// A control character in the Overview paragraph (not a newline --
-    /// `extract_overview_description`'s own `join(" ")` already removes
-    /// those, see that function's doc comment) must not reach
-    /// `yaml_double_quote` unescaped: verified end to end by actually
-    /// parsing the rendered frontmatter as YAML, the same way
-    /// `render_sop_skill_md_frontmatter_actually_parses_as_yaml_for_every_real_fixture`
-    /// does for the real fixtures above -- a substring `.contains()`
-    /// check alone would not catch a raw control byte a YAML parser
-    /// rejects.
+    /// A control character in the Overview paragraph must not reach
+    /// `yaml_double_quote` unescaped, verified by parsing the rendered
+    /// frontmatter as YAML.
     #[test]
     fn render_sop_skill_md_strips_a_control_character_from_the_overview_and_still_parses_as_yaml() {
         let body = "# Weird\n\n## Overview\n\nHello\u{1}world, this has a control byte.\n";
@@ -2247,11 +2220,8 @@ mod tests {
     }
 
     /// A staged `.sop.md` file whose stripped name contains a control
-    /// character (a newline is a legal byte in a POSIX file name) must
-    /// be rejected by `reject_unsafe_sop_name` before
-    /// `render_sop_skill_md_with_options` ever runs, so the character
-    /// never reaches the rendered frontmatter -- there is no `SKILL.md`
-    /// at all once the name is rejected.
+    /// character must be rejected by `reject_unsafe_sop_name` before
+    /// rendering ever runs.
     #[test]
     fn install_sop_skills_rejects_a_sop_name_containing_a_control_character() {
         let dir = scratch_dir("install-sop-skills-control-char");
@@ -2276,13 +2246,8 @@ mod tests {
 
     /// A staged `.sop.md` file whose stripped name is unsafe must be
     /// caught by `plan_sop_skill_files` at plan time, the same way
-    /// `install_sop_skills` already catches it at install time --
-    /// otherwise the plan reports a successful `PlannedFile` for an
-    /// entry the real install then fails on. Includes a name containing
-    /// U+202E (RIGHT-TO-LEFT OVERRIDE), an end-to-end regression guard
-    /// that the Cf rejection added to `reject_unsafe_name_segment`
-    /// applies at both the plan and install paths, not just to the
-    /// underlying function in isolation.
+    /// `install_sop_skills` catches it at install time. Includes a name
+    /// containing U+202E (RIGHT-TO-LEFT OVERRIDE).
     #[test]
     fn plan_and_install_sop_skill_files_agree_on_an_unsafe_stripped_name() {
         for bad_name in ["..sop.md", "weird\\name.sop.md", "weird\u{202E}name.sop.md"] {
@@ -2310,16 +2275,11 @@ mod tests {
     }
 
     /// The interleaved partial-write path inside `install_sop_skills_into`:
-    /// two staged SOPs where the FIRST `write_atomic` succeeds and the
-    /// SECOND fails a REAL I/O write -- not the pre-validation rejection
-    /// `install_sop_skills_rejects_a_sop_name_containing_a_control_character`
-    /// above already covers, which fails before either file is written
-    /// at all. The second SOP's destination `SKILL.md` path is
-    /// pre-created as a DIRECTORY, so `write_atomic`'s rename-the-
-    /// temp-file-over-the-target step fails with a genuine
-    /// `std::io::Error` (renaming a file over an existing directory)
-    /// partway through the loop, after the first SOP has already been
-    /// written in full.
+    /// two staged SOPs where the first `write_atomic` succeeds and the
+    /// second fails a real I/O write. The second SOP's destination
+    /// `SKILL.md` path is pre-created as a directory, so `write_atomic`'s
+    /// rename step fails partway through the loop, after the first SOP
+    /// has already been written in full.
     #[test]
     fn install_from_local_recovers_after_a_partial_sop_skill_write_failure() {
         let target_dir = scratch_dir("sop-partial-write-target");
@@ -2421,6 +2381,117 @@ mod tests {
             .find(|s| s.strategy == "claude")
             .expect("a claude strategy slot must exist");
         assert_eq!(claude_slot.status, Status::Complete);
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// Foreign content in the shared `.claude/settings.json` (a
+    /// `permissions.deny` rule and an unrelated key) must survive a Claude-only
+    /// install untouched, with the hooks landing in `settings.local.json`.
+    #[test]
+    fn install_from_local_leaves_foreign_shared_claude_settings_untouched() {
+        let target_dir = scratch_dir("install-foreign-settings-target");
+        let claude_dir = target_dir.join(".claude");
+        fs::create_dir_all(&claude_dir).unwrap();
+        let original_settings = serde_json::json!({
+            "permissions": {"deny": ["Bash(rm -rf /)"]},
+            "someOtherTool": {"enabled": true}
+        })
+        .to_string();
+        fs::write(claude_dir.join("settings.json"), &original_settings).unwrap();
+
+        let repo_root = scratch_dir("install-foreign-settings-repo");
+        seed_synthed_agent(
+            &repo_root,
+            "k-example",
+            b"---\nname: k-example\n---\nBody\n",
+        );
+
+        ClaudeInstallStrategy
+            .install_from_local(
+                &target_dir,
+                Some(repo_root.to_str().unwrap()),
+                "2026-01-01T00:00:00Z",
+                false,
+            )
+            .expect("install must succeed when .claude/settings.json already has foreign content");
+
+        assert_eq!(
+            fs::read_to_string(claude_dir.join("settings.json")).unwrap(),
+            original_settings
+        );
+        let local: serde_json::Value = serde_json::from_str(
+            &fs::read_to_string(claude_dir.join("settings.local.json")).unwrap(),
+        )
+        .unwrap();
+        assert!(local["hooks"]["SessionStart"].is_array());
+        assert_eq!(
+            local["hooks"]["SubagentStart"][0]["matcher"],
+            "^(k-example)$"
+        );
+
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// When the hooks merge fails (here: `.claude/settings.local.json` is a
+    /// symlink), the install still succeeds and the manifest carries no
+    /// entry for the file this run never wrote.
+    #[cfg(unix)]
+    #[test]
+    fn install_from_local_does_not_abort_when_hooks_only_merge_fails_on_symlinked_settings() {
+        use std::os::unix::fs::symlink;
+
+        let target_dir = scratch_dir("install-symlinked-settings-target");
+        let claude_dir = target_dir.join(".claude");
+        fs::create_dir_all(&claude_dir).unwrap();
+        // A dangling symlink is enough: `reject_symlink` rejects on the
+        // file type alone, without following it.
+        symlink(
+            claude_dir.join("does-not-exist"),
+            claude_dir.join("settings.local.json"),
+        )
+        .unwrap();
+
+        let repo_root = scratch_dir("install-symlinked-settings-repo");
+        seed_synthed_agent(
+            &repo_root,
+            "k-example",
+            b"---\nname: k-example\n---\nBody\n",
+        );
+
+        ClaudeInstallStrategy
+            .install_from_local(
+                &target_dir,
+                Some(repo_root.to_str().unwrap()),
+                "2026-01-01T00:00:00Z",
+                false,
+            )
+            .expect("a symlinked settings file must not abort an otherwise-successful install");
+
+        assert!(
+            target_dir.join(".claude/agents/k-example.md").is_file(),
+            "the agent copy must still land despite the failed hooks merge"
+        );
+
+        let manifest = super::super::manifest::read_manifest(&target_dir)
+            .unwrap()
+            .expect("manifest must exist after install");
+        let claude_slot = manifest
+            .strategies
+            .iter()
+            .find(|s| s.strategy == "claude")
+            .expect("a claude strategy slot must exist");
+        assert_eq!(claude_slot.status, Status::Complete);
+        assert!(
+            !claude_slot
+                .files
+                .iter()
+                .any(|f| f.path == ".claude/settings.local.json"),
+            "a hooks merge that failed against a symlinked settings file must leave no \
+             manifest entry behind -- this run never actually wrote that file"
+        );
 
         fs::remove_dir_all(&target_dir).ok();
         fs::remove_dir_all(&repo_root).ok();

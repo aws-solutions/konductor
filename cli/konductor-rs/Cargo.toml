@@ -1,6 +1,6 @@
 [package]
 name = "konductor"
-version = "1.0.2"
+version = "1.0.3"
 edition = "2021"
 description = "Konductor CLI — placeholder skeleton for build pipeline validation"
 license = "Apache-2.0"
@@ -184,9 +184,8 @@ textwrap = { version = "=0.16.2", default-features = false, features = ["termina
 
 [dev-dependencies]
 # Loopback HTTPS sink standing in for the real telemetry endpoint in
-# this crate's own integration tests (tests/telemetry_report_process.rs
-# and the three tests that previously set KONDUCTOR_TELEMETRY=off) --
-# see shared/telemetry-test-sink's own module doc comment for the full
+# this crate's own integration tests -- see shared/telemetry-test-sink's
+# own module doc comment for the full
 # design rationale, and that crate's own Cargo.toml for why a plain
 # path dependency (not shared workspace membership) is the sharing
 # mechanism, matching konductor-telemetry above.

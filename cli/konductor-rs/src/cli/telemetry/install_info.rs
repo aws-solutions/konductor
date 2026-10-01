@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // telemetry/install_info.rs — `<target_dir>/.konductor/install-info.json`
-// schema, `agent_version` derivation, and write mechanics.
+// schema, `agent_version` derivation, and write and removal mechanics.
 //
 // `agent_version` is the installed content's own version, reported
 // separately from the running binary's version, which reaches every
@@ -92,12 +92,10 @@ pub(crate) fn agent_version_from_source(source_root: &Path) -> Option<String> {
 }
 
 /// Overwrites `<target_dir>/.konductor/install-info.json`
-/// unconditionally, via `atomic_write`'s temp-file-then-`rename` (not
-/// `identity.rs`/`instance.rs`'s temp-then-`hard_link`: those are
-/// create-once records where a second writer must lose and read the
-/// first writer's file back, but this record is rewritten on every
-/// install by design, so it needs an overwrite-safe rename rather than
-/// an exclusive-create link).
+/// unconditionally, via `atomic_write`'s temp-file-then-`rename` -- not
+/// `identity.rs`/`instance.rs`'s temp-then-`hard_link`, since this
+/// record is rewritten on every install by design and needs an
+/// overwrite-safe rename rather than an exclusive-create link.
 pub(crate) fn write_install_info(
     target_dir: &Path,
     source_root: &Path,
@@ -109,13 +107,24 @@ pub(crate) fn write_install_info(
     write_record(target_dir, &record)
 }
 
-/// Concurrent installs to the same `target_dir` with different
-/// harnesses each call this independently, after their own
-/// `manifest::upsert_strategy` call has already returned (dropping
-/// that call's lock) -- so nothing here is protected by the manifest
-/// lock. `atomic_write::write_atomic_with_mode`'s temp-file-then-
-/// `rename` means a reader always sees either the previous record or
-/// this one in full, never a torn write from an interleaved truncate.
+/// Removes the opt-in record, so an `install --no-telemetry` over a target
+/// that was installed with telemetry on actually opts it out. Leaving
+/// the file would keep every `report_*` gate open and make the next
+/// plain `update` carry telemetry forward as enabled. An absent file is
+/// not an error.
+pub(crate) fn remove_install_info(target_dir: &Path) -> std::io::Result<()> {
+    match std::fs::remove_file(install_info_path(target_dir)) {
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        other => other,
+    }
+}
+
+/// Not protected by the manifest lock: concurrent installs with
+/// different harnesses each call this after their own
+/// `manifest::upsert_strategy` lock has already been released.
+/// `atomic_write::write_atomic_with_mode`'s temp-file-then-`rename`
+/// still guarantees a reader sees either the previous record or this
+/// one in full, never a torn write.
 fn write_record(target_dir: &Path, record: &InstallInfoRecord) -> std::io::Result<()> {
     let dir = target_dir.join(KONDUCTOR_DIR_NAME);
     std::fs::create_dir_all(&dir)?;
@@ -128,15 +137,9 @@ fn write_record(target_dir: &Path, record: &InstallInfoRecord) -> std::io::Resul
 
 /// Why a read did not produce a usable [`InstallInfoRecord`], for a
 /// caller that needs to tell "nobody chose this" apart from "the
-/// target opted out." `report_*`'s plain `read_install_info` collapses
-/// all three into `None`, which is exactly right there -- opted-out and
-/// broken are both "do not report," and no caller in that group needs
-/// to say why. `check_telemetry_state` (`doctor.rs`) and `update`'s
-/// opt-out carry-forward (`update.rs`) are the two callers that DO need
-/// to explain a `None`-shaped result -- both warn on `Broken` rather
-/// than silently treating it as `NotFound` -- hence this variant
-/// alongside the existing `Option`-returning function rather than a
-/// changed return type on it.
+/// target opted out." `read_install_info` collapses both into `None`
+/// for callers that only need a yes/no; callers that need to warn on
+/// a broken record specifically use this type instead.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum InstallInfoAbsence {
     /// No file at `install_info_path(target_dir)` -- the target's own
@@ -153,14 +156,9 @@ pub(crate) enum InstallInfoAbsence {
 /// record), or `Err` naming which of the two ways a record can fail to
 /// read back (see [`InstallInfoAbsence`]). `read_install_info` is a
 /// thin projection of this that keeps its own `Option` contract for
-/// `report_*`'s consent gates, which are unaffected by this function
-/// existing. Two callers need the WHY instead: `check_telemetry_state`
-/// (`doctor.rs`), the original reason this function was added --
-/// it used to call `read_install_info` then `install_info_exists` as
-/// two separate filesystem accesses to answer the same question this
-/// single read now answers directly -- and `update`'s opt-out
-/// carry-forward (`update.rs`), which warns on `Broken` rather than
-/// silently carrying it forward as an ordinary opt-out.
+/// `report_*`'s consent gates. Callers that need to warn specifically
+/// on a broken record (as opposed to a plain opt-out) use this
+/// function directly instead.
 pub(crate) fn read_install_info_detailed(
     target_dir: &Path,
 ) -> Result<InstallInfoRecord, InstallInfoAbsence> {
@@ -184,34 +182,17 @@ pub(crate) fn read_install_info_detailed(
 /// No `NewerSchema` carve-out like `identity.rs`/`instance.rs`: this
 /// record has no cross-process mint race to protect.
 ///
-/// A thin projection of [`read_install_info_detailed`]: `report_*`'s
-/// consent gates only ever need "usable or not," never why, so they
-/// keep using this `Option` contract rather than taking on
-/// `InstallInfoAbsence` for no benefit. `update`'s carry-forward
-/// (`update.rs`) calls `read_install_info_detailed` directly instead,
-/// since -- unlike `report_*` -- it needs to warn on a broken record
-/// rather than treat it the same as a genuine opt-out.
+/// A thin projection of [`read_install_info_detailed`] for callers
+/// that only need "usable or not," never why.
 pub(crate) fn read_install_info(target_dir: &Path) -> Option<InstallInfoRecord> {
     read_install_info_detailed(target_dir).ok()
 }
 
 /// Whether `install_info_path(target_dir)` exists on disk at all --
 /// deliberately a plain existence check, not
-/// `read_install_info(target_dir).is_some()`.
-///
-/// No production code calls this anymore. `doctor`'s telemetry-state
-/// check was the last caller, and Fix 1 (the two-read race) replaced
-/// its two-call `read_install_info` + `install_info_exists` sequence
-/// with one call to `read_install_info_detailed`, which distinguishes
-/// absent from broken from a single filesystem access -- the reason
-/// this function existed. It stays for the tests in this module and
-/// in `update.rs` that assert install-info's mere presence/absence
-/// (as opposed to `read_install_info`'s validated content), where a
-/// second filesystem read carries none of `check_telemetry_state`'s
-/// TOCTOU risk. This doc comment has drifted to describe a caller
-/// that no longer exists twice before; if a real caller reappears,
-/// update it again to name that caller specifically rather than
-/// leaving this note stale a third time.
+/// `read_install_info(target_dir).is_some()`. Test-only: used by
+/// tests in this module and in `update.rs` that assert mere
+/// presence/absence rather than validated content.
 #[cfg(test)]
 pub(crate) fn install_info_exists(target_dir: &Path) -> bool {
     install_info_path(target_dir).exists()
@@ -334,14 +315,10 @@ mod tests {
         fs::remove_dir_all(&source).ok();
     }
 
-    /// FIX 3 regression: a genuine permission error reading `VERSION`
-    /// (as opposed to the file simply not existing) must still
-    /// degrade to `None`, never be fabricated -- but the two causes
-    /// are no longer silently conflated into identical behavior with
-    /// no warning. This test only pins the return value (the
-    /// unreadable-vs-absent distinction's externally observable
-    /// contract); the warning itself goes to stderr, which is not
-    /// captured here.
+    /// A genuine permission error reading `VERSION` (as opposed to the
+    /// file simply not existing) must still degrade to `None`, never be
+    /// fabricated. This test only pins the return value; the warning
+    /// itself goes to stderr, which is not captured here.
     #[cfg(unix)]
     #[test]
     fn unreadable_version_file_degrades_to_none_not_a_fabricated_default() {
@@ -586,9 +563,6 @@ mod tests {
     /// any write, true once `write_install_info` publishes the file,
     /// and still true for a file whose content is corrupted -- it does
     /// not distinguish "wrote successfully" from "wrote something."
-    /// This is exactly why no production consent decision reads it
-    /// anymore (see its own doc comment): `read_install_info` is the
-    /// validated read `update`, `doctor`, and `report_*` all consult.
     #[test]
     fn install_info_exists_reflects_plain_presence_including_corrupted_content() {
         let target = scratch_dir("exists-plain-presence-target");
