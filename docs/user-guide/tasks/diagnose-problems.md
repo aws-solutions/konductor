@@ -18,11 +18,14 @@ konductor doctor
 A healthy installation:
 
 ```text
+cli_version        running konductor 1.0.0, which is current    ok
 source             parsed, all cross-references resolve        ok
 runtime            Kiro CLI detected                           ok
 manifest           complete, no hash drift                     ok
 container_runtime  docker found on PATH                      info
 index_status       matches the manifest                        ok
+telemetry_state    telemetry reporting is on                   ok
+content_version    at content version 1.0.0, which is current  ok
 
 All checks passed.
 ```
