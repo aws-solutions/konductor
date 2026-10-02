@@ -1645,7 +1645,8 @@ fn sop_clause(sops_skipped: usize, harness_dir: &str) -> String {
 
 /// Builds the one-line default-mode summary `dispatch_install` prints
 /// on success: destination, per-content-type counts, manifest path,
-/// the SOP-skip note, the foreign-overwrite count, and the installed
+/// the SOP clause (`sop_clause` -- "skipped" or "converted" depending on
+/// `harness_dir`), the foreign-overwrite count, and the installed
 /// content's own version (from install-info.json's `agent_version`,
 /// `None` when unavailable). `mcp_binary_version` is a separate,
 /// distinctly-labeled note: the release tag the no-`--from` path

@@ -548,7 +548,6 @@ jobs:
   publish-claude-plugin:
     name: Publish Claude Code plugin (claude-plugin branch)
     needs: [check-version, publish]
-    # Runs only after `publish` actually succeeds.
     if: needs.publish.result == 'success'
     runs-on: ubuntu-latest
     permissions:
