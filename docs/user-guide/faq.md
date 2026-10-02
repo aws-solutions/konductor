@@ -44,7 +44,6 @@ Which you want:
 | Talk to `konductor` and get work done | No |
 | Run a SOP | No |
 | Read what a SOP or skill does | No |
-| Scaffold `.konductor/config.yml` | Yes |
 | Generate `dist/kiro-cli-v2/agents/*.json` from the specs | Yes |
 | Validate that every spec, skill, and SOP parses | Yes — `konductor synth` |
 
@@ -158,25 +157,10 @@ Full detail in [Contributing and customizing](appendix/contributing.md).
 
 ## How do I make a setting apply to every project?
 
-Create a user-level config. Precedence is preset → user → project, merged per field, project
-winning.
-
-```bash
-mkdir -p ~/.konductor
-```
-
-Then put only the fields you want to override into `~/.konductor/config.yml`:
-
-```yaml
-version: 1
-tier: major
-```
-
-Any project's own `.konductor/config.yml` still overrides this for the fields it sets.
-
-This is also the answer to "why is my config not what I expect?" — a forgotten user-level file is
-the usual culprit, since it applies everywhere and nothing surfaces it. See
-[Diagnose problems → which layer supplied a value](tasks/diagnose-problems.md#why-is-a-config-value-what-it-is).
+No command reads `.konductor/config.yml` today, project- or user-level, so there is nothing yet
+to apply across projects. The three-tier precedence (preset → user → project, merged per field,
+project winning) and the fields themselves exist for a future run-engine. See the
+[CLI reference](reference.md#configuration-file).
 
 ---
 

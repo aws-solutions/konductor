@@ -655,8 +655,7 @@ konductor doctor --all                               # runs every check against 
 ```
 
 Inspects a Konductor installation/checkout for problems and prints actionable
-remediation guidance, reusing the exact logic `install`/`synth`/`config` already use
-rather than re-implementing any validation.
+remediation guidance.
 
 | Check               | What it checks                                                                                                                                                             |
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

@@ -94,14 +94,13 @@ that are not `ok` to find what needs attention.
 
 ## Manual checks
 
-For things `doctor` cannot see — mostly questions about *why* a value is what it is.
+For things `doctor` cannot see: mostly questions about *why* a command or agent behaved the way it did.
 
 ```mermaid
 %%{init:{'theme':'base','themeVariables':{'fontSize':'14px','primaryColor':'#eef2f7','primaryTextColor':'#0f172a','primaryBorderColor':'#40556e','lineColor':'#7a8899','textColor':'#0f172a','edgeLabelBackground':'#ffffff','clusterBkg':'#fafbfc','clusterBorder':'#c9d2dc'}}}%%
 flowchart TD
     D["konductor doctor"] -->|"a check failed"| F["Follow the fix it printed"]
     D -->|"all ok, but behaviour is wrong"| M{"What kind of wrong?"}
-    M -->|"a config value surprises me"| C["Compare the config layers"]
     M -->|"a command did something unexpected"| L["Read the invocation log"]
     M -->|"an agent misbehaves"| A["Check the agent's own capabilities"]
     M -->|"my edits had no effect"| S["Start a new session"]:::gate
@@ -132,29 +131,6 @@ konductor --version
 ```text
 konductor 1.0.0
 ```
-
-### Why is a config value what it is?
-
-Three layers merge, and a forgotten user-level file is the usual surprise. Precedence is preset →
-user → project, project winning.
-
-Project layer:
-
-```bash
-cat .konductor/config.yml
-```
-
-User layer — this one applies to **every** project:
-
-```bash
-cat ~/.konductor/config.yml
-```
-
-`No such file or directory` means you have no user-level config, which is normal.
-
-Any key absent from both files takes the CLI default listed in the
-[CLI reference](../reference.md#configuration-file). If a value is not in your project file, the
-user-level file is almost always the source.
 
 ### What did my recent commands actually do?
 

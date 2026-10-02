@@ -146,7 +146,6 @@ rather than lumping every non-zero code together.
 | Unknown subcommand | `konductor instal` |
 | Unknown flag | `konductor --bogus` |
 | Missing required argument | `konductor install` without `--harness` |
-| Malformed config on load | Any command, against a broken `.konductor/config.yml` |
 | `synth` parse failure | A malformed `agents/*.agent-spec.json` |
 | Current directory cannot be resolved | — |
 
