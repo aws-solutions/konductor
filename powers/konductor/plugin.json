@@ -1,0 +1,27 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "konductor",
+  "version": "1.1.0",
+  "description": "Install Konductor's multi-agent SDLC framework, then get help and diagnostics for it.",
+  "author": {
+    "name": "Amazon.com, Inc. or its affiliates"
+  },
+  "homepage": "https://aws-solutions.github.io/konductor/",
+  "repository": "https://github.com/aws-solutions/konductor",
+  "license": "Apache-2.0",
+  "keywords": [
+    "konductor",
+    "install konductor",
+    "set up konductor",
+    "update konductor",
+    "uninstall konductor",
+    "konductor doctor",
+    "konductor sop",
+    "konductor skill",
+    "konductor agent",
+    "multi agent orchestration",
+    "sdlc workflow",
+    "ai sdlc workflow",
+    "end to end development"
+  ]
+}
