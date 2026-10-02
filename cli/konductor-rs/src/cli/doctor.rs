@@ -1836,8 +1836,7 @@ fn check_role_allowlists() -> CheckResult {
     CheckResult::info(
         "role_allowlists",
         "role-scoped allowlist validation is not yet implemented -- this is a planned \
-         post-launch feature (design doc Task 4.11, milestone M6) and is not present in this \
-         build",
+         post-launch feature and is not present in this build",
         "no action needed".to_string(),
     )
 }

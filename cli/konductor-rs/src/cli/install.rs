@@ -3776,12 +3776,12 @@ mod tests {
         assert_eq!(value["agent_version"], "0.1.1");
     }
 
-    /// IMPORTANT regression (adversarial review finding #4): `install
-    /// --link-bin --json` must print exactly ONE top-level JSON
-    /// document for one invocation, with the bin-link outcome folded in
-    /// as a `"link_bin"` field -- not two separate top-level objects
-    /// (the install summary, then a second standalone document), which
-    /// breaks a single-`JSON.parse` consumer reading all of stdout.
+    /// `install --link-bin --json` must print exactly ONE top-level
+    /// JSON document for one invocation, with the bin-link outcome
+    /// folded in as a `"link_bin"` field -- not two separate
+    /// top-level objects (the install summary, then a second
+    /// standalone document), which breaks a single-`JSON.parse`
+    /// consumer reading all of stdout.
     #[test]
     fn merge_link_bin_json_folds_success_into_the_same_object() {
         let counts = InstallCounts::from_manifest(&sample_manifest());
