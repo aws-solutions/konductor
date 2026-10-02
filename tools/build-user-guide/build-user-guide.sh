@@ -93,6 +93,16 @@ write_manifest() {
 if [ "$MODE" = "record" ]; then
   [ -f "$OUT_HTML" ] || die "$OUT_HTML does not exist — nothing to record"
   mkdir -p "$OUT_DIR"
+  # Re-run the SEO injector before pinning: --record (invoked by `make
+  # guide-record`, after `guide-sync`/`guide-html` have already rewritten the
+  # inner page) is the only path that updates the manifest without going
+  # through this script's own build mode above, so if it skipped this step
+  # the recorded output_sha256 would miss the injected bytes and --check
+  # would see drift on every future run.
+  python3 "$SCRIPT_DIR/inject-seo-metadata.py" "$OUT_HTML" \
+    || die "failed to inject SEO metadata into $OUT_HTML"
+  python3 "$SCRIPT_DIR/inject-seo-metadata.py" "$REPO_ROOT/docs/index.html" \
+    || die "failed to inject SEO metadata into $REPO_ROOT/docs/index.html"
   write_manifest "deterministic"
   echo "recorded: $MANIFEST ($CURRENT_HASH)"
   exit 0
@@ -204,6 +214,21 @@ done
 # this file directly — check-bundle-js.py decodes the page first, then parses.
 python3 "$SCRIPT_DIR/check-bundle-js.py" "$OUT_HTML" \
   || die "$OUT_HTML ships JavaScript that does not parse — the page would render blank"
+
+# Patch real SEO/social metadata into both published bundles' outer shells —
+# the part a crawler or link-unfurl actually reads, which the bundler leaves
+# as an empty <title>Bundled Page</title> with no description or OG/Twitter
+# tags. Runs after the JS-parse check above, on a bundle already confirmed
+# structurally sound, and before write_manifest below, so the recorded
+# output_sha256 reflects these bytes rather than going stale on every future
+# run. docs/index.html is GitHub Pages' served root (see README.md in this
+# directory: "every tool here updates both"), so it is patched here too even
+# though this script's own build/check/record modes otherwise only build
+# docs/site/user-guide.html.
+python3 "$SCRIPT_DIR/inject-seo-metadata.py" "$OUT_HTML" \
+  || die "failed to inject SEO metadata into $OUT_HTML"
+python3 "$SCRIPT_DIR/inject-seo-metadata.py" "$REPO_ROOT/docs/index.html" \
+  || die "failed to inject SEO metadata into $REPO_ROOT/docs/index.html"
 
 write_manifest "$RUNTIME"
 
