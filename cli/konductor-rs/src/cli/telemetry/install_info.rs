@@ -205,9 +205,14 @@ pub(crate) fn read_and_maybe_remove_locked(
 // proven to block on the SAME lock rather than racing it. A no-op in
 // every real build and in every test that never sets it, mirroring
 // `update.rs`'s own `MID_UPDATE_SYNC_HOOK` test-only pattern.
+//
+// `pub(crate)`, not module-private: `install.rs`'s own race test for its
+// `read_and_maybe_remove_locked` call site reuses this exact hook rather
+// than duplicating it, re-exported at `telemetry.rs`'s own level (see
+// that module's `#[cfg(test)]`-only `use install_info::LOCKED_READ_SYNC_HOOK`).
 #[cfg(test)]
 thread_local! {
-    static LOCKED_READ_SYNC_HOOK: std::cell::RefCell<Option<Box<dyn FnOnce()>>> =
+    pub(crate) static LOCKED_READ_SYNC_HOOK: std::cell::RefCell<Option<Box<dyn FnOnce()>>> =
         std::cell::RefCell::new(None);
 }
 

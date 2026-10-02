@@ -25,9 +25,15 @@ mod report;
 pub(crate) use identity::{ensure_identity, identity_path};
 #[cfg(test)]
 pub(crate) use install_info::install_info_exists;
+// `LOCKED_READ_SYNC_HOOK`: `install.rs`'s own race test for its
+// `read_and_maybe_remove_locked` call site reuses this exact hook rather
+// than duplicating it -- see that hook's own doc comment in
+// `install_info.rs`.
+#[cfg(test)]
+pub(crate) use install_info::LOCKED_READ_SYNC_HOOK;
 pub(crate) use install_info::{
     agent_version_from_source, install_info_path, read_and_maybe_remove_locked, read_install_info,
-    read_install_info_detailed, remove_install_info, write_install_info, InstallInfoAbsence,
+    read_install_info_detailed, write_install_info, InstallInfoAbsence,
 };
 pub(crate) use report::{
     report_agent_invocation, report_cli_error, report_cli_error_for_target,

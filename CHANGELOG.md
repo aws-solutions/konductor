@@ -16,9 +16,12 @@ not per individual commit.
 - If removing that record fails (for example, a read-only `.konductor/` directory), `update` now
   warns about it in both plain-text and `--json` output instead of only printing to stderr, so the
   risk of telemetry silently turning back on is visible.
-- The opt-out removal is now serialized against a concurrent install or update at the same
-  project, so a telemetry record a different harness just wrote can no longer be silently
-  destroyed by a race between reading and removing it.
+- `install --no-telemetry` warns the same way when it can't remove an earlier opt-in record,
+  instead of only printing to stderr.
+- The opt-out removal in both `install --no-telemetry` and `update --no-telemetry` is now
+  serialized against a concurrent install or update at the same project, so a telemetry record a
+  different harness just wrote can no longer be silently destroyed by a race between reading and
+  removing it.
 
 ## [1.0.3] - 2026-10-01
 

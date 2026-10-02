@@ -184,8 +184,16 @@ pub enum Commands {
         link_bin: bool,
 
         /// Opt out of usage-analytics telemetry for this install. No
-        /// install record or telemetry hook is written, and any a prior
-        /// install at this target wrote is removed.
+        /// install record or telemetry hook is written, and any record a
+        /// prior install at this target wrote is removed.
+        ///
+        /// Scoped to the whole target directory, NOT to `--harness`:
+        /// `install-info.json` is one file per target, shared by every
+        /// harness installed there, so `--harness <name> --no-telemetry`
+        /// still removes the ENTIRE target's record, including the
+        /// opt-in a different, coexisting harness at that same target
+        /// wrote -- there is no per-harness telemetry setting to opt
+        /// only one of them out of.
         #[arg(long, display_order = 4)]
         no_telemetry: bool,
 
