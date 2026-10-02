@@ -113,53 +113,9 @@ Accepted before or after a subcommand.
 
 **Path:** `.konductor/config.yml`, relative to the current working directory. Not currently used
 by the CLI — the command that reads and writes it (`get`/`set`/`list`) is hidden/gated like
-`init`/`metrics`.
-**Format:** a YAML mapping at the top level, with flat scalar keys. Nested dotted keys are not
-supported.
-
-### Schema
-
-| Key | Type | Valid values | Default |
-| --- | --- | --- | --- |
-| `version` | integer | `1` — any other value is rejected | `1` |
-| `severities_source` | string | A path, relative to the CLI's policy directory, to the file defining finding severities | `severity-schema.yml` |
-| `tiers_source` | string | A path, relative to the CLI's policy directory, to the file defining change tiers | `scope-table.yml` |
-| `tier` | string | The active change tier: `trivial`, `bugfix`, `minor`, `major`, or `full` | `minor` |
-| `default_severity` | string | `CRITICAL`, `HIGH`, `MEDIUM`, `LOW`, or `INFO` — applied to a finding that does not specify its own severity | `MEDIUM` |
-| `fail_on_severity_at_or_above` | string | `CRITICAL`, `HIGH`, `MEDIUM`, `LOW`, or `INFO` — the lowest severity treated as blocking | `CRITICAL` |
-
-Unrecognized extra keys are ignored.
-
-### Minimal valid file
-
-```yaml
-version: 1
-```
-
-Every other field falls through to the user layer and then the CLI defaults.
-
-### Precedence
-
-Three layers, merged **shallow and per-field**. Later layers win per field; a field absent from a
-layer falls through.
-
-| Order | Layer | Path | Missing is an error? |
-| --- | --- | --- | --- |
-| 1 (lowest) | CLI defaults | Compiled into the binary | Never missing |
-| 2 | User config | `~/.konductor/config.yml`, resolved from `$HOME` | No |
-| 3 (highest) | Project config | `<cwd>/.konductor/config.yml` | No |
-
-### Config error messages
-
-All exit `64`.
-
-| Message | Cause |
-| --- | --- |
-| `config version <n> is not supported by this CLI (expected 1)` | `version` is not `1` |
-| `config file <path> is not valid YAML: …` | Syntax error, or a value of the wrong type for its field |
-| `config file <path> is not valid YAML: invalid type: sequence, expected struct RawConfig` | The top level is a list rather than key-value pairs |
-
-An **empty** `config.yml` is not an error — every field falls through to its default.
+`init`/`metrics`. Its fields (`version`, `severities_source`, `tiers_source`, `tier`,
+`default_severity`, `fail_on_severity_at_or_above`) exist for a future run-engine; nothing reads
+them today.
 
 
 ## Exit-code contract
@@ -332,10 +288,8 @@ JSON or Markdown you can read and change — see
 
 | Path | Created by | Gitignored? |
 | --- | --- | --- |
-| `.konductor/config.yml` | You, by hand | No |
 | `dist/` | `konductor synth` | **Yes** |
 | `~/.konductor/logs/konductor.log` | Every CLI invocation | Outside the repo |
-| `~/.konductor/config.yml` | You, by hand | Outside the repo |
 | `.konductor/handoff/<name>.md` | The `k-context-gathering` SOP, for large findings | No |
 | `.agents/scratchpad/critique-NNN.md` | The `k-pre-cr-critique` SOP | No |
 | `.kiro/specs/<feature>/` | The `kiro-spec-workflow` SOP | No |

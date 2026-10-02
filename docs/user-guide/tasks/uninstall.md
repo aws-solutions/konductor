@@ -91,7 +91,7 @@ rm -rf .konductor
 Back it up first if you might want it:
 
 ```bash
-cp .konductor/config.yml ~/konductor-config-backup.yml
+cp -r .konductor ~/konductor-config-backup
 ```
 
 ### Generated runtime files
@@ -178,10 +178,8 @@ For reference, so you can confirm nothing is left behind:
 | Location | Created by | Removed by |
 | --- | --- | --- |
 | Runtime agent directories | `konductor install` | `konductor uninstall` |
-| `<project>/.konductor/config.yml` | you, by hand | you, manually |
 | `<project>/dist/` | `konductor synth` | you, manually — gitignored |
 | `~/.konductor/logs/konductor.log` | every CLI invocation | you, manually |
-| `~/.konductor/config.yml` | you, by hand | you, manually |
 | The `konductor` binary | you, downloading or building it | you, manually |
 
 ---

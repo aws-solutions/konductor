@@ -72,7 +72,8 @@ now corrected to match.
 gated at dispatch, matching the precedent `config` set first: real, tested code underneath,
 not deleted, just not currently offered to users. `init` was the only command that ever wrote
 `.konductor/config.yml`, so with it hidden there is no documented, command-driven way to create
-or customize the file today — hand-edit it against the schema in `reference.md` instead.
+or customize the file today, so hand-edit it against the field list in
+`cli/gate-config/config.yml` instead.
 
 - **`config`**: withheld by reviewer decision; not part of the v1 customer-visible surface.
 - **`init`**: complete and tested, withheld for the same reason as `config`.
