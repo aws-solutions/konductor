@@ -1,10 +1,10 @@
 # Konductor
 
-| **[🚧 Feature request](https://github.com/aws-solutions/konductor/issues/new?labels=enhancement&template=feature_request.md)** | **[🐛 Bug Report](https://github.com/aws-solutions/konductor/issues/new?labels=bug&template=bug_report.md)** | **[🎓 Hands-on Workshop](https://catalog.us-east-1.prod.workshops.aws/workshops/b2bfcd20-ddbe-4ee3-bea8-351c4e2f6156)** |
+| **[📖 User Guide](https://aws-solutions.github.io/konductor/)** | **[🚧 Feature request](https://github.com/aws-solutions/konductor/issues/new?labels=enhancement&template=feature_request.md)** | **[🐛 Bug Report](https://github.com/aws-solutions/konductor/issues/new?labels=bug&template=bug_report.md)** | **[🎓 Hands-on Workshop](https://catalog.us-east-1.prod.workshops.aws/workshops/b2bfcd20-ddbe-4ee3-bea8-351c4e2f6156)** |
 
 Konductor is an open-source AI agent framework that automates the software development lifecycle (SDLC). It ships a coordinated team of specialist agents — product manager, architect, developer, QA, researcher, technical program manager (TPM), browser, media analyzer, plus three orchestrators — each with scoped tools, skills, and standard operating procedures (SOPs). Agents hand work to each other through a structured delegation protocol, so a request can move from requirements to reviewed, working code with minimal manual handoff.
 
-The package ships as static agent configuration compatible with [Kiro](https://kiro.dev) and [Claude Code](https://claude.ai/download). No runtime infrastructure is required beyond the AI runtime itself.
+The package ships as static agent configuration compatible with [Kiro](https://kiro.dev) and [Claude Code](https://claude.ai/download). No runtime infrastructure is required beyond the AI runtime itself. For task guides, use cases, and full agent and skill references, see the [User Guide](https://aws-solutions.github.io/konductor/).
 
 > [!TIP]
 > **Hands-on workshop:** [A-SDLC: Conducting Agents with Konductor on Kiro](https://catalog.us-east-1.prod.workshops.aws/workshops/b2bfcd20-ddbe-4ee3-bea8-351c4e2f6156) is a self-paced workshop of about 5 hours. You drive Konductor's agents through ambiguous, problem-based scenarios and learn to judge when the work is actually done. It runs on your own machine with Kiro CLI. You don't need an AWS account, but driving the agents uses your own Kiro credits.
