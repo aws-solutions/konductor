@@ -160,9 +160,12 @@ pub enum Commands {
         harness: String,
 
         /// SOURCE: path to a local repo root to install previously-built
-        /// (synthed) content from. Installing from a published release is
-        /// not yet available, so this is currently required. Distinct from
-        /// `--target`, the install DESTINATION.
+        /// (synthed) content from. Optional: omitting it tries a GitHub
+        /// Release fetch→verify→install first (against
+        /// `aws-solutions/konductor`'s latest release), falling back to
+        /// `main`'s `dist/` tarball when the release path fails with a
+        /// missing-asset error. Distinct from `--target`, the install
+        /// DESTINATION.
         #[arg(long, display_order = 1)]
         from: Option<String>,
 
