@@ -6,6 +6,42 @@ This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Entries are consolidated per release,
 not per individual commit.
 
+## [Unreleased]
+
+### Changed
+
+- `konductor init` and `konductor metrics` are now hidden from `--help` and gated at
+  dispatch, matching the existing `konductor config` treatment -- both are complete,
+  tested commands (`metrics` alone is also a genuine stub with no logic behind it),
+  withheld from the v1 customer-visible surface rather than removed.
+- `konductor doctor`'s `config` check no longer runs live: nothing in the CLI acts on
+  `.konductor/config.yml`'s resolved values for a real decision, so the check was
+  decorative. It stays implemented and unit-tested, dormant until something consumes
+  those values. `doctor` now runs 8 checks instead of 9.
+
+### Fixed
+
+- `konductor doctor`'s config-load-failure remediation no longer recommends
+  `konductor config list` or `konductor init --force` -- both commands are hidden and
+  would fail with a usage error for an ordinary user. It now points to the schema in
+  the CLI reference and hand-editing the file instead.
+- `cli/README.md`'s `--all` section no longer says "all six checks above" -- the check
+  count moved to 8 in an earlier change and this line was never updated.
+- `reference.md`'s `update` flag table now documents `--cli`, `--version <v>`, and
+  `--force`, which were missing since the v1.0.0 flag reference was first written.
+- `install` command's `--from` flag doc comment no longer claims installing from a
+  published release is unavailable -- it now describes the real GitHub-release /
+  main-branch-dist fallback chain that exists today.
+
+### Documentation
+
+- Removed `konductor init`'s dedicated walkthrough page and all teaching references to
+  `init`/`metrics` from the user guide, consistent with them being withdrawn from the
+  documented command surface. Every remediation step that used to recommend running
+  `init` now gives a manual alternative instead.
+- Corrected `cli/README.md`'s command table, status callout, and "Current state"
+  section to reflect the above.
+
 ## [1.0.3] - 2026-10-01
 
 ### Fixed

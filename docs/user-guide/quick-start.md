@@ -78,8 +78,9 @@ before a team of agents can run. See [Install for Claude Code](tasks/install-cla
 konductor doctor
 ```
 
-Six checks — `source`, `runtime`, `manifest`, `config`, `container_runtime` and `index_status` —
-each with a status. Exit code `0` when nothing failed. Anything reported as not ok is explained in
+Eight checks — `source`, `runtime`, `manifest`, `container_runtime`, `index_status`,
+`cli_version`, `telemetry_state`, and `content_version` — each with a status. Exit code `0` when
+nothing failed. Anything reported as not ok is explained in
 [Diagnose problems](tasks/diagnose-problems.md).
 
 ---
@@ -135,42 +136,6 @@ in Claude Code it holds `Write` and `Bash` outright. Either way what keeps it de
 routing rules — and, in Kiro CLI, your answer to the prompt. If it starts editing
 directly, see
 [Troubleshooting](troubleshooting.md#3-the-orchestrator-does-the-work-itself-instead-of-delegating).
-
----
-
-## Step 5 — Configure the project (optional)
-
-Most work needs no configuration. If you want project-local settings, scaffold them:
-
-```bash
-konductor init
-```
-
-```text
-Initialized Konductor project at /Users/you/your-project/.konductor
-Wrote starter config: /Users/you/your-project/.konductor/config.yml
-```
-
-```bash
-cat .konductor/config.yml
-```
-
-```yaml
-version: 1
-
-severities_source: severity-schema.yml
-tiers_source: scope-table.yml
-
-tier: minor
-
-default_severity: MEDIUM
-
-fail_on_severity_at_or_above: CRITICAL
-```
-
-`init` writes a verbatim copy of the CLI's own preset defaults, comments included, so the file
-documents its own fields. Field meanings are in the
-[CLI reference](reference.md#configuration-file).
 
 ---
 

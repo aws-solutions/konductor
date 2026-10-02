@@ -47,12 +47,13 @@ _DIAGRAM_DIR = {"agents": "agents", "skills": "skills", "SOPs": "agent-sops"}
 _LAYOUT_NOUN = {"agents": "agent specs", "skills": "skills", "SOPs": "SOPs"}
 
 # Commands the CLI accepts but the guide deliberately does not document, with the
-# decision recorded so the carve-out is auditable rather than folklore. `config`
-# is withheld from the v1 customer-visible surface (reviewer decision on
-# reviewer decision); `.konductor/config.yml` itself stays documented, since `init`
-# writes it and `doctor` validates it. Adding a name here is a product decision,
-# not a way to silence this script -- see docs/user-guide/notes.md.
-WITHDRAWN_COMMANDS = {"config"}
+# decision recorded so the carve-out is auditable rather than folklore. `config`,
+# `init`, and `metrics` are all withheld from the v1 customer-visible surface
+# (reviewer decision); `.konductor/config.yml` itself stays documented, since it
+# is real and loaded, even though no live command currently reads or writes it.
+# Adding a name here is a product decision, not a way to silence this script --
+# see docs/user-guide/notes.md.
+WITHDRAWN_COMMANDS = {"config", "init", "metrics"}
 
 
 def html_pages_for_flags(root: Path):

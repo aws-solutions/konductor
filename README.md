@@ -275,9 +275,7 @@ The `konductor` CLI provides the following commands:
 | `konductor update`    | Overwrite a tracked install in place from a fresh `synth` source                                    |
 | `konductor uninstall` | Remove a tracked install's files and its entry from `~/.konductor/installs`                         |
 | `konductor synth`     | Transform source agent specs into per-runtime output (`kiro-cli-v2`, `kiro-v3`, `claude`)           |
-| `konductor init`      | Scaffold `.konductor/` and a starter `config.yml` from a preset (`solo`, `team`, `org`)             |
 | `konductor doctor`    | Inspect an install/checkout for problems and report remediation guidance                            |
-| `konductor config`    | Get/set/list configuration values                                                                   |
 
 Agents already use their `k-*` / `konductor` names today. Get `konductor` today via the quick install script or a from-source build (see [Quick Start](#quick-start) above) and run it with an explicit `konductor install --harness <kiro-cli-v2|kiro-v3|claude>`: `--harness` is required, naming which runtime's output to install, rather than auto-detecting it from the destination.
 

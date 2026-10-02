@@ -160,9 +160,12 @@ pub enum Commands {
         harness: String,
 
         /// SOURCE: path to a local repo root to install previously-built
-        /// (synthed) content from. Installing from a published release is
-        /// not yet available, so this is currently required. Distinct from
-        /// `--target`, the install DESTINATION.
+        /// (synthed) content from. Optional: omitting it tries a GitHub
+        /// Release fetch→verify→install first (against
+        /// `aws-solutions/konductor`'s latest release), falling back to
+        /// `main`'s `dist/` tarball when the release path fails with a
+        /// missing-asset error. Distinct from `--target`, the install
+        /// DESTINATION.
         #[arg(long, display_order = 1)]
         from: Option<String>,
 
@@ -212,10 +215,12 @@ pub enum Commands {
     /// file with fresh content from a fresh `--from <repo-root>` synth
     /// source, the same file-copy path `install` uses. Without `--from`,
     /// tries the same remote fallback chain `install` uses (GitHub Release
-    /// first, falling back to `main`'s `dist/` tree). There is no `--force`
-    /// flag: a hand-edited file is overwritten like any other tracked
-    /// file. `--dry-run` reports hash-based divergence per file without
-    /// writing anything or making any network call.
+    /// first, falling back to `main`'s `dist/` tree). `--force` overwrites
+    /// even when the target is already at the requested content version;
+    /// without it, a hand-edited file is still overwritten like any other
+    /// tracked file once a version bump is actually due. `--dry-run`
+    /// reports hash-based divergence per file without writing anything or
+    /// making any network call.
     Update {
         /// SOURCE: path to a local repo root to re-synth from, same
         /// meaning as `install --from`. When omitted, tries the remote
@@ -330,9 +335,14 @@ pub enum Commands {
         from: Option<String>,
     },
 
-    /// Initialize a new Konductor project: creates `.konductor/` in the
-    /// current working directory and writes a starter
-    /// `.konductor/config.yml` derived from the CLI's preset defaults.
+    /// Hidden; not part of the supported v1 surface.
+    //
+    // Scaffolds `.konductor/config.yml` from a preset. Real, tested logic;
+    // withheld, not stubbed. Re-enable by removing `#[command(hide = true)]`
+    // here and the gating check at the top of dispatch.rs's `Commands::Init`
+    // arm (which currently returns `EXIT_USAGE_ERROR` instead of calling
+    // `dispatch_init`).
+    #[command(hide = true)]
     Init {
         /// Initialization preset to apply.
         #[arg(long, value_parser = ["solo", "team", "org"])]
@@ -372,22 +382,22 @@ pub enum Commands {
         no_version_check: bool,
     },
 
-    /// Read or write Konductor configuration.
-    ///
-    /// Temporarily hidden from normal --help and dispatch while the
-    /// implementation stays fully intact and tested. Re-enable by removing
-    /// `#[command(hide = true)]` here and the gating check in dispatch.rs's
-    /// `Commands::Config` arm.
+    /// Hidden; not part of the supported v1 surface.
+    //
+    // Real, tested logic; withheld, not stubbed. Re-enable by removing
+    // `#[command(hide = true)]` here and the gating check in dispatch.rs's
+    // `Commands::Config` arm.
     #[command(hide = true)]
     Config {
         #[command(subcommand)]
         action: ConfigAction,
     },
 
-    /// Show Konductor usage/run metrics (stub).
-    ///
-    /// Hidden from normal --help since it has no real implementation yet;
-    /// stays fully invokable, only its --help listing is suppressed.
+    /// Hidden; not part of the supported v1 surface.
+    //
+    // Stub -- no real implementation yet. Re-enable by removing
+    // `#[command(hide = true)]` here and the gating check in dispatch.rs's
+    // `Commands::Metrics` arm.
     #[command(hide = true)]
     Metrics {
         /// Time window to report metrics for, e.g. "7d", "24h".
@@ -590,6 +600,11 @@ fn _contract_constants_reference() -> (u8, u8) {
 mod tests {
     use super::*;
     use clap::{CommandFactory, Parser};
+    // `metrics_still_parses_and_dispatches` below mutates the process-global
+    // `KONDUCTOR_ALLOW_METRICS` env var, which races every other
+    // HOME/env-mutating test in this crate under `cargo test`'s default
+    // parallelism -- see `test_home_lock`'s own doc comment.
+    use crate::cli::test_home_lock::lock_home;
 
     #[test]
     fn parses_install_with_from_flag() {
@@ -1680,10 +1695,12 @@ mod tests {
     }
 
     /// Hiding `metrics` from `--help` must never silently become removing
-    /// it: `konductor metrics` still parses to `Commands::Metrics` and
+    /// it: `konductor metrics` still parses to `Commands::Metrics` and,
+    /// with the internal `KONDUCTOR_ALLOW_METRICS=1` escape hatch set,
     /// still dispatches to its not-implemented stub, exiting 0.
     #[test]
     fn metrics_still_parses_and_dispatches() {
+        let _guard = lock_home();
         let cli = Cli::try_parse_from(["konductor", Commands::METRICS])
             .expect("`konductor metrics` must still parse even though it is hidden from --help");
         let command = cli
@@ -1693,10 +1710,19 @@ mod tests {
             matches!(command, Commands::Metrics { since: None }),
             "expected Commands::Metrics {{ since: None }}, got {command:?}"
         );
+
+        let previous = std::env::var("KONDUCTOR_ALLOW_METRICS").ok();
+        std::env::set_var("KONDUCTOR_ALLOW_METRICS", "1");
         let exit_code = dispatch::dispatch(command, false, false, output::ColorMode::disabled());
+        match previous {
+            Some(value) => std::env::set_var("KONDUCTOR_ALLOW_METRICS", value),
+            None => std::env::remove_var("KONDUCTOR_ALLOW_METRICS"),
+        }
+
         assert_eq!(
             exit_code, 0,
-            "`konductor metrics` must still dispatch and exit 0 (its stub behavior is unchanged)"
+            "`konductor metrics` must still dispatch and exit 0 (its stub behavior is unchanged) \
+             once the internal KONDUCTOR_ALLOW_METRICS escape hatch is set"
         );
     }
 }
