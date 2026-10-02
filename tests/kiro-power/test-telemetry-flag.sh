@@ -89,7 +89,7 @@ STUB
 chmod +x "${FAKE_BIN}/curl"
 
 # ── Test 1: telemetry is ON by default -- no --no-telemetry flag at all
-# when the flag is omitted (the design's own default-on decision).
+# when the flag is omitted (an intentional default-on choice).
 rm -f "$ARGV_LOG"
 t_run env HOME="$FAKE_HOME" PATH="${FAKE_BIN}:${PATH}" \
   bash "$ORCHESTRATOR" --target "$TARGET_DIR" --tag "$DEFAULT_TAG" --confirmed

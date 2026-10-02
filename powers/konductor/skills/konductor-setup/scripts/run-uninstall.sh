@@ -20,8 +20,8 @@
 #                     what would be removed before it is).
 #   --confirmed      REQUIRED for a REAL removal (i.e. whenever --dry-run
 #                     is NOT also given). Same consent-backstop rationale
-#                     as run-onboarding.sh's
-#                     identical flag (see that script's own doc comment and
+#                     as run-onboarding.sh's identical flag (see that
+#                     script's own doc comment and
 #                     SKILL.md's "Consent is prose, not a provable gate"
 #                     section): this script refuses to actually delete
 #                     anything without it. SKILL.md's own uninstall flow is

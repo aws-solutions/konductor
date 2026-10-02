@@ -47,8 +47,8 @@ done
 t_run bash "$SCRIPT" Linux x86_64
 t_assert_equal "WSL (reports as Linux/x86_64) is NOT classified as Windows" "SUPPORTED:x86_64-unknown-linux-musl" "$T_OUTPUT"
 
-# A platform the design names no fallback for at all (e.g. Linux/armv7)
-# is a hard, explicit stop -- never silently guessed into either bucket.
+# A platform with no fallback bucket at all (e.g. Linux/armv7) is a
+# hard, explicit stop -- never silently guessed into either bucket.
 t_run bash "$SCRIPT" Linux armv7l
 t_assert_status "unrecognized Linux arch exits non-zero" 1
 t_assert_contains "unrecognized Linux arch names both uname values in its error" "uname -s=Linux, uname -m=armv7l"

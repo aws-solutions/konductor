@@ -129,7 +129,7 @@ link_binary() {
     return 1
   fi
 
-  # Post-check exactly what design/SKILL.md promise this path always is:
+  # Post-check exactly what SKILL.md promises this path always is:
   # a symlink (-L), resolving to a regular file (-f, follows the link),
   # that is executable (-x, follows the link). $tmp_link no longer exists
   # by this point (already renamed onto $link_path above), so there is

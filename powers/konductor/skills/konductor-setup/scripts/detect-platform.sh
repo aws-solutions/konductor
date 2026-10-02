@@ -82,8 +82,6 @@ detect_platform() {
   esac
 }
 
-# Only run as a script entrypoint when invoked directly, not when sourced
-# by a test.
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   HOST_OS="${1:-$(uname -s)}"
   HOST_ARCH="${2:-$(uname -m)}"

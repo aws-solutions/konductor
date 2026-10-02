@@ -60,8 +60,8 @@
 #                     version (whether from --tag or from
 #                     KONDUCTOR_POWER_VERSION). Without this flag, EITHER
 #                     deviation is a hard refusal before any network or
-#                     filesystem action: this
-#                     Power fetches and runs a released binary, so silently
+#                     filesystem action: this Power fetches and runs a
+#                     released binary, so silently
 #                     accepting a different repo or tag is silently
 #                     accepting a different, unverified source of code to
 #                     run. SKILL.md must get an explicit, separate user
@@ -238,12 +238,9 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Each branch below calls a function that streams its own real commands'
-# output directly (curl, git, make) and reports its result via a global
-# variable (FETCH_VERIFY_BINARY_RESULT / BUILD_FROM_SOURCE_RESULT) rather
-# than a captured `$(...)` echo -- see fetch-verify-binary.sh's header for
-# why: capturing the whole function's stdout to get its result would also
-# swallow that real, supposed-to-be-visible command output.
+# Each branch streams its own output directly and reports via a global
+# result variable (FETCH_VERIFY_BINARY_RESULT / BUILD_FROM_SOURCE_RESULT)
+# -- see fetch-verify-binary.sh's header for why.
 case "$CLASSIFICATION" in
   SUPPORTED:*)
     TRIPLE="${CLASSIFICATION#SUPPORTED:}"
@@ -281,8 +278,8 @@ if [[ -n "$USE_GITHUB_TOKEN" ]]; then
 fi
 # --no-telemetry, forwarded verbatim to `konductor install`'s own flag
 # (confirmed against cli.rs's Commands::Install variant) -- telemetry is
-# enabled by default, per the design's own default-on decision; this is
-# the opt-out path, gated on the user actually declining in chat (see
+# enabled by default (an intentional default-on choice); this is the
+# opt-out path, gated on the user actually declining in chat (see
 # SKILL.md's Step 0 telemetry disclosure).
 if [[ -n "$NO_TELEMETRY" ]]; then
   INSTALL_ARGS+=(--no-telemetry)
@@ -298,17 +295,11 @@ konductor_run_cli "${INSTALL_ARGS[@]}"
 konductor_run_cli "$LINKED_BIN" doctor --target "$TARGET_DIR"
 
 # ── Record this run's own CLI binary for konductor_resolve_target_binary ──
-# Written only once the whole flow above has actually succeeded --
-# BINARY_PATH is the real, verified/built file under
-# the stable ~/.konductor/cli-releases cache (never the mutable
-# ~/.local/bin/konductor symlink LINKED_BIN, which every OTHER project's own
-# onboarding/update run can and does repoint). run-update.sh/run-uninstall.sh
-# read this back via konductor_resolve_target_binary to use the exact same
-# binary again, rather than trusting whatever the shared symlink currently
-# points at. See lib.sh's konductor_write_power_cli_record for why this is a
-# separate file from install-info.json, never install-info.json's own
-# `agent_version` (a content version, independent of which CLI binary ran
-# the command).
+# Written only once the whole flow above has actually succeeded.
+# BINARY_PATH, not the mutable LINKED_BIN symlink -- see
+# konductor_write_power_cli_record's own doc comment in lib.sh for why
+# that distinction matters and how run-update.sh/run-uninstall.sh read
+# this record back.
 BINARY_OWN_VERSION="$("$BINARY_PATH" --version 2>/dev/null | awk '{print $2}')"
 if [[ -z "$BINARY_OWN_VERSION" ]]; then
   konductor_die "${BINARY_PATH} produced no '--version' output -- refusing to record it in power-cli.json." || exit 1
