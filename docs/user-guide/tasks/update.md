@@ -124,27 +124,8 @@ If you built from source instead, see
 
 - [ ] `konductor doctor` reports `manifest` as `ok` with no hash drift.
 - [ ] A new runtime session lists the agents you expect.
-- [ ] `konductor doctor` reports `config` as `ok`, confirming your config is still valid against
-      the new release.
 
-Check that last one, because a config schema change is the most likely thing to bite you:
-
-```bash
-konductor doctor
-```
-
-If it reports `config version <n> is not supported by this CLI`, the schema version changed. Back up
-your config, re-scaffold, and re-apply your settings:
-
-```bash
-cp .konductor/config.yml .konductor/config.yml.bak
-```
-
-```bash
-konductor init --force
-```
-
-`--force` overwrites `config.yml` with the release defaults, which is why the backup comes first.
+`.konductor/config.yml` is not currently used by the CLI.
 
 ---
 

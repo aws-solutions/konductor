@@ -215,10 +215,12 @@ pub enum Commands {
     /// file with fresh content from a fresh `--from <repo-root>` synth
     /// source, the same file-copy path `install` uses. Without `--from`,
     /// tries the same remote fallback chain `install` uses (GitHub Release
-    /// first, falling back to `main`'s `dist/` tree). There is no `--force`
-    /// flag: a hand-edited file is overwritten like any other tracked
-    /// file. `--dry-run` reports hash-based divergence per file without
-    /// writing anything or making any network call.
+    /// first, falling back to `main`'s `dist/` tree). `--force` overwrites
+    /// even when the target is already at the requested content version;
+    /// without it, a hand-edited file is still overwritten like any other
+    /// tracked file once a version bump is actually due. `--dry-run`
+    /// reports hash-based divergence per file without writing anything or
+    /// making any network call.
     Update {
         /// SOURCE: path to a local repo root to re-synth from, same
         /// meaning as `install --from`. When omitted, tries the remote
@@ -333,19 +335,13 @@ pub enum Commands {
         from: Option<String>,
     },
 
-    /// Initialize a new Konductor project: creates `.konductor/` in the
-    /// current working directory and writes a starter
-    /// `.konductor/config.yml` derived from the CLI's preset defaults.
-    ///
-    /// Temporarily hidden from normal --help and from normal dispatch (see
-    /// dispatch.rs's `Commands::Init` arm, which returns
-    /// `EXIT_USAGE_ERROR` with a "not currently available" message instead
-    /// of calling `dispatch_init`) while the underlying implementation
-    /// stays fully intact -- like `Config` below, and unlike `Metrics`
-    /// further below, this variant's real logic is complete and covered
-    /// by tests; it is withheld, not stubbed. Re-enable by removing
-    /// `#[command(hide = true)]` here and the gating check at the top of
-    /// dispatch.rs's `Commands::Init` arm.
+    /// Hidden; not part of the supported v1 surface.
+    //
+    // Scaffolds `.konductor/config.yml` from a preset. Real, tested logic;
+    // withheld, not stubbed. Re-enable by removing `#[command(hide = true)]`
+    // here and the gating check at the top of dispatch.rs's `Commands::Init`
+    // arm (which currently returns `EXIT_USAGE_ERROR` instead of calling
+    // `dispatch_init`).
     #[command(hide = true)]
     Init {
         /// Initialization preset to apply.
@@ -386,22 +382,22 @@ pub enum Commands {
         no_version_check: bool,
     },
 
-    /// Read or write Konductor configuration.
-    ///
-    /// Temporarily hidden from normal --help and dispatch while the
-    /// implementation stays fully intact and tested. Re-enable by removing
-    /// `#[command(hide = true)]` here and the gating check in dispatch.rs's
-    /// `Commands::Config` arm.
+    /// Hidden; not part of the supported v1 surface.
+    //
+    // Real, tested logic; withheld, not stubbed. Re-enable by removing
+    // `#[command(hide = true)]` here and the gating check in dispatch.rs's
+    // `Commands::Config` arm.
     #[command(hide = true)]
     Config {
         #[command(subcommand)]
         action: ConfigAction,
     },
 
-    /// Show Konductor usage/run metrics (stub).
-    ///
-    /// Hidden from normal --help since it has no real implementation yet;
-    /// stays fully invokable, only its --help listing is suppressed.
+    /// Hidden; not part of the supported v1 surface.
+    //
+    // Stub -- no real implementation yet. Re-enable by removing
+    // `#[command(hide = true)]` here and the gating check in dispatch.rs's
+    // `Commands::Metrics` arm.
     #[command(hide = true)]
     Metrics {
         /// Time window to report metrics for, e.g. "7d", "24h".

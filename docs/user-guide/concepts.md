@@ -204,7 +204,7 @@ SUGGESTION**, followed by: `Fix these issues? [y/n]`.
 
 The **Konductor CLI** is a separate command-line program named `konductor`. It handles setup, content
 build, lifecycle, and diagnostics for a Konductor-managed repository: `install`, `update`,
-`uninstall`, `doctor`, `init`, `synth`, and `metrics`.
+`uninstall`, `doctor`, and `synth`.
 
 It does **not** run SDLC workflows. Running a workflow means talking to an agent, not typing a
 `konductor` subcommand.

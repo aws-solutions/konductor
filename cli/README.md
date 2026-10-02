@@ -7,12 +7,9 @@ a Konductor-managed repository. It handles installation, configuration, and diag
 for the ASDLC agent/skill/SOP content that Konductor manages — it does not itself run
 SDLC workflows (that's the Konductor Kiro agent's job).
 
-> **Status:** `install`, `update`, `uninstall`, `synth`, and `doctor` 
-> perform real work (see [Current state](#current-state)). `config`, `init`, and `metrics`
-> are all hidden from `--help` and gated behind their own escape hatch, identically:
-> but `config` and `init` are complete, tested, real commands sitting behind that gate,
-> while `metrics` is additionally a genuine **stub** with no real logic behind it, so it
-> still won't perform real work even with its escape hatch set.
+> **Status:** `install`, `update`, `uninstall`, `synth`, and `doctor` perform real work
+> (see [Current state](#current-state)). `config`, `init`, and `metrics` are hidden from
+> `--help` and not part of the supported v1 surface.
 
 ---
 
@@ -32,9 +29,7 @@ into the stdout JSON document) and of the exit code (it fires on both success an
 failure).
 
 `init` also accepts `--force`, to overwrite an existing `.konductor/` directory instead
-of failing. `init` itself isn't wired to be used by anything yet (see the top-of-file
-status note above); this flag exists and works, but the command is not currently
-reachable from normal dispatch.
+of failing. `init` is hidden (see the status note above).
 
 `install` accepts:
 
@@ -898,12 +893,9 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
   - the CLI command surface
   - the declarative contract (gate/config schemas — `severity-schema.yml`,
     `scope-table.yml`, `config.yml`, `run-state.json` — plus the config loader)
-  - `init` scaffolding a real `.konductor/` directory with a starter `config.yml`,
-    fully implemented and tested, but currently hidden and not wired to be used by
-    anything yet (see the top-of-file status note)
-  - `config` reading/writing `.konductor/config.yml`, fully implemented and tested,
-    but currently hidden and not wired to be used by anything yet (see the
-    top-of-file status note)
+  - `init` scaffolding a real `.konductor/` directory with a starter `config.yml`
+    (hidden)
+  - `config` reading/writing `.konductor/config.yml` (hidden)
   - `install` copying synthed agents/skills into `$HOME/.kiro/` (or
     `--target <dir>/.kiro/`) and writing a manifest beside the installed tree
   - `update` overwriting a tracked install in place from a source tree
@@ -912,9 +904,7 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
   - `doctor` inspecting a source tree/install destination via `synth`/`install`/`config`'s
     own logic and reporting per-check ok/info/failed/stale status with remediation
     guidance
-- **Stubs:** `metrics` still prints "not yet implemented." It's also hidden and
-  gated behind its own escape hatch (see the top-of-file status note), on top of
-  being a stub.
+- **Stubs:** `metrics` still prints "not yet implemented," and is hidden.
 - **Not yet started:** the run-engine/conductor (which will read/write
   `.konductor/run-state.json`-shaped documents and is responsible for exit code 2's
   "unresolved CRITICAL gate" signal), and `.konductor/runs/` storage.
@@ -937,7 +927,6 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
   an alternative for installing from a local checkout.
 - SOPs are synthed into `dist/kiro-cli-v2/sops/` but are not installed anywhere; there is
   no runtime discovery path for them yet.
-- `metrics` is a stub (see above).
 - `update` and `uninstall` have no same-target concurrency protection: running two
   `konductor` invocations against the same target directory at once is unsupported and
   can corrupt the manifest, index, or on-disk files. Serialize invocations per target.
