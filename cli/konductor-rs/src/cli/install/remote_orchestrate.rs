@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// install/remote_orchestrate.rs — sequences a GitHub-release fetch
-// (`install::github::fetch_latest_release_artifact_and_mcp_asset`) or a
-// branch-`dist/` fetch (`install::github_branch`) into the existing,
-// unmodified bytes-in-hand verify->unpack->install pipeline
-// (`install::remote::install_from_remote_bytes`).
+// install/remote_orchestrate.rs — sequences a GitHub-release fetch or
+// a branch-`dist/` fetch into the existing, unmodified bytes-in-hand
+// verify->unpack->install pipeline (`install::remote::install_from_remote_bytes`).
 //
 // This is the ONLY production call path that makes a network fetch;
 // every other module in `install::remote`/`install::github`/
@@ -140,43 +138,29 @@ impl std::fmt::Display for FallbackChainError {
 
 impl std::error::Error for FallbackChainError {}
 
-/// Fetches `owner/repo`'s latest GitHub release metadata EXACTLY ONCE
-/// (via `github::fetch_latest_release_artifact_and_mcp_asset`), then
-/// hands the resolved tarball bytes to the existing, unmodified
+/// Fetches `owner/repo`'s latest GitHub release metadata EXACTLY ONCE,
+/// then hands the resolved tarball bytes to the existing, unmodified
 /// `remote::install_from_remote_bytes` -- verify, unpack, install.
-/// Never touches that pipeline's own logic; just sequences a real
-/// fetch in front of it.
 ///
 /// The MCP server binary asset is resolved from that SAME release
 /// response, eagerly, right alongside the tarball -- rather than
-/// deferred into a closure that fetches its own metadata later. Before
-/// this fix, `github::fetch_latest_github_release_artifact` (for the
-/// tarball) and `github::fetch_mcp_server_release_asset` (for the MCP
-/// binary, invoked lazily from inside `install_from_remote_bytes` via
-/// `build_mcp_binary_fetcher`'s closure) each independently called
-/// `fetch_latest_release_metadata`, roughly doubling metadata API
-/// traffic and risking the tarball and MCP binary resolving against
-/// two DIFFERENT releases if a new one published between the calls.
-/// Resolving both eagerly from one fetch closes that window: the
-/// `McpBinaryFetcher` closure passed to `install_from_remote_bytes`
-/// below now just returns the already-computed result, matching the
-/// `McpBinaryFetcher` shape it always had.
+/// deferred into a closure that fetches its own metadata later.
+/// Resolving both eagerly from one fetch avoids doubling metadata API
+/// traffic and avoids the tarball and MCP binary resolving against two
+/// DIFFERENT releases if a new one published between two separate
+/// calls.
 ///
 /// This is the ONE place a real, no-`--from` install actually fetches
-/// the `skill-lookup-mcp` binary from GitHub. Thin wrapper around
-/// `install_from_latest_release_with_fetcher` bound to the real
-/// production fetcher -- the fetcher is parameterized in that function
-/// (not just here) so tests can inject a fake one and exercise this
-/// exact sequencing with no real network call.
+/// the `skill-lookup-mcp` binary from GitHub. The fetcher is
+/// parameterized in `install_from_latest_release_with_fetcher` so
+/// tests can inject a fake one with no real network call.
 ///
 /// `release_tag`, when `Some(tag)`, fetches that SPECIFIC release
-/// (`github::fetch_release_artifact_and_mcp_asset_by_tag`, `GET
-/// .../releases/tags/{tag}`) instead of latest -- same
-/// single-fetch-shared-release resolution either way, differing only
-/// in which metadata endpoint is hit. A `GithubFetchError::TagNotFound`
-/// from the by-tag fetch propagates through unchanged as
-/// `RemoteOrchestrationError::Fetch`, same as every other fetch-phase
-/// failure.
+/// instead of latest -- same single-fetch-shared-release resolution
+/// either way, differing only in which metadata endpoint is hit. A
+/// `GithubFetchError::TagNotFound` from the by-tag fetch propagates
+/// through unchanged as `RemoteOrchestrationError::Fetch`, same as
+/// every other fetch-phase failure.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn install_from_latest_github_release(
     owner: &str,
@@ -210,29 +194,20 @@ pub(crate) fn install_from_latest_github_release(
 /// Builds a `McpBinaryFetcher` that just returns an ALREADY-RESOLVED
 /// `McpServerAssetFetchError`/asset-bytes result, mapped to
 /// `std::io::Error` the same way `github::github_artifact_fetcher`
-/// already maps `GithubFetchError` -- the identical mapping the OLD
-/// `build_mcp_binary_fetcher` used, except this closure performs no
+/// already maps `GithubFetchError`, except this closure performs no
 /// network call of its own at invocation time: `asset_result` was
 /// resolved eagerly, from the SAME release fetch the tarball asset was
-/// resolved from (see `install_from_latest_github_release`'s own doc
-/// comment for why). The "platform unsupported" signal
-/// (`McpServerAssetFetchError::is_unsupported_platform()`) has no
-/// dedicated slot in `std::io::Error`, so it survives the mapping by
-/// prefixing `remote::MCP_BINARY_UNSUPPORTED_PLATFORM_MARKER` onto the
-/// rendered message specifically for that case --
-/// `install_mcp_server_binary_into_remote_temp_dir` strips this exact
-/// prefix back off to recover the distinction on the other side of the
-/// closure boundary. Every other `McpServerAssetFetchError` variant
-/// (a real fetch/verify failure on a supported platform) maps through
-/// with its message unchanged, no marker prefix.
+/// resolved from. The "platform unsupported" signal has no dedicated
+/// slot in `std::io::Error`, so it survives the mapping by prefixing
+/// `remote::MCP_BINARY_UNSUPPORTED_PLATFORM_MARKER` onto the rendered
+/// message for that case -- `install_mcp_server_binary_into_remote_temp_dir`
+/// strips this exact prefix back off to recover the distinction.
 ///
 /// Takes `asset_result` by value and moves it directly into the
-/// returned `FnOnce` closure -- `McpBinaryFetcher`'s `FnOnce() -> ...`
-/// bound both permits and enforces exactly that: the closure consumes
-/// its captured `asset_result` on its one and only call, with no
-/// internal "have I already been called" bookkeeping needed, since the
-/// type system already guarantees `install_from_remote_bytes` can
-/// invoke it at most once per install.
+/// returned `FnOnce` closure: `McpBinaryFetcher`'s `FnOnce() -> ...`
+/// bound both permits and enforces that the closure consumes its
+/// captured `asset_result` on its one and only call, with no internal
+/// "have I already been called" bookkeeping needed.
 fn mcp_binary_fetcher_from_resolved_asset(
     asset_result: github::McpAssetResolutionResult,
 ) -> McpBinaryFetcher<'static> {
@@ -256,21 +231,18 @@ fn mcp_binary_fetcher_from_resolved_asset(
 /// call. A fetcher failure wraps as `RemoteOrchestrationError::Fetch`
 /// carrying the exact `GithubFetchError` unchanged. `mcp_binary_fetcher`
 /// is threaded straight through to `remote::install_from_remote_bytes`
-/// unchanged -- `None` for a caller that wants the tarball-only
-/// sequencing this function already provided before the MCP-binary
-/// feature existed (every current test call site below), `Some(..)`
-/// for the real production path (`install_from_latest_github_release`).
+/// unchanged -- `None` for a caller that wants tarball-only
+/// sequencing, `Some(..)` for the real production path.
 ///
 /// `fetcher`'s third tuple element is the artifact's ACTUAL resolved
-/// filename (see `github::ArtifactResolutionResult`'s own doc comment)
-/// -- verification below uses THIS value, never an independently
-/// re-derived `github::expected_artifact_filename()`. The two can
-/// differ whenever the fetched release's version isn't this binary's
-/// own `CARGO_PKG_VERSION` (a by-tag fetch, or "latest" having moved
-/// past this build), which is exactly the bug this fixed: verifying
-/// against the wrong, build-time version produced a
-/// `SidecarError::FilenameMismatch` even when the fetched artifact and
-/// sidecar were perfectly consistent with each other.
+/// filename -- verification below uses THIS value, never an
+/// independently re-derived `github::expected_artifact_filename()`.
+/// The two can differ whenever the fetched release's version isn't
+/// this binary's own `CARGO_PKG_VERSION` (a by-tag fetch, or "latest"
+/// having moved past this build): verifying against the wrong,
+/// build-time version would produce a `SidecarError::FilenameMismatch`
+/// even when the fetched artifact and sidecar are perfectly
+/// consistent with each other.
 fn install_from_latest_release_with_fetcher(
     fetcher: impl FnOnce() -> Result<(Vec<u8>, Vec<u8>, String), GithubFetchError>,
     strategy: &dyn InstallStrategy,
@@ -355,11 +327,10 @@ pub(crate) fn install_from_main_branch_dist(
 /// `install_from_latest_release_with_fetcher`'s test-seam design.
 /// `fetcher` returns `(tarball_bytes, sidecar_bytes)`, the same shape
 /// `install::github`'s own release fetcher returns -- the sidecar
-/// bytes it returns are passed to `remote::install_from_remote_bytes`
-/// unmodified, never recomputed from `tarball_bytes` here. Always
-/// passes `None` for the MCP-binary fetcher (see
-/// `install_from_main_branch_dist`'s own doc comment for why this
-/// source has nothing analogous to fetch).
+/// bytes are passed to `remote::install_from_remote_bytes` unmodified,
+/// never recomputed from `tarball_bytes` here. Always passes `None`
+/// for the MCP-binary fetcher: this source has nothing analogous to
+/// fetch (see `install_from_main_branch_dist`'s own doc comment).
 fn install_from_main_branch_dist_with_fetcher(
     fetcher: impl FnOnce() -> Result<(Vec<u8>, Vec<u8>), GithubBranchFetchError>,
     strategy: &dyn InstallStrategy,
@@ -387,36 +358,29 @@ fn install_from_main_branch_dist_with_fetcher(
 /// Runs the GitHub-release path first, falling back to the
 /// main-branch-`dist/` path when the release path fails with "nothing
 /// usable here" -- a missing per-platform asset, or a 404 from the
-/// `releases/latest` metadata call (no release exists at all). Both
-/// sources read the same repository, just a different ref, so no
-/// separate opt-in is needed. Every other release failure (network
-/// error, non-404 metadata status, a download-phase HTTP error, an
-/// invalid response, or a verify/unpack/install failure) is never
-/// fallback-eligible -- trying a second source on top of a real
-/// failure risks masking it. `MetadataHttp`/`DownloadHttp` are kept as
-/// distinct variants so this match can tell "no release exists" apart
-/// from "a release exists but its asset bytes failed to fetch," even
-/// when both carry the same HTTP status code.
+/// `releases/latest` metadata call (no release exists at all). Every
+/// other release failure (network error, non-404 metadata status, a
+/// download-phase HTTP error, an invalid response, or a
+/// verify/unpack/install failure) is never fallback-eligible --
+/// trying a second source on top of a real failure risks masking it.
+/// `MetadataHttp`/`DownloadHttp` are kept as distinct variants so this
+/// match can tell "no release exists" apart from "a release exists but
+/// its asset bytes failed to fetch," even when both carry the same
+/// HTTP status code.
 ///
 /// `release_tag_was_requested` gates this ENTIRE eligibility rule, not
 /// just `TagNotFound`: when `true` (an explicit `--version <v>`
 /// fetch), `MissingAsset` and `MetadataHttp(404, _)` are NEVER
-/// fallback-eligible either, even though they are for a latest-release
-/// fetch. A `MissingAsset` on a by-tag fetch means the requested
-/// release genuinely exists but lacks the current platform's asset --
-/// falling back to `main`'s `dist/` tree in that case would silently
-/// install a DIFFERENT version than the one explicitly requested,
-/// exactly the failure mode this parameter exists to prevent (see
-/// `install_from_remote_with_fallback`'s own doc comment for the
-/// `TagNotFound` half of this same guarantee -- this closes the other
-/// half, the case where the tag exists but its asset doesn't).
+/// fallback-eligible either. A `MissingAsset` on a by-tag fetch means
+/// the requested release genuinely exists but lacks the current
+/// platform's asset -- falling back to `main`'s `dist/` tree in that
+/// case would silently install a DIFFERENT version than the one
+/// explicitly requested.
 ///
 /// Returns the source that produced a successful install, plus that
-/// install's own `RemoteInstallOutcome` (today just the MCP server
-/// binary's resolved release version, if any -- see
-/// `remote::RemoteInstallOutcome`'s own doc comment). Parameterized by
-/// `release_installer`/`main_branch_dist_installer` so tests can inject
-/// fake closures with no real network call.
+/// install's own `RemoteInstallOutcome`. Parameterized by
+/// `release_installer`/`main_branch_dist_installer` so tests can
+/// inject fake closures with no real network call.
 fn install_from_remote_with_fallback_using(
     release_installer: impl FnOnce() -> Result<RemoteInstallOutcome, RemoteOrchestrationError>,
     main_branch_dist_installer: impl FnOnce() -> Result<
@@ -542,10 +506,9 @@ mod tests {
     /// End-to-end, no real network: a fake fetcher stands in for the
     /// network call, then the real, unmodified
     /// `remote::install_from_remote_bytes` pipeline runs against those
-    /// bytes -- exercising fetch(fake)->verify->unpack->install. Does
-    /// not call `install_from_latest_github_release` itself (that
-    /// always makes a real fetch); proves the same downstream
-    /// sequencing with the network call swapped out.
+    /// bytes. Does not call `install_from_latest_github_release`
+    /// itself (that always makes a real fetch); proves the same
+    /// downstream sequencing with the network call swapped out.
     #[test]
     fn fake_fetch_then_real_verify_unpack_install_succeeds_end_to_end() {
         let dist_root = scratch_dir("orchestrate-e2e-dist");
@@ -569,7 +532,11 @@ mod tests {
 
         let installed = target_dir.join(".kiro/agents/k-example.json");
         assert!(installed.is_file());
-        assert_eq!(fs::read(&installed).unwrap(), b"{\"name\":\"k-example\"}\n");
+        // TelemetryHookPass re-serializes the agent file, so check the
+        // parsed field rather than raw bytes.
+        let installed_value: serde_json::Value =
+            serde_json::from_slice(&fs::read(&installed).unwrap()).unwrap();
+        assert_eq!(installed_value["name"], serde_json::json!("k-example"));
         let manifest = manifest::read_manifest(&target_dir)
             .unwrap()
             .expect("manifest must exist after successful install");
@@ -659,10 +626,10 @@ mod tests {
 
         let installed = target_dir.join(".kiro/agents/seam-example.json");
         assert!(installed.is_file());
-        assert_eq!(
-            fs::read(&installed).unwrap(),
-            b"{\"name\":\"seam-example\"}\n"
-        );
+        // As above, TelemetryHookPass re-serializes the agent file.
+        let installed_value: serde_json::Value =
+            serde_json::from_slice(&fs::read(&installed).unwrap()).unwrap();
+        assert_eq!(installed_value["name"], serde_json::json!("seam-example"));
         let manifest = manifest::read_manifest(&target_dir)
             .unwrap()
             .expect("manifest must exist after a successful install via the fetcher seam");
@@ -674,23 +641,18 @@ mod tests {
 
     /// Regression test for the `--force` sidecar-mismatch bug: a fetch
     /// that resolves to a release tag OTHER than the running binary's
-    /// own compiled `CARGO_PKG_VERSION` must still install successfully,
-    /// because verification must key off the version that was actually
-    /// fetched, not off `expected_artifact_filename()`'s hardcoded
-    /// build-time version.
+    /// own compiled `CARGO_PKG_VERSION` must still install
+    /// successfully, because verification must key off the version
+    /// that was actually fetched, not off
+    /// `expected_artifact_filename()`'s hardcoded build-time version.
     ///
     /// Builds a real, internally-consistent `(artifact_bytes,
-    /// sidecar_bytes)` pair for a DELIBERATELY DIFFERENT filename
-    /// (`konductor-v9.9.9.tar.gz`, standing in for a by-tag/latest
-    /// fetch that resolved to a newer release than this binary was
-    /// built at) than `expected_artifact_filename()` returns for this
-    /// build. Before the fix, `install_from_latest_release_with_fetcher`
-    /// verifies the fetched pair against `expected_artifact_filename()`
-    /// regardless of which version the fetcher actually resolved,
-    /// so this fails with `SidecarError::FilenameMismatch` even though
-    /// the artifact and sidecar are perfectly consistent WITH EACH
-    /// OTHER -- exactly the shape of the reported bug (`sidecar names
-    /// 'konductor-v0.1.2.tar.gz', expected 'konductor-v0.1.1.tar.gz'`).
+    /// sidecar_bytes)` pair for a DELIBERATELY DIFFERENT filename than
+    /// `expected_artifact_filename()` returns for this build. Before
+    /// the fix, verification was keyed off the build-time filename
+    /// regardless of what was actually fetched, so this failed with
+    /// `SidecarError::FilenameMismatch` even though the artifact and
+    /// sidecar are perfectly consistent WITH EACH OTHER.
     #[test]
     fn install_from_latest_release_with_fetcher_verifies_against_the_fetched_version_not_the_build_version(
     ) {
@@ -731,9 +693,12 @@ mod tests {
 
         let installed = target_dir.join(".kiro/agents/seam-version-example.json");
         assert!(installed.is_file());
+        // As above, TelemetryHookPass re-serializes the agent file.
+        let installed_value: serde_json::Value =
+            serde_json::from_slice(&fs::read(&installed).unwrap()).unwrap();
         assert_eq!(
-            fs::read(&installed).unwrap(),
-            b"{\"name\":\"seam-version-example\"}\n"
+            installed_value["name"],
+            serde_json::json!("seam-version-example")
         );
 
         fs::remove_dir_all(&dist_root).ok();
@@ -796,9 +761,12 @@ mod tests {
 
         let installed = target_dir.join(".kiro/agents/branch-seam-example.json");
         assert!(installed.is_file());
+        // As above, TelemetryHookPass re-serializes the agent file.
+        let installed_value: serde_json::Value =
+            serde_json::from_slice(&fs::read(&installed).unwrap()).unwrap();
         assert_eq!(
-            fs::read(&installed).unwrap(),
-            b"{\"name\":\"branch-seam-example\"}\n"
+            installed_value["name"],
+            serde_json::json!("branch-seam-example")
         );
         let manifest = manifest::read_manifest(&target_dir)
             .unwrap()
@@ -990,16 +958,16 @@ mod tests {
         assert_eq!(result.unwrap().0, RemoteInstallSource::MainBranchDist);
     }
 
-    /// The AutoSDE-flagged gap this fix closes: a `MissingAsset`
-    /// failure on a BY-TAG fetch (`release_tag_was_requested: true`)
-    /// must NEVER be fallback-eligible, even though the identical
-    /// error IS eligible for a latest-release fetch (the test above).
-    /// `MissingAsset` on a by-tag fetch means the requested release
-    /// genuinely exists but lacks the current platform's asset --
-    /// falling back to `main`'s `dist/` tree would silently install a
-    /// DIFFERENT version than the one explicitly requested. The fake
-    /// fallback closure panics if called at all, proving the
-    /// ineligibility fires before any fallback attempt.
+    /// A `MissingAsset` failure on a BY-TAG fetch
+    /// (`release_tag_was_requested: true`) must NEVER be
+    /// fallback-eligible, even though the identical error IS eligible
+    /// for a latest-release fetch. `MissingAsset` on a by-tag fetch
+    /// means the requested release genuinely exists but lacks the
+    /// current platform's asset -- falling back to `main`'s `dist/`
+    /// tree would silently install a DIFFERENT version than the one
+    /// explicitly requested. The fake fallback closure panics if
+    /// called at all, proving the ineligibility fires before any
+    /// fallback attempt.
     #[test]
     fn fallback_chain_never_falls_back_on_missing_asset_when_a_release_tag_was_requested() {
         let result = install_from_remote_with_fallback_using(
@@ -1020,12 +988,8 @@ mod tests {
     }
 
     /// Same guard, the other eligible-for-latest variant: a
-    /// `MetadataHttp(404, _)` on a by-tag fetch (meaning the requested
-    /// tag itself doesn't exist -- though in practice `github.rs`
-    /// would map this to `TagNotFound` instead, this test pins down
-    /// the eligibility rule's OWN behavior independent of that mapping)
-    /// must also never be fallback-eligible when a tag was explicitly
-    /// requested.
+    /// `MetadataHttp(404, _)` on a by-tag fetch must also never be
+    /// fallback-eligible when a tag was explicitly requested.
     #[test]
     fn fallback_chain_never_falls_back_on_metadata_404_when_a_release_tag_was_requested() {
         let result = install_from_remote_with_fallback_using(
@@ -1076,12 +1040,10 @@ mod tests {
 
     /// A release failure with `GithubFetchError::MetadataHttp(404)` --
     /// the outcome when `owner/repo` has never published a release at
-    /// all, since GitHub's `releases/latest` endpoint itself returns
-    /// 404 in that case -- must ALSO be fallback-eligible, reporting
-    /// `MainBranchDist` on a successful fallback. This is the case we
-    /// think is the most likely real-world state (zero releases ->
-    /// 404), which a `MissingAsset`-only eligibility rule would miss
-    /// entirely.
+    /// all -- must ALSO be fallback-eligible, reporting
+    /// `MainBranchDist` on a successful fallback. This is the most
+    /// likely real-world state (zero releases -> 404), which a
+    /// `MissingAsset`-only eligibility rule would miss entirely.
     #[test]
     fn fallback_chain_falls_back_on_release_404_and_reports_main_branch_dist_source() {
         let result = install_from_remote_with_fallback_using(
@@ -1263,21 +1225,18 @@ mod tests {
     }
 
     /// The exact real-world gap this fix closes, exercised through the
-    /// actual fallback-chain dispatch (`install_from_remote_with_fallback_using`),
-    /// not just `Display` in isolation: a repository with no GitHub
-    /// release published at all gets a 404 on the release metadata call
-    /// (fallback-eligible), the fallback to `main`'s `dist/` ALSO 404s
-    /// because nothing is published there either, and with
-    /// `--use-github-token` never passed, the resulting top-level error
-    /// message must still carry the GITHUB_TOKEN/--use-github-token hint
-    /// -- even though neither underlying error is
-    /// `GithubFetchError::DownloadHttp` (the variant the prior fix in
-    /// this session widened). This is the scenario a real `konductor
-    /// install` with no `--from` hits against a repository with zero
-    /// published releases: the metadata-phase 404 masks the
-    /// download-phase 404 entirely by triggering the fallback first, and
-    /// the fallback's own `MissingArtifact`/`MissingSidecar` 404s were
-    /// never wired to any hint before this fix.
+    /// actual fallback-chain dispatch, not just `Display` in isolation:
+    /// a repository with no GitHub release published at all gets a 404
+    /// on the release metadata call (fallback-eligible), the fallback
+    /// to `main`'s `dist/` ALSO 404s because nothing is published
+    /// there either, and with `--use-github-token` never passed, the
+    /// resulting top-level error message must still carry the
+    /// GITHUB_TOKEN/--use-github-token hint -- even though neither
+    /// underlying error is `GithubFetchError::DownloadHttp`. This is
+    /// the scenario a real `konductor install` with no `--from` hits
+    /// against a repository with zero published releases: the
+    /// metadata-phase 404 masks the download-phase 404 entirely by
+    /// triggering the fallback first.
     #[test]
     fn fallback_chain_both_failed_on_metadata_404_and_missing_artifact_still_carries_the_hint_when_not_opted_in(
     ) {
@@ -1323,15 +1282,13 @@ mod tests {
         );
     }
 
-    // ── mcp_binary_fetcher_from_resolved_asset: shared-fetch wiring ──────
+    // ── mcp_binary_fetcher_from_resolved_asset: shared-fetch wiring ──
     //
-    // These exercise the piece of the single-fetch fix that lives in
-    // THIS module: `install_from_latest_github_release` now resolves
-    // the MCP asset eagerly (via
-    // `github::fetch_latest_release_artifact_and_mcp_asset`, exactly
-    // once) instead of handing `install_from_remote_bytes` a closure
-    // that fetches its own metadata later. `mcp_binary_fetcher_from_resolved_asset`
-    // is the seam that turns that already-resolved result into the
+    // `install_from_latest_github_release` resolves the MCP asset
+    // eagerly, exactly once, instead of handing
+    // `install_from_remote_bytes` a closure that fetches its own
+    // metadata later. `mcp_binary_fetcher_from_resolved_asset` is the
+    // seam that turns that already-resolved result into the
     // `McpBinaryFetcher` shape `install_from_remote_bytes` still
     // expects -- these tests confirm it never performs a fetch of its
     // own, just replays the value it was constructed with.
@@ -1355,22 +1312,15 @@ mod tests {
         assert_eq!(version, "v0.4.0");
     }
 
-    /// `McpBinaryFetcher` is a `Box<dyn FnOnce() -> ...>`, and this
-    /// closure is called by consuming the `fetcher` binding itself
-    /// (`fetcher()`, not `(&fetcher)()`), same as every real call site
-    /// does (`install_mcp_server_binary_into_remote_temp_dir` takes
-    /// `fetcher: McpBinaryFetcher` by value). A second call --
-    /// `fetcher()` again on the same binding -- is therefore not a
-    /// runtime possibility to guard against: `fetcher` is moved into
+    /// `McpBinaryFetcher` is a `Box<dyn FnOnce() -> ...>`, called by
+    /// consuming the `fetcher` binding itself, same as every real call
+    /// site does. A second call on the same binding is therefore not
+    /// a runtime possibility to guard against: `fetcher` is moved into
     /// its first (and, per the type, only) call, so a second call
     /// would be a "use of moved value" compiler error, not a panic.
-    /// This test cannot exercise that second call at all (doing so
-    /// would fail `cargo build`, not `cargo test`); it instead pins
-    /// down the positive half of the same guarantee -- that a single
-    /// call still fully consumes and returns the captured result, with
-    /// no leftover internal state to "already be empty" the way the
-    /// old `RefCell`+`take()`+`.expect(..)` implementation needed to
-    /// check for.
+    /// This test instead pins down the positive half of the same
+    /// guarantee -- that a single call still fully consumes and
+    /// returns the captured result, with no leftover internal state.
     #[test]
     fn mcp_binary_fetcher_from_resolved_asset_is_consumed_by_its_one_permitted_call() {
         let fetcher = mcp_binary_fetcher_from_resolved_asset(Ok((
@@ -1434,15 +1384,12 @@ mod tests {
     }
 
     /// The single-fetch guarantee end to end for THIS module's own
-    /// piece: a fake `github::fetch_latest_release_artifact_and_mcp_asset`-shaped
-    /// call is simulated by constructing both halves from ONE shared
-    /// `tag_name`-bearing value and feeding the MCP half straight into
-    /// `mcp_binary_fetcher_from_resolved_asset` -- proving that by the
-    /// time `install_from_latest_github_release` builds this closure,
-    /// the MCP asset's version is already fixed and cannot diverge
-    /// from whatever the tarball side resolved, because both came from
-    /// values derived from the same simulated fetch, not two
-    /// independent ones.
+    /// piece: a fake fetch is simulated by constructing both halves
+    /// from ONE shared `tag_name`-bearing value and feeding the MCP
+    /// half straight into `mcp_binary_fetcher_from_resolved_asset` --
+    /// proving that by the time `install_from_latest_github_release`
+    /// builds this closure, the MCP asset's version is already fixed
+    /// and cannot diverge from whatever the tarball side resolved.
     #[test]
     fn mcp_binary_fetcher_built_from_the_same_release_as_the_tarball_reports_matching_version() {
         let shared_version = "v0.5.0";

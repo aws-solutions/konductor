@@ -4,21 +4,14 @@
 //
 // Structural extraction of the top-level `match command { ... }` out of
 // cli.rs::run() into its own module, so cli.rs stays focused on argument
-// parsing / the command surface, and dispatch stays focused on "what each
-// parsed command does." Init/Config's exit-code behavior is unchanged;
-// Install/Synth gained a new resolve_cwd()-failure exit path (EXIT_USAGE_ERROR)
-// they did not have as inline stub arms. Install no longer resolves cwd at
-// all -- its destination comes from `--target`/`$HOME` (see install.rs's
-// `resolve_destination`), independent of the process's cwd.
+// parsing and dispatch stays focused on what each parsed command does.
 //
 // TODO(design): this is a static `match` over a fixed `Commands` enum, not
-// a dynamic Command+Strategy registry. That is intentional at this
-// milestone, not an oversight — the rationale: the conformance harness
-// depends on `__dump_schema` reflecting the *static* command tree clap
-// derives from `Commands`, and a dynamic registry would risk that
-// introspection for no payoff at 8 stub commands. Revisit once commands
-// have real (non-stub) behavior and/or the command count grows enough
-// that a registry's indirection starts paying for itself.
+// a dynamic Command+Strategy registry. The conformance harness depends on
+// `__dump_schema` reflecting the static command tree clap derives from
+// `Commands`, and a dynamic registry would risk that introspection for no
+// payoff at this command count. Revisit once a registry's indirection
+// starts paying for itself.
 
 use std::path::PathBuf;
 
@@ -26,26 +19,17 @@ use crate::cli::{config, init, output::ColorMode, Commands, ConfigAction};
 
 /// Entry point called by `cli::run()` once argument parsing has produced a
 /// concrete `command` to dispatch. `Init`, `Config`, `Install`, `Synth`,
-/// and `Doctor` have real behavior (see cli/init.rs, cli/config.rs,
-/// cli/install.rs, cli/synth/mod.rs, cli/doctor.rs); every other command
-/// is a stub.
+/// and `Doctor` have real behavior; every other command is a stub.
 ///
-/// `verbose`/`json` (the global `-v`/`--json` flags) are threaded through
-/// to `Install`/`Synth`/`Doctor` only -- the commands with real,
-/// reportable output at this milestone. Every other arm ignores them; a
-/// future stub-to-real transition should thread them to its own arm the
-/// same way, not add a new flag. `color` (the resolved `--no-color`/
-/// `NO_COLOR`/TTY state, see cli/output.rs) is threaded through the
-/// same way, to every arm that can print a `konductor <command>:
-/// <message>` error prefix or (for `Doctor`) a colorized status report.
+/// `verbose`/`json` are threaded through to `Install`/`Synth`/`Doctor`
+/// only -- the commands with real, reportable output at this milestone.
+/// `color` is threaded through to every arm that can print an error
+/// prefix or a colorized status report.
 ///
 /// Returns the raw numeric exit code rather than `std::process::ExitCode`
-/// (which offers no way to read the value back out again) so callers can
-/// both log the code and construct the real `ExitCode` from it.
+/// so callers can both log the code and construct the real `ExitCode`
+/// from it.
 pub fn dispatch(command: Commands, verbose: bool, json: bool, color: ColorMode) -> u8 {
-    // TODO(design): static match, not a dynamic Command+Strategy registry.
-    // See the module header above for the rationale (conformance harness
-    // depends on the static command tree).
     match command {
         Commands::Install {
             from,
@@ -159,59 +143,50 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool, color: ColorMode) 
             println!("{}", crate::cli::schema::dump_schema_json());
             0
         }
-        Commands::TelemetryHook { event_type } => {
+        Commands::TelemetryHook {
+            event_type,
+            agent,
+            install_root,
+        } => {
             // Unlike every other arm above, a cwd-resolution failure
-            // here must never surface at all: the `__telemetry-hook`
-            // contract (see telemetry_hook.rs's module docstring)
-            // requires this subcommand's own failures stay invisible
-            // to the harness that invoked it -- no stderr output, no
-            // telemetry event, not just a suppressed exit code.
-            // `resolve_cwd()` cannot be reused here (even with its
-            // `Err` discarded) because it unconditionally prints to
-            // stderr and fires a `dispatch.cwd_unavailable` `cli_error`
-            // event as side effects of producing that `Err` -- both
-            // visible before this arm ever sees the return value.
-            // Resolve cwd directly instead, falling back to `$HOME`
-            // (the same scope-agnostic identity lookup `resolve_cwd`
-            // itself falls back to) with no side effects either way.
+            // here must stay invisible to the harness that invoked it
+            // (see telemetry_hook.rs's module docstring): no stderr
+            // output, no telemetry event. `resolve_cwd()` can't be
+            // reused here even with its `Err` discarded, since it
+            // unconditionally prints and fires a telemetry event as
+            // side effects before returning. Resolve cwd directly
+            // instead, falling back to `$HOME` with no side effects.
             let cwd = std::env::current_dir().unwrap_or_else(|_| {
                 std::env::var_os("HOME")
                     .map(PathBuf::from)
                     .unwrap_or_default()
             });
-            crate::cli::telemetry_hook::dispatch_telemetry_hook(&cwd, &event_type);
+            crate::cli::telemetry_hook::dispatch_telemetry_hook(
+                &cwd,
+                &event_type,
+                agent.as_deref(),
+                install_root.as_deref(),
+            );
             0
         }
     }
 }
 
 /// Resolves the current working directory, shared by every dispatch arm
-/// that needs a `target_dir` to pass into a real (non-stub) command
-/// handler. On failure, prints the same error message every call site
-/// used before this was extracted (the bare `konductor:
-/// <message>` prefix -- this path is command-agnostic, so it never
-/// gets the `konductor {command}: ` form other errors use), fires a
-/// `dispatch.cwd_unavailable` telemetry event against
-/// `$HOME` -- the closest scope-agnostic identity lookup available when
-/// cwd itself cannot be resolved -- and returns `EXIT_USAGE_ERROR`.
+/// that needs a `target_dir` to pass into a real command handler. On
+/// failure, prints the command-agnostic `konductor: <message>` prefix,
+/// fires a `dispatch.cwd_unavailable` telemetry event against `$HOME`
+/// (the closest scope-agnostic fallback when cwd itself can't be
+/// resolved), and returns `EXIT_USAGE_ERROR`.
 ///
-/// `command` is the ACTUAL subcommand this call is being made on behalf
-/// of (`"synth"`/`"init"`/`"doctor"`/`"config"`) -- reported verbatim as
-/// `report_cli_error`'s own `command` argument (which becomes the wire
-/// event's `targetName`), not the literal string `"dispatch"`.
-/// `docs/telemetry-schema.json`'s own `targetName` description for
-/// `cli_error` events enumerates exactly `init/install/update/uninstall/
-/// synth/doctor/config` -- `"dispatch"` is not one of them, and every
-/// one of Synth/Init/Doctor/Config's distinct cwd-resolution failures
-/// collapsing onto that one non-enumerated value made them
-/// indistinguishable from each other AND schema-invalid. Passing the
-/// real subcommand name here keeps this shared helper's own error
-/// event attributed to whichever command actually failed -- this is
-/// deliberately NOT the same value the plain-text prefix above uses
-/// (which stays command-agnostic); see
-/// `resolve_cwd_reporting_json`'s own doc comment for why its `--json`
-/// envelope's `command` field diverges from this telemetry attribution
-/// the same way.
+/// `command` is the real subcommand this call is on behalf of, reported
+/// as `report_cli_error`'s `command` argument (the wire event's
+/// `targetName`) -- not the literal string `"dispatch"`, which is not
+/// one of `docs/telemetry-schema.json`'s enumerated `targetName` values
+/// for `cli_error`. This is deliberately not the same value the
+/// plain-text prefix above uses, which stays command-agnostic; see
+/// `resolve_cwd_reporting_json`'s doc comment for the same divergence
+/// on its `--json` envelope.
 fn resolve_cwd(command: &str, color: ColorMode) -> Result<PathBuf, u8> {
     let cwd = std::env::current_dir().map_err(|err| {
         eprintln!(
@@ -237,29 +212,18 @@ fn resolve_cwd(command: &str, color: ColorMode) -> Result<PathBuf, u8> {
 }
 
 /// Json-aware variant of `resolve_cwd()`, used by the `Synth`/`Doctor`
-/// arms above, which report through the `--json` error envelope.
-/// `resolve_cwd()` itself always prints its plain-text message
-/// unconditionally, so it cannot be reused as-is when `--json` is set
-/// (that would print the plain-text line to stderr as well as the
-/// envelope to stdout). `Init`/`Config` do not take part in the
-/// `--json` envelope at this milestone and keep calling `resolve_cwd()`
-/// directly, unaffected by this function.
+/// arms, which report through the `--json` error envelope.
+/// `resolve_cwd()` always prints its plain-text message unconditionally,
+/// so it can't be reused as-is when `--json` is set. `Init`/`Config`
+/// don't take part in the `--json` envelope and keep calling
+/// `resolve_cwd()` directly.
 ///
-/// `command` is the real subcommand (`"synth"`/`"doctor"`), passed
-/// through to the non-`--json` branch's `resolve_cwd(command)` call
-/// unchanged. The `--json` branch below does NOT reuse that same value
-/// for the envelope: `resolve_cwd()` failing is one of the
-/// command-agnostic paths, so the envelope's own `"command"`
-/// field stays the literal string
-/// `"konductor"`, matching the same bare `konductor: <message>`
-/// prefix for the same path -- NOT `command`, which is reserved for
-/// telemetry attribution here (see below). This is exactly why this
-/// branch calls `crate::cli::telemetry::report_cli_error` directly
-/// instead of going through `report.rs::report_error`: that shared
-/// helper's single `command` parameter drives BOTH the envelope's
-/// `"command"` field AND the telemetry event's attribution, and here
-/// those two deliberately diverge (`"konductor"` vs. the real
-/// subcommand) -- a divergence `report_error` has no way to express.
+/// The `--json` branch's envelope uses the literal `"command"` value
+/// `"konductor"` (matching the bare `konductor: <message>` prefix for
+/// this command-agnostic path), while telemetry attribution still uses
+/// the real `command` -- a divergence `report.rs::report_error`'s single
+/// `command` parameter can't express, which is why this calls
+/// `crate::cli::telemetry::report_cli_error` directly instead.
 fn resolve_cwd_reporting_json(command: &str, json: bool, color: ColorMode) -> Result<PathBuf, u8> {
     if !json {
         return resolve_cwd(command, color);
@@ -295,14 +259,9 @@ fn resolve_cwd_reporting_json(command: &str, json: bool, color: ColorMode) -> Re
 /// `konductor init [--preset ...] [--force]`: scaffolds `.konductor/` in
 /// `target_dir` (the current working directory in real use; passed
 /// explicitly rather than resolved internally so tests can point at a
-/// scratch directory without mutating the process-global cwd via
-/// `std::env::set_current_dir`, which is unsafe to do from parallel
-/// `cargo test` threads). `preset` is accepted and echoed for forward
-/// compatibility (a future milestone may vary the starter config by
-/// preset) but does not yet change the scaffolded output -- every preset
-/// produces the same starter `.konductor/config.yml` at this milestone,
-/// since cli/gate-config/config.yml does not yet define per-preset
-/// variants.
+/// scratch directory without mutating the process-global cwd). `preset`
+/// is accepted and echoed for forward compatibility but does not yet
+/// change the scaffolded output.
 ///
 /// Exit-code contract: any `InitError` is a USAGE ERROR (64), never exit
 /// code 2 -- see cli/init.rs's module docstring.
@@ -349,19 +308,16 @@ fn dispatch_init(
 /// defaults) via cli/config.rs. `target_dir` is passed explicitly for the
 /// same test-isolation reason as `dispatch_init` above.
 ///
-/// `Set` is handled FIRST, before any call to `load_config`: it writes
-/// the new value back to `.konductor/config.yml` atomically via
-/// `config::set_config_value`, which already performs its own internal
-/// load/merge/validate/write cycle. Gating `Set` behind a prior
-/// `load_config` call would reject `config set` outright on an existing
-/// config.yml that already has a validation error -- even when the
-/// value being set is exactly what would fix that error. `Get`/`List`
-/// have their own load path, so they still call `load_config` up front,
-/// preserving their existing pre-load-and-validate behavior.
+/// `Set` is handled first, before any call to `load_config`: it writes
+/// the new value back atomically via `config::set_config_value`, which
+/// performs its own internal load/merge/validate/write cycle. Gating
+/// `Set` behind a prior `load_config` call would reject `config set`
+/// outright on an existing config that already has a validation error,
+/// even when the value being set is exactly what would fix it. `Get`/
+/// `List` keep their own pre-load-and-validate path.
 ///
-/// Exit-code contract: a `ConfigError` (malformed/invalid config,
-/// unknown key, invalid value, or write failure) is a USAGE ERROR (64),
-/// never exit code 2 -- see cli/config.rs's module docstring.
+/// Exit-code contract: a `ConfigError` is a USAGE ERROR (64), never exit
+/// code 2 -- see cli/config.rs's module docstring.
 fn dispatch_config(target_dir: &std::path::Path, action: ConfigAction, color: ColorMode) -> u8 {
     if let ConfigAction::Set { key, value } = &action {
         return match config::set_config_value(target_dir, key, value) {
@@ -472,11 +428,8 @@ fn list_fields(config: &config::Config) -> Vec<(&'static str, String)> {
 }
 
 /// Remapped exit code for CLI usage errors, matching cli.rs's own
-/// `EXIT_USAGE_ERROR` constant. Duplicated here (rather than imported)
-/// because cli.rs's constant is private to that module; both must stay
-/// equal to 64 -- enforced by cli.rs's own
-/// `usage_error_exit_code_is_not_critical_gate` test plus this module's
-/// tests below exercising real 64-returning paths.
+/// `EXIT_USAGE_ERROR` constant. Duplicated here because cli.rs's
+/// constant is private to that module; both must stay equal to 64.
 const EXIT_USAGE_ERROR: u8 = 64;
 
 fn opt(value: &Option<String>) -> String {
@@ -488,19 +441,15 @@ fn opt(value: &Option<String>) -> String {
 
 /// Gates `Commands::Config` dispatch while the subcommand is temporarily
 /// hidden (see cli.rs's `#[command(hide = true)]` on `Commands::Config`).
-/// The underlying `dispatch_config`/`config`/`config_lock` logic is fully
-/// intact and unconditionally reachable in code -- this only decides
+/// The underlying dispatch logic is fully intact; this only decides
 /// whether a normal CLI invocation may reach it.
 ///
 /// `KONDUCTOR_ALLOW_CONFIG=1` is an internal-only escape hatch, not a
-/// documented user-facing flag (mirrors `trace.rs`'s own
-/// `KONDUCTOR_LOG=debug` precedent for an env-gated internal switch). It
-/// exists so `tests/config_set_concurrency.rs` -- which drives the real
-/// compiled binary as a subprocess specifically to reproduce a
-/// cross-process lock race no in-process test can rule out (see that
-/// file's module docstring) -- keeps exercising the real dispatch path
-/// end to end while `config` is withheld from ordinary end users. Any
-/// other value, or the variable being unset, keeps `config` gated.
+/// documented user-facing flag. It lets
+/// `tests/config_set_concurrency.rs` -- which drives the real compiled
+/// binary as a subprocess to reproduce a cross-process lock race --
+/// keep exercising the real dispatch path while `config` is withheld
+/// from ordinary end users. Any other value, or unset, keeps it gated.
 fn config_dispatch_allowed() -> bool {
     config_dispatch_allowed_for(std::env::var("KONDUCTOR_ALLOW_CONFIG").ok())
 }
@@ -545,15 +494,11 @@ mod tests {
     use std::fs;
     use std::path::PathBuf;
 
-    // Some `config get`/`config list` tests below exercise `dispatch_config`
-    // end to end, which calls `config::load_config` internally -- that
-    // function reads the real process-global `HOME` env var
-    // (`config::dirs_home_dir`). Reading `HOME` concurrently with another
-    // test's `set_var`/`remove_var` (install.rs/uninstall.rs/update.rs/
-    // logging.rs's `HomeGuard`-holding tests) is a data race under
-    // `cargo test`'s default parallelism -- see `test_home_lock`'s own
-    // doc comment. Every test in this module that reaches `load_config`
-    // (directly or via `dispatch_config`) must take this crate-wide lock.
+    // `dispatch_config` reaches `config::load_config`, which reads the
+    // real process-global `HOME` env var. Reading `HOME` concurrently
+    // with another test's set_var/remove_var is a data race under
+    // `cargo test`'s default parallelism, so every test here that
+    // reaches `load_config` must take this crate-wide lock.
     use crate::cli::test_home_lock::lock_home;
 
     fn scratch_cwd(name: &str) -> PathBuf {
@@ -568,19 +513,17 @@ mod tests {
         dir
     }
 
-    /// Guards this module's own duplicated `EXIT_USAGE_ERROR` constant
-    /// against silent drift from cli.rs's canonical value (64).
+    /// Guards this module's duplicated `EXIT_USAGE_ERROR` constant
+    /// against drifting from cli.rs's canonical value (64).
     #[test]
     fn exit_usage_error_constant_is_64() {
         assert_eq!(EXIT_USAGE_ERROR, 64);
     }
 
-    /// `resolve_cwd()` returns `Ok` with a real, existing directory under
-    /// normal conditions. Only the success path is covered: there is no
-    /// portable way to force `std::env::current_dir()` to fail from a
-    /// `cargo test` thread (a deleted-cwd trick works on some Unix
-    /// targets but is process-global state, unsafe to mutate from
-    /// parallel test threads, and not portable to Windows).
+    /// `resolve_cwd()` returns `Ok` with a real, existing directory
+    /// under normal conditions. There's no portable way to force
+    /// `current_dir()` to fail from a test thread, so only the success
+    /// path is covered.
     #[test]
     fn resolve_cwd_succeeds_with_an_existing_directory() {
         let result = resolve_cwd("synth", ColorMode::disabled());
@@ -593,8 +536,8 @@ mod tests {
 
     #[test]
     fn dispatch_init_then_config_list_round_trips() {
-        // `ConfigAction::List` reaches `config::load_config`, which reads
-        // the real $HOME -- see this module's `lock_home` import comment.
+        // ConfigAction::List reaches config::load_config, which reads
+        // the real $HOME -- see this module's lock_home import comment.
         let _lock = lock_home();
         let target = scratch_cwd("round-trip");
 
@@ -628,13 +571,10 @@ mod tests {
 
     #[test]
     fn dispatch_config_set_persists_value_and_succeeds() {
-        // `config set` moved from stub (always EXIT_USAGE_ERROR) to real
-        // behavior: a valid key/value must now succeed (exit 0) and the
-        // written value must round-trip through `config get`.
-        //
-        // The round-trip check below calls `config::load_config` directly,
-        // which reads the real $HOME -- see this module's `lock_home`
-        // import comment.
+        // config set moved from stub (always usage error) to real
+        // behavior: a valid key/value must succeed and round-trip
+        // through config get. The round-trip check calls load_config
+        // directly, which reads the real $HOME -- see lock_home above.
         let _lock = lock_home();
         let target = scratch_cwd("config-set-real");
 
@@ -708,15 +648,12 @@ mod tests {
 
     #[test]
     fn dispatch_config_set_fixes_the_broken_field_on_an_already_invalid_config() {
-        // A `.konductor/config.yml` that already fails validation (a
-        // valid `default_severity` but an OUT-OF-ENUM
-        // `fail_on_severity_at_or_above`) must still allow `config set`
-        // to fix the broken field, rather than being rejected by a
-        // whole-config re-validation before the fix is even applied.
-        //
-        // The post-fix check below calls `config::load_config` directly,
-        // which reads the real $HOME -- see this module's `lock_home`
-        // import comment.
+        // A config.yml that already fails validation (valid
+        // default_severity, out-of-enum fail_on_severity_at_or_above)
+        // must still allow config set to fix the broken field, rather
+        // than being rejected by a whole-config re-validation first.
+        // The post-fix check calls load_config directly, reading the
+        // real $HOME -- see lock_home above.
         let _lock = lock_home();
         let target = scratch_cwd("config-set-fixes-broken-field");
 
@@ -733,8 +670,6 @@ mod tests {
         )
         .unwrap();
 
-        // `config set` on the actually-broken field, with a valid
-        // value, must now SUCCEED (exit 0).
         let set_code = dispatch_config(
             &target,
             ConfigAction::Set {
@@ -763,17 +698,10 @@ mod tests {
 
     #[test]
     fn dispatch_config_get_and_list_still_reject_the_same_broken_config() {
-        // Companion to the test above: confirms the `Set`-first
-        // reordering did NOT accidentally weaken `Get`/`List`'s
-        // pre-load-and-validate behavior. Against the SAME broken fixture
-        // (valid `default_severity`, invalid
-        // `fail_on_severity_at_or_above`), `config get` and `config
-        // list` must still call `load_config` up front and correctly
-        // fail with EXIT_USAGE_ERROR (64) -- never exit 0, and never the
-        // reserved exit code 2.
-        //
-        // Both `Get` and `List` reach `config::load_config`, which reads
-        // the real $HOME -- see this module's `lock_home` import comment.
+        // Companion to the test above: confirms the Set-first reordering
+        // didn't weaken Get/List's pre-load-and-validate behavior. Both
+        // reach config::load_config, which reads the real $HOME -- see
+        // lock_home above.
         let _lock = lock_home();
         let target = scratch_cwd("config-get-list-reject-broken");
 
@@ -821,11 +749,10 @@ mod tests {
 
     #[test]
     fn dispatch_config_set_unknown_key_does_not_write_config() {
-        // `config set` on an unknown key must fail BEFORE touching disk
-        // at all -- config.rs's `set_config_value` checks
-        // `_CONFIG_FIELDS` membership up front, prior to any read/write.
-        // Regression guard: an unknown-key rejection must never leave a
-        // `.konductor/config.yml` behind that wasn't already there.
+        // config set on an unknown key must fail before touching disk;
+        // config.rs's set_config_value checks field membership up
+        // front. A rejection must never leave a config.yml behind that
+        // wasn't already there.
         let target = scratch_cwd("config-set-unknown-key-no-write");
 
         assert_eq!(
@@ -858,11 +785,9 @@ mod tests {
 
     #[test]
     fn dispatch_config_set_invalid_value_does_not_write_config() {
-        // Same guard as the unknown-key case above, but for a
-        // known-key/wrong-type value: `apply_field`'s per-field
-        // validation (and the subsequent re-`validate()` of the merged
-        // config) must reject the write before `write_atomic` is ever
-        // called.
+        // Same guard as the unknown-key case above, for a known-key
+        // but wrong-type value: validation must reject the write
+        // before write_atomic is ever called.
         let target = scratch_cwd("config-set-invalid-value-no-write");
 
         assert_eq!(
@@ -895,12 +820,9 @@ mod tests {
 
     #[test]
     fn dispatch_config_set_leaves_no_leftover_tmp_file() {
-        // Verifies `config set`'s atomic-write mechanics end-to-end:
-        // after a successful `set`, no `.tmp-`-suffixed file
-        // (atomic_write.rs's temp-file naming convention) remains in
-        // `.konductor/`. Complements atomic_write.rs's own
-        // `leaves_no_temp_file_behind_on_success` unit test by proving
-        // the guarantee holds through the full `config set` call path.
+        // After a successful set, no .tmp- suffixed file should remain
+        // in .konductor/ -- proves atomic_write's guarantee holds
+        // through the full config set call path.
         let target = scratch_cwd("config-set-no-leftover-tmp");
 
         assert_eq!(
@@ -934,11 +856,8 @@ mod tests {
 
     #[test]
     fn get_field_and_list_fields_match_config_fields() {
-        // Guards against get_field/list_fields drifting from
-        // config::_CONFIG_FIELDS: both hand-type the same 6 field names
-        // independently of that list, so a future field addition missed
-        // here would otherwise only surface as a runtime `config get`/
-        // `config list` gap, not a build/test failure.
+        // Guards against drifting from config::_CONFIG_FIELDS: both
+        // hand-type the same field names independently of that list.
         let sample = config::Config {
             version: 1,
             severities_source: String::new(),
@@ -973,13 +892,9 @@ mod tests {
 
     #[test]
     fn config_get_set_list_help_text_no_longer_says_stub() {
-        // `config get`/`set`/`list` used to be documented (and behave)
-        // as stubs; now that all three perform real work, their clap
-        // doc comments (which become `--help` text) must not claim
-        // otherwise. Greps the ACTUAL rendered help text via clap's
-        // `--help` output, so a doc-only edit that reintroduces stale
-        // "(stub)"/"not yet supported" wording is caught the same way
-        // a user reading `--help` would notice it.
+        // config get/set/list used to be documented as stubs; now that
+        // all three do real work, their --help text must not claim
+        // otherwise. Greps the real rendered help output.
         for args in [
             [
                 "konductor",
@@ -1019,15 +934,9 @@ mod tests {
 
     // ── `install --link-bin` end-to-end wiring ──────────────────────────
     //
-    // These exercise the FULL `dispatch(Commands::Install { link_bin, .. })`
-    // path (not just `install::bin_link`'s own unit tests, which inject a
-    // home directory and exe path directly) -- confirming the real `$PATH`
-    // symlink lands at `$HOME/.local/bin/konductor` for the real process
-    // `$HOME`, and that `dispatch(Commands::Uninstall { .. })` removes it
-    // again. Mirrors install.rs's/uninstall.rs's own per-module `HomeGuard`
-    // pattern (mutating the real `HOME` env var under the crate-wide
-    // `test_home_lock`, restored on `Drop`) rather than introducing a new
-    // one.
+    // Exercises the full `dispatch(Commands::Install { link_bin, .. })`
+    // path, confirming the real $PATH symlink lands at
+    // $HOME/.local/bin/konductor and that uninstall removes it again.
 
     use crate::cli::install::manifest;
     use std::sync::MutexGuard;
@@ -1045,8 +954,7 @@ mod tests {
             let original_home = std::env::var_os("HOME");
             // SAFETY: held for this guard's entire lifetime under the
             // crate-wide HOME_ENV_LOCK, so no other HOME-mutating test
-            // anywhere in this crate observes an interleaved value;
-            // restored on Drop before the lock releases.
+            // observes an interleaved value; restored on Drop.
             unsafe {
                 std::env::set_var("HOME", &scratch);
             }
@@ -1077,10 +985,9 @@ mod tests {
         fs::write(dir.join(format!("{name}.json")), b"{}\n").unwrap();
     }
 
-    /// A fresh `install --link-bin` (defaulting to `$HOME`, no
-    /// `--target`) must both succeed the underlying install AND create
-    /// a real symlink at `$HOME/.local/bin/konductor` pointing at the
-    /// currently-running test binary's own `current_exe()`.
+    /// A fresh `install --link-bin` must both succeed and create a real
+    /// symlink at `$HOME/.local/bin/konductor` pointing at the running
+    /// test binary.
     #[test]
     fn dispatch_install_with_link_bin_creates_the_path_symlink() {
         let home = HomeGuard::new("link-bin-fresh-home");
@@ -1119,8 +1026,7 @@ mod tests {
     }
 
     /// The complement: a plain `install` with no `--link-bin` must leave
-    /// `$HOME/.local/bin/konductor` untouched -- confirms the flag is
-    /// genuinely opt-in, not a silent default-on behavior change.
+    /// `$HOME/.local/bin/konductor` untouched.
     #[test]
     fn dispatch_install_without_link_bin_creates_no_symlink() {
         let home = HomeGuard::new("link-bin-absent-home");
@@ -1154,9 +1060,7 @@ mod tests {
     }
 
     /// `konductor uninstall` on a target that ran `install --link-bin`
-    /// must remove the tracked symlink as part of removing that target
-    /// -- the corresponding-removal half of `install::bin_link`'s module
-    /// docstring.
+    /// must remove the tracked symlink too.
     #[test]
     fn dispatch_uninstall_removes_the_link_bin_symlink_it_tracked() {
         let home = HomeGuard::new("link-bin-uninstall-home");

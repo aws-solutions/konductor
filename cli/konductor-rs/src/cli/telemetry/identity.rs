@@ -15,38 +15,36 @@
 // entry. The loser discards its own temp file and reads the winner's
 // published file instead of generating a second UUID.
 //
-// ── Recovery from a malformed destination ─────────────────────────────────
+// ── Recovery from a malformed destination ─────────────────────────────
 // `AlreadyExists` only means a directory entry is present, not that it's
 // well-formed. A losing caller that reads a malformed destination
 // removes it (best-effort) and retries its own `hard_link` exactly once,
 // republishing its own already-generated UUID. One retry is the cap.
 //
-// ── Read policy ────────────────────────────────────────────────────────────
+// ── Read policy ──────────────────────────────────────────────────────
 // Missing, unreadable, malformed, or a UUID failing `^[a-f0-9]{64}$` all
 // read back as "absent" -- never an error at the call-site level.
 //
 // A `schema_version` NEWER than this binary's own is NOT "absent" and
 // must never be treated as malformed: an older binary reading a file a
 // newer binary already published is reading a real, live identity it
-// just can't fully parse -- not a missing or corrupt file. Collapsing
-// that case into "absent" previously fed straight into `ensure_identity`'s
+// just can't fully parse, not a missing or corrupt file. Collapsing
+// that case into "absent" previously fed into `ensure_identity`'s
 // race-publish path, which deletes-and-republishes on a destination it
-// believes is malformed -- silently clobbering a real device identity
-// during any rollout where old and new binaries run concurrently against
-// a shared install. `read_identity` returns `ReadOutcome::NewerSchema`
-// for this case so callers can special-case it: read the `UUID` back
-// read-only if it still parses, and never touch the file on disk.
+// believes is malformed, silently clobbering a real device identity
+// during any rollout where old and new binaries run concurrently.
+// `read_identity` returns `ReadOutcome::NewerSchema` for this case so
+// callers can special-case it: read the `UUID` back read-only if it
+// still parses, and never touch the file on disk.
 //
 // ── Dead in production, alive in tests ────────────────────────────────
 // No install path writes this file anymore (the per-target consent
 // signal is `install_info::read_install_info`); the write mechanics
-// above have no production caller left. `identity_path` itself is the
+// above have no production caller left. `identity_path` is the
 // exception -- `uninstall` still calls it to clean up a
 // `telemetry-id.json` left behind by an install that predates this
-// file's retirement. The rest stays as test-only infrastructure:
-// `uninstall`'s own tests need a way to simulate that same pre-
-// retirement machine. One module-level allow, not a function-by-
-// function scatter of the same justification.
+// file's retirement. The rest stays as test-only infrastructure that
+// simulates a pre-retirement machine.
 #![allow(dead_code)]
 
 use std::path::{Path, PathBuf};
@@ -64,13 +62,10 @@ pub(crate) const SCHEMA_VERSION: u64 = 1;
 /// The nil-UUID sentinel: used for a single event when a real identity
 /// exists on disk but this binary cannot safely extract its `UUID` (a
 /// `NewerSchema` read whose `UUID` field didn't parse as a well-shaped
-/// string). Never persisted -- this value is only ever attached to the
-/// in-memory record returned for the current call; the file on disk is
-/// left untouched.
+/// string). Never persisted.
 ///
-/// Re-exported from the shared `konductor_telemetry` crate --
-/// `skill-lookup-core` depends on the same constant, so the two can
-/// never drift.
+/// Re-exported from the shared `konductor_telemetry` crate so
+/// `skill-lookup-core` can never drift from this value.
 pub(crate) use konductor_telemetry::NIL_UUID_SENTINEL;
 
 /// File name within `KONDUCTOR_DIR_NAME`.
@@ -116,8 +111,8 @@ pub(crate) fn identity_path(target_dir: &Path) -> PathBuf {
 
 /// Generates a fresh `UUID`: `sha256_hex()` over
 /// `SystemTime::now()` + `process::id()` + `target_dir`. Mixing in a
-/// moment of entropy (now, this process's own pid) plus the target path
-/// is what a stateless re-derivation could never reconstruct later.
+/// moment of entropy plus the target path is what a stateless
+/// re-derivation could never reconstruct later.
 fn generate_uuid(target_dir: &Path) -> String {
     let nanos = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -156,8 +151,7 @@ pub(crate) enum ReadOutcome {
 /// result per `ReadOutcome`. This is the one place that decides
 /// "malformed/absent" vs "newer schema I can't fully parse" -- every
 /// other read in this module goes through here (directly or via
-/// `read_identity`) so the distinction can never be reintroduced by a
-/// caller re-deriving it ad hoc.
+/// `read_identity`).
 ///
 /// Only a file that fails to parse as a JSON object at all, has NO
 /// `schema_version` field, or has a `UUID` failing
@@ -175,17 +169,16 @@ fn read_identity_raw(target_dir: &Path) -> ReadOutcome {
         Err(_) => return ReadOutcome::Absent,
     };
     let Some(schema_version) = value.get("schema_version").and_then(|v| v.as_u64()) else {
-        // No `schema_version` field at all (or not a valid non-negative
-        // integer) -- genuinely malformed, not a recognized-but-newer
-        // schema.
+        // No `schema_version` field at all, or not a valid non-negative
+        // integer: genuinely malformed, not a recognized-but-newer schema.
         return ReadOutcome::Absent;
     };
 
     if schema_version > SCHEMA_VERSION {
         // A real identity this binary's schema predates. Try to pull
-        // the UUID out read-only; if it's not a well-shaped string,
-        // the caller falls back to the nil-UUID sentinel for its own
-        // event -- but the file itself is never touched either way.
+        // the UUID out read-only; if it's not well-shaped, the caller
+        // falls back to the nil-UUID sentinel, but the file itself is
+        // never touched either way.
         let uuid = value
             .get("UUID")
             .and_then(|v| v.as_str())
@@ -208,20 +201,15 @@ fn read_identity_raw(target_dir: &Path) -> ReadOutcome {
 }
 
 /// Reads `<target_dir>/.konductor/telemetry-id.json`. Returns `None` for
-/// every "absent" case: the file doesn't exist, isn't readable, isn't
-/// valid JSON, doesn't match the expected shape, or has a `UUID` failing
-/// `^[a-f0-9]{64}$` -- never an `Err` (missing/malformed both mean
-/// "treat as absent").
+/// every "absent" case -- never an `Err`.
 ///
 /// A recognized-but-newer `schema_version` is NOT "absent" (see this
-/// module's docstring) and is intentionally NOT surfaced by this
-/// function -- callers on the write/publish path that need to
-/// distinguish it MUST use `read_identity_raw` directly instead of
-/// this convenience wrapper, so the distinction can't be silently lost
-/// by defaulting back to this function.
+/// module's docstring) and is intentionally not surfaced here --
+/// callers on the write/publish path needing that distinction must use
+/// `read_identity_raw` directly.
 ///
 /// No production caller remains; kept only as test infrastructure that
-/// verifies `ensure_identity`'s own write path actually persists a
+/// verifies `ensure_identity`'s write path actually persists a
 /// well-formed record (see `assert_identity_persisted` below).
 pub(crate) fn read_identity(target_dir: &Path) -> Option<IdentityRecord> {
     match read_identity_raw(target_dir) {
@@ -231,12 +219,10 @@ pub(crate) fn read_identity(target_dir: &Path) -> Option<IdentityRecord> {
 }
 
 /// PID alone repeats across the two calls a single process makes in a
-/// race (both threads share one PID), so a monotonic counter is
-/// appended per call. An `AtomicU64` counter, not a nanosecond
-/// timestamp (`atomic_write.rs`'s `unique_suffix` collides under
-/// thread scheduling for exactly this reason): each `fetch_add` is a
-/// single atomic op, so two threads calling this in the same instant
-/// still get distinct values.
+/// race (threads share one PID), so a monotonic counter is appended
+/// per call -- an `AtomicU64`, not a nanosecond timestamp
+/// (`atomic_write.rs`'s `unique_suffix` collides under thread
+/// scheduling for exactly this reason).
 static TEMP_NAME_COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 fn temp_path(target_dir: &Path) -> PathBuf {
@@ -248,14 +234,12 @@ fn temp_path(target_dir: &Path) -> PathBuf {
     ))
 }
 
-/// Removes the temp file at `path` when dropped. Exists so every
+/// Removes the temp file at `path` when dropped, so every
 /// `ensure_identity`/`publish_loser` return path cleans up its own
-/// temp file by construction, rather than each branch needing its own
-/// `remove_file` call -- including the winning `hard_link` branch:
-/// the temp file's inode is also linked at `final_path` by then, so
-/// removing the temp NAME leaves the final path's data untouched (two
-/// links, one inode; dropping one link never deletes the data while
-/// the other remains).
+/// temp file by construction. Including on the winning `hard_link`
+/// branch: the temp file's inode is also linked at `final_path` by
+/// then, so removing the temp NAME leaves the final path's data
+/// untouched.
 struct TempFileGuard<'a> {
     path: &'a Path,
 }
@@ -275,32 +259,22 @@ impl Drop for TempFileGuard<'_> {
 /// Writes `record` to `tmp_path` with explicit `0o644` permissions.
 ///
 /// The temp name includes a per-call counter (see `temp_path` above),
-/// so nothing else in this process ever targets the same path while
-/// this call is in flight -- unlike the old PID-only scheme, a
-/// pre-existing entry here is never a live sibling call's own temp
-/// file. It can only be a pre-planted symlink (a local attacker
-/// predicting this path) or debris from an unrelated prior process
-/// that reused this exact pid+counter pair. Removing it best-effort
-/// before `create_new` (`remove_file` doesn't follow a symlink) covers
-/// both without weakening `create_new`'s own `O_EXCL` guarantee for
-/// concurrent, legitimate callers, since no such caller ever computes
-/// this same name. `O_NOFOLLOW` is defense in depth on top, matching
-/// `report.rs`'s `write_verified`.
+/// so a pre-existing entry here can only be a pre-planted symlink (a
+/// local attacker predicting this path) or debris from an unrelated
+/// prior process, never a live sibling call's own temp file.
+/// Removing it best-effort before `create_new` (`remove_file` doesn't
+/// follow a symlink) covers both without weakening `create_new`'s own
+/// `O_EXCL` guarantee for concurrent, legitimate callers.
+/// `O_NOFOLLOW` is defense in depth on top, matching `report.rs`'s
+/// `write_verified`.
 ///
-/// `.mode(FILE_MODE)` is passed to the `open(2)` call itself, so the
-/// file is never created wider than `0o644` at any point -- without
+/// `.mode(FILE_MODE)` is passed to the `open(2)` call itself: without
 /// it, `OpenOptions`'s default mode (`0o666` ANDed with the process
 /// umask) could leave the file briefly group/world-writable under a
 /// permissive umask, between creation and the `set_permissions` call
-/// that follows. `open(2)`'s own mode is only ever narrowed by umask,
-/// never widened, so this can only make the creation-time mode equal
-/// to or stricter than `0o644`. The subsequent `set_permissions` call
-/// is kept as a defensive, umask-independent normalization step: it
-/// guarantees the FINAL on-disk mode is deterministically `0o644`
-/// regardless of the process umask (matching `FILE_MODE`'s own doc
-/// comment and `file_is_written_with_0o644_permissions`'s pinned
-/// expectation), even on a strict umask that would otherwise leave the
-/// creation-time mode narrower than `0o644`.
+/// that follows. The subsequent `set_permissions` call guarantees the
+/// FINAL on-disk mode is deterministically `0o644` regardless of
+/// umask.
 #[cfg(unix)]
 fn write_temp(tmp_path: &Path, record: &IdentityRecord) -> std::io::Result<()> {
     use std::io::Write as _;
@@ -322,13 +296,10 @@ fn write_temp(tmp_path: &Path, record: &IdentityRecord) -> std::io::Result<()> {
 }
 
 /// Non-Unix fallback: no `O_NOFOLLOW`/`create_new`/explicit-mode
-/// machinery is available via `std::fs` alone on these targets, so this
-/// is a plain best-effort write -- same trade-off `report.rs`'s own
-/// `write_verified` non-Unix fallback makes (see that function's own
-/// `#[cfg(not(unix))]` arm) rather than pulling in a third-party crate
-/// for parity this binary does not otherwise need. The symlink/TOCTOU
-/// hardening above is a Unix-specific concern this fallback does not
-/// attempt to reproduce.
+/// machinery is available via `std::fs` alone on these targets, so
+/// this is a plain best-effort write (same trade-off `report.rs`'s
+/// `write_verified` non-Unix fallback makes) rather than pulling in a
+/// third-party crate for parity this binary does not otherwise need.
 #[cfg(not(unix))]
 fn write_temp(tmp_path: &Path, record: &IdentityRecord) -> std::io::Result<()> {
     let _ = std::fs::remove_file(tmp_path);
@@ -338,15 +309,11 @@ fn write_temp(tmp_path: &Path, record: &IdentityRecord) -> std::io::Result<()> {
     std::fs::write(tmp_path, rendered)
 }
 
-/// `O_NOFOLLOW` -- NOT a single numeric value shared across
-/// Linux/BSD/macOS: on Linux/Android/illumos/Solaris it is `0o400_000`
-/// (`0x20000`); on macOS and the *BSDs it is `0o400` (`0x100`).
-/// cfg-gated per platform rather than pulling in a `libc` dependency
-/// for a single flag (matching `report.rs`'s own local constant of the
-/// same name and this crate's established convention of avoiding
-/// `libc` for single-syscall/single-flag needs -- see `report.rs`'s
-/// own `current_uid` doc comment). Unix-only, matching `write_temp`'s
-/// own `#[cfg(unix)]` arm above, which is this constant's only user.
+/// `O_NOFOLLOW` -- NOT a single numeric value across platforms: on
+/// Linux/Android/illumos/Solaris it is `0o400_000` (`0x20000`); on
+/// macOS and the *BSDs it is `0o400` (`0x100`). cfg-gated per platform
+/// rather than pulling in a `libc` dependency for a single flag
+/// (matching `report.rs`'s own local constant of the same name).
 #[cfg(any(
     target_os = "linux",
     target_os = "android",
@@ -366,26 +333,21 @@ const O_NOFOLLOW: i32 = 0o400_000;
 const O_NOFOLLOW: i32 = 0o400;
 
 /// Ensures the identity record exists at `target_dir`, creating one if
-/// absent. Idempotent: a second call against
-/// an already-populated target reads and reuses the existing `UUID`
-/// rather than generating a new one. Returns the record now on disk
-/// (either freshly written, or another writer's already-published one).
+/// absent. Idempotent: a second call reads and reuses the existing
+/// `UUID` rather than generating a new one. Returns the record now on
+/// disk, either freshly written or another writer's already-published
+/// one.
 ///
-/// Concurrency: two callers racing this function against the same
-/// `target_dir` both generate a `UUID` and both attempt to `hard_link`
-/// their own temp file to the same final path. Exactly one `hard_link`
-/// succeeds; the loser reads the winner's file and discards its own
-/// generated `UUID`, so both callers end up returning the SAME record.
+/// Concurrency: two callers racing this function both generate a
+/// `UUID` and attempt to `hard_link` to the same final path. Exactly
+/// one succeeds; the loser reads the winner's file and discards its
+/// own generated `UUID`, so both end up returning the SAME record.
 ///
-/// Schema skew: if a `NewerSchema` identity is already on disk (an
-/// older binary running against an install a newer binary already
-/// touched), this function skips the entire write/publish attempt --
-/// it never generates a UUID, never writes a temp file, and never
-/// touches the existing file. It returns the newer file's `UUID`
-/// read-only if that value was extractable, or a freshly-generated,
-/// unpersisted record otherwise (the same "absent" fallback shape
-/// `read_identity` callers already get elsewhere, just never written
-/// to disk here).
+/// Schema skew: if a `NewerSchema` identity is already on disk, this
+/// function skips the write/publish attempt entirely -- it never
+/// generates a UUID or touches the existing file. It returns the
+/// newer file's `UUID` read-only if extractable, or an unpersisted
+/// record carrying `NIL_UUID_SENTINEL` otherwise.
 pub(crate) fn ensure_identity(target_dir: &Path, harness: &str) -> IdentityRecord {
     match read_identity_raw(target_dir) {
         ReadOutcome::Ok(existing) => return existing,
@@ -406,10 +368,7 @@ pub(crate) fn ensure_identity(target_dir: &Path, harness: &str) -> IdentityRecor
     let dir = target_dir.join(KONDUCTOR_DIR_NAME);
     if std::fs::create_dir_all(&dir).is_err() {
         // Cannot even create the directory -- fall back to a fresh,
-        // unpersisted record rather than panicking. A caller in this
-        // state has no on-disk identity to read back later either, so
-        // this is the same "absent" state `read_identity` would report,
-        // just surfaced immediately instead of on a later read.
+        // unpersisted record rather than panicking.
         return IdentityRecord::new(generate_uuid(target_dir), harness);
     }
 
@@ -425,10 +384,9 @@ pub(crate) fn ensure_identity(target_dir: &Path, harness: &str) -> IdentityRecor
 
     match std::fs::hard_link(&tmp, &final_path) {
         Ok(()) => {
-            // Winner: dropping `tmp_guard` at the end of this call
-            // removes the temp NAME only. The underlying inode now
-            // has two names; removing one leaves `final_path` (and
-            // its data) untouched.
+            // Winner: dropping `_tmp_guard` removes the temp NAME only.
+            // The inode now has two names; removing one leaves
+            // `final_path` untouched.
             record
         }
         Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists => {
@@ -436,34 +394,23 @@ pub(crate) fn ensure_identity(target_dir: &Path, harness: &str) -> IdentityRecor
         }
         Err(_) => {
             // Some other I/O error (e.g. permissions). Fall back to
-            // the freshly-generated, unpersisted record -- consistent
-            // with the "cannot create directory" fallback above. The
-            // guard cleans up the temp file on the way out.
+            // the freshly-generated, unpersisted record.
             record
         }
     }
 }
 
 /// Handles the losing side of a `hard_link` race: read the winner's
-/// file; if malformed, remove it and retry the
-/// `hard_link` exactly once (republishing this caller's own already-
-/// generated `UUID` from its still-intact temp file); if that retry also
-/// loses, read once more and either use that value or fall back to the
-/// nil-UUID sentinel path (by returning `own_record` unpersisted, which
-/// the report module's identity cache treats as "no identity" the same
-/// way a missing file would be).
+/// file; if malformed, remove it and retry the `hard_link` exactly
+/// once (republishing this caller's already-generated `UUID`); if
+/// that retry also loses, read once more and either use that value or
+/// return `own_record` unpersisted.
 ///
 /// A `NewerSchema` destination is NOT "malformed" -- it's a real
-/// identity a newer binary already published, mid-write or otherwise.
-/// This function never deletes it: it discards its own temp file and
-/// returns the newer file's UUID read-only (or the nil-UUID sentinel
-/// for this event only, if the UUID itself wasn't extractable),
-/// leaving the on-disk file exactly as it was.
-///
-/// `tmp`'s `TempFileGuard` is constructed once here and stays armed
-/// across the whole call, including the one retry: every return path
-/// removes `tmp` on the way out via that guard's drop, without needing
-/// its own `remove_file` call.
+/// identity a newer binary already published. This function never
+/// deletes it: it discards its own temp file and returns the newer
+/// file's UUID read-only (or the nil-UUID sentinel if unextractable),
+/// leaving the on-disk file untouched.
 fn publish_loser(
     target_dir: &Path,
     tmp: &Path,
@@ -488,10 +435,9 @@ fn publish_loser(
         Ok(()) => own_record.clone(),
         Err(_) => {
             // A second writer won in the interim, or another error.
-            // Read once more; if still malformed, proceed unattributed
-            // -- one retry is the cap, never an unbounded loop. A
-            // NewerSchema result here is treated the same as the first
-            // check above: read-only, never re-deleted.
+            // Read once more; one retry is the cap, never an
+            // unbounded loop. A NewerSchema result here is treated
+            // the same as above: read-only, never re-deleted.
             match read_identity_raw(target_dir) {
                 ReadOutcome::Ok(winner) => winner,
                 ReadOutcome::NewerSchema { uuid } => {
@@ -511,11 +457,8 @@ mod tests {
 
     /// Confirms the identity record at `dir` actually persisted and
     /// returns it. `ensure_identity` fails closed to an unpersisted,
-    /// in-memory record on a write failure (same UUID it generated,
-    /// never written) rather than a sentinel, so its return value
-    /// alone can't tell a real mint apart from one that never reached
-    /// disk. Panics naming the write failure -- never lets a caller
-    /// assert on a record that isn't really there.
+    /// in-memory record on a write failure, so its return value alone
+    /// can't tell a real mint apart from one that never reached disk.
     fn assert_identity_persisted(dir: &Path) -> IdentityRecord {
         read_identity(dir).unwrap_or_else(|| {
             panic!(
@@ -555,13 +498,6 @@ mod tests {
     fn second_ensure_reuses_existing_uuid() {
         let dir = scratch_dir("reuse");
         let first = ensure_identity(&dir, "kiro-cli");
-
-        // Precondition: on a write failure, `ensure_identity` returns
-        // its own freshly-generated UUID unpersisted, so a second call
-        // would generate ANOTHER fresh UUID rather than reusing
-        // anything -- the assert_eq below would already fail loudly
-        // in that case, but without naming the write failure as the
-        // cause.
         assert_identity_persisted(&dir);
 
         let second = ensure_identity(&dir, "kiro-cli");
@@ -623,10 +559,6 @@ mod tests {
 
         let dir = scratch_dir("permissions");
         ensure_identity(&dir, "kiro-cli");
-
-        // Precondition: names a write failure instead of a bare
-        // `unwrap()` panic on the metadata call below, which would
-        // otherwise blame a missing file on this test's own logic.
         assert_identity_persisted(&dir);
 
         let mode = fs::metadata(identity_path(&dir))
@@ -638,13 +570,11 @@ mod tests {
         fs::remove_dir_all(&dir).ok();
     }
 
-    /// Symlink/TOCTOU regression: a symlink pre-placed at the exact
-    /// deterministic temp path (`telemetry-id.json.tmp-<pid>`) must
-    /// never be followed -- `write_temp`'s best-effort `remove_file`
-    /// removes the symlink itself (never its target) and `create_new`
-    /// then creates a genuine regular file in its place, so the write
-    /// lands in a fresh file, not through the symlink into whatever it
-    /// pointed at.
+    /// Symlink/TOCTOU regression: a symlink pre-placed at the
+    /// deterministic temp path must never be followed -- `write_temp`'s
+    /// best-effort `remove_file` removes the symlink itself (never its
+    /// target) and `create_new` then creates a genuine regular file in
+    /// its place.
     #[test]
     fn write_temp_never_writes_through_a_symlink_at_the_temp_path() {
         let dir = scratch_dir("symlink-temp-path");
@@ -680,21 +610,20 @@ mod tests {
     }
 
     /// Regression: a second `ensure_identity` call in the SAME process
-    /// against the SAME target, immediately after the first call was
-    /// forced onto the loser side of a `hard_link` race, must still
-    /// persist a record on THAT second call. `temp_path` is PID-
-    /// derived (pre-fix), so both calls compute the identical tmp
-    /// path; if the first call's own temp file were ever left behind,
-    /// the second call's `create_new` would collide with it and fail
-    /// closed.
+    /// against the SAME target, after the first was forced onto the
+    /// loser side of a `hard_link` race, must still persist a record.
+    /// `temp_path` is PID-derived (pre-fix), so both calls compute the
+    /// identical tmp path; if the first call's temp file were ever
+    /// left behind, the second call's `create_new` would collide and
+    /// fail closed.
     #[test]
     fn second_ensure_identity_call_after_a_loser_path_in_the_same_process_still_persists() {
         let dir = scratch_dir("second-call-after-loser");
         fs::create_dir_all(dir.join(KONDUCTOR_DIR_NAME)).unwrap();
 
-        // Pre-populate the final record directly so the first
-        // ensure_identity call below reads it back via
-        // ReadOutcome::Ok, matching the shape a genuine loser-path
+        // Pre-populate the final record directly so the first call
+        // below reads it back via ReadOutcome::Ok, matching the shape
+        // a genuine loser-path call would leave behind.me::Ok, matching the shape a genuine loser-path
         // call would leave behind.
         let winner = IdentityRecord::new(generate_uuid(&dir), "kiro-cli");
         let final_path = identity_path(&dir);
@@ -728,12 +657,9 @@ mod tests {
     /// one process, so without a per-call unique component, two
     /// concurrent callers collide on `create_new`.
     ///
-    /// This test exercises `temp_path` alone -- it does not call
-    /// `write_temp` or `ensure_identity`, so a regression in either's
-    /// exclusive-create or `O_NOFOLLOW` handling would not be caught
-    /// here. See
-    /// `concurrent_ensure_identity_calls_in_one_process_converge_on_one_persisted_record`
-    /// below for the end-to-end version of this same race.
+    /// Exercises `temp_path` alone, not `write_temp`/`ensure_identity`.
+    /// See `concurrent_ensure_identity_calls_in_one_process_converge_on_one_persisted_record`
+    /// below for the end-to-end version.
     #[test]
     fn concurrent_callers_in_one_process_never_pick_the_same_temp_name() {
         let dir = std::sync::Arc::new(scratch_dir("concurrent-same-process"));
@@ -830,11 +756,6 @@ mod tests {
     fn no_temp_file_left_behind_after_successful_publish() {
         let dir = scratch_dir("no-leftover");
         ensure_identity(&dir, "kiro-cli");
-
-        // Precondition: names a write failure instead of a bare
-        // `unwrap()` panic on the read_dir call below, which would
-        // otherwise blame a missing .konductor/ dir on leftover-temp
-        // logic rather than the write that never happened.
         assert_identity_persisted(&dir);
 
         let leftovers: Vec<_> = fs::read_dir(dir.join(KONDUCTOR_DIR_NAME))

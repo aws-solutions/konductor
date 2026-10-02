@@ -9,6 +9,7 @@
     "targetName",
     "sessionId",
     "parentSessionId",
+    "parentAgentName",
     "errorCode",
     "harness",
     "agentVersion",
@@ -35,7 +36,7 @@
         "null"
       ],
       "pattern": "^[a-f0-9]{64}$",
-      "description": "sha256_hex(UUID + the runtime's own session identifier). Present on agent_invocation/subagent_invocation events on harnesses that expose a session identifier (Claude Code); null on mcp_tool_call, cli_error, package_uninstalled, package_installed, and package_version_updated (no runtime session), and null on every event type for harnesses with no session identifier in their hook payload (Kiro CLI, confirmed absent)."
+      "description": "sha256_hex(UUID + the runtime's own session identifier). Present on agent_invocation/subagent_invocation events on harnesses that expose a session identifier (Claude Code, Kiro CLI v2 and v3); null on mcp_tool_call, cli_error, package_uninstalled, package_installed, and package_version_updated (no runtime session), and null on every event type for harnesses with no session identifier in their hook payload (Kiro CLI, confirmed absent)."
     },
     "parentSessionId": {
       "type": [
@@ -44,6 +45,13 @@
       ],
       "pattern": "^[a-f0-9]{64}$",
       "description": "Null unless a sub-agent event. Holds the same value as that event's own sessionId (the parent's sessionId, not its eventId) -- a sub-agent event's parentSessionId is the delegating session's own sessionId, computed the same way."
+    },
+    "parentAgentName": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The delegating agent's name on a subagent_invocation event, when the harness exposes it and it is a Konductor agent. Null on every other event, and when the delegating agent is unknown or is not a Konductor agent."
     },
     "errorCode": {
       "type": [
@@ -84,6 +92,7 @@
       "targetName": "orchestrator",
       "sessionId": "a5e1e982ee70061314417a1070f348e9cec20aa31ee256cb2f0c23ddafbb01b6",
       "parentSessionId": null,
+      "parentAgentName": null,
       "errorCode": null,
       "harness": null,
       "agentVersion": null,
@@ -95,6 +104,7 @@
       "targetName": "k-developer",
       "sessionId": "a5e1e982ee70061314417a1070f348e9cec20aa31ee256cb2f0c23ddafbb01b6",
       "parentSessionId": "a5e1e982ee70061314417a1070f348e9cec20aa31ee256cb2f0c23ddafbb01b6",
+      "parentAgentName": "konductor",
       "errorCode": null,
       "harness": null,
       "agentVersion": null,
@@ -106,6 +116,7 @@
       "targetName": "get_skill:code-review",
       "sessionId": null,
       "parentSessionId": null,
+      "parentAgentName": null,
       "errorCode": null,
       "harness": null,
       "agentVersion": null,
@@ -118,6 +129,7 @@
       "targetName": "install",
       "sessionId": null,
       "parentSessionId": null,
+      "parentAgentName": null,
       "errorCode": "init.create_dir_failed",
       "harness": "kiro-cli",
       "agentVersion": null,
@@ -129,6 +141,7 @@
       "targetName": "kiro-cli",
       "sessionId": null,
       "parentSessionId": null,
+      "parentAgentName": null,
       "errorCode": null,
       "harness": null,
       "agentVersion": null,
@@ -140,6 +153,7 @@
       "targetName": "kiro-cli",
       "sessionId": null,
       "parentSessionId": null,
+      "parentAgentName": null,
       "errorCode": null,
       "harness": null,
       "agentVersion": "0.1.0",
@@ -151,6 +165,7 @@
       "targetName": "kiro-cli",
       "sessionId": null,
       "parentSessionId": null,
+      "parentAgentName": null,
       "errorCode": null,
       "harness": null,
       "agentVersion": "0.2.0",

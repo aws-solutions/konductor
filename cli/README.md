@@ -226,7 +226,8 @@ via its own `KiroCliV3InstallStrategy`.
 
 Before a no-`--from` `install` writes anything, it compares the incoming release's
 content version against the target's currently-recorded `agent_version` (read from that
-target's existing `install-info.json`). A matching version skips the write entirely and
+target's existing `install-info.json`, which an install with `--no-telemetry` does not
+have, so it always writes). A matching version skips the write entirely and
 reports a distinct "already at version X, nothing to do" result — in both plain-text and
 `--json` output — rather than a plain success indistinguishable from a real write. A
 mismatched or unrecorded version proceeds with the write normally, with no
@@ -406,13 +407,13 @@ identical requests to a build with no token support at all, regardless of whethe
 
 On success, `install`'s summary (plain-text and `--json`) reports the installed
 content's own version alongside its usual counts — read back from
-`.konductor/install-info.json`'s `agent_version` field, which every install run writes
-from the synthed source's own `dist/VERSION` file. This is the same field for both
-install paths: a `--from <repo-root>` install reads it from that repo root's own
-`dist/`, and a no-`--from` install reads it from the fetched release's own `dist/`, so
-either path's summary names the actual version installed. It's `null`/omitted from the
-plain-text line only when no `VERSION` file was found under the source's `dist/` at
-all.
+`.konductor/install-info.json`'s `agent_version` field, which every install run without
+`--no-telemetry` writes from the synthed source's own `dist/VERSION` file. This is the
+same field for both install paths: a `--from <repo-root>` install reads it from that repo
+root's own `dist/`, and a no-`--from` install reads it from the fetched release's own
+`dist/`, so either path's summary names the actual version installed. It's
+`null`/omitted from the plain-text line when no `VERSION` file was found under the
+source's `dist/`, or when `--no-telemetry` left no `install-info.json` to read.
 
 Verify a `--target <dir>` install:
 

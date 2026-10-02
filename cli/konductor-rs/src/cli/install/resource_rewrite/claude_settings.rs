@@ -1,133 +1,82 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// install/resource_rewrite/claude_settings.rs — one-time mutation of a
-// Claude Code install target's shared `.claude/settings.json`: the
-// `permissions.allow` grant for the `konductor-skills` MCP server's
-// tools, and the telemetry hook wiring. Neither implements
-// `ResourceRewritePass` -- unlike the passes in `mod.rs`/`mcp_server`,
-// these run once per install run against a plain `target_dir: &Path`,
-// not once per agent against a parsed agent JSON `Value` plus
-// `RewriteContext`, and they merge into one shared file rather than
-// rewriting a per-agent one.
+// install/resource_rewrite/claude_settings.rs — merges Konductor's
+// entries into a Claude Code target's settings files: the
+// `permissions.allow` grant for the `konductor-skills` MCP server's tools
+// (in `.claude/settings.json`), and the telemetry hooks (in the file
+// `claude_hooks_settings_relative_path` picks). Also strips those hooks
+// for `--no-telemetry` and uninstall. None of this is a
+// `ResourceRewritePass`: it runs once per install run against
+// `target_dir`, merging into files the user also owns, not once per
+// agent JSON.
 
 use std::os::unix::fs::PermissionsExt;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use super::super::manifest::{ManifestFile, Provenance};
 use super::mcp_server::{MCP_SERVER_ALLOWED_TOOLS_GRANTS, MCP_SERVER_NAME};
 
-// ── V3/Claude Code permission grant (additive to the V2 pair above) ─────
+// ── V3/Claude Code permission grant ─────────────────────────────────────
 //
-// Kiro CLI V2 (above) grants access by writing `tools`/`allowedTools`
-// directly into each agent's own JSON file -- which, being manifest-
-// tracked as a whole file already, carries the grant's provenance for
-// free. Claude Code has no equivalent per-agent field at all: the
-// analogous grant lives in one shared, project-level settings file,
-// `<target_dir>/.claude/settings.json`'s `permissions.allow` array (see
-// <https://code.claude.com/docs/en/permissions#mcp>, and the real
-// `~/.claude/settings.json` / repo-local `.claude/settings.json`
-// examples this design was grounded in).
+// Kiro agents carry their `konductor-skills` grant in their own JSON
+// (`mcp_server.rs`). Claude Code has no per-agent field: the grant goes
+// in `<target_dir>/.claude/settings.json`'s `permissions.allow` (see
+// <https://code.claude.com/docs/en/permissions#mcp>), so it is applied
+// once per install run, not per agent.
 //
-// Because that file is shared rather than per-agent, this grant is
-// applied exactly ONCE per install run (`apply_claude_settings_grant`
-// below, called from `kiro_cli.rs`'s `install_agents`/
-// `install_from_local`), never once per skill-bearing agent -- unlike
-// the V2 side, which is naturally per-agent. The caller gates the call
-// on two conditions mirroring the V2 grant's own scope: `detect_runtimes`
-// finding a `.claude` marker at the target, AND at least one agent this
-// run actually having received the V2 `mcpServers` injection (checked
-// by the caller via `MCP_SERVER_NAME` above), so this can never fire on
-// a run where V2 injected nothing. The caller also constructs a real
-// `ManifestFile` entry for the written settings.json, classified with
-// `manifest::classify_provenance` against the file's state BEFORE this
-// grant runs -- so the mutation is always accounted for in
-// `.konductor/manifest`, visible to `konductor doctor`, and correctly
-// reflected even if a later agent in the same install run fails.
-// Deliberately NOT solved by that manifest entry: granular "remove
-// exactly these grant strings on uninstall" support. There is no
-// existing manifest concept for partial ownership of a shared file's
-// content to build that on, and a foreign-classified entry is correctly
-// left alone by `konductor uninstall` regardless (matching
-// `install_skills`'s own foreign-file-preservation philosophy elsewhere
-// in this codebase -- uninstall must never wholesale-delete a shared
-// file that may carry unrelated hand-authored content). Inventing that
-// mechanism is out of scope here.
+// `apply_claude_settings_grant_and_hooks` applies it for the Kiro V2
+// (`phases.rs`'s `AgentInstallPhase`) and V3 (`kiro_cli_v3.rs`) installs,
+// both gated on at least one agent receiving the `mcpServers` injection
+// this run and `detect_runtimes` finding a `.claude` marker. The file is
+// planned ahead (`kiro_cli/plan.rs`'s `plan_claude_settings_grant`) and
+// tracked in the manifest. Uninstall never deletes it and leaves the
+// grant strings in place; doctor skips it for drift
+// (`is_claude_settings_path`).
 //
-// `merge_claude_settings_permissions` below guards against two risks a
-// merge-into-a-pre-existing-file operation invites that the V2 side
-// (which only ever writes fresh, synthesized content) never faces:
-// - Symlink safety: both the `.claude` directory and `settings.json`
-//   itself are rejected outright if either is a symlink -- this is the
-//   only pass in this file that reads pre-existing content from the
-//   target and republishes it, so a symlinked `settings.json` would
-//   read and preserve whatever it points at, and a symlinked `.claude`
-//   directory would silently redirect the write through the parent-
-//   directory resolution `create_dir_all`/`rename` already follow.
-// - Deny-shadow detection: if the target's `permissions.deny` already
-//   covers a grant this pass is about to add (an exact match, this
-//   server's own wildcard forms, or the global `mcp__*`), the merge
-//   errors rather than silently writing an allow entry Claude Code
-//   would never actually honor.
+// `merge_claude_settings_permissions` refuses a symlinked `.claude` or
+// `settings.json`, and refuses a grant an existing `permissions.deny`
+// entry already shadows.
 //
-// Reachability today, precisely: there is no separate Claude
-// `InstallStrategy` (`install::registry::STRATEGIES` registers only
-// `KiroCliInstallStrategy`), so this fires only through THAT strategy's
-// `install_from_local` -- which requires `.kiro` to already exist at
-// the target (see `KiroCliInstallStrategy::matches`; a target with
-// `.claude` but no PRE-EXISTING `.kiro` is a Claude-only target by
-// `detect_runtimes`'s reckoning, since `.kiro` would be this same run's
-// own output, and no registered strategy claims that). So this grant
-// reaches disk on a reinstall/update over a target that already has
-// `.kiro` (from a prior konductor install, or created by hand) AND
-// already has `.claude` -- not on a from-scratch "first install ever,
-// Claude Code only" target, which has no install path at all yet
-// (Claude grant or otherwise), pending a real Claude `InstallStrategy`.
-// Verified directly, not assumed: see `kiro_cli.rs`'s
-// `install_from_local_grants_claude_settings_permissions_when_claude_marker_dir_present`
-// (the reachable case, through the real unmodified strategy entry
-// point) and its neighbor
-// `install_from_local_rejects_claude_only_target_with_no_preexisting_kiro_dir`
-// (the unreachable case).
-//
-// A further, deliberately unimplemented gap: this grants PERMISSION to
-// call `konductor-skills`'s tools, but nothing anywhere in this
-// codebase REGISTERS `konductor-skills` as an MCP server for Claude
-// Code (the equivalent of the V2 side's own `mcpServers` JSON
-// injection, which registers AND grants in one place because both live
-// in the same agent file). Without a `.mcp.json` entry or equivalent
-// server registration, an `mcp__konductor-skills__*` allow rule is
-// inert on any target that doesn't happen to have that server
-// registered through some out-of-band means. No concrete design for
-// how this codebase should write that registration exists anywhere in
-// this workspace -- the same "don't invent a schema from guesswork"
-// reasoning as the Kiro V3/KAS gap below applies equally here.
-//
-// There is no Kiro CLI V3/KAS equivalent implemented here either. No
-// concrete schema for a `.kiro/permissions` file -- the natural V3
-// counterpart -- exists anywhere in this workspace (searched both
-// packages' `docs/design/*.md` and `designs/*.md`, and the workspace
-// generally) to ground an implementation in -- unlike the Claude Code
-// side, which has two live, real examples on disk. Adding one here
-// would mean inventing a schema from guesswork. Both this and
-// the MCP-server-registration gap above remain open follow-ups pending
-// design decisions.
+// Known gap: nothing registers `konductor-skills` as an MCP server for
+// Claude Code, so the grant is inert unless the server is registered
+// some other way. That is why `ClaudeInstallStrategy` skips it.
 
-/// Relative path, under an install target directory, of Claude Code's
-/// shared-project settings file -- the "Shared project" tier documented
-/// at <https://code.claude.com/docs/en/settings>. Deliberately
-/// `.claude/settings.json`, not `.claude/settings.local.json` (personal,
-/// gitignored, wrong tier for a project-wide grant this install writes
-/// on every user's behalf) or `~/.claude/settings.json` (user-level,
-/// outside any install target this pass ever sees). `pub(crate)` (not
-/// just `pub(super)`): read by `kiro_cli.rs`, to build the destination
-/// path it passes to `manifest::classify_provenance` before calling
-/// `apply_claude_settings_grant`, AND by
-/// `uninstall.rs`'s `delete_eligible_files`, which special-cases this
-/// one manifest path to NEVER delete it regardless of `Provenance` --
-/// see the comment there for why this file's merge-into-a-shared-file
-/// write model breaks the whole-file-ownership assumption every other
-/// `Provenance::Created`/`ReplacedOurs` path in this codebase relies on.
+/// Claude Code's shared project settings file (the "Shared project" tier,
+/// <https://code.claude.com/docs/en/settings>). Carries the
+/// `permissions.allow` grant, and the telemetry hooks only for a `$HOME`
+/// install (`claude_hooks_settings_relative_path`). Konductor merges into
+/// it rather than owning it, so uninstall never deletes it and doctor
+/// never reports it as drift (`is_claude_settings_path`).
 pub(crate) const CLAUDE_SETTINGS_RELATIVE_PATH: &str = ".claude/settings.json";
+
+/// Claude Code's personal, uncommitted project settings file. A project
+/// install writes its telemetry hooks here, so the absolute binary path
+/// and install root they carry never reach teammates through git.
+pub(crate) const CLAUDE_LOCAL_SETTINGS_RELATIVE_PATH: &str = ".claude/settings.local.json";
+
+/// Whether `path` is one of the Claude settings files Konductor merges
+/// into rather than owns, so uninstall never deletes it and doctor never
+/// reports its hash as drift.
+pub(crate) fn is_claude_settings_path(path: &str) -> bool {
+    path == CLAUDE_SETTINGS_RELATIVE_PATH || path == CLAUDE_LOCAL_SETTINGS_RELATIVE_PATH
+}
+
+/// The settings file that carries the telemetry hooks for `target_dir`:
+/// the user-level `~/.claude/settings.json` for a `$HOME` install (it must
+/// fire in every project, and `settings.local.json` at `$HOME` only applies
+/// to sessions started there), `.claude/settings.local.json` otherwise.
+pub(crate) fn claude_hooks_settings_relative_path(target_dir: &Path) -> &'static str {
+    let canonical =
+        |path: &Path| std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+    let is_home = std::env::var_os("HOME")
+        .filter(|home| !home.is_empty())
+        .is_some_and(|home| canonical(Path::new(&home)) == canonical(target_dir));
+    if is_home {
+        CLAUDE_SETTINGS_RELATIVE_PATH
+    } else {
+        CLAUDE_LOCAL_SETTINGS_RELATIVE_PATH
+    }
+}
 
 /// The `permissions.allow` grant strings this pass writes into a Claude
 /// Code target's settings file, one per tool this server exposes --
@@ -166,10 +115,10 @@ fn deny_entry_shadows_grant(deny_entry: &str, grant: &str) -> bool {
 }
 
 /// Errors if `path` exists and is a symlink (of any kind, dangling or
-/// not) -- never follows it. Called by `merge_claude_settings_permissions`
-/// twice for each of `.claude`/`settings.json`: once up front (rejecting
-/// the common case cheaply, before any parsing work), and again
-/// immediately before each disk-mutating call that path feeds into
+/// not) -- never follows it. Every settings merge and removal in this
+/// module calls it for `.claude` and the settings file twice: once up
+/// front, and again immediately before each disk-mutating call that path
+/// feeds into
 /// (`create_dir_all`, `write_atomic`) -- `create_dir_all`/`File::create`/
 /// `std::fs::read_to_string` all resolve symlinks transparently, so a
 /// symlinked `.claude` (a directory symlink, followed during normal
@@ -202,41 +151,13 @@ fn reject_symlink(path: &Path, kind: &str) -> Result<(), String> {
     }
 }
 
-/// Ensures `<target_dir>/.claude/settings.json` grants every string in
-/// `grants` under its `permissions.allow` array: creates the file (and
-/// its `permissions`/`allow` scaffolding) fresh when it does not exist,
-/// or merges into the existing content otherwise. Appends only entries
-/// not already present -- idempotent across reinstall, the same
-/// append-only philosophy `push_unique_str` gives the V2 side above.
-///
-/// Errors rather than silently overwriting or writing an ineffective
-/// grant when:
-/// - either `.claude` or `settings.json` is a symlink (see
-///   `reject_symlink`'s own doc comment for why);
-/// - the existing content at any step of the path -- `settings.json`
-///   itself, its `permissions` key, its `permissions.deny` key, or its
-///   `permissions.allow` key -- is not the JSON shape this expects;
-/// - an existing `permissions.deny` entry already shadows one of
-///   `grants` (see `deny_entry_shadows_grant`).
-///
-/// Never disturbs any other top-level key, any other key under
-/// `permissions`, or any pre-existing `allow`/`deny` entry (verified
-/// directly: see `claude_settings_grant_merges_preserving_unrelated_entries`
-/// below, seeded with both a sibling top-level key and a sibling
-/// `permissions.allow` entry).
-///
-/// Distinguishes why `merge_claude_settings_permissions`/
-/// `apply_claude_settings_grant` failed, so the caller can decide how
-/// to report it by matching on the variant rather than pattern-matching
-/// rendered error text (rendered text is not a reliable discriminator:
-/// more than one failure mode here can share overlapping substrings).
-/// `DenyShadowed` means the grant was correctly, deliberately not
-/// applied because the target owner already denies it; every other
-/// failure -- symlink, malformed JSON at any step, an I/O error -- is
-/// `Other`. `Deref<Target = str>` (to the same message either variant
-/// carries) keeps `err.contains(...)` call sites working unchanged;
-/// callers that need to distinguish the two cases match on the variant
-/// instead, as `kiro_cli.rs`'s non-fatal-warning branch does.
+/// Why a Claude settings merge failed, so callers match on the variant
+/// instead of the rendered text (several failure modes share substrings).
+/// `DenyShadowed` means the grant was deliberately not applied because
+/// the target already denies it; every other failure (symlink, malformed
+/// JSON, I/O) is `Other`. `Deref<Target = str>` keeps `err.contains(...)`
+/// working. `apply_claude_settings_grant_and_hooks` matches on the
+/// variant to pick its warning.
 #[derive(Debug)]
 pub(super) enum ClaudeGrantError {
     DenyShadowed(String),
@@ -275,75 +196,52 @@ impl From<String> for ClaudeGrantError {
     }
 }
 
-/// Returns, on success, the exact bytes now on disk at `settings_path`
-/// -- freshly written ones when a grant was actually added, or the
-/// file's own pre-existing bytes unchanged when every grant was
-/// already present and the write was skipped (see the `any_added`
-/// check below) -- so `apply_claude_settings_grant` can hash them
-/// directly instead of reading `settings_path` back a second time.
-/// That second, independent read (this function's own write, when it
-/// happens, is already durable and correct via `write_atomic` by the
-/// time this returns) could fail on its own for reasons unrelated to
-/// whether the grant itself succeeded, which would otherwise make the
-/// caller misreport a successful merge as a failed one.
-///
-/// Errors as `ClaudeGrantError::DenyShadowed` specifically for the
-/// `permissions.deny`-shadow case (see `deny_entry_shadows_grant`) --
-/// every other failure below is `ClaudeGrantError::Other`. Returning a
-/// typed variant, rather than a shared `String` the caller would have
-/// to distinguish by sniffing rendered text for a substring, is
-/// deliberate: the "not a JSON array" error just below also contains
-/// the literal substring `"permissions.deny"`, so a substring-based
-/// check could not reliably tell that malformed-file case apart from a
-/// genuine deny-shadow.
-fn merge_claude_settings_permissions(
+/// A settings file's full on-disk state, captured before any mutation:
+/// its parsed JSON root, the original bytes (for an unchanged no-op
+/// return), and the mode to preserve across the rewrite (this file is
+/// the user's, and may deliberately be narrower than the default, e.g.
+/// `0600`, since it can carry an `env` block or an `apiKeyHelper` path).
+/// `None` text/mode means the file did not exist yet.
+struct SettingsFileState {
+    root: serde_json::Value,
+    original_text: Option<String>,
+    original_mode: Option<u32>,
+}
+
+/// `target_dir.join(relative)` and its parent `.claude` directory,
+/// rejecting either if it is a symlink. Safe to call before acquiring
+/// `.settings.lock`, since it only resolves paths and does not read file
+/// content.
+fn settings_paths(
     target_dir: &Path,
-    grants: &[String],
-) -> Result<Vec<u8>, ClaudeGrantError> {
-    let settings_relative = Path::new(CLAUDE_SETTINGS_RELATIVE_PATH);
-    let claude_dir_relative = settings_relative
+    relative: &str,
+) -> Result<(PathBuf, PathBuf), ClaudeGrantError> {
+    let settings_path = target_dir.join(relative);
+    let claude_dir = settings_path
         .parent()
-        .expect("CLAUDE_SETTINGS_RELATIVE_PATH always has a parent (\".claude\")");
-    let claude_dir = target_dir.join(claude_dir_relative);
+        .expect("Claude settings paths always have a parent (\".claude\")")
+        .to_path_buf();
     reject_symlink(&claude_dir, "directory")?;
-
-    let settings_path = target_dir.join(settings_relative);
     reject_symlink(&settings_path, "file")?;
+    Ok((settings_path, claude_dir))
+}
 
-    // Serializes this function's ENTIRE read-modify-write cycle against
-    // any other caller mutating the SAME `settings.json` -- either
-    // `merge_claude_settings_hooks` (held under the identical lock
-    // file -- see that function's own doc comment) racing this one
-    // within the same or a different process, or this same function
-    // racing itself across two concurrent `konductor install` runs
-    // against the same target. Without this, two concurrent merges
-    // each read the same pre-update snapshot, each compute a rewrite
-    // reflecting only their own change, and whichever atomic-rename
-    // lands last silently discards the other's -- the exact
-    // lost-update race `config_lock.rs`'s own locking exists to
-    // prevent for `config set` against `.konductor/config.yml`,
-    // reproduced here for this file. Held for the rest of this function's
-    // scope (dropped automatically at return). Reuses `config_lock`'s
-    // exact advisory-lock-around-the-critical-section primitive
-    // (bounded retry, explicit permissions) rather than a second,
-    // independent locking mechanism -- see that module's own
-    // `acquire_named` doc comment.
-    let _lock_guard = crate::cli::config_lock::acquire_named(&claude_dir, ".settings.lock")
-        .map_err(|source| format!("failed to lock {}: {source}", claude_dir.display()))?;
+/// Reads and parses `settings_path`, re-checking it and `claude_dir` for
+/// a symlink first. An absent file parses as an empty JSON object with
+/// no recorded mode. Must be called only after acquiring
+/// `.settings.lock` for `claude_dir`, since the read result is the basis
+/// for a subsequent write, and reading before the lock would let a
+/// concurrent writer's change be read, then silently overwritten.
+fn read_settings_file(
+    settings_path: &Path,
+    claude_dir: &Path,
+) -> Result<SettingsFileState, ClaudeGrantError> {
+    reject_symlink(claude_dir, "directory")?;
+    reject_symlink(settings_path, "file")?;
 
-    // Captured up front, before any mutation, for two reasons this
-    // function needs later: (1) `original_mode` lets a pre-existing
-    // file's permissions survive `write_atomic`'s fixed `0o644` below
-    // -- right for a file Konductor generates itself, but this one is
-    // the user's and may deliberately be narrower (e.g. `0600`,
-    // since a Claude settings file can carry an `env` block or an
-    // `apiKeyHelper` path); (2) `original_text` is returned verbatim
-    // when the merge below finds every grant already present, so an
-    // idempotent reinstall doesn't reformat the user's file or bump
-    // its mtime for a run that changed nothing.
     let original_mode: Option<u32> = if settings_path.is_file() {
         Some(
-            std::fs::metadata(&settings_path)
+            std::fs::metadata(settings_path)
                 .map_err(|e| format!("failed to stat {}: {e}", settings_path.display()))?
                 .permissions()
                 .mode(),
@@ -353,14 +251,13 @@ fn merge_claude_settings_permissions(
     };
     let original_text: Option<String> = if settings_path.is_file() {
         Some(
-            std::fs::read_to_string(&settings_path)
+            std::fs::read_to_string(settings_path)
                 .map_err(|e| format!("failed to read {}: {e}", settings_path.display()))?,
         )
     } else {
         None
     };
-
-    let mut root: serde_json::Value = match &original_text {
+    let root: serde_json::Value = match &original_text {
         Some(text) => serde_json::from_str(text).map_err(|e| {
             format!(
                 "failed to parse {} as JSON: {e} -- fix or remove the file before installing",
@@ -369,6 +266,80 @@ fn merge_claude_settings_permissions(
         })?,
         None => serde_json::Value::Object(serde_json::Map::new()),
     };
+
+    Ok(SettingsFileState {
+        root,
+        original_text,
+        original_mode,
+    })
+}
+
+/// Serializes `root` and writes it to `settings_path` at `original_mode`
+/// (or the write helper's own default for a freshly-created file),
+/// re-checking for a symlink immediately before the disk-mutating calls
+/// to narrow the TOCTOU window since the earlier check in
+/// `read_settings_file`. Returns the bytes now on disk.
+fn write_settings_file(
+    settings_path: &Path,
+    claude_dir: &Path,
+    root: &serde_json::Value,
+    original_mode: Option<u32>,
+) -> Result<Vec<u8>, ClaudeGrantError> {
+    let mut bytes = serde_json::to_vec_pretty(root)
+        .map_err(|e| format!("failed to serialize {}: {e}", settings_path.display()))?;
+    bytes.push(b'\n');
+
+    reject_symlink(claude_dir, "directory")?;
+    reject_symlink(settings_path, "file")?;
+    std::fs::create_dir_all(claude_dir)
+        .map_err(|e| format!("failed to create {}: {e}", claude_dir.display()))?;
+    match original_mode {
+        Some(mode) => crate::cli::atomic_write::write_atomic_with_mode(settings_path, &bytes, mode),
+        None => crate::cli::atomic_write::write_atomic(settings_path, &bytes),
+    }
+    .map_err(|e| format!("failed to write {}: {e}", settings_path.display()))?;
+
+    Ok(bytes)
+}
+
+/// Ensures `<target_dir>/.claude/settings.json` grants every string in
+/// `grants` under `permissions.allow`, creating the file and scaffolding
+/// when missing. Appends only entries not already present, so reinstall
+/// is idempotent. Never disturbs any other key or pre-existing
+/// `allow`/`deny` entry.
+///
+/// Errors rather than overwriting or writing an ineffective grant when
+/// `.claude` or `settings.json` is a symlink (`reject_symlink`), when
+/// the file, `permissions`, `permissions.deny` or `permissions.allow` is
+/// not the expected JSON shape, or when a `permissions.deny` entry
+/// shadows a grant (`deny_entry_shadows_grant`, reported as
+/// `ClaudeGrantError::DenyShadowed`).
+///
+/// Returns the bytes now on disk: the new content, or the original bytes
+/// when every grant was already present and the write was skipped. The
+/// caller hashes these directly rather than re-reading the file.
+fn merge_claude_settings_permissions(
+    target_dir: &Path,
+    grants: &[String],
+) -> Result<Vec<u8>, ClaudeGrantError> {
+    let (settings_path, claude_dir) = settings_paths(target_dir, CLAUDE_SETTINGS_RELATIVE_PATH)?;
+
+    // `.claude/.settings.lock` serializes every read-modify-write this
+    // module does under `.claude` (grant merge, hook merge, hook removal),
+    // across threads and concurrent `konductor install` runs. Must be
+    // acquired before the read below: reading first and locking only for
+    // the write would let two merges both read the same pre-write
+    // snapshot, each compute a rewrite from it, and the later rename
+    // silently drop the other's change. Held until return.
+    let _lock_guard = crate::cli::config_lock::acquire_named(&claude_dir, ".settings.lock")
+        .map_err(|source| format!("failed to lock {}: {source}", claude_dir.display()))?;
+
+    let state = read_settings_file(&settings_path, &claude_dir)?;
+    let SettingsFileState {
+        mut root,
+        original_text,
+        original_mode,
+    } = state;
 
     let Some(root_obj) = root.as_object_mut() else {
         return Err(format!(
@@ -460,61 +431,14 @@ fn merge_claude_settings_permissions(
         return Ok(unchanged);
     }
 
-    let mut bytes = serde_json::to_vec_pretty(&root)
-        .map_err(|e| format!("failed to serialize {}: {e}", settings_path.display()))?;
-    bytes.push(b'\n');
-
-    // Re-check immediately before the disk-mutating calls below --
-    // narrows, per `reject_symlink`'s own doc comment, the window since
-    // the earlier up-front check at the top of this function.
-    reject_symlink(&claude_dir, "directory")?;
-    reject_symlink(&settings_path, "file")?;
-    std::fs::create_dir_all(&claude_dir)
-        .map_err(|e| format!("failed to create {}: {e}", claude_dir.display()))?;
-
-    // Writes directly at the file's own intended final mode: the
-    // pre-existing mode when there was one (this file is the user's,
-    // and may deliberately be narrower than `0o644`, e.g. `0600`, since
-    // it can carry an `env` block or an `apiKeyHelper` path -- see the
-    // `original_mode` capture above), or `write_atomic`'s own default
-    // for a freshly-created file. `write_atomic_with_mode` chmods the
-    // temp file to this mode BEFORE the rename, and `fs::rename`
-    // preserves that mode across the rename (see `atomic_write.rs`'s
-    // own "Explicit file permissions" module note), so `settings_path`
-    // is never visible, before or after, at any mode other than the one
-    // it is meant to end at. No separate post-rename chmod is needed:
-    // there is no window where a narrower file sits world-readable at
-    // `0o644`, and no possibility of that chmod call failing and
-    // leaving it there.
-    match original_mode {
-        Some(mode) => {
-            crate::cli::atomic_write::write_atomic_with_mode(&settings_path, &bytes, mode)
-        }
-        None => crate::cli::atomic_write::write_atomic(&settings_path, &bytes),
-    }
-    .map_err(|e| format!("failed to write {}: {e}", settings_path.display()))?;
-
-    Ok(bytes)
+    write_settings_file(&settings_path, &claude_dir, &root, original_mode)
 }
 
-/// Performs the Claude/V3 settings grant for a whole install run and
-/// returns the resulting file's manifest-relative path and content
-/// hash, so the caller (`kiro_cli.rs`'s `install_from_local`) can add a
-/// real `ManifestFile` entry for it. Call this exactly once per install
-/// run (never per-agent, unlike the V2 grant, which is naturally
-/// per-agent because each agent owns its own JSON file) -- see this
-/// module's "V3/Claude Code permission grant" section above for why a
-/// single shared file makes per-agent writes both wasteful and racier
-/// than necessary.
-///
-/// Does not decide whether to call itself: the caller checks both
-/// "did the V2 side inject anything into at least one agent this run"
-/// and "is this target's `.claude` a detected Claude Code target"
-/// (`runtime::detect_runtimes`) before calling, and separately snapshots
-/// the settings file's pre-write state for provenance classification
-/// (`manifest::classify_provenance`) -- both of which must happen
-/// before this function runs, not after, since this function's own job
-/// is exactly the write those decisions gate.
+/// Applies the `permissions.allow` grant and returns `settings.json`'s
+/// manifest path and content hash. Called once per install run by
+/// `apply_claude_settings_grant_and_hooks`, whose callers decide whether
+/// the grant applies; provenance comes from the write-ahead plan
+/// (`plan_claude_settings_grant`) via `attach_provenance`.
 pub(super) fn apply_claude_settings_grant(
     target_dir: &Path,
 ) -> Result<(String, String), ClaudeGrantError> {
@@ -527,85 +451,44 @@ pub(super) fn apply_claude_settings_grant(
 
 // ── V3/Claude Code telemetry hook wiring ──
 //
-// Wires `konductor __telemetry-hook <event-type>` into
-// `<target_dir>/.claude/settings.json`'s `"hooks"` key so the runtime
-// itself invokes the hidden `__telemetry-hook` subcommand at
-// `SessionStart` (agent invocation) and `SubagentStart` (sub-agent
-// delegation) -- `SessionStart`/`SubagentStart` fire at the START of an
-// agent/sub-agent invocation, distinct from `SubagentStop` (a DIFFERENT,
-// already-published workflow-level hook that fires at delegation END,
-// not START -- both are real, distinct hooks legitimately in play in
-// the same file for two different purposes).
+// Wires `<exe> __telemetry-hook <event> --install-root <target>` into the
+// `hooks` key of the file `claude_hooks_settings_relative_path` picks:
+// `.claude/settings.local.json` for a project (kept out of git), or
+// `~/.claude/settings.json` for a `$HOME` install. `SessionStart` reports
+// an agent invocation; `SubagentStart`, matched to the installed agent
+// names, reports a delegation.
 //
-// Scope boundary (disclosed, not silent), reachable path: this pass is
-// wired ONLY into `KiroCliInstallStrategy`'s own `AgentInstallPhase`
-// (`phases.rs`), immediately after `apply_claude_settings_grant`
-// succeeds there -- the dual-marker install (a target where BOTH
-// `.kiro` and `.claude` already exist, e.g. a reinstall/update; per
-// that phase's own tests, "not hypothetical, this package's own
-// workspace is set up exactly this way"). Two narrowings follow from
-// reusing that exact call site rather than adding a new one:
-// - Gated the same way the grant is: `any_mcp_server_injected &&
-//   detect_runtimes(target_dir).has(Runtime::ClaudeCode)`, AND fires
-//   only when the grant call immediately before it succeeded (not
-//   independently) -- so a foreign, deny-shadowed, or malformed
-//   pre-existing `settings.json` that skips the grant also skips
-//   hooks wiring for that same run, leaving the foreign file
-//   completely untouched (verified by
-//   `install_from_local_does_not_abort_when_claude_grant_fails_on_foreign_content`
-//   in `kiro_cli.rs`) rather than partially mutating it via a second,
-//   independent write.
-// - `ClaudeInstallStrategy` (`claude.rs`) -- the OTHER real install
-//   path, reachable for a `.claude`-only target with no pre-existing
-//   `.kiro` -- does NOT get this pass in this revision. Wiring it
-//   there needs its own write-ahead-plan entry, and `claude.rs`'s
-//   `plan_all_files` is also the exact function `would_fail_as_noop`
-//   uses to decide "nothing to install" -- an unconditional new planned
-//   entry there would make that check permanently non-empty, breaking
-//   its own "no synthed agent or skill files" error path. A real fix
-//   needs a plan function scoped to `install_from_local`'s own
-//   write-ahead call, separate from the no-op pre-check's, which is a
-//   real follow-up left out of this revision rather than risking that
-//   existing, separately-tested contract.
-// Widening either boundary is real follow-up work, not implemented
-// here.
+// Two install paths wire them, both skipped under `--no-telemetry`:
+// - Kiro V2/V3 on a target with a `.claude` marker, when the grant
+//   applies: `apply_claude_settings_grant_and_hooks`, only after the
+//   grant succeeds, so no hooks are wired next to a foreign,
+//   deny-shadowed or malformed `settings.json`.
+// - `ClaudeInstallStrategy`: `apply_claude_settings_hooks_only`, with no
+//   grant (see the permission grant section above).
 //
-// Kiro CLI: no equivalent hook-registration point exists in this
-// codebase today for the V2 (JSON agent-spec) surface. `hooks.stop`/
-// `hooks.agentSpawn` are AIM-owned frontmatter fields on the SOURCE
-// agent spec, rewritten at SYNTH time (before `konductor install` ever
-// runs) -- not something `konductor install`'s own resource-rewrite
-// passes inject the way this pass injects into Claude's shared,
-// install-time-mutated `settings.json`. Wiring Kiro CLI hooks would
-// mean adding a NEW resource-rewrite pass that mutates
-// `hooks.agentSpawn`/`hooks.stop` on every installed Kiro agent JSON --
-// a real, larger change with its own open design questions (whether
-// `agentSpawn` re-fires on `invokeSubAgent` is not confirmed, and
-// whether a per-agent single-entry or append semantics is right).
-// Kiro CLI hook wiring is explicitly OUT OF SCOPE for this revision.
+// Both first strip hooks this run must not keep (`strip_hooks_not_owned_this_run`):
+// every hook under `--no-telemetry`, or an earlier release's hooks in the
+// shared `settings.json`. Uninstall strips them via
+// `remove_claude_telemetry_hooks` once no remaining strategy tracks the
+// hooks file. Kiro's own hooks live in `telemetry_hook_pass.rs`.
 
-/// One konductor-owned hook entry this pass ensures exists under
-/// `.claude/settings.json`'s `"hooks"` key -- one per event type that has
-/// a real Claude Code hook to fire from. `event_type_arg` is the
-/// `__telemetry-hook <event_type>` argument this entry's command
-/// invokes -- imported directly from `telemetry_hook.rs`'s own
-/// `AGENT_INVOCATION`/`SUBAGENT_INVOCATION` constants (never a
-/// hand-duplicated literal), so a rename on either side is a compile
-/// error here, not a silent runtime mismatch between what this pass
-/// wires in and what `dispatch_telemetry_hook`'s match actually
-/// recognizes. The full command string (with the resolved absolute
-/// binary path prepended -- see `resolve_konductor_exe_path`) is built
-/// at `merge_claude_settings_hooks` call time, not stored here: it
-/// depends on `std::env::current_exe()`, which is not available in a
-/// `const` context. The resulting full command is this entry's own
-/// identity for idempotency purposes (see `find_hook_match`): a
-/// reinstall must never add a second block for the same command under
-/// the same event, and a relocated binary must self-heal the existing
-/// block's command rather than appending a duplicate one.
+/// A Konductor telemetry hook to keep in the hooks settings file.
+/// `event_type_arg` comes from `telemetry_hook.rs`'s constants, so a
+/// rename there is a compile error here. The command is built at merge
+/// time because it embeds the resolved exe path and install root. A hook
+/// is identified by its event argument, so a reinstall replaces a stale
+/// block (moved binary, changed agent set) instead of adding another.
 struct TelemetryHookEntry {
     event: &'static str,
-    matcher: &'static str,
+    matcher: HookMatcher,
     event_type_arg: &'static str,
+}
+
+enum HookMatcher {
+    Fixed(&'static str),
+    /// Matches only the agent types Konductor installed at the target, so
+    /// Claude never spawns the hook for a foreign sub-agent.
+    InstalledAgents,
 }
 
 const TELEMETRY_HOOK_ENTRIES: &[TelemetryHookEntry] = &[
@@ -613,70 +496,68 @@ const TELEMETRY_HOOK_ENTRIES: &[TelemetryHookEntry] = &[
         event: "SessionStart",
         // A genuine session start or a `/clear` both count as a fresh
         // `agent_invocation`.
-        matcher: "startup|clear",
+        matcher: HookMatcher::Fixed("startup|clear"),
         event_type_arg: crate::cli::telemetry_hook::AGENT_INVOCATION,
     },
     TelemetryHookEntry {
         event: "SubagentStart",
-        // Unlike `metrics-collection-design.md`'s own per-specialist
-        // `SubagentStart` matchers (one per named agent, since that
-        // pipeline attributes BY specialist), this design's
-        // `subagent_invocation` event already carries the specialist
-        // name in its own payload (`agent_type`/`agent_name`, see
-        // `telemetry_hook.rs`) -- so one match-everything matcher
-        // suffices; there is no need for a name-specific entry per
-        // agent.
-        matcher: ".*",
+        matcher: HookMatcher::InstalledAgents,
         event_type_arg: crate::cli::telemetry_hook::SUBAGENT_INVOCATION,
     },
 ];
 
-/// Resolves the absolute path to the currently-running `konductor`
-/// binary via `std::env::current_exe()`, so the hook command this pass
-/// wires into `.claude/settings.json` invokes THIS install's own
-/// binary directly rather than a bare `"konductor"` that depends on
-/// `$PATH` still resolving to the right binary whenever the hook later
-/// fires (a different shell, a different user, a CI container with no
-/// `$PATH` entry at all) -- mirrors `McpServerPass::rewrite`'s own
-/// absolute-path pattern for the MCP server binary a few lines below in
-/// this same file. Falls back to the bare `"konductor"` command (the
-/// prior, `$PATH`-dependent behavior) if resolution fails for any
-/// reason -- never fails the whole install over a diagnostics-only path
-/// display concern, matching `kiro_cli.rs`'s own `install_from_local`
-/// canonicalize fallback for its manifest `source` field.
-fn resolve_konductor_exe_path() -> String {
+/// `^(a|b)$` over `agent_names`, sorted and deduplicated; `None` when there
+/// are no names. Claude evaluates a matcher containing `^` as an
+/// unanchored JavaScript regex, hence the anchors and escaping.
+fn installed_agents_matcher(agent_names: &[String]) -> Option<String> {
+    let mut names: Vec<&str> = agent_names.iter().map(String::as_str).collect();
+    names.sort_unstable();
+    names.dedup();
+    if names.is_empty() {
+        return None;
+    }
+    let escaped: Vec<String> = names
+        .iter()
+        .map(|name| {
+            name.chars()
+                .flat_map(|c| {
+                    let special = "\\^$.|?*+()[]{}/".contains(c);
+                    special
+                        .then_some('\\')
+                        .into_iter()
+                        .chain(std::iter::once(c))
+                })
+                .collect()
+        })
+        .collect();
+    Some(format!("^({})$", escaped.join("|")))
+}
+
+/// The absolute path of the running `konductor` binary, so a hook
+/// command invokes this install's binary without depending on `$PATH`
+/// when it fires. Shared with the Kiro hooks in `telemetry_hook_pass.rs`.
+/// Falls back to bare `"konductor"` if `current_exe()` fails, rather
+/// than failing the install.
+pub(super) fn resolve_konductor_exe_path() -> String {
     std::env::current_exe()
         .map(|path| path.display().to_string())
         .unwrap_or_else(|_| "konductor".to_string())
 }
 
-/// Whether `exe` looks like a genuinely resolved absolute executable
-/// path, as opposed to `resolve_konductor_exe_path`'s own bare-word
-/// `"konductor"` fallback (returned when `std::env::current_exe()`
-/// fails). Gates self-healing a stale hook command below: a run whose OWN `current_exe()` call fails
-/// transiently must not treat that failure as authoritative and
-/// downgrade an already-wired absolute path down to the bare,
-/// `$PATH`-dependent fallback -- the exact regression the self-healing
-/// logic below exists to prevent, in reverse. A
-/// non-absolute string is never a genuine `current_exe()` result on
-/// any platform this fallback runs on, so this check is exact, not a
-/// heuristic.
-fn is_resolved_absolute_exe_path(exe: &str) -> bool {
+/// Whether `exe` is an absolute path rather than
+/// `resolve_konductor_exe_path`'s bare `"konductor"` fallback. A run whose
+/// `current_exe()` failed must not replace an already-wired absolute path
+/// with the `$PATH`-dependent fallback.
+pub(super) fn is_resolved_absolute_exe_path(exe: &str) -> bool {
     Path::new(exe).is_absolute()
 }
 
-/// Shell-quotes `exe` for safe embedding in a hook `command` string
-/// that Claude Code executes as a shell command. `exe` comes from `resolve_konductor_exe_path()` ->
-/// `std::env::current_exe()`, which can legitimately be an absolute
-/// path containing a space or another shell metacharacter (e.g. an
-/// install under `Application Support` on macOS or `Program Files` on
-/// Windows) -- embedded unquoted, the shell that runs the hook
-/// mis-splits/mis-parses such a path and the hook silently breaks at
-/// fire time. Unlike `McpServerPass::rewrite`'s structured
-/// `{"command": <path>, "args": [...]}` shape (no shell involved, so no
-/// quoting hazard exists there), this pass builds a single command
-/// STRING Claude Code hands to a shell, so this quoting step is load-
-/// bearing.
+/// Shell-quotes `exe` (or any other value) for embedding in a hook
+/// `command` string, which Claude Code and Kiro run through a shell. An
+/// absolute path can contain a space or other metacharacter (e.g.
+/// `Application Support` on macOS), which would break the hook unquoted.
+/// `McpServerPass`'s structured `{"command", "args"}` shape needs no
+/// quoting; a single command string does.
 ///
 /// Only quotes when `exe` actually needs it -- a bare word made
 /// entirely of characters that are always safe unquoted on the
@@ -697,7 +578,7 @@ fn is_resolved_absolute_exe_path(exe: &str) -> bool {
 /// one token despite embedded spaces; an embedded double quote (never
 /// legal in an actual Windows file path, but handled defensively) is
 /// escaped by doubling it.
-fn shell_quote_for_hook_command(exe: &str) -> String {
+pub(super) fn shell_quote_for_hook_command(exe: &str) -> String {
     let is_safe_unquoted = exe.chars().all(|c| {
         c.is_ascii_alphanumeric()
             || matches!(c, '/' | '.' | '-' | '_' | ':')
@@ -738,203 +619,131 @@ fn shell_quote_for_hook_command(exe: &str) -> String {
     }
 }
 
-/// Extracts the STABLE part of a telemetry hook command -- the
-/// `__telemetry-hook <event-type>` subcommand invocation -- stripping
-/// the leading, environment-dependent absolute binary path
-/// (`resolve_konductor_exe_path()`'s own result, or its bare-word
-/// `"konductor"` fallback) that precedes it. Two commands that differ
-/// ONLY in that leading path (a relocated/reinstalled binary, or a
-/// first-install fallback-to-bare-`"konductor"` followed by a later run
-/// that resolves the real absolute path) must be treated as identifying
-/// the SAME hook, not two different ones -- this extraction is what makes that comparison
-/// possible. Returns `None` if `command` doesn't contain the marker at
-/// all (not a telemetry-hook command shape this pass recognizes).
-fn stable_hook_command_suffix(command: &str) -> Option<&str> {
+/// The `__telemetry-hook ...` part of a hook command, without the leading
+/// exe path, so commands that differ only in where the binary lives (or
+/// in the bare-`"konductor"` fallback) are recognized as the same hook.
+/// `None` when `command` is not a telemetry hook.
+pub(super) fn stable_hook_command_suffix(command: &str) -> Option<&str> {
     const MARKER: &str = "__telemetry-hook ";
     let idx = command.find(MARKER)?;
     Some(&command[idx..])
 }
 
-/// The result of searching an existing `"hooks".<event>"` array for a
-/// block matching `matcher`, used by `merge_claude_settings_hooks` to
-/// decide whether to skip, self-heal, or append fresh.
-enum HookArrayMatch {
-    /// No block with a matching `matcher` AND matching stable command
-    /// suffix exists -- a fresh block must be appended.
-    Absent,
-    /// A block already carries the EXACT command already wired --
-    /// nothing to do.
-    UpToDate,
-    /// A block's matcher and stable command suffix match, but its full
-    /// command differs (a stale absolute exe path from a relocated or
-    /// previously-unresolved binary) -- the entry at
-    /// `array[block_index]["hooks"][hook_index]["command"]` must be
-    /// REWRITTEN in place to the current command, self-healing the
-    /// stale path rather than appending a duplicate block.
-    Stale {
-        block_index: usize,
-        hook_index: usize,
-    },
+/// The event argument of a telemetry hook command, so two commands that
+/// differ only in exe path or trailing arguments identify the same hook.
+pub(super) fn telemetry_hook_event(command: &str) -> Option<&str> {
+    stable_hook_command_suffix(command)?
+        .strip_prefix("__telemetry-hook ")?
+        .split_whitespace()
+        .next()
 }
 
-/// Searches `array` (an existing `"hooks".<event>" array) for a block
-/// whose OWN `"matcher"` equals `matcher` and whose inner `"hooks"`
-/// array carries an entry identifying the SAME hook as `command` --
-/// the identity check `merge_claude_settings_hooks` uses to decide
-/// "already wired exactly", "wired but stale (self-heal)", or "needs a
-/// new block". Matches `merge_claude_settings_permissions`'s own
-/// by-value idempotency check one level up in spirit (that case
-/// matches allow-array values directly; this one matches a
-/// `(matcher, command)` pair nested across two levels, since a hooks
-/// entry is itself an array of blocks each carrying its OWN `matcher`
-/// and its OWN nested `"hooks"` array).
-///
-/// Checks `matcher` exactly, not just the command's stable suffix: a
-/// block whose command's stable suffix matches but whose `matcher` has
-/// drifted (e.g. hand-edited, or wired by an older binary version with
-/// a different matcher for the same event type) is treated as a
-/// DIFFERENT block entirely (`Absent` for THIS `matcher`), so the
-/// correct `(matcher, command)` pair gets appended fresh rather than
-/// the drift being silently accepted as "already wired" -- this never
-/// removes or rewrites a drifted-matcher block in place (consistent
-/// with this function's own caller never disturbing pre-existing
-/// content it doesn't own).
-fn find_hook_match(array: &[serde_json::Value], matcher: &str, command: &str) -> HookArrayMatch {
-    let wanted_suffix = stable_hook_command_suffix(command);
-    // Scans the ENTIRE array for an exact match before committing to a
-    // `Stale` self-heal candidate: an exact `UpToDate` match can appear
-    // anywhere in the array, not necessarily before a stale-suffix
-    // entry, and returning on the first stale-suffix hit would rewrite
-    // that stale entry in place while leaving an already-current block
-    // elsewhere untouched -- producing two blocks with the identical
-    // command under the same event (a duplicate hook that double-counts
-    // telemetry every session). The first stale candidate found is
-    // remembered and returned only if no exact match turns up anywhere.
-    let mut stale_candidate: Option<HookArrayMatch> = None;
-    for (block_index, block) in array.iter().enumerate() {
-        if block.get("matcher").and_then(|m| m.as_str()) != Some(matcher) {
-            continue;
-        }
-        let Some(inner) = block.get("hooks").and_then(|h| h.as_array()) else {
+/// `<exe> __telemetry-hook <event> [--agent <name>] [--install-root <dir>]`.
+/// `quoted_exe` is already shell-quoted; the other values are quoted here.
+pub(super) fn telemetry_hook_command(
+    quoted_exe: &str,
+    event_type: &str,
+    agent: Option<&str>,
+    install_root: Option<&Path>,
+) -> String {
+    let mut command = format!("{quoted_exe} __telemetry-hook {event_type}");
+    if let Some(agent) = agent {
+        command.push_str(" --agent ");
+        command.push_str(&shell_quote_for_hook_command(agent));
+    }
+    if let Some(root) = install_root {
+        let root = std::fs::canonicalize(root).unwrap_or_else(|_| root.to_path_buf());
+        command.push_str(" --install-root ");
+        command.push_str(&shell_quote_for_hook_command(&root.display().to_string()));
+    }
+    command
+}
+
+/// Removes every Konductor telemetry hook for `event_type_arg` from one
+/// event's block array, dropping blocks left empty. Returns how many hooks
+/// it removed.
+fn strip_telemetry_hooks(event_array: &mut Vec<serde_json::Value>, event_type_arg: &str) -> usize {
+    let mut removed = 0;
+    for block in event_array.iter_mut() {
+        let Some(inner) = block.get_mut("hooks").and_then(|h| h.as_array_mut()) else {
             continue;
         };
-        for (hook_index, entry) in inner.iter().enumerate() {
-            let Some(existing_command) = entry.get("command").and_then(|c| c.as_str()) else {
-                continue;
-            };
-            if existing_command == command {
-                return HookArrayMatch::UpToDate;
-            }
-            if stale_candidate.is_none()
-                && wanted_suffix.is_some()
-                && stable_hook_command_suffix(existing_command) == wanted_suffix
-            {
-                stale_candidate = Some(HookArrayMatch::Stale {
-                    block_index,
-                    hook_index,
-                });
-            }
-        }
+        let before = inner.len();
+        inner.retain(|hook| {
+            hook.get("command")
+                .and_then(|c| c.as_str())
+                .and_then(telemetry_hook_event)
+                != Some(event_type_arg)
+        });
+        removed += before - inner.len();
     }
-    stale_candidate.unwrap_or(HookArrayMatch::Absent)
+    if removed > 0 {
+        event_array.retain(|block| {
+            block
+                .get("hooks")
+                .and_then(|h| h.as_array())
+                .is_none_or(|inner| !inner.is_empty())
+        });
+    }
+    removed
 }
 
-/// Ensures `<target_dir>/.claude/settings.json` carries a hook block
-/// for every entry in `entries` under its `"hooks"` key -- creates the
-/// file (and its `hooks`/per-event scaffolding) fresh when it does not
-/// exist, or merges into the existing content otherwise. Mirrors
-/// `merge_claude_settings_permissions`'s own symlink-safety, mode-
-/// preservation, and skip-write-when-unchanged behavior exactly (see
-/// that function's own doc comment) -- the two differ only in WHICH
-/// top-level key they mutate (`"hooks"` here, `"permissions"` there)
-/// and in what "already present" means (a command string nested two
-/// levels deep here, an allow-array value there).
-///
-/// Errors (as `ClaudeGrantError::Other` -- there is no hooks analog of
-/// the permissions side's `DenyShadowed`, since Claude Code has no
-/// "deny a hook" concept) when:
-/// - either `.claude` or `settings.json` is a symlink;
-/// - the existing content at any step of the path -- `settings.json`
-///   itself, its `"hooks"` key, or `"hooks".<event>` -- is not the JSON
-///   shape this expects.
-///
-/// Never disturbs any other top-level key, any other event under
-/// `"hooks"`, or any pre-existing block under an event this pass also
-/// writes to (e.g. the already-published `SubagentStop` hook the base
-/// workflow-level metrics pipeline may have written into the SAME
-/// file) -- appends only its own, missing blocks.
-fn merge_claude_settings_hooks(
-    target_dir: &Path,
-    entries: &[TelemetryHookEntry],
-) -> Result<Vec<u8>, ClaudeGrantError> {
-    merge_claude_settings_hooks_with_exe(target_dir, entries, &resolve_konductor_exe_path())
+/// Whether `event_array` holds exactly one Konductor hook for
+/// `event_type_arg`, and it already has `matcher` and `command`.
+fn telemetry_hook_is_current(
+    event_array: &[serde_json::Value],
+    event_type_arg: &str,
+    matcher: &str,
+    command: &str,
+) -> bool {
+    let mut ours = event_array.iter().flat_map(|block| {
+        block
+            .get("hooks")
+            .and_then(|h| h.as_array())
+            .into_iter()
+            .flatten()
+            .filter_map(|hook| hook.get("command").and_then(|c| c.as_str()))
+            .filter(|existing| telemetry_hook_event(existing) == Some(event_type_arg))
+            .map(move |existing| (block.get("matcher").and_then(|m| m.as_str()), existing))
+    });
+    matches!(
+        (ours.next(), ours.next()),
+        (Some((Some(existing_matcher), existing_command)), None)
+            if existing_matcher == matcher && existing_command == command
+    )
 }
 
-/// Same as `merge_claude_settings_hooks`, but takes the resolved
-/// `konductor` exe path as a parameter rather than resolving it
-/// internally. This is what lets a test exercise the self-heal-vs-
-/// leave-alone decision (`is_resolved_absolute_exe_path`) deterministically end to end -- by passing
-/// `resolve_konductor_exe_path`'s own bare-word fallback directly --
-/// without needing to force a real `std::env::current_exe()` failure,
-/// which isn't reproducible from within a test process.
+/// Ensures the settings file at `<target_dir>/<relative>` carries exactly
+/// one hook block per entry in `entries`, creating the file when missing.
+/// A stale Konductor block (different matcher, exe path or install root)
+/// is replaced, never duplicated. Symlink safety, mode preservation, the
+/// shared advisory lock, and skip-write-when-unchanged mirror
+/// `merge_claude_settings_permissions`.
+///
+/// `agent_names` builds the `SubagentStart` matcher. With no names that
+/// hook is removed rather than wired to match everything.
+///
+/// A bare-word `exe` (the `current_exe()` fallback) never replaces an
+/// existing hook, so a transient resolution failure cannot downgrade an
+/// absolute path to a `$PATH` lookup.
 fn merge_claude_settings_hooks_with_exe(
     target_dir: &Path,
+    relative: &str,
     entries: &[TelemetryHookEntry],
     exe: &str,
+    agent_names: &[String],
 ) -> Result<Vec<u8>, ClaudeGrantError> {
-    let settings_relative = Path::new(CLAUDE_SETTINGS_RELATIVE_PATH);
-    let claude_dir_relative = settings_relative
-        .parent()
-        .expect("CLAUDE_SETTINGS_RELATIVE_PATH always has a parent (\".claude\")");
-    let claude_dir = target_dir.join(claude_dir_relative);
-    reject_symlink(&claude_dir, "directory")?;
+    let (settings_path, claude_dir) = settings_paths(target_dir, relative)?;
 
-    let settings_path = target_dir.join(settings_relative);
-    reject_symlink(&settings_path, "file")?;
-
-    // Serializes this function's ENTIRE read-modify-write cycle against
-    // any other caller mutating the SAME `settings.json` -- either
-    // `merge_claude_settings_permissions` (held under the identical
-    // lock file, see that function's own doc comment) racing this one
-    // within the same or a different process, or this same function
-    // racing itself across two concurrent `konductor install` runs
-    // against the same target. Held for the rest of this function's
-    // scope (dropped automatically at return). Reuses
-    // `config_lock`'s exact advisory-lock-around-the-critical-section
-    // primitive (bounded retry, explicit permissions) rather than a
-    // second, independent locking mechanism -- see that module's own
-    // `acquire_named` doc comment.
     let _lock_guard = crate::cli::config_lock::acquire_named(&claude_dir, ".settings.lock")
         .map_err(|source| format!("failed to lock {}: {source}", claude_dir.display()))?;
 
-    let original_mode: Option<u32> = if settings_path.is_file() {
-        Some(
-            std::fs::metadata(&settings_path)
-                .map_err(|e| format!("failed to stat {}: {e}", settings_path.display()))?
-                .permissions()
-                .mode(),
-        )
-    } else {
-        None
-    };
-    let original_text: Option<String> = if settings_path.is_file() {
-        Some(
-            std::fs::read_to_string(&settings_path)
-                .map_err(|e| format!("failed to read {}: {e}", settings_path.display()))?,
-        )
-    } else {
-        None
-    };
-
-    let mut root: serde_json::Value = match &original_text {
-        Some(text) => serde_json::from_str(text).map_err(|e| {
-            format!(
-                "failed to parse {} as JSON: {e} -- fix or remove the file before installing",
-                settings_path.display()
-            )
-        })?,
-        None => serde_json::Value::Object(serde_json::Map::new()),
-    };
+    let state = read_settings_file(&settings_path, &claude_dir)?;
+    let SettingsFileState {
+        mut root,
+        original_text,
+        original_mode,
+    } = state;
 
     let Some(root_obj) = root.as_object_mut() else {
         return Err(format!(
@@ -955,20 +764,17 @@ fn merge_claude_settings_hooks_with_exe(
         .into());
     };
 
-    // The caller's own resolved exe path (or its bare-word fallback --
-    // see `merge_claude_settings_hooks_with_exe`'s own doc comment),
-    // used for every entry's command below: every entry invokes the
-    // SAME binary, just with a different `__telemetry-hook` argument.
     let exe_is_absolute = is_resolved_absolute_exe_path(exe);
-    // Shell-quoted separately from the absoluteness check above, which
-    // must see the raw, unquoted path: see `shell_quote_for_hook_command`'s own doc comment for why an
-    // unquoted path containing a space or shell metacharacter breaks
-    // this hook at fire time.
     let quoted_exe = shell_quote_for_hook_command(exe);
 
     let mut any_changed = false;
     for entry in entries {
-        let command = format!("{quoted_exe} __telemetry-hook {}", entry.event_type_arg);
+        let matcher = match entry.matcher {
+            HookMatcher::Fixed(matcher) => Some(matcher.to_string()),
+            HookMatcher::InstalledAgents => installed_agents_matcher(agent_names),
+        };
+        let command =
+            telemetry_hook_command(&quoted_exe, entry.event_type_arg, None, Some(target_dir));
         let event_array = hooks_obj
             .entry(entry.event)
             .or_insert_with(|| serde_json::Value::Array(Vec::new()));
@@ -981,161 +787,354 @@ fn merge_claude_settings_hooks_with_exe(
             )
             .into());
         };
-        match find_hook_match(event_array, entry.matcher, &command) {
-            HookArrayMatch::UpToDate => {}
-            HookArrayMatch::Stale {
-                block_index,
-                hook_index,
-            } => {
-                // Self-heal: rewrite the
-                // existing entry's command in place to the current
-                // resolved path instead of appending a duplicate block
-                // -- a relocated/reinstalled binary must not accumulate
-                // a second SessionStart/SubagentStart hook (which would
-                // double-count telemetry events on every session).
-                //
-                // ONLY when the newly-resolved `exe` is a genuine
-                // absolute path: a
-                // TRANSIENT `current_exe()` failure THIS run resolves
-                // to the bare, `$PATH`-dependent fallback word, and
-                // treating that as authoritative would downgrade an
-                // already-correct absolute-path command down to it --
-                // the exact regression the self-heal above exists to
-                // prevent, in reverse. Leave the existing (better,
-                // already-absolute) entry untouched in that case
-                // rather than either healing it downward or, worse,
-                // falling through to `Absent` and appending a
-                // duplicate block.
-                if exe_is_absolute {
-                    event_array[block_index]["hooks"][hook_index]["command"] =
-                        serde_json::Value::String(command);
+
+        match &matcher {
+            Some(matcher)
+                if telemetry_hook_is_current(
+                    event_array,
+                    entry.event_type_arg,
+                    matcher,
+                    &command,
+                ) => {}
+            Some(matcher) => {
+                let removed = if exe_is_absolute {
+                    strip_telemetry_hooks(event_array, entry.event_type_arg)
+                } else {
+                    0
+                };
+                let has_existing = event_array
+                    .iter()
+                    .filter_map(|block| block.get("hooks").and_then(|h| h.as_array()))
+                    .flatten()
+                    .filter_map(|hook| hook.get("command").and_then(|c| c.as_str()))
+                    .any(|existing| telemetry_hook_event(existing) == Some(entry.event_type_arg));
+                if !has_existing {
+                    event_array.push(serde_json::json!({
+                        "matcher": matcher,
+                        "hooks": [{"type": "command", "command": command}]
+                    }));
                     any_changed = true;
                 }
+                any_changed |= removed > 0;
             }
-            HookArrayMatch::Absent => {
-                event_array.push(serde_json::json!({
-                    "matcher": entry.matcher,
-                    "hooks": [{"type": "command", "command": command}]
-                }));
-                any_changed = true;
+            None => {
+                any_changed |= strip_telemetry_hooks(event_array, entry.event_type_arg) > 0;
             }
         }
+        if event_array.is_empty() {
+            hooks_obj.remove(entry.event);
+        }
+    }
+    if hooks_obj.is_empty() {
+        root_obj.remove("hooks");
     }
 
     if !any_changed {
-        // Same rationale as `merge_claude_settings_permissions`'s own
-        // early return: every entry this pass wants is already present
-        // with its current command, so skip the write entirely rather
-        // than reformatting the user's file / bumping its mtime on a
-        // reinstall that changed nothing.
-        let unchanged = original_text
-            .expect(
-                "any_changed is false only when settings_path pre-existed: either every hook \
-                 entry was already present and up to date, or the only outstanding change was \
-                 a Stale match this run's non-absolute exe path declined to self-heal into -- \
-                 both cases require an existing block, which requires the file to have \
-                 pre-existed",
-            )
-            .into_bytes();
-        return Ok(unchanged);
-    }
-
-    let mut bytes = serde_json::to_vec_pretty(&root)
-        .map_err(|e| format!("failed to serialize {}: {e}", settings_path.display()))?;
-    bytes.push(b'\n');
-
-    // Re-check immediately before the disk-mutating calls below, same
-    // TOCTOU-narrowing rationale as `merge_claude_settings_permissions`.
-    reject_symlink(&claude_dir, "directory")?;
-    reject_symlink(&settings_path, "file")?;
-    std::fs::create_dir_all(&claude_dir)
-        .map_err(|e| format!("failed to create {}: {e}", claude_dir.display()))?;
-
-    // Same rationale as `merge_claude_settings_permissions`'s own
-    // identical write, one function up: write directly at the file's
-    // intended final mode (the pre-existing mode when there was one,
-    // else `write_atomic`'s default for a freshly-created file) so
-    // `settings_path` is never visible at any mode other than the one
-    // it is meant to end at, with no separate post-rename chmod step
-    // and so no `set_permissions` call here that could fail.
-    match original_mode {
-        Some(mode) => {
-            crate::cli::atomic_write::write_atomic_with_mode(&settings_path, &bytes, mode)
+        if let Some(text) = original_text {
+            return Ok(text.into_bytes());
         }
-        None => crate::cli::atomic_write::write_atomic(&settings_path, &bytes),
     }
-    .map_err(|e| format!("failed to write {}: {e}", settings_path.display()))?;
 
-    Ok(bytes)
+    write_settings_file(&settings_path, &claude_dir, &root, original_mode)
 }
 
-/// Performs the telemetry-hook wiring for a whole install run and
-/// returns the resulting file's manifest-relative path and content
-/// hash -- same call contract as `apply_claude_settings_grant` (see
-/// that function's own doc comment). Called from the SAME gated call
-/// site immediately after that function, so both mutations to the
-/// shared `settings.json` land under one `ManifestFile` entry rather
-/// than two (see `phases.rs`'s `AgentInstallPhase::run`).
-pub(super) fn apply_claude_settings_hooks(
-    target_dir: &Path,
-) -> Result<(String, String), ClaudeGrantError> {
-    let bytes = merge_claude_settings_hooks(target_dir, TELEMETRY_HOOK_ENTRIES)?;
+/// Wires the telemetry hooks into `target_dir`'s hooks settings file
+/// (`claude_hooks_settings_relative_path`) and returns that file's
+/// manifest path and content hash.
+fn apply_claude_settings_hooks(target_dir: &Path) -> Result<(String, String), ClaudeGrantError> {
+    let relative = claude_hooks_settings_relative_path(target_dir);
+    let agent_names = crate::cli::telemetry_hook::installed_agent_names(target_dir);
+    let bytes = merge_claude_settings_hooks_with_exe(
+        target_dir,
+        relative,
+        TELEMETRY_HOOK_ENTRIES,
+        &resolve_konductor_exe_path(),
+        &agent_names,
+    )?;
+    if relative == CLAUDE_LOCAL_SETTINGS_RELATIVE_PATH {
+        exclude_from_git(target_dir, relative);
+    }
     Ok((
-        CLAUDE_SETTINGS_RELATIVE_PATH.to_string(),
+        relative.to_string(),
         super::super::artifact::sha256_hex(&bytes),
     ))
 }
 
-/// Performs the additive, `.claude`-marker-gated Claude/V3 settings.json
-/// grant (`apply_claude_settings_grant`) plus, unless `no_telemetry`,
-/// the telemetry-hook wiring (`apply_claude_settings_hooks`), for a
-/// whole install run, folding both into at most one `ManifestFile` --
-/// both calls target the exact same manifest path
-/// (`.claude/settings.json`), so exactly one entry is ever produced for
-/// it, never two. Returns `None` when the grant itself is skipped (see
-/// the `ClaudeGrantError` arms below), matching the call sites' own
-/// prior behavior of pushing no `ManifestFile` in that case.
+/// Adds `relative` to the repository's `.git/info/exclude` when
+/// `target_dir` is inside a git work tree that does not already ignore
+/// it. Claude Code does this itself only for a `settings.local.json` it
+/// writes. Best-effort: no git, no repository, or any failure is a no-op.
+fn exclude_from_git(target_dir: &Path, relative: &str) {
+    let git = |args: &[&str]| {
+        std::process::Command::new("git")
+            .arg("-C")
+            .arg(target_dir)
+            .args(args)
+            .stdin(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .output()
+            .ok()
+    };
+    let stdout_line = |args: &[&str]| {
+        git(args)
+            .filter(|out| out.status.success())
+            .and_then(|out| String::from_utf8(out.stdout).ok())
+            .map(|text| text.trim_end_matches(['\n', '\r']).to_string())
+    };
+
+    // Exit 1: inside a work tree and not ignored. 0 is ignored, 128 is
+    // not a repository.
+    if git(&["check-ignore", "-q", "--", relative]).and_then(|out| out.status.code()) != Some(1) {
+        return;
+    }
+    let Some(prefix) = stdout_line(&["rev-parse", "--show-prefix"]) else {
+        return;
+    };
+    let Some(exclude) = stdout_line(&["rev-parse", "--git-path", "info/exclude"]) else {
+        return;
+    };
+    let exclude = target_dir.join(exclude);
+
+    let existing = std::fs::read_to_string(&exclude).unwrap_or_default();
+    let mut addition = String::new();
+    if !existing.is_empty() && !existing.ends_with('\n') {
+        addition.push('\n');
+    }
+    addition.push_str(&format!("/{prefix}{relative}\n"));
+    let written = exclude
+        .parent()
+        .is_some_and(|dir| std::fs::create_dir_all(dir).is_ok())
+        && std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&exclude)
+            .and_then(|mut file| std::io::Write::write_all(&mut file, addition.as_bytes()))
+            .is_ok();
+    if written {
+        eprintln!(
+            "konductor install: added {prefix}{relative} to {} so its machine-specific hooks \
+             are not committed",
+            exclude.display()
+        );
+    }
+}
+
+/// Strips the Konductor telemetry hooks from `<target_dir>/<relative>`,
+/// leaving every other hook, event and key untouched, and removing any
+/// `hooks` scaffolding left empty. Matches on the command's event
+/// argument, so hooks wired by a moved binary or with an old matcher are
+/// still found. Never deletes the file. Returns whether anything was
+/// removed; a missing file is `Ok(false)`.
+fn remove_claude_settings_hooks(
+    target_dir: &Path,
+    relative: &str,
+    entries: &[TelemetryHookEntry],
+) -> Result<bool, ClaudeGrantError> {
+    let (settings_path, claude_dir) = settings_paths(target_dir, relative)?;
+    if !settings_path.is_file() {
+        return Ok(false);
+    }
+
+    let _lock_guard = crate::cli::config_lock::acquire_named(&claude_dir, ".settings.lock")
+        .map_err(|source| format!("failed to lock {}: {source}", claude_dir.display()))?;
+
+    let original_mode = std::fs::metadata(&settings_path)
+        .map_err(|e| format!("failed to stat {}: {e}", settings_path.display()))?
+        .permissions()
+        .mode();
+    let original_text = std::fs::read_to_string(&settings_path)
+        .map_err(|e| format!("failed to read {}: {e}", settings_path.display()))?;
+    let mut root: serde_json::Value = serde_json::from_str(&original_text).map_err(|e| {
+        format!(
+            "failed to parse {} as JSON: {e} -- fix or remove the file",
+            settings_path.display()
+        )
+    })?;
+    let Some(root_obj) = root.as_object_mut() else {
+        return Err(format!(
+            "{} does not contain a JSON object at its top level -- fix or remove the file",
+            settings_path.display()
+        )
+        .into());
+    };
+    let Some(hooks_val) = root_obj.get_mut("hooks") else {
+        return Ok(false);
+    };
+    let Some(hooks_obj) = hooks_val.as_object_mut() else {
+        return Err(format!(
+            "{}'s \"hooks\" key is not a JSON object -- fix or remove the file",
+            settings_path.display()
+        )
+        .into());
+    };
+
+    let removed = strip_entries_from_hooks(hooks_obj, entries, &settings_path)?;
+    if removed == 0 {
+        return Ok(false);
+    }
+    if hooks_obj.is_empty() {
+        root_obj.remove("hooks");
+    }
+
+    write_settings_file(&settings_path, &claude_dir, &root, Some(original_mode))?;
+    Ok(true)
+}
+
+/// Removes every Konductor telemetry hook listed in `entries` from
+/// `hooks_obj` (a settings file's parsed `"hooks"` object), dropping an
+/// event's array once it has no blocks left. Returns how many hooks were
+/// removed in total, across every event. Errors if an event's value is
+/// present but not a JSON array.
+fn strip_entries_from_hooks(
+    hooks_obj: &mut serde_json::Map<String, serde_json::Value>,
+    entries: &[TelemetryHookEntry],
+    settings_path: &Path,
+) -> Result<usize, ClaudeGrantError> {
+    let mut removed = 0;
+    for entry in entries {
+        let Some(event_val) = hooks_obj.get_mut(entry.event) else {
+            continue;
+        };
+        let Some(event_array) = event_val.as_array_mut() else {
+            return Err(format!(
+                "{}'s \"hooks.{}\" key is not a JSON array -- fix or remove the file",
+                settings_path.display(),
+                entry.event
+            )
+            .into());
+        };
+        removed += strip_telemetry_hooks(event_array, entry.event_type_arg);
+        if event_array.is_empty() {
+            hooks_obj.remove(entry.event);
+        }
+    }
+    Ok(removed)
+}
+
+/// Strips the Konductor telemetry hooks from both Claude settings files at
+/// `target_dir`, for `--no-telemetry` and `uninstall`. Returns the files it
+/// changed; every file is attempted even when an earlier one fails.
+pub(crate) fn remove_claude_telemetry_hooks(target_dir: &Path) -> (Vec<String>, Vec<String>) {
+    let mut changed = Vec::new();
+    let mut errors = Vec::new();
+    for relative in [
+        CLAUDE_SETTINGS_RELATIVE_PATH,
+        CLAUDE_LOCAL_SETTINGS_RELATIVE_PATH,
+    ] {
+        match remove_claude_settings_hooks(target_dir, relative, TELEMETRY_HOOK_ENTRIES) {
+            Ok(true) => changed.push(target_dir.join(relative).display().to_string()),
+            Ok(false) => {}
+            Err(err) => errors.push(err.to_string()),
+        }
+    }
+    (changed, errors)
+}
+
+/// Removes hooks that must not stay after this run: from both settings
+/// files under `--no-telemetry`, otherwise only an earlier release's hooks
+/// in the shared `settings.json` when this target's hooks now live in
+/// `settings.local.json`. Runs before any other write to `settings.json`
+/// so the hash recorded for the grant is the final one. Non-fatal.
+fn strip_hooks_not_owned_this_run(target_dir: &Path, no_telemetry: bool) {
+    if no_telemetry {
+        let (changed, errors) = remove_claude_telemetry_hooks(target_dir);
+        for path in changed {
+            eprintln!(
+                "konductor install: removed a previously-installed telemetry hook from {path} \
+                 (--no-telemetry)"
+            );
+        }
+        for err in errors {
+            eprintln!(
+                "warning: could not remove a previously-installed telemetry hook from this \
+                 Claude Code install: {err}"
+            );
+        }
+        return;
+    }
+    if claude_hooks_settings_relative_path(target_dir) == CLAUDE_SETTINGS_RELATIVE_PATH {
+        return;
+    }
+    if let Err(err) = remove_claude_settings_hooks(
+        target_dir,
+        CLAUDE_SETTINGS_RELATIVE_PATH,
+        TELEMETRY_HOOK_ENTRIES,
+    ) {
+        eprintln!(
+            "warning: could not move the telemetry hooks out of this target's shared \
+             {CLAUDE_SETTINGS_RELATIVE_PATH}: {err}"
+        );
+    }
+}
+
+/// Wires only the telemetry hooks (no `permissions.allow` grant), for
+/// `ClaudeInstallStrategy`: that path never registers `konductor-skills`
+/// for Claude Code, so the grant would be inert there. Under
+/// `no_telemetry` it strips hooks a prior install wired instead and
+/// returns `None`, since this run owns no hook file. Non-fatal: a
+/// symlinked or malformed settings file must not abort an otherwise
+/// successful install.
+pub(in crate::cli::install) fn apply_claude_settings_hooks_only(
+    target_dir: &Path,
+    no_telemetry: bool,
+) -> Option<ManifestFile> {
+    strip_hooks_not_owned_this_run(target_dir, no_telemetry);
+    if no_telemetry {
+        return None;
+    }
+    match apply_claude_settings_hooks(target_dir) {
+        Ok((path, sha256)) => Some(ManifestFile {
+            path,
+            sha256: Some(sha256),
+            provenance: Provenance::Created,
+        }),
+        Err(message) => {
+            eprintln!(
+                "warning: telemetry hooks were not wired for this Claude Code install: \
+                 {message}"
+            );
+            None
+        }
+    }
+}
+
+/// Performs the `.claude`-marker-gated `permissions.allow` grant
+/// (`apply_claude_settings_grant`) plus, unless `no_telemetry`, the
+/// telemetry-hook wiring, for a whole install run. Returns one
+/// `ManifestFile` per settings file written: `settings.json` for the
+/// grant, and the hooks file when it differs (a project install). Empty
+/// when the grant is skipped.
 ///
-/// Shared by `AgentInstallPhase::run` (`phases.rs`,
-/// `KiroCliInstallStrategy`) and `KiroCliV3InstallStrategy::
-/// install_from_local` (`kiro_cli_v3.rs`), so this exact match-arm/
-/// warning-string logic exists in exactly one place rather than two
-/// near-verbatim copies kept in lockstep by hand. Both callers already
-/// gate the call the same way (`any_mcp_server_injected &&
-/// detect_runtimes(target_dir).has(Runtime::ClaudeCode)`) before
-/// invoking this.
+/// Shared by `AgentInstallPhase::run` (`phases.rs`) and
+/// `KiroCliV3InstallStrategy::install_from_local` (`kiro_cli_v3.rs`), which
+/// both gate the call on `any_mcp_server_injected &&
+/// detect_runtimes(target_dir).has(Runtime::ClaudeCode)`.
 ///
-/// Deliberately non-fatal on every `ClaudeGrantError` branch -- see
-/// `apply_claude_settings_grant`'s own doc comment for why aborting an
-/// already-succeeded Kiro install over a problem in unrelated,
-/// pre-existing Claude-side content would be the worse outcome.
-///
-/// `strategy_label` affects only the wording of the printed warnings
-/// (e.g. `"Kiro CLI"` vs `"Kiro CLI V3"`, matching each caller's own
-/// prior wording exactly) -- it has no effect on behavior.
+/// Hooks are wired only after the grant succeeds, so a foreign,
+/// deny-shadowed or malformed `settings.json` skips both. Every failure is
+/// a warning: aborting an already-succeeded Kiro install over pre-existing
+/// Claude-side content would be worse. `strategy_label` only affects the
+/// warning text.
 pub(in crate::cli::install) fn apply_claude_settings_grant_and_hooks(
     target_dir: &Path,
     no_telemetry: bool,
     strategy_label: &str,
-) -> Option<ManifestFile> {
-    let mut claude_settings: Option<(String, String)> = None;
+) -> Vec<ManifestFile> {
+    strip_hooks_not_owned_this_run(target_dir, no_telemetry);
 
+    let mut written: Vec<(String, String)> = Vec::new();
     match apply_claude_settings_grant(target_dir) {
-        Ok((claude_path, claude_sha256)) => {
-            claude_settings = Some((claude_path, claude_sha256));
-
+        Ok(grant) => {
+            written.push(grant);
             if !no_telemetry {
                 match apply_claude_settings_hooks(target_dir) {
                     Ok((hooks_path, hooks_sha256)) => {
-                        claude_settings = Some((hooks_path, hooks_sha256));
+                        // A `$HOME` install shares one file, so the hooks
+                        // write supersedes the grant's hash.
+                        written.retain(|(path, _)| *path != hooks_path);
+                        written.push((hooks_path, hooks_sha256));
                     }
-                    Err(ClaudeGrantError::DenyShadowed(message)) => {
-                        eprintln!(
-                            "warning: Claude Code telemetry hook wiring intentionally \
-                             skipped ({message})"
-                        );
-                    }
-                    Err(ClaudeGrantError::Other(message)) => {
+                    Err(message) => {
                         eprintln!(
                             "warning: Claude Code telemetry hook wiring skipped \
                              ({message}) -- the {strategy_label} portion of this install is \
@@ -1161,11 +1160,14 @@ pub(in crate::cli::install) fn apply_claude_settings_grant_and_hooks(
         }
     }
 
-    claude_settings.map(|(path, sha256)| ManifestFile {
-        path,
-        sha256: Some(sha256),
-        provenance: Provenance::Created,
-    })
+    written
+        .into_iter()
+        .map(|(path, sha256)| ManifestFile {
+            path,
+            sha256: Some(sha256),
+            provenance: Provenance::Created,
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -1186,12 +1188,8 @@ mod tests {
     }
 
     // ── Claude/V3 settings.json grant ────────────────────────────────
-    // (called once per install run via `apply_claude_settings_grant`,
-    // never through the `ResourceRewritePass` pipeline above -- see
-    // this module's own "V3/Claude Code permission grant" section for
-    // why. These tests exercise `merge_claude_settings_permissions` and
-    // `apply_claude_settings_grant` directly against a plain
-    // `target_dir`, with no `RewriteContext` involved at all.)
+    // Exercises `merge_claude_settings_permissions` and
+    // `apply_claude_settings_grant` directly against a plain `target_dir`.
 
     #[test]
     fn claude_mcp_permission_grants_derives_from_v2_allowed_tools_grants() {
@@ -1229,10 +1227,8 @@ mod tests {
 
     #[test]
     fn claude_settings_grant_creates_claude_dir_when_missing() {
-        // Unlike the reachable-in-practice case (where `.claude`
-        // already exists -- see kiro_cli.rs's reachability tests),
-        // this function itself has no opinion on whether `.claude`
-        // pre-exists; it must create it if asked to.
+        // This function creates `.claude` itself when asked; whether
+        // install ever calls it without one is the caller's concern.
         let dir = scratch_dir("claude-grant-creates-dir");
         assert!(!dir.join(".claude").exists());
         apply_claude_settings_grant(&dir).expect("grant must create .claude if missing");
@@ -1585,332 +1581,290 @@ mod tests {
         fs::remove_dir_all(&real_elsewhere).ok();
     }
 
-    // ── V3/Claude Code telemetry hook wiring ────────────────────────────
-    // (exercises `merge_claude_settings_hooks`/`apply_claude_settings_hooks`
-    // directly against a plain `target_dir`, same style as the settings-
-    // grant tests above -- see this module's own "V3/Claude Code
-    // telemetry hook wiring" section for the design this implements.)
+    // ── Claude telemetry hook wiring ─────────────────────────────────
+
+    const LOCAL: &str = CLAUDE_LOCAL_SETTINGS_RELATIVE_PATH;
+
+    fn wire(dir: &Path, relative: &str, exe: &str, agents: &[&str]) {
+        let agents: Vec<String> = agents.iter().map(|name| name.to_string()).collect();
+        merge_claude_settings_hooks_with_exe(dir, relative, TELEMETRY_HOOK_ENTRIES, exe, &agents)
+            .expect("hook wiring must succeed");
+    }
+
+    fn read_json(path: &Path) -> serde_json::Value {
+        serde_json::from_slice(&fs::read(path).unwrap()).unwrap()
+    }
+
+    fn root_arg(dir: &Path) -> String {
+        format!(
+            " --install-root {}",
+            std::fs::canonicalize(dir).unwrap().display()
+        )
+    }
+
+    fn hook_block(matcher: &str, command: &str) -> serde_json::Value {
+        serde_json::json!({"matcher": matcher, "hooks": [{"type": "command", "command": command}]})
+    }
 
     #[test]
-    fn claude_settings_hooks_creates_fresh_file() {
-        let dir = scratch_dir("claude-hooks-fresh");
+    fn project_install_wires_hooks_into_settings_local_json() {
+        let dir = scratch_dir("claude-hooks-project-local");
         fs::create_dir_all(dir.join(".claude")).unwrap();
-        let (path, sha256) =
-            apply_claude_settings_hooks(&dir).expect("hook wiring must succeed on a fresh target");
-        assert_eq!(path, ".claude/settings.json");
-        assert_eq!(sha256.len(), 64, "sha256 hex digest must be 64 chars");
 
-        let written = fs::read_to_string(dir.join(".claude/settings.json")).unwrap();
-        let parsed: serde_json::Value = serde_json::from_str(&written).unwrap();
-        // The wired command embeds the resolved absolute path to the
-        // currently-running binary (fix for the bare "konductor"
-        // finding), not the literal word "konductor" -- computed the
-        // same way `resolve_konductor_exe_path` itself computes it, so
-        // this test tracks whatever binary is actually running it.
-        let exe = resolve_konductor_exe_path();
-        // Built through the same helper production uses (see the
-        // `merge_claude_settings_hooks_with_exe` call site), so this
-        // assertion tracks production's shell-quoting instead of
-        // assuming the resolved exe path never needs it.
-        let quoted_exe = shell_quote_for_hook_command(&exe);
+        let (path, sha256) = apply_claude_settings_hooks(&dir).expect("hook wiring must succeed");
+
+        assert_eq!(path, LOCAL);
+        assert_eq!(sha256.len(), 64);
+        assert!(!dir.join(CLAUDE_SETTINGS_RELATIVE_PATH).exists());
+        let quoted_exe = shell_quote_for_hook_command(&resolve_konductor_exe_path());
+        let root = root_arg(&dir);
         assert_eq!(
-            parsed["hooks"]["SessionStart"],
-            serde_json::json!([{
-                "matcher": "startup|clear",
-                "hooks": [{"type": "command", "command": format!("{quoted_exe} __telemetry-hook agent-invocation")}]
-            }])
+            read_json(&dir.join(LOCAL))["hooks"]["SessionStart"],
+            serde_json::json!([hook_block(
+                "startup|clear",
+                &format!("{quoted_exe} __telemetry-hook agent-invocation{root}")
+            )])
+        );
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn home_install_keeps_hooks_in_user_settings_json() {
+        let _lock = crate::cli::test_home_lock::lock_home();
+        let home = scratch_dir("claude-hooks-home");
+        let original_home = std::env::var_os("HOME");
+        std::env::set_var("HOME", &home);
+
+        let home_path = claude_hooks_settings_relative_path(&home);
+        let project_path = claude_hooks_settings_relative_path(&home.join("project"));
+
+        match original_home {
+            Some(value) => std::env::set_var("HOME", value),
+            None => std::env::remove_var("HOME"),
+        }
+        assert_eq!(home_path, CLAUDE_SETTINGS_RELATIVE_PATH);
+        assert_eq!(project_path, LOCAL);
+        fs::remove_dir_all(&home).ok();
+    }
+
+    #[test]
+    fn subagent_matcher_lists_only_installed_agents() {
+        let dir = scratch_dir("claude-hooks-agent-matcher");
+        wire(
+            &dir,
+            LOCAL,
+            "/opt/konductor",
+            &["k-researcher", "k-architect", "k-architect"],
+        );
+
+        let subagent = &read_json(&dir.join(LOCAL))["hooks"]["SubagentStart"];
+        assert_eq!(subagent.as_array().unwrap().len(), 1);
+        assert_eq!(subagent[0]["matcher"], "^(k-architect|k-researcher)$");
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn installed_agents_matcher_escapes_regex_metacharacters() {
+        assert_eq!(
+            installed_agents_matcher(&["a.b".to_string(), "c+d".to_string()]),
+            Some("^(a\\.b|c\\+d)$".to_string())
+        );
+        assert_eq!(installed_agents_matcher(&[]), None);
+    }
+
+    #[test]
+    fn no_installed_agents_removes_the_subagent_hook() {
+        let dir = scratch_dir("claude-hooks-no-agents");
+        wire(&dir, LOCAL, "/opt/konductor", &["k-architect"]);
+        wire(&dir, LOCAL, "/opt/konductor", &[]);
+
+        let hooks = &read_json(&dir.join(LOCAL))["hooks"];
+        assert!(hooks.get("SubagentStart").is_none(), "got: {hooks}");
+        assert!(hooks["SessionStart"].is_array());
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn a_stale_block_is_replaced_not_duplicated() {
+        // An old match-all matcher, a moved binary, and a pre-install-root
+        // command are all stale forms of the same hook.
+        let dir = scratch_dir("claude-hooks-stale-replaced");
+        fs::create_dir_all(dir.join(".claude")).unwrap();
+        fs::write(
+            dir.join(LOCAL),
+            serde_json::json!({"hooks": {
+                "SessionStart": [hook_block("startup|clear", "/old/konductor __telemetry-hook agent-invocation")],
+                "SubagentStart": [hook_block(".*", "/old/konductor __telemetry-hook subagent-invocation")]
+            }})
+            .to_string(),
+        )
+        .unwrap();
+
+        wire(&dir, LOCAL, "/opt/konductor", &["k-architect"]);
+
+        let root = root_arg(&dir);
+        let hooks = &read_json(&dir.join(LOCAL))["hooks"];
+        assert_eq!(
+            hooks["SessionStart"],
+            serde_json::json!([hook_block(
+                "startup|clear",
+                &format!("/opt/konductor __telemetry-hook agent-invocation{root}")
+            )])
         );
         assert_eq!(
-            parsed["hooks"]["SubagentStart"],
-            serde_json::json!([{
-                "matcher": ".*",
-                "hooks": [{"type": "command", "command": format!("{quoted_exe} __telemetry-hook subagent-invocation")}]
-            }])
+            hooks["SubagentStart"],
+            serde_json::json!([hook_block(
+                "^(k-architect)$",
+                &format!("/opt/konductor __telemetry-hook subagent-invocation{root}")
+            )])
         );
-        assert!(
-            Path::new(&exe).is_absolute(),
-            "the wired hook command must carry an absolute path, not a bare binary name \
-             that depends on $PATH at hook-fire time: {exe:?}"
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn duplicate_konductor_hooks_collapse_to_one() {
+        let dir = scratch_dir("claude-hooks-duplicates");
+        fs::create_dir_all(dir.join(".claude")).unwrap();
+        let current = format!(
+            "/opt/konductor __telemetry-hook agent-invocation{}",
+            root_arg(&dir)
+        );
+        fs::write(
+            dir.join(LOCAL),
+            serde_json::json!({"hooks": {"SessionStart": [
+                hook_block("startup|clear", &current),
+                hook_block("startup|clear", &current)
+            ]}})
+            .to_string(),
+        )
+        .unwrap();
+
+        wire(&dir, LOCAL, "/opt/konductor", &[]);
+
+        let session_start = read_json(&dir.join(LOCAL))["hooks"]["SessionStart"].clone();
+        assert_eq!(
+            session_start.as_array().unwrap().len(),
+            1,
+            "got: {session_start}"
+        );
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn claude_settings_hooks_skip_rewrite_when_current() {
+        let dir = scratch_dir("claude-hooks-noop-rewrite");
+        wire(&dir, LOCAL, "/opt/konductor", &["k-architect"]);
+        let original = fs::read_to_string(dir.join(LOCAL)).unwrap();
+        let compact = serde_json::to_string(&read_json(&dir.join(LOCAL))).unwrap();
+        fs::write(dir.join(LOCAL), &compact).unwrap();
+
+        wire(&dir, LOCAL, "/opt/konductor", &["k-architect"]);
+
+        assert_ne!(original, compact);
+        assert_eq!(
+            fs::read_to_string(dir.join(LOCAL)).unwrap(),
+            compact,
+            "an up-to-date file must be left byte-for-byte unchanged"
+        );
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn claude_settings_hooks_never_downgrade_an_absolute_path_to_the_bare_fallback() {
+        let dir = scratch_dir("claude-hooks-never-downgrade");
+        fs::create_dir_all(dir.join(".claude")).unwrap();
+        let good = "/opt/konductor/bin/konductor __telemetry-hook agent-invocation";
+        fs::write(
+            dir.join(LOCAL),
+            serde_json::json!({"hooks": {"SessionStart": [hook_block("startup|clear", good)]}})
+                .to_string(),
+        )
+        .unwrap();
+
+        wire(&dir, LOCAL, "konductor", &[]);
+
+        assert_eq!(
+            read_json(&dir.join(LOCAL))["hooks"]["SessionStart"],
+            serde_json::json!([hook_block("startup|clear", good)])
         );
         fs::remove_dir_all(&dir).ok();
     }
 
     #[cfg(unix)]
     #[test]
-    fn claude_settings_hooks_preserves_narrow_mode_on_preexisting_file() {
+    fn claude_settings_hooks_preserve_narrow_mode_on_preexisting_file() {
         let dir = scratch_dir("claude-hooks-narrow-mode");
-        let claude_dir = dir.join(".claude");
-        fs::create_dir_all(&claude_dir).unwrap();
-        let settings_path = claude_dir.join("settings.json");
-        fs::write(&settings_path, serde_json::json!({}).to_string()).unwrap();
-        fs::set_permissions(&settings_path, fs::Permissions::from_mode(0o600)).unwrap();
+        fs::create_dir_all(dir.join(".claude")).unwrap();
+        fs::write(dir.join(LOCAL), "{}").unwrap();
+        fs::set_permissions(dir.join(LOCAL), fs::Permissions::from_mode(0o600)).unwrap();
 
-        apply_claude_settings_hooks(&dir).expect("hook wiring must succeed on a narrow-mode file");
+        wire(&dir, LOCAL, "/opt/konductor", &[]);
 
-        let mode = fs::metadata(&settings_path).unwrap().permissions().mode() & 0o777;
-        assert_eq!(
-            mode, 0o600,
-            "a pre-existing narrower mode must survive hook wiring unchanged, not be widened"
-        );
+        let mode = fs::metadata(dir.join(LOCAL)).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600);
         fs::remove_dir_all(&dir).ok();
     }
 
     #[test]
-    fn claude_settings_hooks_merges_preserving_unrelated_entries() {
+    fn claude_settings_hooks_preserve_unrelated_entries() {
         let dir = scratch_dir("claude-hooks-merge");
-        let claude_dir = dir.join(".claude");
-        fs::create_dir_all(&claude_dir).unwrap();
-        // Pre-existing settings.json carrying the base workflow-level
-        // pipeline's own SubagentStop hook (a real, unrelated hook this
-        // pass must never touch) plus an unrelated permissions key.
+        fs::create_dir_all(dir.join(".claude")).unwrap();
+        let foreign_stop = serde_json::json!([hook_block("*", "example-tool publish-metrics")]);
         fs::write(
-            claude_dir.join("settings.json"),
-            serde_json::to_string_pretty(&serde_json::json!({
-                "hooks": {"SubagentStop": [{"matcher": "*", "hooks": [{"type": "command", "command": "example-tool publish-metrics"}]}]},
+            dir.join(LOCAL),
+            serde_json::json!({
+                "hooks": {"SubagentStop": foreign_stop},
                 "permissions": {"allow": ["mcp__example-mcp__ExampleAction"]}
-            }))
-            .unwrap(),
+            })
+            .to_string(),
         )
         .unwrap();
 
-        apply_claude_settings_hooks(&dir)
-            .expect("hook wiring must merge into existing settings.json");
+        wire(&dir, LOCAL, "/opt/konductor", &["k-architect"]);
 
-        let written = fs::read_to_string(claude_dir.join("settings.json")).unwrap();
-        let parsed: serde_json::Value = serde_json::from_str(&written).unwrap();
-        assert_eq!(
-            parsed["hooks"]["SubagentStop"],
-            serde_json::json!([{"matcher": "*", "hooks": [{"type": "command", "command": "example-tool publish-metrics"}]}]),
-            "an unrelated hook event must survive the merge untouched"
-        );
+        let parsed = read_json(&dir.join(LOCAL));
+        assert_eq!(parsed["hooks"]["SubagentStop"], foreign_stop);
         assert_eq!(
             parsed["permissions"]["allow"],
-            serde_json::json!(["mcp__example-mcp__ExampleAction"]),
-            "an unrelated top-level key must survive the merge untouched"
+            serde_json::json!(["mcp__example-mcp__ExampleAction"])
         );
-        assert!(
-            parsed["hooks"]["SessionStart"].is_array(),
-            "the new SessionStart block must be added alongside the pre-existing SubagentStop"
-        );
+        assert!(parsed["hooks"]["SessionStart"].is_array());
         fs::remove_dir_all(&dir).ok();
     }
 
     #[test]
-    fn claude_settings_hooks_is_idempotent_across_reinstall() {
-        let dir = scratch_dir("claude-hooks-idempotent");
-        fs::create_dir_all(dir.join(".claude")).unwrap();
-        apply_claude_settings_hooks(&dir).expect("first hook wiring must succeed");
-        apply_claude_settings_hooks(&dir).expect("second hook wiring (reinstall) must succeed");
-        let written = fs::read_to_string(dir.join(".claude/settings.json")).unwrap();
-        let parsed: serde_json::Value = serde_json::from_str(&written).unwrap();
-        assert_eq!(
-            parsed["hooks"]["SessionStart"].as_array().unwrap().len(),
-            1,
-            "reinstall must not append a duplicate SessionStart block"
-        );
-        assert_eq!(
-            parsed["hooks"]["SubagentStart"].as_array().unwrap().len(),
-            1,
-            "reinstall must not append a duplicate SubagentStart block"
-        );
-        fs::remove_dir_all(&dir).ok();
-    }
+    fn claude_settings_hooks_quote_an_exe_path_containing_a_space() {
+        let dir = scratch_dir("claude-hooks-space-in-exe-path");
+        let space_exe = "/Users/dev/Application Support/konductor";
+        wire(&dir, LOCAL, space_exe, &[]);
+        wire(&dir, LOCAL, space_exe, &[]);
 
-    /// `find_hook_match` must compare `matcher`, not
-    /// just `command` -- a pre-existing block whose
-    /// command matches but whose matcher has DRIFTED (hand-edited, or
-    /// left over from an older binary version with a different
-    /// matcher for the same event) must be treated as NOT already
-    /// present, so a fresh, correctly-matchered block gets appended
-    /// rather than the drift being silently accepted as "already
-    /// wired". The drifted block itself is left untouched (this pass
-    /// never rewrites content it doesn't own), so the array ends up
-    /// with BOTH the drifted block and the freshly-added correct one.
-    #[test]
-    fn claude_settings_hooks_repairs_a_drifted_matcher_by_appending_a_fresh_block() {
-        let dir = scratch_dir("claude-hooks-drifted-matcher");
-        let claude_dir = dir.join(".claude");
-        fs::create_dir_all(&claude_dir).unwrap();
-        let settings_path = claude_dir.join("settings.json");
-        let exe = resolve_konductor_exe_path();
-        // Same command as this run would compute, but a DIFFERENT
-        // matcher than TELEMETRY_HOOK_ENTRIES' own "startup|clear" for
-        // SessionStart -- simulates hand-edited or stale-binary drift.
-        let seeded = serde_json::json!({
-            "hooks": {
-                "SessionStart": [{
-                    "matcher": "startup",
-                    "hooks": [{"type": "command", "command": format!("{exe} __telemetry-hook agent-invocation")}]
-                }]
-            }
-        });
-        fs::write(&settings_path, seeded.to_string()).unwrap();
-
-        apply_claude_settings_hooks(&dir)
-            .expect("hook wiring must succeed even with a drifted pre-existing matcher");
-
-        let written = fs::read_to_string(&settings_path).unwrap();
-        let parsed: serde_json::Value = serde_json::from_str(&written).unwrap();
-        let session_start = parsed["hooks"]["SessionStart"].as_array().unwrap();
-        assert_eq!(
-            session_start.len(),
-            2,
-            "the drifted block must be left in place AND a fresh, correctly-matchered block \
-             appended alongside it, got: {session_start:?}"
-        );
-        assert_eq!(
-            session_start[0]["matcher"], "startup",
-            "the original drifted block must survive untouched"
-        );
-        assert_eq!(
-            session_start[1]["matcher"], "startup|clear",
-            "the freshly-appended block must carry the correct matcher"
-        );
-
-        fs::remove_dir_all(&dir).ok();
-    }
-
-    /// A relocated/reinstalled binary
-    /// (or a first install whose `current_exe()` resolution fell back
-    /// to the bare `"konductor"` word, followed by a later run that
-    /// resolves the real absolute path) must SELF-HEAL the existing
-    /// hook block's command in place, never accumulate a second,
-    /// duplicate block for the same matcher/event. Simulates a
-    /// "relocated binary" by seeding a command with a stale, obviously
-    /// different exe path than what `resolve_konductor_exe_path()`
-    /// resolves to in THIS test process, then confirms exactly one
-    /// block remains after `apply_claude_settings_hooks` runs, and that
-    /// its command carries the NEW (current) path, not the old one.
-    #[test]
-    fn claude_settings_hooks_self_heals_a_relocated_binarys_stale_command() {
-        let dir = scratch_dir("claude-hooks-relocated-binary-self-heals");
-        let claude_dir = dir.join(".claude");
-        fs::create_dir_all(&claude_dir).unwrap();
-        let settings_path = claude_dir.join("settings.json");
-
-        let current_exe = resolve_konductor_exe_path();
-        let stale_exe = "/old/relocated/path/to/konductor";
-        assert_ne!(
-            stale_exe, current_exe,
-            "the stale path fixture must genuinely differ from this process's own resolved path"
-        );
-        let stale_agent_command = format!("{stale_exe} __telemetry-hook agent-invocation");
-        let stale_subagent_command = format!("{stale_exe} __telemetry-hook subagent-invocation");
-        let seeded = serde_json::json!({
-            "hooks": {
-                "SessionStart": [{
-                    "matcher": "startup|clear",
-                    "hooks": [{"type": "command", "command": stale_agent_command}]
-                }],
-                "SubagentStart": [{
-                    "matcher": ".*",
-                    "hooks": [{"type": "command", "command": stale_subagent_command}]
-                }]
-            }
-        });
-        fs::write(&settings_path, seeded.to_string()).unwrap();
-
-        apply_claude_settings_hooks(&dir)
-            .expect("hook wiring must succeed and self-heal a stale relocated-binary command");
-
-        let written = fs::read_to_string(&settings_path).unwrap();
-        let parsed: serde_json::Value = serde_json::from_str(&written).unwrap();
-
-        let session_start = parsed["hooks"]["SessionStart"].as_array().unwrap();
-        assert_eq!(
-            session_start.len(),
-            1,
-            "a relocated binary must self-heal the existing block in place, not append a \
-             second SessionStart block: {session_start:?}"
-        );
+        let session_start = read_json(&dir.join(LOCAL))["hooks"]["SessionStart"].clone();
+        assert_eq!(session_start.as_array().unwrap().len(), 1);
         assert_eq!(
             session_start[0]["hooks"][0]["command"],
-            format!("{current_exe} __telemetry-hook agent-invocation"),
-            "the self-healed command must carry the CURRENT resolved exe path, not the stale one"
+            format!(
+                "{} __telemetry-hook agent-invocation{}",
+                shell_quote_for_hook_command(space_exe),
+                root_arg(&dir)
+            )
         );
-
-        let subagent_start = parsed["hooks"]["SubagentStart"].as_array().unwrap();
-        assert_eq!(
-            subagent_start.len(),
-            1,
-            "a relocated binary must self-heal the existing block in place, not append a \
-             second SubagentStart block: {subagent_start:?}"
-        );
-        assert_eq!(
-            subagent_start[0]["hooks"][0]["command"],
-            format!("{current_exe} __telemetry-hook subagent-invocation"),
-            "the self-healed command must carry the CURRENT resolved exe path, not the stale one"
-        );
-
         fs::remove_dir_all(&dir).ok();
     }
 
-    /// `find_hook_match` must scan the WHOLE array for an exact command
-    /// match before committing to a stale-suffix self-heal candidate.
-    /// Seeds a block that already carries BOTH a stale-exe-path entry
-    /// (matching suffix, wrong path) AND an already-current entry
-    /// (exact match) for the same event/matcher, with the stale one
-    /// FIRST in iteration order -- the ordering that would make an
-    /// eager first-match search return `Stale` and rewrite the stale
-    /// entry in place, leaving two identical commands behind. Asserts
-    /// the array is untouched: no rewrite of the stale entry, and no
-    /// duplicate appended.
     #[test]
-    fn claude_settings_hooks_does_not_duplicate_when_an_up_to_date_entry_already_exists() {
-        let dir = scratch_dir("claude-hooks-stale-before-up-to-date-no-duplicate");
-        let claude_dir = dir.join(".claude");
-        fs::create_dir_all(&claude_dir).unwrap();
-        let settings_path = claude_dir.join("settings.json");
-
-        let current_exe = resolve_konductor_exe_path();
-        let stale_exe = "/old/relocated/path/to/konductor";
-        assert_ne!(
-            stale_exe, current_exe,
-            "the stale path fixture must genuinely differ from this process's own resolved path"
-        );
-        let stale_command = format!("{stale_exe} __telemetry-hook agent-invocation");
-        let current_command = format!("{current_exe} __telemetry-hook agent-invocation");
-        let seeded = serde_json::json!({
-            "hooks": {
-                "SessionStart": [{
-                    "matcher": "startup|clear",
-                    "hooks": [
-                        {"type": "command", "command": stale_command},
-                        {"type": "command", "command": current_command}
-                    ]
-                }]
-            }
-        });
-        fs::write(&settings_path, seeded.to_string()).unwrap();
-
-        apply_claude_settings_hooks(&dir)
-            .expect("hook wiring must succeed when a stale entry precedes an already-current one");
-
-        let written = fs::read_to_string(&settings_path).unwrap();
-        let parsed: serde_json::Value = serde_json::from_str(&written).unwrap();
-        let session_start = parsed["hooks"]["SessionStart"].as_array().unwrap();
+    fn telemetry_hook_event_ignores_exe_path_and_trailing_arguments() {
         assert_eq!(
-            session_start.len(),
-            1,
-            "no fresh block must be appended when an exact match already exists: {session_start:?}"
-        );
-        let inner = session_start[0]["hooks"].as_array().unwrap();
-        assert_eq!(
-            inner.len(),
-            2,
-            "the stale entry must be left untouched (not rewritten) and no third entry \
-             appended, once an exact match exists elsewhere in the array: {inner:?}"
+            telemetry_hook_event(
+                "'/a b/konductor' __telemetry-hook agent-invocation --install-root /p"
+            ),
+            Some("agent-invocation")
         );
         assert_eq!(
-            inner[0]["command"], stale_command,
-            "the stale entry must not be rewritten when an exact match exists elsewhere"
+            telemetry_hook_event("konductor __telemetry-hook subagent-invocation"),
+            Some("subagent-invocation")
         );
-        assert_eq!(
-            inner[1]["command"], current_command,
-            "the already-current entry must remain unchanged"
-        );
-
-        fs::remove_dir_all(&dir).ok();
+        assert_eq!(telemetry_hook_event("some-other-hook --flag"), None);
     }
 
     // ── is_resolved_absolute_exe_path ──
@@ -1928,69 +1882,12 @@ mod tests {
         assert!(!is_resolved_absolute_exe_path("konductor"));
     }
 
-    /// A TRANSIENT `current_exe()`
-    /// failure THIS run (simulated here via
-    /// `merge_claude_settings_hooks_with_exe`'s injectable `exe`
-    /// parameter set to `resolve_konductor_exe_path`'s own bare-word
-    /// fallback, since a real failure isn't reproducible from within a
-    /// test process) must NOT downgrade an already-wired absolute-path
-    /// hook command down to the bare, `$PATH`-dependent fallback --
-    /// the exact regression the absolute-path self-heal fix (see
-    /// `claude_settings_hooks_self_heals_a_relocated_binarys_stale_command`
-    /// above) exists to prevent, in reverse.
-    #[test]
-    fn claude_settings_hooks_never_downgrades_an_absolute_path_to_the_bare_fallback() {
-        let dir = scratch_dir("claude-hooks-never-downgrades-to-fallback");
-        let claude_dir = dir.join(".claude");
-        fs::create_dir_all(&claude_dir).unwrap();
-        let settings_path = claude_dir.join("settings.json");
-
-        let good_absolute_exe = "/opt/konductor/bin/konductor";
-        let seeded = serde_json::json!({
-            "hooks": {
-                "SessionStart": [{
-                    "matcher": "startup|clear",
-                    "hooks": [{
-                        "type": "command",
-                        "command": format!("{good_absolute_exe} __telemetry-hook agent-invocation")
-                    }]
-                }]
-            }
-        });
-        fs::write(&settings_path, seeded.to_string()).unwrap();
-
-        merge_claude_settings_hooks_with_exe(&dir, TELEMETRY_HOOK_ENTRIES, "konductor").expect(
-            "hook wiring must succeed even when the resolved exe path falls back to the bare \
-             word",
-        );
-
-        let written = fs::read_to_string(&settings_path).unwrap();
-        let parsed: serde_json::Value = serde_json::from_str(&written).unwrap();
-        let session_start = parsed["hooks"]["SessionStart"].as_array().unwrap();
-        assert_eq!(
-            session_start.len(),
-            1,
-            "must not append a duplicate block: {session_start:?}"
-        );
-        assert_eq!(
-            session_start[0]["hooks"][0]["command"],
-            format!("{good_absolute_exe} __telemetry-hook agent-invocation"),
-            "the already-wired absolute path must survive UNCHANGED -- a transient \
-             current_exe() failure must never downgrade it to the bare, $PATH-dependent \
-             fallback"
-        );
-
-        fs::remove_dir_all(&dir).ok();
-    }
-
     // ── shell_quote_for_hook_command ──
 
     #[test]
     fn shell_quote_for_hook_command_leaves_a_safe_path_unquoted() {
-        // Every existing fixture path in this module's own hook tests
-        // (e.g. "/opt/konductor/bin/konductor") is made entirely of
-        // this safe character set, so this is what keeps those tests'
-        // exact-match assertions byte-for-byte unchanged by this fix.
+        // The hook-test fixture paths (e.g. "/opt/konductor/bin/konductor")
+        // use only this safe set, so their exact-match assertions hold.
         assert_eq!(
             shell_quote_for_hook_command("/opt/konductor/bin/konductor"),
             "/opt/konductor/bin/konductor"
@@ -2053,63 +1950,11 @@ mod tests {
         assert_eq!(quoted, "\"C:\\Program Files\\konductor \"\"beta\"\"\"");
     }
 
-    /// End-to-end: a `current_exe()` resolution under a space-containing
-    /// install path must produce a hook `command` string that survives
-    /// shell parsing intact -- i.e. the wired command is the QUOTED
-    /// path, not the raw one, and the self-heal/idempotency logic
-    /// (which compares by the `__telemetry-hook <arg>` marker suffix,
-    /// unaffected by quoting on the exe portion) still recognizes a
-    /// second wiring pass against the same quoted command as
-    /// already-up-to-date rather than appending a duplicate block.
-    #[test]
-    fn claude_settings_hooks_quotes_an_exe_path_containing_a_space() {
-        let dir = scratch_dir("claude-hooks-space-in-exe-path");
-        fs::create_dir_all(dir.join(".claude")).unwrap();
-        let space_exe = "/Users/dev/Application Support/konductor";
-
-        merge_claude_settings_hooks_with_exe(&dir, TELEMETRY_HOOK_ENTRIES, space_exe)
-            .expect("hook wiring must succeed for an exe path containing a space");
-
-        let written = fs::read_to_string(dir.join(".claude/settings.json")).unwrap();
-        let parsed: serde_json::Value = serde_json::from_str(&written).unwrap();
-        let expected_quoted = shell_quote_for_hook_command(space_exe);
-        assert_eq!(
-            parsed["hooks"]["SessionStart"][0]["hooks"][0]["command"],
-            format!("{expected_quoted} __telemetry-hook agent-invocation"),
-            "the wired command must embed the SHELL-QUOTED exe path, not the raw one \
-             containing an unescaped space"
-        );
-
-        // Re-running with the SAME space-containing exe must be
-        // recognized as already-up-to-date, not appended as a
-        // duplicate block.
-        merge_claude_settings_hooks_with_exe(&dir, TELEMETRY_HOOK_ENTRIES, space_exe)
-            .expect("second hook wiring (reinstall) must succeed");
-        let written = fs::read_to_string(dir.join(".claude/settings.json")).unwrap();
-        let parsed: serde_json::Value = serde_json::from_str(&written).unwrap();
-        assert_eq!(
-            parsed["hooks"]["SessionStart"].as_array().unwrap().len(),
-            1,
-            "reinstall with the same space-containing exe path must not append a duplicate \
-             block"
-        );
-
-        fs::remove_dir_all(&dir).ok();
-    }
-
     // ── shared `.settings.lock` (concurrent-install lost-update race) ─
 
-    /// Reproduces the read-modify-write race directly: without a
-    /// shared lock, two concurrent merges into the SAME
-    /// `settings.json` -- one adding the `"hooks"` key, the other the
-    /// `"permissions"` key -- each compute a full-document rewrite from
-    /// their own stale read, and whichever atomic-rename lands last
-    /// silently discards the other's change. Both merges here run on
-    /// separate OS threads against the same `target_dir`, and both
-    /// must be present in the final file: proof the shared
-    /// `.settings.lock` (see `merge_claude_settings_hooks`/
-    /// `merge_claude_settings_permissions`'s own doc comments) actually
-    /// serializes them instead of letting them race.
+    /// Two concurrent merges into the same `settings.json`, one adding
+    /// `hooks` and one `permissions`, must both survive: the shared
+    /// `.settings.lock` serializes them.
     #[test]
     fn claude_settings_hooks_and_permissions_race_serialize_so_neither_change_is_lost() {
         let dir = scratch_dir("claude-settings-lock-race");
@@ -2117,98 +1962,31 @@ mod tests {
         let perms_target = dir.clone();
 
         let hooks_thread = std::thread::spawn(move || {
-            merge_claude_settings_hooks(&hooks_target, TELEMETRY_HOOK_ENTRIES)
+            merge_claude_settings_hooks_with_exe(
+                &hooks_target,
+                CLAUDE_SETTINGS_RELATIVE_PATH,
+                TELEMETRY_HOOK_ENTRIES,
+                "/opt/konductor",
+                &[],
+            )
         });
         let perms_thread = std::thread::spawn(move || {
             merge_claude_settings_permissions(&perms_target, &["mcp__foo__bar".to_string()])
         });
-
         hooks_thread
             .join()
-            .expect("hooks thread must not panic")
+            .unwrap()
             .expect("hooks merge must succeed");
         perms_thread
             .join()
-            .expect("permissions thread must not panic")
+            .unwrap()
             .expect("permissions merge must succeed");
 
-        let settings_path = dir.join(CLAUDE_SETTINGS_RELATIVE_PATH);
-        let content = fs::read_to_string(&settings_path).unwrap();
-        let root: serde_json::Value = serde_json::from_str(&content).unwrap();
-
-        assert!(
-            root.get("hooks")
-                .and_then(|h| h.get("SessionStart"))
-                .is_some(),
-            "the hooks merge's own change must survive the race, got: {content}"
-        );
+        let root = read_json(&dir.join(CLAUDE_SETTINGS_RELATIVE_PATH));
+        assert!(root["hooks"]["SessionStart"].is_array(), "got: {root}");
         assert_eq!(
             root["permissions"]["allow"],
-            serde_json::json!(["mcp__foo__bar"]),
-            "the permissions merge's own change must survive the race, got: {content}"
-        );
-
-        fs::remove_dir_all(&dir).ok();
-    }
-
-    #[test]
-    fn claude_settings_hooks_and_grant_compose_on_the_same_file() {
-        // The real call site (`phases.rs`'s `AgentInstallPhase::run`)
-        // calls both `apply_claude_settings_grant` and
-        // `apply_claude_settings_hooks` against the SAME file in
-        // sequence. Confirms neither clobbers the other's own key.
-        let dir = scratch_dir("claude-hooks-and-grant-compose");
-        fs::create_dir_all(dir.join(".claude")).unwrap();
-        apply_claude_settings_grant(&dir).expect("grant must succeed");
-        apply_claude_settings_hooks(&dir).expect("hook wiring must succeed after the grant");
-
-        let written = fs::read_to_string(dir.join(".claude/settings.json")).unwrap();
-        let parsed: serde_json::Value = serde_json::from_str(&written).unwrap();
-        assert_eq!(
-            parsed["permissions"]["allow"],
-            serde_json::json!([
-                "mcp__konductor-skills__find_skills",
-                "mcp__konductor-skills__get_skill",
-                "mcp__konductor-skills__reload_skills"
-            ]),
-            "the earlier grant's permissions must survive the later hooks merge"
-        );
-        assert!(parsed["hooks"]["SessionStart"].is_array());
-        assert!(parsed["hooks"]["SubagentStart"].is_array());
-        fs::remove_dir_all(&dir).ok();
-    }
-
-    #[test]
-    fn claude_settings_hooks_skips_rewrite_when_all_entries_already_present() {
-        let dir = scratch_dir("claude-hooks-noop-rewrite");
-        let claude_dir = dir.join(".claude");
-        fs::create_dir_all(&claude_dir).unwrap();
-        let settings_path = claude_dir.join("settings.json");
-        // Seeded with the SAME resolved absolute-path command
-        // `merge_claude_settings_hooks` itself would compute for this
-        // process, so `find_hook_match`'s identity check resolves to
-        // `UpToDate` and this exercises the no-op path, not the
-        // append/self-heal path.
-        let exe = resolve_konductor_exe_path();
-        // Seeded through the same helper production uses, so
-        // `find_hook_match` resolves to `UpToDate` against the command
-        // production would actually build, not an unquoted stand-in.
-        let quoted_exe = shell_quote_for_hook_command(&exe);
-        let original = format!(
-            "{{\"hooks\":{{\"SessionStart\":[{{\"matcher\":\"startup|clear\",\"hooks\":\
-             [{{\"type\":\"command\",\"command\":\"{quoted_exe} __telemetry-hook agent-invocation\"}}]}}],\
-             \"SubagentStart\":[{{\"matcher\":\".*\",\"hooks\":\
-             [{{\"type\":\"command\",\"command\":\"{quoted_exe} __telemetry-hook subagent-invocation\"}}]}}]}}}}"
-        );
-        fs::write(&settings_path, &original).unwrap();
-
-        apply_claude_settings_hooks(&dir).expect("hook wiring must succeed as a no-op");
-
-        let written = fs::read_to_string(&settings_path).unwrap();
-        assert_eq!(
-            written, original,
-            "when every hook entry is already present the file must be left byte-for-byte \
-             unchanged, not reformatted"
+            serde_json::json!(["mcp__foo__bar"])
         );
         fs::remove_dir_all(&dir).ok();
     }
@@ -2216,13 +1994,8 @@ mod tests {
     #[test]
     fn claude_settings_hooks_errors_on_non_object_hooks_key() {
         let dir = scratch_dir("claude-hooks-non-object-hooks-key");
-        let claude_dir = dir.join(".claude");
-        fs::create_dir_all(&claude_dir).unwrap();
-        fs::write(
-            claude_dir.join("settings.json"),
-            serde_json::json!({"hooks": "not-an-object"}).to_string(),
-        )
-        .unwrap();
+        fs::create_dir_all(dir.join(".claude")).unwrap();
+        fs::write(dir.join(LOCAL), r#"{"hooks": "not-an-object"}"#).unwrap();
         let err = apply_claude_settings_hooks(&dir)
             .expect_err("a non-object \"hooks\" key must be rejected, not overwritten");
         assert!(err.contains("\"hooks\""));
@@ -2232,11 +2005,10 @@ mod tests {
     #[test]
     fn claude_settings_hooks_errors_on_non_array_event_key() {
         let dir = scratch_dir("claude-hooks-non-array-event");
-        let claude_dir = dir.join(".claude");
-        fs::create_dir_all(&claude_dir).unwrap();
+        fs::create_dir_all(dir.join(".claude")).unwrap();
         fs::write(
-            claude_dir.join("settings.json"),
-            serde_json::json!({"hooks": {"SessionStart": "not-an-array"}}).to_string(),
+            dir.join(LOCAL),
+            r#"{"hooks": {"SessionStart": "not-an-array"}}"#,
         )
         .unwrap();
         let err = apply_claude_settings_hooks(&dir)
@@ -2250,17 +2022,162 @@ mod tests {
     fn claude_settings_hooks_rejects_symlinked_claude_dir() {
         let dir = scratch_dir("claude-hooks-symlink-dir");
         let real_elsewhere = scratch_dir("claude-hooks-symlink-dir-target");
-        std::os::unix::fs::symlink(&real_elsewhere, dir.join(".claude"))
-            .expect("failed to create test symlink");
+        std::os::unix::fs::symlink(&real_elsewhere, dir.join(".claude")).unwrap();
 
         let err = apply_claude_settings_hooks(&dir)
             .expect_err("a symlinked .claude directory must be rejected, never written through");
         assert!(err.contains("symlink"));
-        assert!(
-            !real_elsewhere.join("settings.json").exists(),
-            "nothing must be written through the symlink into the real target directory"
-        );
+        assert!(!real_elsewhere.join("settings.local.json").exists());
         fs::remove_dir_all(&dir).ok();
         fs::remove_dir_all(&real_elsewhere).ok();
+    }
+
+    // ── removing Konductor's telemetry hooks ─────────────────────────
+
+    #[test]
+    fn remove_claude_settings_hooks_strips_konductor_entries_and_preserves_foreign() {
+        let dir = scratch_dir("claude-hooks-remove-preserve");
+        wire(&dir, LOCAL, "/opt/konductor", &["k-architect"]);
+        let mut root = read_json(&dir.join(LOCAL));
+        root["hooks"]["SessionStart"]
+            .as_array_mut()
+            .unwrap()
+            .push(hook_block("startup", "/usr/bin/env my-own-hook"));
+        root["permissions"] = serde_json::json!({"allow": ["Read(*)"]});
+        fs::write(dir.join(LOCAL), serde_json::to_vec_pretty(&root).unwrap()).unwrap();
+
+        assert!(remove_claude_settings_hooks(&dir, LOCAL, TELEMETRY_HOOK_ENTRIES).unwrap());
+
+        let after = read_json(&dir.join(LOCAL));
+        assert_eq!(
+            after["hooks"]["SessionStart"],
+            serde_json::json!([hook_block("startup", "/usr/bin/env my-own-hook")])
+        );
+        assert!(
+            after["hooks"].get("SubagentStart").is_none(),
+            "got: {after}"
+        );
+        assert_eq!(
+            after["permissions"],
+            serde_json::json!({"allow": ["Read(*)"]})
+        );
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn remove_claude_settings_hooks_removes_empty_hooks_scaffold() {
+        let dir = scratch_dir("claude-hooks-remove-scaffold");
+        wire(&dir, LOCAL, "/opt/konductor", &["k-architect"]);
+
+        assert!(remove_claude_settings_hooks(&dir, LOCAL, TELEMETRY_HOOK_ENTRIES).unwrap());
+
+        let after = read_json(&dir.join(LOCAL));
+        assert!(after.get("hooks").is_none(), "got: {after}");
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn remove_claude_settings_hooks_is_a_noop_when_no_file_exists() {
+        let dir = scratch_dir("claude-hooks-remove-absent");
+        assert!(!remove_claude_settings_hooks(&dir, LOCAL, TELEMETRY_HOOK_ENTRIES).unwrap());
+        assert!(!dir.join(".claude").exists(), "nothing may be created");
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn remove_claude_telemetry_hooks_strips_both_settings_files() {
+        let dir = scratch_dir("claude-hooks-remove-both");
+        wire(&dir, CLAUDE_SETTINGS_RELATIVE_PATH, "/opt/konductor", &[]);
+        wire(&dir, LOCAL, "/opt/konductor", &[]);
+
+        let (changed, errors) = remove_claude_telemetry_hooks(&dir);
+
+        assert!(errors.is_empty(), "{errors:?}");
+        assert_eq!(changed.len(), 2, "{changed:?}");
+        for relative in [CLAUDE_SETTINGS_RELATIVE_PATH, LOCAL] {
+            assert!(read_json(&dir.join(relative)).get("hooks").is_none());
+        }
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    // ── install entry points ─────────────────────────────────────────
+
+    #[test]
+    fn apply_claude_settings_hooks_only_with_no_telemetry_strips_a_prior_hook() {
+        let dir = scratch_dir("claude-hooks-only-transition");
+        fs::create_dir_all(dir.join(".claude")).unwrap();
+        let tracked = apply_claude_settings_hooks_only(&dir, false)
+            .expect("telemetry-on wiring must produce an entry");
+        assert_eq!(tracked.path, LOCAL);
+
+        assert!(apply_claude_settings_hooks_only(&dir, true).is_none());
+        assert!(read_json(&dir.join(LOCAL)).get("hooks").is_none());
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn apply_claude_settings_hooks_only_moves_hooks_out_of_shared_settings_json() {
+        let dir = scratch_dir("claude-hooks-only-migrate");
+        wire(
+            &dir,
+            CLAUDE_SETTINGS_RELATIVE_PATH,
+            "/opt/konductor",
+            &["k-architect"],
+        );
+
+        apply_claude_settings_hooks_only(&dir, false).expect("wiring must produce an entry");
+
+        assert!(read_json(&dir.join(CLAUDE_SETTINGS_RELATIVE_PATH))
+            .get("hooks")
+            .is_none());
+        assert!(read_json(&dir.join(LOCAL))["hooks"]["SessionStart"].is_array());
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn grant_and_hooks_track_the_grant_and_hooks_files_separately() {
+        let dir = scratch_dir("claude-grant-and-hooks");
+        fs::create_dir_all(dir.join(".claude")).unwrap();
+        wire(&dir, CLAUDE_SETTINGS_RELATIVE_PATH, "/opt/konductor", &[]);
+
+        let files = apply_claude_settings_grant_and_hooks(&dir, false, "Kiro CLI");
+
+        let paths: Vec<&str> = files.iter().map(|file| file.path.as_str()).collect();
+        assert_eq!(paths, [CLAUDE_SETTINGS_RELATIVE_PATH, LOCAL]);
+        let shared = fs::read(dir.join(CLAUDE_SETTINGS_RELATIVE_PATH)).unwrap();
+        assert!(serde_json::from_slice::<serde_json::Value>(&shared)
+            .unwrap()
+            .get("hooks")
+            .is_none());
+        assert_eq!(
+            files[0].sha256.as_deref(),
+            Some(super::super::super::artifact::sha256_hex(&shared).as_str()),
+            "the recorded grant hash must match settings.json after the legacy hooks were stripped"
+        );
+        assert!(read_json(&dir.join(LOCAL))["hooks"]["SessionStart"].is_array());
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn grant_and_hooks_with_no_telemetry_strips_prior_hooks_from_both_files() {
+        let dir = scratch_dir("claude-grant-and-hooks-no-telemetry");
+        fs::create_dir_all(dir.join(".claude")).unwrap();
+        wire(
+            &dir,
+            CLAUDE_SETTINGS_RELATIVE_PATH,
+            "/opt/konductor",
+            &["k-architect"],
+        );
+        wire(&dir, LOCAL, "/opt/konductor", &["k-architect"]);
+
+        let files = apply_claude_settings_grant_and_hooks(&dir, true, "Kiro CLI");
+
+        let paths: Vec<&str> = files.iter().map(|file| file.path.as_str()).collect();
+        assert_eq!(paths, [CLAUDE_SETTINGS_RELATIVE_PATH]);
+        let shared = read_json(&dir.join(CLAUDE_SETTINGS_RELATIVE_PATH));
+        assert!(shared.get("hooks").is_none(), "got: {shared}");
+        assert!(shared["permissions"]["allow"].is_array());
+        assert!(read_json(&dir.join(LOCAL)).get("hooks").is_none());
+        fs::remove_dir_all(&dir).ok();
     }
 }

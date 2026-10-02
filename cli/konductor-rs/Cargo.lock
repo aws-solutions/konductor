@@ -443,7 +443,7 @@ dependencies = [
 
 [[package]]
 name = "konductor-telemetry"
-version = "0.1.0"
+version = "1.0.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -794,7 +794,7 @@ dependencies = [
 
 [[package]]
 name = "telemetry-test-sink"
-version = "0.1.0"
+version = "1.0.3"
 dependencies = [
  "rcgen",
  "rustls",
