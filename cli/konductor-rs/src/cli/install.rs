@@ -1933,11 +1933,7 @@ mod tests {
 
     // ── First-ever install --no-telemetry: no record to remove ──────────
 
-    /// A first-ever `install --no-telemetry` has no existing
-    /// `install-info.json` to remove. The locked read this fix goes
-    /// through must find `NotFound` and skip the removal attempt
-    /// entirely, leaving the install a plain success with no warning --
-    /// pinned at `install.rs`'s own call site, not just at the
+    /// Pinned at `install.rs`'s own call site, not just at the
     /// underlying `read_and_maybe_remove_locked` function.
     #[test]
     fn install_no_telemetry_on_a_target_with_no_existing_record_is_a_harmless_noop() {
@@ -2125,13 +2121,6 @@ mod tests {
 
     // ── Removal failure: must warn, not be swallowed by a bare eprintln! ─
 
-    /// `install --no-telemetry` against an enabled target whose
-    /// `.konductor/` directory it cannot write to (so the removal
-    /// genuinely fails) must still surface that failure as a warning
-    /// `report_install_success` can render in both plain-text and
-    /// `--json` output, rather than only to a bare `eprintln!` that a
-    /// `--json` run (or any non-interactive output) would never see.
-    ///
     /// Asserted directly against
     /// `remove_telemetry_record_for_no_telemetry_install`'s own return
     /// value rather than captured `println!` output -- this crate's

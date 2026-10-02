@@ -972,9 +972,6 @@ mod tests {
         }
     }
 
-    /// `--no-telemetry` and `--enable-telemetry` are mutually exclusive:
-    /// passing both must be a usage error, not a silent pick of one over
-    /// the other.
     #[test]
     fn update_no_telemetry_conflicts_with_enable_telemetry() {
         let result = Cli::try_parse_from([

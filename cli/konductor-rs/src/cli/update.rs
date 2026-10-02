@@ -2285,15 +2285,11 @@ mod tests {
 
     // ── Harness selection ─────────────────────────────────────────────────
 
-    /// `update --harness <name>` at a target tracking 2+ strategies
-    /// refreshes only the SELECTED strategy's own slot, and both (a)
-    /// leaves the OTHER already-tracked strategy's own manifest slot
-    /// untouched, and (b) keeps that other strategy's own name in the
-    /// INDEX entry's `strategies` list -- the exact bug this
-    /// implementation's own `tracked_strategy_names` fix closes: naively
-    /// writing `strategies: vec![current.strategy.clone()]` back to the
-    /// index would otherwise silently drop the untouched strategy's name
-    /// from the index even though its manifest slot survives on disk.
+    /// Also pins that the OTHER already-tracked strategy's name survives
+    /// in the index entry's `strategies` list -- naively writing
+    /// `strategies: vec![current.strategy.clone()]` back to the index
+    /// would silently drop it even though its manifest slot survives on
+    /// disk.
     #[test]
     fn update_one_target_with_harness_refreshes_only_selected_strategy() {
         let _home = HomeGuard::new("harness-select-update-home");
@@ -2392,13 +2388,6 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// Races a real concurrent `claude` install against
-    /// `update_one_target` refreshing the already-tracked
-    /// `kiro-cli-v2` slot, proving the finalize index write re-reads
-    /// the manifest fresh instead of reusing a pre-install snapshot --
-    /// so the index agrees with the correct post-race manifest state
-    /// rather than a stale snapshot.
-    ///
     /// Ordering between the installer thread's write and this
     /// function's own finalize fresh-read is enforced via
     /// `MID_UPDATE_SYNC_HOOK` (a real synchronization primitive)
@@ -2512,8 +2501,6 @@ mod tests {
         }
     }
 
-    /// A non-matching `--harness` value at a 2+-strategy target is a
-    /// usage error, and never touches either strategy's slot.
     #[test]
     fn update_one_target_with_unmatched_harness_is_usage_error_and_touches_nothing() {
         let _home = HomeGuard::new("harness-select-update-unmatched-home");
@@ -2562,10 +2549,6 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// With `--harness <name>` given to an `update --all` batch, a
-    /// target that does not track that harness is SKIPPED, not failed
-    /// -- the batch still succeeds (exit 0), while a target that does
-    /// track the requested harness is genuinely updated.
     #[test]
     fn dispatch_update_with_all_flag_skips_targets_that_do_not_track_the_requested_harness() {
         let _home = HomeGuard::new("update-all-skip-harness-not-tracked-home");
@@ -2632,7 +2615,6 @@ mod tests {
             false, /* cli */
             None,  /* release_version */
             false, /* force */
-            /* yes */
             false,
             false,
             ColorMode::disabled(),
@@ -2664,10 +2646,6 @@ mod tests {
         fs::remove_dir_all(&mismatched_target).ok();
     }
 
-    /// `report_update_batch` itself, in isolation: a `skipped` entry
-    /// lands in its own bucket, distinct from `succeeded`/`failed`, in
-    /// both plain-text and `--json` mode -- guards against a future
-    /// change silently dropping the skip bucket or panicking on it.
     /// Mirrors `uninstall.rs`'s
     /// `report_batch_does_not_panic_with_a_skipped_entry_present`.
     #[test]
@@ -2685,13 +2663,6 @@ mod tests {
 
     // ── Regression: `update` honors a target's persisted opt-out ────────
 
-    /// (1) A target originally installed with `konductor install
-    /// --no-telemetry` (no install-info record, no telemetry-hook
-    /// wiring) must have that wiring stay suppressed on a later PLAIN
-    /// `konductor update`, with no `--no-telemetry` re-passed. The
-    /// target's own missing `.konductor/install-info.json` is read as
-    /// the durable "opted out at install time" signal.
-    ///
     /// Exercises the real dispatch path end to end rather than calling
     /// `InstallStrategy::install_from_local` directly, so a regression
     /// in `update.rs`'s own carry-forward computation would be caught
@@ -2753,7 +2724,6 @@ mod tests {
             false, /* cli */
             None,  /* release_version */
             false, /* force */
-            /* yes */
             // no --no-telemetry on THIS invocation
             false,
             false,
@@ -2776,14 +2746,6 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// (2) `update --all` resolves the carry-forward signal
-    /// independently per target -- one target's missing install-info
-    /// record must never leak into another target's decision. Two
-    /// targets share one tracked index: one originally installed with
-    /// `--no-telemetry` (no install-info record), one without. A
-    /// single `update --all` run that itself passes no `--no-telemetry`
-    /// must still keep the first target's hooks suppressed while
-    /// wiring the second target's.
     #[test]
     fn update_all_resolves_the_carry_forward_signal_independently_per_target() {
         let _home = HomeGuard::new("update-all-mixed-home");
@@ -2853,7 +2815,6 @@ mod tests {
             false, /* cli */
             None,  /* release_version */
             false, /* force */
-            /* yes */
             // no --no-telemetry
             false,
             false,
@@ -2884,12 +2845,9 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// (2.1) The reverse case: the legacy identity file present but
-    /// `install-info.json` absent must read as opted out -- no
-    /// fallback to the legacy file. The identity file is no longer
-    /// written by any install path, so it is seeded directly to
-    /// reconstruct a developer machine that predates this file's
-    /// retirement.
+    /// The identity file is no longer written by any install path, so
+    /// it is seeded directly to reconstruct a developer machine that
+    /// predates this file's retirement.
     #[test]
     fn update_carry_forward_does_not_fall_back_to_identity_file_when_install_info_absent() {
         let _home = HomeGuard::new("update-carry-forward-no-fallback-home");
@@ -2971,19 +2929,9 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// (3) An explicit `--no-telemetry` on `update` still suppresses
-    /// hook re-wiring for a target that DOES have an install-info
-    /// record -- the flag is an override in the "opt out now"
-    /// direction, independent of what the persisted signal says. The
-    /// hooks block is removed between install and update, so the
+    /// The hooks block is removed between install and update, so the
     /// assertion checks that this run wired nothing rather than that it
-    /// stripped hooks left in place. The companion confirms the opt-out
-    /// is STICKY: it deletes the record this run resolved as enabled,
-    /// so a later plain `update` (no flag re-passed) stays suppressed
-    /// too, instead of silently re-enabling telemetry the moment the
-    /// flag is omitted -- see
-    /// `update_no_telemetry_against_an_enabled_target_persists_the_opt_out_on_a_later_plain_update`
-    /// for the dedicated regression test on this exact behavior.
+    /// stripped hooks left in place.
     #[test]
     fn explicit_no_telemetry_still_suppresses_wiring_for_a_target_with_an_identity_file() {
         let _home = HomeGuard::new("update-explicit-override-home");
@@ -3050,7 +2998,6 @@ mod tests {
             false, /* cli */
             None,  /* release_version */
             false, /* force */
-            /* yes */
             // --no-telemetry
             false,
             false,
@@ -3086,7 +3033,6 @@ mod tests {
             false, /* cli */
             None,  /* release_version */
             false, /* force */
-            /* yes */
             false,
             false,
             ColorMode::disabled(),
@@ -3105,17 +3051,12 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// (4) End to end: a target installed WITH telemetry on, then
-    /// `update --no-telemetry` run exactly ONCE, then a PLAIN `update`
-    /// (no flag re-passed at all) -- hooks must stay OFF on that final
-    /// plain run. `update --no-telemetry` against a target whose record
-    /// currently reads as enabled removes that record rather than only
-    /// skipping the write for its own run, so the later plain `update`
-    /// finds no record to read as `Ok` and keeps the opt-out instead of
-    /// silently re-enabling telemetry. Companion to
+    /// `update --no-telemetry` against a target whose record currently
+    /// reads as enabled removes that record rather than only skipping
+    /// the write for its own run -- that's what makes the opt-out
+    /// survive the later plain `update` this test checks. Companion to
     /// `explicit_no_telemetry_still_suppresses_wiring_for_a_target_with_an_identity_file`,
-    /// which covers the single-run suppression this test extends to a
-    /// later plain run.
+    /// which covers only the single-run suppression.
     #[test]
     fn update_no_telemetry_against_an_enabled_target_persists_the_opt_out_on_a_later_plain_update()
     {
@@ -3242,10 +3183,7 @@ mod tests {
 
     // ── --enable-telemetry: the reverse override ────────────────────────
 
-    /// `--enable-telemetry` re-opts a previously opted-out target back
-    /// in, and that re-opt-in is itself durable: a LATER plain `update`
-    /// (no flag re-passed) must still see the target as enabled, not
-    /// just the one run `--enable-telemetry` was passed on. Mirrors
+    /// Mirrors
     /// `update_no_telemetry_against_an_enabled_target_persists_the_opt_out_on_a_later_plain_update`'s
     /// shape, in the opposite direction.
     #[test]
@@ -3364,12 +3302,10 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// `--no-telemetry` and `--enable-telemetry` together must fail with
-    /// a clear usage error rather than silently picking one -- the
-    /// runtime guard in `dispatch_update_with` itself, for every caller
-    /// that reaches it directly rather than through parsed argv (every
-    /// test in this module included). `Commands::Update`'s own
-    /// `conflicts_with` is the primary enforcement for real CLI
+    /// Pins the runtime guard in `dispatch_update_with` itself, for
+    /// every caller that reaches it directly rather than through parsed
+    /// argv (every test in this module included). `Commands::Update`'s
+    /// own `conflicts_with` is the primary enforcement for real CLI
     /// invocations; see `cli.rs`'s
     /// `update_no_telemetry_conflicts_with_enable_telemetry` for that
     /// layer.
@@ -3400,10 +3336,6 @@ mod tests {
 
     // ── Core behavior change: unconditional overwrite ──────────────────
 
-    /// `update` on a hand-edited file UNCONDITIONALLY OVERWRITES it with
-    /// fresh content, regardless of local edits -- there is no
-    /// preserve-on-divergence behavior and no `--force` flag; this is
-    /// `update`'s only mode.
     #[test]
     fn update_one_target_unconditionally_overwrites_hand_edited_file() {
         let _home = HomeGuard::new("overwrite-hand-edit-home");
@@ -3470,9 +3402,6 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// A missing file (deleted pre-update) is also unconditionally
-    /// re-created with fresh content -- same single code path as a
-    /// hand-edit, no distinct "missing" handling.
     #[test]
     fn update_one_target_recreates_missing_file_with_fresh_content() {
         let _home = HomeGuard::new("recreate-missing-home");
@@ -3514,14 +3443,9 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// `update` shares `install_from_local` with `install`, so the
-    /// Kiro-discoverable `sop-<name>/SKILL.md` conversion is refreshed
-    /// by `update` the same way every other content type already is --
-    /// but it needs its own regression test: a stale body left over
-    /// from a prior install must not survive a re-run. Drives it
-    /// through `update_one_target` (the real `konductor update` entry
-    /// point) rather than calling `install_from_local` a second time
-    /// by hand.
+    /// Drives it through `update_one_target` (the real `konductor
+    /// update` entry point) rather than calling `install_from_local` a
+    /// second time by hand.
     #[test]
     fn update_one_target_refreshes_stale_kiro_sop_skill_body() {
         let _home = HomeGuard::new("refresh-kiro-sop-skill-home");
@@ -3606,14 +3530,10 @@ mod tests {
 
     // ── update's manifest matches a fresh install's manifest exactly ───
 
-    /// After a run, `update`'s manifest for a target names the same
-    /// files with the same hashes that a fresh `install` to an
-    /// equivalent, previously-empty target would produce for the same
-    /// source. `provenance` legitimately differs (`ReplacedOurs` for
-    /// update's target, which already had a Konductor-managed file at
-    /// that path, vs `Created` for the fresh target). Only
-    /// `installed_at` also legitimately differs (each call captures
-    /// its own timestamp).
+    /// `provenance` legitimately differs (`ReplacedOurs` for update's
+    /// target, which already had a Konductor-managed file at that path,
+    /// vs `Created` for the fresh target), as does `installed_at` (each
+    /// call captures its own timestamp). Everything else must match.
     #[test]
     fn update_manifest_matches_fresh_install_manifest_for_same_source() {
         let _home = HomeGuard::new("manifest-parity-home");
@@ -3719,13 +3639,9 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// `run_update_one_target` computes its own `updated_at` once (for
-    /// the `InProgress` index write) and must reuse that SAME string
-    /// for the `Complete` index write AND thread it into
-    /// `install_from_local` for the manifest, not a second independent
-    /// `utc_now_iso()` call. Runs a real `update_one_target`, then
-    /// reads both the index entry and the manifest back and asserts
-    /// the two `installed_at` strings are byte-identical.
+    /// `run_update_one_target` must compute `updated_at` once and reuse
+    /// that same string for both the index's `Complete` write and the
+    /// manifest, not call `utc_now_iso()` a second time independently.
     #[test]
     fn update_one_target_index_entry_and_manifest_installed_at_are_byte_identical() {
         let _home = HomeGuard::new("update-installed-at-identical-home");
@@ -4041,14 +3957,8 @@ mod tests {
         fs::remove_dir_all(&dir).ok();
     }
 
-    /// The strategy-registration check must run BEFORE the
-    /// `write_index(InProgress)` write-ahead, so a target whose manifest
-    /// records an unregistered strategy is rejected WITHOUT ever
-    /// mutating its index entry. Seeds a `Complete` index entry (as a
-    /// prior successful install/update would have left behind), then
-    /// asserts the entry's status is still `Complete` -- never flipped
-    /// to `InProgress` -- after the failed run, in addition to the
-    /// existing exit-code assertion above.
+    /// Pins that the strategy-registration check runs BEFORE the
+    /// `write_index(InProgress)` write-ahead.
     #[test]
     fn update_one_target_unregistered_strategy_does_not_mutate_index_status() {
         let _home = HomeGuard::new("unregistered-strategy-index-home");
@@ -4111,15 +4021,9 @@ mod tests {
         fs::remove_dir_all(&dir).ok();
     }
 
-    /// The other class of no-op failure `update_one_target` must catch
-    /// before its own write-ahead: a HEALTHY target (registered
-    /// strategy, `Complete` index entry) given a `--from` pointing at a
-    /// source with nothing to install. Must return the usual usage
-    /// error, but must never flip that target's index status from
-    /// `Complete` to `InProgress` for a run that never touched the
-    /// filesystem. Still a synchronous no-op case: `--from` was given,
-    /// so `would_fail_as_noop` runs and catches it before any index
-    /// write.
+    /// The other no-op class `update_one_target` must catch before its
+    /// write-ahead: `--from` was given, so `would_fail_as_noop` runs and
+    /// catches it before any index write.
     #[test]
     fn update_one_target_from_with_nothing_to_install_does_not_mutate_healthy_index_status() {
         let _home = HomeGuard::new("empty-from-index-home");
@@ -4297,12 +4201,9 @@ mod tests {
         fs::remove_dir_all(&source_root).ok();
     }
 
-    /// `--version <v>` composing with the skip-if-unchanged check: a
-    /// target already recorded at EXACTLY the requested tag must skip
-    /// the fetch entirely -- `remote_installer` must never be called at
-    /// all (it panics if it is), proving the comparison is made against
-    /// the explicitly requested version, not "latest" (which this test
-    /// never fetches, since no network call happens either way).
+    /// `remote_installer` panics if called, so this also proves the
+    /// comparison is made against the explicitly requested version, not
+    /// "latest".
     #[test]
     fn update_one_target_version_matching_recorded_version_skips_the_remote_fetch() {
         let _home = HomeGuard::new("update-version-skip-match-home");
@@ -4358,12 +4259,9 @@ mod tests {
         fs::remove_dir_all(&dir).ok();
     }
 
-    /// `--version <v>` composing with `--force`: an EXACT version match
-    /// must still proceed to the real fetch when `force` is `true`,
-    /// bypassing the skip -- `remote_installer` here returns `Ok` with a
-    /// fixed fake outcome (never called on the skip path, but must be
-    /// reachable here) so the run can complete and be observed as a
-    /// real fetch attempt, not a skip.
+    /// `remote_installer` here returns `Ok` with a fixed fake outcome
+    /// (never called on the skip path, but must be reachable here) so
+    /// the run can complete and be observed as a real fetch attempt.
     #[test]
     fn update_one_target_version_matching_recorded_version_with_force_still_fetches() {
         let _home = HomeGuard::new("update-version-force-bypass-home");
@@ -4425,11 +4323,8 @@ mod tests {
         fs::remove_dir_all(&dir).ok();
     }
 
-    /// `--version <v>` for a tag that does not name a recorded version
-    /// yet (a mismatch, or no recorded version at all) must proceed to
-    /// the real fetch, never skip -- confirms the comparison only skips
-    /// on an exact match, same rule `content_version::should_skip_write`
-    /// already enforces.
+    /// Confirms the comparison only skips on an exact match, same rule
+    /// `content_version::should_skip_write` already enforces.
     #[test]
     fn update_one_target_version_mismatched_recorded_version_still_fetches() {
         let _home = HomeGuard::new("update-version-mismatch-fetches-home");
@@ -4488,14 +4383,10 @@ mod tests {
         fs::remove_dir_all(&dir).ok();
     }
 
-    /// A requested tag that GitHub reports as not found
-    /// (`GithubFetchError::TagNotFound`) must surface a clear, distinct
-    /// failure through `update`'s own error-mapping path -- never the
-    /// old generic "not yet supported" message, and never silently
-    /// falling back to some other version. Exercised through
-    /// `run_update_one_target_with_remote_installer`'s real error
-    /// mapping, with a fake `remote_installer` standing in for the
-    /// real GitHub fetch that would return this exact error.
+    /// Must never silently fall back to some other version. Exercised
+    /// through `run_update_one_target_with_remote_installer`'s real
+    /// error mapping, with a fake `remote_installer` standing in for
+    /// the GitHub fetch that would return this exact error.
     #[test]
     fn update_one_target_tag_not_found_surfaces_a_clear_distinct_error() {
         let _home = HomeGuard::new("update-tag-not-found-home");
@@ -4568,10 +4459,7 @@ mod tests {
         fs::remove_dir_all(&dir).ok();
     }
 
-    /// A content-version match on `update`'s content path must render
-    /// through the DISTINCT `report_update_already_at_version` path --
-    /// exit code `0`, never the ordinary "N file(s) re-copied" success
-    /// wording, and never firing the version-updated telemetry event
+    /// Also confirms the version-updated telemetry event never fires
     /// for a run that changed nothing. Exercised through the full
     /// `update_one_target` entry point, so the reporting layer itself
     /// is proven correct.
@@ -4838,7 +4726,6 @@ mod tests {
             false, /* cli */
             None,  /* release_version */
             false, /* force */
-            /* yes */
             false,
             false,
             ColorMode::disabled(),
@@ -4853,12 +4740,8 @@ mod tests {
         fs::remove_dir_all(&home).ok();
     }
 
-    /// `dispatch_update_with` with `HOME` genuinely unresolvable (unset)
-    /// must exit non-zero -- the same `read_index`/
-    /// `IndexError::UnresolvableHome` behavior `uninstall` relies on.
-    /// Silently exiting 0 here would be indistinguishable from "nothing
-    /// was ever installed," when in fact whether anything is tracked
-    /// cannot be determined at all.
+    /// Same `read_index`/`IndexError::UnresolvableHome` behavior
+    /// `uninstall` relies on.
     #[test]
     fn dispatch_update_with_home_unset_exits_nonzero_not_silently_zero() {
         let _guard = lock_home();
@@ -4880,7 +4763,6 @@ mod tests {
             false, /* cli */
             None,  /* release_version */
             false, /* force */
-            /* yes */
             false,
             false,
             ColorMode::disabled(),
@@ -4899,14 +4781,10 @@ mod tests {
         assert_eq!(code, EXIT_USAGE_ERROR);
     }
 
-    /// `dispatch_update_with` with zero tracked installs and
-    /// `json=true` must return 0 via the shared
-    /// `report::report_no_tracked_installs` helper rather than an
-    /// unconditional plain-text `println!`. The exact JSON shape is
-    /// pinned once, structurally, by
+    /// The exact JSON shape is pinned once, structurally, by
     /// `report::tests::report_no_tracked_installs_json_has_command_and_tracked_installs_fields`
-    /// -- this test only needs to confirm `update` actually reaches
-    /// that branch and its exit code.
+    /// -- this test only needs to confirm `update` actually reaches that
+    /// branch and its exit code.
     #[test]
     fn dispatch_update_with_zero_tracked_installs_json_true_returns_zero() {
         let _guard = lock_home();
@@ -4927,7 +4805,6 @@ mod tests {
             false, /* cli */
             None,  /* release_version */
             false, /* force */
-            /* yes */
             false,
             true,
             ColorMode::disabled(),
@@ -4976,7 +4853,6 @@ mod tests {
             false, /* cli */
             None,  /* release_version */
             false, /* force */
-            /* yes */
             false,
             false,
             ColorMode::disabled(),
@@ -5035,7 +4911,6 @@ mod tests {
             false, /* cli */
             None,  /* release_version */
             false, /* force */
-            /* yes */
             false,
             false,
             ColorMode::disabled(),
@@ -5060,15 +4935,10 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// `update --all --json` against 2+ tracked targets (one healthy
-    /// target that succeeds, one stale target with no manifest that
-    /// fails) must emit stdout that parses as exactly ONE JSON document
-    /// -- never N concatenated top-level documents -- with the expected
-    /// `succeeded`/`failed` breakdown. Captures real process stdout
-    /// (via a spawned `konductor` binary) rather than calling
-    /// `dispatch_update_with` in-process, since the whole point being
-    /// tested is what actually lands on stdout for an external `--json`
-    /// consumer.
+    /// Captures real process stdout (via a spawned `konductor` binary)
+    /// rather than calling `dispatch_update_with` in-process, since the
+    /// whole point is what actually lands on stdout for an external
+    /// `--json` consumer.
     #[test]
     fn dispatch_update_all_json_emits_single_document_with_mixed_outcomes() {
         let _guard = lock_home();
@@ -5113,7 +4983,6 @@ mod tests {
             false, /* cli */
             None,  /* release_version */
             false, /* force */
-            /* yes */
             false,
             true,
             ColorMode::disabled(),
@@ -5209,12 +5078,9 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// `report_update_batch`, given a real mixed succeeded/failed
-    /// batch, must print exactly one line to stdout (one JSON
-    /// document) -- structurally confirmed here by rendering the same
-    /// JSON it constructs and checking it contains no embedded
-    /// newline, which is what `println!` on a single `serde_json::json!`
-    /// object always produces.
+    /// Confirmed structurally by checking the rendered JSON contains no
+    /// embedded newline, which is what `println!` on a single
+    /// `serde_json::json!` object always produces.
     #[test]
     fn report_update_batch_renders_as_single_line_json() {
         let succeeded = vec![(
@@ -5318,7 +5184,6 @@ mod tests {
             false, /* cli */
             None,  /* release_version */
             false, /* force */
-            /* yes */
             false,
             false,
             ColorMode::disabled(),
@@ -5395,7 +5260,6 @@ mod tests {
             false, /* cli */
             None,  /* release_version */
             false, /* force */
-            /* yes */
             false,
             false,
             ColorMode::disabled(),
@@ -5515,12 +5379,7 @@ mod tests {
         );
     }
 
-    /// Behavioral counterpart to the source-scanning guard above:
-    /// confirms `report_update_batch` folds a `finalize_index_warning`
-    /// into the succeeded entry's own JSON object (a `warning` field)
-    /// rather than requiring a second, separate stderr line. Confirms
-    /// stdout is still exactly ONE JSON document carrying the folded-in
-    /// warning.
+    /// Behavioral counterpart to the source-scanning guard above.
     #[test]
     fn report_update_batch_folds_finalize_index_warning_into_single_json_document() {
         let succeeded = vec![(
@@ -5579,11 +5438,9 @@ mod tests {
         );
     }
 
-    /// Sanity companion: on the ordinary path (no finalize-index
-    /// failure), `report_update_batch`'s succeeded entry must NOT carry
-    /// a `warning` key at all -- confirms the fold-in above is additive
-    /// or absent, never present-but-empty/null, which would otherwise
-    /// force every `--json` consumer to handle a phantom key.
+    /// Confirms the fold-in above is additive or absent, never
+    /// present-but-empty/null, which would otherwise force every
+    /// `--json` consumer to handle a phantom key.
     #[test]
     fn report_update_batch_omits_warning_key_when_finalize_index_succeeded() {
         let succeeded = vec![(
@@ -6000,7 +5857,6 @@ mod tests {
             false, /* cli */
             None,  /* release_version */
             false, /* force */
-            /* yes */
             false,
             true,
             ColorMode::disabled(),
@@ -6060,7 +5916,6 @@ mod tests {
             false, /* cli */
             None,  /* release_version */
             false, /* force */
-            /* yes */
             false,
             true,
             ColorMode::disabled(),
@@ -6122,7 +5977,6 @@ mod tests {
             false, /* cli */
             None,  /* release_version */
             false, /* force */
-            /* yes */
             false,
             true,
             ColorMode::disabled(),
@@ -6182,7 +6036,6 @@ mod tests {
             false, /* cli */
             None,  /* release_version */
             false, /* force */
-            /* yes */
             false,
             true,
             ColorMode::disabled(),

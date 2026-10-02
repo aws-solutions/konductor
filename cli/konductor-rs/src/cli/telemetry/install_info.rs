@@ -423,10 +423,8 @@ mod tests {
         fs::remove_dir_all(&source).ok();
     }
 
-    /// A genuine permission error reading `VERSION` (as opposed to the
-    /// file simply not existing) must still degrade to `None`, never be
-    /// fabricated. This test only pins the return value; the warning
-    /// itself goes to stderr, which is not captured here.
+    /// Only pins the return value; the warning itself goes to stderr,
+    /// which is not captured here.
     #[cfg(unix)]
     #[test]
     fn unreadable_version_file_degrades_to_none_not_a_fabricated_default() {
@@ -673,10 +671,6 @@ mod tests {
 
     // ── install_info_exists: a bare presence check, test-only ───────────
 
-    /// `install_info_exists` is a plain existence check: false before
-    /// any write, true once `write_install_info` publishes the file,
-    /// and still true for a file whose content is corrupted -- it does
-    /// not distinguish "wrote successfully" from "wrote something."
     #[test]
     fn install_info_exists_reflects_plain_presence_including_corrupted_content() {
         let target = scratch_dir("exists-plain-presence-target");
@@ -705,8 +699,6 @@ mod tests {
         fs::remove_dir_all(&source).ok();
     }
 
-    /// A target with neither `install-info.json` nor any other
-    /// `.konductor` content present must not be reported as opted in.
     #[test]
     fn install_info_exists_is_false_when_neither_file_present() {
         let target = scratch_dir("exists-neither-file-target");
@@ -728,12 +720,8 @@ mod tests {
     // / `delete_and_remove_strategy_locked_never_deletes_a_racing_kiro_variant_overrides_files`
     // pair for the identical shape of race on a different document.
 
-    /// Manually sequences the OLD unprotected pattern -- an unlocked
-    /// read captured once, then an unlocked `remove_install_info` call
-    /// much later -- with a concurrent writer's successful
-    /// `write_install_info` landing in the gap between the two. Pins
-    /// exactly what that composition destroys; not itself the
-    /// regression test for the locked fix, see the next test for that.
+    /// Not itself the regression test for the locked fix -- see the next
+    /// test for that.
     #[test]
     fn old_unlocked_read_then_delete_sequence_destroys_a_racing_concurrent_write() {
         let target = scratch_dir("unlocked-race-old-sequence-target");
@@ -779,13 +767,8 @@ mod tests {
         fs::remove_dir_all(&source).ok();
     }
 
-    /// The regression test for the fix: races a REAL concurrent
-    /// `write_install_info` call against `read_and_maybe_remove_locked`
-    /// using two real OS threads, with `LOCKED_READ_SYNC_HOOK` holding
-    /// the locked function's critical section open for a controlled
-    /// moment. The concurrent write must block on the SAME lock rather
-    /// than racing the read-check-delete, and must land fully, visibly,
-    /// once the lock is released -- never silently lost.
+    /// The regression test for the fix (see the test above for the
+    /// unprotected pattern it's regressing against).
     #[test]
     fn read_and_maybe_remove_locked_never_loses_a_racing_concurrent_write() {
         let target = scratch_dir("locked-race-target");
@@ -866,10 +849,6 @@ mod tests {
                  forever",
         );
 
-        // B's write is NOT silently lost: it is the final, observable
-        // state after both threads complete, exactly as a real serial
-        // A-then-B execution would leave it -- never a corrupted/partial
-        // result and never silently absent.
         let final_record = read_install_info(&target)
             .expect("B's write must still be readable after the race -- it must not be lost");
         assert_eq!(final_record.harness, "claude");
