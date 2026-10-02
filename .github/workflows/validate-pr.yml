@@ -97,6 +97,28 @@ jobs:
             fi
           done
 
+      - name: Install claude CLI for validation
+        # Pinned to the same version release.yml's publish-claude-plugin job
+        # uses, so a PR and the post-merge release job apply the identical
+        # `claude plugin validate` check against the same plugin tree.
+        run: npm install --global @anthropic-ai/claude-code@2.1.284
+
+      - name: Verify the Claude Code plugin still generates and validates (make claude-plugin-check)
+        # PR-time check for a change to agents/*.agent-spec.json,
+        # skills/*/SKILL.md, or agent-sops/*.sop.md: confirms
+        # scripts/generate-claude-plugin.sh and
+        # scripts/assemble-claude-plugin-branch.sh still produce a plugin in
+        # both shapes (repo-root and the flat tree published to the
+        # claude-plugin branch -- see that target's own comment in the root
+        # Makefile), and that `claude plugin validate --strict` passes on
+        # the flat branch shape -- the same validation release.yml's
+        # publish-claude-plugin job runs before force-pushing to the
+        # claude-plugin branch, but here entirely read-only: this job never
+        # pushes or creates a release. The CLI is already built by the
+        # `make synth` step above, so this re-invocation of `make -C cli
+        # build` inside the target is a fast no-op.
+        run: make claude-plugin-check
+
       - name: Verify packaged tarball asset count and version
         # PR-time analog of two release.yml checks that otherwise only run
         # after merge: check-version's TARBALL_MATCH_COUNT/

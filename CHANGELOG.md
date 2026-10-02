@@ -6,6 +6,37 @@ This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Entries are consolidated per release,
 not per individual commit.
 
+## [Unreleased]
+
+### Added
+
+- A Claude Code plugin marketplace install path: `/plugin marketplace add
+  aws-solutions/konductor` then `/plugin install konductor@konductor`. See [Install via the
+  Claude Code plugin marketplace](docs/user-guide/tasks/install-claude-plugin-marketplace.md).
+- `publish-claude-plugin`'s release job tags each `claude-plugin` branch release with an
+  immutable `claude-plugin-vX.Y.Z` tag, so a `marketplace.json` entry can pin to a specific
+  release instead of the branch's moving HEAD.
+
+### Changed
+
+- `make synth` (and `konductor synth`) now pre-wires AWS MCP (`aws-mcp`) into the standalone
+  Claude Code install, matching the plugin build. Everything else stays bring-your-own. The
+  bundled-server list lives in `scripts/claude-plugin-mcp-servers.json`.
+- The plugin and standalone Claude Code builds launch `aws-mcp` with the [Agent Toolkit for
+  AWS](https://github.com/aws/agent-toolkit-for-aws)'s own recommended `mcp-proxy-for-aws-cli`
+  command, overriding the agent specs' own pin for these two install shapes only.
+
+### Security
+
+- `k-architect`/`k-developer` still grant AWS MCP's full tool surface, unchanged. Use the
+  `aws:ViaAWSMCPService`/`aws:CalledViaAWSMCP` IAM condition keys to scope or audit
+  agent-originated calls.
+- `release.yml`'s `workflow_dispatch` trigger bypassed `check-version`'s branch gating: any
+  branch with an unreleased `VERSION` bump could trigger a real `gh release create`, and by
+  default, a force-push to the public `claude-plugin` branch. Removed the manual-dispatch path
+  entirely; `validate-pr.yml` now runs `claude plugin validate --strict` against the assembled
+  plugin tree on every PR instead, with no publish or push step anywhere in its job graph.
+
 ## [1.0.3] - 2026-10-01
 
 ### Fixed

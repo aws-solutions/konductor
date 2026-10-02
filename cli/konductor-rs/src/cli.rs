@@ -328,6 +328,42 @@ pub enum Commands {
         /// Path to a local repo root to synthesize against, instead of the cwd.
         #[arg(long)]
         from: Option<String>,
+
+        /// Comma-separated allowlist of `dependencies.mcpRegistry` server
+        /// names the Claude Code transformer is permitted to merge into
+        /// each agent's rendered `mcpServers:` frontmatter. Omitted (the
+        /// default): the allowlist is empty, so no `mcpRegistry` entry is
+        /// ever merged -- matching this field's behavior before any
+        /// caller opts a server in. This is deliberately opt-in, not
+        /// opt-out: an MCP server most callers of this general-purpose
+        /// CLI have no reason to auto-launch on a caller's machine (e.g.
+        /// a browser-automation server) should never be bundled just
+        /// because a downstream repo's own agent spec happens to declare
+        /// it in `dependencies.mcpRegistry` -- see
+        /// `scripts/claude-plugin-mcp-servers.json` for this repo's own
+        /// choice (`aws-mcp` only, not `playwright-mcp`) and the
+        /// rationale recorded there.
+        #[arg(long = "claude-bundled-mcp-servers")]
+        claude_bundled_mcp_servers: Option<String>,
+
+        /// Path to a JSON file (e.g. `scripts/claude-plugin-mcp-servers.json`)
+        /// whose top-level `"bundled"` object maps each bundled server name to
+        /// its own launch definition (`command`/`args`/`url`, the same shape
+        /// as an agent spec's own `dependencies.mcpRegistry` entry). When
+        /// given, each agent's `mcpRegistry` entry for a name present in both
+        /// this file's `"bundled"` object and `--claude-bundled-mcp-servers`
+        /// is REPLACED by this file's definition before rendering -- the
+        /// launch command/args/url the Claude Code transformer bakes into
+        /// `dist/claude/agents/*.md` frontmatter come from here, not from the
+        /// agent spec's own (possibly different or unpinned)
+        /// `dependencies.mcpRegistry` entry. A bundled name absent from this
+        /// file's `"bundled"` object contributes no `mcpRegistry` entry at
+        /// all, the same as a name absent from `--claude-bundled-mcp-servers`.
+        /// Omitted (the default): falls back to the pre-existing behavior of
+        /// filtering each agent's own `dependencies.mcpRegistry` down to the
+        /// `--claude-bundled-mcp-servers` allowlist, unchanged.
+        #[arg(long = "claude-bundled-mcp-config")]
+        claude_bundled_mcp_config: Option<String>,
     },
 
     /// Initialize a new Konductor project: creates `.konductor/` in the
