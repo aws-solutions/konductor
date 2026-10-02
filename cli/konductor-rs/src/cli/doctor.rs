@@ -1514,9 +1514,12 @@ fn check_index_status(destination: &Path, home_dir: Option<&Path>) -> CheckResul
 /// closed to the same "reporting is off, no record" wording as a
 /// missing `telemetry.json`.
 ///
-/// Five cases: no install-info record at all (`Info`, names both
+/// Six cases: no install-info record at all (`Info`, names both
 /// possible causes); a record present but fails validation (`Warn`,
-/// not a choice the user made); no machine record at all (`Info`,
+/// not a choice the user made); the record validates but `HOME` could
+/// not be resolved, leaving no anchor to read a machine consent record
+/// from (`Info`, fails closed to the same off-with-no-record wording as
+/// a missing machine record); no machine record at all (`Info`,
 /// nothing has reported yet); the machine record declines while this
 /// target opted in (`Warn`, the case a design review flagged as
 /// silent); machine consent allows and this target opted in (`Ok`).
