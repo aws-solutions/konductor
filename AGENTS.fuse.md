@@ -8,7 +8,9 @@ Each workstream's state is saved in `.konductor/workstreams/<slug>.yml` in the u
 repository.
 
 The fuse-konductor clone is at {{CLONE}}. `fuse-flow` is `fuse/flow/fuse-flow` in the clone; run it
-by its full path. The workflows are the `*.yml` files in `fuse/flow/workflows/` in the clone; each
+by its full path, from the root of the user's project repository and never from inside the clone.
+The workstream state and everything the steps produce, such as `.konductor/` and `.kiro/specs/`,
+belong in the project repository. The workflows are the `*.yml` files in `fuse/flow/workflows/` in the clone; each
 has a `name` and a `description`. `fuse-flow` needs Bun and installs its own dependencies on first
 use. If Bun is missing, tell the user to install it from https://bun.sh. If the clone is not where
 this says, ask the user where it is.
