@@ -64,7 +64,7 @@ const workflow = loadWorkflow(workflowPath);
 for (const step of workflow.steps) {
   const state = stateOf(ws, step.id);
   if (state.status !== "done") failures.push(`${step.id}: not done (${state.status})`);
-  if (state.fix_cycles > 0) notes.push(`${step.id}: ${state.fix_cycles} refused continue(s)`);
+  if (state.rounds_granted) notes.push(`${step.id}: owner granted ${state.rounds_granted} more review round(s)`);
   for (const line of state.history) {
     const approval = /owner approved.*$/.exec(line)?.[0];
     if (approval) notes.push(`${step.id}: ${approval}`);
@@ -72,9 +72,10 @@ for (const step of workflow.steps) {
   for (const artifact of new Set([...step.produces, ...state.artifacts])) {
     if (!existsSync(join(project, artifact))) failures.push(`${step.id}: missing artifact ${artifact}`);
   }
-  if (step.gate.kind === "check") {
-    const r = Bun.spawnSync(["sh", "-c", step.gate.command], { cwd: project, stdout: "ignore", stderr: "ignore" });
-    if (r.exitCode !== 0) failures.push(`${step.id}: check failed: ${step.gate.command}`);
+  for (const gate of step.gates) {
+    if (gate.kind !== "script") continue;
+    const r = Bun.spawnSync(["sh", "-c", gate.text], { cwd: project, stdout: "ignore", stderr: "ignore" });
+    if (r.exitCode !== 0) failures.push(`${step.id}: check failed: ${gate.text}`);
   }
 }
 finish();

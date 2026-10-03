@@ -4,7 +4,6 @@
 version: 1
 name: smoke-gated-a
 description: Requirements, implementation and release, with owner approvals and a test check.
-max_fix_cycles: 2
 
 steps:
   - id: requirements

@@ -14,7 +14,6 @@ const CHECK = join(SMOKE_DIR, "check.ts");
 
 const WORKFLOW = `version: 1
 name: tiny
-max_fix_cycles: 2
 steps:
   - id: write
     instruction: write the note
