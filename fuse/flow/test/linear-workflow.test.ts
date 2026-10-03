@@ -38,7 +38,7 @@ test("start mints a workstream that records its workflow, with every step pendin
       `read: ${join(repo.root, "skills/design/SKILL.md")}`,
       "instruction: Write the design.",
       "produce: docs/design.md",
-      "gate: none",
+      "gates: none",
       "then run: fuse-flow continue feat",
       "",
     ].join("\n"),
@@ -46,9 +46,9 @@ test("start mints a workstream that records its workflow, with every step pendin
   expect(repo.state("feat")).toEqual({
     workflow: join(repo.root, "workflow-source.yml"),
     steps: {
-      design: { status: "pending", fix_cycles: 0, artifacts: [], history: [] },
-      build: { status: "pending", fix_cycles: 0, artifacts: [], history: [] },
-      summary: { status: "pending", fix_cycles: 0, artifacts: [], history: [] },
+      design: { status: "pending", artifacts: [], history: [] },
+      build: { status: "pending", artifacts: [], history: [] },
+      summary: { status: "pending", artifacts: [], history: [] },
     },
   });
   // The state is private to this checkout.
@@ -74,13 +74,13 @@ test("work, continue, repeated until the workflow is complete", () => {
   expect(repo.ok("status", "feat")).toContain("workflow complete");
 });
 
-test("continue is refused while a declared artifact is missing, and each refusal costs a fix cycle", () => {
+test("continue is refused while a declared artifact is missing, names the path it expected, and never blocks the step", () => {
   repo.start("feat", LINEAR);
   const out = repo.refused("continue", "feat");
-  expect(out).toContain("refused: missing artifact(s): docs/design.md");
-  expect(out).toContain("fix cycles used on design: 1 of 2");
-  expect(repo.state("feat").steps.design).toMatchObject({ status: "pending", fix_cycles: 1 });
+  expect(out).toContain(`refused: missing artifact(s): docs/design.md (${join(repo.root, "docs/design.md")})`);
   expect(repo.state("feat").steps.design.history[0]).toContain("continue refused: missing artifact(s): docs/design.md");
+  for (let i = 0; i < 3; i++) repo.refused("continue", "feat");
+  expect(repo.status("feat", "design")).toBe("pending");
 
   repo.write("docs/design.md");
   expect(repo.refused("continue", "feat", "--artifact", "docs/extra.md")).toContain("missing artifact(s): docs/extra.md");
@@ -90,9 +90,9 @@ test("continue run twice acts on the following step, as the README says, and say
   repo.start("feat", LINEAR);
   repo.write("docs/design.md");
   repo.ok("continue", "feat");
-  // The replay meets build, whose artifact is missing: refused, and build pays the fix cycle.
+  // The replay meets build, whose artifact is missing: refused, and recorded in build's history.
   expect(repo.refused("continue", "feat")).toContain("missing artifact(s): src/app.ts");
-  expect(repo.state("feat").steps.build.fix_cycles).toBe(1);
+  expect(repo.state("feat").steps.build.history).toHaveLength(1);
   repo.write("src/app.ts");
   repo.ok("continue", "feat");
   // The replay meets summary, which declares nothing: it is marked done, and the output names it.
@@ -117,9 +117,9 @@ test("status lists every step and marks the current one", () => {
   expect(repo.ok("status", "feat")).toBe(
     [
       "workstream feat (linear)",
-      "  design   done            gate none    docs/design.md",
-      "> build    pending         gate none",
-      "  summary  pending         gate none",
+      "  design   done            gates none    docs/design.md",
+      "> build    pending         gates none",
+      "  summary  pending         gates none",
       "current step: build; fuse-flow start feat prints what to do",
       "",
     ].join("\n"),

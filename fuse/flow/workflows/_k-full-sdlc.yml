@@ -1,40 +1,11 @@
+# $schema: ./schemas/workflow.schema.json
+# yaml-language-server: $schema=./schemas/workflow.schema.json
+# above comments enable live schema validation in WebStorm and vscode
+
 # SPDX-License-Identifier: Apache-2.0
-# Default fuse-flow workflow: the k-full-sdlc phases as ordered, gated steps.
-# Start a workstream with:  fuse-flow start <slug> --workflow _k-full-sdlc
-# To change it, copy it to .konductor/workflows/ under a new name and edit the copy.
-#
-# Fields per step:
-#   id          lowercase identifier, shown in fuse-flow output
-#   skill       SKILL.md to read first, relative to the skills directory
-#               (see "Skills" in fuse/flow/README.md for the search order),
-#               or an absolute path
-#   instruction inline guidance printed with the step
-#   produces    artifacts that must exist before `fuse-flow continue` accepts the step
-#   gate        none | owner | "check: <command run from the repository root>"
-#   depends_on  ids of steps listed earlier whose output this step builds on;
-#               documentation for the reader. fuse-flow runs the steps in file
-#               order, one at a time, whatever depends_on says
-#
-# Artifacts live under .konductor/<phase>/; implementation code follows the
-# project's own layout. Steps 0 to 11 of the former k-full-sdlc SOP map onto
-# the twelve steps below in the same order. Owner gates sit where the SOP
-# paused for the engineer (requirements, design review, feature splitting,
-# specs, code review, testing).
-#
-# fuse-flow runs steps forward only. The SOP's backward routes are written into
-# the instructions instead: design review fixes the design in place (4 -> 3),
-# code review and testing fix the implementation in place (8, 9 -> 7), and
-# documentation fixes itself before it is marked done (10 -> 10).
-#
-# Steps 6 to 9 run per feature: each feature from feature-split.md goes through
-# specs, implementation, code review and testing on its own branch, and each
-# step's artifact covers every feature. Fix cycles are counted per step, not per
-# feature, and implementation, code review and testing do not share one retry
-# budget the way the SOP's per-feature fix_cycles_used does.
 version: 1
 name: k-full-sdlc
-description: Requirements through documentation for one feature or project (the twelve k-full-sdlc steps).
-max_fix_cycles: 2
+description: Port of the former k-full-sdlc SOP, requirements through documentation for one feature or project, with its steps 0 to 11 in the same order.
 
 steps:
   - id: elicitation
@@ -84,11 +55,12 @@ steps:
       Review .konductor/design/design.md independently of the author: first
       design-quality-check/SKILL.md, then this skill, then
       adversarial-design-review/SKILL.md. Fix every
-      CRITICAL finding in design.md itself (the route back to step 3), never by
-      deferring it to implementation, and record the findings and their
-      resolution. The owner approves the reviewed design.
+      CRITICAL finding in design.md itself, never by deferring it to
+      implementation, and record the findings and their resolution.
     produces: [.konductor/design/design-review.md]
-    gate: owner
+    gates:
+      - owner-action: approve the reviewed design
+        route_back_to: design
 
   - id: feature-splitting
     title: 5. Feature splitting
@@ -128,24 +100,25 @@ steps:
     skill: code-review/SKILL.md
     instruction: >
       Commit each feature (git-workflow/SKILL.md), open one pull request per
-      feature, and review the diff. Fix CRITICAL findings on the feature branch
-      (the route back to step 7), re-run the build and tests, and record the
-      review. Never merge. The owner approves the pull requests for all features
-      at once.
+      feature, and review the diff. Fix CRITICAL findings on the feature branch,
+      re-run the build and tests, and record the review. Never merge.
     produces: [.konductor/review/code-review.md]
-    gate: owner
+    gates:
+      - owner-action: approve the pull requests for all features at once
+        route_back_to: implementation
 
   - id: testing
     title: 9. Testing (per feature)
     skill: test-coverage-analysis/SKILL.md
     instruction: >
       Find the coverage gaps for what was implemented, write the missing tests on
-      the feature branch (the route back to step 7) and update its pull request.
-      Mark a feature NEEDS_REVALIDATION in code-review.md when this step changes a
-      pull request that was already reviewed. Record the remaining gaps with a
-      reason each; the owner accepts what stays open.
+      the feature branch and update its pull request. Mark a feature
+      NEEDS_REVALIDATION in code-review.md when this step changes a pull request
+      that was already reviewed. Record the remaining gaps with a reason each.
     produces: [.konductor/testing/test-coverage.md]
-    gate: owner
+    gates:
+      - owner-action: accept the coverage gaps that stay open
+        route_back_to: implementation
 
   - id: documentation
     title: 10. Documentation

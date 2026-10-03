@@ -17,7 +17,8 @@ const R = 5;
 const skillName = (p: string) => p.replace(/\/SKILL\.md$/, "").split("/").pop() ?? p;
 const baseName = (p: string) => p.split("/").pop() ?? p;
 const GATE_ICON: Record<Gate["kind"], string> = { "owner-action": "owner", script: "script", agent: "agent" };
-const gateLabel = (g: Gate) => `${GATE_ICON[g.kind]}: ${g.description}`;
+const gateLabel = (g: Gate) =>
+  `${GATE_ICON[g.kind]}: ${g.description}${g.maxRounds !== undefined ? ` (max ${g.maxRounds} rounds)` : ""}`;
 
 // Greedy lanes: the shortest spans sit closest to the cards, and edges whose
 // spans overlap never share a lane.
@@ -46,8 +47,10 @@ function Arrows({ steps, geo }: { steps: Step[]; geo: Rect[] }) {
           : []
         : st.dependsOn.map((d) => index.get(d)).filter((j): j is number => j !== undefined && j < i);
     for (const j of deps) (j === i - 1 ? seq : left).push({ j, i, lane: 0 });
-    const f = st.onFail === null ? undefined : index.get(st.onFail);
-    if (f !== undefined && f <= i) right.push({ j: f, i, lane: 0 });
+    for (const target of st.routesBackTo) {
+      const f = index.get(target);
+      if (f !== undefined && f <= i) right.push({ j: f, i, lane: 0 });
+    }
   });
   assignLanes(left);
   assignLanes(right);
@@ -124,11 +127,6 @@ function StepCard({ step, num }: { step: Step; num: number }) {
               {gateLabel(g)}
             </span>
           ))}
-          {step.maxFixCycles !== null && (
-            <span className="gate fix-cycles" title="max fix cycles for this step (overrides the workflow's)">
-              ↻ {step.maxFixCycles}
-            </span>
-          )}
         </div>
         {hasChips && (
           <div className="chips">

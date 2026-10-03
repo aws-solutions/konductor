@@ -6,7 +6,7 @@ import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import * as commands from "./commands.ts";
 import { FlowError, UsageError } from "./errors.ts";
-import { checkSlug, findRepoRoot, isWorkflowPath } from "./project.ts";
+import { checkSlug, findRepoRoot, isDirectory, isWorkflowPath } from "./project.ts";
 
 const USAGE = `usage:
   fuse-flow start <slug> [--workflow <name or path>]
@@ -16,10 +16,24 @@ const USAGE = `usage:
                                                 the current step's work is finished: record it and print
                                                 the next step; refused unless the step's artifacts exist
                                                 and its check command exits 0
+  fuse-flow continue <slug> --blocked <why>
+                                                the agent cannot finish the current step, for example
+                                                after its agent gate's max_rounds; the owner decides
   fuse-flow continue <slug> --owner-approved [--note <text>]
                                                 the owner approved the current step, which awaited the
                                                 owner or was blocked; record it and print the next step
+  fuse-flow continue <slug> --more-rounds <n> [--note <text>]
+                                                the owner grants a blocked step's agent gates n more
+                                                review rounds; the step is pending again
+  fuse-flow continue <slug> --back-to <step> [--note <text>]
+                                                the owner sends the work back from a step that awaits
+                                                the owner or is blocked to <step> (it or an earlier one),
+                                                which is current again
   fuse-flow status <slug>                       show every step's state
+  fuse-flow validate <name, file or directory>...
+                                                check workflows without starting a workstream; a
+                                                directory stands for every .yml and .yaml file below
+                                                it, so \`fuse-flow validate .\` checks them all
 
 workflows: a name is looked up as <name>.yml in .konductor/workflows/, ~/.konductor/workflows/,
            then the workflows that ship with fuse-flow; in each, at the top level and in the
@@ -33,6 +47,9 @@ const OPTIONS = {
   continue: {
     artifact: { type: "string", multiple: true },
     "owner-approved": { type: "boolean" },
+    blocked: { type: "string" },
+    "more-rounds": { type: "string" },
+    "back-to": { type: "string" },
     note: { type: "string" },
   },
   status: {},
@@ -58,6 +75,7 @@ function parse(command: Command, args: string[]) {
 function run(argv: string[]): string[] {
   const [command, ...args] = argv;
   if (command === "help" || command === "--help" || command === "-h") return [USAGE];
+  if (command === "validate") return validate(args);
   if (!command || !Object.hasOwn(OPTIONS, command)) throw new UsageError(command ? `unknown command "${command}"` : "no command");
 
   const { slug, values } = parse(command as Command, args);
@@ -71,17 +89,44 @@ function run(argv: string[]): string[] {
     }
     case "continue": {
       const ownerApproved = Boolean(values["owner-approved"]);
-      if (values.note !== undefined && !ownerApproved) throw new UsageError("--note goes with --owner-approved");
-      if (values.artifact !== undefined && ownerApproved) throw new UsageError("--artifact records the agent's work; it does not go with --owner-approved");
+      const moreRounds = values["more-rounds"] as string | undefined;
+      const backTo = values["back-to"] as string | undefined;
+      // The owner's decisions on a step that awaits the owner or is blocked.
+      const decisions = [ownerApproved && "--owner-approved", moreRounds !== undefined && "--more-rounds", backTo !== undefined && "--back-to"].filter(Boolean);
+      if (values.blocked !== undefined && (decisions.length > 0 || values.artifact !== undefined)) {
+        throw new UsageError("--blocked reports that the agent cannot finish the step; it goes with no other option");
+      }
+      if (decisions.length > 1) throw new UsageError(`${decisions.join(" and ")} are different decisions; give one`);
+      if (values.note !== undefined && decisions.length === 0) throw new UsageError("--note goes with --owner-approved, --more-rounds or --back-to");
+      if (values.artifact !== undefined && decisions.length > 0) throw new UsageError(`--artifact records the agent's work; it does not go with ${decisions[0]}`);
+      if (moreRounds !== undefined && !/^[1-9][0-9]*$/.test(moreRounds)) throw new UsageError("--more-rounds takes a whole number of rounds, 1 or more");
       return commands.continueWorkstream(root, slug, {
         ownerApproved,
         note: values.note as string | undefined,
+        blocked: values.blocked as string | undefined,
+        moreRounds: moreRounds === undefined ? undefined : Number(moreRounds),
+        backTo,
         extraArtifacts: (values.artifact as string[] | undefined) ?? [],
       });
     }
     case "status":
       return commands.status(root, slug);
   }
+}
+
+// `validate` takes references rather than a slug. A path or a directory is
+// made absolute against the current directory; a directory wins over a
+// workflow name that happens to be spelled the same.
+function validate(args: string[]): string[] {
+  let refs: string[];
+  try {
+    refs = parseArgs({ args, options: {}, allowPositionals: true, strict: true }).positionals;
+  } catch (e) {
+    throw new UsageError((e as Error).message);
+  }
+  if (refs.length === 0) throw new UsageError("validate takes workflow names, files or directories, for example: validate .");
+  const root = findRepoRoot(process.cwd());
+  return commands.validate(root, refs.map((ref) => (isWorkflowPath(ref) || isDirectory(ref) ? resolve(ref) : ref)));
 }
 
 function main(argv: string[]): number {

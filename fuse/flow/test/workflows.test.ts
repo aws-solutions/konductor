@@ -5,7 +5,7 @@
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { existsSync, readdirSync, readFileSync, symlinkSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { FLOW_DIR, REPO_SKILLS, Repo } from "./helpers";
 
 const ONE_STEP = `version: 1
@@ -118,10 +118,14 @@ steps:
 `,
       '"a" depends on "b", which is not a step listed before it',
     ],
-    ["bad gate", ONE_STEP + "    gate: sometimes\n", 'must be none, owner or "check: <command>"'],
-    ["empty check", ONE_STEP + '    gate: "check:"\n', 'must be none, owner or "check: <command>"'],
+    ["bad gate", ONE_STEP + "    gate: sometimes\n", 'must be owner-action("…"), script("…") or agent("…"), as a string or a one-key mapping (a mapping may add description and route_back_to, and an agent mapping max_rounds: <n>), got "sometimes"'],
+    ["empty check", ONE_STEP + '    gate: "check:"\n', 'must be owner-action("…"), script("…") or agent("…"), as a string or a one-key mapping (a mapping may add description and route_back_to, and an agent mapping max_rounds: <n>), got "check:"'],
     ["step with nothing to do", "version: 1\nname: x\nsteps:\n  - id: a\n", "a step needs a skill, an instruction, or both"],
-    ["step max_fix_cycles below 1", ONE_STEP + "    max_fix_cycles: 0\n", "max_fix_cycles"],
+    ["agent gate max_rounds below 1", ONE_STEP + "    gate: { agent: review, max_rounds: 0 }\n", "steps.0.gate.max_rounds: Too small: expected number to be >=1"],
+    ["max_rounds on a script gate", ONE_STEP + "    gate: { script: bun test, max_rounds: 2 }\n", 'got {"script":"bun test","max_rounds":2}'],
+    ["route_back_to a later step", "version: 1\nname: one\nsteps:\n  - id: a\n    instruction: x\n    gate: { agent: review, route_back_to: b }\n  - id: b\n    instruction: y\n", '"a" routes back to "b", which is not this step or a step listed before it'],
+    ["route_back_to a bad step id", ONE_STEP + "    gate: { agent: review, route_back_to: Design }\n", "route_back_to"],
+    ["max_fix_cycles, which fuse-flow no longer reads", "version: 1\nname: one\nmax_fix_cycles: 2\nsteps:\n  - id: only\n    instruction: x\n", "max_fix_cycles"],
     ["bad step id", "version: 1\nname: x\nsteps:\n  - id: Design\n    instruction: x\n", "lowercase letters"],
   ];
   for (const [name, yaml, message] of cases) {
@@ -131,6 +135,35 @@ steps:
       expect(out).toContain(message);
     });
   }
+});
+
+test("the workflow, its steps and its mapping gates take a free-text description, which changes nothing", () => {
+  const out = repo.start(
+    "feat",
+    `version: 1
+name: described
+description: A workflow with notes.
+steps:
+  - id: only
+    description: Why this step exists.
+    instruction: x
+    gates:
+      - script: "true"
+        description: The suite must stay green.
+      - agent: review it
+        description: An independent review.
+        max_rounds: 3
+      - owner-action: approve
+        description: The owner signs off.
+`,
+  );
+  expect(out).toContain("script gate: true");
+  expect(out).toContain("After 3 such rounds");
+  expect(out).not.toContain("Why this step exists");
+  expect(out).not.toContain("The suite must stay green");
+  expect(repo.refused("start", "other", "--workflow", repo.write("bad.yml", ONE_STEP + "    gate: { script: x, description: 3 }\n"))).toContain(
+    'got {"script":"x","description":3}',
+  );
 });
 
 describe("finding skills", () => {
@@ -179,6 +212,30 @@ describe("the workflows shipped in fuse/flow/workflows", () => {
       const skills = workflow.steps.flatMap((s) => s.skill ?? []);
       for (const skill of skills) expect(existsSync(join(REPO_SKILLS, skill))).toBe(true);
       expect(repo.ok("start", "feat")).not.toContain("not found");
+    });
+  }
+});
+
+describe("the workflow JSON Schema", () => {
+  const SCHEMA = join(FLOW_DIR, "workflows", "schemas", "workflow.schema.json");
+
+  test("the JSON Schema files are what `bun run schema` writes from the Zod schemas", () => {
+    const proc = Bun.spawnSync([process.execPath, "run", "schema", "--check"], { cwd: FLOW_DIR, stdout: "pipe", stderr: "pipe" });
+    expect(proc.stdout.toString() + proc.stderr.toString()).toContain("is up to date");
+    expect(proc.exitCode).toBe(0);
+  });
+
+  // Only the tracked workflows: personal/ and team/ are gitignored and often symlinks.
+  const files = readdirSync(join(FLOW_DIR, "workflows")).filter((f) => f.endsWith(".yml"));
+  for (const file of files) {
+    test(`${file} names schemas/workflow.schema.json for WebStorm and for VS Code`, () => {
+      const text = readFileSync(join(FLOW_DIR, "workflows", file), "utf8");
+      const webstorm = /^# \$schema: (\S+)$/m.exec(text)?.[1];
+      const vscode = /^# yaml-language-server: \$schema=(\S+)$/m.exec(text)?.[1];
+      for (const path of [webstorm, vscode]) {
+        expect(path).toBeDefined();
+        expect(resolve(FLOW_DIR, "workflows", path!)).toBe(SCHEMA);
+      }
     });
   }
 });

@@ -103,10 +103,6 @@ function WorkflowView({ workflow }: { workflow: Workflow }) {
             Description
             <input className="input" value={workflow.description} readOnly />
           </label>
-          <label className="field">
-            Max fix cycles
-            <input className="input mono" value={workflow.maxFixCycles ?? ""} readOnly />
-          </label>
         </div>
         <StepsFlow workflow={workflow} />
       </div>

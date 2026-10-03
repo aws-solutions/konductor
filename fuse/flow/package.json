@@ -7,6 +7,7 @@
   "license": "Apache-2.0",
   "scripts": {
     "test": "bun test",
+    "schema": "bun run src/schemas/generate.ts",
     "flow": "bun run src/cli.ts"
   },
   "dependencies": {

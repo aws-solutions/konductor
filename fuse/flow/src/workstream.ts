@@ -5,40 +5,18 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import YAML from "yaml";
-import { z } from "zod";
 import { FlowError } from "./errors.ts";
 import { workstreamFile, workstreamsDir } from "./project.ts";
+import { type StepState, type Workstream, WorkstreamSchema } from "./schemas/workstream.ts";
 
-// pending         the agent is working on it; `continue` records it finished
-// awaiting-owner  artifacts recorded, waiting for `continue --owner-approved`
-// blocked         max_fix_cycles refused attempts; waiting for `continue --owner-approved`
-// done            finished
-const StepStateSchema = z
-  .object({
-    status: z.enum(["pending", "awaiting-owner", "blocked", "done"]),
-    fix_cycles: z.number().int().min(0),
-    artifacts: z.array(z.string()),
-    history: z.array(z.string()),
-  })
-  .strict();
-
-// Step id -> state. An object with a catchall rather than z.record, which
-// refuses objects that have a "constructor" key, and "constructor" is a valid
-// step id. `workflow` is the workflow the workstream follows, as given to
-// `start`: a name, or an absolute path.
-const WorkstreamSchema = z
-  .object({ workflow: z.string().min(1), steps: z.object({}).catchall(StepStateSchema) })
-  .strict();
-
-export type StepState = z.infer<typeof StepStateSchema>;
-export type Workstream = z.infer<typeof WorkstreamSchema>;
+export type { StepState, Workstream } from "./schemas/workstream.ts";
 
 // A step the state file does not mention yet (for example one added to the
 // workflow after `start`) is simply pending.
 export function stateOf(ws: Workstream, stepId: string): StepState {
   // Object.hasOwn, not ??=: a step may be called "constructor".
   if (!Object.hasOwn(ws.steps, stepId)) {
-    ws.steps[stepId] = { status: "pending", fix_cycles: 0, artifacts: [], history: [] };
+    ws.steps[stepId] = { status: "pending", artifacts: [], history: [] };
   }
   return ws.steps[stepId];
 }

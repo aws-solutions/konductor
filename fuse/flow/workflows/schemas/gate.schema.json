@@ -1,0 +1,142 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "./gate.schema.json",
+  "title": "fuse-flow gate",
+  "description": "What must hold before a step counts as done.",
+  "anyOf": [
+    {
+      "description": "The owner-action gate as a mapping: `owner-action: …`, optionally with `description` and `route_back_to`.",
+      "type": "object",
+      "properties": {
+        "owner-action": {
+          "description": "The owner does what this text says, then runs `fuse-flow continue <slug> --owner-approved`. Engine effect: a step with an owner-action gate goes to awaiting-owner instead of done when it is continued.",
+          "type": "string"
+        },
+        "description": {
+          "description": "What the gate is for, in free text, for the reader. Engine effect: none.",
+          "type": "string"
+        },
+        "route_back_to": {
+          "description": "The steps the work should go back to when this gate cannot be passed: one step id or a list, each this step or one before it. Usually the step that produces the artifact the gate finds fault with. Engine effect: when the step awaits the owner or is blocked, fuse-flow suggests these steps for `--back-to`, and the viewer draws them as routes back.",
+          "examples": [
+            "design",
+            [
+              "design",
+              "spec"
+            ]
+          ],
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]*$"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]*$"
+              }
+            }
+          ]
+        }
+      },
+      "required": [
+        "owner-action"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "description": "The script gate as a mapping: `script: …`, optionally with `description` and `route_back_to`.",
+      "type": "object",
+      "properties": {
+        "script": {
+          "description": "A shell command, run from the repository root when the step is continued. Engine effect: `continue` is refused unless the command exits 0.",
+          "type": "string"
+        },
+        "description": {
+          "description": "What the gate is for, in free text, for the reader. Engine effect: none.",
+          "type": "string"
+        },
+        "route_back_to": {
+          "description": "The steps the work should go back to when this gate cannot be passed: one step id or a list, each this step or one before it. Usually the step that produces the artifact the gate finds fault with. Engine effect: when the step awaits the owner or is blocked, fuse-flow suggests these steps for `--back-to`, and the viewer draws them as routes back.",
+          "examples": [
+            "design",
+            [
+              "design",
+              "spec"
+            ]
+          ],
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]*$"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]*$"
+              }
+            }
+          ]
+        }
+      },
+      "required": [
+        "script"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "description": "The agent gate as a mapping: `agent: …`, optionally with `max_rounds`, `description` and `route_back_to`.",
+      "type": "object",
+      "properties": {
+        "agent": {
+          "description": "An agent reviews the work as this text says. The agent that did the work classifies each finding as fix required or false positive, fixes what is required, and they repeat until a round ends with no required fix. Engine effect: none; the text and the round cap are printed with the step, and the agent that did the work counts the rounds.",
+          "type": "string"
+        },
+        "description": {
+          "description": "What the gate is for, in free text, for the reader. Engine effect: none.",
+          "type": "string"
+        },
+        "route_back_to": {
+          "description": "The steps the work should go back to when this gate cannot be passed: one step id or a list, each this step or one before it. Usually the step that produces the artifact the gate finds fault with. Engine effect: when the step awaits the owner or is blocked, fuse-flow suggests these steps for `--back-to`, and the viewer draws them as routes back.",
+          "examples": [
+            "design",
+            [
+              "design",
+              "spec"
+            ]
+          ],
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]*$"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]*$"
+              }
+            }
+          ]
+        },
+        "max_rounds": {
+          "description": "How many review rounds that end with a required fix the step allows, whatever the cause: the maker and the reviewer disagree, the reviewer finds new problems each round, or a fix introduces a regression. When the cap is reached, the agent that did the work does not start another round; it runs `fuse-flow continue <slug> --blocked \"<why>\"`. The owner then accepts the step as it is, grants more rounds, or sends the work back to an earlier step. Engine effect: none; fuse-flow prints the cap, raised by any rounds the owner granted, and does not count the rounds.",
+          "default": 2,
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "agent"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "description": "A gate as a string: `owner-action(\"…\")`, `script(\"…\")` or `agent(\"…\")`. Also accepted, from the first version of the format: `owner` (an owner-action gate that says approve), `none` (no gate) and `check: <command>` (a script gate).",
+      "pattern": "^\\s*(none|owner|(owner-action|script|agent|check)\\s*[(:][\\s\\S]*)$",
+      "type": "string"
+    }
+  ]
+}

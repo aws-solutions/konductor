@@ -69,6 +69,31 @@ export function findWorkflow(root: string, ref: string): string {
   throw new FlowError(`no workflow named "${ref}" in ${dirs.join(", ")} or the folders directly inside them`);
 }
 
+export function isDirectory(path: string): boolean {
+  return existsSync(path) && statSync(path).isDirectory();
+}
+
+// Every .yml and .yaml file below `dir`, in nested folders too, following
+// symlinks. Skips node_modules, .git, and the project's workstream state files,
+// which are YAML but not workflows.
+export function workflowFilesBelow(root: string, dir: string): string[] {
+  const skip = new Set([join(root, ".git"), workstreamsDir(root)].filter(existsSync).map((p) => realpathSync(p)));
+  const files: string[] = [];
+  const walk = (folder: string) => {
+    const real = realpathSync(folder);
+    if (skip.has(real)) return;
+    skip.add(real); // a symlink loop is walked once
+    for (const name of readdirSync(folder).sort()) {
+      if (name === "node_modules" || name === ".git") continue;
+      const path = join(folder, name);
+      if (isDirectory(path)) walk(path);
+      else if (/\.ya?ml$/.test(name) && existsSync(path)) files.push(path);
+    }
+  };
+  walk(dir);
+  return files;
+}
+
 export function workstreamsDir(root: string): string {
   return join(root, ".konductor", "workstreams");
 }

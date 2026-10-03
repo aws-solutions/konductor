@@ -1,10 +1,11 @@
+# $schema: ./schemas/workflow.schema.json
+# yaml-language-server: $schema=./schemas/workflow.schema.json
 # SPDX-License-Identifier: Apache-2.0
 # Demo workflow, small: a bug fix or a one-file change.
 # Three steps, one mechanical gate, no documents beyond a short note.
 version: 1
 name: custom-example-small
 description: Lightweight loop for a small, well-understood change.
-max_fix_cycles: 2
 
 steps:
   - id: implementation

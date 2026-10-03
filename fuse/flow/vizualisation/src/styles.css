@@ -356,10 +356,6 @@ button {
   background: oklch(0.94 0.05 160);
   color: oklch(0.42 0.1 160);
 }
-.gate.fix-cycles {
-  background: var(--surface-sunken);
-  color: var(--text-muted);
-}
 .chips {
   display: flex;
   gap: 4px;

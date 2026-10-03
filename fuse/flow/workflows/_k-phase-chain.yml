@@ -1,27 +1,10 @@
+# $schema: ./schemas/workflow.schema.json
+# yaml-language-server: $schema=./schemas/workflow.schema.json
+
 # SPDX-License-Identifier: Apache-2.0
-# Lighter fuse-flow workflow: konductor's six-phase SDLC chain (the "SDLC
-# Workflow" and "Verification Protocol" sections of the konductor agent prompt,
-# which has since been removed together with the other agent specs),
-# with its code review side loop as a step of its own.
-# Start a workstream with:  fuse-flow start <slug> --workflow _k-phase-chain
-# To change it, copy it to .konductor/workflows/ under a new name and edit the copy.
-# Field reference: see _k-full-sdlc.yml next to this file.
-#
-# Compared with _k-full-sdlc.yml this chain has no intake elicitation, codebase
-# analysis, principal engineer review, documentation or final summary, and no
-# owner gates: it runs through without pausing. max_fix_cycles: 2 matches the
-# prompt's limit of two fix cycles before escalating to the user.
-#
-# fuse-flow runs steps forward only. The chain's backward routes are written
-# into the instructions: the PM and architect steps check and fix their own
-# documents (1 -> 1, 2 -> 2), and code review fixes the implementation in
-# place (5a -> 5). QA findings have no route back.
-#
-# Steps 4 to 5a run per feature; each step's artifact covers every feature.
 version: 1
 name: k-phase-chain
-description: Konductor's lighter six-phase chain, PM through QA, with no owner gates.
-max_fix_cycles: 2
+description: Konductor's lighter six-phase chain, PM through QA, with no owner gates, from the "SDLC Workflow" and "Verification Protocol" sections of the removed Konductor agent prompt.
 
 steps:
   - id: pm
@@ -83,10 +66,12 @@ steps:
     instruction: >
       Review the git diff of each feature. Fix every CRITICAL finding in the
       implementation (the route back to step 5), re-run the build and tests, and
-      record the review. After two failed fix cycles, stop and escalate to the
-      owner.
+      record the review.
     produces: [.konductor/review/code-review.md]
-    gate: none
+    gates:
+      - agent: review the git diff of each feature; a CRITICAL finding fails the round
+        max_rounds: 2
+        route_back_to: implementation
 
   - id: qa
     title: 6. QA

@@ -44,7 +44,11 @@ this says, ask the user where it is.
    it, and prints the next step. If it is refused, fix what it names and try again.
 4. Repeat from 2 until `continue` prints `workflow complete`.
 
-If the printed step awaits the owner, or is blocked, show the user the artifacts and stop. Run
-`fuse-flow continue <slug> --owner-approved` only after the user has approved.
+If the printed step awaits the owner, or is blocked, it is the user's turn. Show the user the
+artifacts and the options the step printed, recommend one with your reason, and stop. Suggest
+sending the work back to the steps the step's gates name, or to the step that produces an artifact
+the user wants reworked. Run the command for the user's decision only after the user has decided:
+`fuse-flow continue <slug> --owner-approved` when they approve, otherwise the `--back-to` or, for
+a blocked step, `--more-rounds` command it printed.
 
 The state is saved after every command. A new session can continue the workstream at any time.

@@ -4,7 +4,7 @@
 
 import YAML from "yaml";
 
-export type Gate = { kind: "owner-action" | "script" | "agent"; description: string; maxRounds?: number };
+export type Gate = { kind: "owner-action" | "script" | "agent"; description: string; maxRounds?: number; routeBackTo: string[] };
 
 export type Step = {
   id: string;
@@ -14,9 +14,8 @@ export type Step = {
   gates: Gate[];
   // null: depends_on omitted, so the step runs after the one listed before it.
   dependsOn: string[] | null;
-  onFail: string | null;
-  // Set only when the step overrides the workflow's max_fix_cycles.
-  maxFixCycles: number | null;
+  // The steps this step's gates route back to, from their route_back_to.
+  routesBackTo: string[];
 };
 
 export type Workflow = {
@@ -25,7 +24,6 @@ export type Workflow = {
   file: string;
   dir: string;
   description: string;
-  maxFixCycles: number | null;
   steps: Step[];
   error: string | null;
   // The file's text as it is on disk.
@@ -44,19 +42,22 @@ const asStrings = (v: unknown): string[] =>
   Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : typeof v === "string" ? [v] : [];
 
 const KINDS = ["owner-action", "script", "agent"] as const;
+// The engine's default for an agent gate without max_rounds.
+const DEFAULT_MAX_ROUNDS = 2;
 const isKind = (k: string): k is Gate["kind"] => (KINDS as readonly string[]).includes(k);
 
 // Same forms the engine accepts: `{ script: "…" }`, `script("…")`, `script: …`,
-// plus the older `owner`, `check: <command>` and `{ review: { skill } }`.
+// `{ agent: "…", max_rounds: n }`, plus the older `owner`, `check: <command>`
+// and `{ review: { skill } }`.
 function parseGate(v: unknown): Gate | null {
   if (typeof v === "string") {
     const s = v.trim();
-    if (s === "owner") return { kind: "owner-action", description: "approve" };
+    if (s === "owner") return { kind: "owner-action", description: "approve", routeBackTo: [] };
     const m = /^([a-z-]+)\s*(?:\(\s*"?(.*?)"?\s*\)|:(.*))$/s.exec(s);
     if (!m) return null;
     const kind = m[1] === "check" ? "script" : m[1];
     const description = (m[2] ?? m[3] ?? "").trim();
-    return isKind(kind) && description ? { kind, description } : null;
+    return isKind(kind) && description ? { kind, description, routeBackTo: [] } : null;
   }
   if (v && typeof v === "object" && "review" in v) {
     const r = (v as { review: { skill?: unknown; max_rounds?: unknown } }).review ?? {};
@@ -64,15 +65,18 @@ function parseGate(v: unknown): Gate | null {
       kind: "agent",
       description: `review loop${typeof r.skill === "string" ? `: ${r.skill}` : ""}`,
       maxRounds: typeof r.max_rounds === "number" ? r.max_rounds : undefined,
+      routeBackTo: [],
     };
   }
   if (v && typeof v === "object" && !Array.isArray(v)) {
-    const entries = Object.entries(v);
+    const { max_rounds: maxRounds, description: _note, route_back_to: routeBackTo, ...rest } = v as Record<string, unknown>;
+    const entries = Object.entries(rest);
     if (entries.length !== 1) return null;
     const [kind, description] = entries[0];
-    return isKind(kind) && typeof description === "string" && description.trim()
-      ? { kind, description: description.trim() }
-      : null;
+    if (!isKind(kind) || typeof description !== "string" || !description.trim()) return null;
+    const gate: Gate = { kind, description: description.trim(), routeBackTo: asStrings(routeBackTo) };
+    if (kind === "agent") gate.maxRounds = typeof maxRounds === "number" ? maxRounds : DEFAULT_MAX_ROUNDS;
+    return gate;
   }
   return null;
 }
@@ -96,8 +100,7 @@ function parseStep(raw: Record<string, unknown>, i: number): Step {
     produces: asStrings(raw.produces),
     gates,
     dependsOn: Array.isArray(raw.depends_on) ? asStrings(raw.depends_on) : null,
-    onFail: typeof raw.on_fail === "string" ? raw.on_fail : null,
-    maxFixCycles: typeof raw.max_fix_cycles === "number" ? raw.max_fix_cycles : null,
+    routesBackTo: [...new Set(gates.flatMap((g) => g.routeBackTo))],
   };
 }
 
@@ -108,7 +111,6 @@ function parseWorkflow(path: string, text: string): Workflow {
     file: path.slice(slash + 1),
     dir: slash < 0 ? "" : path.slice(0, slash),
     description: "",
-    maxFixCycles: null,
     steps: [],
     error: null,
     source: text,
@@ -120,7 +122,6 @@ function parseWorkflow(path: string, text: string): Workflow {
     return {
       ...base,
       description: typeof doc.description === "string" ? doc.description : "",
-      maxFixCycles: typeof doc.max_fix_cycles === "number" ? doc.max_fix_cycles : null,
       steps: steps
         .filter((s): s is Record<string, unknown> => !!s && typeof s === "object")
         .map(parseStep),

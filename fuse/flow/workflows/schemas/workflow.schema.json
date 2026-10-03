@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "./workflow.schema.json",
+  "title": "fuse-flow workflow",
+  "description": "A fuse-flow workflow: the ordered steps a workstream goes through, and what closes each one. Start a workstream with `fuse-flow start <slug> --workflow <name>`.",
+  "type": "object",
+  "properties": {
+    "version": {
+      "description": "Version of the workflow file format; 1 is the only version so far. Engine effect: a file with any other value is refused, so a file written for a different format is not misread.",
+      "type": "number",
+      "const": 1
+    },
+    "name": {
+      "description": "Human-readable name of the workflow. Engine effect: none; shown by `fuse-flow status` and the viewer.",
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "description": "What the workflow is for, in a sentence or two. Engine effect: none; shown by the viewer.",
+      "type": "string"
+    },
+    "steps": {
+      "description": "The steps, in the order fuse-flow runs them. The current step is the first one in the list that is not done, so steps run one at a time, in file order.",
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "$ref": "./step.schema.json"
+      }
+    }
+  },
+  "required": [
+    "version",
+    "name",
+    "steps"
+  ],
+  "additionalProperties": false
+}

@@ -1,3 +1,5 @@
+# $schema: ./schemas/workflow.schema.json
+# yaml-language-server: $schema=./schemas/workflow.schema.json
 # SPDX-License-Identifier: Apache-2.0
 # Demo workflow, ambiguous: the request is unclear, so the weight sits up front.
 # Heavy discovery (elicitation, then research and analysis, which do not depend
@@ -7,7 +9,6 @@
 version: 1
 name: custom-example-ambiguous
 description: Unclear request; discover and decide first, then build lean.
-max_fix_cycles: 2
 
 steps:
   - id: elicitation
