@@ -10,7 +10,7 @@
 
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { dirname, isAbsolute, resolve } from "node:path";
 import { FlowError } from "./errors.ts";
 import {
   artifactPath,
@@ -90,10 +90,13 @@ interface Placed {
 const place = (c: Ctx, artifacts: Artifact[]): Placed[] => artifacts.map((artifact) => ({ artifact, path: artifactPath(c.p, artifact, c.slug) }));
 const onDisk = (c: Ctx, path: string) => existsSync(resolve(c.root, path));
 
-// Whether `file` (relative to the root) lies at or below `path`.
+// Whether `file` lies at or below `path`. Both are as display() shows them:
+// relative to the repository root when inside it, absolute when outside, so
+// a file outside the repository is inside no artifact.
 function contains(path: string, file: string): boolean {
+  if (isAbsolute(file) || file === ".." || file.startsWith("../")) return false;
   const dir = path.replace(/\/+$/, "").replace(/^\.\/+/, "");
-  if (dir === "" || dir === ".") return !file.startsWith("../") && file !== "..";
+  if (dir === "" || dir === ".") return true;
   return file === dir || file.startsWith(`${dir}/`);
 }
 
@@ -370,11 +373,11 @@ function reviewText(c: Ctx, g: Gate, step: Step, state: StepState, reviewed: Pla
   }
   const who = reviewer(c.p);
   if (who) text += ` The reviewer: ${who}.`;
-  text += guided.length
-    ? " The review guide decides what counts as a required fix and when a round passes."
-    : " Classify each finding as fix required or false positive, with the reason; a finding the owner already " +
-      "accepted or deferred is not a required fix. Fix what is required and review again, until a round ends with " +
-      "no required fix.";
+  text +=
+    " Classify each finding as fix required or false positive, with the reason; a finding the owner already " +
+    "accepted or deferred is not a required fix. Fix what is required and review again, until a round ends with " +
+    "no required fix.";
+  if (guided.length) text += " The review guide decides what counts as a required fix and when a round passes.";
   text +=
     " Every round that ends with a required fix counts, whatever the cause. After " +
     `${capOf(c, g, state)} such rounds, do not start another; run \`${FUSE_FLOW} continue ${c.slug} --blocked ` +
@@ -412,7 +415,8 @@ function producedLine(c: Ctx, step: Step, state: StepState): string {
 }
 
 function verificationLine(c: Ctx, step: Step, state: StepState): string {
-  const parts = [...(state.verification ?? [])];
+  const mechanicalGates = gatesInOrder(step).filter((g) => g.kind === "check" || g.kind === "script");
+  const parts = state.verification ? [...state.verification] : mechanicalGates.map((g) => `${mechanical(c, g).label}: not run`);
   for (const g of gatesInOrder(step)) {
     if (g.kind === "agent") parts.push(`review (${g.text}): <rounds used> of ${capOf(c, g, state)} rounds, <any required fix still open>`);
   }
@@ -441,14 +445,17 @@ function handOver(c: Ctx, ws: Workstream, step: Step | undefined): string[] {
     "order, and give the owner's options with your recommendation first, with its reason.";
 
   if (!step) {
-    const all = c.wf.steps.flatMap((s) => stateOf(ws, s.id).artifacts.map((a) => a.path));
+    const done = c.wf.steps.filter((s) => stateOf(ws, s.id).status === "COMPLETED");
+    const produced = done.map((s) => `${s.id}: ${producedLine(c, s, stateOf(ws, s.id)).replace(/^PRODUCED: /, "")}`).filter((l) => !l.endsWith(": none"));
+    const verified = done.flatMap((s) => (stateOf(ws, s.id).verification ?? []).map((v) => `${s.id}: ${v}`));
+    const reviews = done.filter((s) => s.gates.some((g) => g.kind === "agent")).map((s) => `${s.id}: <review rounds used>`);
     return [
       intro,
       "",
       `SUMMARY: <the work, in a sentence>. Workstream ${c.slug}, all ${c.wf.steps.length} steps of ${c.wf.name}.${skipped}`,
       "STATUS: workflow complete",
-      `PRODUCED: ${all.length >= 5 ? `${all.length} artifacts, among them ${all.slice(0, 3).join(", ")}; summarize them` : all.join(", ") || "none"}`,
-      "VERIFICATION: <what was verified during the workstream>",
+      `PRODUCED: ${produced.join("; ") || "none"}`,
+      `VERIFICATION: ${[...verified, ...reviews].join("; ") || "none"}`,
       "NEXT STEP: <what the owner may want next, for example reviewing or landing the work>",
     ];
   }
@@ -586,9 +593,11 @@ function expectState(c: Ctx, ws: Workstream, step: Step, allowed: StepStatus[]):
   return state;
 }
 
-function refuse(c: Ctx, step: Step, reason: string, output = ""): FlowError {
+function refuse(c: Ctx, step: Step, reason: string, output = "", verification?: string[]): FlowError {
   updateWorkstream(c.root, c.slug, (ws) => {
-    expectState(c, ws, step, ["IN_PROGRESS"]).history.push(stamp(`continue refused: ${reason}`));
+    const state = expectState(c, ws, step, ["IN_PROGRESS"]);
+    state.history.push(stamp(`continue refused: ${reason}`));
+    if (verification) state.verification = verification;
   });
   const ws = readWorkstream(c.root, c.slug);
   return new FlowError([reason, ...(output ? [output] : []), "", ...stepBlock(c, ws, step, stateOf(ws, step.id))].join("\n"));
@@ -632,19 +641,25 @@ function finishStep(c: Ctx, step: Step, input: Continue): string[] {
   }
 
   // The checks run without holding the state file's lock, so a long test run
-  // does not stall fuse-flow commands for other workstreams.
+  // does not stall fuse-flow commands for other workstreams. A refusal records
+  // every result so far, and the gates not run, for the hand-over block.
   const verification: string[] = [];
-  for (const g of gatesInOrder(step)) {
-    if (g.kind !== "check" && g.kind !== "script") continue;
+  const mechanicalGates = gatesInOrder(step).filter((g) => g.kind === "check" || g.kind === "script");
+  const failWith = (i: number, result: string, reason: string, output = "") => {
+    verification.push(result, ...mechanicalGates.slice(i + 1).map((g) => `${mechanical(c, g).label}: not run`));
+    return refuse(c, step, reason, output, verification);
+  };
+  for (const [i, g] of mechanicalGates.entries()) {
     const m = mechanical(c, g);
-    if (m.kind === "unbound") throw refuse(c, step, bindInstruction(c, m.check));
+    if (m.kind === "unbound") throw failWith(i, `${m.label}: not run, no command is bound`, bindInstruction(c, m.check));
     if (m.kind === "none") {
       verification.push(`${m.label}: not configured in this project`);
       continue;
     }
     const r = runCommand(c, m.command, step.id);
     if (r.exitCode !== 0) {
-      throw refuse(c, step, `${m.label} failed (exit ${r.exitCode ?? "none, killed by a signal"})`, r.output);
+      const failed = `${m.label} failed (exit ${r.exitCode ?? "none, killed by a signal"})`;
+      throw failWith(i, `${m.label}: failed (exit ${r.exitCode ?? "none"})`, failed, r.output);
     }
     verification.push(`${m.label}: passed`);
   }

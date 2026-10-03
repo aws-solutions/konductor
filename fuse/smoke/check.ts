@@ -36,8 +36,9 @@ function finish(): never {
 }
 
 function contains(path: string, file: string): boolean {
+  if (file.startsWith("/") || file === ".." || file.startsWith("../")) return false;
   const base = path.replace(/\/+$/, "").replace(/^\.\/+/, "");
-  if (base === "" || base === ".") return !file.startsWith("../") && file !== "..";
+  if (base === "" || base === ".") return true;
   return file === base || file.startsWith(`${base}/`);
 }
 

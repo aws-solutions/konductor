@@ -168,6 +168,23 @@ export const GateSchema = z
   .union(SHAPES)
   .meta({ id: "Gate", title: "fuse-flow gate", description: "What must hold before a step counts as done." });
 
+// The shapes a condition may be written in, for editors: one gate kind, with
+// no gate-only fields. ConditionSchema below does the reading.
+export const ConditionShapeSchema = z
+  .union([
+    ...(["owner-action", "check", "script", "agent"] as const).map((kind) =>
+      z
+        .object({ [kind]: z.string().meta({ description: KIND_DOCS[kind] }), description: DESCRIPTION })
+        .strict()
+        .meta({ description: `The ${kind} condition as a mapping: \`${kind}: …\`.` }),
+    ),
+    z.string().meta({
+      description: 'As a string: `script("…")`, `check: <kind>`, `agent: …` or `owner-action: …`.',
+      pattern: String.raw`^\s*(owner-action|check|script|agent)\s*[(:][\s\S]*$`,
+    }),
+  ])
+  .meta({ id: "Condition", title: "fuse-flow condition", description: "When an optional step runs." });
+
 // One gate or a list, read back as a list.
 export const GateListSchema = z
   .unknown()
@@ -185,7 +202,6 @@ export const GateListSchema = z
   .meta({ description: "One gate or a list.", anyOf: [{ $ref: "./gate.schema.json" }, { type: "array", items: { $ref: "./gate.schema.json" } }] });
 
 // A step's condition: when it runs. One gate kind, with no gate-only fields.
-// Editors check it against the gate schema, which allows a little more.
 export const ConditionSchema = z
   .unknown()
   .optional()
@@ -204,5 +220,5 @@ export const ConditionSchema = z
       "reached; exit 0 runs the step, anything else skips it), `agent: <when to do the step>` (the agent judges), " +
       "or `owner-action: <the question>` (the agent asks the owner). Engine effect: a step without a condition is " +
       "mandatory; one with a condition may be skipped with `continue <slug> --skip \"<reason>\"`.",
-    $ref: "./gate.schema.json",
+    $ref: "./condition.schema.json",
   });

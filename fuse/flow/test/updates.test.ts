@@ -81,3 +81,20 @@ test("an updates artifact whose path is the repository root contains every file 
   repo.start("feat", CHANGE.replace("path: src/", "path: ."));
   expect(repo.ok("continue", "feat", "--updated", "src/a.ts", "--unchanged", "changelog", "x")).toContain("PRODUCED: src/a.ts (updated);");
 });
+
+test("a file outside the repository is accepted but accounts for no artifact", () => {
+  repo.start("feat", CHANGE.replace("path: src/", "path: ."));
+  const outside = `${repo.root}-outside.txt`;
+  expect(repo.refused("continue", "feat", "--updated", outside, "--unchanged", "changelog", "x")).toContain("REFUSED: not accounted for: patch (.)");
+  const out = repo.ok("continue", "feat", "--updated", outside, "--updated", "src/a.ts", "--unchanged", "changelog", "x");
+  expect(out).toContain(`PRODUCED: ${outside} (updated, outside the declared paths); src/a.ts (updated);`);
+});
+
+test("the workflow-complete hand-over gathers what every step produced and verified", () => {
+  const flow = CHANGE.replace("      - owner-action: approve the change\n", "      - script: \"true\"\n") + "  - id: notes\n    instruction: Write notes.\n    produces:\n      - artifact: notes\n        path: notes.md\n";
+  repo.start("feat", flow);
+  repo.ok("continue", "feat", "--updated", "src/a.ts", "--unchanged", "changelog", "nothing user-facing");
+  const out = repo.ok("continue", "feat", "--not-produced", "notes", "no notes needed");
+  expect(out).toContain("PRODUCED: change: src/a.ts (updated); changelog unchanged (nothing user-facing); notes: notes not produced (no notes needed)\n");
+  expect(out).toContain("VERIFICATION: change: script `true`: passed\n");
+});

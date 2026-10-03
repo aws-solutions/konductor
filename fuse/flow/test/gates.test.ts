@@ -144,6 +144,11 @@ test("a check gate runs the command the policy binds, and says where the binding
     );
     expect(bound).toContain("  2. The lint check is not configured in this project (bound to none in .konductor/policy-overrides.yml); there is nothing to run.");
     expect(r.refused("continue", "feat")).toContain("REFUSED: check default (`test -f built`) failed (exit 1)");
+    expect(r.state("feat").steps.build.verification).toEqual(["check default (`test -f built`): failed (exit 1)", "check lint: not run"]);
+    expect(r.ok("continue", "feat", "--blocked", "x")).toContain("VERIFICATION: check default (`test -f built`): failed (exit 1); check lint: not run");
+    r.ok("continue", "feat", "--owner-approved");
+    r.cleanupPath(".konductor/workstreams");
+    r.start("feat", CHECKED);
 
     r.write("built");
     expect(r.ok("continue", "feat")).toContain("STATUS: workflow complete");
@@ -191,6 +196,8 @@ test("failed checks never block a step; the agent reports it blocked, and the ow
 
   const blocked = repo.ok("continue", "feat", "--blocked", "the test needs a database this host does not have");
   expect(blocked).toStartWith("build: BLOCKED: the test needs a database this host does not have\n\nOWNER'S TURN:");
+  // The last refused attempt's results stay visible to the owner (decision 22).
+  expect(blocked).toContain("VERIFICATION: script `test -f tests.pass`: failed (exit 1)\n");
   expect(blocked).toContain("STATUS: blocked. blocked by the agent: the test needs a database this host does not have\n");
   expect(repo.status("feat", "build")).toBe("BLOCKED");
 
@@ -273,8 +280,8 @@ steps:
 `,
     );
     const out = r.ok("start", "feat", "--workflow", `${r.root}/flows/wf.yml`);
-    expect(out).toContain("It reviews essay.md against flows/review-rules.md. The review guide decides what counts as a required fix and when a round passes.");
-    expect(out).not.toContain("Classify each finding");
+    expect(out).toContain("It reviews essay.md against flows/review-rules.md. Classify each finding as fix required or false positive");
+    expect(out).toContain("no required fix. The review guide decides what counts as a required fix and when a round passes.");
 
     r.write(".konductor/library/artifacts/essay/review.md", "# house rules\n");
     expect(r.ok("start", "feat")).toContain("It reviews essay.md against .konductor/library/artifacts/essay/review.md.");

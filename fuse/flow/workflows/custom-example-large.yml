@@ -118,6 +118,8 @@ steps:
       - artifact: code-review
         path: .konductor/review/code-review.md
     instruction: Review the implementation and pull requests, fix critical findings, and record the review.
+    consumes:
+      - implementation-report
     updates:
       - artifact: code
         path: .
@@ -127,6 +129,8 @@ steps:
       - artifact: test-coverage
         path: .konductor/testing/test-coverage.md
     instruction: Find test coverage gaps, add missing tests where required, and record the remaining gaps.
+    consumes:
+      - implementation-report
     updates:
       - artifact: code
         path: .
@@ -137,10 +141,13 @@ steps:
       - artifact: security-tests
         path: .konductor/testing/security-tests.md
     consumes:
+      - implementation-report
       - threat-model
   - id: ui-testing
     title: UI testing
     instruction: One end-to-end pass against the deployed URL.
+    consumes:
+      - implementation-report
     produces:
       - artifact: ui-tests
         path: .konductor/testing/ui-tests.md

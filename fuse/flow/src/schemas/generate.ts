@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Writes one JSON Schema file per schema in this folder (workflow, step,
-// artifact, gate, and the policy file)
+// artifact, gate, condition, and the policy file)
 // into workflows/schemas/, so editors can validate workflow files and show
 // each field's description. The files refer to each other by relative path.
 //
@@ -21,6 +21,7 @@ const FILES: Record<string, string> = {
   Step: "step.schema.json",
   Artifact: "artifact.schema.json",
   Gate: "gate.schema.json",
+  Condition: "condition.schema.json",
   Policy: "policy.schema.json",
 };
 

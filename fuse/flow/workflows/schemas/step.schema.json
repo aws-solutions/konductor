@@ -36,7 +36,7 @@
     },
     "condition": {
       "description": "When the step runs, written like one gate: `script: <command>` or `check: <kind>` (run when the step is reached; exit 0 runs the step, anything else skips it), `agent: <when to do the step>` (the agent judges), or `owner-action: <the question>` (the agent asks the owner). Engine effect: a step without a condition is mandatory; one with a condition may be skipped with `continue <slug> --skip \"<reason>\"`.",
-      "$ref": "./gate.schema.json"
+      "$ref": "./condition.schema.json"
     },
     "consumes": {
       "description": "Ids of artifacts produced or updated by earlier steps that this step reads. Engine effect: the step block lists each with its path and whether it exists; an id no earlier step produces or updates is refused.",

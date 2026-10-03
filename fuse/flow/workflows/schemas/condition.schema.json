@@ -1,0 +1,85 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "./condition.schema.json",
+  "title": "fuse-flow condition",
+  "description": "When an optional step runs.",
+  "anyOf": [
+    {
+      "description": "The owner-action condition as a mapping: `owner-action: …`.",
+      "type": "object",
+      "properties": {
+        "owner-action": {
+          "description": "The owner does what this text says, for example approve the design. Engine effect: the step waits for the owner (AWAITING_OWNER) when it is continued, until `fuse-flow continue <slug> --owner-approved`.",
+          "type": "string"
+        },
+        "description": {
+          "description": "What the gate is for, in free text, for the reader. Engine effect: none.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "owner-action"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "description": "The check condition as a mapping: `check: …`.",
+      "type": "object",
+      "properties": {
+        "check": {
+          "description": "A kind of check, a single lower-case word such as `default`, which the project's policy binds to a command (checks: { default: bun run check }). Engine effect: the bound command runs from the repository root when the step is continued, and `continue` is refused unless it exits 0. An unbound kind refuses the step and tells the agent to find the command and record it; a kind bound to `none` passes.",
+          "type": "string"
+        },
+        "description": {
+          "description": "What the gate is for, in free text, for the reader. Engine effect: none.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "check"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "description": "The script condition as a mapping: `script: …`.",
+      "type": "object",
+      "properties": {
+        "script": {
+          "description": "A shell command, run from the repository root when the step is continued. Engine effect: `continue` is refused unless the command exits 0.",
+          "type": "string"
+        },
+        "description": {
+          "description": "What the gate is for, in free text, for the reader. Engine effect: none.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "script"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "description": "The agent condition as a mapping: `agent: …`.",
+      "type": "object",
+      "properties": {
+        "agent": {
+          "description": "What an independent agent reviews. The agent that did the work classifies each finding as fix required or false positive, fixes what is required, and they repeat until a round ends with no required fix, or as the review guide says. Engine effect: none; the text, the review guide and the round cap are printed with the step, and the agent that did the work counts the rounds.",
+          "type": "string"
+        },
+        "description": {
+          "description": "What the gate is for, in free text, for the reader. Engine effect: none.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "agent"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "description": "As a string: `script(\"…\")`, `check: <kind>`, `agent: …` or `owner-action: …`.",
+      "pattern": "^\\s*(owner-action|check|script|agent)\\s*[(:][\\s\\S]*$",
+      "type": "string"
+    }
+  ]
+}

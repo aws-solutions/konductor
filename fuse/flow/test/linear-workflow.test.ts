@@ -72,7 +72,7 @@ test("work, continue, repeated until the workflow is complete, which prints the 
   expect(done).toStartWith("summary: COMPLETED\n\nOWNER'S TURN:");
   expect(done).toContain("SUMMARY: <the work, in a sentence>. Workstream feat, all 3 steps of linear.\n");
   expect(done).toContain("STATUS: workflow complete\n");
-  expect(done).toContain("PRODUCED: docs/design.md, src/app.ts\n");
+  expect(done).toContain("PRODUCED: design: docs/design.md (new); build: src/app.ts (new); src/app.test.ts (updated, outside the declared paths)\n");
   expect(repo.refused("continue", "feat")).toContain("REFUSED: workflow complete; there is nothing to continue");
   expect(repo.ok("status", "feat")).toContain("workflow complete");
 });
