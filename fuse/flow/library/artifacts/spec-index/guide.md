@@ -1,0 +1,1 @@
+../../../../../skills/kiro-requirements-generation/SKILL.md

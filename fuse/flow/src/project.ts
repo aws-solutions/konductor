@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // Where things are: the repository root, the workflow files, the state files
-// fuse-flow keeps under <root>/.konductor, and the SKILL.md files that
-// workflow steps name.
+// fuse-flow keeps under <root>/.konductor, the policy files and the libraries
+// of artifact guides.
 
 import { existsSync, readdirSync, realpathSync, statSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, isAbsolute, join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { FlowError, UsageError } from "./errors.ts";
 
 // The nearest directory at or above `cwd` that contains `.git` (a directory in
@@ -108,32 +108,22 @@ export function checkSlug(slug: string): void {
   }
 }
 
-// Skills are installed in different places depending on the harness, so a
-// relative skill path is looked up in each of these directories in turn.
-export function skillDirs(root: string): string[] {
-  const home = homeDir();
-  return [
-    ...(process.env.FUSE_SKILLS_DIR ? [process.env.FUSE_SKILLS_DIR] : []),
-    join(root, "skills"),
-    join(root, ".kiro", "skills"),
-    join(root, ".konductor", "skills"),
-    join(root, ".claude", "skills"),
-    join(root, ".agents", "skills"),
-    ...(process.env.SKILLS_HOME ? [process.env.SKILLS_HOME] : []),
-    join(home, ".kiro", "skills"),
-    join(home, ".konductor", "skills"),
-    join(home, ".claude", "skills"),
-    join(home, ".codex", "skills"),
-    join(home, ".config", "opencode", "skills"),
-    join(home, ".agents", "skills"),
-  ];
+// Where artifact guides are looked up, the most specific first: the project's
+// own library, the user's, then the one that ships with fuse-flow. Each holds
+// artifacts/<id>/ folders (decisions 16, 24 and 29).
+export function libraryDirs(root: string): { project: string; user: string; package: string } {
+  return {
+    project: join(root, ".konductor", "library"),
+    user: join(homeDir(), ".konductor", "library"),
+    package: join(import.meta.dirname, "..", "library"),
+  };
 }
 
-// The absolute path of a step's skill file, or undefined when no directory
-// has it.
-export function findSkill(root: string, skill: string): string | undefined {
-  if (isAbsolute(skill)) return existsSync(skill) ? skill : undefined;
-  return skillDirs(root)
-    .map((dir) => join(dir, skill))
-    .find((path) => existsSync(path));
+// The policy files, from the most general to the most specific (decision 44).
+export function policyFiles(root: string): { user: string; team: string; local: string } {
+  return {
+    user: join(homeDir(), ".konductor", "policy-overrides.yml"),
+    team: join(root, ".konductor", "policy-overrides.yml"),
+    local: join(root, ".konductor", "policy-overrides.local.yml"),
+  };
 }

@@ -1,0 +1,1 @@
+../../../../../skills/doc-accuracy-analyzer/SKILL.md

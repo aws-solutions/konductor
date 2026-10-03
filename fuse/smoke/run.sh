@@ -17,7 +17,9 @@ defaults: _k-phase-chain; fuse agent opencode with amazon-bedrock/global.openai.
           opencode on Amazon Bedrock with AWS profile opencode-bedrock in us-west-2
 A workflow name is looked up in fuse/flow/workflows/, then fuse/smoke/fixtures/. A workflow
 that does not ship with fuse-flow is copied into the project's .konductor/workflows/, so the
-fuse agent finds it by name. For an opencode role, the model is an opencode model id such as
+fuse agent finds it by name. A sibling <workflow>.policy-overrides file is copied to the
+project's .konductor/policy-overrides.yml, and a sibling <workflow>.library/ directory is copied
+to the project's .konductor/library/. For an opencode role, the model is an opencode model id such as
 amazon-bedrock/global.anthropic.claude-haiku-4-5-20251001-v1:0.
 EOF
   exit 64
@@ -91,6 +93,14 @@ echo "smoke run: $run"
   "$clone/install.sh" --project . > "$run/install.log" 2>&1 &&
   if [ "$shipped" = no ]; then
     mkdir -p .konductor/workflows && cp "$workflow_file" .konductor/workflows/
+  fi &&
+  policy_file="${workflow_file%.yml}.policy-overrides" &&
+  if [ -f "$policy_file" ]; then
+    mkdir -p .konductor && cp "$policy_file" .konductor/policy-overrides.yml
+  fi &&
+  library_dir="${workflow_file%.yml}.library" &&
+  if [ -d "$library_dir" ]; then
+    mkdir -p .konductor/library && cp -R "$library_dir"/. .konductor/library/
   fi &&
   if [ "$fuse_harness" = kiro ]; then
     mkdir -p .kiro/agents &&

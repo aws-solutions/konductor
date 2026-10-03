@@ -31,7 +31,8 @@ test("usage errors exit 64 and print the usage", () => {
   expect(repo.usage("status", "feat", "--verbose")).toContain("--verbose");
   expect(repo.usage("start", "feat", "--workflow")).toContain("--workflow");
   expect(repo.usage("start", "feat", "--workflow=")).toContain("--workflow needs a value");
-  expect(repo.usage("continue", "feat", "--artifact=")).toContain("--artifact needs a value");
+  expect(repo.usage("continue", "feat", "--updated=")).toContain("--updated needs a value");
+  expect(repo.usage("continue", "feat", "--unchanged", "code")).toContain("--unchanged takes an artifact and a reason");
 });
 
 test("a command on a workstream that was never started says to start it", () => {
@@ -65,5 +66,5 @@ test("a command waits for another process's lock, and names the file if it never
   const out = repo.refused("continue", "feat");
   expect(out).toContain("another fuse-flow process holds");
   expect(out).toContain("feat.yml.lock; if none is running, delete that file");
-  expect(repo.status("feat", "only")).toBe("pending");
+  expect(repo.status("feat", "only")).toBe("IN_PROGRESS");
 });

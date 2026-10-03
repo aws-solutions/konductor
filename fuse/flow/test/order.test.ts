@@ -1,37 +1,57 @@
 // SPDX-License-Identifier: Apache-2.0
-// Step order: steps are handed out one at a time, in file order. depends_on
-// documents what a step builds on and is checked, but does not change the order.
+// Inputs: a step reads what earlier steps produced or updated (decision 38),
+// and the step block says whether each input exists. Steps still run one at a
+// time, in file order.
 
 import { afterEach, beforeEach, expect, test } from "bun:test";
 import { Repo } from "./helpers";
 
-// analysis and requirements do not depend on each other; design needs both.
-const BRANCHING = `version: 1
-name: branching
+const FLOW = `version: 1
+name: inputs
 steps:
   - id: analysis
     instruction: Map the code.
-    depends_on: []
-  - id: requirements
+    produces:
+      - artifact: map
+        path: docs/{slug}/map.md
+  - id: stories
     instruction: Write the stories.
-    gate: owner
-    depends_on: []
+    produces:
+      - artifact: stories
+        path: docs/{slug}/stories.md
   - id: design
     instruction: Design it.
-    depends_on: [analysis, requirements]
-  - id: summary
-    instruction: Summarize.
+    consumes: [map, stories]
 `;
 
 let repo: Repo;
 beforeEach(() => (repo = new Repo()));
 afterEach(() => repo.cleanup());
 
-test("steps run in file order, whatever depends_on says", () => {
-  expect(repo.start("feat", BRANCHING)).toContain("step: analysis");
-  expect(repo.ok("continue", "feat")).toContain("step: requirements");
-  expect(repo.ok("continue", "feat")).toContain("step: requirements awaits owner approval");
-  expect(repo.ok("continue", "feat", "--owner-approved")).toContain("step: design");
-  expect(repo.ok("continue", "feat")).toContain("step: summary");
-  expect(repo.ok("continue", "feat")).toEndWith("workflow complete\n");
+test("a step lists what it consumes, with {slug} resolved, from the step that produced it", () => {
+  repo.start("feat", FLOW);
+  expect(repo.start("feat", FLOW)).toContain("PRODUCE docs/feat/map.md (map).");
+  repo.write("docs/feat/map.md");
+  repo.ok("continue", "feat");
+  repo.write("docs/feat/stories.md");
+  const out = repo.ok("continue", "feat");
+  expect(out).toContain("STEP design (3 of 3): Design it.\nREAD docs/feat/map.md (from step analysis).\nREAD docs/feat/stories.md (from step stories).\n");
+});
+
+test("a missing input is reported with what to do about it, never refused", () => {
+  repo.ok("start", "feat", "--workflow", repo.write("wf.yml", FLOW), "--from", "design");
+  const out = repo.ok("start", "feat");
+  expect(out).toContain("READ docs/feat/map.md (from step analysis). It does not exist");
+  expect(out).toContain("report what you did in the hand-over block");
+  expect(repo.ok("continue", "feat")).toContain("STATUS: workflow complete");
+});
+
+test("validate refuses an input that no earlier step produces or updates", () => {
+  const bad = FLOW.replace("consumes: [map, stories]", "consumes: [map, tests]").replace(
+    "  - id: analysis",
+    "  - id: early\n    instruction: Read the design first.\n    consumes: [design-doc]\n  - id: analysis",
+  );
+  const out = repo.refused("validate", repo.write("bad.yml", bad));
+  expect(out).toContain('"early" consumes "design-doc", which no step before it produces or updates');
+  expect(out).toContain('"design" consumes "tests", which no step before it produces or updates');
 });

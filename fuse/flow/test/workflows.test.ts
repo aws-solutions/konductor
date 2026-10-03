@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 // The workflow file: choosing it by name or path, changing it mid-workstream,
-// rejecting invalid ones, finding the skills its steps name, and the
-// workflows shipped in fuse/flow/workflows.
+// rejecting invalid ones, finding its artifacts' guides in the library, and
+// the workflows shipped in fuse/flow/workflows.
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { existsSync, readdirSync, readFileSync, symlinkSync } from "node:fs";
+import { readdirSync, readFileSync, symlinkSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { FLOW_DIR, REPO_SKILLS, Repo } from "./helpers";
+import { FLOW_DIR, Repo } from "./helpers";
 
 const ONE_STEP = `version: 1
 name: one
 steps:
   - id: only
-    skill: demo/SKILL.md
+    instruction: Do the one thing.
 `;
 
 let repo: Repo;
@@ -83,20 +83,20 @@ describe("choosing the workflow", () => {
   test("workstreams in one repository can follow different workflows", () => {
     repo.start("one", ONE_STEP);
     repo.ok("start", "two", "--workflow", "_k-phase-chain");
-    expect(repo.ok("start", "one")).toContain("step: only");
-    expect(repo.ok("start", "two")).not.toContain("step: only");
+    expect(repo.ok("start", "one")).toContain("STEP only");
+    expect(repo.ok("start", "two")).not.toContain("STEP only");
   });
 });
 
 describe("changing the workflow of a running workstream", () => {
-  test("a step added to the workflow is pending straight away", () => {
+  test("a step added to the workflow is handed out straight away", () => {
     repo.start("feat", ONE_STEP);
-    expect(repo.ok("continue", "feat")).toEndWith("workflow complete\n");
+    expect(repo.ok("continue", "feat")).toContain("STATUS: workflow complete");
 
     repo.write("workflow-source.yml", ONE_STEP + "  - id: added\n    instruction: new work\n");
     expect(repo.ok("status", "feat")).toContain("> added");
-    expect(repo.ok("start", "feat")).toContain("step: added"); // and writes the new step into the state file
-    expect(repo.status("feat", "added")).toBe("pending");
+    expect(repo.ok("start", "feat")).toContain("STEP added (2 of 2)"); // and writes the new step into the state file
+    expect(repo.status("feat", "added")).toBe("IN_PROGRESS");
   });
 });
 
@@ -104,27 +104,20 @@ describe("invalid workflows are refused with the reason", () => {
   const cases: Array<[string, string, string]> = [
     ["not YAML", "version: 1\nsteps: [", "is not valid YAML"],
     ["unknown field", ONE_STEP + "    owner: me\n", "Unrecognized key"],
+    ["a skill, which steps no longer name (decision 28)", ONE_STEP + "    skill: demo/SKILL.md\n", "Unrecognized key"],
+    ["depends_on, replaced by consumes (decision 38)", ONE_STEP + "    depends_on: []\n", "Unrecognized key"],
+    ["the gate alias, replaced by gates", ONE_STEP + "    gate: { agent: review }\n", "Unrecognized key"],
     ["duplicate step id", ONE_STEP + "  - id: only\n    instruction: again\n", 'duplicate step id "only"'],
-    [
-      "dependency on a later step",
-      `version: 1
-name: x
-steps:
-  - id: a
-    instruction: a
-    depends_on: [b]
-  - id: b
-    instruction: b
-`,
-      '"a" depends on "b", which is not a step listed before it',
-    ],
-    ["bad gate", ONE_STEP + "    gate: sometimes\n", 'must be owner-action("…"), script("…") or agent("…"), as a string or a one-key mapping (a mapping may add description and route_back_to, and an agent mapping max_rounds: <n>), got "sometimes"'],
-    ["empty check", ONE_STEP + '    gate: "check:"\n', 'must be owner-action("…"), script("…") or agent("…"), as a string or a one-key mapping (a mapping may add description and route_back_to, and an agent mapping max_rounds: <n>), got "check:"'],
-    ["step with nothing to do", "version: 1\nname: x\nsteps:\n  - id: a\n", "a step needs a skill, an instruction, or both"],
-    ["agent gate max_rounds below 1", ONE_STEP + "    gate: { agent: review, max_rounds: 0 }\n", "steps.0.gate.max_rounds: Too small: expected number to be >=1"],
-    ["max_rounds on a script gate", ONE_STEP + "    gate: { script: bun test, max_rounds: 2 }\n", 'got {"script":"bun test","max_rounds":2}'],
-    ["route_back_to a later step", "version: 1\nname: one\nsteps:\n  - id: a\n    instruction: x\n    gate: { agent: review, route_back_to: b }\n  - id: b\n    instruction: y\n", '"a" routes back to "b", which is not this step or a step listed before it'],
-    ["route_back_to a bad step id", ONE_STEP + "    gate: { agent: review, route_back_to: Design }\n", "route_back_to"],
+    ["bad gate", ONE_STEP + "    gates: sometimes\n", 'must be one of owner-action, check, script or agent'],
+    ["empty script", ONE_STEP + '    gates: "script:"\n', "script needs a text"],
+    ["step without an instruction (decision 35)", "version: 1\nname: x\nsteps:\n  - id: a\n", "steps.0.instruction"],
+    ["agent gate max_rounds below 1", ONE_STEP + "    gates: { agent: review, max_rounds: 0 }\n", "max_rounds must be a whole number, 1 or more"],
+    ["max_rounds on a script gate", ONE_STEP + "    gates: { script: bun test, max_rounds: 2 }\n", "max_rounds goes on an agent gate only"],
+    ["guide on an owner gate", ONE_STEP + "    gates: { owner-action: approve, guide: x.md }\n", "guide goes on an agent gate only"],
+    ["route_back_to a later step", "version: 1\nname: one\nsteps:\n  - id: a\n    instruction: x\n    gates: { agent: review, route_back_to: b }\n  - id: b\n    instruction: y\n", '"a" routes back to "b", which is not this step or a step listed before it'],
+    ["route_back_to a bad step id", ONE_STEP + "    gates: { agent: review, route_back_to: Design }\n", "route_back_to names step ids"],
+    ["a produces path without an artifact id", ONE_STEP + "    produces: [docs/x.md]\n", "steps.0.produces"],
+    ["a bad artifact id", ONE_STEP + "    produces: { artifact: Spec, path: x.md }\n", "lowercase letters"],
     ["max_fix_cycles, which fuse-flow no longer reads", "version: 1\nname: one\nmax_fix_cycles: 2\nsteps:\n  - id: only\n    instruction: x\n", "max_fix_cycles"],
     ["bad step id", "version: 1\nname: x\nsteps:\n  - id: Design\n    instruction: x\n", "lowercase letters"],
   ];
@@ -157,35 +150,59 @@ steps:
         description: The owner signs off.
 `,
   );
-  expect(out).toContain("script gate: true");
+  expect(out).toContain("  1. Run `true`.");
   expect(out).toContain("After 3 such rounds");
   expect(out).not.toContain("Why this step exists");
   expect(out).not.toContain("The suite must stay green");
-  expect(repo.refused("start", "other", "--workflow", repo.write("bad.yml", ONE_STEP + "    gate: { script: x, description: 3 }\n"))).toContain(
-    'got {"script":"x","description":3}',
+  expect(repo.refused("start", "other", "--workflow", repo.write("bad.yml", ONE_STEP + "    gates: { script: x, description: 3 }\n"))).toContain(
+    "description must be text",
   );
 });
 
-describe("finding skills", () => {
-  test("FUSE_SKILLS_DIR comes first, then the repository, then SKILLS_HOME, then the home directory", () => {
-    repo.start("feat", ONE_STEP);
-    const where = () => repo.ok("start", "feat").split("\n")[5];
-    expect(where()).toBe("read: demo/SKILL.md   (not found; set FUSE_SKILLS_DIR)");
+const LIBRARY_FLOW = `version: 1
+name: library
+steps:
+  - id: write
+    instruction: Write it.
+    produces:
+      - artifact: essay
+        path: essay.md
+`;
 
-    repo.write("home/.config/opencode/skills/demo/SKILL.md");
-    expect(where()).toBe(`read: ${join(repo.root, "home/.config/opencode/skills/demo/SKILL.md")}`);
-    repo.write("home/.codex/skills/demo/SKILL.md");
-    expect(where()).toBe(`read: ${join(repo.root, "home/.codex/skills/demo/SKILL.md")}`);
-    repo.write("home/.claude/skills/demo/SKILL.md");
-    expect(where()).toBe(`read: ${join(repo.root, "home/.claude/skills/demo/SKILL.md")}`);
-    repo.write("custom-skills/demo/SKILL.md");
-    repo.env.SKILLS_HOME = join(repo.root, "custom-skills");
-    expect(where()).toBe(`read: ${join(repo.root, "custom-skills/demo/SKILL.md")}`);
-    repo.write(".kiro/skills/demo/SKILL.md");
-    expect(where()).toBe(`read: ${join(repo.root, ".kiro/skills/demo/SKILL.md")}`);
-    repo.write("elsewhere/demo/SKILL.md");
-    repo.env.FUSE_SKILLS_DIR = join(repo.root, "elsewhere");
-    expect(where()).toBe(`read: ${join(repo.root, "elsewhere/demo/SKILL.md")}`);
+describe("finding an artifact's guide and template in the library", () => {
+  test("the project's library replaces the user's, which replaces the package's; guide and template come from one folder", () => {
+    const block = () => repo.ok("start", "feat").split("\n").find((l) => l.startsWith("PRODUCE"));
+    repo.start("feat", LIBRARY_FLOW);
+    // An artifact no library has needs no guide: the instruction is the procedure.
+    expect(block()).toBe("PRODUCE essay.md (essay).");
+
+    repo.write("home/.konductor/library/artifacts/essay/guide.md");
+    repo.write("home/.konductor/library/artifacts/essay/template.md");
+    expect(block()).toBe(
+      "PRODUCE essay.md (essay). Follow the process in home/.konductor/library/artifacts/essay/guide.md and use the structure of home/.konductor/library/artifacts/essay/template.md.",
+    );
+    repo.write(".konductor/library/artifacts/essay/guide.md");
+    expect(block()).toBe("PRODUCE essay.md (essay). Follow the process in .konductor/library/artifacts/essay/guide.md.");
+  });
+
+  test("a guide that is a symlink is printed where it really lives; a broken one is a missing guide (decision 11)", () => {
+    repo.write("skills/essay-writing/SKILL.md");
+    repo.write(".konductor/library/artifacts/essay/.keep");
+    symlinkSync("../../../../skills/essay-writing/SKILL.md", join(repo.root, ".konductor/library/artifacts/essay/guide.md"));
+    repo.start("feat", LIBRARY_FLOW);
+    expect(repo.ok("start", "feat")).toContain("PRODUCE essay.md (essay). Follow the process in skills/essay-writing/SKILL.md.");
+
+    repo.cleanupPath("skills/essay-writing/SKILL.md");
+    const out = repo.ok("start", "feat");
+    expect(out).toContain("Its guide is missing (.konductor/library/artifacts/essay/guide.md cannot be read)");
+    expect(out).toContain("ask the owner whether to continue without it, install it and run this command again, or use another workflow");
+  });
+
+  test("the policy can move an artifact, and {slug} is replaced in either path", () => {
+    repo.start("feat", LIBRARY_FLOW.replace("path: essay.md", "path: docs/{slug}.md"));
+    expect(repo.ok("start", "feat")).toContain("PRODUCE docs/feat.md (essay).");
+    repo.write(".konductor/policy-overrides.yml", "artifacts:\n  essay:\n    path: writing/{slug}/essay.md\n");
+    expect(repo.ok("start", "feat")).toContain("PRODUCE writing/feat/essay.md (essay).");
   });
 });
 
@@ -204,14 +221,17 @@ describe("the workflows shipped in fuse/flow/workflows", () => {
   });
 
   for (const file of shipped) {
-    test(`${file} starts by name, and every skill it names exists in this repository`, () => {
-      repo.ok("start", "feat", "--workflow", file.replace(/\.yml$/, ""));
-      repo.env.FUSE_SKILLS_DIR = REPO_SKILLS;
-      const text = readFileSync(join(FLOW_DIR, "workflows", file), "utf8");
-      const workflow = Bun.YAML.parse(text) as { steps: Array<{ skill?: string }> };
-      const skills = workflow.steps.flatMap((s) => s.skill ?? []);
-      for (const skill of skills) expect(existsSync(join(REPO_SKILLS, skill))).toBe(true);
-      expect(repo.ok("start", "feat")).not.toContain("not found");
+    test(`${file} is valid, starts by name, and every guide its artifacts name resolves`, () => {
+      repo.ok("validate", join(FLOW_DIR, "workflows", file));
+      const name = file.replace(/\.yml$/, "");
+      // Walk every step with --forward-to, so each step block is printed once.
+      const workflow = Bun.YAML.parse(readFileSync(join(FLOW_DIR, "workflows", file), "utf8")) as { steps: Array<{ id: string }> };
+      let out = repo.ok("start", "feat", "--workflow", name);
+      for (const step of workflow.steps.slice(1)) {
+        expect(out).not.toContain("guide is missing");
+        out = repo.ok("continue", "feat", "--forward-to", step.id);
+      }
+      expect(out).not.toContain("guide is missing");
     });
   }
 });

@@ -2,16 +2,39 @@
 // The fuse-flow commands. Each returns the lines to print, or throws a
 // FlowError whose message says why the command was refused.
 //
-// A workstream is a state machine: the current step is the first step in file
-// order that is not done, and `continue` is the one input that moves it on.
+// A workstream is a state machine. The current step is the first step in file
+// order that is neither COMPLETED nor SKIPPED. Every command ends by handing
+// out the current step, if it is PENDING, and printing what to do next: the
+// step block when it is the agent's turn (decision 26), the hand-over block
+// when it is the owner's (decision 22).
 
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { FlowError } from "./errors.ts";
-import { findSkill, findWorkflow, isDirectory, workflowFilesBelow, workstreamFile } from "./project.ts";
-import { describeGates, loadWorkflow, type Step, type Workflow } from "./workflow.ts";
-import { readWorkstream, stateOf, updateWorkstream, workstreamExists, type Workstream } from "./workstream.ts";
+import {
+  artifactPath,
+  checkBinding,
+  display,
+  libraryEntry,
+  libraryFolders,
+  loadProject,
+  maxRounds,
+  type Project,
+  reviewer,
+  reviewGuide,
+} from "./policy.ts";
+import { findWorkflow, isDirectory, workflowFilesBelow, workstreamFile } from "./project.ts";
+import { type Artifact, type Condition, describeGates, type Gate, loadWorkflow, type Step, type Workflow } from "./workflow.ts";
+import {
+  readWorkstream,
+  type StepState,
+  type StepStatus,
+  stateOf,
+  updateWorkstream,
+  type Workstream,
+  workstreamExists,
+} from "./workstream.ts";
 
 // How the follow-up commands fuse-flow prints start. The fuse-flow script
 // sets FUSE_FLOW_COMMAND to its own absolute path, so a printed command works
@@ -27,324 +50,94 @@ function stamp(event: string): string {
   return `${new Date().toISOString()} ${event}`;
 }
 
-// The workflow a workstream follows, read fresh on every command, so an edit
-// to the workflow file takes effect straight away.
-function workflowOf(root: string, ws: Workstream): Workflow {
-  return loadWorkflow(findWorkflow(root, ws.workflow));
+const finished = (status: StepStatus) => status === "COMPLETED" || status === "SKIPPED";
+
+// Everything a command needs to know about one workstream. The workflow is
+// read fresh on every command, so an edit to the workflow file takes effect
+// straight away.
+interface Ctx {
+  root: string;
+  slug: string;
+  wf: Workflow;
+  p: Project;
 }
 
-// The step the workstream is on: the first one that is not done. Steps are
-// handed out one at a time, in file order. Undefined once every step is done.
+function context(root: string, slug: string, ws: Workstream): Ctx {
+  return { root, slug, wf: loadWorkflow(findWorkflow(root, ws.workflow)), p: loadProject(root) };
+}
+
 function currentStep(wf: Workflow, ws: Workstream): Step | undefined {
-  return wf.steps.find((step) => stateOf(ws, step.id).status !== "done");
+  return wf.steps.find((step) => !finished(stateOf(ws, step.id).status));
 }
 
-// --------------------------------------------------------------------- start
-// Mint a workstream that follows `workflowRef` (a workflow name or an
-// absolute path), or resume the one that exists. Either way it prints the
-// current step, so an agent that lost its context can pick the work up here.
+const position = (c: Ctx, step: Step) => `${c.wf.steps.indexOf(step) + 1} of ${c.wf.steps.length}`;
 
-export function start(root: string, slug: string, workflowRef?: string): string[] {
-  const resumed = workstreamExists(root, slug);
-  let ref = workflowRef;
-  if (resumed) {
-    const recorded = readWorkstream(root, slug).workflow;
-    if (ref !== undefined && ref !== recorded) {
-      throw new FlowError(`workstream ${slug} follows workflow ${recorded}, not ${ref}`);
-    }
-    ref = recorded;
-  } else if (ref === undefined) {
-    throw new FlowError(`a new workstream needs --workflow <name or path>, for example --workflow _k-full-sdlc`);
-  }
-  const path = findWorkflow(root, ref);
-  const wf = loadWorkflow(path);
-  let current: string[] = [];
-  updateWorkstream(
-    root,
-    slug,
-    (ws) => {
-      // List every step in the state file, so it reads as a complete checklist.
-      wf.steps.forEach((step) => stateOf(ws, step.id));
-      current = describeCurrent(root, slug, wf, ws);
-    },
-    { workflow: ref, steps: {} },
-  );
-  return [`${resumed ? "resumed" : "minted"} workstream ${slug}`, `workflow: ${path}`, `state:    ${workstreamFile(root, slug)}`, "", ...current];
+// The gates in the order they run (decision 27): checks, then agent reviews,
+// then the owner. Within a kind, the order the workflow lists them in.
+function gatesInOrder(step: Step): Gate[] {
+  const rank = (g: Gate) => (g.kind === "check" || g.kind === "script" ? 0 : g.kind === "agent" ? 1 : 2);
+  return [...step.gates].sort((a, b) => rank(a) - rank(b));
 }
 
-// How the owner sends the work back from `step`, with the steps its gates
-// suggest first. The owner usually names an artifact to rework, so the steps
-// up to this one are listed with the artifacts they produce.
-function sendBackLines(slug: string, wf: Workflow, step: Step): string[] {
-  const steps = wf.steps.slice(0, wf.steps.indexOf(step) + 1).map((s) => (s.produces.length ? `${s.id}: ${s.produces.join(", ")}` : s.id));
-  const routes = [...new Set(step.gates.flatMap((g) => g.route_back_to))];
-  return [
-    `    ${FUSE_FLOW} continue ${slug} --back-to <step> [--note "<the owner's decision>"]`,
-    ...(routes.length ? [`    suggested by the step's gates: ${routes.join(", ")}`] : []),
-    `    to rework an artifact, send the work back to the step that produces it: ${steps.join("; ")}`,
-  ];
+const ownerGates = (step: Step) => step.gates.filter((g) => g.kind === "owner-action");
+const routesBack = (step: Step) => [...new Set(step.gates.flatMap((g) => g.route_back_to))];
+
+interface Placed {
+  artifact: Artifact;
+  path: string; // relative to the repository root, {slug} replaced
 }
 
-// What the agent should do now. `start` and `continue` print this while they
-// hold the lock, with the state they are about to write, so the step they
-// print is the current one when their change lands.
-function describeCurrent(root: string, slug: string, wf: Workflow, ws: Workstream): string[] {
-  const step = currentStep(wf, ws);
-  if (!step) return ["workflow complete"];
+const place = (c: Ctx, artifacts: Artifact[]): Placed[] => artifacts.map((artifact) => ({ artifact, path: artifactPath(c.p, artifact, c.slug) }));
+const onDisk = (c: Ctx, path: string) => existsSync(resolve(c.root, path));
 
-  const state = stateOf(ws, step.id);
-  const approve = `${FUSE_FLOW} continue ${slug} --owner-approved`;
-  switch (state.status) {
-    case "awaiting-owner":
-      return [
-        `step: ${step.id} awaits owner approval`,
-        `ask the owner to: ${step.gates.filter((g) => g.kind === "owner-action").map((g) => g.text).join("; ") || "approve"}`,
-        `artifacts: ${state.artifacts.join(", ") || "(no artifacts)"}`,
-        `after the owner approves, run: ${approve} [--note "<what the owner said>"]`,
-        "if the owner rejects it instead, send the work back to a step:",
-        ...sendBackLines(slug, wf, step),
-      ];
-    case "blocked": {
-      const lines = [
-        `step: ${step.id} is blocked`,
-        ...state.history.slice(-3).map((line) => `  ${line}`),
-        "ask the owner how to proceed, then run the command for the owner's decision:",
-        `  accept the step as it is:     ${approve} --note "<the owner's decision>"`,
-      ];
-      if (step.gates.some((g) => g.kind === "agent")) {
-        lines.push(`  grant more review rounds:     ${FUSE_FLOW} continue ${slug} --more-rounds <n> [--note "<the owner's decision>"]`);
-      }
-      lines.push("  send the work back to a step:", ...sendBackLines(slug, wf, step));
-      return lines;
-    }
-    default: {
-      const lines = [`step: ${step.id}${step.title ? ` (${step.title})` : ""}`];
-      for (const skill of step.skills) {
-        const path = findSkill(root, skill);
-        lines.push(`read: ${path ?? `${skill}   (not found; set FUSE_SKILLS_DIR)`}`);
-      }
-      if (step.instruction) lines.push(`instruction: ${step.instruction.trim()}`);
-      lines.push(`produce: ${step.produces.join(", ") || "(nothing declared)"}`);
-      for (const g of step.gates) {
-        if (g.kind === "agent") {
-          const granted = state.rounds_granted ?? 0;
-          const cap = granted ? `${g.max_rounds! + granted} (${g.max_rounds} plus ${granted} granted by the owner)` : `${g.max_rounds}`;
-          lines.push(
-            `agent gate: before continuing, have an agent ${g.text}. Consider each finding critically and ` +
-              `classify it as fix required or false positive, with the reason; a finding the owner already ` +
-              `accepted or deferred is not a required fix. Fix what is required and review again, until a round ` +
-              `ends with no required fix. Every round that ends with a required fix counts, whatever the cause: ` +
-              `you and the reviewer disagree, the reviewer finds new problems each round, or a fix introduced a ` +
-              `regression. ` +
-              `After ${cap} such rounds, do not start another; run: ${FUSE_FLOW} continue ${slug} --blocked ` +
-              `"<what is still open, and why the review does not converge>"`,
-          );
-        }
-        if (g.kind === "script") lines.push(`script gate: ${g.text}   (runs on continue; must exit 0)`);
-        if (g.kind === "owner-action") lines.push(`owner gate: the owner must ${g.text}`);
-      }
-      lines.push(`gates: ${describeGates(step.gates)}`);
-      lines.push(`then run: ${FUSE_FLOW} continue ${slug}`);
-      return lines;
-    }
-  }
+// Whether `file` (relative to the root) lies at or below `path`.
+function contains(path: string, file: string): boolean {
+  const dir = path.replace(/\/+$/, "").replace(/^\.\/+/, "");
+  if (dir === "" || dir === ".") return !file.startsWith("../") && file !== "..";
+  return file === dir || file.startsWith(`${dir}/`);
 }
 
-// ------------------------------------------------------------------ continue
-// Move the workstream on from its current step, then print the new current
-// step. What that means depends on the step's status:
-//
-//   pending         the agent finished the work. Accepted only when every
-//                   artifact exists and the step's script gates exit 0; a
-//                   refusal is recorded in the step's history and costs
-//                   nothing, because the agent can always fix the artifact.
-//                   A step with an owner-action gate goes to awaiting-owner
-//                   instead of done. With --blocked, the agent reports that
-//                   it cannot finish the step, for example after max_rounds
-//                   review rounds, and the step is blocked.
-//   awaiting-owner  needs the owner's decision: --owner-approved approves the
-//                   step, and --back-to <step> rejects it and makes that step
-//                   (it or an earlier one) and every step after it pending.
-//   blocked         needs the owner's decision: --owner-approved accepts the
-//                   step as it is, --more-rounds <n> grants n more review
-//                   rounds and makes the step pending again, and --back-to
-//                   <step> sends the work back as above.
-
-export interface Continue {
-  ownerApproved: boolean;
-  note?: string;
-  blocked?: string;
-  moreRounds?: number;
-  backTo?: string;
-  extraArtifacts: string[];
+// Every path this workstream recorded, in any step.
+function recordedPaths(ws: Workstream): Set<string> {
+  return new Set(Object.values(ws.steps).flatMap((s) => s.artifacts.map((a) => a.path)));
 }
 
-export function continueWorkstream(root: string, slug: string, input: Continue): string[] {
-  const initial = readWorkstream(root, slug);
-  const wf = workflowOf(root, initial);
-  const step = currentStep(wf, initial);
-  if (!step) throw new FlowError("workflow complete; there is nothing to continue");
+// ------------------------------------------------------------------ commands
 
-  const status = stateOf(initial, step.id).status;
-  if (status === "pending") {
-    if (input.ownerApproved) {
-      throw new FlowError(`step "${step.id}" is pending, not awaiting the owner; finish it and run continue without --owner-approved`);
-    }
-    if (input.moreRounds !== undefined) throw new FlowError(`step "${step.id}" is pending, not blocked; --more-rounds answers a blocked step`);
-    if (input.backTo !== undefined) {
-      throw new FlowError(`step "${step.id}" is pending; --back-to answers a step that awaits the owner or is blocked`);
-    }
-    if (input.blocked !== undefined) return blockStep(root, slug, wf, step, input.blocked);
-    return finishStep(root, slug, wf, step, input.extraArtifacts);
-  }
-  if (input.moreRounds !== undefined) {
-    if (status !== "blocked") throw new FlowError(`step "${step.id}" is ${status}, not blocked; --more-rounds answers a blocked step`);
-    return grantRounds(root, slug, wf, step, input.moreRounds, input.note);
-  }
-  if (input.backTo !== undefined) return sendBack(root, slug, wf, step, input.backTo, input.note);
-  if (!input.ownerApproved) {
-    throw new FlowError(`step "${step.id}" is ${status}; only the owner can move it on, with continue --owner-approved`);
-  }
-  return approveStep(root, slug, wf, step, input.note);
+// How a mechanical gate or condition runs in this project: its command, or why
+// there is none.
+type Mechanical =
+  | { kind: "run"; command: string; label: string }
+  | { kind: "none"; label: string; file: string }
+  | { kind: "unbound"; label: string; check: string };
+
+function mechanical(c: Ctx, g: Gate | Condition): Mechanical {
+  if (g.kind === "script") return { kind: "run", command: g.text, label: `script \`${g.text}\`` };
+  const binding = checkBinding(c.p, g.text);
+  const label = `check ${g.text}`;
+  if (!binding) return { kind: "unbound", label, check: g.text };
+  if (binding.command === "none") return { kind: "none", label, file: display(c.p, binding.file) };
+  return { kind: "run", command: binding.command, label: `${label} (\`${binding.command}\`)` };
 }
 
-function finishStep(root: string, slug: string, wf: Workflow, step: Step, extraArtifacts: string[]): string[] {
-  const artifacts = [...new Set([...step.produces, ...extraArtifacts])];
-  const missing = artifacts.filter((a) => !existsSync(resolve(root, a)));
-  if (missing.length > 0) {
-    const expected = missing.map((a) => (resolve(root, a) === a ? a : `${a} (${resolve(root, a)})`));
-    throw refuse(root, slug, wf, step, `missing artifact(s): ${expected.join(", ")}`);
-  }
-
-  // The check runs without holding the state file's lock, so a long test run
-  // does not stall fuse-flow commands for other workstreams.
-  for (const gate of step.gates) {
-    if (gate.kind !== "script") continue;
-    const check = runCheck(root, gate.text, slug, step.id);
-    if (check.exitCode !== 0) {
-      const reason = `script failed (exit ${check.exitCode ?? "none, killed by a signal"}): ${gate.text}`;
-      throw refuse(root, slug, wf, step, reason, check.output);
-    }
-  }
-
-  const awaitsOwner = step.gates.some((g) => g.kind === "owner-action");
-  let current: string[] = [];
-  updateWorkstream(root, slug, (ws) => {
-    const state = requirePending(wf, ws, step); // unchanged while the check ran?
-    state.artifacts = artifacts;
-    state.status = awaitsOwner ? "awaiting-owner" : "done";
-    state.history.push(stamp(awaitsOwner ? "artifacts recorded; awaiting owner approval" : "done"));
-    current = describeCurrent(root, slug, wf, ws);
-  });
-  return [
-    `recorded ${step.id}: ${artifacts.join(", ") || "(no artifacts)"}`,
-    awaitsOwner ? `${step.id} now awaits owner approval` : `${step.id} done`,
-    "",
-    ...current,
-  ];
-}
-
-function blockStep(root: string, slug: string, wf: Workflow, step: Step, reason: string): string[] {
-  let current: string[] = [];
-  updateWorkstream(root, slug, (ws) => {
-    const state = requirePending(wf, ws, step);
-    state.status = "blocked";
-    state.history.push(stamp(`blocked by the agent: ${reason}`));
-    current = describeCurrent(root, slug, wf, ws);
-  });
-  return [`${step.id} blocked: ${reason}`, "", ...current];
-}
-
-// The owner gives the agent gates of a blocked step `n` more review rounds.
-function grantRounds(root: string, slug: string, wf: Workflow, step: Step, n: number, note?: string): string[] {
-  if (!step.gates.some((g) => g.kind === "agent")) {
-    throw new FlowError(`step "${step.id}" has no agent gate, so there are no review rounds to grant`);
-  }
-  let current: string[] = [];
-  updateWorkstream(root, slug, (ws) => {
-    const state = requireBlocked(ws, step);
-    state.status = "pending";
-    state.rounds_granted = (state.rounds_granted ?? 0) + n;
-    state.history.push(stamp(`owner granted ${n} more review round${n === 1 ? "" : "s"}${note ? `: ${note}` : ""}`));
-    current = describeCurrent(root, slug, wf, ws);
-  });
-  return [`${step.id}: owner granted ${n} more review round${n === 1 ? "" : "s"}; step pending again`, "", ...current];
-}
-
-// The owner sends the work back from a step that awaits the owner or is
-// blocked to `target`, the step
-// itself or an earlier one: that step and every step after it are pending
-// again, with no recorded artifacts and no granted rounds. The files the
-// steps wrote stay where they are.
-function sendBack(root: string, slug: string, wf: Workflow, step: Step, target: string, note?: string): string[] {
-  const from = wf.steps.findIndex((s) => s.id === target);
-  const at = wf.steps.indexOf(step);
-  if (from < 0) throw new FlowError(`no step "${target}" in workflow ${wf.name}`);
-  if (from > at) throw new FlowError(`step "${target}" comes after "${step.id}"; --back-to names "${step.id}" or a step before it`);
-  let current: string[] = [];
-  updateWorkstream(root, slug, (ws) => {
-    const status = stateOf(ws, step.id).status;
-    if (status !== "blocked" && status !== "awaiting-owner") {
-      throw new FlowError(`step "${step.id}" is ${status} now; run continue again`);
-    }
-    for (const s of wf.steps.slice(from)) {
-      const state = stateOf(ws, s.id);
-      if (state.status === "pending" && s !== step) continue;
-      state.status = "pending";
-      state.artifacts = [];
-      delete state.rounds_granted;
-      state.history.push(stamp(`owner sent the work back from ${step.id} to ${target}${note ? `: ${note}` : ""}`));
-    }
-    current = describeCurrent(root, slug, wf, ws);
-  });
-  return [`${step.id}: owner sent the work back to ${target}`, "", ...current];
-}
-
-// The step must still be blocked when the owner's answer is written.
-function requireBlocked(ws: Workstream, step: Step) {
-  const state = stateOf(ws, step.id);
-  if (state.status !== "blocked") throw new FlowError(`step "${step.id}" is ${state.status} now; run continue again`);
-  return state;
-}
-
-function approveStep(root: string, slug: string, wf: Workflow, step: Step, note?: string): string[] {
-  let current: string[] = [];
-  updateWorkstream(root, slug, (ws) => {
-    const state = stateOf(ws, step.id);
-    if (state.status !== "awaiting-owner" && state.status !== "blocked") {
-      throw new FlowError(`step "${step.id}" is ${state.status} now; run continue again`);
-    }
-    state.status = "done";
-    state.history.push(stamp(`owner approved${note ? `: ${note}` : ""}`));
-    current = describeCurrent(root, slug, wf, ws);
-  });
-  return [`${step.id}: owner approved; step done`, "", ...current];
-}
-
-// The step must still be the pending current step when the state is written:
-// another `continue` may have finished it while this one ran its check.
-function requirePending(wf: Workflow, ws: Workstream, step: Step) {
-  const state = stateOf(ws, step.id);
-  if (state.status !== "pending") throw new FlowError(`step "${step.id}" is ${state.status} now; run continue again`);
-  return state;
-}
-
-// Record a refused attempt in the step's history, and return the error that
-// tells the caller why.
-function refuse(root: string, slug: string, wf: Workflow, step: Step, reason: string, output = "") {
-  updateWorkstream(root, slug, (ws) => {
-    requirePending(wf, ws, step).history.push(stamp(`continue refused: ${reason}`));
-  });
-  return new FlowError([reason, output].filter(Boolean).join("\n"));
+function bindInstruction(c: Ctx, check: string): string {
+  const base =
+    `This project has no command for the ${check} check yet. Find it in the project (package.json, a Makefile, ` +
+    `Cargo.toml and so on), confirm it with the owner, and record it in .konductor/policy-overrides.yml as ` +
+    `\`checks: { ${check}: <command> }\`.`;
+  return check === "default"
+    ? `${base} If the project has no check command for agents, suggest that the owner add one, and meanwhile bind ` +
+        "the closest existing command, with the owner's confirmation."
+    : base;
 }
 
 // Runs from the repository root with the caller's environment, like a
 // Makefile target. Keeps only the end of the output: enough to see why it
 // failed without flooding the agent's context.
-function runCheck(root: string, command: string, slug: string, stepId: string) {
+function runCommand(c: Ctx, command: string, stepId: string) {
   const proc = spawnSync("sh", ["-c", command], {
-    cwd: root,
-    env: { ...process.env, FUSE_FLOW_SLUG: slug, FUSE_FLOW_STEP: stepId },
+    cwd: c.root,
+    env: { ...process.env, FUSE_FLOW_SLUG: c.slug, FUSE_FLOW_STEP: stepId },
     encoding: "utf8",
     maxBuffer: 256 * 1024 * 1024, // a test suite can print a lot; keep it all, then trim
   });
@@ -353,22 +146,667 @@ function runCheck(root: string, command: string, slug: string, stepId: string) {
   return { exitCode: proc.status, output: text.split("\n").slice(-20).join("\n") };
 }
 
+// ------------------------------------------------------------------ hand-out
+// Hand out the current step if it is PENDING: run a script or check condition
+// and skip the step when it says so, otherwise mark it IN_PROGRESS and note
+// which of its produces paths already exist. Repeats until the current step is
+// handed out, waits for someone, or the workflow is complete. A condition runs
+// without holding the state file's lock.
+
+function handOut(c: Ctx): void {
+  for (;;) {
+    const ws = readWorkstream(c.root, c.slug);
+    const step = currentStep(c.wf, ws);
+    if (!step || stateOf(ws, step.id).status !== "PENDING") return;
+
+    let skip: string | undefined;
+    let note = "handed out";
+    const cond = step.condition;
+    if (cond && (cond.kind === "script" || cond.kind === "check")) {
+      const m = mechanical(c, cond);
+      if (m.kind === "unbound") return; // stays PENDING; the output says how to bind it
+      if (m.kind === "run") {
+        const r = runCommand(c, m.command, step.id);
+        if (r.exitCode === 0) note = `handed out; condition \`${m.command}\` exited 0`;
+        else skip = `condition \`${m.command}\` exited ${r.exitCode ?? "without a code, killed by a signal"}`;
+      } else {
+        note = `handed out; condition ${m.label} is not configured in this project`;
+      }
+    }
+
+    let moved = false;
+    updateWorkstream(c.root, c.slug, (ws2) => {
+      const state = stateOf(ws2, step.id);
+      if (currentStep(c.wf, ws2) !== step || state.status !== "PENDING") return; // another command got here first
+      moved = true;
+      if (skip) {
+        state.status = "SKIPPED";
+        state.skip_reason = skip;
+        state.history.push(stamp(`skipped: ${skip}`));
+        return;
+      }
+      state.status = "IN_PROGRESS";
+      const recorded = recordedPaths(ws2);
+      const existed = place(c, step.produces)
+        .map((a) => a.path)
+        .filter((path) => onDisk(c, path) && !recorded.has(path));
+      if (existed.length) state.existed = existed;
+      else delete state.existed;
+      state.history.push(stamp(note));
+    });
+    if (!moved) continue;
+    if (!skip) return;
+  }
+}
+
+// ------------------------------------------------------------------ output
+
+function present(c: Ctx): string[] {
+  handOut(c);
+  const ws = readWorkstream(c.root, c.slug);
+  const step = currentStep(c.wf, ws);
+  if (!step) return handOver(c, ws, undefined);
+  const state = stateOf(ws, step.id);
+  switch (state.status) {
+    case "PENDING": {
+      const m = mechanical(c, step.condition!) as Extract<Mechanical, { kind: "unbound" }>;
+      return [
+        `STEP ${step.id} (${position(c, step)}) cannot be handed out yet: its condition names the ${m.check} check.`,
+        `${bindInstruction(c, m.check)} Then run \`${FUSE_FLOW} start ${c.slug}\`.`,
+      ];
+    }
+    case "IN_PROGRESS":
+      return stepBlock(c, ws, step, state);
+    default:
+      return handOver(c, ws, step);
+  }
+}
+
+// What the agent does now (decision 26).
+function stepBlock(c: Ctx, ws: Workstream, step: Step, state: StepState): string[] {
+  const lines = [`STEP ${step.id} (${position(c, step)}): ${step.instruction.replace(/\s+/g, " ").trim()}`];
+  const ff = `${FUSE_FLOW} continue ${c.slug}`;
+
+  const cond = step.condition;
+  if (cond?.kind === "agent") {
+    lines.push(`CONDITION: Do this step only if ${cond.text}. Otherwise run \`${ff} --skip "<why it does not apply>"\`.`);
+  } else if (cond?.kind === "owner-action") {
+    lines.push(
+      `CONDITION: Before you start, ask the owner to ${cond.text}, and end your message with the hand-over block, ` +
+        `STATUS needs input. If the owner decides to skip the step, run \`${ff} --skip "<the owner's reason>"\`; ` +
+        "otherwise do the step.",
+    );
+  } else if (cond) {
+    const ran = state.history.findLast((h) => h.includes("handed out"));
+    if (ran?.includes("condition")) lines.push(`CONDITION: ${ran.slice(ran.indexOf("condition"))}, so the step runs.`);
+  }
+
+  for (const id of step.consumes) {
+    const source = [...c.wf.steps.slice(0, c.wf.steps.indexOf(step))]
+      .reverse()
+      .find((s) => [...s.produces, ...s.optional_produces, ...s.updates].some((a) => a.artifact === id))!;
+    const artifact = [...source.produces, ...source.optional_produces, ...source.updates].find((a) => a.artifact === id)!;
+    const path = artifactPath(c.p, artifact, c.slug);
+    lines.push(
+      onDisk(c, path)
+        ? `READ ${path} (from step ${source.id}).`
+        : `READ ${path} (from step ${source.id}). It does not exist, for example because earlier steps were skipped. ` +
+            "Restore what this step needs in the way that serves the owner, such as copying or extracting it from " +
+            "related work, or writing a placeholder that explains the status, and report what you did in the " +
+            "hand-over block.",
+    );
+  }
+
+  const existed = new Set(state.existed ?? []);
+  const artifactLine = (label: string, a: Placed, missingNote?: string) => {
+    let line = `${label} ${a.path} (${a.artifact.artifact}).`;
+    const entry = libraryEntry(c.p, a.artifact.artifact);
+    if (entry?.guide) {
+      line += ` Follow the process in ${display(c.p, entry.guide)}`;
+      line += entry.template ? ` and use the structure of ${display(c.p, entry.template)}.` : ".";
+    } else if (entry?.guideMissing) {
+      line +=
+        ` Its guide is missing (${display(c.p, entry.guideMissing)} cannot be read); ask the owner whether to continue ` +
+        "without it, install it and run this command again, or use another workflow.";
+      if (entry.template) line += ` Use the structure of ${display(c.p, entry.template)}.`;
+    } else if (entry?.template) {
+      line += ` Use the structure of ${display(c.p, entry.template)}.`;
+    }
+    if (missingNote) line += ` ${missingNote}`;
+    return line;
+  };
+  for (const a of place(c, step.produces)) {
+    lines.push(
+      artifactLine(
+        "PRODUCE",
+        a,
+        existed.has(a.path)
+          ? `${a.path} already existed when the step was handed out, and this workstream did not write it. Do what ` +
+              "the instruction or the guide says about it; if they say nothing, judge whether to ask the owner to " +
+              "update it, replace it, or use a different path."
+          : undefined,
+      ),
+    );
+  }
+  for (const a of place(c, step.optional_produces)) lines.push(artifactLine("PRODUCE (optional)", a));
+  for (const a of place(c, step.updates)) {
+    lines.push(
+      artifactLine("UPDATE", a, onDisk(c, a.path) ? undefined : `${a.path} does not exist yet; create it and report it with --updated.`),
+    );
+  }
+
+  lines.push("WHEN THE WORK IS DONE:");
+  let n = 0;
+  const reviewed = place(c, [...step.produces, ...step.optional_produces, ...step.updates]);
+  for (const g of gatesInOrder(step)) {
+    if (g.kind === "check" || g.kind === "script") {
+      const m = mechanical(c, g);
+      const again = "fuse-flow runs it again on continue and refuses the step while it fails.";
+      if (m.kind === "run") {
+        const what = g.kind === "check" ? `, the project's ${g.text} check (bound in ${display(c.p, checkBinding(c.p, g.text)!.file)})` : "";
+        lines.push(`  ${++n}. Run \`${m.command}\`${what}. Fix the work, or the check if the check is wrong, until it passes. ${again}`);
+      } else if (m.kind === "none") {
+        lines.push(`  ${++n}. The ${g.text} check is not configured in this project (bound to none in ${m.file}); there is nothing to run.`);
+      } else {
+        lines.push(`  ${++n}. ${bindInstruction(c, m.check)} Then run it and fix the work until it passes. ${again}`);
+      }
+    } else if (g.kind === "agent") {
+      lines.push(`  ${++n}. ${reviewText(c, g, step, state, reviewed)}`);
+    }
+  }
+
+  let last = `  ${++n}. Run \`${ff}\``;
+  const updates = step.updates.map((a) => a.artifact);
+  const produces = step.produces.map((a) => a.artifact);
+  const parts: string[] = [];
+  if (updates.length) {
+    const which = updates.length === 1 ? `if you left ${updates[0]} as it was` : `for each of ${updates.join(", ")} that you left as it was`;
+    parts.push(`with --updated <file> for each file you revised (repeat it), and --unchanged <artifact> "<reason>" ${which}`);
+  }
+  if (produces.length) {
+    const which = produces.length === 1 ? `if you rightly did not write ${produces[0]}` : `for each of ${produces.join(", ")} that you rightly did not write`;
+    parts.push(`with --not-produced <artifact> "<reason>" only ${which}`);
+  }
+  if (parts.length) last += `, ${parts.join("; and ")}`;
+  last += ".";
+  const owner = ownerGates(step);
+  if (owner.length) {
+    last += ` The step then waits for the owner to ${owner.map((g) => g.text).join(", and to ")}.`;
+    const routes = routesBack(step);
+    if (routes.length) last += ` If the owner rejects it, suggest sending the work back to ${routes.join(" or ")}.`;
+  }
+  lines.push(last);
+  return lines;
+}
+
+function capOf(c: Ctx, g: Gate, state: StepState): string {
+  const cap = maxRounds(c.p, g);
+  const granted = state.rounds_granted ?? 0;
+  return granted ? `${cap + granted} (${cap} plus ${granted} granted by the owner)` : `${cap}`;
+}
+
+function reviewText(c: Ctx, g: Gate, step: Step, state: StepState, reviewed: Placed[]): string {
+  let text = `Have an independent agent ${g.text.replace(/\.$/, "")}.`;
+  const guided: string[] = [];
+  const parts: string[] = [];
+  for (const a of reviewed) {
+    const guide = reviewGuide(c.p, g, a.artifact.artifact);
+    if (guide) {
+      guided.push(guide);
+      parts.push(`${a.path} against ${display(c.p, guide)}`);
+    } else {
+      const own = libraryEntry(c.p, a.artifact.artifact)?.guide;
+      parts.push(own ? `${a.path}, with its guide ${display(c.p, own)} as the definition of a good artifact` : a.path);
+    }
+  }
+  if (reviewed.length === 0) {
+    const guide = reviewGuide(c.p, g, undefined);
+    if (guide) {
+      guided.push(guide);
+      text += ` Follow the review guide ${display(c.p, guide)}.`;
+    }
+  } else {
+    text += ` It reviews ${parts.join("; ")}.`;
+  }
+  const who = reviewer(c.p);
+  if (who) text += ` The reviewer: ${who}.`;
+  text += guided.length
+    ? " The review guide decides what counts as a required fix and when a round passes."
+    : " Classify each finding as fix required or false positive, with the reason; a finding the owner already " +
+      "accepted or deferred is not a required fix. Fix what is required and review again, until a round ends with " +
+      "no required fix.";
+  text +=
+    " Every round that ends with a required fix counts, whatever the cause. After " +
+    `${capOf(c, g, state)} such rounds, do not start another; run \`${FUSE_FLOW} continue ${c.slug} --blocked ` +
+    `"<what is still open, and why the review does not converge>"\`.`;
+  void step;
+  return text;
+}
+
+// The PRODUCED line: the files the step created or changed, and the reasons
+// for what it left out (decisions 22, 43 and 45).
+function producedLine(c: Ctx, step: Step, state: StepState): string {
+  const existed = new Set(state.existed ?? []);
+  const files: string[] = [];
+  const updatesPaths = place(c, step.updates).map((a) => a.path);
+  const updatesIds = new Set(step.updates.map((a) => a.artifact));
+  for (const a of state.artifacts) {
+    if (a.artifact && updatesIds.has(a.artifact)) continue; // listed by file below
+    files.push(`${a.path} (${existed.has(a.path) ? "updated" : "new"})`);
+  }
+  for (const f of state.updated ?? []) {
+    files.push(updatesPaths.some((p) => contains(p, f)) ? `${f} (updated)` : `${f} (updated, outside the declared paths)`);
+  }
+  const parts: string[] = [];
+  if (files.length >= 5) {
+    const dirs = files.map((f) => dirname(f.split(" (")[0]));
+    let common = dirs[0];
+    while (common !== "." && !dirs.every((d) => d === common || d.startsWith(`${common}/`))) common = dirname(common);
+    parts.push(`${files.length} files${common === "." ? "" : ` under ${common}/`}; summarize them, for example "12 files under src/checkout/, with their tests"`);
+  } else {
+    parts.push(...files);
+  }
+  for (const [id, why] of Object.entries(state.not_produced ?? {})) parts.push(`${id} not produced (${why})`);
+  for (const [id, why] of Object.entries(state.unchanged ?? {})) parts.push(`${id} unchanged (${why})`);
+  return `PRODUCED: ${parts.join("; ") || "none"}`;
+}
+
+function verificationLine(c: Ctx, step: Step, state: StepState): string {
+  const parts = [...(state.verification ?? [])];
+  for (const g of gatesInOrder(step)) {
+    if (g.kind === "agent") parts.push(`review (${g.text}): <rounds used> of ${capOf(c, g, state)} rounds, <any required fix still open>`);
+  }
+  return `VERIFICATION: ${parts.join("; ") || "none"}`;
+}
+
+function stepsWithArtifacts(c: Ctx, step: Step): string {
+  return c.wf.steps
+    .slice(0, c.wf.steps.indexOf(step) + 1)
+    .map((s) => {
+      const paths = place(c, [...s.produces, ...s.updates]).map((a) => a.path);
+      return paths.length ? `${s.id} (${paths.join(", ")})` : s.id;
+    })
+    .join(", ");
+}
+
+// When it is the owner's turn: the hand-over block, pre-filled (decision 22).
+function handOver(c: Ctx, ws: Workstream, step: Step | undefined): string[] {
+  const skips = c.wf.steps
+    .map((s) => ({ s, state: stateOf(ws, s.id) }))
+    .filter(({ state }) => state.status === "SKIPPED")
+    .map(({ s, state }) => `${s.id} (${state.skip_reason ?? "no reason recorded"})`);
+  const skipped = skips.length ? ` Skipped steps: ${skips.join("; ")}.` : "";
+  const intro =
+    "OWNER'S TURN: end your message with this hand-over block. Replace each <...> part, keep the lines in this " +
+    "order, and give the owner's options with your recommendation first, with its reason.";
+
+  if (!step) {
+    const all = c.wf.steps.flatMap((s) => stateOf(ws, s.id).artifacts.map((a) => a.path));
+    return [
+      intro,
+      "",
+      `SUMMARY: <the work, in a sentence>. Workstream ${c.slug}, all ${c.wf.steps.length} steps of ${c.wf.name}.${skipped}`,
+      "STATUS: workflow complete",
+      `PRODUCED: ${all.length >= 5 ? `${all.length} artifacts, among them ${all.slice(0, 3).join(", ")}; summarize them` : all.join(", ") || "none"}`,
+      "VERIFICATION: <what was verified during the workstream>",
+      "NEXT STEP: <what the owner may want next, for example reviewing or landing the work>",
+    ];
+  }
+
+  const state = stateOf(ws, step.id);
+  const ff = `${FUSE_FLOW} continue ${c.slug}`;
+  const routes = routesBack(step);
+  const back =
+    `Send the work back: run \`${ff} --back-to <step> --note "<the owner's decision>"\`` +
+    (routes.length ? `; the step's gates suggest ${routes.join(" or ")}` : "") +
+    `. To rework an artifact, name the step that produces it: ${stepsWithArtifacts(c, step)}.`;
+  const lines = [
+    intro,
+    "",
+    `SUMMARY: <the task you worked on, in a sentence>. Workstream ${c.slug}, step ${step.id}, ${position(c, step)}.${skipped}`,
+  ];
+  if (state.status === "AWAITING_OWNER") {
+    const asks = ownerGates(step).map((g) => g.text).join(", and ");
+    lines.push(
+      `STATUS: awaiting owner action. The owner is asked to ${asks}.`,
+      producedLine(c, step, state),
+      verificationLine(c, step, state),
+      "NEXT STEP:",
+      `  - The owner does what the step asks (${asks}): run \`${ff} --owner-approved --note "<what the owner said>"\`.`,
+      `  - ${back}`,
+    );
+  } else {
+    const why = state.history.findLast((h) => h.includes("blocked"))?.replace(/^\S+ /, "") ?? "blocked";
+    lines.push(
+      `STATUS: blocked. ${why}`,
+      producedLine(c, step, state),
+      verificationLine(c, step, state),
+      "NEXT STEP:",
+      `  - Accept the step as it is: run \`${ff} --owner-approved --note "<the owner's decision>"\`.`,
+    );
+    if (step.gates.some((g) => g.kind === "agent")) {
+      lines.push(`  - Grant more review rounds: run \`${ff} --more-rounds <n> --note "<the owner's decision>"\`.`);
+    }
+    lines.push(`  - ${back}`);
+  }
+  return lines;
+}
+
+// --------------------------------------------------------------------- start
+// Mint a workstream that follows `workflowRef` (a workflow name or an
+// absolute path), or resume the one that exists. Either way it prints the
+// current step, so an agent that lost its context can pick the work up here.
+// `from` starts a new workstream at a later step, as the owner's decision.
+
+export function start(root: string, slug: string, workflowRef?: string, from?: string): string[] {
+  const resumed = workstreamExists(root, slug);
+  let ref = workflowRef;
+  if (resumed) {
+    const recorded = readWorkstream(root, slug).workflow;
+    if (ref !== undefined && ref !== recorded) {
+      throw new FlowError(`workstream ${slug} follows workflow ${recorded}, not ${ref}`);
+    }
+    if (from !== undefined) throw new FlowError(`workstream ${slug} exists; --from starts a new one. To jump forward, use continue --forward-to`);
+    ref = recorded;
+  } else if (ref === undefined) {
+    throw new FlowError(`a new workstream needs --workflow <name or path>, for example --workflow _k-full-sdlc`);
+  }
+  const path = findWorkflow(root, ref);
+  const wf = loadWorkflow(path);
+  const fromIndex = from === undefined ? 0 : wf.steps.findIndex((s) => s.id === from);
+  if (fromIndex < 0) throw new FlowError(`no step "${from}" in workflow ${wf.name}`);
+  updateWorkstream(
+    root,
+    slug,
+    (ws) => {
+      // List every step in the state file, so it reads as a complete checklist.
+      wf.steps.forEach((step, i) => {
+        const state = stateOf(ws, step.id);
+        if (!resumed && i < fromIndex) {
+          state.status = "SKIPPED";
+          state.skip_reason = `started at ${from}`;
+          state.history.push(stamp(`skipped: started at ${from}`));
+        }
+      });
+    },
+    { workflow: ref, steps: {} },
+  );
+  const c: Ctx = { root, slug, wf, p: loadProject(root) };
+  return [`${resumed ? "resumed" : "minted"} workstream ${slug}`, `workflow: ${path}`, `state:    ${workstreamFile(root, slug)}`, "", ...present(c)];
+}
+
+// ------------------------------------------------------------------ continue
+
+export interface Continue {
+  ownerApproved: boolean;
+  note?: string;
+  blocked?: string;
+  skip?: string;
+  moreRounds?: number;
+  backTo?: string;
+  forwardTo?: string;
+  updated: string[]; // absolute paths
+  unchanged: Record<string, string>;
+  notProduced: Record<string, string>;
+}
+
+export function continueWorkstream(root: string, slug: string, input: Continue): string[] {
+  const initial = readWorkstream(root, slug);
+  const c = context(root, slug, initial);
+  handOut(c);
+  const ws = readWorkstream(root, slug);
+  const step = currentStep(c.wf, ws);
+  if (!step) throw new FlowError("workflow complete; there is nothing to continue");
+  const status = stateOf(ws, step.id).status;
+
+  if (input.forwardTo !== undefined) return forwardTo(c, step, input.forwardTo, input.note);
+  if (input.skip !== undefined) return skipStep(c, step, input.skip);
+  if (input.moreRounds !== undefined) return grantRounds(c, step, input.moreRounds, input.note);
+  if (input.backTo !== undefined) return sendBack(c, step, input.backTo, input.note);
+  if (input.ownerApproved) return approveStep(c, step, input.note);
+
+  if (status === "AWAITING_OWNER" || status === "BLOCKED") {
+    throw new FlowError(
+      `step "${step.id}" is ${status}; only the owner can move it on, with --owner-approved, --back-to` +
+        (status === "BLOCKED" ? " or --more-rounds" : ""),
+    );
+  }
+  if (status === "PENDING") throw new FlowError(present(c).join("\n"));
+  if (input.blocked !== undefined) return blockStep(c, step, input.blocked);
+  return finishStep(c, step, input);
+}
+
+// The step must still be the current step, in one of `allowed`, when the
+// state is written: another command may have moved it while this one ran.
+function expectState(c: Ctx, ws: Workstream, step: Step, allowed: StepStatus[]): StepState {
+  const state = stateOf(ws, step.id);
+  if (currentStep(c.wf, ws) !== step || !allowed.includes(state.status)) {
+    throw new FlowError(`step "${step.id}" is ${state.status} now; run the command again`);
+  }
+  return state;
+}
+
+function refuse(c: Ctx, step: Step, reason: string, output = ""): FlowError {
+  updateWorkstream(c.root, c.slug, (ws) => {
+    expectState(c, ws, step, ["IN_PROGRESS"]).history.push(stamp(`continue refused: ${reason}`));
+  });
+  const ws = readWorkstream(c.root, c.slug);
+  return new FlowError([reason, ...(output ? [output] : []), "", ...stepBlock(c, ws, step, stateOf(ws, step.id))].join("\n"));
+}
+
+function finishStep(c: Ctx, step: Step, input: Continue): string[] {
+  const updatesIds = step.updates.map((a) => a.artifact);
+  const producesIds = step.produces.map((a) => a.artifact);
+  for (const id of Object.keys(input.unchanged)) {
+    if (!updatesIds.includes(id)) {
+      throw new FlowError(`--unchanged names an artifact the step updates; "${id}" is not one (${updatesIds.join(", ") || "it updates none"})`);
+    }
+  }
+  for (const id of Object.keys(input.notProduced)) {
+    if (!producesIds.includes(id)) {
+      throw new FlowError(`--not-produced names an artifact the step produces; "${id}" is not one (${producesIds.join(", ") || "it produces none"})`);
+    }
+  }
+  const updated = [...new Set(input.updated.map((f) => display(c.p, f)))];
+
+  const produced = place(c, step.produces);
+  const missing = produced.filter((a) => !onDisk(c, a.path) && !(a.artifact.artifact in input.notProduced));
+  if (missing.length) {
+    throw refuse(
+      c,
+      step,
+      `missing artifact(s): ${missing.map((a) => `${a.path} (${a.artifact.artifact})`).join(", ")}. Write each, or report one ` +
+        `the step rightly does not produce with --not-produced <artifact> "<reason>".`,
+    );
+  }
+  const unaccounted = place(c, step.updates).filter(
+    (a) => !(a.artifact.artifact in input.unchanged) && !updated.some((f) => contains(a.path, f)),
+  );
+  if (unaccounted.length) {
+    throw refuse(
+      c,
+      step,
+      `not accounted for: ${unaccounted.map((a) => `${a.artifact.artifact} (${a.path})`).join(", ")}. Report each file you ` +
+        `revised with --updated <file>, or an artifact you left as it was with --unchanged <artifact> "<reason>".`,
+    );
+  }
+
+  // The checks run without holding the state file's lock, so a long test run
+  // does not stall fuse-flow commands for other workstreams.
+  const verification: string[] = [];
+  for (const g of gatesInOrder(step)) {
+    if (g.kind !== "check" && g.kind !== "script") continue;
+    const m = mechanical(c, g);
+    if (m.kind === "unbound") throw refuse(c, step, bindInstruction(c, m.check));
+    if (m.kind === "none") {
+      verification.push(`${m.label}: not configured in this project`);
+      continue;
+    }
+    const r = runCommand(c, m.command, step.id);
+    if (r.exitCode !== 0) {
+      throw refuse(c, step, `${m.label} failed (exit ${r.exitCode ?? "none, killed by a signal"})`, r.output);
+    }
+    verification.push(`${m.label}: passed`);
+  }
+
+  const awaitsOwner = ownerGates(step).length > 0;
+  updateWorkstream(c.root, c.slug, (ws) => {
+    const state = expectState(c, ws, step, ["IN_PROGRESS"]);
+    const status = awaitsOwner ? "draft" : "approved";
+    state.artifacts = [
+      ...[...produced, ...place(c, step.optional_produces)]
+        .filter((a) => !(a.artifact.artifact in input.notProduced) && onDisk(c, a.path))
+        .map((a) => ({ artifact: a.artifact.artifact, path: a.path, status })),
+      ...place(c, step.updates)
+        .filter((a) => onDisk(c, a.path))
+        .map((a) => ({ artifact: a.artifact.artifact, path: a.path, status })),
+    ] as StepState["artifacts"];
+    setOrDelete(state, "updated", updated.length ? updated : undefined);
+    setOrDelete(state, "unchanged", Object.keys(input.unchanged).length ? input.unchanged : undefined);
+    setOrDelete(state, "not_produced", Object.keys(input.notProduced).length ? input.notProduced : undefined);
+    setOrDelete(state, "verification", verification.length ? verification : undefined);
+    state.status = awaitsOwner ? "AWAITING_OWNER" : "COMPLETED";
+    state.history.push(stamp(awaitsOwner ? "work recorded; awaiting the owner's action" : "completed"));
+  });
+  return [`${step.id}: ${awaitsOwner ? "work recorded; the step awaits the owner's action" : "COMPLETED"}`, "", ...present(c)];
+}
+
+function setOrDelete<K extends keyof StepState>(state: StepState, key: K, value: StepState[K] | undefined): void {
+  if (value === undefined) delete state[key];
+  else state[key] = value;
+}
+
+function blockStep(c: Ctx, step: Step, reason: string): string[] {
+  updateWorkstream(c.root, c.slug, (ws) => {
+    const state = expectState(c, ws, step, ["IN_PROGRESS"]);
+    state.status = "BLOCKED";
+    state.history.push(stamp(`blocked by the agent: ${reason}`));
+  });
+  return [`${step.id}: BLOCKED: ${reason}`, "", ...present(c)];
+}
+
+function skipStep(c: Ctx, step: Step, reason: string): string[] {
+  updateWorkstream(c.root, c.slug, (ws) => {
+    const state = expectState(c, ws, step, ["PENDING", "IN_PROGRESS", "AWAITING_OWNER", "BLOCKED"]);
+    state.status = "SKIPPED";
+    state.skip_reason = reason;
+    state.history.push(stamp(`skipped${step.condition ? "" : " on the owner's request"}: ${reason}`));
+  });
+  return [`${step.id}: SKIPPED: ${reason}`, "", ...present(c)];
+}
+
+// The owner raises the round cap of the step's agent gates by `n`, on a
+// blocked step, which is handed back to the agent, or ahead of time on a step
+// in progress (decision 45).
+function grantRounds(c: Ctx, step: Step, n: number, note?: string): string[] {
+  if (!step.gates.some((g) => g.kind === "agent")) {
+    throw new FlowError(`step "${step.id}" has no agent gate, so there are no review rounds to grant`);
+  }
+  updateWorkstream(c.root, c.slug, (ws) => {
+    const state = expectState(c, ws, step, ["IN_PROGRESS", "BLOCKED"]);
+    state.status = "IN_PROGRESS";
+    state.rounds_granted = (state.rounds_granted ?? 0) + n;
+    state.history.push(stamp(`owner granted ${n} more review round${n === 1 ? "" : "s"}${note ? `: ${note}` : ""}`));
+  });
+  return [`${step.id}: owner granted ${n} more review round${n === 1 ? "" : "s"}; the step is IN_PROGRESS`, "", ...present(c)];
+}
+
+// Reopen `step` and everything after it: PENDING, its artifacts draft again.
+// The files the steps wrote stay where they are.
+function reopen(state: StepState, event: string): void {
+  state.status = "PENDING";
+  for (const a of state.artifacts) if (a.status === "approved") a.status = "draft";
+  for (const key of ["rounds_granted", "updated", "unchanged", "not_produced", "verification", "skip_reason", "existed"] as const) {
+    delete state[key];
+  }
+  state.history.push(stamp(event));
+}
+
+// The owner sends the work back from a step that awaits the owner or is
+// blocked to `target`, the step itself or an earlier one.
+function sendBack(c: Ctx, step: Step, target: string, note?: string): string[] {
+  const from = c.wf.steps.findIndex((s) => s.id === target);
+  const at = c.wf.steps.indexOf(step);
+  if (from < 0) throw new FlowError(`no step "${target}" in workflow ${c.wf.name}`);
+  if (from > at) throw new FlowError(`step "${target}" comes after "${step.id}"; --back-to names "${step.id}" or a step before it`);
+  const reopened: string[] = [];
+  updateWorkstream(c.root, c.slug, (ws) => {
+    const status = stateOf(ws, step.id).status;
+    if (status !== "BLOCKED" && status !== "AWAITING_OWNER") {
+      throw new FlowError(`step "${step.id}" is ${status}; --back-to answers a step that awaits the owner or is blocked`);
+    }
+    for (const s of c.wf.steps.slice(from)) {
+      const state = stateOf(ws, s.id);
+      if (state.status === "PENDING") continue;
+      reopened.push(...state.artifacts.map((a) => a.path));
+      reopen(state, `owner sent the work back from ${step.id} to ${target}${note ? `: ${note}` : ""}`);
+    }
+  });
+  return [
+    `${step.id}: owner sent the work back to ${target}`,
+    ...(reopened.length ? [`If any of ${reopened.join(", ")} keeps a status of its own, as its guide says, set it back to draft.`] : []),
+    "",
+    ...present(c),
+  ];
+}
+
+// The owner jumps forward: the current step and every step before `target`
+// are SKIPPED with the owner's note (decision 33).
+function forwardTo(c: Ctx, step: Step, target: string, note?: string): string[] {
+  const to = c.wf.steps.findIndex((s) => s.id === target);
+  const at = c.wf.steps.indexOf(step);
+  if (to < 0) throw new FlowError(`no step "${target}" in workflow ${c.wf.name}`);
+  if (to <= at) throw new FlowError(`step "${target}" is not after "${step.id}"; --forward-to names a later step (use --back-to to go back)`);
+  const reason = `owner jumped forward to ${target}${note ? `: ${note}` : ""}`;
+  updateWorkstream(c.root, c.slug, (ws) => {
+    expectState(c, ws, step, ["PENDING", "IN_PROGRESS", "AWAITING_OWNER", "BLOCKED"]);
+    for (const s of c.wf.steps.slice(at, to)) {
+      const state = stateOf(ws, s.id);
+      if (finished(state.status)) continue;
+      state.status = "SKIPPED";
+      state.skip_reason = reason;
+      state.history.push(stamp(`skipped: ${reason}`));
+    }
+  });
+  return [`jumped forward from ${step.id} to ${target}`, "", ...present(c)];
+}
+
+function approveStep(c: Ctx, step: Step, note?: string): string[] {
+  let paths: string[] = [];
+  updateWorkstream(c.root, c.slug, (ws) => {
+    const state = stateOf(ws, step.id);
+    if (state.status !== "AWAITING_OWNER" && state.status !== "BLOCKED") {
+      throw new FlowError(`step "${step.id}" is ${state.status}, not awaiting the owner or blocked; finish it and run continue without --owner-approved`);
+    }
+    state.status = "COMPLETED";
+    for (const a of state.artifacts) a.status = "approved";
+    paths = state.artifacts.map((a) => a.path);
+    state.history.push(stamp(`owner approved${note ? `: ${note}` : ""}`));
+  });
+  return [
+    `${step.id}: owner approved; COMPLETED`,
+    ...(paths.length ? [`If any of ${paths.join(", ")} keeps a status of its own, as its guide says, set it to approved.`] : []),
+    "",
+    ...present(c),
+  ];
+}
+
 // -------------------------------------------------------------------- status
 
 export function status(root: string, slug: string): string[] {
   const ws = readWorkstream(root, slug);
-  const wf = workflowOf(root, ws);
-  const width = Math.max(...wf.steps.map((s) => s.id.length));
-  const current = currentStep(wf, ws);
-  const rows = wf.steps.map((step) => {
+  const c = context(root, slug, ws);
+  const width = Math.max(...c.wf.steps.map((s) => s.id.length));
+  const current = currentStep(c.wf, ws);
+  const rows = c.wf.steps.map((step) => {
     const state = stateOf(ws, step.id);
-    const details = [state.artifacts.join(", ")].filter(Boolean);
+    const details = [state.artifacts.map((a) => `${a.path} (${a.status})`).join(", "), state.skip_reason ?? ""].filter(Boolean);
     const marker = step === current ? "> " : "  ";
     const columns = [step.id.padEnd(width), state.status.padEnd(14), `gates ${describeGates(step.gates).padEnd(6)}`];
     return `${marker}${[...columns, details.join("; ")].join("  ")}`.trimEnd();
   });
   const footer = current ? `current step: ${current.id}; ${FUSE_FLOW} start ${slug} prints what to do` : "workflow complete";
-  return [`workstream ${slug} (${wf.name})`, ...rows, footer];
+  return [`workstream ${slug} (${c.wf.name})`, ...rows, footer];
 }
 
 // ------------------------------------------------------------------ validate

@@ -1,0 +1,1 @@
+../../../../../skills/design-doc-guidelines/SKILL.md

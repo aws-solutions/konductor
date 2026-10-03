@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "./artifact.schema.json",
+  "title": "fuse-flow artifact",
+  "description": "An artifact a step produces or updates.",
+  "type": "object",
+  "properties": {
+    "artifact": {
+      "description": "The artifact's id. Engine effect: its guide, template and review guide are looked up in library/artifacts/<id>/ (the project's .konductor/library/ first, then ~/.konductor/library/, then the library that ships with fuse-flow), and the project's policy may move it to another path.",
+      "examples": [
+        "spec",
+        "design",
+        "code"
+      ],
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "path": {
+      "description": "Where the artifact lives, relative to the repository root: a file, or a directory for code. `{slug}` is replaced with the workstream's slug, so two workstreams do not write the same file.",
+      "examples": [
+        "docs/specs/{slug}.md",
+        "src/"
+      ],
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "description": "Notes for the reader. Engine effect: none.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "artifact",
+    "path"
+  ],
+  "additionalProperties": false
+}

@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "./step.schema.json",
   "title": "fuse-flow step",
-  "description": "One unit of work. Besides the rules on each field, fuse-flow checks at run time that the step has a skill, an instruction, or both, and that its id is not used by an earlier step.",
+  "description": "One unit of work. Besides the rules on each field, fuse-flow checks that its id is not used by an earlier step and that what it consumes and routes back to comes before it.",
   "type": "object",
   "properties": {
     "id": {
@@ -14,109 +14,98 @@
       "type": "string",
       "pattern": "^[a-z0-9][a-z0-9-]*$"
     },
-    "description": {
-      "description": "What the step is for, in free text, for the reader. Engine effect: none.",
-      "type": "string"
-    },
     "title": {
-      "description": "Human-readable name of the step. Engine effect: none; printed next to the id and shown by the viewer.",
+      "description": "Human-readable name of the step. Engine effect: none; shown by the viewer and in `status`.",
       "examples": [
         "2. Requirements"
       ],
       "type": "string"
     },
-    "skill": {
-      "description": "Skill files to read before working on the step: one path or a list. A path is relative to a skills directory (see \"Skills\" in fuse/flow/README.md for the search order) or absolute. `skill` and `skills` are the same field; both may be given, and their lists are merged. Engine effect: printed as one `read:` line per file when the step becomes current; a file that is not found prints a warning, and the step still runs.",
-      "anyOf": [
-        {
-          "type": "string",
-          "minLength": 1
-        },
-        {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        }
-      ]
+    "description": {
+      "description": "Notes on the step for the reader. Engine effect: none.",
+      "type": "string"
     },
-    "skills": {
-      "description": "Skill files to read before working on the step: one path or a list. A path is relative to a skills directory (see \"Skills\" in fuse/flow/README.md for the search order) or absolute. `skill` and `skills` are the same field; both may be given, and their lists are merged. Engine effect: printed as one `read:` line per file when the step becomes current; a file that is not found prints a warning, and the step still runs.",
-      "anyOf": [
-        {
-          "type": "string",
-          "minLength": 1
-        },
-        {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        }
-      ]
+    "phase": {
+      "description": "A label that groups steps, such as Inception or Construction. Engine effect: none; shown by the viewer.",
+      "type": "string"
     },
     "instruction": {
-      "description": "What this step must achieve, in this workflow. Engine effect: printed as `instruction:` when the step becomes current. A step needs a skill, an instruction, or both.",
+      "description": "What this step must achieve, in this workflow. Engine effect: it opens the step block that fuse-flow prints when the step is handed out.",
       "type": "string",
       "minLength": 1
     },
-    "produces": {
-      "description": "Artifacts the step must leave behind: one path or a list, relative to the repository root. Engine effect: `continue` is refused while one of them is missing. The refusal names the path it expected.",
-      "anyOf": [
-        {
-          "type": "string",
-          "minLength": 1
-        },
-        {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        }
-      ]
+    "condition": {
+      "description": "When the step runs, written like one gate: `script: <command>` or `check: <kind>` (run when the step is reached; exit 0 runs the step, anything else skips it), `agent: <when to do the step>` (the agent judges), or `owner-action: <the question>` (the agent asks the owner). Engine effect: a step without a condition is mandatory; one with a condition may be skipped with `continue <slug> --skip \"<reason>\"`.",
+      "$ref": "./gate.schema.json"
     },
-    "gate": {
-      "description": "What must hold before the step counts as done, besides its artifacts existing: one gate or a list, in any combination of kinds. `gate` and `gates` are the same field; both may be given, and their lists are merged. Engine effect: see each gate kind.",
-      "anyOf": [
-        {
-          "$ref": "./gate.schema.json"
-        },
-        {
-          "type": "array",
-          "items": {
-            "$ref": "./gate.schema.json"
-          }
-        }
-      ]
-    },
-    "gates": {
-      "description": "What must hold before the step counts as done, besides its artifacts existing: one gate or a list, in any combination of kinds. `gate` and `gates` are the same field; both may be given, and their lists are merged. Engine effect: see each gate kind.",
-      "anyOf": [
-        {
-          "$ref": "./gate.schema.json"
-        },
-        {
-          "type": "array",
-          "items": {
-            "$ref": "./gate.schema.json"
-          }
-        }
-      ]
-    },
-    "depends_on": {
-      "description": "Ids of earlier steps whose output this step builds on. Engine effect: none on order; fuse-flow runs the steps in file order regardless. An id that is not a step listed earlier is refused. The viewer draws its edges from this field.",
+    "consumes": {
+      "description": "Ids of artifacts produced or updated by earlier steps that this step reads. Engine effect: the step block lists each with its path and whether it exists; an id no earlier step produces or updates is refused.",
       "type": "array",
       "items": {
         "type": "string",
         "pattern": "^[a-z0-9][a-z0-9-]*$"
       }
+    },
+    "produces": {
+      "description": "Artifacts the step writes: one or a list. Engine effect: `continue` is refused while one of them is neither on disk nor reported with `--not-produced <artifact> \"<reason>\"`. A path that already exists and that this workstream did not record is reported when the step is handed out.",
+      "anyOf": [
+        {
+          "$ref": "./artifact.schema.json"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "./artifact.schema.json"
+          }
+        }
+      ]
+    },
+    "optional_produces": {
+      "description": "Artifacts the step may write. Engine effect: listed in the step block and recorded when they exist; never refused.",
+      "anyOf": [
+        {
+          "$ref": "./artifact.schema.json"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "./artifact.schema.json"
+          }
+        }
+      ]
+    },
+    "updates": {
+      "description": "Artifacts the step changes, which usually exist when it starts, such as code. Engine effect: `continue` is refused until each is accounted for, with `--updated <file>` or `--unchanged <artifact> \"<reason>\"`.",
+      "anyOf": [
+        {
+          "$ref": "./artifact.schema.json"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "./artifact.schema.json"
+          }
+        }
+      ]
+    },
+    "gates": {
+      "description": "What must hold before the step counts as done: one gate or a list, in any combination of kinds. Engine effect: they run in a fixed order, checks first, then the agent review, then the owner.",
+      "anyOf": [
+        {
+          "$ref": "./gate.schema.json"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "./gate.schema.json"
+          }
+        }
+      ]
     }
   },
   "required": [
-    "id"
+    "id",
+    "instruction"
   ],
   "additionalProperties": false
 }

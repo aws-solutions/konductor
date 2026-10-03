@@ -8,53 +8,69 @@
 version: 1
 name: custom-example-medium
 description: One feature, known codebase, one design checkpoint.
-
 steps:
   - id: codebase-analysis
     title: Codebase analysis
     instruction: Map the code the feature touches, with file and line.
-    produces: [.konductor/analysis/codebase-analysis.md]
-    gate: none
-    depends_on: []
-
+    produces:
+      - artifact: codebase-analysis
+        path: .konductor/analysis/codebase-analysis.md
   - id: requirements
     title: Requirements
-    skill: user-story-writing/SKILL.md
-    produces: [.konductor/requirements/user-stories.md]
-    gate: none
-    depends_on: []
-
+    produces:
+      - artifact: user-stories
+        path: .konductor/requirements/user-stories.md
+    instruction: Write user stories and acceptance criteria for the requested feature.
   - id: design
     title: Design
-    skill: design-doc-guidelines/SKILL.md
     instruction: A one-to-two page design grounded in the analysis.
-    produces: [.konductor/design/design.md]
-    gate: owner
-    depends_on: [codebase-analysis, requirements]
-
+    produces:
+      - artifact: design
+        path: .konductor/design/design.md
+    consumes:
+      - codebase-analysis
+      - user-stories
+    gates:
+      - owner-action: approve the design
   - id: implementation
     title: Implementation
-    skill: verification/SKILL.md
-    produces: [.konductor/implementation/implementation-report.md]
-    gate: "check: npm test"
-
+    produces:
+      - artifact: implementation-report
+        path: .konductor/implementation/implementation-report.md
+    instruction: Implement the approved design, verify the change, and record the commands and results.
+    consumes:
+      - design
+    updates:
+      - artifact: code
+        path: .
+    gates:
+      - check: default
   - id: code-review
     title: Code review and pull request
-    skill: code-review/SKILL.md
-    produces: [.konductor/review/code-review.md]
-    gate: none
-    depends_on: [implementation]
-
+    produces:
+      - artifact: code-review
+        path: .konductor/review/code-review.md
+    instruction: Review the implementation and pull request, fix critical findings, and record the review.
+    updates:
+      - artifact: code
+        path: .
   - id: testing
     title: Testing
-    skill: test-coverage-analysis/SKILL.md
-    produces: [.konductor/testing/test-coverage.md]
-    gate: none
-    depends_on: [implementation]
-
+    produces:
+      - artifact: test-coverage
+        path: .konductor/testing/test-coverage.md
+    instruction: Find test coverage gaps, add missing tests where required, and record the remaining gaps.
+    updates:
+      - artifact: code
+        path: .
   - id: final-summary
     title: Summary
     instruction: What shipped, the pull request, what was verified, what is open.
-    produces: [.konductor/sdlc-summary.md]
-    gate: owner
-    depends_on: [code-review, testing]
+    produces:
+      - artifact: sdlc-summary
+        path: .konductor/sdlc-summary.md
+    consumes:
+      - code-review
+      - test-coverage
+    gates:
+      - owner-action: approve the final summary

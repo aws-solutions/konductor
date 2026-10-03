@@ -3,13 +3,14 @@
 // fields themselves are defined in schemas/.
 
 import { existsSync, readFileSync } from "node:fs";
+import { dirname, isAbsolute, resolve } from "node:path";
 import YAML from "yaml";
 import { FlowError } from "./errors.ts";
 import type { Gate } from "./schemas/gate.ts";
 import { WorkflowSchema, type Workflow } from "./schemas/workflow.ts";
 
-export type { Gate, GateKind } from "./schemas/gate.ts";
-export type { Step } from "./schemas/step.ts";
+export type { Condition, Gate, GateKind } from "./schemas/gate.ts";
+export type { Artifact, Step } from "./schemas/step.ts";
 export type { Workflow } from "./schemas/workflow.ts";
 
 export function describeGate(gate: Gate): string {
@@ -32,6 +33,13 @@ export function loadWorkflow(path: string): Workflow {
   if (!parsed.success) {
     const issues = parsed.error.issues.map((i) => `  ${i.path.join(".") || "(top level)"}: ${i.message}`);
     throw new FlowError(`${path} is not a valid workflow:\n${issues.join("\n")}`);
+  }
+  // A gate's review guide is relative to the workflow file, so a workflow and
+  // its guides can be moved together.
+  for (const step of parsed.data.steps) {
+    for (const gate of step.gates) {
+      if (gate.guide && !isAbsolute(gate.guide)) gate.guide = resolve(dirname(path), gate.guide);
+    }
   }
   return parsed.data;
 }

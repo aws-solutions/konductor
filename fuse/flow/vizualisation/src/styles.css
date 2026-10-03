@@ -334,7 +334,8 @@ button {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.gate {
+.gate,
+.condition {
   flex: none;
   padding: 1px 7px;
   border-radius: 999px;
@@ -344,50 +345,80 @@ button {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.gate.owner-action {
+.gate.owner-action,
+.condition.owner-action {
   background: oklch(0.94 0.06 85);
   color: oklch(0.45 0.11 70);
 }
-.gate.script {
+.gate.check,
+.condition.check {
+  background: oklch(0.95 0.04 250);
+  color: oklch(0.42 0.1 250);
+}
+.gate.script,
+.condition.script {
   background: var(--accent-soft);
   color: var(--accent-text);
 }
-.gate.agent {
+.gate.agent,
+.condition.agent {
   background: oklch(0.94 0.05 160);
   color: oklch(0.42 0.1 160);
+}
+.condition {
+  border: 1px dashed currentColor;
+}
+.phase {
+  flex: none;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+  font: 500 10px "JetBrains Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.card.is-optional {
+  border-style: dashed;
 }
 .chips {
   display: flex;
   gap: 4px;
   flex-wrap: wrap;
 }
-.chips-skills {
-  margin-left: auto;
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
 .chip {
-  height: 20px;
+  min-height: 20px;
   display: flex;
   align-items: center;
-  padding: 0 7px;
+  padding: 2px 7px;
   border-radius: 999px;
   font: 500 11px "JetBrains Mono", monospace;
 }
-.chip.skill {
-  background: var(--surface-sunken);
-  color: var(--text-body);
-}
 .chip.artifact {
-  gap: 4px;
+  gap: 5px;
   border: 1px solid var(--border);
   font-weight: 400;
   color: var(--text-muted);
 }
-.chip.artifact .arrow {
+.chip.artifact.updates {
+  border-style: dashed;
+  background: var(--surface-sunken);
+}
+.chip.artifact.optional-produces {
+  border-style: dotted;
+  opacity: 0.78;
+}
+.artifact-role {
   color: var(--text-faint);
+  font-size: 9px;
+  text-transform: uppercase;
+}
+.artifact-id {
+  color: var(--text-strong);
+  font-weight: 600;
+}
+.artifact-path {
+  color: var(--text-muted);
 }
 
 /* Header button and the YAML modal */

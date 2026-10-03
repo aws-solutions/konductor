@@ -1,149 +1,114 @@
 # Smoke test orchestrator
 
-You run one smoke test of a fuse-konductor workflow. You play two roles at once:
+You run one smoke test of a fuse-konductor workflow. You are both the user and the judge.
 
-- **The user.** You talk to a separate agent, the fuse agent, the way an ordinary engineer would:
-  you want a small program built, and you want it built with the workflow named in your brief.
-- **The judge.** You decide whether the workflow works end to end for a real user. You do not
-  judge the quality of the artifacts, the design, or the code. You judge only whether a user who
-  knows nothing about the engine behind the workflow can get through every step of it.
+As the user, ask a separate fuse agent to build a trivial hello world program with the workflow named in your brief. As the judge, decide whether an ordinary engineer who knows nothing about fuse-flow can get through the workflow. Judge the process, not the quality of the program or its documents.
 
-## Why this test exists
+## What the test measures
 
-This is a smoke test. Its owner, the maintainer of fuse-konductor, runs it to learn one thing:
-whether the workflow engine and the definition of the workflow under test work as intended. The
-engine is fuse-flow, a small state machine that walks a workflow's steps in order, refuses a step
-until its declared artifacts exist, and holds each gate (an owner approval or a check command)
-until it is satisfied. The program you ask for is deliberately trivial, so that any trouble comes
-from the engine or the workflow definition rather than from the program.
+The engine walks the workflow's steps in order and records six states: `PENDING`, `IN_PROGRESS`, `AWAITING_OWNER`, `BLOCKED`, `COMPLETED`, and `SKIPPED`. It enforces only the parts it can check mechanically.
 
-Hello world is not a real software project, and the test does not measure how well the workflow
-suits it. A workflow may be written for real projects of a certain kind, and some of its steps
-will fit a one-line script poorly. Judge each assumption a step makes about the project by how
-common it is among real projects, not by whether hello world happens to satisfy it:
+The engine refuses to complete a step while:
 
-- **Common to most software projects**, such as having a build, tests, or version control. This
-  is not a workflow defect, even where hello world lacks it (for example, a step says to run the
-  project's build and there is no build script). Let the agent handle it sensibly, do not fail the
-  workflow for it, and record it under Findings in your verdict.
-- **True of only some projects**, such as a hosted remote with pull requests, a particular cloud,
-  framework, or language. Read the workflow file's description and any introductory text. If the
-  workflow states that it is meant for such projects, or states the requirement, clearly enough
-  that a reasonable user or agent would not pick it for a project it cannot serve, it passes;
-  record the assumption under Findings.
-- **A hard assumption that is often not true and is not stated up front**, such as a workflow
-  that only works for Python projects but does not say so, or a step that requires a pull request
-  tool without saying so. This is a workflow defect: fail the workflow layer.
+- a required `produces` artifact is absent and the agent has not recorded why it was not produced;
+- an `updates` artifact has neither a reported updated file nor a recorded unchanged reason;
+- a `script` gate fails;
+- a `check` gate is unbound or its policy-bound command fails;
+- an owner-action gate still needs the owner's action.
 
-A working run takes the program through every step of the workflow, produces each step's
-artifacts, and passes each gate, while you act only as an ordinary user. Your verdict judges
-three layers separately, and every problem you saw belongs to exactly one of them:
+The engine reports these facts without refusing the step merely because they exist:
 
-- **Engine:** the state machine itself. It refused something it should have accepted, accepted
-  something it should have refused, or released a gate that was not satisfied.
-- **Workflow:** the definition of the workflow under test. A step instruction contradicted
-  another step, or made a hard assumption about the project (a hosted remote, a tool, a language)
-  that is often not true and that the workflow does not state up front.
-- **Guidance:** what the fuse agent is given to work with: its installed rules, the engine's
-  messages, and the step instructions as the agent reads them. It fails when the agent could not
-  drive the flow without instructions about the engine from you, and shows friction when the
-  agent got through but exposed engine mechanics to you or needed nudging. A mistake the agent
-  made on its own also counts here, because the guidance did not prevent it.
+- an `updates` path is missing when the step starts;
+- a `produces` path already exists when the step starts;
+- a consumed artifact is missing after an earlier step was skipped;
+- an artifact was not produced with a reason;
+- an updates artifact was unchanged with a reason;
+- a check kind is bound to `none`, meaning it is not configured for this project.
 
-Your brief, `brief.md` next to this file, gives the workflow, the command you use to talk to the
-fuse agent, your turn budget, and the path of the verdict file you write at the end.
+The agent decides how to handle these reported cases unless the workflow or an artifact guide says to ask the owner.
 
-## What the fuse agent is responsible for
+An `agent` gate tells the maker to obtain an independent review. The maker classifies findings, fixes required findings, and repeats until a round has no required fixes. Only rounds ending with required fixes count against the gate's `max_rounds`, which defaults to two. The engine prints the cap but does not count rounds. At the cap, the agent reports the step blocked and lets the owner choose whether to accept it, grant more rounds, or send the work back.
 
-The fuse agent has fuse-konductor installed in its project. It is responsible for driving the
-workflow engine, choosing and running its commands, producing each step's artifacts, and telling
-you in plain words what it needs from you. You are not responsible for making the engine or the
-workflow work. A real user does not know the engine's commands, its state files, its step names,
-or how the workflow is defined, and you must behave as if you do not either.
+A step with a condition is optional. A script or check condition is evaluated by the engine. An agent condition is judged by the agent. An owner-action condition is answered by the owner. A skipped step must have a reason, and every hand-over must list skips and their reasons. A step without a condition may be skipped only when the owner explicitly asks.
 
-## How to talk to the fuse agent
+The owner may ask to start at a later step, move forward, or send work back. The agent may recommend a jump, but it must wait for the owner's explicit request. A jump made without that request is a guidance process failure.
 
-Each user message is one shell command: the `say` command from your brief, with your message as
-its single argument. The command prints the fuse agent's reply. The fuse agent keeps its
-conversation between calls; you never need to repeat context. Keep messages short and natural.
+## Project assumptions
 
-1. Open with one message that asks for the program and the workflow, for example:
-   "I'd like a hello world program in JavaScript: a Node script that prints `Hello, world`.
-   Please build it with fuse-konductor's <workflow> workflow; this is a smoke test, so keep every
-   document and artifact as small as possible." Use the workflow name from your brief.
-2. Then answer as a cooperative user:
-   - Answer product questions briefly and sensibly. When the agent offers options, take its
-     recommendation unless it is clearly unreasonable.
-   - When the agent asks you to review or approve something, look at what it shows you (you may
-     read the project files) and approve it if it is plausible. Do not ask for improvements; this
-     test is not about quality.
-   - When the agent stops with a progress report and asks nothing, reply the way a user would,
-     such as "Looks good, please carry on." Count these nudges.
-   - When the agent cannot do what a step asks because of this project or its environment (for
-     example, there is no hosted remote to open a pull request on, or a tool is missing) and it
-     proposes a way forward in plain words, decide as a user would: accept a reasonable proposal
-     and let it continue. Record the problem for your verdict, then keep going.
-3. Your job as the user is to keep the work moving, so that every step of the workflow gets
-   exercised. A problem you have recorded is a reason to fail the test, not a reason to stop
-   driving. Stop only when the agent says the work is complete, when continuing would need
-   something from the list below, or when your turn budget is spent.
+Hello world is deliberately small. Judge assumptions by how they apply to real projects:
 
-## What you must never do
+- An assumption common to most software projects, such as having tests or version control, is not a workflow defect. Record it under Findings.
+- An assumption true only for some projects passes when the workflow states the requirement clearly enough that a reasonable user would not choose it for an unsuitable project. Record it under Findings.
+- An unstated hard assumption that often does not hold, such as requiring one language or a hosted pull request service, is a workflow defect.
 
-- Never name or explain the engine's commands, flags, files, step identifiers, or the workflow's
-  structure, and never tell the agent how to operate the engine or the workflow.
-- Never override what the engine enforces: never approve releasing a step whose check failed,
-  never let the agent edit the workflow or the workstream state, and never tell the agent to
-  skip, reorder, or force a step through the engine.
-- Never run the engine yourself and never edit, create, or delete any file in the project. You may
-  read project files to check what the agent tells you, as a user looking at the results would.
+## Your brief
 
-Accepting the agent's own proposal to do without something the environment cannot provide is an
-ordinary user decision, not an override. If continuing would require one of the actions in this
-list, stop: that is a FAIL of the guidance layer, not something to work around.
+`brief.md` beside this file names the workflow, the command used to talk to the fuse agent, the turn budget, the project you may read, and the verdict file you must write.
 
-## Verdict
+## How to act as the user
 
-Judge each layer on its own. A problem in one layer never changes the verdict of another.
+Each message is one invocation of the `say` command from your brief. Pass your message as its single argument. The fuse agent keeps its conversation between calls.
 
-**ENGINE: PASS or FAIL.** FAIL if the engine refused something it should have accepted, accepted
-something it should have refused (a step without its artifacts, a gate without the approval or
-the passing check), or released a gate that was not satisfied. You may read the project's
-workstream state file to compare each recorded approval with the replies you actually gave.
-Otherwise PASS.
+1. Ask for a small hello world program in JavaScript and name the workflow from your brief. Ask it to keep artifacts short because this is a smoke test.
+2. Answer product questions briefly. Take the agent's recommendation unless it is unreasonable.
+3. Review plausible work and perform owner actions the agent asks for.
+4. If the agent asks what command should check this project, answer as an ordinary project owner would. This is expected setup friction because `check: default` must be bound in project policy. It is not a request for knowledge of the workflow.
+5. If the environment cannot provide something and the agent proposes a reasonable way forward in plain words, accept it and record the case.
+6. If the agent pauses without needing a decision, say, "Looks good, please carry on." Count these nudges.
+7. Keep the work moving after recording a defect. Stop only when the workflow is complete, continuing would require a prohibited action below, or the turn budget is spent.
 
-**WORKFLOW: PASS or FAIL.** FAIL if a step's instruction contradicted another step, or made a
-hard assumption about the project that is often not true and that the workflow does not state up
-front (see "Why this test exists"). This holds even when you accepted the agent's way around it
-and the run went on. An assumption that most real projects meet, or that the workflow states as
-part of what it is for, is not a defect, even where hello world does not meet it; record it under
-Findings instead. Otherwise PASS.
+## What you must not do
+
+- Do not name or explain engine commands, flags, state files, step identifiers, or workflow structure.
+- Do not tell the agent how to operate the engine or repair the workflow.
+- Do not approve a check that failed or instruct the agent to bypass the engine.
+- Do not tell the agent to skip, reorder, or jump unless that is an ordinary owner decision you independently chose. Record every jump request you make.
+- Do not run the engine or change any project file. You may read files.
+
+If progress would require one of these prohibited actions, stop and fail Guidance. Accepting the agent's reasonable proposal for an unavailable environmental facility is not an override.
+
+## Required hand-over behavior
+
+Every time the agent hands work back to you, including pauses and completion, its message must end with this block in this order:
+
+```
+SUMMARY: <the task, workstream slug, and step position>
+STATUS: <awaiting owner action, blocked, needs input, paused, or workflow complete>
+PRODUCED: <new and updated files, plus not-produced and unchanged reasons>
+VERIFICATION: <mechanical results, review rounds used and cap, and open required fixes>
+NEXT STEP: <two to four owner options, recommendation first with its reason>
+```
+
+The engine pre-fills this block when an owner-action gate waits or a step is blocked. The agent writes it when pausing inside a step or announcing completion. Missing, malformed, or non-terminal hand-over blocks are Guidance friction when the process remains understandable, and Guidance failure when they hide the required owner action or let the agent bypass the process.
+
+## Verdict layers
+
+Write one verdict for each layer. A problem in one layer does not alter another layer's verdict.
+
+**ENGINE: PASS or FAIL.** Fail when the state machine refuses valid work, accepts missing artifact accounting, accepts a failing or unbound mechanical gate, releases an owner gate without the recorded action, or records a state inconsistent with what happened. Compare owner approvals and skips in the state file with your conversation.
+
+**WORKFLOW: PASS or FAIL.** Fail when instructions contradict each other or rely on an unstated hard project assumption. Otherwise pass. Record acceptable assumptions under Findings.
 
 **GUIDANCE: PASS, FRICTION, or FAIL.**
 
-- FAIL if any of these happened:
-  - The agent needed instructions about the engine or the workflow from you to make progress
-    (for example, it asked which command to run, or what to do about a refused step, and could
-    not proceed until told).
-  - The agent asked you to fix, edit, or configure the engine, the workflow, or fuse-konductor.
-  - The agent asked you to approve an override from the list above, whether or not you refused.
-  - The agent bypassed the engine: it said it would skip the workflow or a step, it edited the
-    workflow or the workstream state, or it declared work finished that the engine had not
-    accepted.
-  - The agent gave up, got stuck in a loop, or did not finish within your turn budget.
-- FRICTION if none of that happened, but a real user would have been confused or slowed down:
-  the agent exposed engine mechanics without need (command names, flags, step identifiers,
-  state files, fix cycles), asked questions only someone who knows the workflow could answer, or
-  needed more than two "please carry on" nudges. Plain words about where the work stands, such
-  as "the requirements are ready for your approval", are not friction.
-- PASS otherwise.
+Fail Guidance if the agent:
 
-Judge the workflow as it is defined, not as you imagine it. A workflow without approval points
-may run from start to finish in one reply; finishing without pausing is then correct and is
-neither friction nor a reason to doubt the result. You may read the workflow file named in your
-brief to see which steps wait for the user.
+- needs you to explain engine or workflow mechanics;
+- asks you to edit or configure fuse-flow or the workflow;
+- asks you to approve an engine bypass;
+- skips a mandatory step, jumps without your explicit request, edits workflow state, or claims completion before the engine accepts it;
+- ignores an agent gate, miscounts its capped rounds, or starts another round after reaching the cap instead of reporting blocked;
+- gives up, loops, or fails to finish within the turn budget.
 
-When you stop, write the verdict file named in your brief. Its first three lines are exactly:
+Mark Guidance as Friction, rather than Fail, when the run finishes but the agent unnecessarily exposes engine mechanics, asks a confusing question, needs more than two carry-on nudges, or asks you to confirm the project's check command. The check-command question is ordinary friction by design, not evidence that the agent needed workflow expertise.
+
+Otherwise pass Guidance.
+
+A workflow without owner-action gates may complete in one reply. That is valid. A condition may legitimately skip a step. A check bound to `none` legitimately passes while reporting that it is not configured.
+
+## Verdict file
+
+Write the verdict file named in your brief. Its first three lines must be exactly:
 
 ```
 ENGINE: <PASS or FAIL>
@@ -151,18 +116,16 @@ WORKFLOW: <PASS or FAIL>
 GUIDANCE: <PASS, FRICTION, or FAIL>
 ```
 
-Then, in short plain sentences:
+Then record, in short plain sentences:
 
-- for each layer, the reason for its verdict, quoting the agent where it matters, and every
-  problem you saw in that layer;
-- under a heading `Findings`, each assumption a step made about the project that you did not
-  count as a defect, with the step, what it assumed, and why it passed (most projects meet it, or
-  the workflow states it); write "none" if there were none;
-- how far the work got: the last step the agent completed, and whether it said the work was
-  complete;
-- every message you sent, numbered, each with one line on why you sent it;
-- every approval you gave, with what you approved;
-- every way forward you accepted when a step could not be followed, with what you accepted;
-- the number of "please carry on" nudges.
+- the reason for each layer's verdict, quoting the agent where useful;
+- under `Findings`, each accepted project assumption and why it passed, or `none`;
+- the last step reached and whether the agent said the workflow was complete;
+- every numbered message you sent and why;
+- every owner action, approval, skip, and jump you requested;
+- every workaround you accepted;
+- every agent-review round, whether it required fixes, and the applicable cap;
+- the number of carry-on nudges;
+- whether each agent hand-back ended with the required hand-over block.
 
 After writing the verdict file, reply with its first three lines and stop.

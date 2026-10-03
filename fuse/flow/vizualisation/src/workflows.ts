@@ -2,33 +2,10 @@
 // Reads every *.yml under ../../workflows (subfolders included) at build time
 // and turns each into the shape the diagram draws. Read-only: nothing is written back.
 
-import YAML from "yaml";
+import { parseWorkflow, type Workflow } from "./workflowParser.ts";
 
-export type Gate = { kind: "owner-action" | "script" | "agent"; description: string; maxRounds?: number; routeBackTo: string[] };
-
-export type Step = {
-  id: string;
-  title: string;
-  skills: string[];
-  produces: string[];
-  gates: Gate[];
-  // null: depends_on omitted, so the step runs after the one listed before it.
-  dependsOn: string[] | null;
-  // The steps this step's gates route back to, from their route_back_to.
-  routesBackTo: string[];
-};
-
-export type Workflow = {
-  // Path relative to the workflows dir, e.g. "team/hotfix.yml".
-  path: string;
-  file: string;
-  dir: string;
-  description: string;
-  steps: Step[];
-  error: string | null;
-  // The file's text as it is on disk.
-  source: string;
-};
+export { parseWorkflow };
+export type { Artifact, ArtifactRole, Gate, GateKind, Step, Workflow } from "./workflowParser.ts";
 
 const WORKFLOWS_DIR = "fuse/flow/workflows";
 
@@ -37,100 +14,6 @@ const sources = import.meta.glob("../../workflows/**/*.yml", {
   import: "default",
   eager: true,
 }) as Record<string, string>;
-
-const asStrings = (v: unknown): string[] =>
-  Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : typeof v === "string" ? [v] : [];
-
-const KINDS = ["owner-action", "script", "agent"] as const;
-// The engine's default for an agent gate without max_rounds.
-const DEFAULT_MAX_ROUNDS = 2;
-const isKind = (k: string): k is Gate["kind"] => (KINDS as readonly string[]).includes(k);
-
-// Same forms the engine accepts: `{ script: "…" }`, `script("…")`, `script: …`,
-// `{ agent: "…", max_rounds: n }`, plus the older `owner`, `check: <command>`
-// and `{ review: { skill } }`.
-function parseGate(v: unknown): Gate | null {
-  if (typeof v === "string") {
-    const s = v.trim();
-    if (s === "owner") return { kind: "owner-action", description: "approve", routeBackTo: [] };
-    const m = /^([a-z-]+)\s*(?:\(\s*"?(.*?)"?\s*\)|:(.*))$/s.exec(s);
-    if (!m) return null;
-    const kind = m[1] === "check" ? "script" : m[1];
-    const description = (m[2] ?? m[3] ?? "").trim();
-    return isKind(kind) && description ? { kind, description, routeBackTo: [] } : null;
-  }
-  if (v && typeof v === "object" && "review" in v) {
-    const r = (v as { review: { skill?: unknown; max_rounds?: unknown } }).review ?? {};
-    return {
-      kind: "agent",
-      description: `review loop${typeof r.skill === "string" ? `: ${r.skill}` : ""}`,
-      maxRounds: typeof r.max_rounds === "number" ? r.max_rounds : undefined,
-      routeBackTo: [],
-    };
-  }
-  if (v && typeof v === "object" && !Array.isArray(v)) {
-    const { max_rounds: maxRounds, description: _note, route_back_to: routeBackTo, ...rest } = v as Record<string, unknown>;
-    const entries = Object.entries(rest);
-    if (entries.length !== 1) return null;
-    const [kind, description] = entries[0];
-    if (!isKind(kind) || typeof description !== "string" || !description.trim()) return null;
-    const gate: Gate = { kind, description: description.trim(), routeBackTo: asStrings(routeBackTo) };
-    if (kind === "agent") gate.maxRounds = typeof maxRounds === "number" ? maxRounds : DEFAULT_MAX_ROUNDS;
-    return gate;
-  }
-  return null;
-}
-
-const asList = (v: unknown): unknown[] => (v === undefined ? [] : Array.isArray(v) ? v : [v]);
-
-function parseStep(raw: Record<string, unknown>, i: number): Step {
-  const id = typeof raw.id === "string" ? raw.id : `step-${i + 1}`;
-  const gates = [...asList(raw.gate), ...asList(raw.gates)]
-    .map(parseGate)
-    .filter((g): g is Gate => g !== null);
-  if (raw.review) {
-    const g = parseGate({ review: raw.review });
-    if (g) gates.push(g);
-  }
-  return {
-    id,
-    // Drop a leading "0. " style number: the card already shows the step number.
-    title: typeof raw.title === "string" ? raw.title.replace(/^\d+\.\s+/, "") : id,
-    skills: [...asStrings(raw.skill), ...asStrings(raw.skills)],
-    produces: asStrings(raw.produces),
-    gates,
-    dependsOn: Array.isArray(raw.depends_on) ? asStrings(raw.depends_on) : null,
-    routesBackTo: [...new Set(gates.flatMap((g) => g.routeBackTo))],
-  };
-}
-
-function parseWorkflow(path: string, text: string): Workflow {
-  const slash = path.lastIndexOf("/");
-  const base: Workflow = {
-    path,
-    file: path.slice(slash + 1),
-    dir: slash < 0 ? "" : path.slice(0, slash),
-    description: "",
-    steps: [],
-    error: null,
-    source: text,
-  };
-  try {
-    const doc = YAML.parse(text) as Record<string, unknown> | null;
-    if (!doc || typeof doc !== "object") return { ...base, error: "not a YAML mapping" };
-    const steps = Array.isArray(doc.steps) ? doc.steps : [];
-    return {
-      ...base,
-      description: typeof doc.description === "string" ? doc.description : "",
-      steps: steps
-        .filter((s): s is Record<string, unknown> => !!s && typeof s === "object")
-        .map(parseStep),
-      error: Array.isArray(doc.steps) ? null : "no steps list",
-    };
-  } catch (e) {
-    return { ...base, error: (e as Error).message };
-  }
-}
 
 export const workflowsDir = WORKFLOWS_DIR;
 

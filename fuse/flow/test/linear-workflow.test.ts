@@ -11,12 +11,15 @@ name: linear
 steps:
   - id: design
     title: Design
-    skill: design/SKILL.md
     instruction: Write the design.
-    produces: [docs/design.md]
+    produces:
+      - artifact: sketch
+        path: docs/design.md
   - id: build
     instruction: Build it.
-    produces: [src/app.ts]
+    produces:
+      artifact: app
+      path: src/app.ts
   - id: summary
     instruction: Summarize what shipped.
 `;
@@ -25,8 +28,7 @@ let repo: Repo;
 beforeEach(() => (repo = new Repo()));
 afterEach(() => repo.cleanup());
 
-test("start mints a workstream that records its workflow, with every step pending, and prints the first step", () => {
-  repo.write("skills/design/SKILL.md", "# design skill\n");
+test("start mints a workstream that records its workflow, hands out the first step, and prints its step block", () => {
   const out = repo.start("feat", LINEAR);
   expect(out).toBe(
     [
@@ -34,70 +36,82 @@ test("start mints a workstream that records its workflow, with every step pendin
       `workflow: ${join(repo.root, "workflow-source.yml")}`,
       `state:    ${join(repo.root, ".konductor/workstreams/feat.yml")}`,
       "",
-      "step: design (Design)",
-      `read: ${join(repo.root, "skills/design/SKILL.md")}`,
-      "instruction: Write the design.",
-      "produce: docs/design.md",
-      "gates: none",
-      "then run: fuse-flow continue feat",
+      "STEP design (1 of 3): Write the design.",
+      "PRODUCE docs/design.md (sketch).",
+      "WHEN THE WORK IS DONE:",
+      '  1. Run `fuse-flow continue feat`, with --not-produced <artifact> "<reason>" only if you rightly did not write sketch.',
       "",
     ].join("\n"),
   );
-  expect(repo.state("feat")).toEqual({
-    workflow: join(repo.root, "workflow-source.yml"),
-    steps: {
-      design: { status: "pending", artifacts: [], history: [] },
-      build: { status: "pending", artifacts: [], history: [] },
-      summary: { status: "pending", artifacts: [], history: [] },
-    },
-  });
+  const state = repo.state("feat");
+  expect(state.workflow).toBe(join(repo.root, "workflow-source.yml"));
+  expect(state.steps.design.status).toBe("IN_PROGRESS");
+  expect(state.steps.design.history[0]).toEndWith(" handed out");
+  expect(state.steps.build).toEqual({ status: "PENDING", artifacts: [], history: [] });
+  expect(state.steps.summary).toEqual({ status: "PENDING", artifacts: [], history: [] });
   // The state is private to this checkout.
   expect(repo.read(".konductor/workstreams/.gitignore")).toBe("*\n");
 });
 
-test("work, continue, repeated until the workflow is complete", () => {
+test("work, continue, repeated until the workflow is complete, which prints the hand-over block", () => {
   repo.start("feat", LINEAR);
 
   repo.write("docs/design.md");
   const first = repo.ok("continue", "feat");
-  expect(first).toStartWith("recorded design: docs/design.md\ndesign done\n\nstep: build\n");
-  expect(first).toContain("then run: fuse-flow continue feat");
+  expect(first).toStartWith("design: COMPLETED\n\nSTEP build (2 of 3): Build it.\nPRODUCE src/app.ts (app).\n");
+  // A step without an owner gate approves its artifacts when it completes (decision 46).
+  expect(repo.state("feat").steps.design.artifacts).toEqual([{ artifact: "sketch", path: "docs/design.md", status: "approved" }]);
 
   repo.write("src/app.ts");
   repo.write("src/app.test.ts");
-  const second = repo.ok("continue", "feat", "--artifact", "src/app.test.ts");
-  expect(repo.state("feat").steps.build.artifacts).toEqual(["src/app.ts", "src/app.test.ts"]);
-  expect(second).toContain("produce: (nothing declared)");
+  const second = repo.ok("continue", "feat", "--updated", "src/app.test.ts");
+  expect(repo.state("feat").steps.build.updated).toEqual(["src/app.test.ts"]);
+  expect(second).toContain("STEP summary (3 of 3): Summarize what shipped.\nWHEN THE WORK IS DONE:\n  1. Run `fuse-flow continue feat`.\n");
 
-  expect(repo.ok("continue", "feat")).toEndWith("summary done\n\nworkflow complete\n");
-  expect(repo.refused("continue", "feat")).toContain("workflow complete; there is nothing to continue");
+  const done = repo.ok("continue", "feat");
+  expect(done).toStartWith("summary: COMPLETED\n\nOWNER'S TURN:");
+  expect(done).toContain("SUMMARY: <the work, in a sentence>. Workstream feat, all 3 steps of linear.\n");
+  expect(done).toContain("STATUS: workflow complete\n");
+  expect(done).toContain("PRODUCED: docs/design.md, src/app.ts\n");
+  expect(repo.refused("continue", "feat")).toContain("REFUSED: workflow complete; there is nothing to continue");
   expect(repo.ok("status", "feat")).toContain("workflow complete");
 });
 
-test("continue is refused while a declared artifact is missing, names the path it expected, and never blocks the step", () => {
+test("continue is refused while a produces artifact is missing, repeats the step block, and never blocks the step", () => {
   repo.start("feat", LINEAR);
   const out = repo.refused("continue", "feat");
-  expect(out).toContain(`refused: missing artifact(s): docs/design.md (${join(repo.root, "docs/design.md")})`);
-  expect(repo.state("feat").steps.design.history[0]).toContain("continue refused: missing artifact(s): docs/design.md");
+  expect(out).toStartWith(
+    "REFUSED: missing artifact(s): docs/design.md (sketch). Write each, or report one the step rightly does not produce " +
+      'with --not-produced <artifact> "<reason>".\n\nSTEP design (1 of 3): Write the design.\n',
+  );
+  expect(repo.state("feat").steps.design.history.at(-1)).toContain("continue refused: missing artifact(s): docs/design.md");
   for (let i = 0; i < 3; i++) repo.refused("continue", "feat");
-  expect(repo.status("feat", "design")).toBe("pending");
-
-  repo.write("docs/design.md");
-  expect(repo.refused("continue", "feat", "--artifact", "docs/extra.md")).toContain("missing artifact(s): docs/extra.md");
+  expect(repo.status("feat", "design")).toBe("IN_PROGRESS");
 });
 
-test("continue run twice acts on the following step, as the README says, and says so in its output", () => {
+test("an artifact the step rightly does not produce is reported with its reason instead (decision 45)", () => {
+  repo.start("feat", LINEAR);
+  expect(repo.usage("continue", "feat", "--not-produced", "sketch")).toContain("--not-produced takes an artifact and a reason");
+  expect(repo.refused("continue", "feat", "--not-produced", "app", "x")).toContain(
+    '--not-produced names an artifact the step produces; "app" is not one (sketch)',
+  );
+  const out = repo.ok("continue", "feat", "--not-produced", "sketch", "a one-line fix needs no design");
+  expect(out).toStartWith("design: COMPLETED\n");
+  const state = repo.state("feat").steps.design;
+  expect(state.not_produced).toEqual({ sketch: "a one-line fix needs no design" });
+  expect(state.artifacts).toEqual([]);
+});
+
+test("continue run twice acts on the following step, and says so in its output", () => {
   repo.start("feat", LINEAR);
   repo.write("docs/design.md");
   repo.ok("continue", "feat");
   // The replay meets build, whose artifact is missing: refused, and recorded in build's history.
   expect(repo.refused("continue", "feat")).toContain("missing artifact(s): src/app.ts");
-  expect(repo.state("feat").steps.build.history).toHaveLength(1);
   repo.write("src/app.ts");
   repo.ok("continue", "feat");
-  // The replay meets summary, which declares nothing: it is marked done, and the output names it.
-  const replay = repo.ok("continue", "feat");
-  expect(replay).toStartWith("recorded summary: (no artifacts)\nsummary done\n\nworkflow complete\n");
+  // The replay meets summary, which declares nothing: it completes, and the output names it.
+  expect(repo.ok("continue", "feat")).toStartWith("summary: COMPLETED\n");
 });
 
 test("start again resumes the workstream, keeps its progress, and prints the current step", () => {
@@ -106,8 +120,8 @@ test("start again resumes the workstream, keeps its progress, and prints the cur
   repo.ok("continue", "feat");
   const out = repo.ok("start", "feat");
   expect(out).toContain("resumed workstream feat");
-  expect(out).toContain("step: build");
-  expect(repo.status("feat", "design")).toBe("done");
+  expect(out).toContain("STEP build (2 of 3)");
+  expect(repo.status("feat", "design")).toBe("COMPLETED");
 });
 
 test("status lists every step and marks the current one", () => {
@@ -117,13 +131,36 @@ test("status lists every step and marks the current one", () => {
   expect(repo.ok("status", "feat")).toBe(
     [
       "workstream feat (linear)",
-      "  design   done            gates none    docs/design.md",
-      "> build    pending         gates none",
-      "  summary  pending         gates none",
+      "  design   COMPLETED       gates none    docs/design.md (approved)",
+      "> build    IN_PROGRESS     gates none",
+      "  summary  PENDING         gates none",
       "current step: build; fuse-flow start feat prints what to do",
       "",
     ].join("\n"),
   );
+});
+
+test("a state file written before the six step states is read and migrated (decision 40)", () => {
+  repo.start("feat", LINEAR);
+  repo.write(
+    ".konductor/workstreams/feat.yml",
+    `workflow: ${join(repo.root, "workflow-source.yml")}
+steps:
+  design:
+    status: done
+    fix_cycles: 2
+    artifacts: [docs/design.md]
+    history: []
+  build:
+    status: pending
+    artifacts: []
+    history: []
+`,
+  );
+  expect(repo.ok("start", "feat")).toContain("STEP build (2 of 3)");
+  const state = repo.state("feat");
+  expect(state.steps.design).toEqual({ status: "COMPLETED", artifacts: [{ path: "docs/design.md", status: "approved" }], history: [] });
+  expect(state.steps.build.status).toBe("IN_PROGRESS");
 });
 
 test("the fuse-flow script works from any directory, and prints follow-up commands that work without PATH", () => {
@@ -135,18 +172,18 @@ test("the fuse-flow script works from any directory, and prints follow-up comman
 
   const r = repo.run(["start", "feat"], nested, [script]);
   expect(r.code).toBe(0);
-  expect(r.out).toContain("step: design");
+  expect(r.out).toContain("STEP design (1 of 3)");
   expect(existsSync(join(nested, ".konductor"))).toBe(false);
 
   // Run the printed follow-up command exactly as written.
-  const printed = r.out.split("\n").find((line) => line.startsWith("then run: "))!.slice("then run: ".length);
+  const printed = /Run `([^`]+)`/.exec(r.out)![1];
   expect(printed).toBe(`${script} continue feat`);
   repo.write("docs/design.md");
   const [command, ...args] = printed.split(" ");
   const followUp = repo.run(args, nested, [command]);
   expect(followUp.code).toBe(0);
-  expect(followUp.out).toContain("step: build");
-  expect(followUp.out).toContain(`then run: ${script} continue feat`);
+  expect(followUp.out).toContain("STEP build (2 of 3)");
+  expect(followUp.out).toContain(`Run \`${script} continue feat\``);
 });
 
 test("a script path with spaces and quotes is quoted in the printed commands", () => {
@@ -155,17 +192,17 @@ test("a script path with spaces and quotes is quoted in the printed commands", (
   chmodSync(launcher, 0o755);
   repo.env.FUSE_FLOW_COMMAND = launcher;
 
-  const printed = repo.start("feat", LINEAR).split("\n").find((line) => line.startsWith("then run: "))!.slice("then run: ".length);
+  const printed = /Run `([^`]+)`/.exec(repo.start("feat", LINEAR))![1];
   expect(printed).toBe(`'${launcher.replace("'", `'\\''`)}' continue feat`);
   repo.write("docs/design.md");
   const followUp = repo.run(["-c", printed], repo.root, ["sh"]);
   expect(followUp.code).toBe(0);
-  expect(followUp.out).toContain("design done");
+  expect(followUp.out).toContain("design: COMPLETED");
 });
 
 test("a step id that is also a JavaScript object property works like any other", () => {
-  expect(repo.start("feat", "version: 1\nname: odd\nsteps:\n  - id: constructor\n    instruction: x\n")).toContain("step: constructor");
-  expect(repo.ok("continue", "feat")).toEndWith("workflow complete\n");
+  expect(repo.start("feat", "version: 1\nname: odd\nsteps:\n  - id: constructor\n    instruction: x\n")).toContain("STEP constructor (1 of 1)");
+  expect(repo.ok("continue", "feat")).toContain("STATUS: workflow complete");
 });
 
 test("workstreams in one repository are independent", () => {
@@ -173,15 +210,16 @@ test("workstreams in one repository are independent", () => {
   repo.ok("start", "two", "--workflow", join(repo.root, "workflow-source.yml"));
   repo.write("docs/design.md");
   repo.ok("continue", "one");
-  expect(repo.ok("start", "one")).toContain("step: build");
-  expect(repo.ok("start", "two")).toContain("step: design");
+  expect(repo.ok("start", "one")).toContain("STEP build");
+  expect(repo.ok("start", "two")).toContain("STEP design");
 });
 
 test("a fresh copy of fuse-flow installs its own dependencies on first use, with Bun and with Node", () => {
   // A clone that was never set up: the sources without node_modules.
   const copy = join(repo.root, "clone", "fuse", "flow");
   mkdirSync(copy, { recursive: true });
-  for (const entry of ["fuse-flow", "package.json", "bun.lock", "tsconfig.json", "src", "workflows"]) {
+  for (const entry of ["fuse-flow", "package.json", "bun.lock", "tsconfig.json", "src", "workflows", "library"]) {
+    if (!existsSync(join(FLOW_DIR, entry))) continue;
     cpSync(join(FLOW_DIR, entry), join(copy, entry), { recursive: true });
   }
   const script = join(copy, "fuse-flow");
@@ -191,7 +229,7 @@ test("a fresh copy of fuse-flow installs its own dependencies on first use, with
   const withBun = repo.run(["start", "feat", "--workflow", workflow], repo.root, [script]);
   expect(withBun.code).toBe(0);
   expect(withBun.out).toContain(`installing dependencies in ${copy}`);
-  expect(withBun.out).toContain("step: design");
+  expect(withBun.out).toContain("STEP design");
   expect(existsSync(join(copy, "node_modules", "zod"))).toBe(true);
 
   // The second run finds them and says nothing about it.

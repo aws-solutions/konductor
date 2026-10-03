@@ -9,7 +9,7 @@
       "type": "object",
       "properties": {
         "owner-action": {
-          "description": "The owner does what this text says, then runs `fuse-flow continue <slug> --owner-approved`. Engine effect: a step with an owner-action gate goes to awaiting-owner instead of done when it is continued.",
+          "description": "The owner does what this text says, for example approve the design. Engine effect: the step waits for the owner (AWAITING_OWNER) when it is continued, until `fuse-flow continue <slug> --owner-approved`.",
           "type": "string"
         },
         "description": {
@@ -42,6 +42,47 @@
       },
       "required": [
         "owner-action"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "description": "The check gate as a mapping: `check: …`, optionally with `description` and `route_back_to`.",
+      "type": "object",
+      "properties": {
+        "check": {
+          "description": "A kind of check, a single lower-case word such as `default`, which the project's policy binds to a command (checks: { default: bun run check }). Engine effect: the bound command runs from the repository root when the step is continued, and `continue` is refused unless it exits 0. An unbound kind refuses the step and tells the agent to find the command and record it; a kind bound to `none` passes.",
+          "type": "string"
+        },
+        "description": {
+          "description": "What the gate is for, in free text, for the reader. Engine effect: none.",
+          "type": "string"
+        },
+        "route_back_to": {
+          "description": "The steps the work should go back to when this gate cannot be passed: one step id or a list, each this step or one before it. Usually the step that produces the artifact the gate finds fault with. Engine effect: when the step awaits the owner or is blocked, fuse-flow suggests these steps for `--back-to`, and the viewer draws them as routes back.",
+          "examples": [
+            "design",
+            [
+              "design",
+              "spec"
+            ]
+          ],
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]*$"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]*$"
+              }
+            }
+          ]
+        }
+      },
+      "required": [
+        "check"
       ],
       "additionalProperties": false
     },
@@ -87,11 +128,11 @@
       "additionalProperties": false
     },
     {
-      "description": "The agent gate as a mapping: `agent: …`, optionally with `max_rounds`, `description` and `route_back_to`.",
+      "description": "The agent gate as a mapping: `agent: …`, optionally with `max_rounds`, `guide`, `description` and `route_back_to`.",
       "type": "object",
       "properties": {
         "agent": {
-          "description": "An agent reviews the work as this text says. The agent that did the work classifies each finding as fix required or false positive, fixes what is required, and they repeat until a round ends with no required fix. Engine effect: none; the text and the round cap are printed with the step, and the agent that did the work counts the rounds.",
+          "description": "What an independent agent reviews. The agent that did the work classifies each finding as fix required or false positive, fixes what is required, and they repeat until a round ends with no required fix, or as the review guide says. Engine effect: none; the text, the review guide and the round cap are printed with the step, and the agent that did the work counts the rounds.",
           "type": "string"
         },
         "description": {
@@ -122,10 +163,13 @@
           ]
         },
         "max_rounds": {
-          "description": "How many review rounds that end with a required fix the step allows, whatever the cause: the maker and the reviewer disagree, the reviewer finds new problems each round, or a fix introduces a regression. When the cap is reached, the agent that did the work does not start another round; it runs `fuse-flow continue <slug> --blocked \"<why>\"`. The owner then accepts the step as it is, grants more rounds, or sends the work back to an earlier step. Engine effect: none; fuse-flow prints the cap, raised by any rounds the owner granted, and does not count the rounds.",
-          "default": 2,
+          "description": "How many review rounds that end with a required fix the step allows; 2 unless the workflow or policy says otherwise. When the cap is reached, the agent that did the work does not start another round; it runs `fuse-flow continue <slug> --blocked \"<why>\"`. Engine effect: none; fuse-flow prints the cap, raised by any rounds the owner granted, and does not count the rounds.",
           "type": "integer",
           "minimum": 1
+        },
+        "guide": {
+          "description": "A review guide for this gate, relative to the workflow file or absolute. It replaces the review guides of the step's artifacts and decides what counts as a required fix and when a round passes. A project's policy or its own library can replace it. Engine effect: printed with the step.",
+          "type": "string"
         }
       },
       "required": [
@@ -134,8 +178,8 @@
       "additionalProperties": false
     },
     {
-      "description": "A gate as a string: `owner-action(\"…\")`, `script(\"…\")` or `agent(\"…\")`. Also accepted, from the first version of the format: `owner` (an owner-action gate that says approve), `none` (no gate) and `check: <command>` (a script gate).",
-      "pattern": "^\\s*(none|owner|(owner-action|script|agent|check)\\s*[(:][\\s\\S]*)$",
+      "description": "As a string: `owner-action(\"…\")`, `check: default`, `script(\"…\")` or `agent: …`.",
+      "pattern": "^\\s*(owner-action|check|script|agent)\\s*[(:][\\s\\S]*$",
       "type": "string"
     }
   ]

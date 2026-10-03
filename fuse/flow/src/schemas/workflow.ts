@@ -25,31 +25,38 @@ export const WorkflowSchema = z
     }),
     steps: z.array(StepSchema).min(1).meta({
       description:
-        "The steps, in the order fuse-flow runs them. The current step is the first one in the list that is not " +
-        "done, so steps run one at a time, in file order.",
+        "The steps, in the order fuse-flow runs them. The current step is the first one in the list that is " +
+        "neither COMPLETED nor SKIPPED, so steps run one at a time, in file order.",
     }),
   })
   .strict()
   .superRefine((wf, ctx) => {
-    // A step may only depend on steps listed before it, so the file order,
-    // which is the order fuse-flow runs the steps in, respects every dependency.
+    // Zod runs this check even when a step failed its own rules, with the
+    // values that step was written with, so read lists defensively.
+    const list = <T>(v: T[] | unknown): T[] => (Array.isArray(v) ? v : []);
+    // What a step consumes or routes back to must come before it, so the file
+    // order, which is the order fuse-flow runs the steps in, respects both.
     const earlier = new Set<string>();
+    const artifactsSoFar = new Set<string>();
     wf.steps.forEach((step, i) => {
       if (earlier.has(step.id)) {
         ctx.addIssue({ code: "custom", path: ["steps", i, "id"], message: `duplicate step id "${step.id}"` });
       }
-      for (const dep of step.depends_on ?? []) {
-        if (!earlier.has(dep)) {
+      for (const id of list<string>(step.consumes)) {
+        if (!artifactsSoFar.has(id)) {
           ctx.addIssue({
             code: "custom",
-            path: ["steps", i, "depends_on"],
-            message: `"${step.id}" depends on "${dep}", which is not a step listed before it`,
+            path: ["steps", i, "consumes"],
+            message: `"${step.id}" consumes "${id}", which no step before it produces or updates`,
           });
         }
       }
       earlier.add(step.id);
+      for (const a of [...list<{ artifact: string }>(step.produces), ...list<{ artifact: string }>(step.optional_produces), ...list<{ artifact: string }>(step.updates)]) {
+        artifactsSoFar.add(a?.artifact);
+      }
       // A gate routes back to this step or one listed before it.
-      for (const target of new Set(step.gates.flatMap((g) => g.route_back_to))) {
+      for (const target of new Set(list<{ route_back_to?: string[] }>(step.gates).flatMap((g) => list<string>(g?.route_back_to)))) {
         if (!earlier.has(target)) {
           ctx.addIssue({
             code: "custom",

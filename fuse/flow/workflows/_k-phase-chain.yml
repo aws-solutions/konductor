@@ -4,81 +4,84 @@
 # SPDX-License-Identifier: Apache-2.0
 version: 1
 name: k-phase-chain
-description: Konductor's lighter six-phase chain, PM through QA, with no owner gates, from the "SDLC Workflow" and "Verification Protocol" sections of the removed Konductor agent prompt.
-
+description: Konductor's lighter six-phase chain, PM through QA, with no owner gates, from the "SDLC
+  Workflow" and "Verification Protocol" sections of the removed Konductor agent prompt.
 steps:
   - id: pm
     title: 1. PM
-    skill: user-story-writing/SKILL.md
     instruction: >
-      Write the user stories and acceptance criteria from the request, then check
-      them against the request and fix what does not hold before marking the
-      step done.
-    produces: [.konductor/requirements/user-stories.md]
-    gate: none
-
+      Write the user stories and acceptance criteria from the request, then check them against the
+      request and fix what does not hold before marking the step done.
+    produces:
+      - artifact: user-stories
+        path: .konductor/requirements/user-stories.md
   - id: architect
     title: 2. Architect
-    skill: system-design-patterns/SKILL.md
     instruction: >
-      Write the system design: architecture, non-functional requirements, threat
-      model, API and data models, access policies. Follow
-      design-doc-guidelines/SKILL.md, then check every claim against the code
-      (doc-accuracy-analyzer/SKILL.md) and fix what does not hold before marking
-      the step done.
-    produces: [.konductor/design/design.md]
-    gate: none
-
+      Write the system design: architecture, non-functional requirements, threat model, API and data
+      models, access policies. Follow design-doc-guidelines/SKILL.md, then check every claim against
+      the code (doc-accuracy-analyzer/SKILL.md) and fix what does not hold before marking the step
+      done.
+    produces:
+      - artifact: design
+        path: .konductor/design/design.md
+    consumes:
+      - user-stories
   - id: feature-splitting
     title: 3. Feature splitting
-    skill: task-decomposition/SKILL.md
-    instruction: >
-      Split the design into features that can be built independently and give
-      each a unique slug.
-    produces: [.konductor/features/feature-split.md]
-    gate: none
-
+    instruction: |
+      Split the design into features that can be built independently and give each a unique slug.
+    produces:
+      - artifact: feature-split
+        path: .konductor/features/feature-split.md
+    consumes:
+      - design
   - id: specs
     title: 4. Developer (specs, per feature)
-    skill: kiro-requirements-generation/SKILL.md
     instruction: >
       For each feature in feature-split.md write .kiro/specs/<feature>/requirements.md
-      (this skill), design.md (kiro-design-generation/SKILL.md) and tasks.md
-      (kiro-task-generation/SKILL.md), then list the spec directories in the index
+      (kiro-requirements-generation/SKILL.md), design.md (kiro-design-generation/SKILL.md) and
+      tasks.md (kiro-task-generation/SKILL.md), then list the spec directories in the index
       artifact.
-    produces: [.konductor/specs/index.md]
-    gate: none
-
+    produces:
+      - artifact: spec-index
+        path: .konductor/specs/index.md
+    consumes:
+      - feature-split
   - id: implementation
     title: 5. Developer (implementation, per feature)
-    skill: verification/SKILL.md
     instruction: >
-      Implement each feature from its tasks.md with tests. Run the project's build
-      and tests after each feature; record the commands and their terminal output
-      in the implementation report.
-    produces: [.konductor/implementation/implementation-report.md]
-    # Replace with "check: <build and test command>" so the gate is mechanical.
-    gate: none
-
+      Implement each feature from its tasks.md with tests. Run the project's build and tests after
+      each feature; record the commands and their terminal output in the implementation report.
+    produces:
+      - artifact: implementation-report
+        path: .konductor/implementation/implementation-report.md
+    consumes:
+      - spec-index
+    updates:
+      - artifact: code
+        path: .
   - id: code-review
     title: 5a. Code review (per feature)
-    skill: code-review/SKILL.md
     instruction: >
-      Review the git diff of each feature. Fix every CRITICAL finding in the
-      implementation (the route back to step 5), re-run the build and tests, and
-      record the review.
-    produces: [.konductor/review/code-review.md]
+      Review the git diff of each feature. Fix every CRITICAL finding in the implementation (the
+      route back to step 5), re-run the build and tests, and record the review.
+    produces:
+      - artifact: code-review
+        path: .konductor/review/code-review.md
+    updates:
+      - artifact: code
+        path: .
     gates:
       - agent: review the git diff of each feature; a CRITICAL finding fails the round
         max_rounds: 2
         route_back_to: implementation
-
   - id: qa
     title: 6. QA
-    skill: test-coverage-analysis/SKILL.md
     instruction: >
-      Find the test coverage gaps for what was implemented, plan the end-to-end
-      and security tests, check user-facing text, and record the findings. This
-      is the last step; findings are reported, not routed back to implementation.
-    produces: [.konductor/testing/test-coverage.md]
-    gate: none
+      Find the test coverage gaps for what was implemented, plan the end-to-end and security tests,
+      check user-facing text, and record the findings. This is the last step; findings are reported,
+      not routed back to implementation.
+    produces:
+      - artifact: test-coverage
+        path: .konductor/testing/test-coverage.md

@@ -3,7 +3,7 @@
 # mechanical check, small enough that the orchestrator's replies dominate.
 version: 1
 name: smoke-gated-b
-description: Requirements, implementation and release, with owner approvals and a release check.
+description: Requirements, implementation and release, with owner approvals and a failing check.
 
 steps:
   - id: requirements
@@ -11,8 +11,11 @@ steps:
     instruction: >
       Write down in a few lines what the program must do, then ask the owner to
       approve them.
-    produces: [.konductor/requirements.md]
-    gate: owner
+    produces:
+      - artifact: requirements
+        path: .konductor/{slug}/requirements.md
+    gates:
+      - owner-action: approve the requirements
 
   - id: implementation
     title: Implement
@@ -20,13 +23,21 @@ steps:
       Build the program the approved requirements describe, with an npm test
       that runs it and checks its output. Record what you built and how you ran
       the test.
-    produces: [.konductor/implementation-report.md]
-    gate: "check: false"
+    consumes: [requirements]
+    produces:
+      - artifact: implementation-report
+        path: .konductor/{slug}/implementation-report.md
+    gates:
+      - check: default
 
   - id: release
     title: Release approval
     instruction: >
       Summarize for the owner what was built and how it was verified, then ask
       the owner to accept it.
-    produces: [.konductor/release-summary.md]
-    gate: owner
+    consumes: [implementation-report]
+    produces:
+      - artifact: release-summary
+        path: .konductor/{slug}/release-summary.md
+    gates:
+      - owner-action: accept the release

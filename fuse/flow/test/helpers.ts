@@ -7,7 +7,6 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 
 export const FLOW_DIR = resolve(import.meta.dir, "..");
-export const REPO_SKILLS = resolve(FLOW_DIR, "..", "..", "skills");
 const CLI = join(FLOW_DIR, "src", "cli.ts");
 
 export interface Result {
@@ -23,10 +22,9 @@ export class Repo {
     const base = process.env.KIROCREW_SCRATCH ?? tmpdir();
     this.root = realpathSync(mkdtempSync(join(base, "fuse-flow-test-")));
     mkdirSync(join(this.root, ".git"));
-    // A private HOME, so skills installed on the test machine are not found.
+    // A private HOME, so the test machine's own workflows, library and policy
+    // are not found.
     this.env = { ...(process.env as Record<string, string>), HOME: join(this.root, "home") };
-    delete this.env.FUSE_SKILLS_DIR;
-    delete this.env.SKILLS_HOME;
     delete this.env.FUSE_FLOW_COMMAND;
   }
 
@@ -35,6 +33,10 @@ export class Repo {
     mkdirSync(dirname(full), { recursive: true });
     writeFileSync(full, content);
     return full;
+  }
+
+  cleanupPath(path: string): void {
+    rmSync(join(this.root, path), { recursive: true, force: true });
   }
 
   read(path: string): string {

@@ -9,14 +9,14 @@ import { FlowError } from "./errors.ts";
 import { workstreamFile, workstreamsDir } from "./project.ts";
 import { type StepState, type Workstream, WorkstreamSchema } from "./schemas/workstream.ts";
 
-export type { StepState, Workstream } from "./schemas/workstream.ts";
+export type { RecordedArtifact, StepState, StepStatus, Workstream } from "./schemas/workstream.ts";
 
 // A step the state file does not mention yet (for example one added to the
-// workflow after `start`) is simply pending.
+// workflow after `start`) is simply PENDING.
 export function stateOf(ws: Workstream, stepId: string): StepState {
   // Object.hasOwn, not ??=: a step may be called "constructor".
   if (!Object.hasOwn(ws.steps, stepId)) {
-    ws.steps[stepId] = { status: "pending", artifacts: [], history: [] };
+    ws.steps[stepId] = { status: "PENDING", artifacts: [], history: [] };
   }
   return ws.steps[stepId];
 }

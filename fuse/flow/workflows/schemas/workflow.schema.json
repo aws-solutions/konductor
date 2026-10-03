@@ -20,7 +20,7 @@
       "type": "string"
     },
     "steps": {
-      "description": "The steps, in the order fuse-flow runs them. The current step is the first one in the list that is not done, so steps run one at a time, in file order.",
+      "description": "The steps, in the order fuse-flow runs them. The current step is the first one in the list that is neither COMPLETED nor SKIPPED, so steps run one at a time, in file order.",
       "minItems": 1,
       "type": "array",
       "items": {

@@ -6,26 +6,37 @@
 version: 1
 name: custom-example-small
 description: Lightweight loop for a small, well-understood change.
-
 steps:
   - id: implementation
     title: Implement
-    skill: verification/SKILL.md
     instruction: >
-      Make the smallest change that fixes the request, with a test that fails
-      before it and passes after. Record the command and its output.
-    produces: [.konductor/implementation/implementation-report.md]
-    gate: "check: npm test"
-
+      Make the smallest change that fixes the request, with a test that fails before it and passes
+      after. Record the command and its output.
+    produces:
+      - artifact: implementation-report
+        path: .konductor/implementation/implementation-report.md
+    updates:
+      - artifact: code
+        path: .
+    gates:
+      - check: default
   - id: code-review
     title: Self review
-    skill: code-review/SKILL.md
     instruction: Review your own diff, fix CRITICAL findings, commit.
-    produces: [.konductor/review/code-review.md]
-    gate: none
-
+    produces:
+      - artifact: code-review
+        path: .konductor/review/code-review.md
+    updates:
+      - artifact: code
+        path: .
   - id: final-summary
     title: Summary
     instruction: One paragraph for the owner, what changed, how it was verified.
-    produces: [.konductor/sdlc-summary.md]
-    gate: owner
+    produces:
+      - artifact: sdlc-summary
+        path: .konductor/sdlc-summary.md
+    consumes:
+      - implementation-report
+      - code-review
+    gates:
+      - owner-action: approve the summary

@@ -1,179 +1,307 @@
 # fuse-flow
 
-fuse-flow gives agents a deterministic lookup of the next workflow step, so that an agent does not
-have to reason about it. `fuse-flow start` prints the current step: the skill to read, an inline
-instruction, or both. The agent does the work and runs `fuse-flow continue`, which checks the step,
-records it, and prints the next one. fuse-flow refuses a step whose artifacts are missing or whose
-check fails, and holds a step until the owner approves it.
+fuse-flow gives agents a deterministic lookup of the next workflow step. `fuse-flow start` prints
+what to do now. The agent does that work and runs `fuse-flow continue`, which checks and records
+the step before printing the next one. fuse-flow refuses completion while required artifacts are
+unaccounted for or a mechanical gate fails, and it hands decisions to the owner when required.
 
-It is a small command line tool meant to be operated by agents only. It runs the TypeScript sources directly, on
-[Bun](https://bun.sh) or on Node 22.18+, 23.6+ or 24+. Bun is the main runtime and runs the tests.
+It is a small command line tool meant to be operated by agents. It runs the TypeScript sources
+directly on [Bun](https://bun.sh), or on Node 22.18+, 23.6+ or 24+. Bun is the main runtime and
+runs the tests.
 
-fuse-flow is part of fuse-konductor and runs from the fuse-konductor clone. `install.sh` installs the
-skills and the agent rules into a project or into your user-level instruction files, and checks
-that Bun is present; it does not copy fuse-flow anywhere, but it tells the agent where the clone is:
-a global install writes the clone's path into the rules, and a project install writes it to
-`~/.konductor/fuse-konductor-clone` (one line, `clone=<path>`) in your home directory, so the committed `AGENTS.md`
-stays the same for every developer and each of them runs `install.sh` once from their own clone. One clone serves any number of projects, whether they
-were set up with `--project` or `--global`. What differs per project is the state: each repository
-keeps its own workstreams under `.konductor/workstreams/`.
+fuse-flow is part of fuse-konductor and runs from the fuse-konductor clone. `install.sh` installs
+the agent rules into a project or into a user-level instruction file and checks that Bun is
+present. It does not copy fuse-flow. A global install writes the clone path into the rules. A
+project install writes `clone=<path>` to `~/.konductor/fuse-konductor-clone`, so a committed
+`AGENTS.md` stays the same for every developer. One clone serves any number of projects. Each
+repository keeps its private workstream state under `.konductor/workstreams/`.
 
 ```bash
 cd <your-project>
 <fuse-konductor-clone>/fuse/flow/fuse-flow start my-feature --workflow _k-full-sdlc
 ```
 
-When the two dependencies, zod and yaml, are missing from `fuse/flow/node_modules` of the clone,
-normally only on the first run, fuse-flow downloads them from the npm registry (with `bun install`,
-or `npm install` when only Node is present, so Node needs npm next to it). That is the only time it
-uses the network; offline, that run fails and says which command to run.
+When zod and yaml are missing from the clone's `fuse/flow/node_modules`, normally only on the
+first run, fuse-flow downloads them from the npm registry with `bun install`, or with `npm install`
+when only Node is present. That is the only time it uses the network. An offline run fails and
+names the command to run.
 
-In normal use you do not type these commands. You ask the agent to start a new feature, and the
-agent runs them, following the rules that `install.sh` adds to your instruction file. The agent
-runs the `fuse-flow` script by its full path, and every follow-up command fuse-flow prints uses
-that same path, so nothing needs to be on `PATH`. The rest of this document writes the commands as
-`fuse-flow ...` for short.
+In normal use, the agent runs the `fuse-flow` script by its full path. Every follow-up command
+fuse-flow prints uses that same path, so nothing needs to be on `PATH`. This document shortens the
+command to `fuse-flow ...`.
 
 ## The agent loop
 
-A workstream is one piece of work: a feature, a refactoring, a story. When it starts, you pick the
-workflow it follows, such as `_k-full-sdlc`. fuse-flow is the state machine that runs it: the
-workflow file is the graph of steps, the workstream's state is its current step (the first step in
-the workflow that is not done), and there is one input, `continue`, which moves the workstream to
-the next step and prints it.
+A workstream is one piece of work, such as a feature, refactoring or story. Its workflow is an
+ordered list of steps. The current step is the first step that is neither `COMPLETED` nor
+`SKIPPED`.
 
-1. `fuse-flow start <slug> --workflow <name>` mints the workstream and prints the current step: the
-   skill file to read, the instruction, the artifacts to produce, the gate, and the `continue`
-   command to run afterwards. In a new session, `fuse-flow start <slug>` resumes the workstream and
-   prints the same thing.
-2. The agent does the work and runs `fuse-flow continue <slug>`. fuse-flow checks the artifacts and
-   the gate, records the step, and prints the next step.
-3. Repeat step 2 until `continue` prints `workflow complete`.
+1. `fuse-flow start <slug> --workflow <name or path>` creates a workstream and prints its first
+   step. `fuse-flow start <slug>` resumes an existing workstream and prints its current step.
+2. The agent follows the printed step block. When the work is done, it runs the printed
+   `fuse-flow continue <slug>` command and accounts for produced and updated artifacts.
+3. fuse-flow runs the mechanical gates, records the result, and prints the next step or an
+   `OWNER'S TURN` hand-over block.
+4. The agent repeats until the hand-over block says `STATUS: workflow complete`.
 
-When the printed step awaits the owner, or is blocked, the agent shows the owner the artifacts and
-stops. After the owner has said yes, `fuse-flow continue <slug> --owner-approved` closes the step
-and prints the next one.
+When the owner must decide, the agent presents the printed options with a recommendation and runs
+the command for the decision only after the owner has made it.
+
+## Workflow format
+
+A workflow is YAML with `version: 1`, a `name`, an optional `description`, and one or more ordered
+`steps`. Every step has a unique `id` and an `instruction`. `title`, `description` and `phase` are
+optional information for readers and the viewer.
+
+```yaml
+version: 1
+name: feature
+steps:
+  - id: research
+    instruction: Map the existing behavior.
+    condition:
+      agent: the work touches an unfamiliar area
+    optional_produces:
+      - artifact: research-note
+        path: docs/research/{slug}.md
+
+  - id: spec
+    instruction: Turn the request into an agreed specification.
+    produces:
+      - artifact: spec
+        path: docs/specs/{slug}.md
+    gates:
+      - owner-action: approve the specification
+
+  - id: implement
+    instruction: Implement the approved specification.
+    consumes: [spec]
+    updates:
+      - artifact: code
+        path: src/
+    gates:
+      - check: default
+      - agent: review the branch diff
+        max_rounds: 2
+        guide: reviews/code.md
+      - owner-action: approve the change
+        route_back_to: spec
+```
+
+The step fields have these effects:
+
+- `instruction` opens the step block and says what the step must achieve.
+- `condition` makes the step optional. It is written as one `owner-action`, `check`, `script` or
+  `agent` mapping. A `check` or `script` condition runs when the engine reaches the step: exit 0
+  runs it and another result skips it. An `agent` condition is judged by the agent. An
+  `owner-action` condition asks the owner. A step without a condition is mandatory.
+- `consumes` lists artifact identifiers from earlier steps. The step block prints each resolved
+  input as `READ`, including the source step. A missing input is reported rather than refused, so
+  the agent can recover it after a jump.
+- `produces` contains one artifact mapping or a list. Each mapping has an `artifact` identifier,
+  a `path`, and an optional `description`. Completion requires the path to exist or the agent to
+  report `--not-produced <artifact> <reason>`.
+- `optional_produces` has the same mapping shape. Existing paths are recorded, but missing paths
+  never refuse completion.
+- `updates` has the same mapping shape for artifacts that usually exist before the step, such as
+  code. The agent accounts for every updated artifact with one or more `--updated <file>` flags,
+  or with `--unchanged <artifact> <reason>`. A missing update path is reported and may be created.
+- `{slug}` in an artifact path is replaced with the workstream slug.
+- `gates` is one gate or a list. Gate kinds are `owner-action`, `check`, `script` and `agent`.
+  Gates run in a fixed order: mechanical gates, agent reviews, then owner actions. List order does
+  not change that sequence.
+- `check: <kind>` names a lower-case check kind that policy binds to a command. `script: <command>`
+  is a literal shell command. Both run from the repository root and must exit 0.
+- `agent: <review>` tells the maker to obtain an independent review. `max_rounds`, at least 1,
+  caps review rounds that end with a required fix. The default is 2. `guide` may name a review
+  guide relative to the workflow file or by absolute path. fuse-flow prints these instructions;
+  the maker counts the rounds and reports `--blocked` at the cap.
+- `owner-action: <action>` leaves the completed work in `AWAITING_OWNER` until the owner decides.
+- Any gate mapping may have `route_back_to`, as one step identifier or a list. Each target is the
+  same step or an earlier step. It suggests routes for the owner's `--back-to` decision and does
+  not create automatic control flow. A mapping may also have an informational `description`.
 
 ## Commands
 
 | Command | What it does |
 |---|---|
-| `start <slug> [--workflow <name or path>]` | Mint a workstream that follows the given workflow, or resume an existing one, then print the current step. A new workstream needs `--workflow`. |
-| `continue <slug> [--artifact <path>]...` | The current step's work is finished: record it and print the next step. Refused unless every artifact the step declares (and every `--artifact`) exists and its check command exits 0. |
-| `continue <slug> --blocked <why>` | The agent cannot finish the current step, for example because its agent gate's `max_rounds` is reached: block the step and record why. The owner decides. |
-| `continue <slug> --owner-approved [--note <text>]` | The owner approved the current step, which awaited the owner or was blocked: record it and print the next step. |
-| `continue <slug> --more-rounds <n> [--note <text>]` | The owner grants a blocked step's agent gates `n` more review rounds. The step is pending again, and its printed cap is raised. |
-| `continue <slug> --back-to <step> [--note <text>]` | The owner sends the work back from a step that awaits the owner or is blocked, to that step or an earlier one, usually to rework an artifact. That rejects a step that awaits approval. The output of such a step names the steps its gates suggest and the step that produces each artifact. That step and every step after it are pending again, with no recorded artifacts; the files stay on disk. |
-| `status <slug>` | Show every step's status and artifacts, and mark the current step. |
-| `validate <name, file or directory>...` | Check workflows without starting a workstream, and report every file. A directory stands for every `.yml` and `.yaml` file below it, in nested and symlinked folders, so `validate .` in a workflows directory checks them all. Refused when any file is invalid. Run at a repository root, it also reads YAML that is not a workflow, such as `.github/workflows/`. |
+| `start <slug> [--workflow <name or path>] [--from <step>]` | Create or resume a workstream and print what to do. A new workstream requires `--workflow`. On a new workstream, `--from` starts at a later step and records earlier steps as skipped on the owner's decision. |
+| `continue <slug>` | Finish the current step after its artifacts are accounted for and its mechanical gates pass, then print the next step or hand-over block. |
+| `continue <slug> [--updated <file>]...` | Report each file revised under an `updates` artifact. Repeat the flag for several files. Files outside declared update paths are accepted and identified in the hand-over block. |
+| `continue <slug> [--unchanged <artifact> <reason>]...` | Report each `updates` artifact deliberately left unchanged. Repeat the flag as needed. |
+| `continue <slug> [--not-produced <artifact> <reason>]...` | Report each required `produces` artifact deliberately not written. Repeat the flag as needed. |
+| `continue <slug> --blocked <why>` | Record that the agent cannot finish the current step, such as at the review round cap. The owner decides what happens next. |
+| `continue <slug> --skip <why>` | Skip a conditional step, or skip any step after the owner explicitly asks. Records the reason. |
+| `continue <slug> --owner-approved [--note <text>]` | Record the owner's approval of an `AWAITING_OWNER` or `BLOCKED` step and complete it. |
+| `continue <slug> --more-rounds <n> [--note <text>]` | Add one or more review rounds to an agent gate on an `IN_PROGRESS` or `BLOCKED` step. |
+| `continue <slug> --back-to <step> [--note <text>]` | On the owner's decision, reopen the named step and every later step from an `AWAITING_OWNER` or `BLOCKED` step. Files stay on disk. |
+| `continue <slug> --forward-to <step> [--note <text>]` | On the owner's decision, skip the current step and every step before the later target. |
+| `status <slug>` | Show all steps, their six states, gates, artifacts, skip reasons and the current step. |
+| `validate <name, file or directory>...` | Validate one or more workflows without starting a workstream. A directory means every `.yml` and `.yaml` file below it, including nested and symlinked folders. |
+| `help`, `--help`, `-h` | Print command usage, lookup paths and state location. |
 
-Exit codes: 0 success, 1 refused (the reason is printed), 64 usage error.
+`--note` is valid only with `--owner-approved`, `--more-rounds`, `--back-to` or `--forward-to`.
+The owner decision flags are mutually exclusive. `--blocked` and `--skip` are mutually exclusive
+reports, and artifact-reporting flags do not accompany either kind. Exit codes are 0 for success,
+1 for a refusal, and 64 for a usage error.
+
+## Output contract
+
+The plain-text output is an interface for agents. A layout change is deliberate and should update
+the tests and this section.
+
+When it is the agent's turn, the step block uses these labels:
+
+- `STEP` gives the step identifier, position and instruction.
+- `CONDITION` explains why an optional step runs or how to skip it.
+- `READ` gives each consumed artifact's path and source step.
+- `PRODUCE` gives a required artifact path, identifier, guide and template information.
+- `PRODUCE (optional)` gives an optional artifact in the same form.
+- `UPDATE` gives an artifact path the step changes and reports when the path is missing.
+- `WHEN THE WORK IS DONE` gives numbered gate and completion instructions.
+- `REFUSED` gives the reason completion was refused, followed by the step block again.
+
+When the owner acts next, output begins with `OWNER'S TURN` and ends with a pre-filled hand-over
+block. The agent replaces placeholders, preserves the order, and ends its own message with these
+five lines:
+
+- `SUMMARY:` the task, workstream slug and step position.
+- `STATUS:` one of `awaiting owner action`, `blocked`, `needs input`, `paused` or
+  `workflow complete`.
+- `PRODUCED:` new and updated files, or a compact summary for five or more files, plus reasons for
+  artifacts reported unchanged or not produced.
+- `VERIFICATION:` mechanical gate results, review rounds used and required fixes still open, or
+  `none`.
+- `NEXT STEP:` the owner's options, with the recommendation first and its reason.
+
+fuse-flow pre-fills the block for `awaiting owner action`, `blocked` and `workflow complete`. The
+agent writes it from `status` for `needs input` or `paused`.
 
 ## Files
 
-- A workflow is a YAML file listing steps, in order, with their gates. The fields are defined and
-  described in [`src/schemas/`](src/schemas/): `workflow.ts`, `step.ts` and `gate.ts`. Each
-  description ends with the field's effect on the engine. Each workstream records the workflow it
-  follows, so workstreams in one repository can follow different workflows.
-  - `bun run schema` writes one JSON Schema file per schema into
-    [`workflows/schemas/`](workflows/schemas/): `workflow.schema.json`, `step.schema.json` and
-    `gate.schema.json`, which refer to each other by relative path. A test fails when they differ
-    from the Zod schemas. A workflow file that starts with
-    `# $schema: <path>` (WebStorm) and `# yaml-language-server: $schema=<path>` (VS Code with the
-    YAML extension), pointing at `workflow.schema.json`, gets validation, completion and the field
-    descriptions in the editor. The path is relative to the workflow file, so a copy in another
-    directory needs its own path. Rules that involve several fields, such as unique step ids, are
-    checked only by fuse-flow.
-  - `--workflow` takes a path or a name. A reference that contains a slash or ends in `.yml` or
-    `.yaml` is a path, and is recorded as an absolute path.
-  - A name is looked up as `<name>.yml` in the project's `.konductor/workflows/`, then in
-    `~/.konductor/workflows/`, then in the workflows that ship with fuse-flow in
-    [`workflows/`](workflows/). A team adds its own workflows to the first or second directory.
-  - In each of these directories, fuse-flow looks at the top level and in the folders directly
-    inside it, such as `personal/` and `team/`. The first directory that has the name wins. A name
-    found twice in the same directory is refused, and the message lists both files.
-  - You can edit the workflows in [`workflows/`](workflows/) or add your own there. Put personal
-    workflows that you do not want to share in `workflows/personal/`, which is gitignored. To share
-    workflows with a group but not with everybody, keep them in a separate repository and add a
-    symlink to it named `workflows/team`, which is gitignored as well.
-  - fuse-flow reads the workflow again on every command, so an edit takes effect straight away, and
-    a step added to it is pending.
-- `.konductor/workstreams/<slug>.yml` is the state of one workstream: the workflow it follows, and
-  each step's status, recorded artifacts and a timestamped history. Only fuse-flow writes
-  it. The directory has its own `.gitignore`, so the state stays private to your checkout.
+### Workflows
+
+A workflow reference containing a slash or ending in `.yml` or `.yaml` is a path. Otherwise a name
+is looked up as `<name>.yml`, first in the project's `.konductor/workflows/`, then the user's
+`~/.konductor/workflows/`, then `fuse/flow/workflows/` in the package. Within each location,
+fuse-flow checks the top level and each direct child folder. The first location with a match wins;
+two matches in one location are refused as ambiguous.
+
+The schemas in `src/schemas/` define the fields. `bun run schema` writes editor schemas to
+`workflows/schemas/`. A workflow may point its editor at `workflow.schema.json`. fuse-flow checks
+cross-field rules, including unique step identifiers, valid `consumes` references and backward
+`route_back_to` targets. It reads the workflow again on every command, so edits affect running
+workstreams.
+
+### Artifact library
+
+Each artifact identifier selects one folder with this layout:
+
+```text
+library/artifacts/<id>/
+  guide.md          how to produce the artifact
+  template.<ext>    optional structure for the artifact
+  review.md         optional review guide
+```
+
+The engine points the agent to a template but does not copy it. It searches the project's
+`.konductor/library/artifacts/<id>/`, then the user's `~/.konductor/library/artifacts/<id>/`, then
+the package's `fuse/flow/library/artifacts/<id>/`. The first existing folder wins as a unit, so
+files are not mixed across library levels. `library/gates/` is reserved; reusable gate entries are
+not defined yet.
+
+### Policy overrides
+
+Policy binds workflow intents to a project. Files are read at these locations:
+
+1. `~/.konductor/policy-overrides.yml`, personal defaults across projects.
+2. `.konductor/policy-overrides.yml`, team policy checked into the project.
+3. `.konductor/policy-overrides.local.yml`, personal policy for that project, normally gitignored.
+
+A policy file may contain:
+
+```yaml
+checks:
+  default: bun run check
+  test: none
+review:
+  max_rounds: 3
+  guide: reviews/default.md
+  reviewer: a different model from the maker
+artifacts:
+  spec:
+    path: docs/specs/{slug}.md
+```
+
+The complete override order, from general to specific, is: engine and package defaults, user
+policy, workflow and gates, project policy, project-local policy, workstream state, then the
+owner's recorded decision for approval, added rounds or a jump. In the implemented fields, project
+and local policy override workflow values where defined. Check bindings, reviewer and artifact
+paths use local, project, then user policy. Review `max_rounds` uses local or project policy, then
+the gate, then user policy, then the engine default. A review guide uses local or project policy,
+the project's artifact `review.md`, the gate's `guide`, user policy, then the user and package
+artifact review guides.
+
+### Workstream state
+
+`.konductor/workstreams/<slug>.yml` records the workflow reference, each step's state, artifacts,
+reported files and reasons, verification, granted rounds, skip reason and timestamped history.
+Only fuse-flow writes it. The directory is gitignored.
 
 ## Rules
 
-- **Order.** Steps run one at a time, in file order. The current step is the first step that is not
-  done. There is no parallel execution and the workflow format has no way to ask for it. A step's
-  `depends_on` names the earlier steps whose output it builds on, and `depends_on: []` says a step
-  builds on none of them; fuse-flow checks that the names point at earlier steps and otherwise
-  leaves the field to the reader. Two steps that do not depend on each other still run in the order
-  they are listed.
-- **Statuses.** `pending`, then `done`. A step with an owner-action gate goes to `awaiting-owner`
-  first. `continue` finishes a pending step, and `continue --blocked <why>` blocks it;
-  `continue --owner-approved` closes a step that awaits the owner or is blocked. Instead, the
-  owner can send the work back with `--back-to <step>`, and for a blocked step grant more review
-  rounds with `--more-rounds <n>`.
-- **Refusals.** A `continue` refused because an artifact is missing or a script gate failed is
-  recorded in the step's history and costs nothing: the gate tells the agent it is not done yet,
-  and the agent can always fix the artifact. Refusals never block a step.
-- **Round cap.** An agent gate is a review loop: an agent reviews, the agent that did the work
-  classifies each finding as fix required or false positive and fixes what is required, and they
-  repeat until a round ends with no required fix. A finding the owner already accepted or deferred
-  is not a required fix. That loop may not converge: the reviewer
-  can disagree with the maker for reasons the maker cannot fix, find new problems in every round,
-  or find regressions that each fix introduces. So the gate caps the rounds that end with a
-  required fix at `max_rounds` (default 2). fuse-flow prints the cap and does not count: the agent that did the work counts the
-  rounds, and when the cap is reached it runs `continue --blocked <why>` instead of starting
-  another round. The owner can then grant more rounds explicitly with `--more-rounds <n>`, which
-  raises the printed cap for that step until the work is sent back past it.
-- **Routes back.** A gate written as a mapping can name `route_back_to`: the steps the work should
-  go back to when the gate cannot be passed, usually the step that produces the artifact the gate
-  finds fault with. Each must be the step itself or one before it. When the step awaits the owner
-  or is blocked, fuse-flow suggests them for `--back-to`, and the viewer draws them as routes back.
-- **Skills.** A relative skill path is looked up in `FUSE_SKILLS_DIR`, then `skills/`,
-  `.kiro/skills/`, `.konductor/skills/`, `.claude/skills/` and `.agents/skills/` in the
-  repository, then `SKILLS_HOME`, then `~/.kiro/skills/`, `~/.konductor/skills/`,
-  `~/.claude/skills/`, `~/.codex/skills/`, `~/.config/opencode/skills/` and `~/.agents/skills/`.
-- **Running at the same time.** A check command runs outside the lock on the state file, so a long
-  test run does not hold up other workstreams. If two `continue` commands for the same workstream
-  run at once, both run the check, and only the first to finish records the step; the other is
-  refused.
+- **Order.** Steps run one at a time in file order. There is no parallel execution.
+- **States.** `PENDING` has not been handed out. `IN_PROGRESS` is with the agent.
+  `AWAITING_OWNER` has finished work waiting on an owner action. `BLOCKED` means the planned path
+  broke down. `COMPLETED` and `SKIPPED` are terminal; a skipped step records `skip_reason`.
+- **Artifacts.** Recorded artifacts are `draft` while an owner action waits and `approved` when
+  their step completes, including steps without an owner gate. Sending work back makes approved
+  artifacts draft again. `superseded` is available for a later artifact replacement process.
+- **Refusals.** A missing unreported `produces` artifact, an unaccounted `updates` artifact, an
+  unbound check, or a failed mechanical gate refuses `continue` and repeats the step block. The
+  refusal is recorded but does not block the step or consume a review round.
+- **Review cap.** The maker classifies findings, fixes required ones and repeats until a round is
+  clean. A round ending with a required fix counts. At the printed cap, the maker reports the step
+  blocked rather than starting another round. The owner can approve as is, grant rounds or send
+  work back.
+- **Jumps.** `--from`, `--forward-to`, `--back-to`, and skipping a mandatory step are owner
+  decisions. After a jump, the agent restores missing consumed artifacts in the owner's interest
+  and reports what it did.
+- **Concurrency.** Mechanical commands run outside the state-file lock. If two commands try to
+  advance the same workstream, only the first successful state update records the step.
 
 ## What fuse-flow does not try to do
 
-fuse-flow tracks one engineer's workstream on their own machine. It is not a security boundary, and
-`continue` is deliberately one input with no step id:
+fuse-flow tracks one engineer's workstream on one machine. It is not a security boundary.
 
-- `continue` acts on whatever step is current when it runs. Run it once per step. If a `continue`
-  that already succeeded is run again, it acts on the following step: it is refused when that
-  step's artifacts are missing, and it marks the step done when
-  the step declares no artifacts and no check. `continue --owner-approved` run again is refused
-  unless the following step already awaits the owner. Every `continue` prints what it recorded,
-  and the state file's history keeps the timestamps, so a replay is visible.
-- A `check:` command runs like a Makefile target, from the repository root with your environment.
-  Only use workflow files you trust.
-- `continue --owner-approved` records the owner's word. It does not verify who typed it; the agent
-  is instructed to run it only after the owner has approved.
-- Skill and artifact paths are taken as written, including absolute paths and paths outside the
-  repository.
+- `continue` acts on the current step and has no step identifier. Run it once per step. The history
+  makes replays visible.
+- Commands in `script` gates and policy-bound checks run like Makefile targets from the repository
+  root with the caller's environment. Use only trusted workflows and policy files.
+- Owner-decision flags record the owner's word. They do not authenticate who typed it, so the agent
+  runs them only after the owner decides.
+- The engine does not create templates, infer check commands, count review rounds, compare file
+  contents, or choose jumps.
+- There are no parallel branches, path-choice constructs, workflow parameters, per-item loops or
+  reusable gate library entries.
 
 ## Code
 
 | File | Contents |
 |---|---|
-| `src/cli.ts` | Argument parsing, printing, exit codes. |
-| `src/commands.ts` | The commands. Start here. |
-| `src/workflow.ts` | Loading a workflow file, and describing its gates. |
-| `src/workstream.ts` | The state file: reading it, and locked updates. |
-| `src/schemas/workflow.ts` | The workflow format: its fields, their documentation and validation. |
-| `src/schemas/step.ts` | The step format. |
-| `src/schemas/gate.ts` | The gate format, and how a gate written as a string is read. |
-| `src/schemas/workstream.ts` | The state file format. |
-| `src/schemas/generate.ts` | Writes the JSON Schema files in `workflows/schemas/` (`bun run schema`). |
-| `src/project.ts` | The repository root, the workflow and skill lookup, and the paths under `.konductor/`. |
-| `src/errors.ts` | The two error types, mapped to exit codes 1 and 64. |
-| `fuse-flow` | Shell script that runs `src/cli.ts` from any directory, with Bun or else Node. |
+| `src/cli.ts` | Argument parsing, usage, printing and exit codes. |
+| `src/commands.ts` | Command behavior and output blocks. Start here. |
+| `src/workflow.ts` | Workflow loading and gate descriptions. |
+| `src/workstream.ts` | State-file reading and locked updates. |
+| `src/schemas/workflow.ts` | Workflow schema and cross-step validation. |
+| `src/schemas/step.ts` | Step and artifact schema. |
+| `src/schemas/gate.ts` | Gate and condition schema. |
+| `src/schemas/policy.ts` | Policy override schema. |
+| `src/schemas/workstream.ts` | Workstream state schema and migration. |
+| `src/schemas/generate.ts` | JSON Schema generation. |
+| `src/policy.ts` | Policy layering, artifact placement, library lookup and review guides. |
+| `src/project.ts` | Repository root, workflow lookup and `.konductor/` paths. |
+| `src/errors.ts` | Refusal and usage errors. |
+| `fuse-flow` | Runtime launcher for Bun or Node. |
 
 Tests: `bun test` in this directory. Each test runs the real command line in a throwaway repository.
