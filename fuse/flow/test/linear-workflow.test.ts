@@ -93,7 +93,7 @@ test("an artifact the step rightly does not produce is reported with its reason 
   repo.start("feat", LINEAR);
   expect(repo.usage("continue", "feat", "--not-produced", "sketch")).toContain("--not-produced takes an artifact and a reason");
   expect(repo.refused("continue", "feat", "--not-produced", "app", "x")).toContain(
-    '--not-produced names an artifact the step produces; "app" is not one (sketch)',
+    '--not-produced names an artifact the step produces, by its id or its path; "app" is neither (sketch (docs/design.md))',
   );
   const out = repo.ok("continue", "feat", "--not-produced", "sketch", "a one-line fix needs no design");
   expect(out).toStartWith("design: COMPLETED\n");

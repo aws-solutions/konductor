@@ -40,7 +40,7 @@ test("continue is refused until every updates artifact is reported as updated or
   );
   expect(repo.refused("continue", "feat", "--updated", "src/a.ts")).toContain("REFUSED: not accounted for: changelog (CHANGELOG.md).");
   expect(repo.refused("continue", "feat", "--unchanged", "readme", "x")).toContain(
-    '--unchanged names an artifact the step updates; "readme" is not one (patch, changelog)',
+    '--unchanged names an artifact the step updates, by its id or its path; "readme" is neither (patch (src/), changelog (CHANGELOG.md))',
   );
 
   const out = repo.ok("continue", "feat", "--updated", "src/a.ts", "--updated", "docs/extra.md", "--unchanged", "changelog", "nothing user-facing");
@@ -97,4 +97,26 @@ test("the workflow-complete hand-over gathers what every step produced and verif
   const out = repo.ok("continue", "feat", "--not-produced", "notes", "no notes needed");
   expect(out).toContain("PRODUCED: change: src/a.ts (updated); changelog unchanged (nothing user-facing); notes: notes not produced (no notes needed)\n");
   expect(out).toContain("VERIFICATION: change: script `true`: passed\n");
+});
+
+test("--unchanged and --not-produced also name an artifact by its path, as the step block shows it", () => {
+  const flow =
+    CHANGE.replace("path: src/", "path: .").replace("      - owner-action: approve the change\n", "      - script: \"true\"\n") +
+    "  - id: notes\n    instruction: Write notes.\n    produces:\n      - artifact: notes\n        path: docs/notes.md\n";
+  repo.start("feat", flow);
+  // "." is the repository root, given from a subdirectory as "..".
+  const r = repo.run(["continue", "feat", "--unchanged", "..", "no code change", "--unchanged", "../CHANGELOG.md", "nothing user-facing"], `${repo.root}/src`);
+  expect(r.out).toContain("change: COMPLETED\n");
+  expect(repo.state("feat").steps.change.unchanged).toEqual({ patch: "no code change", changelog: "nothing user-facing" });
+
+  expect(repo.refused("continue", "feat", "--not-produced", "notes.md", "x")).toContain(
+    '--not-produced names an artifact the step produces, by its id or its path; "notes.md" is neither (notes (docs/notes.md))',
+  );
+  expect(repo.ok("continue", "feat", "--not-produced", "./docs/notes.md", "no notes needed")).toContain("notes not produced (no notes needed)");
+});
+
+test("a path that two artifacts share is refused, and the artifact must be named by its id", () => {
+  repo.start("feat", CHANGE.replace("path: CHANGELOG.md", "path: src/"));
+  expect(repo.refused("continue", "feat", "--unchanged", "src", "x")).toContain('--unchanged "src" is the path of patch and changelog; name the artifact by its id');
+  expect(repo.ok("continue", "feat", "--unchanged", "patch", "x", "--unchanged", "changelog", "y")).toContain("STATUS: awaiting owner action.");
 });

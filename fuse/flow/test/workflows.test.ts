@@ -119,6 +119,8 @@ describe("invalid workflows are refused with the reason", () => {
     ["max_rounds on a script gate", ONE_STEP + "    gates: { script: bun test, max_rounds: 2 }\n", "max_rounds goes on an agent gate only"],
     ["guide on an owner gate", ONE_STEP + "    gates: { owner-action: approve, guide: x.md }\n", "guide goes on an agent gate only"],
     ["route_back_to a later step", "version: 1\nname: one\nsteps:\n  - id: a\n    instruction: x\n    gates: { agent: review, route_back_to: b }\n  - id: b\n    instruction: y\n", '"a" routes back to "b", which is not this step or a step listed before it'],
+    ["route_back_to a later step, at the gate that names it", "version: 1\nname: one\nsteps:\n  - id: a\n    instruction: x\n    gates: [{ script: \"true\" }, { agent: review, route_back_to: b }]\n  - id: b\n    instruction: y\n", "steps.0.gates.1.route_back_to:"],
+    ["consumes an artifact no earlier step produces, at the entry", ONE_STEP + "    consumes: [spec, notes]\n", 'steps.0.consumes.1: "only" consumes "notes"'],
     ["route_back_to a bad step id", ONE_STEP + "    gates: { agent: review, route_back_to: Design }\n", "route_back_to names step ids"],
     ["a produces path without an artifact id", ONE_STEP + "    produces: [docs/x.md]\n", "steps.0.produces"],
     ["a bad artifact id", ONE_STEP + "    produces: { artifact: Spec, path: x.md }\n", "lowercase letters"],

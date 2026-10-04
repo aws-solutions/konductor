@@ -118,6 +118,9 @@ The step fields have these effects:
 - `updates` has the same mapping shape for artifacts that usually exist before the step, such as
   code. The agent accounts for every updated artifact with one or more `--updated <file>` flags,
   or with `--unchanged <artifact> <reason>`. A missing update path is reported and may be created.
+- `--unchanged` and `--not-produced` name an artifact by its identifier or by its path, relative
+  to the current directory. An identifier wins when a name is both. A path that several of the
+  step's artifacts share is refused, and the artifact must then be named by its identifier.
 - `{slug}` in an artifact path is replaced with the workstream slug.
 - `gates` is one gate or a list. Gate kinds are `owner-action`, `check`, `script` and `agent`.
   Gates run in a fixed order: mechanical gates, agent reviews, then owner actions. List order does

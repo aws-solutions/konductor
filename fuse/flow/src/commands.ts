@@ -10,8 +10,9 @@
 
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { dirname, isAbsolute, resolve } from "node:path";
+import { dirname, isAbsolute, relative, resolve } from "node:path";
 import { FlowError } from "./errors.ts";
+import { EVENT, SKIP_REASON, stamp } from "./history.ts";
 import {
   artifactPath,
   checkBinding,
@@ -44,10 +45,6 @@ const FUSE_FLOW = shellQuote(process.env.FUSE_FLOW_COMMAND || "fuse-flow");
 // A path that the shell reads as one word, even with spaces or quotes in it.
 function shellQuote(word: string): string {
   return /^[A-Za-z0-9_./-]+$/.test(word) ? word : `'${word.replaceAll("'", `'\\''`)}'`;
-}
-
-function stamp(event: string): string {
-  return `${new Date().toISOString()} ${event}`;
 }
 
 const finished = (status: StepStatus) => status === "COMPLETED" || status === "SKIPPED";
@@ -163,17 +160,17 @@ function handOut(c: Ctx): void {
     if (!step || stateOf(ws, step.id).status !== "PENDING") return;
 
     let skip: string | undefined;
-    let note = "handed out";
+    let note = EVENT.handedOut();
     const cond = step.condition;
     if (cond && (cond.kind === "script" || cond.kind === "check")) {
       const m = mechanical(c, cond);
       if (m.kind === "unbound") return; // stays PENDING; the output says how to bind it
       if (m.kind === "run") {
         const r = runCommand(c, m.command, step.id);
-        if (r.exitCode === 0) note = `handed out; condition \`${m.command}\` exited 0`;
+        if (r.exitCode === 0) note = EVENT.handedOut(`condition \`${m.command}\` exited 0`);
         else skip = `condition \`${m.command}\` exited ${r.exitCode ?? "without a code, killed by a signal"}`;
       } else {
-        note = `handed out; condition ${m.label} is not configured in this project`;
+        note = EVENT.handedOut(`condition ${m.label} is not configured in this project`);
       }
     }
 
@@ -185,7 +182,7 @@ function handOut(c: Ctx): void {
       if (skip) {
         state.status = "SKIPPED";
         state.skip_reason = skip;
-        state.history.push(stamp(`skipped: ${skip}`));
+        state.history.push(stamp(EVENT.skipped(skip)));
         return;
       }
       state.status = "IN_PROGRESS";
@@ -531,8 +528,9 @@ export function start(root: string, slug: string, workflowRef?: string, from?: s
         const state = stateOf(ws, step.id);
         if (!resumed && i < fromIndex) {
           state.status = "SKIPPED";
-          state.skip_reason = `started at ${from}`;
-          state.history.push(stamp(`skipped: started at ${from}`));
+          const reason = SKIP_REASON.startedAt(from ?? step.id);
+          state.skip_reason = reason;
+          state.history.push(stamp(EVENT.skipped(reason)));
         }
       });
     },
@@ -596,26 +594,48 @@ function expectState(c: Ctx, ws: Workstream, step: Step, allowed: StepStatus[]):
 function refuse(c: Ctx, step: Step, reason: string, output = "", verification?: string[]): FlowError {
   updateWorkstream(c.root, c.slug, (ws) => {
     const state = expectState(c, ws, step, ["IN_PROGRESS"]);
-    state.history.push(stamp(`continue refused: ${reason}`));
+    state.history.push(stamp(EVENT.refused(reason)));
     if (verification) state.verification = verification;
   });
   const ws = readWorkstream(c.root, c.slug);
   return new FlowError([reason, ...(output ? [output] : []), "", ...stepBlock(c, ws, step, stateOf(ws, step.id))].join("\n"));
 }
 
-function finishStep(c: Ctx, step: Step, input: Continue): string[] {
-  const updatesIds = step.updates.map((a) => a.artifact);
-  const producesIds = step.produces.map((a) => a.artifact);
-  for (const id of Object.keys(input.unchanged)) {
-    if (!updatesIds.includes(id)) {
-      throw new FlowError(`--unchanged names an artifact the step updates; "${id}" is not one (${updatesIds.join(", ") || "it updates none"})`);
+// A path with "./" and trailing slashes removed, "." for the repository root.
+const tidy = (path: string) => path.replace(/^(\.\/+)+/, "").replace(/\/+$/, "") || ".";
+
+// Key the reasons given with `--<flag> <artifact> <reason>` by artifact id. The
+// agent may name an artifact by its id or by its path as the step block shows
+// it; an id wins when a name is both. A path that more than one of the
+// artifacts uses is refused, since it does not say which one is meant.
+function byArtifactId(c: Ctx, flag: string, verb: string, artifacts: Artifact[], given: Record<string, string>): Record<string, string> {
+  const placed = place(c, artifacts);
+  const known = placed.map((a) => `${a.artifact.artifact} (${a.path})`).join(", ") || `it ${verb} none`;
+  const out: Record<string, string> = {};
+  for (const [name, why] of Object.entries(given)) {
+    let id = placed.find((a) => a.artifact.artifact === name)?.artifact.artifact;
+    if (id === undefined) {
+      const rel = relative(c.p.root, resolve(name));
+      const matches = isAbsolute(rel) || rel === ".." || rel.startsWith("../") ? [] : placed.filter((a) => tidy(a.path) === tidy(rel));
+      if (matches.length > 1) {
+        throw new FlowError(`--${flag} "${name}" is the path of ${matches.map((a) => a.artifact.artifact).join(" and ")}; name the artifact by its id`);
+      }
+      id = matches[0]?.artifact.artifact;
     }
-  }
-  for (const id of Object.keys(input.notProduced)) {
-    if (!producesIds.includes(id)) {
-      throw new FlowError(`--not-produced names an artifact the step produces; "${id}" is not one (${producesIds.join(", ") || "it produces none"})`);
+    if (id === undefined) {
+      throw new FlowError(`--${flag} names an artifact the step ${verb}, by its id or its path; "${name}" is neither (${known})`);
     }
+    out[id] = why;
   }
+  return out;
+}
+
+function finishStep(c: Ctx, step: Step, given: Continue): string[] {
+  const input: Continue = {
+    ...given,
+    unchanged: byArtifactId(c, "unchanged", "updates", step.updates, given.unchanged),
+    notProduced: byArtifactId(c, "not-produced", "produces", step.produces, given.notProduced),
+  };
   const updated = [...new Set(input.updated.map((f) => display(c.p, f)))];
 
   const produced = place(c, step.produces);
@@ -681,7 +701,7 @@ function finishStep(c: Ctx, step: Step, input: Continue): string[] {
     setOrDelete(state, "not_produced", Object.keys(input.notProduced).length ? input.notProduced : undefined);
     setOrDelete(state, "verification", verification.length ? verification : undefined);
     state.status = awaitsOwner ? "AWAITING_OWNER" : "COMPLETED";
-    state.history.push(stamp(awaitsOwner ? "work recorded; awaiting the owner's action" : "completed"));
+    state.history.push(stamp(awaitsOwner ? EVENT.awaitingOwner() : EVENT.completed()));
   });
   return [`${step.id}: ${awaitsOwner ? "work recorded; the step awaits the owner's action" : "COMPLETED"}`, "", ...present(c)];
 }
@@ -695,7 +715,7 @@ function blockStep(c: Ctx, step: Step, reason: string): string[] {
   updateWorkstream(c.root, c.slug, (ws) => {
     const state = expectState(c, ws, step, ["IN_PROGRESS"]);
     state.status = "BLOCKED";
-    state.history.push(stamp(`blocked by the agent: ${reason}`));
+    state.history.push(stamp(EVENT.blocked(reason)));
   });
   return [`${step.id}: BLOCKED: ${reason}`, "", ...present(c)];
 }
@@ -705,7 +725,10 @@ function skipStep(c: Ctx, step: Step, reason: string): string[] {
     const state = expectState(c, ws, step, ["PENDING", "IN_PROGRESS", "AWAITING_OWNER", "BLOCKED"]);
     state.status = "SKIPPED";
     state.skip_reason = reason;
-    state.history.push(stamp(`skipped${step.condition ? "" : " on the owner's request"}: ${reason}`));
+    // An owner-action condition is the owner's answer, so its skip is the
+    // owner's, like a skip of a step without a condition.
+    const ownersCall = !step.condition || step.condition.kind === "owner-action";
+    state.history.push(stamp(ownersCall ? EVENT.skippedOnRequest(reason) : EVENT.skipped(reason)));
   });
   return [`${step.id}: SKIPPED: ${reason}`, "", ...present(c)];
 }
@@ -721,20 +744,20 @@ function grantRounds(c: Ctx, step: Step, n: number, note?: string): string[] {
     const state = expectState(c, ws, step, ["IN_PROGRESS", "BLOCKED"]);
     state.status = "IN_PROGRESS";
     state.rounds_granted = (state.rounds_granted ?? 0) + n;
-    state.history.push(stamp(`owner granted ${n} more review round${n === 1 ? "" : "s"}${note ? `: ${note}` : ""}`));
+    state.history.push(stamp(EVENT.roundsGranted(n, note)));
   });
   return [`${step.id}: owner granted ${n} more review round${n === 1 ? "" : "s"}; the step is IN_PROGRESS`, "", ...present(c)];
 }
 
 // Reopen `step` and everything after it: PENDING, its artifacts draft again.
 // The files the steps wrote stay where they are.
-function reopen(state: StepState, event: string): void {
+function reopen(state: StepState, line: string): void {
   state.status = "PENDING";
   for (const a of state.artifacts) if (a.status === "approved") a.status = "draft";
   for (const key of ["rounds_granted", "updated", "unchanged", "not_produced", "verification", "skip_reason", "existed"] as const) {
     delete state[key];
   }
-  state.history.push(stamp(event));
+  state.history.push(line);
 }
 
 // The owner sends the work back from a step that awaits the owner or is
@@ -750,11 +773,14 @@ function sendBack(c: Ctx, step: Step, target: string, note?: string): string[] {
     if (status !== "BLOCKED" && status !== "AWAITING_OWNER") {
       throw new FlowError(`step "${step.id}" is ${status}; --back-to answers a step that awaits the owner or is blocked`);
     }
+    // One line for the whole send-back, written to every reopened step, so
+    // the steps carry the same time and a reader counts it once.
+    const line = stamp(EVENT.sentBack(step.id, target, note));
     for (const s of c.wf.steps.slice(from)) {
       const state = stateOf(ws, s.id);
       if (state.status === "PENDING") continue;
       reopened.push(...state.artifacts.map((a) => a.path));
-      reopen(state, `owner sent the work back from ${step.id} to ${target}${note ? `: ${note}` : ""}`);
+      reopen(state, line);
     }
   });
   return [
@@ -772,7 +798,7 @@ function forwardTo(c: Ctx, step: Step, target: string, note?: string): string[] 
   const at = c.wf.steps.indexOf(step);
   if (to < 0) throw new FlowError(`no step "${target}" in workflow ${c.wf.name}`);
   if (to <= at) throw new FlowError(`step "${target}" is not after "${step.id}"; --forward-to names a later step (use --back-to to go back)`);
-  const reason = `owner jumped forward to ${target}${note ? `: ${note}` : ""}`;
+  const reason = SKIP_REASON.jumpedForward(target, note);
   updateWorkstream(c.root, c.slug, (ws) => {
     expectState(c, ws, step, ["PENDING", "IN_PROGRESS", "AWAITING_OWNER", "BLOCKED"]);
     for (const s of c.wf.steps.slice(at, to)) {
@@ -780,7 +806,7 @@ function forwardTo(c: Ctx, step: Step, target: string, note?: string): string[] 
       if (finished(state.status)) continue;
       state.status = "SKIPPED";
       state.skip_reason = reason;
-      state.history.push(stamp(`skipped: ${reason}`));
+      state.history.push(stamp(EVENT.skipped(reason)));
     }
   });
   return [`jumped forward from ${step.id} to ${target}`, "", ...present(c)];
@@ -796,7 +822,7 @@ function approveStep(c: Ctx, step: Step, note?: string): string[] {
     state.status = "COMPLETED";
     for (const a of state.artifacts) a.status = "approved";
     paths = state.artifacts.map((a) => a.path);
-    state.history.push(stamp(`owner approved${note ? `: ${note}` : ""}`));
+    state.history.push(stamp(EVENT.approved(note)));
   });
   return [
     `${step.id}: owner approved; COMPLETED`,

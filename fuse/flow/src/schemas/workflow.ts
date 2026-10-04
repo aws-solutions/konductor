@@ -42,29 +42,31 @@ export const WorkflowSchema = z
       if (earlier.has(step.id)) {
         ctx.addIssue({ code: "custom", path: ["steps", i, "id"], message: `duplicate step id "${step.id}"` });
       }
-      for (const id of list<string>(step.consumes)) {
+      list<string>(step.consumes).forEach((id, j) => {
         if (!artifactsSoFar.has(id)) {
           ctx.addIssue({
             code: "custom",
-            path: ["steps", i, "consumes"],
+            path: ["steps", i, "consumes", j],
             message: `"${step.id}" consumes "${id}", which no step before it produces or updates`,
           });
         }
-      }
+      });
       earlier.add(step.id);
       for (const a of [...list<{ artifact: string }>(step.produces), ...list<{ artifact: string }>(step.optional_produces), ...list<{ artifact: string }>(step.updates)]) {
         artifactsSoFar.add(a?.artifact);
       }
       // A gate routes back to this step or one listed before it.
-      for (const target of new Set(list<{ route_back_to?: string[] }>(step.gates).flatMap((g) => list<string>(g?.route_back_to)))) {
-        if (!earlier.has(target)) {
-          ctx.addIssue({
-            code: "custom",
-            path: ["steps", i, "gates"],
-            message: `"${step.id}" routes back to "${target}", which is not this step or a step listed before it`,
-          });
+      list<{ route_back_to?: string[] }>(step.gates).forEach((g, j) => {
+        for (const target of new Set(list<string>(g?.route_back_to))) {
+          if (!earlier.has(target)) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["steps", i, "gates", j, "route_back_to"],
+              message: `"${step.id}" routes back to "${target}", which is not this step or a step listed before it`,
+            });
+          }
         }
-      }
+      });
     });
   })
   // Last, because a refinement returns a new schema that does not carry metadata.

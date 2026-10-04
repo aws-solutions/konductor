@@ -6,7 +6,7 @@
 // defaults, the user's policy, the workflow, the team's policy, the user's
 // local policy for the project.
 
-import { existsSync, lstatSync, readdirSync, readFileSync, realpathSync } from "node:fs";
+import { existsSync, lstatSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import YAML from "yaml";
 import { FlowError } from "./errors.ts";
@@ -155,4 +155,74 @@ export function libraryEntry(
 export function libraryFolders(p: Project, id: string): string[] {
   const dirs = libraryDirs(p.root);
   return [dirs.project, dirs.user, dirs.package].map((dir) => join(dir, "artifacts", id));
+}
+
+export type LibraryLevel = "project" | "user" | "package";
+
+export interface LibraryListing {
+  id: string;
+  level: LibraryLevel;
+  folder: string;
+  guide?: string;
+  guideMissing?: string;
+  template?: string;
+  // The template's file name in the folder, such as template.md.
+  templateFile?: string;
+  review?: string;
+  // The level of the entry with the same id that this one replaces, or that
+  // replaces it: the most specific level wins as a whole (decision 24).
+  hides?: LibraryLevel;
+  hiddenBy?: LibraryLevel;
+}
+
+// Every artifact folder in the three libraries, most specific level first.
+export function listLibrary(root: string): LibraryListing[] {
+  const dirs = libraryDirs(root);
+  const levels: LibraryLevel[] = ["project", "user", "package"];
+  const found: LibraryListing[] = [];
+  for (const level of levels) {
+    const base = join(dirs[level], "artifacts");
+    if (!existsSync(base)) continue;
+    for (const id of readdirSync(base).sort()) {
+      const folder = join(base, id);
+      if (!statSafe(folder)) continue;
+      const files = readdirSync(folder).sort();
+      const template = files.find((f) => /^template\.[^.]+$/.test(f));
+      const guidePath = join(folder, "guide.md");
+      const guide = existing(guidePath);
+      const linked = !guide && isSymlink(guidePath);
+      found.push({
+        id,
+        level,
+        folder,
+        ...(guide ? { guide } : {}),
+        ...(linked ? { guideMissing: guidePath } : {}),
+        ...(template && existing(join(folder, template)) ? { template: existing(join(folder, template)), templateFile: template } : {}),
+        ...(existing(join(folder, "review.md")) ? { review: existing(join(folder, "review.md")) } : {}),
+      });
+    }
+  }
+  for (const entry of found) {
+    const same = found.filter((e) => e.id === entry.id);
+    const winner = same[0];
+    if (winner === entry && same.length > 1) entry.hides = same[1].level;
+    if (winner !== entry) entry.hiddenBy = winner.level;
+  }
+  return found;
+}
+
+function statSafe(path: string): boolean {
+  try {
+    return statSync(path).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+function isSymlink(path: string): boolean {
+  try {
+    return lstatSync(path).isSymbolicLink();
+  } catch {
+    return false;
+  }
 }

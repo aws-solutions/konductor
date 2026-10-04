@@ -17,7 +17,8 @@ const USAGE = `usage:
                             [--not-produced <artifact> <reason>]...
                                                 the current step's work is done: refused until every artifact
                                                 it produces exists or is reported --not-produced, every
-                                                artifact it updates is accounted for, and its checks pass
+                                                artifact it updates is accounted for, and its checks pass.
+                                                An <artifact> is its id or its path
   fuse-flow continue <slug> --blocked <why>     the agent cannot finish the step, for example at the review
                                                 round cap; the owner decides
   fuse-flow continue <slug> --skip <why>        skip the step: its condition does not hold, or the owner asked

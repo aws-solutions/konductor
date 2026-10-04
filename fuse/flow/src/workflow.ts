@@ -1,45 +1,32 @@
 // SPDX-License-Identifier: Apache-2.0
-// Loading a workflow file, and describing its gates in fuse-flow output. The
-// fields themselves are defined in schemas/.
+// Loading a workflow file. Parsing its text is in parse.ts, which Komposer
+// shares; the fields themselves are defined in schemas/.
 
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, isAbsolute, resolve } from "node:path";
-import YAML from "yaml";
 import { FlowError } from "./errors.ts";
-import type { Gate } from "./schemas/gate.ts";
-import { WorkflowSchema, type Workflow } from "./schemas/workflow.ts";
+import { formatIssue, parseWorkflowText } from "./parse.ts";
+import type { Workflow } from "./schemas/workflow.ts";
 
+export { describeGate, describeGates } from "./parse.ts";
 export type { Condition, Gate, GateKind } from "./schemas/gate.ts";
 export type { Artifact, Step } from "./schemas/step.ts";
 export type { Workflow } from "./schemas/workflow.ts";
 
-export function describeGate(gate: Gate): string {
-  return `${gate.kind}(${gate.text})`;
-}
-
-export function describeGates(gates: Gate[]): string {
-  return gates.length ? gates.map(describeGate).join(", ") : "none";
-}
-
 export function loadWorkflow(path: string): Workflow {
   if (!existsSync(path)) throw new FlowError(`no workflow at ${path}`);
-  let yaml: unknown;
-  try {
-    yaml = YAML.parse(readFileSync(path, "utf8"));
-  } catch (e) {
-    throw new FlowError(`${path} is not valid YAML: ${(e as Error).message}`);
-  }
-  const parsed = WorkflowSchema.safeParse(yaml);
-  if (!parsed.success) {
-    const issues = parsed.error.issues.map((i) => `  ${i.path.join(".") || "(top level)"}: ${i.message}`);
+  const parsed = parseWorkflowText(readFileSync(path, "utf8"));
+  if (!parsed.ok) {
+    if (parsed.issues[0]?.code === "yaml") throw new FlowError(`${path} is ${parsed.issues[0].message}`);
+    const issues = parsed.issues.map((i) => `  ${formatIssue(i)}`);
     throw new FlowError(`${path} is not a valid workflow:\n${issues.join("\n")}`);
   }
   // A gate's review guide is relative to the workflow file, so a workflow and
   // its guides can be moved together.
-  for (const step of parsed.data.steps) {
+  for (const step of parsed.workflow.steps) {
     for (const gate of step.gates) {
       if (gate.guide && !isAbsolute(gate.guide)) gate.guide = resolve(dirname(path), gate.guide);
     }
   }
-  return parsed.data;
+  return parsed.workflow;
 }

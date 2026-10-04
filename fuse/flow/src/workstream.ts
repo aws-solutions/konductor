@@ -2,11 +2,11 @@
 // The state of one workstream, .konductor/workstreams/<slug>.yml: where each
 // step stands. Only fuse-flow writes it, and git ignores it.
 
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import YAML from "yaml";
 import { FlowError } from "./errors.ts";
-import { workstreamFile, workstreamsDir } from "./project.ts";
+import { findWorkflow, workstreamFile, workstreamsDir } from "./project.ts";
 import { type StepState, type Workstream, WorkstreamSchema } from "./schemas/workstream.ts";
 
 export type { RecordedArtifact, StepState, StepStatus, Workstream } from "./schemas/workstream.ts";
@@ -94,4 +94,40 @@ function withLock(lockFile: string, fn: () => void): void {
   } finally {
     rmSync(lockFile, { force: true });
   }
+}
+
+export interface WorkstreamListing {
+  slug: string;
+  // The workflow file the workstream's `workflow` field resolves to now;
+  // absent when it resolves to none, for example after a rename.
+  workflowPath?: string;
+  workstream?: Workstream;
+  // Why the state file could not be read.
+  error?: string;
+}
+
+// Every workstream in the project, by slug.
+export function listWorkstreams(root: string): WorkstreamListing[] {
+  const dir = workstreamsDir(root);
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir)
+    .filter((name) => name.endsWith(".yml"))
+    .sort()
+    .map((name) => {
+      const slug = name.slice(0, -".yml".length);
+      let workstream: Workstream;
+      try {
+        workstream = readWorkstream(root, slug);
+      } catch (e) {
+        return { slug, error: (e as Error).message };
+      }
+      let workflowPath: string | undefined;
+      try {
+        const path = findWorkflow(root, workstream.workflow);
+        workflowPath = existsSync(path) ? resolve(root, path) : undefined;
+      } catch {
+        workflowPath = undefined;
+      }
+      return { slug, workstream, ...(workflowPath ? { workflowPath } : {}) };
+    });
 }

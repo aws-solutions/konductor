@@ -13,10 +13,11 @@ export type GateKind = (typeof GATE_KINDS)[number];
 // gates only; max_rounds is undefined when the workflow does not set it, so
 // policy can fill it in (decision 37). route_back_to lists the steps to
 // suggest sending the work back to.
-export type Gate = { kind: GateKind; text: string; max_rounds?: number; guide?: string; route_back_to: string[] };
+export type Gate = { kind: GateKind; text: string; description?: string; max_rounds?: number; guide?: string; route_back_to: string[] };
 
 // A condition is a gate without the fields that only make sense on a gate.
-export type Condition = { kind: GateKind; text: string };
+// `description` is for the reader only; the engine never reads it.
+export type Condition = { kind: GateKind; text: string; description?: string };
 
 export const STEP_ID = z.string().regex(/^[a-z0-9][a-z0-9-]*$/, "must be lowercase letters, digits and hyphens");
 const isStepId = (v: unknown): v is string => STEP_ID.safeParse(v).success;
@@ -71,7 +72,7 @@ function parseGate(v: unknown, asCondition: boolean): Gate | string {
     for (const field of ["max_rounds", "guide", "route_back_to"] as const) {
       if (extra[field] !== undefined) return `a condition has no ${field}`;
     }
-    return { kind, text: trimmed, route_back_to: [] };
+    return { kind, text: trimmed, ...(description !== undefined ? { description: description as string } : {}), route_back_to: [] };
   }
   const routes = routeBackTo === undefined ? [] : Array.isArray(routeBackTo) ? routeBackTo : [routeBackTo];
   if (!routes.every(isStepId)) return `route_back_to names step ids; got ${JSON.stringify(routeBackTo)}`;
@@ -82,6 +83,7 @@ function parseGate(v: unknown, asCondition: boolean): Gate | string {
   if (guide !== undefined && kind !== "agent") return "guide goes on an agent gate only";
   if (guide !== undefined && (typeof guide !== "string" || !guide.trim())) return "guide must be a path";
   const gate: Gate = { kind, text: trimmed, route_back_to: routes };
+  if (description !== undefined) gate.description = description as string;
   if (maxRounds !== undefined) gate.max_rounds = maxRounds as number;
   if (guide !== undefined) gate.guide = (guide as string).trim();
   return gate;
@@ -212,7 +214,7 @@ export const ConditionSchema = z
       ctx.addIssue({ code: "custom", message: parsed });
       return undefined;
     }
-    return { kind: parsed.kind, text: parsed.text };
+    return { kind: parsed.kind, text: parsed.text, ...(parsed.description !== undefined ? { description: parsed.description } : {}) };
   })
   .meta({
     description:
