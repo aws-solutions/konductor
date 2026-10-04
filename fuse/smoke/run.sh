@@ -15,7 +15,7 @@ defaults: _k-phase-chain; fuse agent opencode with amazon-bedrock/global.openai.
           orchestrator opencode with amazon-bedrock/global.openai.gpt-6.1-sol; ~/fuse-smoke-runs, 30 turns,
           60 minutes for the whole run, 30 minutes per fuse agent turn,
           opencode on Amazon Bedrock with AWS profile opencode-bedrock in us-west-2
-A workflow name is looked up in fuse/flow/workflows/, then fuse/smoke/fixtures/. A workflow
+A workflow name is looked up at any depth of fuse/flow/workflows/, then in fuse/smoke/fixtures/. A workflow
 that does not ship with fuse-flow is copied into the project's .konductor/workflows/, so the
 fuse agent finds it by name. A sibling <workflow>.policy-overrides file is copied to the
 project's .konductor/policy-overrides.yml, and a sibling <workflow>.library/ directory is copied
@@ -57,13 +57,16 @@ smoke="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 clone="$(cd "$smoke/../.." && pwd)"
 case "$workflow" in
   */* | *.yml | *.yaml) workflow_file="$(cd "$(dirname "$workflow")" && pwd)/$(basename "$workflow")" ;;
-  *) workflow_file="$clone/fuse/flow/workflows/$workflow.yml"
-     [ -f "$workflow_file" ] || workflow_file="$smoke/fixtures/$workflow.yml" ;;
+  *) # A name is looked up like fuse-flow does: at any depth of the shipped workflows, then fixtures.
+     found="$(find -L "$clone/fuse/flow/workflows" -name "$workflow.yml" -type f 2>/dev/null)"
+     [ "$(printf '%s\n' "$found" | grep -c .)" -le 1 ] ||
+       { echo "run.sh: workflow name $workflow is ambiguous:" >&2; echo "$found" >&2; exit 64; }
+     workflow_file="${found:-$smoke/fixtures/$workflow.yml}" ;;
 esac
 [ -f "$workflow_file" ] || { echo "run.sh: no workflow named or at $workflow" >&2; exit 64; }
 workflow_name="$(basename "$workflow_file" .yml)"
 shipped=no
-[ "$workflow_file" = "$clone/fuse/flow/workflows/$workflow_name.yml" ] && shipped=yes
+case "$workflow_file" in "$clone/fuse/flow/workflows/"*) shipped=yes ;; esac
 case "$fuse_harness" in kiro | opencode) ;; *) usage ;; esac
 case "$orchestrator_harness" in kiro | opencode) ;; *) usage ;; esac
 command -v kiro-cli >/dev/null || { echo "run.sh: kiro-cli is not on PATH" >&2; exit 1; }
