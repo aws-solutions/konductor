@@ -1,7 +1,19 @@
 # fuse-flow
 
-fuse-flow gives agents a deterministic lookup of the next workflow step. `fuse-flow start` prints
-what to do now. The agent does that work and runs `fuse-flow continue`, which checks and records
+fuse-flow keeps an agent on a defined process. 
+You choose one of the pre-defined workflows, or define your own: an ordered sequence of activities and the artifacts they produce. 
+The engine reads that workflow and the work done so far, and calculates the next step.
+
+You will not interact with the engine. The agent guides you through the steps. But instead of interpreting prose instructions and reason about it, 
+the agent invokes this deterministic program behind the scenes to decide the next step.
+
+
+## Behind the scenes
+
+You do not need to know any of this, but you're welcome to explore and understand what's happening.
+
+The agent invokes `fuse-flow start` on the terminal, which prints what to do now. 
+The agent does that work and runs `fuse-flow continue`, which checks and records
 the step before printing the next one. fuse-flow refuses completion while required artifacts are
 unaccounted for or a mechanical gate fails, and it hands decisions to the owner when required.
 
