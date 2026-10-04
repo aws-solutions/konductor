@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: "127.0.0.1",
-    // The workflow files live in ../workflows, outside this app's root.
+    // The workflow files live in ../flow/workflows, outside this app's root.
     fs: { allow: [".."] },
   },
   preview: { host: "127.0.0.1" },

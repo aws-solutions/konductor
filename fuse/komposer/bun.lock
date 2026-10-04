@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "fuse-flow-vizualisation",
+      "name": "fuse-komposer",
       "dependencies": {
         "react": "19.3.0",
         "react-dom": "19.3.0",

@@ -1,9 +1,9 @@
 {
-  "name": "fuse-flow-vizualisation",
+  "name": "fuse-komposer",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Read-only visualization of the fuse-flow workflow files in ../workflows.",
+  "description": "Read-only visualization of the fuse-flow workflow files in ../flow/workflows.",
   "license": "Apache-2.0",
   "scripts": {
     "dev": "bun --bun vite",
