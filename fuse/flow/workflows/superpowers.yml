@@ -1,0 +1,126 @@
+# $schema: ./schemas/workflow.schema.json
+# yaml-language-server: $schema=./schemas/workflow.schema.json
+# above comments enable live schema validation in WebStorm and vscode
+#
+# Superpowers as a native fuse-flow workflow, after the skills of
+# https://github.com/obra/superpowers (MIT). It needs no Superpowers skills installed:
+# the design spec and the implementation plan have guides and templates in fuse-flow's
+# library, the final review has a guide next to this file, and every other step states
+# its procedure in its instruction.
+#
+# Start a workstream with:  fuse-flow start <slug> --workflow superpowers
+#
+# fuse-flow keeps a workstream's state, and runs its checks, in the checkout where the
+# workstream started. So the work stays in that checkout: an owner who wants a separate
+# worktree starts the workstream inside it.
+version: 1
+name: superpowers
+description: >
+  Spec-driven development after obra/superpowers. Design with the owner, plan for an implementer
+  without context, build test-first with independent review, and let the owner decide how the
+  branch is integrated.
+steps:
+  - id: design
+    title: Design
+    phase: Design
+    instruction: >
+      Turn the owner's idea into an approved design. Before your first question, classify the
+      request and say the classification, so the owner can override it. A bounded change is a
+      well-scoped change to a flow that already exists in this repository: ask the questions that
+      matter, present a short design in chat, and report the spec as not produced, giving
+      "bounded change" as the reason. Anything else is architectural, including every new
+      project: write the spec as its guide describes. A spike, a question whose answer is not code
+      you keep, does not need this workflow; say so and let the owner decide. When in doubt, take
+      the heavier path, and step up when hidden complexity appears. Read-only exploration is
+      allowed; do not set up, scaffold, plan or implement anything until the owner approves the
+      design.
+    produces:
+      - artifact: design-spec
+        path: docs/superpowers/specs/{slug}-design.md
+    gates:
+      - owner-action: approve the design, either the written spec or the short design given in chat
+
+  - id: plan
+    title: Implementation plan
+    phase: Design
+    instruction: >
+      Turn the approved spec into an implementation plan for an engineer with no context, as its
+      guide describes. Recommend an execution mode, subagent-driven or inline, and give the
+      reason. Do not start implementing until the owner approves the plan and chooses the mode.
+    condition:
+      agent: the design step wrote a spec; a bounded change whose design was approved in chat needs no plan
+    consumes: [design-spec]
+    produces:
+      - artifact: implementation-plan
+        path: docs/superpowers/plans/{slug}.md
+    gates:
+      - owner-action: approve the implementation plan and choose the execution mode
+        route_back_to: design
+
+  - id: workspace
+    title: Branch and baseline
+    phase: Build
+    instruction: >
+      Prepare this checkout for the work. If it is on the integration branch, create a feature
+      branch from HEAD, named after the workstream unless the owner prefers another name, so that
+      it carries the spec and plan commits. Never implement on the integration branch without the
+      owner's explicit consent. Then run the project's setup, such as installing dependencies, and
+      establish a clean test baseline. If the baseline fails, report the failures and let the
+      owner decide whether to continue or investigate first.
+    gates:
+      - check: default
+
+  - id: implement
+    title: Implement
+    phase: Build
+    instruction: >
+      Execute the plan in the mode the owner chose, recorded in the plan's front matter, or
+      implement the bounded design approved in chat. Work continuously: do not stop between tasks
+      to check in. Decide conflicts, ambiguities and plan defects yourself, with the spec as the
+      binding authority, and record each decision as a ruling. Stop and ask only before an
+      irreversible or destructive operation, a security-sensitive action, a side effect outside
+      this checkout such as a push to a shared branch, or when the plan is so broken that every
+      way forward is a guess.
+
+      Keep a progress ledger in a git-ignored file, such as .superpowers/sdd/<slug>/progress.md,
+      with one line per completed task and one per ruling, and trust it and the git log over your
+      memory after a context reset.
+
+      In subagent-driven mode, give each task to a fresh implementer with only that task's text,
+      the interfaces it touches and the global constraints, one task at a time and never in
+      parallel. After each task, have a fresh reviewer check spec compliance and code quality
+      against the task's diff, and send the required fixes back to the implementer; after five
+      fix rounds, decide each open finding yourself and record the ruling. In inline mode,
+      implement every task yourself.
+
+      In either mode, work test-first: write the test, watch it fail for the expected reason,
+      write the least code that makes it pass, and watch it pass. When something fails
+      unexpectedly, find the root cause before you change code. Claim a task complete only after
+      running its tests in this session and reading the output.
+    consumes: [design-spec, implementation-plan]
+    updates:
+      - artifact: code
+        path: .
+    gates:
+      - check: default
+      - agent: obtain a fresh review of the whole branch, from the commit it started at to HEAD
+        guide: superpowers/whole-branch-review.md
+        max_rounds: 2
+        route_back_to: plan
+
+  - id: finish
+    title: Finish the branch
+    phase: Finish
+    instruction: >
+      Integrate the finished branch the way the owner chooses. Confirm the base branch the work
+      started from, and ask when it is not certain, because merging into the wrong base is
+      expensive to undo. Present exactly three options: merge the branch into its base locally,
+      push it and open a pull request, or keep it as it is. Discard the work only when the owner
+      explicitly asks for it, and only after they confirm by typing "discard". Carry out only the
+      owner's choice. After a local merge, run the tests on the merged result, and delete the
+      branch only when they pass. For a pull request, report its address. Then record the choice
+      with --owner-approved and a note.
+    gates:
+      - check: default
+      - script: test -z "$(git status --porcelain)"
+      - owner-action: choose how to integrate the branch

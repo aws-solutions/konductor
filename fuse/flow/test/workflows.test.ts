@@ -209,7 +209,7 @@ describe("finding an artifact's guide and template in the library", () => {
 describe("the workflows shipped in fuse/flow/workflows", () => {
   const shipped = readdirSync(join(FLOW_DIR, "workflows")).filter((f) => f.endsWith(".yml"));
 
-  test("there are six of them", () => {
+  test("there are seven of them", () => {
     expect(shipped.sort()).toEqual([
       "_k-full-sdlc.yml",
       "_k-phase-chain.yml",
@@ -217,6 +217,7 @@ describe("the workflows shipped in fuse/flow/workflows", () => {
       "custom-example-large.yml",
       "custom-example-medium.yml",
       "custom-example-small.yml",
+      "superpowers.yml",
     ]);
   });
 
