@@ -4,8 +4,8 @@
 // the workflows shipped in fuse/flow/workflows.
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { readdirSync, readFileSync, symlinkSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { existsSync, readdirSync, readFileSync, symlinkSync } from "node:fs";
+import { basename, dirname, join, resolve } from "node:path";
 import { FLOW_DIR, Repo } from "./helpers";
 
 const ONE_STEP = `version: 1
@@ -59,7 +59,7 @@ describe("choosing the workflow", () => {
     expect(repo.refused("start", "other", "--workflow", "nope")).toContain('no workflow named "nope" in');
   });
 
-  test("a name is also found in a subfolder of a workflows directory, including a symlinked one", () => {
+  test("a name is found at any depth of a workflows directory, including through a symlink", () => {
     repo.write(".konductor/workflows/personal/mine.yml", ONE_STEP.replace("name: one", "name: personal"));
     repo.ok("start", "feat", "--workflow", "mine");
     expect(repo.state("feat").workflow).toBe("mine");
@@ -69,15 +69,19 @@ describe("choosing the workflow", () => {
     symlinkSync(join(repo.root, "team-repo"), join(repo.root, ".konductor/workflows/team"));
     repo.ok("start", "other", "--workflow", "shared");
     expect(repo.ok("status", "other")).toStartWith("workstream other (team)");
+
+    repo.write(".konductor/workflows/examples/deep/nested.yml", ONE_STEP.replace("name: one", "name: nested"));
+    repo.ok("start", "third", "--workflow", "nested");
+    expect(repo.ok("status", "third")).toStartWith("workstream third (nested)");
   });
 
-  test("a name found twice in one workflows directory is refused with both paths", () => {
+  test("a name found twice in one workflows directory, at any depths, is refused with both paths", () => {
     const top = repo.write(".konductor/workflows/mine.yml", ONE_STEP);
-    const personal = repo.write(".konductor/workflows/personal/mine.yml", ONE_STEP);
+    const nested = repo.write(".konductor/workflows/examples/deep/mine.yml", ONE_STEP);
     const out = repo.refused("start", "feat", "--workflow", "mine");
     expect(out).toContain('workflow name "mine" is ambiguous');
     expect(out).toContain(top);
-    expect(out).toContain(personal);
+    expect(out).toContain(nested);
   });
 
   test("workstreams in one repository can follow different workflows", () => {
@@ -206,33 +210,57 @@ describe("finding an artifact's guide and template in the library", () => {
   });
 });
 
+// The tracked workflows, at any depth below fuse/flow/workflows, as paths
+// relative to it. personal/ and team/ are gitignored and often symlinks.
+function shippedWorkflows(): string[] {
+  const dir = join(FLOW_DIR, "workflows");
+  const walk = (rel: string): string[] =>
+    readdirSync(join(dir, rel), { withFileTypes: true })
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .flatMap((entry) => {
+        const path = rel ? `${rel}/${entry.name}` : entry.name;
+        if (entry.isDirectory()) return ["personal", "team", "schemas"].includes(path) ? [] : walk(path);
+        return entry.name.endsWith(".yml") ? [path] : [];
+      });
+  return walk("");
+}
+
 describe("the workflows shipped in fuse/flow/workflows", () => {
-  const shipped = readdirSync(join(FLOW_DIR, "workflows")).filter((f) => f.endsWith(".yml"));
+  const shipped = shippedWorkflows();
 
   test("there are seven of them", () => {
     expect(shipped.sort()).toEqual([
       "_k-full-sdlc.yml",
       "_k-phase-chain.yml",
-      "custom-example-ambiguous.yml",
-      "custom-example-large.yml",
-      "custom-example-medium.yml",
-      "custom-example-small.yml",
-      "superpowers.yml",
+      "examples/custom-example-ambiguous.yml",
+      "examples/custom-example-large.yml",
+      "examples/custom-example-medium.yml",
+      "examples/custom-example-small.yml",
+      "examples/superpowers/superpowers.yml",
     ]);
   });
 
   for (const file of shipped) {
-    test(`${file} is valid, starts by name, and every guide its artifacts name resolves`, () => {
+    test(`${file} is valid, starts by name, and every guide its artifacts and gates name resolves`, () => {
       repo.ok("validate", join(FLOW_DIR, "workflows", file));
-      const name = file.replace(/\.yml$/, "");
+      const name = basename(file, ".yml");
       // Walk every step with --forward-to, so each step block is printed once.
-      const workflow = Bun.YAML.parse(readFileSync(join(FLOW_DIR, "workflows", file), "utf8")) as { steps: Array<{ id: string }> };
+      const workflow = Bun.YAML.parse(readFileSync(join(FLOW_DIR, "workflows", file), "utf8")) as {
+        steps: Array<{ id: string; gates?: unknown }>;
+      };
       let out = repo.ok("start", "feat", "--workflow", name);
       for (const step of workflow.steps.slice(1)) {
         expect(out).not.toContain("guide is missing");
         out = repo.ok("continue", "feat", "--forward-to", step.id);
       }
       expect(out).not.toContain("guide is missing");
+      // A gate's own review guide is relative to the workflow file.
+      for (const step of workflow.steps) {
+        const gates = (Array.isArray(step.gates) ? step.gates : step.gates ? [step.gates] : []) as Array<{ guide?: string }>;
+        for (const gate of gates) {
+          if (gate.guide) expect(existsSync(resolve(FLOW_DIR, "workflows", dirname(file), gate.guide))).toBe(true);
+        }
+      }
     });
   }
 });
@@ -246,16 +274,14 @@ describe("the workflow JSON Schema", () => {
     expect(proc.exitCode).toBe(0);
   });
 
-  // Only the tracked workflows: personal/ and team/ are gitignored and often symlinks.
-  const files = readdirSync(join(FLOW_DIR, "workflows")).filter((f) => f.endsWith(".yml"));
-  for (const file of files) {
+  for (const file of shippedWorkflows()) {
     test(`${file} names schemas/workflow.schema.json for WebStorm and for VS Code`, () => {
       const text = readFileSync(join(FLOW_DIR, "workflows", file), "utf8");
       const webstorm = /^# \$schema: (\S+)$/m.exec(text)?.[1];
       const vscode = /^# yaml-language-server: \$schema=(\S+)$/m.exec(text)?.[1];
       for (const path of [webstorm, vscode]) {
         expect(path).toBeDefined();
-        expect(resolve(FLOW_DIR, "workflows", path!)).toBe(SCHEMA);
+        expect(resolve(FLOW_DIR, "workflows", dirname(file), path!)).toBe(SCHEMA);
       }
     });
   }

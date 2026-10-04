@@ -5,7 +5,7 @@
 
 import { existsSync, readdirSync, realpathSync, statSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { FlowError, UsageError } from "./errors.ts";
 
 // The nearest directory at or above `cwd` that contains `.git` (a directory in
@@ -38,35 +38,22 @@ export function workflowDirs(root: string): string[] {
   ];
 }
 
-// The folders of one workflows directory that a name is looked up in: the
-// directory itself, then each folder directly inside it (such as personal/,
-// or a team/ symlink to another repository), in alphabetical order.
-function workflowFolders(dir: string): string[] {
-  if (!existsSync(dir)) return [];
-  const subfolders = readdirSync(dir)
-    .sort()
-    .map((name) => join(dir, name))
-    .filter((path) => existsSync(path) && statSync(path).isDirectory());
-  return [dir, ...subfolders];
-}
-
 // The file a workflow reference points at: the path itself, or <name>.yml in
-// the first workflows directory that has it, at its top level or in one of its
-// folders. A name found more than once in that directory is refused rather
-// than guessed.
+// the first workflows directory that has it, at any depth below it (such as
+// examples/superpowers/, personal/, or a team/ symlink to another repository).
+// A name found more than once in that directory is refused rather than guessed.
 export function findWorkflow(root: string, ref: string): string {
   if (isWorkflowPath(ref)) return ref;
   const dirs = workflowDirs(root);
   for (const dir of dirs) {
-    const found = workflowFolders(dir)
-      .map((folder) => join(folder, `${ref}.yml`))
-      .filter((path) => existsSync(path));
+    if (!isDirectory(dir)) continue;
+    const found = workflowFilesBelow(root, dir).filter((path) => basename(path) === `${ref}.yml`);
     if (found.length > 1) {
       throw new FlowError(`workflow name "${ref}" is ambiguous; rename one of: ${found.join(", ")}`);
     }
     if (found.length === 1) return found[0];
   }
-  throw new FlowError(`no workflow named "${ref}" in ${dirs.join(", ")} or the folders directly inside them`);
+  throw new FlowError(`no workflow named "${ref}" in ${dirs.join(", ")} or any folder below them`);
 }
 
 export function isDirectory(path: string): boolean {

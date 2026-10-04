@@ -31,11 +31,11 @@ Use this skill in one of three modes:
   `clone=<path>`. The engine is `<clone>/fuse/flow/fuse-flow`. The full contract is
   `<clone>/fuse/flow/README.md`, and the field definitions are in `<clone>/fuse/flow/src/schemas/`.
 - **Read the existing examples:** every `.yml` in `<clone>/fuse/flow/workflows/`, and the artifact
-  library in `<clone>/fuse/flow/library/artifacts/`. `superpowers.yml` is the most complete
-  example of a native workflow. `_k-full-sdlc.yml` shows a long workflow whose guides link to
-  skills shipped in the clone.
-- **Choose where the workflow lives.** fuse-flow looks a name up in this order, and the first
-  location with a match wins:
+  library in `<clone>/fuse/flow/library/artifacts/`. `examples/superpowers/superpowers.yml` is the
+  most complete example of a native workflow, and keeps its own review guide in its folder.
+  `_k-full-sdlc.yml` shows a long workflow whose guides link to skills shipped in the clone.
+- **Choose where the workflow lives.** fuse-flow looks a name up in these locations, at any depth
+  below each, and the first location with a match wins:
 
   | Location | Use it for |
   |---|---|
@@ -277,7 +277,7 @@ judgment call as a deviation and report it at the end.
 
 ### Example
 
-`fuse/flow/workflows/superpowers.yml` encodes [obra/superpowers](https://github.com/obra/superpowers):
+`fuse/flow/workflows/examples/superpowers/superpowers.yml` encodes [obra/superpowers](https://github.com/obra/superpowers):
 
 | Superpowers | superpowers.yml |
 |---|---|

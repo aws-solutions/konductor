@@ -78,12 +78,12 @@ The workflow definitions in [`fuse/flow/workflows/`](fuse/flow/workflows/) are t
 | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `_k-full-sdlc.yml`         | Elicitation, codebase analysis, requirements, design, design review, feature splitting, specs, implementation, code review, testing, documentation and a final summary, with owner gates between phases. |
 | `_k-phase-chain.yml`       | The lighter chain: requirements, design, feature splitting, specs, implementation, code review and QA, with no owner gates.                                                |
-| `custom-example-*.yml`     | Examples of project-specific workflows at different sizes.                                                                                                                 |
-| `superpowers.yml`          | Spec-driven development after obra/superpowers: design, plan, branch and baseline, test-first implementation with a whole-branch review, and the owner's choice of integration. Needs no Superpowers skills installed. |
+| `examples/custom-example-*.yml` | Examples of project-specific workflows at different sizes.                                                                                                       |
+| `examples/superpowers/superpowers.yml` | Spec-driven development after obra/superpowers: design, plan, branch and baseline, test-first implementation with a whole-branch review, and the owner's choice of integration. Needs no Superpowers skills installed. |
 
 For a single task, ask the session to use a skill directly; see [Usage Examples](#usage-examples).
 
-You can edit these workflows or add your own in the same folder. Personal workflows that you do not want to share go in `fuse/flow/workflows/personal/`, which is gitignored. To share workflows with a group but not with everybody, keep them in a separate repository and add a symlink to it named `fuse/flow/workflows/team`, which is gitignored too. fuse-flow finds a workflow by name in either folder; [`fuse/flow/README.md`](fuse/flow/README.md) gives the lookup order.
+You can edit these workflows or add your own in the same folder. Personal workflows that you do not want to share go in `fuse/flow/workflows/personal/`, which is gitignored. To share workflows with a group but not with everybody, keep them in a separate repository and add a symlink to it named `fuse/flow/workflows/team`, which is gitignored too. fuse-flow finds a workflow by name in any folder below `fuse/flow/workflows/`; [`fuse/flow/README.md`](fuse/flow/README.md) gives the lookup order.
 
 ## Skills
 

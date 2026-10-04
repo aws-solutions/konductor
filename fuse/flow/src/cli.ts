@@ -37,8 +37,8 @@ const USAGE = `usage:
                                                 it, so \`fuse-flow validate .\` checks them all
 
 workflows: a name is looked up as <name>.yml in .konductor/workflows/, ~/.konductor/workflows/,
-           then the workflows that ship with fuse-flow; in each, at the top level and in the
-           folders directly inside it (personal/, team/)
+           then the workflows that ship with fuse-flow; in each, at any depth (examples/,
+           personal/, team/)
 library:   artifact guides in .konductor/library/artifacts/<id>/, ~/.konductor/library/artifacts/<id>/,
            then the library that ships with fuse-flow
 policy:    ~/.konductor/policy-overrides.yml, .konductor/policy-overrides.yml,

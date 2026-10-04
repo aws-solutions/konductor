@@ -1,5 +1,5 @@
-# $schema: ./schemas/workflow.schema.json
-# yaml-language-server: $schema=./schemas/workflow.schema.json
+# $schema: ../../schemas/workflow.schema.json
+# yaml-language-server: $schema=../../schemas/workflow.schema.json
 # above comments enable live schema validation in WebStorm and vscode
 #
 # Superpowers as a native fuse-flow workflow, after the skills of
@@ -104,7 +104,7 @@ steps:
     gates:
       - check: default
       - agent: obtain a fresh review of the whole branch, from the commit it started at to HEAD
-        guide: superpowers/whole-branch-review.md
+        guide: whole-branch-review.md
         max_rounds: 2
         route_back_to: plan
 

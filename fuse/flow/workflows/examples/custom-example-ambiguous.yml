@@ -1,5 +1,5 @@
-# $schema: ./schemas/workflow.schema.json
-# yaml-language-server: $schema=./schemas/workflow.schema.json
+# $schema: ../schemas/workflow.schema.json
+# yaml-language-server: $schema=../schemas/workflow.schema.json
 # SPDX-License-Identifier: Apache-2.0
 # Demo workflow, ambiguous: the request is unclear, so the weight sits up front.
 # Heavy discovery (elicitation, then research and analysis, which do not depend
