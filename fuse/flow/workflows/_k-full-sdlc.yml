@@ -114,9 +114,10 @@ steps:
   - id: code-review
     title: 8. Code review and pull request (per feature)
     instruction: >
-      Commit each feature (git-workflow/SKILL.md), open one pull request per feature, and review the
-      diff. Fix CRITICAL findings on the feature branch, re-run the build and tests, and record the
-      review. Never merge.
+      Commit each feature (git-workflow/SKILL.md), open one pull request per feature, or push the
+      feature branch when the project has no pull request tool, and review the diff. Fix CRITICAL
+      findings on the feature branch, re-run the build and tests, and record the review. Never
+      merge.
     produces:
       - artifact: code-review
         path: .konductor/review/code-review.md
@@ -124,15 +125,15 @@ steps:
       - artifact: code
         path: .
     gates:
-      - owner-action: approve the pull requests for all features at once
+      - owner-action: approve the pull requests or pushed branches for all features at once
         route_back_to: implementation
   - id: testing
     title: 9. Testing (per feature)
     instruction: >
       Find the coverage gaps for what was implemented, write the missing tests on the feature branch
-      and update its pull request. Mark a feature NEEDS_REVALIDATION in code-review.md when this
-      step changes a pull request that was already reviewed. Record the remaining gaps with a reason
-      each.
+      and update its pull request, or push the branch when the feature has no pull request. Mark a
+      feature NEEDS_REVALIDATION in code-review.md when this step changes a feature that was
+      already reviewed. Record the remaining gaps with a reason each.
     produces:
       - artifact: test-coverage
         path: .konductor/testing/test-coverage.md
