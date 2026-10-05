@@ -8,6 +8,20 @@ not per individual commit.
 
 ## [Unreleased]
 
+### Changed
+
+- `konductor init`'s starter `.konductor/config.yml` now contains only `version` and
+  `telemetry.enabled`, instead of the full six-field schema. An existing config with the other
+  fields still parses and is validated if present; `konductor doctor` reports `tier` and
+  `default_severity` from it.
+
+### Deprecated
+
+- `konductor init --preset <solo|team|org>`. Still accepted and still accepts only those three
+  values, but has no effect on the scaffolded output: every preset produces the same file. The
+  flag is hidden from `--help` and prints a deprecation warning to stderr when passed; it will be
+  removed in a future release.
+
 ### Removed
 
 - `konductor metrics`. It was a stub that printed "not yet implemented"; the CLI now exits `64`

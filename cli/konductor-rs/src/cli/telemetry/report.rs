@@ -185,22 +185,16 @@ fn resolved_addresses_include_disallowed_host(host: &str) -> bool {
 const DNS_RESOLUTION_TIMEOUT: std::time::Duration = std::time::Duration::from_millis(500);
 
 #[derive(Debug, Default, serde::Deserialize)]
-struct RawTelemetrySection {
-    #[serde(default)]
-    enabled: Option<bool>,
-    #[serde(default)]
-    endpoint: Option<String>,
-}
-
-#[derive(Debug, Default, serde::Deserialize)]
 struct RawConfigTelemetryOnly {
     #[serde(default)]
-    telemetry: Option<RawTelemetrySection>,
+    telemetry: Option<super::super::config::RawTelemetry>,
 }
 
 /// `None` on missing/unreadable/malformed -- the same "absent"
 /// tolerance every telemetry read path applies.
-fn read_telemetry_config(target_dir: &std::path::Path) -> Option<RawTelemetrySection> {
+fn read_telemetry_config(
+    target_dir: &std::path::Path,
+) -> Option<super::super::config::RawTelemetry> {
     let path = target_dir
         .join(super::super::config::KONDUCTOR_DIR_NAME)
         .join(super::super::config::CONFIG_FILE_NAME);

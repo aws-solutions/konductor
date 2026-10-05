@@ -136,26 +136,26 @@ konductor 1.0.0
 
 ### Why is a config value what it is?
 
-Three layers merge, and a forgotten user-level file is the usual surprise. Precedence is preset →
-user → project, project winning.
-
-Project layer:
+Depends on which value. Telemetry (on/off, and where it reports) reads only the project's
+`.konductor/config.yml`. No other file is consulted.
 
 ```bash
 cat .konductor/config.yml
 ```
 
-User layer — this one applies to **every** project:
+`konductor doctor`'s `config` check reports a different pair of values, `tier` and
+`default_severity`, which merge three layers in order: built-in defaults, then
+`~/.konductor/config.yml` if present, then the project file, with the project file winning per
+field. To see where one of those two came from, check the project file first, then the
+user-level one:
 
 ```bash
+cat .konductor/config.yml
 cat ~/.konductor/config.yml
 ```
 
-`No such file or directory` means you have no user-level config, which is normal.
-
 Any key absent from both files takes the CLI default listed in the
-[CLI reference](../reference.md#configuration-file). If a value is not in your project file, the
-user-level file is almost always the source.
+[CLI reference](../reference.md#configuration-file).
 
 ### What did my recent commands actually do?
 
