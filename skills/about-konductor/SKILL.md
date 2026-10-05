@@ -39,6 +39,8 @@ claude
 
 A plain session discovers the installed skills: Claude Code reads `.claude/skills/`, Kiro CLI reads `.kiro/skills/`, and Codex, Cursor and OpenCode read `.agents/skills/`.
 
+For a guided, hands-on tour of fuse-flow and Komposer, ask the session to start the tutorial, or type `/fuse-tutorial` where the harness supports it; the `fuse-tutorial` skill coaches you through it.
+
 ## 4. Give the session real work
 
 Describe the outcome and name the relevant skill when needed:
