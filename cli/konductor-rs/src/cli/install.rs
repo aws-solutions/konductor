@@ -45,24 +45,43 @@ pub(crate) mod target_triple;
 
 use manifest::Provenance;
 
-/// Counts the `*.sop.md` files staged under
-/// `<from>/dist/<harness_dir>/sops/` -- the SOPs this install skips.
-/// Reads the actual staged directory rather than a constant, so the
-/// count can never drift from what synth produced. Returns 0 when
+/// The bare SOP names staged under `<staged_root>/sops/` -- every
+/// staged SOP, regardless of whether it gets installed, with the
+/// `.sop.md` suffix stripped. This is the ground truth
+/// `InstallCounts::from_manifest` classifies a `.claude/skills/sop-<name>`
+/// entry against (see that struct's own doc comment): a staged SOP
+/// name wins the `sop-<name>` collision, anything else loses it and
+/// counts as a plain skill. Returns an empty set when the directory is
 /// absent.
-fn count_staged_sops(from: &str, harness_dir: &str) -> usize {
+fn staged_sop_names(staged_root: &Path) -> std::collections::HashSet<String> {
     use crate::cli::synth::kiro_cli_v2::SOPS_CONTENT_TYPE_DIR;
-    let sops_dir = Path::new(from)
-        .join("dist")
-        .join(harness_dir)
-        .join(SOPS_CONTENT_TYPE_DIR);
+    let sops_dir = staged_root.join(SOPS_CONTENT_TYPE_DIR);
     let Ok(entries) = std::fs::read_dir(&sops_dir) else {
-        return 0;
+        return std::collections::HashSet::new();
     };
     entries
         .filter_map(|entry| entry.ok())
-        .filter(|entry| entry.file_name().to_string_lossy().ends_with(".sop.md"))
-        .count()
+        .filter_map(|entry| {
+            entry
+                .file_name()
+                .to_string_lossy()
+                .strip_suffix(".sop.md")
+                .map(str::to_string)
+        })
+        .collect()
+}
+
+/// Counts the `*.sop.md` files staged under
+/// `<from>/dist/<harness_dir>/sops/` -- every staged SOP, regardless of
+/// whether it gets installed. Used to detect a shortfall against
+/// `InstallCounts.sops` (the SOPs actually installed), not to assume
+/// staged implies skipped. Reads the actual staged directory rather
+/// than a constant, so the count can never drift from what synth
+/// produced. Returns 0 when absent. Thin wrapper around
+/// `staged_sop_names`, so the count and the classification set can
+/// never disagree on what counts as staged.
+fn count_staged_sops(from: &str, harness_dir: &str) -> usize {
+    staged_sop_names(&Path::new(from).join("dist").join(harness_dir)).len()
 }
 
 /// Remapped exit code for CLI usage errors, matching cli.rs's own
@@ -1274,14 +1293,17 @@ fn dispatch_install_with_remote_installer(
 /// success would be an internal inconsistency, not a normal failure --
 /// falls back to a fixed line in that case rather than panicking.
 /// `harness_dir` is the harness directory of whichever strategy
-/// actually ran, threaded through to `count_staged_sops`.
+/// actually ran, threaded through to `count_staged_sops`/
+/// `staged_sop_names`.
 ///
 /// `link_bin_result` is `Some(..)` only when `--link-bin` was
 /// requested; its outcome is folded into this same report.
 /// `remote_source` is `Some(..)` only on the no-`--from` fallback-chain
 /// path, naming which remote source produced the install. `remote_outcome`
 /// is likewise `Some(..)` only on that path; its `mcp_binary_version`
-/// field is surfaced distinctly from `agent_version`.
+/// field is surfaced distinctly from `agent_version`, and its
+/// `staged_sop_names` field is this function's only source of staged
+/// SOP names on that path (see this function's own body for why).
 #[allow(clippy::too_many_arguments)]
 fn report_install_success(
     destination: &Path,
@@ -1307,7 +1329,25 @@ fn report_install_success(
     // the no-`--from` graceful-degrade case (no published binary for
     // this platform). Distinct from `agent_version`: this is sourced
     // from release metadata, not the installed dist/VERSION file.
-    let mcp_binary_version = remote_outcome.and_then(|outcome| outcome.mcp_binary_version);
+    //
+    // The staged SOP names this run actually staged, used below to
+    // classify a `.claude/skills/sop-<name>` manifest entry (see
+    // `InstallCounts::from_manifest`'s own doc comment). On the
+    // no-`--from` remote path the staged `dist/` tree is a deleted
+    // scratch temp dir by the time this function runs, so it is read
+    // off `remote_outcome` (captured before deletion -- see
+    // `RemoteInstallOutcome`'s own doc comment) rather than from disk.
+    let (mcp_binary_version, remote_staged_sop_names) = match remote_outcome {
+        Some(outcome) => (outcome.mcp_binary_version, Some(outcome.staged_sop_names)),
+        None => (None, None),
+    };
+    // On the `--from` local path the staged `dist/` tree is still on
+    // disk under `from`, so it is read directly rather than threaded
+    // through an outcome struct.
+    let staged_sop_names = remote_staged_sop_names.unwrap_or_else(|| {
+        from.map(|f| staged_sop_names(&Path::new(f).join("dist").join(harness_dir)))
+            .unwrap_or_default()
+    });
     // The manifest may track several strategies' slots; this report
     // describes only the one this run actually performed.
     let slot = match manifest::read_manifest(destination) {
@@ -1328,6 +1368,7 @@ fn report_install_success(
                     "manifest_path": manifest::manifest_path(destination).display().to_string(),
                     "agents": 0,
                     "skills": 0,
+                    "sops": 0,
                     "context": 0,
                     "bin": 0,
                     "sops_skipped": from
@@ -1362,10 +1403,15 @@ fn report_install_success(
         }
     };
     let manifest_path = manifest::manifest_path(destination);
-    let counts = InstallCounts::from_manifest(&slot);
-    // Count skipped SOPs from the source synth staged under the
-    // strategy that actually ran, not a hardcoded harness.
-    let sops_skipped = from.map(|f| count_staged_sops(f, harness_dir)).unwrap_or(0);
+    let counts = InstallCounts::from_manifest(&slot, &staged_sop_names);
+    // Staged SOPs that were not actually installed, derived against
+    // the strategy that actually ran, not a hardcoded harness. Every
+    // staged SOP is installed today (see `InstallCounts`'s own doc
+    // comment), so this is normally 0; a nonzero value only arises if
+    // a future change leaves some staged SOP uninstalled without
+    // failing the whole run.
+    let staged_sops = staged_sop_names.len();
+    let sops_skipped = staged_sops.saturating_sub(counts.sops);
 
     if json {
         let mut value = format_install_summary_json(
@@ -1525,22 +1571,51 @@ fn link_bin_report_line(
 /// `files[]`, plus how many were `Provenance::ReplacedForeign`.
 /// Content type is inferred from each file's path prefix, matching
 /// what each strategy's own copy functions always write, so this
-/// stays in sync with install's real output by construction. `.kiro/skills/`
-/// holds only the Kiro-discoverable `sop-<name>/SKILL.md` conversion;
-/// every other Kiro-runtime skill lives under `.konductor/skills/`.
+/// stays in sync with install's real output by construction.
+///
+/// `sops` and `skills` are counted separately: a staged SOP is
+/// installed as its own content type (a raw `.konductor/sops/*.sop.md`
+/// copy for the Kiro harnesses, and/or a `sop-<name>/SKILL.md`
+/// conversion under whichever harness's skills root), not folded into
+/// the `skills` count. `.kiro/skills/` holds only the Kiro-discoverable
+/// SOP conversion, so every entry there counts as a SOP unconditionally.
+/// `.claude/skills/` holds both real skills and SOP conversions side by
+/// side, so a directory there counts as a SOP only when its name has
+/// the `sop-<name>` form AND `<name>` is in `staged_sop_names` --
+/// classified against what synth actually staged for this install, not
+/// against the name shape alone. This tells a SOP conversion apart from
+/// a hand-authored skill whose own name happens to start with `sop-`
+/// (one exists in this repo: `sop-state-management`), which stays a
+/// skill because its name was never staged as a SOP.
+///
 /// `skills` counts distinct skill directories (a skill may hold
-/// auxiliary files beyond `SKILL.md`); agents, context, and bin
-/// entries are one file each.
+/// auxiliary files beyond `SKILL.md`), deduped per `(root, name)` so a
+/// plain skill and a SOP conversion sharing a basename under different
+/// roots both count. `sops` counts distinct SOP NAMES, not files or
+/// directories: a SOP installed as both a raw `.konductor/sops/*.sop.md`
+/// copy and a `sop-<name>/SKILL.md` conversion (the Kiro harnesses'
+/// case) is the same logical SOP and counts once. Agents, context, and
+/// bin entries are one file each.
 struct InstallCounts {
     agents: usize,
     skills: usize,
+    sops: usize,
     context: usize,
     bin: usize,
     replaced_foreign: usize,
 }
 
 impl InstallCounts {
-    fn from_manifest(manifest: &manifest::StrategyManifest) -> Self {
+    /// `staged_sop_names` is the set of SOP names actually staged for
+    /// this install (see that function's own doc comment) -- the only
+    /// signal that can tell a `.claude/skills/sop-<name>` SOP
+    /// conversion apart from a hand-authored skill of the same name
+    /// shape, since Claude writes both to the same `.claude/skills/`
+    /// root with no other on-disk marker distinguishing them.
+    fn from_manifest(
+        manifest: &manifest::StrategyManifest,
+        staged_sop_names: &std::collections::HashSet<String>,
+    ) -> Self {
         use crate::cli::synth::kiro_cli_v2::{AGENTS_CONTENT_TYPE_DIR, SKILLS_CONTENT_TYPE_DIR};
         let claude_agents_prefix = format!(
             "{}/{AGENTS_CONTENT_TYPE_DIR}/",
@@ -1551,36 +1626,58 @@ impl InstallCounts {
             claude::CLAUDE_DESTINATION_ROOT
         );
 
-        // A skill is a directory that may hold SKILL.md plus auxiliary
-        // files, so count distinct skill directories, not one per
-        // file -- otherwise a skill with scripts would inflate the
-        // count. Agents, context, and bin entries are one file each.
-        //
+        let mut agents = 0;
+        let mut context = 0;
+        let mut bin = 0;
+        let mut replaced_foreign = 0;
         // Keyed by `(root, name)`, not bare `name`: `.konductor/skills/`
         // and `.kiro/skills/` are both written on every Kiro install (a
         // plain skill under the former, a SOP-skill conversion under
         // the latter), so a plain skill and a SOP-derived skill
         // sharing a basename are two physically distinct directories
         // that must both count.
-        let mut agents = 0;
-        let mut context = 0;
-        let mut bin = 0;
-        let mut replaced_foreign = 0;
         let mut skill_dirs: std::collections::HashSet<(&str, &str)> =
             std::collections::HashSet::new();
+        // Keyed by bare SOP name only (not `(root, name)`): a raw
+        // `.konductor/sops/<name>.sop.md` copy and a `sop-<name>/`
+        // conversion both name the SAME logical SOP, and must collapse
+        // to one entry regardless of which root(s) wrote it.
+        let mut sop_names: std::collections::HashSet<&str> = std::collections::HashSet::new();
         for file in &manifest.files {
             if let Some(rest) = file.path.strip_prefix(".konductor/skills/") {
                 if let Some(name) = rest.split('/').next().filter(|s| !s.is_empty()) {
                     skill_dirs.insert((".konductor/skills/", name));
                 }
             } else if let Some(rest) = file.path.strip_prefix(".kiro/skills/") {
-                if let Some(name) = rest.split('/').next().filter(|s| !s.is_empty()) {
-                    skill_dirs.insert((".kiro/skills/", name));
+                // `.kiro/skills/` holds only the SOP-skill conversion
+                // (see this struct's doc comment) -- every entry here
+                // is a SOP, no name heuristic needed.
+                if let Some(dir_name) = rest.split('/').next().filter(|s| !s.is_empty()) {
+                    sop_names.insert(dir_name.strip_prefix("sop-").unwrap_or(dir_name));
                 }
             } else if let Some(rest) = file.path.strip_prefix(claude_skills_prefix.as_str()) {
-                if let Some(name) = rest.split('/').next().filter(|s| !s.is_empty()) {
-                    skill_dirs.insert((claude_skills_prefix.as_str(), name));
+                if let Some(dir_name) = rest.split('/').next().filter(|s| !s.is_empty()) {
+                    // A `sop-<name>` entry is a SOP conversion only
+                    // when `<name>` was actually staged as a SOP this
+                    // run -- a hand-authored skill whose own name
+                    // happens to start with `sop-` (e.g.
+                    // `sop-state-management`) was never staged as a
+                    // SOP, so it falls through to the plain-skill case
+                    // below instead.
+                    let sop_name = dir_name
+                        .strip_prefix("sop-")
+                        .filter(|name| staged_sop_names.contains(*name));
+                    match sop_name {
+                        Some(sop_name) => {
+                            sop_names.insert(sop_name);
+                        }
+                        None => {
+                            skill_dirs.insert((claude_skills_prefix.as_str(), dir_name));
+                        }
+                    }
                 }
+            } else if let Some(file_name) = file.path.strip_prefix(".konductor/sops/") {
+                sop_names.insert(file_name.strip_suffix(".sop.md").unwrap_or(file_name));
             } else if file.path.starts_with(".kiro/agents/")
                 || file.path.starts_with(claude_agents_prefix.as_str())
             {
@@ -1597,6 +1694,7 @@ impl InstallCounts {
         InstallCounts {
             agents,
             skills: skill_dirs.len(),
+            sops: sop_names.len(),
             context,
             bin,
             replaced_foreign,
@@ -1605,16 +1703,22 @@ impl InstallCounts {
 }
 
 /// Builds the one-line default-mode summary `dispatch_install` prints
-/// on success: destination, per-content-type counts, manifest path,
-/// the SOP-skip note, the foreign-overwrite count, and the installed
-/// content's own version (from install-info.json's `agent_version`,
-/// `None` when unavailable). `mcp_binary_version` is a separate,
-/// distinctly-labeled note: the release tag the no-`--from` path
-/// actually fetched and checksum-verified the MCP binary from. It can
-/// genuinely differ from `agent_version`, which is read from the
-/// installed `dist/VERSION` file rather than release metadata. `None`
-/// on the `--from` local path and on the no-`--from` graceful-degrade
-/// case (no published binary for this platform).
+/// on success: destination, per-content-type counts (agents, skills,
+/// SOPs, context, MCP binaries), manifest path, any SOP-skip note, the
+/// foreign-overwrite count, and the installed content's own version
+/// (from install-info.json's `agent_version`, `None` when unavailable).
+/// `sops_skipped` is normally 0: every staged SOP is installed today
+/// (as a raw copy and/or a `sop-<name>/SKILL.md` conversion -- see
+/// `InstallCounts`), so this reports a shortfall only if a future
+/// change leaves some staged SOP uninstalled without failing the whole
+/// run; the clause is omitted from the line when it is 0.
+/// `mcp_binary_version` is a separate, distinctly-labeled note: the
+/// release tag the no-`--from` path actually fetched and
+/// checksum-verified the MCP binary from. It can genuinely differ from
+/// `agent_version`, which is read from the installed `dist/VERSION`
+/// file rather than release metadata. `None` on the `--from` local
+/// path and on the no-`--from` graceful-degrade case (no published
+/// binary for this platform).
 fn format_install_summary(
     destination: &Path,
     manifest_path: &Path,
@@ -1632,19 +1736,24 @@ fn format_install_summary(
         Some(version) => format!(" (mcp server version: {version})"),
         None => String::new(),
     };
+    let sops_skipped_note = if sops_skipped > 0 {
+        format!("; skipped {sops_skipped} staged SOP(s)")
+    } else {
+        String::new()
+    };
     format!(
-        "{} installed {} agent(s), {} skill(s), {} context file(s), {} \
-         MCP server binary(ies) to {} (manifest: {}); skipped {} SOP(s) (no runtime \
-         discovery path yet); overwrote {} pre-existing file(s) not created by \
+        "{} installed {} agent(s), {} skill(s), {} SOP(s), {} context file(s), {} \
+         MCP server binary(ies) to {} (manifest: {}){sops_skipped_note}; overwrote {} \
+         pre-existing file(s) not created by \
          Konductor{version_note}{mcp_binary_version_note}",
         crate::cli::output::success_prefix(color, "konductor install:"),
         counts.agents,
         counts.skills,
+        counts.sops,
         counts.context,
         counts.bin,
         destination.display(),
         manifest_path.display(),
-        sops_skipped,
         counts.replaced_foreign,
     )
 }
@@ -1661,7 +1770,8 @@ fn format_install_verbose_lines(manifest: &manifest::StrategyManifest) -> Vec<St
 }
 
 /// Builds the `--json` structured equivalent of `format_install_summary`:
-/// the same counts as the human-readable summary, plus
+/// the same counts as the human-readable summary (including the new
+/// `"sops"` count, alongside `"skills"`), plus
 /// `"agent_version"`/`"mcp_binary_version"` fields (`null` when
 /// unavailable). Returns the `serde_json::Value` itself, not a
 /// pre-serialized string, so `report_install_success` can merge in an
@@ -1680,6 +1790,7 @@ fn format_install_summary_json(
         "manifest_path": manifest_path.display().to_string(),
         "agents": counts.agents,
         "skills": counts.skills,
+        "sops": counts.sops,
         "context": counts.context,
         "bin": counts.bin,
         "sops_skipped": sops_skipped,
@@ -1735,6 +1846,38 @@ mod tests {
         let dir = repo_root.join("dist").join("kiro-v3").join("agents");
         fs::create_dir_all(&dir).unwrap();
         fs::write(dir.join(format!("{name}.json")), b"{}\n").unwrap();
+    }
+
+    /// Stages a minimal `<name>.sop.md` file under
+    /// `<repo_root>/dist/<harness_dir>/sops/`, so a real end-to-end
+    /// install actually has a SOP to convert/copy. No `## Overview`
+    /// section -- `render_sop_skill_md` falls back to a generated
+    /// description when one is absent, so this stays minimal.
+    fn seed_synthed_sop(repo_root: &Path, harness_dir: &str, name: &str) {
+        let dir = repo_root.join("dist").join(harness_dir).join("sops");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join(format!("{name}.sop.md")), b"# Example SOP\n").unwrap();
+    }
+
+    /// Stages a minimal plain-skill directory,
+    /// `<repo_root>/dist/<harness_dir>/skills/<name>/SKILL.md`, so a
+    /// real end-to-end install has a skill (not a SOP conversion) to
+    /// copy. Used to reproduce the `sop-state-management` collision:
+    /// seeding `name: "sop-state-management"` here, with no matching
+    /// `state-management` SOP staged, must install and count as a
+    /// plain skill, never a SOP.
+    fn seed_synthed_claude_skill(repo_root: &Path, harness_dir: &str, name: &str) {
+        let dir = repo_root
+            .join("dist")
+            .join(harness_dir)
+            .join("skills")
+            .join(name);
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(
+            dir.join("SKILL.md"),
+            b"---\nname: x\ndescription: x\n---\nbody\n",
+        )
+        .unwrap();
     }
 
     /// RAII guard for tests that mutate the process-global `HOME` env
@@ -1874,6 +2017,13 @@ mod tests {
             false,
             ColorMode::disabled(),
             move |strategy, destination, installed_at, no_telemetry| {
+                // Mirrors the real remote path's own ordering (see
+                // `remote.rs`'s `install_from_remote_bytes_named_with_limit`):
+                // read the staged SOP names before `install_from_local`
+                // runs, so this fake installer's `RemoteInstallOutcome`
+                // carries the same data the real one would.
+                let staged_sop_names =
+                    staged_sop_names(&synth_source.join("dist").join(strategy.harness_dir()));
                 strategy
                     .install_from_local(
                         destination,
@@ -1884,7 +2034,10 @@ mod tests {
                     .map(|()| {
                         (
                             remote_orchestrate::RemoteInstallSource::MainBranchDist,
-                            remote::RemoteInstallOutcome::default(),
+                            remote::RemoteInstallOutcome {
+                                mcp_binary_version: None,
+                                staged_sop_names,
+                            },
                         )
                     })
                     .map_err(|err| {
@@ -2367,6 +2520,7 @@ mod tests {
                             remote_orchestrate::RemoteInstallSource::GithubRelease,
                             remote::RemoteInstallOutcome {
                                 mcp_binary_version: Some(mcp_binary_version),
+                                staged_sop_names: std::collections::HashSet::new(),
                             },
                         )
                     })
@@ -2428,7 +2582,8 @@ mod tests {
     /// `install-info.json` with no visible report of it.
     #[test]
     fn format_install_summary_includes_version_note_when_agent_version_present() {
-        let counts = InstallCounts::from_manifest(&sample_manifest());
+        let counts =
+            InstallCounts::from_manifest(&sample_manifest(), &sample_manifest_staged_sop_names());
         let summary = format_install_summary(
             Path::new("/tmp/example-target"),
             Path::new("/tmp/example-target/.konductor/manifest"),
@@ -2450,7 +2605,8 @@ mod tests {
     /// file at all.
     #[test]
     fn format_install_summary_omits_version_note_when_agent_version_absent() {
-        let counts = InstallCounts::from_manifest(&sample_manifest());
+        let counts =
+            InstallCounts::from_manifest(&sample_manifest(), &sample_manifest_staged_sop_names());
         let summary = format_install_summary(
             Path::new("/tmp/example-target"),
             Path::new("/tmp/example-target/.konductor/manifest"),
@@ -2540,7 +2696,375 @@ mod tests {
         fs::remove_dir_all(&kiro_repo_root).ok();
     }
 
-    /// On a coexistence target with two strategies already tracked, a
+    /// Parses a captured `--json` install summary string back into a
+    /// `serde_json::Value` for assertions. These end-to-end tests do
+    /// not capture real stdout (`report_install_success` prints
+    /// directly); instead they re-derive the summary the same way
+    /// `report_install_success` does, from the manifest `install_from_local`
+    /// actually wrote -- proving the real counts an installed manifest
+    /// produces, not a hand-built fixture. `repo_root`/`harness_dir`
+    /// locate the staged `dist/<harness_dir>/sops/` tree the same way
+    /// production reads it on the `--from` path, needed to classify a
+    /// `.claude/skills/sop-<name>` manifest entry (see
+    /// `InstallCounts::from_manifest`'s own doc comment).
+    fn summary_json_for_installed_target(
+        destination: &Path,
+        strategy_name: &str,
+        repo_root: &Path,
+        harness_dir: &str,
+    ) -> serde_json::Value {
+        let manifest = manifest::read_manifest(destination).unwrap().unwrap();
+        let slot = manifest.get(strategy_name).cloned().unwrap();
+        let staged = staged_sop_names(&repo_root.join("dist").join(harness_dir));
+        let counts = InstallCounts::from_manifest(&slot, &staged);
+        format_install_summary_json(
+            destination,
+            &manifest::manifest_path(destination),
+            &counts,
+            0,
+            None,
+            None,
+        )
+    }
+
+    /// kiro-cli-v2, `--from` path: a staged SOP must be installed (raw
+    /// `.konductor/sops/` copy plus `.kiro/skills/sop-<name>/SKILL.md`
+    /// conversion) and counted as 1 SOP, separate from the 1 plain
+    /// skill -- not folded together, and not reported as skipped. All
+    /// prior JSON keys stay present.
+    #[test]
+    fn dispatch_install_kiro_cli_v2_from_local_counts_sops_separately_from_skills() {
+        let _home = HomeGuard::new("kiro-v2-from-sop-counts-home");
+        let dir = scratch_dir("kiro-v2-from-sop-counts-target");
+        let repo_root = scratch_dir("kiro-v2-from-sop-counts-repo");
+        seed_synthed_agent(&repo_root, "k-example");
+        seed_synthed_sop(&repo_root, "kiro-cli-v2", "ticket-sync");
+
+        let code = dispatch_install_with(
+            Some(repo_root.to_str().unwrap().to_string()),
+            Some(dir.to_str().unwrap().to_string()),
+            "kiro-cli-v2".to_string(),
+            false,
+            false,
+            false,
+            None,
+            false,
+            false,
+            false,
+            ColorMode::disabled(),
+        );
+        assert_eq!(code, 0);
+
+        assert!(dir.join(".konductor/sops/ticket-sync.sop.md").is_file());
+        assert!(dir.join(".kiro/skills/sop-ticket-sync/SKILL.md").is_file());
+
+        let value =
+            summary_json_for_installed_target(&dir, "kiro-cli-v2", &repo_root, "kiro-cli-v2");
+        assert_eq!(value["agents"], 1);
+        assert_eq!(
+            value["sops"], 1,
+            "the raw copy and skill conversion are the same SOP"
+        );
+        assert_eq!(value["sops_skipped"], 0);
+        assert!(
+            value.get("skills").is_some(),
+            "skills key must still be present"
+        );
+        assert_eq!(
+            value["skills"], 0,
+            "no plain skill was staged, so skills must not absorb the SOP conversion"
+        );
+
+        fs::remove_dir_all(&dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// kiro-cli-v2, no-`--from` path (fake successful remote installer,
+    /// no real network call): same SOP-counting behavior as the
+    /// `--from` path above, proving the fix applies uniformly to both
+    /// install paths.
+    #[test]
+    fn dispatch_install_kiro_cli_v2_remote_counts_sops_separately_from_skills() {
+        let _home = HomeGuard::new("kiro-v2-remote-sop-counts-home");
+        let dir = scratch_dir("kiro-v2-remote-sop-counts-target");
+        let repo_root = scratch_dir("kiro-v2-remote-sop-counts-repo");
+        seed_synthed_agent(&repo_root, "k-example");
+        seed_synthed_sop(&repo_root, "kiro-cli-v2", "ticket-sync");
+
+        let code = dispatch_install_with_fake_successful_remote_installer(
+            Some(dir.to_str().unwrap().to_string()),
+            "kiro-cli-v2".to_string(),
+            &repo_root,
+        );
+        assert_eq!(code, 0);
+
+        let value =
+            summary_json_for_installed_target(&dir, "kiro-cli-v2", &repo_root, "kiro-cli-v2");
+        assert_eq!(value["sops"], 1);
+        assert_eq!(value["sops_skipped"], 0);
+        assert_eq!(value["skills"], 0);
+
+        fs::remove_dir_all(&dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// kiro-v3, `--from` path: same SOP-counting contract as
+    /// kiro-cli-v2 -- `install_kiro_sop_skills`/`install_sops` are
+    /// shared verbatim between the two Kiro strategies (see
+    /// `kiro_cli_v3.rs`'s own module doc comment), so this guards
+    /// against a kiro-v3-specific regression in that reuse.
+    #[test]
+    fn dispatch_install_kiro_v3_from_local_counts_sops_separately_from_skills() {
+        let _home = HomeGuard::new("kiro-v3-from-sop-counts-home");
+        let dir = scratch_dir("kiro-v3-from-sop-counts-target");
+        let repo_root = scratch_dir("kiro-v3-from-sop-counts-repo");
+        seed_synthed_kiro_v3_agent(&repo_root, "k-example");
+        seed_synthed_sop(&repo_root, "kiro-v3", "ticket-sync");
+
+        let code = dispatch_install_with(
+            Some(repo_root.to_str().unwrap().to_string()),
+            Some(dir.to_str().unwrap().to_string()),
+            "kiro-v3".to_string(),
+            false,
+            false,
+            false,
+            None,
+            false,
+            false,
+            false,
+            ColorMode::disabled(),
+        );
+        assert_eq!(code, 0);
+
+        assert!(dir.join(".konductor/sops/ticket-sync.sop.md").is_file());
+        assert!(dir.join(".kiro/skills/sop-ticket-sync/SKILL.md").is_file());
+
+        let value = summary_json_for_installed_target(&dir, "kiro-v3", &repo_root, "kiro-v3");
+        assert_eq!(value["sops"], 1);
+        assert_eq!(value["sops_skipped"], 0);
+        assert_eq!(value["skills"], 0);
+
+        fs::remove_dir_all(&dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// kiro-v3, no-`--from` path: same as the `--from` case above,
+    /// through the fake-successful-remote-installer seam.
+    #[test]
+    fn dispatch_install_kiro_v3_remote_counts_sops_separately_from_skills() {
+        let _home = HomeGuard::new("kiro-v3-remote-sop-counts-home");
+        let dir = scratch_dir("kiro-v3-remote-sop-counts-target");
+        let repo_root = scratch_dir("kiro-v3-remote-sop-counts-repo");
+        seed_synthed_kiro_v3_agent(&repo_root, "k-example");
+        seed_synthed_sop(&repo_root, "kiro-v3", "ticket-sync");
+
+        let code = dispatch_install_with_fake_successful_remote_installer(
+            Some(dir.to_str().unwrap().to_string()),
+            "kiro-v3".to_string(),
+            &repo_root,
+        );
+        assert_eq!(code, 0);
+
+        let value = summary_json_for_installed_target(&dir, "kiro-v3", &repo_root, "kiro-v3");
+        assert_eq!(value["sops"], 1);
+        assert_eq!(value["sops_skipped"], 0);
+        assert_eq!(value["skills"], 0);
+
+        fs::remove_dir_all(&dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// claude, `--from` path: a staged SOP converts to
+    /// `sop-<name>/SKILL.md` under the SAME `.claude/skills/` root a
+    /// plain skill would use, and must still count as 1 SOP, not 1
+    /// skill -- the regression this fix targets most directly, since
+    /// Claude has no separate SOP-skill root to lean on.
+    #[test]
+    fn dispatch_install_claude_from_local_counts_sops_separately_from_skills() {
+        let _home = HomeGuard::new("claude-from-sop-counts-home");
+        let dir = scratch_dir("claude-from-sop-counts-target");
+        let repo_root = scratch_dir("claude-from-sop-counts-repo");
+        seed_synthed_claude_agent(&repo_root, "k-example");
+        seed_synthed_sop(&repo_root, claude::CLAUDE_HARNESS_DIR, "ticket-sync");
+        fs::create_dir_all(dir.join(".claude")).unwrap();
+
+        let code = dispatch_install_with(
+            Some(repo_root.to_str().unwrap().to_string()),
+            Some(dir.to_str().unwrap().to_string()),
+            "claude".to_string(),
+            false,
+            false,
+            false,
+            None,
+            false,
+            false,
+            false,
+            ColorMode::disabled(),
+        );
+        assert_eq!(code, 0);
+
+        assert!(dir
+            .join(".claude/skills/sop-ticket-sync/SKILL.md")
+            .is_file());
+        assert!(
+            !dir.join(".konductor/sops").exists(),
+            "claude has no raw SOP copy, only the SKILL.md conversion"
+        );
+
+        let value = summary_json_for_installed_target(
+            &dir,
+            "claude",
+            &repo_root,
+            claude::CLAUDE_HARNESS_DIR,
+        );
+        assert_eq!(value["sops"], 1);
+        assert_eq!(value["sops_skipped"], 0);
+        assert_eq!(
+            value["skills"], 0,
+            "sop-ticket-sync must not be double-counted as a plain skill"
+        );
+
+        fs::remove_dir_all(&dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// claude, no-`--from` path: same as the `--from` case above,
+    /// through the fake-successful-remote-installer seam.
+    #[test]
+    fn dispatch_install_claude_remote_counts_sops_separately_from_skills() {
+        let _home = HomeGuard::new("claude-remote-sop-counts-home");
+        let dir = scratch_dir("claude-remote-sop-counts-target");
+        let repo_root = scratch_dir("claude-remote-sop-counts-repo");
+        seed_synthed_claude_agent(&repo_root, "k-example");
+        seed_synthed_sop(&repo_root, claude::CLAUDE_HARNESS_DIR, "ticket-sync");
+        fs::create_dir_all(dir.join(".claude")).unwrap();
+
+        let code = dispatch_install_with_fake_successful_remote_installer(
+            Some(dir.to_str().unwrap().to_string()),
+            "claude".to_string(),
+            &repo_root,
+        );
+        assert_eq!(code, 0);
+
+        let value = summary_json_for_installed_target(
+            &dir,
+            "claude",
+            &repo_root,
+            claude::CLAUDE_HARNESS_DIR,
+        );
+        assert_eq!(value["sops"], 1);
+        assert_eq!(value["sops_skipped"], 0);
+        assert_eq!(value["skills"], 0);
+
+        fs::remove_dir_all(&dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// claude, `--from` path: reproduces the exact `sop-state-management`
+    /// collision this fix targets -- a hand-authored skill named
+    /// `sop-state-management` is staged alongside a genuinely different
+    /// staged SOP (`ticket-sync`). The skill must install and count as
+    /// 1 skill, not get swept into the SOP count by its name alone.
+    #[test]
+    fn dispatch_install_claude_from_local_recognizes_skill_named_like_a_sop() {
+        let _home = HomeGuard::new("claude-from-sop-skill-collision-home");
+        let dir = scratch_dir("claude-from-sop-skill-collision-target");
+        let repo_root = scratch_dir("claude-from-sop-skill-collision-repo");
+        seed_synthed_claude_agent(&repo_root, "k-example");
+        seed_synthed_claude_skill(
+            &repo_root,
+            claude::CLAUDE_HARNESS_DIR,
+            "sop-state-management",
+        );
+        seed_synthed_sop(&repo_root, claude::CLAUDE_HARNESS_DIR, "ticket-sync");
+        fs::create_dir_all(dir.join(".claude")).unwrap();
+
+        let code = dispatch_install_with(
+            Some(repo_root.to_str().unwrap().to_string()),
+            Some(dir.to_str().unwrap().to_string()),
+            "claude".to_string(),
+            false,
+            false,
+            false,
+            None,
+            false,
+            false,
+            false,
+            ColorMode::disabled(),
+        );
+        assert_eq!(code, 0);
+
+        assert!(dir
+            .join(".claude/skills/sop-state-management/SKILL.md")
+            .is_file());
+        assert!(dir
+            .join(".claude/skills/sop-ticket-sync/SKILL.md")
+            .is_file());
+
+        let value = summary_json_for_installed_target(
+            &dir,
+            "claude",
+            &repo_root,
+            claude::CLAUDE_HARNESS_DIR,
+        );
+        assert_eq!(
+            value["skills"], 1,
+            "sop-state-management is a plain skill: state-management was never staged as a SOP"
+        );
+        assert_eq!(
+            value["sops"], 1,
+            "only sop-ticket-sync's name was actually staged as a SOP"
+        );
+
+        fs::remove_dir_all(&dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// claude, no-`--from` path: same collision as the `--from` case
+    /// above, through the fake-successful-remote-installer seam --
+    /// proves the staged-name classification survives the remote
+    /// path's own `RemoteInstallOutcome` plumbing, not just the
+    /// `--from` path's direct disk read.
+    #[test]
+    fn dispatch_install_claude_remote_recognizes_skill_named_like_a_sop() {
+        let _home = HomeGuard::new("claude-remote-sop-skill-collision-home");
+        let dir = scratch_dir("claude-remote-sop-skill-collision-target");
+        let repo_root = scratch_dir("claude-remote-sop-skill-collision-repo");
+        seed_synthed_claude_agent(&repo_root, "k-example");
+        seed_synthed_claude_skill(
+            &repo_root,
+            claude::CLAUDE_HARNESS_DIR,
+            "sop-state-management",
+        );
+        seed_synthed_sop(&repo_root, claude::CLAUDE_HARNESS_DIR, "ticket-sync");
+        fs::create_dir_all(dir.join(".claude")).unwrap();
+
+        let code = dispatch_install_with_fake_successful_remote_installer(
+            Some(dir.to_str().unwrap().to_string()),
+            "claude".to_string(),
+            &repo_root,
+        );
+        assert_eq!(code, 0);
+
+        let value = summary_json_for_installed_target(
+            &dir,
+            "claude",
+            &repo_root,
+            claude::CLAUDE_HARNESS_DIR,
+        );
+        assert_eq!(
+            value["skills"], 1,
+            "sop-state-management is a plain skill: state-management was never staged as a SOP"
+        );
+        assert_eq!(
+            value["sops"], 1,
+            "only sop-ticket-sync's name was actually staged as a SOP"
+        );
+
+        fs::remove_dir_all(&dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
     /// manifest read error at finalize time must fall back to the same
     /// coexistence-aware write-ahead projection, not a single-element
     /// vec naming only the strategy just installed -- that would
@@ -3428,8 +3952,31 @@ mod tests {
                     sha256: Some("f".repeat(64)),
                     provenance: Provenance::Created,
                 },
+                // The raw SOP copy and its Kiro-discoverable skill
+                // conversion both represent the SAME SOP; `sops` must
+                // count this once, not twice.
+                manifest::ManifestFile {
+                    path: ".konductor/sops/ticket-sync.sop.md".to_string(),
+                    sha256: Some("g".repeat(64)),
+                    provenance: Provenance::Created,
+                },
+                manifest::ManifestFile {
+                    path: ".kiro/skills/sop-ticket-sync/SKILL.md".to_string(),
+                    sha256: Some("h".repeat(64)),
+                    provenance: Provenance::Created,
+                },
             ],
         )
+    }
+
+    /// The staged SOP names `sample_manifest`'s own fixture implies
+    /// (`ticket-sync`) -- `.kiro/skills/sop-<name>/` entries never
+    /// consult this set (see `InstallCounts::from_manifest`'s own doc
+    /// comment), so it is passed to most `sample_manifest()`-based
+    /// tests only for API completeness, not because it changes their
+    /// outcome.
+    fn sample_manifest_staged_sop_names() -> std::collections::HashSet<String> {
+        std::collections::HashSet::from(["ticket-sync".to_string()])
     }
 
     /// `InstallCounts` derives its per-content-type counts from each
@@ -3437,12 +3984,16 @@ mod tests {
     /// provenance -- both counted independently against a manifest
     /// with a deliberate mix, so a miscount in either dimension would
     /// fail this test rather than passing on a degenerate all-zero or
-    /// all-one fixture.
+    /// all-one fixture. `sops` is 1, not 2: the raw `.konductor/sops/`
+    /// copy and the `.kiro/skills/sop-*` conversion describe the same
+    /// installed SOP.
     #[test]
     fn install_counts_from_manifest_counts_each_dimension_independently() {
-        let counts = InstallCounts::from_manifest(&sample_manifest());
+        let counts =
+            InstallCounts::from_manifest(&sample_manifest(), &sample_manifest_staged_sop_names());
         assert_eq!(counts.agents, 2);
         assert_eq!(counts.skills, 1);
+        assert_eq!(counts.sops, 1);
         assert_eq!(counts.context, 1);
         assert_eq!(counts.bin, 1);
         assert_eq!(counts.replaced_foreign, 2);
@@ -3454,7 +4005,14 @@ mod tests {
     /// which strategy wrote the manifest. Mixes a Claude-shaped manifest
     /// entry set with the same multi-file-per-skill-directory case
     /// `sample_manifest` exercises for Kiro, proving the skill-directory
-    /// dedup applies identically under `.claude/skills/`.
+    /// dedup applies identically under `.claude/skills/`. Also includes
+    /// two `sop-<name>/SKILL.md`-shaped entries sharing that same root:
+    /// `sop-ticket-sync`, whose name IS in `staged_sop_names`, counts as
+    /// a SOP; `sop-state-management`, whose name is NOT (a hand-authored
+    /// skill of that exact name exists in this package, see
+    /// `install_counts_from_manifest_recognizes_claude_skill_named_like_a_staged_sop_name`
+    /// below for the single-collision version of this case), counts as
+    /// a plain skill despite the shared `sop-` prefix.
     #[test]
     fn install_counts_from_manifest_recognizes_claude_prefixes() {
         let manifest = manifest::StrategyManifest::new(
@@ -3486,23 +4044,75 @@ mod tests {
                     sha256: Some("d".repeat(64)),
                     provenance: Provenance::ReplacedForeign,
                 },
+                manifest::ManifestFile {
+                    path: ".claude/skills/sop-ticket-sync/SKILL.md".to_string(),
+                    sha256: Some("e".repeat(64)),
+                    provenance: Provenance::Created,
+                },
+                // `sop-`-prefixed by name, but `state-management` was
+                // never staged as a SOP -- must count as a skill, not a
+                // SOP, regardless of the name shape.
+                manifest::ManifestFile {
+                    path: ".claude/skills/sop-state-management/SKILL.md".to_string(),
+                    sha256: Some("f".repeat(64)),
+                    provenance: Provenance::Created,
+                },
             ],
         );
+        let staged_sop_names = std::collections::HashSet::from(["ticket-sync".to_string()]);
 
-        let counts = InstallCounts::from_manifest(&manifest);
+        let counts = InstallCounts::from_manifest(&manifest, &staged_sop_names);
         assert_eq!(counts.agents, 2);
-        assert_eq!(counts.skills, 1);
+        assert_eq!(
+            counts.skills, 2,
+            "constraints and sop-state-management are both plain skills, not SOPs"
+        );
+        assert_eq!(
+            counts.sops, 1,
+            "only sop-ticket-sync's name was staged as a SOP"
+        );
         assert_eq!(counts.context, 0);
         assert_eq!(counts.bin, 0);
         assert_eq!(counts.replaced_foreign, 1);
     }
 
+    /// Regression for the exact bug this fix targets: a hand-authored
+    /// skill whose own name happens to start with `sop-`
+    /// (`sop-state-management`, which really exists in this package)
+    /// must count as a skill, never a SOP, when NO SOP of that bare
+    /// name (`state-management`) was staged for this install -- proving
+    /// classification is keyed off what was actually staged, not off
+    /// the `sop-` prefix alone.
+    #[test]
+    fn install_counts_from_manifest_recognizes_claude_skill_named_like_a_staged_sop_name() {
+        let manifest = manifest::StrategyManifest::new(
+            "claude",
+            "2026-01-15T09:30:00Z",
+            ".",
+            None,
+            manifest::Status::Complete,
+            vec![manifest::ManifestFile {
+                path: ".claude/skills/sop-state-management/SKILL.md".to_string(),
+                sha256: Some("a".repeat(64)),
+                provenance: Provenance::Created,
+            }],
+        );
+
+        let counts = InstallCounts::from_manifest(&manifest, &std::collections::HashSet::new());
+        assert_eq!(
+            counts.skills, 1,
+            "sop-state-management is a plain skill: state-management was never staged as a SOP"
+        );
+        assert_eq!(counts.sops, 0);
+    }
+
     /// `.kiro/skills/sop-<name>/SKILL.md` (the Kiro-discoverable SOP-skill
-    /// conversion) must count toward `skills`, exactly like
-    /// `.konductor/skills/`/`.claude/skills/` entries do -- regression
-    /// guard for the undercount this feature would otherwise introduce:
-    /// without this prefix recognized, the summary's skill count would
-    /// silently omit every installed SOP-skill directory.
+    /// conversion) must count toward `sops`, separately from
+    /// `.konductor/skills/`'s plain skills -- regression guard for
+    /// `sops` undercounting or `skills` overcounting: without
+    /// `.kiro/skills/` recognized as SOPs, the summary would either
+    /// omit every installed SOP-skill directory or misreport it as a
+    /// plain skill.
     #[test]
     fn install_counts_from_manifest_recognizes_kiro_skills_prefix() {
         let manifest = manifest::StrategyManifest::new(
@@ -3530,11 +4140,15 @@ mod tests {
             ],
         );
 
-        let counts = InstallCounts::from_manifest(&manifest);
+        let counts = InstallCounts::from_manifest(&manifest, &std::collections::HashSet::new());
         assert_eq!(counts.agents, 1);
         assert_eq!(
-            counts.skills, 2,
-            "both the .konductor/skills/ skill and the .kiro/skills/ SOP-skill must count"
+            counts.skills, 1,
+            "only the .konductor/skills/ entry is a plain skill"
+        );
+        assert_eq!(
+            counts.sops, 1,
+            "the .kiro/skills/sop-* conversion must count as a SOP, not a skill"
         );
         assert_eq!(counts.replaced_foreign, 0);
     }
@@ -3542,14 +4156,13 @@ mod tests {
     /// Regression: a plain skill under `.konductor/skills/` and a
     /// Kiro-discoverable SOP-skill conversion under `.kiro/skills/`
     /// sharing the exact same basename (`sop-state-management`) are two
-    /// physically distinct on-disk directories, and both must count.
-    /// Keying `skill_dirs` on the bare name alone would collapse them
-    /// into a single `HashSet` entry and undercount by one -- this is
-    /// reachable today: `skills/sop-state-management/` already exists as
-    /// a plain skill in this package, and a `sop-<name>/SKILL.md`
-    /// conversion under `.kiro/skills/` derives its directory name the
-    /// same way (`sop-{sop_name}`), so a future `state-management.sop.md`
-    /// would collide with it exactly.
+    /// physically distinct on-disk directories, counted in two
+    /// different buckets (`skills` vs `sops`) -- neither must swallow
+    /// the other. This is reachable today: `skills/sop-state-management/`
+    /// already exists as a plain skill in this package, and a
+    /// `sop-<name>/SKILL.md` conversion under `.kiro/skills/` derives
+    /// its directory name the same way (`sop-{sop_name}`), so a future
+    /// `state-management.sop.md` would collide with it exactly.
     #[test]
     fn install_counts_from_manifest_counts_colliding_basenames_across_two_roots_separately() {
         let manifest = manifest::StrategyManifest::new(
@@ -3572,50 +4185,74 @@ mod tests {
             ],
         );
 
-        let counts = InstallCounts::from_manifest(&manifest);
+        let counts = InstallCounts::from_manifest(&manifest, &std::collections::HashSet::new());
         assert_eq!(
-            counts.skills, 2,
-            "a plain skill and a SOP-derived skill sharing a basename across the two roots \
-             must count as two distinct skill directories, not one"
+            counts.skills, 1,
+            "the .konductor/skills/ entry is the plain skill"
+        );
+        assert_eq!(
+            counts.sops, 1,
+            "the .kiro/skills/ entry is the SOP conversion, counted separately"
         );
     }
 
-    /// The default-mode summary line names the exact counts, the
-    /// destination, the manifest path, the SOP-skip count, and the
-    /// foreign-overwrite count -- never implying SOPs were installed.
+    /// The default-mode summary line names the exact counts for every
+    /// content type, including `sops` as its own figure separate from
+    /// `skills`, plus the destination, the manifest path, and the
+    /// foreign-overwrite count. `sops_skipped` is 0 (the normal case,
+    /// since every staged SOP is installed today), so the summary
+    /// carries no skip clause at all.
     #[test]
-    fn format_install_summary_reports_exact_counts_and_never_implies_sops_installed() {
-        let counts = InstallCounts::from_manifest(&sample_manifest());
+    fn format_install_summary_reports_exact_counts_including_sops() {
+        let counts =
+            InstallCounts::from_manifest(&sample_manifest(), &sample_manifest_staged_sop_names());
         let summary = format_install_summary(
             Path::new("/tmp/example-target"),
             Path::new("/tmp/example-target/.konductor/manifest"),
             &counts,
-            7,
+            0,
             None,
             None,
             ColorMode::disabled(),
         );
         assert_eq!(
             summary,
-            "konductor install: installed 2 agent(s), 1 skill(s), 1 context file(s), 1 \
-             MCP server binary(ies) to /tmp/example-target \
+            "konductor install: installed 2 agent(s), 1 skill(s), 1 SOP(s), 1 context \
+             file(s), 1 MCP server binary(ies) to /tmp/example-target \
              (manifest: /tmp/example-target/.konductor/manifest); \
-             skipped 7 SOP(s) (no runtime discovery path yet); \
              overwrote 2 pre-existing file(s) not created by Konductor"
         );
+    }
+
+    /// A nonzero `sops_skipped` (a shortfall between staged and
+    /// installed SOPs) must surface its own clause in the summary,
+    /// distinct from the `sops` count of what was actually installed.
+    #[test]
+    fn format_install_summary_includes_skip_clause_when_sops_skipped_is_nonzero() {
+        let counts =
+            InstallCounts::from_manifest(&sample_manifest(), &sample_manifest_staged_sop_names());
+        let summary = format_install_summary(
+            Path::new("/tmp/example-target"),
+            Path::new("/tmp/example-target/.konductor/manifest"),
+            &counts,
+            3,
+            None,
+            None,
+            ColorMode::disabled(),
+        );
         assert!(
-            !summary.contains("installed")
-                || !summary[summary.find("SOP").unwrap()..].contains("installed"),
-            "summary must never claim SOPs were installed: {summary:?}"
+            summary.contains("skipped 3 staged SOP(s)"),
+            "summary must report a nonzero skip count, got: {summary:?}"
         );
     }
 
     /// `count_staged_sops` counts `*.sop.md` under the source's staged
-    /// `dist/<harness_dir>/sops/` -- the figure the install summary
-    /// reports as skipped -- ignoring non-SOP files, and returns 0 when
-    /// the directory is absent. Derived at runtime, so it can never
-    /// drift from a hand-maintained constant and reflects whatever
-    /// `--from` source was installed under the given harness directory.
+    /// `dist/<harness_dir>/sops/` -- every staged SOP, used to detect a
+    /// shortfall against what was actually installed -- ignoring
+    /// non-SOP files, and returns 0 when the directory is absent.
+    /// Derived at runtime, so it can never drift from a hand-maintained
+    /// constant and reflects whatever `--from` source was installed
+    /// under the given harness directory.
     #[test]
     fn count_staged_sops_counts_staged_sop_md_files() {
         use crate::cli::synth::kiro_cli_v2::{KiroCliV2Transformer, SOPS_CONTENT_TYPE_DIR};
@@ -3709,28 +4346,51 @@ mod tests {
     }
 
     /// `--json` output parses as valid JSON and carries the same counts
-    /// as the human-readable summary, including the SOP-skip and
-    /// foreign-overwrite figures.
+    /// as the human-readable summary, including the new `sops` count
+    /// (kept separate from `skills`), `sops_skipped`, and the
+    /// foreign-overwrite figure. All prior keys stay present and
+    /// unrenamed.
     #[test]
     fn format_install_summary_json_parses_and_matches_counts() {
-        let counts = InstallCounts::from_manifest(&sample_manifest());
+        let counts =
+            InstallCounts::from_manifest(&sample_manifest(), &sample_manifest_staged_sop_names());
         let value = format_install_summary_json(
             Path::new("/tmp/example-target"),
             Path::new("/tmp/example-target/.konductor/manifest"),
             &counts,
-            7,
+            0,
             Some("0.1.1"),
             Some("v0.2.0"),
         );
         assert_eq!(value["command"], "install");
         assert_eq!(value["agents"], 2);
         assert_eq!(value["skills"], 1);
+        assert_eq!(value["sops"], 1);
         assert_eq!(value["context"], 1);
         assert_eq!(value["bin"], 1);
-        assert_eq!(value["sops_skipped"], 7);
+        assert_eq!(value["sops_skipped"], 0);
         assert_eq!(value["replaced_foreign"], 2);
         assert_eq!(value["agent_version"], "0.1.1");
         assert_eq!(value["mcp_binary_version"], "v0.2.0");
+    }
+
+    /// A nonzero `sops_skipped` must still serialize correctly
+    /// alongside a nonzero `sops` count -- the two are independent
+    /// figures (installed vs. shortfall), not mutually exclusive.
+    #[test]
+    fn format_install_summary_json_reports_nonzero_sops_skipped_independently_of_sops() {
+        let counts =
+            InstallCounts::from_manifest(&sample_manifest(), &sample_manifest_staged_sop_names());
+        let value = format_install_summary_json(
+            Path::new("/tmp/example-target"),
+            Path::new("/tmp/example-target/.konductor/manifest"),
+            &counts,
+            3,
+            None,
+            None,
+        );
+        assert_eq!(value["sops"], 1);
+        assert_eq!(value["sops_skipped"], 3);
     }
 
     /// `agent_version` must serialize as an explicit JSON `null`, not
@@ -3738,7 +4398,8 @@ mod tests {
     /// `install-info.json`'s own `agent_version` field contract.
     #[test]
     fn format_install_summary_json_agent_version_is_null_when_unavailable() {
-        let counts = InstallCounts::from_manifest(&sample_manifest());
+        let counts =
+            InstallCounts::from_manifest(&sample_manifest(), &sample_manifest_staged_sop_names());
         let value = format_install_summary_json(
             Path::new("/tmp/example-target"),
             Path::new("/tmp/example-target/.konductor/manifest"),
@@ -3757,7 +4418,8 @@ mod tests {
     /// present (as `null`), not missing.
     #[test]
     fn format_install_summary_json_mcp_binary_version_is_null_when_unavailable() {
-        let counts = InstallCounts::from_manifest(&sample_manifest());
+        let counts =
+            InstallCounts::from_manifest(&sample_manifest(), &sample_manifest_staged_sop_names());
         let value = format_install_summary_json(
             Path::new("/tmp/example-target"),
             Path::new("/tmp/example-target/.konductor/manifest"),
@@ -3780,7 +4442,8 @@ mod tests {
     /// breaks a single-`JSON.parse` consumer reading all of stdout.
     #[test]
     fn merge_link_bin_json_folds_success_into_the_same_object() {
-        let counts = InstallCounts::from_manifest(&sample_manifest());
+        let counts =
+            InstallCounts::from_manifest(&sample_manifest(), &sample_manifest_staged_sop_names());
         let mut value = format_install_summary_json(
             Path::new("/tmp/example-target"),
             Path::new("/tmp/example-target/.konductor/manifest"),
@@ -3810,7 +4473,8 @@ mod tests {
 
     #[test]
     fn merge_link_bin_json_folds_failure_into_the_same_object() {
-        let counts = InstallCounts::from_manifest(&sample_manifest());
+        let counts =
+            InstallCounts::from_manifest(&sample_manifest(), &sample_manifest_staged_sop_names());
         let mut value = format_install_summary_json(
             Path::new("/tmp/example-target"),
             Path::new("/tmp/example-target/.konductor/manifest"),

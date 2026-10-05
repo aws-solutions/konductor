@@ -6,6 +6,20 @@ This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Entries are consolidated per release,
 not per individual commit.
 
+## [Unreleased]
+
+### Fixed
+
+- `konductor install`'s summary now reports SOPs and skills as separate counts, for
+  both plain-text and `--json` output, across all three harnesses (`kiro-cli-v2`,
+  `kiro-v3`, `claude`) and both install paths (`--from` and the no-`--from` release
+  fetch). Before, an installed SOP's `sop-<name>/SKILL.md` conversion was folded into
+  the `skills` count, and the summary separately claimed every staged SOP was
+  "skipped", even though it had just been installed.
+- `--json` output adds a `sops` key alongside the existing `skills` key. `sops_skipped`
+  stays present and now reports an actual shortfall (staged minus installed), which is
+  0 in the normal case; no existing key was removed or renamed.
+
 ## [1.0.3] - 2026-10-01
 
 ### Fixed

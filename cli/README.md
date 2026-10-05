@@ -264,8 +264,15 @@ choose between.
 | ----------------- | ------------------------------------ |
 | Agents            | `<target>/.kiro/agents/`             |
 | Skills            | `<target>/.konductor/skills/<name>/` |
+| SOPs              | `<target>/.konductor/sops/` (raw copy) plus `<target>/.kiro/skills/sop-<name>/` (Kiro-discoverable conversion) |
 | MCP server binary | `<target>/.konductor/bin/<name>`     |
 | Manifest          | `<target>/.konductor/manifest`       |
+
+This table covers `kiro-cli-v2`/`kiro-v3`. `--harness claude` installs agents and
+skills under `.claude/agents/`/`.claude/skills/` instead, and converts each SOP into
+a `sop-<name>/SKILL.md` file under that same `.claude/skills/` root, with no raw
+copy on that harness, since Claude Code has no MCP-prompt equivalent to serve
+`.sop.md` files directly.
 
 The MCP server binary is `skill-lookup-mcp`. On a `--from <repo-root>` install it's
 read from `<repo-root>/mcp/target/release/skill-lookup-mcp` (built by `make build`'s
@@ -420,6 +427,7 @@ Verify a `--target <dir>` install:
 ```bash
 ls dir/.kiro/agents/*.json | wc -l          # agent count
 ls -d dir/.konductor/skills/*/ | wc -l      # skill count
+ls dir/.konductor/sops/*.sop.md | wc -l     # SOP count
 wc -l dir/.konductor/manifest                # manifest entries
 ```
 
@@ -920,8 +928,6 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
   for that gap plus two further caveats (GitHub API rate limiting; no GPG/sigstore
   provenance check — SHA-256 transport-integrity only). `--from <repo-root>` remains
   an alternative for installing from a local checkout.
-- SOPs are synthed into `dist/kiro-cli-v2/sops/` but are not installed anywhere; there is
-  no runtime discovery path for them yet.
 - `metrics` is a stub (see above).
 - `update` and `uninstall` have no same-target concurrency protection: running two
   `konductor` invocations against the same target directory at once is unsupported and

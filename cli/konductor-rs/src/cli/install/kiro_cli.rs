@@ -2,11 +2,14 @@
 //
 // install/kiro_cli.rs — `InstallStrategy` for the Kiro CLI runtime.
 //
-// Copies synthed agent, skill, and context files from a local synth output
-// tree (`--from <repo-root>`) into the target's `.kiro/` and `.konductor/`.
-// SOPs under `dist/<harness>/sops/` have no Kiro CLI install destination and
-// are not copied. Remote (GitHub Release) installation is not yet
-// implemented; `install_from_local` fails with a clear message instead.
+// Copies synthed agent, skill, context, and SOP files from a local
+// synth output tree (`--from <repo-root>`) into the target's `.kiro/`
+// and `.konductor/`. SOPs land as a raw `.konductor/sops/*.sop.md`
+// copy plus a Kiro-discoverable `sop-<name>/SKILL.md` conversion under
+// `.kiro/skills/` (see `kiro_cli/copy.rs`'s `install_sops`/
+// `install_kiro_sop_skills`, run via `phases.rs`'s `SopInstallPhase`).
+// Remote (GitHub Release) installation is not yet implemented;
+// `install_from_local` fails with a clear message instead.
 //
 // Skills land under `.konductor/skills/`, not `.kiro/skills/`: Kiro CLI's
 // native skill discovery scans `.kiro/skills/` unconditionally and makes

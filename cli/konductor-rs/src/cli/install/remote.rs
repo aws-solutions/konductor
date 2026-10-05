@@ -406,14 +406,21 @@ impl Drop for RemoteTempDir {
 pub type RemoteArtifactFetcher<'a> = Box<dyn Fn() -> std::io::Result<(Vec<u8>, Vec<u8>)> + 'a>;
 
 /// What a successful `install_from_remote_bytes` call actually
-/// installed, beyond "it succeeded" -- today just the MCP server
-/// binary's own release version (`None` when no `mcp_binary_fetcher`
-/// was supplied, or when the current host has no published binary).
-/// Named struct rather than a bare `Option<String>` return so a future
-/// additional piece of data has an obvious place to land.
+/// installed, beyond "it succeeded" -- the MCP server binary's own
+/// release version (`None` when no `mcp_binary_fetcher` was supplied,
+/// or when the current host has no published binary) and the bare
+/// names of every SOP staged for this install (see
+/// `super::staged_sop_names`'s own doc comment). `staged_sop_names` is
+/// threaded through because the staged `dist/` tree this outcome is
+/// built from lives only in a scratch temp directory that is deleted
+/// the instant `install_from_remote_bytes_named_with_limit` returns
+/// (see `RemoteTempDir::drop`) -- by the time a caller could otherwise
+/// re-read it to classify a `.claude/skills/sop-<name>` manifest entry,
+/// it is already gone.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct RemoteInstallOutcome {
     pub mcp_binary_version: Option<String>,
+    pub staged_sop_names: std::collections::HashSet<String>,
 }
 
 /// Verifies the pair, unpacks into a fresh temp directory, hands that
@@ -528,6 +535,16 @@ fn install_from_remote_bytes_named_with_limit(
             "temp directory path is not valid UTF-8",
         ))
     })?;
+
+    // Read while `temp_dir` is still alive -- `RemoteTempDir::drop`
+    // deletes the staged `dist/` tree the instant this function
+    // returns, so this is the last point the real staged SOP names are
+    // reachable at all. Threaded out via `RemoteInstallOutcome` so a
+    // caller can classify a `.claude/skills/sop-<name>` manifest entry
+    // after the fact without the staged source still being on disk.
+    let staged_sop_names =
+        super::staged_sop_names(&temp_dir.path.join("dist").join(strategy.harness_dir()));
+
     strategy
         .install_from_local(target_dir, Some(from), installed_at, no_telemetry)
         .map_err(RemoteInstallError::Install)?;
@@ -575,7 +592,10 @@ fn install_from_remote_bytes_named_with_limit(
         );
     }
 
-    Ok(RemoteInstallOutcome { mcp_binary_version })
+    Ok(RemoteInstallOutcome {
+        mcp_binary_version,
+        staged_sop_names,
+    })
 }
 
 #[cfg(test)]
