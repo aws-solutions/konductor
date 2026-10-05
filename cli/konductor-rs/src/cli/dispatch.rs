@@ -92,12 +92,12 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool, color: ColorMode) 
             };
             crate::cli::synth::dispatch_synth_with(&cwd, from, verbose, json, color)
         }
-        Commands::Init { preset, force } => {
+        Commands::Init { force } => {
             let cwd = match resolve_cwd("init", color) {
                 Ok(dir) => dir,
                 Err(code) => return code,
             };
-            dispatch_init(&cwd, preset, force, color)
+            dispatch_init(&cwd, force, color)
         }
         Commands::Doctor {
             from,
@@ -136,6 +136,10 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool, color: ColorMode) 
             dispatch_config(&cwd, action, color)
         }
         Commands::Metrics { since } => {
+            if !metrics_dispatch_allowed() {
+                print_not_currently_available("metrics");
+                return EXIT_USAGE_ERROR;
+            }
             print_not_implemented("metrics", &[("--since", opt(&since))]);
             0
         }
@@ -256,21 +260,14 @@ fn resolve_cwd_reporting_json(command: &str, json: bool, color: ColorMode) -> Re
     }
 }
 
-/// `konductor init [--preset ...] [--force]`: scaffolds `.konductor/` in
-/// `target_dir` (the current working directory in real use; passed
-/// explicitly rather than resolved internally so tests can point at a
-/// scratch directory without mutating the process-global cwd). `preset`
-/// is accepted and echoed for forward compatibility but does not yet
-/// change the scaffolded output.
+/// `konductor init [--force]`: scaffolds `.konductor/` in `target_dir`
+/// (the current working directory in real use; passed explicitly rather
+/// than resolved internally so tests can point at a scratch directory
+/// without mutating the process-global cwd).
 ///
 /// Exit-code contract: any `InitError` is a USAGE ERROR (64), never exit
 /// code 2 -- see cli/init.rs's module docstring.
-fn dispatch_init(
-    target_dir: &std::path::Path,
-    preset: Option<String>,
-    force: bool,
-    color: ColorMode,
-) -> u8 {
+fn dispatch_init(target_dir: &std::path::Path, force: bool, color: ColorMode) -> u8 {
     match init::run_init(target_dir, force) {
         Ok(result) => {
             println!(
@@ -286,9 +283,6 @@ fn dispatch_init(
                     "Gitignore already exists, left untouched: {}",
                     result.gitignore_path.display()
                 );
-            }
-            if let Some(preset) = preset {
-                println!("(preset '{preset}' requested; all presets currently produce the same starter config)");
             }
             0
         }
@@ -451,15 +445,29 @@ fn opt(value: &Option<String>) -> String {
 /// keep exercising the real dispatch path while `config` is withheld
 /// from ordinary end users. Any other value, or unset, keeps it gated.
 fn config_dispatch_allowed() -> bool {
-    config_dispatch_allowed_for(std::env::var("KONDUCTOR_ALLOW_CONFIG").ok())
+    command_dispatch_allowed_for(std::env::var("KONDUCTOR_ALLOW_CONFIG").ok(), "1")
 }
 
-/// Pure decision logic behind `config_dispatch_allowed`, split out so
-/// tests can exercise every input value without mutating the real
-/// process-global `KONDUCTOR_ALLOW_CONFIG` env var (which would race
-/// against other tests reading process env concurrently).
-fn config_dispatch_allowed_for(value: Option<String>) -> bool {
-    value.as_deref() == Some("1")
+/// Gates `Commands::Metrics` dispatch while the subcommand is
+/// temporarily hidden (see cli.rs's `#[command(hide = true)]` on
+/// `Commands::Metrics`). `metrics` is a stub with no side effects, but
+/// it still needs the gate so a direct invocation gets a consistent
+/// "not currently available" rather than silently succeeding (exit 0)
+/// despite being hidden from `--help`.
+///
+/// `KONDUCTOR_ALLOW_METRICS=1` is the same internal-only escape hatch
+/// as `config_dispatch_allowed`'s `KONDUCTOR_ALLOW_CONFIG`.
+fn metrics_dispatch_allowed() -> bool {
+    command_dispatch_allowed_for(std::env::var("KONDUCTOR_ALLOW_METRICS").ok(), "1")
+}
+
+/// Shared decision logic behind all three dispatch-allowed gates: an
+/// env var's value only allows dispatch when it exactly matches
+/// `allow_value`. Split out so tests can exercise every input without
+/// mutating the real process-global env vars, which would race other
+/// tests reading process env concurrently.
+fn command_dispatch_allowed_for(value: Option<String>, allow_value: &str) -> bool {
+    value.as_deref() == Some(allow_value)
 }
 
 /// Printed instead of running `dispatch_config` when `config` is gated.
@@ -541,7 +549,7 @@ mod tests {
         let _lock = lock_home();
         let target = scratch_cwd("round-trip");
 
-        let init_code = dispatch_init(&target, None, false, ColorMode::disabled());
+        let init_code = dispatch_init(&target, false, ColorMode::disabled());
         assert_eq!(init_code, 0, "init on an empty target must succeed");
 
         let list_code = dispatch_config(&target, ConfigAction::List, ColorMode::disabled());
@@ -558,11 +566,11 @@ mod tests {
         let target = scratch_cwd("clobber-guard");
 
         assert_eq!(
-            dispatch_init(&target, None, false, ColorMode::disabled()),
+            dispatch_init(&target, false, ColorMode::disabled()),
             0
         );
         assert_eq!(
-            dispatch_init(&target, None, false, ColorMode::disabled()),
+            dispatch_init(&target, false, ColorMode::disabled()),
             EXIT_USAGE_ERROR
         );
 
@@ -579,7 +587,7 @@ mod tests {
         let target = scratch_cwd("config-set-real");
 
         assert_eq!(
-            dispatch_init(&target, None, false, ColorMode::disabled()),
+            dispatch_init(&target, false, ColorMode::disabled()),
             0
         );
         let set_code = dispatch_config(
@@ -607,7 +615,7 @@ mod tests {
         let target = scratch_cwd("config-set-unknown-key");
 
         assert_eq!(
-            dispatch_init(&target, None, false, ColorMode::disabled()),
+            dispatch_init(&target, false, ColorMode::disabled()),
             0
         );
         let code = dispatch_config(
@@ -629,7 +637,7 @@ mod tests {
         let target = scratch_cwd("config-set-invalid-value");
 
         assert_eq!(
-            dispatch_init(&target, None, false, ColorMode::disabled()),
+            dispatch_init(&target, false, ColorMode::disabled()),
             0
         );
         let code = dispatch_config(
@@ -658,7 +666,7 @@ mod tests {
         let target = scratch_cwd("config-set-fixes-broken-field");
 
         assert_eq!(
-            dispatch_init(&target, None, false, ColorMode::disabled()),
+            dispatch_init(&target, false, ColorMode::disabled()),
             0
         );
         let config_path = target
@@ -706,7 +714,7 @@ mod tests {
         let target = scratch_cwd("config-get-list-reject-broken");
 
         assert_eq!(
-            dispatch_init(&target, None, false, ColorMode::disabled()),
+            dispatch_init(&target, false, ColorMode::disabled()),
             0
         );
         let config_path = target
@@ -756,7 +764,7 @@ mod tests {
         let target = scratch_cwd("config-set-unknown-key-no-write");
 
         assert_eq!(
-            dispatch_init(&target, None, false, ColorMode::disabled()),
+            dispatch_init(&target, false, ColorMode::disabled()),
             0
         );
         let config_path = target
@@ -791,7 +799,7 @@ mod tests {
         let target = scratch_cwd("config-set-invalid-value-no-write");
 
         assert_eq!(
-            dispatch_init(&target, None, false, ColorMode::disabled()),
+            dispatch_init(&target, false, ColorMode::disabled()),
             0
         );
         let config_path = target
@@ -826,7 +834,7 @@ mod tests {
         let target = scratch_cwd("config-set-no-leftover-tmp");
 
         assert_eq!(
-            dispatch_init(&target, None, false, ColorMode::disabled()),
+            dispatch_init(&target, false, ColorMode::disabled()),
             0
         );
         let code = dispatch_config(
@@ -1114,16 +1122,17 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// Pure decision logic behind the `KONDUCTOR_ALLOW_CONFIG` gate.
-    /// Exercised directly (no real env var mutation) to cover every input
-    /// without racing other tests that read process env concurrently.
+    /// Pure decision logic shared by all three dispatch-allowed gates
+    /// (`KONDUCTOR_ALLOW_CONFIG`/`_INIT`/`_METRICS`). Exercised directly
+    /// (no real env var mutation) to cover every input without racing
+    /// other tests that read process env concurrently.
     #[test]
-    fn config_dispatch_allowed_for_only_accepts_exact_value_one() {
-        assert!(config_dispatch_allowed_for(Some("1".to_string())));
-        assert!(!config_dispatch_allowed_for(None));
-        assert!(!config_dispatch_allowed_for(Some("".to_string())));
-        assert!(!config_dispatch_allowed_for(Some("true".to_string())));
-        assert!(!config_dispatch_allowed_for(Some("0".to_string())));
+    fn command_dispatch_allowed_for_only_accepts_exact_value_one() {
+        assert!(command_dispatch_allowed_for(Some("1".to_string()), "1"));
+        assert!(!command_dispatch_allowed_for(None, "1"));
+        assert!(!command_dispatch_allowed_for(Some("".to_string()), "1"));
+        assert!(!command_dispatch_allowed_for(Some("true".to_string()), "1"));
+        assert!(!command_dispatch_allowed_for(Some("0".to_string()), "1"));
     }
 
     /// `Commands::Config` must be gated by default: with
@@ -1193,6 +1202,59 @@ mod tests {
         assert_eq!(
             code, 0,
             "with the escape hatch set, `config list` must reach dispatch_config and succeed"
+        );
+    }
+
+    /// `Commands::Metrics` must be gated by default: with
+    /// `KONDUCTOR_ALLOW_METRICS` unset, dispatching it must return
+    /// `EXIT_USAGE_ERROR`, not the stub's usual exit 0.
+    #[test]
+    fn dispatch_metrics_is_gated_without_the_allow_env_var() {
+        let _guard = lock_home();
+        let previous = std::env::var("KONDUCTOR_ALLOW_METRICS").ok();
+        std::env::remove_var("KONDUCTOR_ALLOW_METRICS");
+
+        let code = dispatch(
+            Commands::Metrics { since: None },
+            false,
+            false,
+            ColorMode::disabled(),
+        );
+
+        match previous {
+            Some(value) => std::env::set_var("KONDUCTOR_ALLOW_METRICS", value),
+            None => std::env::remove_var("KONDUCTOR_ALLOW_METRICS"),
+        }
+
+        assert_eq!(
+            code, EXIT_USAGE_ERROR,
+            "gated `metrics` dispatch must return EXIT_USAGE_ERROR (64), not the stub's exit 0"
+        );
+    }
+
+    /// The escape hatch: with `KONDUCTOR_ALLOW_METRICS=1` set,
+    /// `Commands::Metrics` must reach the stub's normal exit-0 behavior.
+    #[test]
+    fn dispatch_metrics_reaches_stub_when_allow_env_var_is_set() {
+        let _guard = lock_home();
+        let previous = std::env::var("KONDUCTOR_ALLOW_METRICS").ok();
+        std::env::set_var("KONDUCTOR_ALLOW_METRICS", "1");
+
+        let code = dispatch(
+            Commands::Metrics { since: None },
+            false,
+            false,
+            ColorMode::disabled(),
+        );
+
+        match previous {
+            Some(value) => std::env::set_var("KONDUCTOR_ALLOW_METRICS", value),
+            None => std::env::remove_var("KONDUCTOR_ALLOW_METRICS"),
+        }
+
+        assert_eq!(
+            code, 0,
+            "with the escape hatch set, `metrics` must reach the stub and exit 0"
         );
     }
 }

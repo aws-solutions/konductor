@@ -30,24 +30,21 @@ For the agents and skills themselves, see the [Agents reference](agents.md) and
 
 ## Command table
 
-Seven commands.
+Six commands.
 
 | Command | Purpose |
 | --- | --- |
 | `konductor install` | Register agents, skills, SOPs, and context files with the harness named by `--harness` (required) |
-| `konductor update` | Unconditionally overwrite a tracked install in place from `--from`; `--dry-run` previews it |
+| `konductor update` | With `--from`, unconditionally overwrites a tracked install in place; with no `--from`, fetches a release and skips the write if already current. `--dry-run` previews either path. See [Update an installation](tasks/update.md) |
 | `konductor uninstall` | Remove a tracked install's files and its index entry; `--dry-run` previews it |
-| `konductor doctor` | Check the runtime, the installed content, the project config, and available updates |
-| `konductor init` | Create `.konductor/` and write a starter `config.yml` |
+| `konductor doctor` | Check the runtime, the installed content, and available updates |
 | `konductor synth` | Parse `agents/`, `skills/`, and `agent-sops/` and write per-runtime output to `<source>/dist/` |
-| `konductor metrics` | Show quality trends from recent runs |
+| `konductor init` | Scaffold `.konductor/config.yml`. Optional, see [Initialize a project](tasks/initialize-a-project.md) |
 
 `update` and `uninstall` both accept `--target <dir>`, `--all`, and `--dry-run`, and share one
 target-selection table — see [Update an installation](tasks/update.md#choosing-which-install-to-update).
 Neither prompts for confirmation: `--dry-run` is the only preview, and it is the only way to see
 **which** files carry local edits that a real run would destroy.
-
-`konductor metrics` is a **stub** in this release — it prints "not yet implemented."
 
 **`install` fetches its content from a GitHub Release, and whether it succeeds depends on one
 being published.** It looks for one asset — `konductor-v<version>.tar.gz` — plus a `.sha256`
@@ -100,6 +97,9 @@ Accepted before or after a subcommand.
 | `update` | `--all` | flag | No | Update every tracked install. Conflicts with `--target` |
 | `update` | `--dry-run` | flag | No | Report what would be overwritten, per path, flagging local edits. Writes nothing |
 | `update` | `--harness <NAME>` | enum | No | Narrow the selection to one harness |
+| `update` | `--cli` | flag | No | Self-replace the running binary from a published GitHub release instead of updating installed content. Conflicts with `--from`, `--target`, `--all`, `--harness`, and `--dry-run` |
+| `update` | `--version <v>` | string | No | Fetch a specific release tag instead of latest. Applies to both the content axis and `--cli`. Conflicts with `--from` |
+| `update` | `--force` | flag | No | Bypass the already-current skip on a no-`--from` content update. No effect on `--from` or `--cli` |
 | `uninstall` | `--target <DIR>` | path | No | Which tracked install to remove. Conflicts with `--all` |
 | `uninstall` | `--all` | flag | No | Remove every tracked install. Conflicts with `--target` |
 | `uninstall` | `--dry-run` | flag | No | Report what would be removed, per path, flagging local edits. Writes nothing |
@@ -107,63 +107,18 @@ Accepted before or after a subcommand.
 | `doctor` | `--from <PATH>` | path | No | Source tree to check. Conflicts with `--all` |
 | `doctor` | `--target <DIR>` | path | No | Install directory to check. Defaults to `$HOME`. Conflicts with `--all` |
 | `doctor` | `--all` | flag | No | Check every tracked install. Conflicts with `--from` and `--target` |
-| `init` | `--preset <PRESET>` | enum | No | `solo`, `team`, `org` |
-| `init` | `--force` | flag | No | Overwrite an existing `.konductor/` instead of failing |
 | `synth` | `--from <PATH>` | path | No | Synthesize this source tree instead of the current directory. Output goes to `<PATH>/dist/` |
-| `metrics` | `--since <WINDOW>` | string | No | Limit the report to runs within a time window. `metrics` is a stub in this release |
+| `init` | `--force` | flag | No | Overwrite an existing `.konductor/` directory instead of failing when one is already present |
 
 
 ## Configuration file
 
-**Path:** `.konductor/config.yml`, relative to the current working directory. `konductor init`
-writes it and `konductor doctor` validates it; edit it by hand.
-**Format:** a YAML mapping at the top level, with flat scalar keys. Nested dotted keys are not
-supported.
-
-### Schema
-
-| Key | Type | Valid values | Default |
-| --- | --- | --- | --- |
-| `version` | integer | `1` — any other value is rejected | `1` |
-| `severities_source` | string | A path, relative to the CLI's policy directory, to the file defining finding severities | `severity-schema.yml` |
-| `tiers_source` | string | A path, relative to the CLI's policy directory, to the file defining change tiers | `scope-table.yml` |
-| `tier` | string | The active change tier: `trivial`, `bugfix`, `minor`, `major`, or `full` | `minor` |
-| `default_severity` | string | `CRITICAL`, `HIGH`, `MEDIUM`, `LOW`, or `INFO` — applied to a finding that does not specify its own severity | `MEDIUM` |
-| `fail_on_severity_at_or_above` | string | `CRITICAL`, `HIGH`, `MEDIUM`, `LOW`, or `INFO` — the lowest severity treated as blocking | `CRITICAL` |
-
-Unrecognized extra keys are ignored.
-
-### Minimal valid file
-
-```yaml
-version: 1
-```
-
-Every other field falls through to the user layer and then the CLI defaults.
-
-### Precedence
-
-Three layers, merged **shallow and per-field**. Later layers win per field; a field absent from a
-layer falls through.
-
-| Order | Layer | Path | Missing is an error? |
-| --- | --- | --- | --- |
-| 1 (lowest) | CLI defaults | Compiled into the binary | Never missing |
-| 2 | User config | `~/.konductor/config.yml`, resolved from `$HOME` | No |
-| 3 (highest) | Project config | `<cwd>/.konductor/config.yml` | No |
-
-### Config error messages
-
-All exit `64`.
-
-| Message | Cause |
-| --- | --- |
-| `config version <n> is not supported by this CLI (expected 1)` | `version` is not `1` |
-| `config file <path> is not valid YAML: …` | Syntax error, or a value of the wrong type for its field |
-| `config file <path> is not valid YAML: invalid type: sequence, expected struct RawConfig` | The top level is a list rather than key-value pairs |
-| `<path> already exists. Re-run with --force to overwrite it.` | `init` on an existing `.konductor/` |
-
-An **empty** `config.yml` is not an error — every field falls through to its default.
+**Path:** `.konductor/config.yml`, relative to the current working directory. Optional:
+`konductor init` scaffolds a starter copy, but a project with no file at all behaves identically
+to one with the shipped defaults. Two top-level keys: `version` (schema version) and
+`telemetry` (a nested section with one field, `enabled`, set to `false` to opt this project
+out of usage telemetry). `telemetry.endpoint` is not shipped in the starter file; set it by
+hand only to redirect telemetry to a different collector.
 
 
 ## Exit-code contract
@@ -194,9 +149,6 @@ rather than lumping every non-zero code together.
 | Unknown subcommand | `konductor instal` |
 | Unknown flag | `konductor --bogus` |
 | Missing required argument | `konductor install` without `--harness` |
-| Invalid enum value | `konductor init --preset enterprise` |
-| Malformed config on load | Any command, against a broken `.konductor/config.yml` |
-| `init` without `--force` on an existing `.konductor/` | `konductor init` |
 | `synth` parse failure | A malformed `agents/*.agent-spec.json` |
 | Current directory cannot be resolved | — |
 
@@ -211,7 +163,7 @@ konductor instal
 ```text
 error: unrecognized subcommand 'instal'
 
-  tip: some similar subcommands exist: 'init', 'uninstall', 'install'
+  tip: some similar subcommands exist: 'uninstall', 'install', 'update'
 
 Usage: konductor [OPTIONS] [COMMAND]
 
@@ -338,10 +290,8 @@ JSON or Markdown you can read and change — see
 
 | Path | Created by | Gitignored? |
 | --- | --- | --- |
-| `.konductor/config.yml` | `konductor init` | No |
 | `dist/` | `konductor synth` | **Yes** |
 | `~/.konductor/logs/konductor.log` | Every CLI invocation | Outside the repo |
-| `~/.konductor/config.yml` | You, by hand | Outside the repo |
 | `.konductor/handoff/<name>.md` | The `k-context-gathering` SOP, for large findings | No |
 | `.agents/scratchpad/critique-NNN.md` | The `k-pre-cr-critique` SOP | No |
 | `.kiro/specs/<feature>/` | The `kiro-spec-workflow` SOP | No |

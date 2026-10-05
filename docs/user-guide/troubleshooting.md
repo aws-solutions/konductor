@@ -27,7 +27,6 @@ For a systematic walk-through rather than a specific symptom, see
 5. [An agent says it cannot run a workflow](#5-an-agent-says-it-cannot-run-a-workflow)
 6. [My edits to an agent, skill, or SOP had no effect](#6-my-edits-to-an-agent-skill-or-sop-had-no-effect)
 7. [`konductor synth` succeeds but produces nothing](#7-konductor-synth-succeeds-but-produces-nothing)
-8. [A config value is not what I set](#8-a-config-value-is-not-what-i-set)
 
 ---
 
@@ -316,28 +315,6 @@ konductor synth: agents/broken.agent-spec.json: invalid JSON: key must be a stri
 ```
 
 Fix the named file and re-run.
-
----
-
-## 8. A config value is not what I set
-
-**Symptom.** A finding severity or change tier is not what your project config says.
-
-**Cause.** Three layers merge — CLI defaults, then `~/.konductor/config.yml`, then the project file —
-and a forgotten **user-level** config applies to every project while nothing surfaces it.
-
-**Fix.** Check the user layer:
-
-```bash
-cat ~/.konductor/config.yml
-```
-
-`No such file or directory` means you have no user-level config, and the value is coming from the CLI
-defaults. Otherwise, that file is your answer — edit or remove it.
-
-To override just for this project, edit `.konductor/config.yml` directly — project config
-always wins over the user layer. Full precedence rules are in the
-[CLI reference](reference.md#configuration-file).
 
 ---
 

@@ -23,7 +23,7 @@ drift checks, [`tools/build-user-guide/`](../../tools/build-user-guide/README.md
 | **Skill naming** | Skills are *not* renamed with the agent prefix. Two shipped skills begin with a prefix that looks like an agent prefix and must survive any rename sweep untouched — see `naming.PRESERVE`. | `skills/` on disk |
 | **SOP naming** | All SOPs carry the `k-` prefix except `kiro-spec-workflow` and `about-konductor`. | `agent-sops/` on disk |
 | **End-state vs as-shipped** | The guide describes **what ships now**. Where the CLI is a stub, the guide says so rather than describing the finished behaviour. | `cli/README.md` |
-| **Documented version** | `1.0.0`. **No source file declares it** — `cli/konductor-rs/Cargo.toml` is `0.1.1` and `package.json` is `0.1.0`. This is the one number in the guide that cannot be verified against the source, and it is deliberately not gated. Bump the source before launch. | none — by decision |
+| **Documented version** | `1.0.0`. **No source file declares it** — `cli/konductor-rs/Cargo.toml` is `1.0.3` and `package.json` is `0.1.0`. This is the one number in the guide that cannot be verified against the source, and it is deliberately not gated. | none — by decision |
 
 ---
 
@@ -61,26 +61,33 @@ repository is public. `--from` survives as one row in `reference.md`'s flag tabl
 maintainer path. The guide describes the shipped product and does not narrate the pre-launch
 window; the quick start builds from a clone without commenting on the release state.
 
-One source-side contradiction is deliberately left alone, being outside a docs change:
-`cli.rs`'s `--from` doc comment still says "Currently required: installing from a published
-release is not yet available", which contradicts `cli/README.md` and the implemented
-`remote_orchestrate` path. Worth a follow-up in the CLI.
+`cli.rs`'s `--from` doc comment used to contradict this: it claimed installing from a
+published release was not yet available, when `cli/README.md` and the implemented
+`remote_orchestrate` path already described the real fallback chain. That doc comment is
+now corrected to match.
 
-### `konductor config` is withheld from the v1 guide
+### Commands withheld from v1
 
-By reviewer decision: the command is not part of the customer-visible surface for the v1 launch,
-so the guide does not document it. **`.konductor/config.yml` itself is still documented**,
-schema included, because `konductor init` writes it and `konductor doctor` validates it —
-removing the file too would leave both of those pointing at something the guide never describes.
+`config` and `metrics` are hidden from `--help` (`#[command(hide = true)]`) and gated at
+dispatch: real, tested code underneath, not deleted, just not currently offered to users.
+`init` was un-hidden by reviewer decision: it is the only command that scaffolds
+`.konductor/config.yml`, so hiding it would leave no documented, command-driven way to
+create or customize the file at all. `init`'s documentation now frames it as optional
+rather than a required setup step.
 
-`check-guide-facts.py` records this in `WITHDRAWN_COMMANDS` rather than dropping its
+- **`config`**: withheld by reviewer decision; not part of the v1 customer-visible surface.
+- **`metrics`**: additionally a genuine stub (prints "not yet implemented"), hidden now so its
+  real implementation doesn't ship later as a surprise new command.
+
+`check-guide-facts.py` records both in `WITHDRAWN_COMMANDS` rather than dropping its
 command-coverage check. That section asserts three things: every other command in
 `cli/README.md` is documented, every withdrawn command is **absent** from `reference.md`,
 `concepts.md` and `glossary.md`, and every name in `WITHDRAWN_COMMANDS` still exists in
-`cli/README.md`. So a second withdrawal nobody recorded, or a `config` command that gets deleted
+`cli/README.md`. So a withdrawal nobody recorded, or a withdrawn command that gets deleted
 outright, both fail loudly instead of quietly widening the carve-out.
 
-**Adding a name to `WITHDRAWN_COMMANDS` is a product decision, not a way to quiet the checker.**
+**Adding or removing a name in `WITHDRAWN_COMMANDS` is a product decision, not a way to quiet
+the checker.**
 
 ---
 

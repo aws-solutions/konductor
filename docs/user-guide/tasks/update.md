@@ -9,15 +9,23 @@ destinations is destroyed** — see the warning below before running it.
 
 ---
 
-## There is no "is an update available?" check
+## Checking whether an update is available
 
-Nothing in the CLI compares your installed version against a published one. `doctor` has six
-checks — `source`, `runtime`, `manifest`, `config`, `container_runtime`, `index_status` — and
-`cli/README.md` states plainly that it "does not … compare installed vs. available versions."
-`update` has no version awareness either: it overwrites from whatever `--from` you give it,
-without asking what version that is.
+```bash
+konductor update --dry-run
+```
 
-To know whether anything changed, compare your source checkout against the manifest:
+`konductor doctor` also has two checks for this: `cli_version` compares the running binary's own
+version against the latest published GitHub release, and `content_version` compares a tracked
+target's installed content version against the same. Both are `warn`-severity only when stale,
+never `failed`, and never affect `doctor`'s own exit code. Pass `--no-version-check` to skip the
+network calls both checks make; this is independent of telemetry opt-out.
+
+This version-comparison behaviour applies only to a no-`--from` install/update. **A `--from
+<repo-root>` update still has no version concept to compare against**, since a local checkout
+carries no release-version signal, so `--from` always overwrites unconditionally regardless of
+what `doctor` reports. To know whether anything would change from a local source, compare your
+source checkout against the manifest instead:
 
 ```bash
 konductor update --from <repo-root> --dry-run
@@ -49,7 +57,9 @@ Updated. Start a new session to pick up the changes.
 > destinations — `.kiro/agents/`, `.konductor/skills/`, `.konductor/manifest` — is silently
 > clobbered.** A real run reports only an aggregate count of how many files were overwritten
 > while diverged, *after the fact*; that count never gates or alters the overwrite, and there
-> is no `--force` flag either way. Use `--dry-run` first (below) if local edits might exist.
+> is no effect from `--force` on this path either, see
+> [Checking whether an update is available](#checking-whether-an-update-is-available) above for
+> where it does apply. Use `--dry-run` first (below) if local edits might exist.
 
 `--from` has no default of its own. Reusing whatever source a target was last installed from
 is not supported — pass `--from <repo-root>` explicitly every time.
@@ -90,9 +100,11 @@ Two things to note in that output:
 - **A running session keeps the old content.** Agents, skills, and context files are read at session
   start, so you need a new session.
 
-`update` does not detect "already current" — it has no version awareness. Running it against
-an unchanged source overwrites every tracked file with byte-identical content and reports the
-same counts. Exit code `0`.
+`update --from <repo-root>` does not detect "already current", since a local checkout has no
+version signal to compare against. Running it against an unchanged source overwrites every
+tracked file with byte-identical content and reports the same counts. Exit code `0`. A
+no-`--from` update does detect this instead, see
+[Checking whether an update is available](#checking-whether-an-update-is-available) above.
 
 ---
 
@@ -124,27 +136,8 @@ If you built from source instead, see
 
 - [ ] `konductor doctor` reports `manifest` as `ok` with no hash drift.
 - [ ] A new runtime session lists the agents you expect.
-- [ ] `konductor doctor` reports `config` as `ok`, confirming your config is still valid against
-      the new release.
 
-Check that last one, because a config schema change is the most likely thing to bite you:
-
-```bash
-konductor doctor
-```
-
-If it reports `config version <n> is not supported by this CLI`, the schema version changed. Back up
-your config, re-scaffold, and re-apply your settings:
-
-```bash
-cp .konductor/config.yml .konductor/config.yml.bak
-```
-
-```bash
-konductor init --force
-```
-
-`--force` overwrites `config.yml` with the release defaults, which is why the backup comes first.
+`.konductor/config.yml` is not currently used by the CLI.
 
 ---
 

@@ -48,11 +48,13 @@ _LAYOUT_NOUN = {"agents": "agent specs", "skills": "skills", "SOPs": "SOPs"}
 
 # Commands the CLI accepts but the guide deliberately does not document, with the
 # decision recorded so the carve-out is auditable rather than folklore. `config`
-# is withheld from the v1 customer-visible surface (reviewer decision on
-# reviewer decision); `.konductor/config.yml` itself stays documented, since `init`
-# writes it and `doctor` validates it. Adding a name here is a product decision,
-# not a way to silence this script -- see docs/user-guide/notes.md.
-WITHDRAWN_COMMANDS = {"config"}
+# and `metrics` are withheld from the v1 customer-visible surface (reviewer
+# decision); `init` was un-hidden by reviewer decision and is now documented
+# like any other command, since it is the only command that scaffolds
+# `.konductor/config.yml` -- see docs/user-guide/notes.md.
+# Adding a name here is a product decision, not a way to silence this script --
+# see docs/user-guide/notes.md.
+WITHDRAWN_COMMANDS = {"config", "metrics"}
 
 
 def html_pages_for_flags(root: Path):
@@ -626,10 +628,9 @@ def main() -> int:
     keys = re.findall(r"^([a-z][a-z0-9_]*):", cfg, re.MULTILINE)
     if not keys:
         fail("could not parse any top-level keys from cli/gate-config/config.yml")
-    # reference.md is the only page documenting the schema now. The task page that
-    # used to carry it went with the `konductor config` command -- see the
-    # WITHDRAWN_COMMANDS note below. The FILE is still documented, because
-    # `init` writes it and `doctor` validates it.
+    # reference.md is the only page documenting the schema. `init` writes it
+    # and `doctor` validates it; `config` (the get/set/list command) remains
+    # withdrawn -- see the WITHDRAWN_COMMANDS note above.
     for page in ("reference.md",):
         text = read(guide / page)
         missing = [k for k in keys if f"`{k}`" not in text]

@@ -44,7 +44,6 @@ Which you want:
 | Talk to `konductor` and get work done | No |
 | Run a SOP | No |
 | Read what a SOP or skill does | No |
-| Scaffold `.konductor/config.yml` | Yes |
 | Generate `dist/kiro-cli-v2/agents/*.json` from the specs | Yes |
 | Validate that every spec, skill, and SOP parses | Yes — `konductor synth` |
 
@@ -158,34 +157,21 @@ Full detail in [Contributing and customizing](appendix/contributing.md).
 
 ## How do I make a setting apply to every project?
 
-Create a user-level config. Precedence is preset → user → project, merged per field, project
-winning.
-
-```bash
-mkdir -p ~/.konductor
-```
-
-Then put only the fields you want to override into `~/.konductor/config.yml`:
-
-```yaml
-version: 1
-tier: major
-```
-
-Any project's own `.konductor/config.yml` still overrides this for the fields it sets.
-
-This is also the answer to "why is my config not what I expect?" — a forgotten user-level file is
-the usual culprit, since it applies everywhere and nothing surfaces it. See
-[Diagnose problems → which layer supplied a value](tasks/diagnose-problems.md#why-is-a-config-value-what-it-is).
+No command reads `.konductor/config.yml` today, project- or user-level, so there is nothing yet
+to apply across projects. The three-tier precedence (preset → user → project, merged per field,
+project winning) and the fields themselves exist for a future run-engine. See the
+[CLI reference](reference.md#configuration-file).
 
 ---
 
 ## Is any of my data sent anywhere?
 
-The CLI touches the network in one place only: `install`, fetching the release it installs from.
-Everything else — `update`, `doctor`, `init`, `synth`, `metrics` — is entirely local.
-Neither `update` nor `doctor` makes any release call: neither has version
-awareness. It writes to `.konductor/`, `dist/`, your runtime's configuration directory,
+The CLI touches the network in more than one place. `install` always fetches the release it
+installs from. `doctor` fetches the latest release tag by default too, to check whether your
+install is current — pass `--no-version-check` to skip that. A no-`--from` `update` fetches a
+release by design, since that's how it gets the content to update to; `update --cli` additionally
+reaches the network for its own self-replace step. `synth` alone is entirely local — no release
+or version-check call. It writes to `.konductor/`, `dist/`, your runtime's configuration directory,
 and `~/.konductor/` — nowhere else.
 
 Three things to be aware of nonetheless:
