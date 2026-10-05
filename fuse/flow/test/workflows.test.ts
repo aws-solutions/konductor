@@ -230,7 +230,7 @@ function shippedWorkflows(): string[] {
 describe("the workflows shipped in fuse/flow/workflows", () => {
   const shipped = shippedWorkflows();
 
-  test("there are seven of them", () => {
+  test("there are nine of them", () => {
     expect(shipped.sort()).toEqual([
       "_k-full-sdlc.yml",
       "_k-phase-chain.yml",
@@ -239,6 +239,8 @@ describe("the workflows shipped in fuse/flow/workflows", () => {
       "examples/custom-example-medium.yml",
       "examples/custom-example-small.yml",
       "examples/superpowers/superpowers.yml",
+      "fuse-development/fuse-feature-development.yml",
+      "fuse-development/fuse-system-development.yml",
     ]);
   });
 

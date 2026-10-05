@@ -52,7 +52,7 @@ function commentLines(text: string): Map<number, string> {
 
 describe("applyEdit on every real workflow file", () => {
   test(`found all ${WORKFLOW_FILES.length} workflow files`, () => {
-    expect(WORKFLOW_FILES.length).toBe(10);
+    expect(WORKFLOW_FILES.length).toBe(12);
   });
 
   for (const file of WORKFLOW_FILES) {

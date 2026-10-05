@@ -1,0 +1,72 @@
+# $schema: ../schemas/workflow.schema.json
+# yaml-language-server: $schema=../schemas/workflow.schema.json
+#
+# One feature in an existing codebase, in the spirit of decently-capable-powers: agree a spec
+# with the owner, build it test-first, and let independent agent review raise the bar before the
+# owner looks. The steps say what to achieve and leave the how to the agent and its harness.
+# Step and artifact names follow _k-phase-chain where they fit; review.md next to this file is
+# the review guide for both agent gates.
+#
+# Start a workstream with:  fuse-flow start <slug> --workflow fuse-feature-development
+version: 1
+name: fuse-feature-development
+description: >
+  One feature in an existing codebase: a spec agreed with the owner, a test-first build on a
+  branch, and independent agent review of both, before the owner approves the spec and lands the
+  branch.
+steps:
+  - id: design
+    title: Design
+    phase: Design
+    instruction: >
+      Turn the owner's request into an agreed spec: what the feature does and for whom, how it
+      fits the existing code, and how it will be verified, including whether to build it
+      test-first. Read the code before you ask anything.
+      Ask only the questions whose answers change the design, give your recommended answer with
+      each, and decide the rest yourself as recorded assumptions. Keep the spec as short as the
+      feature allows. Do not change code until the owner approves the spec.
+    produces:
+      - artifact: design
+        path: docs/specs/{slug}.md
+    gates:
+      - agent: review the spec against the owner's request and the code
+        guide: review.md
+        max_rounds: 2
+      - owner-action: approve the spec
+
+  - id: implementation
+    title: Implementation
+    phase: Build
+    instruction: >
+      Build the approved spec. If this checkout is on the integration branch, first create a
+      feature branch named after the workstream. Unless the spec rules it out, work test-first:
+      write a test, watch it fail for the expected reason, then make it pass. Commit as you go. When something fails
+      unexpectedly, find the root cause before you change code. Decide ambiguities yourself,
+      with the spec as the authority, and list each decision in the hand-over. Stop and ask only
+      before an irreversible action or one that reaches outside this checkout.
+    consumes: [design]
+    updates:
+      - artifact: code
+        path: .
+    gates:
+      - check: default
+
+  - id: code-review
+    title: Code review
+    phase: Review
+    instruction: >
+      Make the branch ready for the owner to land: bring it up to date with its base if the base
+      has moved, and get it through review. Do not merge it into the integration branch or push
+      it to a shared branch; the owner lands it.
+    consumes: [design]
+    updates:
+      - artifact: code
+        path: .
+    gates:
+      - check: default
+      - agent: review the whole branch, from the commit it started at to HEAD, against the approved spec
+        guide: review.md
+        max_rounds: 3
+        route_back_to: implementation
+      - owner-action: land the branch, or send it back
+        route_back_to: [design, implementation]

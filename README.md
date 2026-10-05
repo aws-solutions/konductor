@@ -78,6 +78,8 @@ The workflow definitions in [`fuse/flow/workflows/`](fuse/flow/workflows/) are t
 | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `_k-full-sdlc.yml`         | Elicitation, codebase analysis, requirements, design, design review, feature splitting, specs, implementation, code review, testing, documentation and a final summary, with owner gates between phases. |
 | `_k-phase-chain.yml`       | The lighter chain: requirements, design, feature splitting, specs, implementation, code review and QA, with no owner gates.                                                |
+| `fuse-development/fuse-feature-development.yml` | One feature in an existing codebase: design, implementation and code review. Agent review of the spec and of the whole branch comes before the owner approves the spec and lands the branch. |
+| `fuse-development/fuse-system-development.yml` | A new system or a large change such as a migration: requirements, design, feature splitting, implementation, testing and code review, with agent review before each owner decision. |
 | `examples/custom-example-*.yml` | Examples of project-specific workflows at different sizes.                                                                                                       |
 | `examples/superpowers/superpowers.yml` | Spec-driven development after obra/superpowers: design, plan, branch and baseline, test-first implementation with a whole-branch review, and the owner's choice of integration. Needs no Superpowers skills installed. |
 
