@@ -30,7 +30,7 @@ For the agents and skills themselves, see the [Agents reference](agents.md) and
 
 ## Command table
 
-Five commands.
+Six commands.
 
 | Command | Purpose |
 | --- | --- |
@@ -39,6 +39,7 @@ Five commands.
 | `konductor uninstall` | Remove a tracked install's files and its index entry; `--dry-run` previews it |
 | `konductor doctor` | Check the runtime, the installed content, and available updates |
 | `konductor synth` | Parse `agents/`, `skills/`, and `agent-sops/` and write per-runtime output to `<source>/dist/` |
+| `konductor init` | Scaffold `.konductor/config.yml`. Optional, see [Initialize a project](tasks/initialize-a-project.md) |
 
 `update` and `uninstall` both accept `--target <dir>`, `--all`, and `--dry-run`, and share one
 target-selection table — see [Update an installation](tasks/update.md#choosing-which-install-to-update).
@@ -107,15 +108,17 @@ Accepted before or after a subcommand.
 | `doctor` | `--target <DIR>` | path | No | Install directory to check. Defaults to `$HOME`. Conflicts with `--all` |
 | `doctor` | `--all` | flag | No | Check every tracked install. Conflicts with `--from` and `--target` |
 | `synth` | `--from <PATH>` | path | No | Synthesize this source tree instead of the current directory. Output goes to `<PATH>/dist/` |
+| `init` | `--force` | flag | No | Overwrite an existing `.konductor/` directory instead of failing when one is already present |
 
 
 ## Configuration file
 
-**Path:** `.konductor/config.yml`, relative to the current working directory. Not currently used
-by the CLI — the command that reads and writes it (`get`/`set`/`list`) is hidden/gated like
-`init`/`metrics`. Its fields (`version`, `severities_source`, `tiers_source`, `tier`,
-`default_severity`, `fail_on_severity_at_or_above`) exist for a future run-engine; nothing reads
-them today.
+**Path:** `.konductor/config.yml`, relative to the current working directory. Optional:
+`konductor init` scaffolds a starter copy, but a project with no file at all behaves identically
+to one with the shipped defaults. Two top-level keys: `version` (schema version) and
+`telemetry` (a nested section with one field, `enabled`, set to `false` to opt this project
+out of usage telemetry). `telemetry.endpoint` is not shipped in the starter file; set it by
+hand only to redirect telemetry to a different collector.
 
 
 ## Exit-code contract

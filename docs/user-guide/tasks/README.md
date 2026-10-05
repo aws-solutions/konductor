@@ -15,6 +15,7 @@ Looking to change how the agents behave, or build the CLI yourself? That is
 | --- | --- |
 | [Install for Kiro CLI](install-kiro-cli.md) | The agent team registered with `kiro-cli` |
 | [Install for Claude Code](install-claude-code.md) | The agent team registered with `claude`, including the two settings agent teams require |
+| [Initialize a project](initialize-a-project.md) | A `.konductor/config.yml` you can edit, optional, most installs don't need it |
 | [Diagnose problems](diagnose-problems.md) | `konductor doctor`, plus manual checks for behaviour it cannot see |
 | [Update an installation](update.md) | The latest release, with your local modifications kept |
 | [Uninstall](uninstall.md) | Konductor removed from your machine |
@@ -42,6 +43,7 @@ flowchart TD
     A -->|"No, managing an install"| J{Which?}
     J -->|Update| L["update.md"]
     J -->|Remove| M["uninstall.md"]
+    J -->|"Set telemetry opt-out"| N["initialize-a-project.md"]
 ```
 
 *Routing to the right task guide.*

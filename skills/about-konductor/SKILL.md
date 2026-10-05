@@ -147,7 +147,7 @@ defaults are the kind of detail that drifts across versions.
 
 | Subcommand  | What it does                                                                                                                                                                             |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `init`      | Scaffold `.konductor/config.yml` from a preset. Hidden, not for general use.                                                                                                              |
+| `init`      | Scaffold `.konductor/config.yml`. Optional: not necessary for ordinary use, it only provides some configuration options (currently, the telemetry opt-out) -- do not suggest running it as a required setup step.   |
 | `config`    | Get, set, or list configuration values. Hidden, not for general use.                                                                                                                      |
 | `install`   | Install Konductor into a target directory. Quick-install (no `--from`) is the default path; `--from <repo-root>` installs from a local source tree instead.                             |
 | `update`    | Re-run the same file-copy `install` uses against a tracked install, unconditionally overwriting every tracked file. `--dry-run` previews it first; local edits are not protected.        |

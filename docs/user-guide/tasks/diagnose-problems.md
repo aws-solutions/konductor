@@ -207,4 +207,4 @@ See [Contributing and customizing](../appendix/contributing.md#validating-your-c
 
 ---
 
-[← Install for Claude Code](install-claude-code.md) · [Next: Update →](update.md)
+[← Initialize a project](initialize-a-project.md) · [Task guides](README.md) · [Next: Update →](update.md)

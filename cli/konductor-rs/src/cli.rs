@@ -335,19 +335,12 @@ pub enum Commands {
         from: Option<String>,
     },
 
-    /// Hidden; not part of the supported v1 surface.
-    //
-    // Scaffolds `.konductor/config.yml` from a preset. Real, tested logic;
-    // withheld, not stubbed. Re-enable by removing `#[command(hide = true)]`
-    // here and the gating check at the top of dispatch.rs's `Commands::Init`
-    // arm (which currently returns `EXIT_USAGE_ERROR` instead of calling
-    // `dispatch_init`).
-    #[command(hide = true)]
+    /// Scaffold `.konductor/config.yml` in a repository. Optional: most
+    /// projects don't need to run this. It only provides some
+    /// configuration options (currently, the telemetry opt-out) -- a
+    /// project without `.konductor/config.yml` behaves identically to
+    /// one with the shipped defaults.
     Init {
-        /// Initialization preset to apply.
-        #[arg(long, value_parser = ["solo", "team", "org"])]
-        preset: Option<String>,
-
         /// Overwrite an existing `.konductor/` directory instead of
         /// failing when one is already present.
         #[arg(long, action = ArgAction::SetTrue)]
@@ -1503,13 +1496,10 @@ mod tests {
     }
 
     #[test]
-    fn parses_init_with_valid_preset() {
-        let cli = Cli::try_parse_from(["konductor", Commands::INIT, "--preset", "solo"]).unwrap();
+    fn parses_init_with_no_flags() {
+        let cli = Cli::try_parse_from(["konductor", Commands::INIT]).unwrap();
         match cli.command {
-            Some(Commands::Init { preset, force }) => {
-                assert_eq!(preset, Some("solo".to_string()));
-                assert!(!force);
-            }
+            Some(Commands::Init { force }) => assert!(!force),
             other => panic!("expected Init, got {other:?}"),
         }
     }
@@ -1523,10 +1513,17 @@ mod tests {
         }
     }
 
+    /// `--preset` no longer exists on `init` -- it was dead (every
+    /// invocation wrote the same fixed starter config regardless of
+    /// the flag's value). Passing it must now be an unrecognized-flag
+    /// usage error, not a parse success.
     #[test]
-    fn rejects_init_with_invalid_preset() {
-        let result = Cli::try_parse_from(["konductor", Commands::INIT, "--preset", "bogus"]);
-        assert!(result.is_err());
+    fn rejects_init_with_preset_flag_now_unrecognized() {
+        let result = Cli::try_parse_from(["konductor", Commands::INIT, "--preset", "solo"]);
+        assert!(
+            result.is_err(),
+            "--preset was removed; init must no longer accept it"
+        );
     }
 
     #[test]

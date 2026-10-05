@@ -618,10 +618,15 @@ fn merge(base: RawConfig, override_cfg: RawConfig) -> RawConfig {
 }
 
 /// Validates a merged `RawConfig` and converts it into a fully-populated
-/// `Config`. A field that is still `None` after merging against the
-/// preset (i.e. the preset itself omitted it -- a packaging bug) is
-/// reported the same way as any other invalid value, rather than
-/// panicking or silently defaulting further.
+/// `Config`. A field still `None` after merging every tier falls back to
+/// this module's own built-in default (`DEFAULT_TIER`/
+/// `DEFAULT_SEVERITY`/`DEFAULT_FAIL_ON_SEVERITY_AT_OR_ABOVE`) -- the
+/// preset at `cli/gate-config/config.yml` ships only `version` and
+/// `telemetry.enabled` (see that file's own header comment), so `tier`/
+/// `default_severity`/`fail_on_severity_at_or_above` being absent from
+/// every tier is the normal case now, not a packaging bug. A value that
+/// IS present but not one of `VALID_TIERS`/`VALID_SEVERITIES` is still
+/// rejected exactly as before.
 fn validate(raw: &RawConfig) -> Result<Config, ConfigError> {
     let version = raw.version.ok_or(ConfigError::UnsupportedVersion {
         found: 0,
@@ -652,12 +657,23 @@ fn validate(raw: &RawConfig) -> Result<Config, ConfigError> {
     })
 }
 
-/// Validates that `value` is present and one of `VALID_TIERS`, returning
-/// it owned on success.
+/// Built-in fallback for `tier` when every tier (preset, user, project)
+/// leaves it unset. Matches this crate's historical preset value.
+const DEFAULT_TIER: &str = "minor";
+
+/// Built-in fallback for `default_severity` when every tier leaves it
+/// unset. Matches this crate's historical preset value.
+const DEFAULT_SEVERITY: &str = "MEDIUM";
+
+/// Built-in fallback for `fail_on_severity_at_or_above` when every tier
+/// leaves it unset. Matches this crate's historical preset value.
+const DEFAULT_FAIL_ON_SEVERITY_AT_OR_ABOVE: &str = "CRITICAL";
+
+/// Validates that `value`, if present, is one of `VALID_TIERS`; an
+/// absent value falls back to `DEFAULT_TIER` rather than erroring (see
+/// `validate`'s doc comment for why absence is now the normal case).
 fn require_tier(value: Option<&str>) -> Result<String, ConfigError> {
-    let value = value.ok_or_else(|| ConfigError::UnknownTier {
-        value: "<missing>".to_string(),
-    })?;
+    let value = value.unwrap_or(DEFAULT_TIER);
     if VALID_TIERS.contains(&value) {
         Ok(value.to_string())
     } else {
@@ -667,13 +683,18 @@ fn require_tier(value: Option<&str>) -> Result<String, ConfigError> {
     }
 }
 
-/// Validates that `value` is present and one of `VALID_SEVERITIES`,
-/// returning it owned on success.
+/// Validates that `value`, if present, is one of `VALID_SEVERITIES`; an
+/// absent value falls back to `DEFAULT_SEVERITY`/
+/// `DEFAULT_FAIL_ON_SEVERITY_AT_OR_ABOVE` (selected by `field`) rather
+/// than erroring (see `validate`'s doc comment for why absence is now
+/// the normal case).
 fn require_severity(value: Option<&str>, field: &'static str) -> Result<String, ConfigError> {
-    let value = value.ok_or_else(|| ConfigError::UnknownSeverity {
-        field,
-        value: "<missing>".to_string(),
-    })?;
+    let default = if field == "default_severity" {
+        DEFAULT_SEVERITY
+    } else {
+        DEFAULT_FAIL_ON_SEVERITY_AT_OR_ABOVE
+    };
+    let value = value.unwrap_or(default);
     if value.parse::<Severity>().is_ok() {
         Ok(value.to_string())
     } else {
@@ -882,6 +903,26 @@ mod tests {
         fs::remove_dir_all(&root).ok();
     }
 
+    /// The trimmed preset (`version` + `telemetry.enabled` only -- see
+    /// cli/gate-config/config.yml's own header comment) must still
+    /// resolve `tier`/`default_severity`/`fail_on_severity_at_or_above`
+    /// to their historical values via `validate`'s built-in defaults,
+    /// not fail to load.
+    #[test]
+    fn preset_only_load_resolves_built_in_defaults_for_fields_the_preset_no_longer_ships() {
+        let root = scratch_dir("preset-only-built-in-defaults");
+        let config = load_config_with_home(&root, None)
+            .expect("preset-only load must succeed even though the preset no longer ships \
+                     tier/default_severity/fail_on_severity_at_or_above");
+        assert_eq!(config.tier, DEFAULT_TIER);
+        assert_eq!(config.default_severity, DEFAULT_SEVERITY);
+        assert_eq!(
+            config.fail_on_severity_at_or_above,
+            DEFAULT_FAIL_ON_SEVERITY_AT_OR_ABOVE
+        );
+        fs::remove_dir_all(&root).ok();
+    }
+
     #[test]
     fn document_marker_only_project_config_falls_back_to_preset_defaults() {
         // Same fallback path as `empty_project_config_falls_back_to_preset_defaults`,
@@ -914,7 +955,11 @@ mod tests {
         let raw: RawConfig =
             serde_yaml::from_str(PRESET_CONFIG_CONTENTS).expect("embedded preset must parse");
         assert_eq!(raw.version, Some(SUPPORTED_CONFIG_VERSION));
-        assert!(raw.tier.is_some());
+        // The preset no longer ships `tier` (trimmed down to `version`
+        // and `telemetry.enabled` -- see cli/gate-config/config.yml's
+        // own header comment); `validate`'s own `DEFAULT_TIER` fallback
+        // covers it, exercised below via `load_preset_defaults`.
+        assert_eq!(raw.tier, None);
 
         // load_preset_defaults() must succeed identically -- it is now a
         // pure parse of the same embedded constant, with no I/O path

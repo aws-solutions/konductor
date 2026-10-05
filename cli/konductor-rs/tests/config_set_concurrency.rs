@@ -63,15 +63,14 @@ fn run_konductor(cwd: &Path, sink: &telemetry_test_sink::TelemetrySink, args: &[
     // hatch) lets the `config` invocations below reach the real
     // `dispatch_config` path while `config` is temporarily gated from
     // ordinary end users -- see dispatch.rs's `config_dispatch_allowed`
-    // doc comment. `KONDUCTOR_ALLOW_INIT=1` does the same for this
-    // file's `init` invocations, now gated the same way.
+    // doc comment. `init` dispatches unconditionally and needs no such
+    // escape hatch.
     let mut command = Command::new(bin());
     command
         .args(args)
         .current_dir(cwd)
         .env("HOME", cwd)
-        .env("KONDUCTOR_ALLOW_CONFIG", "1")
-        .env("KONDUCTOR_ALLOW_INIT", "1");
+        .env("KONDUCTOR_ALLOW_CONFIG", "1");
     for var in sink.env_vars() {
         command.env(var.name, &var.value);
     }
@@ -262,7 +261,11 @@ fn config_set_exits_usage_error_when_lock_is_held_by_another_process() {
         "stderr must mention the lock: {stderr}"
     );
 
-    // Confirm the contended write never landed.
+    // Confirm the contended write never landed. A fresh `konductor init`
+    // config.yml (the trimmed preset -- see cli/gate-config/config.yml's
+    // own header comment) carries no `default_severity` key at all, so
+    // "never landed" means the key is still absent, not equal to some
+    // on-disk default value.
     let config_path = konductor_dir.join(CONFIG_FILE_NAME);
     let raw_after = std::fs::read_to_string(&config_path).unwrap();
     let parsed_after: serde_yaml::Value = serde_yaml::from_str(&raw_after).unwrap();
@@ -270,7 +273,7 @@ fn config_set_exits_usage_error_when_lock_is_held_by_another_process() {
         parsed_after
             .get("default_severity")
             .and_then(|v| v.as_str()),
-        Some(SEVERITY_MEDIUM),
+        None,
         "a config set that failed on lock contention must not have modified config.yml at all"
     );
 

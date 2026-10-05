@@ -7,9 +7,9 @@ a Konductor-managed repository. It handles installation, configuration, and diag
 for the ASDLC agent/skill/SOP content that Konductor manages — it does not itself run
 SDLC workflows (that's the Konductor Kiro agent's job).
 
-> **Status:** `install`, `update`, `uninstall`, `synth`, and `doctor` perform real work
-> (see [Current state](#current-state)). `config`, `init`, and `metrics` are hidden from
-> `--help` and not part of the supported v1 surface.
+> **Status:** `install`, `update`, `uninstall`, `synth`, `doctor`, and `init` perform
+> real work (see [Current state](#current-state)). `config` and `metrics` are hidden
+> from `--help` and not part of the supported v1 surface.
 
 ---
 
@@ -28,8 +28,11 @@ no additional output. This tracing is independent of `--json` (trace lines never
 into the stdout JSON document) and of the exit code (it fires on both success and
 failure).
 
-`init` also accepts `--force`, to overwrite an existing `.konductor/` directory instead
-of failing. `init` is hidden (see the status note above).
+`init` is optional: it is not necessary to run before using the rest of the CLI, it only
+provides some configuration options (currently, scaffolding `.konductor/config.yml` so
+you have a real file to edit for the telemetry opt-out -- see `telemetry.enabled` in
+[Current state](#current-state)'s config-schema entry). It also accepts `--force`, to
+overwrite an existing `.konductor/` directory instead of failing.
 
 `install` accepts:
 
@@ -671,11 +674,13 @@ remediation guidance.
 A few forward-looking checks (`config`, `gitignore`, `provider_model_access`,
 `role_allowlists`) exist in the code and are unit-tested, but are not yet wired into
 live `doctor` output. `config`'s resolved values (`tier`, `default_severity`,
-`severities_source`, `fail_on_severity_at_or_above`) have no consumer that acts on them
-for a real decision right now, so the check is decorative rather than a real signal
-today; the other three are dormant until the features they'd validate (run-state
-persistence, the override mechanism, provider/model-access, role-scoped allowlists)
-actually exist.
+`severities_source`, `fail_on_severity_at_or_above` -- `tier`/`default_severity`/
+`fail_on_severity_at_or_above` now resolve to a built-in fallback rather than the
+preset, since `cli/gate-config/config.yml` no longer ships those three fields) have no
+consumer that acts on them for a real decision right now, so the check is decorative
+rather than a real signal today; the other three are dormant until the features they'd
+validate (run-state persistence, the override mechanism, provider/model-access,
+role-scoped allowlists) actually exist.
 
 `source` validates the **repo checkout**, which only has a real answer when a local
 `--from` checkout exists — useful for catching an authoring mistake before/after an
@@ -892,8 +897,9 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
   - the CLI command surface
   - the declarative contract (gate/config schemas — `severity-schema.yml`,
     `scope-table.yml`, `config.yml`, `run-state.json` — plus the config loader)
-  - `init` scaffolding a real `.konductor/` directory with a starter `config.yml`
-    (hidden)
+  - `init` scaffolding a real `.konductor/` directory with a starter `config.yml`.
+    Optional: most projects don't need to run it; it only provides some
+    configuration options (currently, the telemetry opt-out).
   - `config` reading/writing `.konductor/config.yml` (hidden)
   - `install` copying synthed agents/skills into `$HOME/.kiro/` (or
     `--target <dir>/.kiro/`) and writing a manifest beside the installed tree

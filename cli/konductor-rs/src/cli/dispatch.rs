@@ -92,16 +92,12 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool, color: ColorMode) 
             };
             crate::cli::synth::dispatch_synth_with(&cwd, from, verbose, json, color)
         }
-        Commands::Init { preset, force } => {
-            if !init_dispatch_allowed() {
-                print_not_currently_available("init");
-                return EXIT_USAGE_ERROR;
-            }
+        Commands::Init { force } => {
             let cwd = match resolve_cwd("init", color) {
                 Ok(dir) => dir,
                 Err(code) => return code,
             };
-            dispatch_init(&cwd, preset, force, color)
+            dispatch_init(&cwd, force, color)
         }
         Commands::Doctor {
             from,
@@ -264,21 +260,14 @@ fn resolve_cwd_reporting_json(command: &str, json: bool, color: ColorMode) -> Re
     }
 }
 
-/// `konductor init [--preset ...] [--force]`: scaffolds `.konductor/` in
-/// `target_dir` (the current working directory in real use; passed
-/// explicitly rather than resolved internally so tests can point at a
-/// scratch directory without mutating the process-global cwd). `preset`
-/// is accepted and echoed for forward compatibility but does not yet
-/// change the scaffolded output.
+/// `konductor init [--force]`: scaffolds `.konductor/` in `target_dir`
+/// (the current working directory in real use; passed explicitly rather
+/// than resolved internally so tests can point at a scratch directory
+/// without mutating the process-global cwd).
 ///
 /// Exit-code contract: any `InitError` is a USAGE ERROR (64), never exit
 /// code 2 -- see cli/init.rs's module docstring.
-fn dispatch_init(
-    target_dir: &std::path::Path,
-    preset: Option<String>,
-    force: bool,
-    color: ColorMode,
-) -> u8 {
+fn dispatch_init(target_dir: &std::path::Path, force: bool, color: ColorMode) -> u8 {
     match init::run_init(target_dir, force) {
         Ok(result) => {
             println!(
@@ -294,9 +283,6 @@ fn dispatch_init(
                     "Gitignore already exists, left untouched: {}",
                     result.gitignore_path.display()
                 );
-            }
-            if let Some(preset) = preset {
-                println!("(preset '{preset}' requested; all presets currently produce the same starter config)");
             }
             0
         }
@@ -462,19 +448,6 @@ fn config_dispatch_allowed() -> bool {
     command_dispatch_allowed_for(std::env::var("KONDUCTOR_ALLOW_CONFIG").ok(), "1")
 }
 
-/// Gates `Commands::Init` dispatch while the subcommand is temporarily
-/// hidden (see cli.rs's `#[command(hide = true)]` on `Commands::Init`).
-/// The underlying dispatch logic is fully intact; this only decides
-/// whether a normal CLI invocation may reach it.
-///
-/// `KONDUCTOR_ALLOW_INIT=1` is the same internal-only escape hatch as
-/// `config_dispatch_allowed`'s `KONDUCTOR_ALLOW_CONFIG`, used by
-/// `tests/config_set_concurrency.rs` to reach real `init` dispatch as
-/// setup. Any other value, or unset, keeps it gated.
-fn init_dispatch_allowed() -> bool {
-    command_dispatch_allowed_for(std::env::var("KONDUCTOR_ALLOW_INIT").ok(), "1")
-}
-
 /// Gates `Commands::Metrics` dispatch while the subcommand is
 /// temporarily hidden (see cli.rs's `#[command(hide = true)]` on
 /// `Commands::Metrics`). `metrics` is a stub with no side effects, but
@@ -576,7 +549,7 @@ mod tests {
         let _lock = lock_home();
         let target = scratch_cwd("round-trip");
 
-        let init_code = dispatch_init(&target, None, false, ColorMode::disabled());
+        let init_code = dispatch_init(&target, false, ColorMode::disabled());
         assert_eq!(init_code, 0, "init on an empty target must succeed");
 
         let list_code = dispatch_config(&target, ConfigAction::List, ColorMode::disabled());
@@ -593,11 +566,11 @@ mod tests {
         let target = scratch_cwd("clobber-guard");
 
         assert_eq!(
-            dispatch_init(&target, None, false, ColorMode::disabled()),
+            dispatch_init(&target, false, ColorMode::disabled()),
             0
         );
         assert_eq!(
-            dispatch_init(&target, None, false, ColorMode::disabled()),
+            dispatch_init(&target, false, ColorMode::disabled()),
             EXIT_USAGE_ERROR
         );
 
@@ -614,7 +587,7 @@ mod tests {
         let target = scratch_cwd("config-set-real");
 
         assert_eq!(
-            dispatch_init(&target, None, false, ColorMode::disabled()),
+            dispatch_init(&target, false, ColorMode::disabled()),
             0
         );
         let set_code = dispatch_config(
@@ -642,7 +615,7 @@ mod tests {
         let target = scratch_cwd("config-set-unknown-key");
 
         assert_eq!(
-            dispatch_init(&target, None, false, ColorMode::disabled()),
+            dispatch_init(&target, false, ColorMode::disabled()),
             0
         );
         let code = dispatch_config(
@@ -664,7 +637,7 @@ mod tests {
         let target = scratch_cwd("config-set-invalid-value");
 
         assert_eq!(
-            dispatch_init(&target, None, false, ColorMode::disabled()),
+            dispatch_init(&target, false, ColorMode::disabled()),
             0
         );
         let code = dispatch_config(
@@ -693,7 +666,7 @@ mod tests {
         let target = scratch_cwd("config-set-fixes-broken-field");
 
         assert_eq!(
-            dispatch_init(&target, None, false, ColorMode::disabled()),
+            dispatch_init(&target, false, ColorMode::disabled()),
             0
         );
         let config_path = target
@@ -741,7 +714,7 @@ mod tests {
         let target = scratch_cwd("config-get-list-reject-broken");
 
         assert_eq!(
-            dispatch_init(&target, None, false, ColorMode::disabled()),
+            dispatch_init(&target, false, ColorMode::disabled()),
             0
         );
         let config_path = target
@@ -791,7 +764,7 @@ mod tests {
         let target = scratch_cwd("config-set-unknown-key-no-write");
 
         assert_eq!(
-            dispatch_init(&target, None, false, ColorMode::disabled()),
+            dispatch_init(&target, false, ColorMode::disabled()),
             0
         );
         let config_path = target
@@ -826,7 +799,7 @@ mod tests {
         let target = scratch_cwd("config-set-invalid-value-no-write");
 
         assert_eq!(
-            dispatch_init(&target, None, false, ColorMode::disabled()),
+            dispatch_init(&target, false, ColorMode::disabled()),
             0
         );
         let config_path = target
@@ -861,7 +834,7 @@ mod tests {
         let target = scratch_cwd("config-set-no-leftover-tmp");
 
         assert_eq!(
-            dispatch_init(&target, None, false, ColorMode::disabled()),
+            dispatch_init(&target, false, ColorMode::disabled()),
             0
         );
         let code = dispatch_config(
@@ -1229,64 +1202,6 @@ mod tests {
         assert_eq!(
             code, 0,
             "with the escape hatch set, `config list` must reach dispatch_config and succeed"
-        );
-    }
-
-    /// `Commands::Init` must be gated by default: with
-    /// `KONDUCTOR_ALLOW_INIT` unset, dispatching it must return
-    /// `EXIT_USAGE_ERROR` rather than reaching `dispatch_init` at all.
-    /// Only checks the exit code, not an isolated cwd like the Config
-    /// test does: `Commands::Init`'s dispatch arm resolves the
-    /// process's real cwd with no override, so this test can't safely
-    /// scaffold or inspect it without affecting the whole test binary.
-    #[test]
-    fn dispatch_init_is_gated_without_the_allow_env_var() {
-        let _guard = lock_home();
-        let previous = std::env::var("KONDUCTOR_ALLOW_INIT").ok();
-        std::env::remove_var("KONDUCTOR_ALLOW_INIT");
-
-        let code = dispatch(
-            Commands::Init {
-                preset: None,
-                force: false,
-            },
-            false,
-            false,
-            ColorMode::disabled(),
-        );
-
-        match previous {
-            Some(value) => std::env::set_var("KONDUCTOR_ALLOW_INIT", value),
-            None => std::env::remove_var("KONDUCTOR_ALLOW_INIT"),
-        }
-
-        assert_eq!(
-            code, EXIT_USAGE_ERROR,
-            "gated `init` dispatch must return EXIT_USAGE_ERROR (64)"
-        );
-    }
-
-    /// The escape hatch: with `KONDUCTOR_ALLOW_INIT=1` set,
-    /// `init_dispatch_allowed()` must return `true`. Checks the gate
-    /// function directly rather than a full `dispatch(Commands::Init)`
-    /// call, which would scaffold `.konductor/` into this test
-    /// binary's real process cwd and race every other test.
-    #[test]
-    fn init_dispatch_allowed_returns_true_when_allow_env_var_is_set() {
-        let _guard = lock_home();
-        let previous = std::env::var("KONDUCTOR_ALLOW_INIT").ok();
-        std::env::set_var("KONDUCTOR_ALLOW_INIT", "1");
-
-        let allowed = init_dispatch_allowed();
-
-        match previous {
-            Some(value) => std::env::set_var("KONDUCTOR_ALLOW_INIT", value),
-            None => std::env::remove_var("KONDUCTOR_ALLOW_INIT"),
-        }
-
-        assert!(
-            allowed,
-            "with KONDUCTOR_ALLOW_INIT=1 set, init_dispatch_allowed() must return true"
         );
     }
 

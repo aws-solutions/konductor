@@ -129,7 +129,7 @@ the software development lifecycle they automate, and the names are the same on 
 ### Konductor CLI
 
 The `konductor` command-line program. Handles setup, content build, lifecycle, and diagnostics:
-`install`, `update`, `uninstall`, `doctor`, and `synth`. It does
+`install`, `update`, `uninstall`, `doctor`, `synth`, and `init`. It does
 **not** run SDLC workflows — that is the **agents**' job.
 
 
@@ -191,8 +191,9 @@ testing, and operations. Konductor ships specialists for each phase.
 ### Severity
 
 How serious a finding is. Most **SOPs** use a three-level vocabulary —
-**CRITICAL / IMPORTANT / SUGGESTION** — sorted in that order. The severity vocabulary the CLI ships is
-declared in the file named by the `severities_source` config key.
+**CRITICAL / IMPORTANT / SUGGESTION** — sorted in that order. A project's `.konductor/config.yml`
+can point at a different severity vocabulary file via the `severities_source` config key, though
+the shipped starter config does not set one.
 
 
 ### Skill
@@ -223,8 +224,9 @@ with a file and a reason.
 
 ### Tier
 
-A classification of how large a change is. The tier vocabulary the CLI ships is declared in the file
-named by the `tiers_source` config key.
+A classification of how large a change is. A project's `.konductor/config.yml` can point at a
+different tier vocabulary file via the `tiers_source` config key, though the shipped starter
+config does not set one.
 
 
 ### tmux / zellij

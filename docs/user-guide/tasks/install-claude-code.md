@@ -233,4 +233,4 @@ See [docs/guides/slack-integration.md](../../guides/slack-integration.md) for de
 
 ---
 
-[← Install for Kiro CLI](install-kiro-cli.md) · [Next: Diagnose problems →](diagnose-problems.md)
+[← Install for Kiro CLI](install-kiro-cli.md) · [Next: Initialize a project →](initialize-a-project.md)

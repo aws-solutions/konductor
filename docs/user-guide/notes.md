@@ -68,19 +68,18 @@ now corrected to match.
 
 ### Commands withheld from v1
 
-`config`, `init`, and `metrics` are all hidden from `--help` (`#[command(hide = true)]`) and
-gated at dispatch, matching the precedent `config` set first: real, tested code underneath,
-not deleted, just not currently offered to users. `init` was the only command that ever wrote
-`.konductor/config.yml`, so with it hidden there is no documented, command-driven way to create
-or customize the file today, so hand-edit it against the field list in
-`cli/gate-config/config.yml` instead.
+`config` and `metrics` are hidden from `--help` (`#[command(hide = true)]`) and gated at
+dispatch: real, tested code underneath, not deleted, just not currently offered to users.
+`init` was un-hidden by reviewer decision: it is the only command that scaffolds
+`.konductor/config.yml`, so hiding it would leave no documented, command-driven way to
+create or customize the file at all. `init`'s documentation now frames it as optional
+rather than a required setup step.
 
 - **`config`**: withheld by reviewer decision; not part of the v1 customer-visible surface.
-- **`init`**: complete and tested, withheld for the same reason as `config`.
 - **`metrics`**: additionally a genuine stub (prints "not yet implemented"), hidden now so its
   real implementation doesn't ship later as a surprise new command.
 
-`check-guide-facts.py` records all three in `WITHDRAWN_COMMANDS` rather than dropping its
+`check-guide-facts.py` records both in `WITHDRAWN_COMMANDS` rather than dropping its
 command-coverage check. That section asserts three things: every other command in
 `cli/README.md` is documented, every withdrawn command is **absent** from `reference.md`,
 `concepts.md` and `glossary.md`, and every name in `WITHDRAWN_COMMANDS` still exists in
