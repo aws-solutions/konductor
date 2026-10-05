@@ -2,8 +2,9 @@
 # yaml-language-server: $schema=../schemas/workflow.schema.json
 #
 # One feature in an existing codebase, in the spirit of decently-capable-powers: agree a spec
-# with the owner, build it test-first, and let independent agent review raise the bar before the
-# owner looks. The steps say what to achieve and leave the how to the agent and its harness.
+# with the owner, build it against acceptance tests taken from the spec, and let independent agent
+# review raise the bar before the owner looks. The steps say what to achieve and leave the how to
+# the agent and its harness.
 # Step and artifact names follow _k-phase-chain where they fit; review.md next to this file is
 # the review guide for both agent gates.
 #
@@ -11,20 +12,20 @@
 version: 1
 name: fuse-feature-development
 description: >
-  One feature in an existing codebase: a spec agreed with the owner, a test-first build on a
-  branch, and independent agent review of both, before the owner approves the spec and lands the
-  branch.
+  One feature in an existing codebase: a spec agreed with the owner, a build on a branch against
+  acceptance tests taken from the spec, and independent agent review of both, before the owner
+  approves the spec and lands the branch.
 steps:
   - id: design
     title: Design
     phase: Design
     instruction: >
       Turn the owner's request into an agreed spec: what the feature does and for whom, how it
-      fits the existing code, and how it will be verified, including whether to build it
-      test-first. Read the code before you ask anything.
-      Ask only the questions whose answers change the design, give your recommended answer with
-      each, and decide the rest yourself as recorded assumptions. Keep the spec as short as the
-      feature allows. Do not change code until the owner approves the spec.
+      fits the existing code, and the acceptance tests that will show it works, one for each
+      behavior it must have. Read the code before you ask anything. Ask only the questions whose
+      answers change the design, give your recommended answer with each, and decide the rest
+      yourself as recorded assumptions. Keep the spec as short as the feature allows. Do not
+      change code until the owner approves the spec.
     produces:
       - artifact: design
         path: docs/specs/{slug}.md
@@ -39,11 +40,14 @@ steps:
     phase: Build
     instruction: >
       Build the approved spec. If this checkout is on the integration branch, first create a
-      feature branch named after the workstream. Unless the spec rules it out, work test-first:
-      write a test, watch it fail for the expected reason, then make it pass. Commit as you go. When something fails
-      unexpectedly, find the root cause before you change code. Decide ambiguities yourself,
-      with the spec as the authority, and list each decision in the hand-over. Stop and ask only
-      before an irreversible action or one that reaches outside this checkout.
+      feature branch named after the workstream. Write the spec's acceptance tests from the
+      spec's wording, not from your code, and see each one fail before the code makes it pass,
+      or break the code briefly and see it go red. Start every bug fix with a test that
+      reproduces the bug and fails. How you test the rest is your call. Never weaken a test to
+      get to green. Commit as you go. When something fails unexpectedly, find the root cause
+      before you change code. Decide ambiguities yourself, with the spec as the authority, and
+      list each decision in the hand-over. Stop and ask only before an irreversible action or one
+      that reaches outside this checkout.
     consumes: [design]
     updates:
       - artifact: code

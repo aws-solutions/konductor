@@ -18,7 +18,9 @@ agent, review the artifact yourself in a separate pass and say so in the hand-ov
   source? Could the next step be done from it without guessing?
 - Code: the whole diff since the branch started, against the approved spec. Behavior the spec
   asks for that is missing or wrong, tests that do not prove what they claim, security and data
-  loss risks, and departures from the project's conventions.
+  loss risks, and departures from the project's conventions. Check the tests against the spec,
+  not only the code: each behavior the spec requires has a test that would fail without it, and
+  no test was weakened or narrowed to pass. A required behavior without such a test is a P1.
 
 ## Priorities
 

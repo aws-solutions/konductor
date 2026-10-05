@@ -39,10 +39,10 @@ steps:
     phase: Design
     instruction: >
       Design how the system meets the approved requirements: its parts and the interfaces
-      between them, the data it keeps, how it fails, and how it is tested, including whether to
-      build it test-first. Choose the simplest
-      design that meets them. Where there is a real choice, give the options and the reason for
-      yours. Check every claim about existing code or services against the source.
+      between them, the data it keeps, how it fails, and the acceptance tests that will show it
+      meets each requirement. Choose the simplest design that meets them. Where there is a real
+      choice, give the options and the reason for yours. Check every claim about existing code or
+      services against the source.
     consumes: [requirements]
     produces:
       - artifact: design
@@ -73,9 +73,11 @@ steps:
     phase: Build
     instruction: >
       Build the features in the order of the split, one at a time. If this checkout is on the
-      integration branch, first create a feature branch named after the workstream. Unless the
-      design rules it out, work test-first: write a test, watch it fail for the expected reason,
-      then make it pass. Commit
+      integration branch, first create a feature branch named after the workstream. Write each
+      feature's acceptance tests from the requirements and the design, not from your code, and
+      see each one fail before the code makes it pass, or break the code briefly and see it go
+      red. Start every bug fix with a test that reproduces the bug and fails. How you test the
+      rest is your call. Never weaken a test to get to green. Commit
       each feature when its tests pass. When something fails unexpectedly, find the root cause
       before you change code. Decide ambiguities yourself, with the design as the authority, and
       list each decision in the hand-over. Stop and ask only before an irreversible action or one
