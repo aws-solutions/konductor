@@ -5,7 +5,8 @@ import YAML, { Scalar } from "yaml";
 import { Plus, X } from "lucide-react";
 import type { RunEvent, LibraryEntry, WorkstreamSummary } from "./api.ts";
 import { dateTime, duration, RUN_STATE, runDuration, runState } from "./runView.ts";
-import { resolveLibrary } from "./api.ts";
+import { ARTIFACT_DRAG, resolveLibrary, suggestPath } from "./api.ts";
+import { winningEntry } from "./model/artifactInstruction.ts";
 import { CHECK_KIND } from "../../flow/src/schemas/gate.ts";
 import type { Edit, GateKind, OutputMode } from "./model/yamlEdit.ts";
 import { gatesInRunOrder, stepViews, workflowKey, type OpenWorkflow, type StepView } from "./workflowView.ts";
@@ -34,6 +35,7 @@ export function Inspector({
   diffBase,
   compareRequest,
   onEdit,
+  onAddArtifact,
   allWorkflows,
   run,
   onOpenRun,
@@ -50,11 +52,19 @@ export function Inspector({
   diffBase: string;
   compareRequest: number;
   onEdit: (edit: Edit) => void;
+  // Adds an artifact to a step, with the instruction pre-fill of decision 18.
+  onAddArtifact: (step: number, mode: OutputMode, artifact: string, path?: string) => void;
   allWorkflows: OpenWorkflow[];
   run?: WorkstreamSummary;
   onOpenRun: (slug: string) => void;
   onOpenWorkflowStep: (workflowKey: string, stepIndex: number) => void;
 }) {
+  // The library entry a G T R badge asked to open; the counter re-opens the same id.
+  const [libraryFocus, setLibraryFocus] = useState<{ id: string; n: number } | null>(null);
+  const openLibraryEntry = (id: string) => {
+    setLibraryFocus((current) => ({ id, n: (current?.n ?? 0) + 1 }));
+    onTab("library");
+  };
   return (
     <div className="inspector">
       <div className="inspector-tabs">
@@ -80,7 +90,9 @@ export function Inspector({
             library={library}
             text={workflow.openText}
             onEdit={onEdit}
+            onAddArtifact={onAddArtifact}
             onLibrary={() => onTab("library")}
+            onOpenLibraryEntry={openLibraryEntry}
           />
         )}
         {tab === "workflow" && (
@@ -92,8 +104,9 @@ export function Inspector({
             allWorkflows={allWorkflows}
             steps={steps}
             selectedIndex={selectedIndex}
-            onEdit={onEdit}
+            onAddArtifact={onAddArtifact}
             onOpenWorkflowStep={onOpenWorkflowStep}
+            focus={libraryFocus}
           />
         )}
         {tab === "run" && run && <RunTab run={run} selectedStep={steps[selectedIndex]?.id} />}
@@ -111,7 +124,9 @@ function StepTab({
   library,
   text,
   onEdit,
+  onAddArtifact,
   onLibrary,
+  onOpenLibraryEntry,
 }: {
   step?: StepView;
   steps: StepView[];
@@ -120,7 +135,9 @@ function StepTab({
   library: LibraryEntry[];
   text: string;
   onEdit: (edit: Edit) => void;
+  onAddArtifact: (step: number, mode: OutputMode, artifact: string, path?: string) => void;
   onLibrary: () => void;
+  onOpenLibraryEntry: (id: string) => void;
 }) {
   const [expand, setExpand] = useState(false);
   const [outputId, setOutputId] = useState("");
@@ -359,9 +376,14 @@ function StepTab({
                     <option value="updates">updates</option>
                   </select>
                   <InfoTip doc={DOCS[a.role]} />
-                  <span className={`library-badge${entry ? "" : " is-missing"}`}>
+                  <button
+                    type="button"
+                    className={`library-badge${entry ? "" : " is-missing"}`}
+                    title={entry ? `Open ${a.artifact} in the library` : `Search the library for ${a.artifact}`}
+                    onClick={() => onOpenLibraryEntry(a.artifact)}
+                  >
                     {entry ? `${entry.g ? "G" : ""} ${entry.t ? "T" : ""} ${entry.r ? "R" : ""}` : "no guide"}
-                  </span>
+                  </button>
                   <button
                     className="icon-mini"
                     onClick={() => onEdit({ op: "removeOutput", step: selectedIndex, mode: a.role, index })}
@@ -450,7 +472,7 @@ function StepTab({
               onClick={() => {
                 const id = outputId.trim();
                 if (!id) return;
-                onEdit({ op: "addOutput", step: selectedIndex, mode: "produces", artifact: id, path: suggestPath(id) });
+                onAddArtifact(selectedIndex, "produces", id);
                 setOutputId("");
               }}
             >
@@ -758,15 +780,17 @@ function LibraryTab({
   allWorkflows,
   steps,
   selectedIndex,
-  onEdit,
+  onAddArtifact,
   onOpenWorkflowStep,
+  focus,
 }: {
   library: LibraryEntry[];
   allWorkflows: OpenWorkflow[];
   steps: StepView[];
   selectedIndex: number;
-  onEdit: (edit: Edit) => void;
+  onAddArtifact: (step: number, mode: OutputMode, artifact: string, path?: string) => void;
   onOpenWorkflowStep: (workflowKey: string, stepIndex: number) => void;
+  focus: { id: string; n: number } | null;
 }) {
   const [query, setQuery] = useState("");
   const [level, setLevel] = useState<"all" | LibraryEntry["level"]>("all");
@@ -788,8 +812,23 @@ function LibraryTab({
     );
   const add = (id: string, addMode = mode, addPath = path || suggestPath(id)) => {
     if (!selectedStep) return;
-    onEdit({ op: "addOutput", step: selectedIndex, mode: addMode, artifact: id, path: addPath });
+    onAddArtifact(selectedIndex, addMode, id, addPath);
   };
+  const openEntry = (entry: LibraryEntry) => {
+    setOpen(entry);
+    setFile(Object.keys(entry.files)[0] ?? "");
+    setPath(suggestPath(entry.id));
+  };
+  // A G T R badge opens the entry its artifact resolves to, or searches for an id with none.
+  useEffect(() => {
+    if (!focus) return;
+    const entry = winningEntry(library, focus.id);
+    if (entry) openEntry(entry);
+    else {
+      setOpen(null);
+      setQuery(focus.id);
+    }
+  }, [focus?.n]);
   const filtered = library.filter(
     (entry) =>
       (level === "all" || entry.level === level) && (!query.trim() || entry.id.includes(query.trim().toLowerCase())),
@@ -818,6 +857,8 @@ function LibraryTab({
               {open.hiddenBy ? `hidden by ${levelLabel(open.hiddenBy)}` : `hides ${levelLabel(open.hides!)}`}
             </div>
           )}
+          {open.description && <p className="library-detail-description">{open.description}</p>}
+          {open.entryProblem && <div className="library-entry-problem">{open.entryProblem}</div>}
           <div className="file-path mono">{open.folder}</div>
         </div>
         {files.length > 0 && (
@@ -908,12 +949,8 @@ function LibraryTab({
               key={`${entry.id}-${entry.level}`}
               className={`library-row${hidden ? " is-hidden" : ""}`}
               draggable
-              onDragStart={(event) => event.dataTransfer.setData("application/x-komposer-artifact", entry.id)}
-              onClick={() => {
-                setOpen(entry);
-                setFile(Object.keys(entry.files)[0] ?? "");
-                setPath(suggestPath(entry.id));
-              }}
+              onDragStart={(event) => event.dataTransfer.setData(ARTIFACT_DRAG, entry.id)}
+              onClick={() => openEntry(entry)}
             >
               <span className="mono library-row-id">{entry.id}</span>
               <span className="chip-gtr">
@@ -924,6 +961,11 @@ function LibraryTab({
                 <span className={entry.files["review.md"] ? "lit" : "dim"}>R</span>
               </span>
               <span className="library-level-pill">{levelLabel(entry.level)}</span>
+              {entry.description ? (
+                <span className="library-description">{entry.description}</span>
+              ) : entry.entryProblem ? (
+                <span className="library-description is-missing">entry.yml has a problem</span>
+              ) : null}
               <span className="library-meta">
                 {(entry.hides || entry.hiddenBy) && (
                   <span className="library-override">
@@ -1101,7 +1143,4 @@ function gateTextLabel(kind: string) {
       } as Record<string, string>
     )[kind] ?? "text"
   );
-}
-function suggestPath(id: string) {
-  return id === "code" ? "." : `.konductor/{slug}/${id}.md`;
 }

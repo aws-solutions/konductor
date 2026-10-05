@@ -462,15 +462,39 @@ function applySetInstruction(text: string, edit: { step: number; text: string; s
   const indent = columnIndent(text, keyRange[0]);
   const valueRange = valueNode.range as Range;
   const fullStart = keyRange[0];
-  const fullEnd = valueRange[1];
+  let fullEnd = valueRange[1];
   const requestedType = edit.style === ">" ? Scalar.BLOCK_FOLDED : Scalar.BLOCK_LITERAL;
   if (valueNode.type === requestedType && String(valueNode.value).trim() === edit.text.trim()) return text;
 
+  // A comment on the instruction's line moves to the new block's header. Left
+  // where it was, after a plain value it would become part of the block's text.
+  const lineEnd = (from: number) => (text.indexOf("\n", from) === -1 ? text.length : text.indexOf("\n", from));
+  // Comments between the key and the value: the one on the key's line stays
+  // on the new header, the others get their own lines above the key, since
+  // they cannot sit inside the new block. A value may start on a later line,
+  // block indicator included.
+  const beforeValue = text.slice(keyRange[1], valueRange[0]).match(/#[^\n]*/g) ?? [];
+  const onKeyLine = /#[^\n]*/.exec(text.slice(keyRange[1], Math.min(valueRange[0], lineEnd(keyRange[1]))))?.[0];
+  const above = beforeValue.filter((c) => c !== onKeyLine).map((c) => c.trimEnd());
+  // The comment after the value: on a block's indicator line, or after a plain
+  // or quoted value's last line.
+  let afterValue: string | undefined;
+  if (valueNode.type === Scalar.BLOCK_FOLDED || valueNode.type === Scalar.BLOCK_LITERAL) {
+    afterValue = /^[>|][-+0-9]*[ \t]+(#.*)$/.exec(text.slice(valueRange[0], lineEnd(valueRange[0])))?.[1];
+  } else {
+    afterValue = /^[ \t]+(#.*)$/.exec(text.slice(valueRange[1], lineEnd(valueRange[1])))?.[1];
+    if (afterValue) fullEnd = lineEnd(valueRange[1]);
+  }
+  const comment = [onKeyLine, afterValue].filter(Boolean).map((c) => c!.trimEnd()).join(" ") || undefined;
+
   // setInstruction always honors the selected block style, even for short
   // text; the style is explicit editor state, not a formatting hint.
-  const rendered = blockScalarLines("instruction", indent, edit.text, edit.style)
+  let rendered = blockScalarLines("instruction", indent, edit.text, edit.style)
     .slice(indent.length)
     .replace(/\n$/, "");
+  // A callback, so `$&` or `$'` in the comment is inserted as written.
+  if (comment) rendered = rendered.replace("\n", () => ` ${comment.trimEnd()}\n`);
+  if (above.length) rendered = above.map((c) => `${c}\n${indent}`).join("") + rendered;
 
   // Replace from the start of the key line to the end of the value
   // (including, for block scalars, all its body lines) but not the trailing

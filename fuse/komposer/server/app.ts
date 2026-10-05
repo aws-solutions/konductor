@@ -174,6 +174,8 @@ export function startServer(options: ServerOptions): KomposerServer {
         id: e.id,
         level: e.level,
         folder: e.folder,
+        ...(e.description ? { description: e.description } : {}),
+        ...(e.entryProblem ? { entryProblem: e.entryProblem } : {}),
         files,
         ...(e.guideMissing ? { guideMissing: e.guideMissing } : {}),
         ...(e.hides ? { hides: e.hides } : {}),

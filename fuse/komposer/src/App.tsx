@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
-import { api, ApiError, type LibraryEntry, type WorkstreamSummary } from "./api.ts";
-import { applyEdit, type Edit } from "./model/yamlEdit.ts";
+import { api, ApiError, suggestPath, type LibraryEntry, type WorkstreamSummary } from "./api.ts";
+import { applyEdit, type Edit, type OutputMode } from "./model/yamlEdit.ts";
+import { addArtifactEdits, describeFrom, insertArtifactStepEdits } from "./model/artifactInstruction.ts";
 import {
   artifactCount,
   openWorkflow,
@@ -115,16 +116,21 @@ export function App() {
     return () => source.close();
   }, [workflow?.path, workflow?.hash, workflow?.openText, workflow?.text, workflow?.onDisk]);
 
-  const apply = (edit: Edit) => {
+  // Applies one edit, or several in order as one change: either all apply or none.
+  const apply = (edits: Edit | Edit[]) => {
     if (!workflow || !currentKey) return;
+    const list = Array.isArray(edits) ? edits : [edits];
     try {
-      const nextText = applyEdit(workflow.openText, edit);
+      let nextText = workflow.openText;
       const stepKeys = [...workflow.stepKeys];
-      if (edit.op === "insertStep") stepKeys.splice(edit.at, 0, newStepKey());
-      if (edit.op === "deleteStep") stepKeys.splice(edit.index, 1);
-      if (edit.op === "moveStep") {
-        const [key] = stepKeys.splice(edit.from, 1);
-        stepKeys.splice(edit.to, 0, key);
+      for (const edit of list) {
+        nextText = applyEdit(nextText, edit);
+        if (edit.op === "insertStep") stepKeys.splice(edit.at, 0, newStepKey());
+        if (edit.op === "deleteStep") stepKeys.splice(edit.index, 1);
+        if (edit.op === "moveStep") {
+          const [key] = stepKeys.splice(edit.from, 1);
+          stepKeys.splice(edit.to, 0, key);
+        }
       }
       const next = openWorkflow({
         ...workflow,
@@ -132,10 +138,29 @@ export function App() {
         workingCopy: nextText === workflow.text ? undefined : nextText,
       });
       replaceWorkflow(currentKey, next);
-      if (edit.op === "insertStep") setSelectedIndex(edit.at);
-      if (edit.op === "moveStep") setSelectedIndex(edit.to);
-      if (edit.op === "deleteStep")
-        setSelectedIndex((i) => Math.max(0, Math.min(i > edit.index ? i - 1 : i, steps.length - 2)));
+      for (const edit of list) {
+        if (edit.op === "insertStep") setSelectedIndex(edit.at);
+        if (edit.op === "moveStep") setSelectedIndex(edit.to);
+        if (edit.op === "deleteStep")
+          setSelectedIndex((i) => Math.max(0, Math.min(i > edit.index ? i - 1 : i, steps.length - 2)));
+      }
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : String(e));
+    }
+  };
+  // Adding an artifact pre-fills a generated instruction (decision 18).
+  const addArtifact = (step: number, mode: OutputMode, artifact: string, path = suggestPath(artifact)) => {
+    if (!workflow) return;
+    try {
+      apply(addArtifactEdits(workflow.openText, step, mode, artifact, path, describeFrom(library)));
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : String(e));
+    }
+  };
+  const insertArtifactStep = (at: number, artifact: string) => {
+    if (!workflow) return;
+    try {
+      apply(insertArtifactStepEdits(workflow.openText, at, artifact, suggestPath(artifact), describeFrom(library)));
     } catch (e) {
       showToast(e instanceof Error ? e.message : String(e));
     }
@@ -456,15 +481,8 @@ export function App() {
           onAppend={() => apply({ op: "insertStep", at: steps.length, step: { id: uniqueStepId(), instruction: "" } })}
           onMove={(from, to) => apply({ op: "moveStep", from, to })}
           onDelete={(index) => apply({ op: "deleteStep", index })}
-          onDropArtifact={(step, artifact) =>
-            apply({
-              op: "addOutput",
-              step,
-              mode: "produces",
-              artifact,
-              path: artifact === "code" ? "." : `.konductor/{slug}/${artifact}.md`,
-            })
-          }
+          onDropArtifact={(step, artifact) => addArtifact(step, "produces", artifact)}
+          onDropArtifactAt={insertArtifactStep}
           run={run}
         />
       </div>
@@ -484,6 +502,7 @@ export function App() {
         diffBase={disk?.text ?? workflow.text}
         compareRequest={compareRequest}
         onEdit={apply}
+        onAddArtifact={addArtifact}
         allWorkflows={workflows}
         run={run}
         onOpenRun={openRun}

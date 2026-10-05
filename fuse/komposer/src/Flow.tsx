@@ -3,12 +3,12 @@
 // condition row, description, artifact chips, gate pills, error line) and
 // the SVG edge overlay. Read-only for step 3: no seam/drag/append/buttons.
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState, type DragEvent } from "react";
 import { ArrowDown, ArrowUp, X } from "lucide-react";
 import type { Gate } from "../../flow/src/schemas/gate.ts";
 import type { LibraryEntry, WorkstreamSummary } from "./api.ts";
 import { duration, RUN_STATE, runState } from "./runView.ts";
-import { resolveLibrary } from "./api.ts";
+import { ARTIFACT_DRAG, resolveLibrary } from "./api.ts";
 import { gatesInRunOrder, type ArtifactRole, type StepView } from "./workflowView.ts";
 import { layoutEdges } from "./layout.ts";
 import type { Problem } from "./validate.ts";
@@ -45,6 +45,7 @@ export function Flow({
   onDelete,
   onAppend,
   onDropArtifact,
+  onDropArtifactAt,
   run,
   gateTextVisible = true,
 }: {
@@ -62,9 +63,29 @@ export function Flow({
   onDelete: (index: number) => void;
   onAppend: () => void;
   onDropArtifact: (step: number, artifact: string) => void;
+  // A library entry dropped between steps, or on "Append step", becomes a new step at `at`.
+  onDropArtifactAt: (at: number, artifact: string) => void;
   run?: WorkstreamSummary;
   gateTextVisible?: boolean;
 }) {
+  const [dropAt, setDropAt] = useState<number | null>(null);
+  const dropProps = (at: number) => ({
+    onDragOver: (event: DragEvent) => {
+      if (!event.dataTransfer.types.includes(ARTIFACT_DRAG)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setDropAt(at);
+    },
+    onDragLeave: () => setDropAt((current) => (current === at ? null : current)),
+    onDrop: (event: DragEvent) => {
+      const artifact = event.dataTransfer.getData(ARTIFACT_DRAG);
+      setDropAt(null);
+      if (!artifact) return;
+      event.preventDefault();
+      event.stopPropagation();
+      onDropArtifactAt(at, artifact);
+    },
+  });
   const flowRef = useRef<HTMLDivElement>(null);
   const [geo, setGeo] = useState<Rect[]>([]);
   const layout = layoutEdges(steps);
@@ -115,8 +136,12 @@ export function Flow({
           {steps.map((step, i) => (
             <div key={`${step.id}-${i}`}>
               {run ? null : (
-                <div className="step-seam" onClick={() => onInsert(i)}>
-                  <span>+ insert</span>
+                <div
+                  className={`step-seam${dropAt === i ? " is-drop-target" : ""}`}
+                  onClick={() => onInsert(i)}
+                  {...dropProps(i)}
+                >
+                  <span>{dropAt === i ? "+ new step" : "+ insert"}</span>
                 </div>
               )}
               {step.phase && (i === 0 || steps[i - 1].phase !== step.phase) && (
@@ -150,7 +175,11 @@ export function Flow({
           ))}
         </div>
         {!run && (
-          <button className="append-step-btn" onClick={onAppend}>
+          <button
+            className={`append-step-btn${dropAt === steps.length ? " is-drop-target" : ""}`}
+            onClick={onAppend}
+            {...dropProps(steps.length)}
+          >
             + Append step
           </button>
         )}
@@ -234,10 +263,10 @@ function StepCard({
       className={`step-card${step.condition ? " is-optional" : ""}${selected ? " is-selected" : ""}${hasProblems ? " has-problems" : ""}${stateInfo ? ` run-${stateInfo.className}` : ""}`}
       onClick={onSelect}
       onDragOver={(event) => {
-        if (!runMode && event.dataTransfer.types.includes("application/x-komposer-artifact")) event.preventDefault();
+        if (!runMode && event.dataTransfer.types.includes(ARTIFACT_DRAG)) event.preventDefault();
       }}
       onDrop={(event) => {
-        const artifact = event.dataTransfer.getData("application/x-komposer-artifact");
+        const artifact = event.dataTransfer.getData(ARTIFACT_DRAG);
         if (artifact && !runMode) {
           event.preventDefault();
           onDropArtifact(artifact);

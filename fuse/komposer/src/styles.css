@@ -912,6 +912,11 @@ select {
   border-radius: 6px;
   background: var(--surface-sunken);
   color: var(--text-body);
+  border: 0;
+  cursor: pointer;
+}
+.library-badge:hover {
+  box-shadow: 0 0 0 1px var(--accent);
 }
 .library-badge.is-missing {
   background: oklch(0.95 0.05 80);
@@ -964,8 +969,9 @@ select {
   flex-direction: column;
   gap: 2px;
 }
-/* Two lines per entry: the id, its G T R badge, level and + on the first;
-   what it hides and where it is used on the second. */
+/* Up to three lines per entry: the id, its G T R badge, level and + on the
+   first; its description on the second; what it hides and where it is used
+   on the last. */
 .library-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto auto;
@@ -985,6 +991,25 @@ select {
 .library-row > .icon-mini {
   grid-column: 4;
   grid-row: 1;
+}
+.library-description {
+  grid-column: 1 / -1;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.library-description.is-missing {
+  color: var(--text-faint);
+  font-style: italic;
+}
+.library-detail-description {
+  margin: 4px 0 6px;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+.library-entry-problem {
+  color: oklch(0.5 0.18 25);
+  font-size: 12px;
 }
 .library-meta {
   grid-column: 1 / -1;
@@ -1033,6 +1058,7 @@ select {
 .step-seam::before, .step-seam::after { content: ""; flex: 1; height: 1px; background: var(--accent); }
 .step-seam span { margin: 0 8px; padding: 0 10px; border: 1px solid var(--accent); border-radius: 999px; background: var(--surface); color: var(--accent-text); font: 600 11px "JetBrains Mono",monospace; }
 .step-seam:hover { opacity: 1; }
+.step-seam.is-drop-target { opacity: 1; height: 28px; }
 .step-card { margin-bottom: 0; }
 .step-actions { display: flex; gap: 1px; padding-top: 1px; }
 .step-actions button, .icon-mini { width: 26px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 6px; background: transparent; color: var(--text-muted); cursor: pointer; }
@@ -1040,7 +1066,7 @@ select {
 .step-actions button:last-child:hover { background: oklch(0.95 0.04 25); color: oklch(0.5 0.18 25); }
 .step-actions button:disabled { opacity: .25; cursor: default; }
 .append-step-btn { margin-top: 14px; cursor: pointer; opacity: 1; }
-.append-step-btn:hover { border-color: var(--accent); color: var(--accent-text); background: var(--accent-soft); }
+.append-step-btn:hover, .append-step-btn.is-drop-target { border-color: var(--accent); color: var(--accent-text); background: var(--accent-soft); }
 .toggle-pill { cursor: pointer; }
 .toggle-pill small { color: var(--text-faint); }
 .add-row { display: flex; gap: 8px; }

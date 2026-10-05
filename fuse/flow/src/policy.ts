@@ -12,6 +12,7 @@ import YAML from "yaml";
 import { FlowError } from "./errors.ts";
 import { libraryDirs, policyFiles } from "./project.ts";
 import { DEFAULT_MAX_ROUNDS, type Gate } from "./schemas/gate.ts";
+import { LibraryEntrySchema } from "./schemas/library.ts";
 import { type Policy, PolicySchema } from "./schemas/policy.ts";
 import type { Artifact } from "./schemas/step.ts";
 
@@ -169,6 +170,10 @@ export interface LibraryListing {
   // The template's file name in the folder, such as template.md.
   templateFile?: string;
   review?: string;
+  // From the folder's entry.yml, when it has one that matches its schema.
+  description?: string;
+  // Why entry.yml could not be read, when it exists but does not match.
+  entryProblem?: string;
   // The level of the entry with the same id that this one replaces, or that
   // replaces it: the most specific level wins as a whole (decision 24).
   hides?: LibraryLevel;
@@ -199,6 +204,7 @@ export function listLibrary(root: string): LibraryListing[] {
         ...(linked ? { guideMissing: guidePath } : {}),
         ...(template && existing(join(folder, template)) ? { template: existing(join(folder, template)), templateFile: template } : {}),
         ...(existing(join(folder, "review.md")) ? { review: existing(join(folder, "review.md")) } : {}),
+        ...readEntryFile(join(folder, "entry.yml")),
       });
     }
   }
@@ -209,6 +215,22 @@ export function listLibrary(root: string): LibraryListing[] {
     if (winner !== entry) entry.hiddenBy = winner.level;
   }
   return found;
+}
+
+// An entry's entry.yml. A file that does not match its schema is reported on
+// the entry, so one bad file does not hide the rest of the library.
+function readEntryFile(path: string): { description?: string; entryProblem?: string } {
+  if (!existsSync(path)) return {};
+  let yaml: unknown;
+  try {
+    yaml = YAML.parse(readFileSync(path, "utf8")) ?? {};
+  } catch (e) {
+    return { entryProblem: `${path} is not valid YAML: ${(e as Error).message}` };
+  }
+  const parsed = LibraryEntrySchema.safeParse(yaml);
+  if (parsed.success) return { description: parsed.data.description };
+  const issues = parsed.error.issues.map((i) => `${i.path.join(".") || "(top level)"}: ${i.message}`);
+  return { entryProblem: `${path}: ${issues.join("; ")}` };
 }
 
 function statSafe(path: string): boolean {

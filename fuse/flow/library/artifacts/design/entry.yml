@@ -1,0 +1,2 @@
+# yaml-language-server: $schema=../../../workflows/schemas/library-entry.schema.json
+description: "The architecture and the decisions behind it, with every claim about current behaviour cited to the code."

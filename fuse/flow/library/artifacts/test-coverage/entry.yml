@@ -1,0 +1,2 @@
+# yaml-language-server: $schema=../../../workflows/schemas/library-entry.schema.json
+description: "The test coverage gaps in what was implemented, with the tests added or planned to close them."

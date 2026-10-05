@@ -1,0 +1,2 @@
+# yaml-language-server: $schema=../../../workflows/schemas/library-entry.schema.json
+description: "The project's source code and tests, changed on the work's branch and reviewed as a diff."

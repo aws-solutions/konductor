@@ -71,6 +71,9 @@ export interface LibraryEntry {
   id: string;
   level: "project" | "user" | "package";
   folder: string;
+  // From the entry's entry.yml.
+  description?: string;
+  entryProblem?: string;
   files: Record<string, string>;
   guideMissing?: string;
   hides?: "project" | "user" | "package";
@@ -108,6 +111,14 @@ export interface WorkstreamSummary {
       { status: string; activeMs: number; ownerWaitMs: number; visits: number; skipReason?: string }
     >;
   };
+}
+
+// The drag-and-drop type of a library entry dragged from the Library tab.
+export const ARTIFACT_DRAG = "application/x-komposer-artifact";
+
+// Where a new artifact goes unless the author says otherwise.
+export function suggestPath(id: string): string {
+  return id === "code" ? "." : `.konductor/{slug}/${id}.md`;
 }
 
 // G/T/R presence for one artifact id, resolved project > personal > package.

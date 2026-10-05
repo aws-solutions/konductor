@@ -404,6 +404,46 @@ steps:
     if (parsed.ok) expect(parsed.workflow.steps[0].instruction).toBe("Do the thing.");
     expect(edited).toContain("instruction: >\n");
   });
+
+  // A comment on the instruction's line stays a comment, on the new block's header.
+  for (const [label, line] of [
+    ["a plain", "instruction: Old text. # keep this comment"],
+    ["a quoted", 'instruction: "" # keep this comment'],
+    ["a folded block's header", "instruction: > # keep this comment\n      Old text."],
+    ["a literal block's header", "instruction: |-  # keep this comment\n      Old text."],
+    ["a commented, with replacement tokens,", "instruction: Old. # keep this comment, $' and $& and $1"],
+    ["a multi-line plain", "instruction: # keep this comment\n      Old text\n      on two lines."],
+    ["a multi-line quoted", 'instruction: "Old text\n      on two lines." # keep this comment'],
+    ["a folded block, with the indicator on the next line,", "instruction:\n      > # keep this comment\n        Old text."],
+    ["a literal block, with the indicator on the next line,", "instruction:\n      | # keep this comment\n        Old text."],
+  ] as const) {
+    test(`keeps the comment on ${label} instruction`, () => {
+      const before = `version: 1\nname: demo\nsteps:\n  - id: one\n    ${line}\n`;
+      for (const style of [">", "|"] as const) {
+        const edited = applyEdit(before, { op: "setInstruction", step: 0, text: "Line one.\nLine two.", style });
+        const parsed = parseWorkflowText(edited);
+        expect(parsed.ok ? parsed.workflow.steps[0].instruction.trimEnd() : parsed.issues).toBe("Line one.\nLine two.");
+        const comment = line.slice(line.indexOf("#")).split("\n")[0].trimEnd();
+        expect(edited).toContain(`    instruction: ${style} ${comment}\n`);
+      }
+    });
+  }
+
+  test("keeps a comment after the key when the block indicator is on the next line", () => {
+    const before = `version: 1\nname: demo\nsteps:\n  - id: one\n    instruction: # key comment\n      | # block comment\n        Old text.\n`;
+    const edited = applyEdit(before, { op: "setInstruction", step: 0, text: "New text.", style: "|" });
+    const parsed = parseWorkflowText(edited);
+    expect(parsed.ok ? parsed.workflow.steps[0].instruction.trim() : parsed.issues).toBe("New text.");
+    expect(edited).toContain("    instruction: | # key comment # block comment\n      New text.\n");
+  });
+
+  test("keeps every comment between the key and a plain value on later lines", () => {
+    const before = `version: 1\nname: demo\nsteps:\n  - id: one\n    instruction: # first comment\n      # second comment\n      Old text.\n`;
+    const edited = applyEdit(before, { op: "setInstruction", step: 0, text: "New text.", style: ">" });
+    const parsed = parseWorkflowText(edited);
+    expect(parsed.ok ? parsed.workflow.steps[0].instruction.trim() : parsed.issues).toBe("New text.");
+    expect(edited).toContain("    # second comment\n    instruction: > # first comment\n      New text.\n");
+  });
 });
 
 describe("setCondition", () => {

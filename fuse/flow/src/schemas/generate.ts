@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Writes one JSON Schema file per schema in this folder (workflow, step,
-// artifact, gate, condition, and the policy file)
+// artifact, gate, condition, the policy file and a library entry's entry.yml)
 // into workflows/schemas/, so editors can validate workflow files and show
 // each field's description. The files refer to each other by relative path.
 //
@@ -12,6 +12,7 @@ import { join, resolve } from "node:path";
 import { z } from "zod";
 import "./workflow.ts"; // registers the Workflow, Step, Artifact and Gate schemas by id
 import "./policy.ts"; // registers the Policy schema
+import "./library.ts"; // registers the LibraryEntry schema
 
 export const JSON_SCHEMA_DIR = resolve(import.meta.dir, "..", "..", "workflows", "schemas");
 
@@ -23,6 +24,7 @@ const FILES: Record<string, string> = {
   Gate: "gate.schema.json",
   Condition: "condition.schema.json",
   Policy: "policy.schema.json",
+  LibraryEntry: "library-entry.schema.json",
 };
 
 // File name -> content.

@@ -1,0 +1,2 @@
+# yaml-language-server: $schema=../../../workflows/schemas/library-entry.schema.json
+description: "An unclear request classified by intent, with its ambiguities, its bounded scope and the recommended way to carry it out."

@@ -246,6 +246,43 @@ describe("library", () => {
     // The package's design entry is hidden by the project's.
     expect(entries.find((e: any) => e.id === "design" && e.level === "package")).toMatchObject({ hiddenBy: "project" });
   });
+
+  test("an entry's description comes from its entry.yml, which is not listed as a file", async () => {
+    const folder = join(root, ".konductor", "library", "artifacts", "notes");
+    write(join(folder, "entry.yml"), "# what the notes are\ndescription: >\n  The notes kept\n  while working.\n");
+    write(join(folder, "guide.md"), "guide\n");
+    const { entries } = await json("/api/library");
+    expect(entries.find((e: any) => e.id === "notes")).toEqual({
+      id: "notes",
+      level: "project",
+      folder,
+      description: "The notes kept while working.",
+      files: { "guide.md": "guide\n" },
+    });
+  });
+
+  test("an entry.yml that does not match its schema is reported on the entry, not as a failed listing", async () => {
+    const base = join(root, ".konductor", "library", "artifacts");
+    write(join(base, "empty", "entry.yml"), "description: ''\n");
+    write(join(base, "extra", "entry.yml"), "description: Fine.\ncolour: red\n");
+    write(join(base, "broken", "entry.yml"), "description: [unclosed\n");
+    const { entries } = await json("/api/library");
+    const mine = (id: string) => entries.find((e: any) => e.id === id && e.level === "project");
+    expect(mine("empty").description).toBeUndefined();
+    expect(mine("empty").entryProblem).toContain("description");
+    expect(mine("extra").entryProblem).toContain("colour");
+    expect(mine("broken").entryProblem).toContain("not valid YAML");
+  });
+
+  test("every entry that ships with fuse-flow has a description", async () => {
+    const { entries } = await json("/api/library");
+    const shipped = entries.filter((e: any) => e.level === "package");
+    expect(shipped.length).toBeGreaterThan(0);
+    for (const entry of shipped) {
+      expect({ id: entry.id, problem: entry.entryProblem }).toEqual({ id: entry.id, problem: undefined });
+      expect(typeof entry.description).toBe("string");
+    }
+  });
 });
 
 describe("workstreams", () => {

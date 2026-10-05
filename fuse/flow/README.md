@@ -215,6 +215,7 @@ Each artifact identifier selects one folder with this layout:
 
 ```text
 library/artifacts/<id>/
+  entry.yml         optional; `description:` says what the artifact is (library-entry.schema.json)
   guide.md          how to produce the artifact
   template.<ext>    optional structure for the artifact
   review.md         optional review guide
@@ -223,8 +224,9 @@ library/artifacts/<id>/
 The engine points the agent to a template but does not copy it. It searches the project's
 `.konductor/library/artifacts/<id>/`, then the user's `~/.konductor/library/artifacts/<id>/`, then
 the package's `fuse/flow/library/artifacts/<id>/`. The first existing folder wins as a unit, so
-files are not mixed across library levels. `library/gates/` is reserved; reusable gate entries are
-not defined yet.
+files are not mixed across library levels. The engine does not use `entry.yml`; Komposer shows the
+description and pre-fills a step's instruction from it. `library/gates/` is reserved; reusable gate
+entries are not defined yet.
 
 ### Policy overrides
 

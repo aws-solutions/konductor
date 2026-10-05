@@ -1,0 +1,2 @@
+# yaml-language-server: $schema=../../../workflows/schemas/library-entry.schema.json
+description: "User stories with acceptance criteria, written from the requirements in the code's vocabulary."
