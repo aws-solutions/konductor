@@ -28,6 +28,14 @@
 // A third tier, `~/.konductor/config.yml` (user-level), merges between
 // preset and project: preset -> user -> project, project wins on conflict;
 // a missing user-level file is not an error, same as a missing project file.
+//
+// ── Post-merge fallback ──────────────────────────────────────────────────
+// The shipped preset only sets `version` and `telemetry.enabled`. Every
+// other field (`severities_source`, `tiers_source`, `tier`,
+// `default_severity`, `fail_on_severity_at_or_above`) still has a value
+// after the merge above only because `validate()` falls back to this
+// module's own `DEFAULT_*` constants for whichever of them stayed `None`
+// -- not because the preset itself carries them.
 
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -123,6 +131,17 @@ pub struct Config {
     pub fail_on_severity_at_or_above: String,
 }
 
+/// `telemetry:` block, carried through `RawConfig`/`merge` purely so
+/// `config set` round-trips it (see `RawConfig::telemetry`'s own doc
+/// comment for why this exists and what it does NOT do).
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub(crate) struct RawTelemetry {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) endpoint: Option<String>,
+}
+
 /// Raw, partially-populated config as parsed directly from a YAML
 /// document -- every field optional, since a project's own
 /// `.konductor/config.yml` is allowed to omit any field and fall back to
@@ -144,6 +163,16 @@ struct RawConfig {
     default_severity: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     fail_on_severity_at_or_above: Option<String>,
+    /// The `telemetry:` block. `config get`/`config list` never surface
+    /// this (see `Config`, which has no telemetry field at all) --
+    /// carried on `RawConfig` purely so `config set` reads it off disk
+    /// and writes it straight back, instead of a plain `fs::read`/
+    /// `fs::write` round-trip silently dropping it. `report.rs` (the
+    /// real telemetry opt-out check) never goes through `RawConfig` or
+    /// this merge pipeline at all -- it reads the project file directly
+    /// -- so this field has no effect on telemetry behavior itself.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    telemetry: Option<RawTelemetry>,
 }
 
 /// All the ways loading/validating a config can fail. Every variant is a
@@ -509,17 +538,15 @@ fn apply_field(raw_project: &mut RawConfig, key: &str, value: &str) -> Result<()
             raw_project.tier = Some(value.to_string());
         }
         "default_severity" => {
-            require_severity(Some(value), "default_severity").map_err(|_| {
-                ConfigError::InvalidValue {
-                    key: key.to_string(),
-                    value: value.to_string(),
-                    reason: format!("expected one of {VALID_SEVERITIES:?}"),
-                }
+            require_severity(value, "default_severity").map_err(|_| ConfigError::InvalidValue {
+                key: key.to_string(),
+                value: value.to_string(),
+                reason: format!("expected one of {VALID_SEVERITIES:?}"),
             })?;
             raw_project.default_severity = Some(value.to_string());
         }
         "fail_on_severity_at_or_above" => {
-            require_severity(Some(value), "fail_on_severity_at_or_above").map_err(|_| {
+            require_severity(value, "fail_on_severity_at_or_above").map_err(|_| {
                 ConfigError::InvalidValue {
                     key: key.to_string(),
                     value: value.to_string(),
@@ -555,9 +582,9 @@ pub(crate) const _CONFIG_FIELDS: &[&str] = &[
 ];
 
 /// Parses the compiled-in preset defaults (`PRESET_CONFIG_CONTENTS`) as a
-/// fully-populated `RawConfig` (every field expected present -- the
-/// preset is the ultimate fallback, so it must not itself be relying on
-/// any fallback).
+/// `RawConfig`. The preset only sets `version` and `telemetry.enabled`;
+/// every other field comes back `None` here and is resolved later by
+/// `validate()`'s own `DEFAULT_*` fallback, not by this function.
 ///
 /// Pure parsing, no filesystem access: the preset text is embedded at
 /// compile time (see `PRESET_CONFIG_CONTENTS`'s docstring), so there is
@@ -599,11 +626,16 @@ fn load_raw_config(path: &Path) -> Result<RawConfig, ConfigError> {
 }
 
 /// Field-by-field, shallow merge of `override_cfg` over `base` (see module
-/// docstring's "Merge semantics" section). `base` is expected to already
-/// be fully-populated by the time `validate` runs, so any field
-/// `override_cfg` leaves `None` falls back to `base`'s value; a
-/// truly-missing preset field (packaging bug) surfaces as a validation
-/// error downstream rather than panicking here.
+/// docstring's "Merge semantics" section). The preset itself is no longer
+/// fully-populated -- it only sets `version` and `telemetry.enabled` --
+/// so a field left `None` after this merge is expected, not a packaging
+/// bug; `validate()` resolves it against its own `DEFAULT_*` constants
+/// instead.
+///
+/// `telemetry` merges the same way, but one level deeper: `enabled`/
+/// `endpoint` each fall back independently rather than the whole block
+/// being replaced wholesale, so setting only one of the two in a
+/// higher layer doesn't blank out the other.
 fn merge(base: RawConfig, override_cfg: RawConfig) -> RawConfig {
     RawConfig {
         version: override_cfg.version.or(base.version),
@@ -614,14 +646,46 @@ fn merge(base: RawConfig, override_cfg: RawConfig) -> RawConfig {
         fail_on_severity_at_or_above: override_cfg
             .fail_on_severity_at_or_above
             .or(base.fail_on_severity_at_or_above),
+        telemetry: merge_telemetry(base.telemetry, override_cfg.telemetry),
     }
 }
 
+/// Field-by-field merge of the `telemetry:` block, mirroring `merge`'s
+/// own per-field fallback -- `None`/`None` yields `None` rather than
+/// `Some(RawTelemetry::default())`, so a config with no `telemetry:` key
+/// at any layer still serializes with the key absent entirely.
+fn merge_telemetry(
+    base: Option<RawTelemetry>,
+    override_cfg: Option<RawTelemetry>,
+) -> Option<RawTelemetry> {
+    if base.is_none() && override_cfg.is_none() {
+        return None;
+    }
+    let base = base.unwrap_or_default();
+    let override_cfg = override_cfg.unwrap_or_default();
+    Some(RawTelemetry {
+        enabled: override_cfg.enabled.or(base.enabled),
+        endpoint: override_cfg.endpoint.or(base.endpoint),
+    })
+}
+
+/// Built-in fallback values applied after the preset/user/project merge,
+/// for a field no layer set. The shipped preset carries only `version`
+/// and `telemetry.enabled`, so every other field resolves through these
+/// constants whenever no layer sets it.
+const DEFAULT_SEVERITIES_SOURCE: &str = "severity-schema.yml";
+const DEFAULT_TIERS_SOURCE: &str = "scope-table.yml";
+const DEFAULT_TIER: &str = "minor";
+const DEFAULT_SEVERITY: &str = "MEDIUM";
+const DEFAULT_FAIL_ON_SEVERITY_AT_OR_ABOVE: &str = "CRITICAL";
+
 /// Validates a merged `RawConfig` and converts it into a fully-populated
-/// `Config`. A field that is still `None` after merging against the
-/// preset (i.e. the preset itself omitted it -- a packaging bug) is
-/// reported the same way as any other invalid value, rather than
-/// panicking or silently defaulting further.
+/// `Config`. A field left `None` after the preset/user/project merge
+/// falls back to this module's own built-in default (see the
+/// `DEFAULT_*` constants above) rather than being treated as a packaging
+/// bug -- the shipped preset no longer sets these fields itself. A field
+/// that IS present but holds a value this loader does not recognize is
+/// still rejected, same as always.
 fn validate(raw: &RawConfig) -> Result<Config, ConfigError> {
     let version = raw.version.ok_or(ConfigError::UnsupportedVersion {
         found: 0,
@@ -634,30 +698,40 @@ fn validate(raw: &RawConfig) -> Result<Config, ConfigError> {
         });
     }
 
-    let tier = require_tier(raw.tier.as_deref())?;
+    let tier = require_tier(raw.tier.as_deref().unwrap_or(DEFAULT_TIER))?;
 
-    let default_severity = require_severity(raw.default_severity.as_deref(), "default_severity")?;
+    let default_severity = require_severity(
+        raw.default_severity.as_deref().unwrap_or(DEFAULT_SEVERITY),
+        "default_severity",
+    )?;
     let fail_on_severity_at_or_above = require_severity(
-        raw.fail_on_severity_at_or_above.as_deref(),
+        raw.fail_on_severity_at_or_above
+            .as_deref()
+            .unwrap_or(DEFAULT_FAIL_ON_SEVERITY_AT_OR_ABOVE),
         "fail_on_severity_at_or_above",
     )?;
 
     Ok(Config {
         version,
-        severities_source: raw.severities_source.clone().unwrap_or_default(),
-        tiers_source: raw.tiers_source.clone().unwrap_or_default(),
+        severities_source: raw
+            .severities_source
+            .clone()
+            .unwrap_or_else(|| DEFAULT_SEVERITIES_SOURCE.to_string()),
+        tiers_source: raw
+            .tiers_source
+            .clone()
+            .unwrap_or_else(|| DEFAULT_TIERS_SOURCE.to_string()),
         tier,
         default_severity,
         fail_on_severity_at_or_above,
     })
 }
 
-/// Validates that `value` is present and one of `VALID_TIERS`, returning
-/// it owned on success.
-fn require_tier(value: Option<&str>) -> Result<String, ConfigError> {
-    let value = value.ok_or_else(|| ConfigError::UnknownTier {
-        value: "<missing>".to_string(),
-    })?;
+/// Validates that `value` is one of `VALID_TIERS`, returning it owned on
+/// success. Every call site resolves a missing field to `DEFAULT_TIER`
+/// before calling this, so there is no "value absent" case to handle
+/// here -- only "value present but unrecognized".
+fn require_tier(value: &str) -> Result<String, ConfigError> {
     if VALID_TIERS.contains(&value) {
         Ok(value.to_string())
     } else {
@@ -667,13 +741,11 @@ fn require_tier(value: Option<&str>) -> Result<String, ConfigError> {
     }
 }
 
-/// Validates that `value` is present and one of `VALID_SEVERITIES`,
-/// returning it owned on success.
-fn require_severity(value: Option<&str>, field: &'static str) -> Result<String, ConfigError> {
-    let value = value.ok_or_else(|| ConfigError::UnknownSeverity {
-        field,
-        value: "<missing>".to_string(),
-    })?;
+/// Validates that `value` is one of `VALID_SEVERITIES`, returning it
+/// owned on success. Every call site resolves a missing field to its own
+/// `DEFAULT_*` constant before calling this, so there is no "value
+/// absent" case to handle here -- only "value present but unrecognized".
+fn require_severity(value: &str, field: &'static str) -> Result<String, ConfigError> {
     if value.parse::<Severity>().is_ok() {
         Ok(value.to_string())
     } else {
@@ -750,6 +822,26 @@ mod tests {
         assert!(VALID_TIERS.contains(&config.tier.as_str()));
         assert!(VALID_SEVERITIES.contains(&config.default_severity.as_str()));
         assert!(VALID_SEVERITIES.contains(&config.fail_on_severity_at_or_above.as_str()));
+        fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn preset_only_load_resolves_built_in_fallback_defaults() {
+        // The shipped preset only sets `version` and `telemetry.enabled`;
+        // every other field must still resolve to this module's own
+        // DEFAULT_* constants, not a packaging error, since no layer sets
+        // them at all in a fresh preset-only load.
+        let root = scratch_dir("preset-only-fallback-defaults");
+        let config = load_config_with_home(&root, None)
+            .expect("preset-only load must resolve the built-in fallback defaults");
+        assert_eq!(config.severities_source, DEFAULT_SEVERITIES_SOURCE);
+        assert_eq!(config.tiers_source, DEFAULT_TIERS_SOURCE);
+        assert_eq!(config.tier, DEFAULT_TIER);
+        assert_eq!(config.default_severity, DEFAULT_SEVERITY);
+        assert_eq!(
+            config.fail_on_severity_at_or_above,
+            DEFAULT_FAIL_ON_SEVERITY_AT_OR_ABOVE
+        );
         fs::remove_dir_all(&root).ok();
     }
 
@@ -914,7 +1006,6 @@ mod tests {
         let raw: RawConfig =
             serde_yaml::from_str(PRESET_CONFIG_CONTENTS).expect("embedded preset must parse");
         assert_eq!(raw.version, Some(SUPPORTED_CONFIG_VERSION));
-        assert!(raw.tier.is_some());
 
         // load_preset_defaults() must succeed identically -- it is now a
         // pure parse of the same embedded constant, with no I/O path
@@ -996,5 +1087,82 @@ mod tests {
         let declared_keys: std::collections::BTreeSet<&str> =
             _CONFIG_FIELDS.iter().copied().collect();
         assert_eq!(serialized_keys, declared_keys);
+    }
+
+    // ── `telemetry:` block round-trips through `config set` ────────────
+
+    /// A project config with a `telemetry:` block must keep both its
+    /// fields on disk after `config set` changes an unrelated key, and
+    /// the targeted key must actually change. `config get`/`config
+    /// list` are untouched by this -- they still only report
+    /// `_CONFIG_FIELDS`, never `telemetry`.
+    #[test]
+    fn set_config_value_preserves_telemetry_block() {
+        let root = scratch_dir("set-preserves-telemetry");
+        let konductor_dir = root.join(KONDUCTOR_DIR_NAME);
+        fs::create_dir_all(&konductor_dir).unwrap();
+        fs::write(
+            konductor_dir.join(CONFIG_FILE_NAME),
+            "version: 1\ntelemetry:\n  enabled: false\n  endpoint: \"https://example.invalid\"\n",
+        )
+        .unwrap();
+
+        let effective = set_config_value(&root, "tier", "full")
+            .expect("config set must succeed against a config carrying a telemetry: block");
+        assert_eq!(effective.tier, "full");
+
+        let raw = fs::read_to_string(konductor_dir.join(CONFIG_FILE_NAME)).unwrap();
+        let parsed: serde_yaml::Value = serde_yaml::from_str(&raw).unwrap();
+        assert_eq!(
+            parsed.get("tier").and_then(|v| v.as_str()),
+            Some("full"),
+            "the targeted key must actually change on disk, got: {raw}"
+        );
+        let telemetry = parsed.get("telemetry").unwrap_or_else(|| {
+            panic!("telemetry: block must still be present after config set, got: {raw}")
+        });
+        assert_eq!(
+            telemetry.get("enabled").and_then(|v| v.as_bool()),
+            Some(false)
+        );
+        assert_eq!(
+            telemetry.get("endpoint").and_then(|v| v.as_str()),
+            Some("https://example.invalid")
+        );
+
+        fs::remove_dir_all(&root).ok();
+    }
+
+    /// `config get`/`config list`'s field set must stay exactly
+    /// `_CONFIG_FIELDS` -- adding `telemetry` to `RawConfig` must not
+    /// leak it into either, since telemetry's actual on/off behavior is
+    /// read by `report.rs` directly, never through this loader.
+    #[test]
+    fn config_fields_does_not_include_telemetry() {
+        assert!(
+            !_CONFIG_FIELDS.contains(&"telemetry"),
+            "_CONFIG_FIELDS must not grow a telemetry entry -- config get/set/list must not \
+             surface the telemetry: block"
+        );
+    }
+
+    /// A config with no `telemetry:` key at any layer must still
+    /// round-trip through `config set` with no `telemetry:` key
+    /// appearing afterward -- `merge_telemetry`'s `None`/`None` case
+    /// must not synthesize an empty block.
+    #[test]
+    fn set_config_value_does_not_invent_a_telemetry_block() {
+        let root = scratch_dir("set-no-telemetry-block");
+        set_config_value(&root, "tier", "full")
+            .expect("config set on a fresh project must succeed");
+
+        let raw = fs::read_to_string(root.join(KONDUCTOR_DIR_NAME).join(CONFIG_FILE_NAME)).unwrap();
+        let parsed: serde_yaml::Value = serde_yaml::from_str(&raw).unwrap();
+        assert!(
+            parsed.get("telemetry").is_none(),
+            "no telemetry: block was ever set, so config set must not invent one, got: {raw}"
+        );
+
+        fs::remove_dir_all(&root).ok();
     }
 }

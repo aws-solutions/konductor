@@ -158,18 +158,11 @@ cat .konductor/config.yml
 ```yaml
 version: 1
 
-severities_source: severity-schema.yml
-tiers_source: scope-table.yml
-
-tier: minor
-
-default_severity: MEDIUM
-
-fail_on_severity_at_or_above: CRITICAL
+telemetry:
+  enabled: true
 ```
 
-`init` writes a verbatim copy of the CLI's own preset defaults, comments included, so the file
-documents its own fields. Field meanings are in the
+`init` writes a verbatim copy of the CLI's own starter defaults. Field meanings are in the
 [CLI reference](reference.md#configuration-file).
 
 ---

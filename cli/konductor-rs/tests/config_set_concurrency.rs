@@ -221,6 +221,8 @@ fn config_set_exits_usage_error_when_lock_is_held_by_another_process() {
 
     let konductor_dir = dir.join(KONDUCTOR_DIR_NAME);
     let lock_path = konductor_dir.join(".config.lock");
+    let config_path = konductor_dir.join(CONFIG_FILE_NAME);
+    let before = std::fs::read(&config_path).expect("config.yml must exist after init");
     let lock_file = std::fs::OpenOptions::new()
         .create(true)
         .truncate(false)
@@ -262,14 +264,9 @@ fn config_set_exits_usage_error_when_lock_is_held_by_another_process() {
     );
 
     // Confirm the contended write never landed.
-    let config_path = konductor_dir.join(CONFIG_FILE_NAME);
-    let raw_after = std::fs::read_to_string(&config_path).unwrap();
-    let parsed_after: serde_yaml::Value = serde_yaml::from_str(&raw_after).unwrap();
+    let after = std::fs::read(&config_path).expect("config.yml must exist after init");
     assert_eq!(
-        parsed_after
-            .get("default_severity")
-            .and_then(|v| v.as_str()),
-        Some(SEVERITY_MEDIUM),
+        before, after,
         "a config set that failed on lock contention must not have modified config.yml at all"
     );
 

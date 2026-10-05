@@ -92,12 +92,12 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool, color: ColorMode) 
             };
             crate::cli::synth::dispatch_synth_with(&cwd, from, verbose, json, color)
         }
-        Commands::Init { preset, force } => {
+        Commands::Init { force, preset } => {
             let cwd = match resolve_cwd("init", color) {
                 Ok(dir) => dir,
                 Err(code) => return code,
             };
-            dispatch_init(&cwd, preset, force, color)
+            dispatch_init(&cwd, force, preset.as_deref(), color)
         }
         Commands::Doctor {
             from,
@@ -252,21 +252,31 @@ fn resolve_cwd_reporting_json(command: &str, json: bool, color: ColorMode) -> Re
     }
 }
 
-/// `konductor init [--preset ...] [--force]`: scaffolds `.konductor/` in
-/// `target_dir` (the current working directory in real use; passed
+/// `konductor init [--force] [--preset <value>]`: scaffolds `.konductor/`
+/// in `target_dir` (the current working directory in real use; passed
 /// explicitly rather than resolved internally so tests can point at a
-/// scratch directory without mutating the process-global cwd). `preset`
-/// is accepted and echoed for forward compatibility but does not yet
-/// change the scaffolded output.
+/// scratch directory without mutating the process-global cwd).
+///
+/// `preset` is deprecated and hidden (see cli.rs's `Commands::Init`): an
+/// unrecognized value is already rejected by clap before dispatch ever
+/// runs, so this only has to warn and then ignore it. Threaded through
+/// no further than this function -- `init::run_init` never sees it,
+/// since it has no effect on the scaffolded output.
 ///
 /// Exit-code contract: any `InitError` is a USAGE ERROR (64), never exit
 /// code 2 -- see cli/init.rs's module docstring.
 fn dispatch_init(
     target_dir: &std::path::Path,
-    preset: Option<String>,
     force: bool,
+    preset: Option<&str>,
     color: ColorMode,
 ) -> u8 {
+    if preset.is_some() {
+        eprintln!(
+            "{} --preset is deprecated and has no effect; it will be removed in a future release.",
+            crate::cli::output::status::warn(color, "konductor init: warning:")
+        );
+    }
     match init::run_init(target_dir, force) {
         Ok(result) => {
             println!(
@@ -282,9 +292,6 @@ fn dispatch_init(
                     "Gitignore already exists, left untouched: {}",
                     result.gitignore_path.display()
                 );
-            }
-            if let Some(preset) = preset {
-                println!("(preset '{preset}' requested; all presets currently produce the same starter config)");
             }
             0
         }
@@ -513,7 +520,7 @@ mod tests {
         let _lock = lock_home();
         let target = scratch_cwd("round-trip");
 
-        let init_code = dispatch_init(&target, None, false, ColorMode::disabled());
+        let init_code = dispatch_init(&target, false, None, ColorMode::disabled());
         assert_eq!(init_code, 0, "init on an empty target must succeed");
 
         let list_code = dispatch_config(&target, ConfigAction::List, ColorMode::disabled());
@@ -525,16 +532,51 @@ mod tests {
         fs::remove_dir_all(&target).ok();
     }
 
+    /// `--preset` is deprecated and hidden, but still accepted: it must
+    /// exit 0, write the exact same starter config `init` without it
+    /// would, and work with `--force` on a second run.
+    #[test]
+    fn dispatch_init_with_preset_writes_the_same_file_as_without_it() {
+        let with_preset = scratch_cwd("preset-team");
+        let without_preset = scratch_cwd("preset-none");
+
+        let code_with_preset =
+            dispatch_init(&with_preset, false, Some("team"), ColorMode::disabled());
+        assert_eq!(code_with_preset, 0, "--preset team must still exit 0");
+
+        let code_without_preset =
+            dispatch_init(&without_preset, false, None, ColorMode::disabled());
+        assert_eq!(code_without_preset, 0);
+
+        let config_path_fragment =
+            config::KONDUCTOR_DIR_NAME.to_string() + "/" + config::CONFIG_FILE_NAME;
+        let with_preset_contents =
+            fs::read_to_string(with_preset.join(&config_path_fragment)).unwrap();
+        let without_preset_contents =
+            fs::read_to_string(without_preset.join(&config_path_fragment)).unwrap();
+        assert_eq!(
+            with_preset_contents, without_preset_contents,
+            "--preset must not change the scaffolded config.yml at all"
+        );
+
+        // --preset must also work alongside --force on a second run.
+        let force_code = dispatch_init(&with_preset, true, Some("team"), ColorMode::disabled());
+        assert_eq!(force_code, 0, "--preset team --force must still exit 0");
+
+        fs::remove_dir_all(&with_preset).ok();
+        fs::remove_dir_all(&without_preset).ok();
+    }
+
     #[test]
     fn dispatch_init_without_force_on_existing_dir_is_usage_error() {
         let target = scratch_cwd("clobber-guard");
 
         assert_eq!(
-            dispatch_init(&target, None, false, ColorMode::disabled()),
+            dispatch_init(&target, false, None, ColorMode::disabled()),
             0
         );
         assert_eq!(
-            dispatch_init(&target, None, false, ColorMode::disabled()),
+            dispatch_init(&target, false, None, ColorMode::disabled()),
             EXIT_USAGE_ERROR
         );
 
@@ -551,7 +593,7 @@ mod tests {
         let target = scratch_cwd("config-set-real");
 
         assert_eq!(
-            dispatch_init(&target, None, false, ColorMode::disabled()),
+            dispatch_init(&target, false, None, ColorMode::disabled()),
             0
         );
         let set_code = dispatch_config(
@@ -579,7 +621,7 @@ mod tests {
         let target = scratch_cwd("config-set-unknown-key");
 
         assert_eq!(
-            dispatch_init(&target, None, false, ColorMode::disabled()),
+            dispatch_init(&target, false, None, ColorMode::disabled()),
             0
         );
         let code = dispatch_config(
@@ -601,7 +643,7 @@ mod tests {
         let target = scratch_cwd("config-set-invalid-value");
 
         assert_eq!(
-            dispatch_init(&target, None, false, ColorMode::disabled()),
+            dispatch_init(&target, false, None, ColorMode::disabled()),
             0
         );
         let code = dispatch_config(
@@ -630,7 +672,7 @@ mod tests {
         let target = scratch_cwd("config-set-fixes-broken-field");
 
         assert_eq!(
-            dispatch_init(&target, None, false, ColorMode::disabled()),
+            dispatch_init(&target, false, None, ColorMode::disabled()),
             0
         );
         let config_path = target
@@ -678,7 +720,7 @@ mod tests {
         let target = scratch_cwd("config-get-list-reject-broken");
 
         assert_eq!(
-            dispatch_init(&target, None, false, ColorMode::disabled()),
+            dispatch_init(&target, false, None, ColorMode::disabled()),
             0
         );
         let config_path = target
@@ -728,7 +770,7 @@ mod tests {
         let target = scratch_cwd("config-set-unknown-key-no-write");
 
         assert_eq!(
-            dispatch_init(&target, None, false, ColorMode::disabled()),
+            dispatch_init(&target, false, None, ColorMode::disabled()),
             0
         );
         let config_path = target
@@ -763,7 +805,7 @@ mod tests {
         let target = scratch_cwd("config-set-invalid-value-no-write");
 
         assert_eq!(
-            dispatch_init(&target, None, false, ColorMode::disabled()),
+            dispatch_init(&target, false, None, ColorMode::disabled()),
             0
         );
         let config_path = target
@@ -798,7 +840,7 @@ mod tests {
         let target = scratch_cwd("config-set-no-leftover-tmp");
 
         assert_eq!(
-            dispatch_init(&target, None, false, ColorMode::disabled()),
+            dispatch_init(&target, false, None, ColorMode::disabled()),
             0
         );
         let code = dispatch_config(

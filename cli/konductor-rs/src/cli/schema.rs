@@ -181,7 +181,7 @@ fn arg_default(arg: &Arg) -> Value {
     }
 }
 
-/// The arg's allowed choice set (e.g. init's ["solo", "team", "org"]), or
+/// The arg's allowed choice set (e.g. install's `--harness` values), or
 /// `null` if the arg is not choice-constrained.
 fn arg_choices(arg: &Arg) -> Value {
     match arg.get_value_parser().possible_values() {
