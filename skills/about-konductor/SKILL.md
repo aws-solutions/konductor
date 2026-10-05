@@ -55,7 +55,7 @@ For a complete multi-phase pass in one agent session, use fuse-flow. Run the scr
 
 ```bash
 fuse-flow start <slug> --workflow _k-full-sdlc
-fuse-flow continue <slug> [--artifact <path>]
+fuse-flow continue <slug> [--updated <file>]... [--unchanged <artifact> "<reason>"]... [--not-produced <artifact> "<reason>"]...
 fuse-flow continue <slug> --owner-approved
 fuse-flow status <slug>
 ```

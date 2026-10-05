@@ -76,6 +76,11 @@ test("--updated, --unchanged and --not-produced report the agent's work, so no o
   );
   expect(repo.usage("continue", "feat", "--not-produced", "patch", "x", "--skip", "y")).toContain("--not-produced reports the agent's work");
 });
+test("with a single updates artifact, the step block names its id in the --unchanged hint", () => {
+  const one = CHANGE.replace("      - artifact: changelog\n        path: CHANGELOG.md\n", "").replace("artifact: patch\n        path: src/", "artifact: code\n        path: .");
+  expect(repo.start("feat", one)).toContain('and --unchanged code "<reason>" if you left code as it was.');
+});
+
 
 test("an updates artifact whose path is the repository root contains every file in it", () => {
   repo.start("feat", CHANGE.replace("path: src/", "path: ."));

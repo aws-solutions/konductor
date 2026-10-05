@@ -39,7 +39,7 @@ test("start mints a workstream that records its workflow, hands out the first st
       "STEP design (1 of 3): Write the design.",
       "PRODUCE docs/design.md (sketch).",
       "WHEN THE WORK IS DONE:",
-      '  1. Run `fuse-flow continue feat`, with --not-produced <artifact> "<reason>" only if you rightly did not write sketch.',
+      '  1. Run `fuse-flow continue feat`, with --not-produced sketch "<reason>" only if you rightly did not write sketch.',
       "",
     ].join("\n"),
   );

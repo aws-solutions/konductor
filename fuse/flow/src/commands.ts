@@ -319,13 +319,16 @@ function stepBlock(c: Ctx, ws: Workstream, step: Step, state: StepState): string
   const updates = step.updates.map((a) => a.artifact);
   const produces = step.produces.map((a) => a.artifact);
   const parts: string[] = [];
+  // With one artifact the hint names its id, so the agent can copy the flag as printed.
   if (updates.length) {
+    const flag = `--unchanged ${updates.length === 1 ? updates[0] : "<artifact>"} "<reason>"`;
     const which = updates.length === 1 ? `if you left ${updates[0]} as it was` : `for each of ${updates.join(", ")} that you left as it was`;
-    parts.push(`with --updated <file> for each file you revised (repeat it), and --unchanged <artifact> "<reason>" ${which}`);
+    parts.push(`with --updated <file> for each file you revised (repeat it), and ${flag} ${which}`);
   }
   if (produces.length) {
+    const flag = `--not-produced ${produces.length === 1 ? produces[0] : "<artifact>"} "<reason>"`;
     const which = produces.length === 1 ? `if you rightly did not write ${produces[0]}` : `for each of ${produces.join(", ")} that you rightly did not write`;
-    parts.push(`with --not-produced <artifact> "<reason>" only ${which}`);
+    parts.push(`with ${flag} only ${which}`);
   }
   if (parts.length) last += `, ${parts.join("; and ")}`;
   last += ".";

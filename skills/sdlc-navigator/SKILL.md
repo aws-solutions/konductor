@@ -90,7 +90,7 @@ For the complete chain in one agent session, use fuse-flow with either `fuse/flo
 
 ```bash
 fuse-flow start <slug> --workflow <name or path>
-fuse-flow continue <slug> [--artifact <path>]
+fuse-flow continue <slug> [--updated <file>]... [--unchanged <artifact> "<reason>"]... [--not-produced <artifact> "<reason>"]...
 fuse-flow continue <slug> --owner-approved
 fuse-flow status <slug>
 ```
