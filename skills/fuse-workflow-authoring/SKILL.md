@@ -293,8 +293,9 @@ judgment call as a deviation and report it at the end.
 
 There is no blueprint, and the user may only have a rough idea. The aim is a workflow as simple as
 possible and as sophisticated as necessary, and only its purpose tells you which is which. So
-find out what it is for before you propose anything. The `socratic-elicitation` skill helps with
-the questioning.
+find out what it is for before you propose anything. The `fuse-flow-builder` skill holds the
+interview, the iteration with the user in Komposer and fuse's principles for workflows; use it
+with this section. The `socratic-elicitation` skill helps with the questioning.
 
 ### Procedure
 
