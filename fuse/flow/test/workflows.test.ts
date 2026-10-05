@@ -210,6 +210,41 @@ describe("finding an artifact's guide and template in the library", () => {
     repo.write(".konductor/policy-overrides.yml", "artifacts:\n  essay:\n    path: writing/{slug}/essay.md\n");
     expect(repo.ok("start", "feat")).toContain("PRODUCE writing/feat/essay.md (essay).");
   });
+
+  test("an entry may sit in folders below artifacts/; it is found by its folder's name", () => {
+    repo.write(".konductor/library/artifacts/writing/long-form/essay/guide.md");
+    repo.start("feat", LIBRARY_FLOW);
+    expect(repo.ok("start", "feat")).toContain(
+      "PRODUCE essay.md (essay). Follow the process in .konductor/library/artifacts/writing/long-form/essay/guide.md.",
+    );
+  });
+
+  test("an id filed twice in a library that a more specific library replaces is not looked at", () => {
+    repo.write(".konductor/library/artifacts/essay/guide.md");
+    repo.write("home/.konductor/library/artifacts/essay/guide.md");
+    repo.write("home/.konductor/library/artifacts/writing/essay/guide.md");
+    repo.start("feat", LIBRARY_FLOW);
+    expect(repo.ok("start", "feat")).toContain("Follow the process in .konductor/library/artifacts/essay/guide.md.");
+  });
+
+  test("a folder holding a file, even a hidden one, is an entry, not a group of the folders in it", () => {
+    repo.write(".konductor/library/artifacts/essay/.keep");
+    repo.write(".konductor/library/artifacts/essay/examples/example.md");
+    repo.write("home/.konductor/library/artifacts/essay/guide.md");
+    repo.start("feat", LIBRARY_FLOW);
+    // The project's entry, with no guide, replaces the user's.
+    expect(repo.ok("start", "feat").split("\n").find((l) => l.startsWith("PRODUCE"))).toBe("PRODUCE essay.md (essay).");
+  });
+
+  test("an id found twice in one library, at any depths, is refused with both folders", () => {
+    repo.write(".konductor/library/artifacts/essay/guide.md");
+    repo.write(".konductor/library/artifacts/writing/essay/guide.md");
+    repo.write(".konductor/workflows/lib.yml", LIBRARY_FLOW);
+    const out = repo.refused("start", "feat", "--workflow", "lib");
+    expect(out).toContain('artifact "essay" is ambiguous');
+    expect(out).toContain(join(repo.root, ".konductor/library/artifacts/essay"));
+    expect(out).toContain(join(repo.root, ".konductor/library/artifacts/writing/essay"));
+  });
 });
 
 // The tracked workflows, at any depth below fuse/flow/workflows, as paths

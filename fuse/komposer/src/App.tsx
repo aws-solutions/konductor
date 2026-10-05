@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
-import { api, ApiError, suggestPath, type LibraryEntry, type WorkstreamSummary } from "./api.ts";
+import { api, ApiError, suggestPath, type LibraryEntry, type ReviewGuides, type WorkstreamSummary } from "./api.ts";
 import { applyEdit, type Edit, type OutputMode } from "./model/yamlEdit.ts";
 import { addArtifactEdits, describeFrom, insertArtifactStepEdits } from "./model/artifactInstruction.ts";
 import {
@@ -90,6 +90,25 @@ export function App() {
     }, 350);
     return () => window.clearTimeout(timer);
   }, [workflow?.path, workflow?.openText, workflow?.text]);
+
+  // The review guides the engine gives the open text's agent gates. Asked
+  // again shortly after each edit; a failed request leaves the last answer.
+  const [guides, setGuides] = useState<{ path: string; result: ReviewGuides } | null>(null);
+  const reviewGuides = guides && guides.path === workflow?.path ? guides.result : null;
+  useEffect(() => {
+    if (!workflow) return;
+    let current = true;
+    const timer = window.setTimeout(() => {
+      api
+        .reviewGuides(workflow.path, workflow.openText)
+        .then((result) => current && setGuides({ path: workflow.path, result }))
+        .catch(() => {});
+    }, 300);
+    return () => {
+      current = false;
+      window.clearTimeout(timer);
+    };
+  }, [workflow?.path, workflow?.openText]);
 
   // Watch the open original. Clean files reload silently; dirty files retain their text and get the conflict banner.
   useEffect(() => {
@@ -503,6 +522,7 @@ export function App() {
         compareRequest={compareRequest}
         onEdit={apply}
         onAddArtifact={addArtifact}
+        reviewGuides={reviewGuides}
         allWorkflows={workflows}
         run={run}
         onOpenRun={openRun}

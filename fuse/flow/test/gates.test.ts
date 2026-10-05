@@ -260,6 +260,36 @@ steps:
   }
 });
 
+test("a review guide comes from the winning library entry only; a replaced library is not looked at", () => {
+  const r = new Repo();
+  try {
+    r.start(
+      "feat",
+      `version: 1
+name: w
+steps:
+  - id: write
+    instruction: Write it.
+    produces:
+      - artifact: essay
+        path: essay.md
+    gates:
+      - agent: review the essay
+`,
+    );
+    // The user's library has a review guide for essay, filed twice.
+    r.write("home/.konductor/library/artifacts/essay/review.md", "# user rules\n");
+    r.write("home/.konductor/library/artifacts/writing/essay/review.md", "# user rules\n");
+    // The project's entry, with a guide and no review guide, replaces both.
+    r.write(".konductor/library/artifacts/essay/guide.md", "# guide\n");
+    expect(r.ok("start", "feat")).toContain(
+      "It reviews essay.md, with its guide .konductor/library/artifacts/essay/guide.md as the definition of a good artifact.",
+    );
+  } finally {
+    r.cleanup();
+  }
+});
+
 test("a review guide decides the pass rule; a project's own replaces the workflow's gate guide (decision 17)", () => {
   const r = new Repo();
   try {
@@ -285,6 +315,10 @@ steps:
 
     r.write(".konductor/library/artifacts/essay/review.md", "# house rules\n");
     expect(r.ok("start", "feat")).toContain("It reviews essay.md against .konductor/library/artifacts/essay/review.md.");
+    // An entry in a folder below artifacts/ is found the same way.
+    r.cleanupPath(".konductor/library/artifacts/essay");
+    r.write(".konductor/library/artifacts/prose/essay/review.md", "# house rules\n");
+    expect(r.ok("start", "feat")).toContain("It reviews essay.md against .konductor/library/artifacts/prose/essay/review.md.");
     r.write(".konductor/review.md", "# policy guide\n");
     r.write(".konductor/policy-overrides.yml", "review:\n  guide: review.md\n");
     expect(r.ok("start", "feat")).toContain("It reviews essay.md against .konductor/review.md.");

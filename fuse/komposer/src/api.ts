@@ -63,6 +63,8 @@ export const api = {
   deleteWorkingCopy: (path: string) =>
     request<Record<string, never>>("working-copies", { method: "DELETE", body: JSON.stringify({ path }) }),
   library: () => request<{ entries: LibraryEntry[] }>("library"),
+  reviewGuides: (path: string, text: string) =>
+    request<ReviewGuides>("review-guides", { method: "POST", body: JSON.stringify({ path, text }) }),
   workstreams: () => request<{ workstreams: WorkstreamSummary[] }>("workstreams"),
   watchUrl: (path: string) => `/api/watch?path=${encodeURIComponent(path)}&token=${encodeURIComponent(token)}`,
 };
@@ -71,6 +73,10 @@ export interface LibraryEntry {
   id: string;
   level: "project" | "user" | "package";
   folder: string;
+  // The folders between artifacts/ and the entry, such as "writing"; "" at the top.
+  group: string;
+  // Files that are symlinks, by name: where each leads, such as a Konductor skill.
+  links?: Record<string, FileRef>;
   // From the entry's entry.yml.
   description?: string;
   entryProblem?: string;
@@ -78,6 +84,28 @@ export interface LibraryEntry {
   guideMissing?: string;
   hides?: "project" | "user" | "package";
   hiddenBy?: "project" | "user" | "package";
+}
+
+export interface FileRef {
+  path: string;
+  // Relative to the project, or to the repository that holds a link's target.
+  display: string;
+}
+
+export type ReviewGuideSource =
+  "local policy" | "team policy" | "project library" | "gate" | "user policy" | "user library" | "package library";
+
+// For each agent gate of the open text: the review guide the engine gives it
+// for each artifact of its step, and the gate's own guide.
+export interface ReviewGuides {
+  gates: {
+    step: number;
+    gate: number;
+    gateGuide?: FileRef & { exists: boolean };
+    reviews: { artifact?: string; guide?: FileRef & { source: ReviewGuideSource }; ownGuide?: FileRef }[];
+  }[];
+  // The text of every file named above that exists, by path.
+  files: Record<string, string>;
 }
 
 export interface RunEvent {

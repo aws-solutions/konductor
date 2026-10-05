@@ -10,12 +10,12 @@
 // working-copy folder.
 
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, rmSync, statSync, watch, writeFileSync } from "node:fs";
-import { basename, dirname, extname, join, relative, resolve, sep } from "node:path";
+import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, rmSync, statSync, watch, writeFileSync } from "node:fs";
+import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { summarizeRun, runEvents } from "../../flow/src/history.ts";
 import { parseWorkflowText } from "../../flow/src/parse.ts";
-import { listLibrary } from "../../flow/src/policy.ts";
-import { workflowDirs, workflowFilesBelow } from "../../flow/src/project.ts";
+import { display, libraryEntry, listLibrary, loadProject, reviewGuideSource } from "../../flow/src/policy.ts";
+import { findRepoRoot, workflowDirs, workflowFilesBelow } from "../../flow/src/project.ts";
 import { listWorkstreams } from "../../flow/src/workstream.ts";
 
 export interface ServerOptions {
@@ -164,16 +164,37 @@ export function startServer(options: ServerOptions): KomposerServer {
     return {};
   };
 
+  // Where a file that is a symlink leads, shown relative to the repository
+  // that holds it, so a guide that is a Konductor skill reads as
+  // skills/<name>/SKILL.md.
+  const linkTarget = (path: string): { path: string; display: string } | undefined => {
+    try {
+      if (!lstatSync(path).isSymbolicLink() || !existsSync(path)) return undefined;
+    } catch {
+      return undefined;
+    }
+    const real = realpathSync(path);
+    return { path: real, display: relative(findRepoRoot(dirname(real)), real) };
+  };
+
   const library = () => ({
     entries: listLibrary(root).map((e) => {
       const files: Record<string, string> = {};
       if (e.guide) files["guide.md"] = readFileSync(e.guide, "utf8");
       if (e.template && e.templateFile) files[e.templateFile] = readFileSync(e.template, "utf8");
       if (e.review) files["review.md"] = readFileSync(e.review, "utf8");
+      const links = Object.fromEntries(
+        Object.keys(files).flatMap((name) => {
+          const target = linkTarget(join(e.folder, name));
+          return target ? [[name, target]] : [];
+        }),
+      );
       return {
         id: e.id,
         level: e.level,
         folder: e.folder,
+        group: e.group,
+        ...(Object.keys(links).length ? { links } : {}),
         ...(e.description ? { description: e.description } : {}),
         ...(e.entryProblem ? { entryProblem: e.entryProblem } : {}),
         files,
@@ -183,6 +204,46 @@ export function startServer(options: ServerOptions): KomposerServer {
       };
     }),
   });
+
+  // The review guide each agent gate of the sent text uses for each artifact
+  // of its step, with the layer it comes from (the engine's own rule), the
+  // gate's own guide, and the text of every file named. The text sent is the
+  // open version, saved or not; a gate's guide is relative to the workflow
+  // file, as the engine reads it.
+  const reviewGuides = (body: any) => {
+    const { path } = locate(body.path);
+    if (typeof body.text !== "string") throw new HttpError(400, "text is required");
+    const parsed = parseWorkflowText(body.text);
+    if (!parsed.ok) return { gates: [], files: {} };
+    const p = loadProject(root);
+    const files: Record<string, string> = {};
+    const ref = (file: string) => {
+      if (existsSync(file) && statSync(file).isFile()) files[file] ??= readFileSync(file, "utf8");
+      return { path: file, display: display(p, file) };
+    };
+    const gates = parsed.workflow.steps.flatMap((step, stepIndex) =>
+      step.gates.flatMap((gate, gateIndex) => {
+        if (gate.kind !== "agent") return [];
+        const resolved = { ...gate, ...(gate.guide ? { guide: isAbsolute(gate.guide) ? gate.guide : resolve(dirname(path), gate.guide) } : {}) };
+        const artifacts = [...step.produces, ...step.optional_produces, ...step.updates].map((a) => a.artifact);
+        const reviews = (artifacts.length ? artifacts : [undefined]).map((artifact) => {
+          const found = reviewGuideSource(p, resolved, artifact);
+          if (found) return { ...(artifact ? { artifact } : {}), guide: { ...ref(found.path), source: found.source } };
+          const own = artifact ? libraryEntry(p, artifact)?.guide : undefined;
+          return { ...(artifact ? { artifact } : {}), ...(own ? { ownGuide: ref(own) } : {}) };
+        });
+        return [
+          {
+            step: stepIndex,
+            gate: gateIndex,
+            ...(resolved.guide ? { gateGuide: { ...ref(resolved.guide), exists: existsSync(resolved.guide) } } : {}),
+            reviews,
+          },
+        ];
+      }),
+    );
+    return { gates, files };
+  };
 
   const workstreams = () => ({
     workstreams: listWorkstreams(root).map((w) => {
@@ -269,6 +330,8 @@ export function startServer(options: ServerOptions): KomposerServer {
         return Response.json(deleteWorkingCopy(body));
       case "GET /api/library":
         return Response.json(library());
+      case "POST /api/review-guides":
+        return Response.json(reviewGuides(body));
       case "GET /api/workstreams":
         return Response.json(workstreams());
       case "GET /api/watch":

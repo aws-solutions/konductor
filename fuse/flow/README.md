@@ -224,7 +224,10 @@ library/artifacts/<id>/
 The engine points the agent to a template but does not copy it. It searches the project's
 `.konductor/library/artifacts/<id>/`, then the user's `~/.konductor/library/artifacts/<id>/`, then
 the package's `fuse/flow/library/artifacts/<id>/`. The first existing folder wins as a unit, so
-files are not mixed across library levels. The engine does not use `entry.yml`; Komposer shows the
+files are not mixed across library levels. An entry may also be filed in folders below
+`artifacts/`, such as `artifacts/writing/<id>/`: a folder that holds only folders groups entries,
+and any other folder is an entry named by the folder. An id found twice in one library is refused,
+as a workflow name is. The engine does not use `entry.yml`; Komposer shows the
 description and pre-fills a step's instruction from it. `library/gates/` is reserved; reusable gate
 entries are not defined yet.
 

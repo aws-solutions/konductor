@@ -18,7 +18,6 @@ import {
   checkBinding,
   display,
   libraryEntry,
-  libraryFolders,
   loadProject,
   maxRounds,
   type Project,

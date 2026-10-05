@@ -3,10 +3,16 @@
 import { useEffect, useState } from "react";
 import YAML, { Scalar } from "yaml";
 import { Plus, X } from "lucide-react";
-import type { RunEvent, LibraryEntry, WorkstreamSummary } from "./api.ts";
+import type { FileRef, RunEvent, LibraryEntry, ReviewGuides, WorkstreamSummary } from "./api.ts";
 import { dateTime, duration, RUN_STATE, runDuration, runState } from "./runView.ts";
 import { ARTIFACT_DRAG, resolveLibrary, suggestPath } from "./api.ts";
 import { winningEntry } from "./model/artifactInstruction.ts";
+import { folderPrefixes, useFolderState } from "./folders.ts";
+import { Chevron } from "./WorkflowList.tsx";
+
+const LEVELS: LibraryEntry["level"][] = ["project", "user", "package"];
+// An entry's place in its library, such as "writing/essay".
+const entryPath = (entry: LibraryEntry) => (entry.group ? `${entry.group}/${entry.id}` : entry.id);
 import { CHECK_KIND } from "../../flow/src/schemas/gate.ts";
 import type { Edit, GateKind, OutputMode } from "./model/yamlEdit.ts";
 import { gatesInRunOrder, stepViews, workflowKey, type OpenWorkflow, type StepView } from "./workflowView.ts";
@@ -36,6 +42,7 @@ export function Inspector({
   compareRequest,
   onEdit,
   onAddArtifact,
+  reviewGuides,
   allWorkflows,
   run,
   onOpenRun,
@@ -54,6 +61,8 @@ export function Inspector({
   onEdit: (edit: Edit) => void;
   // Adds an artifact to a step, with the instruction pre-fill of decision 18.
   onAddArtifact: (step: number, mode: OutputMode, artifact: string, path?: string) => void;
+  // The review guides of the open text's agent gates, from the server.
+  reviewGuides: ReviewGuides | null;
   allWorkflows: OpenWorkflow[];
   run?: WorkstreamSummary;
   onOpenRun: (slug: string) => void;
@@ -65,6 +74,8 @@ export function Inspector({
     setLibraryFocus((current) => ({ id, n: (current?.n ?? 0) + 1 }));
     onTab("library");
   };
+  // A guide file opened from a gate, shown over the inspector.
+  const [viewing, setViewing] = useState<{ title: string; file: FileRef; text?: string } | null>(null);
   return (
     <div className="inspector">
       <div className="inspector-tabs">
@@ -93,6 +104,8 @@ export function Inspector({
             onAddArtifact={onAddArtifact}
             onLibrary={() => onTab("library")}
             onOpenLibraryEntry={openLibraryEntry}
+            reviewGuides={reviewGuides}
+            onViewFile={(title, file) => setViewing({ title, file, text: reviewGuides?.files[file.path] })}
           />
         )}
         {tab === "workflow" && (
@@ -112,6 +125,7 @@ export function Inspector({
         {tab === "run" && run && <RunTab run={run} selectedStep={steps[selectedIndex]?.id} />}
         {tab === "yaml" && <YamlTab text={workflow.openText} base={diffBase} compareRequest={compareRequest} />}
       </div>
+      {viewing && <FileViewer {...viewing} onClose={() => setViewing(null)} />}
     </div>
   );
 }
@@ -127,6 +141,8 @@ function StepTab({
   onAddArtifact,
   onLibrary,
   onOpenLibraryEntry,
+  reviewGuides,
+  onViewFile,
 }: {
   step?: StepView;
   steps: StepView[];
@@ -138,9 +154,13 @@ function StepTab({
   onAddArtifact: (step: number, mode: OutputMode, artifact: string, path?: string) => void;
   onLibrary: () => void;
   onOpenLibraryEntry: (id: string) => void;
+  reviewGuides: ReviewGuides | null;
+  onViewFile: (title: string, file: FileRef) => void;
 }) {
   const [expand, setExpand] = useState(false);
   const [outputId, setOutputId] = useState("");
+  const gateGuides = (fileIndex: number) =>
+    reviewGuides?.gates.find((g) => g.step === selectedIndex && g.gate === fileIndex);
   if (!step) return <div className="inspector-empty">No step selected.</div>;
   const err = (field: Problem["field"]) =>
     problems
@@ -379,7 +399,16 @@ function StepTab({
                   <button
                     type="button"
                     className={`library-badge${entry ? "" : " is-missing"}`}
-                    title={entry ? `Open ${a.artifact} in the library` : `Search the library for ${a.artifact}`}
+                    title={
+                      entry
+                        ? [
+                            `Open ${a.artifact} in the library`,
+                            ...Object.entries(winningEntry(library, a.artifact)?.links ?? {}).map(
+                              ([name, link]) => `${name} is ${link.display}`,
+                            ),
+                          ].join("\n")
+                        : `Search the library for ${a.artifact}`
+                    }
                     onClick={() => onOpenLibraryEntry(a.artifact)}
                   >
                     {entry ? `${entry.g ? "G" : ""} ${entry.t ? "T" : ""} ${entry.r ? "R" : ""}` : "no guide"}
@@ -580,20 +609,36 @@ function StepTab({
                       <span className="mini-label">
                         guide <FieldLabel label="" doc={GATE_FIELD_DOCS.guide} />
                       </span>
-                      <input
-                        className="field-input"
-                        value={gate.guide ?? ""}
-                        onChange={(e) =>
-                          onEdit({
-                            op: "setGate",
-                            step: selectedIndex,
-                            index: fileIndex,
-                            fields: { guide: e.target.value || null },
-                          })
-                        }
-                      />
+                      <span className="input-with-button">
+                        <input
+                          className="field-input"
+                          value={gate.guide ?? ""}
+                          onChange={(e) =>
+                            onEdit({
+                              op: "setGate",
+                              step: selectedIndex,
+                              index: fileIndex,
+                              fields: { guide: e.target.value || null },
+                            })
+                          }
+                        />
+                        {gateGuides(fileIndex)?.gateGuide && (
+                          <button
+                            type="button"
+                            className="text-button"
+                            disabled={!gateGuides(fileIndex)!.gateGuide!.exists}
+                            title={gateGuides(fileIndex)!.gateGuide!.path}
+                            onClick={() => onViewFile("Gate guide", gateGuides(fileIndex)!.gateGuide!)}
+                          >
+                            {gateGuides(fileIndex)!.gateGuide!.exists ? "Open" : "Not found"}
+                          </button>
+                        )}
+                      </span>
                     </label>
                   </div>
+                )}
+                {gate.kind === "agent" && gateGuides(fileIndex) && (
+                  <ReviewInEffect gate={gateGuides(fileIndex)!} onViewFile={onViewFile} />
                 )}
                 <label className="mini-field">
                   <span className="mini-label">
@@ -831,12 +876,69 @@ function LibraryTab({
   }, [focus?.n]);
   const filtered = library.filter(
     (entry) =>
-      (level === "all" || entry.level === level) && (!query.trim() || entry.id.includes(query.trim().toLowerCase())),
+      (level === "all" || entry.level === level) &&
+      (!query.trim() || entryPath(entry).includes(query.trim().toLowerCase())),
   );
   const unknown = query.trim().toLowerCase();
   const noLibrary = [...new Set(steps.flatMap((step) => step.artifacts.map((artifact) => artifact.artifact)))].filter(
     (id) => !library.some((entry) => entry.id === id),
   );
+
+  const folders = useFolderState("komposer-library-folders");
+  const searching = !!query.trim();
+  const sectionOpen = (lv: LibraryEntry["level"]) => searching || folders.isOpen(`${lv}:`, "", true);
+  const folderOpen = (lv: LibraryEntry["level"], prefix: string, name: string) =>
+    searching || folders.isOpen(`${lv}:${prefix}`, name);
+  const renderRow = (entry: LibraryEntry, depth: number) => {
+    const used = usage(entry.id);
+    const workflows = new Set(used.map((item) => item.candidate.path)).size;
+    const hidden = !!entry.hiddenBy;
+    return (
+      <div
+        key={`${entry.id}-${entry.level}-${entry.folder}`}
+        className={`library-row${hidden ? " is-hidden" : ""}`}
+        style={{ paddingLeft: `${4 + depth * 12}px` }}
+        draggable
+        onDragStart={(event) => event.dataTransfer.setData(ARTIFACT_DRAG, entry.id)}
+        onClick={() => openEntry(entry)}
+      >
+        <span className="mono library-row-id">{entry.id}</span>
+        <span className="chip-gtr">
+          <span className={entry.files["guide.md"] ? "lit" : "dim"}>G</span>
+          <span className={Object.keys(entry.files).some((name) => name.startsWith("template.")) ? "lit" : "dim"}>
+            T
+          </span>
+          <span className={entry.files["review.md"] ? "lit" : "dim"}>R</span>
+        </span>
+        <span className="library-level-pill">{levelLabel(entry.level)}</span>
+        {entry.description ? (
+          <span className="library-description">{entry.description}</span>
+        ) : entry.entryProblem ? (
+          <span className="library-description is-missing">entry.yml has a problem</span>
+        ) : null}
+        <span className="library-meta">
+          {(entry.hides || entry.hiddenBy) && (
+            <span className="library-override">
+              {entry.hiddenBy ? `hidden by ${levelLabel(entry.hiddenBy)}` : `hides ${levelLabel(entry.hides!)}`}
+            </span>
+          )}
+          <span className="library-used">
+            {used.length ? `${used.length} steps · ${workflows} workflows` : "unused"}
+          </span>
+        </span>
+        <button
+          className="icon-mini"
+          title={`Add to ${selectedStep?.id}`}
+          onClick={(event) => {
+            event.stopPropagation();
+            add(entry.id, "produces", suggestPath(entry.id));
+          }}
+        >
+          <Plus size={14} />
+        </button>
+      </div>
+    );
+  };
 
   if (open) {
     const files = Object.keys(open.files);
@@ -860,6 +962,7 @@ function LibraryTab({
           {open.description && <p className="library-detail-description">{open.description}</p>}
           {open.entryProblem && <div className="library-entry-problem">{open.entryProblem}</div>}
           <div className="file-path mono">{open.folder}</div>
+          {open.group && <div className="library-override">filed under {open.group}/</div>}
         </div>
         {files.length > 0 && (
           <>
@@ -870,6 +973,11 @@ function LibraryTab({
                 </button>
               ))}
             </div>
+            {open.links?.[shownFile] && (
+              <div className="library-link" title={open.links[shownFile].path}>
+                {shownFile} is a link to <span className="mono">{open.links[shownFile].display}</span>
+              </div>
+            )}
             <pre className="library-file">{open.files[shownFile]}</pre>
           </>
         )}
@@ -940,52 +1048,51 @@ function LibraryTab({
         </span>
       </div>
       <div className="library-list">
-        {filtered.map((entry) => {
-          const used = usage(entry.id);
-          const workflows = new Set(used.map((item) => item.candidate.path)).size;
-          const hidden = !!entry.hiddenBy;
+        {LEVELS.filter((lv) => level === "all" || lv === level).map((lv) => {
+          const inLevel = filtered
+            .filter((entry) => entry.level === lv)
+            .sort((a, b) => entryPath(a).localeCompare(entryPath(b)));
+          if (!inLevel.length) return null;
+          const open = sectionOpen(lv);
+          const shownFolders = new Set<string>();
           return (
-            <div
-              key={`${entry.id}-${entry.level}`}
-              className={`library-row${hidden ? " is-hidden" : ""}`}
-              draggable
-              onDragStart={(event) => event.dataTransfer.setData(ARTIFACT_DRAG, entry.id)}
-              onClick={() => openEntry(entry)}
-            >
-              <span className="mono library-row-id">{entry.id}</span>
-              <span className="chip-gtr">
-                <span className={entry.files["guide.md"] ? "lit" : "dim"}>G</span>
-                <span className={Object.keys(entry.files).some((name) => name.startsWith("template.")) ? "lit" : "dim"}>
-                  T
-                </span>
-                <span className={entry.files["review.md"] ? "lit" : "dim"}>R</span>
-              </span>
-              <span className="library-level-pill">{levelLabel(entry.level)}</span>
-              {entry.description ? (
-                <span className="library-description">{entry.description}</span>
-              ) : entry.entryProblem ? (
-                <span className="library-description is-missing">entry.yml has a problem</span>
-              ) : null}
-              <span className="library-meta">
-                {(entry.hides || entry.hiddenBy) && (
-                  <span className="library-override">
-                    {entry.hiddenBy ? `hidden by ${levelLabel(entry.hiddenBy)}` : `hides ${levelLabel(entry.hides!)}`}
-                  </span>
-                )}
-                <span className="library-used">
-                  {used.length ? `${used.length} steps · ${workflows} workflows` : "unused"}
-                </span>
-              </span>
+            <div key={lv}>
               <button
-                className="icon-mini"
-                title={`Add to ${selectedStep?.id}`}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  add(entry.id, "produces", suggestPath(entry.id));
-                }}
+                className="library-section-head lane-toggle"
+                aria-expanded={open}
+                onClick={() => folders.toggle(`${lv}:`, "", true)}
               >
-                <Plus size={14} />
+                <Chevron open={open} />
+                {levelLabel(lv)}
+                <span className="library-section-count">{inLevel.length}</span>
               </button>
+              {open &&
+                inLevel.map((entry) => {
+                  const rows: React.ReactNode[] = [];
+                  let visible = true;
+                  folderPrefixes(entry.group).forEach(({ prefix, name }, depth) => {
+                    if (!visible) return;
+                    const folderIsOpen = folderOpen(lv, prefix, name);
+                    if (!shownFolders.has(prefix)) {
+                      shownFolders.add(prefix);
+                      rows.push(
+                        <button
+                          key={`folder-${prefix}`}
+                          className="lane-folder-row lane-toggle"
+                          aria-expanded={folderIsOpen}
+                          style={{ paddingLeft: `${4 + depth * 12}px` }}
+                          onClick={() => folders.toggle(`${lv}:${prefix}`, name)}
+                        >
+                          <Chevron open={folderIsOpen} />
+                          {name}/
+                        </button>,
+                      );
+                    }
+                    visible = folderIsOpen;
+                  });
+                  if (visible) rows.push(renderRow(entry, folderPrefixes(entry.group).length));
+                  return rows;
+                })}
             </div>
           );
         })}
@@ -1142,5 +1249,96 @@ function gateTextLabel(kind: string) {
         "owner-action": "what the owner does",
       } as Record<string, string>
     )[kind] ?? "text"
+  );
+}
+
+const SOURCE_LABEL: Record<string, string> = {
+  "local policy": "your local policy for this project",
+  "team policy": "the team's policy",
+  "project library": "the project's library",
+  gate: "this gate's guide",
+  "user policy": "your policy",
+  "user library": "your library",
+  "package library": "the fuse-flow library",
+};
+
+// What an agent gate reviews each artifact against, as the engine decides it:
+// a gate's own guide is replaced by a project's review guide, for example.
+function ReviewInEffect({
+  gate,
+  onViewFile,
+}: {
+  gate: ReviewGuides["gates"][number];
+  onViewFile: (title: string, file: FileRef) => void;
+}) {
+  return (
+    <div className="review-in-effect">
+      <span className="mini-label">reviews against</span>
+      {gate.reviews.map((review, index) => (
+        <div key={`${review.artifact ?? ""}-${index}`} className="review-in-effect-row">
+          <span className="mono review-in-effect-what">{review.artifact ?? "the step"}</span>
+          {review.guide ? (
+            <>
+              <button
+                type="button"
+                className="link-button mono"
+                title={review.guide.path}
+                onClick={() => onViewFile(`Review guide for ${review.artifact ?? "the step"}`, review.guide!)}
+              >
+                {review.guide.display}
+              </button>
+              <small>from {SOURCE_LABEL[review.guide.source] ?? review.guide.source}</small>
+            </>
+          ) : review.ownGuide ? (
+            <>
+              <button
+                type="button"
+                className="link-button mono"
+                title={review.ownGuide.path}
+                onClick={() => onViewFile(`Guide for ${review.artifact}`, review.ownGuide!)}
+              >
+                {review.ownGuide.display}
+              </button>
+              <small>its own guide; no review guide</small>
+            </>
+          ) : (
+            <small>the gate's text only; no guide</small>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function FileViewer({
+  title,
+  file,
+  text,
+  onClose,
+}: {
+  title: string;
+  file: FileRef;
+  text?: string;
+  onClose: () => void;
+}) {
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="expand-modal file-viewer" onClick={(event) => event.stopPropagation()}>
+        <div className="file-viewer-head">
+          <strong>{title}</strong>
+          <button className="icon-mini" title="Close" onClick={onClose}>
+            <X size={14} />
+          </button>
+        </div>
+        <div className="file-path mono" title={file.path}>
+          {file.display}
+        </div>
+        {text === undefined ? (
+          <div className="inspector-empty">The file does not exist.</div>
+        ) : (
+          <pre className="library-file">{text}</pre>
+        )}
+      </div>
+    </div>
   );
 }

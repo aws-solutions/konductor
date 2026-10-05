@@ -7,7 +7,7 @@
 // local policy for the project.
 
 import { existsSync, lstatSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
-import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import YAML from "yaml";
 import { FlowError } from "./errors.ts";
 import { libraryDirs, policyFiles } from "./project.ts";
@@ -92,21 +92,47 @@ function policyGuide(layer: Layer | undefined): string | undefined {
   return guide === undefined ? undefined : isAbsolute(guide) ? guide : resolve(dirname(layer!.file), guide);
 }
 
-// The review guide an agent gate uses for one of the step's artifacts, or
-// undefined when there is none: the generic review text applies then
-// (decision 17).
-export function reviewGuide(p: Project, gate: Gate, artifactId: string | undefined): string | undefined {
+export type ReviewGuideSource =
+  | "local policy"
+  | "team policy"
+  | "project library"
+  | "gate"
+  | "user policy"
+  | "user library"
+  | "package library";
+
+// The review guide an agent gate uses for one of the step's artifacts, and
+// which layer it comes from, or undefined when there is none: the generic
+// review text applies then (decision 17).
+export function reviewGuideSource(
+  p: Project,
+  gate: Gate,
+  artifactId: string | undefined,
+): { path: string; source: ReviewGuideSource } | undefined {
   const dirs = libraryDirs(p.root);
-  const inLibrary = (dir: string) => (artifactId ? existing(join(dir, "artifacts", artifactId, "review.md")) : undefined);
-  return (
-    policyGuide(p.local) ??
-    policyGuide(p.team) ??
-    inLibrary(dirs.project) ??
-    gate.guide ??
-    policyGuide(p.user) ??
-    inLibrary(dirs.user) ??
-    inLibrary(dirs.package)
-  );
+  // Only the winning entry's review.md counts: the entry wins as a whole, as
+  // for its guide and template, and the libraries it replaces are not looked at.
+  const winner = artifactId ? libraryEntry(p, artifactId)?.folder : undefined;
+  const inLibrary = (dir: string) =>
+    winner && winner.startsWith(join(dir, "artifacts") + sep) ? existing(join(winner, "review.md")) : undefined;
+  const order: [ReviewGuideSource, () => string | undefined][] = [
+    ["local policy", () => policyGuide(p.local)],
+    ["team policy", () => policyGuide(p.team)],
+    ["project library", () => inLibrary(dirs.project)],
+    ["gate", () => gate.guide],
+    ["user policy", () => policyGuide(p.user)],
+    ["user library", () => inLibrary(dirs.user)],
+    ["package library", () => inLibrary(dirs.package)],
+  ];
+  for (const [source, find] of order) {
+    const path = find();
+    if (path) return { path, source };
+  }
+  return undefined;
+}
+
+export function reviewGuide(p: Project, gate: Gate, artifactId: string | undefined): string | undefined {
+  return reviewGuideSource(p, gate, artifactId)?.path;
 }
 
 // ------------------------------------------------------------------ artifacts
@@ -124,6 +150,51 @@ function existing(path: string): string | undefined {
   return existsSync(path) ? realpathSync(path) : undefined;
 }
 
+// Every entry folder below <library>/artifacts/, at any depth, following
+// symlinks. A folder that holds only folders groups entries; any other folder
+// is an entry, named by the folder, so an id is found wherever it is filed.
+// `group` is the path of the grouping folders above it, "" at the top.
+export interface EntryFolder {
+  id: string;
+  folder: string;
+  group: string;
+}
+
+function entryFoldersIn(libraryDir: string): EntryFolder[] {
+  const base = join(libraryDir, "artifacts");
+  if (!statSafe(base)) return [];
+  const seen = new Set<string>();
+  const found: EntryFolder[] = [];
+  const walk = (folder: string, group: string) => {
+    const real = realpathSync(folder);
+    if (seen.has(real)) return; // a symlink loop is walked once
+    seen.add(real);
+    for (const name of readdirSync(folder).sort()) {
+      const path = join(folder, name);
+      if (name.startsWith(".") || !statSafe(path)) continue;
+      // Hidden files count: a .keep makes a folder an entry with no guide.
+      const children = readdirSync(path);
+      if (children.length > 0 && children.every((c) => statSafe(join(path, c)))) {
+        walk(path, group ? `${group}/${name}` : name);
+      } else {
+        found.push({ id: name, folder: path, group });
+      }
+    }
+  };
+  walk(base, "");
+  return found;
+}
+
+// An id's folder in one library. An id filed twice in one library is refused
+// rather than guessed, as a workflow name is.
+function entryFolder(libraryDir: string, id: string): string | undefined {
+  const matches = entryFoldersIn(libraryDir).filter((e) => e.id === id);
+  if (matches.length > 1) {
+    throw new FlowError(`artifact "${id}" is ambiguous; rename one of: ${matches.map((m) => m.folder).join(", ")}`);
+  }
+  return matches[0]?.folder;
+}
+
 // An artifact's folder in the library: the project's own replaces the user's,
 // which replaces the package's (decisions 16 and 24). Its guide and template
 // come from that folder only; undefined when no library has the artifact. A
@@ -135,27 +206,20 @@ export function libraryEntry(
   id: string,
 ): { folder: string; guide?: string; guideMissing?: string; template?: string } | undefined {
   const dirs = libraryDirs(p.root);
-  const folder = [dirs.project, dirs.user, dirs.package].map((dir) => join(dir, "artifacts", id)).find((f) => existsSync(f));
+  // The first library that has the id wins; the ones it replaces are not looked at.
+  let folder: string | undefined;
+  for (const dir of [dirs.project, dirs.user, dirs.package]) {
+    folder = entryFolder(dir, id);
+    if (folder) break;
+  }
   if (!folder) return undefined;
   const template = readdirSync(folder)
     .sort()
     .find((f) => /^template\.[^.]+$/.test(f));
   const guidePath = join(folder, "guide.md");
   const guide = existing(guidePath);
-  const linked = !guide && (() => {
-    try {
-      return lstatSync(guidePath).isSymbolicLink();
-    } catch {
-      return false;
-    }
-  })();
+  const linked = !guide && isSymlink(guidePath);
   return { folder, guide, guideMissing: linked ? guidePath : undefined, template: template && existing(join(folder, template)) };
-}
-
-// Where a missing artifact folder was looked for.
-export function libraryFolders(p: Project, id: string): string[] {
-  const dirs = libraryDirs(p.root);
-  return [dirs.project, dirs.user, dirs.package].map((dir) => join(dir, "artifacts", id));
 }
 
 export type LibraryLevel = "project" | "user" | "package";
@@ -164,6 +228,8 @@ export interface LibraryListing {
   id: string;
   level: LibraryLevel;
   folder: string;
+  // The grouping folders between artifacts/ and the entry, such as "writing"; "" at the top.
+  group: string;
   guide?: string;
   guideMissing?: string;
   template?: string;
@@ -180,31 +246,34 @@ export interface LibraryListing {
   hiddenBy?: LibraryLevel;
 }
 
-// Every artifact folder in the three libraries, most specific level first.
+// Every entry in the three libraries, at any depth, most specific level first.
 export function listLibrary(root: string): LibraryListing[] {
   const dirs = libraryDirs(root);
   const levels: LibraryLevel[] = ["project", "user", "package"];
   const found: LibraryListing[] = [];
   for (const level of levels) {
-    const base = join(dirs[level], "artifacts");
-    if (!existsSync(base)) continue;
-    for (const id of readdirSync(base).sort()) {
-      const folder = join(base, id);
-      if (!statSafe(folder)) continue;
+    const inLevel = entryFoldersIn(dirs[level]);
+    for (const { id, folder, group } of inLevel) {
+      const twins = inLevel.filter((e) => e.id === id && e.folder !== folder);
       const files = readdirSync(folder).sort();
       const template = files.find((f) => /^template\.[^.]+$/.test(f));
       const guidePath = join(folder, "guide.md");
       const guide = existing(guidePath);
       const linked = !guide && isSymlink(guidePath);
+      const entryFile = readEntryFile(join(folder, "entry.yml"));
+      if (twins.length) {
+        entryFile.entryProblem = `the id is ambiguous in this library; rename one of: ${[folder, ...twins.map((t) => t.folder)].join(", ")}`;
+      }
       found.push({
         id,
         level,
         folder,
+        group,
         ...(guide ? { guide } : {}),
         ...(linked ? { guideMissing: guidePath } : {}),
         ...(template && existing(join(folder, template)) ? { template: existing(join(folder, template)), templateFile: template } : {}),
         ...(existing(join(folder, "review.md")) ? { review: existing(join(folder, "review.md")) } : {}),
-        ...readEntryFile(join(folder, "entry.yml")),
+        ...entryFile,
       });
     }
   }
