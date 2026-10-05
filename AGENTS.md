@@ -90,7 +90,7 @@ not apply — do not leave a section untouched with its placeholder text still i
 ## Konductor CLI (`cli/`)
 
 The `cli/` tree is the Konductor CLI: the command-line utility for installing, configuring,
-and diagnosing a Konductor-managed repository, covering an 8-command surface.
+and diagnosing a Konductor-managed repository, covering a 6-command surface.
 **Read `cli/README.md` before working on it** (commands, conventions, current state).
 
 Non-negotiable conventions:

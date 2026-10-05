@@ -6,6 +6,13 @@ This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Entries are consolidated per release,
 not per individual commit.
 
+## [Unreleased]
+
+### Removed
+
+- `konductor metrics`. It was a stub that printed "not yet implemented"; the CLI now exits `64`
+  for it like any other unrecognized subcommand.
+
 ## [1.0.3] - 2026-10-01
 
 ### Fixed

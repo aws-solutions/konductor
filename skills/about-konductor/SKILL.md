@@ -153,7 +153,6 @@ defaults are the kind of detail that drifts across versions.
 | `uninstall` | Remove a tracked install.                                                                                                                                                                |
 | `synth`     | Synthesize pipeline/config artifacts from a repo root without installing anywhere.                                                                                                       |
 | `doctor`    | Inspect an install or checkout and print remediation guidance for problems it finds.                                                                                                     |
-| `metrics`   | Show usage/run metrics (still a stub as of this writing — verify with `--help`, don't assume it stayed one).                                                                             |
 
 Every subcommand takes `-v`/`--verbose`, `--json`, and
 `--no-color`; `install`, `update`, `uninstall`, and `doctor` also take

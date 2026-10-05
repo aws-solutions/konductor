@@ -183,7 +183,7 @@ the usual culprit, since it applies everywhere and nothing surfaces it. See
 ## Is any of my data sent anywhere?
 
 The CLI touches the network in one place only: `install`, fetching the release it installs from.
-Everything else — `update`, `doctor`, `init`, `synth`, `metrics` — is entirely local.
+Everything else, `update`, `doctor`, `init`, `synth`, is entirely local.
 Neither `update` nor `doctor` makes any release call: neither has version
 awareness. It writes to `.konductor/`, `dist/`, your runtime's configuration directory,
 and `~/.konductor/` — nowhere else.

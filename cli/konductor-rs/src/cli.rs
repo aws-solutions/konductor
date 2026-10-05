@@ -4,8 +4,7 @@
 // spec file). The hidden `__dump_schema` command (see cli/schema.rs) dumps
 // the live command tree as JSON for external validation.
 //
-// `metrics` is a stub: it parses and exits 0 but has no real logic yet.
-// Every other command has real behavior in its own module (cli/install.rs,
+// Every command has real behavior in its own module (cli/install.rs,
 // cli/update.rs, cli/uninstall.rs, cli/synth/mod.rs, cli/config.rs,
 // cli/init.rs, cli/doctor.rs).
 //
@@ -384,17 +383,6 @@ pub enum Commands {
         action: ConfigAction,
     },
 
-    /// Show Konductor usage/run metrics (stub).
-    ///
-    /// Hidden from normal --help since it has no real implementation yet;
-    /// stays fully invokable, only its --help listing is suppressed.
-    #[command(hide = true)]
-    Metrics {
-        /// Time window to report metrics for, e.g. "7d", "24h".
-        #[arg(long)]
-        since: Option<String>,
-    },
-
     /// Dump the live command tree as JSON (internal, for schema tooling).
     ///
     /// Not one of the public commands. Hidden from --help; exists so
@@ -458,7 +446,6 @@ impl Commands {
             Commands::Init { .. } => Self::INIT,
             Commands::Doctor { .. } => Self::DOCTOR,
             Commands::Config { .. } => Self::CONFIG,
-            Commands::Metrics { .. } => Self::METRICS,
             Commands::DumpSchema => "__dump_schema",
             Commands::TelemetryHook { .. } => "__telemetry-hook",
         }
@@ -476,8 +463,6 @@ impl Commands {
     pub(crate) const INIT: &'static str = "init";
     pub(crate) const DOCTOR: &'static str = "doctor";
     pub(crate) const CONFIG: &'static str = "config";
-    #[allow(dead_code)]
-    pub(crate) const METRICS: &'static str = "metrics";
 }
 
 impl ConfigAction {
@@ -1664,39 +1649,5 @@ mod tests {
                 "--harness must appear before {other_flag} in install --help, got:\n{help_text}"
             );
         }
-    }
-
-    // ── `metrics` hidden-from-help regression ──────────────────────────
-
-    /// Pins `#[command(hide = true)]` on `Commands::Metrics`.
-    #[test]
-    fn metrics_does_not_appear_in_top_level_help() {
-        let help_text = Cli::command().render_help().to_string();
-        assert!(
-            !help_text.contains(Commands::METRICS),
-            "konductor --help must not list 'metrics' -- it has no real \
-             implementation yet, got:\n{help_text}"
-        );
-    }
-
-    /// Hiding `metrics` from `--help` must never silently become removing
-    /// it: `konductor metrics` still parses to `Commands::Metrics` and
-    /// still dispatches to its not-implemented stub, exiting 0.
-    #[test]
-    fn metrics_still_parses_and_dispatches() {
-        let cli = Cli::try_parse_from(["konductor", Commands::METRICS])
-            .expect("`konductor metrics` must still parse even though it is hidden from --help");
-        let command = cli
-            .command
-            .expect("a command must be present for `konductor metrics`");
-        assert!(
-            matches!(command, Commands::Metrics { since: None }),
-            "expected Commands::Metrics {{ since: None }}, got {command:?}"
-        );
-        let exit_code = dispatch::dispatch(command, false, false, output::ColorMode::disabled());
-        assert_eq!(
-            exit_code, 0,
-            "`konductor metrics` must still dispatch and exit 0 (its stub behavior is unchanged)"
-        );
     }
 }

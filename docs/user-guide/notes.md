@@ -39,10 +39,6 @@ The roster tables state **13** (the `claudeCli` basis, which `check-guide-facts.
 against) and footnote the Kiro CLI number. If the two lists are ever reconciled in the specs,
 drop the footnote.
 
-### `metrics` is a stub
-
-It prints "not yet implemented". The guide says so rather than describing what it will report.
-
 ### Exit code `2` is reserved
 
 `2` signals an unresolved CRITICAL gate and is owned by the run-engine, which is not yet

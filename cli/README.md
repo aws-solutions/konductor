@@ -7,16 +7,14 @@ a Konductor-managed repository. It handles installation, configuration, and diag
 for the ASDLC agent/skill/SOP content that Konductor manages — it does not itself run
 SDLC workflows (that's the Konductor Kiro agent's job).
 
-> **Status:** `init`, `install`, `update`, `uninstall`, `synth`, and `doctor` now
-> perform real work (see [Current state](#current-state)). The remaining command
-> (`metrics`) is still a **stub** — it parses arguments and validates input correctly,
-> but does not yet perform real work.
+> **Status:** `init`, `install`, `update`, `uninstall`, `synth`, and `doctor` all
+> perform real work (see [Current state](#current-state)).
 
 ---
 
-## The 7 commands
+## The 6 commands
 
-`install`, `update`, `uninstall`, `synth`, `init`, `doctor`, `metrics`.
+`install`, `update`, `uninstall`, `synth`, `init`, `doctor`.
 
 Global options: `--verbose`/`-v`,
 `--json`, `--version`, `--no-color`.
@@ -899,7 +897,6 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
   - `doctor` inspecting a source tree/install destination via `synth`/`install`/`config`'s
     own logic and reporting per-check ok/info/failed/stale status with remediation
     guidance
-- **Stubs:** `metrics` still prints "not yet implemented."
 - **Not yet started:** the run-engine/conductor (which will read/write
   `.konductor/run-state.json`-shaped documents and is responsible for exit code 2's
   "unresolved CRITICAL gate" signal), and `.konductor/runs/` storage.
@@ -922,7 +919,6 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
   an alternative for installing from a local checkout.
 - SOPs are synthed into `dist/kiro-cli-v2/sops/` but are not installed anywhere; there is
   no runtime discovery path for them yet.
-- `metrics` is a stub (see above).
 - `update` and `uninstall` have no same-target concurrency protection: running two
   `konductor` invocations against the same target directory at once is unsupported and
   can corrupt the manifest, index, or on-disk files. Serialize invocations per target.

@@ -15,7 +15,7 @@ in-development state — read the ground rules below before changing anything.
 ## Ground rules
 
 1. **End-state rule.** The guide deliberately describes stubbed or unimplemented features as
-   working (`install`, `update`, `uninstall`, `doctor`, `synth`, `metrics` may still be
+   working (`install`, `update`, `uninstall`, `doctor`, `synth` may still be
    stubs). Never "fix" the guide to say a feature is unimplemented. What must always match
    the source: **names, identifiers, counts, command surfaces, flags, config keys, exit
    codes, file paths, and the declared design intent.**
