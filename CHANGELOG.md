@@ -8,12 +8,14 @@ not per individual commit.
 
 ## [Unreleased]
 
+### Removed
+
+- `konductor init` and `konductor metrics` from the supported command surface:
+  both now return a usage error (exit `64`) on direct invocation, the same as an
+  unknown subcommand, unless an escape hatch is set. Both are withheld from the v1 customer-visible surface rather than removed.
+
 ### Changed
 
-- `konductor init` and `konductor metrics` are now hidden from `--help` and gated at
-  dispatch, matching the existing `konductor config` treatment -- both are complete,
-  tested commands (`metrics` alone is also a genuine stub with no logic behind it),
-  withheld from the v1 customer-visible surface rather than removed.
 - `konductor doctor`'s `config` check no longer runs live: nothing in the CLI acts on
   `.konductor/config.yml`'s resolved values for a real decision, so the check was
   decorative. It stays implemented and unit-tested, dormant until something consumes
