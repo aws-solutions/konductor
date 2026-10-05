@@ -49,9 +49,9 @@ of failing.
 
 `doctor` accepts:
 
-- `--from <repo-root>` — SOURCE: an explicit override. When given, `source`/`config`
-  always check this tree, regardless of any manifest. When omitted (the default), those
-  two checks instead resolve against the manifest's recorded install-time source (see
+- `--from <repo-root>` — SOURCE: an explicit override. When given, `source`
+  always checks this tree, regardless of any manifest. When omitted (the default), that
+  check instead resolves against the manifest's recorded install-time source (see
   the [`doctor`](#doctor) section below for the full precedence).
 - `--target <dir>` — DESTINATION: install directory to check for a runtime/manifest.
   Defaults to `$HOME` when omitted, same as `install --target`.
@@ -654,7 +654,7 @@ konductor doctor --all                               # runs every check against 
 ```
 
 Inspects a Konductor installation/checkout for problems and prints actionable
-remediation guidance, reusing the exact logic `install`/`synth`/`config` already use
+remediation guidance, reusing the exact logic `install`/`synth` already use
 rather than re-implementing any validation.
 
 | Check               | What it checks                                                                                                                                                             |
@@ -662,9 +662,9 @@ rather than re-implementing any validation.
 | `source`            | Parses the source tree with `synth`'s own parser, including cross-reference validation (agent → context/skill/SOP references must resolve).                                |
 | `runtime`           | Which runtime(s) (Kiro CLI / Claude Code) `install` auto-detects at the target.                                                                                            |
 | `manifest`          | Manifest presence, completion status, and per-file hash drift against what's on disk.                                                                                      |
-| `config`            | `.konductor/config.yml` loads and validates, via `config`'s own loader.                                                                                                    |
 | `container_runtime` | Probes `docker`/`podman`/`nerdctl`/`finch` on PATH, in that order — informational only.                                                                                    |
 | `index_status`      | Compares `~/.konductor/installs`'s cached status for the target against that target's real manifest status — catches an install/update interrupted between the two writes. |
+| `telemetry_state`   | The effective telemetry state for the target: whether reporting is on, or off and why, such as this target's own `install --no-telemetry` opt-out, the machine-scoped consent record declining, `KONDUCTOR_TELEMETRY=off`, or this target's own `.konductor/config.yml` `telemetry.enabled: false`. |
 | `cli_version`       | Machine-wide, runs exactly once even under `--all`. Compares the running `konductor` binary's own version against the latest published GitHub release. `warn` severity only when stale — never `failed`, never affects `doctor`'s own exit code. |
 | `content_version`   | Per-target, runs once per tracked target under `--all`. Compares that target's recorded content version (`agent_version` in `install-info.json`) against the latest published release. Fully independent of `cli_version` — no shared check name, summary line, or comparison logic. |
 
@@ -673,13 +673,13 @@ exist in the code and are unit-tested, but are not yet wired into live `doctor` 
 — they're dormant until the features they'd validate (run-state persistence, the
 override mechanism, provider/model-access, role-scoped allowlists) actually exist.
 
-`source`/`config` validate the **repo checkout/project config**, which only has a real
+`source` validates the **repo checkout**, which only has a real
 answer when a local `--from` checkout exists — useful for catching an authoring
 mistake before/after an install. `manifest`/`runtime`/`index_status` answer "is my
 installation healthy" regardless of install method, since they only inspect the
 installed destination (and, for `index_status`, its index entry). Anyone installing
 from a published release artifact (no local checkout) should expect a benign `info`
-fallback from `source`/`config`, not a sign of a broken install. `container_runtime` is
+fallback from `source`, not a sign of a broken install. `container_runtime` is
 always `info`/informational; `index_status` is `info` for a target that isn't tracked
 in the index at all (not every install needs to be tracked — e.g. one predating the
 index).
@@ -694,7 +694,7 @@ Each check reports one of five statuses, each non-`ok` line followed by an inden
   back to an **unvalidated cwd** with no known relationship to the install (flagged
   with a `WARNING: ... UNVALIDATED cwd ...` marker), or `index_status` finding the
   install index and manifest disagree on completion status.
-- `failed` — something is broken: a source parse error, invalid config, a manifest
+- `failed`, meaning something is broken: a source parse error, a manifest
   stuck `InProgress`, a corrupt manifest, or a manifest from an incompatible
   `konductor` version (remediation there points at upgrading `konductor`, never at
   re-running `install`).
@@ -715,24 +715,25 @@ not complete.
 
 ### Checking every tracked install with `--all`
 
-`--all` runs the full check suite (all six checks above) against **every** target in
-`~/.konductor/installs`, one at a time — the same "act on every tracked entry"
-semantics `update --all`/`uninstall --all` use, applied to diagnostics instead of a
-write operation. Plain-text output is grouped per target under a `== <target_dir> ==`
-header; `--json` collects every target into one batched document (`{"command":
-"doctor", "ok": ..., "targets": [...]}`, each entry carrying that target's own
-`ok`/`warnings`/`checks` fields plus its `target_dir`) rather than emitting one JSON
-document per target. Zero tracked installs is a no-op, exit `0`. The overall exit code
-is `1` (`EXIT_HALTED`) if **any** target has a `failed`/`stale` check, `0` otherwise.
+`--all` runs the full check suite (every check in the table above) against **every**
+target in `~/.konductor/installs`, one at a time, the same "act on every tracked
+entry" semantics `update --all`/`uninstall --all` use, applied to diagnostics instead
+of a write operation. Plain-text output is grouped per target under a
+`== <target_dir> ==` header; `--json` collects every target into one batched document
+(`{"command": "doctor", "ok": ..., "targets": [...]}`, each entry carrying that
+target's own `ok`/`warnings`/`checks` fields plus its `target_dir`) rather than
+emitting one JSON document per target. Zero tracked installs is a no-op, exit `0`. The
+overall exit code is `1` (`EXIT_HALTED`) if **any** target has a `failed`/`stale`
+check, `0` otherwise.
 
 `--all` is mutually exclusive with `--from` and `--target`: a single source/destination
 override doesn't make sense across multiple targets that may have recorded different
 sources, so passing either alongside `--all` is a usage error (exit `64`) at parse
 time, mirroring `update`/`uninstall`'s own `--target`/`--all` conflict.
 
-### Source resolution (`source`/`config` checks)
+### Source resolution (`source` check)
 
-Like `runtime`/`manifest`, these two default to validating what was actually
+Like `runtime`/`manifest`, this check defaults to validating what was actually
 **installed**, not whatever `--from`/cwd happens to be when `doctor` runs:
 
 1. **Explicit `--from <repo-root>`** — always wins outright, independent of any
@@ -755,9 +756,12 @@ $ konductor doctor
 ok: source — source tree at /home/user/konductor-checkout parses cleanly (11 agent(s), 75 skill(s), 17 SOP(s), 1 context file(s))
 ok: runtime — detected runtime(s) under /home/user: kiro-cli
 ok: manifest — manifest at /home/user/.konductor/manifest is Complete and every recorded file matches (93 file(s))
-ok: config — config loads cleanly (tier 'minor', default_severity 'MEDIUM')
 info: container_runtime — detected container runtime on PATH: docker
     fix: no action needed -- only relevant if you plan to use a container-based sandbox mode
+ok: index_status — install index and manifest agree on status (Complete) for /home/user
+ok: telemetry_state — telemetry reporting is on for /home/user
+ok: cli_version — running konductor 1.0.0, which is current
+ok: content_version — /home/user is at content version 1.0.0, which is current
 ```
 
 Example (problem found — manifest hash drift):
@@ -784,10 +788,12 @@ are `warn`/`info`/`ok`.
     { "name": "source", "status": "ok", "summary": "..." },
     { "name": "runtime", "status": "ok", "summary": "..." },
     { "name": "manifest", "status": "ok", "summary": "..." },
-    { "name": "config", "status": "ok", "summary": "..." },
     { "name": "container_runtime", "status": "info", "summary": "..." },
-    { "name": "index_status", "status": "ok", "summary": "..." }
-  ]
+    { "name": "index_status", "status": "ok", "summary": "..." },
+    { "name": "telemetry_state", "status": "ok", "summary": "..." },
+    { "name": "content_version", "status": "ok", "summary": "..." }
+  ],
+  "cli_version": { "name": "cli_version", "status": "ok", "summary": "..." }
 }
 ```
 
@@ -894,7 +900,7 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
   - `update` overwriting a tracked install in place from a source tree
   - `uninstall` removing a tracked install's files and manifest
   - `synth` transforming source content into runtime-native output
-  - `doctor` inspecting a source tree/install destination via `synth`/`install`/`config`'s
+  - `doctor` inspecting a source tree/install destination via `synth`/`install`'s
     own logic and reporting per-check ok/info/failed/stale status with remediation
     guidance
 - **Not yet started:** the run-engine/conductor (which will read/write

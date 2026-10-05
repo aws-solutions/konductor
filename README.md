@@ -326,7 +326,12 @@ Licensed under the Apache License, Version 2.0 — see [LICENSE.txt](LICENSE.txt
 
 To decline for the whole machine, edit `$HOME/.konductor/telemetry.json` and set `"telemetry_consent": false`. This file is created the first time any telemetry event actually gets reported on the machine (a successful install, an agent invocation, and so on — never a `--no-telemetry` install, which reports nothing) — if it doesn't exist yet, there's nothing to edit. Once it exists, just flip that one field; Konductor reads this file but never resets an existing value, so a consent you set by hand stays in place across later installs and updates on that machine. A record missing any of its four fields (`schema_version`, `UUID`, `created_at`, `telemetry_consent`) or carrying a `UUID` that isn't exactly 64 lowercase hex characters is treated as unreadable — but it does not get replaced. Konductor never deletes or overwrites this file once it exists, so a malformed record is permanent: every subsequent event silently drops to an untraceable placeholder identifier and no consent flag is read until you repair the JSON or delete the file by hand.
 
-Reporting for any given install requires both the per-project flag and this machine-level setting to allow it; either one being off is enough to suppress it. `konductor doctor` reports which of these is in effect for the current install, including whether a machine-level decline is the reason a project that never opted out isn't reporting.
+Reporting for any given install requires the per-project flag, this machine-level setting, and
+the absence of a `KONDUCTOR_TELEMETRY=off` env var or a project's own `.konductor/config.yml`
+`telemetry.enabled: false` to all allow it; any one of these being off is enough to suppress it.
+`konductor doctor`'s `telemetry_state` check reports which of these is in effect for the current
+install, including whether a machine-level decline is the reason a project that never opted out
+isn't reporting.
 
 This solution sends operational metrics to AWS (the "Data") about the use of this solution. We use this Data to better understand how customers use this solution and related services and products. AWS's collection of this Data is subject to the [AWS Privacy Notice](https://aws.amazon.com/privacy/).
 

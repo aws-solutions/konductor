@@ -50,8 +50,9 @@ _LAYOUT_NOUN = {"agents": "agent specs", "skills": "skills", "SOPs": "SOPs"}
 # decision recorded so the carve-out is auditable rather than folklore. `config`
 # is withheld from the v1 customer-visible surface (reviewer decision on
 # reviewer decision); `.konductor/config.yml` itself stays documented, since `init`
-# writes it and `doctor` validates it. Adding a name here is a product decision,
-# not a way to silence this script -- see docs/user-guide/notes.md.
+# writes it and `doctor`'s `telemetry_state` check reads its `telemetry.enabled` key.
+# Adding a name here is a product decision, not a way to silence this script -- see
+# docs/user-guide/notes.md.
 WITHDRAWN_COMMANDS = {"config"}
 
 
@@ -629,7 +630,7 @@ def main() -> int:
     # reference.md is the only page documenting the schema now. The task page that
     # used to carry it went with the `konductor config` command -- see the
     # WITHDRAWN_COMMANDS note below. The FILE is still documented, because
-    # `init` writes it and `doctor` validates it.
+    # `init` writes it and `doctor`'s `telemetry_state` check reads its `telemetry.enabled` key.
     for page in ("reference.md",):
         text = read(guide / page)
         missing = [k for k in keys if f"`{k}`" not in text]

@@ -4,9 +4,9 @@
 //
 // Inspects a Konductor installation/checkout for problems and prints
 // actionable remediation guidance. Every check is reuse-only: it calls
-// the same functions `install`/`synth`/`config` already use, rather
-// than re-implementing any validation logic. Seven checks run today,
-// in this order: source, runtime, manifest, config, container_runtime,
+// the same functions `install`/`synth` already use, rather than
+// re-implementing any validation logic. Six checks run today,
+// in this order: source, runtime, manifest, container_runtime,
 // index_status, telemetry_state.
 //
 // Three additional checks (`gitignore`, `provider_model_access`,
@@ -16,8 +16,8 @@
 // call site for why each is dormant, and the doc comment on each
 // function for the re-enable condition.
 //
-// `source`/`config` validate that the repo/project config an install is
-// built from is well-formed, useful mainly when a local `--from`
+// `source` validates that the repo/project the source checkout
+// is built from is well-formed, useful mainly when a local `--from`
 // checkout exists to point at. Anyone installing from a published
 // release artifact has no such checkout, so a `Warn`/`Info` fallback
 // here is the normal, expected outcome for them. `manifest`/`runtime`
@@ -25,7 +25,7 @@
 // of install method, since they only ever inspect the installed
 // destination.
 //
-// Source resolution (`source`/`config` checks), in
+// Source resolution (`source` check), in
 // `resolve_source_for_checks` below:
 //   1. Explicit `--from <repo-root>` always wins outright.
 //   2. No `--from`: read the manifest at the resolved install
@@ -199,7 +199,7 @@ impl CheckResult {
 
     /// Non-failing, but visibly more severe than `info` -- see
     /// `CheckStatus::Warn`'s doc comment. Currently only reachable via
-    /// `check_source`/`check_config`'s `unvalidated_cwd` fallback.
+    /// `check_source`'s `unvalidated_cwd` fallback.
     fn warn(
         name: &'static str,
         summary: impl Into<String>,
@@ -245,8 +245,8 @@ impl CheckResult {
     }
 }
 
-/// `konductor doctor [--from ...] [--target ...] [--all]`: runs the seven
-/// active checks (source, runtime, manifest, config, container_runtime,
+/// `konductor doctor [--from ...] [--target ...] [--all]`: runs the six
+/// active checks (source, runtime, manifest, container_runtime,
 /// index_status, telemetry_state) against `--from`/`target_dir` (source
 /// tree) and `--target`/`$HOME` (install destination), prints a report,
 /// and returns the exit code.
@@ -260,8 +260,8 @@ impl CheckResult {
 /// source tree root, same precedence `synth` uses. `target` overrides
 /// `$HOME` as the install destination the runtime/manifest checks
 /// inspect, same precedence `install` uses. `home_dir_override` is the
-/// user-tier config's home directory (the `config` check's
-/// `~/.konductor/config.yml` tier); pass `None` to resolve `$HOME`
+/// `$HOME` the `index_status` and `telemetry_state` checks read their
+/// machine-scoped records from; pass `None` to resolve `$HOME`
 /// normally.
 ///
 /// `all`: run the full check suite against every target tracked in
@@ -339,7 +339,7 @@ pub fn dispatch_doctor_with(
     }
 }
 
-/// The full active check suite (source, runtime, manifest, config,
+/// The full active check suite (source, runtime, manifest,
 /// container_runtime, index_status, telemetry_state) against one
 /// resolved source-tree/destination pair. Shared by the single-target
 /// path and the `--all` path, so the two can never drift on which
@@ -360,7 +360,6 @@ fn run_checks(
         check_source(&resolved_source),
         check_runtime(destination),
         check_manifest(destination),
-        check_config_with_home(&resolved_source, home_dir.as_deref()),
         check_container_runtime(),
         check_index_status(destination, home_dir.as_deref()),
         check_telemetry_state(destination, home_dir.as_deref()),
@@ -399,9 +398,9 @@ fn dispatch_doctor_all(
     no_version_check: bool,
     color: ColorMode,
 ) -> u8 {
-    // Same home override `run_checks` below threads to `config`/
-    // `index_status`/`telemetry_state`; the tracked-install
-    // enumeration itself must respect it too.
+    // Same home override `run_checks` below threads to `index_status`/
+    // `telemetry_state`; the tracked-install enumeration itself must
+    // respect it too.
     let resolved_home: Option<PathBuf> = home_dir_override
         .map(PathBuf::from)
         .or_else(index::env_home_dir);
@@ -744,7 +743,7 @@ fn check_content_version(
     }
 }
 
-/// The source tree the `source`/`config` checks validate, plus (when
+/// The source tree the `source` check validates, plus (when
 /// resolution did not come from an explicit `--from`) a human-readable
 /// note explaining which fallback rule fired and why. See this
 /// module's docstring, "Source resolution", for the three-step
@@ -769,7 +768,7 @@ fn check_content_version(
 ///   "unvalidated cwd" summary prefix.
 /// - `unsupported_schema_version`: set only on the
 ///   `ManifestError::UnsupportedSchemaVersion` fallback arm. Points
-///   `source`/`config`'s remediation at the `manifest` check's own
+///   `source`'s remediation at the `manifest` check's own
 ///   advice instead of the generic "re-run `konductor install`"
 ///   wording, which is wrong for a schema_version skew.
 struct ResolvedSource {
@@ -826,10 +825,10 @@ fn resolve_source_for_checks(
                 // only decides whether to fall back at all, not
                 // whether the recorded path is a usable source tree.
                 // A path that degraded into a plain file still passes
-                // `exists()` and flows on into
-                // `check_source`/`check_config`, which get their own
-                // more precise "not a directory" `Failed` instead of
-                // this function's generic "moved away" fallback.
+                // `exists()` and flows on into `check_source`, which
+                // gets its own more precise "not a directory" `Failed`
+                // instead of this function's generic "moved away"
+                // fallback.
                 if source_path.exists() {
                     ResolvedSource {
                         path: source_path,
@@ -1037,7 +1036,7 @@ fn fallback_detail(resolved: &ResolvedSource, mut detail: Vec<String>) -> Vec<St
     detail
 }
 
-/// Shared by `check_source`/`check_config`'s `Err` arm: a parse/load
+/// Shared by `check_source`'s `Err` arm: a parse/load
 /// failure against a `legacy_manifest_no_source`/`missing_recorded_source`
 /// fallback tree does not mean the installation is broken, the
 /// manifest is fully readable and the install it describes is
@@ -1076,13 +1075,12 @@ fn failed_or_downgraded_for_fallback(
     )
 }
 
-/// Shared by `check_source`/`check_config`: given the underlying
+/// Used by `check_source`: given the underlying
 /// operation already succeeded against `resolved.path`, picks the
 /// right non-failing `CheckResult` for whichever fallback tier
 /// `resolved` represents (no fallback, `unvalidated_cwd`,
 /// `legacy_manifest_no_source`, `missing_recorded_source`,
-/// `unsupported_schema_version`, or the generic case). Kept as one
-/// shared function rather than duplicated per check.
+/// `unsupported_schema_version`, or the generic case).
 fn escalate_for_fallback(
     name: &'static str,
     resolved: &ResolvedSource,
@@ -1360,7 +1358,7 @@ fn drifted_files(destination: &Path, manifest: &StrategyManifest) -> Vec<String>
 /// check's job is advisory drift-detection, not index integrity.
 ///
 /// `home_dir` is the same resolved home `run_checks` threads to
-/// `check_config_with_home`/`check_telemetry_state`.
+/// `check_telemetry_state`.
 fn check_index_status(destination: &Path, home_dir: Option<&Path>) -> CheckResult {
     let canonical = match index::canonicalize_target_dir(destination) {
         Ok(canonical) => canonical,
@@ -1488,11 +1486,15 @@ fn check_index_status(destination: &Path, home_dir: Option<&Path>) -> CheckResul
 }
 
 /// The `telemetry_state` check: the effective telemetry state for
-/// `destination`, read through the exact two signals `report.rs`'s own
-/// AND gate consults: `install_info::read_install_info_detailed` (the
-/// per-target opt-out signal) and `konductor_telemetry::read_instance`
-/// (the machine-scoped consent record). Never re-derived, so this
-/// check cannot drift from the gate it reports on.
+/// `destination`, read through the exact signals `report.rs`'s own AND
+/// gate consults: `install_info::read_install_info_detailed` (gate 2,
+/// the per-target opt-out signal), `konductor_telemetry::read_instance`
+/// (gate 3, the machine-scoped consent record), and
+/// `telemetry::gate4_suppression` (gate 4, `KONDUCTOR_TELEMETRY=off` or
+/// this target's `.konductor/config.yml` `telemetry.enabled: false`).
+/// Never re-derived, so this check cannot drift from the gate it
+/// reports on. Gate 1 (the agent-name manifest filter) is per-event,
+/// not a target-level state, so it has no result to report here.
 ///
 /// The per-target signal is one filesystem access:
 /// `read_install_info_detailed` returns either the record or an
@@ -1514,12 +1516,9 @@ fn check_index_status(destination: &Path, home_dir: Option<&Path>) -> CheckResul
 /// closed to the same "reporting is off, no record" wording as a
 /// missing `telemetry.json`.
 ///
-/// Five cases: no install-info record at all (`Info`, names both
-/// possible causes); a record present but fails validation (`Warn`,
-/// not a choice the user made); no machine record at all (`Info`,
-/// nothing has reported yet); the machine record declines while this
-/// target opted in (`Warn`, the case a design review flagged as
-/// silent); machine consent allows and this target opted in (`Ok`).
+/// Gate 4 is checked only once gates 2 and 3 both allow -- it is
+/// `Info` severity, since it names a deliberate configuration rather
+/// than a hygiene problem.
 fn check_telemetry_state(destination: &Path, home_dir: Option<&Path>) -> CheckResult {
     use crate::cli::telemetry::InstallInfoAbsence;
 
@@ -1597,59 +1596,40 @@ fn check_telemetry_state(destination: &Path, home_dir: Option<&Path>) -> CheckRe
                 record_path.display()
             ),
         ),
-        Some(_) => CheckResult::ok(
-            "telemetry_state",
-            format!("telemetry reporting is on for {}", destination.display()),
-        ),
+        Some(_) => report_gate4(destination),
     }
 }
 
-/// `config::load_config_with_home`, the same loading logic
-/// `config get`/`config list`/`config set` use. A source tree with no
-/// `.konductor/config.yml` at all still loads (preset defaults alone
-/// are a valid config), so this only fails on a genuinely
-/// malformed/invalid project or user config, never merely on one
-/// being absent.
-///
-/// Same caveat as `check_source`: this validates the repo's project
-/// config, which only exists to check when a local checkout is
-/// available. A `Warn`/`Info` fallback is expected and benign for most
-/// install methods.
-///
-/// `home_dir` is the user-tier config's home directory, passed in
-/// explicitly rather than resolved from the `HOME` env var here, so
-/// end-to-end tests can point the user tier at a scratch directory.
-/// Production callers pass the real `$HOME`.
-fn check_config_with_home(resolved: &ResolvedSource, home_dir: Option<&Path>) -> CheckResult {
-    let source_dir = resolved.path.as_path();
-    match config::load_config_with_home(source_dir, home_dir) {
-        Ok(loaded) => {
-            let summary = with_fallback_prefix(
-                resolved,
-                format!(
-                    "config loads cleanly (tier '{}', default_severity '{}')",
-                    loaded.tier, loaded.default_severity
-                ),
-            );
-            escalate_for_fallback("config", resolved, summary)
-        }
-        Err(err) => failed_or_downgraded_for_fallback(
-            "config",
-            resolved,
-            with_fallback_prefix(
-                resolved,
-                // Deliberately no hardcoded path in this prefix:
-                // `err`'s own `Display` already names whichever
-                // specific tier's file actually failed to load.
-                // Prefixing with `source_dir` unconditionally would
-                // misreport a broken user-tier config as if the
-                // project config were the problem.
-                format!("config failed to load: {err}"),
+/// Gates 2 and 3 both allow; reports gate 4's own verdict (`Info` if
+/// it suppresses, `Ok` if it does not), via the exact predicate
+/// `report.rs`'s `resolve_endpoint_with_pin` sends through.
+fn report_gate4(destination: &Path) -> CheckResult {
+    use crate::cli::telemetry::Gate4Reason;
+
+    match crate::cli::telemetry::gate4_suppression(destination) {
+        Some(Gate4Reason::EnvVarOff) => CheckResult::info(
+            "telemetry_state",
+            format!(
+                "telemetry reporting is off for {}: KONDUCTOR_TELEMETRY=off",
+                destination.display()
             ),
-            "run `konductor config list` for the full merged view, or `konductor init --force` \
-             to reset to preset defaults"
+            "unset KONDUCTOR_TELEMETRY, or remove the \"off\" value, to allow reporting again"
                 .to_string(),
-            err.to_string(),
+        ),
+        Some(Gate4Reason::ConfigDisabled) => CheckResult::info(
+            "telemetry_state",
+            format!(
+                "telemetry reporting is off for {}: .konductor/config.yml sets \
+                 telemetry.enabled: false",
+                destination.display()
+            ),
+            "set telemetry.enabled: true (or remove the key) in .konductor/config.yml to \
+             allow reporting again"
+                .to_string(),
+        ),
+        None => CheckResult::ok(
+            "telemetry_state",
+            format!("telemetry reporting is on for {}", destination.display()),
         ),
     }
 }
@@ -2634,12 +2614,9 @@ mod tests {
              corrupt-manifest case"
         );
 
-        let config_result = check_config_with_home(&resolved, Some(&home));
-        assert_eq!(config_result.status, CheckStatus::Info);
-
         // The overall run is still EXIT_HALTED: `check_manifest`
         // itself reports the unsupported schema version as a real
-        // Failed, even though source/config are only Info.
+        // Failed, even though source is only Info.
         let code = dispatch_doctor_with(
             &cwd,
             None,
@@ -2666,7 +2643,6 @@ mod tests {
     fn dispatch_doctor_json_output_is_valid_and_reports_failure_detail() {
         let source = scratch_dir("json-source");
         let destination = scratch_dir("json-destination");
-        let home = scratch_dir("json-home");
         fs::create_dir_all(source.join("agents")).unwrap();
         fs::write(
             source.join("agents/broken.agent-spec.json"),
@@ -2686,7 +2662,6 @@ mod tests {
             check_source(&resolved_source),
             check_runtime(&destination),
             check_manifest(&destination),
-            check_config_with_home(&resolved_source, Some(&home)),
         ];
         let rendered = format_report_json(&results);
         let parsed: serde_json::Value =
@@ -2709,7 +2684,6 @@ mod tests {
 
         fs::remove_dir_all(&source).ok();
         fs::remove_dir_all(&destination).ok();
-        fs::remove_dir_all(&home).ok();
     }
 
     /// `ok` alone reads `true` even when a `Warn` check is present
@@ -2779,16 +2753,16 @@ mod tests {
         fs::write(&path, serde_json::to_string_pretty(&full).unwrap()).unwrap();
     }
 
-    // ── Manifest-based source resolution (check_source/check_config) ────
+    // ── Manifest-based source resolution (check_source) ──────────────────
 
     /// (a) A manifest at the destination records a `source` path, and
-    /// no `--from` is given: `check_source`/`check_config` must
+    /// no `--from` is given: `check_source` must
     /// resolve against the manifest's recorded path, not `target_dir`,
     /// proven by pointing the manifest's recorded `source` at a real,
     /// well-formed tree while `target_dir` itself is a deliberately
     /// different, malformed one.
     #[test]
-    fn dispatch_doctor_check_source_and_check_config_use_manifest_recorded_source_by_default() {
+    fn dispatch_doctor_check_source_uses_manifest_recorded_source_by_default() {
         let cwd = scratch_dir("manifest-source-cwd");
         let real_source = scratch_dir("manifest-source-real");
         let destination = scratch_dir("manifest-source-destination");
@@ -2829,7 +2803,7 @@ mod tests {
 
         assert_eq!(
             code, 0,
-            "doctor must resolve source/config against the manifest's recorded (well-formed) \
+            "doctor must resolve source against the manifest's recorded (well-formed) \
              path, not the malformed cwd"
         );
         assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
@@ -2851,7 +2825,7 @@ mod tests {
     /// but that path no longer exists on disk:
     /// `resolve_source_for_checks` must fall back to `target_dir` with
     /// an `Info`-tier note naming the stale path, rather than handing
-    /// `check_source`/`check_config` a nonexistent path that
+    /// `check_source` a nonexistent path that
     /// `parse_canonical` hard-rejects.
     #[test]
     fn resolve_source_for_checks_falls_back_when_recorded_source_no_longer_exists() {
@@ -2935,7 +2909,7 @@ mod tests {
     }
 
     /// (b) No manifest exists at the destination, and no `--from` is
-    /// given: `check_source`/`check_config` must fall back to
+    /// given: `check_source` must fall back to
     /// `target_dir`, and the fallback must be stated explicitly in the
     /// check's own summary.
     #[test]
@@ -2997,7 +2971,7 @@ mod tests {
 
     /// (b') Distinct sibling of the test above: the manifest at the
     /// destination exists but is corrupt/unreadable, so
-    /// `check_source`/`check_config` also fall back to `target_dir`,
+    /// `check_source` also falls back to `target_dir`,
     /// but this fallback reason must be visibly distinguishable from
     /// the benign "no manifest exists yet" case: a different
     /// `CheckStatus` (`Warn`, not `Info`) and an unmistakable
@@ -3044,13 +3018,6 @@ mod tests {
             result.summary
         );
 
-        let config_result = check_config_with_home(&resolved, Some(&home));
-        assert_eq!(
-            config_result.status,
-            CheckStatus::Warn,
-            "check_config must escalate the same way check_source does"
-        );
-
         let code = dispatch_doctor_with(
             &cwd,
             None,
@@ -3065,7 +3032,7 @@ mod tests {
         assert_eq!(
             code, EXIT_HALTED,
             "the manifest check surfaces the unreadable manifest itself as a real failure, \
-             so the overall run must be EXIT_HALTED even though source/config are only Warn"
+             so the overall run must be EXIT_HALTED even though source is only Warn"
         );
         assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
 
@@ -3191,13 +3158,6 @@ mod tests {
              Info, not Warn"
         );
 
-        let config_result = check_config_with_home(&resolved, Some(&home));
-        assert_eq!(
-            config_result.status,
-            CheckStatus::Info,
-            "check_config must escalate the same way check_source does"
-        );
-
         let code = dispatch_doctor_with(
             &cwd,
             None,
@@ -3278,58 +3238,6 @@ mod tests {
         fs::remove_dir_all(&destination).ok();
     }
 
-    /// `check_config`'s error summary must name the actual broken
-    /// config file, not unconditionally assume the project tier is
-    /// the culprit. This malforms only the `$HOME`-tier file, leaving
-    /// the project tier absent entirely, and asserts the reported
-    /// summary names the user-tier path.
-    #[test]
-    fn check_config_names_the_actual_broken_home_tier_file_not_the_project_path() {
-        let source_dir = scratch_dir("config-broken-home-tier-source");
-        let home_dir = scratch_dir("config-broken-home-tier-home");
-
-        let user_config_dir = home_dir.join(config::KONDUCTOR_DIR_NAME);
-        fs::create_dir_all(&user_config_dir).unwrap();
-        let user_config_path = user_config_dir.join(config::CONFIG_FILE_NAME);
-        fs::write(&user_config_path, b"not: [valid: yaml").unwrap();
-
-        let resolved = ResolvedSource {
-            path: source_dir.clone(),
-            fallback_note: None,
-            unvalidated_cwd: false,
-            legacy_manifest_no_source: false,
-            missing_recorded_source: false,
-            unsupported_schema_version: false,
-        };
-
-        let result = check_config_with_home(&resolved, Some(&home_dir));
-        assert_eq!(
-            result.status,
-            CheckStatus::Failed,
-            "a malformed $HOME-tier config must fail check_config"
-        );
-        let user_path_str = user_config_path.display().to_string();
-        assert!(
-            result.summary.contains(&user_path_str),
-            "check_config's summary must name the actual broken file ({user_path_str}), got: {}",
-            result.summary
-        );
-        let source_dir_config_str = source_dir
-            .join(config::KONDUCTOR_DIR_NAME)
-            .join(config::CONFIG_FILE_NAME)
-            .display()
-            .to_string();
-        assert!(
-            !result.summary.contains(&source_dir_config_str),
-            "check_config's summary must not name the project tier's path ({source_dir_config_str}) \
-             when the project tier isn't the one that's actually broken, got: {}",
-            result.summary
-        );
-
-        fs::remove_dir_all(&source_dir).ok();
-        fs::remove_dir_all(&home_dir).ok();
-    }
-
     /// `missing_recorded_source` fallback tier: a parse/load failure
     /// against the fallback tree must downgrade to `Info`, not
     /// `Failed`, since the manifest itself is fully readable and the
@@ -3380,12 +3288,6 @@ mod tests {
             remediation.contains("invalid JSON") || remediation.contains("failed to parse"),
             "remediation must still surface the real parse error text, got: {remediation}"
         );
-
-        let config_result = check_config_with_home(&resolved, Some(&home));
-        // `config` has no config.yml at all in this fixture, so it
-        // loads cleanly (preset defaults) rather than failing -- assert
-        // it is not incorrectly downgraded to Failed either way.
-        assert_ne!(config_result.status, CheckStatus::Failed);
 
         let code = dispatch_doctor_with(
             &cwd,
@@ -4059,7 +3961,6 @@ mod tests {
                 "source",
                 "runtime",
                 "manifest",
-                "config",
                 "container_runtime",
                 "index_status",
                 "telemetry_state",
@@ -4108,73 +4009,6 @@ mod tests {
         fs::remove_dir_all(&source).ok();
         fs::remove_dir_all(&destination).ok();
         fs::remove_dir_all(&home).ok();
-    }
-
-    /// A malformed `$HOME`-tier `.konductor/config.yml` in a scratch
-    /// home-dir override must surface through the full
-    /// `dispatch_doctor_with` path as a real `Failed`/`EXIT_HALTED`
-    /// result, and must not leak into a separate `dispatch_doctor_with`
-    /// run against an unrelated healthy scratch home dir.
-    #[test]
-    fn dispatch_doctor_with_malformed_home_config_is_isolated_and_does_not_affect_other_runs() {
-        let broken_source = scratch_dir("isolation-broken-source");
-        let broken_destination = scratch_dir("isolation-broken-destination");
-        let broken_home = scratch_dir("isolation-broken-home");
-        let broken_user_config_dir = broken_home.join(config::KONDUCTOR_DIR_NAME);
-        fs::create_dir_all(&broken_user_config_dir).unwrap();
-        fs::write(
-            broken_user_config_dir.join(config::CONFIG_FILE_NAME),
-            b"not: [valid: yaml",
-        )
-        .unwrap();
-
-        let code = dispatch_doctor_with(
-            &broken_source,
-            Some(broken_source.display().to_string()),
-            Some(broken_destination.display().to_string()),
-            false, // all
-            false,
-            false,
-            Some(&broken_home),
-            false, /* no_version_check */
-            ColorMode::disabled(),
-        );
-        assert_eq!(
-            code, EXIT_HALTED,
-            "a malformed $HOME-tier config reached through the override seam must halt the run"
-        );
-        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
-
-        // A second, unrelated run against a genuinely healthy scratch
-        // home dir must be completely unaffected by the broken run
-        // above.
-        let healthy_source = scratch_dir("isolation-healthy-source");
-        let healthy_destination = scratch_dir("isolation-healthy-destination");
-        let healthy_home = scratch_dir("isolation-healthy-home");
-
-        let healthy_code = dispatch_doctor_with(
-            &healthy_source,
-            Some(healthy_source.display().to_string()),
-            Some(healthy_destination.display().to_string()),
-            false, // all
-            false,
-            false,
-            Some(&healthy_home),
-            false, /* no_version_check */
-            ColorMode::disabled(),
-        );
-        assert_eq!(
-            healthy_code, 0,
-            "an unrelated healthy run must not be affected by a prior run's broken $HOME \
-             override -- isolation must hold across successive dispatch_doctor_with calls"
-        );
-
-        fs::remove_dir_all(&broken_source).ok();
-        fs::remove_dir_all(&broken_destination).ok();
-        fs::remove_dir_all(&broken_home).ok();
-        fs::remove_dir_all(&healthy_source).ok();
-        fs::remove_dir_all(&healthy_destination).ok();
-        fs::remove_dir_all(&healthy_home).ok();
     }
 
     /// The three dormant checks (`gitignore`, `provider_model_access`,
@@ -4633,6 +4467,130 @@ mod tests {
 
         fs::remove_dir_all(&destination).ok();
         fs::remove_dir_all(&home).ok();
+    }
+
+    /// Gate 4, env var: `KONDUCTOR_TELEMETRY=off` suppresses reporting
+    /// even though gates 2 and 3 both allow, and the check names the
+    /// specific reason at `Info` severity.
+    #[test]
+    fn check_telemetry_state_reports_info_when_env_var_sets_telemetry_off() {
+        let _lock = crate::cli::telemetry::lock_telemetry_env();
+        let destination = scratch_dir("telemetry-state-gate4-env-var-target");
+        let home = scratch_dir("telemetry-state-gate4-env-var-home");
+        opt_in_to_telemetry(&destination);
+        konductor_telemetry::ensure_instance(&home, true, crate::cli::time::utc_now_iso_millis);
+        std::env::set_var("KONDUCTOR_TELEMETRY", "off");
+
+        let result = check_telemetry_state(&destination, Some(&home));
+
+        std::env::remove_var("KONDUCTOR_TELEMETRY");
+
+        assert_eq!(
+            result.status,
+            CheckStatus::Info,
+            "KONDUCTOR_TELEMETRY=off must be reported even though gates 2 and 3 both allow"
+        );
+        assert!(!result.status.is_failing());
+        assert!(
+            result.summary.contains("KONDUCTOR_TELEMETRY=off"),
+            "summary must name the specific gate-4 reason, got: {}",
+            result.summary
+        );
+
+        fs::remove_dir_all(&destination).ok();
+        fs::remove_dir_all(&home).ok();
+    }
+
+    /// Gate 4, config.yml: this target's own `.konductor/config.yml`
+    /// `telemetry.enabled: false` suppresses reporting even though
+    /// gates 2 and 3 both allow, and the check names the specific
+    /// reason at `Info` severity.
+    #[test]
+    fn check_telemetry_state_reports_info_when_config_yml_disables_telemetry() {
+        let _lock = crate::cli::telemetry::lock_telemetry_env();
+        let destination = scratch_dir("telemetry-state-gate4-config-target");
+        let home = scratch_dir("telemetry-state-gate4-config-home");
+        opt_in_to_telemetry(&destination);
+        konductor_telemetry::ensure_instance(&home, true, crate::cli::time::utc_now_iso_millis);
+        std::env::remove_var("KONDUCTOR_TELEMETRY");
+        let konductor_dir = destination.join(config::KONDUCTOR_DIR_NAME);
+        fs::create_dir_all(&konductor_dir).unwrap();
+        fs::write(
+            konductor_dir.join(config::CONFIG_FILE_NAME),
+            "telemetry:\n  enabled: false\n",
+        )
+        .unwrap();
+
+        let result = check_telemetry_state(&destination, Some(&home));
+
+        assert_eq!(
+            result.status,
+            CheckStatus::Info,
+            "a target's own telemetry.enabled: false must be reported even though gates 2 \
+             and 3 both allow"
+        );
+        assert!(!result.status.is_failing());
+        assert!(
+            result.summary.contains("telemetry.enabled: false"),
+            "summary must name the specific gate-4 reason, got: {}",
+            result.summary
+        );
+
+        fs::remove_dir_all(&destination).ok();
+        fs::remove_dir_all(&home).ok();
+    }
+
+    /// `doctor --all` evaluates gate 4's config.yml check per target,
+    /// not once for the whole batch: two destinations sharing one
+    /// `run_checks` call site (the exact function `dispatch_doctor_all`
+    /// loops over) must report different `telemetry_state` outcomes
+    /// when only one of them sets `telemetry.enabled: false`.
+    #[test]
+    fn run_checks_evaluates_the_config_yml_gate_independently_per_target() {
+        let _lock = crate::cli::telemetry::lock_telemetry_env();
+        std::env::remove_var("KONDUCTOR_TELEMETRY");
+        let source = scratch_dir("gate4-per-target-source");
+        let home = scratch_dir("gate4-per-target-home");
+        let target_off = scratch_dir("gate4-per-target-off-dest");
+        let target_on = scratch_dir("gate4-per-target-on-dest");
+        opt_in_to_telemetry(&target_off);
+        opt_in_to_telemetry(&target_on);
+        konductor_telemetry::ensure_instance(&home, true, crate::cli::time::utc_now_iso_millis);
+
+        let konductor_dir = target_off.join(config::KONDUCTOR_DIR_NAME);
+        fs::create_dir_all(&konductor_dir).unwrap();
+        fs::write(
+            konductor_dir.join(config::CONFIG_FILE_NAME),
+            "telemetry:\n  enabled: false\n",
+        )
+        .unwrap();
+
+        let results_off = run_checks(&source, None, &target_off, Some(&home));
+        let results_on = run_checks(&source, None, &target_on, Some(&home));
+
+        let telemetry_off = results_off
+            .iter()
+            .find(|r| r.name == "telemetry_state")
+            .expect("telemetry_state must be present");
+        let telemetry_on = results_on
+            .iter()
+            .find(|r| r.name == "telemetry_state")
+            .expect("telemetry_state must be present");
+
+        assert_eq!(telemetry_off.status, CheckStatus::Info);
+        assert!(telemetry_off.summary.contains("telemetry.enabled: false"));
+        assert_eq!(telemetry_on.status, CheckStatus::Ok);
+        assert!(
+            !telemetry_on.summary.contains("telemetry.enabled: false"),
+            "the second target's own config.yml must not be suppressed by the first \
+             target's, got: {}",
+            telemetry_on.summary
+        );
+
+        fs::remove_dir_all(&source).ok();
+        fs::remove_dir_all(&home).ok();
+        fs::remove_dir_all(&target_off).ok();
+        fs::remove_dir_all(&target_on).ok();
     }
 
     /// `install-info.json` is present but fails schema validation.

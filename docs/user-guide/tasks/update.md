@@ -12,7 +12,8 @@ destinations is destroyed** — see the warning below before running it.
 ## There is no "is an update available?" check
 
 Nothing in the CLI compares your installed version against a published one. `doctor` has six
-checks — `source`, `runtime`, `manifest`, `config`, `container_runtime`, `index_status` — and
+checks (`source`, `runtime`, `manifest`, `container_runtime`, `index_status`,
+`telemetry_state`), plus two version checks (`cli_version` and `content_version`), and
 `cli/README.md` states plainly that it "does not … compare installed vs. available versions."
 `update` has no version awareness either: it overwrites from whatever `--from` you give it,
 without asking what version that is.
@@ -124,27 +125,6 @@ If you built from source instead, see
 
 - [ ] `konductor doctor` reports `manifest` as `ok` with no hash drift.
 - [ ] A new runtime session lists the agents you expect.
-- [ ] `konductor doctor` reports `config` as `ok`, confirming your config is still valid against
-      the new release.
-
-Check that last one, because a config schema change is the most likely thing to bite you:
-
-```bash
-konductor doctor
-```
-
-If it reports `config version <n> is not supported by this CLI`, the schema version changed. Back up
-your config, re-scaffold, and re-apply your settings:
-
-```bash
-cp .konductor/config.yml .konductor/config.yml.bak
-```
-
-```bash
-konductor init --force
-```
-
-`--force` overwrites `config.yml` with the release defaults, which is why the backup comes first.
 
 ---
 

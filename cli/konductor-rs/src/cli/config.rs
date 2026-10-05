@@ -340,9 +340,9 @@ pub fn load_config(project_root: &Path) -> Result<Config, ConfigError> {
 /// from parallel `cargo test` threads (unlike a single CLI process,
 /// where reading `HOME` once at startup is fine).
 ///
-/// `pub(crate)` (not private) so `doctor::check_config_with_home`'s own
-/// tests can drive a malformed-user-tier-config scenario the same
-/// deterministic way, without mutating `HOME` either.
+/// `pub(crate)` (not private) so `init.rs`'s own validation call can
+/// reuse it, and so tests can drive a malformed-user-tier-config
+/// scenario the same deterministic way, without mutating `HOME`.
 pub(crate) fn load_config_with_home(
     project_root: &Path,
     home_dir: Option<&Path>,

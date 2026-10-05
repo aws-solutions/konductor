@@ -86,7 +86,7 @@
 // ── `source` (doctor's manifest-based resolution) ─────────────────────
 // Records the absolute, canonicalized `--from <repo-root>` path this
 // install run was given (`None` if the caller has none to record).
-// `konductor doctor`'s `check_source`/`check_config` resolve against
+// `konductor doctor`'s `check_source` resolves against
 // this field by default, instead of `--from`/cwd -- see doctor.rs's
 // module docstring for the full precedence rule. `#[serde(default)]`
 // on read, so a manifest written before this field existed still
@@ -282,8 +282,8 @@ impl Manifest {
 ///
 /// `source` is the absolute, canonicalized `--from <repo-root>` path
 /// `install_from_local` was given -- the source tree, not `destination`
-/// (the install root). `konductor doctor`'s `check_source`/`check_config`
-/// resolve against this field by default, so they validate the tree
+/// (the install root). `konductor doctor`'s `check_source`
+/// resolves against this field by default, so it validates the tree
 /// that was actually installed rather than whatever `--from`/cwd is at
 /// doctor time. `Option` because `install_from_local` takes `from:
 /// Option<&str>`, and because `#[serde(default)]` lets a manifest

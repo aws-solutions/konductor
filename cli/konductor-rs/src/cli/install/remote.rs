@@ -534,7 +534,7 @@ fn install_from_remote_bytes_named_with_limit(
 
     // `install_from_local` unconditionally records its `from` argument
     // (canonicalized) as the manifest's `source` field, for `doctor`'s
-    // `check_source`/`check_config` to resolve against later. Here
+    // `check_source` to resolve against later. Here
     // that value is `temp_dir`, which `RemoteTempDir::drop` deletes
     // the instant this function returns -- so it gets overwritten with
     // a stable, synthetic `remote:<artifact_filename>` marker instead.

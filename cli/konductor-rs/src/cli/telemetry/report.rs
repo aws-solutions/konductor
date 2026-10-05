@@ -89,17 +89,9 @@ fn resolve_endpoint(target_dir: &std::path::Path) -> Option<String> {
 fn resolve_endpoint_with_pin(
     target_dir: &std::path::Path,
 ) -> Option<(String, Option<std::net::IpAddr>)> {
-    if std::env::var(TELEMETRY_OFF_ENV_VAR).as_deref() == Ok(TELEMETRY_OFF_VALUE) {
-        return None;
-    }
-
     let raw = read_telemetry_config(target_dir);
 
-    if let Some(false) = raw.as_ref().and_then(|r| r.enabled) {
-        crate::cli::trace::trace(
-            "trace",
-            "telemetry: disabled for this target via .konductor/config.yml",
-        );
+    if gate4_suppression_from(&raw).is_some() {
         return None;
     }
 
@@ -207,6 +199,51 @@ fn read_telemetry_config(target_dir: &std::path::Path) -> Option<RawTelemetrySec
     let contents = std::fs::read_to_string(path).ok()?;
     let parsed: RawConfigTelemetryOnly = serde_yaml::from_str(&contents).ok()?;
     parsed.telemetry
+}
+
+/// Which of gate 4's two checks suppressed telemetry, for a caller
+/// that needs to say why (`doctor`'s `telemetry_state` check), not
+/// just whether (`resolve_endpoint_with_pin`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Gate4Reason {
+    /// `KONDUCTOR_TELEMETRY=off`, checked first so it overrides a
+    /// repo's own `telemetry.enabled: true`.
+    EnvVarOff,
+    /// `.konductor/config.yml`'s `telemetry.enabled: false` at
+    /// `target_dir`.
+    ConfigDisabled,
+}
+
+/// The single source of truth for gate 4 (env var + config.yml),
+/// shared by `resolve_endpoint_with_pin` (the real send-time gate) and
+/// `doctor`'s `check_telemetry_state` (reporting), so the two can never
+/// drift on what counts as suppressed. `None` means gate 4 allows
+/// telemetry; the caller still has gates 2/3 of its own to check.
+///
+/// Reads `.konductor/config.yml` itself. `resolve_endpoint_with_pin`
+/// already has that config loaded for endpoint resolution, so it calls
+/// `gate4_suppression_from` directly instead, to avoid reading the
+/// file twice per send.
+pub(crate) fn gate4_suppression(target_dir: &std::path::Path) -> Option<Gate4Reason> {
+    gate4_suppression_from(&read_telemetry_config(target_dir))
+}
+
+/// Gate 4's decision given an already-loaded config, factored out of
+/// `gate4_suppression` so a caller that has already read
+/// `.konductor/config.yml` for another reason doesn't have to read it
+/// again just for this check.
+fn gate4_suppression_from(raw: &Option<RawTelemetrySection>) -> Option<Gate4Reason> {
+    if std::env::var(TELEMETRY_OFF_ENV_VAR).as_deref() == Ok(TELEMETRY_OFF_VALUE) {
+        return Some(Gate4Reason::EnvVarOff);
+    }
+    if let Some(false) = raw.as_ref().and_then(|r| r.enabled) {
+        crate::cli::trace::trace(
+            "trace",
+            "telemetry: disabled for this target via .konductor/config.yml",
+        );
+        return Some(Gate4Reason::ConfigDisabled);
+    }
+    None
 }
 
 /// Materializes the embedded transport script into a process-private
@@ -838,12 +875,26 @@ pub(crate) fn report_package_version_updated_for_target(
     );
 }
 
+/// Dedicated lock for tests (in this module and others, e.g.
+/// `doctor.rs`'s `telemetry_state` gate-4 tests) mutating telemetry
+/// env vars -- `std::env::set_var` has no per-thread scoping.
+#[cfg(test)]
+pub(crate) static TELEMETRY_ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+/// Acquires `TELEMETRY_ENV_LOCK`, recovering the guard even if a
+/// previous holder panicked while holding it.
+#[cfg(test)]
+pub(crate) fn lock_telemetry_env() -> std::sync::MutexGuard<'static, ()> {
+    TELEMETRY_ENV_LOCK
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::fs;
     use std::sync::atomic::{AtomicUsize, Ordering};
-    use std::sync::{Mutex, MutexGuard};
 
     // consent_decision: exhaustive over its 2 bool inputs (4 cases),
     // no filesystem, deterministic on any architecture. This is the
@@ -875,14 +926,12 @@ mod tests {
     }
 
     /// Dedicated lock for tests mutating telemetry env vars --
-    /// `std::env::set_var` has no per-thread scoping.
-    static TELEMETRY_ENV_LOCK: Mutex<()> = Mutex::new(());
-
-    fn lock_telemetry_env() -> MutexGuard<'static, ()> {
-        TELEMETRY_ENV_LOCK
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-    }
+    /// `std::env::set_var` has no per-thread scoping. Defined at
+    /// module scope (`super::lock_telemetry_env`) so cross-module
+    /// tests (e.g. `doctor.rs`'s gate-4 tests) can coordinate with
+    /// these too; re-imported here under the name this module's own
+    /// tests already use.
+    use super::lock_telemetry_env;
 
     #[test]
     fn spawn_and_send_with_transport_records_endpoint_pin_and_body_unchanged() {
