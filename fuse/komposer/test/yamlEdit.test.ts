@@ -51,8 +51,12 @@ function commentLines(text: string): Map<number, string> {
 }
 
 describe("applyEdit on every real workflow file", () => {
-  test(`found all ${WORKFLOW_FILES.length} workflow files`, () => {
-    expect(WORKFLOW_FILES.length).toBe(12);
+  // personal/ and team/ are gitignored links to the owner's own workflows, so
+  // a fresh clone has none; the 9 tracked ones are always there. Every file
+  // found, tracked or not, is still tested below.
+  const tracked = WORKFLOW_FILES.filter((f) => !/\/workflows\/(personal|team)\//.test(f));
+  test(`found all ${tracked.length} tracked workflow files`, () => {
+    expect(tracked.length).toBe(9);
   });
 
   for (const file of WORKFLOW_FILES) {
