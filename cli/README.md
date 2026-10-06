@@ -630,11 +630,10 @@ symlink it created at `$HOME/.local/bin/konductor` is removed too.
 
 `--dry-run` reports exactly which files would be removed for every selected target,
 without touching the filesystem in any way, flagging each individual path that has
-diverged from its manifest-recorded hash (i.e. would have local edits destroyed) - 
-distinct from an unmodified tracked path, both in plain-text (`(local edits would be
-destroyed)`) and `--json` (a per-path `"diverged"` boolean), not just an aggregate
-count. Without `--dry-run`, a real uninstall proceeds directly, with no confirmation
-prompt of any kind.
+diverged from its manifest-recorded hash (i.e. would have local edits destroyed) - distinct
+from an unmodified tracked path, both in plain-text (`(local edits would be destroyed)`)
+and `--json` (a per-path `"diverged"` boolean), not just an aggregate count. Without
+`--dry-run`, a real uninstall proceeds directly, with no confirmation prompt of any kind.
 
 Uses `update`'s `--target`/`--all` selection table above exactly, with no divergence:
 a bare invocation (`--target` omitted, `--all` not passed) against 2+ tracked installs
@@ -843,8 +842,8 @@ stdout instead:
 - `command`/`error` are guaranteed on every envelope, regardless of which command
   produced it.
 - Some call sites attach extra, command-specific fields (e.g. `target_dir` on
-  `uninstall`/`update`). These are not part of the stable cross-command contract - 
-  only rely on an extra field once you already know which command produced it.
+  `uninstall`/`update`). These are not part of the stable cross-command contract - only
+  rely on an extra field once you already know which command produced it.
 - The envelope always prints to stdout, matching every other `--json` document these
   commands emit on success, so a `--json` consumer only has to read one stream to see
   every outcome, success or failure.
