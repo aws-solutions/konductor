@@ -21,10 +21,14 @@ import {
   loadProject,
   maxRounds,
   type Project,
+  type Launch,
+  launch,
   reviewer,
+  reviewers,
   reviewGuide,
+  rulings,
 } from "./policy.ts";
-import { findWorkflow, isDirectory, workflowFilesBelow, workstreamFile } from "./project.ts";
+import { findWorkflow, isDirectory, reviewsDir, workflowFilesBelow, workstreamFile } from "./project.ts";
 import { type Artifact, type Condition, describeGates, type Gate, loadWorkflow, type Step, type Workflow } from "./workflow.ts";
 import {
   readWorkstream,
@@ -45,6 +49,9 @@ const FUSE_FLOW = shellQuote(process.env.FUSE_FLOW_COMMAND || "fuse-flow");
 function shellQuote(word: string): string {
   return /^[A-Za-z0-9_./-]+$/.test(word) ? word : `'${word.replaceAll("'", `'\\''`)}'`;
 }
+
+// The JSON Schema a reviewer's findings file follows.
+const FINDINGS_SCHEMA = resolve(import.meta.dirname, "..", "workflows", "schemas", "review-findings.schema.json");
 
 const finished = (status: StepStatus) => status === "COMPLETED" || status === "SKIPPED";
 
@@ -242,6 +249,10 @@ function present(c: Ctx): string[] {
 // What the agent does now (decision 26).
 function stepBlock(c: Ctx, ws: Workstream, step: Step, state: StepState): string[] {
   const lines = [`STEP ${step.id} (${position(c, step)}): ${step.instruction.replace(/\s+/g, " ").trim()}`];
+  const owned = rulings(c.p);
+  if (owned.length) {
+    lines.push("RULINGS: where this workflow and other installed rules overlap, the owner ruled:", ...owned.map((r) => `  - ${r}`));
+  }
   const ff = `${FUSE_FLOW} continue ${c.slug}`;
 
   const cond = step.condition;
@@ -390,6 +401,30 @@ function reviewText(c: Ctx, g: Gate, step: Step, state: StepState, reviewed: Pla
   }
   const who = reviewer(c.p);
   if (who) text += ` The reviewer: ${who}.`;
+  const how = launch(c.p);
+  const table = Object.entries(reviewers(c.p));
+  const same = (a: Launch, b: Launch) => JSON.stringify(a) === JSON.stringify(b);
+  const startedBy = (l: Launch) => (l === "subagent" ? "as a fresh subagent in your own harness" : `with \`${l.command}\``);
+  if (table.length) {
+    const rows = table.map(([author, r]) => {
+      const row = `if you run on ${author}, ${r.model}${r.effort ? ` at ${r.effort} effort` : ""}`;
+      return r.launch && !same(r.launch, how) ? `${row}, started ${startedBy(r.launch)}` : row;
+    });
+    text += ` Pick the reviewer's model by the model you run on: ${rows.join("; ")}. If yours is not listed, follow the review guide.`;
+  }
+  const rowLaunches = table.flatMap(([, r]) => (r.launch && !same(r.launch, how) ? [r.launch] : []));
+  text += ` ${rowLaunches.length ? "Unless its row says otherwise, start" : "Start"} the reviewer ${startedBy(how)}, with none of your context.`;
+  if (how !== "subagent" || rowLaunches.some((l) => l !== "subagent")) {
+    text +=
+      " In a launch command, replace {model} and {effort} with the reviewer's, {prompt_file} with a file you " +
+      "write the review request to, and {findings_file} with the findings file.";
+  }
+  const agentGates = step.gates.filter((x) => x.kind === "agent");
+  const gateName = agentGates.length > 1 ? `-gate${agentGates.indexOf(g) + 1}` : "";
+  const findings = `${display(c.p, reviewsDir(c.root, c.slug))}/${step.id}${gateName}-round-<n>.json`;
+  text +=
+    ` The reviewer writes its findings to ${findings}, where <n> is the round, following ` +
+    `${display(c.p, FINDINGS_SCHEMA)}; read them from there.`;
   text +=
     " Classify each finding as fix required or false positive, with the reason; a finding the owner already " +
     "accepted or deferred is not a required fix. Fix what is required and review again, until a round ends with " +
@@ -399,7 +434,6 @@ function reviewText(c: Ctx, g: Gate, step: Step, state: StepState, reviewed: Pla
     " Every round that ends with a required fix counts, whatever the cause. After " +
     `${capOf(c, g, state)} such rounds, do not start another; run \`${FUSE_FLOW} continue ${c.slug} --blocked ` +
     `"<what is still open, and why the review does not converge>"\`.`;
-  void step;
   return text;
 }
 

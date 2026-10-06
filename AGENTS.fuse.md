@@ -96,3 +96,20 @@ that it explains itself to that reader.
   "next, the code review". Do not show fuse-flow commands, flags or the workstream's state file,
   and do not assume the owner knows how fuse-flow works. When the owner asks how it works,
   explain it.
+
+## When other installed rules overlap
+
+Other installed skills and always-on instructions may cover the same ground as a step, such as a
+second review mechanism, commit rules or a testing policy.
+
+- When they agree, do the work once. Never run two reviews of the same work because two rule sets
+  each ask for one.
+- When they differ, look for the owner's ruling: the `RULINGS` lines of the step block, the
+  project's AGENTS.md, and your harness's memory. If there is none, ask the owner which one takes
+  precedence, with your recommendation, before you do the overlapping part.
+- Record the ruling as one plain sentence under `rulings:` in a fuse-flow policy file:
+  `.konductor/policy-overrides.local.yml` for this owner in this project (the default),
+  `.konductor/policy-overrides.yml` for the team, or `~/.konductor/policy-overrides.yml` for all
+  of the owner's projects. Save it to your harness's memory too, and offer to add it to the
+  project's AGENTS.md or the owner's global instruction file, outside any block another tool
+  manages.

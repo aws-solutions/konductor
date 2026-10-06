@@ -8,6 +8,30 @@ import { z } from "zod";
 import { CHECK_KIND } from "./gate.ts";
 import { ARTIFACT_ID } from "./step.ts";
 
+const LaunchSchema = z.union([
+  z.literal("subagent"),
+  z
+    .object({
+      command: z.string().trim().min(1).meta({
+        description:
+          "The shell command that runs one review, from the repository root. `{model}`, `{effort}`, " +
+          "`{prompt_file}` and `{findings_file}` are replaced: the agent writes the review request to the prompt " +
+          "file, and the reviewer writes its findings to the findings file.",
+      }),
+    })
+    .strict(),
+]);
+
+const ReviewerSchema = z
+  .object({
+    model: z.string().min(1).meta({ description: "The model the reviewer runs on." }),
+    effort: z.string().min(1).optional().meta({ description: "The reasoning effort, such as high." }),
+    launch: LaunchSchema.optional().meta({
+      description: "How to start this reviewer, when it differs from `review.launch`, for example a model the agent's harness cannot run.",
+    }),
+  })
+  .strict();
+
 export const PolicySchema = z
   .object({
     checks: z
@@ -34,13 +58,48 @@ export const PolicySchema = z
             "the workflow's gates and the artifacts' review guides. Engine effect: printed with the gate.",
         }),
         reviewer: z.string().min(1).optional().meta({
-          description: "Who reviews, such as a model or a harness. Engine effect: printed with the gate.",
+          description: "Who reviews, in words, such as a model or a harness. Engine effect: printed with the gate.",
           examples: ["a different model from the one that did the work"],
+        }),
+        reviewers: z
+          .record(z.string().min(1), ReviewerSchema)
+          .optional()
+          .meta({
+            description:
+              "The reviewer's model for each model an author may run on, by the author's model name. The layers " +
+              "merge by author model, the more specific file winning. Engine effect: printed with the gate; the " +
+              "agent picks the row for its own model.",
+            examples: [
+              {
+                "claude-opus-5.5": { model: "gpt-6.1-sol", effort: "high" },
+                "gpt-6.1-sol": { model: "claude-opus-5.5", effort: "high" },
+              },
+            ],
+          }),
+        launch: LaunchSchema.optional().meta({
+          description:
+            "How the agent starts a reviewer: `subagent`, a fresh subagent in the agent's own harness (the " +
+            "default), or a command such as another harness on the terminal. A reviewer row's own launch wins. " +
+            "Engine effect: printed with the gate.",
+          examples: [
+            "subagent",
+            { command: "opencode run -m amazon-bedrock/us.openai.{model} --agent review-readonly \"$(cat {prompt_file})\"" },
+          ],
         }),
       })
       .strict()
       .optional()
       .meta({ description: "How agent gates review." }),
+    rulings: z
+      .array(z.string().trim().min(1))
+      .optional()
+      .meta({
+        description:
+          "The owner's rulings where fuse-flow and another installed skill or always-on instruction overlap, " +
+          "in plain sentences, such as which of two review mechanisms runs. Every layer's rulings apply, the more " +
+          "specific file's last. Engine effect: printed with every step.",
+        examples: [["In fuse-flow workstreams, the workflow's review gates replace the DCL completion review."]],
+      }),
     artifacts: z
       .record(ARTIFACT_ID, z.object({ path: z.string().min(1) }).strict())
       .optional()

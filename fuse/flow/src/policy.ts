@@ -87,6 +87,27 @@ export function reviewer(p: Project): string | undefined {
   return undefined;
 }
 
+export type Launch = "subagent" | { command: string };
+export type Reviewers = Record<string, { model: string; effort?: string; launch?: Launch }>;
+
+// The reviewer for each author model, merged across the layers: a more
+// specific file's row for a model replaces a more general file's.
+export function reviewers(p: Project): Reviewers {
+  return Object.assign({}, p.user?.policy.review?.reviewers, p.team?.policy.review?.reviewers, p.local?.policy.review?.reviewers);
+}
+
+export function launch(p: Project): Launch {
+  for (const layer of [p.local, p.team, p.user]) {
+    if (layer?.policy.review?.launch) return layer.policy.review.launch;
+  }
+  return "subagent";
+}
+
+// Every layer's rulings, the user's first and the local file's last.
+export function rulings(p: Project): string[] {
+  return [p.user, p.team, p.local].flatMap((l) => l?.policy.rulings ?? []);
+}
+
 function policyGuide(layer: Layer | undefined): string | undefined {
   const guide = layer?.policy.review?.guide;
   return guide === undefined ? undefined : isAbsolute(guide) ? guide : resolve(dirname(layer!.file), guide);

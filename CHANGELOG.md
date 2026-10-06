@@ -28,6 +28,12 @@ not per individual commit.
   commands after the block, for the agent only. The always-on block tells agents to keep fuse-flow
   out of what they show the owner unless asked, and to write headings, decisions and commit
   subjects that explain themselves without labels such as `D1` or `round 3`.
+- fuse-flow policy files take `review.reviewers`, the reviewer's model for each author model;
+  `review.launch`, a subagent in the same harness by default or a command such as another harness
+  on the terminal; and `rulings`, the owner's decisions where fuse-flow and other installed rules
+  overlap. Reviewers write findings to `.konductor/reviews/<slug>/` as JSON, following
+  `review-findings.schema.json`. The fuse-development review guide no longer asks for the most
+  capable model, and agents run one review where two rule sets each ask for one.
 - `konductor install --harness kiro-cli-v2|kiro-v3` installs skills under `.kiro/skills/`
   instead of `.konductor/skills/` when the synthesized output contains no agents, so a plain
   Kiro CLI session discovers them. Output that contains agents is unchanged. A skill named like

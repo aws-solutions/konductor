@@ -1,0 +1,128 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "./review-findings.schema.json",
+  "title": "fuse-flow review findings",
+  "description": "What one reviewer found in one round of an agent gate. The reviewer writes it; the author reads it.",
+  "type": "object",
+  "properties": {
+    "round": {
+      "description": "The round of the gate this review is for, from 1.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "reviewer": {
+      "description": "The model and harness that reviewed, such as gpt-6.1-sol in OpenCode.",
+      "type": "string",
+      "minLength": 1
+    },
+    "summary": {
+      "description": "The reviewer's verdict, in a few sentences.",
+      "type": "string",
+      "minLength": 1
+    },
+    "findings": {
+      "description": "Every finding of this round, most severe first.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "priority": {
+            "description": "P0: wrong or unsafe. P1: a requirement missed, or a defect a user would hit. P2: worth fixing. P3: a nit.",
+            "type": "string",
+            "enum": [
+              "P0",
+              "P1",
+              "P2",
+              "P3"
+            ]
+          },
+          "title": {
+            "description": "What is wrong, in one sentence that stands on its own.",
+            "type": "string",
+            "minLength": 1
+          },
+          "file": {
+            "description": "The file it is in, relative to the repository root, or null.",
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "evidence": {
+            "description": "What the reviewer saw, quoted or described, so the author can check it.",
+            "type": "string",
+            "minLength": 1
+          },
+          "impact": {
+            "description": "Who or what it hurts, and how.",
+            "type": "string",
+            "minLength": 1
+          },
+          "scope": {
+            "description": "Whether it is a single instance or a broken pattern with other occurrences.",
+            "type": "string",
+            "enum": [
+              "single",
+              "pattern"
+            ]
+          }
+        },
+        "required": [
+          "priority",
+          "title",
+          "file",
+          "evidence",
+          "impact",
+          "scope"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "earlier": {
+      "description": "From the second round on: how each finding of earlier rounds was handled.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "description": "The earlier finding, as the author reported it.",
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "description": "How the earlier finding stands now; accepted means the author's reason for not fixing it holds.",
+            "type": "string",
+            "enum": [
+              "fixed",
+              "still-open",
+              "regressed",
+              "accepted"
+            ]
+          },
+          "evidence": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "title",
+          "status",
+          "evidence"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "round",
+    "reviewer",
+    "summary",
+    "findings"
+  ],
+  "additionalProperties": false
+}

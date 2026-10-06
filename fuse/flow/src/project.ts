@@ -85,6 +85,11 @@ export function workstreamsDir(root: string): string {
   return join(root, ".konductor", "workstreams");
 }
 
+// Where the reviewers of one workstream write their findings files.
+export function reviewsDir(root: string, slug: string): string {
+  return join(root, ".konductor", "reviews", slug);
+}
+
 export function workstreamFile(root: string, slug: string): string {
   return join(workstreamsDir(root), `${slug}.yml`);
 }

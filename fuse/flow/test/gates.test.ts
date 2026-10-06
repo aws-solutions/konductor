@@ -4,7 +4,14 @@
 // blocked, and the owner's decisions on them.
 
 import { afterEach, beforeEach, expect, test } from "bun:test";
-import { Repo } from "./helpers";
+import { join } from "node:path";
+import { FLOW_DIR, Repo } from "./helpers";
+
+// What every agent gate says about starting the reviewer and where its findings go.
+const SCHEMA = join(FLOW_DIR, "workflows", "schemas", "review-findings.schema.json");
+const subagent = (findings: string) =>
+  "Start the reviewer as a fresh subagent in your own harness, with none of your context. The reviewer writes " +
+  `its findings to ${findings}, where <n> is the round, following ${SCHEMA}; read them from there. `;
 
 const GATED = `version: 1
 name: gated
@@ -242,7 +249,9 @@ steps:
 `;
     const out = other.start("feat", wf);
     expect(out).toContain(
-      "  1. Have an independent agent review the diff against the spec. It reviews src/. Classify each finding as fix " +
+      "  1. Have an independent agent review the diff against the spec. It reviews src/. " +
+        subagent(".konductor/reviews/feat/review-gate1-round-<n>.json") +
+        "Classify each finding as fix " +
         "required or false positive, with the reason; a finding the owner already accepted or deferred is not a " +
         "required fix. Fix what is required and review again, until a round ends with no required fix. Every round " +
         "that ends with a required fix counts, whatever the cause. After 3 such rounds, do not start another; run " +
@@ -314,7 +323,9 @@ steps:
 `,
     );
     const out = r.ok("start", "feat", "--workflow", `${r.root}/flows/wf.yml`);
-    expect(out).toContain("It reviews essay.md against flows/review-rules.md. Classify each finding as fix required or false positive");
+    expect(out).toContain(
+      `It reviews essay.md against flows/review-rules.md. ${subagent(".konductor/reviews/feat/write-round-<n>.json")}Classify each finding as fix required or false positive`,
+    );
     expect(out).toContain("no required fix. The review guide decides what counts as a required fix and when a round passes.");
 
     r.write(".konductor/library/artifacts/essay/review.md", "# house rules\n");

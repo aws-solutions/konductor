@@ -61,13 +61,14 @@ export function updateWorkstream(
   });
 }
 
-// Workstream state is private to the engineer's checkout, so the directory
-// carries its own .gitignore.
+// Workstream state and the reviewers' findings files are private to the
+// engineer's checkout, so each directory carries its own .gitignore.
 function prepareWorkstreamsDir(root: string): void {
-  const dir = workstreamsDir(root);
-  mkdirSync(dir, { recursive: true });
-  const gitignore = join(dir, ".gitignore");
-  if (!existsSync(gitignore)) writeFileSync(gitignore, "*\n");
+  for (const dir of [workstreamsDir(root), join(root, ".konductor", "reviews")]) {
+    mkdirSync(dir, { recursive: true });
+    const gitignore = join(dir, ".gitignore");
+    if (!existsSync(gitignore)) writeFileSync(gitignore, "*\n");
+  }
 }
 
 const LOCK_WAIT_MS = 2000;
