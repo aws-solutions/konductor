@@ -6,8 +6,8 @@ description: Answers questions about an existing Konductor installation, CLI fla
 # konductor-help
 
 Use the installed CLI and project files as the source of truth. Resolve the
-absolute binary path created by `konductor-setup`; do not trust an unrelated
-`konductor` found first on `PATH`.
+absolute binary created by `konductor-setup`; a bare `konductor` on `PATH` may
+refer to a different installation.
 
 ## CLI behavior
 
@@ -17,10 +17,10 @@ Use the live schema for flags and defaults:
 konductor __dump_schema
 ```
 
-Do not present these schema entries as normal user commands:
+Do not present these entries as normal user commands:
 
 - `metrics` is a stub.
-- `config` is not available in a normal installation.
+- `config` is withheld from normal installations.
 - `__telemetry-hook` is internal.
 
 ## Diagnose an install
@@ -33,9 +33,20 @@ Read each failed or stale check’s `fix:` guidance. Use `--json` for
 machine-readable output and `--no-version-check` when GitHub rate limits block
 version checks.
 
-`cli_version` describes the running binary. `content_version` describes a
-target’s installed agents, skills, and SOPs. The Power’s update path uses
-`content_version`.
+The most relevant checks are:
+
+| Check | Meaning |
+| --- | --- |
+| `source` | Validates the source tree and its references. |
+| `runtime` | Reports detected runtime support. |
+| `manifest` | Checks installed files and drift. |
+| `config` | Validates `.konductor/config.yml`. |
+| `telemetry_state` | Reports install-record and machine-level telemetry state. |
+| `cli_version` | Compares the running binary with the latest release. |
+| `content_version` | Compares target content with the latest release. |
+
+`cli_version` and `content_version` are independent. The Power’s update path
+uses `content_version`.
 
 `telemetry_state` does not currently account for a project-level
 `telemetry.enabled: false` setting in `.konductor/config.yml`. Do not claim
@@ -59,9 +70,9 @@ list or hardcoded SOP count.
 
 ## MCP setup
 
-Kiro does not automatically configure MCP servers from
-`dependencies.mcpRegistry`. Users must configure them in `.kiro/settings/mcp.json`
-or `~/.kiro/settings/mcp.json`.
+Kiro does not automatically configure servers from `dependencies.mcpRegistry`.
+Users must configure them in `.kiro/settings/mcp.json` or
+`~/.kiro/settings/mcp.json`.
 
 For AWS MCP, use the `aws-mcp` key and the pinned proxy configuration in the
 Kiro Power install guide. Knowledge tools are pre-approved; API tools prompt
