@@ -165,54 +165,14 @@ synth:
 	@echo "=== [konductor] Synth complete -- output in dist/ ==="
 
 # ── claude-plugin ───────────────────────────────────────────────────────────
-# Regenerates generated/claude-plugin/{agents,skills}/,
-# .claude-plugin/plugin.json, and .mcp.json -- see
-# generated/claude-plugin/README.md for what each piece is and why two
-# different CLI subcommands produce it.
-#
-# All of the synth/install/copy/render/validate logic lives in
-# scripts/generate-claude-plugin.sh, not here -- this target only builds the
-# CLI first (cli's own `build` target, same pattern `synth` above uses, so
-# `make claude-plugin` never forces an unrelated mcp/ rebuild) and then hands
-# off to the script.
+# Builds the CLI and regenerates local plugin output.
 claude-plugin:
 	$(MAKE) -C cli build TARGET=$(TARGET)
 	@test -x "$(KONDUCTOR_BIN)" || { echo "error: $(KONDUCTOR_BIN) not found; run 'make -C cli build' first" >&2; exit 1; }
 	KONDUCTOR_BIN=$(KONDUCTOR_BIN) scripts/generate-claude-plugin.sh
 
 # ── claude-plugin-check ──────────────────────────────────────────────────────
-# PR-time smoke test, not a drift check: nothing generated is committed on
-# main (see .gitignore), so there is nothing to diff against. Instead this
-# confirms the generation pipeline still succeeds and still produces a
-# valid plugin, in both shapes users can encounter:
-#   1. The repo-root shape (agents/skills nested under
-#      generated/claude-plugin/) -- `scripts/generate-claude-plugin.sh`
-#      itself already runs `claude plugin validate .claude-plugin/plugin.json`
-#      at the end when the `claude` CLI is present, so this target's own
-#      call below is a second, explicit check of that same result.
-#      Validates .claude-plugin/marketplace.json too, with --strict, as its
-#      own separate target -- `claude plugin validate .` run against the
-#      repo root would pick marketplace.json over plugin.json whenever both
-#      exist in the same directory (they do here), so passing each manifest
-#      FILE explicitly is what actually exercises the plugin's own
-#      agent/skill/MCP content, not just the marketplace shape. plugin.json
-#      itself is intentionally validated WITHOUT --strict here: this repo's
-#      own top-level CLAUDE.md makes `claude plugin validate` permanently
-#      warn "CLAUDE.md at the plugin root is not loaded as project context"
-#      whenever the plugin root and repo root are the same directory --
-#      true regardless of this plugin's own content -- and --strict would
-#      turn that permanent, environment-driven warning into a permanent
-#      failure. See scripts/generate-claude-plugin.sh's own comment on its
-#      matching validate call for the full explanation.
-#   2. The flat branch shape actually published to `claude-plugin` --
-#      assembled fresh into a scratch directory by
-#      scripts/assemble-claude-plugin-branch.sh and validated there WITH
-#      --strict: that tree has no top-level CLAUDE.md (see
-#      scripts/assemble-claude-plugin-branch.sh's own file list), so
-#      nothing structural stops it from being held to the stricter bar.
-# Fails on either generation step failing, or (when `claude` is on PATH) on
-# marketplace.json or the flat tree failing `--strict` validation, or
-# plugin.json failing plain (non-strict) validation.
+# Regenerates and validates the repository-tree and flat-release plugin layouts.
 claude-plugin-check:
 	$(MAKE) -C cli build TARGET=$(TARGET)
 	@test -x "$(KONDUCTOR_BIN)" || { echo "error: $(KONDUCTOR_BIN) not found; run 'make -C cli build' first" >&2; exit 1; }

@@ -1,73 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// synth/claude.rs -- `HarnessTransformer` for the Claude Code harness
-// target: writes each agent, skill, and SOP in a `CanonicalModel` out
-// as Claude Code output (agent markdown with YAML frontmatter,
-// `SKILL.md` + auxiliary files, `.sop.md`).
+// synth/claude.rs renders CanonicalModel content for Claude Code.
 //
-// Agent output shape is grounded against this package's own real,
-// installed Claude Code output, not a written spec: YAML
-// frontmatter with `name`/`description`/`model`/`tools`/`skills`,
-// followed by the system prompt as a plain markdown body with no
-// wrapping heading.
+// Standalone agent files can declare `mcpServers` frontmatter. Plugin agent
+// files cannot, so the plugin generator writes a shared `.mcp.json` instead.
+// Agent context is rendered into the prompt body because Claude Code has no
+// generic context-resource frontmatter field.
 //
-// A few shapes are deliberately scoped down to what the live artifact
-// confirms, to be extended once a real spec needs more:
-// - No `# System Prompt` heading in the body.
-// - `allowedTools`/`hooks`/`mcpServers` each render as their own
-//   frontmatter key (see `ClaudeAgentFrontmatter`), omitted entirely
-//   (not rendered empty) when the corresponding `claudeCli` field is
-//   empty. `hooks` renders `ClaudeCliConfig::hooks`'s parsed structure
-//   as-is, but each leaf goes through `hooks_to_yaml`/
-//   `json_value_to_yaml_value` first, since this crate's `serde_json`
-//   `arbitrary_precision` feature makes `Number`'s `Serialize` impl
-//   incompatible with `serde_yaml` (a numeric leaf would otherwise
-//   render as a corrupted nested map). `mcpServers` renders as a YAML
-//   sequence of single-key maps, not a plain map keyed by server name,
-//   so `render_mcp_servers` reshapes it into that sequence via
-//   `McpServerRender`; `command`/`args`/`url` are omitted per-entry
-//   when absent in the source.
-// - No fallback to `dependencies.skills.skillNames` when
-//   `claudeCli.skills` is absent -- every real spec in this repo's
-//   fixture corpus sets both today, so the fallback path is untested.
-// - `agent.dependencies.context.context_names` isn't referenced in the
-//   rendered frontmatter (Claude Code has no generic "resources" field
-//   like Kiro's). Instead, each named context file's content is
-//   spliced directly into the rendered body, wrapped in a `<Context:
-//   filename.md>...</Context: filename.md>` marker, one block per name
-//   in order (see `render_agent_md`) -- this mirrors the real
-//   materialization behavior, confirmed against a live installed agent
-//   file. `dist/claude/context/` is still written even though the
-//   Claude agent output no longer needs to read it back, in case some
-//   other consumer of `dist/claude/` wants the raw per-file content.
-//
-// `mcpServers` frontmatter is the UNION of `agent.dependencies.mcpRegistry`
-// (the cross-harness MCP server declarations every harness's own transformer
-// is meant to read) and `clientConfig.claudeCli.mcpServers` (a
-// Claude-specific override/addition) -- see `merge_mcp_servers`'s own doc
-// comment for the exact precedence. Before this, `mcpRegistry` was parsed
-// (`parser.rs`) but never read by this transformer at all: an agent like
-// `k-browser`, which declares `dependencies.mcpRegistry.playwright-mcp` and
-// grants `mcp__playwright-mcp__*` in `clientConfig.claudeCli.tools`, rendered
-// with no `mcpServers:` key whatsoever -- the granted tool pattern named a
-// server nothing ever declared how to launch. This fixes that for the
-// STANDALONE (non-plugin) Claude Code install path (`konductor install
-// --harness claude`, which writes agent Markdown files directly into
-// `.claude/agents/` -- see `install/claude.rs`'s own module docstring):
-// per Claude Code's own subagent frontmatter reference
-// (https://code.claude.com/docs/en/sub-agents#supported-frontmatter-fields),
-// `mcpServers` IS a supported field for a standalone/project-level subagent
-// file. It has NO effect when the same rendered agent Markdown is instead
-// shipped inside a Claude Code PLUGIN (as this repo's own `claude-plugin`
-// branch does): per that same reference, "plugin subagents don't support the
-// `hooks`, `mcpServers`, or `permissionMode` frontmatter fields... these
-// fields are ignored when loading agents from a plugin." The plugin path
-// needs a plugin-level `.mcp.json` instead -- see
-// `scripts/render-claude-plugin-json.py`'s `--mcp-output`, wired through
-// `scripts/generate-claude-plugin.sh` and `scripts/assemble-claude-plugin-
-// branch.sh`, which derives that file from the exact same
-// `agents/*.agent-spec.json` `dependencies.mcpRegistry` source this
-// transformer reads.
+// The renderer intentionally preserves the distinction between omitted tools
+// (inherit defaults) and an empty tools list (no tools).
 
 use std::collections::{BTreeMap, HashSet};
 use std::fs;

@@ -92,10 +92,11 @@ must be configured by the user.
 
 ## Kiro CLI
 
-Kiro CLI does not yet configure `dependencies.mcpRegistry` automatically. Add
-MCP servers in Kiro configuration as described in the user guide. The agent
-spec grants AWS MCP tools once the server is configured; API tools still prompt
-for confirmation.
+Kiro CLI renders `clientConfig.kiroCli.mcpServers`, not an agent's
+`dependencies.mcpRegistry`. The bundled `aws-mcp` definition is therefore not
+copied into Kiro configuration automatically. Add MCP servers in Kiro
+configuration as described in the user guide. The agent spec grants AWS MCP
+tools once the server is configured; API tools still prompt for confirmation.
 
 ## Implementation references
 

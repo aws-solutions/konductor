@@ -210,27 +210,8 @@ pub fn dispatch_synth_with(
         }
     };
 
-    // Filter every agent's `dependencies.mcp_registry` down to just the
-    // server names this invocation opted into bundling for the Claude
-    // transformer (see `claude::merge_mcp_servers`, the only reader of
-    // `mcp_registry` today). AWS MCP is packaged with the Claude plugin
-    // and standalone install; Playwright (and anything else in an agent
-    // spec's `mcpRegistry`) stays bring-your-own, so callers that want
-    // AWS MCP wired up pass `--claude-bundled-mcp-servers aws-mcp`
-    // (sourced from `scripts/claude-plugin-mcp-servers.json`, the single
-    // source of truth both this flag and the plugin-render Python script
-    // read) and everything else is dropped before any transformer sees
-    // the model.
-    //
-    // This filtering happens once, here, generically across the whole
-    // model rather than inside `ClaudeTransformer` itself:
-    // `HarnessTransformer` implementations are registered as `&'static`
-    // zero-sized types in `registry::TRANSFORMERS` (see that trait's own
-    // docstring), so there is no per-invocation state a transformer
-    // struct could hold this allowlist in. `None` (the flag omitted) is
-    // an empty allowlist -- no `mcpRegistry` entry is ever merged into
-    // rendered output -- matching this field's behavior before any
-    // caller opts a server in.
+    // Only explicitly bundled MCP servers reach rendered Claude agents.
+    // Apply the allowlist once before transformers run.
     let bundled_mcp_allowlist: std::collections::HashSet<String> = claude_bundled_mcp_servers
         .as_deref()
         .unwrap_or("")
@@ -240,16 +221,7 @@ pub fn dispatch_synth_with(
         .map(str::to_string)
         .collect();
 
-    // --claude-bundled-mcp-config (optional): when given, the launch
-    // definition (command/args/url) for each allowlisted name comes from
-    // that file's own top-level "bundled" object, not from whatever an
-    // individual agent spec's own `dependencies.mcpRegistry` entry says --
-    // see this flag's own doc comment on the `Synth` variant in cli.rs and
-    // scripts/render-claude-plugin-json.py's `--bundled-mcp-config`, which
-    // reads the identical file for the plugin-level `.mcp.json` side of the
-    // same rendering. A name in the allowlist but absent from this file's
-    // "bundled" object still falls through to the plain retain-filter
-    // behavior below, unchanged.
+    // Optional config overrides launch definitions for allowlisted servers.
     let bundled_mcp_config: Option<std::collections::BTreeMap<String, parser::McpServerDef>> =
         match &claude_bundled_mcp_config {
             None => None,
@@ -288,10 +260,24 @@ pub fn dispatch_synth_with(
                         return EXIT_USAGE_ERROR;
                     }
                 };
-                let bundled_value = raw
-                    .get("bundled")
-                    .cloned()
-                    .unwrap_or_else(|| serde_json::Value::Object(Default::default()));
+                let bundled_value = match raw.get("bundled") {
+                    Some(value) => value.clone(),
+                    None => {
+                        crate::cli::report::report_error(
+                            "synth",
+                            "synth.bundled_mcp_config_invalid_shape",
+                            target_dir,
+                            false,
+                            &format!(
+                                "--claude-bundled-mcp-config {path} must contain a \"bundled\" object"
+                            ),
+                            Vec::new(),
+                            json,
+                            color,
+                        );
+                        return EXIT_USAGE_ERROR;
+                    }
+                };
                 match serde_json::from_value(bundled_value) {
                     Ok(parsed) => Some(parsed),
                     Err(err) => {
@@ -2024,6 +2010,39 @@ mod tests {
             "the legacy leftover must never appear as an entry inside the freshly \
              packaged tarball, got entries: {entries:?}"
         );
+
+        fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn dispatch_synth_with_bundled_mcp_config_requires_bundled_object() {
+        let root = scratch_dir("bundled-mcp-config-missing-bundled");
+        fs::create_dir_all(root.join("agents")).unwrap();
+        fs::write(
+            root.join("agents/k-example.agent-spec.json"),
+            br#"{
+                "schemaVersion": "1",
+                "name": "k-example",
+                "config": {"description": "d", "systemPrompt": "p", "model": "m"},
+                "dependencies": {"mcpRegistry": {}},
+                "clientConfig": {"claudeCli": {}}
+            }"#,
+        )
+        .unwrap();
+
+        let config_path = root.join("bundled-mcp-servers.json");
+        fs::write(&config_path, br#"{"byo": {}}"#).unwrap();
+
+        let code = dispatch_synth_with(
+            &root,
+            None,
+            Some("aws-mcp".to_string()),
+            Some(config_path.display().to_string()),
+            false,
+            false,
+            ColorMode::disabled(),
+        );
+        assert_eq!(code, EXIT_USAGE_ERROR);
 
         fs::remove_dir_all(&root).ok();
     }

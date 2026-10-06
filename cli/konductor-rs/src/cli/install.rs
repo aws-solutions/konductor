@@ -1524,16 +1524,7 @@ fn link_bin_report_line(
     }
 }
 
-/// Per-content-type counts derived from a written manifest's
-/// `files[]`, plus how many were `Provenance::ReplacedForeign`.
-/// Content type is inferred from each file's path prefix, matching
-/// what each strategy's own copy functions always write, so this
-/// stays in sync with install's real output by construction. `.kiro/skills/`
-/// holds only the Kiro-discoverable `sop-<name>/SKILL.md` conversion;
-/// every other Kiro-runtime skill lives under `.konductor/skills/`.
-/// `skills` counts distinct skill directories (a skill may hold
-/// auxiliary files beyond `SKILL.md`); agents, context, and bin
-/// entries are one file each.
+/// Counts installed content from a strategy manifest.
 struct InstallCounts {
     agents: usize,
     skills: usize,
@@ -1554,17 +1545,7 @@ impl InstallCounts {
             claude::CLAUDE_DESTINATION_ROOT
         );
 
-        // A skill is a directory that may hold SKILL.md plus auxiliary
-        // files, so count distinct skill directories, not one per
-        // file -- otherwise a skill with scripts would inflate the
-        // count. Agents, context, and bin entries are one file each.
-        //
-        // Keyed by `(root, name)`, not bare `name`: `.konductor/skills/`
-        // and `.kiro/skills/` are both written on every Kiro install (a
-        // plain skill under the former, a SOP-skill conversion under
-        // the latter), so a plain skill and a SOP-derived skill
-        // sharing a basename are two physically distinct directories
-        // that must both count.
+        // Count skill directories, not their individual files.
         let mut agents = 0;
         let mut context = 0;
         let mut bin = 0;
@@ -1607,31 +1588,12 @@ impl InstallCounts {
     }
 }
 
-/// Whether `harness_dir`'s own install strategy converts every staged
-/// `.sop.md` file into a real, installed `sop-<name>/SKILL.md` skill
-/// directory (Claude Code -- see `install/claude.rs`'s `install_sop_skills`)
-/// rather than leaving it un-rendered (every other harness today). Read by
-/// both `format_install_summary` (to pick the accurate phrasing) and
-/// `format_install_summary_json`/`report_install_success`'s own
-/// internal-inconsistency fallback (to populate `sops_converted_to_skills`).
-/// A single `bool`, not a richer enum, because there are currently only
-/// these two outcomes across every registered `InstallStrategy` -- see
-/// `count_staged_sops`'s own doc comment for the count this flag qualifies.
+/// Returns whether a harness converts staged SOPs into installed skills.
 fn sops_are_converted_to_skills(harness_dir: &str) -> bool {
     harness_dir == claude::CLAUDE_HARNESS_DIR
 }
 
-/// The SOP clause of the human-readable summary line: accurate per
-/// harness, since "skipped" is true for Kiro CLI (no runtime discovery
-/// path exists there yet) but false for Claude Code, where every staged
-/// `.sop.md` is actually converted into an installed `sop-<name>/SKILL.md`
-/// skill and already counted in `counts.skills` above (see
-/// `install/claude.rs`'s `install_sop_skills` and this module's own
-/// `InstallCounts::from_manifest` doc comment). Before this, the summary
-/// unconditionally printed "skipped N SOP(s) (no runtime discovery path
-/// yet)" on EVERY harness, which was actively misleading on Claude Code --
-/// see `generated/claude-plugin/README.md`'s former "Known gap" section,
-/// now resolved by this fix.
+/// Formats the SOP portion of the install summary for a harness.
 fn sop_clause(sops_skipped: usize, harness_dir: &str) -> String {
     if sops_are_converted_to_skills(harness_dir) {
         format!(
@@ -1643,18 +1605,7 @@ fn sop_clause(sops_skipped: usize, harness_dir: &str) -> String {
     }
 }
 
-/// Builds the one-line default-mode summary `dispatch_install` prints
-/// on success: destination, per-content-type counts, manifest path,
-/// the SOP clause (`sop_clause` -- "skipped" or "converted" depending on
-/// `harness_dir`), the foreign-overwrite count, and the installed
-/// content's own version (from install-info.json's `agent_version`,
-/// `None` when unavailable). `mcp_binary_version` is a separate,
-/// distinctly-labeled note: the release tag the no-`--from` path
-/// actually fetched and checksum-verified the MCP binary from. It can
-/// genuinely differ from `agent_version`, which is read from the
-/// installed `dist/VERSION` file rather than release metadata. `None`
-/// on the `--from` local path and on the no-`--from` graceful-degrade
-/// case (no published binary for this platform).
+/// Formats a successful human-readable install summary.
 #[allow(clippy::too_many_arguments)]
 fn format_install_summary(
     destination: &Path,
@@ -1701,24 +1652,7 @@ fn format_install_verbose_lines(manifest: &manifest::StrategyManifest) -> Vec<St
         .collect()
 }
 
-/// Builds the `--json` structured equivalent of `format_install_summary`:
-/// the same counts as the human-readable summary, plus
-/// `"agent_version"`/`"mcp_binary_version"` fields (`null` when
-/// unavailable). Returns the `serde_json::Value` itself, not a
-/// pre-serialized string, so `report_install_success` can merge in an
-/// additional `"link_bin"` field before printing.
-///
-/// `sops_skipped` keeps its established name and numeric meaning
-/// unchanged (the count of staged `.sop.md` files) for backward
-/// compatibility with any existing `--json` consumer that already reads
-/// it -- it is not renamed or repurposed to 0 on a harness that installs
-/// them. The new `"sops_converted_to_skills"` boolean (see
-/// `sops_are_converted_to_skills`'s own doc comment) disambiguates
-/// per-harness meaning ADDITIVELY: `false` means the count really is
-/// skipped, no runtime discovery path yet (Kiro CLI today); `true` means
-/// every one of those `sops_skipped` files was actually converted into an
-/// installed `sop-<name>/SKILL.md` skill and is already included in
-/// `"skills"` above (Claude Code).
+/// Formats the JSON equivalent of `format_install_summary`.
 fn format_install_summary_json(
     destination: &Path,
     manifest_path: &Path,

@@ -552,19 +552,12 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    # Job-scoped: a second claude-plugin publish attempt (e.g. a re-run)
-    # must not race the first one's force-push. Independent of the
-    # workflow-level `release-${{ github.ref }}` group above -- that group
-    # only prevents a second concurrent *release*, not a second concurrent
-    # push to this specific branch.
+    # Prevent concurrent updates to the public plugin branch.
     concurrency:
       group: claude-plugin-branch-publish
       cancel-in-progress: false
     env:
       RELEASE_VERSION: ${{ needs.check-version.outputs.release_version }}
-      # Hardcoded literal, not sourced from any input -- the guard step
-      # below is defense in depth against a future edit that parameterizes
-      # this incorrectly, not a check against anything reachable today.
       TARGET_BRANCH: claude-plugin
     steps:
       - name: Refuse to target main/mainline
@@ -590,18 +583,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
         with:
-          # Checks out the tag `publish` just created -- the exact commit
-          # that was released.
+          # Build the released source revision.
           ref: ${{ needs.check-version.outputs.release_version }}
           fetch-depth: 0
 
       - name: Set VERSION from the release tag
-        # RELEASE_VERSION is "v<version>" (check-version's own convention).
-        # This is normally a no-op -- check-version already read VERSION
-        # from this same commit to derive RELEASE_VERSION in the first
-        # place -- but re-deriving it here from the tag actually checked
-        # out (rather than trusting the file unconditionally) is cheap
-        # insurance against the two ever disagreeing.
+        # Keep VERSION aligned with the release tag.
         run: |
           set -e
           TAG_VERSION="${RELEASE_VERSION#v}"
@@ -612,22 +599,11 @@ jobs:
         uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
 
       - name: Build the konductor CLI
-        # scripts/generate-claude-plugin.sh (called by
-        # scripts/assemble-claude-plugin-branch.sh below) assumes an
-        # already-built binary and fails closed if it's missing -- it never
-        # builds one itself. This is the same `cli` build target `make
-        # build`/`make synth`/`make claude-plugin` all use; no musl target
-        # needed here, since this binary only runs transiently on this
-        # runner to drive synth/install, and is never uploaded as a release
-        # asset.
+        # The CLI is used only to generate the plugin tree.
         run: make -C cli build
 
       - name: Assemble the flat Claude Code plugin tree
-        # Reuses scripts/generate-claude-plugin.sh and
-        # scripts/assemble-claude-plugin-branch.sh for all of the actual
-        # synth/install/render logic -- no duplicated logic in this
-        # workflow. Locally, `make claude-plugin-check` runs the identical
-        # two scripts.
+        # Build the flat tree that Claude Code installs.
         run: |
           set -e
           ASSEMBLE_DIR="$RUNNER_TEMP/claude-plugin-branch"
@@ -636,23 +612,10 @@ jobs:
           echo "ASSEMBLE_DIR=$ASSEMBLE_DIR" >> "$GITHUB_ENV"
 
       - name: Install claude CLI for validation
-        # `claude plugin validate` is the real, authoritative check -- it's
-        # what a user's own `claude` CLI runs against this exact tree, so it
-        # catches more than a hand-rolled JSON Schema check could
-        # (frontmatter shape, cross-references between agents/skills/
-        # plugin.json, etc.). A schema-only check was the fallback
-        # considered, but this package is a real, public npm package
-        # (@anthropic-ai/claude-code) that installs cleanly on a plain
-        # ubuntu-latest runner, so there's no reason to settle for the
-        # weaker check. Pinned, not @latest, so a change in the CLI's own
-        # validation behavior can't silently start failing (or silently
-        # start passing) this job on an unrelated CLI release.
+        # Pin the validator so its behavior changes only through this workflow.
         run: npm install --global @anthropic-ai/claude-code@2.1.284
 
       - name: Validate the assembled plugin tree
-        # --strict: treat warnings as errors, so unrecognized fields and
-        # missing metadata that the runtime tolerates fail this job too --
-        # not just a hard error.
         run: claude plugin validate "$ASSEMBLE_DIR" --strict
 
       - name: Publish the plugin branch and immutable tag
