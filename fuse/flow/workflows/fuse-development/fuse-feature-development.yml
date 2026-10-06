@@ -16,22 +16,44 @@ description: >
   acceptance tests taken from the spec, and independent agent review of both, before the owner
   approves the spec and lands the branch.
 steps:
+  - id: intake
+    title: Intake
+    phase: Design
+    instruction: >
+      If this checkout is on the integration branch, first create a feature branch named after the
+      workstream. Find out what the owner wants to build: get them to share their vision, however
+      rough or detailed it is, and what problem it solves for whom. Read the code before you ask
+      anything. While the purpose and rough scope are still unclear, ask rather than propose, one
+      or a few questions at a time. If the request names one or more features from a system's
+      build order, build them as one feature: take the scope from their briefs, read the system's
+      requirements and design, and do not reopen decisions they already settle. As soon as the
+      purpose and rough scope are settled, write a first draft of the spec, marked as a draft,
+      with the questions still open; from then on, record each decision in the draft when it is
+      made. When the request already settles the purpose and scope, write the draft straight away
+      and say so. Do not order the draft for review yet, and do not change code.
+    produces:
+      - artifact: feature-spec
+        path: docs/specs/{slug}.md
+
   - id: design
     title: Design
     phase: Design
     instruction: >
-      If this checkout is on the integration branch, first create a feature branch named after the
-      workstream. Turn the owner's request into an agreed spec: what the feature does and for
-      whom, how it fits the existing code, and the acceptance tests that will show it works, one
-      for each behavior it must have. Read the code before you ask anything. Ask only the questions whose
-      answers change the design, give your recommended answer with each, and decide the rest
-      yourself as recorded assumptions. Keep the spec as short as the feature allows. Do not
-      change code until the owner approves the spec. Commit the spec on the branch.
-    produces:
+      Turn the draft into the agreed spec: what the feature does and for whom, how it fits the
+      existing code, and the acceptance tests that will show it works, one for each behavior it
+      must have. Where there are genuinely different approaches, propose them with your
+      recommendation. Ask every remaining question whose answer changes the design, give your
+      recommended answer with each, and decide the rest yourself as recorded assumptions, labeled
+      as your decisions so the owner can object. Record what is deferred. Keep the spec as short
+      as the feature allows. When nothing material is open, order the spec for review: the
+      decisions the owner must make or check, and your own decisions and assumptions, come first,
+      most important first. Do not change code until the owner approves the spec. Commit the spec
+      on the branch.
+    updates:
       - artifact: feature-spec
         path: docs/specs/{slug}.md
     gates:
-      - agent: review the spec against the owner's request and the code
+      - agent: review the spec against the owner's request, the code, and the system's requirements and design when the feature is part of a system
         guide: review.md
         max_rounds: 2
       - owner-action: approve the spec
@@ -40,14 +62,15 @@ steps:
     title: Implementation
     phase: Build
     instruction: >
-      Build the approved spec. Write the spec's acceptance tests from the
-      spec's wording, not from your code, and see each one fail before the code makes it pass,
-      or break the code briefly and see it go red. Start every bug fix with a test that
-      reproduces the bug and fails. How you test the rest is your call. Never weaken a test to
-      get to green. Commit as you go. When something fails unexpectedly, find the root cause
-      before you change code. Decide ambiguities yourself, with the spec as the authority, and
-      list each decision in the hand-over. Stop and ask only before an irreversible action or one
-      that reaches outside this checkout.
+      Build the approved spec. Write the spec's acceptance tests from the spec's wording, not from
+      your code, and see each one fail before the code makes it pass, or break the code briefly
+      and see it go red. Start every bug fix with a test that reproduces the bug and fails. How
+      you test the rest is your call. Never weaken a test to get to green. If the feature is part
+      of a system, also use the system end to end, with the features landed so far, for the
+      requirements this feature covers. Commit as you go. When something fails unexpectedly, find
+      the root cause before you change code. Decide ambiguities yourself, with the spec as the
+      authority, and list each decision in the hand-over. Stop and ask only before an
+      irreversible action or one that reaches outside this checkout.
     consumes: [feature-spec]
     updates:
       - artifact: code

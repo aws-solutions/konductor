@@ -6,30 +6,54 @@
 # new channels. Work that extends code within the existing architecture uses
 # fuse-feature-development; a migration needs its own workflow. In the spirit of
 # decently-capable-powers and decently-coordinated-loops: the owner approves what to build and
-# how, the agent builds it feature by feature, and independent agent review raises the bar before
-# each owner decision. The steps say what to achieve and leave the
-# how to the agent and its harness. Step and artifact names follow _k-phase-chain and
-# _k-full-sdlc where they fit; review.md next to this file is the review guide for every agent gate.
+# how, and independent agent review raises the bar before each owner decision. The workflow ends
+# with the approved requirements, design and build order on the integration branch. Each entry of
+# the build order, or a few of them combined, is then built as its own fuse-feature-development
+# workstream, by the owner or by teammates in parallel where the order allows. Each feature is
+# tested and reviewed as it is integrated with what has landed so far, so there is no separate
+# build or final test phase here. The steps say what to achieve and leave the how to the agent and
+# its harness. Step and artifact names follow _k-phase-chain and _k-full-sdlc where they fit;
+# review.md next to this file is the review guide for every agent gate.
 #
 # Start a workstream with:  fuse-flow start <slug> --workflow fuse-system-development
 version: 1
 name: fuse-system-development
 description: >
-  A new system from scratch, or a new module that needs its own architecture: requirements and a
-  design approved by the owner, a build feature by feature, end-to-end testing against the requirements, and independent
-  agent review before each owner decision.
+  A new system from scratch, or a new module that needs its own architecture: requirements, a
+  design and a build order, each reviewed by an agent and approved by the owner. The features in
+  the build order are then built one by one, or in parallel by teammates, with
+  fuse-feature-development.
 steps:
+  - id: intake
+    title: Intake
+    phase: Design
+    instruction: >
+      Find out what the owner wants to build: get them to share their vision, however rough or
+      detailed it is, who it is for, and what problem it solves. Read what already exists before
+      you ask anything. While the purpose and rough scope are still unclear, ask rather than
+      propose, one or a few questions at a time. As soon as the purpose and rough scope are
+      settled, write a first draft of the requirements, marked as a draft, with the questions
+      still open; from then on, record each decision in the draft when it is made. When the
+      request already settles the purpose and scope, write the draft straight away and say so.
+      Do not order the draft for review yet.
+    produces:
+      - artifact: requirements
+        path: docs/specs/{slug}/requirements.md
+
   - id: requirements
     title: Requirements
     phase: Design
     instruction: >
-      Agree with the owner what the system must do: who uses it, what they can do with it, and how
-      the owner will judge it done. Also record what it must never do (prohibited behavior), what
-      is planned for later and must stay possible but is not built now (deferred behavior), and
-      what is out of scope, with nothing decided about it. Read what already exists before you ask anything. Ask only the questions
-      whose answers change the requirements, give your recommended answer with each, and record
-      the rest as assumptions. Write each requirement so that a test can check it.
-    produces:
+      Turn the draft into the agreed requirements: who uses the system, what they can do with it,
+      and how the owner will judge it done. Also record what it must never do (prohibited
+      behavior), what is planned for later and must stay possible but is not built now (deferred
+      behavior), and what is out of scope, with nothing decided about it. Ask every remaining
+      question whose answer changes the requirements, give your recommended answer with each,
+      and record the rest as assumptions, labeled as your decisions so the owner can object.
+      Write each requirement so that a test can check it. When nothing material is open, order
+      the document for review: the decisions the owner must make or check, and your own
+      decisions and assumptions, come first, most important first.
+    updates:
       - artifact: requirements
         path: docs/specs/{slug}/requirements.md
     gates:
@@ -38,15 +62,39 @@ steps:
         max_rounds: 2
       - owner-action: approve the requirements
 
-  - id: design
-    title: Design
+  - id: prototype
+    title: Prototypes
+    phase: Design
+    condition:
+      agent: >
+        the design will rest on an assumption that is uncertain and that a short experiment can
+        settle, such as how a library, an API or a service behaves under the system's use, or
+        whether an approach is fast or cheap enough
+    instruction: >
+      List the assumptions the design will rest on that you cannot settle by reading, and propose
+      to the owner an experiment for each: what it would show, and roughly how big it is. Run the
+      ones the owner agrees to, as throwaway prototypes in a git-ignored scratch folder or on a
+      branch that is never landed. Record each result, and the evidence for it, in a research
+      note, and say whether the assumption held. Prototype code does not become the system's code.
+    consumes: [requirements]
+    produces:
+      - artifact: research-note
+        path: docs/research/
+
+  - id: system-design
+    title: System design
     phase: Design
     instruction: >
       Design how the system meets the approved requirements: its parts and the interfaces
       between them, the data it keeps, how it fails, and the acceptance tests that will show it
-      meets each requirement. Choose the simplest design that meets them. Where there is a real
-      choice, give the options and the reason for yours. Check every claim about existing code or
-      services against the source. Leave the build order to the feature split.
+      meets each requirement. Choose the simplest design that meets them. For each significant
+      decision, show that you looked beyond your first idea: name the plausible alternatives,
+      including ones found by researching how others solve the problem, weigh them against the
+      requirements, and give the reason for your choice. State the assumptions the design rests
+      on and how each was checked, citing the research notes from the prototypes where there are
+      any; when an assumption needs an experiment nobody has run, propose it to the owner rather
+      than guess. Check every claim about existing code or services against the source. Leave
+      the build order to the feature split.
     consumes: [requirements]
     produces:
       - artifact: design
@@ -56,14 +104,26 @@ steps:
         guide: review.md
         max_rounds: 2
         route_back_to: requirements
+      - agent: challenge the design as a principal engineer would before approving it
+        guide: principal-review.md
+        max_rounds: 3
+        route_back_to: [prototype, requirements]
 
   - id: feature-splitting
     title: Feature splitting
     phase: Design
     instruction: >
-      Split the design into features to build one after another, in an order where each feature
-      leaves the system working and testable end to end. Give each feature a slug and list the
-      requirements it covers; every requirement belongs to a feature.
+      Split the design into small features, each one a change that leaves the system working and
+      testable end to end, and put them in a build order. Err on the side of small: do not try to
+      judge how much work a feature is. Give each feature a short brief: a slug, what it adds, the
+      requirements it covers, and the features it depends on. Every requirement belongs to a
+      feature. Mark which features can be built in parallel. Each feature will be built as its
+      own fuse-feature-development workstream, with its own spec, review and landing, so the split
+      is a proposal, not a rule: tell the owner that features too small to be worth that
+      ceremony can be combined, now in the build order or later when a feature workstream starts,
+      and point out the ones you would combine. If this checkout is on the integration branch,
+      create a branch named after the workstream, and commit the requirements, the design and the
+      build order on it. Do not merge it or push it to a shared branch; the owner lands it.
     consumes: [requirements, design]
     produces:
       - artifact: build-order
@@ -72,65 +132,5 @@ steps:
       - agent: review the build order against the approved requirements and the design
         guide: review.md
         max_rounds: 2
-      - owner-action: approve the design and the build order
-        route_back_to: [requirements, design]
-
-  - id: implementation
-    title: Implementation
-    phase: Build
-    instruction: >
-      Build the features in the order of the split, one at a time. If this checkout is on the
-      integration branch, first create a feature branch named after the workstream. Write each
-      feature's acceptance tests from the requirements and the design, not from your code, and
-      see each one fail before the code makes it pass, or break the code briefly and see it go
-      red. Start every bug fix with a test that reproduces the bug and fails. How you test the
-      rest is your call. Never weaken a test to get to green. Commit
-      each feature when its tests pass. When something fails unexpectedly, find the root cause
-      before you change code. Decide ambiguities yourself, with the design as the authority, and
-      list each decision in the hand-over. Stop and ask only before an irreversible action or one
-      that reaches outside this checkout.
-    consumes: [requirements, design, build-order]
-    updates:
-      - artifact: code
-        path: .
-    gates:
-      - check: default
-
-  - id: testing
-    title: Testing
-    phase: Build
-    instruction: >
-      Use the system end to end as its users would, against every requirement, including the
-      failure cases. For a migration, compare its behavior with the old system's. Fix what fails
-      and add the test that would have caught it. Record, per requirement, how you exercised it
-      and the result.
-    consumes: [requirements]
-    produces:
-      - artifact: test-report
-        path: docs/specs/{slug}/test-report.md
-    updates:
-      - artifact: code
-        path: .
-    gates:
-      - check: default
-
-  - id: code-review
-    title: Code review
-    phase: Review
-    instruction: >
-      Make the branch ready for the owner to land. If the integration branch has moved, rebase the
-      branch onto it first. Get the branch through review. Before the last round, fold fixups and
-      review fixes into one commit per feature, each with a subject that stands on its own. Do not
-      merge it into the integration branch or push it to a shared branch; the owner lands it.
-    consumes: [requirements, design, test-report]
-    updates:
-      - artifact: code
-        path: .
-    gates:
-      - check: default
-      - agent: review the branch's diff from its merge-base with the integration branch to HEAD, against the approved requirements and design
-        guide: review.md
-        max_rounds: 3
-        route_back_to: implementation
-      - owner-action: land the branch, or send it back
-        route_back_to: [requirements, design, implementation]
+      - owner-action: approve the design and the build order, then land them
+        route_back_to: [requirements, system-design]
