@@ -6,6 +6,14 @@ This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Entries are consolidated per release,
 not per individual commit.
 
+## [1.0.4] - 2026-10-06
+
+### Fixed
+
+- `k-architect` and `k-developer` no longer tell agents to use `aws___call_aws`, a tool the AWS MCP server has removed. Both now point at `aws___run_script`, the server's own replacement for running AWS CLI commands.
+- `find-aws-skills`' failure-handling fallback no longer references `aws___suggest_aws_commands`, which the AWS MCP server does not expose. It now points at `aws___run_script` instead.
+- `aws-service-validator` calls `aws___get_regional_availability` with the parameters the AWS MCP server actually requires (`regions`, `resource_type`, `filters`), instead of a bare service-and-region call that fails with a missing-required-field error.
+
 ## [1.0.3] - 2026-10-01
 
 ### Fixed
