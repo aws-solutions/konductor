@@ -1,10 +1,13 @@
 # $schema: ../schemas/workflow.schema.json
 # yaml-language-server: $schema=../schemas/workflow.schema.json
 #
-# A new system, or a change large enough to need its own requirements and design, such as a
-# migration. In the spirit of decently-capable-powers and decently-coordinated-loops: the owner
-# approves what to build and how, the agent builds it feature by feature, and independent agent
-# review raises the bar before each owner decision. The steps say what to achieve and leave the
+# A new system built from scratch, or a significant new module of an existing system that needs
+# architecture of its own: new infrastructure, new scalability concerns, a new persistence layer,
+# new channels. Work that extends code within the existing architecture uses
+# fuse-feature-development; a migration needs its own workflow. In the spirit of
+# decently-capable-powers and decently-coordinated-loops: the owner approves what to build and
+# how, the agent builds it feature by feature, and independent agent review raises the bar before
+# each owner decision. The steps say what to achieve and leave the
 # how to the agent and its harness. Step and artifact names follow _k-phase-chain and
 # _k-full-sdlc where they fit; review.md next to this file is the review guide for every agent gate.
 #
@@ -12,17 +15,18 @@
 version: 1
 name: fuse-system-development
 description: >
-  A new system or a large change such as a migration: requirements and a design approved by the
-  owner, a build feature by feature, end-to-end testing against the requirements, and independent
+  A new system from scratch, or a new module that needs its own architecture: requirements and a
+  design approved by the owner, a build feature by feature, end-to-end testing against the requirements, and independent
   agent review before each owner decision.
 steps:
   - id: requirements
     title: Requirements
     phase: Design
     instruction: >
-      Agree with the owner what the system must do: who uses it, what they can do with it, what is
-      out of scope, and how the owner will judge it done. For a migration, say what must behave
-      exactly as before. Read what already exists before you ask anything. Ask only the questions
+      Agree with the owner what the system must do: who uses it, what they can do with it, and how
+      the owner will judge it done. Also record what it must never do (prohibited behavior), what
+      is planned for later and must stay possible but is not built now (deferred behavior), and
+      what is out of scope, with nothing decided about it. Read what already exists before you ask anything. Ask only the questions
       whose answers change the requirements, give your recommended answer with each, and record
       the rest as assumptions. Write each requirement so that a test can check it.
     produces:

@@ -19,8 +19,8 @@ steps:
   - id: elicitation
     title: 0. Intake elicitation
     instruction: >
-      Resolve the request into a requirements summary: goals, non-goals, constraints, open decisions
-      with your recommendation. Skip the questioning when the request already answers them and say
+      Resolve the request into a requirements summary: goals, prohibited behavior, deferred
+      behavior, what is out of scope, constraints, and open decisions with your recommendation. Skip the questioning when the request already answers them and say
       so in the summary.
     produces:
       - artifact: requirements-summary

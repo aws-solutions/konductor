@@ -34,6 +34,17 @@ it fits; otherwise they use the clearest ordinary engineering term.
 | hand-over block | The final five labelled lines in every hand-back to the owner: `SUMMARY`, `STATUS`, `PRODUCED`, `VERIFICATION`, and `NEXT STEP`. | Konductor: handoff or completion receipt in prose. AI-DLC: stage transition summary. |
 | `skip_reason` | The recorded reason a step became `SKIPPED`, including a false condition or owner-directed jump. | Konductor: `skip_reason`, required for a `SKIPPED` step. |
 
+## Scope terms
+
+Requirements, specs and designs sort what a change will not do into three kinds. Do not use
+"non-goal": it does not say which of the three is meant.
+
+| Term | Meaning | Maps to |
+|---|---|---|
+| prohibited behavior | What the system must never do. Reviews and tests check it like any requirement. | Konductor and AI-DLC: part of "non-goals" or constraints. |
+| deferred behavior | Behavior that will likely become a goal later. Do not work towards it now, but keep the design open for it as a planned expansion. | Konductor and AI-DLC: part of "non-goals" or future work. |
+| out of scope | Left out without deciding whether it may be wanted later. The work neither builds it nor plans for it. | Konductor and AI-DLC: part of "non-goals". |
+
 ## Step states
 
 | Term | Meaning | Maps to |
