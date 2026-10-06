@@ -10,6 +10,12 @@ workstreams. It reads and writes the workflow files on disk, in all three places
 
 The Library tab shows the artifact library from the same three levels.
 
+The detail panel on the right is closed when Komposer opens, so the workflow's steps fill the
+screen. Selecting a step opens it on that step; the Library, Workflow and YAML buttons at the bottom
+right open it on those tabs; Escape or its close button closes it again. The step tab groups its
+fields in four sections (basics, instruction, inputs and outputs, gates); only the instruction is
+open at first, a closed section shows a one-line summary, and a section with a problem stays open.
+
 ## Running it
 
 You need [Bun](https://bun.sh) 1.3 or later. From this folder, the first time:

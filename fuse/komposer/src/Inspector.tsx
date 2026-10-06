@@ -47,6 +47,7 @@ export function Inspector({
   run,
   onOpenRun,
   onOpenWorkflowStep,
+  onClose,
 }: {
   tab: InspectorTab;
   onTab: (tab: InspectorTab) => void;
@@ -67,6 +68,7 @@ export function Inspector({
   run?: WorkstreamSummary;
   onOpenRun: (slug: string) => void;
   onOpenWorkflowStep: (workflowKey: string, stepIndex: number) => void;
+  onClose: () => void;
 }) {
   // The library entry a G T R badge asked to open; the counter re-opens the same id.
   const [libraryFocus, setLibraryFocus] = useState<{ id: string; n: number } | null>(null);
@@ -90,6 +92,10 @@ export function Inspector({
             {t.label}
           </button>
         ))}
+        <span className="grow" />
+        <button className="icon-mini inspector-close" title="Close the panel (Esc)" aria-label="Close the panel" onClick={onClose}>
+          <X size={16} />
+        </button>
       </div>
       <div className="inspector-body">
         {tab === "step" && (
@@ -158,6 +164,7 @@ function StepTab({
   onViewFile: (title: string, file: FileRef) => void;
 }) {
   const [expand, setExpand] = useState(false);
+  const sections = useFolderState("komposer:step-sections");
   const [outputId, setOutputId] = useState("");
   const gateGuides = (fileIndex: number) =>
     reviewGuides?.gates.find((g) => g.step === selectedIndex && g.gate === fileIndex);
@@ -186,550 +193,589 @@ function StepTab({
       condition: { kind, text: value, ...(description ? { description } : {}) },
     });
 
+  const hasProblem = (...fields: Problem["field"][]) => problems.some((p) => fields.includes(p.field));
+  const section = (id: StepSection, problem: boolean) => ({
+    open: problem || sections.isOpen(id, id, id === "instruction"),
+    problem,
+    onToggle: () => sections.toggle(id, id, id === "instruction"),
+  });
+  const firstWords = (step.instruction ?? "").trim().split(/\s+/).slice(0, 8).join(" ");
+  const gateKinds = gateOrder.map(({ gate }) => gate.kind).join(", ");
+
   return (
     <div className="inspector-section-stack">
-      <div className="field-grid">
-        <label className="field full-span">
-          <FieldLabel label="Title" doc={DOCS.title} />
-          <input
-            className="field-input title-input"
-            value={step.title ?? ""}
-            placeholder={step.id}
-            onChange={(e) => setStep("title", e.target.value)}
-          />
-        </label>
-        <label className="field">
-          <FieldLabel label="Id" doc={DOCS.id} />
-          <input
-            className="field-input mono-input"
-            value={step.id}
-            onChange={(e) => setStep("id", e.target.value)}
-            data-error={!!err("id")}
-          />
-        </label>
-        <label className="field">
-          <FieldLabel label="Phase" doc={DOCS.phase} />
-          <input
-            className="field-input"
-            list="kp-phases"
-            value={step.phase ?? ""}
-            onChange={(e) => setStep("phase", e.target.value)}
-          />
-          <datalist id="kp-phases">
-            {phases.map((p) => (
-              <option key={p} value={p} />
-            ))}
-          </datalist>
-        </label>
-        {err("id") && <div className="field-error full-span">{err("id")}</div>}
-        <label className="field full-span">
-          <FieldLabel label="Description" doc={DOCS.description} />
-          <input
-            className="field-input"
-            value={step.description ?? ""}
-            onChange={(e) => setStep("description", e.target.value)}
-          />
-        </label>
-      </div>
-
-      <div className="field-block">
-        <div className="field-block-head">
-          <FieldLabel label="Instruction" doc={DOCS.instruction} />
-          <span className="grow" />
-          <select
-            className="mode-select"
-            value={style}
-            onChange={(e) =>
-              onEdit({
-                op: "setInstruction",
-                step: selectedIndex,
-                text: step.instruction ?? "",
-                style: e.target.value as ">" | "|",
-              })
-            }
-          >
-            <option value=">">&gt; folded</option>
-            <option value="|">| literal</option>
-          </select>
-          <button className="text-button" onClick={() => setExpand(true)}>
-            Expand
-          </button>
-        </div>
-        <textarea
-          className="field-textarea"
-          rows={clampRows(step.instruction)}
-          value={step.instruction ?? ""}
-          onChange={(e) => onEdit({ op: "setInstruction", step: selectedIndex, text: e.target.value, style })}
-          data-error={!!err("instr")}
-        />
-        {err("instr") && <div className="field-error">{err("instr")}</div>}
-      </div>
-
-      <div className="field-block">
-        <div className="field-block-head">
-          <FieldLabel label="Condition" doc={DOCS.condition} />
-        </div>
-        <div className="segmented">
-          {(["none", "check", "script", "agent", "owner-action"] as const).map((kind) => (
-            <button
-              key={kind}
-              className={`segmented-opt${(step.condition?.kind ?? "none") === kind ? " is-active" : ""}`}
-              onClick={() =>
-                kind === "none"
-                  ? onEdit({ op: "setCondition", step: selectedIndex, condition: null })
-                  : setCondition(
-                      kind,
-                      kind === "check" ? "default" : (step.condition?.text ?? ""),
-                      step.condition?.description,
-                    )
-              }
-            >
-              {kind === "owner-action" ? "owner" : kind}
-            </button>
-          ))}
-        </div>
-        {step.condition && (
-          <>
+      <StepSectionView
+        title="Basics"
+        summary={[step.title ?? step.id, step.phase].filter(Boolean).join(" · ")}
+        {...section("basics", hasProblem("id"))}
+      >
+        <div className="field-grid">
+          <label className="field full-span">
+            <FieldLabel label="Title" doc={DOCS.title} />
             <input
-              className="field-input"
-              value={step.condition.text}
-              placeholder={conditionPlaceholder(step.condition.kind)}
-              onChange={(e) => setCondition(step.condition!.kind, e.target.value, step.condition!.description)}
-              data-error={!!err("cond")}
+              className="field-input title-input"
+              value={step.title ?? ""}
+              placeholder={step.id}
+              onChange={(e) => setStep("title", e.target.value)}
             />
-            <label className="mini-field">
-              <span className="mini-label">
-                description <span className="field-tag is-optional">optional</span>
-                <InfoTip doc={GATE_FIELD_DOCS.gateDescription} />
-              </span>
-              <input
-                className="field-input"
-                value={step.condition.description ?? ""}
-                onChange={(e) => setCondition(step.condition!.kind, step.condition!.text, e.target.value)}
-              />
-            </label>
-          </>
-        )}
-        {err("cond") && <div className="field-error">{err("cond")}</div>}
-      </div>
-
-      <div className="field-block">
-        <div className="field-block-head">
-          <FieldLabel label="Consumes" doc={DOCS.consumes} />
-        </div>
-        <div className="pill-row">
-          {available.map((a) => {
-            const on = step.consumes.includes(a.id);
-            return (
-              <button
-                key={a.id}
-                className={`toggle-pill${on ? " is-on" : ""}`}
-                title={`from ${a.from}`}
-                onClick={() =>
-                  onEdit({
-                    op: "setConsumes",
-                    step: selectedIndex,
-                    ids: on
-                      ? step.consumes.filter((id) => id !== a.id)
-                      : [
-                          ...step.consumes.filter((id) => available.some((v) => v.id === id)),
-                          a.id,
-                          ...step.consumes.filter((id) => !available.some((v) => v.id === id)),
-                        ],
-                  })
-                }
-              >
-                {a.id} <small>{a.from}</small>
-              </button>
-            );
-          })}
-          {step.consumes
-            .filter((id) => !available.some((a) => a.id === id))
-            .map((id) => (
-              <button
-                key={id}
-                className="toggle-pill is-bad"
-                onClick={() =>
-                  onEdit({ op: "setConsumes", step: selectedIndex, ids: step.consumes.filter((x) => x !== id) })
-                }
-              >
-                {id} × remove
-              </button>
-            ))}
-        </div>
-      </div>
-
-      <div className="field-block">
-        <div className="field-block-head">
-          <FieldLabel label="Outputs" doc={DOCS.produces} />
-          <span className="grow" />
-          <button className="text-button" onClick={onLibrary}>
-            Library
-          </button>
-        </div>
-        <div className="output-rows">
-          {step.artifacts.map((a, flatIndex) => {
-            const index = step.artifacts.slice(0, flatIndex).filter((x) => x.role === a.role).length;
-            const entry = resolveLibrary(library, a.artifact);
-            const fieldErr = problems
-              .filter((p) => p.field === "art" && p.itemIndex === flatIndex)
-              .map((p) => p.message)
-              .join(" ");
-            return (
-              <div key={`${a.role}-${index}`} className="output-row">
-                <div className="output-row-head">
-                  <select
-                    className="mode-select"
-                    value={a.role}
-                    onChange={(e) =>
-                      onEdit({
-                        op: "changeOutputMode",
-                        step: selectedIndex,
-                        mode: a.role,
-                        index,
-                        to: e.target.value as OutputMode,
-                      })
-                    }
-                  >
-                    <option value="produces">produces</option>
-                    <option value="optional_produces">optional_produces</option>
-                    <option value="updates">updates</option>
-                  </select>
-                  <InfoTip doc={DOCS[a.role]} />
-                  <button
-                    type="button"
-                    className={`library-badge${entry ? "" : " is-missing"}`}
-                    title={
-                      entry
-                        ? [
-                            `Open ${a.artifact} in the library`,
-                            ...Object.entries(winningEntry(library, a.artifact)?.links ?? {}).map(
-                              ([name, link]) => `${name} is ${link.display}`,
-                            ),
-                          ].join("\n")
-                        : `Search the library for ${a.artifact}`
-                    }
-                    onClick={() => onOpenLibraryEntry(a.artifact)}
-                  >
-                    {entry ? `${entry.g ? "G" : ""} ${entry.t ? "T" : ""} ${entry.r ? "R" : ""}` : "no guide"}
-                  </button>
-                  <button
-                    className="icon-mini"
-                    onClick={() => onEdit({ op: "removeOutput", step: selectedIndex, mode: a.role, index })}
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-                <label className="mini-field">
-                  <span className="mini-label">
-                    artifact <span className="field-tag is-required">required</span>
-                    <InfoTip doc={DOCS.artifact} />
-                  </span>
-                  <input
-                    className="field-input mono-input"
-                    list="kp-library"
-                    value={a.artifact}
-                    onChange={(e) =>
-                      onEdit({
-                        op: "setOutput",
-                        step: selectedIndex,
-                        mode: a.role,
-                        index,
-                        fields: { artifact: e.target.value },
-                      })
-                    }
-                    data-error={!!fieldErr}
-                  />
-                </label>
-                <label className="mini-field">
-                  <span className="mini-label">
-                    path <span className="field-tag is-required">required</span>
-                    <InfoTip doc={DOCS.path} />
-                  </span>
-                  <input
-                    className="field-input"
-                    value={a.path}
-                    onChange={(e) =>
-                      onEdit({
-                        op: "setOutput",
-                        step: selectedIndex,
-                        mode: a.role,
-                        index,
-                        fields: { path: e.target.value },
-                      })
-                    }
-                  />
-                </label>
-                <label className="mini-field">
-                  <span className="mini-label">
-                    description <span className="field-tag is-optional">optional</span>
-                    <InfoTip doc={DOCS.artDescription} />
-                  </span>
-                  <input
-                    className="field-input"
-                    value={a.description ?? ""}
-                    onChange={(e) =>
-                      onEdit({
-                        op: "setOutput",
-                        step: selectedIndex,
-                        mode: a.role,
-                        index,
-                        fields: { description: e.target.value || null },
-                      })
-                    }
-                  />
-                </label>
-                {fieldErr && <div className="field-error">{fieldErr}</div>}
-              </div>
-            );
-          })}
-          <datalist id="kp-library">
-            {[...new Set(library.map((e) => e.id))].map((id) => (
-              <option key={id} value={id} />
-            ))}
-          </datalist>
-          <div className="add-row">
+          </label>
+          <label className="field">
+            <FieldLabel label="Id" doc={DOCS.id} />
             <input
               className="field-input mono-input"
-              list="kp-library"
-              placeholder="artifact id"
-              value={outputId}
-              onChange={(e) => setOutputId(e.target.value)}
+              value={step.id}
+              onChange={(e) => setStep("id", e.target.value)}
+              data-error={!!err("id")}
             />
-            <button
-              className="add-button"
-              onClick={() => {
-                const id = outputId.trim();
-                if (!id) return;
-                onAddArtifact(selectedIndex, "produces", id);
-                setOutputId("");
-              }}
+          </label>
+          <label className="field">
+            <FieldLabel label="Phase" doc={DOCS.phase} />
+            <input
+              className="field-input"
+              list="kp-phases"
+              value={step.phase ?? ""}
+              onChange={(e) => setStep("phase", e.target.value)}
+            />
+            <datalist id="kp-phases">
+              {phases.map((p) => (
+                <option key={p} value={p} />
+              ))}
+            </datalist>
+          </label>
+          {err("id") && <div className="field-error full-span">{err("id")}</div>}
+          <label className="field full-span">
+            <FieldLabel label="Description" doc={DOCS.description} />
+            <input
+              className="field-input"
+              value={step.description ?? ""}
+              onChange={(e) => setStep("description", e.target.value)}
+            />
+          </label>
+        </div>
+      </StepSectionView>
+
+      <StepSectionView
+        title="Instruction"
+        summary={
+          (step.condition ? `only if: ${step.condition.text || step.condition.kind} · ` : "") +
+          (firstWords ? `${firstWords}…` : "empty")
+        }
+        {...section("instruction", hasProblem("instr", "cond"))}
+      >
+
+        <div className="field-block">
+          <div className="field-block-head">
+            <FieldLabel label="Instruction" doc={DOCS.instruction} />
+            <span className="grow" />
+            <select
+              className="mode-select"
+              value={style}
+              onChange={(e) =>
+                onEdit({
+                  op: "setInstruction",
+                  step: selectedIndex,
+                  text: step.instruction ?? "",
+                  style: e.target.value as ">" | "|",
+                })
+              }
             >
-              <Plus size={14} /> Add
+              <option value=">">&gt; folded</option>
+              <option value="|">| literal</option>
+            </select>
+            <button className="text-button" onClick={() => setExpand(true)}>
+              Expand
             </button>
           </div>
+          <textarea
+            className="field-textarea"
+            rows={clampRows(step.instruction)}
+            value={step.instruction ?? ""}
+            onChange={(e) => onEdit({ op: "setInstruction", step: selectedIndex, text: e.target.value, style })}
+            data-error={!!err("instr")}
+          />
+          {err("instr") && <div className="field-error">{err("instr")}</div>}
         </div>
-      </div>
 
-      <div className="field-block">
-        <div className="field-block-head">
-          <FieldLabel label="Gates" doc={DOCS.gates} />
-          {differs && <span className="run-order-note">shown in run order; file order differs</span>}
+        <div className="field-block">
+          <div className="field-block-head">
+            <FieldLabel label="Condition" doc={DOCS.condition} />
+          </div>
+          <div className="segmented">
+            {(["none", "check", "script", "agent", "owner-action"] as const).map((kind) => (
+              <button
+                key={kind}
+                className={`segmented-opt${(step.condition?.kind ?? "none") === kind ? " is-active" : ""}`}
+                onClick={() =>
+                  kind === "none"
+                    ? onEdit({ op: "setCondition", step: selectedIndex, condition: null })
+                    : setCondition(
+                        kind,
+                        kind === "check" ? "default" : (step.condition?.text ?? ""),
+                        step.condition?.description,
+                      )
+                }
+              >
+                {kind === "owner-action" ? "owner" : kind}
+              </button>
+            ))}
+          </div>
+          {step.condition && (
+            <>
+              <input
+                className="field-input"
+                value={step.condition.text}
+                placeholder={conditionPlaceholder(step.condition.kind)}
+                onChange={(e) => setCondition(step.condition!.kind, e.target.value, step.condition!.description)}
+                data-error={!!err("cond")}
+              />
+              <label className="mini-field">
+                <span className="mini-label">
+                  description <span className="field-tag is-optional">optional</span>
+                  <InfoTip doc={GATE_FIELD_DOCS.gateDescription} />
+                </span>
+                <input
+                  className="field-input"
+                  value={step.condition.description ?? ""}
+                  onChange={(e) => setCondition(step.condition!.kind, step.condition!.text, e.target.value)}
+                />
+              </label>
+            </>
+          )}
+          {err("cond") && <div className="field-error">{err("cond")}</div>}
         </div>
-        <div className="gate-rows">
-          {gateOrder.map(({ gate, fileIndex }, orderIndex) => {
-            const gateProblems = problems.filter((p) => p.field === "gate" && p.itemIndex === fileIndex);
-            const gateTextErr = gateProblems
-              .filter((p) => p.subfield === "text" || !p.subfield)
-              .map((p) => p.message)
-              .join(" ");
-            const routeErr = gateProblems
-              .filter((p) => p.subfield === "route")
-              .map((p) => p.message)
-              .join(" ");
-            const maxRoundsErr = gateProblems
-              .filter((p) => p.subfield === "maxRounds")
-              .map((p) => p.message)
-              .join(" ");
-            const remainingErr = gateProblems
-              .filter((p) => p.subfield !== "route")
-              .map((p) => p.message)
-              .join(" ");
-            return (
-              <div key={fileIndex} className="gate-row">
-                <div className="gate-row-head">
-                  <span className="gate-row-num">{orderIndex + 1}</span>
-                  <select
-                    className="kind-select"
-                    value={gate.kind}
-                    onChange={(e) => {
-                      const kind = e.target.value as GateKind;
-                      onEdit({
-                        op: "setGate",
-                        step: selectedIndex,
-                        index: fileIndex,
-                        fields: {
-                          kind,
-                          ...(kind === "check" && !CHECK_KIND.test(gate.text) ? { text: "default" } : {}),
-                        },
-                      });
-                    }}
-                  >
-                    <option value="check">check</option>
-                    <option value="script">script</option>
-                    <option value="agent">agent</option>
-                    <option value="owner-action">owner-action</option>
-                  </select>
-                  <span className="grow" />
-                  <button
-                    className="icon-mini"
-                    onClick={() => onEdit({ op: "removeGate", step: selectedIndex, index: fileIndex })}
-                  >
-                    <X size={14} />
-                  </button>
+      </StepSectionView>
+
+      <StepSectionView
+        title="Inputs and outputs"
+        summary={`reads ${step.consumes.length} · writes ${step.artifacts.length}`}
+        {...section("artifacts", hasProblem("art"))}
+      >
+
+        <div className="field-block">
+          <div className="field-block-head">
+            <FieldLabel label="Consumes" doc={DOCS.consumes} />
+          </div>
+          <div className="pill-row">
+            {available.map((a) => {
+              const on = step.consumes.includes(a.id);
+              return (
+                <button
+                  key={a.id}
+                  className={`toggle-pill${on ? " is-on" : ""}`}
+                  title={`from ${a.from}`}
+                  onClick={() =>
+                    onEdit({
+                      op: "setConsumes",
+                      step: selectedIndex,
+                      ids: on
+                        ? step.consumes.filter((id) => id !== a.id)
+                        : [
+                            ...step.consumes.filter((id) => available.some((v) => v.id === id)),
+                            a.id,
+                            ...step.consumes.filter((id) => !available.some((v) => v.id === id)),
+                          ],
+                    })
+                  }
+                >
+                  {a.id} <small>{a.from}</small>
+                </button>
+              );
+            })}
+            {step.consumes
+              .filter((id) => !available.some((a) => a.id === id))
+              .map((id) => (
+                <button
+                  key={id}
+                  className="toggle-pill is-bad"
+                  onClick={() =>
+                    onEdit({ op: "setConsumes", step: selectedIndex, ids: step.consumes.filter((x) => x !== id) })
+                  }
+                >
+                  {id} × remove
+                </button>
+              ))}
+          </div>
+        </div>
+
+        <div className="field-block">
+          <div className="field-block-head">
+            <FieldLabel label="Outputs" doc={DOCS.produces} />
+            <span className="grow" />
+            <button className="text-button" onClick={onLibrary}>
+              Library
+            </button>
+          </div>
+          <div className="output-rows">
+            {step.artifacts.map((a, flatIndex) => {
+              const index = step.artifacts.slice(0, flatIndex).filter((x) => x.role === a.role).length;
+              const entry = resolveLibrary(library, a.artifact);
+              const fieldErr = problems
+                .filter((p) => p.field === "art" && p.itemIndex === flatIndex)
+                .map((p) => p.message)
+                .join(" ");
+              return (
+                <div key={`${a.role}-${index}`} className="output-row">
+                  <div className="output-row-head">
+                    <select
+                      className="mode-select"
+                      value={a.role}
+                      onChange={(e) =>
+                        onEdit({
+                          op: "changeOutputMode",
+                          step: selectedIndex,
+                          mode: a.role,
+                          index,
+                          to: e.target.value as OutputMode,
+                        })
+                      }
+                    >
+                      <option value="produces">produces</option>
+                      <option value="optional_produces">optional_produces</option>
+                      <option value="updates">updates</option>
+                    </select>
+                    <InfoTip doc={DOCS[a.role]} />
+                    <button
+                      type="button"
+                      className={`library-badge${entry ? "" : " is-missing"}`}
+                      title={
+                        entry
+                          ? [
+                              `Open ${a.artifact} in the library`,
+                              ...Object.entries(winningEntry(library, a.artifact)?.links ?? {}).map(
+                                ([name, link]) => `${name} is ${link.display}`,
+                              ),
+                            ].join("\n")
+                          : `Search the library for ${a.artifact}`
+                      }
+                      onClick={() => onOpenLibraryEntry(a.artifact)}
+                    >
+                      {entry ? `${entry.g ? "G" : ""} ${entry.t ? "T" : ""} ${entry.r ? "R" : ""}` : "no guide"}
+                    </button>
+                    <button
+                      className="icon-mini"
+                      onClick={() => onEdit({ op: "removeOutput", step: selectedIndex, mode: a.role, index })}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                  <label className="mini-field">
+                    <span className="mini-label">
+                      artifact <span className="field-tag is-required">required</span>
+                      <InfoTip doc={DOCS.artifact} />
+                    </span>
+                    <input
+                      className="field-input mono-input"
+                      list="kp-library"
+                      value={a.artifact}
+                      onChange={(e) =>
+                        onEdit({
+                          op: "setOutput",
+                          step: selectedIndex,
+                          mode: a.role,
+                          index,
+                          fields: { artifact: e.target.value },
+                        })
+                      }
+                      data-error={!!fieldErr}
+                    />
+                  </label>
+                  <label className="mini-field">
+                    <span className="mini-label">
+                      path <span className="field-tag is-required">required</span>
+                      <InfoTip doc={DOCS.path} />
+                    </span>
+                    <input
+                      className="field-input"
+                      value={a.path}
+                      onChange={(e) =>
+                        onEdit({
+                          op: "setOutput",
+                          step: selectedIndex,
+                          mode: a.role,
+                          index,
+                          fields: { path: e.target.value },
+                        })
+                      }
+                    />
+                  </label>
+                  <label className="mini-field">
+                    <span className="mini-label">
+                      description <span className="field-tag is-optional">optional</span>
+                      <InfoTip doc={DOCS.artDescription} />
+                    </span>
+                    <input
+                      className="field-input"
+                      value={a.description ?? ""}
+                      onChange={(e) =>
+                        onEdit({
+                          op: "setOutput",
+                          step: selectedIndex,
+                          mode: a.role,
+                          index,
+                          fields: { description: e.target.value || null },
+                        })
+                      }
+                    />
+                  </label>
+                  {fieldErr && <div className="field-error">{fieldErr}</div>}
                 </div>
-                <label className="mini-field">
-                  <span className="mini-label">
-                    {gateTextLabel(gate.kind)} <span className="field-tag is-required">required</span>
-                    <InfoTip doc={GATE_KIND_DOCS[gate.kind]} />
-                  </span>
-                  <input
-                    className="field-input"
-                    value={gate.text}
-                    onChange={(e) =>
-                      onEdit({ op: "setGate", step: selectedIndex, index: fileIndex, fields: { text: e.target.value } })
-                    }
-                    data-error={!!gateTextErr}
-                  />
-                </label>
-                {gate.kind === "agent" && (
-                  <div className="field-grid">
-                    <label className="mini-field">
-                      <span className="mini-label">
-                        max_rounds <FieldLabel label="" doc={GATE_FIELD_DOCS.maxRounds} />
-                      </span>
-                      <input
-                        className="field-input"
-                        type="number"
-                        min={1}
-                        placeholder="2"
-                        value={gate.max_rounds ?? ""}
-                        data-error={!!maxRoundsErr}
-                        onChange={(e) =>
-                          onEdit({
-                            op: "setGate",
-                            step: selectedIndex,
-                            index: fileIndex,
-                            fields: { max_rounds: e.target.value ? Number(e.target.value) : null },
-                          })
-                        }
-                      />
-                    </label>
-                    <label className="mini-field">
-                      <span className="mini-label">
-                        guide <FieldLabel label="" doc={GATE_FIELD_DOCS.guide} />
-                      </span>
-                      <span className="input-with-button">
+              );
+            })}
+            <datalist id="kp-library">
+              {[...new Set(library.map((e) => e.id))].map((id) => (
+                <option key={id} value={id} />
+              ))}
+            </datalist>
+            <div className="add-row">
+              <input
+                className="field-input mono-input"
+                list="kp-library"
+                placeholder="artifact id"
+                value={outputId}
+                onChange={(e) => setOutputId(e.target.value)}
+              />
+              <button
+                className="add-button"
+                onClick={() => {
+                  const id = outputId.trim();
+                  if (!id) return;
+                  onAddArtifact(selectedIndex, "produces", id);
+                  setOutputId("");
+                }}
+              >
+                <Plus size={14} /> Add
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </StepSectionView>
+
+      <StepSectionView
+        title="Gates"
+        summary={gateKinds || "none"}
+        {...section("gates", hasProblem("gate"))}
+      >
+        <div className="field-block">
+          <div className="field-block-head">
+            <FieldLabel label="Gates" doc={DOCS.gates} />
+            {differs && <span className="run-order-note">shown in run order; file order differs</span>}
+          </div>
+          <div className="gate-rows">
+            {gateOrder.map(({ gate, fileIndex }, orderIndex) => {
+              const gateProblems = problems.filter((p) => p.field === "gate" && p.itemIndex === fileIndex);
+              const gateTextErr = gateProblems
+                .filter((p) => p.subfield === "text" || !p.subfield)
+                .map((p) => p.message)
+                .join(" ");
+              const routeErr = gateProblems
+                .filter((p) => p.subfield === "route")
+                .map((p) => p.message)
+                .join(" ");
+              const maxRoundsErr = gateProblems
+                .filter((p) => p.subfield === "maxRounds")
+                .map((p) => p.message)
+                .join(" ");
+              const remainingErr = gateProblems
+                .filter((p) => p.subfield !== "route")
+                .map((p) => p.message)
+                .join(" ");
+              return (
+                <div key={fileIndex} className="gate-row">
+                  <div className="gate-row-head">
+                    <span className="gate-row-num">{orderIndex + 1}</span>
+                    <select
+                      className="kind-select"
+                      value={gate.kind}
+                      onChange={(e) => {
+                        const kind = e.target.value as GateKind;
+                        onEdit({
+                          op: "setGate",
+                          step: selectedIndex,
+                          index: fileIndex,
+                          fields: {
+                            kind,
+                            ...(kind === "check" && !CHECK_KIND.test(gate.text) ? { text: "default" } : {}),
+                          },
+                        });
+                      }}
+                    >
+                      <option value="check">check</option>
+                      <option value="script">script</option>
+                      <option value="agent">agent</option>
+                      <option value="owner-action">owner-action</option>
+                    </select>
+                    <span className="grow" />
+                    <button
+                      className="icon-mini"
+                      onClick={() => onEdit({ op: "removeGate", step: selectedIndex, index: fileIndex })}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                  <label className="mini-field">
+                    <span className="mini-label">
+                      {gateTextLabel(gate.kind)} <span className="field-tag is-required">required</span>
+                      <InfoTip doc={GATE_KIND_DOCS[gate.kind]} />
+                    </span>
+                    <input
+                      className="field-input"
+                      value={gate.text}
+                      onChange={(e) =>
+                        onEdit({ op: "setGate", step: selectedIndex, index: fileIndex, fields: { text: e.target.value } })
+                      }
+                      data-error={!!gateTextErr}
+                    />
+                  </label>
+                  {gate.kind === "agent" && (
+                    <div className="field-grid">
+                      <label className="mini-field">
+                        <span className="mini-label">
+                          max_rounds <FieldLabel label="" doc={GATE_FIELD_DOCS.maxRounds} />
+                        </span>
                         <input
                           className="field-input"
-                          value={gate.guide ?? ""}
+                          type="number"
+                          min={1}
+                          placeholder="2"
+                          value={gate.max_rounds ?? ""}
+                          data-error={!!maxRoundsErr}
                           onChange={(e) =>
                             onEdit({
                               op: "setGate",
                               step: selectedIndex,
                               index: fileIndex,
-                              fields: { guide: e.target.value || null },
+                              fields: { max_rounds: e.target.value ? Number(e.target.value) : null },
                             })
                           }
                         />
-                        {gateGuides(fileIndex)?.gateGuide && (
+                      </label>
+                      <label className="mini-field">
+                        <span className="mini-label">
+                          guide <FieldLabel label="" doc={GATE_FIELD_DOCS.guide} />
+                        </span>
+                        <span className="input-with-button">
+                          <input
+                            className="field-input"
+                            value={gate.guide ?? ""}
+                            onChange={(e) =>
+                              onEdit({
+                                op: "setGate",
+                                step: selectedIndex,
+                                index: fileIndex,
+                                fields: { guide: e.target.value || null },
+                              })
+                            }
+                          />
+                          {gateGuides(fileIndex)?.gateGuide && (
+                            <button
+                              type="button"
+                              className="text-button"
+                              disabled={!gateGuides(fileIndex)!.gateGuide!.exists}
+                              title={gateGuides(fileIndex)!.gateGuide!.path}
+                              onClick={() => onViewFile("Gate guide", gateGuides(fileIndex)!.gateGuide!)}
+                            >
+                              {gateGuides(fileIndex)!.gateGuide!.exists ? "Open" : "Not found"}
+                            </button>
+                          )}
+                        </span>
+                      </label>
+                    </div>
+                  )}
+                  {gate.kind === "agent" && gateGuides(fileIndex) && (
+                    <ReviewInEffect gate={gateGuides(fileIndex)!} onViewFile={onViewFile} />
+                  )}
+                  <label className="mini-field">
+                    <span className="mini-label">
+                      route_back_to <FieldLabel label="" doc={GATE_FIELD_DOCS.routeBack} />
+                    </span>
+                    <div className="pill-row route-pills" data-error={!!routeErr}>
+                      {steps.slice(0, selectedIndex + 1).map((s, i) => {
+                        const on = gate.route_back_to.includes(s.id);
+                        return (
                           <button
-                            type="button"
-                            className="text-button"
-                            disabled={!gateGuides(fileIndex)!.gateGuide!.exists}
-                            title={gateGuides(fileIndex)!.gateGuide!.path}
-                            onClick={() => onViewFile("Gate guide", gateGuides(fileIndex)!.gateGuide!)}
+                            key={s.id}
+                            className={`toggle-pill${on ? " is-on" : ""}`}
+                            onClick={() =>
+                              onEdit({
+                                op: "setGate",
+                                step: selectedIndex,
+                                index: fileIndex,
+                                fields: {
+                                  route_back_to: on
+                                    ? gate.route_back_to.filter((id) => id !== s.id)
+                                    : [...gate.route_back_to, s.id],
+                                },
+                              })
+                            }
                           >
-                            {gateGuides(fileIndex)!.gateGuide!.exists ? "Open" : "Not found"}
+                            {s.id}
+                            {i === selectedIndex ? " (this)" : ""}
                           </button>
-                        )}
-                      </span>
-                    </label>
-                  </div>
-                )}
-                {gate.kind === "agent" && gateGuides(fileIndex) && (
-                  <ReviewInEffect gate={gateGuides(fileIndex)!} onViewFile={onViewFile} />
-                )}
-                <label className="mini-field">
-                  <span className="mini-label">
-                    route_back_to <FieldLabel label="" doc={GATE_FIELD_DOCS.routeBack} />
-                  </span>
-                  <div className="pill-row route-pills" data-error={!!routeErr}>
-                    {steps.slice(0, selectedIndex + 1).map((s, i) => {
-                      const on = gate.route_back_to.includes(s.id);
-                      return (
-                        <button
-                          key={s.id}
-                          className={`toggle-pill${on ? " is-on" : ""}`}
-                          onClick={() =>
-                            onEdit({
-                              op: "setGate",
-                              step: selectedIndex,
-                              index: fileIndex,
-                              fields: {
-                                route_back_to: on
-                                  ? gate.route_back_to.filter((id) => id !== s.id)
-                                  : [...gate.route_back_to, s.id],
-                              },
-                            })
-                          }
-                        >
-                          {s.id}
-                          {i === selectedIndex ? " (this)" : ""}
-                        </button>
-                      );
-                    })}
-                    {gate.route_back_to
-                      .filter((target) => !steps.slice(0, selectedIndex + 1).some((step) => step.id === target))
-                      .map((target) => (
-                        <button
-                          key={target}
-                          className="toggle-pill is-bad"
-                          onClick={() =>
-                            onEdit({
-                              op: "setGate",
-                              step: selectedIndex,
-                              index: fileIndex,
-                              fields: { route_back_to: gate.route_back_to.filter((id) => id !== target) },
-                            })
-                          }
-                        >
-                          {target} × remove
-                        </button>
-                      ))}
-                  </div>
-                  {routeErr && <span className="field-error">{routeErr}</span>}
-                </label>
-                <label className="mini-field">
-                  <span className="mini-label">
-                    description <span className="field-tag is-optional">optional</span>
-                    <InfoTip doc={GATE_FIELD_DOCS.gateDescription} />
-                  </span>
-                  <input
-                    className="field-input"
-                    value={gate.description ?? ""}
-                    onChange={(e) =>
-                      onEdit({
-                        op: "setGate",
-                        step: selectedIndex,
-                        index: fileIndex,
-                        fields: { description: e.target.value || null },
-                      })
-                    }
-                  />
-                </label>
-                {remainingErr && <div className="field-error">{remainingErr}</div>}
-              </div>
-            );
-          })}
-          <div className="gate-adds">
-            {(["check", "script", "agent", "owner-action"] as GateKind[]).map((kind) => (
-              <button
-                key={kind}
-                onClick={() =>
-                  onEdit({
-                    op: "addGate",
-                    step: selectedIndex,
-                    gate: { kind, text: kind === "check" ? "default" : "" },
-                  })
-                }
-              >
-                + {kind}
-              </button>
-            ))}
+                        );
+                      })}
+                      {gate.route_back_to
+                        .filter((target) => !steps.slice(0, selectedIndex + 1).some((step) => step.id === target))
+                        .map((target) => (
+                          <button
+                            key={target}
+                            className="toggle-pill is-bad"
+                            onClick={() =>
+                              onEdit({
+                                op: "setGate",
+                                step: selectedIndex,
+                                index: fileIndex,
+                                fields: { route_back_to: gate.route_back_to.filter((id) => id !== target) },
+                              })
+                            }
+                          >
+                            {target} × remove
+                          </button>
+                        ))}
+                    </div>
+                    {routeErr && <span className="field-error">{routeErr}</span>}
+                  </label>
+                  <label className="mini-field">
+                    <span className="mini-label">
+                      description <span className="field-tag is-optional">optional</span>
+                      <InfoTip doc={GATE_FIELD_DOCS.gateDescription} />
+                    </span>
+                    <input
+                      className="field-input"
+                      value={gate.description ?? ""}
+                      onChange={(e) =>
+                        onEdit({
+                          op: "setGate",
+                          step: selectedIndex,
+                          index: fileIndex,
+                          fields: { description: e.target.value || null },
+                        })
+                      }
+                    />
+                  </label>
+                  {remainingErr && <div className="field-error">{remainingErr}</div>}
+                </div>
+              );
+            })}
+            <div className="gate-adds">
+              {(["check", "script", "agent", "owner-action"] as GateKind[]).map((kind) => (
+                <button
+                  key={kind}
+                  onClick={() =>
+                    onEdit({
+                      op: "addGate",
+                      step: selectedIndex,
+                      gate: { kind, text: kind === "check" ? "default" : "" },
+                    })
+                  }
+                >
+                  + {kind}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      </StepSectionView>
       {expand && (
         <div className="modal-backdrop">
           <div className="expand-modal">
@@ -755,6 +801,39 @@ function StepTab({
         </div>
       )}
     </div>
+  );
+}
+
+// The step tab's four collapsible sections. Instruction is open by default;
+// the user's choice is kept in localStorage, and a section with a problem is
+// always open.
+type StepSection = "basics" | "instruction" | "artifacts" | "gates";
+
+function StepSectionView({
+  title,
+  summary,
+  open,
+  problem,
+  onToggle,
+  children,
+}: {
+  title: string;
+  summary: string;
+  open: boolean;
+  problem: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className={`step-section${open ? " is-open" : ""}`}>
+      <button type="button" className="step-section-head" aria-expanded={open} onClick={onToggle} disabled={problem}>
+        <Chevron open={open} />
+        <span className="step-section-title">{title}</span>
+        {problem && <span className="step-section-problem" title="This section has a problem" />}
+        {!open && <span className="step-section-summary">{summary}</span>}
+      </button>
+      {open && <div className="step-section-body">{children}</div>}
+    </section>
   );
 }
 

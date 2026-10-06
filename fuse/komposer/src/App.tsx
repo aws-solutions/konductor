@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { BookOpen, FileCode, Settings2, X } from "lucide-react";
 import { api, ApiError, suggestPath, type LibraryEntry, type ReviewGuides, type WorkstreamSummary } from "./api.ts";
 import { applyEdit, type Edit, type OutputMode } from "./model/yamlEdit.ts";
 import { addArtifactEdits, describeFrom, insertArtifactStepEdits } from "./model/artifactInstruction.ts";
@@ -35,6 +35,13 @@ export function App() {
   const [currentKey, setCurrentKey] = useState<string | null>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [tab, setTab] = useState<InspectorTab>("step");
+  // The detail drawer on the right. Closed until something needs its detail
+  // view: a selected step, the library, a run, the workflow's settings or YAML.
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const showTab = (next: InspectorTab) => {
+    setTab(next);
+    setDrawerOpen(true);
+  };
   const [compareRequest, setCompareRequest] = useState(0);
   const [runSlug, setRunSlug] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -68,6 +75,15 @@ export function App() {
   useEffect(() => {
     reloadData().catch((e) => setError(e instanceof Error ? e.message : String(e)));
   }, []);
+
+  // Escape closes the drawer, unless a dialog is open.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !modal) setDrawerOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [modal]);
 
   const workflow = useMemo(() => workflows.find((w) => workflowKey(w) === currentKey) ?? null, [workflows, currentKey]);
   const steps = useMemo(() => (workflow ? stepViews(workflow) : []), [workflow]);
@@ -158,7 +174,10 @@ export function App() {
       });
       replaceWorkflow(currentKey, next);
       for (const edit of list) {
-        if (edit.op === "insertStep") setSelectedIndex(edit.at);
+        if (edit.op === "insertStep") {
+          setSelectedIndex(edit.at);
+          showTab("step");
+        }
         if (edit.op === "moveStep") setSelectedIndex(edit.to);
         if (edit.op === "deleteStep")
           setSelectedIndex((i) => Math.max(0, Math.min(i > edit.index ? i - 1 : i, steps.length - 2)));
@@ -194,6 +213,7 @@ export function App() {
     setCurrentKey(key);
     setSelectedIndex(0);
     setTab("step");
+    setDrawerOpen(false);
     setCompareRequest(0);
     setRunSlug(null);
     setProblemsOpen(false);
@@ -214,7 +234,7 @@ export function App() {
 
   const openRun = (slug: string) => {
     setRunSlug(slug);
-    setTab("run");
+    showTab("run");
     setProblemsOpen(false);
   };
   const closeRun = () => {
@@ -227,7 +247,7 @@ export function App() {
     setSelectedIndex(stepIndex);
     setRunSlug(null);
     setCompareRequest(0);
-    setTab("step");
+    showTab("step");
   };
 
   const createNew = () => setModal({ type: "new", location: "project", folder: "", name: "" });
@@ -255,7 +275,7 @@ export function App() {
     setWorkflows((all) => [...all, created]);
     setCurrentKey(workflowKey(created));
     setSelectedIndex(0);
-    setTab("step");
+    showTab("step");
     setModal(null);
   };
 
@@ -376,7 +396,7 @@ export function App() {
   const structural = structureChanges(workflow, steps);
 
   return (
-    <div className="screen">
+    <div className={`screen${drawerOpen ? " has-drawer" : ""}`}>
       <WorkflowList
         workflows={workflows}
         currentKey={currentKey}
@@ -422,7 +442,7 @@ export function App() {
                   onClick={() => {
                     if (p.stepIndex >= 0) {
                       setSelectedIndex(p.stepIndex);
-                      setTab("step");
+                      showTab("step");
                     }
                     setProblemsOpen(false);
                   }}
@@ -443,7 +463,7 @@ export function App() {
             </span>
             <button
               onClick={() => {
-                setTab("yaml");
+                showTab("yaml");
                 setCompareRequest((request) => request + 1);
               }}
             >
@@ -485,10 +505,10 @@ export function App() {
         {run && <RunBanner run={run} onClose={closeRun} />}
         <Flow
           steps={steps}
-          selectedIndex={selectedIndex}
+          selectedIndex={drawerOpen ? selectedIndex : -1}
           onSelect={(i) => {
             setSelectedIndex(i);
-            setTab(run ? "run" : "step");
+            showTab(run ? "run" : "step");
           }}
           problemsByStep={byStep}
           library={library}
@@ -504,7 +524,23 @@ export function App() {
           onDropArtifactAt={insertArtifactStep}
           run={run}
         />
+        {!drawerOpen && (
+          <div className="drawer-fabs">
+            <button className="drawer-fab" title="Workflow settings and runs" onClick={() => showTab(run ? "run" : "workflow")}>
+              <Settings2 size={16} /> {run ? "Run" : "Workflow"}
+            </button>
+            <button className="drawer-fab" title="The workflow file" onClick={() => showTab("yaml")}>
+              <FileCode size={16} /> YAML
+            </button>
+            {!run && (
+              <button className="drawer-fab is-primary" title="Artifact guides, templates and review guides" onClick={() => showTab("library")}>
+                <BookOpen size={16} /> Library
+              </button>
+            )}
+          </div>
+        )}
       </div>
+      {drawerOpen && (
       <Inspector
         tab={tab}
         onTab={(next) => {
@@ -527,7 +563,9 @@ export function App() {
         run={run}
         onOpenRun={openRun}
         onOpenWorkflowStep={openWorkflowStep}
+        onClose={() => setDrawerOpen(false)}
       />
+      )}
       {modal && (
         <ModalView
           modal={modal}
