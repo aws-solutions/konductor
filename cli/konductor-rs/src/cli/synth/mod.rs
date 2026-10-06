@@ -943,7 +943,7 @@ mod tests {
                 "bundled": {
                     "aws-mcp": {
                         "command": "uvx",
-                        "args": ["mcp-proxy-for-aws-cli@latest", "https://aws-mcp.us-east-1.api.aws/mcp"]
+                        "args": ["mcp-proxy-for-aws-cli==1.7.0", "https://aws-mcp.us-east-1.api.aws/mcp"]
                     }
                 }
             }"#,
@@ -963,7 +963,7 @@ mod tests {
 
         let written = fs::read_to_string(root.join("dist/claude/agents/k-example.md")).unwrap();
         assert!(
-            written.contains("mcp-proxy-for-aws-cli@latest"),
+            written.contains("mcp-proxy-for-aws-cli==1.7.0"),
             "expected the config file's pinned package to win over the spec's own \
              unpinned mcp-proxy-for-aws@latest, got:\n{written}"
         );
@@ -1006,7 +1006,7 @@ mod tests {
                 "bundled": {
                     "aws-mcp": {
                         "command": "uvx",
-                        "args": ["mcp-proxy-for-aws-cli@latest"]
+                        "args": ["mcp-proxy-for-aws-cli==1.7.0"]
                     }
                 }
             }"#,

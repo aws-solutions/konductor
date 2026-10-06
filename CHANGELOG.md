@@ -22,12 +22,12 @@ not per individual commit.
 - `make synth` (and `konductor synth`) now pre-wires AWS MCP (`aws-mcp`) into the standalone
   Claude Code install, matching the plugin build. Everything else stays bring-your-own. The
   bundled-server list lives in `scripts/claude-plugin-mcp-servers.json`.
-- The plugin and standalone Claude Code builds launch `aws-mcp` with the [Agent Toolkit for
-  AWS](https://github.com/aws/agent-toolkit-for-aws)'s own recommended `mcp-proxy-for-aws-cli`
-  command, overriding the agent specs' own pin for these two install shapes only.
+- The plugin and standalone Claude Code builds launch `aws-mcp` through `mcp-proxy-for-aws-cli==1.7.0`. Pinning the proxy prevents unreviewed client changes while the managed endpoint continues to supply current AWS documentation and skills.
 
 ### Security
 
+- `aws-mcp` uses `mcp-proxy-for-aws-cli==1.7.0` instead of a moving package version. The managed endpoint still supplies current AWS documentation and skills.
+- The plugin release requires a preprovisioned `claude-plugin` branch and publishes that branch and its immutable release tag in one atomic push.
 - `k-architect`/`k-developer` still grant AWS MCP's full tool surface, unchanged. Use the
   `aws:ViaAWSMCPService`/`aws:CalledViaAWSMCP` IAM condition keys to scope or audit
   agent-originated calls.

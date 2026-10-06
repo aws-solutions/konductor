@@ -17,9 +17,9 @@ time that runs.
 ## Where the published plugin actually lives
 
 Users install this project's Claude Code plugin from the **`claude-plugin`**
-branch, not from `main`. `.github/workflows/release.yml`'s
-`publish-claude-plugin` job builds it on every tagged release and
-force-pushes it there as a single squashed commit. See that job, and
+branch, not from `main`. Before the first release, repository administrators
+must create and protect that branch. `.github/workflows/release.yml`'s
+`publish-claude-plugin` job then updates it for each tagged release. See that job, and
 `scripts/assemble-claude-plugin-branch.sh`, for exactly what ends up on that
 branch: a flat tree (`.claude-plugin/plugin.json`, `.mcp.json`, `agents/`,
 `skills/`, `README.md`, `LICENSE.txt`, all at the tree root, with no

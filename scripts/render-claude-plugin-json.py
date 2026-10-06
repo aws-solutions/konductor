@@ -353,7 +353,14 @@ def main() -> int:
                     file=sys.stderr,
                 )
                 return 1
-            config_bundled = config.get("bundled", {}) if isinstance(config, dict) else config
+            if not isinstance(config, dict) or "bundled" not in config:
+                print(
+                    f"error: --bundled-mcp-config {args.bundled_mcp_config} must contain a "
+                    'top-level "bundled" object',
+                    file=sys.stderr,
+                )
+                return 1
+            config_bundled = config["bundled"]
             shape_error = _validate_bundled_config(config_bundled)
             if shape_error is not None:
                 print(

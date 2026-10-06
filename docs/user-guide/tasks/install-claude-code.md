@@ -217,15 +217,16 @@ AWS's own getting-started docs, OAuth commands, and existing configs.
 server via the `mcp__aws-mcp__*` glob, so every tool it exposes is granted, including the
 AWS-API-acting ones (see Tool grant below). Each agent's rendered `.md` file carries an
 `mcpServers:` entry (built from `dependencies.mcpRegistry`, filtered to just this server,
-launched via `uvx mcp-proxy-for-aws-cli@latest`), so this `konductor install --harness claude`
+launched via `uvx mcp-proxy-for-aws-cli==1.7.0`), so this `konductor install --harness claude`
 install launches the server itself — no separate MCP server configuration needed. This is also
 true if you installed via the [Claude Code plugin marketplace](install-claude-plugin-marketplace.md)
 instead: the plugin ships a plugin-level `.mcp.json` for the same server, with the granted
 tool rewritten to its real plugin-scoped name Claude Code resolves for a plugin subagent. The
 server auto-starts as soon as the plugin (or standalone install) is enabled, launching
-`mcp-proxy-for-aws-cli@latest` per the toolkit's own guidance — install `uvx` and configure AWS
-credentials (`~/.aws/credentials` or environment variables) so the agent has something to
-authenticate with; it degrades gracefully if credentials are absent.
+`mcp-proxy-for-aws-cli==1.7.0`. The proxy is pinned for repeatable client behavior; AWS
+service documentation and skills still come from the managed endpoint at request time. Install `uvx`
+and configure AWS credentials (`~/.aws/credentials` or environment variables) so the agent has
+something to authenticate with; it degrades gracefully if credentials are absent.
 
 **Tool grant: the whole server.** `k-architect`/`k-developer` grant every tool the server
 exposes — the five AWS knowledge/documentation tools (`aws___search_documentation`,

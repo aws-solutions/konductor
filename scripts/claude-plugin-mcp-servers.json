@@ -1,10 +1,10 @@
 {
-  "$comment": "Single source of truth for which MCP servers Konductor packages with the Claude Code target (both the standalone `konductor install --harness claude` output and the Claude plugin), AND for the exact launch command/args each bundled server uses. Read by both `konductor synth --claude-bundled-mcp-servers`/`--claude-bundled-mcp-config` (see cli/konductor-rs/src/cli.rs) and scripts/render-claude-plugin-json.py's --bundled-mcp-servers/--bundled-mcp-config flags, so the two never drift apart. Everything NOT listed under `bundled` below is bring-your-own on every harness: an agent spec's own `dependencies.mcpRegistry` entry (if any) documents how a user would configure that server themselves (e.g. `claude mcp add <server> -- ...`), but no .mcp.json/mcpServers: entry is ever generated for it, and this file's own `command`/`args` values below take priority over an agent spec's own `mcpRegistry` entry for whichever server names are listed here. `aws-mcp` (this repo's own key, matching AWS's getting-started docs and OAuth commands, plus existing user configs and internal agents -- the Agent Toolkit for AWS repo's own README example uses `aws` instead for the same server, but Konductor keeps `aws-mcp` for continuity) is the one packaged server -- its launch definition below uses `uvx mcp-proxy-for-aws-cli@latest`, the version-pinned CLI distribution the toolkit recommends, not the loosely-pinned `mcp-proxy-for-aws` library package. Every tool the server exposes is granted; nothing here narrows the tool grant -- see agents/k-architect.agent-spec.json and agents/k-developer.agent-spec.json's own `clientConfig` for that (unchanged from origin/main).",
+  "$comment": "Defines the MCP servers bundled with Konductor's Claude Code outputs. Only aws-mcp is bundled; other MCP servers are user-configured. The exact proxy version is pinned because it runs with the user's AWS credentials.",
   "bundled": {
     "aws-mcp": {
       "command": "uvx",
       "args": [
-        "mcp-proxy-for-aws-cli@latest",
+        "mcp-proxy-for-aws-cli==1.7.0",
         "https://aws-mcp.us-east-1.api.aws/mcp",
         "--metadata",
         "AWS_REGION=us-east-1"
@@ -12,7 +12,7 @@
     }
   },
   "byo": {
-    "$comment": "Documented here for completeness, not read by any script: every mcpRegistry server name NOT in `bundled` above is bring-your-own by definition. Listed explicitly so a future agent-spec author can see at a glance which servers already have a documented bring-your-own setup story instead of assuming an omission is an oversight.",
-    "playwright-mcp": "k-browser's Playwright integration. Users configure it themselves under the exact name playwright-mcp on every harness -- see docs/user-guide/tasks/install-claude-code.md and docs/user-guide/tasks/install-kiro-cli.md for the per-harness setup commands."
+    "$comment": "This section is documentation only. Entries here are not generated into plugin or standalone MCP configuration.",
+    "playwright-mcp": "Configure it using the instructions in docs/user-guide/tasks/install-claude-code.md or docs/user-guide/tasks/install-kiro-cli.md."
   }
 }

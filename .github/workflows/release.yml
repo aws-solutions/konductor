@@ -577,6 +577,16 @@ jobs:
               ;;
           esac
 
+      - name: Require a preprovisioned plugin branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          if ! git ls-remote --exit-code --heads "https://github.com/${{ github.repository }}.git" "refs/heads/$TARGET_BRANCH" >/dev/null 2>&1; then
+            echo "FATAL: '$TARGET_BRANCH' must be created and protected before publishing the public plugin." >&2
+            exit 1
+          fi
+
       - name: Checkout
         uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
         with:
@@ -645,7 +655,7 @@ jobs:
         # not just a hard error.
         run: claude plugin validate "$ASSEMBLE_DIR" --strict
 
-      - name: Force-push to claude-plugin branch (single squashed commit)
+      - name: Publish the plugin branch and immutable tag
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -656,50 +666,24 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git commit -q -m "Publish Claude Code plugin for $RELEASE_VERSION"
-          # Remote URL carries no credential -- the token is sent as a
-          # per-request Basic-auth header instead (below), so it never lands
-          # in `git remote -v`, `.git/config`, or any log line that echoes
-          # the remote URL.
           git remote add origin "https://github.com/${{ github.repository }}.git"
-          AUTH_HEADER="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
-          git -c http.extraHeader="$AUTH_HEADER" push --force origin "HEAD:$TARGET_BRANCH"
 
-      - name: Tag the release (immutable, one tag per release, never moved)
-        # A per-release tag on the exact commit just force-pushed above lets a
-        # marketplace.json plugin entry pin `ref` to a specific, permanent
-        # release instead of the `claude-plugin` branch's own moving HEAD --
-        # see generated/claude-plugin/README.md's "Rollback" section for why
-        # that matters and how to roll one back.
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -e
-          cd "$ASSEMBLE_DIR"
           TAG="claude-plugin-v${RELEASE_VERSION#v}"
-
-          # Fail closed: `git ls-remote --exit-code` exits 0 when the ref IS
-          # found, 2 when the remote was reached but the ref genuinely does
-          # not exist, and any other code (network error, auth failure, ...)
-          # on a real query failure. Only the exit-2 case is safe to proceed
-          # on -- treat exit 0 (tag already exists) AND any non-2 failure the
-          # same way: abort, never guess. This is what makes the tag
-          # immutable: a re-run against an already-tagged RELEASE_VERSION
-          # fails instead of silently re-tagging (which would move it) or
-          # silently skipping (which would hide that nothing new was
-          # published).
           set +e
           git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1
           LS_REMOTE_STATUS=$?
           set -e
           if [ "$LS_REMOTE_STATUS" -eq 0 ]; then
-            echo "FATAL: tag '$TAG' already exists on origin -- refusing to move an existing immutable release tag. If this release needs republishing, cut a new RELEASE_VERSION and re-run." >&2
+            echo "FATAL: tag '$TAG' already exists; refusing to change an immutable plugin release." >&2
             exit 1
           elif [ "$LS_REMOTE_STATUS" -ne 2 ]; then
-            echo "FATAL: could not confirm tag '$TAG' is free on origin (git ls-remote exited $LS_REMOTE_STATUS) -- refusing to proceed without that confirmation." >&2
+            echo "FATAL: could not confirm that tag '$TAG' is available." >&2
             exit 1
           fi
 
           git tag -a "$TAG" -m "Claude Code plugin release $RELEASE_VERSION" HEAD
           AUTH_HEADER="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
-          git -c http.extraHeader="$AUTH_HEADER" push origin "refs/tags/$TAG"
-          echo "Tagged $TARGET_BRANCH at $(git rev-parse HEAD) as $TAG"
+          git -c http.extraHeader="$AUTH_HEADER" push --atomic origin \
+            "+HEAD:refs/heads/$TARGET_BRANCH" \
+            "refs/tags/$TAG"
+          echo "Published $TARGET_BRANCH at $(git rev-parse HEAD) and tagged it $TAG"

@@ -53,7 +53,7 @@ def _run(tmp_path: Path, bundled_mcp_servers=None, bundled_mcp_config=None, bund
     _write_agent_spec(
         agent_specs_dir / "k-architect.agent-spec.json",
         "k-architect",
-        {"aws-mcp": {"command": "uvx", "args": ["mcp-proxy-for-aws-cli@latest"]}},
+        {"aws-mcp": {"command": "uvx", "args": ["mcp-proxy-for-aws-cli==1.7.0"]}},
     )
     _write_agent_spec(
         agent_specs_dir / "k-browser.agent-spec.json",
@@ -156,7 +156,7 @@ def test_bundled_mcp_config_overrides_the_agent_specs_own_definition(tmp_path):
             "aws-mcp": {
                 "command": "uvx",
                 "args": [
-                    "mcp-proxy-for-aws-cli@latest",
+                    "mcp-proxy-for-aws-cli==1.7.0",
                     "https://aws-mcp.us-east-1.api.aws/mcp",
                     "--metadata",
                     "AWS_REGION=us-east-1",
@@ -168,7 +168,7 @@ def test_bundled_mcp_config_overrides_the_agent_specs_own_definition(tmp_path):
 
     rendered = json.loads(mcp_output.read_text(encoding="utf-8"))
     assert rendered["mcpServers"]["aws-mcp"]["args"] == [
-        "mcp-proxy-for-aws-cli@latest",
+        "mcp-proxy-for-aws-cli==1.7.0",
         "https://aws-mcp.us-east-1.api.aws/mcp",
         "--metadata",
         "AWS_REGION=us-east-1",
@@ -187,7 +187,7 @@ def test_bundled_mcp_config_falls_back_to_registry_for_unlisted_name(tmp_path):
     assert result.returncode == 0, result.stderr
 
     rendered = json.loads(mcp_output.read_text(encoding="utf-8"))
-    assert rendered["mcpServers"]["aws-mcp"]["args"] == ["mcp-proxy-for-aws-cli@latest"], rendered
+    assert rendered["mcpServers"]["aws-mcp"]["args"] == ["mcp-proxy-for-aws-cli==1.7.0"], rendered
 
 
 def test_bundled_mcp_config_malformed_json_fails_cleanly(tmp_path):
@@ -227,7 +227,7 @@ def test_bundled_mcp_config_unsupported_key_fails_cleanly(tmp_path):
         bundled_mcp_config={
             "aws-mcp": {
                 "command": "uvx",
-                "args": ["mcp-proxy-for-aws-cli@latest"],
+                "args": ["mcp-proxy-for-aws-cli==1.7.0"],
                 "env": {"FOO": "bar"},
             }
         },
@@ -287,3 +287,24 @@ def test_conflicting_definitions_still_error_even_when_filtered_out(tmp_path):
     )
     assert result.returncode != 0
     assert "conflicting" in result.stderr, result.stderr
+
+
+def test_bundled_mcp_config_requires_top_level_bundled_object(tmp_path):
+    result, _ = _run(
+        tmp_path,
+        bundled_mcp_servers="aws-mcp",
+        bundled_mcp_config_raw='{"byo": {}}',
+    )
+
+    assert result.returncode != 0
+    assert 'top-level "bundled" object' in result.stderr, result.stderr
+
+
+def test_shipped_bundled_aws_proxy_is_exactly_pinned():
+    config = json.loads(
+        (REPO_ROOT / "scripts" / "claude-plugin-mcp-servers.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    assert config["bundled"]["aws-mcp"]["args"][0] == "mcp-proxy-for-aws-cli==1.7.0"
