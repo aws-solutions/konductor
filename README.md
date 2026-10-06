@@ -103,6 +103,19 @@ claude --agent konductor
 > see [`cli/README.md`](cli/README.md#getting-started). That doc also covers installing
 > into a directory other than `$HOME` via `--target`.
 
+### Installing via a Kiro Power
+
+Kiro CLI v3 and the unified Kiro IDE support a distributable, keyword-activated install unit called a [Power](https://kiro.dev/docs/powers/). This repo ships one at [`powers/konductor/`](powers/konductor/) directly on `main`: that directory already has the flat shape Kiro's GitHub import expects (`plugin.json` at its own root, `skills/` alongside it), so there is no separate publish branch or assembly step. `make kiro-power`/`make kiro-power-check` (see the [`Makefile`](Makefile)) validate this same committed tree in place. For the full walkthrough, including the exact click path, what the consent prompt shows, supported platforms, updating, uninstalling, bring-your-own MCP server setup, and troubleshooting, see [Install via Kiro Power](docs/user-guide/tasks/install-kiro-power.md) in the user guide.
+
+1. In Kiro, open the Powers panel and choose **Add Custom Power** → **Import power from GitHub**.
+2. Enter `https://github.com/aws-solutions/konductor/tree/main/powers/konductor`.
+3. Choose **Install**. Per Kiro's own docs, this only registers the Power's manifest; nothing runs yet.
+4. Either say "konductor", "install konductor", or "set up konductor" in a chat session, or use the Try-power action in the installed Powers list. Both trigger the same onboarding skill.
+
+The onboarding skill (`konductor-setup`) then does everything the [Quick install](#quick-install-single-command) and [Installing from source](#installing-from-source) sections above do by hand: detect your platform, download and checksum-verify the pinned `konductor` release (or build it from source on Intel Mac; native Windows isn't supported in v1, use WSL), symlink it onto `PATH`, and run `konductor install --harness kiro-v3`. But it's scoped to whichever project you invoked it in (`--target` is always that project's directory, never `$HOME`), and only after showing you the exact plan and getting one confirmation first. A second skill, `konductor-help`, answers ongoing questions about the install afterward (CLI flags, `doctor` diagnostics, which SOPs are available); see [`powers/konductor/skills/konductor-help/SKILL.md`](powers/konductor/skills/konductor-help/SKILL.md).
+
+This is a third install path alongside the two above, not a replacement for either. The quick-install one-liner and the from-source walkthrough remain the right choice for a shell session outside Kiro, or for a platform this Power's own release matrix doesn't publish a binary for.
+
 ### First run
 
 **Full SDLC pass, via the orchestrator (Kiro CLI).** The install paths above leave you at the `konductor` prompt. A full pass starts from a plain-language request typed there:

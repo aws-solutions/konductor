@@ -263,7 +263,7 @@ The most capable agent in the package, on the strongest model.
 | **Model** | `claude-sonnet-5` — the same model every agent runs |
 | **SOPs** (4) | `k-design-doc-creation`, `k-existing-design-review`, `k-principal-engineer-design-review`, `k-adversarial-pull-request-review` |
 | **Skills** | **38** — the largest share of any agent. See [Architecture and design](skills.md#architecture-and-design), [Design quality gates](skills.md#design-quality-gates), [API and data modelling](skills.md#api-and-data-modelling) |
-| **MCP** | `aws-mcp` — launched via `uvx mcp-proxy-for-aws@latest`; `allowedTools` grants five tools: documentation search, documentation read, skill retrieval, region list, and regional availability |
+| **MCP** | `aws-mcp` — launched via `uvx mcp-proxy-for-aws-cli==1.7.0`; `allowedTools` grants five tools: documentation search, documentation read, skill retrieval, region list, and regional availability |
 | **Can mutate?** | Write and shell in both runtimes — pre-approved in Kiro CLI, granted in Claude Code |
 | **Can delegate to** | `k-developer`, `k-quality-assurance` — in both runtimes |
 
