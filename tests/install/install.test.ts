@@ -91,6 +91,9 @@ describe("the block", () => {
   const CLONE_FILE = ".konductor/fuse-konductor-clone"; // under HOME
 
   test("--global replaces {{CLONE}} with the clone's path, wherever it appears", () => {
+    // Skill installation has separate coverage and adds unrelated full-filesystem syncs.
+    sb.cleanup();
+    sb = new Sandbox([]);
     sb.setBlock(BLOCK_WITH_CLONE);
     const target = join(sb.home, ".claude", "CLAUDE.md");
     sb.ok("--global", target);

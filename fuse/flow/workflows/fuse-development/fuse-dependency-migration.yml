@@ -1,0 +1,173 @@
+# $schema: ../schemas/workflow.schema.json
+# yaml-language-server: $schema=../schemas/workflow.schema.json
+#
+# A complex migration or refactoring in an existing codebase: a dependency, runtime or platform
+# upgrade, a library swap, a large restructuring. The system must behave the same afterwards,
+# apart from changes the owner accepts on purpose, so the work is organized around the checks that
+# prove it. First the agent catalogues the checks that exist, sorts them into the ones that must
+# pass unchanged and the ones tied to implementation details, and proposes cheap checks to add
+# where behavior the migration puts at risk has none. Gaps are closed before anything is migrated,
+# a baseline is recorded, the migration runs in increments that each keep the must-pass checks
+# green, and the result is compared against the baseline in a report the owner reviews before
+# landing. Step and artifact names follow fuse-feature-development where they fit; review.md next
+# to this file is the review guide for every agent gate.
+#
+# Start a workstream with:  fuse-flow start <slug> --workflow fuse-dependency-migration
+version: 1
+name: fuse-dependency-migration
+description: >
+  A complex migration or refactoring that must leave the system behaving the same: catalogue the
+  checks that prove it, add the ones missing, record a baseline, migrate in increments that keep
+  the checks green, and compare the result against the baseline in a report the owner reviews
+  before landing.
+steps:
+  - id: intake
+    title: Intake
+    phase: Design
+    instruction: >
+      If this checkout is on the integration branch, first create a branch named after the
+      workstream. Find out what the owner wants to migrate and why: what moves from what to what,
+      what prompted it, what must keep working, and how the owner will judge that it does. Read
+      the code, the build and the dependency manifests before you ask anything. While the purpose
+      and rough scope are still unclear, ask rather than propose, one or a few questions at a
+      time. As soon as they are settled, write a first draft of the migration spec, marked as a
+      draft, with the questions still open; from then on, record each decision in the draft when
+      it is made. When the request already settles the purpose and scope, write the draft straight
+      away and say so. Do not order the draft for review yet, and do not change code.
+    produces:
+      - artifact: migration-spec
+        path: docs/specs/{slug}/spec.md
+
+  - id: check-catalogue
+    title: Check catalogue
+    phase: Design
+    instruction: >
+      Catalogue every check and guardrail the project has: builds, unit and integration tests,
+      linters and type checks, end-to-end and smoke runs, pipeline stages, and manual checks the
+      team does by hand. For each, record how it runs, who can run it (you, or only the owner,
+      for example because it needs an account you do not have), roughly how long it takes, and
+      what behavior it protects. Run the ones you can, and record their current result; a check
+      that fails before the migration is a pre-existing defect, recorded as such so it is not
+      blamed on the migration later. Sort every check into one of three classes: must pass
+      unchanged before and after; may change, because it is tied to implementation details the
+      migration replaces, such as unit tests of internals or snapshots of a library's output; or
+      not relevant to this migration. Then look for gaps: behavior the migration puts at risk
+      that no must-pass check covers, and the cheapest check that would cover it, such as a
+      characterization test, a golden output, a recorded baseline of a run, or a smoke test of
+      the main path. Propose the gaps worth closing with a cost for each. Read the release notes
+      and migration guides of what you are moving to, and list the behavior changes they announce
+      that touch this code, so the owner decides for each whether to accept it or to preserve the
+      old behavior. Finish the migration spec with the strategy: the increments the migration
+      will be done in, each leaving the system working, and what to do when one cannot be kept
+      green. Order both documents for review: the decisions the owner must make or check come
+      first, most important first.
+    consumes: [migration-spec]
+    produces:
+      - artifact: check-catalogue
+        path: docs/specs/{slug}/checks.md
+    updates:
+      - artifact: migration-spec
+        path: docs/specs/{slug}/spec.md
+    gates:
+      - agent: review the catalogue and the spec against the code, its checks and the owner's request; look especially for behavior at risk that no must-pass check covers, and for checks classed as changeable that actually protect behavior
+        guide: review.md
+        max_rounds: 2
+      - owner-action: approve the catalogue, the checks to add, the accepted behavior changes and the strategy
+        route_back_to: intake
+
+  - id: guardrails
+    title: Guardrails
+    phase: Build
+    condition:
+      agent: the approved catalogue lists checks to add before the migration
+    instruction: >
+      Add the checks the owner approved, on the code as it is before the migration. Write each
+      from the behavior it protects, not from the implementation, and show that it can fail:
+      break the code briefly and watch it go red, then restore it and watch it pass. Wire each
+      into the project's check command where it belongs. Commit them separately from any
+      migration work, and add each to the catalogue as a must-pass check with its result.
+    consumes: [check-catalogue]
+    updates:
+      - artifact: code
+        path: .
+      - artifact: check-catalogue
+        path: docs/specs/{slug}/checks.md
+    gates:
+      - check: default
+
+  - id: baseline
+    title: Baseline
+    phase: Build
+    instruction: >
+      Run every must-pass and changeable check you can run on the code as it is before the
+      migration, and record the results in the catalogue as the baseline: the result of each,
+      and where the catalogue asks for it the captured outputs, numbers or artifacts a later
+      comparison needs, kept where the catalogue says. Run a check that looks unstable several
+      times and record how often it fails, so a later failure can be told from flakiness. Every
+      must-pass check is green, or recorded as a pre-existing defect with the evidence. Ask the
+      owner to run the checks only they can run, and record what they report. Commit the
+      catalogue.
+    consumes: [check-catalogue]
+    updates:
+      - artifact: check-catalogue
+        path: docs/specs/{slug}/checks.md
+    gates:
+      - check: default
+
+  - id: migration
+    title: Migration
+    phase: Build
+    instruction: >
+      Do the migration in the increments the spec lays out, and commit each increment on its own
+      so the history can be bisected. After each increment, run the must-pass checks that cover
+      what it touched, and the full set before you call it done. A must-pass check is never
+      weakened, skipped or deleted to get to green. A changeable check may be adapted to the new
+      implementation when the behavior it protected still holds; record each adaptation in the
+      catalogue with the reason. When a must-pass check fails and the cause is a real change in
+      behavior, stop: either the spec accepts that change already, or the owner decides, and the
+      decision goes into the spec. A behavior change announced by the release notes that the
+      owner chose to preserve is preserved in code, not by changing the check. When something
+      fails unexpectedly, find the root cause before you change code. Decide ambiguities
+      yourself, with the spec and the catalogue as the authority, and list each decision for the
+      report. Stop and ask only before an irreversible action or one that reaches outside this
+      checkout.
+    consumes: [migration-spec, check-catalogue]
+    updates:
+      - artifact: code
+        path: .
+      - artifact: check-catalogue
+        path: docs/specs/{slug}/checks.md
+    gates:
+      - check: default
+
+  - id: verification
+    title: Verification
+    phase: Review
+    instruction: >
+      Run every check in the catalogue again and compare against the baseline, check by check:
+      the same result, or better, for every must-pass check; every changeable check that was
+      adapted listed with what changed and why; captured outputs and numbers compared, with the
+      differences explained. Ask the owner to run the checks only they can run, and record what
+      they report, or list them as pending. Write the migration report: what changed, from which
+      versions to which; the checks before and after, side by side; the pre-existing defects and
+      whether the migration touched them; the behavior changes accepted on purpose; the risks no
+      check covers and what the owner should try by hand; and the decisions you made alone. If
+      the integration branch has moved, rebase the branch onto it first and run the checks again.
+      Get the branch and the report through review. Before the last round, fold fixups into the
+      commits it should land as, keeping the increments. Do not merge into the integration branch
+      or push to a shared branch; the owner lands it.
+    consumes: [migration-spec, check-catalogue]
+    produces:
+      - artifact: migration-report
+        path: docs/specs/{slug}/report.md
+    updates:
+      - artifact: code
+        path: .
+    gates:
+      - check: default
+      - agent: review the branch's diff from its merge-base with the integration branch to HEAD, and the report, against the spec and the catalogue; verify that no must-pass check was weakened, that every adapted check still protects the behavior it did, and that the report's claims match the check results
+        guide: review.md
+        max_rounds: 3
+        route_back_to: migration
+      - owner-action: review the report, run the checks only you can run, then land the branch or send it back
+        route_back_to: [check-catalogue, migration]
