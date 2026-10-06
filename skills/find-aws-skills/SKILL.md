@@ -51,7 +51,7 @@ If the search returns no results, no result is relevant, or skill retrieval fail
 give the user a friendly message explaining what happened and offer options:
 
 1. Retry with a different search phrase
-2. Proceed with direct AWS CLI commands (`aws___suggest_aws_commands`)
+2. Proceed with direct AWS CLI commands via `aws___run_script`
 3. Let the user guide you on how they'd like to proceed
 
 Do not silently fall back to CLI tools — always wait for the user's confirmation first.

@@ -35,7 +35,7 @@ For each extracted claim, use the `aws-mcp` tools in this order:
 
 1. **`aws___search_documentation`** — search for the service + feature to locate the relevant doc page
 2. **`aws___read_documentation`** — read the located page to confirm or deny the assertion
-3. **`aws___get_regional_availability`** — for any regional availability claim, call this tool with the service and region
+3. **`aws___get_regional_availability`** — for any regional availability claim, call this tool with `regions`, `resource_type` (`"product"`, `"api"`, or `"cfn"`), and `filters` set to the exact product/sub-feature name (e.g. `"Amazon Bedrock"`), API shape (`"SdkServiceId+Operation"`, e.g. `"CloudFormation+CreateStack"`), or CloudFormation resource type (e.g. `"AWS::Lambda::Function"`) — all three fields are required
 
 Do not accept the document's own assertion as evidence. Always consult the primary source.
 
@@ -70,7 +70,7 @@ Output a markdown report in this format:
 
 - **Do not block on UNVERIFIED** — mark and proceed. New services may not yet appear in documentation.
 - **Do not validate pricing claims from memory** — always call `aws___search_documentation` for pricing pages.
-- **Regional availability changes frequently** — always call `aws___get_regional_availability` rather than relying on prior knowledge.
+- **Regional availability changes frequently** — always call `aws___get_regional_availability` rather than relying on prior knowledge. It requires `resource_type` and `filters` — a call with only `regions` fails with a missing-required-field error.
 - **Feature names drift** — search by both the marketing name and the API/console name if the first search returns no results.
 
 ## Verification
