@@ -99,29 +99,11 @@ fetch_verify_binary() {
 
   chmod +x "$asset_path"
 
-  # Relocate to the stable release cache before returning -- see this
-  # file's header for why <dest_dir> itself is never safe to hand back to
-  # a caller that may remove it once the whole script exits.
-  #
-  # Note: `mv -f` here is only guaranteed ATOMIC when <dest_dir> and
-  # <releases_dir> are on the same
-  # filesystem -- true for run-onboarding.sh's own caller, since both are
-  # ordinary paths under the same $HOME/$TMPDIR mount in the common case,
-  # but not a property this line enforces or verifies. A cross-filesystem
-  # `mv` falls back to a copy-then-delete internally, which is NOT atomic
-  # (a reader could observe a partially-written file mid-copy) -- unlike
-  # link-binary.sh's own same-directory temp-symlink-then-rename, which
-  # IS guaranteed atomic because a symlink's rename never crosses a
-  # filesystem boundary by construction. This is an accepted, narrow gap,
-  # not a fix made here: closing it would mean detecting mount boundaries
-  # (a real curl download onto a different partition, e.g. a container
-  # with `/tmp` and `$HOME` mounted separately, is the realistic case),
-  # which this Power's own supported-environments scope does not
-  # currently need to handle.
   releases_dir="${HOME:?HOME must be set}/.konductor/cli-releases"
-  mkdir -p "$releases_dir"
   stable_path="${releases_dir}/${asset_name}"
-  mv -f "$asset_path" "$stable_path"
+  if ! konductor_publish_cached_binary "$asset_path" "$stable_path"; then
+    return 1
+  fi
 
   FETCH_VERIFY_BINARY_RESULT="$stable_path"
 }

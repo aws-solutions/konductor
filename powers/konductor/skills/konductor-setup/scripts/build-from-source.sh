@@ -106,14 +106,11 @@ build_from_source() {
     return 1
   fi
 
-  # Relocate to the stable release cache before returning -- see this
-  # file's header for why <clone_dir> itself is never safe to hand back to
-  # a caller that may remove it once the whole script exits.
   releases_dir="${HOME:?HOME must be set}/.konductor/cli-releases"
-  mkdir -p "$releases_dir"
   stable_path="${releases_dir}/konductor-${tag}-source-build"
-  cp -f "$built_binary" "$stable_path"
-  chmod +x "$stable_path"
+  if ! konductor_publish_cached_binary "$built_binary" "$stable_path"; then
+    return 1
+  fi
 
   BUILD_FROM_SOURCE_RESULT="$stable_path"
 }

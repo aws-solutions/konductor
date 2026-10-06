@@ -500,3 +500,39 @@ konductor_sha256_verify() {
     return 1
   fi
 }
+
+# konductor_publish_cached_binary <source> <destination>
+# Copies a verified or built binary to a same-directory temporary file, then
+# atomically replaces the cache entry. Cache entries must be regular files.
+konductor_publish_cached_binary() {
+  local source="$1" destination="$2" cache_dir temp_file
+
+  if [[ ! -f "$source" ]]; then
+    konductor_die "source binary ${source} is not a regular file."
+    return 1
+  fi
+
+  cache_dir="$(dirname "$destination")"
+  mkdir -p "$cache_dir"
+  if [[ -d "$destination" || -L "$destination" ]]; then
+    konductor_die "cache destination ${destination} is not a regular file path."
+    return 1
+  fi
+
+  temp_file="$(mktemp "${cache_dir}/.$(basename "$destination").tmp.XXXXXX")"
+  if ! cp "$source" "$temp_file"; then
+    rm -f "$temp_file"
+    konductor_die "failed to copy ${source} into the release cache."
+    return 1
+  fi
+  if ! chmod +x "$temp_file"; then
+    rm -f "$temp_file"
+    konductor_die "failed to mark cached binary ${temp_file} executable."
+    return 1
+  fi
+  if ! mv -f "$temp_file" "$destination"; then
+    rm -f "$temp_file"
+    konductor_die "failed to publish cached binary ${destination}."
+    return 1
+  fi
+}
