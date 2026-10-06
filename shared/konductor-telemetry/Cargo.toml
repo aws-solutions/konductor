@@ -1,6 +1,6 @@
 [package]
 name = "konductor-telemetry"
-version = "1.0.3"
+version = "1.0.5"
 edition = "2021"
 description = "Shared telemetry primitives -- identity (nil-UUID sentinel, UUID-shape validation, the machine-scoped $HOME/.konductor/telemetry.json read/write path) and net (host-allowlist DNS classification, DNS-rebinding pin construction, and the timeout-vs-failure resolution decision) -- consumed by cli/konductor-rs and mcp/lib/skill-lookup-core"
 license.workspace = true
