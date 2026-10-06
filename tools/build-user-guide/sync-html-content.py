@@ -67,6 +67,17 @@ EDITS = [
      "├── agent-sops/                   19 SOPs (*.sop.md)"),
     ("layout tree skills", "├── skills/                       75 skills (<name>/SKILL.md",
      "├── skills/                       82 skills (<name>/SKILL.md"),
+    # ---- aws-mcp launches a pinned version, not a floating @latest ----------
+    ("reference MCP registry note: pinned aws-mcp",
+     'note":"MCP registry entries — aws-mcp (k-architect, k-developer): command uvx, args '
+     'mcp-proxy-for-aws@latest, https://aws-mcp.us-east-1.api.aws/mcp, --metadata, AWS_REGION=us-east-1.',
+     'note":"MCP registry entries — aws-mcp (k-architect, k-developer): command uvx, args '
+     'mcp-proxy-for-aws-cli==1.7.0, https://aws-mcp.us-east-1.api.aws/mcp, --metadata, AWS_REGION=us-east-1.'),
+    ("architect card: pinned aws-mcp",
+     'MCP: aws-mcp, launched via uvx mcp-proxy-for-aws@latest — allowedTools grants documentation '
+     'search/read, region list, and regional availability.',
+     'MCP: aws-mcp, launched via uvx mcp-proxy-for-aws-cli==1.7.0 — allowedTools grants documentation '
+     'search/read, region list, and regional availability.'),
     # ---- k-architect is no longer on a different model ----------------------
     ("architect model prose",
      "Both are owned by <code style=\"font-family:'JetBrains Mono',monospace;font-size:.87em;color:var(--tx)\">k-architect</code>, which carries 37 of the package's 82 skills — close to half, and by far the largest share of any agent.",
