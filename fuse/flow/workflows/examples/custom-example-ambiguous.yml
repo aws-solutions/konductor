@@ -15,7 +15,7 @@ steps:
     instruction: Surface goals, assumptions and the questions only the owner can answer.
     produces:
       - artifact: requirements-summary
-        path: .konductor/requirements/requirements-summary.md
+        path: .konductor/{slug}/requirements-summary.md
     gates:
       - owner-action: approve the requirements summary
   - id: prior-art
@@ -23,7 +23,7 @@ steps:
     instruction: How others solved this, inside and outside the company.
     produces:
       - artifact: prior-art
-        path: .konductor/research/prior-art.md
+        path: .konductor/{slug}/prior-art.md
     consumes:
       - requirements-summary
   - id: codebase-analysis
@@ -31,7 +31,7 @@ steps:
     instruction: What the code already offers that the answer could reuse.
     produces:
       - artifact: codebase-analysis
-        path: .konductor/analysis/codebase-analysis.md
+        path: .konductor/{slug}/codebase-analysis.md
     consumes:
       - requirements-summary
   - id: option-a
@@ -39,7 +39,7 @@ steps:
     instruction: A one-page sketch of the simplest direction.
     produces:
       - artifact: option-a
-        path: .konductor/options/option-a.md
+        path: .konductor/{slug}/option-a.md
     consumes:
       - prior-art
       - codebase-analysis
@@ -48,35 +48,41 @@ steps:
     instruction: A one-page sketch of the most complete direction.
     produces:
       - artifact: option-b
-        path: .konductor/options/option-b.md
+        path: .konductor/{slug}/option-b.md
     consumes:
       - prior-art
       - codebase-analysis
   - id: spike
     title: Spike
-    instruction: Throwaway prototype of the riskiest assumption shared by both options.
+    instruction: >
+      Throwaway prototype of the riskiest assumption shared by both options. Build it in a
+      git-ignored scratch folder, record what it proved, then delete it, so no prototype code
+      reaches the implementation.
     produces:
       - artifact: spike-findings
-        path: .konductor/options/spike-findings.md
+        path: .konductor/{slug}/spike-findings.md
     consumes:
       - codebase-analysis
+      - option-a
+      - option-b
   - id: decision
     title: Decision
     instruction: Compare A and B with the spike findings; recommend one.
     produces:
       - artifact: decision
-        path: .konductor/options/decision.md
+        path: .konductor/{slug}/decision.md
     consumes:
       - option-a
       - option-b
       - spike-findings
     gates:
       - owner-action: approve the decision
+        route_back_to: option-a
   - id: requirements
     title: Requirements
     produces:
       - artifact: user-stories
-        path: .konductor/requirements/user-stories.md
+        path: .konductor/{slug}/user-stories.md
     instruction: Write user stories and acceptance criteria for the chosen option.
     consumes:
       - decision
@@ -86,10 +92,12 @@ steps:
     title: Implementation
     produces:
       - artifact: implementation-report
-        path: .konductor/implementation/implementation-report.md
+        path: .konductor/{slug}/implementation-report.md
     instruction: Implement the approved requirements, verify the change, and record the commands and results.
     consumes:
+      - decision
       - user-stories
+      - codebase-analysis
     updates:
       - artifact: code
         path: .
@@ -99,17 +107,22 @@ steps:
     title: Code review
     produces:
       - artifact: code-review
-        path: .konductor/review/code-review.md
+        path: .konductor/{slug}/code-review.md
     instruction: Review the implementation, fix critical findings, and record the review.
+    consumes:
+      - implementation-report
+      - user-stories
     updates:
       - artifact: code
         path: .
+    gates:
+      - check: default
   - id: final-summary
     title: Summary
     instruction: Which option was chosen and why, what shipped, what is open.
     produces:
       - artifact: sdlc-summary
-        path: .konductor/sdlc-summary.md
+        path: .konductor/{slug}/sdlc-summary.md
     consumes:
       - decision
       - implementation-report

@@ -42,7 +42,7 @@ steps:
       between them, the data it keeps, how it fails, and the acceptance tests that will show it
       meets each requirement. Choose the simplest design that meets them. Where there is a real
       choice, give the options and the reason for yours. Check every claim about existing code or
-      services against the source.
+      services against the source. Leave the build order to the feature split.
     consumes: [requirements]
     produces:
       - artifact: design
@@ -62,10 +62,13 @@ steps:
       requirements it covers; every requirement belongs to a feature.
     consumes: [requirements, design]
     produces:
-      - artifact: feature-split
-        path: docs/specs/{slug}/feature-split.md
+      - artifact: build-order
+        path: docs/specs/{slug}/build-order.md
     gates:
-      - owner-action: approve the design and the feature split
+      - agent: review the build order against the approved requirements and the design
+        guide: review.md
+        max_rounds: 2
+      - owner-action: approve the design and the build order
         route_back_to: [requirements, design]
 
   - id: implementation
@@ -82,7 +85,7 @@ steps:
       before you change code. Decide ambiguities yourself, with the design as the authority, and
       list each decision in the hand-over. Stop and ask only before an irreversible action or one
       that reaches outside this checkout.
-    consumes: [requirements, design, feature-split]
+    consumes: [requirements, design, build-order]
     updates:
       - artifact: code
         path: .
@@ -95,9 +98,12 @@ steps:
     instruction: >
       Use the system end to end as its users would, against every requirement, including the
       failure cases. For a migration, compare its behavior with the old system's. Fix what fails
-      and add the test that would have caught it. In the hand-over, say which requirements you
-      exercised and how.
+      and add the test that would have caught it. Record, per requirement, how you exercised it
+      and the result.
     consumes: [requirements]
+    produces:
+      - artifact: test-report
+        path: docs/specs/{slug}/test-report.md
     updates:
       - artifact: code
         path: .
@@ -108,16 +114,17 @@ steps:
     title: Code review
     phase: Review
     instruction: >
-      Make the branch ready for the owner to land: bring it up to date with its base if the base
-      has moved, and get it through review. Do not merge it into the integration branch or push
-      it to a shared branch; the owner lands it.
-    consumes: [requirements, design]
+      Make the branch ready for the owner to land. If the integration branch has moved, rebase the
+      branch onto it first. Get the branch through review. Before the last round, fold fixups and
+      review fixes into one commit per feature, each with a subject that stands on its own. Do not
+      merge it into the integration branch or push it to a shared branch; the owner lands it.
+    consumes: [requirements, design, test-report]
     updates:
       - artifact: code
         path: .
     gates:
       - check: default
-      - agent: review the whole branch, from the commit it started at to HEAD, against the approved requirements and design
+      - agent: review the branch's diff from its merge-base with the integration branch to HEAD, against the approved requirements and design
         guide: review.md
         max_rounds: 3
         route_back_to: implementation

@@ -2,10 +2,9 @@
 # yaml-language-server: $schema=../schemas/workflow.schema.json
 # SPDX-License-Identifier: Apache-2.0
 # Demo workflow, large: a multi-feature project with review at every stage.
-# Everything in k-full-sdlc, plus a threat model, a design review that does not
-# depend on it, independent security and UI testing, and a release readiness
-# gate. Several steps share a dependency and join again later; fuse-flow hands
-# them out one at a time.
+# The steps of k-full-sdlc, with shorter instructions, plus a threat model, a design review that
+# does not depend on it, independent security and UI testing, and a release readiness gate.
+# Several steps share a dependency and join again later; fuse-flow hands them out one at a time.
 version: 1
 name: custom-example-large
 description: Multi-feature project, heavy review, security and release gates.
@@ -14,7 +13,7 @@ steps:
     title: Intake elicitation
     produces:
       - artifact: requirements-summary
-        path: .konductor/requirements/requirements-summary.md
+        path: .konductor/{slug}/requirements-summary.md
     instruction: Resolve the request into a requirements summary.
     gates:
       - owner-action: approve the requirements summary
@@ -23,25 +22,28 @@ steps:
     instruction: Map architecture, conventions, build and test commands.
     produces:
       - artifact: codebase-analysis
-        path: .konductor/analysis/codebase-analysis.md
+        path: .konductor/{slug}/codebase-analysis.md
     consumes:
       - requirements-summary
   - id: requirements
     title: Requirements
     produces:
       - artifact: user-stories
-        path: .konductor/requirements/user-stories.md
-    instruction: Write user stories and acceptance criteria from the requirements summary.
+        path: .konductor/{slug}/user-stories.md
+    instruction: >
+      Write user stories and acceptance criteria from the requirements summary, in the code's
+      vocabulary.
     consumes:
       - requirements-summary
+      - codebase-analysis
     gates:
       - owner-action: approve the user stories
   - id: design
     title: System design
     produces:
       - artifact: design
-        path: .konductor/design/design.md
-    instruction: Write the system design by following system-design-patterns/SKILL.md.
+        path: .konductor/{slug}/design.md
+    instruction: Write the system design with the system-design-patterns skill.
     consumes:
       - codebase-analysis
       - user-stories
@@ -50,61 +52,81 @@ steps:
     instruction: STRIDE threat model for the design, with a mitigation per threat.
     produces:
       - artifact: threat-model
-        path: .konductor/design/threat-model.md
+        path: .konductor/{slug}/threat-model.md
     consumes:
       - design
   - id: design-review
     title: Principal engineer design review
-    instruction: |
-      First design-quality-check/SKILL.md, then design-evaluation/SKILL.md, then adversarial-design-review/SKILL.md.
+    instruction: >
+      Have the design reviewed as the gate below says, fix every CRITICAL finding in the design
+      itself, and record the findings and their resolution.
     produces:
       - artifact: design-review
-        path: .konductor/design/design-review.md
+        path: .konductor/{slug}/design-review.md
     consumes:
       - design
     updates:
       - artifact: design
-        path: .konductor/design/design.md
+        path: .konductor/{slug}/design.md
+    gates:
+      - agent: >
+          review the design: first with the design-quality-check skill, then design-evaluation,
+          then adversarial-design-review. A CRITICAL finding is a required fix
+        max_rounds: 2
   - id: design-signoff
     title: Design sign-off
-    instruction: Present the reviewed design and threat model together.
+    instruction: >
+      Bring the threat model up to date with the changes the design review made, then present the
+      reviewed design and threat model together.
     produces:
       - artifact: design-signoff
-        path: .konductor/design/signoff.md
+        path: .konductor/{slug}/design-signoff.md
     consumes:
+      - design
       - threat-model
       - design-review
+    updates:
+      - artifact: threat-model
+        path: .konductor/{slug}/threat-model.md
     gates:
       - owner-action: approve the reviewed design and threat model
+        route_back_to: [design, threat-model]
   - id: feature-splitting
     title: Feature splitting
     produces:
       - artifact: feature-split
-        path: .konductor/features/feature-split.md
+        path: .konductor/{slug}/feature-split.md
     instruction: Split the signed-off design into independently buildable features.
     consumes:
+      - design
+      - user-stories
       - design-signoff
     gates:
       - owner-action: approve the feature split
   - id: specs
     title: Specs per feature
     instruction: >
-      Per feature: requirements.md (kiro-requirements-generation/SKILL.md), design.md
-      (kiro-design-generation/SKILL.md), tasks.md (kiro-task-generation/SKILL.md) under
-      .kiro/specs/<feature>/.
+      Per feature: requirements.md (the kiro-requirements-generation skill), design.md
+      (kiro-design-generation) and tasks.md (kiro-task-generation) under .kiro/specs/<feature>/,
+      listed in the index.
     produces:
       - artifact: spec-index
-        path: .konductor/specs/index.md
+        path: .konductor/{slug}/spec-index.md
     consumes:
       - feature-split
+      - user-stories
+      - design
+      - threat-model
     gates:
       - owner-action: approve the feature specifications
   - id: implementation
     title: Implementation per feature
     produces:
       - artifact: implementation-report
-        path: .konductor/implementation/implementation-report.md
-    instruction: Implement each approved feature, verify it, and record the commands and results.
+        path: .konductor/{slug}/implementation-report.md
+    instruction: >
+      Implement each approved feature on its own branch, with tests, and commit it before
+      starting the next. Record each feature's branch, commit and check result.
     consumes:
       - spec-index
     updates:
@@ -116,56 +138,85 @@ steps:
     title: Code review and pull requests
     produces:
       - artifact: code-review
-        path: .konductor/review/code-review.md
-    instruction: Review the implementation and pull requests, fix critical findings, and record the review.
+        path: .konductor/{slug}/code-review.md
+    instruction: >
+      Open a draft pull request per feature, or push the branch, have each diff reviewed as the
+      gate below says, fix the required findings, and record the review. Never merge.
     consumes:
+      - spec-index
       - implementation-report
     updates:
       - artifact: code
         path: .
+    gates:
+      - check: default
+      - agent: review each feature branch's diff against its spec. A CRITICAL finding is a required fix
+        max_rounds: 2
+        route_back_to: implementation
   - id: coverage-testing
     title: Coverage testing
     produces:
       - artifact: test-coverage
-        path: .konductor/testing/test-coverage.md
-    instruction: Find test coverage gaps, add missing tests where required, and record the remaining gaps.
+        path: .konductor/{slug}/test-coverage.md
+    instruction: >
+      Find test coverage gaps, add missing tests where required, and record the remaining gaps.
+      Mark a reviewed feature NEEDS_REVALIDATION in the code review when you change it.
     consumes:
+      - user-stories
+      - spec-index
       - implementation-report
     updates:
       - artifact: code
         path: .
+      - artifact: code-review
+        path: .konductor/{slug}/code-review.md
+    gates:
+      - check: default
   - id: security-testing
     title: Security testing
     instruction: Test every mitigation in the threat model; record gaps.
     produces:
       - artifact: security-tests
-        path: .konductor/testing/security-tests.md
+        path: .konductor/{slug}/security-tests.md
     consumes:
       - implementation-report
       - threat-model
+    updates:
+      - artifact: code
+        path: .
+    gates:
+      - check: default
   - id: ui-testing
     title: UI testing
-    instruction: One end-to-end pass against the deployed URL.
+    condition:
+      agent: the project has a user interface, and the owner has given a deployed URL or a way to run it locally
+    instruction: One end-to-end pass of each feature's user-facing flow; record the URL used.
     consumes:
       - implementation-report
     produces:
       - artifact: ui-tests
-        path: .konductor/testing/ui-tests.md
+        path: .konductor/{slug}/ui-tests.md
   - id: documentation
     title: Documentation
     produces:
       - artifact: doc-accuracy
-        path: .konductor/docs/doc-accuracy.md
-    instruction: Check the documentation against the implementation and record every correction.
+        path: .konductor/{slug}/doc-accuracy.md
+    instruction: >
+      Write or update the README and developer guide for what shipped, check them against the
+      implementation, fix every inaccuracy, and record the corrections.
     consumes:
+      - design
       - code-review
+    updates:
+      - artifact: readme
+        path: README.md
   - id: release-readiness
     title: Release readiness
     instruction: |
       Collect review, all three test reports and the docs into one go/no-go recommendation.
     produces:
       - artifact: release-readiness
-        path: .konductor/release/readiness.md
+        path: .konductor/{slug}/release-readiness.md
     consumes:
       - code-review
       - test-coverage
@@ -174,11 +225,14 @@ steps:
       - doc-accuracy
     gates:
       - owner-action: approve release readiness
+        route_back_to: [implementation, code-review]
   - id: final-summary
     title: Final summary
     produces:
       - artifact: sdlc-summary
-        path: .konductor/sdlc-summary.md
+        path: .konductor/{slug}/sdlc-summary.md
     instruction: Deliverables, verification, open items, for a reader who was not there.
     consumes:
       - release-readiness
+      - implementation-report
+      - code-review

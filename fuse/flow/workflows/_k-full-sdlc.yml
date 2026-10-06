@@ -1,8 +1,16 @@
 # $schema: ./schemas/workflow.schema.json
 # yaml-language-server: $schema=./schemas/workflow.schema.json
 # above comments enable live schema validation in WebStorm and vscode
-
 # SPDX-License-Identifier: Apache-2.0
+#
+# A port of the k-full-sdlc SOP (agent-sops/k-full-sdlc.sop.md), steps 0 to 11 in order.
+# Skills are named by their name; they ship with fuse-konductor in the clone's skills/ folder.
+# Deliberate deviations from the SOP:
+# - skip_phases: the owner skips or jumps with fuse-flow's --skip and --forward-to.
+# - Worktree isolation and parallel features: one workstream per checkout, features one after
+#   another on their own branches.
+# - The SOP's fix-cycle budget: the round cap of each agent gate.
+# - The unattended BLOCKED branches: the agent reports the step blocked and the owner decides.
 version: 1
 name: k-full-sdlc
 description: Port of the former k-full-sdlc SOP, requirements through documentation for one feature
@@ -16,7 +24,7 @@ steps:
       so in the summary.
     produces:
       - artifact: requirements-summary
-        path: .konductor/requirements/requirements-summary.md
+        path: .konductor/{slug}/requirements-summary.md
   - id: codebase-analysis
     title: 1. Codebase analysis
     instruction: >
@@ -26,7 +34,9 @@ steps:
       code yet.
     produces:
       - artifact: codebase-analysis
-        path: .konductor/analysis/codebase-analysis.md
+        path: .konductor/{slug}/codebase-analysis.md
+    consumes:
+      - requirements-summary
   - id: requirements
     title: 2. Requirements
     instruction: >
@@ -35,7 +45,7 @@ steps:
       as an owner decision.
     produces:
       - artifact: user-stories
-        path: .konductor/requirements/user-stories.md
+        path: .konductor/{slug}/user-stories.md
     consumes:
       - requirements-summary
       - codebase-analysis
@@ -44,117 +54,162 @@ steps:
   - id: design
     title: 3. Design
     instruction: >
-      Write the design document. For system architecture, data models and infrastructure also read
-      system-design-patterns/SKILL.md. Cite code for every claim about current behaviour; mark what
-      could not be verified.
+      Write the design document. For system architecture, data models and infrastructure also use
+      the system-design-patterns skill. Cite code for every claim about current behaviour; mark what
+      could not be verified. When the codebase analysis found no code, name the language, framework
+      and runtime; implementation scaffolds from them.
     produces:
       - artifact: design
-        path: .konductor/design/design.md
+        path: .konductor/{slug}/design.md
     consumes:
       - user-stories
       - codebase-analysis
   - id: design-review
     title: 4. Principal engineer design review
     instruction: >
-      Review .konductor/design/design.md independently of the author: first
-      design-quality-check/SKILL.md, then design-evaluation/SKILL.md, then
-      adversarial-design-review/SKILL.md. Fix every CRITICAL finding in design.md itself, never by
-      deferring it to implementation, and record the findings and their resolution.
+      Have the design reviewed as the gate below says. Fix every CRITICAL finding in the design
+      itself, never by deferring it to implementation, and record the findings and their
+      resolution.
     produces:
       - artifact: design-review
-        path: .konductor/design/design-review.md
+        path: .konductor/{slug}/design-review.md
     consumes:
       - design
+      - user-stories
     updates:
       - artifact: design
-        path: .konductor/design/design.md
+        path: .konductor/{slug}/design.md
     gates:
+      - agent: >
+          review the design as a principal engineer: first with the design-quality-check skill,
+          then design-evaluation, then adversarial-design-review. A CRITICAL finding is a required
+          fix
+        max_rounds: 2
       - owner-action: approve the reviewed design
         route_back_to: design
   - id: feature-splitting
     title: 5. Feature splitting
     instruction: >
       Split the design into features that can be built independently, give each a unique slug, and
-      record the split. The owner approves it.
+      record the split. Every user story belongs to at least one feature. The owner approves it.
     produces:
       - artifact: feature-split
-        path: .konductor/features/feature-split.md
+        path: .konductor/{slug}/feature-split.md
     consumes:
+      - user-stories
       - design
     gates:
       - owner-action: approve the feature split
   - id: specs
     title: 6. Specs (per feature)
     instruction: >
-      For each feature in feature-split.md write .kiro/specs/<feature>/requirements.md
-      (kiro-requirements-generation/SKILL.md), design.md (kiro-design-generation/SKILL.md) and
-      tasks.md (kiro-task-generation/SKILL.md), then list the spec directories in the index
-      artifact. The owner approves the specs for all features at once.
+      For each feature in the split write .kiro/specs/<feature>/requirements.md (the
+      kiro-requirements-generation skill), design.md (kiro-design-generation) and tasks.md
+      (kiro-task-generation), then list the spec directories in the index. The owner approves the
+      specs for all features at once.
     produces:
       - artifact: spec-index
-        path: .konductor/specs/index.md
+        path: .konductor/{slug}/spec-index.md
     consumes:
       - feature-split
+      - user-stories
+      - design
+      - codebase-analysis
     gates:
       - owner-action: approve the feature specifications
   - id: implementation
     title: 7. Implementation (per feature)
     instruction: >
-      Implement each feature from its tasks.md on its own branch, with unit and integration tests.
-      On a greenfield project build the scaffold first. Run the project's build and tests after each
-      feature; record the commands and their terminal output in the implementation report.
+      Before cutting the first branch, confirm the working tree is clean, and ask the owner if it
+      is not. Implement each feature from its tasks.md on its own branch, with unit and integration
+      tests. On a greenfield project build the scaffold first, from the design. Run the project's
+      check on each feature and commit the feature on its branch (the git-workflow skill) before
+      starting the next. Record each feature's branch, commit and check result in the
+      implementation report.
     produces:
       - artifact: implementation-report
-        path: .konductor/implementation/implementation-report.md
+        path: .konductor/{slug}/implementation-report.md
     consumes:
       - spec-index
-    updates:
-      - artifact: code
-        path: .
-  - id: code-review
-    title: 8. Code review and pull request (per feature)
-    instruction: >
-      Commit each feature (git-workflow/SKILL.md), open one pull request per feature, or push the
-      feature branch when the project has no pull request tool, and review the diff. Fix CRITICAL
-      findings on the feature branch, re-run the build and tests, and record the review. Never
-      merge.
-    produces:
-      - artifact: code-review
-        path: .konductor/review/code-review.md
+      - design
+      - codebase-analysis
     updates:
       - artifact: code
         path: .
     gates:
+      - check: default
+  - id: code-review
+    title: 8. Code review and pull request (per feature)
+    instruction: >
+      Open one pull request per feature branch, or push the branch when the project has no pull
+      request tool. Have each feature's diff reviewed as the gate below says, fix the required
+      findings on the feature branch, and record each feature's review and its pull request or
+      branch. Never merge.
+    produces:
+      - artifact: code-review
+        path: .konductor/{slug}/code-review.md
+    consumes:
+      - spec-index
+      - implementation-report
+    updates:
+      - artifact: code
+        path: .
+    gates:
+      - check: default
+      - agent: >
+          review each feature branch's diff against its spec. A CRITICAL finding is a required fix
+        max_rounds: 2
+        route_back_to: implementation
       - owner-action: approve the pull requests or pushed branches for all features at once
         route_back_to: implementation
   - id: testing
     title: 9. Testing (per feature)
     instruction: >
       Find the coverage gaps for what was implemented, write the missing tests on the feature branch
-      and update its pull request, or push the branch when the feature has no pull request. Mark a
-      feature NEEDS_REVALIDATION in code-review.md when this step changes a feature that was
-      already reviewed. Record the remaining gaps with a reason each.
+      and update its pull request, or push the branch when the feature has no pull request. Include
+      a security test plan per feature (the security-test-generation skill) and count its critical
+      findings as gaps; a plan that is only a task list counts as not evaluated. When the owner has
+      given a deployed URL and the feature has a user interface, run one end-to-end pass against it.
+      Mark a feature NEEDS_REVALIDATION in the code review when this step changes a feature that
+      was already reviewed. Record the remaining gaps with a reason each.
     produces:
       - artifact: test-coverage
-        path: .konductor/testing/test-coverage.md
+        path: .konductor/{slug}/test-coverage.md
     consumes:
-      - code-review
+      - user-stories
+      - spec-index
+      - implementation-report
     updates:
       - artifact: code
         path: .
+      - artifact: code-review
+        path: .konductor/{slug}/code-review.md
     gates:
+      - check: default
       - owner-action: accept the coverage gaps that stay open
         route_back_to: implementation
   - id: documentation
     title: 10. Documentation
     instruction: >
       Write or update the README and developer guide for what shipped, write AGENTS.md if it is
-      missing or update it where commands or structure changed (agents-md-authoring/SKILL.md), apply
-      humanize-writing/SKILL.md, then check every claim in them against the implementation. Fix
-      every inaccuracy before marking the step done, and record the result.
+      missing or update it where commands or structure changed (the agents-md-authoring skill), and
+      apply the humanize-writing skill. Record the accuracy check's result.
     produces:
       - artifact: doc-accuracy
-        path: .konductor/docs/doc-accuracy.md
+        path: .konductor/{slug}/doc-accuracy.md
+    consumes:
+      - design
+      - spec-index
+      - implementation-report
+      - test-coverage
+    updates:
+      - artifact: readme
+        path: README.md
+    gates:
+      - agent: >
+          check every claim in the README, the developer guide and AGENTS.md against the
+          implementation (the doc-accuracy-analyzer skill). An incorrect claim is a required fix
+        max_rounds: 2
   - id: final-summary
     title: 11. Final summary
     instruction: >
@@ -163,7 +218,7 @@ steps:
       what is left for the owner.
     produces:
       - artifact: sdlc-summary
-        path: .konductor/sdlc-summary.md
+        path: .konductor/{slug}/sdlc-summary.md
     consumes:
       - implementation-report
       - code-review

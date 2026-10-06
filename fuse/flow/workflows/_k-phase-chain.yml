@@ -2,6 +2,17 @@
 # yaml-language-server: $schema=./schemas/workflow.schema.json
 
 # SPDX-License-Identifier: Apache-2.0
+#
+# Konductor's six-phase chain, from the "SDLC Workflow" and "Verification Protocol" sections of the
+# removed Konductor agent prompt and its phase agents (k-product-manager, k-architect, k-tpm,
+# k-developer, k-quality-assurance on the konductor main branch). Skills are named by their name;
+# they ship with fuse-konductor. Deliberate deviations from the source:
+# - No owner gates: the chain runs through, and the owner reads the results at the end.
+# - The independent checker runs on the user stories, the design and the code; the feature split
+#   and the specs are checked by their own guides only, to keep the chain light.
+# - Per-feature work happens inside one step per phase, because fuse-flow has no loops.
+# - QA reports its findings instead of handing them back to the developer; the agent suggests
+#   sending the work back when a gap leaves an acceptance criterion untested.
 version: 1
 name: k-phase-chain
 description: Konductor's lighter six-phase chain, PM through QA, with no owner gates, from the "SDLC
@@ -9,79 +20,102 @@ description: Konductor's lighter six-phase chain, PM through QA, with no owner g
 steps:
   - id: pm
     title: 1. PM
-    instruction: >
-      Write the user stories and acceptance criteria from the request, then check them against the
-      request and fix what does not hold before marking the step done.
+    instruction: Write the user stories and acceptance criteria from the request.
     produces:
       - artifact: user-stories
-        path: .konductor/requirements/user-stories.md
+        path: .konductor/{slug}/user-stories.md
+    gates:
+      - agent: check the user stories and acceptance criteria against the request; a story the request does not support, or a request with no story, is a required fix
+        max_rounds: 2
   - id: architect
     title: 2. Architect
     instruction: >
-      Write the system design: architecture, non-functional requirements, threat model, API and data
-      models, access policies. Follow design-doc-guidelines/SKILL.md, then check every claim against
-      the code (doc-accuracy-analyzer/SKILL.md) and fix what does not hold before marking the step
-      done.
+      Write the system design: architecture, non-functional requirements, a threat model (the
+      threat-modeling skill), API and data models, access policies. Cite code for every claim
+      about current behaviour.
     produces:
       - artifact: design
-        path: .konductor/design/design.md
+        path: .konductor/{slug}/design.md
     consumes:
       - user-stories
+    gates:
+      - agent: >
+          review the design and its threat model for flaws that would block implementation, and
+          check every claim about the code against the code (the doc-accuracy-analyzer skill)
+        max_rounds: 2
   - id: feature-splitting
     title: 3. Feature splitting
     instruction: |
       Split the design into features that can be built independently and give each a unique slug.
+      Every user story belongs to at least one feature.
     produces:
       - artifact: feature-split
-        path: .konductor/features/feature-split.md
+        path: .konductor/{slug}/feature-split.md
     consumes:
+      - user-stories
       - design
   - id: specs
     title: 4. Developer (specs, per feature)
     instruction: >
-      For each feature in feature-split.md write .kiro/specs/<feature>/requirements.md
-      (kiro-requirements-generation/SKILL.md), design.md (kiro-design-generation/SKILL.md) and
-      tasks.md (kiro-task-generation/SKILL.md), then list the spec directories in the index
-      artifact.
+      For each feature in the split write .kiro/specs/<feature>/requirements.md (the
+      kiro-requirements-generation skill), design.md (kiro-design-generation) and tasks.md
+      (kiro-task-generation), then list the spec directories in the index.
     produces:
       - artifact: spec-index
-        path: .konductor/specs/index.md
+        path: .konductor/{slug}/spec-index.md
     consumes:
       - feature-split
+      - user-stories
+      - design
   - id: implementation
     title: 5. Developer (implementation, per feature)
     instruction: >
-      Implement each feature from its tasks.md with tests. Run the project's build and tests after
-      each feature; record the commands and their terminal output in the implementation report.
+      Implement each feature from its tasks.md with tests. Commit each feature separately, with
+      commit messages that name the feature's slug, so code review can read each feature's diff.
+      Record per feature its commits and the check's result in the implementation report.
     produces:
       - artifact: implementation-report
-        path: .konductor/implementation/implementation-report.md
+        path: .konductor/{slug}/implementation-report.md
     consumes:
       - spec-index
     updates:
       - artifact: code
         path: .
+    gates:
+      - check: default
   - id: code-review
     title: 5a. Code review (per feature)
     instruction: >
-      Review the git diff of each feature. Fix every CRITICAL finding in the implementation (the
-      route back to step 5), re-run the build and tests, and record the review.
+      Have the git diff of each feature reviewed as the gate below says, fix every CRITICAL finding
+      in the implementation, and record the review.
     produces:
       - artifact: code-review
-        path: .konductor/review/code-review.md
+        path: .konductor/{slug}/code-review.md
+    consumes:
+      - spec-index
+      - implementation-report
     updates:
       - artifact: code
         path: .
     gates:
+      - check: default
       - agent: review the git diff of each feature; a CRITICAL finding fails the round
         max_rounds: 2
         route_back_to: implementation
   - id: qa
     title: 6. QA
     instruction: >
-      Find the test coverage gaps for what was implemented, plan the end-to-end and security tests,
-      check user-facing text, and record the findings. This is the last step; findings are reported,
-      not routed back to implementation.
+      Find the test coverage gaps for what was implemented, plan the end-to-end tests (the
+      e2e-test-strategy skill) and the security tests (security-test-generation), and check
+      user-facing text when there is any (ui-text-validation); each is a section of the report.
+      This is the last step; findings are reported, not routed back to implementation. Put any gap
+      that leaves an acceptance criterion untested at the top, and suggest sending the work back to
+      implementation in the hand-over.
     produces:
       - artifact: test-coverage
-        path: .konductor/testing/test-coverage.md
+        path: .konductor/{slug}/test-coverage.md
+    consumes:
+      - user-stories
+      - spec-index
+      - implementation-report
+      - code-review

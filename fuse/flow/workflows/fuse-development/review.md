@@ -16,9 +16,9 @@ agent, review the artifact yourself in a separate pass and say so in the hand-ov
 - A document: is it correct, complete for its purpose, and consistent with itself and with what
   it builds on? Is every claim about existing code or services true when checked against the
   source? Could the next step be done from it without guessing?
-- Code: the whole diff since the branch started, against the approved spec. Behavior the spec
-  asks for that is missing or wrong, tests that do not prove what they claim, security and data
-  loss risks, and departures from the project's conventions. Check the tests against the spec,
+- Code: the branch's whole diff from its merge-base with the integration branch, against the
+  approved spec. Behavior the spec asks for that is missing or wrong, tests that do not prove
+  what they claim, security and data loss risks, and departures from the project's conventions. Check the tests against the spec,
   not only the code: each behavior the spec requires has a test that would fail without it, and
   no test was weakened or narrowed to pass. A required behavior without such a test is a P1.
 
@@ -29,8 +29,12 @@ agent, review the artifact yourself in a separate pass and say so in the hand-ov
 - P2: worth fixing, but nobody is hurt if it waits.
 - P3: a nit.
 
-P0 and P1 findings are required fixes. Check each one against the code before you accept or
-reject it, and record a rejected finding as a false positive with the reason. Fix P2 and P3
+The reviewer says for each finding whether it is a single instance or a broken pattern.
+
+A reviewer is not an authority: it can be wrong, and it lacks context you have. P0 and P1
+findings are required fixes once you have checked them against the code; record a rejected
+finding as a false positive with the reason. For a pattern, look for every other occurrence in the
+change and fix them in the same pass. Fix P2 and P3
 findings when the fix is cheap; list the rest as deferred in the hand-over.
 
 ## A round

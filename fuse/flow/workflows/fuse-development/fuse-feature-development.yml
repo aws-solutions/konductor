@@ -20,14 +20,15 @@ steps:
     title: Design
     phase: Design
     instruction: >
-      Turn the owner's request into an agreed spec: what the feature does and for whom, how it
-      fits the existing code, and the acceptance tests that will show it works, one for each
-      behavior it must have. Read the code before you ask anything. Ask only the questions whose
+      If this checkout is on the integration branch, first create a feature branch named after the
+      workstream. Turn the owner's request into an agreed spec: what the feature does and for
+      whom, how it fits the existing code, and the acceptance tests that will show it works, one
+      for each behavior it must have. Read the code before you ask anything. Ask only the questions whose
       answers change the design, give your recommended answer with each, and decide the rest
       yourself as recorded assumptions. Keep the spec as short as the feature allows. Do not
-      change code until the owner approves the spec.
+      change code until the owner approves the spec. Commit the spec on the branch.
     produces:
-      - artifact: design
+      - artifact: feature-spec
         path: docs/specs/{slug}.md
     gates:
       - agent: review the spec against the owner's request and the code
@@ -39,8 +40,7 @@ steps:
     title: Implementation
     phase: Build
     instruction: >
-      Build the approved spec. If this checkout is on the integration branch, first create a
-      feature branch named after the workstream. Write the spec's acceptance tests from the
+      Build the approved spec. Write the spec's acceptance tests from the
       spec's wording, not from your code, and see each one fail before the code makes it pass,
       or break the code briefly and see it go red. Start every bug fix with a test that
       reproduces the bug and fails. How you test the rest is your call. Never weaken a test to
@@ -48,7 +48,7 @@ steps:
       before you change code. Decide ambiguities yourself, with the spec as the authority, and
       list each decision in the hand-over. Stop and ask only before an irreversible action or one
       that reaches outside this checkout.
-    consumes: [design]
+    consumes: [feature-spec]
     updates:
       - artifact: code
         path: .
@@ -59,16 +59,18 @@ steps:
     title: Code review
     phase: Review
     instruction: >
-      Make the branch ready for the owner to land: bring it up to date with its base if the base
-      has moved, and get it through review. Do not merge it into the integration branch or push
-      it to a shared branch; the owner lands it.
-    consumes: [design]
+      Make the branch ready for the owner to land. If the integration branch has moved, rebase the
+      branch onto it first. Get the branch through review. Before the last round, fold fixups and
+      review fixes into the commits it should land as, normally one commit for the feature, with a
+      subject that stands on its own. Do not merge it into the integration branch or push it to a
+      shared branch; the owner lands it.
+    consumes: [feature-spec]
     updates:
       - artifact: code
         path: .
     gates:
       - check: default
-      - agent: review the whole branch, from the commit it started at to HEAD, against the approved spec
+      - agent: review the branch's diff from its merge-base with the integration branch to HEAD, against the approved spec
         guide: review.md
         max_rounds: 3
         route_back_to: implementation

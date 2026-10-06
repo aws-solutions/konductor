@@ -2,7 +2,7 @@
 # yaml-language-server: $schema=../schemas/workflow.schema.json
 # SPDX-License-Identifier: Apache-2.0
 # Demo workflow, small: a bug fix or a one-file change.
-# Three steps, one mechanical gate, no documents beyond a short note.
+# Three steps, one mechanical gate on the final code, and one short note that every step adds to.
 version: 1
 name: custom-example-small
 description: Lightweight loop for a small, well-understood change.
@@ -11,32 +11,36 @@ steps:
     title: Implement
     instruction: >
       Make the smallest change that fixes the request, with a test that fails before it and passes
-      after. Record the command and its output.
+      after. Record the command and its output in the note.
     produces:
       - artifact: implementation-report
-        path: .konductor/implementation/implementation-report.md
+        path: .konductor/{slug}/implementation-report.md
     updates:
+      - artifact: code
+        path: .
+  - id: code-review
+    title: Self review
+    instruction: >
+      Review your own diff, fix CRITICAL findings, add the review's outcome to the note, and
+      commit.
+    consumes:
+      - implementation-report
+    updates:
+      - artifact: implementation-report
+        path: .konductor/{slug}/implementation-report.md
       - artifact: code
         path: .
     gates:
       - check: default
-  - id: code-review
-    title: Self review
-    instruction: Review your own diff, fix CRITICAL findings, commit.
-    produces:
-      - artifact: code-review
-        path: .konductor/review/code-review.md
-    updates:
-      - artifact: code
-        path: .
   - id: final-summary
     title: Summary
-    instruction: One paragraph for the owner, what changed, how it was verified.
-    produces:
-      - artifact: sdlc-summary
-        path: .konductor/sdlc-summary.md
+    instruction: >
+      Add one paragraph for the owner at the top of the note: what changed and how it was
+      verified.
     consumes:
       - implementation-report
-      - code-review
+    updates:
+      - artifact: implementation-report
+        path: .konductor/{slug}/implementation-report.md
     gates:
-      - owner-action: approve the summary
+      - owner-action: approve the change
