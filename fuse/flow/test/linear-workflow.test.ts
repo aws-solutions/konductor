@@ -3,7 +3,7 @@
 
 import { afterEach, beforeEach, expect, test } from "bun:test";
 import { chmodSync, cpSync, existsSync, mkdirSync, rmSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { FLOW_DIR, Repo } from "./helpers";
 
 const LINEAR = `version: 1
@@ -258,11 +258,17 @@ test("a fresh copy of fuse-flow installs its own dependencies on first use, with
 
 // A PATH holding Node 22.18+ with its npm, and no Bun; undefined when this
 // machine has no such Node. FUSE_FLOW_TEST_NODE_BIN names the bin directory
-// when it is not on PATH (for example a version manager's install).
+// when it is not on PATH. A version manager's shim (mise, asdf, volta) is
+// resolved to the directory of the real binary: the test runs fuse-flow with a
+// private HOME, where a shim finds no installed Node and would download one.
 function pathWithNodeOnly(): string | undefined {
-  const dirs = [process.env.FUSE_FLOW_TEST_NODE_BIN, ...(process.env.PATH ?? "").split(":")].filter((d): d is string => !!d);
-  for (const dir of dirs) {
-    if (!existsSync(join(dir, "node")) || !existsSync(join(dir, "npm"))) continue;
+  const candidates = [process.env.FUSE_FLOW_TEST_NODE_BIN, ...(process.env.PATH ?? "").split(":")].filter((d): d is string => !!d);
+  for (const candidate of candidates) {
+    if (!existsSync(join(candidate, "node"))) continue;
+    const real = Bun.spawnSync([join(candidate, "node"), "-p", "process.execPath"]).stdout.toString().trim();
+    if (!real) continue;
+    const dir = dirname(real);
+    if (!existsSync(join(dir, "npm"))) continue;
     const version = Bun.spawnSync([join(dir, "node"), "--version"]).stdout.toString().trim();
     const [major, minor] = version.replace(/^v/, "").split(".").map(Number);
     if (!(major >= 24 || (major === 23 && minor >= 6) || (major === 22 && minor >= 18))) continue;
