@@ -6,6 +6,23 @@ This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Entries are consolidated per release,
 not per individual commit.
 
+## [1.0.5] - 2026-10-06
+
+### Fixed
+
+- `update --no-telemetry` now opts a project out for good: it removes the project's telemetry
+  record instead of only skipping that one run's write, so a later plain `update` can't quietly
+  turn telemetry back on. Pass the new `--enable-telemetry` flag to opt back in.
+- If removing that record fails (for example, a read-only `.konductor/` directory), `update` now
+  warns about it in both plain-text and `--json` output instead of only printing to stderr, so the
+  risk of telemetry silently turning back on is visible.
+- `install --no-telemetry` warns the same way when it can't remove an earlier opt-in record,
+  instead of only printing to stderr.
+- The opt-out removal in both `install --no-telemetry` and `update --no-telemetry` is now
+  serialized against a concurrent install or update at the same project, so a telemetry record a
+  different harness just wrote can no longer be silently destroyed by a race between reading and
+  removing it.
+
 ## [1.0.3] - 2026-10-01
 
 ### Fixed

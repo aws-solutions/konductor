@@ -227,6 +227,7 @@ pub fn dispatch_update_with(
     all: bool,
     harness: Option<String>,
     no_telemetry: bool,
+    enable_telemetry: bool,
     dry_run: bool,
     use_github_token: bool,
     cli: bool,
@@ -245,6 +246,28 @@ pub fn dispatch_update_with(
     let home_dir_fallback = std::env::var_os("HOME")
         .map(std::path::PathBuf::from)
         .unwrap_or_default();
+
+    // `Commands::Update`'s own `conflicts_with` already rejects this
+    // combination before `dispatch_update_with` is ever reached from
+    // real argv -- this guard exists for every OTHER caller (every test
+    // in this module calls this function directly, bypassing clap
+    // entirely) so neither flag is ever silently picked over the other.
+    if no_telemetry && enable_telemetry {
+        super::report::report_error(
+            "update",
+            "update.telemetry_flags_conflict",
+            &home_dir_fallback,
+            // Neither flag's own telemetry preference can be trusted
+            // here -- the two disagree -- so this one error is never
+            // itself reported.
+            true,
+            "--no-telemetry and --enable-telemetry are mutually exclusive; pass at most one",
+            Vec::new(),
+            json,
+            color,
+        );
+        return EXIT_USAGE_ERROR;
+    }
 
     if cli {
         return dispatch_update_cli(
@@ -403,6 +426,7 @@ pub fn dispatch_update_with(
             force,
             verbose,
             no_telemetry,
+            enable_telemetry,
         );
     }
 
@@ -442,6 +466,7 @@ pub fn dispatch_update_with(
             json,
             all,
             no_telemetry,
+            enable_telemetry,
             color,
             latest_release_tag_cache.as_ref(),
         );
@@ -540,6 +565,7 @@ fn dispatch_update_all_json(
     force: bool,
     verbose: bool,
     no_telemetry: bool,
+    enable_telemetry: bool,
 ) -> u8 {
     let _ = verbose; // Batched --json output has no verbose per-file listing.
     let mut succeeded: Vec<(String, UpdateOutcome)> = Vec::new();
@@ -580,6 +606,7 @@ fn dispatch_update_all_json(
             true,
             true,
             no_telemetry,
+            enable_telemetry,
             latest_release_tag_cache.as_ref(),
         ) {
             Ok(outcome) => outcome,
@@ -1123,6 +1150,7 @@ fn update_one_target(
     json: bool,
     uncached_identity: bool,
     no_telemetry: bool,
+    enable_telemetry: bool,
     color: ColorMode,
     latest_release_tag_cache: Option<&Result<String, github::GithubFetchError>>,
 ) -> u8 {
@@ -1136,6 +1164,7 @@ fn update_one_target(
         uncached_identity,
         json,
         no_telemetry,
+        enable_telemetry,
         latest_release_tag_cache,
     ) {
         Ok(UpdateOutcome::Success {
@@ -1290,6 +1319,7 @@ fn run_update_one_target(
     uncached_identity: bool,
     json: bool,
     no_telemetry: bool,
+    enable_telemetry: bool,
     latest_release_tag_cache: Option<&Result<String, github::GithubFetchError>>,
 ) -> Result<UpdateOutcome, UpdateOutcome> {
     run_update_one_target_with_remote_installer(
@@ -1302,6 +1332,7 @@ fn run_update_one_target(
         uncached_identity,
         json,
         no_telemetry,
+        enable_telemetry,
         latest_release_tag_cache,
         // owner/repo are the confirmed real values for this project,
         // hardcoded ONLY at this one call site -- mirrors
@@ -1349,6 +1380,15 @@ fn run_update_one_target(
 /// redundant identical requests against GitHub's unauthenticated rate
 /// limit, since the latest tag is repo-wide, not per-target. `None`
 /// means "no pre-fetch, resolve directly."
+///
+/// `no_telemetry` and `enable_telemetry` are the explicit CLI flags, as
+/// the caller passed them (mutually exclusive -- see
+/// `Commands::Update`'s own `conflicts_with`), before either one is
+/// combined with this target's own carried-forward opt-out signal. See
+/// the carry-forward block in this function's own body for the sticky
+/// delete `no_telemetry` performs over an enabled target, and the
+/// unconditional override `enable_telemetry` performs over a
+/// carried-forward opt-out.
 #[allow(clippy::too_many_arguments)]
 fn run_update_one_target_with_remote_installer(
     target_dir: &Path,
@@ -1360,6 +1400,7 @@ fn run_update_one_target_with_remote_installer(
     uncached_identity: bool,
     json: bool,
     no_telemetry: bool,
+    enable_telemetry: bool,
     latest_release_tag_cache: Option<&Result<String, github::GithubFetchError>>,
     remote_installer: impl FnOnce(
         &dyn super::install::InstallStrategy,
@@ -1574,20 +1615,19 @@ fn run_update_one_target_with_remote_installer(
     // and when passed it always suppresses telemetry for this run
     // regardless of the target's own history -- an explicit override
     // in either direction. When it is NOT passed, this target's own
-    // `.konductor/install-info.json` is read via
-    // `read_install_info_detailed` (not the plain `read_install_info`
-    // `report_*` uses, since this call site -- unlike those -- needs to
-    // tell the user WHY, not just whether) to resolve one of three
+    // `.konductor/install-info.json` is read to resolve one of three
     // outcomes, the same three `doctor`'s `check_telemetry_state` reads
     // from this file:
     //
     //   - `Ok`: an install-info record exists and validated. Not
-    //     opted out; `no_telemetry` is left as the caller passed it.
+    //     opted out; `no_telemetry` is left as the caller passed it
+    //     (see the removal below for what an explicit `--no-telemetry`
+    //     still does to this record).
     //   - `Err(NotFound)`: no record was ever written, either from a
-    //     deliberate `--no-telemetry` choice at install or an install
-    //     that predates this telemetry system entirely -- the two are
-    //     indistinguishable from the filesystem alone. Carried forward
-    //     as opted-out silently, same as before: this is the
+    //     deliberate `--no-telemetry` choice at install or update, or an
+    //     install that predates this telemetry system entirely -- these
+    //     are indistinguishable from the filesystem alone. Carried
+    //     forward as opted-out silently: this is the
     //     conservative default that never wires a telemetry side
     //     effect for a target that never affirmatively got one, and
     //     nothing here is broken, so nothing is printed.
@@ -1610,33 +1650,92 @@ fn run_update_one_target_with_remote_installer(
     // what keeps this run from wiring telemetry hooks on any harness,
     // and makes it strip the hooks a prior run wired.
     //
-    // Read unconditionally -- NOT `no_telemetry ||`-short-circuited --
-    // so a broken record is always surfaced via `telemetry_state_warning`
-    // even on a run where `--no-telemetry` was passed explicitly (which
-    // would otherwise skip this read entirely and never learn the
-    // record was broken rather than absent). The read's `Ok`/`NotFound`
-    // outcomes never affect `no_telemetry`: an explicit `--no-telemetry`
-    // already decided the opt-out on its own, and this read exists only
-    // to resolve that decision when the flag was NOT passed and to
-    // report whether the file backing that decision is trustworthy.
+    // The read and the sticky-opt-out removal just below it run as ONE
+    // locked critical section via `read_and_maybe_remove_locked`, not
+    // two separately unlocked steps -- composing an unlocked read with a
+    // later, separately unlocked removal would leave a gap for a
+    // concurrent `write_install_info` (a different harness's install or
+    // update, telemetry on) to land a fresh record in between the two,
+    // and the removal would then act on a decision made before that
+    // record ever existed; see `read_and_maybe_remove_locked`'s own doc
+    // comment for the TOCTOU gap this closes. An EXPLICIT
+    // `--no-telemetry` against a target whose record currently reads as
+    // enabled does not just suppress wiring for this one run -- it
+    // removes the record, the same effect `install --no-telemetry`
+    // already has over an opted-in target (see that call site's own doc
+    // comment). Without this, a target opted out via `update
+    // --no-telemetry` would have its record read as `Ok` again on the
+    // very next PLAIN `update` (no flag re-passed), silently re-enabling
+    // telemetry. The read itself runs unconditionally -- `no_telemetry`
+    // only gates whether a removal is REQUESTED, never whether the read
+    // happens -- so a broken record is always surfaced via
+    // `telemetry_state_warning` even on a run where `--no-telemetry` was
+    // passed explicitly. Requesting removal for a target that was
+    // ALREADY opted out is harmless: there is no record to remove, and
+    // removal is already a no-op for a missing file regardless.
+    // Best-effort, matching `install.rs`'s own handling of the identical
+    // call: a removal failure is folded into `telemetry_state_warning`
+    // below rather than failing the update outright -- an update that
+    // otherwise succeeded must not be reported as a hard failure just
+    // because this record survived.
     let mut telemetry_state_warning: Option<String> = None;
-    let carried_forward_opt_out =
-        match crate::cli::telemetry::read_install_info_detailed(target_dir) {
-            Ok(_) => false,
-            Err(crate::cli::telemetry::InstallInfoAbsence::NotFound) => true,
-            Err(crate::cli::telemetry::InstallInfoAbsence::Broken) => {
-                let record_path = crate::cli::telemetry::install_info_path(target_dir);
-                telemetry_state_warning = Some(format!(
-                    "telemetry reporting is off for {}: {} is present but could not be read \
+    let (install_info_read, remove_error) =
+        crate::cli::telemetry::read_and_maybe_remove_locked(target_dir, no_telemetry);
+    let carried_forward_opt_out = match install_info_read {
+        Ok(_) => false,
+        Err(crate::cli::telemetry::InstallInfoAbsence::NotFound) => true,
+        Err(crate::cli::telemetry::InstallInfoAbsence::Broken) => {
+            let record_path = crate::cli::telemetry::install_info_path(target_dir);
+            telemetry_state_warning = Some(format!(
+                "telemetry reporting is off for {}: {} is present but could not be read \
                  (unreadable or an unrecognized schema) -- re-run `konductor install` to \
                  rewrite it, or inspect it directly to see why it failed to parse",
-                    target_dir.display(),
-                    record_path.display()
-                ));
-                true
-            }
-        };
-    let no_telemetry = no_telemetry || carried_forward_opt_out;
+                target_dir.display(),
+                record_path.display()
+            ));
+            true
+        }
+    };
+    // A failed removal leaves this target's record exactly as it was
+    // read above -- still `Ok`, still enabled -- so a later plain
+    // `update` (no `--no-telemetry` re-passed) will carry telemetry
+    // forward as on, exactly the bug this whole opt-out removal exists
+    // to close, just reached via a failure path instead of a missing
+    // one. Folded into `telemetry_state_warning` with the same `"; "`
+    // join `finalize_index_warning` uses below, rather than overwriting
+    // a `Broken`-record warning that may already be set: the two
+    // conditions are independent and either can fire alone.
+    if let Some(err) = remove_error {
+        let record_path = crate::cli::telemetry::install_info_path(target_dir);
+        let message = format!(
+            "could not remove {}: {err} -- a later plain `update` for this target may \
+             silently re-enable telemetry until this record is removed",
+            record_path.display()
+        );
+        telemetry_state_warning = Some(match telemetry_state_warning {
+            Some(existing) => format!("{existing}; {message}"),
+            None => message,
+        });
+    }
+
+    // `--enable-telemetry` is the mirror image: it forces telemetry ON
+    // for this run regardless of any carried-forward opt-out (an
+    // absent or broken record), overriding `carried_forward_opt_out`
+    // the same unconditional way an explicit `--no-telemetry` overrides
+    // it in the other direction. This doesn't call `write_install_info`
+    // directly -- forcing `no_telemetry` to `false` here is sufficient:
+    // the install step below (`install_from_local`/the remote fallback
+    // chain) already writes the record whenever it runs with
+    // `no_telemetry: false`, the same path a plain `update` against an
+    // already-opted-in target already takes. `enable_telemetry` and
+    // `no_telemetry` are mutually exclusive (`Commands::Update`'s own
+    // `conflicts_with`), so this never has to arbitrate between the
+    // two.
+    let no_telemetry = if enable_telemetry {
+        false
+    } else {
+        no_telemetry || carried_forward_opt_out
+    };
 
     // Content-version skip-if-unchanged, mirroring `install.rs`'s own
     // no-`--from` check exactly: compares the incoming version (the
@@ -2186,15 +2285,11 @@ mod tests {
 
     // ── Harness selection ─────────────────────────────────────────────────
 
-    /// `update --harness <name>` at a target tracking 2+ strategies
-    /// refreshes only the SELECTED strategy's own slot, and both (a)
-    /// leaves the OTHER already-tracked strategy's own manifest slot
-    /// untouched, and (b) keeps that other strategy's own name in the
-    /// INDEX entry's `strategies` list -- the exact bug this
-    /// implementation's own `tracked_strategy_names` fix closes: naively
-    /// writing `strategies: vec![current.strategy.clone()]` back to the
-    /// index would otherwise silently drop the untouched strategy's name
-    /// from the index even though its manifest slot survives on disk.
+    /// Also pins that the OTHER already-tracked strategy's name survives
+    /// in the index entry's `strategies` list -- naively writing
+    /// `strategies: vec![current.strategy.clone()]` back to the index
+    /// would silently drop it even though its manifest slot survives on
+    /// disk.
     #[test]
     fn update_one_target_with_harness_refreshes_only_selected_strategy() {
         let _home = HomeGuard::new("harness-select-update-home");
@@ -2250,6 +2345,7 @@ mod tests {
             false,
             false,
             false,
+            false, /* enable_telemetry */
             ColorMode::disabled(),
             None, /* latest_release_tag_cache */
         );
@@ -2292,13 +2388,6 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// Races a real concurrent `claude` install against
-    /// `update_one_target` refreshing the already-tracked
-    /// `kiro-cli-v2` slot, proving the finalize index write re-reads
-    /// the manifest fresh instead of reusing a pre-install snapshot --
-    /// so the index agrees with the correct post-race manifest state
-    /// rather than a stale snapshot.
-    ///
     /// Ordering between the installer thread's write and this
     /// function's own finalize fresh-read is enforced via
     /// `MID_UPDATE_SYNC_HOOK` (a real synchronization primitive)
@@ -2366,6 +2455,7 @@ mod tests {
                 false,
                 false,
                 false,
+                false, /* enable_telemetry */
                 ColorMode::disabled(),
                 None, /* latest_release_tag_cache */
             );
@@ -2411,8 +2501,6 @@ mod tests {
         }
     }
 
-    /// A non-matching `--harness` value at a 2+-strategy target is a
-    /// usage error, and never touches either strategy's slot.
     #[test]
     fn update_one_target_with_unmatched_harness_is_usage_error_and_touches_nothing() {
         let _home = HomeGuard::new("harness-select-update-unmatched-home");
@@ -2448,6 +2536,7 @@ mod tests {
             false,
             false,
             false,
+            false, /* enable_telemetry */
             ColorMode::disabled(),
             None, /* latest_release_tag_cache */
         );
@@ -2460,10 +2549,6 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// With `--harness <name>` given to an `update --all` batch, a
-    /// target that does not track that harness is SKIPPED, not failed
-    /// -- the batch still succeeds (exit 0), while a target that does
-    /// track the requested harness is genuinely updated.
     #[test]
     fn dispatch_update_with_all_flag_skips_targets_that_do_not_track_the_requested_harness() {
         let _home = HomeGuard::new("update-all-skip-harness-not-tracked-home");
@@ -2524,12 +2609,12 @@ mod tests {
             true,
             Some("kiro-cli-v2".to_string()),
             false,
+            false, /* enable_telemetry */
             false,
             false, /* use_github_token */
             false, /* cli */
             None,  /* release_version */
             false, /* force */
-            /* yes */
             false,
             false,
             ColorMode::disabled(),
@@ -2561,10 +2646,6 @@ mod tests {
         fs::remove_dir_all(&mismatched_target).ok();
     }
 
-    /// `report_update_batch` itself, in isolation: a `skipped` entry
-    /// lands in its own bucket, distinct from `succeeded`/`failed`, in
-    /// both plain-text and `--json` mode -- guards against a future
-    /// change silently dropping the skip bucket or panicking on it.
     /// Mirrors `uninstall.rs`'s
     /// `report_batch_does_not_panic_with_a_skipped_entry_present`.
     #[test]
@@ -2582,13 +2663,6 @@ mod tests {
 
     // ── Regression: `update` honors a target's persisted opt-out ────────
 
-    /// (1) A target originally installed with `konductor install
-    /// --no-telemetry` (no install-info record, no telemetry-hook
-    /// wiring) must have that wiring stay suppressed on a later PLAIN
-    /// `konductor update`, with no `--no-telemetry` re-passed. The
-    /// target's own missing `.konductor/install-info.json` is read as
-    /// the durable "opted out at install time" signal.
-    ///
     /// Exercises the real dispatch path end to end rather than calling
     /// `InstallStrategy::install_from_local` directly, so a regression
     /// in `update.rs`'s own carry-forward computation would be caught
@@ -2644,12 +2718,12 @@ mod tests {
             false,
             None,
             false,
+            false, /* enable_telemetry */
             false,
             false, /* use_github_token */
             false, /* cli */
             None,  /* release_version */
             false, /* force */
-            /* yes */
             // no --no-telemetry on THIS invocation
             false,
             false,
@@ -2672,14 +2746,6 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// (2) `update --all` resolves the carry-forward signal
-    /// independently per target -- one target's missing install-info
-    /// record must never leak into another target's decision. Two
-    /// targets share one tracked index: one originally installed with
-    /// `--no-telemetry` (no install-info record), one without. A
-    /// single `update --all` run that itself passes no `--no-telemetry`
-    /// must still keep the first target's hooks suppressed while
-    /// wiring the second target's.
     #[test]
     fn update_all_resolves_the_carry_forward_signal_independently_per_target() {
         let _home = HomeGuard::new("update-all-mixed-home");
@@ -2743,12 +2809,12 @@ mod tests {
             true, // --all
             None,
             false,
+            false, /* enable_telemetry */
             false,
             false, /* use_github_token */
             false, /* cli */
             None,  /* release_version */
             false, /* force */
-            /* yes */
             // no --no-telemetry
             false,
             false,
@@ -2779,12 +2845,9 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// (2.1) The reverse case: the legacy identity file present but
-    /// `install-info.json` absent must read as opted out -- no
-    /// fallback to the legacy file. The identity file is no longer
-    /// written by any install path, so it is seeded directly to
-    /// reconstruct a developer machine that predates this file's
-    /// retirement.
+    /// The identity file is no longer written by any install path, so
+    /// it is seeded directly to reconstruct a developer machine that
+    /// predates this file's retirement.
     #[test]
     fn update_carry_forward_does_not_fall_back_to_identity_file_when_install_info_absent() {
         let _home = HomeGuard::new("update-carry-forward-no-fallback-home");
@@ -2840,7 +2903,9 @@ mod tests {
             Some(target.to_str().unwrap().to_string()),
             false,
             None,
-            false, // no explicit --no-telemetry: relies on the carry-forward signal alone
+            false,
+            false, /* enable_telemetry */
+            // no explicit --no-telemetry: relies on the carry-forward signal alone
             false,
             false,
             false, /* cli */
@@ -2864,14 +2929,9 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// (3) An explicit `--no-telemetry` on `update` still suppresses
-    /// hook re-wiring for a target that DOES have an install-info
-    /// record -- the flag is an override in the "opt out now"
-    /// direction, independent of what the persisted signal says. The
-    /// hooks block is removed between install and update, so the
+    /// The hooks block is removed between install and update, so the
     /// assertion checks that this run wired nothing rather than that it
-    /// stripped hooks left in place; the companion run without the flag
-    /// shows there was something to wire.
+    /// stripped hooks left in place.
     #[test]
     fn explicit_no_telemetry_still_suppresses_wiring_for_a_target_with_an_identity_file() {
         let _home = HomeGuard::new("update-explicit-override-home");
@@ -2932,12 +2992,12 @@ mod tests {
             false,
             None,
             true,
+            false, /* enable_telemetry */
             false,
             false, /* use_github_token */
             false, /* cli */
             None,  /* release_version */
             false, /* force */
-            /* yes */
             // --no-telemetry
             false,
             false,
@@ -2951,23 +3011,28 @@ mod tests {
             "explicit --no-telemetry must suppress hook re-wiring even for a target whose \
              install-info.json is present; got: {after_explicit_opt_out:?}"
         );
+        assert!(
+            !crate::cli::telemetry::install_info_exists(&target),
+            "explicit --no-telemetry against a target whose record resolved as enabled must \
+             delete that record, not just suppress wiring for this one run"
+        );
 
-        // Companion: without the flag, this same (opted-in) target's
-        // hooks DO get (re-)wired -- confirms the explicit flag above
-        // genuinely had an effect, rather than hooks being unwireable
-        // for some unrelated reason.
+        // Companion: WITHOUT re-passing the flag, this same target
+        // stays suppressed -- the deletion above is what makes the
+        // opt-out sticky, not a one-run suppression that silently lapses
+        // the moment --no-telemetry is omitted.
         let update_code_without_flag = dispatch_update_with(
             Some(repo_root.to_str().unwrap().to_string()),
             Some(target.to_str().unwrap().to_string()),
             false,
             None,
             false,
+            false, /* enable_telemetry */
             false,
             false, /* use_github_token */
             false, /* cli */
             None,  /* release_version */
             false, /* force */
-            /* yes */
             false,
             false,
             ColorMode::disabled(),
@@ -2976,21 +3041,301 @@ mod tests {
         let after_plain_update: serde_json::Value =
             serde_json::from_str(&fs::read_to_string(&claude_settings_path).unwrap()).unwrap();
         assert!(
-            after_plain_update.get("hooks").is_some(),
-            "an update run without --no-telemetry must re-wire hooks for a target whose \
-             install-info.json is present; got: {after_plain_update:?}"
+            after_plain_update.get("hooks").is_none(),
+            "a plain update (no --no-telemetry re-passed) must keep this target's hooks \
+             suppressed -- the earlier explicit opt-out deleted the record, so there is \
+             nothing left to carry forward as enabled; got: {after_plain_update:?}"
         );
 
         fs::remove_dir_all(&target).ok();
         fs::remove_dir_all(&repo_root).ok();
     }
 
+    /// `update --no-telemetry` against a target whose record currently
+    /// reads as enabled removes that record rather than only skipping
+    /// the write for its own run -- that's what makes the opt-out
+    /// survive the later plain `update` this test checks. Companion to
+    /// `explicit_no_telemetry_still_suppresses_wiring_for_a_target_with_an_identity_file`,
+    /// which covers only the single-run suppression.
+    #[test]
+    fn update_no_telemetry_against_an_enabled_target_persists_the_opt_out_on_a_later_plain_update()
+    {
+        let _home = HomeGuard::new("update-sticky-opt-out-home");
+        let target = scratch_dir("update-sticky-opt-out-target");
+        fs::create_dir_all(target.join(".kiro")).unwrap();
+        fs::create_dir_all(target.join(".claude")).unwrap();
+        let repo_root = scratch_dir("update-sticky-opt-out-repo");
+        seed_synthed_agent_with_skill_resource(&repo_root, "k-example", "constraints");
+        seed_synthed_skill(
+            &repo_root,
+            "constraints",
+            b"---\nname: constraints\n---\nBody\n",
+        );
+        seed_mcp_binary(&repo_root, "skill-lookup-mcp", b"binary bytes\n");
+
+        // Install WITH telemetry on: install-info.json written, hooks
+        // wired.
+        let install_code = super::super::install::dispatch_install_with(
+            Some(repo_root.to_str().unwrap().to_string()),
+            Some(target.to_str().unwrap().to_string()),
+            "kiro-cli-v2".to_string(),
+            false, // no --link-bin
+            false, // no --no-telemetry
+            false,
+            None,  /* release_version */
+            false, /* force */
+            false,
+            false,
+            ColorMode::disabled(),
+        );
+        assert_eq!(install_code, 0, "initial install must succeed");
+        assert!(
+            crate::cli::telemetry::install_info_exists(&target),
+            "a plain install must write install-info.json"
+        );
+        let claude_settings_path = target.join(".claude/settings.local.json");
+        let after_install: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&claude_settings_path).unwrap()).unwrap();
+        assert!(
+            after_install.get("hooks").is_some(),
+            "a plain install must wire the telemetry hooks"
+        );
+
+        // Remove the hooks block so each run below has a genuine
+        // opportunity to re-wire it.
+        let mut settings = after_install;
+        settings.as_object_mut().unwrap().remove("hooks");
+        fs::write(&claude_settings_path, settings.to_string()).unwrap();
+
+        // `update --no-telemetry` run EXACTLY ONCE.
+        let no_telemetry_update_code = dispatch_update_with(
+            Some(repo_root.to_str().unwrap().to_string()),
+            Some(target.to_str().unwrap().to_string()),
+            false,
+            None,
+            true,  /* --no-telemetry */
+            false, /* enable_telemetry */
+            false,
+            false, /* use_github_token */
+            false, /* cli */
+            None,  /* release_version */
+            false, /* force */
+            false,
+            false,
+            ColorMode::disabled(),
+        );
+        assert_eq!(
+            no_telemetry_update_code, 0,
+            "update --no-telemetry must succeed"
+        );
+        let after_no_telemetry_update: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&claude_settings_path).unwrap()).unwrap();
+        assert!(
+            after_no_telemetry_update.get("hooks").is_none(),
+            "update --no-telemetry must suppress wiring for its own run; \
+             got: {after_no_telemetry_update:?}"
+        );
+        assert!(
+            !crate::cli::telemetry::install_info_exists(&target),
+            "update --no-telemetry against an enabled target must delete install-info.json, \
+             not merely skip writing a fresh one for this run"
+        );
+
+        // The actual regression check: a PLAIN `update` -- no
+        // `--no-telemetry` passed on THIS invocation at all -- must
+        // still see the target as opted out, because the record is now
+        // gone rather than merely stale.
+        let plain_update_code = dispatch_update_with(
+            Some(repo_root.to_str().unwrap().to_string()),
+            Some(target.to_str().unwrap().to_string()),
+            false,
+            None,
+            false, // no --no-telemetry on this run
+            false, // no --enable-telemetry on this run
+            false,
+            false, /* use_github_token */
+            false, /* cli */
+            None,  /* release_version */
+            false, /* force */
+            false,
+            false,
+            ColorMode::disabled(),
+        );
+        assert_eq!(plain_update_code, 0, "plain update must succeed");
+        let after_plain_update: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&claude_settings_path).unwrap()).unwrap();
+        assert!(
+            after_plain_update.get("hooks").is_none(),
+            "a plain `update` with no flag re-passed must keep hooks suppressed for a target \
+             that was opted out via a PRIOR `update --no-telemetry` run -- the opt-out must be \
+             sticky, not silently lapse the moment the flag is omitted; \
+             got: {after_plain_update:?}"
+        );
+        assert!(
+            !crate::cli::telemetry::install_info_exists(&target),
+            "a plain update must never re-create install-info.json for a target whose record \
+             was deleted by an earlier explicit --no-telemetry run"
+        );
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    // ── --enable-telemetry: the reverse override ────────────────────────
+
+    /// Mirrors
+    /// `update_no_telemetry_against_an_enabled_target_persists_the_opt_out_on_a_later_plain_update`'s
+    /// shape, in the opposite direction.
+    #[test]
+    fn update_enable_telemetry_reopts_in_and_persists_across_a_later_plain_update() {
+        let _home = HomeGuard::new("update-enable-telemetry-home");
+        let target = scratch_dir("update-enable-telemetry-target");
+        fs::create_dir_all(target.join(".kiro")).unwrap();
+        fs::create_dir_all(target.join(".claude")).unwrap();
+        let repo_root = scratch_dir("update-enable-telemetry-repo");
+        seed_synthed_agent_with_skill_resource(&repo_root, "k-example", "constraints");
+        seed_synthed_skill(
+            &repo_root,
+            "constraints",
+            b"---\nname: constraints\n---\nBody\n",
+        );
+        seed_mcp_binary(&repo_root, "skill-lookup-mcp", b"binary bytes\n");
+
+        // Install opted OUT from the start: no install-info.json, no
+        // hooks wired.
+        let install_code = super::super::install::dispatch_install_with(
+            Some(repo_root.to_str().unwrap().to_string()),
+            Some(target.to_str().unwrap().to_string()),
+            "kiro-cli-v2".to_string(),
+            false, // no --link-bin
+            true,  // --no-telemetry
+            false,
+            None,  /* release_version */
+            false, /* force */
+            false,
+            false,
+            ColorMode::disabled(),
+        );
+        assert_eq!(install_code, 0, "opted-out install must succeed");
+        assert!(!crate::cli::telemetry::install_info_exists(&target));
+        let claude_settings_path = target.join(".claude/settings.local.json");
+        assert!(
+            !claude_settings_path.exists(),
+            "install --no-telemetry must not write hook wiring in the first place"
+        );
+
+        // `update --enable-telemetry`: forces telemetry ON for this run
+        // regardless of the carried-forward opt-out, and durably
+        // re-creates install-info.json.
+        let enable_update_code = dispatch_update_with(
+            Some(repo_root.to_str().unwrap().to_string()),
+            Some(target.to_str().unwrap().to_string()),
+            false,
+            None,
+            false, /* no_telemetry */
+            true,  /* --enable-telemetry */
+            false,
+            false, /* use_github_token */
+            false, /* cli */
+            None,  /* release_version */
+            false, /* force */
+            false,
+            false,
+            ColorMode::disabled(),
+        );
+        assert_eq!(
+            enable_update_code, 0,
+            "update --enable-telemetry must succeed"
+        );
+        assert!(
+            crate::cli::telemetry::install_info_exists(&target),
+            "update --enable-telemetry must durably re-create install-info.json"
+        );
+        let after_enable: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&claude_settings_path).unwrap()).unwrap();
+        assert!(
+            after_enable.get("hooks").is_some(),
+            "update --enable-telemetry must wire hooks for this run; got: {after_enable:?}"
+        );
+
+        // Remove the hooks block so the plain run below has a genuine
+        // opportunity to re-wire it, same technique the sibling
+        // sticky-opt-out test uses.
+        let mut settings = after_enable;
+        settings.as_object_mut().unwrap().remove("hooks");
+        fs::write(&claude_settings_path, settings.to_string()).unwrap();
+
+        // The persistence check: a PLAIN `update` -- no
+        // `--enable-telemetry` re-passed -- must still see this target
+        // as enabled, because the earlier run durably re-created the
+        // record rather than only turning telemetry on for itself.
+        let plain_update_code = dispatch_update_with(
+            Some(repo_root.to_str().unwrap().to_string()),
+            Some(target.to_str().unwrap().to_string()),
+            false,
+            None,
+            false, // no --no-telemetry
+            false, // no --enable-telemetry on this run
+            false,
+            false, /* use_github_token */
+            false, /* cli */
+            None,  /* release_version */
+            false, /* force */
+            false,
+            false,
+            ColorMode::disabled(),
+        );
+        assert_eq!(plain_update_code, 0, "plain update must succeed");
+        assert!(
+            crate::cli::telemetry::install_info_exists(&target),
+            "a plain update must not delete a record a prior --enable-telemetry run created"
+        );
+        let after_plain_update: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&claude_settings_path).unwrap()).unwrap();
+        assert!(
+            after_plain_update.get("hooks").is_some(),
+            "a plain update must re-wire hooks for a target that was durably re-opted in by an \
+             earlier --enable-telemetry run; got: {after_plain_update:?}"
+        );
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// Pins the runtime guard in `dispatch_update_with` itself, for
+    /// every caller that reaches it directly rather than through parsed
+    /// argv (every test in this module included). `Commands::Update`'s
+    /// own `conflicts_with` is the primary enforcement for real CLI
+    /// invocations; see `cli.rs`'s
+    /// `update_no_telemetry_conflicts_with_enable_telemetry` for that
+    /// layer.
+    #[test]
+    fn dispatch_update_with_rejects_no_telemetry_and_enable_telemetry_together() {
+        let _home = HomeGuard::new("telemetry-flags-conflict-home");
+        let code = dispatch_update_with(
+            None,
+            None,
+            false,
+            None,
+            true, /* --no-telemetry */
+            true, /* --enable-telemetry */
+            false,
+            false, /* use_github_token */
+            false, /* cli */
+            None,  /* release_version */
+            false, /* force */
+            false,
+            false,
+            ColorMode::disabled(),
+        );
+        assert_eq!(
+            code, EXIT_USAGE_ERROR,
+            "passing both flags together must be a usage error, not a silent pick of one"
+        );
+    }
+
     // ── Core behavior change: unconditional overwrite ──────────────────
 
-    /// `update` on a hand-edited file UNCONDITIONALLY OVERWRITES it with
-    /// fresh content, regardless of local edits -- there is no
-    /// preserve-on-divergence behavior and no `--force` flag; this is
-    /// `update`'s only mode.
     #[test]
     fn update_one_target_unconditionally_overwrites_hand_edited_file() {
         let _home = HomeGuard::new("overwrite-hand-edit-home");
@@ -3020,6 +3365,7 @@ mod tests {
             false,
             false,
             false,
+            false, /* enable_telemetry */
             ColorMode::disabled(),
             None, /* latest_release_tag_cache */
         );
@@ -3056,9 +3402,6 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// A missing file (deleted pre-update) is also unconditionally
-    /// re-created with fresh content -- same single code path as a
-    /// hand-edit, no distinct "missing" handling.
     #[test]
     fn update_one_target_recreates_missing_file_with_fresh_content() {
         let _home = HomeGuard::new("recreate-missing-home");
@@ -3080,6 +3423,7 @@ mod tests {
             false,
             false,
             false,
+            false, /* enable_telemetry */
             ColorMode::disabled(),
             None, /* latest_release_tag_cache */
         );
@@ -3099,14 +3443,9 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// `update` shares `install_from_local` with `install`, so the
-    /// Kiro-discoverable `sop-<name>/SKILL.md` conversion is refreshed
-    /// by `update` the same way every other content type already is --
-    /// but it needs its own regression test: a stale body left over
-    /// from a prior install must not survive a re-run. Drives it
-    /// through `update_one_target` (the real `konductor update` entry
-    /// point) rather than calling `install_from_local` a second time
-    /// by hand.
+    /// Drives it through `update_one_target` (the real `konductor
+    /// update` entry point) rather than calling `install_from_local` a
+    /// second time by hand.
     #[test]
     fn update_one_target_refreshes_stale_kiro_sop_skill_body() {
         let _home = HomeGuard::new("refresh-kiro-sop-skill-home");
@@ -3161,6 +3500,7 @@ mod tests {
             false,
             false,
             false,
+            false, /* enable_telemetry */
             ColorMode::disabled(),
             None, /* latest_release_tag_cache */
         );
@@ -3190,14 +3530,10 @@ mod tests {
 
     // ── update's manifest matches a fresh install's manifest exactly ───
 
-    /// After a run, `update`'s manifest for a target names the same
-    /// files with the same hashes that a fresh `install` to an
-    /// equivalent, previously-empty target would produce for the same
-    /// source. `provenance` legitimately differs (`ReplacedOurs` for
-    /// update's target, which already had a Konductor-managed file at
-    /// that path, vs `Created` for the fresh target). Only
-    /// `installed_at` also legitimately differs (each call captures
-    /// its own timestamp).
+    /// `provenance` legitimately differs (`ReplacedOurs` for update's
+    /// target, which already had a Konductor-managed file at that path,
+    /// vs `Created` for the fresh target), as does `installed_at` (each
+    /// call captures its own timestamp). Everything else must match.
     #[test]
     fn update_manifest_matches_fresh_install_manifest_for_same_source() {
         let _home = HomeGuard::new("manifest-parity-home");
@@ -3237,6 +3573,7 @@ mod tests {
             false,
             false,
             false,
+            false, /* enable_telemetry */
             ColorMode::disabled(),
             None, /* latest_release_tag_cache */
         );
@@ -3302,13 +3639,9 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// `run_update_one_target` computes its own `updated_at` once (for
-    /// the `InProgress` index write) and must reuse that SAME string
-    /// for the `Complete` index write AND thread it into
-    /// `install_from_local` for the manifest, not a second independent
-    /// `utc_now_iso()` call. Runs a real `update_one_target`, then
-    /// reads both the index entry and the manifest back and asserts
-    /// the two `installed_at` strings are byte-identical.
+    /// `run_update_one_target` must compute `updated_at` once and reuse
+    /// that same string for both the index's `Complete` write and the
+    /// manifest, not call `utc_now_iso()` a second time independently.
     #[test]
     fn update_one_target_index_entry_and_manifest_installed_at_are_byte_identical() {
         let _home = HomeGuard::new("update-installed-at-identical-home");
@@ -3327,6 +3660,7 @@ mod tests {
             false,
             false,
             false,
+            false, /* enable_telemetry */
             ColorMode::disabled(),
             None, /* latest_release_tag_cache */
         );
@@ -3380,6 +3714,7 @@ mod tests {
             false,
             false,
             false,
+            false, /* enable_telemetry */
             ColorMode::disabled(),
             None, /* latest_release_tag_cache */
         );
@@ -3401,6 +3736,7 @@ mod tests {
             false,
             false,
             false,
+            false, /* enable_telemetry */
             ColorMode::disabled(),
             None, /* latest_release_tag_cache */
         );
@@ -3422,6 +3758,7 @@ mod tests {
             false,
             false,
             false,
+            false, /* enable_telemetry */
             ColorMode::disabled(),
             None, /* latest_release_tag_cache */
         );
@@ -3453,6 +3790,7 @@ mod tests {
                 false,
                 false,
                 false,
+                false, /* enable_telemetry */
                 ColorMode::disabled(),
                 None /* latest_release_tag_cache */
             ),
@@ -3580,6 +3918,7 @@ mod tests {
             false,
             false,
             false,
+            false, /* enable_telemetry */
             ColorMode::disabled(),
             None, /* latest_release_tag_cache */
         );
@@ -3610,6 +3949,7 @@ mod tests {
             false,
             false,
             false,
+            false, /* enable_telemetry */
             ColorMode::disabled(),
             None, /* latest_release_tag_cache */
         );
@@ -3617,14 +3957,8 @@ mod tests {
         fs::remove_dir_all(&dir).ok();
     }
 
-    /// The strategy-registration check must run BEFORE the
-    /// `write_index(InProgress)` write-ahead, so a target whose manifest
-    /// records an unregistered strategy is rejected WITHOUT ever
-    /// mutating its index entry. Seeds a `Complete` index entry (as a
-    /// prior successful install/update would have left behind), then
-    /// asserts the entry's status is still `Complete` -- never flipped
-    /// to `InProgress` -- after the failed run, in addition to the
-    /// existing exit-code assertion above.
+    /// Pins that the strategy-registration check runs BEFORE the
+    /// `write_index(InProgress)` write-ahead.
     #[test]
     fn update_one_target_unregistered_strategy_does_not_mutate_index_status() {
         let _home = HomeGuard::new("unregistered-strategy-index-home");
@@ -3663,6 +3997,7 @@ mod tests {
             false,
             false,
             false,
+            false, /* enable_telemetry */
             ColorMode::disabled(),
             None, /* latest_release_tag_cache */
         );
@@ -3686,15 +4021,9 @@ mod tests {
         fs::remove_dir_all(&dir).ok();
     }
 
-    /// The other class of no-op failure `update_one_target` must catch
-    /// before its own write-ahead: a HEALTHY target (registered
-    /// strategy, `Complete` index entry) given a `--from` pointing at a
-    /// source with nothing to install. Must return the usual usage
-    /// error, but must never flip that target's index status from
-    /// `Complete` to `InProgress` for a run that never touched the
-    /// filesystem. Still a synchronous no-op case: `--from` was given,
-    /// so `would_fail_as_noop` runs and catches it before any index
-    /// write.
+    /// The other no-op class `update_one_target` must catch before its
+    /// write-ahead: `--from` was given, so `would_fail_as_noop` runs and
+    /// catches it before any index write.
     #[test]
     fn update_one_target_from_with_nothing_to_install_does_not_mutate_healthy_index_status() {
         let _home = HomeGuard::new("empty-from-index-home");
@@ -3737,6 +4066,7 @@ mod tests {
             false,
             false,
             false,
+            false, /* enable_telemetry */
             ColorMode::disabled(),
             None, /* latest_release_tag_cache */
         );
@@ -3807,7 +4137,8 @@ mod tests {
             false,
             false,
             false,
-            None, /* latest_release_tag_cache */
+            false, /* enable_telemetry */
+            None,  /* latest_release_tag_cache */
             |_strategy, _destination, _installed_at, _no_telemetry| {
                 Err(remote_orchestrate::FallbackChainError::ReleaseOnly(
                     remote_orchestrate::RemoteOrchestrationError::Fetch(
@@ -3870,12 +4201,9 @@ mod tests {
         fs::remove_dir_all(&source_root).ok();
     }
 
-    /// `--version <v>` composing with the skip-if-unchanged check: a
-    /// target already recorded at EXACTLY the requested tag must skip
-    /// the fetch entirely -- `remote_installer` must never be called at
-    /// all (it panics if it is), proving the comparison is made against
-    /// the explicitly requested version, not "latest" (which this test
-    /// never fetches, since no network call happens either way).
+    /// `remote_installer` panics if called, so this also proves the
+    /// comparison is made against the explicitly requested version, not
+    /// "latest".
     #[test]
     fn update_one_target_version_matching_recorded_version_skips_the_remote_fetch() {
         let _home = HomeGuard::new("update-version-skip-match-home");
@@ -3910,7 +4238,8 @@ mod tests {
             false,
             false,
             false,
-            None, /* latest_release_tag_cache */
+            false, /* enable_telemetry */
+            None,  /* latest_release_tag_cache */
             |_strategy, _destination, _installed_at, _no_telemetry| {
                 panic!(
                     "remote_installer must never be called when the target is already at \
@@ -3930,12 +4259,9 @@ mod tests {
         fs::remove_dir_all(&dir).ok();
     }
 
-    /// `--version <v>` composing with `--force`: an EXACT version match
-    /// must still proceed to the real fetch when `force` is `true`,
-    /// bypassing the skip -- `remote_installer` here returns `Ok` with a
-    /// fixed fake outcome (never called on the skip path, but must be
-    /// reachable here) so the run can complete and be observed as a
-    /// real fetch attempt, not a skip.
+    /// `remote_installer` here returns `Ok` with a fixed fake outcome
+    /// (never called on the skip path, but must be reachable here) so
+    /// the run can complete and be observed as a real fetch attempt.
     #[test]
     fn update_one_target_version_matching_recorded_version_with_force_still_fetches() {
         let _home = HomeGuard::new("update-version-force-bypass-home");
@@ -3972,7 +4298,8 @@ mod tests {
             false,
             false,
             false,
-            None, /* latest_release_tag_cache */
+            false, /* enable_telemetry */
+            None,  /* latest_release_tag_cache */
             move |_strategy, _destination, _installed_at, _no_telemetry| {
                 remote_installer_called_check.set(true);
                 Err(remote_orchestrate::FallbackChainError::ReleaseOnly(
@@ -3996,11 +4323,8 @@ mod tests {
         fs::remove_dir_all(&dir).ok();
     }
 
-    /// `--version <v>` for a tag that does not name a recorded version
-    /// yet (a mismatch, or no recorded version at all) must proceed to
-    /// the real fetch, never skip -- confirms the comparison only skips
-    /// on an exact match, same rule `content_version::should_skip_write`
-    /// already enforces.
+    /// Confirms the comparison only skips on an exact match, same rule
+    /// `content_version::should_skip_write` already enforces.
     #[test]
     fn update_one_target_version_mismatched_recorded_version_still_fetches() {
         let _home = HomeGuard::new("update-version-mismatch-fetches-home");
@@ -4037,7 +4361,8 @@ mod tests {
             false,
             false,
             false,
-            None, /* latest_release_tag_cache */
+            false, /* enable_telemetry */
+            None,  /* latest_release_tag_cache */
             move |_strategy, _destination, _installed_at, _no_telemetry| {
                 remote_installer_called_check.set(true);
                 Err(remote_orchestrate::FallbackChainError::ReleaseOnly(
@@ -4058,14 +4383,10 @@ mod tests {
         fs::remove_dir_all(&dir).ok();
     }
 
-    /// A requested tag that GitHub reports as not found
-    /// (`GithubFetchError::TagNotFound`) must surface a clear, distinct
-    /// failure through `update`'s own error-mapping path -- never the
-    /// old generic "not yet supported" message, and never silently
-    /// falling back to some other version. Exercised through
-    /// `run_update_one_target_with_remote_installer`'s real error
-    /// mapping, with a fake `remote_installer` standing in for the
-    /// real GitHub fetch that would return this exact error.
+    /// Must never silently fall back to some other version. Exercised
+    /// through `run_update_one_target_with_remote_installer`'s real
+    /// error mapping, with a fake `remote_installer` standing in for
+    /// the GitHub fetch that would return this exact error.
     #[test]
     fn update_one_target_tag_not_found_surfaces_a_clear_distinct_error() {
         let _home = HomeGuard::new("update-tag-not-found-home");
@@ -4100,7 +4421,8 @@ mod tests {
             false,
             false,
             false,
-            None, /* latest_release_tag_cache */
+            false, /* enable_telemetry */
+            None,  /* latest_release_tag_cache */
             {
                 let missing_tag = missing_tag.to_string();
                 move |_strategy, _destination, _installed_at, _no_telemetry| {
@@ -4137,10 +4459,7 @@ mod tests {
         fs::remove_dir_all(&dir).ok();
     }
 
-    /// A content-version match on `update`'s content path must render
-    /// through the DISTINCT `report_update_already_at_version` path --
-    /// exit code `0`, never the ordinary "N file(s) re-copied" success
-    /// wording, and never firing the version-updated telemetry event
+    /// Also confirms the version-updated telemetry event never fires
     /// for a run that changed nothing. Exercised through the full
     /// `update_one_target` entry point, so the reporting layer itself
     /// is proven correct.
@@ -4179,6 +4498,7 @@ mod tests {
             false,
             false,
             false,
+            false, /* enable_telemetry */
             ColorMode::disabled(),
             None, /* latest_release_tag_cache */
         );
@@ -4258,6 +4578,7 @@ mod tests {
             false,
             false,
             false, // no_telemetry not passed -- the carry-forward must still run
+            false, /* enable_telemetry */
             None,  /* latest_release_tag_cache */
             |_strategy, _destination, _installed_at, _no_telemetry| {
                 Err(remote_orchestrate::FallbackChainError::ReleaseOnly(
@@ -4337,8 +4658,9 @@ mod tests {
             false,
             false,
             false,
-            true, // --no-telemetry passed explicitly
-            None, /* latest_release_tag_cache */
+            true,  // --no-telemetry passed explicitly
+            false, /* enable_telemetry */
+            None,  /* latest_release_tag_cache */
             |_strategy, _destination, installed_at, no_telemetry| {
                 // The flag must still read as opted-out regardless of
                 // the now-unconditional detailed read's own outcome.
@@ -4398,12 +4720,12 @@ mod tests {
             false,
             None,
             false,
+            false, /* enable_telemetry */
             false,
             false, /* use_github_token */
             false, /* cli */
             None,  /* release_version */
             false, /* force */
-            /* yes */
             false,
             false,
             ColorMode::disabled(),
@@ -4418,12 +4740,8 @@ mod tests {
         fs::remove_dir_all(&home).ok();
     }
 
-    /// `dispatch_update_with` with `HOME` genuinely unresolvable (unset)
-    /// must exit non-zero -- the same `read_index`/
-    /// `IndexError::UnresolvableHome` behavior `uninstall` relies on.
-    /// Silently exiting 0 here would be indistinguishable from "nothing
-    /// was ever installed," when in fact whether anything is tracked
-    /// cannot be determined at all.
+    /// Same `read_index`/`IndexError::UnresolvableHome` behavior
+    /// `uninstall` relies on.
     #[test]
     fn dispatch_update_with_home_unset_exits_nonzero_not_silently_zero() {
         let _guard = lock_home();
@@ -4439,12 +4757,12 @@ mod tests {
             false,
             None,
             false,
+            false, /* enable_telemetry */
             false,
             false, /* use_github_token */
             false, /* cli */
             None,  /* release_version */
             false, /* force */
-            /* yes */
             false,
             false,
             ColorMode::disabled(),
@@ -4463,14 +4781,10 @@ mod tests {
         assert_eq!(code, EXIT_USAGE_ERROR);
     }
 
-    /// `dispatch_update_with` with zero tracked installs and
-    /// `json=true` must return 0 via the shared
-    /// `report::report_no_tracked_installs` helper rather than an
-    /// unconditional plain-text `println!`. The exact JSON shape is
-    /// pinned once, structurally, by
+    /// The exact JSON shape is pinned once, structurally, by
     /// `report::tests::report_no_tracked_installs_json_has_command_and_tracked_installs_fields`
-    /// -- this test only needs to confirm `update` actually reaches
-    /// that branch and its exit code.
+    /// -- this test only needs to confirm `update` actually reaches that
+    /// branch and its exit code.
     #[test]
     fn dispatch_update_with_zero_tracked_installs_json_true_returns_zero() {
         let _guard = lock_home();
@@ -4485,12 +4799,12 @@ mod tests {
             false,
             None,
             false,
+            false, /* enable_telemetry */
             false,
             false, /* use_github_token */
             false, /* cli */
             None,  /* release_version */
             false, /* force */
-            /* yes */
             false,
             true,
             ColorMode::disabled(),
@@ -4533,12 +4847,12 @@ mod tests {
             false,
             None,
             false,
+            false, /* enable_telemetry */
             false,
             false, /* use_github_token */
             false, /* cli */
             None,  /* release_version */
             false, /* force */
-            /* yes */
             false,
             false,
             ColorMode::disabled(),
@@ -4591,12 +4905,12 @@ mod tests {
             true,
             None,
             false,
+            false, /* enable_telemetry */
             false,
             false, /* use_github_token */
             false, /* cli */
             None,  /* release_version */
             false, /* force */
-            /* yes */
             false,
             false,
             ColorMode::disabled(),
@@ -4621,15 +4935,10 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// `update --all --json` against 2+ tracked targets (one healthy
-    /// target that succeeds, one stale target with no manifest that
-    /// fails) must emit stdout that parses as exactly ONE JSON document
-    /// -- never N concatenated top-level documents -- with the expected
-    /// `succeeded`/`failed` breakdown. Captures real process stdout
-    /// (via a spawned `konductor` binary) rather than calling
-    /// `dispatch_update_with` in-process, since the whole point being
-    /// tested is what actually lands on stdout for an external `--json`
-    /// consumer.
+    /// Captures real process stdout (via a spawned `konductor` binary)
+    /// rather than calling `dispatch_update_with` in-process, since the
+    /// whole point is what actually lands on stdout for an external
+    /// `--json` consumer.
     #[test]
     fn dispatch_update_all_json_emits_single_document_with_mixed_outcomes() {
         let _guard = lock_home();
@@ -4668,12 +4977,12 @@ mod tests {
             true,
             None,
             false,
+            false, /* enable_telemetry */
             false,
             false, /* use_github_token */
             false, /* cli */
             None,  /* release_version */
             false, /* force */
-            /* yes */
             false,
             true,
             ColorMode::disabled(),
@@ -4769,12 +5078,9 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// `report_update_batch`, given a real mixed succeeded/failed
-    /// batch, must print exactly one line to stdout (one JSON
-    /// document) -- structurally confirmed here by rendering the same
-    /// JSON it constructs and checking it contains no embedded
-    /// newline, which is what `println!` on a single `serde_json::json!`
-    /// object always produces.
+    /// Confirmed structurally by checking the rendered JSON contains no
+    /// embedded newline, which is what `println!` on a single
+    /// `serde_json::json!` object always produces.
     #[test]
     fn report_update_batch_renders_as_single_line_json() {
         let succeeded = vec![(
@@ -4872,12 +5178,12 @@ mod tests {
             true,
             None,
             false,
+            false, /* enable_telemetry */
             false,
             false, /* use_github_token */
             false, /* cli */
             None,  /* release_version */
             false, /* force */
-            /* yes */
             false,
             false,
             ColorMode::disabled(),
@@ -4948,12 +5254,12 @@ mod tests {
             true,
             None,
             false,
+            false, /* enable_telemetry */
             false,
             false, /* use_github_token */
             false, /* cli */
             None,  /* release_version */
             false, /* force */
-            /* yes */
             false,
             false,
             ColorMode::disabled(),
@@ -5073,12 +5379,7 @@ mod tests {
         );
     }
 
-    /// Behavioral counterpart to the source-scanning guard above:
-    /// confirms `report_update_batch` folds a `finalize_index_warning`
-    /// into the succeeded entry's own JSON object (a `warning` field)
-    /// rather than requiring a second, separate stderr line. Confirms
-    /// stdout is still exactly ONE JSON document carrying the folded-in
-    /// warning.
+    /// Behavioral counterpart to the source-scanning guard above.
     #[test]
     fn report_update_batch_folds_finalize_index_warning_into_single_json_document() {
         let succeeded = vec![(
@@ -5137,11 +5438,9 @@ mod tests {
         );
     }
 
-    /// Sanity companion: on the ordinary path (no finalize-index
-    /// failure), `report_update_batch`'s succeeded entry must NOT carry
-    /// a `warning` key at all -- confirms the fold-in above is additive
-    /// or absent, never present-but-empty/null, which would otherwise
-    /// force every `--json` consumer to handle a phantom key.
+    /// Confirms the fold-in above is additive or absent, never
+    /// present-but-empty/null, which would otherwise force every
+    /// `--json` consumer to handle a phantom key.
     #[test]
     fn report_update_batch_omits_warning_key_when_finalize_index_succeeded() {
         let succeeded = vec![(
@@ -5202,7 +5501,8 @@ mod tests {
             false,
             false,
             false,
-            None, /* latest_release_tag_cache */
+            false, /* enable_telemetry */
+            None,  /* latest_release_tag_cache */
         );
         let Ok(UpdateOutcome::Success {
             finalize_index_warning,
@@ -5261,8 +5561,10 @@ mod tests {
             false, // force
             false, // uncached_identity
             false, // json
-            false, // no --no-telemetry on this update call,
-            None,  /* latest_release_tag_cache */
+            false,
+            false, /* enable_telemetry */
+            // no --no-telemetry on this update call,
+            None, /* latest_release_tag_cache */
         );
         let Ok(UpdateOutcome::Success {
             finalize_index_warning,
@@ -5300,8 +5602,10 @@ mod tests {
             false, // force
             false, // uncached_identity
             false, // json
-            false, // no --no-telemetry on this update call,
-            None,  /* latest_release_tag_cache */
+            false,
+            false, /* enable_telemetry */
+            // no --no-telemetry on this update call,
+            None, /* latest_release_tag_cache */
         );
         let Ok(UpdateOutcome::Success {
             finalize_index_warning,
@@ -5354,8 +5658,10 @@ mod tests {
             false, // force
             false, // uncached_identity
             false, // json
-            false, // no --no-telemetry on this update call,
-            None,  /* latest_release_tag_cache */
+            false,
+            false, /* enable_telemetry */
+            // no --no-telemetry on this update call,
+            None, /* latest_release_tag_cache */
         );
         let Ok(UpdateOutcome::Success {
             finalize_index_warning,
@@ -5378,6 +5684,142 @@ mod tests {
 
         fs::remove_dir_all(&target).ok();
         fs::remove_dir_all(&repo_root).ok();
+    }
+
+    // ── Sticky opt-out: a removal failure must warn, not be swallowed ───
+
+    /// `update --no-telemetry` against an enabled target whose
+    /// `.konductor/` directory it cannot write to (so the removal below
+    /// genuinely fails) must still surface that failure through
+    /// `telemetry_state_warning` -> `finalize_index_warning`, exactly
+    /// like the three outcomes above, rather than only to a bare
+    /// `eprintln!` that a `--json` run (or any non-interactive output)
+    /// would never see. A `--json` run must not report clean success
+    /// with exit code 0 while the stale, still-enabled record silently
+    /// survives.
+    ///
+    /// Drives this through the content-version skip-if-unchanged path
+    /// (a matching `--version`) rather than the ordinary re-copy path:
+    /// the skip path never calls `install_from_local`, so it never
+    /// needs to write this target's own manifest -- the only other
+    /// write under this read-only `.konductor/` directory this run
+    /// would otherwise attempt, which would fail for an unrelated
+    /// reason and mask the one failure this test targets.
+    #[test]
+    fn removal_failure_on_explicit_opt_out_warns_without_failing_the_run() {
+        use std::os::unix::fs::PermissionsExt;
+
+        if super::super::install::bin_link::running_as_root() {
+            eprintln!(
+                "skipping removal_failure_on_explicit_opt_out_warns_without_failing_the_run: \
+                 running as root, which bypasses the DAC permission denial this test depends \
+                 on"
+            );
+            return;
+        }
+
+        let _home = HomeGuard::new("removal-failure-home");
+        let target = scratch_dir("removal-failure-target");
+        let manifest = StrategyManifest::new(
+            "kiro-cli-v2",
+            "2026-01-01T00:00:00Z",
+            ".",
+            None,
+            Status::Complete,
+            vec![],
+        );
+        manifest::upsert_strategy(&target, manifest).unwrap();
+        seed_agent_version_for_harness(&target, "kiro-cli-v2", "1.5.0");
+        let record_path = crate::cli::telemetry::install_info_path(&target);
+        assert!(
+            record_path.is_file(),
+            "sanity check: the record must exist before the directory is locked down"
+        );
+
+        let canonical = index::canonicalize_target_dir(&target).unwrap();
+        index::write_index(IndexEntry {
+            target_dir: canonical,
+            strategies: vec!["kiro-cli-v2".to_string()],
+            installed_at: "2026-01-01T00:00:00Z".to_string(),
+            status: IndexEntryStatus::Complete,
+        })
+        .unwrap();
+
+        // Strip write permission from the target's own `.konductor/`
+        // directory -- `fs::remove_file` needs write permission on the
+        // PARENT directory, not the file's own permission bits, so this
+        // is what actually makes the removal below fail, not the
+        // record's own mode.
+        let konductor_dir = target.join(".konductor");
+        let mut perms = fs::metadata(&konductor_dir).unwrap().permissions();
+        perms.set_mode(0o555);
+        fs::set_permissions(&konductor_dir, perms).unwrap();
+
+        let outcome = run_update_one_target_with_remote_installer(
+            &target,
+            None,          /* from */
+            None,          /* harness */
+            false,         /* use_github_token */
+            Some("1.5.0"), /* release_version: matches the recorded version */
+            false,         /* force */
+            false,         /* uncached_identity */
+            false,         /* json */
+            true,          /* no_telemetry: --no-telemetry */
+            false,         /* enable_telemetry */
+            None,          /* latest_release_tag_cache */
+            |_strategy, _destination, _installed_at, _no_telemetry| {
+                panic!(
+                    "remote_installer must never be called when the target is already at \
+                     exactly the requested --version"
+                )
+            },
+        );
+
+        // Restore permissions before any assertion can panic and skip
+        // this cleanup, so a failing run never leaves a read-only
+        // directory behind for the next test using the same scratch
+        // root pattern.
+        let restored = std::fs::Permissions::from_mode(0o755);
+        let _ = fs::set_permissions(&konductor_dir, restored);
+
+        let Ok(UpdateOutcome::AlreadyAtVersion {
+            version,
+            finalize_index_warning,
+        }) = outcome
+        else {
+            panic!(
+                "update --no-telemetry must still succeed via AlreadyAtVersion even when the \
+                 removal fails -- a removal failure must stay non-fatal to the overall update"
+            );
+        };
+        assert_eq!(version, "1.5.0");
+
+        let warning = finalize_index_warning.expect(
+            "a removal failure must produce a warning via telemetry_state_warning, not be \
+             swallowed by a bare eprintln!",
+        );
+        assert!(
+            warning.contains(&record_path.display().to_string()),
+            "the warning must name the file that could not be removed; got: {warning}"
+        );
+        assert!(warning.contains("could not remove"), "got: {warning}");
+
+        // Detectable: the removal genuinely failed, so the stale record
+        // is still present and still reads as enabled -- exactly the
+        // precondition for a later plain `update` to silently carry
+        // telemetry forward, but now surfaced via the warning above
+        // instead of silently.
+        assert!(
+            crate::cli::telemetry::install_info_exists(&target),
+            "the removal must have genuinely failed, leaving the stale record behind"
+        );
+        assert!(
+            crate::cli::telemetry::read_install_info_detailed(&target).is_ok(),
+            "the surviving record must still read as enabled -- this is exactly the risk the \
+             warning above names"
+        );
+
+        fs::remove_dir_all(&target).ok();
     }
 
     #[test]
@@ -5409,12 +5851,12 @@ mod tests {
             false,
             None,
             false,
+            false, /* enable_telemetry */
             false,
             false, /* use_github_token */
             false, /* cli */
             None,  /* release_version */
             false, /* force */
-            /* yes */
             false,
             true,
             ColorMode::disabled(),
@@ -5468,12 +5910,12 @@ mod tests {
             false,
             None,
             false,
+            false, /* enable_telemetry */
             false,
             false, /* use_github_token */
             false, /* cli */
             None,  /* release_version */
             false, /* force */
-            /* yes */
             false,
             true,
             ColorMode::disabled(),
@@ -5529,12 +5971,12 @@ mod tests {
             false,
             None,
             false,
+            false, /* enable_telemetry */
             false,
             false, /* use_github_token */
             false, /* cli */
             None,  /* release_version */
             false, /* force */
-            /* yes */
             false,
             true,
             ColorMode::disabled(),
@@ -5588,12 +6030,12 @@ mod tests {
             false,
             None,
             false,
+            false, /* enable_telemetry */
             false,
             false, /* use_github_token */
             false, /* cli */
             None,  /* release_version */
             false, /* force */
-            /* yes */
             false,
             true,
             ColorMode::disabled(),
@@ -5642,6 +6084,7 @@ mod tests {
             true,
             false,
             false,
+            false, /* enable_telemetry */
             ColorMode::disabled(),
             None, /* latest_release_tag_cache */
         );
@@ -5675,6 +6118,7 @@ mod tests {
             true,
             false,
             false,
+            false, /* enable_telemetry */
             ColorMode::disabled(),
             None, /* latest_release_tag_cache */
         );
@@ -5724,6 +6168,7 @@ mod tests {
             true,
             false,
             false,
+            false, /* enable_telemetry */
             ColorMode::disabled(),
             None, /* latest_release_tag_cache */
         );
@@ -5765,6 +6210,7 @@ mod tests {
             true,
             false,
             false,
+            false, /* enable_telemetry */
             ColorMode::disabled(),
             None, /* latest_release_tag_cache */
         );
@@ -5799,6 +6245,7 @@ mod tests {
             true,
             false,
             false,
+            false, /* enable_telemetry */
             ColorMode::disabled(),
             None, /* latest_release_tag_cache */
         );
@@ -6274,6 +6721,7 @@ mod tests {
             false,
             false,
             false,
+            false, /* enable_telemetry */
             ColorMode::disabled(),
             None, /* latest_release_tag_cache */
         );
@@ -6289,6 +6737,7 @@ mod tests {
             true,
             false,
             false,
+            false, /* enable_telemetry */
             ColorMode::disabled(),
             None, /* latest_release_tag_cache */
         );
@@ -6357,6 +6806,7 @@ mod tests {
             false,
             false,
             false,
+            false, /* enable_telemetry */
             ColorMode::disabled(),
             None, /* latest_release_tag_cache */
         );
@@ -6401,6 +6851,7 @@ mod tests {
             false,
             None,
             false,
+            false, /* enable_telemetry */
             true,
             false, /* use_github_token */
             false, /* cli */
@@ -6694,6 +7145,7 @@ mod tests {
             false,
             None,
             false,
+            false, /* enable_telemetry */
             false,
             false, /* use_github_token */
             false, /* cli */
@@ -6741,6 +7193,7 @@ mod tests {
             true, // --all
             None,
             false,
+            false, /* enable_telemetry */
             false,
             false, /* use_github_token */
             false, /* cli */
@@ -6778,6 +7231,7 @@ mod tests {
             false,
             None,
             false,
+            false, /* enable_telemetry */
             false,
             false, /* use_github_token */
             false, /* cli */
@@ -6815,6 +7269,7 @@ mod tests {
             true, // --all
             None,
             false,
+            false, /* enable_telemetry */
             true,
             false, /* use_github_token */
             false, /* cli */
@@ -6838,6 +7293,7 @@ mod tests {
             true, // --all
             None,
             false,
+            false, /* enable_telemetry */
             false,
             false, /* use_github_token */
             false, /* cli */
@@ -6861,6 +7317,7 @@ mod tests {
             true, // --all
             None,
             false,
+            false, /* enable_telemetry */
             false,
             false, /* use_github_token */
             false, /* cli */
@@ -6896,6 +7353,7 @@ mod tests {
             false, // --all
             None,
             false,
+            false, /* enable_telemetry */
             false,
             false,                      /* use_github_token */
             false,                      /* cli */
@@ -6923,6 +7381,7 @@ mod tests {
             true, // --all
             None,
             false,
+            false, /* enable_telemetry */
             false,
             false,                      /* use_github_token */
             false,                      /* cli */

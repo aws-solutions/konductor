@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// doctor.rs — `konductor doctor` diagnostics (Rust implementation).
+// doctor.rs - `konductor doctor` diagnostics (Rust implementation).
 //
 // Inspects a Konductor installation/checkout for problems and prints
 // actionable remediation guidance. Every check is reuse-only: it calls
@@ -36,7 +36,7 @@
 //      summary/detail always states that a fallback occurred and why.
 //
 // Output: one summary line per check (`ok: <check>`,
-// `info/warn/stale/failed: <check> — <detail>`), each non-`ok` line
+// `info/warn/stale/failed: <check> - <detail>`), each non-`ok` line
 // followed by an indented remediation hint. `-v` appends full detail.
 // `--json` emits one compact object mirroring install/synth's JSON
 // shape, with a per-check `status` and, on non-ok checks, a `detail`
@@ -1514,12 +1514,15 @@ fn check_index_status(destination: &Path, home_dir: Option<&Path>) -> CheckResul
 /// closed to the same "reporting is off, no record" wording as a
 /// missing `telemetry.json`.
 ///
-/// Five cases: no install-info record at all (`Info`, names both
+/// Six cases: no install-info record at all (`Info`, names both
 /// possible causes); a record present but fails validation (`Warn`,
-/// not a choice the user made); no machine record at all (`Info`,
+/// not a choice the user made); the record validates but `HOME` could
+/// not be resolved, leaving no anchor to read a machine consent record
+/// from (`Info`, fails closed to the same off-with-no-record wording as
+/// a missing machine record); no machine record at all (`Info`,
 /// nothing has reported yet); the machine record declines while this
-/// target opted in (`Warn`, the case a design review flagged as
-/// silent); machine consent allows and this target opted in (`Ok`).
+/// target opted in (`Warn`, a silent mismatch between the two consent
+/// signals); machine consent allows and this target opted in (`Ok`).
 fn check_telemetry_state(destination: &Path, home_dir: Option<&Path>) -> CheckResult {
     use crate::cli::telemetry::InstallInfoAbsence;
 
@@ -1528,14 +1531,15 @@ fn check_telemetry_state(destination: &Path, home_dir: Option<&Path>) -> CheckRe
             return CheckResult::info(
                 "telemetry_state",
                 format!(
-                    "telemetry reporting is off for {} (either opted out at install, or {} \
-                     was never installed)",
+                    "telemetry reporting is off for {} (opted out at install or a later \
+                     update, or {} was never installed)",
                     destination.display(),
                     destination.display()
                 ),
-                "if this was opted out, re-run `konductor install` without --no-telemetry to \
-                 opt back in; if it was never installed, run `konductor install` to install \
-                 it -- see the index check's own result to tell which"
+                "if this was opted out, run `konductor update --enable-telemetry` to opt back \
+                 in (or re-run `konductor install` without --no-telemetry); if it was never \
+                 installed, run `konductor install` to install it -- see the index check's own \
+                 result to tell which"
                     .to_string(),
             );
         }
@@ -1835,8 +1839,7 @@ fn check_role_allowlists() -> CheckResult {
     CheckResult::info(
         "role_allowlists",
         "role-scoped allowlist validation is not yet implemented -- this is a planned \
-         post-launch feature (design doc Task 4.11, milestone M6) and is not present in this \
-         build",
+         post-launch feature and is not present in this build",
         "no action needed".to_string(),
     )
 }
@@ -1855,7 +1858,7 @@ fn print_report(results: &[CheckResult], verbose: bool, color: ColorMode) {
             CheckStatus::Failed | CheckStatus::Stale => super::output::status::error(color, label),
         };
         println!(
-            "{icon} {colored_label}: {} — {}",
+            "{icon} {colored_label}: {} - {}",
             result.name, result.summary
         );
         if let Some(remediation) = &result.remediation {

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// dispatch.rs — command dispatch for the Konductor CLI (Rust implementation).
+// dispatch.rs - command dispatch for the Konductor CLI (Rust implementation).
 //
 // Structural extraction of the top-level `match command { ... }` out of
 // cli.rs::run() into its own module, so cli.rs stays focused on argument
@@ -21,8 +21,9 @@ use crate::cli::{config, init, output::ColorMode, Commands, ConfigAction};
 /// concrete `command` to dispatch. `Init`, `Config`, `Install`, `Synth`,
 /// and `Doctor` have real behavior; every other command is a stub.
 ///
-/// `verbose`/`json` are threaded through to `Install`/`Synth`/`Doctor`
-/// only -- the commands with real, reportable output at this milestone.
+/// `verbose`/`json` are threaded through to `Install`/`Update`/`Synth`/
+/// `Doctor` only -- the commands with real, reportable output at this
+/// milestone.
 /// `color` is threaded through to every arm that can print an error
 /// prefix or a colorized status report.
 ///
@@ -59,6 +60,7 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool, color: ColorMode) 
             all,
             harness,
             no_telemetry,
+            enable_telemetry,
             dry_run,
             use_github_token,
             cli,
@@ -70,6 +72,7 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool, color: ColorMode) 
             all,
             harness,
             no_telemetry,
+            enable_telemetry,
             dry_run,
             use_github_token,
             cli,
