@@ -90,8 +90,9 @@ Reach for them in this order, and stop as soon as the workflow does what it is f
    refuses `continue` until the file exists, or the agent reports
    `--not-produced <id> "<reason>"`. Use it whenever the point of a step is a document someone
    will read later.
-   - Put `{slug}` in the path, such as `docs/specs/{slug}.md`, so two workstreams in one
-     repository do not overwrite each other's files.
+   - Put `{slug}` in the path, such as `docs/specs/{date}-{slug}.md`, so two workstreams in one
+     repository do not overwrite each other's files. `{date}` is the local date the workstream
+     started, so documents sort by when the work began.
    - The identifier is also the key into the artifact library. Name the kind of document, such as
      `design-spec`, not the step. Check the library before inventing an identifier, and never reuse
      an existing identifier for a document with a different purpose, because its guide would

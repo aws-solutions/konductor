@@ -138,10 +138,12 @@ export function reviewGuide(p: Project, gate: Gate, artifactId: string | undefin
 // ------------------------------------------------------------------ artifacts
 
 // Where an artifact lives in this workstream, relative to the repository root.
-export function artifactPath(p: Project, artifact: Artifact, slug: string): string {
+// `date` is the day the workstream started, YYYY-MM-DD, so the path stays the
+// same for the whole workstream.
+export function artifactPath(p: Project, artifact: Artifact, slug: string, date: string): string {
   const override = projectLayers(p).find((l) => l.policy.artifacts?.[artifact.artifact])?.policy.artifacts?.[artifact.artifact];
   const path = override?.path ?? artifact.path ?? p.user?.policy.artifacts?.[artifact.artifact]?.path;
-  return path.replaceAll("{slug}", slug);
+  return path.replaceAll("{slug}", slug).replaceAll("{date}", date);
 }
 
 function existing(path: string): string | undefined {

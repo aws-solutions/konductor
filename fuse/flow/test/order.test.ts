@@ -55,3 +55,22 @@ test("validate refuses an input that no earlier step produces or updates", () =>
   expect(out).toContain('"early" consumes "design-doc", which no step before it produces or updates');
   expect(out).toContain('"design" consumes "tests", which no step before it produces or updates');
 });
+
+test("{date} in an artifact path is the day the workstream started, for the whole workstream", () => {
+  const dated = FLOW.replaceAll("docs/{slug}/", "docs/{date}-{slug}/");
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  expect(repo.start("feat", dated)).toContain(`PRODUCE docs/${today}-feat/map.md (map).`);
+  expect(repo.state("feat").started).toBe(today);
+
+  // A workstream started on another day keeps that day's paths.
+  const file = ".konductor/workstreams/feat.yml";
+  repo.write(file, repo.read(file).replace(`started: ${today}`, "started: 2026-01-31"));
+  expect(repo.ok("start", "feat")).toContain("PRODUCE docs/2026-01-31-feat/map.md (map).");
+
+  // A state file from before `started` existed uses its earliest history line.
+  const legacy = repo.read(file).replace("started: 2026-01-31\n", "").replace(/history:\n(\s+)- \S+/, "history:\n$1- 2025-12-24T12:00:00.000Z");
+  repo.write(file, legacy);
+  expect(repo.ok("start", "feat")).toContain("PRODUCE docs/2025-12-24-feat/map.md (map).");
+});

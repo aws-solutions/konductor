@@ -45,8 +45,12 @@ test("an owner gate holds the step and prints the pre-filled hand-over block unt
   expect(recorded).toContain("STATUS: awaiting owner action. The owner is asked to approve the design.\n");
   expect(recorded).toContain("PRODUCED: design.md (new)\n");
   expect(recorded).toContain("VERIFICATION: none\n");
+  // The owner sees the options in plain words; the commands come after the block, for the agent only.
+  expect(recorded).toContain("NEXT STEP:\n  - Approve the design.\n  - Send the work back to an earlier step, with what to change.\n\nFOR YOU, NOT FOR THE OWNER:");
+  const block = recorded.slice(0, recorded.indexOf("FOR YOU, NOT FOR THE OWNER:"));
+  expect(block.split("\n").filter((l) => /^(SUMMARY|STATUS|PRODUCED|VERIFICATION|NEXT STEP|  - )/.test(l)).join("\n")).not.toContain("fuse-flow");
   expect(recorded).toContain(
-    'NEXT STEP:\n  - The owner does what the step asks (approve the design): run `fuse-flow continue feat --owner-approved --note "<what the owner said>"`.\n',
+    '\n  - The owner does what the step asks (approve the design): run `fuse-flow continue feat --owner-approved --note "<what the owner said>"`.\n',
   );
   expect(recorded).toContain("To rework an artifact, name the step that produces it: design (design.md).");
   expect(repo.status("feat", "design")).toBe("AWAITING_OWNER");
@@ -207,8 +211,8 @@ test("failed checks never block a step; the agent reports it blocked, and the ow
   expect(repo.refused("continue", "feat", "--blocked", "again")).toContain('step "build" is BLOCKED; only the owner can move it on');
 
   const resumed = repo.ok("start", "feat");
-  expect(resumed).toContain('  - Accept the step as it is: run `fuse-flow continue feat --owner-approved --note "<the owner\'s decision>"`.');
-  expect(resumed).toContain("  - Send the work back: run `fuse-flow continue feat --back-to <step>");
+  expect(resumed).toContain('  - The owner accepts the step as it is: run `fuse-flow continue feat --owner-approved --note "<the owner\'s decision>"`.');
+  expect(resumed).toContain("  - The owner sends the work back: run `fuse-flow continue feat --back-to <step>");
   expect(resumed).toContain("name the step that produces it: design (design.md), build.");
   // build has no agent gate, so there are no review rounds to grant, and no gate suggests a step.
   expect(resumed).not.toContain("--more-rounds");
@@ -357,7 +361,7 @@ test("the owner can grant more review rounds, on a blocked step or ahead of time
     expect(early).toContain("After 3 (2 plus 1 granted by the owner) such rounds");
 
     const blocked = other.ok("continue", "feat", "--blocked", "the reviewer wants an API the spec rules out");
-    expect(blocked).toContain('  - Grant more review rounds: run `fuse-flow continue feat --more-rounds <n> --note "<the owner\'s decision>"`.');
+    expect(blocked).toContain('  - The owner grants more review rounds: run `fuse-flow continue feat --more-rounds <n> --note "<the owner\'s decision>"`.');
     expect(blocked).toContain("; the step's gates suggest spec or implement.");
     expect(blocked).toContain("VERIFICATION: review (review the diff against the spec): <rounds used> of 3 (2 plus 1 granted by the owner) rounds");
     expect(other.refused("continue", "feat")).toContain('step "implement" is BLOCKED');

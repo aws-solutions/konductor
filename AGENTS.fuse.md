@@ -51,8 +51,9 @@ and wait. Run the command only after the owner decides. After any jump, follow t
 relevant content from related work or writing a clear placeholder, and report what you did.
 
 When fuse-flow prints an `OWNER'S TURN` block, fill in every placeholder, preserve its line order,
-and end the message with that block. Put the recommended owner option first and explain why. Run
-an owner-decision command only after the owner has decided.
+and end the message with that block. Put the recommended owner option first and explain why. The
+commands printed after the block are for you: do not copy them into your message. Run an
+owner-decision command only after the owner has decided.
 
 Every other hand-back to the owner also ends with exactly these five labelled lines:
 
@@ -77,3 +78,21 @@ five-line block from the current state. Include every skipped step and its reaso
 
 The state is saved after every command. A later session resumes by running
 `fuse-flow start <slug>`.
+
+## Writing for the owner
+
+The owner reads what you write without the context you have built up. Write every statement so
+that it explains itself to that reader.
+
+- A heading, list entry or decision names its subject in words, such as "Matching rule: which free
+  slot a booking request gets". A label such as `D1`, `Q3`, `P1` or `round 3` may accompany the
+  words but never replaces them, in a document, a hand-over or a commit message.
+- Refer only to what the reader has just read. A label defined in the text closely above may be
+  reused. Do not point at a decision further down the document, in another file, or in the
+  conversation; say what it is instead.
+- Write commit subjects that describe the change on their own terms, without plan, task, finding
+  or review-round identifiers.
+- Keep fuse-flow behind the scenes. Name the next step, phase or artifact in plain words, such as
+  "next, the code review". Do not show fuse-flow commands, flags or the workstream's state file,
+  and do not assume the owner knows how fuse-flow works. When the owner asks how it works,
+  explain it.

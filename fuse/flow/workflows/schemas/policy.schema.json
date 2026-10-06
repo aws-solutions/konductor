@@ -52,7 +52,7 @@
       "additionalProperties": false
     },
     "artifacts": {
-      "description": "Where this project keeps an artifact, by artifact id, relative to the repository root; `{slug}` is replaced with the workstream's slug. Engine effect: replaces the path the workflow gives.",
+      "description": "Where this project keeps an artifact, by artifact id, relative to the repository root; `{slug}` is replaced with the workstream's slug and `{date}` with the local date the workstream started. Engine effect: replaces the path the workflow gives.",
       "examples": [
         {
           "spec": {

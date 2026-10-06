@@ -47,7 +47,8 @@ export const PolicySchema = z
       .meta({
         description:
           "Where this project keeps an artifact, by artifact id, relative to the repository root; `{slug}` is " +
-          "replaced with the workstream's slug. Engine effect: replaces the path the workflow gives.",
+          "replaced with the workstream's slug and `{date}` with the local date the workstream started. Engine " +
+          "effect: replaces the path the workflow gives.",
         examples: [{ spec: { path: "docs/specs/{slug}.md" } }],
       }),
   })

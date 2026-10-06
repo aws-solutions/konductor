@@ -21,6 +21,13 @@ not per individual commit.
 
 ### Changed
 
+- fuse-flow artifact paths accept `{date}`, the local date the workstream started. The
+  fuse-development workflows name their specs `docs/specs/<date>-<slug>.md` (or a
+  `docs/specs/<date>-<slug>/` folder).
+- fuse-flow's hand-over block gives the owner's options in plain words and prints the matching
+  commands after the block, for the agent only. The always-on block tells agents to keep fuse-flow
+  out of what they show the owner unless asked, and to write headings, decisions and commit
+  subjects that explain themselves without labels such as `D1` or `round 3`.
 - `konductor install --harness kiro-cli-v2|kiro-v3` installs skills under `.kiro/skills/`
   instead of `.konductor/skills/` when the synthesized output contains no agents, so a plain
   Kiro CLI session discovers them. Output that contains agents is unchanged. A skill named like

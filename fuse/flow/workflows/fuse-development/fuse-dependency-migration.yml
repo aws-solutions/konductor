@@ -36,7 +36,7 @@ steps:
       away and say so. Do not order the draft for review yet, and do not change code.
     produces:
       - artifact: migration-spec
-        path: docs/specs/{slug}/spec.md
+        path: docs/specs/{date}-{slug}/spec.md
 
   - id: check-catalogue
     title: Check catalogue
@@ -64,10 +64,10 @@ steps:
     consumes: [migration-spec]
     produces:
       - artifact: check-catalogue
-        path: docs/specs/{slug}/checks.md
+        path: docs/specs/{date}-{slug}/checks.md
     updates:
       - artifact: migration-spec
-        path: docs/specs/{slug}/spec.md
+        path: docs/specs/{date}-{slug}/spec.md
     gates:
       - agent: review the catalogue and the spec against the code, its checks and the owner's request; look especially for behavior at risk that no must-pass check covers, and for checks classed as changeable that actually protect behavior
         guide: review.md
@@ -91,7 +91,7 @@ steps:
       - artifact: code
         path: .
       - artifact: check-catalogue
-        path: docs/specs/{slug}/checks.md
+        path: docs/specs/{date}-{slug}/checks.md
     gates:
       - check: default
 
@@ -110,7 +110,7 @@ steps:
     consumes: [check-catalogue]
     updates:
       - artifact: check-catalogue
-        path: docs/specs/{slug}/checks.md
+        path: docs/specs/{date}-{slug}/checks.md
     gates:
       - check: default
 
@@ -136,7 +136,7 @@ steps:
       - artifact: code
         path: .
       - artifact: check-catalogue
-        path: docs/specs/{slug}/checks.md
+        path: docs/specs/{date}-{slug}/checks.md
     gates:
       - check: default
 
@@ -159,7 +159,7 @@ steps:
     consumes: [migration-spec, check-catalogue]
     produces:
       - artifact: migration-report
-        path: docs/specs/{slug}/report.md
+        path: docs/specs/{date}-{slug}/report.md
     updates:
       - artifact: code
         path: .

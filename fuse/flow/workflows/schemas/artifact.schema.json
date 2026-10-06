@@ -16,9 +16,9 @@
       "pattern": "^[a-z0-9][a-z0-9-]*$"
     },
     "path": {
-      "description": "Where the artifact lives, relative to the repository root: a file, or a directory for code. `{slug}` is replaced with the workstream's slug, so two workstreams do not write the same file.",
+      "description": "Where the artifact lives, relative to the repository root: a file, or a directory for code. `{slug}` is replaced with the workstream's slug, so two workstreams do not write the same file, and `{date}` with the local date the workstream started, YYYY-MM-DD.",
       "examples": [
-        "docs/specs/{slug}.md",
+        "docs/specs/{date}-{slug}.md",
         "src/"
       ],
       "type": "string",

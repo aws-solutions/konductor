@@ -33,7 +33,7 @@ steps:
       and say so. Do not order the draft for review yet, and do not change code.
     produces:
       - artifact: feature-spec
-        path: docs/specs/{slug}.md
+        path: docs/specs/{date}-{slug}.md
 
   - id: design
     title: Design
@@ -51,7 +51,7 @@ steps:
       on the branch.
     updates:
       - artifact: feature-spec
-        path: docs/specs/{slug}.md
+        path: docs/specs/{date}-{slug}.md
     gates:
       - agent: review the spec against the owner's request, the code, and the system's requirements and design when the feature is part of a system
         guide: review.md

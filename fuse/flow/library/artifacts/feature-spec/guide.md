@@ -7,7 +7,9 @@ are checked against.
 ## What it holds, in this order
 
 1. **For the owner:** the decisions you need from them and any open question, each with your
-   recommendation. Leave the section out when there is nothing to decide.
+   recommendation. Title each one with what it decides, such as "Matching rule: which free slot a
+   booking request gets", and give enough context that the owner can decide without reading the
+   rest of the spec first. Leave the section out when there is nothing to decide.
 2. **What and for whom:** the request in one or two sentences, and the outcome the owner wants.
 3. **Scope:** what the feature includes, and what it does not.
 4. **How it fits the code:** the files, modules or interfaces it changes or adds, found by reading

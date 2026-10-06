@@ -15,7 +15,9 @@ agent, review the artifact yourself in a separate pass and say so in the hand-ov
 
 - A document: is it correct, complete for its purpose, and consistent with itself and with what
   it builds on? Is every claim about existing code or services true when checked against the
-  source? Could the next step be done from it without guessing?
+  source? Could the next step be done from it without guessing? Can a reader without the author's
+  context follow every heading and reference, or does one lean on a label, such as `D1`, that is
+  only explained further down or elsewhere?
 - Code: the branch's whole diff from its merge-base with the integration branch, against the
   approved spec. Behavior the spec asks for that is missing or wrong, tests that do not prove
   what they claim, security and data loss risks, and departures from the project's conventions. Check the tests against the spec,

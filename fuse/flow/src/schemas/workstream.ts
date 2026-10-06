@@ -81,6 +81,15 @@ export const WorkstreamSchema = z
     workflow: z.string().min(1).meta({
       description: "The workflow the workstream follows, as given to `start`: a name, or an absolute path.",
     }),
+    started: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional()
+      .meta({
+        description:
+          "The local date the workstream was started, YYYY-MM-DD; artifact paths use it for `{date}`. Absent in " +
+          "state files written before it existed; the date of the earliest history line stands in then.",
+      }),
     steps: z.object({}).catchall(StepStateSchema).meta({ description: "The state of each step, by step id." }),
   })
   .strict()

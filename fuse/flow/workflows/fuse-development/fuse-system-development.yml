@@ -38,7 +38,7 @@ steps:
       Do not order the draft for review yet.
     produces:
       - artifact: requirements
-        path: docs/specs/{slug}/requirements.md
+        path: docs/specs/{date}-{slug}/requirements.md
 
   - id: requirements
     title: Requirements
@@ -55,7 +55,7 @@ steps:
       decisions and assumptions, come first, most important first.
     updates:
       - artifact: requirements
-        path: docs/specs/{slug}/requirements.md
+        path: docs/specs/{date}-{slug}/requirements.md
     gates:
       - agent: review the requirements against the owner's request and what already exists
         guide: review.md
@@ -98,7 +98,7 @@ steps:
     consumes: [requirements]
     produces:
       - artifact: design
-        path: docs/specs/{slug}/design.md
+        path: docs/specs/{date}-{slug}/design.md
     gates:
       - agent: review the design against the approved requirements
         guide: review.md
@@ -127,7 +127,7 @@ steps:
     consumes: [requirements, design]
     produces:
       - artifact: build-order
-        path: docs/specs/{slug}/build-order.md
+        path: docs/specs/{date}-{slug}/build-order.md
     gates:
       - agent: review the build order against the approved requirements and the design
         guide: review.md

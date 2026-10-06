@@ -56,10 +56,28 @@ interface Ctx {
   slug: string;
   wf: Workflow;
   p: Project;
+  date: string; // the day the workstream started, for {date} in artifact paths
 }
 
 function context(root: string, slug: string, ws: Workstream): Ctx {
-  return { root, slug, wf: loadWorkflow(findWorkflow(root, ws.workflow)), p: loadProject(root) };
+  return { root, slug, wf: loadWorkflow(findWorkflow(root, ws.workflow)), p: loadProject(root), date: startedOn(ws) };
+}
+
+// The local date, YYYY-MM-DD.
+function localDate(now = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
+// The day the workstream started. A state file written before `started`
+// existed falls back to its earliest history line.
+function startedOn(ws: Workstream): string {
+  if (ws.started) return ws.started;
+  const stamps = Object.values(ws.steps)
+    .flatMap((s) => s.history.map((h) => h.split(" ")[0]))
+    .filter((t) => !Number.isNaN(Date.parse(t)))
+    .sort();
+  return localDate(stamps.length ? new Date(stamps[0]) : new Date());
 }
 
 function currentStep(wf: Workflow, ws: Workstream): Step | undefined {
@@ -80,10 +98,10 @@ const routesBack = (step: Step) => [...new Set(step.gates.flatMap((g) => g.route
 
 interface Placed {
   artifact: Artifact;
-  path: string; // relative to the repository root, {slug} replaced
+  path: string; // relative to the repository root, {slug} and {date} replaced
 }
 
-const place = (c: Ctx, artifacts: Artifact[]): Placed[] => artifacts.map((artifact) => ({ artifact, path: artifactPath(c.p, artifact, c.slug) }));
+const place = (c: Ctx, artifacts: Artifact[]): Placed[] => artifacts.map((artifact) => ({ artifact, path: artifactPath(c.p, artifact, c.slug, c.date) }));
 const onDisk = (c: Ctx, path: string) => existsSync(resolve(c.root, path));
 
 // Whether `file` lies at or below `path`. Both are as display() shows them:
@@ -245,7 +263,7 @@ function stepBlock(c: Ctx, ws: Workstream, step: Step, state: StepState): string
       .reverse()
       .find((s) => [...s.produces, ...s.optional_produces, ...s.updates].some((a) => a.artifact === id))!;
     const artifact = [...source.produces, ...source.optional_produces, ...source.updates].find((a) => a.artifact === id)!;
-    const path = artifactPath(c.p, artifact, c.slug);
+    const path = artifactPath(c.p, artifact, c.slug, c.date);
     lines.push(
       onDisk(c, path)
         ? `READ ${path} (from step ${source.id}).`
@@ -441,7 +459,9 @@ function handOver(c: Ctx, ws: Workstream, step: Step | undefined): string[] {
   const skipped = skips.length ? ` Skipped steps: ${skips.join("; ")}.` : "";
   const intro =
     "OWNER'S TURN: end your message with this hand-over block. Replace each <...> part, keep the lines in this " +
-    "order, and give the owner's options with your recommendation first, with its reason.";
+    "order, and give the owner's options with your recommendation first, with its reason. Write the block for " +
+    "the owner: name steps, phases and artifacts in plain words, and leave out fuse-flow, its commands and the " +
+    "workstream's state file unless the owner asks how the workflow works.";
 
   if (!step) {
     const done = c.wf.steps.filter((s) => stateOf(ws, s.id).status === "COMPLETED");
@@ -462,15 +482,19 @@ function handOver(c: Ctx, ws: Workstream, step: Step | undefined): string[] {
   const state = stateOf(ws, step.id);
   const ff = `${FUSE_FLOW} continue ${c.slug}`;
   const routes = routesBack(step);
-  const back =
-    `Send the work back: run \`${ff} --back-to <step> --note "<the owner's decision>"\`` +
+  const backOption =
+    "Send the work back to an earlier step, with what to change" +
     (routes.length ? `; the step's gates suggest ${routes.join(" or ")}` : "") +
-    `. To rework an artifact, name the step that produces it: ${stepsWithArtifacts(c, step)}.`;
+    ".";
+  const backCommand =
+    `The owner sends the work back: run \`${ff} --back-to <step> --note "<the owner's decision>"\`. ` +
+    `To rework an artifact, name the step that produces it: ${stepsWithArtifacts(c, step)}.`;
   const lines = [
     intro,
     "",
     `SUMMARY: <the task you worked on, in a sentence>. Workstream ${c.slug}, step ${step.id}, ${position(c, step)}.${skipped}`,
   ];
+  const commands: string[] = [];
   if (state.status === "AWAITING_OWNER") {
     const asks = ownerGates(step).map((g) => g.text).join(", and ");
     lines.push(
@@ -478,8 +502,12 @@ function handOver(c: Ctx, ws: Workstream, step: Step | undefined): string[] {
       producedLine(c, step, state),
       verificationLine(c, step, state),
       "NEXT STEP:",
+      `  - ${capitalize(asks)}.`,
+      `  - ${backOption}`,
+    );
+    commands.push(
       `  - The owner does what the step asks (${asks}): run \`${ff} --owner-approved --note "<what the owner said>"\`.`,
-      `  - ${back}`,
+      `  - ${backCommand}`,
     );
   } else {
     const why = state.history.findLast((h) => h.includes("blocked"))?.replace(/^\S+ /, "") ?? "blocked";
@@ -488,15 +516,20 @@ function handOver(c: Ctx, ws: Workstream, step: Step | undefined): string[] {
       producedLine(c, step, state),
       verificationLine(c, step, state),
       "NEXT STEP:",
-      `  - Accept the step as it is: run \`${ff} --owner-approved --note "<the owner's decision>"\`.`,
+      "  - Accept the step as it is.",
     );
+    commands.push(`  - The owner accepts the step as it is: run \`${ff} --owner-approved --note "<the owner's decision>"\`.`);
     if (step.gates.some((g) => g.kind === "agent")) {
-      lines.push(`  - Grant more review rounds: run \`${ff} --more-rounds <n> --note "<the owner's decision>"\`.`);
+      lines.push("  - Allow more review rounds, and how many.");
+      commands.push(`  - The owner grants more review rounds: run \`${ff} --more-rounds <n> --note "<the owner's decision>"\`.`);
     }
-    lines.push(`  - ${back}`);
+    lines.push(`  - ${backOption}`);
+    commands.push(`  - ${backCommand}`);
   }
-  return lines;
+  return [...lines, "", "FOR YOU, NOT FOR THE OWNER: once the owner has decided, run the matching command.", ...commands];
 }
+
+const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
 // --------------------------------------------------------------------- start
 // Mint a workstream that follows `workflowRef` (a workflow name or an
@@ -536,9 +569,9 @@ export function start(root: string, slug: string, workflowRef?: string, from?: s
         }
       });
     },
-    { workflow: ref, steps: {} },
+    { workflow: ref, started: localDate(), steps: {} },
   );
-  const c: Ctx = { root, slug, wf, p: loadProject(root) };
+  const c: Ctx = { root, slug, wf, p: loadProject(root), date: startedOn(readWorkstream(root, slug)) };
   return [`${resumed ? "resumed" : "minted"} workstream ${slug}`, `workflow: ${path}`, `state:    ${workstreamFile(root, slug)}`, "", ...present(c)];
 }
 

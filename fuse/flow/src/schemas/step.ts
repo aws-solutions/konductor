@@ -21,8 +21,9 @@ export const ArtifactSchema = z
     path: z.string().min(1).meta({
       description:
         "Where the artifact lives, relative to the repository root: a file, or a directory for code. `{slug}` is " +
-        "replaced with the workstream's slug, so two workstreams do not write the same file.",
-      examples: ["docs/specs/{slug}.md", "src/"],
+        "replaced with the workstream's slug, so two workstreams do not write the same file, and `{date}` with the " +
+        "local date the workstream started, YYYY-MM-DD.",
+      examples: ["docs/specs/{date}-{slug}.md", "src/"],
     }),
     description: z.string().optional().meta({ description: "Notes for the reader. Engine effect: none." }),
   })
