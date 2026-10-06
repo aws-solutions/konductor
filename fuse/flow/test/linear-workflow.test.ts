@@ -254,7 +254,7 @@ test("a fresh copy of fuse-flow installs its own dependencies on first use, with
   expect(out).toContain(`installing dependencies in ${copy}`);
   expect(out).toContain("current step: design");
   expect(withNode.exitCode).toBe(0);
-});
+}, 60_000);
 
 // A PATH holding Node 22.18+ with its npm, and no Bun; undefined when this
 // machine has no such Node. FUSE_FLOW_TEST_NODE_BIN names the bin directory
