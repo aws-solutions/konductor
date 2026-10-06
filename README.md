@@ -252,20 +252,35 @@ Here the SOP ships as a native Claude Code skill invoked via `/sop-k-full-sdlc` 
 
 The orchestrator runs the SOP through every phase — codebase analysis through documentation — writing artifacts under `.konductor/`.
 
-## Optional Integrations
+## Optional integrations
 
-MCP servers are **bring-your-own**. Konductor does not bundle a user's MCP server for them, with one packaged exception: **AWS MCP**, which ships pre-wired for Claude Code because `k-architect`/`k-developer` depend on it closely enough to launch it for you automatically. Everything else, including Playwright, you configure yourself. Konductor's AWS MCP setup follows the [Agent Toolkit for AWS](https://github.com/aws/agent-toolkit-for-aws), the upstream source of truth for the server key, package, and args. See that repo, or [Install via the Claude Code plugin marketplace](docs/user-guide/tasks/install-claude-plugin-marketplace.md) (also published on the [docs site](https://aws-solutions.github.io/konductor/)), for the plugin-specific version of this setup and for two alternatives the toolkit itself documents:
+Most MCP servers are user-configured. AWS MCP is the exception: Konductor
+pre-wires it for `k-architect` and `k-developer` on Claude Code.
 
-- **OAuth, no local proxy**: `claude mcp add aws-mcp https://aws-mcp.us-east-1.api.aws/mcp --transport http` connects directly to AWS's managed endpoint with no `uvx`/local process at all. Requires the `AWSMCPSignInOAuthAccessPolicy` managed policy attached to your IAM role or user.
-- **AWS's official plugin**: `/plugin install aws-core@claude-plugins-official` bundles the AWS MCP Server configuration and the toolkit's agent skills into one install, maintained directly by AWS rather than by this repository.
-- **Toolkit skills**: `npx skills add aws/agent-toolkit-for-aws/skills` installs the toolkit's own AWS skills independently of Konductor's `aws-service-validator`.
+### AWS MCP
 
-| Agent                        | Integration                                                                                                    | Setup                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `k-architect`, `k-developer` | [AWS MCP Server](https://aws.amazon.com/blogs/aws/aws-mcp-server/): AWS documentation, region/service lookups, and live API access | **Claude Code:** pre-wired for standalone installs and the plugin. It starts `aws-mcp` with `mcp-proxy-for-aws-cli==1.7.0`; install `uvx` and configure AWS credentials. Both agents grant `mcp__aws-mcp__*`, including `aws___run_script`, `aws___get_presigned_url`, and `aws___get_tasks`. Use the `aws:ViaAWSMCPService` and `aws:CalledViaAWSMCP` IAM condition keys to scope agent-initiated calls. **Kiro CLI:** add `aws-mcp` under `mcpServers` in `~/.kiro/settings/mcp.json` or the project configuration. The five knowledge tools are auto-approved; other tools prompt for confirmation. See [Install for Claude Code](docs/user-guide/tasks/install-claude-code.md#optional-integrations) and [Install for Kiro CLI](docs/user-guide/tasks/install-kiro-cli.md). |
-| `k-browser`                  | [`@playwright/mcp`](https://github.com/microsoft/playwright-mcp): browser automation                          | **Bring-your-own on every harness**: this agent's `mcp__playwright-mcp__*` tool grant names the server, but nothing installs or launches it for you. **Claude Code:** `claude mcp add playwright-mcp -- npx -y @playwright/mcp@latest` (add `--scope user` to make it available across every project rather than just the current one). **Kiro CLI:** add a `playwright-mcp` entry yourself under `mcpServers` in `~/.kiro/settings/mcp.json`. Either way, also install the Chromium binary: `npx playwright install chromium`. See [Install for Claude Code](docs/user-guide/tasks/install-claude-code.md#optional-integrations) / [Install for Kiro CLI](docs/user-guide/tasks/install-kiro-cli.md) for more. |
-| `k-researcher`               | Slack search                                                                                                   | Opt-in on both harnesses: requires registering your own Slack app against the official Slack MCP server. See [docs/guides/slack-integration.md](docs/guides/slack-integration.md).                                                                                                                                                                                                                                                                                                                    |
-| `k-product-manager`          | Asana sprint planning (`asana-sprint-planning` skill)                                                          | Opt-in on both harnesses: requires an Asana MCP server (`https://mcp.asana.com/v2/mcp`). See [docs/guides/asana-integration.md](docs/guides/asana-integration.md).                                                                                                                                                                                                                                                                                                                                     |
+Claude Code starts `aws-mcp` with `mcp-proxy-for-aws-cli==1.7.0`. Install
+`uvx` and configure AWS credentials. Both affected agents can use the full
+server, including AWS API tools. Use the `aws:ViaAWSMCPService` and
+`aws:CalledViaAWSMCP` IAM condition keys to limit agent-initiated calls.
+
+Kiro CLI users must add `aws-mcp` to their MCP configuration. Knowledge tools
+are auto-approved; API tools prompt for confirmation. See [Install for Claude
+Code](docs/user-guide/tasks/install-claude-code.md#optional-integrations) or
+[Install for Kiro CLI](docs/user-guide/tasks/install-kiro-cli.md).
+
+The [AWS Agent Toolkit](https://github.com/aws/agent-toolkit-for-aws) also
+provides an OAuth connection, an AWS-managed plugin, and standalone skills.
+
+### Other integrations
+
+- **Browser automation:** `k-browser` expects a user-configured
+  [`@playwright/mcp`](https://github.com/microsoft/playwright-mcp) server.
+  Install Chromium after configuring it.
+- **Slack search:** `k-researcher` requires a Slack MCP server.
+  See [Slack integration](docs/guides/slack-integration.md).
+- **Asana:** `k-product-manager` requires an Asana MCP server.
+  See [Asana integration](docs/guides/asana-integration.md).
 
 ## Roadmap: The Konductor CLI
 

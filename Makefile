@@ -75,7 +75,7 @@ all: build
 # ── help ──────────────────────────────────────────────────────────────────────
 help:
 	@echo ""
-	@echo "Konductor (root) — Makefile targets"
+	@echo "Konductor (root): Makefile targets"
 	@echo ""
 	@echo "  make build              Compile cli/ and mcp/ (release)"
 	@echo "  make lint               Rust lint (clippy + cargo fmt --check), cli/mcp/shared"
@@ -159,7 +159,7 @@ KONDUCTOR_BIN := build/cli/konductor
 # (e.g. k-browser's playwright-mcp) stays bring-your-own.
 synth:
 	$(MAKE) -C cli build TARGET=$(TARGET)
-	@test -x "$(KONDUCTOR_BIN)" || { echo "error: $(KONDUCTOR_BIN) not found — run 'make build' first" >&2; exit 1; }
+	@test -x "$(KONDUCTOR_BIN)" || { echo "error: $(KONDUCTOR_BIN) not found; run 'make build' first" >&2; exit 1; }
 	@echo "=== [konductor] Running konductor synth ==="
 	$(KONDUCTOR_BIN) synth --claude-bundled-mcp-servers "$$(scripts/read-bundled-mcp-servers.sh)" --claude-bundled-mcp-config scripts/claude-plugin-mcp-servers.json
 	@echo "=== [konductor] Synth complete -- output in dist/ ==="
@@ -177,7 +177,7 @@ synth:
 # off to the script.
 claude-plugin:
 	$(MAKE) -C cli build TARGET=$(TARGET)
-	@test -x "$(KONDUCTOR_BIN)" || { echo "error: $(KONDUCTOR_BIN) not found — run 'make -C cli build' first" >&2; exit 1; }
+	@test -x "$(KONDUCTOR_BIN)" || { echo "error: $(KONDUCTOR_BIN) not found; run 'make -C cli build' first" >&2; exit 1; }
 	KONDUCTOR_BIN=$(KONDUCTOR_BIN) scripts/generate-claude-plugin.sh
 
 # ── claude-plugin-check ──────────────────────────────────────────────────────
@@ -215,7 +215,7 @@ claude-plugin:
 # plugin.json failing plain (non-strict) validation.
 claude-plugin-check:
 	$(MAKE) -C cli build TARGET=$(TARGET)
-	@test -x "$(KONDUCTOR_BIN)" || { echo "error: $(KONDUCTOR_BIN) not found — run 'make -C cli build' first" >&2; exit 1; }
+	@test -x "$(KONDUCTOR_BIN)" || { echo "error: $(KONDUCTOR_BIN) not found; run 'make -C cli build' first" >&2; exit 1; }
 	KONDUCTOR_BIN=$(KONDUCTOR_BIN) scripts/generate-claude-plugin.sh
 	@if command -v claude >/dev/null 2>&1; then \
 		echo "=== [claude-plugin-check] Validating repo-root marketplace.json ==="; \
