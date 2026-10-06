@@ -1521,8 +1521,8 @@ fn check_index_status(destination: &Path, home_dir: Option<&Path>) -> CheckResul
 /// from (`Info`, fails closed to the same off-with-no-record wording as
 /// a missing machine record); no machine record at all (`Info`,
 /// nothing has reported yet); the machine record declines while this
-/// target opted in (`Warn`, the case a design review flagged as
-/// silent); machine consent allows and this target opted in (`Ok`).
+/// target opted in (`Warn`, a silent mismatch between the two consent
+/// signals); machine consent allows and this target opted in (`Ok`).
 fn check_telemetry_state(destination: &Path, home_dir: Option<&Path>) -> CheckResult {
     use crate::cli::telemetry::InstallInfoAbsence;
 

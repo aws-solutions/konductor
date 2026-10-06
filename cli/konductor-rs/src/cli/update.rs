@@ -1627,7 +1627,7 @@ fn run_update_one_target_with_remote_installer(
     //     deliberate `--no-telemetry` choice at install or update, or an
     //     install that predates this telemetry system entirely -- these
     //     are indistinguishable from the filesystem alone. Carried
-    //     forward as opted-out silently, same as before: this is the
+    //     forward as opted-out silently: this is the
     //     conservative default that never wires a telemetry side
     //     effect for a target that never affirmatively got one, and
     //     nothing here is broken, so nothing is printed.

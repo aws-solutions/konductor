@@ -1194,10 +1194,10 @@ fn dispatch_install_with_remote_installer(
             // function and the same per-target lock `update.rs`'s own
             // carry-forward block uses for the identical removal, and
             // the same lock `write_record` holds for its own write.
-            // Composing an unconditional unlocked `remove_install_info`
-            // call (as before) with no read at all leaves a gap for a
-            // concurrent install or update of a DIFFERENT, coexisting
-            // harness at this same target to land a fresh, enabled
+            // An unconditional unlocked `remove_install_info` call with
+            // no read at all leaves a gap for a concurrent install or
+            // update of a DIFFERENT, coexisting harness at this same
+            // target to land a fresh, enabled
             // record in between this run deciding to opt out and the
             // removal actually executing on disk, which would then be
             // destroyed with no record it ever existed -- see
@@ -1308,9 +1308,9 @@ fn dispatch_install_with_remote_installer(
 /// `read_and_maybe_remove_locked` -- the same function and the same
 /// per-target lock `update.rs`'s own carry-forward block uses for the
 /// identical removal, and the same lock `write_record` holds for its
-/// own write. Composing an unconditional unlocked `remove_install_info`
-/// call (as before) with no read at all leaves a gap for a concurrent
-/// install or update of a DIFFERENT, coexisting harness at this same
+/// own write. An unconditional unlocked `remove_install_info` call
+/// with no read at all leaves a gap for a concurrent install or
+/// update of a DIFFERENT, coexisting harness at this same
 /// target to land a fresh, enabled record in between this run deciding
 /// to opt out and the removal actually executing on disk, which would
 /// then be destroyed with no record it ever existed -- see
