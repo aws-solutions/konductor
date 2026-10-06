@@ -27,7 +27,7 @@ AGENTS.fuse.md # Always-on block that install.sh writes into harness instruction
 
 ## Setup & Commands
 
-Run every test suite from the repository root with `make test`. It needs Bun.
+Run every test suite from the repository root with `bun run test`.
 
 ## Code Style & Conventions
 

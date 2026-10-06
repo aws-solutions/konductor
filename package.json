@@ -1,13 +1,13 @@
 {
-  "name": "asdlc-core-ai-capabilities-benchmark",
+  "name": "fuse-konductor",
   "version": "0.1.0",
   "private": true,
-  "description": "Node.js tests for the Konductor repository.",
+  "description": "Root test orchestration for fuse-konductor.",
   "scripts": {
-    "test": "node --test tests/scripts/*.test.js",
-    "test:install": "bun test ./tests/install"
-  },
-  "engines": {
-    "node": ">=22"
+    "test": "bun run test:repository && bun run test:skills && bun run test:flow && bun run test:komposer",
+    "test:repository": "bun test ./tests/install ./tests/scripts ./tests/repo",
+    "test:skills": "for f in tests/skills/*/*.sh; do bash \"$f\" || exit 1; done",
+    "test:flow": "bun install --cwd fuse/flow --frozen-lockfile && bun run --cwd fuse/flow test",
+    "test:komposer": "bun install --cwd fuse/komposer --frozen-lockfile && bun run --cwd fuse/komposer test"
   }
 }

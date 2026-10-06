@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
-# PR-time validation: runs every test suite (make test), requires a
-# CHANGELOG.md entry alongside any VERSION bump, and checks the VERSION format.
+# PR-time validation: runs every test suite through the root package,
+# requires a CHANGELOG.md entry alongside any VERSION bump, and checks the
+# VERSION format.
 #
 # Triggers on `pull_request`, NOT `pull_request_target`, so the job runs with a
 # read-only, secret-free token even for fork PRs.
@@ -62,4 +63,4 @@ jobs:
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
 
       - name: Run every test suite
-        run: make test
+        run: bun run test
