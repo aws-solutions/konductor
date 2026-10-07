@@ -16,7 +16,8 @@ engine's help text for `status` gets one sentence on what "approved" means, so n
 for an owner's approval.
 
 Last reviewed against: the owner's agreement to per-pass round counting and to an owner gate on
-the prototype step, both folded into the rules below.
+the prototype step, both folded into the rules below, and commit `2091b31`, which already fixed
+how the debug-mode guide counts review rounds.
 
 ## Background
 
@@ -92,29 +93,32 @@ This fixes the second surprise.
 
 A gate's cap counts the rounds of the current pass; the owner agreed to this on 2026-10-07.
 Counting across passes would stop a step at its first review after a send-back whenever the
-earlier pass used its rounds, which is when the owner most wants a fresh review. A pass starts when a step is handed out for
-the first time, and again each time a send-back reopens it. Rounds the owner granted belong to
-their pass and lapse with it, as they do today.
+earlier pass used its rounds, which is when the owner most wants a fresh review. A pass starts
+when a step is handed out for the first time, and again each time a send-back reopens it. Rounds
+the owner granted belong to their pass and lapse with it, as they do today. As today, only a
+round that ends with a required fix counts against the cap; a round that passes does not.
+
+The engine already resets granted rounds when it reopens a step, but its step block never says
+that a new pass has started. It names the findings file `<step>-round-<n>.json` and leaves the
+agent to infer which rounds belong to this pass. The step block after a send-back therefore says
+so in words: "This is pass 2 of this step. Count only this pass's rounds against the cap."
 
 The findings files carry the pass in their name, for example
-`requirements-pass-2-round-1.json`, so a file name alone says which pass and round it records,
-and the rounds used are simply the files of the current pass. The alternative is to keep one
-running round number and have the step block say "this pass starts at round 3; the cap allows
-rounds 3 and 4". That keeps today's names but makes every reader do the arithmetic.
+`requirements-pass-2-round-1.json`, so a file name alone says which pass and round it records.
+The rounds that count are then the files of the current pass whose round ended with a required
+fix. The alternative is to keep one running round number and have the step block say "this pass
+starts at round 3; the cap allows rounds 3 and 4". That keeps today's names but makes every
+reader do the arithmetic.
 
 After a send-back, the step block says that the review covers the whole artifact, and that the
 reviewer gets the earlier passes' findings files with how each finding was handled. The review
 guide `review.md` gets the same two sentences, so a reviewer launched without the step block
 follows them too.
 
-The debug-mode guide, `skills/fuse-workstream/debug-mode.md`, is already wrong here. It was
-committed in `da680e5` before this rule existed, and it counts rounds used as the number of
-findings files for the step and gate. After a send-back that count includes the earlier passes,
-so for decently-fancy-designs the report would show the requirements gate at its cap of 2 before
-this pass's first review has run. The guide
-changes to count only the current pass's rounds against that pass's cap: the files named for the
-current pass, or, under the running-number alternative, the rounds from the number the step block
-names.
+The debug-mode guide, `skills/fuse-workstream/debug-mode.md`, already counts this way since
+`2091b31`: only rounds of the current pass that ended with a required fix, with a passing round
+shown as `passed`. It needs no change for this rule, except to name the pass once the findings
+files carry it.
 
 This fixes the fourth surprise.
 
