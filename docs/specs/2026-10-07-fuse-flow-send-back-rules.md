@@ -2,20 +2,21 @@
 
 Status: brainstorming draft. Nothing here is implemented.
 
-## Needs your decision
+## Agent decision to approve or decline
 
-1. **Do review rounds from before a send-back count against a gate's cap?** I recommend counting
-   each pass on its own, as the engine already does when it reopens a step. Counting across
-   passes would stop a step at its first review after a send-back whenever the earlier pass used
-   its rounds, which is the case where the owner most wants a fresh review. The rule on rounds
-   below assumes per-pass counting.
-2. **Should a step without an owner gate mark its artifacts "approved"?** I recommend a new
-   status, "done", for that case, so "approved" always means the owner approved. This is the
-   root of the requirements file showing as approved under intake, and of the earlier surprise
-   where draft requirements showed as approved after intake.
-3. **Should the prototype step get an owner gate?** I recommend it. Its instruction already asks
-   the owner to agree to experiments, and a prototype that changes the requirements is a normal
-   result. A gate gives the owner one defined point to accept the findings or send the work back.
+**Keep "approved" for a step without an owner gate; drop the proposed "done" status.** The owner
+pointed out that "approved" is intentional: it means the step's gates passed, whoever ran them
+(the owner, a reviewing agent, or the authoring agent after its checks). The decently-fancy-designs
+log shows no harm from it. Every owner approval the agent asked for came from the requirements
+step's owner gate or from the prototype step's instruction text, never from an artifact's status.
+The only real problem was the contradiction in the status view: intake had recorded the
+requirements as approved while the file's own status line said draft, and after the send-back
+the view showed both. The rule on one status per artifact below removes that on its own. The
+engine's help text for `status` gets one sentence on what "approved" means, so no reader takes it
+for an owner's approval.
+
+Last reviewed against: the owner's agreement to per-pass round counting and to an owner gate on
+the prototype step, both folded into the rules below.
 
 ## Background
 
@@ -82,15 +83,16 @@ under the latest step in workflow order that records it, with that step's status
 keep their records for the history, and the view notes "also produced by intake" where that
 helps the reader.
 
-If the owner accepts the second decision above, "approved" is set only by an owner approval, and
-a step without an owner gate leaves its artifacts "done". Together these remove the impression
-that an owner approved a file nobody approved.
+"Approved" keeps its meaning: the step's gates passed, whoever ran them. A step without an owner
+gate still marks its artifacts approved when it completes.
 
 This fixes the second surprise.
 
 ### Rule on review rounds after a send-back
 
-A gate's cap counts the rounds of the current pass. A pass starts when a step is handed out for
+A gate's cap counts the rounds of the current pass; the owner agreed to this on 2026-10-07.
+Counting across passes would stop a step at its first review after a send-back whenever the
+earlier pass used its rounds, which is when the owner most wants a fresh review. A pass starts when a step is handed out for
 the first time, and again each time a send-back reopens it. Rounds the owner granted belong to
 their pass and lapse with it, as they do today.
 
@@ -126,8 +128,10 @@ This fixes the fifth surprise.
 
 ## Workflow changes that go with the rules
 
-The prototype step in `fuse-system-development.yml` gets an owner gate, if the owner accepts the
-third decision: "approve the prototype findings, or send the work back to the requirements".
+The prototype step in `fuse-system-development.yml` gets an owner gate, which the owner agreed to
+on 2026-10-07: "approve the prototype findings, or send the work back to the requirements". Its
+instruction already asks the owner to agree to experiments, and a prototype that changes the
+requirements is a normal result, so the gate gives the owner one defined point to decide.
 
 The system-design step consumes the research notes as well as the requirements, so its step
 block lists the prototype results its instruction already tells the agent to cite. The research
