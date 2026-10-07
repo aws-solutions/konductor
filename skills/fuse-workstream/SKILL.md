@@ -1,6 +1,6 @@
 ---
 name: fuse-workstream
-description: Use when the user asks to work with fuse, fuse-konductor or a fuse-flow workflow, wants to start a new feature, system, migration or other substantial piece of work, or wants to continue work that may already be in progress, even if they name no workflow. Finds a workstream to resume, or recommends a workflow for new work and starts it once the user agrees, then runs it step by step with fuse-flow.
+description: Use when the user asks to work with fuse, fuse-konductor or a fuse-flow workflow, wants to start a new feature, system, migration or other substantial piece of work, or wants to continue work that may already be in progress, even if they name no workflow. Finds a workstream to resume, or recommends a workflow for new work and starts it once the user agrees, then runs it step by step with fuse-flow. Also turns fuse debug mode on or off, which ends every reply with a report of what fuse did.
 version: 1.0.0
 tags: [skill, fuse-flow, workflow, workstream]
 ---
@@ -24,6 +24,8 @@ explained by what fuse-flow prints.
 - **Keep the mechanics out of what the owner reads.** Name workflows, steps and documents in plain
   words, such as "the feature workflow" or "next, the code review". Do not show fuse-flow commands,
   flags or the state file unless the owner asks how it works.
+- **Debug mode.** When the owner asks to turn fuse debug mode on or off, or to see fuse at work
+  turn by turn, read `debug-mode.md` next to this file and follow it.
 
 ## 1. Resume or start
 

@@ -15,6 +15,10 @@ not per individual commit.
   installed rules overlap. It takes over that guidance from the always-on block.
 - `fuse-flow list` prints the project's workstreams with their current step, and every workflow a
   new workstream can follow, by location, with its description and the name that starts it.
+- Fuse debug mode, turned on or off by asking for it. While it is on, every reply to the owner ends
+  with a fuse report (a diagram of the workflow and four lines on the step, what comes next, the
+  fuse instructions used and any surprises), and each turn is logged in `.konductor/debug/`. The
+  instructions are in `skills/fuse-workstream/debug-mode.md` and load only when needed.
 - `aws-mcp-usage` skill: confirmation rules for AWS MCP tools that act on an account, and which
   AWS guidance to load for common development tasks. Extracted from the removed architect and
   developer agent prompts.
