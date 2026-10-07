@@ -39,6 +39,8 @@ serves the app with Vite on port 5173 and passes `/api` to the server started wi
 
 ## What to know
 
+- **Light and dark themes.** Komposer follows your system's light or dark setting until you
+  choose one with the sun/moon button next to its name; that choice is kept in the browser.
 - **Edits are kept as a working copy** in the project's `.konductor/editor/` folder, which git
   ignores, until you choose Save. Save either updates the original file or saves a new one. If
   the file changed on disk in the meantime, Komposer asks before overwriting it.

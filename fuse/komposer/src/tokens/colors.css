@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: Apache-2.0 */
 /* On Coding — Color System
    Built from the TSE circuit-gradient mark: bright cyan → deep blue.
    Light is the default; dark is scoped to [data-theme="dark"]. */
@@ -79,6 +80,46 @@
   --warning-soft: var(--amber-50);
   --danger-soft:  var(--red-50);
 
+  /* ---- Komposer tints: gate kinds, run states, errors, diffs, routes back ----
+     The light values are the design handoff's literals; [data-theme="dark"]
+     overrides each one, so no tint stays pastel on a dark page. */
+  --tint-danger-line:     oklch(0.58 0.19 25);
+  --tint-danger-dot:      oklch(0.55 0.18 25);
+  --tint-danger-border:   oklch(0.85 0.07 25);
+  --tint-danger-bg:       oklch(0.97 0.02 25);
+  --tint-danger-bg-strong: oklch(0.95 0.04 25);
+  --tint-danger-text:     oklch(0.48 0.18 25);
+  --tint-danger-text-alt: oklch(0.5 0.18 25);
+
+  --tint-warn-line:       oklch(0.72 0.14 75);
+  --tint-warn-border:     oklch(0.82 0.08 85);
+  --tint-warn-border-alt: oklch(0.88 0.07 85);
+  --tint-warn-button:     oklch(0.8 0.08 85);
+  --tint-warn-bg:         oklch(0.97 0.03 85);
+  --tint-warn-pill-bg:    oklch(0.94 0.06 85);
+  --tint-warn-chip-bg:    oklch(0.95 0.05 80);
+  --tint-warn-chip-text:  oklch(0.45 0.11 65);
+  --tint-warn-text:       oklch(0.44 0.11 70);
+  --tint-warn-text-deep:  oklch(0.4 0.1 70);
+  --tint-warn-solid:      oklch(0.44 0.11 70);   /* filled button behind white text */
+  --tint-warn-marker:     oklch(0.55 0.13 65);   /* "no library entry" marker on a chip */
+
+  --tint-route-back:      oklch(0.62 0.13 65);
+  --tint-route-text:      oklch(0.55 0.13 65);
+  --tint-route-text-alt:  oklch(0.5 0.13 60);
+
+  --tint-ok-line:         oklch(0.62 0.12 155);
+  --tint-ok-bg:           oklch(0.94 0.05 155);
+  --tint-ok-text:         oklch(0.4 0.1 155);
+
+  --tint-agent-bg:        oklch(0.94 0.05 160);
+  --tint-agent-text:      oklch(0.4 0.1 160);
+
+  --tint-diff-add-bg:     oklch(0.94 0.05 155);
+  --tint-diff-add-text:   oklch(0.35 0.09 155);
+  --tint-diff-remove-bg:  oklch(0.95 0.035 25);
+  --tint-diff-remove-text: oklch(0.42 0.14 25);
+
   color-scheme: light;
 }
 
@@ -111,6 +152,44 @@
   --success-soft: rgba(27,166,115,0.14);
   --warning-soft: rgba(217,138,11,0.14);
   --danger-soft:  rgba(216,58,69,0.14);
+
+  /* tints: translucent fills, mid-tone borders, light text */
+  --tint-danger-line:     oklch(0.66 0.17 25);
+  --tint-danger-dot:      oklch(0.66 0.17 25);
+  --tint-danger-border:   oklch(0.45 0.1 25);
+  --tint-danger-bg:       oklch(0.58 0.19 25 / 0.12);
+  --tint-danger-bg-strong: oklch(0.58 0.19 25 / 0.2);
+  --tint-danger-text:     oklch(0.78 0.12 25);
+  --tint-danger-text-alt: oklch(0.8 0.11 25);
+
+  --tint-warn-line:       oklch(0.75 0.14 75);
+  --tint-warn-border:     oklch(0.5 0.09 80);
+  --tint-warn-border-alt: oklch(0.45 0.08 80);
+  --tint-warn-button:     oklch(0.55 0.09 80);
+  --tint-warn-bg:         oklch(0.72 0.14 75 / 0.1);
+  --tint-warn-pill-bg:    oklch(0.72 0.14 75 / 0.16);
+  --tint-warn-chip-bg:    oklch(0.72 0.14 75 / 0.16);
+  --tint-warn-chip-text:  oklch(0.82 0.11 75);
+  --tint-warn-text:       oklch(0.82 0.11 75);
+  --tint-warn-text-deep:  oklch(0.85 0.09 80);
+  --tint-warn-solid:      oklch(0.5 0.11 70);
+  --tint-warn-marker:     oklch(0.78 0.12 70);
+
+  --tint-route-back:      oklch(0.72 0.13 65);
+  --tint-route-text:      oklch(0.78 0.12 70);
+  --tint-route-text-alt:  oklch(0.78 0.11 65);
+
+  --tint-ok-line:         oklch(0.68 0.12 155);
+  --tint-ok-bg:           oklch(0.62 0.12 155 / 0.16);
+  --tint-ok-text:         oklch(0.8 0.11 155);
+
+  --tint-agent-bg:        oklch(0.62 0.1 160 / 0.18);
+  --tint-agent-text:      oklch(0.82 0.09 160);
+
+  --tint-diff-add-bg:     oklch(0.62 0.12 155 / 0.16);
+  --tint-diff-add-text:   oklch(0.82 0.1 155);
+  --tint-diff-remove-bg:  oklch(0.58 0.19 25 / 0.16);
+  --tint-diff-remove-text: oklch(0.8 0.1 25);
 
   color-scheme: dark;
 }

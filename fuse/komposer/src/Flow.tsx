@@ -17,14 +17,14 @@ type Rect = { t: number; b: number; l: number; r: number };
 
 const FWD = "var(--text-faint)";
 const SEL = "var(--accent)";
-const BACK = "oklch(0.62 0.13 65)";
+const BACK = "var(--tint-route-back)";
 const BADGE_X = 24;
 
 const GATE_STYLE: Record<Gate["kind"], { label: string; bg: string; fg: string }> = {
   check: { label: "check", bg: "var(--accent-soft)", fg: "var(--accent-text)" },
   script: { label: "script", bg: "var(--surface-sunken)", fg: "var(--text-strong)" },
-  agent: { label: "agent", bg: "oklch(0.94 0.05 160)", fg: "oklch(0.4 0.1 160)" },
-  "owner-action": { label: "owner", bg: "oklch(0.94 0.06 85)", fg: "oklch(0.44 0.11 70)" },
+  agent: { label: "agent", bg: "var(--tint-agent-bg)", fg: "var(--tint-agent-text)" },
+  "owner-action": { label: "owner", bg: "var(--tint-warn-pill-bg)", fg: "var(--tint-warn-text)" },
 };
 
 const ROLE_PREFIX: Record<ArtifactRole, string> = { produces: "", optional_produces: "", updates: "~" };

@@ -10,6 +10,7 @@ import type { LibraryEntry, WorkstreamSummary } from "./api.ts";
 import { gateCount, workflowKey, type LocationId, type OpenWorkflow } from "./workflowView.ts";
 import { problemsForText } from "./validate.ts";
 import { stepViews } from "./workflowView.ts";
+import { ThemeToggle } from "./ThemeToggle.tsx";
 
 const LOCATION_ORDER: LocationId[] = ["project", "personal", "fuse-flow"];
 const LOCATION_LABEL: Record<LocationId, string> = {
@@ -61,6 +62,7 @@ export function WorkflowList({
       <div className="lane-head">
         <div className="brand-disc" />
         <div className="brand-name">Komposer</div>
+        <ThemeToggle />
       </div>
       <div className="lane-search">
         <input

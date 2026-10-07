@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 <!doctype html>
 <html lang="en">
   <head>
@@ -5,6 +6,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>fuse-flow</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- Same rule as src/model/theme.ts, run before first paint so a dark page never flashes light. -->
+    <script>
+      var t = null;
+      try {
+        t = localStorage.getItem("komposer-theme");
+      } catch (e) {}
+      if (t !== "light" && t !== "dark") {
+        try {
+          t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        } catch (e) {
+          t = "light";
+        }
+      }
+      document.documentElement.dataset.theme = t;
+    </script>
   </head>
   <body>
     <div id="root"></div>
