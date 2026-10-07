@@ -1,12 +1,15 @@
-# Konductor
+# Konductor and Fuse
 
-| **[🚧 Feature request](https://github.com/aws-solutions/konductor/issues/new?labels=enhancement&template=feature_request.md)** | **[🐛 Bug Report](https://github.com/aws-solutions/konductor/issues/new?labels=bug&template=bug_report.md)** |
+| **[🚧 Feature Request](https://github.com/aws-solutions/konductor/issues/new?labels=enhancement&template=feature_request.md)** | **[🐛 Bug Report](https://github.com/aws-solutions/konductor/issues/new?labels=bug&template=bug_report.md)** |
 
-Konductor is an open-source package of skills, standard operating procedures (SOPs) and workflows that automate the software development lifecycle (SDLC). A single agent session in Kiro CLI or Claude Code runs a workflow one step at a time and loads the skill each step names, so a request can move from requirements through design, specs, implementation, code review, testing and documentation with the same quality gates at every step.
+**Konductor** is an open-source package of skills, standard operating procedures (SOPs) and workflows that automate the software development cycle.
 
-> **Note:** Konductor used to ship agent specs: eight specialists and three orchestrators that routed work between them. They were removed, together with the skills and the SOP that only routed work to subagents; see [docs/research/2026-09-26-orchestration-skills-and-sops.md](docs/research/2026-09-26-orchestration-skills-and-sops.md). The user guide, which described the agents and the removed `konductor` command line tool, is not on this branch. The integration guides under [`docs/guides/`](docs/guides/) still describe the agent-based layout and have not been rewritten yet. To install, use [INSTALL.md](INSTALL.md).
+**Fuse-Konductor** is an evolution of Konductor with two main differences:
+- Fuse-Konductor turns Konductor's elements into a reusable library of modules, aimed at users who tweak the pre-packaged workflows and assemble their own.
+- Fuse-Konductor replaces Konductor's suite of specialist agent personas and orchestration rules with a workflow engine operated by your harness's default agent.
 
-The package ships as static configuration compatible with [Kiro](https://kiro.dev) and [Claude Code](https://claude.ai/download). No runtime infrastructure is required beyond the AI runtime itself.
+Fuse-Konductor is a set of [agent skills](https://agentskills.io/home), plus a block of "always-on" instructions installed in your [AGENTS.md](https://agents.md/) (global or project-specific).
+The workflow engine ships as TypeScript code that runs on `bun` and keeps its state in local Markdown files on your machine.
 
 ---
 
@@ -30,15 +33,15 @@ The package ships as static configuration compatible with [Kiro](https://kiro.de
 
 ## Why Konductor
 
-Most AI coding sessions improvise their process. Konductor gives the session a written one: skills that say how to write requirements, design a system, review a design, split features, write specs, implement, review code, plan tests and document, each with its own checker, and workflows that run those skills in order with gates where the owner signs off.
+By default, AI coding sessions improvise their process. Konductor gives the session a written one: guides that say how to write requirements, design a system, review a design, split features, write specs, implement, review code, plan tests and document, each with its own checker, and workflows that produce these artifacts in order with human or agentic quality gates.
 
-You get this by installing one package. No servers to run and no infrastructure to provision: the skills, SOPs and workflows are files that your existing Kiro or Claude Code runtime reads directly.
+You get this by installing one package. No servers to run and no infrastructure to provision: the skills, guides and workflows are files that your existing coding agent reads directly.
 
 ## Quick Start
 
 ### Installing
 
-Clone the `fuse` branch and run `install.sh`, into one project or for yourself across projects:
+Clone the `fuse` branch and run `install.sh`, either into one project or for yourself across all projects:
 
 ```bash
 git clone -b fuse https://github.com/aws-solutions/konductor.git fuse-konductor
@@ -47,32 +50,25 @@ cd fuse-konductor
 ./install.sh --global ~/.claude/CLAUDE.md
 ```
 
-[INSTALL.md](INSTALL.md) covers every supported harness, update, uninstall and customer forks.
+[INSTALL.md](INSTALL.md) covers every supported harness, updating, uninstalling and custom forks.
 
-### First run
+### Tutorial
 
-**Full SDLC pass with fuse-flow.** The workflow runner lives in this repository under [`fuse/flow/`](fuse/flow/README.md) and needs [Bun](https://bun.sh) or Node 22.18+, 23.6+ or 24+ with npm; it installs its own dependencies on first use. `install.sh` does not copy it, so run it from your checkout:
+Start an agent session in any project. Prompt the agent with "Start the fuse tutorial", or run the command `/fuse-tutorial`.
 
-```bash
-cd <your-project>
-<konductor-checkout>/fuse/flow/fuse-flow start my-feature --workflow _k-full-sdlc
-```
+### Feature development with Fuse-Konductor
 
-Then, in a Kiro CLI or Claude Code session in that project, ask:
-
-```text
-Run `<konductor-checkout>/fuse/flow/fuse-flow start my-feature` and do what it says. When a step is
-done, run `continue`, which prints the next step. Repeat until the workflow is complete. Stop at
-each owner gate and show me the artifact.
-```
-
-Each step names its skill and the artifact it must produce under `.konductor/`. `fuse-flow continue` refuses a step until its artifacts exist, and a gated step waits until you approve it with `fuse-flow continue my-feature --owner-approved`. fuse-flow finds skills in every directory `install.sh` writes to, so it needs no extra setup; [`fuse/flow/README.md`](fuse/flow/README.md) lists them.
+Prompt your agent with "Use fuse-feature-development to build <...>", giving an initial description of your feature.
+This can be a few words or several paragraphs. The agent will take it from there, guiding you through the workflow and eliciting the details you haven't provided yet.
 
 ---
 
 ## Workflows
 
 The workflow definitions in [`fuse/flow/workflows/`](fuse/flow/workflows/) are the entry points for multi-phase work.
+Pick one by naming it to your agent, or let the agent pick the best fit for the work at hand.
+If none of the pre-packaged workflows matches your needs, start an agent session in the Konductor repository to let the agent help you modify a workflow or build your own.
+Optionally, you can use the Komposer UI (a React app running on a local dev server) to visualize and modify workflows yourself.
 
 | Workflow                   | Steps                                                                                                                                                                      |
 | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -87,113 +83,18 @@ For a single task, ask the session to use a skill directly; see [Usage Examples]
 
 You can edit these workflows or add your own in the same folder. Personal workflows that you do not want to share go in `fuse/flow/workflows/personal/`, which is gitignored. To share workflows with a group but not with everybody, keep them in a separate repository and add a symlink to it named `fuse/flow/workflows/team`, which is gitignored too. fuse-flow finds a workflow by name in any folder below `fuse/flow/workflows/`; [`fuse/flow/README.md`](fuse/flow/README.md) gives the lookup order.
 
-## Skills
+## Skills and guides
 
-Skills are modular knowledge packages that a session loads when a task needs them. On Claude Code, installed skills live in `.claude/skills/`: only their names and descriptions are in context at session start, and the full content loads when a skill is invoked. On Kiro CLI, skills are installed to `.kiro/skills/`, where Kiro CLI's native skill discovery finds them. (A package that ships agent specs installs its skills under `.konductor/skills/` instead, so that each agent sees only the skills it declares; this package ships none.) The package ships **80 skills** across 8 capability areas:
+Skills are modular knowledge packages that a session loads automatically when the agent thinks that a task needs them.
+Their structure is defined by the [agent skills standard](https://agentskills.io/home), which all mainstream coding agents support.
+While the implementation of skill activation can differ from harness to harness,
+keep in mind that activation is based on each skill's `name` and `description` frontmatter, and is generally left to the agent's judgment rather than enforced.
 
-| Category                          | Count | Representative skills                                                                                                                       | Covers                                                                                                                                                                                    |
-| --------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Architecture & Design             | 22    | `system-design-patterns`, `threat-modeling`, `dynamodb-design`, `iam-policy-design`, `smithy-modeling`, `cost-estimation`, `adr-generator`  | System design docs, STRIDE threat models, data models, least-privilege IAM, Smithy API models, AWS cost scenarios, trade-off scoring, ADRs, adversarial design review, design elicitation |
-| Planning & Tracking               | 13    | `user-story-writing`, `task-decomposition`, `sprint-planning`, `risk-management`, `program-planning`, `progress-tracking`                   | Requirements → user stories → task/sprint breakdown, program plans and decision docs, RAID logs, status reports, plan critique                                                            |
-| Architecture & Development Review | 14    | `backend-development`, `frontend-development`, `infra-validation`, `code-review`, `git-workflow`, `adversarial-code-review`                 | Backend/frontend implementation, CDK/CloudFormation validation, IAM/security policy validation, standard and adversarial code review, git workflow                                        |
-| Testing & QA                      | 8     | `test-coverage-analysis`, `e2e-test-strategy`, `cypress-test-implementation`, `security-test-generation`                                    | Coverage gap analysis, prioritized E2E test matrices, Cypress/Playwright planning, OWASP-based security test plans, web app/DOM discovery                                                 |
-| Orchestration & Delegation        | 10    | `fuse-workstream`, `pre-planning-analysis`, `persistent-memory`, `workspace-skills`, `sop-state-management`, `asdlc-aspect-review`          | Picking, starting and resuming a fuse-flow workflow, ambiguous-request triage, cross-session memory, reusable workspace skills, resumable SOP state, parallel n-aspect review, building and authoring fuse-flow workflows with the user (`fuse-flow-builder`)                     |
-| Kiro Spec Generation              | 3     | `kiro-requirements-generation`, `kiro-design-generation`, `kiro-task-generation`                                                            | Chained skills that turn PM/architecture artifacts into a Kiro IDE `requirements.md` / `design.md` / `tasks.md` spec                                                                      |
-| Documentation & Writing           | 4     | `document-formats`, `doc-accuracy-analyzer`, `humanize-writing`, `agents-md-authoring`                                                      | Reading/writing `.docx`, fact-checking technical documents against primary sources, rewriting AI-sounding text, authoring AGENTS.md files                                                 |
-| Research & Security               | 6     | `external-research`, `security-remediation`, `find-aws-skills`, `aws-mcp-usage`, `about-konductor`, `fuse-tutorial`                            | External documentation/web research, security-finding remediation planning, discovering additional AWS skills, AWS MCP confirmation rules, onboarding a new user to Konductor, a hands-on tutorial of fuse-flow and Komposer |
+Instructions that Konductor wants to pass to an agent deterministically (e.g. how to write a system-design.md document)
+are therefore not built as skills, but as plain .md files that the workflow engine instructs the agent to use at a certain
+step in the workflow. We call these instruction files "guides" rather than skills.
+Guides have no frontmatter that gets loaded into every agent session, which keeps your agent's context clean.
 
-## Persistent Memory
-
-Sessions that load the `persistent-memory` skill (see the Orchestration & Delegation row in [Skills](#skills) above) keep a small local scratchpad across sessions. It needs `bash` and [Bun](https://bun.sh), and no other setup: the skill creates the directory on first write and appends it to `.gitignore` itself.
-
-Two files, split by what they hold:
-
-| File                          | Holds                                    |
-| ----------------------------- | ---------------------------------------- |
-| `.konductor/memory/MEMORY.md` | Project, codebase, and environment facts |
-| `.konductor/memory/USER.md`   | Personal preferences and working style   |
-
-An optional `.konductor/memory-config.json` lets you tune two things: the per-file character limits and a URL allowlist restricting which external domains can appear in an entry. Copy the template to get started:
-
-```bash
-mkdir -p .konductor && cp skills/persistent-memory/memory-config.json.template .konductor/memory-config.json
-```
-
-Every write is checked by a validator script — an entry that exceeds a limit or fails the allowlist is rejected and reported back to you, never silently dropped.
-
-## SOPs (Standard Operating Procedures)
-
-The SOPs below live in `agent-sops/`. The installer does not install them; they are being replaced by fuse-flow workflows.
-
-| SOP                                  | What it does                                                                                                                                      |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `about-konductor`                    | Onboards a new or lost user: install, then find and use the skills and workflows                                                                  |
-| `k-plan`                             | Work breakdown with success criteria, task dependencies, skill assignments, and timeline estimates                                                |
-| `k-context-gathering`                | Pre-implementation context gathering for unfamiliar code, complex multi-system changes, or after repeated debugging failures                      |
-| `k-comprehensive-search`             | Exhaustive codebase and documentation search, with code and documentation searches run in parallel where the runtime offers subagents            |
-| `k-verify`                           | Comprehensive completion verification with collected evidence — run before declaring any task done                                                |
-| `k-design-doc-creation`              | Five-phase workflow producing a PE-ready design document: requirements grilling, outside-in structure, quality gates, adversarial review loop     |
-| `k-existing-design-review`           | 10-dimension evaluation of _existing_ design artifacts before implementation (superseded for new docs by `k-design-doc-creation`)                 |
-| `k-principal-engineer-design-review` | Pre-submission quality gate on a design doc — slop detection, architecture principles evaluation, and an adversarial review loop before PE review |
-| `k-test-coverage-review`             | Test gap identification, E2E test planning, and security test plan generation in sequence                                                         |
-| `k-e2e-test-generation`              | Deployed-app discovery via browser automation, generating unit test prompts or executable Cypress/Playwright specs                                |
-| `k-light-ui-testing`                 | Live discovery and prompt-driven UI testing for pages not yet ready for full functional test generation                                           |
-| `k-code-review-workflow`             | Multi-skill review across backend, frontend, and infrastructure files with false-positive critique and a consolidated report                      |
-| `k-pre-cr-critique`                  | Lightweight, strictly read-only pre-submission critique of local changes                                                                          |
-| `k-code-cleanup`                     | Removes AI-generated slop from code before review submission                                                                                      |
-| `k-codebase-analysis`                | Deep-dive architecture, design-pattern, and technical-debt assessment for onboarding or refactor planning                                         |
-| `kiro-spec-workflow`                 | Chains the three `kiro-*-generation` skills into a complete Kiro IDE spec (`requirements.md` + `design.md` + `tasks.md`)                          |
-| `k-adversarial-pull-request-review`  | Adversarial review of a pull request/CR diff — classifies findings as CRITICAL/IMPORTANT/MINOR before merge                                       |
-| `k-full-sdlc`                        | End-to-end SDLC pass — codebase analysis through documentation — chaining the SOPs above per feature                                              |
-
-## Usage Examples
-
-**Review a diff before opening a PR:**
-
-```bash
-claude
-> Use the code-review skill to review my current branch against main.
-```
-
-**Targeted request that uses one skill:**
-
-```bash
-claude -p "Use the threat-modeling skill to create a threat model for a public REST API backed by DynamoDB."
-```
-
-**Run the full SDLC workflow:** start the `_k-full-sdlc` workflow with fuse-flow as described in [First run](#first-run), then let the session follow the steps `fuse-flow start` and `continue` print. It runs every phase, requirements through documentation, and writes its artifacts under `.konductor/`.
-
-The same prompts work in Kiro CLI, Codex, Cursor and OpenCode sessions.
-
-## Optional Integrations
-
-Konductor registers none of these MCP servers for you. Register each one you need in your harness's own MCP configuration.
-
-| Used by                                                         | Integration                                                                                                    | Setup                                                                                                                                                             |
-| --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `aws-mcp-usage`, `aws-service-validator`, `find-aws-skills`     | [AWS MCP Server](https://aws.amazon.com/blogs/aws/aws-mcp-server/): AWS documentation, region/service lookups  | Register it as `aws-mcp` with a pinned version and a read-only profile, and pre-approve only its read-only tools. The `aws-mcp-usage` skill has the exact configuration. |
-| `app-discovery`, `k-e2e-test-generation`, `k-light-ui-testing`  | [`@playwright/mcp`](https://github.com/microsoft/playwright-mcp): browser automation                           | Register `npx @playwright/mcp@latest` as an MCP server and install the Chromium binary: `npx playwright install chromium`.                                       |
-| `external-research`                                             | Slack search                                                                                                   | Opt-in; requires registering your own Slack app against the official Slack MCP server. See [docs/guides/slack-integration.md](docs/guides/slack-integration.md). |
-| `asana-sprint-planning`                                         | Asana sprint planning                                                                                          | Opt-in; requires an Asana MCP server (`https://mcp.asana.com/v2/mcp`). See [docs/guides/asana-integration.md](docs/guides/asana-integration.md).                  |
-
-## Project Structure
-
-```text
-konductor/
-├── agent-sops/            # 18 SOPs (.sop.md)
-├── skills/                # 78 skills (skills/<name>/SKILL.md)
-├── fuse/flow/             # fuse-flow workflow runner and workflow definitions
-├── docs/guides/           # Getting-started and integration guides
-├── .github/               # Issue and PR templates
-├── CHANGELOG.md
-├── CODE_OF_CONDUCT.md
-├── CONTRIBUTING.md
-├── LICENSE.txt            # Apache-2.0
-├── NOTICE.txt             # Third-party attribution
-├── SECURITY.md
-├── aim.json               # Package/plugin build metadata
-└── README.md
-```
 
 ## Contributing
 
@@ -209,7 +110,7 @@ Licensed under the Apache License, Version 2.0 — see [LICENSE.txt](LICENSE.txt
 
 ## Data Collection
 
-fuse-konductor collects no data. The installer sends nothing over the network. fuse-flow downloads its two dependencies, zod and yaml, from the npm registry when they are missing from `fuse/flow/node_modules` in your clone, normally only the first time it runs; otherwise it sends nothing. Offline, that run fails and names the install command to run.
+Fuse-Konductor collects no data. The installer sends nothing over the network. fuse-flow downloads its two dependencies, zod and yaml, from the npm registry when they are missing from `fuse/flow/node_modules` in your clone, normally only the first time it runs; otherwise it sends nothing. Offline, that run fails and names the install command to run.
 
 ---
 
