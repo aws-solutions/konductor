@@ -22,9 +22,10 @@ says that debug mode is on.
    ## Fuse debug mode
 
    Fuse debug mode is on. At the start of each session, read `<guide>` and follow it: end every
-   reply to the owner with the fuse report it describes. Only the agent that talks to the owner
-   writes the report; subagents, reviewers and judges never do. To turn debug mode off, the owner
-   asks for it, and the agent removes this section.
+   reply to the owner with the fuse report it describes. Only a session that the owner started
+   and talks to writes the report. A session started by a script, a command or another agent never
+   does, and neither do subagents, reviewers and judges. To turn debug mode off, the owner asks for
+   it, and the agent removes this section.
    ```
 
 3. Confirm in one sentence where you added it, and end this reply with the first report.
@@ -46,8 +47,12 @@ is the record of fuse bugs found. Delete it only when the owner asks.
 
 ## Who writes it and when
 
-- Only the agent that talks to the owner. When you dispatch a subagent, reviewer or judge, tell it
-  not to write a report, because it loads the same instruction files.
+- Only the agent in a session that the owner started and talks to. Every other session loads the
+  same instruction files, so it must rule itself out even when nobody told it to. A session that
+  a script, a command, a launch command or another agent started is not the owner's, and neither
+  is one whose task arrived as a prompt file or a one-off prompt on the command line. Such a
+  session writes neither the report nor the log.
+- When you dispatch a subagent, reviewer or judge, still tell it not to write a report.
 - At the end of every reply to the owner, including replies with no workstream active and replies
   that start because background work finished.
 
@@ -81,9 +86,14 @@ So the diagram goes in a code block, and every labelled line is a list item with
   awaiting the owner or blocked; add `blocked` or `waiting for the owner` as a note), `[skipped]`
   for skipped, `[ ]` for pending.
 - After the state, the step's gates in order, such as `checks -> agent review 2/2 -> owner approves`.
-  The review count is rounds used of the cap. Rounds used is the number of findings files for that
-  step and gate in `.konductor/reviews/<slug>/`; the cap is the step's cap plus any rounds the owner
-  granted, as the step block or `fuse-flow status` shows.
+  The review count is rounds used of the cap, counted the way the step counts them: only rounds
+  of the current pass that ended with a required fix. A pass starts when the step is handed out,
+  and again each time the owner sends work back to it; rounds from an earlier pass do not count.
+  A round that passed does not count either, so show it as `passed` after the count, such as
+  `agent review 1/2 passed`. The findings files for that step and gate in
+  `.konductor/reviews/<slug>/` show how many rounds ran in all passes, not how many count. The cap
+  is the step's cap plus any rounds the owner granted in this pass, as the step block or
+  `fuse-flow status` shows.
 - A short note after `<-` is welcome, such as `<- update proposed`.
 - Rebuild the diagram from the current status every turn. With no workstream active, leave it out.
 

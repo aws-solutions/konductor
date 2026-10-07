@@ -94,7 +94,8 @@ steps:
       on and how each was checked, citing the research notes from the prototypes where there are
       any; when an assumption needs an experiment nobody has run, propose it to the owner rather
       than guess. Check every claim about existing code or services against the source. Leave
-      the build order to the feature split.
+      the build order to the feature split: the design has no implementation plan or task list,
+      even though the design guide asks for one.
     consumes: [requirements]
     produces:
       - artifact: design
