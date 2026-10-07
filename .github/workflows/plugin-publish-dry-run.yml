@@ -50,12 +50,26 @@ jobs:
       pull-requests: write
     env:
       BASE_BRANCH: release/plugins
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # No job-wide GH_TOKEN. Only the two steps that actually call `gh`
+      # or need GitHub API auth (precondition validation, draft PR
+      # creation) bind it in their own `env:` -- see those steps below.
+      # Checkout, toolchain setup, the build, npm install, and tree
+      # assembly have no reason to see this token at all.
     steps:
       - name: Enforce the hard dry-run confirmation guard
+        # Bound through `env`, not interpolated into the script body.
+        # confirm_dry_run is a workflow_dispatch string input -- free text
+        # a user can set to anything. GitHub Actions expression syntax
+        # inside a `run:` block is substituted into the script source
+        # before the shell runs it, so a value containing shell
+        # metacharacters would execute as code rather than compare as a
+        # string. Passing it through the process environment means the
+        # shell only ever sees it as $CONFIRM_DRY_RUN's value.
+        env:
+          CONFIRM_DRY_RUN: ${{ inputs.confirm_dry_run }}
         run: |
           set -e
-          if [ "${{ inputs.confirm_dry_run }}" != "DRY_RUN_CONFIRMED" ]; then
+          if [ "$CONFIRM_DRY_RUN" != "DRY_RUN_CONFIRMED" ]; then
             echo "FATAL: confirm_dry_run must be exactly 'DRY_RUN_CONFIRMED'. Got a different value (not echoed here in case it was meant as a secret). Failing closed before touching anything." >&2
             exit 1
           fi
@@ -94,6 +108,11 @@ jobs:
           echo "tag_label=claude-plugin-dryrun-v${RAW_VERSION}-${{ github.run_id }}" >> "$GITHUB_OUTPUT"
 
       - name: Validate publish preconditions (source ref, candidate collision)
+        # Needs GH_TOKEN: validate-plugin-publish-preconditions.sh requires
+        # it in its own environment and fails closed if absent (used only
+        # by `gh`, never printed -- see the script's own header comment).
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -e
           scripts/validate-plugin-publish-preconditions.sh \
@@ -148,6 +167,9 @@ jobs:
 
       - name: Open a draft pull request into release/plugins
         id: pr
+        # Needs GH_TOKEN: `gh pr create` below authenticates with it.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -e
           PR_BODY="[DRY RUN] Rehearsal of the plugin candidate publish path. Not a real release.
@@ -169,14 +191,41 @@ jobs:
           echo "Opened draft PR: $PR_URL"
 
       - name: Report deterministic cleanup identifiers
-        # These two identifiers are everything a reviewer needs to clean up
-        # this run's remote state. Printed as plain, grep-able lines (not
-        # just left in prior step logs) so a cleanup script or a human can
-        # find them in one place regardless of how far they scroll.
+        # if: always() -- a reviewer needs these identifiers even when a
+        # later step failed partway through (e.g. the candidate branch
+        # pushed but PR creation didn't). Without it, a step after any
+        # earlier failure is skipped by default and the pushed branch
+        # would have to be found by hand in the job logs.
+        #
+        # The candidate branch is printed whenever that step itself ran;
+        # PR identifiers are printed only when PR creation actually
+        # produced them, since the branch can exist with no PR on top of
+        # it. No GH_TOKEN here -- this step only echoes instructions, it
+        # never calls `gh` itself.
+        if: always()
+        env:
+          CANDIDATE_BRANCH: ${{ steps.candidate.outputs.candidate_branch }}
+          PR_NUMBER: ${{ steps.pr.outputs.pr_number }}
+          PR_URL: ${{ steps.pr.outputs.pr_url }}
+          REPO: ${{ github.repository }}
         run: |
           echo "=== Dry-run cleanup identifiers ==="
-          echo "CANDIDATE_BRANCH=${{ steps.candidate.outputs.candidate_branch }}"
-          echo "PR_NUMBER=${{ steps.pr.outputs.pr_number }}"
-          echo "PR_URL=${{ steps.pr.outputs.pr_url }}"
+          if [ -n "$CANDIDATE_BRANCH" ]; then
+            echo "CANDIDATE_BRANCH=$CANDIDATE_BRANCH"
+          else
+            echo "CANDIDATE_BRANCH=<not derived -- this run failed before the candidate branch name was computed>"
+          fi
+          if [ -n "$PR_NUMBER" ]; then
+            echo "PR_NUMBER=$PR_NUMBER"
+            echo "PR_URL=$PR_URL"
+          else
+            echo "PR_NUMBER=<no PR was created -- check this run's logs for where it stopped>"
+          fi
           echo "To clean up:"
-          echo "  gh pr close ${{ steps.pr.outputs.pr_number }} --repo ${{ github.repository }} --delete-branch"
+          if [ -n "$PR_NUMBER" ]; then
+            echo "  gh pr close $PR_NUMBER --repo $REPO --delete-branch"
+          elif [ -n "$CANDIDATE_BRANCH" ]; then
+            echo "  gh api --method DELETE repos/$REPO/git/refs/heads/$CANDIDATE_BRANCH"
+          else
+            echo "  (nothing to clean up -- no candidate branch was pushed)"
+          fi
