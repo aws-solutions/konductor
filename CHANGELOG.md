@@ -13,9 +13,9 @@ not per individual commit.
 - A Claude Code plugin marketplace install path: `/plugin marketplace add
   aws-solutions/konductor` then `/plugin install konductor@konductor`. See [Install via the
   Claude Code plugin marketplace](docs/user-guide/tasks/install-claude-plugin-marketplace.md).
-- `publish-claude-plugin`'s release job tags each `claude-plugin` branch release with an
-  immutable `claude-plugin-vX.Y.Z` tag, so a `marketplace.json` entry can pin to a specific
-  release instead of the branch's moving HEAD.
+- `tag-claude-plugin-release.yml` tags each `release/plugins` merge with an immutable
+  `claude-plugin-vX.Y.Z` tag, so a `marketplace.json` entry can pin to a specific release
+  instead of the branch's moving HEAD.
 
 ### Changed
 
@@ -27,7 +27,14 @@ not per individual commit.
 ### Security
 
 - `aws-mcp` uses `mcp-proxy-for-aws-cli==1.7.0` instead of a moving package version. The managed endpoint still supplies current AWS documentation and skills.
-- The plugin release requires a preprovisioned `claude-plugin` branch and publishes that branch and its immutable release tag in one atomic push.
+- The plugin release no longer force-pushes directly to a public branch. `publish-claude-plugin`
+  pushes a fresh, collision-resistant candidate branch (release version plus workflow run
+  identifier) and opens a **draft** pull request into the protected `release/plugins` branch,
+  using `GITHUB_TOKEN` scoped to `contents: write` and `pull-requests: write` only. The
+  `plugins` branch ruleset (creation/update/deletion/non-fast-forward blocked, zero bypass
+  actors) and the org-wide two-approval PR ruleset gate the actual merge. A separate workflow,
+  `tag-claude-plugin-release.yml`, creates the immutable `claude-plugin-vX.Y.Z` tag only after
+  that PR is merged into `release/plugins` by a human reviewer.
 - `k-architect`/`k-developer` still grant AWS MCP's full tool surface, unchanged. Use the
   `aws:ViaAWSMCPService`/`aws:CalledViaAWSMCP` IAM condition keys to scope or audit
   agent-originated calls.
@@ -35,7 +42,10 @@ not per individual commit.
   branch with an unreleased `VERSION` bump could trigger a real `gh release create`, and by
   default, a force-push to the public `claude-plugin` branch. Removed the manual-dispatch path
   entirely; `validate-pr.yml` now runs `claude plugin validate --strict` against the assembled
-  plugin tree on every PR instead, with no publish or push step anywhere in its job graph.
+  plugin tree on every PR instead, with no publish or push step anywhere in its job graph. A
+  separate opt-in rehearsal workflow (`plugin-publish-dry-run.yml`) can push a throwaway
+  candidate branch and open a draft PR for review, gated behind a typed confirmation input; it
+  cannot create a release, tag, merge, or write to `release/plugins`.
 
 ## [1.0.3] - 2026-10-01
 

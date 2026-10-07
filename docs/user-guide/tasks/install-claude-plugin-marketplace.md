@@ -5,7 +5,7 @@
 [← Task guides](README.md) · [Guide index](../README.md)
 
 Use this path to install Konductor without the `konductor` CLI. It is
-available after the first plugin release.
+available after the first plugin release merges into `release/plugins`.
 
 ## Prerequisites
 

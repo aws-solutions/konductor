@@ -36,11 +36,19 @@ write to the developer's real Claude Code or Konductor state.
 
 ## Published plugin
 
-The marketplace in `main` points to the `claude-plugin` branch. Before the
-first release, repository administrators must create and protect that branch.
+The marketplace in `main` points to the `release/plugins` branch. Before the
+first release, repository administrators must create and protect that
+branch, and protect the `claude-plugin-v*` tag pattern.
+
 The release workflow assembles the flat plugin tree
-(`scripts/assemble-claude-plugin-branch.sh`), validates it, then atomically
-updates the branch and its immutable `claude-plugin-vX.Y.Z` tag.
+(`scripts/assemble-claude-plugin-branch.sh`), validates it, pushes it to a
+fresh, collision-resistant candidate branch, and opens a draft pull request
+into `release/plugins`. It never writes to `release/plugins` directly --
+the `plugins` branch ruleset blocks creation, update, deletion, and
+non-fast-forward there with no bypass actors, and the org-wide ruleset
+requires two approvals before any PR merges. After a human merges that PR,
+a separate workflow (`tag-claude-plugin-release.yml`) creates the immutable
+`claude-plugin-vX.Y.Z` tag on the merge commit.
 
 The published branch contains:
 
@@ -57,9 +65,10 @@ LICENSE.txt
 root, by `scripts/assemble-claude-plugin-branch.sh`. There is no separate
 repository-root copy of either file.
 
-To correct a bad release, publish a fixed version. Do not move an existing
-plugin tag. If the marketplace must stop tracking a bad release, update its
-reference through a normal pull request.
+To correct a bad release, publish a fixed version through the same
+candidate-branch and draft-PR flow. Do not move an existing plugin tag. If
+the marketplace must stop tracking a bad release, update its reference
+through a normal pull request.
 
 ## MCP servers
 

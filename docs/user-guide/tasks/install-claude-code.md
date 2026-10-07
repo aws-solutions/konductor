@@ -273,7 +273,8 @@ See [docs/guides/slack-integration.md](../../guides/slack-integration.md) for de
 ## Related
 
 - [Install via the Claude Code plugin marketplace](install-claude-plugin-marketplace.md): an
-  alternative to the steps above, once the first release publishes the `claude-plugin` branch
+  alternative to the steps above, once the first release merges a plugin candidate PR into the
+  `release/plugins` branch
 - [Install for Kiro CLI](install-kiro-cli.md): the other runtime
 
 ---
