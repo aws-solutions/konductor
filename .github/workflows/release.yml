@@ -16,8 +16,9 @@ name: Release
 # `publish` succeeds: it builds the Claude Code plugin tree (`make
 # claude-plugin` via scripts/generate-claude-plugin.sh, then
 # scripts/assemble-claude-plugin-branch.sh for the flat layout Claude Code
-# expects), pushes it to a fresh, collision-resistant candidate branch, and
-# opens a draft pull request into the protected `release/plugins` branch.
+# expects), pushes it to a collision-resistant candidate branch built on top
+# of release/plugins' current tip, and opens a draft pull request into the
+# protected `release/plugins` branch.
 # It never writes to `release/plugins` directly -- the `plugins` branch
 # ruleset blocks creation/update/deletion/non-fast-forward there with no
 # bypass actors, and the org-wide ruleset requires two PR approvals before
@@ -658,23 +659,35 @@ jobs:
       - name: Validate the assembled plugin tree (strict manifest validation)
         run: claude plugin validate "$ASSEMBLE_DIR" --strict
 
+      - name: Build the candidate commit on top of release/plugins' tip
+        # Based on the base branch's own remote tip, not a disconnected
+        # root commit -- this is what gives GitHub a common ancestor to
+        # diff against, so the draft PR below can open at all. See the
+        # script's own header comment for the full rationale.
+        run: |
+          set -e
+          scripts/build-plugin-candidate-commit.sh \
+            --base-branch "$BASE_BRANCH" \
+            --candidate-branch "${{ steps.candidate.outputs.candidate_branch }}" \
+            --assemble-dir "$ASSEMBLE_DIR" \
+            --commit-message "Publish Claude Code plugin candidate for $RELEASE_VERSION"
+
       - name: Push the candidate branch
         # Plain push to a brand-new branch name this run just derived and
         # confirmed is free -- never a force push, and never a write to
-        # release/plugins (that ruleset would reject it anyway).
+        # release/plugins (that ruleset would reject it anyway). No manual
+        # auth header: the checkout step above already persisted
+        # write-scoped credentials (actions/checkout's default
+        # persist-credentials behavior) into this same working copy's git
+        # config, since this job's `permissions:` block grants
+        # contents: write. Re-adding a second Authorization header here
+        # (as the pre-fix version did, operating in its own
+        # credential-free standalone repo) would duplicate it instead.
         run: |
           set -e
-          cd "$ASSEMBLE_DIR"
-          git init -q -b "${{ steps.candidate.outputs.candidate_branch }}"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -q -m "Publish Claude Code plugin candidate for $RELEASE_VERSION"
-          git remote add origin "https://github.com/${{ github.repository }}.git"
-          AUTH_HEADER="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
-          git -c http.extraHeader="$AUTH_HEADER" push origin \
-            "HEAD:refs/heads/${{ steps.candidate.outputs.candidate_branch }}"
-          echo "Pushed candidate branch ${{ steps.candidate.outputs.candidate_branch }} at $(git rev-parse HEAD)"
+          git push origin \
+            "${{ steps.candidate.outputs.candidate_branch }}:refs/heads/${{ steps.candidate.outputs.candidate_branch }}"
+          echo "Pushed candidate branch ${{ steps.candidate.outputs.candidate_branch }} at $(git rev-parse "${{ steps.candidate.outputs.candidate_branch }}")"
 
       - name: Open a draft pull request into release/plugins
         # The merge, and therefore the write to release/plugins itself, is

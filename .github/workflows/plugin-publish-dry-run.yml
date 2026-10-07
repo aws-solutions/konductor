@@ -122,20 +122,29 @@ jobs:
       - name: Validate the assembled plugin tree (strict manifest validation)
         run: claude plugin validate "$ASSEMBLE_DIR" --strict
 
-      - name: Push the throwaway candidate branch
+      - name: Build the candidate commit on top of release/plugins' tip
+        # Same history-safe construction release.yml's publish-claude-plugin
+        # job uses -- see scripts/build-plugin-candidate-commit.sh's own
+        # header comment. Both workflows calling the same script is what
+        # keeps them from drifting apart on this again.
         run: |
           set -e
-          cd "$ASSEMBLE_DIR"
-          git init -q -b "${{ steps.candidate.outputs.candidate_branch }}"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -q -m "[DRY RUN] Claude Code plugin candidate rehearsal (run ${{ github.run_id }})"
-          git remote add origin "https://github.com/${{ github.repository }}.git"
-          AUTH_HEADER="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
-          git -c http.extraHeader="$AUTH_HEADER" push origin \
-            "HEAD:refs/heads/${{ steps.candidate.outputs.candidate_branch }}"
-          echo "Pushed dry-run candidate branch ${{ steps.candidate.outputs.candidate_branch }} at $(git rev-parse HEAD)"
+          scripts/build-plugin-candidate-commit.sh \
+            --base-branch "$BASE_BRANCH" \
+            --candidate-branch "${{ steps.candidate.outputs.candidate_branch }}" \
+            --assemble-dir "$ASSEMBLE_DIR" \
+            --commit-message "[DRY RUN] Claude Code plugin candidate rehearsal (run ${{ github.run_id }})"
+
+      - name: Push the throwaway candidate branch
+        # No manual auth header: the checkout step above already persisted
+        # write-scoped credentials into this working copy (actions/
+        # checkout's default persist-credentials behavior, since this
+        # job's `permissions:` block grants contents: write).
+        run: |
+          set -e
+          git push origin \
+            "${{ steps.candidate.outputs.candidate_branch }}:refs/heads/${{ steps.candidate.outputs.candidate_branch }}"
+          echo "Pushed dry-run candidate branch ${{ steps.candidate.outputs.candidate_branch }} at $(git rev-parse "${{ steps.candidate.outputs.candidate_branch }}")"
 
       - name: Open a draft pull request into release/plugins
         id: pr
