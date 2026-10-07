@@ -26,12 +26,16 @@ const USAGE = `usage:
                                                 the owner approved a step that awaits the owner or is blocked
   fuse-flow continue <slug> --more-rounds <n> [--note <text>]
                                                 the owner grants the step's agent gates n more review rounds
-  fuse-flow continue <slug> --back-to <step> [--note <text>]
-                                                the owner sends the work back from a step that awaits the owner
-                                                or is blocked to <step>, it or an earlier one
+  fuse-flow continue <slug> --back-to <step> [--updated <file>]... [--note <text>]
+                                                the owner sends the work back from the current step, whatever
+                                                its status, to <step>, it or an earlier one. --updated records
+                                                the files the current step wrote so far, for its next pass
   fuse-flow continue <slug> --forward-to <step> [--note <text>]
                                                 the owner jumps forward; the steps passed over are skipped
-  fuse-flow status <slug>                       show every step's state
+  fuse-flow status <slug>                       show every step's state. A file shows once, under the latest
+                                                step that records it.
+                                                approved means the step's gates passed, whoever ran them;
+                                                it is the owner's approval only where the step has an owner gate
   fuse-flow list                                list this project's workstreams with their current step, and
                                                 every workflow a workstream can follow, with its description
   fuse-flow validate <name, file or directory>...
@@ -140,7 +144,11 @@ function run(argv: string[]): string[] {
       ].filter(Boolean) as string[];
       const actions = [...decisions, ...reports];
       if (actions.length > 1) throw new UsageError(`${actions.join(" and ")} are different decisions; give one`);
-      if (actions.length && work.length) throw new UsageError(`${work[0]} reports the agent's work; it does not go with ${actions[0]}`);
+      // A send-back may record what the current step wrote so far.
+      const recordsWork = backTo !== undefined && work.every((w) => w === "--updated");
+      if (actions.length && work.length && !recordsWork) {
+        throw new UsageError(`${work.find((w) => backTo === undefined || w !== "--updated")} reports the agent's work; it does not go with ${actions[0]}`);
+      }
       if (values.note !== undefined && decisions.length === 0) {
         throw new UsageError("--note goes with --owner-approved, --more-rounds, --back-to or --forward-to");
       }

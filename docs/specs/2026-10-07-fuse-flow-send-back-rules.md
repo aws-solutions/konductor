@@ -1,6 +1,8 @@
 # fuse-flow: rules for sending work back
 
-Status: brainstorming draft. Nothing here is implemented.
+Status: implemented on `agents/defiant-claude-2`. For a step's first pass the findings files keep
+their old names; only the second pass on carries the pass in its name, so files and running
+workstreams from before the change keep reading the same.
 
 ## Agent decision to approve or decline
 

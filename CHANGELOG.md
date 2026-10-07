@@ -36,6 +36,12 @@ script installs plain skills and an always-on instruction block that every suppo
   - Where a step's instruction and an artifact's guide disagree, the step block says the
     instruction wins and asks the agent to name each disagreement; the review request tells the
     reviewer the same.
+  - When the owner sends work back, from the current step in any status, the files the steps
+    wrote stay recorded as draft and each reopened step's next pass lists them to keep, update or
+    redo. Review rounds count per pass, with the pass in the findings file names from the second
+    pass on. `status` shows each file once, under the latest step that records it. A produced
+    folder that existed before the step, such as a shared research folder, is recorded file by
+    file from the files the agent names.
   - Workflows are found by name in the project's `.konductor/workflows/`, then
     `~/.konductor/workflows/`, then the shipped ones, at any folder depth, so personal and team
     workflows can sit in their own folders or symlinked repositories.
@@ -54,7 +60,8 @@ script installs plain skills and an always-on instruction block that every suppo
     lands the branch.
   - `fuse-system-development`, a new system or a module with its own architecture: intake,
     requirements, optional prototypes, a system design with a principal engineer review by an
-    agent, and a build order whose features are then built with `fuse-feature-development`.
+    agent, and a build order whose features are then built with `fuse-feature-development`. The
+    owner approves the prototype findings or sends the work back to the requirements.
   - `fuse-dependency-migration`, a migration or refactoring that must keep the behavior: catalogue
     the checks, add missing ones, record a baseline, migrate in increments and compare.
   - `_k-full-sdlc` and `_k-phase-chain`, Konductor's full lifecycle pass and lighter phase chain,

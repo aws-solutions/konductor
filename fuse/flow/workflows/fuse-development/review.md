@@ -57,3 +57,7 @@ P1 open. When the round cap is reached with required fixes open, stop and report
 blocked with the open findings; the owner decides.
 
 In the hand-over, list each round's findings with how each was handled, and the deferred ones.
+
+After the owner sends the work back to a step, its next pass starts the round count again, and
+its findings files carry the pass in their name. The review still covers the whole artifact, and
+the reviewer gets the findings files of the earlier passes, with how each finding was handled.

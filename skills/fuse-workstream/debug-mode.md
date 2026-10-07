@@ -91,7 +91,8 @@ So the diagram goes in a code block, and every labelled line is a list item with
   and again each time the owner sends work back to it; rounds from an earlier pass do not count.
   A round that passed does not count either, so show it as `passed` after the count, such as
   `agent review 1/2 passed`. The findings files for that step and gate in
-  `.konductor/reviews/<slug>/` show how many rounds ran in all passes, not how many count. The cap
+  `.konductor/reviews/<slug>/` show how many rounds ran in all passes, not how many count; from
+  the second pass on, their names carry the pass, such as `requirements-pass-2-round-1.json`. The cap
   is the step's cap plus any rounds the owner granted in this pass, as the step block or
   `fuse-flow status` shows.
 - A short note after `<-` is welcome, such as `<- update proposed`.

@@ -110,10 +110,14 @@ The step fields have these effects:
   `owner-action` condition asks the owner. A step without a condition is mandatory.
 - `consumes` lists artifact identifiers from earlier steps. The step block prints each resolved
   input as `READ`, including the source step. A missing input is reported rather than refused, so
-  the agent can recover it after a jump.
+  the agent can recover it after a jump. An input from a step that was skipped because it was not
+  needed is reported as nothing to read. For a folder artifact, `READ` lists the files the source
+  step recorded in it rather than the whole folder.
 - `produces` contains one artifact mapping or a list. Each mapping has an `artifact` identifier,
   a `path`, and an optional `description`. Completion requires the path to exist or the agent to
-  report `--not-produced <artifact> <reason>`.
+  report `--not-produced <artifact> <reason>`. When the path is a folder that existed before the
+  step, such as a research folder shared with other work, the agent names each file it wrote in
+  it with `--updated <file>`, and the engine records the files one by one.
 - `optional_produces` has the same mapping shape. Existing paths are recorded, but missing paths
   never refuse completion.
 - `updates` has the same mapping shape for artifacts that usually exist before the step, such as
@@ -151,9 +155,9 @@ The step fields have these effects:
 | `continue <slug> --skip <why>` | Skip a conditional step, or skip any step after the owner explicitly asks. Records the reason. |
 | `continue <slug> --owner-approved [--note <text>]` | Record the owner's approval of an `AWAITING_OWNER` or `BLOCKED` step and complete it. |
 | `continue <slug> --more-rounds <n> [--note <text>]` | Add one or more review rounds to an agent gate on an `IN_PROGRESS` or `BLOCKED` step. |
-| `continue <slug> --back-to <step> [--note <text>]` | On the owner's decision, reopen the named step and every later step from an `AWAITING_OWNER` or `BLOCKED` step. Files stay on disk. |
+| `continue <slug> --back-to <step> [--updated <file>]... [--note <text>]` | On the owner's decision, reopen the named step and every later step, from the current step in any status. Files stay on disk and stay recorded, as draft; `--updated` records what the current step wrote so far. A reopened step's next pass lists the files of its earlier passes, and its review rounds count from that pass, with findings files named `<step>-pass-<n>-round-<m>.json`. |
 | `continue <slug> --forward-to <step> [--note <text>]` | On the owner's decision, skip the current step and every step before the later target. |
-| `status <slug>` | Show all steps, their six states, gates, artifacts, skip reasons and the current step. |
+| `status <slug>` | Show all steps, their six states, gates, artifacts, skip reasons and the current step. Each file shows once, under the latest step that records it. `approved` means the step's gates passed, whoever ran them; it is the owner's approval only where the step has an owner gate. |
 | `list` | List the project's workstreams with their workflow and current step, and every workflow a new workstream can follow, by location, with the name `start --workflow` takes and its description. Names that cannot be started by name, and invalid files, are listed with the reason. |
 | `validate <name, file or directory>...` | Validate one or more workflows without starting a workstream. A directory means every `.yml` and `.yaml` file below it, including nested and symlinked folders. |
 | `help`, `--help`, `-h` | Print command usage, lookup paths and state location. |

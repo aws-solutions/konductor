@@ -62,7 +62,15 @@ export const StepStateSchema = z
           description: "Produces artifacts the agent did not write, with the reason, by artifact id.",
         }),
         existed: z.array(z.string()).optional().meta({
-          description: "Produces paths that existed, unrecorded by this workstream, when the step was handed out.",
+          description: "Produces paths that existed, unrecorded by this workstream, when the step was first handed out.",
+        }),
+        pass: z.number().int().min(2).optional().meta({
+          description:
+            "Which pass of the step this is, when the owner sent the work back to it or past it; absent for the " +
+            "first pass. Review rounds count per pass.",
+        }),
+        earlier_pass: z.array(z.string()).optional().meta({
+          description: "The files the step wrote in its earlier passes, for its next pass to keep, update or redo.",
         }),
         verification: z.array(z.string()).optional().meta({
           description: "The result of each check and script gate when the step was last continued.",

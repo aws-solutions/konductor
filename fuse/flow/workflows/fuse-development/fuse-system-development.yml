@@ -80,6 +80,9 @@ steps:
     produces:
       - artifact: research-note
         path: docs/research/
+    gates:
+      - owner-action: approve the prototype findings, or send the work back to the requirements
+        route_back_to: requirements
 
   - id: system-design
     title: System design
@@ -96,7 +99,7 @@ steps:
       than guess. Check every claim about existing code or services against the source. Leave
       the build order to the feature split: the design has no implementation plan or task list,
       even though the design guide asks for one.
-    consumes: [requirements]
+    consumes: [requirements, research-note]
     produces:
       - artifact: design
         path: docs/specs/{date}-{slug}/design.md

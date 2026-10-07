@@ -68,8 +68,9 @@ test("an owner gate holds the step and prints the pre-filled hand-over block unt
   expect(repo.ok("start", "feat")).toContain("STATUS: awaiting owner action.");
 
   const approved = repo.ok("continue", "feat", "--owner-approved", "--note", "looks good");
+  // The sketch artifact has no guide, so the reminder names the file's own status line instead.
   expect(approved).toStartWith(
-    "design: owner approved; COMPLETED\nIf any of design.md keeps a status of its own, as its guide says, set it to approved.\n\nSTEP build (2 of 3)",
+    "design: owner approved; COMPLETED\nIf any of design.md records a status of its own, such as a 'Status: draft' line, set it to approved.\n\nSTEP build (2 of 3)",
   );
   expect(repo.status("feat", "design")).toBe("COMPLETED");
   expect(repo.state("feat").steps.design.artifacts[0].status).toBe("approved");
@@ -445,8 +446,9 @@ test("the owner can send the work back from a blocked step to it or an earlier s
     expect(other.refused("continue", "feat", "--back-to", "nowhere")).toContain('no step "nowhere" in workflow reviewed');
 
     const back = other.ok("continue", "feat", "--back-to", "spec", "--note", "fix the API section first");
+    // The paper artifact has no guide, so the reminder names the file's own status line instead.
     expect(back).toStartWith(
-      "implement: owner sent the work back to spec\nIf any of spec.md keeps a status of its own, as its guide says, set it back to draft.\n\nSTEP spec (1 of 3)",
+      "implement: owner sent the work back to spec\nIf any of spec.md records a status of its own, such as a 'Status: approved' line, set it back to draft.\n\nSTEP spec (1 of 3)",
     );
     // The file this workstream wrote is rework, not a file someone else left there.
     expect(back).not.toContain("already existed");
@@ -462,10 +464,12 @@ test("the owner can send the work back from a blocked step to it or an earlier s
   }
 });
 
-test("--back-to answers a step that awaits the owner or is blocked", () => {
-  expect(repo.refused("continue", "feat", "--back-to", "design")).toContain(
-    'step "design" is IN_PROGRESS; --back-to answers a step that awaits the owner or is blocked',
-  );
+// The send-back rules let the owner send work back from a step in progress
+// too; before, the agent had to report a block that never happened.
+test("--back-to answers the current step whatever its status", () => {
+  expect(repo.ok("continue", "feat", "--back-to", "design")).toContain("STEP design (1 of 3)");
+  expect(repo.status("feat", "design")).toBe("IN_PROGRESS");
+  expect(repo.state("feat").steps.design.history.some((h: string) => h.includes("blocked"))).toBe(false);
   repo.write("design.md");
   repo.ok("continue", "feat");
   expect(repo.refused("continue", "feat", "--more-rounds", "1")).toContain('step "design" has no agent gate');
@@ -489,7 +493,11 @@ test("--more-rounds takes a whole number, and each owner decision goes alone", (
   expect(repo.usage("continue", "feat", "--more-rounds", "0")).toContain("--more-rounds takes a whole number of rounds, 1 or more");
   expect(repo.usage("continue", "feat", "--more-rounds", "two")).toContain("--more-rounds takes a whole number");
   expect(repo.usage("continue", "feat", "--more-rounds", "1", "--owner-approved")).toContain("--owner-approved and --more-rounds are different decisions");
-  expect(repo.usage("continue", "feat", "--back-to", "design", "--updated", "a")).toContain("--updated reports the agent's work; it does not go with --back-to");
+  // --back-to may record the files written so far with --updated (send-back rules), but no other report.
+  expect(repo.usage("continue", "feat", "--back-to", "design", "--not-produced", "sketch", "x")).toContain(
+    "--not-produced reports the agent's work; it does not go with --back-to",
+  );
+  expect(repo.usage("continue", "feat", "--owner-approved", "--updated", "a")).toContain("--updated reports the agent's work; it does not go with --owner-approved");
 });
 
 test("--blocked needs a reason and goes with no other option", () => {
