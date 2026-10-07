@@ -88,7 +88,6 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool, color: ColorMode) 
         Commands::Synth {
             from,
             claude_bundled_mcp_servers,
-            claude_bundled_mcp_config,
         } => {
             let cwd = match resolve_cwd_reporting_json("synth", json, color) {
                 Ok(dir) => dir,
@@ -98,7 +97,6 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool, color: ColorMode) 
                 &cwd,
                 from,
                 claude_bundled_mcp_servers,
-                claude_bundled_mcp_config,
                 verbose,
                 json,
                 color,

@@ -54,7 +54,6 @@ cp README.md "$OUT/README.md"
 cp LICENSE.txt "$OUT/LICENSE.txt"
 
 BUNDLED_MCP_SERVERS="$("$REPO_ROOT/scripts/read-bundled-mcp-servers.sh")"
-BUNDLED_MCP_CONFIG="$REPO_ROOT/scripts/claude-plugin-mcp-servers.json"
 
 python3 "$REPO_ROOT/scripts/render-claude-plugin-json.py" \
   --template "$REPO_ROOT/scripts/claude-plugin.template.json" \
@@ -64,7 +63,17 @@ python3 "$REPO_ROOT/scripts/render-claude-plugin-json.py" \
   --agent-specs-dir "$REPO_ROOT/agents" \
   --mcp-output "$OUT/.mcp.json" \
   --bundled-mcp-servers "$BUNDLED_MCP_SERVERS" \
-  --bundled-mcp-config "$BUNDLED_MCP_CONFIG" \
   --output "$OUT/.claude-plugin/plugin.json"
+
+# konductor synth (run by generate-claude-plugin.sh above) writes bare
+# mcp__<server>__* grants, since it has no way to know a plugin name at
+# that point. Rewrite them to the plugin-scoped form here, now that
+# $OUT/.claude-plugin/plugin.json exists and carries that name, so a
+# released plugin agent's tool grant matches what Claude Code actually
+# namespaces a plugin MCP server's tools to.
+python3 "$REPO_ROOT/scripts/rewrite-claude-plugin-mcp-tool-names.py" \
+  --agents-dir "$OUT/agents" \
+  --plugin-json "$OUT/.claude-plugin/plugin.json" \
+  --bundled-mcp-servers "$BUNDLED_MCP_SERVERS"
 
 echo "=== [assemble-claude-plugin] Done: flat plugin tree at $OUT ==="

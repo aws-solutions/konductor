@@ -3,8 +3,8 @@
 # Claude plugin build output
 
 `generated/claude-plugin/` is local build output. Do not edit generated
-agents, skills, `.mcp.json`, or `.claude-plugin/plugin.json`. The source of
-truth is `agents/`, `skills/`, and `agent-sops/` at the repository root.
+agents or skills. The source of truth is `agents/`, `skills/`, and
+`agent-sops/` at the repository root.
 
 ## What is generated
 
@@ -19,11 +19,6 @@ generated/claude-plugin/
 SOPs. Native skills stay under the repository's `skills/` directory and are
 included separately by the plugin manifest.
 
-The generator also writes two gitignored files at the repository root:
-
-- `.claude-plugin/plugin.json` describes the repository-tree plugin.
-- `.mcp.json` declares bundled plugin MCP servers.
-
 ## Generate and validate
 
 ```bash
@@ -31,10 +26,10 @@ make claude-plugin
 make claude-plugin-check
 ```
 
-`make claude-plugin` builds the CLI, synthesizes Claude agents, performs the
-SOP-to-skill conversion in a temporary install, and renders plugin metadata.
-`make claude-plugin-check` also builds the flat release tree and validates
-both plugin shapes.
+`make claude-plugin` builds the CLI, synthesizes Claude agents, and performs
+the SOP-to-skill conversion in a temporary install. `make claude-plugin-check`
+additionally assembles the flat release tree (the only plugin layout this
+repository ships) and validates it, plus the committed `marketplace.json`.
 
 The generator uses temporary `HOME` and install directories. It does not
 write to the developer's real Claude Code or Konductor state.
@@ -43,8 +38,9 @@ write to the developer's real Claude Code or Konductor state.
 
 The marketplace in `main` points to the `claude-plugin` branch. Before the
 first release, repository administrators must create and protect that branch.
-The release workflow validates a flat plugin tree, then atomically updates the
-branch and its immutable `claude-plugin-vX.Y.Z` tag.
+The release workflow assembles the flat plugin tree
+(`scripts/assemble-claude-plugin-branch.sh`), validates it, then atomically
+updates the branch and its immutable `claude-plugin-vX.Y.Z` tag.
 
 The published branch contains:
 
@@ -56,6 +52,10 @@ skills/
 README.md
 LICENSE.txt
 ```
+
+`plugin.json` and `.mcp.json` are rendered only at that flat tree's own
+root, by `scripts/assemble-claude-plugin-branch.sh`. There is no separate
+repository-root copy of either file.
 
 To correct a bad release, publish a fixed version. Do not move an existing
 plugin tag. If the marketplace must stop tracking a bad release, update its
@@ -69,10 +69,11 @@ Claude Code. The bundled definition pins
 `mcp-proxy-for-aws-cli==1.7.0`; the managed AWS MCP endpoint still supplies
 current documentation and skills at request time.
 
-Plugin agent frontmatter cannot launch MCP servers, so the generator writes a
-plugin-level `.mcp.json`. It derives the bundled server set from agent specs,
-rejects conflicting definitions, and uses the bundled configuration as the
-launch source.
+Plugin agent frontmatter cannot launch MCP servers, so
+`scripts/assemble-claude-plugin-branch.sh` writes a plugin-level
+`.mcp.json` at the flat tree's root. It derives the bundled server set
+from agent specs, rejects conflicting definitions, and uses the bundled
+configuration as the launch source.
 
 Claude Code namespaces tools from a plugin MCP server. The generator rewrites
 bundled grants such as:
@@ -100,8 +101,11 @@ tools once the server is configured; API tools still prompt for confirmation.
 
 ## Implementation references
 
-- `scripts/generate-claude-plugin.sh` generates repository-tree output.
-- `scripts/assemble-claude-plugin-branch.sh` builds the flat release tree.
+- `scripts/generate-claude-plugin.sh` generates this directory's
+  agents/skills output.
+- `scripts/assemble-claude-plugin-branch.sh` builds the flat release tree,
+  calling the generator above first, then rendering `plugin.json` and
+  `.mcp.json` at the flat tree's own root.
 - `scripts/render-claude-plugin-json.py` renders plugin and MCP metadata.
 - `scripts/rewrite-claude-plugin-mcp-tool-names.py` rewrites bundled tool
   grants for plugin namespacing.

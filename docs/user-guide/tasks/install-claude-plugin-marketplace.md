@@ -65,10 +65,19 @@ The plugin bundles `aws-mcp` for `k-architect` and `k-developer`. Install
 pinned; AWS documentation and skills still come from the managed endpoint at
 request time.
 
-These agents can use the full AWS MCP tool surface. Use the
-`aws:ViaAWSMCPService` and `aws:CalledViaAWSMCP` IAM condition keys to limit
-agent-initiated calls. See [Install for Claude Code](install-claude-code.md#optional-integrations)
+A plugin-level MCP server starts for the whole plugin session once the
+plugin is enabled, not only while `k-architect` or `k-developer` is active,
+and it runs under your own AWS credentials for that entire session. Use the
+`aws:ViaAWSMCPService` and `aws:CalledViaAWSMCP` IAM condition keys to scope
+or audit what the server can do, regardless of which agent triggered the
+call. See [Install for Claude Code](install-claude-code.md#optional-integrations)
 for AWS setup and other MCP integrations.
+
+A plugin agent's tool grant uses the plugin-scoped name
+`mcp__plugin_konductor_aws-mcp__*`, not the standalone `mcp__aws-mcp__*`.
+Grant that exact glob in `permissions.allow` (or `ask`/`deny`) if you set
+Claude Code permissions for this install path; the standalone name has no
+effect on a plugin agent.
 
 `k-browser`'s Playwright MCP server is not bundled. Configure it separately:
 

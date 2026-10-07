@@ -10,6 +10,14 @@ actually packaged into the rendered .mcp.json. Today that allowlist is just
 ["aws-mcp"] -- k-browser's playwright-mcp entry is a documented reference
 config, not something Konductor ships.
 
+The launch definition for an allowlisted server comes straight from the
+agent specs' own dependencies.mcpRegistry entry -- there is no separate
+override file. k-architect and k-developer each declare the pinned
+`mcp-proxy-for-aws-cli==1.7.0` command directly, and must declare it
+identically (see test_bundled_server_definitions_are_byte_identical_across_
+agent_specs and test_direct_pinned_definition_reaches_rendered_mcp_output
+below).
+
 These tests exercise the script as a subprocess (matching this repo's other
 scripts/*.py regression tests, e.g. test_validate_version_semver.py), since
 --bundled-mcp-servers is argparse-level behavior, not something importable
@@ -43,7 +51,7 @@ def _write_agent_spec(path: Path, name: str, mcp_registry: dict) -> None:
     )
 
 
-def _run(tmp_path: Path, bundled_mcp_servers=None, bundled_mcp_config=None, bundled_mcp_config_raw=None):
+def _run(tmp_path: Path, bundled_mcp_servers=None):
     agents_dir = tmp_path / "agents"
     agents_dir.mkdir()
     (agents_dir / "k-example.md").write_text("---\nname: k-example\n---\n", encoding="utf-8")
@@ -90,14 +98,6 @@ def _run(tmp_path: Path, bundled_mcp_servers=None, bundled_mcp_config=None, bund
     ]
     if bundled_mcp_servers is not None:
         argv += ["--bundled-mcp-servers", bundled_mcp_servers]
-    if bundled_mcp_config is not None:
-        config_path = tmp_path / "claude-plugin-mcp-servers.json"
-        config_path.write_text(json.dumps({"bundled": bundled_mcp_config}), encoding="utf-8")
-        argv += ["--bundled-mcp-config", str(config_path)]
-    if bundled_mcp_config_raw is not None:
-        config_path = tmp_path / "claude-plugin-mcp-servers-raw.json"
-        config_path.write_text(bundled_mcp_config_raw, encoding="utf-8")
-        argv += ["--bundled-mcp-config", str(config_path)]
 
     result = subprocess.run(argv, capture_output=True, text=True)
     return result, mcp_output
@@ -143,98 +143,15 @@ def test_unknown_bundled_server_name_is_silently_dropped_not_an_error(tmp_path):
     assert list(rendered["mcpServers"].keys()) == ["aws-mcp"], rendered
 
 
-def test_bundled_mcp_config_overrides_the_agent_specs_own_definition(tmp_path):
-    """--bundled-mcp-config's own "bundled" object wins over the agent
-    spec's own dependencies.mcpRegistry entry for the same server name --
-    the plugin's .mcp.json always gets the pinned command Konductor
-    recommends, regardless of what an individual agent spec happens to
-    declare for that server."""
-    result, mcp_output = _run(
-        tmp_path,
-        bundled_mcp_servers="aws-mcp",
-        bundled_mcp_config={
-            "aws-mcp": {
-                "command": "uvx",
-                "args": [
-                    "mcp-proxy-for-aws-cli==1.7.0",
-                    "https://aws-mcp.us-east-1.api.aws/mcp",
-                    "--metadata",
-                    "AWS_REGION=us-east-1",
-                ],
-            }
-        },
-    )
-    assert result.returncode == 0, result.stderr
-
-    rendered = json.loads(mcp_output.read_text(encoding="utf-8"))
-    assert rendered["mcpServers"]["aws-mcp"]["args"] == [
-        "mcp-proxy-for-aws-cli==1.7.0",
-        "https://aws-mcp.us-east-1.api.aws/mcp",
-        "--metadata",
-        "AWS_REGION=us-east-1",
-    ], rendered
-
-
-def test_bundled_mcp_config_falls_back_to_registry_for_unlisted_name(tmp_path):
-    """A name allowlisted via --bundled-mcp-servers but absent from
-    --bundled-mcp-config's own "bundled" object falls back to the agent
-    spec's own dependencies.mcpRegistry entry unchanged."""
-    result, mcp_output = _run(
-        tmp_path,
-        bundled_mcp_servers="aws-mcp",
-        bundled_mcp_config={"some-other-server": {"command": "npx", "args": ["-y", "other@latest"]}},
-    )
+def test_direct_pinned_definition_reaches_rendered_mcp_output(tmp_path):
+    """The launch definition written to .mcp.json for an allowlisted
+    server comes straight from the agent spec's own
+    dependencies.mcpRegistry entry -- no override file sits in between."""
+    result, mcp_output = _run(tmp_path, bundled_mcp_servers="aws-mcp")
     assert result.returncode == 0, result.stderr
 
     rendered = json.loads(mcp_output.read_text(encoding="utf-8"))
     assert rendered["mcpServers"]["aws-mcp"]["args"] == ["mcp-proxy-for-aws-cli==1.7.0"], rendered
-
-
-def test_bundled_mcp_config_malformed_json_fails_cleanly(tmp_path):
-    """A --bundled-mcp-config file that isn't valid JSON fails with a
-    clean `error: ...` message and a non-zero exit, not a Python
-    traceback."""
-    result, _ = _run(
-        tmp_path,
-        bundled_mcp_servers="aws-mcp",
-        bundled_mcp_config_raw="{not valid json,,,",
-    )
-    assert result.returncode != 0
-    assert "error:" in result.stderr, result.stderr
-    assert "Traceback" not in result.stderr, result.stderr
-
-
-def test_bundled_mcp_config_bad_entry_shape_fails_cleanly(tmp_path):
-    """A "bundled" entry missing a string `command` and a list-of-strings
-    `args` fails with a clean `error: ...` message rather than raising or
-    silently writing a malformed .mcp.json."""
-    result, _ = _run(
-        tmp_path,
-        bundled_mcp_servers="aws-mcp",
-        bundled_mcp_config={"aws-mcp": {"command": 123, "args": "not-a-list"}},
-    )
-    assert result.returncode != 0
-    assert "error:" in result.stderr, result.stderr
-    assert "command" in result.stderr, result.stderr
-
-
-def test_bundled_mcp_config_unsupported_key_fails_cleanly(tmp_path):
-    """A "bundled" entry with a key outside the documented
-    command/args/url shape fails with a clean `error: ...` message."""
-    result, _ = _run(
-        tmp_path,
-        bundled_mcp_servers="aws-mcp",
-        bundled_mcp_config={
-            "aws-mcp": {
-                "command": "uvx",
-                "args": ["mcp-proxy-for-aws-cli==1.7.0"],
-                "env": {"FOO": "bar"},
-            }
-        },
-    )
-    assert result.returncode != 0
-    assert "error:" in result.stderr, result.stderr
-    assert "env" in result.stderr, result.stderr
 
 
 def test_conflicting_definitions_still_error_even_when_filtered_out(tmp_path):
@@ -289,22 +206,33 @@ def test_conflicting_definitions_still_error_even_when_filtered_out(tmp_path):
     assert "conflicting" in result.stderr, result.stderr
 
 
-def test_bundled_mcp_config_requires_top_level_bundled_object(tmp_path):
-    result, _ = _run(
-        tmp_path,
-        bundled_mcp_servers="aws-mcp",
-        bundled_mcp_config_raw='{"byo": {}}',
-    )
+def test_bundled_server_definitions_are_byte_identical_across_agent_specs():
+    """Regression guard for the direct-pin simplification: k-architect and
+    k-developer are the only agent specs declaring the bundled aws-mcp
+    server, and the renderer's own conflict detection (see
+    _load_mcp_registry_union) would already fail the build if they ever
+    diverged -- this test fails fast and names the exact mismatch instead
+    of waiting for that generic conflict error."""
+    specs_dir = REPO_ROOT / "agents"
+    definitions = {}
+    for name in ("k-architect", "k-developer"):
+        spec = json.loads((specs_dir / f"{name}.agent-spec.json").read_text(encoding="utf-8"))
+        definitions[name] = spec["dependencies"]["mcpRegistry"]["aws-mcp"]
 
-    assert result.returncode != 0
-    assert 'top-level "bundled" object' in result.stderr, result.stderr
+    assert definitions["k-architect"] == definitions["k-developer"], (
+        f"k-architect and k-developer must declare an identical aws-mcp "
+        f"launch definition, got:\n{definitions}"
+    )
 
 
 def test_shipped_bundled_aws_proxy_is_exactly_pinned():
-    config = json.loads(
-        (REPO_ROOT / "scripts" / "claude-plugin-mcp-servers.json").read_text(
-            encoding="utf-8"
-        )
+    """The pinned command lives in the agent specs themselves now, not in
+    scripts/claude-plugin-mcp-servers.json's "bundled" object (which only
+    lists bundled server NAMES -- see that file's own $comment)."""
+    spec = json.loads(
+        (REPO_ROOT / "agents" / "k-architect.agent-spec.json").read_text(encoding="utf-8")
     )
 
-    assert config["bundled"]["aws-mcp"]["args"][0] == "mcp-proxy-for-aws-cli==1.7.0"
+    assert (
+        spec["dependencies"]["mcpRegistry"]["aws-mcp"]["args"][0] == "mcp-proxy-for-aws-cli==1.7.0"
+    )

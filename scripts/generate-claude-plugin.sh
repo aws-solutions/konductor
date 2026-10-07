@@ -1,8 +1,21 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: Apache-2.0
 #
-# Regenerates Claude plugin agents, SOP-derived skills, plugin.json, and
-# .mcp.json. Generated files are local build output and must not be committed.
+# Regenerates the Claude plugin's intermediate build output:
+# generated/claude-plugin/{agents,skills}/, rendered from
+# agents/*.agent-spec.json via `konductor synth` and from
+# agent-sops/*.sop.md via `konductor install --harness claude`'s
+# SOP-to-skill conversion. This is local build output and must not be
+# committed.
+#
+# This script does not render a plugin.json or .mcp.json itself -- the
+# only Claude Code plugin layout this repo ships is the flat tree
+# scripts/assemble-claude-plugin-branch.sh assembles (which calls this
+# script first, then renders those two files at the flat tree's own root).
+# A prior revision additionally wrote a second, repo-root plugin.json/
+# .mcp.json pair for local testing; that shape was dropped because it
+# duplicated the flat tree's generation and validation path for no
+# functional difference. See generated/claude-plugin/README.md.
 #
 # Usage: generate-claude-plugin.sh
 set -euo pipefail
@@ -22,18 +35,9 @@ if [ ! -x "$KONDUCTOR_BIN" ]; then
   exit 1
 fi
 
-if ! command -v python3 >/dev/null 2>&1; then
-  echo "error: [claude-plugin] python3 not found on PATH; required to render plugin.json" >&2
-  exit 1
-fi
-
 AGENTS_OUT_DIR="$REPO_ROOT/generated/claude-plugin/agents"
 SKILLS_OUT_DIR="$REPO_ROOT/generated/claude-plugin/skills"
-PLUGIN_JSON_OUT="$REPO_ROOT/.claude-plugin/plugin.json"
-MCP_JSON_OUT="$REPO_ROOT/.mcp.json"
-AGENT_SPECS_DIR="$REPO_ROOT/agents"
 BUNDLED_MCP_SERVERS="$("$REPO_ROOT/scripts/read-bundled-mcp-servers.sh")"
-BUNDLED_MCP_CONFIG="$REPO_ROOT/scripts/claude-plugin-mcp-servers.json"
 
 SCRATCH_HOME=""
 SCRATCH_TARGET=""
@@ -43,8 +47,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-"$KONDUCTOR_BIN" synth --from . --claude-bundled-mcp-servers "$BUNDLED_MCP_SERVERS" \
-  --claude-bundled-mcp-config "$BUNDLED_MCP_CONFIG"
+"$KONDUCTOR_BIN" synth --from . --claude-bundled-mcp-servers "$BUNDLED_MCP_SERVERS"
 
 SCRATCH_HOME="$(mktemp -d)"
 SCRATCH_TARGET="$(mktemp -d)"
@@ -61,26 +64,3 @@ for d in "$SCRATCH_TARGET"/.claude/skills/sop-*/; do
   [ "$name" = "sop-state-management" ] && continue
   cp -r "$d" "$SKILLS_OUT_DIR/$name"
 done
-
-mkdir -p "$(dirname "$PLUGIN_JSON_OUT")"
-python3 "$REPO_ROOT/scripts/render-claude-plugin-json.py" \
-  --template "$REPO_ROOT/scripts/claude-plugin.template.json" \
-  --version-file "$REPO_ROOT/VERSION" \
-  --agents-dir "$AGENTS_OUT_DIR" \
-  --agent-specs-dir "$AGENT_SPECS_DIR" \
-  --mcp-output "$MCP_JSON_OUT" \
-  --bundled-mcp-servers "$BUNDLED_MCP_SERVERS" \
-  --bundled-mcp-config "$BUNDLED_MCP_CONFIG" \
-  --output "$PLUGIN_JSON_OUT"
-
-python3 "$REPO_ROOT/scripts/rewrite-claude-plugin-mcp-tool-names.py" \
-  --agents-dir "$AGENTS_OUT_DIR" \
-  --plugin-json "$PLUGIN_JSON_OUT" \
-  --bundled-mcp-servers "$BUNDLED_MCP_SERVERS"
-
-if command -v claude >/dev/null 2>&1; then
-  # Validate the manifest file because the repository root resolves the marketplace manifest.
-  claude plugin validate "$PLUGIN_JSON_OUT"
-else
-  echo "notice: [claude-plugin] 'claude' CLI not found on PATH; skipping plugin validation" >&2
-fi

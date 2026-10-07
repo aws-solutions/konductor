@@ -182,7 +182,6 @@ pub fn dispatch_synth_with(
     target_dir: &Path,
     from: Option<String>,
     claude_bundled_mcp_servers: Option<String>,
-    claude_bundled_mcp_config: Option<String>,
     verbose: bool,
     json: bool,
     color: ColorMode,
@@ -221,100 +220,11 @@ pub fn dispatch_synth_with(
         .map(str::to_string)
         .collect();
 
-    // Optional config overrides launch definitions for allowlisted servers.
-    let bundled_mcp_config: Option<std::collections::BTreeMap<String, parser::McpServerDef>> =
-        match &claude_bundled_mcp_config {
-            None => None,
-            Some(path) => {
-                let text = match std::fs::read_to_string(path) {
-                    Ok(text) => text,
-                    Err(err) => {
-                        crate::cli::report::report_error(
-                            "synth",
-                            "synth.bundled_mcp_config_read_failed",
-                            target_dir,
-                            false,
-                            &format!("failed to read --claude-bundled-mcp-config {path}: {err}"),
-                            Vec::new(),
-                            json,
-                            color,
-                        );
-                        return EXIT_USAGE_ERROR;
-                    }
-                };
-                let raw: serde_json::Value = match serde_json::from_str(&text) {
-                    Ok(raw) => raw,
-                    Err(err) => {
-                        crate::cli::report::report_error(
-                            "synth",
-                            "synth.bundled_mcp_config_parse_failed",
-                            target_dir,
-                            false,
-                            &format!(
-                                "failed to parse --claude-bundled-mcp-config {path} as JSON: {err}"
-                            ),
-                            Vec::new(),
-                            json,
-                            color,
-                        );
-                        return EXIT_USAGE_ERROR;
-                    }
-                };
-                let bundled_value = match raw.get("bundled") {
-                    Some(value) => value.clone(),
-                    None => {
-                        crate::cli::report::report_error(
-                            "synth",
-                            "synth.bundled_mcp_config_invalid_shape",
-                            target_dir,
-                            false,
-                            &format!(
-                                "--claude-bundled-mcp-config {path} must contain a \"bundled\" object"
-                            ),
-                            Vec::new(),
-                            json,
-                            color,
-                        );
-                        return EXIT_USAGE_ERROR;
-                    }
-                };
-                match serde_json::from_value(bundled_value) {
-                    Ok(parsed) => Some(parsed),
-                    Err(err) => {
-                        crate::cli::report::report_error(
-                            "synth",
-                            "synth.bundled_mcp_config_invalid_shape",
-                            target_dir,
-                            false,
-                            &format!(
-                                "--claude-bundled-mcp-config {path}'s \"bundled\" object is not \
-                                 a map of server name to launch definition: {err}"
-                            ),
-                            Vec::new(),
-                            json,
-                            color,
-                        );
-                        return EXIT_USAGE_ERROR;
-                    }
-                }
-            }
-        };
-
     for agent in &mut model.agents {
         agent
             .dependencies
             .mcp_registry
             .retain(|name, _| bundled_mcp_allowlist.contains(name));
-        if let Some(config) = &bundled_mcp_config {
-            for (name, def) in config {
-                if agent.dependencies.mcp_registry.contains_key(name) {
-                    agent
-                        .dependencies
-                        .mcp_registry
-                        .insert(name.clone(), def.clone());
-                }
-            }
-        }
     }
 
     // Transformer-layer defense-in-depth: every registered transformer
@@ -773,8 +683,7 @@ mod tests {
     #[test]
     fn dispatch_synth_returns_zero_on_empty_source_tree() {
         let root = scratch_dir("empty-ok");
-        let code =
-            dispatch_synth_with(&root, None, None, None, false, false, ColorMode::disabled());
+        let code = dispatch_synth_with(&root, None, None, false, false, ColorMode::disabled());
         assert_eq!(code, 0);
         fs::remove_dir_all(&root).ok();
     }
@@ -804,7 +713,6 @@ mod tests {
             &unrelated_target_dir,
             Some(local_root.display().to_string()),
             None,
-            None,
             false,
             false,
             ColorMode::disabled(),
@@ -832,7 +740,6 @@ mod tests {
         let code = dispatch_synth_with(
             &bogus_target,
             Some(root.display().to_string()),
-            None,
             None,
             false,
             false,
@@ -876,7 +783,6 @@ mod tests {
             &root,
             None,
             Some("aws-mcp".to_string()),
-            None,
             false,
             false,
             ColorMode::disabled(),
@@ -896,261 +802,10 @@ mod tests {
         fs::remove_dir_all(&root).ok();
     }
 
-    /// `--claude-bundled-mcp-config` overrides the agent spec's own
-    /// `dependencies.mcpRegistry` definition for a name present in both
-    /// the allowlist and the config file's own "bundled" object -- the
-    /// launch command/args baked into `dist/claude/agents/*.md`
-    /// frontmatter come from the config file, not from whatever the spec
-    /// itself declares for that same server name.
-    #[test]
-    fn dispatch_synth_with_bundled_mcp_config_overrides_the_agent_specs_own_registry_entry() {
-        let root = scratch_dir("bundled-mcp-config-override");
-        fs::create_dir_all(root.join("agents")).unwrap();
-        fs::write(
-            root.join("agents/k-example.agent-spec.json"),
-            br#"{
-                "schemaVersion": "1",
-                "name": "k-example",
-                "config": {"description": "d", "systemPrompt": "p", "model": "m"},
-                "dependencies": {
-                    "mcpRegistry": {
-                        "aws-mcp": {"command": "uvx", "args": ["mcp-proxy-for-aws@latest"]}
-                    }
-                },
-                "clientConfig": {"claudeCli": {}}
-            }"#,
-        )
-        .unwrap();
-
-        let config_path = root.join("bundled-mcp-servers.json");
-        fs::write(
-            &config_path,
-            br#"{
-                "bundled": {
-                    "aws-mcp": {
-                        "command": "uvx",
-                        "args": ["mcp-proxy-for-aws-cli==1.7.0", "https://aws-mcp.us-east-1.api.aws/mcp"]
-                    }
-                }
-            }"#,
-        )
-        .unwrap();
-
-        let code = dispatch_synth_with(
-            &root,
-            None,
-            Some("aws-mcp".to_string()),
-            Some(config_path.display().to_string()),
-            false,
-            false,
-            ColorMode::disabled(),
-        );
-        assert_eq!(code, 0);
-
-        let written = fs::read_to_string(root.join("dist/claude/agents/k-example.md")).unwrap();
-        assert!(
-            written.contains("mcp-proxy-for-aws-cli==1.7.0"),
-            "expected the config file's pinned package to win over the spec's own \
-             unpinned mcp-proxy-for-aws@latest, got:\n{written}"
-        );
-        assert!(
-            !written.contains("mcp-proxy-for-aws@latest"),
-            "expected the spec's own unpinned package to be fully replaced, got:\n{written}"
-        );
-
-        fs::remove_dir_all(&root).ok();
-    }
-
-    /// A name allowlisted via `--claude-bundled-mcp-servers` but absent
-    /// from `--claude-bundled-mcp-config`'s own "bundled" object falls
-    /// back to the agent spec's own `dependencies.mcpRegistry` entry
-    /// unchanged, rather than being dropped.
-    #[test]
-    fn dispatch_synth_with_bundled_mcp_config_falls_back_to_registry_for_unlisted_name() {
-        let root = scratch_dir("bundled-mcp-config-fallback");
-        fs::create_dir_all(root.join("agents")).unwrap();
-        fs::write(
-            root.join("agents/k-example.agent-spec.json"),
-            br#"{
-                "schemaVersion": "1",
-                "name": "k-example",
-                "config": {"description": "d", "systemPrompt": "p", "model": "m"},
-                "dependencies": {
-                    "mcpRegistry": {
-                        "some-other-server": {"command": "npx", "args": ["-y", "some-other-server@latest"]}
-                    }
-                },
-                "clientConfig": {"claudeCli": {}}
-            }"#,
-        )
-        .unwrap();
-
-        let config_path = root.join("bundled-mcp-servers.json");
-        fs::write(
-            &config_path,
-            br#"{
-                "bundled": {
-                    "aws-mcp": {
-                        "command": "uvx",
-                        "args": ["mcp-proxy-for-aws-cli==1.7.0"]
-                    }
-                }
-            }"#,
-        )
-        .unwrap();
-
-        let code = dispatch_synth_with(
-            &root,
-            None,
-            Some("some-other-server".to_string()),
-            Some(config_path.display().to_string()),
-            false,
-            false,
-            ColorMode::disabled(),
-        );
-        assert_eq!(code, 0);
-
-        let written = fs::read_to_string(root.join("dist/claude/agents/k-example.md")).unwrap();
-        assert!(
-            written.contains("some-other-server@latest"),
-            "expected the spec's own registry entry to survive when the config file \
-             has no override for this name, got:\n{written}"
-        );
-
-        fs::remove_dir_all(&root).ok();
-    }
-
-    /// `--claude-bundled-mcp-config` pointing at a path that doesn't exist
-    /// fails closed (`synth.bundled_mcp_config_read_failed`) rather than
-    /// panicking or silently falling back to the plain registry filter.
-    #[test]
-    fn dispatch_synth_with_bundled_mcp_config_read_failed_on_missing_file() {
-        let root = scratch_dir("bundled-mcp-config-read-failed");
-        fs::create_dir_all(root.join("agents")).unwrap();
-        fs::write(
-            root.join("agents/k-example.agent-spec.json"),
-            br#"{
-                "schemaVersion": "1",
-                "name": "k-example",
-                "config": {"description": "d", "systemPrompt": "p", "model": "m"},
-                "dependencies": {
-                    "mcpRegistry": {
-                        "aws-mcp": {"command": "uvx", "args": ["mcp-proxy-for-aws@latest"]}
-                    }
-                },
-                "clientConfig": {"claudeCli": {}}
-            }"#,
-        )
-        .unwrap();
-
-        let code = dispatch_synth_with(
-            &root,
-            None,
-            Some("aws-mcp".to_string()),
-            Some(root.join("does-not-exist.json").display().to_string()),
-            false,
-            false,
-            ColorMode::disabled(),
-        );
-        assert_eq!(code, EXIT_USAGE_ERROR);
-
-        fs::remove_dir_all(&root).ok();
-    }
-
-    /// A `--claude-bundled-mcp-config` file that isn't valid JSON fails
-    /// closed (`synth.bundled_mcp_config_parse_failed`).
-    #[test]
-    fn dispatch_synth_with_bundled_mcp_config_parse_failed_on_malformed_json() {
-        let root = scratch_dir("bundled-mcp-config-parse-failed");
-        fs::create_dir_all(root.join("agents")).unwrap();
-        fs::write(
-            root.join("agents/k-example.agent-spec.json"),
-            br#"{
-                "schemaVersion": "1",
-                "name": "k-example",
-                "config": {"description": "d", "systemPrompt": "p", "model": "m"},
-                "dependencies": {
-                    "mcpRegistry": {
-                        "aws-mcp": {"command": "uvx", "args": ["mcp-proxy-for-aws@latest"]}
-                    }
-                },
-                "clientConfig": {"claudeCli": {}}
-            }"#,
-        )
-        .unwrap();
-
-        let config_path = root.join("bundled-mcp-servers.json");
-        fs::write(&config_path, b"{not valid json,,,").unwrap();
-
-        let code = dispatch_synth_with(
-            &root,
-            None,
-            Some("aws-mcp".to_string()),
-            Some(config_path.display().to_string()),
-            false,
-            false,
-            ColorMode::disabled(),
-        );
-        assert_eq!(code, EXIT_USAGE_ERROR);
-
-        fs::remove_dir_all(&root).ok();
-    }
-
-    /// A `--claude-bundled-mcp-config` file whose "bundled" object has an
-    /// entry that doesn't match the `McpServerDef` shape (here, `args` is
-    /// a string instead of a list of strings) fails closed
-    /// (`synth.bundled_mcp_config_invalid_shape`).
-    #[test]
-    fn dispatch_synth_with_bundled_mcp_config_invalid_shape_on_bad_entry() {
-        let root = scratch_dir("bundled-mcp-config-invalid-shape");
-        fs::create_dir_all(root.join("agents")).unwrap();
-        fs::write(
-            root.join("agents/k-example.agent-spec.json"),
-            br#"{
-                "schemaVersion": "1",
-                "name": "k-example",
-                "config": {"description": "d", "systemPrompt": "p", "model": "m"},
-                "dependencies": {
-                    "mcpRegistry": {
-                        "aws-mcp": {"command": "uvx", "args": ["mcp-proxy-for-aws@latest"]}
-                    }
-                },
-                "clientConfig": {"claudeCli": {}}
-            }"#,
-        )
-        .unwrap();
-
-        let config_path = root.join("bundled-mcp-servers.json");
-        fs::write(
-            &config_path,
-            br#"{
-                "bundled": {
-                    "aws-mcp": {
-                        "command": "uvx",
-                        "args": "not-a-list"
-                    }
-                }
-            }"#,
-        )
-        .unwrap();
-
-        let code = dispatch_synth_with(
-            &root,
-            None,
-            Some("aws-mcp".to_string()),
-            Some(config_path.display().to_string()),
-            false,
-            false,
-            ColorMode::disabled(),
-        );
-        assert_eq!(code, EXIT_USAGE_ERROR);
-
-        fs::remove_dir_all(&root).ok();
-    }
-
-    /// Companion to the test above: omitting `--claude-bundled-mcp-servers`
-    /// entirely (the `None` every other call site in this module passes)
-    /// must merge NOTHING from `dependencies.mcpRegistry`, preserving the
+    /// Companion to `dispatch_synth_with_no_bundled_mcp_servers_flag_merges_nothing_from_the_registry`
+    /// below: omitting `--claude-bundled-mcp-servers` entirely (the
+    /// `None` every other call site in this module passes) must merge
+    /// NOTHING from `dependencies.mcpRegistry`, preserving the
     /// pre-bundling default of bare tool grants with no `mcpServers:` key
     /// at all -- this is the "matching this field's behavior before any
     /// caller opts a server in" guarantee documented on the CLI flag
@@ -1175,8 +830,7 @@ mod tests {
         )
         .unwrap();
 
-        let code =
-            dispatch_synth_with(&root, None, None, None, false, false, ColorMode::disabled());
+        let code = dispatch_synth_with(&root, None, None, false, false, ColorMode::disabled());
         assert_eq!(code, 0);
 
         let written = fs::read_to_string(root.join("dist/claude/agents/k-example.md")).unwrap();
@@ -1195,15 +849,7 @@ mod tests {
         let root = scratch_dir("source-is-file");
         let file_path = root.join("not-a-dir");
         fs::write(&file_path, b"not a directory").unwrap();
-        let code = dispatch_synth_with(
-            &file_path,
-            None,
-            None,
-            None,
-            false,
-            false,
-            ColorMode::disabled(),
-        );
+        let code = dispatch_synth_with(&file_path, None, None, false, false, ColorMode::disabled());
         assert_eq!(code, EXIT_USAGE_ERROR);
         fs::remove_dir_all(&root).ok();
     }
@@ -1212,8 +858,7 @@ mod tests {
     fn dispatch_synth_copies_root_version_file_into_dist_output_root() {
         let root = scratch_dir("version-copy");
         fs::write(root.join("VERSION"), "1.2.3\n").unwrap();
-        let code =
-            dispatch_synth_with(&root, None, None, None, false, false, ColorMode::disabled());
+        let code = dispatch_synth_with(&root, None, None, false, false, ColorMode::disabled());
         assert_eq!(code, 0);
         let copied = fs::read_to_string(root.join("dist").join("VERSION")).unwrap();
         assert_eq!(copied, "1.2.3\n");
@@ -1223,8 +868,7 @@ mod tests {
     #[test]
     fn dispatch_synth_succeeds_without_writing_dist_version_when_root_version_is_absent() {
         let root = scratch_dir("no-version-at-root");
-        let code =
-            dispatch_synth_with(&root, None, None, None, false, false, ColorMode::disabled());
+        let code = dispatch_synth_with(&root, None, None, false, false, ColorMode::disabled());
         assert_eq!(code, 0);
         assert!(!root.join("dist").join("VERSION").exists());
         fs::remove_dir_all(&root).ok();
@@ -1241,7 +885,7 @@ mod tests {
         // First run: root VERSION present, so it's copied to dist/.
         fs::write(root.join("VERSION"), "1.2.3\n").unwrap();
         let first_code =
-            dispatch_synth_with(&root, None, None, None, false, false, ColorMode::disabled());
+            dispatch_synth_with(&root, None, None, false, false, ColorMode::disabled());
         assert_eq!(first_code, 0);
         assert!(
             root.join("dist").join("VERSION").exists(),
@@ -1252,7 +896,7 @@ mod tests {
         // the source now has none.
         fs::remove_file(root.join("VERSION")).unwrap();
         let second_code =
-            dispatch_synth_with(&root, None, None, None, false, false, ColorMode::disabled());
+            dispatch_synth_with(&root, None, None, false, false, ColorMode::disabled());
         assert_eq!(second_code, 0);
         assert!(
             !root.join("dist").join("VERSION").exists(),
@@ -1280,7 +924,7 @@ mod tests {
         // to dist/ normally.
         fs::write(root.join("VERSION"), "1.2.3\n").unwrap();
         let first_code =
-            dispatch_synth_with(&root, None, None, None, false, false, ColorMode::disabled());
+            dispatch_synth_with(&root, None, None, false, false, ColorMode::disabled());
         assert_eq!(first_code, 0);
         assert!(root.join("dist").join("VERSION").exists());
 
@@ -1292,7 +936,7 @@ mod tests {
         fs::create_dir_all(root.join("VERSION")).unwrap();
 
         let second_code =
-            dispatch_synth_with(&root, None, None, None, false, false, ColorMode::disabled());
+            dispatch_synth_with(&root, None, None, false, false, ColorMode::disabled());
 
         assert_eq!(
             second_code, 0,
@@ -1327,8 +971,7 @@ mod tests {
         // succeeding.
         fs::create_dir_all(root.join("dist").join("VERSION")).unwrap();
 
-        let code =
-            dispatch_synth_with(&root, None, None, None, false, false, ColorMode::disabled());
+        let code = dispatch_synth_with(&root, None, None, false, false, ColorMode::disabled());
 
         assert_eq!(
             code, 0,
@@ -1357,8 +1000,7 @@ mod tests {
     fn dispatch_synth_packages_dist_version_into_the_tarball_artifact() {
         let root = scratch_dir("version-in-tarball");
         fs::write(root.join("VERSION"), "9.9.9\n").unwrap();
-        let code =
-            dispatch_synth_with(&root, None, None, None, false, false, ColorMode::disabled());
+        let code = dispatch_synth_with(&root, None, None, false, false, ColorMode::disabled());
         assert_eq!(code, 0);
 
         let artifact_bytes = fs::read(root.join("dist").join(artifact_filename())).unwrap();
@@ -1728,7 +1370,7 @@ mod tests {
         fs::write(root.join("context/notes.md"), b"# Notes\n").unwrap();
 
         let first_code =
-            dispatch_synth_with(&root, None, None, None, false, false, ColorMode::disabled());
+            dispatch_synth_with(&root, None, None, false, false, ColorMode::disabled());
         assert_eq!(first_code, 0, "first synth run must succeed");
         let first_snapshot = snapshot_dir(&root.join("dist"));
         assert!(
@@ -1737,7 +1379,7 @@ mod tests {
         );
 
         let second_code =
-            dispatch_synth_with(&root, None, None, None, false, false, ColorMode::disabled());
+            dispatch_synth_with(&root, None, None, false, false, ColorMode::disabled());
         assert_eq!(second_code, 0, "second synth run must succeed");
         let second_snapshot = snapshot_dir(&root.join("dist"));
 
@@ -1986,8 +1628,7 @@ mod tests {
         fs::write(&legacy_artifact, b"leftover legacy artifact bytes").unwrap();
         fs::write(&legacy_sidecar, b"leftover legacy sidecar bytes").unwrap();
 
-        let code =
-            dispatch_synth_with(&root, None, None, None, false, false, ColorMode::disabled());
+        let code = dispatch_synth_with(&root, None, None, false, false, ColorMode::disabled());
         assert_eq!(code, 0, "synth must succeed against an empty source tree");
 
         assert!(
@@ -2014,9 +1655,15 @@ mod tests {
         fs::remove_dir_all(&root).ok();
     }
 
+    /// Direct-pin regression: an agent spec that declares the pinned
+    /// `aws-mcp` command directly in its own `dependencies.mcpRegistry`
+    /// (no `--claude-bundled-mcp-config` override involved -- that flag
+    /// no longer exists) must have the pinned package reach the
+    /// rendered Claude agent file unchanged, once allowlisted via
+    /// `--claude-bundled-mcp-servers`.
     #[test]
-    fn dispatch_synth_with_bundled_mcp_config_requires_bundled_object() {
-        let root = scratch_dir("bundled-mcp-config-missing-bundled");
+    fn dispatch_synth_with_bundled_mcp_servers_renders_the_agent_specs_own_pinned_command() {
+        let root = scratch_dir("bundled-mcp-direct-pin");
         fs::create_dir_all(root.join("agents")).unwrap();
         fs::write(
             root.join("agents/k-example.agent-spec.json"),
@@ -2024,25 +1671,32 @@ mod tests {
                 "schemaVersion": "1",
                 "name": "k-example",
                 "config": {"description": "d", "systemPrompt": "p", "model": "m"},
-                "dependencies": {"mcpRegistry": {}},
+                "dependencies": {
+                    "mcpRegistry": {
+                        "aws-mcp": {"command": "uvx", "args": ["mcp-proxy-for-aws-cli==1.7.0"]}
+                    }
+                },
                 "clientConfig": {"claudeCli": {}}
             }"#,
         )
         .unwrap();
 
-        let config_path = root.join("bundled-mcp-servers.json");
-        fs::write(&config_path, br#"{"byo": {}}"#).unwrap();
-
         let code = dispatch_synth_with(
             &root,
             None,
             Some("aws-mcp".to_string()),
-            Some(config_path.display().to_string()),
             false,
             false,
             ColorMode::disabled(),
         );
-        assert_eq!(code, EXIT_USAGE_ERROR);
+        assert_eq!(code, 0);
+
+        let written = fs::read_to_string(root.join("dist/claude/agents/k-example.md")).unwrap();
+        assert!(
+            written.contains("mcp-proxy-for-aws-cli==1.7.0"),
+            "expected the agent spec's own pinned command to render \
+             unchanged, got:\n{written}"
+        );
 
         fs::remove_dir_all(&root).ok();
     }

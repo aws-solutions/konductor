@@ -345,25 +345,6 @@ pub enum Commands {
         /// rationale recorded there.
         #[arg(long = "claude-bundled-mcp-servers")]
         claude_bundled_mcp_servers: Option<String>,
-
-        /// Path to a JSON file (e.g. `scripts/claude-plugin-mcp-servers.json`)
-        /// whose top-level `"bundled"` object maps each bundled server name to
-        /// its own launch definition (`command`/`args`/`url`, the same shape
-        /// as an agent spec's own `dependencies.mcpRegistry` entry). When
-        /// given, each agent's `mcpRegistry` entry for a name present in both
-        /// this file's `"bundled"` object and `--claude-bundled-mcp-servers`
-        /// is REPLACED by this file's definition before rendering -- the
-        /// launch command/args/url the Claude Code transformer bakes into
-        /// `dist/claude/agents/*.md` frontmatter come from here, not from the
-        /// agent spec's own (possibly different or unpinned)
-        /// `dependencies.mcpRegistry` entry. A bundled name absent from this
-        /// file's `"bundled"` object contributes no `mcpRegistry` entry at
-        /// all, the same as a name absent from `--claude-bundled-mcp-servers`.
-        /// Omitted (the default): falls back to the pre-existing behavior of
-        /// filtering each agent's own `dependencies.mcpRegistry` down to the
-        /// `--claude-bundled-mcp-servers` allowlist, unchanged.
-        #[arg(long = "claude-bundled-mcp-config")]
-        claude_bundled_mcp_config: Option<String>,
     },
 
     /// Initialize a new Konductor project: creates `.konductor/` in the

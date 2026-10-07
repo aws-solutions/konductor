@@ -31,16 +31,18 @@ original key order. This script does not know or need to know what those
 fields mean; it only knows how to compute `version` and `agents`, and (with
 --path-prefix) rewrite path-shaped fields.
 
---path-prefix supports a second caller: .github/workflows/release.yml's
-`publish-claude-plugin` job (via scripts/assemble-claude-plugin-branch.sh)
-renders a second plugin.json for the flat tree published to the
-`claude-plugin` branch, where `agents/` and `skills/` sit at the tree root
-instead of under `generated/claude-plugin/`. Any template string that starts
-with the default prefix (`./generated/claude-plugin/`) has that leading
-segment replaced with --path-prefix's value; every other string is left
-untouched. This is a generic, field-name-agnostic string rewrite (it also
-catches the template's static `skills` entry, not just the freshly computed
-`agents` list) rather than two copies of the same substitution logic.
+--path-prefix rewrites generated/claude-plugin/-relative template strings to
+a different root: scripts/assemble-claude-plugin-branch.sh (called from
+.github/workflows/release.yml's `publish-claude-plugin` job, and from
+`make claude-plugin-check`) is this script's only caller, and it renders
+plugin.json for the flat tree published to the `claude-plugin` branch,
+where `agents/` and `skills/` sit at the tree root instead of under
+`generated/claude-plugin/`. Any template string that starts with the
+default prefix (`./generated/claude-plugin/`) has that leading segment
+replaced with --path-prefix's value; every other string is left untouched.
+This is a generic, field-name-agnostic string rewrite (it also catches the
+template's static `skills` entry, not just the freshly computed `agents`
+list) rather than a special case tied to one specific field.
 
 --agent-specs-dir and --mcp-output (both optional, required together) also
 render a SECOND file: .mcp.json, the plugin-level MCP server declaration
@@ -74,17 +76,11 @@ the single source of truth this flag and `konductor synth
 the Rust-side agent-file rendering and this script's plugin-level
 .mcp.json never disagree about which servers are packaged. Omitting it
 is an empty allowlist: .mcp.json's "mcpServers" is written empty,
-matching `--claude-bundled-mcp-servers`'s own documented default.
-
---bundled-mcp-config (optional) points at that same
-scripts/claude-plugin-mcp-servers.json file (or a compatible one) to
-source the actual launch DEFINITION (command/args/url) for each
-allowlisted server from its "bundled" object, instead of from the
-agent-spec union computed above, so the pinned command Konductor
-recommends always wins over whatever an individual agent spec's own
-dependencies.mcpRegistry entry happens to say for that server. A name
-present in --bundled-mcp-servers but absent from this file's "bundled"
-object still falls back to the agent-spec union unchanged.
+matching `--claude-bundled-mcp-servers`'s own documented default. The
+launch definition for each allowlisted server comes straight from the
+agent specs' own dependencies.mcpRegistry entry (k-architect and
+k-developer declare the same pinned `aws-mcp` command directly), with no
+separate override file in between.
 
 Called by scripts/generate-claude-plugin.sh and
 scripts/assemble-claude-plugin-branch.sh. Not meant to be run directly.
@@ -95,47 +91,6 @@ import sys
 from pathlib import Path
 
 DEFAULT_PREFIX = "./generated/claude-plugin/"
-
-# The only keys a --bundled-mcp-config "bundled.<name>" entry may carry.
-# "command"/"args" are required (the launch shape every entry uses today);
-# "url" is optional and documented here for a future HTTP-based bundled
-# server, matching the third field of the Rust side's McpServerDef struct
-# (cli/konductor-rs/src/cli/synth/parser.rs). No other key is allowed.
-_BUNDLED_CONFIG_ENTRY_KEYS = {"command", "args", "url"}
-
-
-def _validate_bundled_config(config_bundled) -> str | None:
-    """Validates the shape of --bundled-mcp-config's top-level "bundled"
-    value. Returns None on success, or a human-readable error string
-    describing the first shape violation found (the caller prints it to
-    stderr and exits non-zero). Never raises, so a malformed config
-    fails cleanly instead of with a Python traceback."""
-    if not isinstance(config_bundled, dict):
-        return (
-            '"bundled" must be a JSON object mapping server name to launch '
-            f"definition, got {type(config_bundled).__name__}"
-        )
-    for name, definition in config_bundled.items():
-        if not isinstance(definition, dict):
-            return (
-                f'"bundled.{name}" must be a JSON object, got '
-                f"{type(definition).__name__}"
-            )
-        extra_keys = sorted(set(definition.keys()) - _BUNDLED_CONFIG_ENTRY_KEYS)
-        if extra_keys:
-            return f'"bundled.{name}" has unsupported key(s): {extra_keys}'
-        command = definition.get("command")
-        if not isinstance(command, str):
-            return f'"bundled.{name}.command" must be a string, got {type(command).__name__}'
-        args = definition.get("args")
-        if not isinstance(args, list) or not all(isinstance(a, str) for a in args):
-            return f'"bundled.{name}.args" must be a list of strings'
-        if "url" in definition and not isinstance(definition["url"], str):
-            return (
-                f'"bundled.{name}.url" must be a string, got '
-                f"{type(definition['url']).__name__}"
-            )
-    return None
 
 
 def _load_mcp_registry_union(agent_specs_dir: Path):
@@ -257,25 +212,6 @@ def main() -> int:
             "`konductor synth` side."
         ),
     )
-    parser.add_argument(
-        "--bundled-mcp-config",
-        type=Path,
-        default=None,
-        help=(
-            "Path to scripts/claude-plugin-mcp-servers.json (or a compatible file) "
-            "whose top-level \"bundled\" object maps a server name to its own "
-            "launch definition (command/args/url). When given, the definition "
-            "written to --mcp-output for each allowlisted name that also appears "
-            "in this file's \"bundled\" object comes from HERE, not from the union "
-            "of agent specs' own dependencies.mcpRegistry entries, so the launch "
-            "command/args/pin this file declares always wins over whatever an "
-            "individual agent spec happens to say for that same server name. A "
-            "name only present in --bundled-mcp-servers but absent from this "
-            "file's \"bundled\" object falls back to the agent-spec union, "
-            "unchanged. Optional; omitting it preserves the pre-existing "
-            "agent-spec-sourced behavior entirely."
-        ),
-    )
     args = parser.parse_args()
 
     if bool(args.agent_specs_dir) != bool(args.mcp_output):
@@ -337,40 +273,6 @@ def main() -> int:
             if name.strip()
         }
         servers = {name: definition for name, definition in servers.items() if name in allowlist}
-        if args.bundled_mcp_config is not None:
-            if not args.bundled_mcp_config.is_file():
-                print(
-                    f"error: --bundled-mcp-config not found: {args.bundled_mcp_config}",
-                    file=sys.stderr,
-                )
-                return 1
-            try:
-                config = json.loads(args.bundled_mcp_config.read_text(encoding="utf-8"))
-            except json.JSONDecodeError as exc:
-                print(
-                    f"error: --bundled-mcp-config {args.bundled_mcp_config} is not valid "
-                    f"JSON: {exc}",
-                    file=sys.stderr,
-                )
-                return 1
-            if not isinstance(config, dict) or "bundled" not in config:
-                print(
-                    f"error: --bundled-mcp-config {args.bundled_mcp_config} must contain a "
-                    'top-level "bundled" object',
-                    file=sys.stderr,
-                )
-                return 1
-            config_bundled = config["bundled"]
-            shape_error = _validate_bundled_config(config_bundled)
-            if shape_error is not None:
-                print(
-                    f"error: --bundled-mcp-config {args.bundled_mcp_config}: {shape_error}",
-                    file=sys.stderr,
-                )
-                return 1
-            for name in servers:
-                if name in config_bundled:
-                    servers[name] = config_bundled[name]
         args.mcp_output.parent.mkdir(parents=True, exist_ok=True)
         args.mcp_output.write_text(
             json.dumps({"mcpServers": servers}, indent=2) + "\n", encoding="utf-8"

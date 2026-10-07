@@ -46,5 +46,3 @@ browser-output/
 # generated/claude-plugin/README.md.
 generated/claude-plugin/agents/
 generated/claude-plugin/skills/
-.claude-plugin/plugin.json
-.mcp.json
