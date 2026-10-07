@@ -33,6 +33,9 @@ script installs plain skills and an always-on instruction block that every suppo
   - The engine refuses to complete a step while a required artifact is missing without a reason
     or a check fails. It hands over to the owner at owner gates and when a review reaches its
     round cap, with the owner's options in plain words.
+  - Where a step's instruction and an artifact's guide disagree, the step block says the
+    instruction wins and asks the agent to name each disagreement; the review request tells the
+    reviewer the same.
   - Workflows are found by name in the project's `.konductor/workflows/`, then
     `~/.konductor/workflows/`, then the shipped ones, at any folder depth, so personal and team
     workflows can sit in their own folders or symlinked repositories.

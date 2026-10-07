@@ -303,6 +303,53 @@ steps:
   }
 });
 
+test("where the step instruction and a guide disagree, the author and the reviewer follow the instruction", () => {
+  const r = new Repo();
+  try {
+    r.start(
+      "feat",
+      `version: 1
+name: w
+steps:
+  - id: write
+    instruction: Write it without a plan section.
+    produces:
+      - artifact: essay
+        path: essay.md
+    gates:
+      - agent: review the essay
+  - id: notes
+    instruction: Write notes.
+    produces:
+      - artifact: scribble
+        path: notes.md
+    gates:
+      - agent: review the notes
+`,
+    );
+    r.write(".konductor/library/artifacts/essay/guide.md", "# guide\n");
+    const guided = r.ok("start", "feat");
+    expect(guided).toContain(
+      "GUIDES: where the step instruction above and a guide disagree, follow the instruction, and name each " +
+        "disagreement in your hand-over block.",
+    );
+    expect(guided).toContain(
+      "Give the reviewer the step instruction as well: where it and a guide disagree, the instruction wins, so " +
+        "following the instruction is not a required fix.",
+    );
+
+    // A step whose artifacts have no guide gets neither line.
+    r.write("essay.md", "# essay\n");
+    r.ok("continue", "feat");
+    const unguided = r.ok("start", "feat");
+    expect(unguided).toContain("STEP notes");
+    expect(unguided).not.toContain("GUIDES:");
+    expect(unguided).not.toContain("Give the reviewer the step instruction");
+  } finally {
+    r.cleanup();
+  }
+});
+
 test("a review guide decides the pass rule; a project's own replaces the workflow's gate guide (decision 17)", () => {
   const r = new Repo();
   try {

@@ -324,9 +324,17 @@ function stepBlock(c: Ctx, ws: Workstream, step: Step, state: StepState): string
     );
   }
 
+  const reviewed = place(c, [...step.produces, ...step.optional_produces, ...step.updates]);
+  const guided = reviewed.some((a) => libraryEntry(c.p, a.artifact.artifact)?.guide);
+  // A step instruction may deliberately depart from a shared guide; say which wins.
+  if (guided) {
+    lines.push(
+      "GUIDES: where the step instruction above and a guide disagree, follow the instruction, and name each " +
+        "disagreement in your hand-over block.",
+    );
+  }
   lines.push("WHEN THE WORK IS DONE:");
   let n = 0;
-  const reviewed = place(c, [...step.produces, ...step.optional_produces, ...step.updates]);
   for (const g of gatesInOrder(step)) {
     if (g.kind === "check" || g.kind === "script") {
       const m = mechanical(c, g);
@@ -407,6 +415,7 @@ function reviewText(c: Ctx, g: Gate, step: Step, state: StepState, reviewed: Pla
   let text = `Have an independent agent ${g.text.replace(/\.$/, "")}.`;
   const guided: string[] = [];
   const parts: string[] = [];
+  let ownGuide = false;
   for (const a of reviewed) {
     const guide = reviewGuide(c.p, g, a.artifact.artifact);
     if (guide) {
@@ -414,6 +423,7 @@ function reviewText(c: Ctx, g: Gate, step: Step, state: StepState, reviewed: Pla
       parts.push(`${a.path} against ${display(c.p, guide)}`);
     } else {
       const own = libraryEntry(c.p, a.artifact.artifact)?.guide;
+      if (own) ownGuide = true;
       parts.push(own ? `${a.path}, with its guide ${display(c.p, own)} as the definition of a good artifact` : a.path);
     }
   }
@@ -457,6 +467,11 @@ function reviewText(c: Ctx, g: Gate, step: Step, state: StepState, reviewed: Pla
     "accepted or deferred is not a required fix. Fix what is required and review again, until a round ends with " +
     "no required fix.";
   if (guided.length) text += " The review guide decides what counts as a required fix and when a round passes.";
+  if (guided.length || ownGuide) {
+    text +=
+      " Give the reviewer the step instruction as well: where it and a guide disagree, the instruction wins, so " +
+      "following the instruction is not a required fix.";
+  }
   text +=
     " Every round that ends with a required fix counts, whatever the cause. After " +
     `${capOf(c, g, state)} such rounds, do not start another; run \`${FUSE_FLOW} continue ${c.slug} --blocked ` +
