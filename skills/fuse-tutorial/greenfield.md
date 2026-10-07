@@ -20,7 +20,7 @@ not a detour: the design step is where an owner makes such calls.
 ## Before starting
 
 - **fuse needs to be installed** for the harness the user works in, so that sessions in the new
-  project know the fuse skills. If it is not, offer the installation first (`install.md`).
+  project know the fuse skills. If it is not, offer the installation first (see "Installation" in `SKILL.md`).
 - **Where the project lives.** Ask for a folder, and suggest one next to the user's other projects,
   such as `~/projects/pacman-enterprise-edition`. Create it, `git init` it, and add a one-line
   `README.md` with a first commit. Record the path as `project_path` in `state.yml`.

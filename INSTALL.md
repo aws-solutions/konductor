@@ -6,6 +6,8 @@ Kiro CLI.
 
 You need a POSIX shell, `git`, coreutils and [Bun](https://bun.sh). The `persistent-memory` skill needs Bun, so `install.sh` refuses to install without it. The `fuse-flow` runner also runs on Bun. On Windows, use WSL.
 
+You can also let an agent do all of this with you: clone the repository as in step 1, open an agent session in the clone, and say "Start the tutorial". It checks your harnesses and existing skills first, and installs only after you agree.
+
 ## 1. Clone the `fuse` branch
 
 ```bash
@@ -71,6 +73,23 @@ Add both:
 ```
 
 For a project install, use `file://AGENTS.md` and `skill://.kiro/skills/*/SKILL.md` instead.
+
+## Other harnesses
+
+`install.sh` has presets for the five harnesses above. For another one, find out from its
+documentation which instruction files and skills folders it reads, then pick what fits:
+
+- **It reads a project's `AGENTS.md`,** as many do: a project install gives it the always-on block.
+  If it supports agent skills, link its project skills folder to `.agents/skills`.
+- **It has a user-level instruction file of its own:** `./install.sh --global <that file>` accepts
+  any file. It adds the block there and copies the skills into `skills/` next to it. If the harness
+  reads skills from another folder, link that folder's entries to the copies.
+- **It does not support agent skills:** add one sentence to its instruction file, outside the
+  fuse-konductor block: the skills are in `<folder>/<name>/SKILL.md`, and when a task matches a
+  skill's `description`, read that file and follow it.
+
+Do not rely on `@path` imports in an instruction file: only Claude Code resolves them, and other
+harnesses read them as plain text. `--uninstall` does not undo links or sentences you add by hand.
 
 ## Update
 

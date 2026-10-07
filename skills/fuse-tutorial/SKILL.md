@@ -1,6 +1,6 @@
 ---
 name: fuse-tutorial
-description: Use when the user types /fuse-tutorial or /tutorial, asks to start or continue the fuse tutorial or the tutorial, asks for a tour of fuse-konductor, fuse-flow or Komposer, asks how to install fuse-konductor or which harnesses it supports, or opens a session in the fuse-konductor clone without a specific task. A coach offers to install fuse-konductor with the user (checking their harnesses and conflicting skills or instructions first), to explain what the repository contains, or to teach hands-on: choosing a workflow for a task, working on a real project, building a greenfield demo project with the system and feature workflows, or shaping a workflow to how the user works. Each run has a name and a state file, so several runs can go on in parallel and any run can be resumed.
+description: Use when the user types /fuse-tutorial or /tutorial, asks to start or continue the fuse tutorial or the tutorial, is new to fuse-konductor or Konductor and asks what it is, how to install it, which harnesses it supports, what they can ask it or how skills and workflows differ, even if they only say "how do I get started", or opens a session in the fuse-konductor clone without a specific task. A coach offers to install fuse-konductor with the user (checking their harnesses and conflicting skills or instructions first), to explain what the repository contains, or to teach hands-on: choosing a workflow for a task, working on a real project, building a greenfield demo project with the system and feature workflows, or shaping a workflow to how the user works. Each run has a name and a state file, so several runs can go on in parallel and any run can be resumed.
 version: 2.0.0
 tags: [skill, tutorial, onboarding, install, fuse-flow, komposer]
 ---
@@ -120,7 +120,41 @@ implement step", never a status word.
 
 ## Installation
 
-Read `install.md` next to this file and follow it.
+The goal: the user ends up with fuse-konductor installed where they want it, knows what changed and
+why, and knows how to undo it. `<clone>/INSTALL.md` holds the facts: what each mode writes, the
+instruction file of each harness, updating, uninstalling, custom Kiro agents and harnesses without a
+preset. Read it first and explain from it; do not restate it from memory. When the user already
+knows what they want, such as "install it globally for Claude Code", do the checks, say in a few
+lines what the command will change, and go straight to running it.
+
+1. **Look around, read-only,** and tell the user in one line that you are doing so. Check `git` and
+   `bun`. Find the harnesses on this machine: a harness is present when its folder in the home
+   directory or its command exists; you also know which harness you run in. Read
+   `~/.konductor/fuse-konductor-clone` and look for a `<FUSE-KONDUCTOR>` line in each present
+   harness's instruction file, to find an existing install, possibly from another clone. Compare
+   the names in `<clone>/skills/` with the skills folders of the present harnesses and
+   `~/.agents/skills/`, or with the project's skills folders for a project install. Read the
+   instruction files, and the project's `AGENTS.md` and `CLAUDE.md`, for rules that cover the same
+   ground as fuse: another workflow or spec-driven method, a review mechanism, commit or branching
+   rules, a testing policy. In the home directory, open only these files and folder listings:
+   harness folders also hold credentials, tokens and session history, which you must not read, and
+   do not search the whole home directory.
+2. **Explain** at the run's level why to install (without it, only sessions in the clone know
+   fuse), what it writes, what it leaves alone, and how `--uninstall` undoes it. Then report what
+   you found, a line each. A skill whose name collides stays the user's own, because `install.sh`
+   skips it. An overlapping rule is settled when it meets a fuse step: the agent asks which takes
+   precedence and records the ruling, as the `fuse-workstream` skill describes; offer to settle the
+   ones you can see now. Summarise private instruction files; do not quote them.
+3. **Decide** with one question, your recommendation first: global for a user trying fuse on their
+   own machine, with one instruction file for each supported harness they use; a project install
+   when a team adopts fuse together, or for Cursor.
+4. **Install** after the user's yes: show the exact command, run it from the clone's root, explain
+   each reported or skipped item, and check that the block and the skills are in place. For a
+   project install, show `git status` and leave the commit to the user. Tell them that a new
+   session loads the install; open ones do not. If something looks broken, running the same command
+   again is safe and reports what it skipped and why.
+5. **A harness without a preset:** offer the measure from `INSTALL.md` that fits it, only with the
+   user's yes. `--uninstall` does not undo these, so tell the user what you changed.
 
 ## Tour of the repository
 
@@ -131,7 +165,9 @@ Point at the files so the user can open them. The stops:
   development cycle. Fuse-Konductor builds on it: a library of modules, and a workflow engine your
   harness's default agent operates. `README.md` says this in more words.
 - **The skills,** in `skills/`, one folder per skill, by the agent skills standard. A session loads
-  a skill when its `description` matches the task. Name a few the user is likely to meet, such as
+  a skill when its `description` matches the task. The difference from a workflow, in one line: a
+  skill says what guidance applies to a task, and a workflow keeps the state of a piece of work
+  across its steps and sessions. Name the fuse skills the user is likely to meet,
   `fuse-workstream` and `fuse-flow-builder`.
 - **The engine and its workflows,** in `fuse/flow/`: `fuse-flow`, the workflows in `workflows/`, and
   the artifact library in `library/artifacts/`, where each kind of document has a guide, often a
