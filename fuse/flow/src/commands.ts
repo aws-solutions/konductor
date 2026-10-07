@@ -9,8 +9,8 @@
 // when it is the owner's (decision 22).
 
 import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
-import { dirname, isAbsolute, relative, resolve } from "node:path";
+import { existsSync, readdirSync } from "node:fs";
+import { basename, dirname, isAbsolute, relative, resolve } from "node:path";
 import { FlowError } from "./errors.ts";
 import { EVENT, SKIP_REASON, stamp } from "./history.ts";
 import {
@@ -28,7 +28,7 @@ import {
   reviewGuide,
   rulings,
 } from "./policy.ts";
-import { findWorkflow, isDirectory, reviewsDir, workflowFilesBelow, workstreamFile } from "./project.ts";
+import { findWorkflow, isDirectory, reviewsDir, workflowDirs, workflowFilesBelow, workstreamFile, workstreamsDir } from "./project.ts";
 import { type Artifact, type Condition, describeGates, type Gate, loadWorkflow, type Step, type Workflow } from "./workflow.ts";
 import {
   readWorkstream,
@@ -237,6 +237,7 @@ function present(c: Ctx): string[] {
       return [
         `STEP ${step.id} (${position(c, step)}) cannot be handed out yet: its condition names the ${m.check} check.`,
         `${bindInstruction(c, m.check)} Then run \`${FUSE_FLOW} start ${c.slug}\`.`,
+        ...stopEarly(c, ws, step),
       ];
     }
     case "IN_PROGRESS":
@@ -260,8 +261,8 @@ function stepBlock(c: Ctx, ws: Workstream, step: Step, state: StepState): string
     lines.push(`CONDITION: Do this step only if ${cond.text}. Otherwise run \`${ff} --skip "<why it does not apply>"\`.`);
   } else if (cond?.kind === "owner-action") {
     lines.push(
-      `CONDITION: Before you start, ask the owner to ${cond.text}, and end your message with the hand-over block, ` +
-        `STATUS needs input. If the owner decides to skip the step, run \`${ff} --skip "<the owner's reason>"\`; ` +
+      `CONDITION: Before you start, ask the owner to ${cond.text}, and end your message with the five lines at the ` +
+        `end of this block, STATUS needs input. If the owner decides to skip the step, run \`${ff} --skip "<the owner's reason>"\`; ` +
         "otherwise do the step.",
     );
   } else if (cond) {
@@ -367,7 +368,33 @@ function stepBlock(c: Ctx, ws: Workstream, step: Step, state: StepState): string
     if (routes.length) last += ` If the owner rejects it, suggest sending the work back to ${routes.join(" or ")}.`;
   }
   lines.push(last);
+  lines.push(...stopEarly(c, ws, step));
   return lines;
+}
+
+// How the agent hands back to the owner while the step is still in progress:
+// it waits for an answer, or the owner paused the work.
+function stopEarly(c: Ctx, ws: Workstream, step: Step): string[] {
+  const reviews = step.gates.filter((g) => g.kind === "agent").length > 0;
+  return [
+    "IF YOU STOP BEFORE THE STEP IS DONE: end your message with these five lines, written for the owner, with each " +
+      "<...> part replaced. If you cannot finish the step at all, report it blocked instead.",
+    `  SUMMARY: <the task, in a sentence>. Workstream ${c.slug}, step ${step.id}, ${position(c, step)}.${skippedSteps(c, ws)}`,
+    "  STATUS: <needs input, when you need an answer or a decision from the owner; paused, when the work only " +
+      "waits for the owner's request to continue>",
+    "  PRODUCED: <the files written or changed so far, and why any artifact will not be written; or none>",
+    `  VERIFICATION: <the check results so far${reviews ? ", the review rounds used of the cap, and any required fix still open" : ""}; or none>`,
+    "  NEXT STEP: <two to four options for the owner, your recommendation first, with its reason>",
+  ];
+}
+
+// The skipped steps with their reasons, for the SUMMARY line, or nothing.
+function skippedSteps(c: Ctx, ws: Workstream): string {
+  const skips = c.wf.steps
+    .map((s) => ({ s, state: stateOf(ws, s.id) }))
+    .filter(({ state }) => state.status === "SKIPPED")
+    .map(({ s, state }) => `${s.id} (${state.skip_reason ?? "no reason recorded"})`);
+  return skips.length ? ` Skipped steps: ${skips.join("; ")}.` : "";
 }
 
 function capOf(c: Ctx, g: Gate, state: StepState): string {
@@ -486,11 +513,7 @@ function stepsWithArtifacts(c: Ctx, step: Step): string {
 
 // When it is the owner's turn: the hand-over block, pre-filled (decision 22).
 function handOver(c: Ctx, ws: Workstream, step: Step | undefined): string[] {
-  const skips = c.wf.steps
-    .map((s) => ({ s, state: stateOf(ws, s.id) }))
-    .filter(({ state }) => state.status === "SKIPPED")
-    .map(({ s, state }) => `${s.id} (${state.skip_reason ?? "no reason recorded"})`);
-  const skipped = skips.length ? ` Skipped steps: ${skips.join("; ")}.` : "";
+  const skipped = skippedSteps(c, ws);
   const intro =
     "OWNER'S TURN: end your message with this hand-over block. Replace each <...> part, keep the lines in this " +
     "order, and give the owner's options with your recommendation first, with its reason. Write the block for " +
@@ -917,6 +940,78 @@ export function status(root: string, slug: string): string[] {
   });
   const footer = current ? `current step: ${current.id}; ${FUSE_FLOW} start ${slug} prints what to do` : "workflow complete";
   return [`workstream ${slug} (${c.wf.name})`, ...rows, footer];
+}
+
+// ---------------------------------------------------------------------- list
+// What an agent needs to pick up or start work: the workstreams in this
+// project with their current step, and every workflow it can start, by the
+// name `start --workflow` takes, with its description. A file that is not a
+// valid workflow, or a name that cannot be started, is listed with the reason,
+// so one broken file does not hide the others.
+
+export function list(root: string): string[] {
+  const lines: string[] = [];
+  const dir = workstreamsDir(root);
+  const slugs = isDirectory(dir)
+    ? readdirSync(dir)
+        .filter((name) => name.endsWith(".yml"))
+        .map((name) => name.slice(0, -4))
+        .sort()
+    : [];
+  lines.push(slugs.length ? `WORKSTREAMS in this project; \`${FUSE_FLOW} start <slug>\` resumes one:` : "WORKSTREAMS in this project: none");
+  for (const slug of slugs) {
+    try {
+      const ws = readWorkstream(root, slug);
+      const c = context(root, slug, ws);
+      const step = currentStep(c.wf, ws);
+      const where = step ? `step ${step.id}, ${position(c, step)}, ${stateOf(ws, step.id).status}` : "workflow complete";
+      lines.push(`  ${slug} (${c.wf.name}, started ${c.date}): ${where}`);
+    } catch (e) {
+      if (!(e instanceof FlowError)) throw e;
+      lines.push(`  ${slug}: cannot be read: ${e.message}`);
+    }
+  }
+
+  lines.push("", `WORKFLOWS by the name \`${FUSE_FLOW} start <slug> --workflow <name>\` takes; where a name is in several locations, the first wins:`);
+  const labels = ["this project", "yours", "shipped with fuse-flow"];
+  // A name resolves as findWorkflow does: to the first location with a file
+  // of that name, valid or not, and is refused when that location has two.
+  const nameOf = (file: string) => (file.endsWith(".yml") ? basename(file, ".yml") : undefined);
+  const locations = workflowDirs(root).map((dir) => ({ dir, files: isDirectory(dir) ? workflowFilesBelow(root, dir) : [] }));
+  const owner = new Map<string, { at: number; count: number }>(); // name -> where it resolves
+  locations.forEach(({ files }, i) => {
+    for (const file of files) {
+      const name = nameOf(file);
+      if (!name) continue;
+      const o = owner.get(name);
+      if (!o) owner.set(name, { at: i, count: 1 });
+      else if (o.at === i) o.count += 1;
+    }
+  });
+  locations.forEach(({ dir, files }, i) => {
+    lines.push(`${labels[i]}, ${dir}:${files.length ? "" : " none"}`);
+    for (const file of files) {
+      const name = nameOf(file);
+      const shown = relative(dir, file);
+      let wf: Workflow;
+      try {
+        wf = loadWorkflow(file);
+      } catch (e) {
+        if (!(e instanceof FlowError)) throw e;
+        lines.push(`  ${shown}: not a valid workflow; \`${FUSE_FLOW} validate ${shellQuote(file)}\` says why`);
+        continue;
+      }
+      const o = name ? owner.get(name)! : undefined;
+      let note = "";
+      if (!o) note = " (start it by its path; only .yml files are found by name)";
+      else if (o.at === i && o.count > 1) note = " (ambiguous in this location; start it by its path, or rename one)";
+      else if (o.at !== i && o.count > 1) note = ` (start it by its path; the name is ambiguous in ${labels[o.at]})`;
+      else if (o.at !== i) note = ` (start it by its path; the name starts the one in ${labels[o.at]})`;
+      lines.push(`  ${name ?? shown} (${shown})${note}`);
+      if (wf.description) lines.push(`      ${wf.description.replace(/\s+/g, " ").trim()}`);
+    }
+  });
+  return lines;
 }
 
 // ------------------------------------------------------------------ validate

@@ -154,11 +154,11 @@ Two messages, each ending with the offer to go deeper or move on.
   suggest the user clicks one to see its steps as a diagram. Offer the full list, with the examples,
   as the deeper part; the next topic is composing their own.
 - **Composing their own workflow,** in three ways:
-  1. by writing the YAML file by hand; the `fuse-workflow-authoring` skill describes the format;
+  1. by writing the YAML file by hand; the `fuse-flow-builder` skill describes the format;
   2. in Komposer, which is what chapter 4 does;
   3. by asking an agent to write or adapt one for them, for example "build me a lightweight
-     workflow for bug fixes"; the `fuse-flow-builder` skill interviews them and builds it with
-     them, with Komposer open to watch it take shape.
+     workflow for bug fixes"; the same skill interviews them and builds it with them, with
+     Komposer open to watch it take shape.
   Where their workflows can live is the deeper part: three places, which are the three sections
   of the list: **Project** (the project's `.konductor/workflows/`, shared through the project's
   git), **Personal** (`~/.konductor/workflows/`, only for them) and **fuse-flow** (the official

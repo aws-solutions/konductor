@@ -89,6 +89,11 @@ describes the result.
 
 See the `agents-md-authoring` skill for creating and maintaining AGENTS.md files.
 
+Instructions that tell agents how to work with fuse go in exactly one of these places: the
+`fuse-workstream` skill (picking, starting and running a workstream), the `fuse-flow-builder` skill
+(building and changing workflows), the `fuse-tutorial` skill (the guided tour), the always-on block
+`AGENTS.fuse.md`, or the output fuse-flow prints. Do not add another fuse skill.
+
 ## Memory
 
 Local memory persistence is provided by the `persistent-memory` skill. Facts persist across sessions in

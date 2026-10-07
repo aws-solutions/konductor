@@ -10,6 +10,11 @@ not per individual commit.
 
 ### Added
 
+- `fuse-workstream` skill: finds a workstream to resume, recommends a workflow for new work when
+  the user names none, starts it once the user agrees, and records the owner's rulings where
+  installed rules overlap. It takes over that guidance from the always-on block.
+- `fuse-flow list` prints the project's workstreams with their current step, and every workflow a
+  new workstream can follow, by location, with its description and the name that starts it.
 - `aws-mcp-usage` skill: confirmation rules for AWS MCP tools that act on an account, and which
   AWS guidance to load for common development tasks. Extracted from the removed architect and
   developer agent prompts.
@@ -21,6 +26,12 @@ not per individual commit.
 
 ### Changed
 
+- `fuse-flow-builder` now also holds the workflow format, the encoding procedure and the dry run,
+  which were in `fuse-workflow-authoring`.
+- The always-on block `AGENTS.fuse.md` keeps only when fuse applies, the rules that hold while a
+  workstream runs, and writing for the owner. It points at the `fuse-workstream` skill for the rest.
+- fuse-flow's step block ends with the five lines the agent fills in when it hands back to the
+  owner before the step is done, with status `needs input` or `paused`.
 - fuse-flow artifact paths accept `{date}`, the local date the workstream started. The
   fuse-development workflows name their specs `docs/specs/<date>-<slug>.md` (or a
   `docs/specs/<date>-<slug>/` folder).
@@ -72,6 +83,8 @@ kept, untracked; delete them by hand if you no longer want them.
 
 ### Removed
 
+- `fuse-workflow-authoring`, merged into `fuse-flow-builder`.
+- `sdlc-navigator`, which routed between Konductor's phases and is not used on the fuse branch.
 - All 11 agent specs in `agents/`, including the three orchestrators.
 - The routing and dispatch layer that only served them: the `delegation-protocol`,
   `claude-teams-behavior`, `mux-dispatch` and `cmux-dispatch` skills, the `k-delegate` SOP, and

@@ -39,6 +39,9 @@ test("a check condition runs the command the policy binds; an unbound kind holds
   expect(out).toContain("STEP research (1 of 3) cannot be handed out yet: its condition names the unfamiliar check.");
   expect(out).toContain("record it in .konductor/policy-overrides.yml as `checks: { unfamiliar: <command> }`");
   expect(repo.status("feat", "research")).toBe("PENDING");
+  // Binding the check needs the owner's confirmation, so the agent is told how to hand back meanwhile.
+  expect(out).toContain("IF YOU STOP BEFORE THE STEP IS DONE:");
+  expect(out).toContain("  SUMMARY: <the task, in a sentence>. Workstream feat, step research, 1 of 3.\n");
   expect(repo.refused("continue", "feat")).toContain("cannot be handed out yet");
 
   repo.write(".konductor/policy-overrides.yml", "checks:\n  unfamiliar: \"false\"\n");
@@ -98,4 +101,11 @@ test("--forward-to jumps forward; the current step and those before the target a
     expect(repo.state("feat").steps[id]).toMatchObject({ status: "SKIPPED", skip_reason: "owner jumped forward to release: split off the build" });
   }
   expect(repo.usage("continue", "feat", "--forward-to", "release", "--skip", "x")).toContain("are different decisions; give one");
+});
+
+test("a step after skipped steps names them, with their reasons, in the lines for stopping early", () => {
+  const out = repo.start("feat", flow("    condition:\n      script: test -f nothing-here"));
+  expect(out).toContain(
+    "  SUMMARY: <the task, in a sentence>. Workstream feat, step build, 2 of 3. Skipped steps: research (condition `test -f nothing-here` exited 1).\n",
+  );
 });

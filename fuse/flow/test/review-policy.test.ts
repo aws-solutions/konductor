@@ -87,3 +87,9 @@ test("a launch that is neither subagent nor a command is refused with the file t
   repo.write(".konductor/policy-overrides.yml", "review:\n  launch: terminal\n");
   expect(repo.refused("start", "feat")).toContain(".konductor/policy-overrides.yml is not a valid policy file");
 });
+
+test("on a step with a review, the lines for stopping early ask for the rounds used and any required fix still open", () => {
+  expect(repo.start("feat", FLOW)).toContain(
+    "  VERIFICATION: <the check results so far, the review rounds used of the cap, and any required fix still open; or none>\n",
+  );
+});

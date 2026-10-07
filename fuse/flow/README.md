@@ -48,7 +48,8 @@ A workstream is one piece of work, such as a feature, refactoring or story. Its 
 ordered list of steps. The current step is the first step that is neither `COMPLETED` nor
 `SKIPPED`.
 
-1. `fuse-flow start <slug> --workflow <name or path>` creates a workstream and prints its first
+1. `fuse-flow list` shows the project's workstreams and the workflows a new one can follow.
+   `fuse-flow start <slug> --workflow <name or path>` creates a workstream and prints its first
    step. `fuse-flow start <slug>` resumes an existing workstream and prints its current step.
 2. The agent follows the printed step block. When the work is done, it runs the printed
    `fuse-flow continue <slug>` command and accounts for produced and updated artifacts.
@@ -153,6 +154,7 @@ The step fields have these effects:
 | `continue <slug> --back-to <step> [--note <text>]` | On the owner's decision, reopen the named step and every later step from an `AWAITING_OWNER` or `BLOCKED` step. Files stay on disk. |
 | `continue <slug> --forward-to <step> [--note <text>]` | On the owner's decision, skip the current step and every step before the later target. |
 | `status <slug>` | Show all steps, their six states, gates, artifacts, skip reasons and the current step. |
+| `list` | List the project's workstreams with their workflow and current step, and every workflow a new workstream can follow, by location, with the name `start --workflow` takes and its description. Names that cannot be started by name, and invalid files, are listed with the reason. |
 | `validate <name, file or directory>...` | Validate one or more workflows without starting a workstream. A directory means every `.yml` and `.yaml` file below it, including nested and symlinked folders. |
 | `help`, `--help`, `-h` | Print command usage, lookup paths and state location. |
 
@@ -175,6 +177,9 @@ When it is the agent's turn, the step block uses these labels:
 - `PRODUCE (optional)` gives an optional artifact in the same form.
 - `UPDATE` gives an artifact path the step changes and reports when the path is missing.
 - `WHEN THE WORK IS DONE` gives numbered gate and completion instructions.
+- `IF YOU STOP BEFORE THE STEP IS DONE` gives the five hand-back lines below, pre-filled with the
+  workstream, the step and any skipped steps, for a message that waits on the owner while the step
+  is in progress.
 - `REFUSED` gives the reason completion was refused, followed by the step block again.
 
 When the owner acts next, output begins with `OWNER'S TURN` and ends with a pre-filled hand-over
@@ -190,8 +195,9 @@ five lines:
   `none`.
 - `NEXT STEP:` the owner's options, with the recommendation first and its reason.
 
-fuse-flow pre-fills the block for `awaiting owner action`, `blocked` and `workflow complete`. The
-agent writes it from `status` for `needs input` or `paused`.
+fuse-flow pre-fills the block for `awaiting owner action`, `blocked` and `workflow complete`. For
+`needs input` or `paused`, the agent fills in the lines the step block printed under
+`IF YOU STOP BEFORE THE STEP IS DONE`.
 
 ## Files
 

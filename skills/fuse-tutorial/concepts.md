@@ -2,7 +2,7 @@
 
 The coach explains these at the user's depth. Each entry has a one-line menu text, then "short",
 "normal" and "deep" material. "Normal" includes "short", and "deep" includes both. "In Komposer"
-says where to point. The source of truth for the format is the `fuse-workflow-authoring` skill and
+says where to point. The source of truth for the format is the `fuse-flow-builder` skill and
 `fuse/flow/README.md` in the clone; check them when a question goes beyond this file.
 
 ## workflow

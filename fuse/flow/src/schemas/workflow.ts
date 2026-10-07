@@ -21,7 +21,7 @@ export const WorkflowSchema = z
       description: "Human-readable name of the workflow. Engine effect: none; shown by `fuse-flow status` and the viewer.",
     }),
     description: z.string().optional().meta({
-      description: "What the workflow is for, in a sentence or two. Engine effect: none; shown by the viewer.",
+      description: "What the workflow is for, in a sentence or two. Engine effect: none; shown by `fuse-flow list` and the viewer.",
     }),
     steps: z.array(StepSchema).min(1).meta({
       description:

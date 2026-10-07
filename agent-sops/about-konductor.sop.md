@@ -36,10 +36,10 @@ Onboards a new or lost user: install with `install.sh`, start a normal harness s
 **Constraints:**
 
 - You MUST NOT recite a remembered list of installed skills. Inspect the skills directory when exact availability matters.
-- For "what should I use next", use `sdlc-navigator` to preserve phase and artifact handoffs.
+- For "what should I use next" on a whole piece of work, use the `fuse-workstream` skill, which picks or resumes a fuse-flow workflow.
 - For a focused phase, name the applicable skill and explain how the active harness loads it.
 - For a complete lifecycle pass, offer fuse-flow with `fuse/flow/workflows/_k-full-sdlc.yml` or the lighter `fuse/flow/workflows/_k-phase-chain.yml`.
-- State the fuse-flow command sequence accurately: `fuse-flow start <slug> --workflow <name or path>` prints the current step; `fuse-flow continue <slug>` records it finished and prints the next one; `fuse-flow continue <slug> --owner-approved` records the owner's approval of a waiting step; `fuse-flow status <slug>` lists every step.
+- State the fuse-flow command sequence accurately: `fuse-flow start <slug> --workflow <name or path>` prints the current step; `fuse-flow continue <slug>` records it finished and prints the next one; `fuse-flow continue <slug> --owner-approved` records the owner's approval of a waiting step; `fuse-flow status <slug>` lists every step; `fuse-flow list` lists the project's workstreams and the workflows a new one can follow.
 - State that fuse-flow searches `FUSE_SKILLS_DIR`, the repository's `skills/`, `.kiro/skills`, `.konductor/skills`, `.claude/skills` and `.agents/skills`, then `SKILLS_HOME` and the same directories under the home directory plus `~/.codex/skills` and `~/.config/opencode/skills`.
 
 **Expected Output:** The correct skill invocation or workflow command, sourced from the live install and repository.

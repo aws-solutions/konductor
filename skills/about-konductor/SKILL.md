@@ -56,6 +56,7 @@ Use the user-story-writing skill to write user stories for a self-service passwo
 For a complete multi-phase pass in one agent session, use fuse-flow. Run the script by its path, `<konductor-checkout>/fuse/flow/fuse-flow`; the commands below abbreviate it, and the follow-up commands fuse-flow prints carry the full path:
 
 ```bash
+fuse-flow list
 fuse-flow start <slug> --workflow _k-full-sdlc
 fuse-flow continue <slug> [--updated <file>]... [--unchanged <artifact> "<reason>"]... [--not-produced <artifact> "<reason>"]...
 fuse-flow continue <slug> --owner-approved
@@ -86,6 +87,6 @@ The practical difference: skills answer "what guidance applies," and workflows p
 
 ## Getting unstuck
 
-- If you do not know which focused capability applies, use `sdlc-navigator` or inspect the installed skill directories.
+- If you do not know which focused capability applies, inspect the installed skill directories. For a whole piece of work, the `fuse-workstream` skill suggests a fuse-flow workflow.
 - If you want the complete lifecycle in one session, start one of the fuse-flow workflows and follow `continue` until it prints `workflow complete`.
 - If the install looks broken, run the same `install.sh` command again; it reports what it skipped and why.

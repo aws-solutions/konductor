@@ -32,6 +32,8 @@ const USAGE = `usage:
   fuse-flow continue <slug> --forward-to <step> [--note <text>]
                                                 the owner jumps forward; the steps passed over are skipped
   fuse-flow status <slug>                       show every step's state
+  fuse-flow list                                list this project's workstreams with their current step, and
+                                                every workflow a workstream can follow, with its description
   fuse-flow validate <name, file or directory>...
                                                 check workflows without starting a workstream; a
                                                 directory stands for every .yml and .yaml file below
@@ -102,6 +104,10 @@ function run(argv: string[]): string[] {
   const notProduced = command === "continue" ? takePairs(args, "not-produced") : {};
   if (command === "help" || command === "--help" || command === "-h") return [USAGE];
   if (command === "validate") return validate(args);
+  if (command === "list") {
+    if (args.length) throw new UsageError("list takes no arguments");
+    return commands.list(findRepoRoot(process.cwd()));
+  }
   if (!command || !Object.hasOwn(OPTIONS, command)) throw new UsageError(command ? `unknown command "${command}"` : "no command");
 
   const { slug, values } = parse(command as Command, args);

@@ -16,7 +16,7 @@
       "minLength": 1
     },
     "description": {
-      "description": "What the workflow is for, in a sentence or two. Engine effect: none; shown by the viewer.",
+      "description": "What the workflow is for, in a sentence or two. Engine effect: none; shown by `fuse-flow list` and the viewer.",
       "type": "string"
     },
     "steps": {

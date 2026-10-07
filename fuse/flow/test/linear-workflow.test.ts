@@ -40,6 +40,14 @@ test("start mints a workstream that records its workflow, hands out the first st
       "PRODUCE docs/design.md (sketch).",
       "WHEN THE WORK IS DONE:",
       '  1. Run `fuse-flow continue feat`, with --not-produced sketch "<reason>" only if you rightly did not write sketch.',
+      "IF YOU STOP BEFORE THE STEP IS DONE: end your message with these five lines, written for the owner, with each " +
+        "<...> part replaced. If you cannot finish the step at all, report it blocked instead.",
+      "  SUMMARY: <the task, in a sentence>. Workstream feat, step design, 1 of 3.",
+      "  STATUS: <needs input, when you need an answer or a decision from the owner; paused, when the work only " +
+        "waits for the owner's request to continue>",
+      "  PRODUCED: <the files written or changed so far, and why any artifact will not be written; or none>",
+      "  VERIFICATION: <the check results so far; or none>",
+      "  NEXT STEP: <two to four options for the owner, your recommendation first, with its reason>",
       "",
     ].join("\n"),
   );
