@@ -1,0 +1,141 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Tag Claude Code plugin release
+
+# Creates the immutable claude-plugin-vX.Y.Z tag after a plugin-candidate PR
+# merges into the protected release/plugins branch. This is the only step
+# in the whole plugin-publish path that writes to release/plugins' history
+# in the sense of adding a tag pointed at it -- and even that is additive
+# (tag creation only; plugin-release-tags blocks update/delete/
+# non-fast-forward) and happens only after a human merged the PR under the
+# plugins and org-wide branch rulesets. This workflow never pushes a
+# branch, never force-pushes, and never writes to release/plugins itself.
+#
+# release.yml's publish-claude-plugin job pushes a disposable candidate
+# branch and opens a draft PR into release/plugins; it does not create this
+# tag. See scripts/compute-plugin-release-tag.sh for the exact
+# target/base/merged/candidate-prefix guards this workflow applies before
+# tagging, verified against GitHub's documented pull_request webhook
+# payload (the `merged` boolean on `pull_request.closed`, and
+# `pull_request.base.ref`/`pull_request.head.ref` for the merge's target
+# and source branches):
+# https://docs.github.com/en/webhooks/webhook-events-and-payloads#pull_request
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [release/plugins]
+
+permissions:
+  contents: read
+
+jobs:
+  tag-release:
+    name: Create claude-plugin-vX.Y.Z tag
+    if: github.repository == 'aws-solutions/konductor' && github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    # contents: write is granted only on this job, only for the tag-push
+    # step below, and only after every guard in compute-plugin-release-tag.sh
+    # has passed. It can create a tag; the plugin-release-tags ruleset
+    # (allows creation, blocks update/delete/non-fast-forward) is the
+    # control that keeps even this scope from being able to touch an
+    # existing tag.
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout the merge commit
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
+
+      - name: Read the release version from the merged VERSION file
+        # The candidate branch's own commit (release.yml's
+        # publish-claude-plugin job) wrote VERSION from the release tag
+        # before pushing, so the merge commit carries that same value --
+        # reading it here, rather than parsing the candidate branch name,
+        # keeps this workflow correct even if that naming scheme changes.
+        id: version
+        run: |
+          set -e
+          if [ ! -f VERSION ]; then
+            echo "FATAL: VERSION file not found at the merge commit. Failing closed." >&2
+            exit 1
+          fi
+          RAW_VERSION="$(cat VERSION)"
+          scripts/validate-version-semver.sh "$RAW_VERSION"
+          echo "version=$RAW_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Decide whether this merge qualifies for tagging
+        id: decide
+        # pull_request.head.ref is attacker-controlled (a fork can name its
+        # branch anything) -- routed through env vars rather than
+        # interpolated directly into the script, per GitHub's own hardening
+        # guidance for untrusted pull_request context values:
+        # https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions
+        env:
+          PR_MERGED: ${{ github.event.pull_request.merged }}
+          PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set +e
+          TAG="$(scripts/compute-plugin-release-tag.sh \
+            --merged "$PR_MERGED" \
+            --base-ref "$PR_BASE_REF" \
+            --head-ref "$PR_HEAD_REF" \
+            --version "$RELEASE_VERSION")"
+          STATUS=$?
+          set -e
+          if [ "$STATUS" -eq 0 ]; then
+            echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+            echo "should_tag=true" >> "$GITHUB_OUTPUT"
+          elif [ "$STATUS" -eq 10 ]; then
+            echo "should_tag=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "FATAL: compute-plugin-release-tag.sh failed with an input error (exit $STATUS). Failing closed." >&2
+            exit 1
+          fi
+
+      - name: Confirm the tag does not already exist
+        if: steps.decide.outputs.should_tag == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set +e
+          git ls-remote --exit-code --tags "https://github.com/${{ github.repository }}.git" "refs/tags/${{ steps.decide.outputs.tag }}" >/dev/null 2>&1
+          STATUS=$?
+          set -e
+          case "$STATUS" in
+            2) : ;; # Not found -- safe to proceed.
+            0)
+              echo "FATAL: tag '${{ steps.decide.outputs.tag }}' already exists; refusing to touch an immutable plugin release tag." >&2
+              exit 1
+              ;;
+            *)
+              echo "FATAL: could not confirm tag availability (ls-remote exited $STATUS). Failing closed." >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Create and push the immutable release tag
+        if: steps.decide.outputs.should_tag == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.decide.outputs.tag }}" \
+            -m "Claude Code plugin release ${{ steps.version.outputs.version }}" \
+            "${{ github.event.pull_request.merge_commit_sha }}"
+          AUTH_HEADER="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          # Plain push of a new tag ref -- no --force, no branch write, no
+          # product release assets. plugin-release-tags itself still blocks
+          # anything but creation if this ever tries to touch an existing tag.
+          git -c http.extraHeader="$AUTH_HEADER" push origin \
+            "refs/tags/${{ steps.decide.outputs.tag }}"
+          echo "Tagged ${{ github.event.pull_request.merge_commit_sha }} as ${{ steps.decide.outputs.tag }}"
+
+      - name: Report skip reason
+        if: steps.decide.outputs.should_tag == 'false'
+        run: echo "This merge did not qualify for a claude-plugin-v* tag; see the 'Decide whether this merge qualifies for tagging' step's log for the reason."

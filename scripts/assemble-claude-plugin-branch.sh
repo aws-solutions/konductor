@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: Apache-2.0
 #
-# Assembles the flat Claude Code plugin tree published to claude-plugin.
+# Assembles the flat Claude Code plugin tree published via the
+# plugin-candidate-branch + draft-PR flow into release/plugins.
 # Usage: assemble-claude-plugin-branch.sh --out <dir>
 set -euo pipefail
 

@@ -1,0 +1,173 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Dry run - Claude Code plugin candidate publish
+
+# Manually-triggered rehearsal of release.yml's publish-claude-plugin job,
+# without a real release. It builds and validates the plugin tree, pushes a
+# throwaway candidate branch, and opens a draft PR into release/plugins --
+# exactly what a real release does, so the rehearsal exercises the real
+# push/PR path instead of a simulation of it. It is structurally incapable
+# of creating a GitHub Release, a product release asset, or the
+# claude-plugin-vX.Y.Z tag: this workflow has no dependency on release.yml's
+# check-version/build/publish jobs and never runs `gh release create` or
+# `git tag`. It cannot merge the PR it opens (opened as draft; merging
+# requires two human approvals under the org-wide ruleset) and cannot write
+# to release/plugins directly (the plugins ruleset blocks that regardless
+# of what this workflow does).
+#
+# The candidate branch uses the "plugin-candidate-dryrun" prefix, not
+# "plugin-candidate" -- tag-claude-plugin-release.yml's
+# compute-plugin-release-tag.sh guard only tags a merge whose head branch
+# starts with "plugin-candidate/", so even an accidental merge of this PR
+# can never produce a real tag.
+#
+# Requires typing the literal confirmation phrase as a dispatch input (hard
+# dry-run guard): a workflow_dispatch run with no input value, or the wrong
+# one, fails before any branch is pushed or any PR is opened.
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_dry_run:
+        description: >-
+          Type DRY_RUN_CONFIRMED to proceed. This still pushes a real
+          (throwaway) candidate branch and opens a real draft PR into
+          release/plugins for cleanup afterward -- it does not simulate
+          those two actions, only the release/tag/asset actions a real
+          publish would also take.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  dry-run:
+    name: Dry-run plugin candidate publish
+    if: github.repository == 'aws-solutions/konductor'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      BASE_BRANCH: release/plugins
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Enforce the hard dry-run confirmation guard
+        run: |
+          set -e
+          if [ "${{ inputs.confirm_dry_run }}" != "DRY_RUN_CONFIRMED" ]; then
+            echo "FATAL: confirm_dry_run must be exactly 'DRY_RUN_CONFIRMED'. Got a different value (not echoed here in case it was meant as a secret). Failing closed before touching anything." >&2
+            exit 1
+          fi
+
+      - name: Refuse to target main/mainline
+        run: |
+          set -e
+          case "$BASE_BRANCH" in
+            main|mainline)
+              echo "FATAL: refusing to target '$BASE_BRANCH' -- generated plugin output must never land on main/mainline." >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Checkout
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
+        with:
+          fetch-depth: 0
+
+      - name: Derive the dry-run candidate branch name
+        id: candidate
+        run: |
+          set -e
+          RAW_VERSION="$(cat VERSION)"
+          scripts/validate-version-semver.sh "$RAW_VERSION"
+          CANDIDATE_BRANCH="$(scripts/derive-plugin-candidate-branch.sh \
+            --version "v${RAW_VERSION}" \
+            --run-id "${{ github.run_id }}" \
+            --run-attempt "${{ github.run_attempt }}" \
+            --prefix "plugin-candidate-dryrun")"
+          echo "candidate_branch=$CANDIDATE_BRANCH" >> "$GITHUB_OUTPUT"
+          # Not a real release tag and never created -- a collision-check
+          # label only, so validate-plugin-publish-preconditions.sh has
+          # something to look up. tag-claude-plugin-release.yml never sees
+          # this value; it reads the real tag name itself from VERSION.
+          echo "tag_label=claude-plugin-dryrun-v${RAW_VERSION}-${{ github.run_id }}" >> "$GITHUB_OUTPUT"
+
+      - name: Validate publish preconditions (source ref, candidate collision)
+        run: |
+          set -e
+          scripts/validate-plugin-publish-preconditions.sh \
+            --repo "${{ github.repository }}" \
+            --expected-ref "${{ github.sha }}" \
+            --candidate-branch "${{ steps.candidate.outputs.candidate_branch }}" \
+            --tag "${{ steps.candidate.outputs.tag_label }}"
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+
+      - name: Build the konductor CLI
+        run: make -C cli build
+
+      - name: Assemble the flat Claude Code plugin tree
+        run: |
+          set -e
+          ASSEMBLE_DIR="$RUNNER_TEMP/claude-plugin-dryrun"
+          rm -rf "$ASSEMBLE_DIR"
+          scripts/assemble-claude-plugin-branch.sh --out "$ASSEMBLE_DIR"
+          echo "ASSEMBLE_DIR=$ASSEMBLE_DIR" >> "$GITHUB_ENV"
+
+      - name: Install claude CLI for validation
+        run: npm install --global @anthropic-ai/claude-code@2.1.284
+
+      - name: Validate the assembled plugin tree (strict manifest validation)
+        run: claude plugin validate "$ASSEMBLE_DIR" --strict
+
+      - name: Push the throwaway candidate branch
+        run: |
+          set -e
+          cd "$ASSEMBLE_DIR"
+          git init -q -b "${{ steps.candidate.outputs.candidate_branch }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "[DRY RUN] Claude Code plugin candidate rehearsal (run ${{ github.run_id }})"
+          git remote add origin "https://github.com/${{ github.repository }}.git"
+          AUTH_HEADER="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          git -c http.extraHeader="$AUTH_HEADER" push origin \
+            "HEAD:refs/heads/${{ steps.candidate.outputs.candidate_branch }}"
+          echo "Pushed dry-run candidate branch ${{ steps.candidate.outputs.candidate_branch }} at $(git rev-parse HEAD)"
+
+      - name: Open a draft pull request into release/plugins
+        id: pr
+        run: |
+          set -e
+          PR_BODY="[DRY RUN] Rehearsal of the plugin candidate publish path. Not a real release.
+
+          - Candidate branch: ${{ steps.candidate.outputs.candidate_branch }}
+          - Triggered manually (run ${{ github.run_id }}/${{ github.run_attempt }}) from ${{ github.sha }}.
+          - No tag, release, or merge is created by this run.
+          - Close this PR and delete the branch after reviewing it -- see this workflow's job summary for the exact cleanup commands."
+          PR_URL="$(gh pr create \
+            --repo "${{ github.repository }}" \
+            --base "$BASE_BRANCH" \
+            --head "${{ steps.candidate.outputs.candidate_branch }}" \
+            --title "[DRY RUN] Plugin candidate rehearsal (run ${{ github.run_id }})" \
+            --body "$PR_BODY" \
+            --draft)"
+          PR_NUMBER="$(printf '%s' "$PR_URL" | grep -oE '[0-9]+$')"
+          echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
+          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "Opened draft PR: $PR_URL"
+
+      - name: Report deterministic cleanup identifiers
+        # These two identifiers are everything a reviewer needs to clean up
+        # this run's remote state. Printed as plain, grep-able lines (not
+        # just left in prior step logs) so a cleanup script or a human can
+        # find them in one place regardless of how far they scroll.
+        run: |
+          echo "=== Dry-run cleanup identifiers ==="
+          echo "CANDIDATE_BRANCH=${{ steps.candidate.outputs.candidate_branch }}"
+          echo "PR_NUMBER=${{ steps.pr.outputs.pr_number }}"
+          echo "PR_URL=${{ steps.pr.outputs.pr_url }}"
+          echo "To clean up:"
+          echo "  gh pr close ${{ steps.pr.outputs.pr_number }} --repo ${{ github.repository }} --delete-branch"

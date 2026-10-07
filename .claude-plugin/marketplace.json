@@ -11,7 +11,7 @@
       "source": {
         "source": "github",
         "repo": "aws-solutions/konductor",
-        "ref": "claude-plugin"
+        "ref": "release/plugins"
       },
       "description": "Open-source AI agent framework that automates the software development lifecycle (SDLC) through a coordinated team of specialist agents and a structured delegation protocol.",
       "category": "developer-tools",

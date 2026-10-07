@@ -35,14 +35,15 @@ fields mean; it only knows how to compute `version` and `agents`, and (with
 a different root: scripts/assemble-claude-plugin-branch.sh (called from
 .github/workflows/release.yml's `publish-claude-plugin` job, and from
 `make claude-plugin-check`) is this script's only caller, and it renders
-plugin.json for the flat tree published to the `claude-plugin` branch,
-where `agents/` and `skills/` sit at the tree root instead of under
-`generated/claude-plugin/`. Any template string that starts with the
-default prefix (`./generated/claude-plugin/`) has that leading segment
-replaced with --path-prefix's value; every other string is left untouched.
-This is a generic, field-name-agnostic string rewrite (it also catches the
-template's static `skills` entry, not just the freshly computed `agents`
-list) rather than a special case tied to one specific field.
+plugin.json for the flat tree published via a candidate branch and draft PR
+into the protected `release/plugins` branch, where `agents/` and `skills/`
+sit at the tree root instead of under `generated/claude-plugin/`. Any
+template string that starts with the default prefix
+(`./generated/claude-plugin/`) has that leading segment replaced with
+--path-prefix's value; every other string is left untouched. This is a
+generic, field-name-agnostic string rewrite (it also catches the template's
+static `skills` entry, not just the freshly computed `agents` list) rather
+than a special case tied to one specific field.
 
 --agent-specs-dir and --mcp-output (both optional, required together) also
 render a SECOND file: .mcp.json, the plugin-level MCP server declaration

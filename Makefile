@@ -32,7 +32,8 @@
 #                     procedure. Output is gitignored -- see .gitignore --
 #                     so this is a local/CI build step, never something to
 #                     commit on main. The published plugin is built and
-#                     force-pushed to the `claude-plugin` branch by
+#                     pushed to a candidate branch, then merged into
+#                     `release/plugins` via a draft pull request, by
 #                     .github/workflows/release.yml's
 #                     `publish-claude-plugin` job (scripts/
 #                     assemble-claude-plugin-branch.sh), which calls this
