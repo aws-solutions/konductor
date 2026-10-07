@@ -16,8 +16,10 @@ location.
   for a guided tour, the `fuse-tutorial` skill.
 - If the user asks to continue substantial work that may already be in progress, or to start a new
   feature, system or other large workstream, load the `fuse-workstream` skill: it finds the
-  workstream to resume or suggests a suitable workflow. The user decides. If they decline, do not
-  suggest it again for that work.
+  workstream to resume or suggests a suitable workflow. Requests such as "let's build X", "I want a
+  new X" or "let's migrate X to Y" count. When unsure whether the work is large enough, load the
+  skill anyway: it decides, and says so when no workflow is needed. The user decides. If they
+  decline, do not suggest it again for that work.
 - Otherwise, do not bring it up.
 
 ## While a workstream runs
