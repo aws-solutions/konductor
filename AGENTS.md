@@ -15,6 +15,13 @@ If a path does not exist, skip it silently and continue.
 
 Konductor is an open-source package of skills, SOPs and workflows that automate the software development lifecycle. It ships as static configuration files compatible with Kiro CLI and Claude Code, with no runtime infrastructure required. The package ships no agent specs: an agent runs a workflow step by step and loads each step's skill directly (see `fuse/flow/`).
 
+## First session in this repository
+
+When the user opens a session here without a specific task, such as a greeting, "what is this?" or
+"how do I get started?", or asks for the tutorial, read `skills/fuse-tutorial/SKILL.md` and offer
+the tutorial it describes. Read it by that path: someone who just cloned the repository has usually
+not installed the skills yet, and the tutorial is also how they install them.
+
 ## Project Structure
 
 ```
