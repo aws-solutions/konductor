@@ -471,4 +471,3 @@ implement the path-glob heuristic now as one rule inside the trace normalizer (s
 [benchmark-protocol.md's Trace Normalization
 Layer](./benchmark-protocol.md#trace-normalization-layer)), while separately pursuing a dedicated
 structured event upstream in Kiro CLI as the better long-term fix.
-
