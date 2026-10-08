@@ -46,9 +46,20 @@ fresh, collision-resistant candidate branch, and opens a draft pull request
 into `release/plugins`. It never writes to `release/plugins` directly --
 the `plugins` branch ruleset blocks creation, update, deletion, and
 non-fast-forward there with no bypass actors, and the org-wide ruleset
-requires two approvals before any PR merges. After a human merges that PR,
-a separate workflow (`tag-claude-plugin-release.yml`) creates the immutable
-`claude-plugin-vX.Y.Z` tag on the merge commit.
+requires two approvals before any PR merges.
+
+After a human merges that PR, a repository admin runs
+`tag-claude-plugin-release.yml` manually (Actions -> Tag Claude Code plugin
+release -> Run workflow), supplying the merged PR's number. This is a
+manual, post-merge step, not an automatic trigger: `release/plugins` is
+artifact-only (no `.github/`, no `VERSION`, no `scripts/`), so a
+`pull_request`-triggered workflow -- which GitHub only runs from a copy of
+the workflow file on the PR's base branch -- would never find a copy of
+itself there to run. The workflow instead verifies the supplied PR through
+the GitHub API (merged, base is `release/plugins`, head starts with the
+real `plugin-candidate/` prefix), checks out the merge commit, reads the
+version from the published `.claude-plugin/plugin.json`, and creates the
+immutable `claude-plugin-vX.Y.Z` tag on that commit.
 
 The published branch contains:
 
@@ -119,3 +130,9 @@ tools once the server is configured; API tools still prompt for confirmation.
 - `scripts/rewrite-claude-plugin-mcp-tool-names.py` rewrites bundled tool
   grants for plugin namespacing.
 - `.github/workflows/release.yml` publishes the release tree.
+- `.github/workflows/tag-claude-plugin-release.yml` is a manually dispatched
+  workflow that creates the immutable `claude-plugin-vX.Y.Z` tag after a
+  human merges a candidate PR into `release/plugins`. It uses
+  `scripts/compute-plugin-release-tag.sh` for the same base/head/version
+  guards `scripts/validate-plugin-publish-preconditions.sh` applies before
+  publishing.

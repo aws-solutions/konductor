@@ -13,9 +13,10 @@ not per individual commit.
 - A Claude Code plugin marketplace install path: `/plugin marketplace add
   aws-solutions/konductor` then `/plugin install konductor@konductor`. See [Install via the
   Claude Code plugin marketplace](docs/user-guide/tasks/install-claude-plugin-marketplace.md).
-- `tag-claude-plugin-release.yml` tags each `release/plugins` merge with an immutable
-  `claude-plugin-vX.Y.Z` tag, so a `marketplace.json` entry can pin to a specific release
-  instead of the branch's moving HEAD.
+- `tag-claude-plugin-release.yml` is a manually dispatched workflow, run after a human merges a
+  plugin-candidate PR into `release/plugins`, that creates an immutable `claude-plugin-vX.Y.Z`
+  tag on the merge commit -- so a `marketplace.json` entry can pin to a specific release instead
+  of the branch's moving HEAD.
 
 ### Changed
 
