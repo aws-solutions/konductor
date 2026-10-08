@@ -252,16 +252,35 @@ Here the SOP ships as a native Claude Code skill invoked via `/sop-k-full-sdlc` 
 
 The orchestrator runs the SOP through every phase — codebase analysis through documentation — writing artifacts under `.konductor/`.
 
-## Optional Integrations
+## Optional integrations
 
-Two MCP servers ship pre-wired — AWS MCP on the architect and developer agents, Playwright on the browser agent. Two more agents support opt-in servers you configure yourself.
+Most MCP servers are user-configured. AWS MCP is the exception: Konductor
+pre-wires it for `k-architect` and `k-developer` on Claude Code.
 
-| Agent                        | Integration                                                                                                    | Setup                                                                                                                                                             |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `k-architect`, `k-developer` | [AWS MCP Server](https://aws.amazon.com/blogs/aws/aws-mcp-server/) — AWS documentation, region/service lookups | Install `uvx` and configure AWS credentials (`~/.aws/credentials` or environment variables). The agent degrades gracefully if credentials are absent.             |
-| `k-browser`                  | [`@playwright/mcp`](https://github.com/microsoft/playwright-mcp) — browser automation                          | Pre-wired, no separate install. Requires the Chromium binary: `npx playwright install chromium`.                                                                  |
-| `k-researcher`               | Slack search                                                                                                   | Opt-in — requires registering your own Slack app against the official Slack MCP server. See [docs/guides/slack-integration.md](docs/guides/slack-integration.md). |
-| `k-product-manager`          | Asana sprint planning (`asana-sprint-planning` skill)                                                          | Opt-in — requires an Asana MCP server (`https://mcp.asana.com/v2/mcp`). See [docs/guides/asana-integration.md](docs/guides/asana-integration.md).                 |
+### AWS MCP
+
+Claude Code starts `aws-mcp` with `mcp-proxy-for-aws-cli==1.7.0`. Install
+`uvx` and configure AWS credentials. Both affected agents can use the full
+server, including AWS API tools. Use the `aws:ViaAWSMCPService` and
+`aws:CalledViaAWSMCP` IAM condition keys to limit agent-initiated calls.
+
+Kiro CLI users must add `aws-mcp` to their MCP configuration. Knowledge tools
+are auto-approved; API tools prompt for confirmation. See [Install for Claude
+Code](docs/user-guide/tasks/install-claude-code.md#optional-integrations) or
+[Install for Kiro CLI](docs/user-guide/tasks/install-kiro-cli.md).
+
+The [AWS Agent Toolkit](https://github.com/aws/agent-toolkit-for-aws) also
+provides an OAuth connection, an AWS-managed plugin, and standalone skills.
+
+### Other integrations
+
+- **Browser automation:** `k-browser` expects a user-configured
+  [`@playwright/mcp`](https://github.com/microsoft/playwright-mcp) server.
+  Install Chromium after configuring it.
+- **Slack search:** `k-researcher` requires a Slack MCP server.
+  See [Slack integration](docs/guides/slack-integration.md).
+- **Asana:** `k-product-manager` requires an Asana MCP server.
+  See [Asana integration](docs/guides/asana-integration.md).
 
 ## Roadmap: The Konductor CLI
 

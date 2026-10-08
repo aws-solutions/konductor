@@ -7,8 +7,7 @@
 Registers the agent team with `claude`, and configures the two settings Claude Code requires before a
 team of agents can actually do anything.
 
-**Time required:** about 5 minutes — longer than Kiro CLI, because agent teams are an experimental
-Claude Code feature that has to be switched on and given tool permissions.
+Agent teams are experimental, so setup includes both an environment variable and tool permissions.
 
 ## Prerequisites
 
@@ -28,8 +27,7 @@ Claude Code feature that has to be switched on and given tool permissions.
 konductor install --harness claude
 ```
 
-On success it reports a per-content-type count — agents, skills, SOPs and context files — and
-says that two more settings are required before teammates can run. Both are below.
+On success it reports a per-content-type count: agents, skills, SOPs, and context files. Two more settings are required before teammates can run.
 
 Agent files land in `~/.claude/agents/`:
 
@@ -62,13 +60,12 @@ Or edit `~/.claude/settings.json` by hand:
 }
 ```
 
-Start a **new** session afterwards — it is read at startup.
+Start a **new** session afterwards. The configuration is read at startup.
 
 ### 3. Grant tool permissions
 
 This step is not optional. Background subagents cannot prompt you interactively, so **any tool not
-in `permissions.allow` is silently auto-denied** — no error, no prompt, the specialist simply
-cannot do its job.
+in `permissions.allow` is silently auto-denied. There is no error or prompt, so the specialist cannot work.
 
 Add a `permissions.allow` block to `~/.claude/settings.json`:
 
@@ -108,7 +105,7 @@ Permissions are **team-level**: they apply to every agent in the team, not per a
 runs inside its parent's permission context, so the parent has to hold a tool before any specialist
 it dispatches can use it.
 
-`allow` is one of three verdicts this file supports — `ask` prompts you, `deny` refuses outright.
+`allow` is one of three verdicts this file supports: `ask` prompts you and `deny` refuses outright.
 For an interactive session `ask` is a reasonable middle ground, but a background subagent has no
 way to answer a prompt, so in team mode `ask` lands as a silent denial. That is why this step is an
 allowlist rather than a mix.
@@ -144,7 +141,7 @@ claude --agent konductor -p "Create a threat model for a public REST API backed 
 That request routes to `k-architect`, which owns threat modeling via its `threat-modeling`
 skill.
 
-The same agent names work on Kiro CLI — see [Install for Kiro CLI](install-kiro-cli.md).
+The same agent names work on Kiro CLI. See [Install for Kiro CLI](install-kiro-cli.md).
 
 ---
 
@@ -153,7 +150,7 @@ The same agent names work on Kiro CLI — see [Install for Kiro CLI](install-kir
 | State | What happens |
 | --- | --- |
 | **Both settings configured** | The orchestrator spawns specialists, and they have the allowlisted tools. |
-| **Env var set, no `permissions.allow`** | Team mode silently degrades. Specialists spawn and then auto-deny every tool. Nothing errors — work just does not happen. |
+| **Env var set, no `permissions.allow`** | Team mode silently degrades. Specialists spawn and then auto-deny every tool. Nothing errors. |
 | **`permissions.allow` set, no env var** | Specialists never spawn. The orchestrator has no one to delegate to. |
 | **Claude Code older than v2.1.178** | Team mode is unavailable regardless of settings. |
 
@@ -170,8 +167,8 @@ Verify with the CLI first:
 konductor doctor
 ```
 
-It runs six checks — `source`, `runtime`, `manifest`, `config`, `container_runtime` and
-`index_status` — and prints a status per check plus remediation for anything that is not `ok`.
+It runs six checks: `source`, `runtime`, `manifest`, `config`, `container_runtime` and
+`index_status`. It prints a status and remediation for anything that is not `ok`.
 Exit code `0` when nothing failed. Full status vocabulary in
 [Diagnose problems](diagnose-problems.md).
 
@@ -200,19 +197,63 @@ this in `~/.claude/settings.json`:
 ```
 
 This is no longer the default as of Claude Code v2.1.179 and requires tmux or iTerm2 (with the
-`it2` CLI). It is display polish only — team mode itself needs just the environment variable above.
+`it2` CLI). It is display polish only. Team mode needs only the environment variable above.
 
 ---
 
 ## Optional integrations
 
-**AWS documentation lookups** — `k-architect` and `k-developer` request AWS MCP tools via
-the glob `mcp__aws-mcp__*`. Unlike their Kiro CLI configuration, the Claude Code configuration does
-**not** launch the server itself, so you must configure an `aws-mcp` MCP server in Claude Code
-yourself for those tools to resolve.
+MCP servers are bring-your-own on Claude Code, with one packaged exception: AWS MCP.
+Everything else you configure yourself, the same way you would for any other MCP server.
+Konductor's AWS MCP setup follows the [Agent Toolkit for AWS](https://github.com/aws/agent-toolkit-for-aws),
+the upstream source of truth for the package (`mcp-proxy-for-aws-cli`) and args. Konductor keeps
+its own `aws-mcp` server key rather than the toolkit README's `aws` key, for continuity with
+AWS's own getting-started docs, OAuth commands, and existing configs.
 
-**Browser automation** — `k-browser` requests `mcp__playwright-mcp__*`, with the same caveat.
-Install the browser binary:
+**AWS documentation lookups:** `k-architect` and `k-developer` request the whole `aws-mcp`
+server via the `mcp__aws-mcp__*` glob, so every tool it exposes is granted, including the
+AWS-API-acting ones (see Tool grant below). Each agent's rendered `.md` file carries an
+`mcpServers:` entry (built from `dependencies.mcpRegistry`, filtered to just this server,
+launched via `uvx mcp-proxy-for-aws-cli==1.7.0`), so this `konductor install --harness claude`
+install launches the server itself. No separate MCP server configuration is needed. This is also
+true if you installed via the [Claude Code plugin marketplace](install-claude-plugin-marketplace.md)
+instead: the plugin ships a plugin-level `.mcp.json` for the same server, with the granted
+tool rewritten to its real plugin-scoped name Claude Code resolves for a plugin subagent. The
+server auto-starts as soon as the plugin (or standalone install) is enabled, launching
+`mcp-proxy-for-aws-cli==1.7.0`. The proxy is pinned for repeatable client behavior; AWS
+service documentation and skills still come from the managed endpoint at request time. Install `uvx`
+and configure AWS credentials (`~/.aws/credentials` or environment variables) so the agent has
+something to authenticate with; it degrades gracefully if credentials are absent.
+
+**Tool grant: the whole server.** `k-architect`/`k-developer` grant every tool the server
+exposes: the five AWS knowledge/documentation tools (`aws___search_documentation`,
+`aws___retrieve_skill`, `aws___read_documentation`, `aws___list_regions`,
+`aws___get_regional_availability`) and the three AWS-API-acting tools (`aws___run_script`,
+which runs sandboxed Python with AWS API access; `aws___get_presigned_url`; `aws___get_tasks`).
+Once a tool call runs, it uses your own IAM credentials. Use the `aws:ViaAWSMCPService`
+(boolean) and `aws:CalledViaAWSMCP` (string, `aws-mcp.amazonaws.com` for this server) global IAM
+condition keys to scope or audit what an agent can do through the MCP server specifically; see
+[Understanding IAM for managed AWS MCP servers](https://aws.amazon.com/blogs/security/understanding-iam-for-managed-aws-mcp-servers/).
+
+**Alternatives the toolkit documents** (not what Konductor's own `.mcp.json`/`mcpServers:` uses,
+but valid ways to reach the same server): `claude mcp add aws-mcp
+https://aws-mcp.us-east-1.api.aws/mcp --transport http` connects directly over OAuth with no
+local `uvx` process at all (requires the `AWSMCPSignInOAuthAccessPolicy` managed policy).
+`/plugin install aws-core@claude-plugins-official` installs AWS's own official plugin, which
+bundles the server config and the toolkit's agent skills together, maintained by AWS rather
+than by this repo. `npx skills add aws/agent-toolkit-for-aws/skills` installs the toolkit's own
+skills independently of Konductor's `aws-service-validator`.
+
+**Browser automation:** `k-browser` requests `mcp__playwright-mcp__*`, but nothing installs
+or launches `playwright-mcp` for you. It is bring-your-own on every harness, standalone
+install or plugin alike. Register it yourself:
+
+```bash
+claude mcp add playwright-mcp -- npx -y @playwright/mcp@latest
+```
+
+Add `--scope user` if you want it available across every project rather than just the
+current one (the default `local` scope). Also install the browser binary:
 
 ```bash
 npx playwright install chromium
@@ -229,6 +270,12 @@ See [docs/guides/slack-integration.md](../../guides/slack-integration.md) for de
 
 ---
 
+## Related
+
+- [Install via the Claude Code plugin marketplace](install-claude-plugin-marketplace.md): an
+  alternative to the steps above, once the first release merges a plugin candidate PR into the
+  `release/plugins` branch
+- [Install for Kiro CLI](install-kiro-cli.md): the other runtime
 
 ---
 

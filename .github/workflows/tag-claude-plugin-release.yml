@@ -1,0 +1,326 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Tag Claude Code plugin release
+
+# Creates the immutable claude-plugin-vX.Y.Z tag after a plugin-candidate PR
+# merges into the protected release/plugins branch. This is the only step
+# in the whole plugin-publish path that writes to release/plugins' history
+# in the sense of adding a tag pointed at it -- and even that is additive
+# (tag creation only; plugin-release-tags blocks update/delete/
+# non-fast-forward) and happens only after a human merged the PR under the
+# plugins and org-wide branch rulesets. This workflow never pushes a
+# branch, never force-pushes, and never writes to release/plugins itself.
+#
+# release.yml's publish-claude-plugin job pushes a disposable candidate
+# branch and opens a draft PR into release/plugins; it does not create this
+# tag.
+#
+# Manual workflow_dispatch, not pull_request.closed: GitHub only runs a
+# pull_request-triggered workflow from a copy of the workflow file that
+# exists on the PR's BASE branch
+# (https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request).
+# release/plugins is artifact-only -- scripts/assemble-claude-plugin-branch.sh
+# publishes only agents/, skills/, README.md, LICENSE.txt, and the rendered
+# .claude-plugin/plugin.json/.mcp.json there, never .github/, VERSION, or
+# scripts/. A pull_request.closed trigger on this file would therefore
+# never fire for a merge into release/plugins: there is no copy of this
+# workflow, scripts/compute-plugin-release-tag.sh, or the root VERSION file
+# on that branch for GitHub to run.
+#
+# workflow_dispatch only runs the copy of the workflow file that lives on
+# the repository's default branch, which is `main` here (see release.yml's
+# own "push: branches: [main]" trigger). But GitHub's own docs note that
+# "once a workflow has run at least once, you can dispatch it against any
+# branch or tag via the GitHub API or GitHub CLI" -- the workflow DEFINITION
+# always comes from main, but a specific RUN of it can still be pointed at
+# any other ref. Every step below trusts scripts/compute-plugin-release-tag.sh
+# and scripts/validate-version-semver.sh checked out from `github.ref`
+# (default checkout, no `ref:` override) as if they were main's own trusted
+# copies, so a run dispatched against another branch would read those
+# helper scripts from that branch's content instead. The first step below
+# fails closed unless this run's own ref is main, before any of that
+# checkout, API call, or helper-script read happens. Once past that guard,
+# this workflow runs from main's own checkout, reading VERSION-independent
+# scripts from there, and only checks out the merge commit on
+# release/plugins (via `ref:` below) for the small set of plugin-tree files
+# it actually needs (.claude-plugin/plugin.json) to derive the version. A
+# human runs this manually, from Actions -> this workflow -> Run workflow,
+# entering the merged PR's number, after confirming the merge into
+# release/plugins happened.
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: >-
+          Number of the merged pull request into release/plugins to tag
+          (e.g. 42). The PR must already be merged -- this workflow verifies
+          that itself and fails closed if it is not.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  tag-release:
+    name: Create claude-plugin-vX.Y.Z tag
+    if: github.repository == 'aws-solutions/konductor'
+    runs-on: ubuntu-latest
+    # contents: write is granted only on this job, only for the tag-push
+    # step below, and only after every guard has passed.
+    # pull-requests: read is the minimum scope `gh pr view` needs to read
+    # the supplied PR's state/base/head/merge-commit-sha; it cannot write
+    # anything.
+    permissions:
+      contents: write
+      pull-requests: read
+
+    steps:
+      - name: Fail closed unless dispatched from main
+        # workflow_dispatch can target any branch or tag once a workflow
+        # has run once from the default branch (GitHub's own docs: "you
+        # can dispatch it against any branch or tag via the GitHub API or
+        # GitHub CLI"). The next step's checkout has no `ref:` override,
+        # so it resolves to this run's own ref, not necessarily main --
+        # meaning a non-main dispatch would make every later step trust
+        # scripts/compute-plugin-release-tag.sh and
+        # scripts/validate-version-semver.sh from that other ref instead
+        # of main's. This must run first, before that checkout, the PR
+        # API call, or any token-bound step.
+        env:
+          DISPATCH_REF: ${{ github.ref }}
+          DISPATCH_REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -e
+          if [ "$DISPATCH_REF" != "refs/heads/main" ] \
+            || [ "$DISPATCH_REF_NAME" != "main" ]; then
+            echo "FATAL: dispatched from ref '$DISPATCH_REF' (ref_name" \
+              "'$DISPATCH_REF_NAME'), not main. Refusing to trust helper" \
+              "scripts from a non-main ref. Failing closed." >&2
+            exit 1
+          fi
+
+      - name: Checkout the default branch (for VERSION-independent scripts)
+        # Stays on main's own tip -- no `ref:` override. This checkout's
+        # only job is to supply scripts/validate-version-semver.sh and
+        # scripts/compute-plugin-release-tag.sh from a trusted ref, not
+        # from whatever the supplied PR number's merge commit on
+        # release/plugins happens to contain.
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
+
+      - name: Validate the pr_number input is purely numeric
+        # workflow_dispatch inputs are free-form text even when `type:
+        # string` is the only option GitHub offers for a bounded numeric
+        # value -- validate the shape here, before it's used to build a
+        # `gh pr view` argument, rather than trust the UI/API caller.
+        # Bound through env, not interpolated into the script body, per
+        # GitHub's own hardening guidance for untrusted workflow_dispatch
+        # input text:
+        # https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions
+        env:
+          PR_NUMBER: ${{ inputs.pr_number }}
+        run: |
+          set -e
+          case "$PR_NUMBER" in
+            ''|*[!0-9]*)
+              echo "FATAL: pr_number '$PR_NUMBER' is not a positive integer. Failing closed." >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Read the pull request's state, base, head, and merge commit
+        id: pr
+        env:
+          PR_NUMBER: ${{ inputs.pr_number }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -e
+          # One `gh pr view` call, one jq pass -- avoids a separate round
+          # trip per field and keeps the four values read as of the same
+          # API response. mergeCommit.oid is null (jq's `// empty` prints
+          # nothing) for an unmerged, closed-without-merging, or still-open
+          # PR -- the merged guard below is what actually enforces "must be
+          # merged", not the mere presence of this field.
+          FIELDS="$(gh pr view "$PR_NUMBER" \
+            --json state,mergeCommit,baseRefName,headRefName \
+            --jq '[.state, (.mergeCommit.oid // ""), .baseRefName, .headRefName] | join("|")')"
+          IFS='|' read -r PR_STATE PR_MERGE_SHA PR_BASE_REF PR_HEAD_REF <<< "$FIELDS"
+          {
+            echo "state=$PR_STATE"
+            echo "merge_sha=$PR_MERGE_SHA"
+            echo "base_ref=$PR_BASE_REF"
+            echo "head_ref=$PR_HEAD_REF"
+          } >> "$GITHUB_OUTPUT"
+          echo "Read PR #$PR_NUMBER: state=$PR_STATE base=$PR_BASE_REF head=$PR_HEAD_REF merge_sha=${PR_MERGE_SHA:-<none>}"
+
+      - name: Fail closed unless the PR is actually merged, with a merge commit
+        # Hard failure, not a quiet skip: unlike the old pull_request.closed
+        # trigger (which ran on every closed PR and had to skip the common
+        # "closed without merging" case without erroring), this workflow is
+        # manually dispatched against one explicitly supplied PR number. If
+        # that PR isn't merged, the operator asked to tag something that
+        # doesn't qualify -- that's a mistake to report, not a silent no-op.
+        env:
+          PR_STATE: ${{ steps.pr.outputs.state }}
+          PR_MERGE_SHA: ${{ steps.pr.outputs.merge_sha }}
+        run: |
+          set -e
+          if [ "$PR_STATE" != "MERGED" ]; then
+            echo "FATAL: PR is not merged (state=$PR_STATE). Refusing to tag an unmerged pull request. Failing closed." >&2
+            exit 1
+          fi
+          # GitHub's schema documents merge_commit_sha as nullable even on
+          # a merged pull request in rare cases (e.g. a merge recorded
+          # through a path that didn't populate it). This workflow checks
+          # out that exact commit next, so an empty value here must stop
+          # the run rather than resolve to some other ref by accident.
+          if [ -z "$PR_MERGE_SHA" ]; then
+            echo "FATAL: PR is reported as merged but has no merge commit SHA. Failing closed." >&2
+            exit 1
+          fi
+
+      - name: Check out the merge commit on release/plugins
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
+        with:
+          ref: ${{ steps.pr.outputs.merge_sha }}
+          fetch-depth: 0
+
+      - name: Validate artifact presence at the merge commit
+        # Confirms this checkout really is the published flat plugin tree
+        # scripts/assemble-claude-plugin-branch.sh produces, not an empty or
+        # unexpectedly-shaped commit -- the exact files that tree's own
+        # script guarantees are present (see that script's own checks for
+        # README.md/LICENSE.txt and its explicit mkdir/cp list for
+        # everything else).
+        run: |
+          set -e
+          MISSING=""
+          for f in ".claude-plugin/plugin.json" ".mcp.json" "README.md" "LICENSE.txt"; do
+            if [ ! -f "$f" ]; then
+              MISSING="$MISSING $f"
+            fi
+          done
+          if [ ! -d "agents" ] || [ -z "$(ls -A agents 2>/dev/null)" ]; then
+            MISSING="$MISSING agents/(missing-or-empty)"
+          fi
+          if [ ! -d "skills" ] || [ -z "$(ls -A skills 2>/dev/null)" ]; then
+            MISSING="$MISSING skills/(missing-or-empty)"
+          fi
+          if [ -n "$MISSING" ]; then
+            echo "FATAL: merge commit is missing expected published plugin artifact(s):$MISSING. Failing closed." >&2
+            exit 1
+          fi
+          echo "Artifact presence confirmed at the merge commit."
+
+      - name: Parse and validate the version from .claude-plugin/plugin.json
+        id: version
+        # Reads the version from the published manifest itself, not the
+        # root VERSION file or any source-only script -- release/plugins
+        # carries no VERSION file at all (it is artifact-only), and
+        # .claude-plugin/plugin.json's own `version` field is exactly what
+        # scripts/render-claude-plugin-json.py wrote from VERSION at
+        # publish time (see that script's own module docstring). Parsing
+        # the manifest directly here stays correct even if that rendering
+        # path's source changes later.
+        run: |
+          set -e
+          RAW_VERSION="$(jq -r '.version // empty' .claude-plugin/plugin.json)"
+          if [ -z "$RAW_VERSION" ]; then
+            echo "FATAL: .claude-plugin/plugin.json has no 'version' field. Failing closed." >&2
+            exit 1
+          fi
+          scripts/validate-version-semver.sh "$RAW_VERSION"
+          echo "version=$RAW_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Decide the tag name (re-confirms every guard against the real version)
+        id: decide
+        # Delegates the base/head/merged/version guards to
+        # scripts/compute-plugin-release-tag.sh -- the single, directly
+        # tested unit tag-claude-plugin-release.yml has always used for
+        # this decision (see tests/test_compute_plugin_release_tag.py) --
+        # instead of re-implementing the same case statements inline here.
+        # This step is a final, defense-in-depth confirmation: the merged
+        # guard above already stopped an unmerged PR, so --merged is always
+        # "true" by the time this step runs; passing it through the script
+        # anyway (rather than skipping straight to tag-name formatting)
+        # keeps base-ref/head-ref/version-format validated by the exact
+        # same tested logic a real tag creation always goes through, the
+        # same "don't trust that an earlier step enforced it correctly"
+        # posture scripts/validate-plugin-publish-preconditions.sh's own
+        # header comment documents for its own re-checks.
+        #
+        # Every value below comes from the GitHub API response read above
+        # (steps.pr.outputs) or from the merge commit's own
+        # .claude-plugin/plugin.json (steps.version.outputs), never
+        # directly from workflow_dispatch input text -- so the shell-
+        # injection concern that applies to a raw `${{ inputs.* }}`
+        # expansion in a run: body does not apply to these values. They
+        # are still routed through env (not inlined into the script
+        # invocation) for the same defense-in-depth reason
+        # compute-plugin-release-tag.sh's own PR_HEAD_REF binding exists:
+        # a forked PR's branch name is attacker-controlled text regardless
+        # of where it is read from.
+        env:
+          PR_BASE_REF: ${{ steps.pr.outputs.base_ref }}
+          PR_HEAD_REF: ${{ steps.pr.outputs.head_ref }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set +e
+          TAG="$(scripts/compute-plugin-release-tag.sh \
+            --merged true \
+            --base-ref "$PR_BASE_REF" \
+            --head-ref "$PR_HEAD_REF" \
+            --version "$RELEASE_VERSION")"
+          STATUS=$?
+          set -e
+          if [ "$STATUS" -ne 0 ]; then
+            # Both exit 10 ("doesn't qualify", meant as a quiet skip for
+            # the old every-closed-PR trigger) and exit 1 (malformed
+            # input) are hard failures here: this workflow was manually
+            # pointed at one specific PR, already confirmed merged above,
+            # so any disqualification compute-plugin-release-tag.sh finds
+            # at this point means a guard this workflow itself validated
+            # disagrees with the script's own re-check -- an inconsistency
+            # to fail closed on, not a case to shrug off silently.
+            echo "FATAL: this PR does not qualify for a claude-plugin-v* tag (compute-plugin-release-tag.sh exited $STATUS; see its own message above). Failing closed." >&2
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Confirm the tag does not already exist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set +e
+          git ls-remote --exit-code --tags "https://github.com/${{ github.repository }}.git" "refs/tags/${{ steps.decide.outputs.tag }}" >/dev/null 2>&1
+          STATUS=$?
+          set -e
+          case "$STATUS" in
+            2) : ;; # Not found -- safe to proceed.
+            0)
+              echo "FATAL: tag '${{ steps.decide.outputs.tag }}' already exists; refusing to touch an immutable plugin release tag." >&2
+              exit 1
+              ;;
+            *)
+              echo "FATAL: could not confirm tag availability (ls-remote exited $STATUS). Failing closed." >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Create and push the immutable release tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.decide.outputs.tag }}" \
+            -m "Claude Code plugin release ${{ steps.version.outputs.version }}" \
+            "${{ steps.pr.outputs.merge_sha }}"
+          AUTH_HEADER="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          # Plain push of a new tag ref -- no --force, no branch write, no
+          # product release assets. plugin-release-tags itself still blocks
+          # anything but creation if this ever tries to touch an existing tag.
+          git -c http.extraHeader="$AUTH_HEADER" push origin \
+            "refs/tags/${{ steps.decide.outputs.tag }}"
+          echo "Tagged ${{ steps.pr.outputs.merge_sha }} as ${{ steps.decide.outputs.tag }}"

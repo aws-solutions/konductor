@@ -1,0 +1,10 @@
+{
+  "$comment": "Lists the MCP server names bundled with Konductor's Claude Code outputs (read by scripts/read-bundled-mcp-servers.sh into the --claude-bundled-mcp-servers allowlist). Only aws-mcp is bundled; other MCP servers are user-configured. Each agent spec under agents/*.agent-spec.json declares its own bundled server's launch command/args directly in dependencies.mcpRegistry -- that is the single source of truth for the pinned command, not this file, so no definition is duplicated here.",
+  "bundled": {
+    "aws-mcp": {}
+  },
+  "byo": {
+    "$comment": "This section is documentation only. Entries here are not generated into plugin or standalone MCP configuration.",
+    "playwright-mcp": "Configure it using the instructions in docs/user-guide/tasks/install-claude-code.md or docs/user-guide/tasks/install-kiro-cli.md."
+  }
+}

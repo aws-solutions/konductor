@@ -181,6 +181,7 @@ pub trait HarnessTransformer: Sync {
 pub fn dispatch_synth_with(
     target_dir: &Path,
     from: Option<String>,
+    claude_bundled_mcp_servers: Option<String>,
     verbose: bool,
     json: bool,
     color: ColorMode,
@@ -191,7 +192,7 @@ pub fn dispatch_synth_with(
     };
     let output_root: PathBuf = source_dir.join("dist");
 
-    let model = match parse_canonical(&source_dir) {
+    let mut model = match parse_canonical(&source_dir) {
         Ok(model) => model,
         Err(err) => {
             crate::cli::report::report_error(
@@ -207,6 +208,24 @@ pub fn dispatch_synth_with(
             return EXIT_USAGE_ERROR;
         }
     };
+
+    // Only explicitly bundled MCP servers reach rendered Claude agents.
+    // Apply the allowlist once before transformers run.
+    let bundled_mcp_allowlist: std::collections::HashSet<String> = claude_bundled_mcp_servers
+        .as_deref()
+        .unwrap_or("")
+        .split(',')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string)
+        .collect();
+
+    for agent in &mut model.agents {
+        agent
+            .dependencies
+            .mcp_registry
+            .retain(|name, _| bundled_mcp_allowlist.contains(name));
+    }
 
     // Transformer-layer defense-in-depth: every registered transformer
     // below receives this same `model` value, so this check runs once,
@@ -664,7 +683,7 @@ mod tests {
     #[test]
     fn dispatch_synth_returns_zero_on_empty_source_tree() {
         let root = scratch_dir("empty-ok");
-        let code = dispatch_synth_with(&root, None, false, false, ColorMode::disabled());
+        let code = dispatch_synth_with(&root, None, None, false, false, ColorMode::disabled());
         assert_eq!(code, 0);
         fs::remove_dir_all(&root).ok();
     }
@@ -693,6 +712,7 @@ mod tests {
         let code = dispatch_synth_with(
             &unrelated_target_dir,
             Some(local_root.display().to_string()),
+            None,
             false,
             false,
             ColorMode::disabled(),
@@ -720,11 +740,105 @@ mod tests {
         let code = dispatch_synth_with(
             &bogus_target,
             Some(root.display().to_string()),
+            None,
             false,
             false,
             ColorMode::disabled(),
         );
         assert_eq!(code, 0);
+        fs::remove_dir_all(&root).ok();
+    }
+
+    /// `--claude-bundled-mcp-servers aws-mcp` merges only the `aws-mcp`
+    /// entry of an agent's `dependencies.mcpRegistry` into the rendered
+    /// Claude agent file, dropping `playwright-mcp` (or any other
+    /// registry entry) even though both are declared on the same agent
+    /// spec. This is the actual `dispatch_synth_with` entry point real
+    /// callers use (`konductor synth --claude-bundled-mcp-servers ...`),
+    /// not `claude.rs`'s own lower-level `render_agent_md`/`transform`
+    /// unit tests, which construct a `CanonicalModel` directly and so
+    /// never exercise this filtering step at all.
+    #[test]
+    fn dispatch_synth_with_bundled_mcp_servers_merges_only_the_allowlisted_registry_entry() {
+        let root = scratch_dir("bundled-mcp-allowlist");
+        fs::create_dir_all(root.join("agents")).unwrap();
+        fs::write(
+            root.join("agents/k-example.agent-spec.json"),
+            br#"{
+                "schemaVersion": "1",
+                "name": "k-example",
+                "config": {"description": "d", "systemPrompt": "p", "model": "m"},
+                "dependencies": {
+                    "mcpRegistry": {
+                        "aws-mcp": {"command": "uvx", "args": ["mcp-proxy-for-aws@latest"]},
+                        "playwright-mcp": {"command": "npx", "args": ["-y", "@playwright/mcp@latest"]}
+                    }
+                },
+                "clientConfig": {"claudeCli": {}}
+            }"#,
+        )
+        .unwrap();
+
+        let code = dispatch_synth_with(
+            &root,
+            None,
+            Some("aws-mcp".to_string()),
+            false,
+            false,
+            ColorMode::disabled(),
+        );
+        assert_eq!(code, 0);
+
+        let written = fs::read_to_string(root.join("dist/claude/agents/k-example.md")).unwrap();
+        assert!(
+            written.contains("aws-mcp"),
+            "expected the allowlisted aws-mcp registry entry to be merged in, got:\n{written}"
+        );
+        assert!(
+            !written.contains("playwright-mcp"),
+            "expected playwright-mcp to be dropped since it is not in the allowlist, got:\n{written}"
+        );
+
+        fs::remove_dir_all(&root).ok();
+    }
+
+    /// Companion to `dispatch_synth_with_no_bundled_mcp_servers_flag_merges_nothing_from_the_registry`
+    /// below: omitting `--claude-bundled-mcp-servers` entirely (the
+    /// `None` every other call site in this module passes) must merge
+    /// NOTHING from `dependencies.mcpRegistry`, preserving the
+    /// pre-bundling default of bare tool grants with no `mcpServers:` key
+    /// at all -- this is the "matching this field's behavior before any
+    /// caller opts a server in" guarantee documented on the CLI flag
+    /// itself (`cli.rs`'s `claude_bundled_mcp_servers` doc comment).
+    #[test]
+    fn dispatch_synth_with_no_bundled_mcp_servers_flag_merges_nothing_from_the_registry() {
+        let root = scratch_dir("bundled-mcp-allowlist-absent");
+        fs::create_dir_all(root.join("agents")).unwrap();
+        fs::write(
+            root.join("agents/k-example.agent-spec.json"),
+            br#"{
+                "schemaVersion": "1",
+                "name": "k-example",
+                "config": {"description": "d", "systemPrompt": "p", "model": "m"},
+                "dependencies": {
+                    "mcpRegistry": {
+                        "aws-mcp": {"command": "uvx", "args": ["mcp-proxy-for-aws@latest"]}
+                    }
+                },
+                "clientConfig": {"claudeCli": {}}
+            }"#,
+        )
+        .unwrap();
+
+        let code = dispatch_synth_with(&root, None, None, false, false, ColorMode::disabled());
+        assert_eq!(code, 0);
+
+        let written = fs::read_to_string(root.join("dist/claude/agents/k-example.md")).unwrap();
+        assert!(
+            !written.contains("mcpServers:"),
+            "expected no mcpServers: key when --claude-bundled-mcp-servers is omitted, got:\n{written}"
+        );
+
         fs::remove_dir_all(&root).ok();
     }
 
@@ -735,7 +849,7 @@ mod tests {
         let root = scratch_dir("source-is-file");
         let file_path = root.join("not-a-dir");
         fs::write(&file_path, b"not a directory").unwrap();
-        let code = dispatch_synth_with(&file_path, None, false, false, ColorMode::disabled());
+        let code = dispatch_synth_with(&file_path, None, None, false, false, ColorMode::disabled());
         assert_eq!(code, EXIT_USAGE_ERROR);
         fs::remove_dir_all(&root).ok();
     }
@@ -744,7 +858,7 @@ mod tests {
     fn dispatch_synth_copies_root_version_file_into_dist_output_root() {
         let root = scratch_dir("version-copy");
         fs::write(root.join("VERSION"), "1.2.3\n").unwrap();
-        let code = dispatch_synth_with(&root, None, false, false, ColorMode::disabled());
+        let code = dispatch_synth_with(&root, None, None, false, false, ColorMode::disabled());
         assert_eq!(code, 0);
         let copied = fs::read_to_string(root.join("dist").join("VERSION")).unwrap();
         assert_eq!(copied, "1.2.3\n");
@@ -754,7 +868,7 @@ mod tests {
     #[test]
     fn dispatch_synth_succeeds_without_writing_dist_version_when_root_version_is_absent() {
         let root = scratch_dir("no-version-at-root");
-        let code = dispatch_synth_with(&root, None, false, false, ColorMode::disabled());
+        let code = dispatch_synth_with(&root, None, None, false, false, ColorMode::disabled());
         assert_eq!(code, 0);
         assert!(!root.join("dist").join("VERSION").exists());
         fs::remove_dir_all(&root).ok();
@@ -770,7 +884,8 @@ mod tests {
 
         // First run: root VERSION present, so it's copied to dist/.
         fs::write(root.join("VERSION"), "1.2.3\n").unwrap();
-        let first_code = dispatch_synth_with(&root, None, false, false, ColorMode::disabled());
+        let first_code =
+            dispatch_synth_with(&root, None, None, false, false, ColorMode::disabled());
         assert_eq!(first_code, 0);
         assert!(
             root.join("dist").join("VERSION").exists(),
@@ -780,7 +895,8 @@ mod tests {
         // Second run against the SAME dist/: root VERSION removed, so
         // the source now has none.
         fs::remove_file(root.join("VERSION")).unwrap();
-        let second_code = dispatch_synth_with(&root, None, false, false, ColorMode::disabled());
+        let second_code =
+            dispatch_synth_with(&root, None, None, false, false, ColorMode::disabled());
         assert_eq!(second_code, 0);
         assert!(
             !root.join("dist").join("VERSION").exists(),
@@ -807,7 +923,8 @@ mod tests {
         // First run: root VERSION present and readable, so it's copied
         // to dist/ normally.
         fs::write(root.join("VERSION"), "1.2.3\n").unwrap();
-        let first_code = dispatch_synth_with(&root, None, false, false, ColorMode::disabled());
+        let first_code =
+            dispatch_synth_with(&root, None, None, false, false, ColorMode::disabled());
         assert_eq!(first_code, 0);
         assert!(root.join("dist").join("VERSION").exists());
 
@@ -818,7 +935,8 @@ mod tests {
         fs::remove_file(root.join("VERSION")).unwrap();
         fs::create_dir_all(root.join("VERSION")).unwrap();
 
-        let second_code = dispatch_synth_with(&root, None, false, false, ColorMode::disabled());
+        let second_code =
+            dispatch_synth_with(&root, None, None, false, false, ColorMode::disabled());
 
         assert_eq!(
             second_code, 0,
@@ -853,7 +971,7 @@ mod tests {
         // succeeding.
         fs::create_dir_all(root.join("dist").join("VERSION")).unwrap();
 
-        let code = dispatch_synth_with(&root, None, false, false, ColorMode::disabled());
+        let code = dispatch_synth_with(&root, None, None, false, false, ColorMode::disabled());
 
         assert_eq!(
             code, 0,
@@ -882,7 +1000,7 @@ mod tests {
     fn dispatch_synth_packages_dist_version_into_the_tarball_artifact() {
         let root = scratch_dir("version-in-tarball");
         fs::write(root.join("VERSION"), "9.9.9\n").unwrap();
-        let code = dispatch_synth_with(&root, None, false, false, ColorMode::disabled());
+        let code = dispatch_synth_with(&root, None, None, false, false, ColorMode::disabled());
         assert_eq!(code, 0);
 
         let artifact_bytes = fs::read(root.join("dist").join(artifact_filename())).unwrap();
@@ -1251,7 +1369,8 @@ mod tests {
         fs::create_dir_all(root.join("context")).unwrap();
         fs::write(root.join("context/notes.md"), b"# Notes\n").unwrap();
 
-        let first_code = dispatch_synth_with(&root, None, false, false, ColorMode::disabled());
+        let first_code =
+            dispatch_synth_with(&root, None, None, false, false, ColorMode::disabled());
         assert_eq!(first_code, 0, "first synth run must succeed");
         let first_snapshot = snapshot_dir(&root.join("dist"));
         assert!(
@@ -1259,7 +1378,8 @@ mod tests {
             "expected the first run to write something under dist/"
         );
 
-        let second_code = dispatch_synth_with(&root, None, false, false, ColorMode::disabled());
+        let second_code =
+            dispatch_synth_with(&root, None, None, false, false, ColorMode::disabled());
         assert_eq!(second_code, 0, "second synth run must succeed");
         let second_snapshot = snapshot_dir(&root.join("dist"));
 
@@ -1508,7 +1628,7 @@ mod tests {
         fs::write(&legacy_artifact, b"leftover legacy artifact bytes").unwrap();
         fs::write(&legacy_sidecar, b"leftover legacy sidecar bytes").unwrap();
 
-        let code = dispatch_synth_with(&root, None, false, false, ColorMode::disabled());
+        let code = dispatch_synth_with(&root, None, None, false, false, ColorMode::disabled());
         assert_eq!(code, 0, "synth must succeed against an empty source tree");
 
         assert!(
@@ -1530,6 +1650,52 @@ mod tests {
                 .any(|e| e.contains("x86_64-unknown-linux-gnu")),
             "the legacy leftover must never appear as an entry inside the freshly \
              packaged tarball, got entries: {entries:?}"
+        );
+
+        fs::remove_dir_all(&root).ok();
+    }
+
+    /// Direct-pin regression: an agent spec that declares the pinned
+    /// `aws-mcp` command directly in its own `dependencies.mcpRegistry`
+    /// (no `--claude-bundled-mcp-config` override involved -- that flag
+    /// no longer exists) must have the pinned package reach the
+    /// rendered Claude agent file unchanged, once allowlisted via
+    /// `--claude-bundled-mcp-servers`.
+    #[test]
+    fn dispatch_synth_with_bundled_mcp_servers_renders_the_agent_specs_own_pinned_command() {
+        let root = scratch_dir("bundled-mcp-direct-pin");
+        fs::create_dir_all(root.join("agents")).unwrap();
+        fs::write(
+            root.join("agents/k-example.agent-spec.json"),
+            br#"{
+                "schemaVersion": "1",
+                "name": "k-example",
+                "config": {"description": "d", "systemPrompt": "p", "model": "m"},
+                "dependencies": {
+                    "mcpRegistry": {
+                        "aws-mcp": {"command": "uvx", "args": ["mcp-proxy-for-aws-cli==1.7.0"]}
+                    }
+                },
+                "clientConfig": {"claudeCli": {}}
+            }"#,
+        )
+        .unwrap();
+
+        let code = dispatch_synth_with(
+            &root,
+            None,
+            Some("aws-mcp".to_string()),
+            false,
+            false,
+            ColorMode::disabled(),
+        );
+        assert_eq!(code, 0);
+
+        let written = fs::read_to_string(root.join("dist/claude/agents/k-example.md")).unwrap();
+        assert!(
+            written.contains("mcp-proxy-for-aws-cli==1.7.0"),
+            "expected the agent spec's own pinned command to render \
+             unchanged, got:\n{written}"
         );
 
         fs::remove_dir_all(&root).ok();

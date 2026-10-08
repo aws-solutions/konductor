@@ -1333,6 +1333,7 @@ fn report_install_success(
                     "sops_skipped": from
                         .map(|f| count_staged_sops(f, harness_dir))
                         .unwrap_or(0),
+                    "sops_converted_to_skills": sops_are_converted_to_skills(harness_dir),
                     "replaced_foreign": 0,
                     "agent_version": agent_version,
                     "mcp_binary_version": mcp_binary_version,
@@ -1375,6 +1376,7 @@ fn report_install_success(
             sops_skipped,
             agent_version.as_deref(),
             mcp_binary_version.as_deref(),
+            harness_dir,
         );
         if let Some(result) = &link_bin_result {
             merge_link_bin_json(&mut value, result);
@@ -1395,6 +1397,7 @@ fn report_install_success(
         sops_skipped,
         agent_version.as_deref(),
         mcp_binary_version.as_deref(),
+        harness_dir,
         color,
     );
     let summary_line = match remote_source {
@@ -1521,16 +1524,7 @@ fn link_bin_report_line(
     }
 }
 
-/// Per-content-type counts derived from a written manifest's
-/// `files[]`, plus how many were `Provenance::ReplacedForeign`.
-/// Content type is inferred from each file's path prefix, matching
-/// what each strategy's own copy functions always write, so this
-/// stays in sync with install's real output by construction. `.kiro/skills/`
-/// holds only the Kiro-discoverable `sop-<name>/SKILL.md` conversion;
-/// every other Kiro-runtime skill lives under `.konductor/skills/`.
-/// `skills` counts distinct skill directories (a skill may hold
-/// auxiliary files beyond `SKILL.md`); agents, context, and bin
-/// entries are one file each.
+/// Counts installed content from a strategy manifest.
 struct InstallCounts {
     agents: usize,
     skills: usize,
@@ -1551,17 +1545,7 @@ impl InstallCounts {
             claude::CLAUDE_DESTINATION_ROOT
         );
 
-        // A skill is a directory that may hold SKILL.md plus auxiliary
-        // files, so count distinct skill directories, not one per
-        // file -- otherwise a skill with scripts would inflate the
-        // count. Agents, context, and bin entries are one file each.
-        //
-        // Keyed by `(root, name)`, not bare `name`: `.konductor/skills/`
-        // and `.kiro/skills/` are both written on every Kiro install (a
-        // plain skill under the former, a SOP-skill conversion under
-        // the latter), so a plain skill and a SOP-derived skill
-        // sharing a basename are two physically distinct directories
-        // that must both count.
+        // Count skill directories, not their individual files.
         let mut agents = 0;
         let mut context = 0;
         let mut bin = 0;
@@ -1604,17 +1588,25 @@ impl InstallCounts {
     }
 }
 
-/// Builds the one-line default-mode summary `dispatch_install` prints
-/// on success: destination, per-content-type counts, manifest path,
-/// the SOP-skip note, the foreign-overwrite count, and the installed
-/// content's own version (from install-info.json's `agent_version`,
-/// `None` when unavailable). `mcp_binary_version` is a separate,
-/// distinctly-labeled note: the release tag the no-`--from` path
-/// actually fetched and checksum-verified the MCP binary from. It can
-/// genuinely differ from `agent_version`, which is read from the
-/// installed `dist/VERSION` file rather than release metadata. `None`
-/// on the `--from` local path and on the no-`--from` graceful-degrade
-/// case (no published binary for this platform).
+/// Returns whether a harness converts staged SOPs into installed skills.
+fn sops_are_converted_to_skills(harness_dir: &str) -> bool {
+    harness_dir == claude::CLAUDE_HARNESS_DIR
+}
+
+/// Formats the SOP portion of the install summary for a harness.
+fn sop_clause(sops_skipped: usize, harness_dir: &str) -> String {
+    if sops_are_converted_to_skills(harness_dir) {
+        format!(
+            "converted {sops_skipped} SOP(s) into sop-* skill(s) (already counted in the \
+             skill total above)"
+        )
+    } else {
+        format!("skipped {sops_skipped} SOP(s) (no runtime discovery path yet)")
+    }
+}
+
+/// Formats a successful human-readable install summary.
+#[allow(clippy::too_many_arguments)]
 fn format_install_summary(
     destination: &Path,
     manifest_path: &Path,
@@ -1622,6 +1614,7 @@ fn format_install_summary(
     sops_skipped: usize,
     agent_version: Option<&str>,
     mcp_binary_version: Option<&str>,
+    harness_dir: &str,
     color: ColorMode,
 ) -> String {
     let version_note = match agent_version {
@@ -1634,9 +1627,8 @@ fn format_install_summary(
     };
     format!(
         "{} installed {} agent(s), {} skill(s), {} context file(s), {} \
-         MCP server binary(ies) to {} (manifest: {}); skipped {} SOP(s) (no runtime \
-         discovery path yet); overwrote {} pre-existing file(s) not created by \
-         Konductor{version_note}{mcp_binary_version_note}",
+         MCP server binary(ies) to {} (manifest: {}); {}; overwrote {} \
+         pre-existing file(s) not created by Konductor{version_note}{mcp_binary_version_note}",
         crate::cli::output::success_prefix(color, "konductor install:"),
         counts.agents,
         counts.skills,
@@ -1644,7 +1636,7 @@ fn format_install_summary(
         counts.bin,
         destination.display(),
         manifest_path.display(),
-        sops_skipped,
+        sop_clause(sops_skipped, harness_dir),
         counts.replaced_foreign,
     )
 }
@@ -1660,12 +1652,7 @@ fn format_install_verbose_lines(manifest: &manifest::StrategyManifest) -> Vec<St
         .collect()
 }
 
-/// Builds the `--json` structured equivalent of `format_install_summary`:
-/// the same counts as the human-readable summary, plus
-/// `"agent_version"`/`"mcp_binary_version"` fields (`null` when
-/// unavailable). Returns the `serde_json::Value` itself, not a
-/// pre-serialized string, so `report_install_success` can merge in an
-/// additional `"link_bin"` field before printing.
+/// Formats the JSON equivalent of `format_install_summary`.
 fn format_install_summary_json(
     destination: &Path,
     manifest_path: &Path,
@@ -1673,6 +1660,7 @@ fn format_install_summary_json(
     sops_skipped: usize,
     agent_version: Option<&str>,
     mcp_binary_version: Option<&str>,
+    harness_dir: &str,
 ) -> serde_json::Value {
     serde_json::json!({
         "command": "install",
@@ -1683,6 +1671,7 @@ fn format_install_summary_json(
         "context": counts.context,
         "bin": counts.bin,
         "sops_skipped": sops_skipped,
+        "sops_converted_to_skills": sops_are_converted_to_skills(harness_dir),
         "replaced_foreign": counts.replaced_foreign,
         "agent_version": agent_version,
         "mcp_binary_version": mcp_binary_version,
@@ -2436,6 +2425,7 @@ mod tests {
             7,
             Some("0.1.1"),
             None,
+            "kiro-cli-v2",
             ColorMode::disabled(),
         );
         assert!(
@@ -2458,6 +2448,7 @@ mod tests {
             7,
             None,
             None,
+            "kiro-cli-v2",
             ColorMode::disabled(),
         );
         assert!(
@@ -3593,6 +3584,7 @@ mod tests {
             7,
             None,
             None,
+            "kiro-cli-v2",
             ColorMode::disabled(),
         );
         assert_eq!(
@@ -3607,6 +3599,38 @@ mod tests {
             !summary.contains("installed")
                 || !summary[summary.find("SOP").unwrap()..].contains("installed"),
             "summary must never claim SOPs were installed: {summary:?}"
+        );
+    }
+
+    /// The exact regression this fix addresses: on the Claude harness,
+    /// every staged SOP really is converted into an installed
+    /// `sop-<name>/SKILL.md` skill (see `install/claude.rs`'s
+    /// `install_sop_skills`), so the summary must say so -- never the
+    /// Kiro-only "skipped ... no runtime discovery path yet" wording the
+    /// test above pins for Kiro CLI. Mirrors
+    /// `generated/claude-plugin/README.md`'s former "Known gap" section
+    /// (`konductor install --harness claude` printed "skipped 19 SOP(s)"
+    /// while having, in the same run, correctly installed all 19).
+    #[test]
+    fn format_install_summary_on_claude_harness_reports_conversion_not_skip() {
+        let counts = InstallCounts::from_manifest(&sample_manifest());
+        let summary = format_install_summary(
+            Path::new("/tmp/example-target"),
+            Path::new("/tmp/example-target/.konductor/manifest"),
+            &counts,
+            19,
+            None,
+            None,
+            claude::CLAUDE_HARNESS_DIR,
+            ColorMode::disabled(),
+        );
+        assert!(
+            summary.contains("converted 19 SOP(s) into sop-* skill(s)"),
+            "got: {summary:?}"
+        );
+        assert!(
+            !summary.contains("skipped"),
+            "the Claude harness summary must never say a SOP was skipped, got: {summary:?}"
         );
     }
 
@@ -3721,6 +3745,7 @@ mod tests {
             7,
             Some("0.1.1"),
             Some("v0.2.0"),
+            "kiro-cli-v2",
         );
         assert_eq!(value["command"], "install");
         assert_eq!(value["agents"], 2);
@@ -3728,9 +3753,32 @@ mod tests {
         assert_eq!(value["context"], 1);
         assert_eq!(value["bin"], 1);
         assert_eq!(value["sops_skipped"], 7);
+        assert_eq!(value["sops_converted_to_skills"], false);
         assert_eq!(value["replaced_foreign"], 2);
         assert_eq!(value["agent_version"], "0.1.1");
         assert_eq!(value["mcp_binary_version"], "v0.2.0");
+    }
+
+    /// Companion to the test above, for the Claude harness: `sops_skipped`
+    /// keeps its established numeric meaning (the count of staged
+    /// `.sop.md` files -- 19 in the real `generated/claude-plugin/`
+    /// case), and the new `sops_converted_to_skills` flag is `true`,
+    /// disambiguating that those files were actually installed as
+    /// `sop-<name>/SKILL.md` skills rather than genuinely skipped.
+    #[test]
+    fn format_install_summary_json_on_claude_harness_sets_sops_converted_to_skills_true() {
+        let counts = InstallCounts::from_manifest(&sample_manifest());
+        let value = format_install_summary_json(
+            Path::new("/tmp/example-target"),
+            Path::new("/tmp/example-target/.konductor/manifest"),
+            &counts,
+            19,
+            None,
+            None,
+            claude::CLAUDE_HARNESS_DIR,
+        );
+        assert_eq!(value["sops_skipped"], 19);
+        assert_eq!(value["sops_converted_to_skills"], true);
     }
 
     /// `agent_version` must serialize as an explicit JSON `null`, not
@@ -3746,6 +3794,7 @@ mod tests {
             7,
             None,
             None,
+            "kiro-cli-v2",
         );
         assert!(value["agent_version"].is_null());
     }
@@ -3765,6 +3814,7 @@ mod tests {
             7,
             Some("0.1.1"),
             None,
+            "kiro-cli-v2",
         );
         assert!(value["mcp_binary_version"].is_null());
         // agent_version must be unaffected by mcp_binary_version's own
@@ -3788,6 +3838,7 @@ mod tests {
             7,
             None,
             None,
+            "kiro-cli-v2",
         );
         let result: Result<(PathBuf, bin_link::BinLinkOutcome), bin_link::BinLinkError> = Ok((
             PathBuf::from("/home/x/.local/bin/konductor"),
@@ -3818,6 +3869,7 @@ mod tests {
             7,
             None,
             None,
+            "kiro-cli-v2",
         );
         let result: Result<(PathBuf, bin_link::BinLinkOutcome), bin_link::BinLinkError> =
             Err(bin_link::BinLinkError::ForeignFileExists {

@@ -6,6 +6,48 @@ This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Entries are consolidated per release,
 not per individual commit.
 
+## [Unreleased]
+
+### Added
+
+- A Claude Code plugin marketplace install path: `/plugin marketplace add
+  aws-solutions/konductor` then `/plugin install konductor@konductor`. See [Install via the
+  Claude Code plugin marketplace](docs/user-guide/tasks/install-claude-plugin-marketplace.md).
+- `tag-claude-plugin-release.yml` is a manually dispatched workflow, run after a human merges a
+  plugin-candidate PR into `release/plugins`, that creates an immutable `claude-plugin-vX.Y.Z`
+  tag on the merge commit -- so a `marketplace.json` entry can pin to a specific release instead
+  of the branch's moving HEAD.
+
+### Changed
+
+- `make synth` (and `konductor synth`) now pre-wires AWS MCP (`aws-mcp`) into the standalone
+  Claude Code install, matching the plugin build. Everything else stays bring-your-own. The
+  bundled-server list lives in `scripts/claude-plugin-mcp-servers.json`.
+- The plugin and standalone Claude Code builds launch `aws-mcp` through `mcp-proxy-for-aws-cli==1.7.0`. Pinning the proxy prevents unreviewed client changes while the managed endpoint continues to supply current AWS documentation and skills.
+
+### Security
+
+- `aws-mcp` uses `mcp-proxy-for-aws-cli==1.7.0` instead of a moving package version. The managed endpoint still supplies current AWS documentation and skills.
+- The plugin release no longer force-pushes directly to a public branch. `publish-claude-plugin`
+  pushes a fresh, collision-resistant candidate branch (release version plus workflow run
+  identifier) and opens a **draft** pull request into the protected `release/plugins` branch,
+  using `GITHUB_TOKEN` scoped to `contents: write` and `pull-requests: write` only. The
+  `plugins` branch ruleset (creation/update/deletion/non-fast-forward blocked, zero bypass
+  actors) and the org-wide two-approval PR ruleset gate the actual merge. A separate workflow,
+  `tag-claude-plugin-release.yml`, creates the immutable `claude-plugin-vX.Y.Z` tag only after
+  that PR is merged into `release/plugins` by a human reviewer.
+- `k-architect`/`k-developer` still grant AWS MCP's full tool surface, unchanged. Use the
+  `aws:ViaAWSMCPService`/`aws:CalledViaAWSMCP` IAM condition keys to scope or audit
+  agent-originated calls.
+- `release.yml`'s `workflow_dispatch` trigger bypassed `check-version`'s branch gating: any
+  branch with an unreleased `VERSION` bump could trigger a real `gh release create`, and by
+  default, a force-push to the public `claude-plugin` branch. Removed the manual-dispatch path
+  entirely; `validate-pr.yml` now runs `claude plugin validate --strict` against the assembled
+  plugin tree on every PR instead, with no publish or push step anywhere in its job graph. A
+  separate opt-in rehearsal workflow (`plugin-publish-dry-run.yml`) can push a throwaway
+  candidate branch and open a draft PR for review, gated behind a typed confirmation input; it
+  cannot create a release, tag, merge, or write to `release/plugins`.
+
 ## [1.0.3] - 2026-10-01
 
 ### Fixed

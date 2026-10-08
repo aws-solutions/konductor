@@ -5,14 +5,27 @@ name: Release
 # GitHub-hosted infrastructure, so it needs no AWS credentials or OIDC role --
 # the built-in GITHUB_TOKEN is sufficient.
 #
-# Three jobs: `check-version` decides whether a release is needed; `build`
+# Four jobs: `check-version` decides whether a release is needed; `build`
 # compiles konductor and skill-lookup-mcp for linux/x86_64, linux/aarch64, and
 # macos/aarch64 (Apple Silicon). Both Linux legs target `*-unknown-linux-musl`
 # (static libc, no runtime glibc version dependency) natively on their own
 # runner -- no cross-architecture compilation. No Intel/x86_64 macOS leg:
 # GitHub retired its free-tier Intel macOS runner and this org has no paid
 # larger-runner entitlement. `publish` downloads every leg's assets and
-# creates the release exactly once.
+# creates the release exactly once. `publish-claude-plugin` runs after
+# `publish` succeeds: it builds the Claude Code plugin tree (`make
+# claude-plugin` via scripts/generate-claude-plugin.sh, then
+# scripts/assemble-claude-plugin-branch.sh for the flat layout Claude Code
+# expects), pushes it to a collision-resistant candidate branch built on top
+# of release/plugins' current tip, and opens a draft pull request into the
+# protected `release/plugins` branch.
+# It never writes to `release/plugins` directly -- the `plugins` branch
+# ruleset blocks creation/update/deletion/non-fast-forward there with no
+# bypass actors, and the org-wide ruleset requires two PR approvals before
+# merge. A separate workflow (tag-claude-plugin-release.yml) creates the
+# immutable `claude-plugin-vX.Y.Z` tag only after that PR is merged by a
+# human reviewer. `main` itself never carries generated plugin output (see
+# .gitignore and generated/claude-plugin/README.md).
 
 on:
   push:
@@ -538,3 +551,163 @@ jobs:
             --target "${{ github.sha }}" \
             --title "konductor $RELEASE_VERSION" \
             --notes "Synthesized by $BINARY_VERSION (release $RELEASE_VERSION) from ${{ github.sha }} at ${BUILD_TIMESTAMP}."
+
+  publish-claude-plugin:
+    name: Publish Claude Code plugin (candidate branch + draft PR)
+    needs: [check-version, publish]
+    if: needs.publish.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      # contents: write pushes the candidate branch; pull-requests: write
+      # opens the draft PR into release/plugins. Neither scope grants
+      # anything on release/plugins itself -- the `plugins` branch ruleset
+      # (creation/update/deletion/non-fast-forward blocked, zero bypass
+      # actors) and the org-wide 2-approval PR ruleset enforce that a human
+      # must merge before release/plugins moves.
+      contents: write
+      pull-requests: write
+    # One candidate-branch publish in flight at a time, so two concurrent
+    # releases can't both derive candidate branches and race the same
+    # `release/plugins` PR surface.
+    concurrency:
+      group: claude-plugin-candidate-publish
+      cancel-in-progress: false
+    env:
+      RELEASE_VERSION: ${{ needs.check-version.outputs.release_version }}
+      BASE_BRANCH: release/plugins
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Refuse to target main/mainline
+        run: |
+          set -e
+          case "$BASE_BRANCH" in
+            main|mainline)
+              echo "FATAL: refusing to publish the Claude Code plugin into '$BASE_BRANCH' -- generated plugin output must never land on main/mainline." >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Require a preprovisioned, protected base branch
+        run: |
+          set -e
+          if ! git ls-remote --exit-code --heads "https://github.com/${{ github.repository }}.git" "refs/heads/$BASE_BRANCH" >/dev/null 2>&1; then
+            echo "FATAL: '$BASE_BRANCH' must be created and protected before publishing the public plugin." >&2
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
+        with:
+          # Build the released source revision.
+          ref: ${{ needs.check-version.outputs.release_version }}
+          fetch-depth: 0
+
+      - name: Set VERSION from the release tag
+        # Keep VERSION aligned with the release tag.
+        run: |
+          set -e
+          TAG_VERSION="${RELEASE_VERSION#v}"
+          scripts/validate-version-semver.sh "$TAG_VERSION"
+          echo "$TAG_VERSION" > VERSION
+
+      - name: Derive the candidate branch name
+        id: candidate
+        run: |
+          set -e
+          CANDIDATE_BRANCH="$(scripts/derive-plugin-candidate-branch.sh \
+            --version "$RELEASE_VERSION" \
+            --run-id "${{ github.run_id }}" \
+            --run-attempt "${{ github.run_attempt }}")"
+          echo "candidate_branch=$CANDIDATE_BRANCH" >> "$GITHUB_OUTPUT"
+          TAG="claude-plugin-v${RELEASE_VERSION#v}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Validate publish preconditions (manifest, source ref, candidate/tag collisions)
+        # Fail-closed gate before any push: confirms this checkout really is
+        # the release tag it claims to be, that the derived candidate branch
+        # doesn't already exist, and that the immutable release tag doesn't
+        # either. See the script's own comments for why each check fails
+        # closed (not open) on an inconclusive remote lookup.
+        run: |
+          set -e
+          scripts/validate-plugin-publish-preconditions.sh \
+            --repo "${{ github.repository }}" \
+            --expected-ref "$RELEASE_VERSION" \
+            --candidate-branch "${{ steps.candidate.outputs.candidate_branch }}" \
+            --tag "${{ steps.candidate.outputs.tag }}"
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+
+      - name: Build the konductor CLI
+        # The CLI is used only to generate the plugin tree.
+        run: make -C cli build
+
+      - name: Assemble the flat Claude Code plugin tree
+        # Build the flat tree that Claude Code installs.
+        run: |
+          set -e
+          ASSEMBLE_DIR="$RUNNER_TEMP/claude-plugin-candidate"
+          rm -rf "$ASSEMBLE_DIR"
+          scripts/assemble-claude-plugin-branch.sh --out "$ASSEMBLE_DIR"
+          echo "ASSEMBLE_DIR=$ASSEMBLE_DIR" >> "$GITHUB_ENV"
+
+      - name: Install claude CLI for validation
+        # Pin the validator so its behavior changes only through this workflow.
+        run: npm install --global @anthropic-ai/claude-code@2.1.284
+
+      - name: Validate the assembled plugin tree (strict manifest validation)
+        run: claude plugin validate "$ASSEMBLE_DIR" --strict
+
+      - name: Build the candidate commit on top of release/plugins' tip
+        # Based on the base branch's own remote tip, not a disconnected
+        # root commit -- this is what gives GitHub a common ancestor to
+        # diff against, so the draft PR below can open at all. See the
+        # script's own header comment for the full rationale.
+        run: |
+          set -e
+          scripts/build-plugin-candidate-commit.sh \
+            --base-branch "$BASE_BRANCH" \
+            --candidate-branch "${{ steps.candidate.outputs.candidate_branch }}" \
+            --assemble-dir "$ASSEMBLE_DIR" \
+            --commit-message "Publish Claude Code plugin candidate for $RELEASE_VERSION"
+
+      - name: Push the candidate branch
+        # Plain push to a brand-new branch name this run just derived and
+        # confirmed is free -- never a force push, and never a write to
+        # release/plugins (that ruleset would reject it anyway). No manual
+        # auth header: the checkout step above already persisted
+        # write-scoped credentials (actions/checkout's default
+        # persist-credentials behavior) into this same working copy's git
+        # config, since this job's `permissions:` block grants
+        # contents: write. Re-adding a second Authorization header here
+        # (as the pre-fix version did, operating in its own
+        # credential-free standalone repo) would duplicate it instead.
+        run: |
+          set -e
+          git push origin \
+            "${{ steps.candidate.outputs.candidate_branch }}:refs/heads/${{ steps.candidate.outputs.candidate_branch }}"
+          echo "Pushed candidate branch ${{ steps.candidate.outputs.candidate_branch }} at $(git rev-parse "${{ steps.candidate.outputs.candidate_branch }}")"
+
+      - name: Open a draft pull request into release/plugins
+        # The merge, and therefore the write to release/plugins itself, is
+        # left to a human: the plugins ruleset blocks this token from
+        # writing there directly, and the org-wide ruleset requires two
+        # approvals before any merge regardless. tag-claude-plugin-release.yml
+        # creates the immutable release tag only after that PR merges.
+        run: |
+          set -e
+          PR_BODY="Automated Claude Code plugin candidate for release $RELEASE_VERSION.
+
+          - Source: ${{ steps.candidate.outputs.candidate_branch }} (built from $RELEASE_VERSION, run ${{ github.run_id }}/${{ github.run_attempt }})
+          - Validated with \`claude plugin validate --strict\` before this branch was pushed.
+          - Merging this PR into \`release/plugins\` is what makes the release public; merging is a manual, reviewed action under the \`plugins\` and org-wide branch rulesets.
+          - On merge, tag-claude-plugin-release.yml creates the immutable tag \`${{ steps.candidate.outputs.tag }}\`."
+          PR_URL="$(gh pr create \
+            --repo "${{ github.repository }}" \
+            --base "$BASE_BRANCH" \
+            --head "${{ steps.candidate.outputs.candidate_branch }}" \
+            --title "Publish Claude Code plugin $RELEASE_VERSION" \
+            --body "$PR_BODY" \
+            --draft)"
+          echo "Opened draft PR: $PR_URL"
