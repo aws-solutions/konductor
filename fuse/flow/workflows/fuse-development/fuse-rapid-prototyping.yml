@@ -1,0 +1,106 @@
+# $schema: ../schemas/workflow.schema.json
+# yaml-language-server: $schema=../schemas/workflow.schema.json
+#
+# A new product idea explored as a runnable prototype before anyone designs it properly. It
+# front-loads "what do we build" and defers "how do we build it well": a short interview finds
+# the owner's intent, the agent builds the smallest runnable version, and owner and agent improve
+# it in many small iterations driven by the owner's, the team's and customers' feedback. There is
+# no code review loop and no architecture work; security, scalability, observability and the like
+# are recorded as what the prototype ignored, not designed. The iterations happen inside one step,
+# so the engine stays out of the loop, and the owner ends the exploration. The workflow ends with a
+# product brief: what to build and for whom, the ranked features, the evidence behind them and
+# what a real system must add. The brief is the input to fuse-system-development, or to
+# fuse-feature-development when the prototype is small enough to keep. Prototype code is a
+# reference by default, not the base of the system. review.md next to this file is the review guide
+# for the one agent gate.
+#
+# Start a workstream with:  fuse-flow start <slug> --workflow fuse-rapid-prototyping
+version: 1
+name: fuse-rapid-prototyping
+description: >
+  A new product idea explored as a runnable prototype: a short interview on the owner's intent,
+  then many small build-and-feedback iterations with no code review loop, ending in a product
+  brief of what to build, ranked by the feedback, that fuse-system-development can take up.
+steps:
+  - id: intake
+    title: Intake
+    phase: Explore
+    instruction: >
+      Find out what the owner wants to explore, in three short phases. Understand: who it is for,
+      what problem it solves, and what would make the owner say the idea is worth building. Read
+      what already exists before you ask anything, and ask one or a few questions at a time.
+      Diverge: propose two to four distinctly different directions the product could take, with
+      the one you would try first. Converge: agree with the owner on the first slice, the
+      smallest runnable thing that lets them try the idea's core and react to it. Keep the whole
+      interview short; the prototype answers most questions better than talk does. Write a first
+      draft of the product brief, marked as a draft: the intent, the directions considered, the
+      first slice, and the questions the prototype should answer. Agree with the owner where the
+      prototype will run, locally by default. Do not write prototype code yet.
+    produces:
+      - artifact: product-brief
+        path: docs/specs/{date}-{slug}/product-brief.md
+    gates:
+      - owner-action: agree on the first slice
+        route_back_to: intake
+
+  - id: iterate
+    title: Iterate
+    phase: Explore
+    instruction: >
+      Build the first slice as fast as you can make it run, then improve it in many small
+      iterations. Each iteration: make the smallest change that lets the owner try the next idea,
+      keep the prototype runnable, commit, tell the owner in two or three lines how to try it and
+      what to look at, and ask for their feedback and any feedback from the team or customers.
+      After each piece of feedback, propose a few candidates for the next iteration, including one
+      the owner did not ask for, with your recommended pick; the owner chooses. Record every
+      iteration in the iteration log: what changed, the feedback and who gave it, and what was
+      decided. Keep the brief's ranked feature list current: build next, later, and dropped with
+      the reason. Favor speed over code quality: no review loop, no architecture work, and tests
+      only where they speed you up. Fix what breaks the prototype for the person trying it. Record
+      shortcuts you take that a real system must not, and concerns the prototype ignores, such as
+      security, scalability, observability, data retention or accessibility, in the brief rather
+      than solving them. Three rules hold even here: use no real customer or personal data, keep
+      secrets out of the code, and do not make the prototype reachable outside the owner's
+      machine until the owner has decided who may reach it and how access is restricted. Suggest
+      ending the exploration when the feedback has stopped changing what to build, when the next
+      idea needs real users, real data or real scale, or when the prototype has become hard to
+      change; the owner decides when it ends.
+    consumes: [product-brief]
+    produces:
+      - artifact: prototype
+        path: prototype/{slug}/
+      - artifact: iteration-log
+        path: docs/specs/{date}-{slug}/iterations.md
+    updates:
+      - artifact: product-brief
+        path: docs/specs/{date}-{slug}/product-brief.md
+    gates:
+      - check: default
+        description: the prototype still builds and starts
+      - owner-action: end the exploration, or keep iterating
+        route_back_to: [iterate, intake]
+
+  - id: brief
+    title: Product brief
+    phase: Explore
+    instruction: >
+      Turn the draft into the product brief that the next workflow starts from. Say what to build
+      and for whom; the ranked features, with what goes into a first release and what is deferred;
+      the evidence for each ranking, citing the iteration log; and the ideas that were tried and
+      dropped, with why. List what a real system must add that the prototype ignored, and the
+      prototype's shortcuts that someone reading its code should know. Recommend the next step:
+      fuse-system-development for most products, fuse-feature-development when the prototype is
+      small enough to harden in place, or stopping. Say whether the prototype code should be kept
+      as a reference only, which is the default, or become the base of the system, and why. When
+      nothing material is open, order the brief for review: the decisions the owner must make or
+      check come first.
+    consumes: [prototype, iteration-log]
+    updates:
+      - artifact: product-brief
+        path: docs/specs/{date}-{slug}/product-brief.md
+    gates:
+      - agent: review the brief against the iteration log and the prototype, so that every ranking and claim rests on recorded feedback
+        guide: review.md
+        max_rounds: 1
+      - owner-action: approve the product brief
+        route_back_to: iterate

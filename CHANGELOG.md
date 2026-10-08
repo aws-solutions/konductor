@@ -64,6 +64,9 @@ script installs plain skills and an always-on instruction block that every suppo
     owner approves the prototype findings or sends the work back to the requirements.
   - `fuse-dependency-migration`, a migration or refactoring that must keep the behavior: catalogue
     the checks, add missing ones, record a baseline, migrate in increments and compare.
+  - `fuse-rapid-prototyping`, a new product idea explored as a runnable prototype: a short
+    interview, many small build-and-feedback iterations with no code review loop, and a product
+    brief of what to build that `fuse-system-development` can take up.
   - `_k-full-sdlc` and `_k-phase-chain`, Konductor's full lifecycle pass and lighter phase chain,
     expressed as fuse-flow workflows.
   - Examples: four project-specific workflows, and a native workflow after obra/superpowers.
