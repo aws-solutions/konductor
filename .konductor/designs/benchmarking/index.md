@@ -257,7 +257,7 @@ Good: the panel keeps running when a primary model fails its check.
 
 Bad: the Anthropic seat's tag rule screens content-authorship lineage only, not execution-substrate lineage, a residual bias risk detailed in [benchmark-protocol.md's Anthropic seat exclusion rule](./benchmark-protocol.md#the-anthropic-seats-exclusion-rule).
 
-Neutral: DeepSeek, Mistral Large 3, and an unverified-independence cluster are excluded from every seat on the same screening basis.
+Neutral: Mistral Large 3 and an unverified-independence cluster are excluded from every seat on the same screening basis; DeepSeek is an escalation-pool candidate under its own provenance constraint (see [benchmark-protocol.md's DeepSeek provenance constraint](./benchmark-protocol.md#deepseeks-provenance-constraint)).
 
 ### ADR-4: Check-and-instruct over auto-install for `konductor bench doctor`
 
@@ -342,4 +342,4 @@ Neutral: a disposable container or network namespace remains available as option
 - Whether a usage-frequency signal, such as skill-invocation telemetry, could be incorporated into the pipeline to inform the `usage-signal` field (see [benchmark-protocol.md's Output](./benchmark-protocol.md#output)) remains open.
 - Whether the normalized trace record (see [Trace Normalization Layer](./benchmark-protocol.md#trace-normalization-layer)) can be shaped to match the Strands Evals SDK's own session format closely enough to reuse its trace-level evaluators is untested.
 - Whether a per-verdict confidence signal (for example, vote margin or judge agreement level) should become a fifth [Needs-human-review](./benchmark-protocol.md#needs-human-review-dispositions) trigger (a candidate idea from Strands Decider, see [Prior Art and Lessons](#prior-art-and-lessons)) remains an untested candidate, with no signal, threshold, or calibration defined yet.
-- OpenCode's headless tool-access retention, and reliability checks for Claude Opus 5.5, GPT-6 Astra, Amazon Nova Pro, Meta Llama 4 Maverick, and Cohere Command R+, are all still unconfirmed or untested.
+- OpenCode's headless tool-access retention, and reliability checks for Claude Opus 5.5, GPT-6 Astra, Amazon Nova Pro, Meta Llama 4 Maverick, Cohere Command R+, and DeepSeek V3.2, are all still unconfirmed or untested.

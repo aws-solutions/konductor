@@ -77,7 +77,8 @@ candidate must come from a model family with no significant training lineage ove
 or skills under evaluation, and must pass the reliability check below. Meta Llama 4 Maverick and
 Cohere Command R+ are the two most likely candidates to satisfy the rule, and both are already named
 as seat fallbacks above, but naming them does not pre-approve either; each still has to pass its own
-reliability check.
+reliability check. DeepSeek V3.2 on Amazon Bedrock is also eligible, under its own provenance
+constraint (see [DeepSeek's provenance constraint](#deepseeks-provenance-constraint) below).
 
 This tiering is deliberately thorough for independence and reliability reasons; a real minimal pilot
 should still start with just the primary 3 and only invoke a fallback on an actual failure, not
@@ -112,12 +113,12 @@ rationale wording varies across trials even when the label is stable. A trial th
 or whose label disagrees with the other four, counts as a failure. A candidate that fails is
 excluded, not swapped in for an untested alternative by default.
 
-**Independence screen:** DeepSeek, Mistral Large 3, and an unverified-independence cluster (Qwen,
+**Independence screen:** Mistral Large 3 and an unverified-independence cluster (Qwen,
 Kimi/Moonshot, GLM/Z.AI, MiniMax) are excluded from every seat and from the escalation pool.
-DeepSeek is excluded on widely reported concerns about its training data sourcing from Claude
-outputs, a bias concern this project has not independently verified. Mistral Large 3 failed its
-reliability check 3 of 3 times, with no newer Bedrock-listed version to substitute. The remaining
-four have unverified independence.
+Mistral Large 3 failed its reliability check 3 of 3 times, with no newer Bedrock-listed version to
+substitute. The remaining four have unverified independence. DeepSeek V3.2 on Amazon Bedrock is not
+excluded; it is an escalation-pool candidate under its own provenance constraint (see [DeepSeek's
+provenance constraint](#deepseeks-provenance-constraint) below).
 
 **Precondition for full-agreement resolution:** all three base-panel seats, not just Grok 4.7, must
 independently pass their own reliability check before an ablation run depends on 3-of-3 agreement.
@@ -160,6 +161,18 @@ models, Claude Opus 5.5 judging their output carries a same-family bias risk thi
 catch, since the rule screens the artifact's authorship, not the executing agent's model family.
 Closing that second gap is a residual, named open item (see [index.md Open
 Questions](./index.md#open-questions)).
+
+### DeepSeek's provenance constraint
+
+DeepSeek V3.2 on Amazon Bedrock is an escalation-pool candidate, not an excluded model, and must
+pass the same 5-of-5 reliability check as every candidate (see Independence and reliability rules
+above). Because of DeepSeek's reported training-lineage overlap with Claude, a bias concern this
+project has not independently verified, it is treated like the Anthropic seat: excluded under the
+same tag-based rule when the skill or scenario under evaluation carries a Claude-authorship
+provenance tag, and excluded by default until the provenance-tag checker is built and passing (see
+[The Anthropic seat's exclusion rule](#the-anthropic-seats-exclusion-rule) above). For the same
+reason, DeepSeek is never the replacement for an excluded Anthropic seat; that replacement stays
+Meta Llama 4 Maverick, then Cohere Command R+ (see Panel math when the seat is excluded, above).
 
 ### Escalation and resolution rules
 
