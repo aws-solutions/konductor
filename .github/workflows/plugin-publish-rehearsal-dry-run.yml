@@ -35,7 +35,25 @@ name: Dry run - Claude Code plugin candidate publish (pre-merge rehearsal)
 #
 # Requires typing the literal confirmation phrase as a dispatch input (hard
 # dry-run guard): a run with no input value, or the wrong one, fails before
-# any branch is pushed or any PR is opened.
+# any branch is pushed or any PR is opened. The confirmation value is bound
+# through a step-level env: mapping and read back as a quoted shell
+# variable, not interpolated directly into the script -- a raw `${{ }}`
+# substitution inside a run: body is text-substituted before the shell ever
+# parses it, so a value containing a `"` or `$(...)` could otherwise break
+# out of the comparison and execute as shell.
+#
+# Before checking out the pinned commit, a live `gh pr view 28` call
+# re-verifies that PR #28's actual current head still matches
+# FIXED_SOURCE_REF below. The pin is a point-in-time snapshot taken when
+# this workflow was last reviewed; if PR #28 gains new commits afterward,
+# rehearsing the stale pinned commit would silently validate behavior that
+# no longer matches what will actually merge. This check fails closed on
+# any drift, before touching the repository.
+#
+# GH_TOKEN is granted only on the three steps that call `gh` (the live
+# PR #28 head check, precondition validation, and draft-PR creation) --
+# never at job or workflow level, so checkout, the Rust build, npm install,
+# and plugin assembly never see it.
 
 on:
   workflow_dispatch:
@@ -71,14 +89,19 @@ jobs:
       # branch name -- a branch can move after this workflow is reviewed and
       # merged to main; a commit SHA cannot. Update this value (via a
       # reviewed PR to main, same as any other change here) if the source
-      # branch gains fixes that should be rehearsed too.
-      FIXED_SOURCE_REF: 64970ef9ef4ee6e3ad48a1f70b3603689bd36fd3
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # branch gains fixes that should be rehearsed too -- the live drift
+      # check below fails closed if this value falls behind PR #28's
+      # actual head, so a stale pin is caught rather than silently rehearsed.
+      FIXED_SOURCE_REF: 84404aff69e7a1a8915297d9531438a6b41c631e
     steps:
       - name: Enforce the hard dry-run confirmation guard
+        env:
+          # Bound once here so the shell reads it as data through a quoted
+          # variable, never as text spliced into the script source.
+          CONFIRM_DRY_RUN: ${{ inputs.confirm_dry_run }}
         run: |
           set -e
-          if [ "${{ inputs.confirm_dry_run }}" != "DRY_RUN_CONFIRMED" ]; then
+          if [ "$CONFIRM_DRY_RUN" != "DRY_RUN_CONFIRMED" ]; then
             echo "FATAL: confirm_dry_run must be exactly 'DRY_RUN_CONFIRMED'. Got a different value (not echoed here in case it was meant as a secret). Failing closed before touching anything." >&2
             exit 1
           fi
@@ -92,6 +115,21 @@ jobs:
               exit 1
               ;;
           esac
+
+      - name: "Check PR #28 for live source-head drift"
+        # Catches the case where PR #28 gained commits after this workflow's
+        # FIXED_SOURCE_REF was last reviewed and pinned. Runs before
+        # checkout -- a stale pin must stop the run before anything is
+        # fetched, built, or pushed, not after.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          LIVE_HEAD_SHA="$(gh pr view 28 --repo "${{ github.repository }}" --json headRefOid --jq '.headRefOid')"
+          if [ "$LIVE_HEAD_SHA" != "$FIXED_SOURCE_REF" ]; then
+            echo "FATAL: PR #28's live head ($LIVE_HEAD_SHA) no longer matches the pinned FIXED_SOURCE_REF ($FIXED_SOURCE_REF). The pin is stale -- resolve PR #28's current head and update FIXED_SOURCE_REF via a reviewed PR to main before re-running. Failing closed." >&2
+            exit 1
+          fi
 
       - name: Checkout the pinned source commit
         # `ref:` is the fixed, hardcoded commit above -- never an input,
@@ -139,6 +177,8 @@ jobs:
           echo "tag_label=claude-plugin-dryrun-v${RAW_VERSION}-${{ github.run_id }}" >> "$GITHUB_OUTPUT"
 
       - name: Validate publish preconditions (source ref, candidate collision)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -e
           scripts/validate-plugin-publish-preconditions.sh \
@@ -191,6 +231,8 @@ jobs:
 
       - name: Open a draft pull request into release/plugins
         id: pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -e
           PR_BODY="[DRY RUN] Pre-merge rehearsal of the plugin candidate publish path, run from main. Not a real release.
@@ -213,14 +255,44 @@ jobs:
           echo "Opened draft PR: $PR_URL"
 
       - name: Report deterministic cleanup identifiers
-        # These two identifiers are everything a reviewer needs to clean up
-        # this run's remote state. Printed as plain, grep-able lines (not
-        # just left in prior step logs) so a cleanup script or a human can
-        # find them in one place regardless of how far they scroll.
+        # Runs on every outcome (if: always()) -- a run that fails after
+        # pushing the candidate branch but before opening the PR, or after
+        # opening the PR but before this step, must still surface whatever
+        # remote state it left behind. Without `always()`, a mid-pipeline
+        # failure would leave an orphaned branch (or branch+PR) with no
+        # printed identifier anywhere, so a reviewer couldn't find it to
+        # clean it up.
+        #
+        # The candidate branch is always reported if it was derived at all
+        # (even a push failure still leaves the identifier printed, which
+        # is useful since the push step itself logs the same name). The PR
+        # identifiers are reported only when the PR step actually produced
+        # them -- printing an empty PR_NUMBER/PR_URL would make the
+        # `gh pr close` cleanup command silently malformed. Two cleanup
+        # commands are offered depending on how far the run got, and
+        # neither one embeds a token: `gh pr close`/`git push` both read
+        # credentials from the invoking user's own `gh`/git auth, not from
+        # anything this workflow printed.
+        if: always()
         run: |
           echo "=== Dry-run cleanup identifiers ==="
-          echo "CANDIDATE_BRANCH=${{ steps.candidate.outputs.candidate_branch }}"
-          echo "PR_NUMBER=${{ steps.pr.outputs.pr_number }}"
-          echo "PR_URL=${{ steps.pr.outputs.pr_url }}"
-          echo "To clean up:"
-          echo "  gh pr close ${{ steps.pr.outputs.pr_number }} --repo ${{ github.repository }} --delete-branch"
+          CANDIDATE_BRANCH="${{ steps.candidate.outputs.candidate_branch }}"
+          PR_NUMBER="${{ steps.pr.outputs.pr_number }}"
+          PR_URL="${{ steps.pr.outputs.pr_url }}"
+          if [ -n "$CANDIDATE_BRANCH" ]; then
+            echo "CANDIDATE_BRANCH=$CANDIDATE_BRANCH"
+          else
+            echo "CANDIDATE_BRANCH=(not derived -- failed before that step ran)"
+          fi
+          if [ -n "$PR_NUMBER" ]; then
+            echo "PR_NUMBER=$PR_NUMBER"
+            echo "PR_URL=$PR_URL"
+            echo "To clean up (branch + draft PR):"
+            echo "  gh pr close $PR_NUMBER --repo ${{ github.repository }} --delete-branch"
+          elif [ -n "$CANDIDATE_BRANCH" ]; then
+            echo "PR_NUMBER=(not created -- run failed or stopped before the PR step)"
+            echo "To clean up (branch only, no PR was opened):"
+            echo "  git push origin --delete $CANDIDATE_BRANCH"
+          else
+            echo "Nothing was pushed or opened -- no cleanup needed."
+          fi
