@@ -57,6 +57,10 @@ Run every test suite from the repository root with `bun run test`.
   - Shell, YAML: `# SPDX-License-Identifier: Apache-2.0`
 
   Formats that have no comment syntax at all (JSON and similar) cannot carry a header and are exempt -- do not add one and do not treat its absence as a violation.
+- **No references to private specs:** specs and research notes (`docs/specs/`, `docs/research/`)
+  are gitignored and never published. Code, test and workflow comments, test names and other
+  published files must not cite them: no file paths, decision numbers ("decision 18"), or
+  mentions of a brief or build spec. State the reason itself in the comment instead.
 
 ## Pull Requests
 
