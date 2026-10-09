@@ -129,7 +129,7 @@ the software development lifecycle they automate, and the names are the same on 
 ### Konductor CLI
 
 The `konductor` command-line program. Handles setup, content build, lifecycle, and diagnostics:
-`install`, `update`, `uninstall`, `doctor`, `init`, `synth`, and `metrics`. It does
+`install`, `update`, `uninstall`, `doctor`, `init`, and `synth`. It does
 **not** run SDLC workflows — that is the **agents**' job.
 
 

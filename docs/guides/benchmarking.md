@@ -133,8 +133,8 @@ needing to change anything.
 
 ## Roadmap: becoming a `konductor` CLI subcommand
 
-The `konductor` CLI launches with 8 commands —
-`install | update | uninstall | synth | init | doctor | config | metrics` —
+The `konductor` CLI launches with 6 commands,
+`install | update | uninstall | synth | init | doctor`,
 and no workflow-run subcommand: running an SDLC workflow is agent-driven at
 launch, with CLI-headless workflow-run features landing **post-launch**. A
 `konductor benchmark` subcommand fits that same post-launch, CLI-headless

@@ -30,7 +30,7 @@ For the agents and skills themselves, see the [Agents reference](agents.md) and
 
 ## Command table
 
-Seven commands.
+Six commands.
 
 | Command | Purpose |
 | --- | --- |
@@ -40,14 +40,11 @@ Seven commands.
 | `konductor doctor` | Check the runtime, the installed content, the project config, and available updates |
 | `konductor init` | Create `.konductor/` and write a starter `config.yml` |
 | `konductor synth` | Parse `agents/`, `skills/`, and `agent-sops/` and write per-runtime output to `<source>/dist/` |
-| `konductor metrics` | Show quality trends from recent runs |
 
 `update` and `uninstall` both accept `--target <dir>`, `--all`, and `--dry-run`, and share one
 target-selection table — see [Update an installation](tasks/update.md#choosing-which-install-to-update).
 Neither prompts for confirmation: `--dry-run` is the only preview, and it is the only way to see
 **which** files carry local edits that a real run would destroy.
-
-`konductor metrics` is a **stub** in this release — it prints "not yet implemented."
 
 **`install` fetches its content from a GitHub Release, and whether it succeeds depends on one
 being published.** It looks for one asset — `konductor-v<version>.tar.gz` — plus a `.sha256`
@@ -110,7 +107,6 @@ Accepted before or after a subcommand.
 | `init` | `--preset <PRESET>` | enum | No | `solo`, `team`, `org` |
 | `init` | `--force` | flag | No | Overwrite an existing `.konductor/` instead of failing |
 | `synth` | `--from <PATH>` | path | No | Synthesize this source tree instead of the current directory. Output goes to `<PATH>/dist/` |
-| `metrics` | `--since <WINDOW>` | string | No | Limit the report to runs within a time window. `metrics` is a stub in this release |
 
 
 ## Configuration file
