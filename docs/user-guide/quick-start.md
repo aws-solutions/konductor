@@ -78,7 +78,8 @@ before a team of agents can run. See [Install for Claude Code](tasks/install-cla
 konductor doctor
 ```
 
-Six checks — `source`, `runtime`, `manifest`, `config`, `container_runtime` and `index_status` —
+Six checks (`source`, `runtime`, `manifest`, `container_runtime`, `index_status` and
+`telemetry_state`), plus two version checks (`cli_version` and `content_version`),
 each with a status. Exit code `0` when nothing failed. Anything reported as not ok is explained in
 [Diagnose problems](tasks/diagnose-problems.md).
 

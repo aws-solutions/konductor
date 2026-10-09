@@ -350,7 +350,7 @@ pub fn read_index() -> Result<Option<Index>, IndexError> {
 ///
 /// `pub(crate)` (not private) so `doctor::check_index_status` and
 /// `doctor::dispatch_doctor_all` can thread the same home override
-/// `run_checks` already resolves for the `config`/`telemetry_state`
+/// `run_checks` already resolves for the `index_status`/`telemetry_state`
 /// checks, instead of silently falling back to the live `$HOME`
 /// (mirrors `config.rs`'s `load_config_with_home` visibility for the
 /// identical reason).

@@ -12,6 +12,17 @@ not per individual commit.
 
 - `konductor metrics`. It was a stub that printed "not yet implemented"; the CLI now exits `64`
   for it like any other unrecognized subcommand.
+- `doctor`'s `config` check. It validated the full config schema, which belongs to the hidden
+  `config` command; the starter config now holds only `version` and `telemetry.enabled`, so the
+  check had nothing left to catch.
+
+### Fixed
+
+- `doctor`'s `telemetry_state` check now reports every gate that can suppress telemetry
+  reporting, not just the per-target opt-out and machine consent. It now also reports
+  `KONDUCTOR_TELEMETRY=off` and a target's own `.konductor/config.yml` `telemetry.enabled:
+  false`, so `doctor` can no longer say reporting is on when one of these actually suppresses it.
+  `doctor --all` evaluates the `config.yml` gate per target.
 
 ## [1.0.3] - 2026-10-01
 

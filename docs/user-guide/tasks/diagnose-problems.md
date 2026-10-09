@@ -21,9 +21,11 @@ A healthy installation:
 source             parsed, all cross-references resolve        ok
 runtime            Kiro CLI detected                           ok
 manifest           complete, no hash drift                     ok
-config             .konductor/config.yml valid                 ok
 container_runtime  docker found on PATH                      info
 index_status       matches the manifest                        ok
+telemetry_state    reporting is on                              ok
+cli_version        running konductor, which is current          ok
+content_version    at content version, which is current         ok
 
 All checks passed.
 ```
@@ -39,11 +41,11 @@ runtime            no runtime detected at this target          failed
     fix: install Kiro CLI or Claude Code, or pass --target
 manifest           4 files differ from their recorded hash       warn
     fix: run `konductor update --from <repo-root> --dry-run` to see which
-config             .konductor/config.yml not found              info
-    fix: optional. Run `konductor init` to create one.
 container_runtime  none of docker/podman/nerdctl/finch on PATH  info
 index_status       index says complete, manifest says partial    warn
     fix: re-run the install; it was interrupted between the two writes
+telemetry_state    reporting is off: KONDUCTOR_TELEMETRY=off     info
+    fix: unset KONDUCTOR_TELEMETRY, or remove the "off" value, to allow reporting again
 
 2 checks failed.
 ```
@@ -75,10 +77,12 @@ konductor doctor --json
     { "name": "source", "status": "ok", "summary": "..." },
     { "name": "runtime", "status": "ok", "summary": "..." },
     { "name": "manifest", "status": "ok", "summary": "..." },
-    { "name": "config", "status": "ok", "summary": "..." },
     { "name": "container_runtime", "status": "info", "summary": "..." },
-    { "name": "index_status", "status": "ok", "summary": "..." }
-  ]
+    { "name": "index_status", "status": "ok", "summary": "..." },
+    { "name": "telemetry_state", "status": "ok", "summary": "..." },
+    { "name": "content_version", "status": "ok", "summary": "..." }
+  ],
+  "cli_version": { "name": "cli_version", "status": "ok", "summary": "..." }
 }
 ```
 

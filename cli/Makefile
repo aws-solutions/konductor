@@ -259,10 +259,11 @@ test-schema-dump: build
 # prefix.
 #
 # Points both `--target` and `HOME` at scratch directories: `--target`
-# alone isn't enough, since doctor's `config` check resolves the
-# user-config tier via the real `$HOME` regardless, and a malformed
-# personal `~/.konductor/config.yml` would otherwise fail this gate for an
-# unrelated reason (same isolation `test-schema-dump` uses above).
+# alone isn't enough, since doctor's `telemetry_state` and `index_status`
+# checks resolve `$HOME` regardless, and a malformed personal
+# `~/.konductor/config.yml` or `telemetry.json` would otherwise affect
+# this gate for an unrelated reason (same isolation `test-schema-dump`
+# uses above).
 #
 # Captures stdout+stderr together: `doctor`'s report goes to stdout, so
 # capturing stderr alone would discard the actual diagnostic on a real

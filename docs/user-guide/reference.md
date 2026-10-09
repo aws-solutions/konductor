@@ -37,7 +37,7 @@ Six commands.
 | `konductor install` | Register agents, skills, SOPs, and context files with the harness named by `--harness` (required) |
 | `konductor update` | Unconditionally overwrite a tracked install in place from `--from`; `--dry-run` previews it |
 | `konductor uninstall` | Remove a tracked install's files and its index entry; `--dry-run` previews it |
-| `konductor doctor` | Check the runtime, the installed content, the project config, and available updates |
+| `konductor doctor` | Check the source tree, the runtime, the installed content, telemetry state, and available updates |
 | `konductor init` | Create `.konductor/` and write a starter `config.yml` |
 | `konductor synth` | Parse `agents/`, `skills/`, and `agent-sops/` and write per-runtime output to `<source>/dist/` |
 
@@ -112,7 +112,7 @@ Accepted before or after a subcommand.
 ## Configuration file
 
 **Path:** `.konductor/config.yml`, relative to the current working directory. `konductor init`
-writes it and `konductor doctor` validates it; edit it by hand.
+writes it; edit it by hand.
 **Format:** a YAML mapping at the top level, with flat scalar keys. Nested dotted keys are not
 supported.
 

@@ -29,9 +29,11 @@ pub(crate) use install_info::{
     agent_version_from_source, install_info_path, read_install_info, read_install_info_detailed,
     remove_install_info, write_install_info, InstallInfoAbsence,
 };
+#[cfg(test)]
+pub(crate) use report::lock_telemetry_env;
 pub(crate) use report::{
-    report_agent_invocation, report_cli_error, report_cli_error_for_target,
+    gate4_suppression, report_agent_invocation, report_cli_error, report_cli_error_for_target,
     report_package_installed, report_package_uninstalled, report_package_uninstalled_for_target,
     report_package_version_updated, report_package_version_updated_for_target,
-    report_subagent_invocation,
+    report_subagent_invocation, Gate4Reason,
 };

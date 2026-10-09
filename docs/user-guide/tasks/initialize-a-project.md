@@ -87,9 +87,8 @@ Field meanings are in [CLI reference → configuration file](../reference.md#con
 
 - [ ] `konductor init` printed two `Initialized…` / `Wrote starter config:` lines and exited `0`.
 - [ ] `.konductor/config.yml` exists and is non-empty.
-- [ ] `.konductor/config.yml` parses — `konductor doctor` reports `config` as `ok`.
 
-Verify that last one:
+Verify the file:
 
 ```bash
 cat .konductor/config.yml
