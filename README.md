@@ -275,7 +275,7 @@ The `konductor` CLI provides the following commands:
 | `konductor update`    | Overwrite a tracked install in place from a fresh `synth` source                                    |
 | `konductor uninstall` | Remove a tracked install's files and its entry from `~/.konductor/installs`                         |
 | `konductor synth`     | Transform source agent specs into per-runtime output (`kiro-cli-v2`, `kiro-v3`, `claude`)           |
-| `konductor init`      | Scaffold `.konductor/` and a starter `config.yml` from a preset (`solo`, `team`, `org`)             |
+| `konductor init`      | Scaffold `.konductor/` and a starter `config.yml`                                                   |
 | `konductor doctor`    | Inspect an install/checkout for problems and report remediation guidance                            |
 | `konductor config`    | Get/set/list configuration values                                                                   |
 

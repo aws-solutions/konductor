@@ -104,49 +104,50 @@ Accepted before or after a subcommand.
 | `doctor` | `--from <PATH>` | path | No | Source tree to check. Conflicts with `--all` |
 | `doctor` | `--target <DIR>` | path | No | Install directory to check. Defaults to `$HOME`. Conflicts with `--all` |
 | `doctor` | `--all` | flag | No | Check every tracked install. Conflicts with `--from` and `--target` |
-| `init` | `--preset <PRESET>` | enum | No | `solo`, `team`, `org` |
 | `init` | `--force` | flag | No | Overwrite an existing `.konductor/` instead of failing |
 | `synth` | `--from <PATH>` | path | No | Synthesize this source tree instead of the current directory. Output goes to `<PATH>/dist/` |
 
+`init` also accepts a hidden, deprecated `--preset <solo|team|org>`: it has no effect on the
+scaffolded output and prints a warning to stderr.
 
 ## Configuration file
 
-**Path:** `.konductor/config.yml`, relative to the current working directory. `konductor init`
-writes it and `konductor doctor` validates it; edit it by hand.
+**Path:** `.konductor/config.yml`, relative to the current working directory. The file is
+optional; if it is absent, or omits `telemetry.enabled`, telemetry defaults to on. `konductor init`
+writes a starter copy and `konductor doctor` validates it; edit it by hand.
+
 **Format:** a YAML mapping at the top level, with flat scalar keys. Nested dotted keys are not
-supported.
+supported, except for `telemetry`, which groups its own two fields.
 
 ### Schema
 
 | Key | Type | Valid values | Default |
 | --- | --- | --- | --- |
 | `version` | integer | `1` — any other value is rejected | `1` |
-| `severities_source` | string | A path, relative to the CLI's policy directory, to the file defining finding severities | `severity-schema.yml` |
-| `tiers_source` | string | A path, relative to the CLI's policy directory, to the file defining change tiers | `scope-table.yml` |
-| `tier` | string | The active change tier: `trivial`, `bugfix`, `minor`, `major`, or `full` | `minor` |
-| `default_severity` | string | `CRITICAL`, `HIGH`, `MEDIUM`, `LOW`, or `INFO` — applied to a finding that does not specify its own severity | `MEDIUM` |
-| `fail_on_severity_at_or_above` | string | `CRITICAL`, `HIGH`, `MEDIUM`, `LOW`, or `INFO` — the lowest severity treated as blocking | `CRITICAL` |
+| `telemetry.enabled` | boolean | `true` or `false`, the per-project telemetry opt-out | `true` |
 
-Unrecognized extra keys are ignored.
+The opt-out value must be the YAML boolean `false`; a `config.yml` that fails to parse leaves
+telemetry on.
+
+`telemetry.endpoint` is also read if present, but `init` does not write it. Set it by hand under
+`telemetry:` to point reporting at a different collector:
+
+```yaml
+telemetry:
+  enabled: true
+  endpoint: "https://your-collector.example.com/generic"
+```
+
+Unrecognized extra keys are ignored. A config carrying the older `severities_source`,
+`tiers_source`, `tier`, `default_severity`, or `fail_on_severity_at_or_above` keys still parses
+and validates them if present. `init` just no longer writes them into a fresh starter file.
+`konductor doctor`'s `config` check reports the effective `tier` and `default_severity`.
 
 ### Minimal valid file
 
 ```yaml
 version: 1
 ```
-
-Every other field falls through to the user layer and then the CLI defaults.
-
-### Precedence
-
-Three layers, merged **shallow and per-field**. Later layers win per field; a field absent from a
-layer falls through.
-
-| Order | Layer | Path | Missing is an error? |
-| --- | --- | --- | --- |
-| 1 (lowest) | CLI defaults | Compiled into the binary | Never missing |
-| 2 | User config | `~/.konductor/config.yml`, resolved from `$HOME` | No |
-| 3 (highest) | Project config | `<cwd>/.konductor/config.yml` | No |
 
 ### Config error messages
 
@@ -190,7 +191,7 @@ rather than lumping every non-zero code together.
 | Unknown subcommand | `konductor instal` |
 | Unknown flag | `konductor --bogus` |
 | Missing required argument | `konductor install` without `--harness` |
-| Invalid enum value | `konductor init --preset enterprise` |
+| Invalid enum value | `konductor install --harness bogus` |
 | Malformed config on load | Any command, against a broken `.konductor/config.yml` |
 | `init` without `--force` on an existing `.konductor/` | `konductor init` |
 | `synth` parse failure | A malformed `agents/*.agent-spec.json` |
@@ -337,7 +338,6 @@ JSON or Markdown you can read and change — see
 | `.konductor/config.yml` | `konductor init` | No |
 | `dist/` | `konductor synth` | **Yes** |
 | `~/.konductor/logs/konductor.log` | Every CLI invocation | Outside the repo |
-| `~/.konductor/config.yml` | You, by hand | Outside the repo |
 | `.konductor/handoff/<name>.md` | The `k-context-gathering` SOP, for large findings | No |
 | `.agents/scratchpad/critique-NNN.md` | The `k-pre-cr-critique` SOP | No |
 | `.kiro/specs/<feature>/` | The `kiro-spec-workflow` SOP | No |

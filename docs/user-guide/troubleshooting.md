@@ -323,21 +323,22 @@ Fix the named file and re-run.
 
 **Symptom.** A finding severity or change tier is not what your project config says.
 
-**Cause.** Three layers merge — CLI defaults, then `~/.konductor/config.yml`, then the project file —
-and a forgotten **user-level** config applies to every project while nothing surfaces it.
+**Cause.** Depends on which value you mean. Telemetry (whether it's on, and where it reports to)
+reads only `.konductor/config.yml` in the project. Nothing else is consulted. The values
+`konductor doctor` reports, `tier` and `default_severity`, come from a three-layer merge instead:
+built-in defaults, then `~/.konductor/config.yml` if one exists, then the project's
+`.konductor/config.yml`, with the project file winning per field when both set it.
 
-**Fix.** Check the user layer:
+**Fix.** For a doctor-reported value, check the project file first, then the user-level one:
 
 ```bash
+cat .konductor/config.yml
 cat ~/.konductor/config.yml
 ```
 
-`No such file or directory` means you have no user-level config, and the value is coming from the CLI
-defaults. Otherwise, that file is your answer — edit or remove it.
-
-To override just for this project, edit `.konductor/config.yml` directly — project config
-always wins over the user layer. Full precedence rules are in the
-[CLI reference](reference.md#configuration-file).
+A key absent from both files takes its built-in default, listed in the
+[CLI reference](reference.md#configuration-file). Run `konductor doctor` to confirm the project
+file parses at all. A parse failure reports as a `failed` check there rather than a vague mismatch.
 
 ---
 
