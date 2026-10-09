@@ -46,7 +46,18 @@ function readLayer(file: string): Layer | undefined {
 
 export function loadProject(root: string): Project {
   const files = policyFiles(root);
-  return { root, user: readLayer(files.user), team: readLayer(files.team), local: readLayer(files.local) };
+  const user = readLayer(files.user);
+  // The user's policy fills in only what a workflow leaves open, and a
+  // workflow always says where each artifact goes, so an artifact path in the
+  // user's file could never take effect. Refuse it instead of ignoring it.
+  if (user?.policy.artifacts) {
+    throw new FlowError(
+      `${user.file} sets artifacts, which only a project's policy can do: a workflow always says where its ` +
+        `artifacts go, and this file fills in only what a workflow leaves open. Move the entry to ` +
+        `.konductor/policy-overrides.yml or .konductor/policy-overrides.local.yml in the project.`,
+    );
+  }
+  return { root, user, team: readLayer(files.team), local: readLayer(files.local) };
 }
 
 // The project's layers, most specific first, then the user's.
@@ -163,7 +174,7 @@ export function reviewGuide(p: Project, gate: Gate, artifactId: string | undefin
 // same for the whole workstream.
 export function artifactPath(p: Project, artifact: Artifact, slug: string, date: string): string {
   const override = projectLayers(p).find((l) => l.policy.artifacts?.[artifact.artifact])?.policy.artifacts?.[artifact.artifact];
-  const path = override?.path ?? artifact.path ?? p.user?.policy.artifacts?.[artifact.artifact]?.path;
+  const path = override?.path ?? artifact.path;
   return path.replaceAll("{slug}", slug).replaceAll("{date}", date);
 }
 

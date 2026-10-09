@@ -211,6 +211,14 @@ describe("finding an artifact's guide and template in the library", () => {
     expect(repo.ok("start", "feat")).toContain("PRODUCE writing/feat/essay.md (essay).");
   });
 
+  test("the user's policy may not move an artifact: it is refused, not ignored", () => {
+    repo.start("feat", LIBRARY_FLOW);
+    repo.write("home/.konductor/policy-overrides.yml", "artifacts:\n  essay:\n    path: mine/{slug}.md\n");
+    const out = repo.refused("start", "feat");
+    expect(out).toContain("policy-overrides.yml sets artifacts, which only a project's policy can do");
+    expect(out).toContain("Move the entry to .konductor/policy-overrides.yml or .konductor/policy-overrides.local.yml");
+  });
+
   test("an entry may sit in folders below artifacts/; it is found by its folder's name", () => {
     repo.write(".konductor/library/artifacts/writing/long-form/essay/guide.md");
     repo.start("feat", LIBRARY_FLOW);

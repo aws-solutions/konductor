@@ -107,7 +107,8 @@ export const PolicySchema = z
         description:
           "Where this project keeps an artifact, by artifact id, relative to the repository root; `{slug}` is " +
           "replaced with the workstream's slug and `{date}` with the local date the workstream started. Engine " +
-          "effect: replaces the path the workflow gives.",
+          "effect: replaces the path the workflow gives. Refused in ~/.konductor/policy-overrides.yml, which fills " +
+          "in only what a workflow leaves open, while a workflow always gives each artifact a path.",
         examples: [{ spec: { path: "docs/specs/{slug}.md" } }],
       }),
   })

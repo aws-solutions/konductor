@@ -289,8 +289,9 @@ policy, workflow and gates, project policy, project-local policy, workstream sta
 owner's recorded decision for approval, added rounds or a jump. In the implemented fields, project
 and local policy override workflow values where defined. Check bindings and the reviewer use local,
 project, then user policy; so do `launch`, while `reviewers` merges by author model and `rulings`
-from every file apply. Artifact paths use local or project policy, then the workflow, then
-user policy. Review `max_rounds` uses local or project policy, then
+from every file apply. Artifact paths use local or project policy, then the workflow; a workflow
+always gives each artifact a path, so user policy may not set `artifacts` and is refused when it
+does. Review `max_rounds` uses local or project policy, then
 the gate, then user policy, then the engine default. A review guide uses local or project policy,
 the project's artifact `review.md`, the gate's `guide`, user policy, then the user and package
 artifact review guides.
