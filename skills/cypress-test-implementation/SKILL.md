@@ -1,6 +1,6 @@
 ---
 name: cypress-test-implementation
-description: Transforms E2E test strategy into Cypress implementation tasks. Use after E2E strategy is defined to plan and track Cypress test development. Operates in three modes — initial (planning), progress (tracking), and final (verification).
+description: 'Use when an agreed E2E test strategy needs its Cypress implementation planned, tracked, or verified. Breaks the strategy into phased implementation tasks in three modes: initial (planning), progress (tracking), and final (verification against the strategy). For writing Playwright specs, use playwright-test-implementation.'
 version: 1.0.0
 tags: [skill, cypress, e2e-testing, implementation, quality-assurance]
 ---
@@ -50,7 +50,7 @@ Transform E2E test strategy into actionable Cypress test implementation plan wit
 
 ## Prerequisites
 
-1. **E2E Test Strategy**: Output from E2E Test Strategy Planner prompt
+1. **E2E Test Strategy**: Output from the `e2e-test-strategy` skill
    - Location: `testing-quality-assurance/outputs/e2e-test-strategy.md`
    - Contains: Prioritized E2E test matrix, user journeys, test specifications
 
@@ -1940,5 +1940,5 @@ Next Steps:
 - Could add visual snapshot tests for critical UI states
 - Could configure parallel execution for faster CI runs
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
 ```

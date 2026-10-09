@@ -13,60 +13,37 @@ If a path does not exist, skip it silently and continue.
 
 ## Project Overview
 
-Konductor is an open-source multi-agent orchestration framework that provides a coordinated suite of specialist AI agents automating the full software development lifecycle. Agents collaborate through a structured delegation protocol. The package ships as static agent configuration files compatible with Kiro CLI and Claude Code — no runtime infrastructure required.
+Konductor is an open-source package of skills, SOPs and workflows that automate the software development lifecycle. It ships as static configuration files compatible with Kiro CLI and Claude Code, with no runtime infrastructure required. The package ships no agent specs: an agent runs a workflow step by step and loads each step's skill directly (see `fuse/flow/`).
+
+## First session in this repository
+
+When the user opens a session here without a specific task, such as a greeting, "what is this?" or
+"how do I get started?", or asks for the tutorial, read `skills/fuse-tutorial/SKILL.md` and offer
+the tutorial it describes. Read it by that path: someone who just cloned the repository has usually
+not installed the skills yet, and the tutorial is also how they install them.
 
 ## Project Structure
 
 ```
-agents/        # Agent definitions (.agent-spec.json, one per agent)
 skills/        # Skill definitions (SKILL.md + optional scripts)
 agent-sops/    # Standard operating procedures (user-invoked workflows)
-context/       # Context files loaded at agent startup (system prompts, routing rules)
-cli/           # Konductor CLI; see cli/README.md
+fuse/flow/     # fuse-flow workflow runner and workflow definitions; see fuse/flow/README.md
+install.sh     # Installer; see INSTALL.md
+AGENTS.fuse.md # Always-on block that install.sh writes into harness instruction files
 ```
 
 ## Setup & Commands
 
-```bash
-# Kiro CLI
-konductor install
-kiro-cli chat --agent konductor
-
-# Claude Code
-claude --agent konductor
-```
-
-Run from the repo root (`make synth`'s `konductor synth` defaults its source tree to
-the current working directory, and the `build/cli/konductor` path below is relative
-to it):
-
-```bash
-# Build cli/ + mcp/, synth agent/skill content, then install from this checkout
-make build
-make synth
-build/cli/konductor install --from . --harness kiro-cli-v2
-```
-
-`make build` first is required, not optional: `make synth` on its own only builds
-`cli/` (it needs the `konductor` binary, nothing from `mcp/`), so skipping this step
-and going straight to `make synth` leaves `mcp/`'s MCP server binary unbuilt --
-`install` auto-discovers that binary and silently skips it if missing (no error),
-producing agents that can't load skills at runtime.
-
-See [`cli/README.md`](cli/README.md) for the full build, PATH setup, and install
-instructions.
+Run every test suite from the repository root with `bun run test`.
 
 ## Code Style & Conventions
 
-- Agent specs are JSON; keep them formatted (2-space indent).
-- Skills are markdown with YAML frontmatter (`name`, `description`). A `description` may take a
-  trigger-clause form ("Use when...") or a behavior-summary form ("Does X"); either is fine as
-  long as a reader, human or model, can tell when the skill applies from the text alone. Do not
-  convert a description from one form to the other for consistency alone. Fix a description
-  that gives no activation condition at all. You may broaden an existing condition (for example,
-  add a disjunct) when the skill's actual scope grew, but do not churn the form otherwise.
-- Orchestrators are named `konductor`, `konductor-mux-orchestrator`, and `konductor-cmux-orchestrator`; 
-  every specialist uses a `k-*` name. Skills are unprefixed unless avoiding a known collision.
+- Skills follow the [Agent Skills specification](https://agentskills.io/specification). Write
+  each `description` as the [optimizing-descriptions](https://agentskills.io/skill-creation/optimizing-descriptions)
+  guide describes, opening with when to use the skill ("Use when ...") and then saying briefly
+  what it does, in at most 1024 characters. Write the body by the
+  [best practices](https://agentskills.io/skill-creation/best-practices).
+- SOPs use a `k-*` name, except the older `kiro-spec-workflow`. Skills are unprefixed unless avoiding a known collision.
 - **License headers:** All code files must carry an SPDX short-form identifier as the very first line
   (before any docstring or comment block), matching the project's declared Apache-2.0 license.
   `Apache-2.0` is the only permitted SPDX identifier in this package. Do not introduce any other
@@ -80,28 +57,53 @@ instructions.
   - Shell, YAML: `# SPDX-License-Identifier: Apache-2.0`
 
   Formats that have no comment syntax at all (JSON and similar) cannot carry a header and are exempt -- do not add one and do not treat its absence as a violation.
+- **No references to private specs:** specs and research notes (`docs/specs/`, `docs/research/`)
+  are gitignored and never published. Code, test and workflow comments, test names and other
+  published files must not cite them: no file paths, decision numbers ("decision 18"), or
+  mentions of a brief or build spec. State the reason itself in the comment instead.
 
 ## Pull Requests
+
+Write commit messages and pull request titles as [Conventional Commits](https://www.conventionalcommits.org):
+`type(scope): summary`, for example `fix(skills): tighten a skill description`. Use a component name
+(`skills`, `agents`, `fuse-flow`) as the scope where one applies. Skills, agent specs, SOPs and
+context files are shipped product: use `feat` or `fix` when they change agent behavior and
+`refactor` when they do not, never `docs`. Changes to this file or `CLAUDE.md` are `chore`.
+This convention is inferred from the existing history and is not enforced by CI.
 
 Use [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md) for every pull request.
 GitHub pre-fills the PR body with it automatically. Complete every section, or delete it if it does
 not apply — do not leave a section untouched with its placeholder text still in place.
 
-## Konductor CLI (`cli/`)
+## Branching
 
-The `cli/` tree is the Konductor CLI: the command-line utility for installing, configuring,
-and diagnosing a Konductor-managed repository, covering an 8-command surface.
-**Read `cli/README.md` before working on it** (commands, conventions, current state).
+`fuse` is the integration branch; every pull request targets it. Its history stays clean and
+linear, which is why merge commits are disabled. Commit as often as you like while working, but
+squash before landing: either the whole pull request into one well-named commit, or related
+commits within it. Five commits in a row editing the same file become one, whose message
+describes the result.
 
-Non-negotiable conventions:
-
-- **Usage errors exit `64` (`EX_USAGE`)**; exit code `2` is reserved for the "unresolved
-  CRITICAL gate" signal and must never be emitted for a bad CLI invocation.
-- When changing the command surface, keep `cli/README.md`'s command list in sync.
+- **Targeted changes** (anything that should land in `fuse` for sure) are built on a short-lived
+  branch named for the change type: `feature/<slug>`, `fix/<slug>`, `chore/<slug>`,
+  `refactoring/<slug>`, or `agent/<slug>` for agent-driven work. Each lands through a pull
+  request that replays its commits on top of `fuse`; merge commits are disabled on the
+  repository, and the branch is deleted on landing. Rebase onto the current `fuse` before
+  requesting review, so the reviewed commits are the ones that land.
+- **Candidates** are experimental, wide-scoped changes that alter agent behavior significantly
+  and are meant to be benchmarked against `fuse` and against each other. They live on
+  `candidates/<NAME>`. A candidate is not an incremental change and is never merged piecemeal:
+  most candidates are discarded, and a selected candidate replaces `fuse` as a whole. Replacing
+  `fuse` is the maintainers' call; tag the previous tip first (`git tag fuse-before-<NAME> fuse`) so it
+  stays reachable.
 
 ## Authoring Agents & Skills
 
 See the `agents-md-authoring` skill for creating and maintaining AGENTS.md files.
+
+Instructions that tell agents how to work with fuse go in exactly one of these places: the
+`fuse-workstream` skill (picking, starting and running a workstream), the `fuse-flow-builder` skill
+(building and changing workflows), the `fuse-tutorial` skill (the guided tour), the always-on block
+`AGENTS.fuse.md`, or the output fuse-flow prints. Do not add another fuse skill.
 
 ## Memory
 

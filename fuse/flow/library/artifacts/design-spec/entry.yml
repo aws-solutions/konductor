@@ -1,0 +1,2 @@
+# yaml-language-server: $schema=../../../workflows/schemas/library-entry.schema.json
+description: "The approved design for one change, worked out with the owner from their idea, that the implementation plan is built from."

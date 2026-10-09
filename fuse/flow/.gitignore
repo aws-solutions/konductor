@@ -1,0 +1,6 @@
+node_modules/
+# Workflows that are not shared with everybody: personal/ is a folder of your
+# own, team/ is usually a symlink to a repository shared with a group. No
+# trailing slash on team, so the pattern also matches the symlink.
+/workflows/personal/
+/workflows/team

@@ -1,0 +1,2 @@
+checks:
+  default: npm test

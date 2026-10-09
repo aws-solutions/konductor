@@ -1,25 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 /**
  * Regression test guarding README.md (and CHANGELOG.md) against a small
- * class of wording that leaks the wrong audience/visibility assumption
- * into a document meant for the public, runnable from a plain external
- * clone of this package with no sibling packages and no CDK access.
- *
- * The authoritative denylist scan for this class of wording lives in a
- * separate, internal-only package's public-artifact-safety-scan.sh and
- * runs as part of the internal release pipeline (see the README's "How
- * installing Konductor works" section) -- it is not reachable from a
- * standalone clone of this package, and today's PR-time GitHub Actions
- * check does not run it either. This test is a supplementary, local-only
- * layer, not a replacement for that pipeline stage.
+ * class of wording that assumes a restricted, non-public audience. Both
+ * documents are meant for anyone who clones this repository, so a phrase
+ * that addresses only a closed group of readers is a defect. The test runs
+ * from a plain clone of this repository and needs nothing else.
  *
  * The forbidden phrases below are stored ROT13-encoded rather than as
  * literal string/regex patterns, and this comment intentionally never
  * spells them out either. A prior version of this test embedded the
  * literal phrases directly, which made this test FILE ITSELF a carrier of
  * exactly the wording it existed to forbid -- a public artifact containing
- * that wording as plain text, which the same denylist class would flag if
- * it (or a future stricter scan) ever swept this package's own tree. ROT13
+ * that wording as plain text, which a scan for the same wording would flag
+ * if it ever swept this repository's own tree. ROT13
  * avoids that: the literal substring never appears in this file's source
  * bytes, only its rotated form does, decoded back at test-run time for the
  * actual comparison.

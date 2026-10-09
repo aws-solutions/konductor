@@ -1,6 +1,6 @@
 ---
 name: policy-validation
-description: Validates IAM policies and security controls against AWS best practices. Use before deployment to detect overly permissive permissions, missing conditions, and compliance gaps. Produces prioritized findings with specific fixes.
+description: Use when IAM policies or security controls are about to be deployed, to catch overly permissive permissions, missing conditions, and compliance gaps first. Produces prioritized findings with specific fixes. To write new policies, use iam-policy-design.
 version: 1.0.0
 tags: [skill, iam, security, policy, validation, checker, aws]
 ---
@@ -965,4 +965,4 @@ Generate output in this format:
 - Could add `aws:CalledVia` conditions for service-to-service calls
 - Could tighten `s3:GetObject` to specific key prefixes
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.

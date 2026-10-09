@@ -1,0 +1,2 @@
+# yaml-language-server: $schema=../../../workflows/schemas/library-entry.schema.json
+description: "A step-by-step plan for implementing the approved design, written for an engineer with no context."

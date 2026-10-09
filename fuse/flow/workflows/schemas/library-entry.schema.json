@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "./library-entry.schema.json",
+  "title": "fuse-flow library entry",
+  "description": "library/artifacts/<id>/entry.yml: what one artifact in the library is.",
+  "type": "object",
+  "properties": {
+    "description": {
+      "description": "One sentence on what the artifact is and what it is for. Engine effect: none. Komposer shows it in the library and pre-fills a step's empty instruction from it when the artifact is added to the step.",
+      "examples": [
+        "The architecture and the decisions behind it."
+      ],
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "description"
+  ],
+  "additionalProperties": false
+}

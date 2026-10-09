@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: Apache-2.0
+# Smoke fixture: a three-step build loop with two owner approvals and one
+# mechanical check, small enough that the orchestrator's replies dominate.
+version: 1
+name: smoke-gated-a
+description: Requirements, implementation and release, with owner approvals and a test check.
+
+steps:
+  - id: requirements
+    title: Requirements
+    instruction: >
+      Write down in a few lines what the program must do, then ask the owner to
+      approve them.
+    produces:
+      - artifact: requirements
+        path: .konductor/{slug}/requirements.md
+    gates:
+      - owner-action: approve the requirements
+
+  - id: implementation
+    title: Implement
+    instruction: >
+      Build the program the approved requirements describe, with an npm test
+      that runs it and checks its output. Record what you built and how you ran
+      the test.
+    consumes: [requirements]
+    produces:
+      - artifact: implementation-report
+        path: .konductor/{slug}/implementation-report.md
+    gates:
+      - check: default
+
+  - id: release
+    title: Release approval
+    instruction: >
+      Summarize for the owner what was built and how it was verified, then ask
+      the owner to accept it.
+    consumes: [implementation-report]
+    produces:
+      - artifact: release-summary
+        path: .konductor/{slug}/release-summary.md
+    gates:
+      - owner-action: accept the release

@@ -1,6 +1,6 @@
 ---
 name: non-functional-requirements
-description: Extracts measurable non-functional requirements from system design documents. Use after system design to produce NFRs across performance, availability, security, scalability, and observability. Outputs are used as inputs for test planning and architecture validation.
+description: Use when a system design is done and the service needs measurable non-functional requirements for test planning or architecture validation. Extracts NFRs for performance, availability, security, scalability, and observability from the design documents.
 version: 1.0.0
 tags: [skill, nfr, requirements, performance, availability, security, architecture]
 ---
@@ -20,7 +20,7 @@ Extract NFRs from the provided system design document across these categories:
 - Observability: required metrics, log retention, trace sampling rate
 - Cost: monthly budget target, cost per transaction target
 
-All NFRs must be measurable — no vague terms ("fast", "reliable", "secure").
+All NFRs must be measurable: no vague terms ("fast", "reliable", "secure").
 
 ## Quality Gate
 
@@ -41,4 +41,4 @@ All NFRs must be measurable — no vague terms ("fast", "reliable", "secure").
 - Could add NFRs for cold start latency if Lambda is used
 - Could define degraded mode behavior when targets cannot be met
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.

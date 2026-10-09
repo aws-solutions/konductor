@@ -1,6 +1,6 @@
 ---
 name: user-story-writing
-description: Creates user stories with INVEST principles, epics, and acceptance criteria from business requirements or product documentation. Use when converting validated requirements into development-ready stories. Supports MVP (10-15 stories), Production (20-30 stories), and full scope (30-40 stories).
+description: Use when validated requirements or product documentation need to become development-ready user stories. Writes INVEST stories, epics, and acceptance criteria at MVP (10-15 stories), Production (20-30), or full scope (30-40).
 version: 1.0.0
 tags: [skill, user-stories, agile, invest, acceptance-criteria, requirements]
 ---
@@ -40,7 +40,7 @@ When this skill is activated, use the following as your full instruction set for
 ---
 
 <role>
-You are a Senior Agile Requirements Engineer with 15+ years of experience implementing SAFe, Scrum, and Kanban methodologies across enterprise organizations. Your expertise includes requirements decomposition, writing clear user stories with INVEST principles (Independent, Negotiable, Valuable, Estimable, Small, Testable), maintaining business-technical alignment, and facilitating requirements workshops. You have successfully transformed vague business needs into actionable development tasks for Fortune 500 companies across finance, healthcare, and technology sectors.
+You are a Senior Agile Requirements Engineer with 15+ years of experience implementing SAFe, Scrum, and Kanban methodologies across enterprise organizations. Your expertise includes requirements decomposition, writing clear user stories with INVEST principles (Independent, Negotiable, Valuable, Estimable, Small, Testable), maintaining business-technical alignment, and facilitating requirements workshops.
 </role>
 <context>
 Users will come to you with various forms of requirements through different input methods:
@@ -306,4 +306,4 @@ Content may include:
 - Could decompose XL stories further
 - Could add non-functional requirements as explicit stories
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.

@@ -13,17 +13,17 @@ Evidence collection protocol that ensures no task is declared complete without p
 
 ## Usage
 
-This skill is always active. It applies whenever an agent completes a task that produces a testable outcome — code, build artifacts, generated documents, or infrastructure changes. No explicit activation needed.
+This skill is always active. It applies whenever an agent completes a task that produces a testable outcome: code, build artifacts, generated documents, or infrastructure changes. No explicit activation needed.
 
 ## TDD Workflow
 
 Follow these phases in order. Do not skip phases.
 
-1. **SPEC** — Define success criteria before implementation. What must be true when done?
-2. **RED** — Write a failing test. Run it. Confirm it FAILS. Show the output.
-3. **GREEN** — Write minimal code to make the test pass. Run it. Confirm it PASSES. Show the output.
-4. **REFACTOR** — Clean up code. Run tests again. Confirm they stay GREEN. Show the output.
-5. **VERIFY** — Run the full test suite. Confirm all tests pass. Show the output.
+1. **SPEC**: Define success criteria before implementation. What must be true when done?
+2. **RED**: Write a failing test. Run it. Confirm it FAILS. Show the output.
+3. **GREEN**: Write minimal code to make the test pass. Run it. Confirm it PASSES. Show the output.
+4. **REFACTOR**: Clean up code. Run tests again. Confirm they stay GREEN. Show the output.
+5. **VERIFY**: Run the full test suite. Confirm all tests pass. Show the output.
 
    ```bash
    # Node.js / TypeScript
@@ -39,7 +39,7 @@ Follow these phases in order. Do not skip phases.
    ./gradlew build test
    ```
 
-6. **EVIDENCE** — Present the output proving it works.
+6. **EVIDENCE**: Present the output proving it works.
 
 ## Evidence Requirements
 
@@ -47,7 +47,7 @@ Follow these phases in order. Do not skip phases.
 | -------- | ------------------ | --------------------------------------- |
 | Build    | Run build command  | Exit code 0, no errors in output        |
 | Test     | Execute test suite | All tests pass (full output shown)      |
-| Artifact | Generate document  | Corresponding checker skill scores PASS |
+| Artifact | Generate document  | Corresponding checker skill passes      |
 | Manual   | Test the feature   | Describe exactly what was observed      |
 
 ### Evidence Format
@@ -65,20 +65,49 @@ Follow these phases in order. Do not skip phases.
 After generating any artifact (design doc, implementation guide, specification):
 
 1. Run the corresponding checker skill automatically
-2. Checker must score PASS before presenting to user
-3. If checker finds CRITICAL issues — fix them, re-run checker, then present
-4. Include checker score in evidence
+2. Checker must pass (see the pass condition below) before presenting to user
+3. If checker finds CRITICAL issues, fix them, re-run checker, then present
+4. Include the checker's result (its score, or its finding counts per severity) in evidence
+
+### Checker for each artifact
+
+Use the checker that matches what you produced. Load its skill and apply its criteria.
+
+| You produced                              | Checker                                                                                                 |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Backend code change                       | `backend-review`                                                                                        |
+| Frontend code change                      | `frontend-review`                                                                                       |
+| Infrastructure as code change             | `infra-validation`                                                                                      |
+| System design or architecture document    | `design-doc-guidelines`                                                                                 |
+| Threat model                              | `threat-modeling` quality criteria                                                                      |
+| Technical research or decision evidence   | `decision-research`, to verify claims and surface prior art                                             |
+| User stories                              | `user-story-writing` criteria (INVEST, complete acceptance criteria), then `decision-research` on claims |
+| Any other document produced by a skill    | That skill's own quality criteria                                                                       |
+
+A change to a design-bearing artifact needs `design-impact-review` before you make it, not after.
+Design-bearing means a requirement or user story, a system design decision, an API contract, a data
+model or schema, or a user experience flow: anything other artifacts depend on. The same applies to
+a change that deviates from an existing design document. Surface every BREAKING impact the review
+finds before proceeding.
+
+Present checker findings in the order CRITICAL, IMPORTANT, SUGGESTION. Most checkers report
+severity-ranked findings rather than a score: for those, the artifact passes when no CRITICAL
+finding remains, and the evidence is the finding counts per severity. A checker that defines its
+own pass condition or score uses that instead. Then ask the user "Fix these issues? [y/n]", unless
+the checker's own instructions say the user already confirmed scope or the run is unattended (for
+example `backend-review` with `scope_confirmed`); in that case report the findings without asking
+and leave fixing to the caller, as the checker says.
 
 ## Anti-Patterns
 
 These are NOT verification:
 
-- "I believe this works" — not evidence. Run it.
-- "The code looks correct" — not evidence. Compile it.
-- "Tests should pass" — not evidence. Execute them and show output.
-- Skipping verification because "it's a small change" — all changes need evidence.
-- Deleting failing tests instead of fixing code — fix the code, never delete the test.
-- Presenting an artifact without running the checker — always run maker-checker first.
+- "I believe this works" is not evidence. Run it.
+- "The code looks correct" is not evidence. Compile it.
+- "Tests should pass" is not evidence. Execute them and show output.
+- Skipping verification because "it's a small change". All changes need evidence.
+- Deleting failing tests instead of fixing code. Fix the code, never delete the test.
+- Presenting an artifact without running the checker. Always run maker-checker first.
 
 ## Self-Validation Checklist
 

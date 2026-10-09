@@ -1,6 +1,6 @@
 ---
 name: git-workflow
-description: Git workflow patterns for atomic commits, branch management, and history operations. Use when committing changes, managing branches, or searching git history.
+description: Use when committing changes, creating or managing branches, or searching git history. Covers atomic commits, branch management, and history operations. For merging branches, use git-merge.
 version: 1.0.0
 tags: [skill, git, workflow, commits, branches]
 ---
@@ -60,7 +60,7 @@ Examples:
 
 - Branch from `main` for new work
 - Naming: `<type>/<short-description>` (e.g., `feat/network-monitoring`, `fix/throttling-retry`)
-- Keep branches short-lived — merge within days, not weeks
+- Keep branches short-lived: merge within days, not weeks
 - Rebase on main before submitting a PR
 
 ## History Operations
@@ -68,7 +68,7 @@ Examples:
 | Command                     | Purpose                                  |
 | --------------------------- | ---------------------------------------- |
 | `git log --oneline -20`     | Recent commit history                    |
-| `git log --author=<alias>`  | Commits by author                        |
+| `git log --author=<name>`   | Commits by author                        |
 | `git blame <file>`          | Line-by-line attribution                 |
 | `git bisect start/bad/good` | Binary search for regression             |
 | `git log -S "<string>"`     | Find commits that added/removed a string |

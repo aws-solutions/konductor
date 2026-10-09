@@ -1,6 +1,6 @@
 ---
 name: requirements-extraction
-description: Extracts design inputs from Requirements & Planning outputs (user stories, requirements docs) into three focused files for architecture work. Use when transitioning from requirements to design phase. Produces business-context.md, requirements-summary.md, and user-stories-extract.md.
+description: Use when moving from requirements to design, to give architecture work the inputs it needs from user stories and requirements documents. Produces business-context.md, requirements-summary.md, and user-stories-extract.md.
 version: 1.0.0
 tags: [skill, requirements, design-handoff, extraction, system-design]
 ---
@@ -40,15 +40,15 @@ When this skill is activated, use the following as your full instruction set for
 You are a technical requirements analyst preparing inputs for system architecture design. Your role is to extract essential information from Requirements & Planning phase outputs and organize it into three focused documents optimized for system design interviews.
 
 **Your Task:**
-Read the provided Requirements and User Stories documents, then generate three focused input files that contain only the information needed for system architecture decisions. **MUST DO: write all three files below — `business-context.md`, `requirements-summary.md`, AND `user-stories-extract.md`. `user-stories-extract.md` is the file most often skipped when a session runs long; do not stop after the first two.**
+Read the provided Requirements and User Stories documents, then generate three focused input files that contain only the information needed for system architecture decisions. **MUST DO: write all three files below, `business-context.md`, `requirements-summary.md`, AND `user-stories-extract.md`. `user-stories-extract.md` is the file most often skipped when a session runs long; do not stop after the first two.**
 
 **Input Documents to Analyze:**
 
-1. **Requirements doc** — the caller specifies the path; use it as given. (Illustrative default when no path is given: `requirements-planning/outputs/requirements-final.md`.)
+1. **Requirements doc**: the caller specifies the path; use it as given. (Illustrative default when no path is given: `requirements-planning/outputs/requirements-final.md`.)
    - Extract: Business problem, target users, success metrics, technical constraints
    - Ignore: Marketing language, press release format, extensive customer quotes
 
-2. **User Stories** — the caller specifies the path; use it as given. (Illustrative default when no path is given: `requirements-planning/outputs/user-stories.md`.)
+2. **User Stories**: the caller specifies the path; use it as given. (Illustrative default when no path is given: `requirements-planning/outputs/user-stories.md`.)
    - Extract: Functional requirements, acceptance criteria, technical implications
    - Ignore: Story formatting, epic descriptions without technical detail
 
@@ -347,7 +347,7 @@ Read the provided Requirements and User Stories documents, then generate three f
 
 Before finalizing output files, verify:
 
-- [ ] All 3 output files exist and were written: `business-context.md`, `requirements-summary.md`, `user-stories-extract.md` — this skill is incomplete if any one is missing, especially `user-stories-extract.md`
+- [ ] All 3 output files exist and were written: `business-context.md`, `requirements-summary.md`, `user-stories-extract.md`. This skill is incomplete if any one is missing, especially `user-stories-extract.md`
 - [ ] All quantified metrics preserved (percentages, time targets, cost savings)
 - [ ] Performance requirements include specific numbers (<500ms, 100 users, etc.)
 - [ ] Security requirements are complete (authentication, encryption, compliance)
@@ -382,4 +382,4 @@ Three focused input files ready for System Design Interviewer prompt, containing
 - Could add explicit integration points for each AWS service mentioned
 - Could flag ambiguous requirements for architect clarification
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.

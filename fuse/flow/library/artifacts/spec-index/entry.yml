@@ -1,0 +1,2 @@
+# yaml-language-server: $schema=../../../workflows/schemas/library-entry.schema.json
+description: "The list of spec directories, one per feature, each holding the feature's requirements.md, design.md and tasks.md."

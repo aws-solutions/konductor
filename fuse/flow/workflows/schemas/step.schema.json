@@ -1,0 +1,111 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "./step.schema.json",
+  "title": "fuse-flow step",
+  "description": "One unit of work. Besides the rules on each field, fuse-flow checks that its id is not used by an earlier step and that what it consumes and routes back to comes before it.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "description": "Identifier of the step, unique in the workflow: lowercase letters, digits and hyphens. Engine effect: the state file records each step under its id, so renaming a step in a running workstream starts that step over.",
+      "examples": [
+        "requirements",
+        "code-review"
+      ],
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "title": {
+      "description": "Human-readable name of the step. Engine effect: none; shown by the viewer and in `status`.",
+      "examples": [
+        "2. Requirements"
+      ],
+      "type": "string"
+    },
+    "description": {
+      "description": "Notes on the step for the reader. Engine effect: none.",
+      "type": "string"
+    },
+    "phase": {
+      "description": "A label that groups steps, such as Inception or Construction. Engine effect: none; shown by the viewer.",
+      "type": "string"
+    },
+    "instruction": {
+      "description": "What this step must achieve, in this workflow. Engine effect: it opens the step block that fuse-flow prints when the step is handed out.",
+      "type": "string",
+      "minLength": 1
+    },
+    "condition": {
+      "description": "When the step runs, written like one gate: `script: <command>` or `check: <kind>` (run when the step is reached; exit 0 runs the step, anything else skips it), `agent: <when to do the step>` (the agent judges), or `owner-action: <the question>` (the agent asks the owner). Engine effect: a step without a condition is mandatory; one with a condition may be skipped with `continue <slug> --skip \"<reason>\"`.",
+      "$ref": "./condition.schema.json"
+    },
+    "consumes": {
+      "description": "Ids of artifacts produced or updated by earlier steps that this step reads. Engine effect: the step block lists each with its path and whether it exists; an id no earlier step produces or updates is refused.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9-]*$"
+      }
+    },
+    "produces": {
+      "description": "Artifacts the step writes: one or a list. Engine effect: `continue` is refused while one of them is neither on disk nor reported with `--not-produced <artifact> \"<reason>\"`. A path that already exists and that this workstream did not record is reported when the step is handed out.",
+      "anyOf": [
+        {
+          "$ref": "./artifact.schema.json"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "./artifact.schema.json"
+          }
+        }
+      ]
+    },
+    "optional_produces": {
+      "description": "Artifacts the step may write. Engine effect: listed in the step block and recorded when they exist; never refused.",
+      "anyOf": [
+        {
+          "$ref": "./artifact.schema.json"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "./artifact.schema.json"
+          }
+        }
+      ]
+    },
+    "updates": {
+      "description": "Artifacts the step changes, which usually exist when it starts, such as code. Engine effect: `continue` is refused until each is accounted for, with `--updated <file>` or `--unchanged <artifact> \"<reason>\"`.",
+      "anyOf": [
+        {
+          "$ref": "./artifact.schema.json"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "./artifact.schema.json"
+          }
+        }
+      ]
+    },
+    "gates": {
+      "description": "What must hold before the step counts as done: one gate or a list, in any combination of kinds. Engine effect: they run in a fixed order, checks first, then the agent review, then the owner.",
+      "anyOf": [
+        {
+          "$ref": "./gate.schema.json"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "./gate.schema.json"
+          }
+        }
+      ]
+    }
+  },
+  "required": [
+    "id",
+    "instruction"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,2 @@
+# yaml-language-server: $schema=../../../workflows/schemas/library-entry.schema.json
+description: "A check of every claim in the README and the other documentation against the implementation, recording what does not hold and how it was fixed."

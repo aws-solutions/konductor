@@ -1,0 +1,22 @@
+/* SPDX-License-Identifier: Apache-2.0
+   Komposer's webfonts, bundled from the @fontsource packages so that the app
+   makes no requests to other hosts. The fonts are under the SIL Open Font
+   License 1.1.
+   Display: Space Grotesk
+   Body/UI: IBM Plex Sans
+   Mono:    JetBrains Mono (code, labels, kickers) */
+
+@import "@fontsource/space-grotesk/400.css";
+@import "@fontsource/space-grotesk/500.css";
+@import "@fontsource/space-grotesk/600.css";
+@import "@fontsource/space-grotesk/700.css";
+
+@import "@fontsource/ibm-plex-sans/400.css";
+@import "@fontsource/ibm-plex-sans/400-italic.css";
+@import "@fontsource/ibm-plex-sans/500.css";
+@import "@fontsource/ibm-plex-sans/600.css";
+@import "@fontsource/ibm-plex-sans/700.css";
+
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
+@import "@fontsource/jetbrains-mono/700.css";

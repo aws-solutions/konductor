@@ -1,6 +1,6 @@
 ---
 name: dynamodb-design
-description: Generates DynamoDB table designs optimized for access patterns. Use when designing a data model for a new service. Produces partition key recommendations, GSI strategies, capacity planning, and CDK/CloudFormation implementation code.
+description: Use when designing the data model for a new service on DynamoDB, or when someone asks how to structure tables and keys for their access patterns. Produces partition key and GSI strategies, capacity planning, and CDK or CloudFormation code. To check an existing design, use dynamodb-validation.
 version: 1.0.0
 tags: [skill, dynamodb, database-design, nosql, data-modeling, aws]
 ---
@@ -2177,7 +2177,7 @@ Ask these questions during design review to catch issues early:
 
 **CRITICAL (must fix):**
 
-- Hot partition risk — access patterns concentrate writes on a single partition key value
+- Hot partition risk: access patterns concentrate writes on a single partition key value
 - Missing GSI for a required query pattern
 - No TTL strategy for time-bounded data
 
@@ -2192,4 +2192,4 @@ Ask these questions during design review to catch issues early:
 - Could add DynamoDB Streams configuration for event-driven patterns
 - Could document cost estimates for projected load
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.

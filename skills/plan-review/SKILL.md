@@ -1,6 +1,6 @@
 ---
 name: plan-review
-description: Critical review of work plans against 4 criteria (clarity, verifiability, context completeness, big picture) with 1-5 star rating and BLOCKED/OKAY/SHIP IT verdicts. Use when evaluating implementation plans, task breakdowns, or work breakdowns before execution.
+description: Use when an implementation plan, task breakdown, or work breakdown should be checked before execution starts. Rates it 1-5 stars on clarity, verifiability, context completeness, and big picture, with a BLOCKED, OKAY, or SHIP IT verdict.
 version: 1.0.0
 tags: [skill, review, plan, quality-gate, evaluation, tpm]
 ---
@@ -28,7 +28,7 @@ Do NOT use when:
 
 ## Core Principle
 
-**You are a REVIEWER, not a DESIGNER.** The implementation direction in the plan is NOT NEGOTIABLE. Evaluate whether the plan documents that direction clearly enough to execute — NOT whether the direction itself is correct.
+**You are a REVIEWER, not a DESIGNER.** The implementation direction in the plan is NOT NEGOTIABLE. Evaluate whether the plan documents that direction clearly enough to execute. Do NOT evaluate whether the direction itself is correct.
 
 ## 4 Evaluation Criteria
 
@@ -118,10 +118,10 @@ Reject plans that have ANY of these issues:
 
 ## Review Workflow
 
-1. Read the full plan — don't start reviewing until you've read everything
-2. Score each of the 4 criteria — go through checklists, note issues with task numbers
-3. Verify file references — check that referenced files and patterns exist
-4. Identify blocking issues — distinguish "nice to have" from "must fix"
+1. Read the full plan. Don't start reviewing until you've read everything
+2. Score each of the 4 criteria. Go through checklists, note issues with task numbers
+3. Verify file references. Check that referenced files and patterns exist
+4. Identify blocking issues. Distinguish "nice to have" from "must fix"
 5. Calculate overall rating using the scoring formula
 6. Write verdict using the appropriate format (OKAY or BLOCKED)
 
@@ -129,11 +129,11 @@ Reject plans that have ANY of these issues:
 
 | Rating     | Verdict | Meaning                                           |
 | ---------- | ------- | ------------------------------------------------- |
-| ⭐         | BLOCKED | Unusable — fundamental gaps prevent any progress  |
-| ⭐⭐       | BLOCKED | Major revision needed — multiple critical gaps    |
-| ⭐⭐⭐     | OKAY    | Workable but risky — several unclear areas        |
+| ⭐         | BLOCKED | Unusable, fundamental gaps prevent any progress  |
+| ⭐⭐       | BLOCKED | Major revision needed, multiple critical gaps    |
+| ⭐⭐⭐     | OKAY    | Workable but risky, several unclear areas        |
 | ⭐⭐⭐⭐   | OKAY    | Good plan with minor issues                       |
-| ⭐⭐⭐⭐⭐ | SHIP IT | Clear, verifiable, complete — ready for execution |
+| ⭐⭐⭐⭐⭐ | SHIP IT | Clear, verifiable, complete, ready for execution |
 
 ### Scoring
 

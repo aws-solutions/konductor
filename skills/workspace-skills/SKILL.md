@@ -1,11 +1,6 @@
 ---
 name: workspace-skills
-description: >
-  Use after trial-and-error that succeeded, a mid-task course correction, a
-  user correction that worked, or an unexpected outcome requiring
-  investigation. Captures the reusable procedure as a project-specific
-  workspace skill, with proactive capture, dedup, and provenance
-  protection.
+description: Use after trial-and-error that succeeded, a mid-task course correction, a user correction that worked, or an unexpected outcome requiring investigation. Captures the reusable procedure as a project-specific workspace skill, with proactive capture, dedup, and provenance protection. For a single fact or preference, use persistent-memory.
 origin: agent-created
 version: 4
 last_used: 2026-07-01
@@ -23,7 +18,7 @@ persistent-memory. When unsure, apply this rule:
 | ------------------------------------ | ----------------- |
 | A reusable procedure or workflow     | workspace-skills  |
 | A fact, preference, or convention    | persistent-memory |
-| A one-time observation (not durable) | Neither — discard |
+| A one-time observation (not durable) | Neither, discard |
 
 ---
 
@@ -95,17 +90,17 @@ Scan existing skills for overlap (see Scan-Before-Create)
 ## Offer, then confirm
 
 When a quality signal fires, propose the capture with a single
-lightweight confirm line — keep it low-friction:
+lightweight confirm line, keep it low-friction:
 
-> "Capturing skill: `<name>` — `<one-line desc>`. OK?"
+> "Capturing skill `<name>`: `<one-line desc>`. OK?"
 
 After the user confirms, write the file and notify:
-"Captured skill `<name>` — `<desc>`."
+"Captured skill `<name>`: `<desc>`."
 
 Write the offer in third person, stating WHAT the skill does AND WHEN to
 use it, including trigger phrases the user might say. The provenance
 markers and immutability gate (see Provenance Markers below) are the
-safety net — they protect user-authored content regardless of how
+safety net. They protect user-authored content regardless of how
 capture is initiated.
 
 ---
@@ -117,7 +112,7 @@ capture is initiated.
 Check the `ws-*` workspace skills **already visible in your context**.
 They are loaded at session start via the `skill://.kiro/skills/ws-*/SKILL.md`
 resource glob (re-resolved each session). Each workspace skill's name
-and description appear in your context — scan those for overlap before
+and description appear in your context. Scan those for overlap before
 writing anything.
 
 **Decision rules:**
@@ -157,12 +152,12 @@ user's entry.
 ## What a worth-saving skill contains
 
 All four of the following. If any is missing, the workflow is not stable
-enough yet — keep iterating, do not save.
+enough yet. Keep iterating, do not save.
 
-1. **Trigger conditions** — when to use this skill (be specific)
+1. **Trigger conditions**: when to use this skill (be specific)
 2. **Numbered steps** with exact commands or tool calls
-3. **Pitfalls section** — what goes wrong and how to avoid it
-4. **Verification steps** — how to confirm the procedure succeeded
+3. **Pitfalls section**: what goes wrong and how to avoid it
+4. **Verification steps**: how to confirm the procedure succeeded
 
 ---
 
@@ -177,17 +172,17 @@ enough yet — keep iterating, do not save.
 ## How to Create a Skill
 
 1. **Scan** for overlap using the `ws-*` workspace skills already in context
-   (see Scan-Before-Create above) — the scan result determines whether to
+   (see Scan-Before-Create above); the scan result determines whether to
    PATCH an existing skill or CREATE a new one before offering.
 2. **Offer** with a lightweight confirm line: "Capturing skill:
-   `<name>` — `<one-line desc>`. OK?" Keep it low-friction.
+   `<name>`: `<one-line desc>`. OK?" Keep it low-friction.
 3. **Write** to the appropriate path for the current runtime after
    confirmation:
    - `.kiro/skills/ws-<name>/SKILL.md` (Kiro CLI)
    - `.claude/skills/ws-<name>/SKILL.md` (Claude Code)
-4. **Notify** the user: "Captured skill `<name>` — `<desc>`."
+4. **Notify** the user: "Captured skill `<name>`: `<desc>`."
 
-The `ws-` prefix is **mandatory** for both runtimes — it prevents name
+The `ws-` prefix is **mandatory** for both runtimes. It prevents name
 collisions with package-provided skills.
 
 ---
@@ -197,7 +192,7 @@ collisions with package-provided skills.
 ```yaml
 ---
 name: ws-<name>         # kebab-case, ws- prefix required
-description: <one sentence>  # what procedure this skill captures
+description: Use when <situation>. <What the procedure does>.  # when to apply it first, then what it does
 origin: agent-created   # or: user-authored
 version: 1              # integer, increment on every edit
 last_used: YYYY-MM-DD   # updated after applying the skill
@@ -213,8 +208,8 @@ related: []             # optional: names of related/overlapping skills
 ---
 name: ws-dynamodb-pagination
 description: >
-  How to implement DynamoDB pagination with LastEvaluatedKey
-  in this project.
+  Use when a DynamoDB query or scan in this project returns more
+  items than one page. Paginates with LastEvaluatedKey.
 origin: agent-created
 version: 1
 last_used: 2026-05-21

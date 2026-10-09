@@ -25,8 +25,8 @@ CONFIG_FILE="${GIT_ROOT}/.konductor/memory-config.json"
 # Anchor a relative TARGET to the repo root too, mirroring CONFIG_FILE
 # above -- the skill's real invocation always passes the relative literal
 # ".konductor/memory/MEMORY.md", so without this a write from a package
-# subdirectory (e.g. src/SomePackage/) lands at
-# src/SomePackage/.konductor/memory/MEMORY.md instead of the canonical,
+# subdirectory (e.g. packages/app/) lands at
+# packages/app/.konductor/memory/MEMORY.md instead of the canonical,
 # root-anchored path the .gitignore rule assumes protects it. An
 # already-absolute TARGET is left untouched.
 case "$TARGET" in
@@ -48,61 +48,80 @@ TARGET_DIR="$(dirname "$TARGET")"
 # present key of the wrong type. Callers fail closed on this rather than
 # falling through to defaults.
 _parse_config() {
-python3 - "$1" <<'PYEOF'
-import json, sys
+bun run - "$1" <<'TSEOF'
+import { readFileSync } from "node:fs";
 
-path = sys.argv[1]
-try:
-    with open(path) as f:
-        raw = f.read()
-except OSError as e:
-    print(f"CONFIG_ERROR: cannot read {path}: {e}")
-    sys.exit(1)
+const path = process.argv[2];
 
-try:
-    data = json.loads(raw)
-except json.JSONDecodeError as e:
-    print(f"CONFIG_ERROR: malformed JSON in {path}: {e}")
-    sys.exit(1)
+function fail(message: string): never {
+  console.log(`CONFIG_ERROR: ${message}`);
+  process.exit(1);
+}
 
-if not isinstance(data, dict):
-    print(f"CONFIG_ERROR: {path} top level must be a JSON object, got {type(data).__name__}")
-    sys.exit(1)
+function typeName(value: unknown): string {
+  if (value === null) return "null";
+  if (Array.isArray(value)) return "array";
+  return typeof value;
+}
 
-limits = data.get("limits", {})
-if not isinstance(limits, dict):
-    print(f"CONFIG_ERROR: {path} 'limits' must be an object, got {type(limits).__name__}")
-    sys.exit(1)
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeName(value) === "object";
+}
 
-memory_max = limits.get("memory_max_chars", "")
-if memory_max != "" and (not isinstance(memory_max, int) or isinstance(memory_max, bool)):
-    print(f"CONFIG_ERROR: {path} 'limits.memory_max_chars' must be an integer")
-    sys.exit(1)
+let raw: string;
+try {
+  // Fatal decoding: bytes that are not UTF-8 are an error, not replacement characters.
+  raw = new TextDecoder("utf-8", { fatal: true }).decode(readFileSync(path));
+} catch (error) {
+  fail(`cannot read ${path} as UTF-8: ${(error as Error).message}`);
+}
 
-user_max = limits.get("user_max_chars", "")
-if user_max != "" and (not isinstance(user_max, int) or isinstance(user_max, bool)):
-    print(f"CONFIG_ERROR: {path} 'limits.user_max_chars' must be an integer")
-    sys.exit(1)
+let data: unknown;
+try {
+  data = JSON.parse(raw);
+} catch (error) {
+  fail(`malformed JSON in ${path}: ${(error as Error).message}`);
+}
 
-allow = data.get("allowlist_patterns", [])
-if not isinstance(allow, list) or not all(isinstance(x, str) for x in allow):
-    print(f"CONFIG_ERROR: {path} 'allowlist_patterns' must be an array of strings")
-    sys.exit(1)
-if any("\n" in x or "\r" in x for x in allow):
-    # A newline inside a printed "ALLOW:<pattern>" line would be read by the
-    # caller's line-oriented `while read` loop as a SEPARATE output line --
-    # letting one allowlist entry inject a bogus MEMORY_MAX=/USER_MAX=/
-    # ALLOW: line of its own and silently override a budget or add an
-    # unintended pattern. Reject at the source instead of trying to escape
-    # it downstream.
-    print(f"CONFIG_ERROR: {path} 'allowlist_patterns' entries must not contain newlines")
-    sys.exit(1)
+if (!isObject(data)) {
+  fail(`${path} top level must be a JSON object, got ${typeName(data)}`);
+}
 
-print(f"MEMORY_MAX={memory_max}")
-print(f"USER_MAX={user_max}")
-for pattern in allow:
-    print(f"ALLOW:{pattern}")
-PYEOF
+// Only an absent key takes the default. An explicit null is a wrong type.
+const limits = "limits" in data ? data.limits : {};
+if (!isObject(limits)) {
+  fail(`${path} 'limits' must be an object, got ${typeName(limits)}`);
+}
+
+// A missing key prints as empty, which the caller reads as "use the default".
+function limit(key: string): string {
+  const value = limits[key];
+  if (value === undefined) return "";
+  if (!Number.isSafeInteger(value)) fail(`${path} 'limits.${key}' must be an integer`);
+  return String(value);
+}
+
+const memoryMax = limit("memory_max_chars");
+const userMax = limit("user_max_chars");
+
+const allow = "allowlist_patterns" in data ? data.allowlist_patterns : [];
+if (!Array.isArray(allow) || !allow.every((x) => typeof x === "string")) {
+  fail(`${path} 'allowlist_patterns' must be an array of strings`);
+}
+if (allow.some((x: string) => x.includes("\n") || x.includes("\r"))) {
+  // A newline inside a printed "ALLOW:<pattern>" line would be read by the
+  // caller's line-oriented `while read` loop as a SEPARATE output line --
+  // letting one allowlist entry inject a bogus MEMORY_MAX=/USER_MAX=/
+  // ALLOW: line of its own and silently override a budget or add an
+  // unintended pattern. Reject at the source instead of trying to escape
+  // it downstream.
+  fail(`${path} 'allowlist_patterns' entries must not contain newlines`);
+}
+
+console.log(`MEMORY_MAX=${memoryMax}`);
+console.log(`USER_MAX=${userMax}`);
+for (const pattern of allow) console.log(`ALLOW:${pattern}`);
+TSEOF
 }
 
 MEMORY_MAX=2200
@@ -122,9 +141,9 @@ if [[ -f "$CONFIG_FILE" ]]; then
       echo "REJECT: ${CONFIG_FILE} exists but could not be parsed as a valid config (${PARSE_OUTPUT#CONFIG_ERROR: }). Proceeding on defaults would silently convert a configured restriction into an unrestricted URL allowlist. Fix or remove the file, then retry." >&2
     else
       # No CONFIG_ERROR: line means _parse_config itself never ran (e.g.
-      # python3 missing) -- an environment problem, not a statement about
+      # bun missing) -- an environment problem, not a statement about
       # the config's contents. Still fail closed, but name the real cause.
-      echo "REJECT: could not invoke the interpreter needed to parse ${CONFIG_FILE} (exit ${PARSE_STATUS}). This is an environment problem (e.g. python3 missing or not executable), not a problem with the config file's contents. Fix the environment, then retry." >&2
+      echo "REJECT: could not invoke the interpreter needed to parse ${CONFIG_FILE} (exit ${PARSE_STATUS}). This is an environment problem (e.g. bun missing or not executable), not a problem with the config file's contents. Fix the environment, then retry." >&2
     fi
     exit 1
   fi
@@ -194,7 +213,7 @@ normalize_entry() {
 }
 
 # Derive the "entry" text a line contributes to content validation.
-# CWE-20 fix: content checks must not be limited to bullet lines -- an
+# Content checks (CWE-20) must not be limited to bullet lines -- an
 # injection payload formatted as a heading, paragraph, blockquote, or
 # numbered-list item must be checked too, since it is written to disk
 # verbatim just like a bullet entry. This strips a leading bullet marker
@@ -203,8 +222,8 @@ normalize_entry() {
 #
 # The bullet strip is ANCHORED (matches the numbered-item branch below):
 # it removes exactly one leading marker char and its following space(s),
-# nothing more. A prior version used the bash "${line#*[-*] }" shortest-
-# prefix expansion, which matches the FIRST occurrence anywhere in the
+# nothing more. The bash "${line#*[-*] }" shortest-prefix expansion is
+# not used because it matches the FIRST occurrence anywhere in the
 # line of a "-"/"*" followed by a space -- not necessarily the leading
 # one. When the leading marker is not immediately followed by a single
 # space (e.g. "-1 *payload* text"), that shortest-match can land on a
@@ -279,7 +298,7 @@ fi
 
 # Validate proposed entries. Every non-blank line is checked -- bullets,
 # numbered items, headings, paragraphs, blockquotes, etc. -- not just
-# bullet lines (CWE-20 fix).
+# bullet lines (CWE-20).
 while IFS= read -r line; do
   [[ "$line" =~ ^[[:space:]]*$ ]] && continue
 
@@ -355,18 +374,37 @@ done <<< "$PROPOSED"
 # budget. Forcing a specific UTF-8 locale (e.g. LC_ALL=C.UTF-8) is not a
 # fix: if that locale isn't installed, wc silently falls back to
 # byte-counting with no error, reproducing the same bug in a
-# harder-to-notice form. Count with python3 instead: len() on a decoded
-# stdin read counts Unicode code points regardless of the ambient
-# locale. This makes python3 a required dependency for every write, not
-# just when a config file is present (as _parse_config above already
-# needs it) -- so an invocation failure here is reported the same way,
-# as an environment problem, rather than left as an unexplained abort.
+# harder-to-notice form. Count with Bun instead: spreading a decoded
+# string counts Unicode code points regardless of the ambient locale.
+# This makes bun a required dependency for every write, not just when a
+# config file is present (as _parse_config above already needs it) -- so
+# an invocation failure here is reported the same way, as an environment
+# problem, rather than left as an unexplained abort. Content that is not
+# valid UTF-8 prints INVALID_UTF8 instead of a count and is rejected: decoding
+# it leniently would count replacement characters, not the bytes written.
 set +e
-proposed_chars="$(printf '%s' "$PROPOSED" | python3 -c 'import sys; print(len(sys.stdin.read()))' 2>/dev/null)"
+proposed_chars="$(printf '%s' "$PROPOSED" | bun -e '
+let text;
+try {
+  text = new TextDecoder("utf-8", { fatal: true }).decode(require("node:fs").readFileSync(0));
+} catch {
+  process.stdout.write("INVALID_UTF8");
+  process.exit(0);
+}
+process.stdout.write(String([...text].length));
+' 2>/dev/null)"
 COUNT_STATUS=$?
 set -e
 if [[ "$COUNT_STATUS" -ne 0 ]]; then
-  echo "REJECT: could not invoke the interpreter needed to count the proposed content's length (exit ${COUNT_STATUS}). This is an environment problem (e.g. python3 missing or not executable), not a problem with the proposed content. Fix the environment, then retry." >&2
+  echo "REJECT: could not invoke the interpreter needed to count the proposed content's length (exit ${COUNT_STATUS}). This is an environment problem (e.g. bun missing or not executable), not a problem with the proposed content. Fix the environment, then retry." >&2
+  exit 1
+fi
+if [[ "$proposed_chars" == INVALID_UTF8 ]]; then
+  echo "REJECT: proposed content is not valid UTF-8" >&2
+  exit 1
+fi
+if [[ ! "$proposed_chars" =~ ^[0-9]+$ ]]; then
+  echo "REJECT: could not count the proposed content's length (got '${proposed_chars}')" >&2
   exit 1
 fi
 if [[ "$proposed_chars" -gt "$BUDGET" ]]; then

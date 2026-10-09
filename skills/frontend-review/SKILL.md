@@ -1,6 +1,6 @@
 ---
 name: frontend-review
-description: Reviews frontend code changes for Cloudscape compliance, React Hook Form patterns, TypeScript type safety, and test quality. Use after implementing frontend changes to catch issues before code review. Produces CRITICAL/IMPORTANT/SUGGESTION findings.
+description: Use when frontend changes are implemented and not yet in code review, to catch problems early. Reviews Cloudscape compliance, React Hook Form patterns, TypeScript type safety, and test quality, with CRITICAL, IMPORTANT, and SUGGESTION findings. For backend code, use backend-review.
 version: 1.0.0
 tags: [skill, frontend, code-review, react, typescript, cloudscape, checker]
 ---
@@ -9,7 +9,7 @@ tags: [skill, frontend, code-review, react, typescript, cloudscape, checker]
 
 ## Overview
 
-Reviews frontend code with a critical eye across Cloudscape compliance, form patterns, type safety, component quality, and test coverage. Provides direct, unbiased assessment — calls out pattern violations, unnecessary complexity, and missing test coverage.
+Reviews frontend code with a critical eye across Cloudscape compliance, form patterns, type safety, component quality, and test coverage. Provides direct, unbiased assessment: calls out pattern violations, unnecessary complexity, and missing test coverage.
 
 ## Usage
 
@@ -30,9 +30,9 @@ Pattern compliance (React Hook Form + Zod, `useFormContext`, `FormProvider`), Cl
 
 ### Pattern Compliance
 
-- [ ] React Hook Form used — not custom state hooks
-- [ ] Zod validation used — not manual validation
-- [ ] Form sub-components use `useFormContext` — no prop drilling
+- [ ] React Hook Form used, not custom state hooks
+- [ ] Zod validation used, not manual validation
+- [ ] Form sub-components use `useFormContext`, no prop drilling
 - [ ] Wizard pages wrapped in `FormProvider`
 
 ### Cloudscape Compliance
@@ -92,4 +92,4 @@ Pattern compliance (React Hook Form + Zod, `useFormContext`, `FormProvider`), Cl
 - Could add missing edge case tests
 - Could strengthen error state test coverage
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.

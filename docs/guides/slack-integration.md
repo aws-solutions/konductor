@@ -1,6 +1,6 @@
 # Slack Integration (Optional)
 
-The official Slack MCP server (`https://mcp.slack.com/mcp`) lets the `k-researcher` agent search
+The official Slack MCP server (`https://mcp.slack.com/mcp`) lets the agent that runs the `external-research` skill search
 Slack channels and threads alongside web and documentation sources.
 
 This is a **user opt-in** — the package cannot ship a shared Slack app `client_id`, so each user must
@@ -24,14 +24,15 @@ That's it. Claude Code handles OAuth automatically.
 
 1. Go to [api.slack.com/apps](https://api.slack.com/apps) and create a free Slack app.
 2. Enable OAuth 2.0 and note your `client_id`.
-3. Register the official Slack MCP server with your agent:
+3. Register the official Slack MCP server with the agent you use for research (replace
+   `<your-agent>` with its name):
 
 ```bash
 kiro-cli mcp add \
   --name slack \
   --url "https://mcp.slack.com/mcp" \
   --transport http-sse \
-  --agent k-researcher
+  --agent <your-agent>
 ```
 
 4. Authenticate when prompted (first run opens a browser for OAuth).
@@ -40,10 +41,10 @@ kiro-cli mcp add \
 
 ## What it enables
 
-Once configured, `k-researcher` can:
+Once configured, the agent can:
 
 - Search channels and DMs for prior discussions on a topic
-- Pull thread context when a question has been answered internally before
+- Pull thread context when a question has been answered in your workspace before
 - Supplement documentation findings with team knowledge
 
 ---

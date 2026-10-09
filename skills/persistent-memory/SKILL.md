@@ -1,6 +1,6 @@
 ---
 name: persistent-memory
-description: Use after an error-recovery sequence, when the user corrects your approach and the correction is durable, or when a non-obvious project or environment convention or preference is discovered. Persists the fact to bounded memory files that survive across sessions.
+description: Use after an error-recovery sequence, when the user corrects your approach and the correction is durable, or when a non-obvious project or environment convention or preference is discovered. Persists the fact to bounded memory files that survive across sessions. For a reusable multi-step procedure, use workspace-skills.
 ---
 
 # Skill: Persistent Memory
@@ -32,13 +32,20 @@ Load `.konductor/memory/MEMORY.md` and `.konductor/memory/USER.md` via `fs_read`
 ## Writing Memory
 
 1. Re-read the target file from disk.
-2. Prepare the **full file content** — all existing entries plus the new/updated one.
-3. Pipe through the validator:
+2. Prepare the **full file content**: all existing entries plus the new/updated one.
+3. Pipe through the validator. It is `scripts/memory-validator.sh` in the directory this `SKILL.md` was loaded from; use that path when you know it. Otherwise search the install locations. The validator needs `bash` and `bun`.
 
    ```bash
    VALIDATOR="$(git rev-parse --show-toplevel 2>/dev/null)/skills/persistent-memory/scripts/memory-validator.sh"
    if [[ ! -x "$VALIDATOR" ]]; then
-     VALIDATOR="${SKILLS_HOME:-$HOME/.konductor/skills}/persistent-memory/scripts/memory-validator.sh"
+     # Project installs (.agents/skills, .kiro/skills, .claude/skills), then
+     # user-level installs for each supported harness.
+     for dir in .agents/skills .kiro/skills .claude/skills "${SKILLS_HOME:-$HOME/.konductor/skills}" \
+       "$HOME/.claude/skills" "$HOME/.codex/skills" "$HOME/.config/opencode/skills" \
+       "$HOME/.kiro/skills" "$HOME/.agents/skills"; do
+       VALIDATOR="$dir/persistent-memory/scripts/memory-validator.sh"
+       [[ -x "$VALIDATOR" ]] && break
+     done
    fi
    printf '%s' "$PROPOSED_CONTENT" | bash "$VALIDATOR" ".konductor/memory/MEMORY.md"
    ```
@@ -46,7 +53,7 @@ Load `.konductor/memory/MEMORY.md` and `.konductor/memory/USER.md` via `fs_read`
 4. **Exit 0** → write succeeded (validator performs atomic write).
 5. **Exit 1** → read stderr for reason, adjust and retry once, or skip if unresolvable.
 
-**Missing validator:** If neither path resolves to an executable validator, fail closed — do not write, log the error, continue the session normally.
+**Missing validator:** If no candidate path resolves to an executable validator, fail closed: do not write, log the error, continue the session normally.
 
 ### Add an entry
 
@@ -84,9 +91,9 @@ Limits and URL allowlist are configurable via `.konductor/memory-config.json` at
 }
 ```
 
-- `limits.memory_max_chars` — max characters for MEMORY.md (default: 2200)
-- `limits.user_max_chars` — max characters for USER.md (default: 1375)
-- `allowlist_patterns` — glob patterns for permitted URL domains in entries. Empty array = all URLs allowed. Populate with your org's domains to restrict external URLs.
+- `limits.memory_max_chars`: max characters for MEMORY.md (default: 2200)
+- `limits.user_max_chars`: max characters for USER.md (default: 1375)
+- `allowlist_patterns`: glob patterns for permitted URL domains in entries. Empty array = all URLs allowed. Populate with your org's domains to restrict external URLs.
 
 A template is provided at `skills/persistent-memory/memory-config.json.template`. Copy it to `.konductor/memory-config.json` in your project and customize.
 
@@ -96,16 +103,16 @@ The validator emits warnings for entries older than 90 days. When you see a stal
 
 ## Memory-Nudge
 
-Every 5–10 turns, self-evaluate: _Is there anything worth persisting?_
+Every 5-10 turns, self-evaluate: _Is there anything worth persisting?_
 
-**Hard checkpoints — always evaluate before moving on:**
+**Hard checkpoints. Always evaluate before moving on:**
 
 1. After an error-recovery sequence that exceeded 5 tool calls.
 2. Before returning a final result.
 
 ---
 
-## Routing Note (§6.2.2)
+## Routing Note
 
 This skill handles **declarative facts, preferences, decisions, and conventions only**. Route
 reusable multi-step procedures to `workspace-skills` instead.
@@ -118,12 +125,12 @@ reusable multi-step procedures to `workspace-skills` instead.
 
 ---
 
-## Proactive Capture Triggers (§6.2.3 — do not wait to be asked)
+## Proactive Capture Triggers (do not wait to be asked)
 
 ### Primary triggers (act on any one)
 
 - **User corrects your approach** and the corrected convention or preference is durable
-  (implicit-correction detection — capture immediately; see Notification below)
+  (implicit-correction detection: capture immediately; see Notification below)
 - **Non-obvious convention or preference discovered** during work
   (e.g., "this project uses pnpm not npm")
 - **Design decision or architectural constraint** established during the session
@@ -135,11 +142,11 @@ reusable multi-step procedures to `workspace-skills` instead.
 ### Suppress (do not capture)
 
 - One-time observations tied to a single occurrence (e.g., "build failed because of typo in line 42")
-- Anything already covered by an existing entry (patch instead — see Scan-Before-Create below)
+- Anything already covered by an existing entry (patch instead, see Scan-Before-Create below)
 
 ---
 
-## Scan-Before-Create (§6.2.4 — hard gate)
+## Scan-Before-Create (hard gate)
 
 **BEFORE creating a new memory entry, you MUST check for overlap.**
 
@@ -157,7 +164,7 @@ Duplicates dilute memory quality and degrade recall.
 
 ---
 
-## Provenance Markers (§6.2.5 — user entries are immutable to agents)
+## Provenance Markers (user entries are immutable to agents)
 
 Every agent-created memory entry **MUST** carry `[origin:agent]` inline after the timestamp.
 When the user explicitly dictates what to remember, write `[origin:user]`.
@@ -183,7 +190,7 @@ the original.
 
 ---
 
-## Notification & Reduced Friction (§7.2)
+## Notification & Reduced Friction
 
 | Capture type                | Confirmation?          | Notification?                |
 | --------------------------- | ---------------------- | ---------------------------- |
@@ -192,7 +199,7 @@ the original.
 | User-dictated memory        | ❌ No (explicit ask)   | ✅ `"Saved: <summary>"`      |
 
 **All autonomous captures produce a visible notification. Do NOT wait for permission before
-saving a durable fact — notify immediately after writing.**
+saving a durable fact. Notify immediately after writing.**
 
 If the capture turns out to be situational, the user can say "don't save that" in the next
 turn and the entry can be removed.

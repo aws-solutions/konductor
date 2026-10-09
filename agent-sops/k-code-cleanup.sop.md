@@ -2,12 +2,12 @@
 
 ## Overview
 
-This SOP removes AI-generated slop from code before CR submission. It diffs the current branch against main/mainline, identifies unnecessary artifacts, cleans them, and runs review skills on the result.
+This SOP removes AI-generated slop from code before a pull request is opened. It diffs the current branch against the repository's default branch, identifies unnecessary artifacts, cleans them, and runs review skills on the result.
 
 ## Parameters
 
 - **source_dir** (required): Path to the source directory to clean
-- **branch** (optional, default: current branch): Branch to diff against main/mainline
+- **branch** (optional, default: current branch): Branch to diff against the repository's default branch
 - **output_file** (optional, default: `cleanup-report.md`): File to write the cleanup summary
 
 **Constraints for parameter acquisition:**
@@ -19,11 +19,11 @@ This SOP removes AI-generated slop from code before CR submission. It diffs the 
 
 ### 1. Get Changed Files
 
-Run git diff of the current branch against main/mainline to identify changed files.
+Run git diff of the current branch against the repository's default branch to identify changed files.
 
 **Constraints:**
 
-- You MUST diff `branch` against `main` or `mainline` (whichever exists)
+- You MUST diff `branch` against the repository's default branch (`git symbolic-ref --short refs/remotes/origin/HEAD`, usually `main`)
 - You MUST list only files within `source_dir`
 - You MUST skip binary files, lock files, and build artifacts
 

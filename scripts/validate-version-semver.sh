@@ -2,12 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # validate-version-semver.sh -- fail closed unless the given string is a
-# valid X.Y.Z semver. Shared by release.yml's check-version job and
-# validate-pr.yml so the regex and FATAL message live in one place instead
-# of two independently-maintained inline copies. Mirrors
-# versionSemverValidationSnippet() in the release-pipeline package's
-# konductor-release-project.ts, which applies the same check on the CDK
-# pipeline side for the same reason.
+# valid X.Y.Z semver. Used by validate-pr.yml.
 #
 # Usage: validate-version-semver.sh <version-string>
 #   exit 0: valid semver

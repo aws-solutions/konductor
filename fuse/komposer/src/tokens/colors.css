@@ -1,0 +1,195 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* On Coding — Color System
+   Built from the TSE circuit-gradient mark: bright cyan → deep blue.
+   Light is the default; dark is scoped to [data-theme="dark"]. */
+
+:root {
+  /* ---- Brand blue scale (from the logo gradient) ---- */
+  --blue-50:  #eaf6fd;
+  --blue-100: #cfeafa;
+  --blue-200: #a3d8f4;
+  --blue-300: #6cc1ec;
+  --blue-400: #2bb8ea;  /* cyan side of the mark */
+  --blue-500: #0a86d8;  /* signature electric blue */
+  --blue-600: #0a6cc0;
+  --blue-700: #0c5398;  /* deep side of the mark */
+  --blue-800: #0d4378;
+  --blue-900: #0e3258;
+
+  /* The signature gradient (logo) */
+  --brand-gradient: linear-gradient(135deg, #2bb8ea 0%, #0c5398 100%); /* @kind color */
+  --brand-gradient-soft: linear-gradient(135deg, #6cc1ec 0%, #0a6cc0 100%); /* @kind color */
+
+  /* ---- Neutral / ink ramp (cool, GitHub-adjacent) ---- */
+  --gray-0:   #ffffff;
+  --gray-25:  #fbfcfd;
+  --gray-50:  #f6f8fa;
+  --gray-100: #eef1f5;
+  --gray-200: #e3e8ee;
+  --gray-300: #d3dae3;
+  --gray-400: #aab4c0;
+  --gray-500: #7b8794;
+  --gray-600: #586271;
+  --gray-700: #3d4654;
+  --gray-800: #232c39;
+  --gray-900: #141a23;
+  --gray-950: #0b0e14;
+
+  /* ---- Semantic accents ---- */
+  --green-500: #1ba673;
+  --green-50:  #e7f6ef;
+  --amber-500: #d98a0b;
+  --amber-50:  #fbf2e0;
+  --red-500:   #d83a45;
+  --red-50:    #fbe9ea;
+
+  /* ============ SEMANTIC ALIASES (light) ============ */
+  /* surfaces */
+  --paper:          var(--gray-0);     /* page background */
+  --surface:        var(--gray-0);     /* card background */
+  --surface-subtle: var(--gray-50);    /* muted panel */
+  --surface-sunken: var(--gray-100);   /* code blocks, wells */
+  --surface-inverse: var(--gray-950);
+
+  /* text */
+  --text-strong:  var(--gray-950);     /* headlines */
+  --text-body:    var(--gray-800);     /* paragraphs */
+  --text-muted:   var(--gray-600);     /* meta, captions */
+  --text-faint:   var(--gray-500);     /* disabled, hints */
+  --text-on-brand: #ffffff;
+  --text-inverse: var(--gray-25);
+
+  /* brand */
+  --accent:        var(--blue-500);
+  --accent-hover:  var(--blue-600);
+  --accent-press:  var(--blue-700);
+  --accent-soft:   var(--blue-50);
+  --accent-text:   var(--blue-700);    /* links/brand text on paper */
+
+  /* lines */
+  --border:        var(--gray-200);
+  --border-strong: var(--gray-300);
+  --border-faint:  var(--gray-100);
+  --ring:          color-mix(in srgb, var(--blue-500) 45%, transparent);
+
+  /* status */
+  --success: var(--green-500);
+  --warning: var(--amber-500);
+  --danger:  var(--red-500);
+  --success-soft: var(--green-50);
+  --warning-soft: var(--amber-50);
+  --danger-soft:  var(--red-50);
+
+  /* ---- Komposer tints: gate kinds, run states, errors, diffs, routes back ----
+     The light values are fixed literals; [data-theme="dark"]
+     overrides each one, so no tint stays pastel on a dark page. */
+  --tint-danger-line:     oklch(0.58 0.19 25);
+  --tint-danger-dot:      oklch(0.55 0.18 25);
+  --tint-danger-border:   oklch(0.85 0.07 25);
+  --tint-danger-bg:       oklch(0.97 0.02 25);
+  --tint-danger-bg-strong: oklch(0.95 0.04 25);
+  --tint-danger-text:     oklch(0.48 0.18 25);
+  --tint-danger-text-alt: oklch(0.5 0.18 25);
+
+  --tint-warn-line:       oklch(0.72 0.14 75);
+  --tint-warn-border:     oklch(0.82 0.08 85);
+  --tint-warn-border-alt: oklch(0.88 0.07 85);
+  --tint-warn-button:     oklch(0.8 0.08 85);
+  --tint-warn-bg:         oklch(0.97 0.03 85);
+  --tint-warn-pill-bg:    oklch(0.94 0.06 85);
+  --tint-warn-chip-bg:    oklch(0.95 0.05 80);
+  --tint-warn-chip-text:  oklch(0.45 0.11 65);
+  --tint-warn-text:       oklch(0.44 0.11 70);
+  --tint-warn-text-deep:  oklch(0.4 0.1 70);
+  --tint-warn-solid:      oklch(0.44 0.11 70);   /* filled button behind white text */
+  --tint-warn-marker:     oklch(0.55 0.13 65);   /* "no library entry" marker on a chip */
+
+  --tint-route-back:      oklch(0.62 0.13 65);
+  --tint-route-text:      oklch(0.55 0.13 65);
+  --tint-route-text-alt:  oklch(0.5 0.13 60);
+
+  --tint-ok-line:         oklch(0.62 0.12 155);
+  --tint-ok-bg:           oklch(0.94 0.05 155);
+  --tint-ok-text:         oklch(0.4 0.1 155);
+
+  --tint-agent-bg:        oklch(0.94 0.05 160);
+  --tint-agent-text:      oklch(0.4 0.1 160);
+
+  --tint-diff-add-bg:     oklch(0.94 0.05 155);
+  --tint-diff-add-text:   oklch(0.35 0.09 155);
+  --tint-diff-remove-bg:  oklch(0.95 0.035 25);
+  --tint-diff-remove-text: oklch(0.42 0.14 25);
+
+  color-scheme: light;
+}
+
+/* ============ DARK THEME ============ */
+[data-theme="dark"] {
+  --paper:          var(--gray-950);
+  --surface:        #11161f;
+  --surface-subtle: #161c27;
+  --surface-sunken: #0a0d13;
+  --surface-inverse: var(--gray-50);
+
+  --text-strong:  #e9eef5;
+  --text-body:    #c4cdd9;
+  --text-muted:   #8a96a6;
+  --text-faint:   #626d7d;
+  --text-on-brand: #ffffff;
+  --text-inverse: var(--gray-900);
+
+  --accent:        var(--blue-400);
+  --accent-hover:  var(--blue-300);
+  --accent-press:  var(--blue-200);
+  --accent-soft:   rgba(43,184,234,0.12);
+  --accent-text:   var(--blue-300);
+
+  --border:        #232c39;
+  --border-strong: #313c4c;
+  --border-faint:  #1a212c;
+  --ring:          color-mix(in srgb, var(--blue-400) 55%, transparent);
+
+  --success-soft: rgba(27,166,115,0.14);
+  --warning-soft: rgba(217,138,11,0.14);
+  --danger-soft:  rgba(216,58,69,0.14);
+
+  /* tints: translucent fills, mid-tone borders, light text */
+  --tint-danger-line:     oklch(0.66 0.17 25);
+  --tint-danger-dot:      oklch(0.66 0.17 25);
+  --tint-danger-border:   oklch(0.45 0.1 25);
+  --tint-danger-bg:       oklch(0.58 0.19 25 / 0.12);
+  --tint-danger-bg-strong: oklch(0.58 0.19 25 / 0.2);
+  --tint-danger-text:     oklch(0.78 0.12 25);
+  --tint-danger-text-alt: oklch(0.8 0.11 25);
+
+  --tint-warn-line:       oklch(0.75 0.14 75);
+  --tint-warn-border:     oklch(0.5 0.09 80);
+  --tint-warn-border-alt: oklch(0.45 0.08 80);
+  --tint-warn-button:     oklch(0.55 0.09 80);
+  --tint-warn-bg:         oklch(0.72 0.14 75 / 0.1);
+  --tint-warn-pill-bg:    oklch(0.72 0.14 75 / 0.16);
+  --tint-warn-chip-bg:    oklch(0.72 0.14 75 / 0.16);
+  --tint-warn-chip-text:  oklch(0.82 0.11 75);
+  --tint-warn-text:       oklch(0.82 0.11 75);
+  --tint-warn-text-deep:  oklch(0.85 0.09 80);
+  --tint-warn-solid:      oklch(0.5 0.11 70);
+  --tint-warn-marker:     oklch(0.78 0.12 70);
+
+  --tint-route-back:      oklch(0.72 0.13 65);
+  --tint-route-text:      oklch(0.78 0.12 70);
+  --tint-route-text-alt:  oklch(0.78 0.11 65);
+
+  --tint-ok-line:         oklch(0.68 0.12 155);
+  --tint-ok-bg:           oklch(0.62 0.12 155 / 0.16);
+  --tint-ok-text:         oklch(0.8 0.11 155);
+
+  --tint-agent-bg:        oklch(0.62 0.1 160 / 0.18);
+  --tint-agent-text:      oklch(0.82 0.09 160);
+
+  --tint-diff-add-bg:     oklch(0.62 0.12 155 / 0.16);
+  --tint-diff-add-text:   oklch(0.82 0.1 155);
+  --tint-diff-remove-bg:  oklch(0.58 0.19 25 / 0.16);
+  --tint-diff-remove-text: oklch(0.8 0.1 25);
+
+  color-scheme: dark;
+}

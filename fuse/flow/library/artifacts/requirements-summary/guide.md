@@ -1,0 +1,1 @@
+../../../../../skills/socratic-elicitation/SKILL.md

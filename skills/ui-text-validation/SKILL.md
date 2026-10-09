@@ -1,6 +1,6 @@
 ---
 name: ui-text-validation
-description: Validates UI text against public AWS style guidance, Cloudscape design standards, and general content quality principles. Use when reviewing user-facing text in console-style applications. Produces findings organized by severity with before/after examples.
+description: Use when reviewing user-facing text in a console-style application, such as labels, messages, and help text. Checks it against public AWS style guidance, Cloudscape standards, and content quality principles, with severity-ranked findings and before/after examples.
 version: 1.0.0
 tags:
   [
@@ -72,11 +72,6 @@ Evaluate UI text in console-style applications against Cloudscape design standar
    https://cloudscape.design/components/help-panel/
 2. **Cloudscape Alert Component**: https://cloudscape.design/components/alert/
 3. **Cloudscape Accessibility Guidance**: https://cloudscape.design/foundation/core-principles/accessibility/
-
-> This checklist's internal counterpart also cites a dedicated AWS Style Guide (voice, consoles-and-UI,
-> global-English, legal-guidelines, safe-names) and an internal AWS content-strategy standards page. No public
-> equivalent exists for those references — the corresponding guidance below is retained as general principles
-> without a source link, and each gap is called out explicitly rather than papered over with an unrelated link.
 
 ## Evaluation Checklist
 
@@ -150,9 +145,8 @@ Evaluate UI text in console-style applications against Cloudscape design standar
 **✅ VERIFY:**
 
 - Consistent terminology within the application and with its public documentation
-- Correct capitalization of service and product names — no public equivalent exists for this checklist's
-  internal source-of-truth reference (an internal service-name registry); verify against the product's own
-  published documentation instead
+- Correct capitalization of service and product names; verify against the product's own published
+  documentation
 - Third-party names match official branding
 - New feature names use lowercase (not Title Case)
 - Acronyms follow standard technical-writing guidance (spell out on first use unless in exception list)
@@ -221,17 +215,15 @@ Evaluate UI text in console-style applications against Cloudscape design standar
 - Concise wording (allows 30% expansion)
 - Global English (appropriate for worldwide audience)
 - No culturally-specific idioms or expressions
-- No public equivalent exists for this checklist's internal global-English source-of-truth reference; apply
-  general plain-language and internationalization best practices instead
+- Plain-language and internationalization best practices applied
 
 ### 9. Legal and Compliance
 
 **✅ CHECK:**
 
 - No internal company information exposed
-- Fictitious names use legally approved examples only
-- No public equivalent exists for this checklist's internal legal-guidelines and safe/fictitious-names
-  source-of-truth references; consult your organization's own legal and brand guidance instead
+- Fictitious names use legally approved examples only; consult your organization's own legal and brand
+  guidance
 
 ### 10. Technical Accuracy
 
@@ -439,20 +431,20 @@ Guidelines referenced in this evaluation:
 
 ## Evaluation Approach
 
-1. **Ask for file path** - Get the location where the report should be saved
-2. **Create report file** - Initialize with progress tracker and structure
-3. **Review systematically** - Go through each UI component type
-4. **Update progress tracker** - Mark sections complete as you finish them
-5. **Check against guidelines** - Use the evaluation checklist
-6. **Provide specific examples** - Include before/after text
-7. **Save incrementally** - Update the file after each major section
-8. **Prioritize issues** - Organize by customer impact
-9. **Reference official sources** - Link to design-system guidelines for each recommendation
-10. **Be constructive** - Highlight strengths as well as issues
-11. **Focus on customer experience** - How does this help customers complete tasks?
-12. **Create implementation tracking** - Add table with status checkboxes
-13. **Mark evaluation complete** - Update final progress tracker item
-14. **Review and clean up** - Remove any false positives or evaluation errors before finalizing
+1. **Ask for file path**: Get the location where the report should be saved
+2. **Create report file**: Initialize with progress tracker and structure
+3. **Review systematically**: Go through each UI component type
+4. **Update progress tracker**: Mark sections complete as you finish them
+5. **Check against guidelines**: Use the evaluation checklist
+6. **Provide specific examples**: Include before/after text
+7. **Save incrementally**: Update the file after each major section
+8. **Prioritize issues**: Organize by customer impact
+9. **Reference official sources**: Link to design-system guidelines for each recommendation
+10. **Be constructive**: Highlight strengths as well as issues
+11. **Focus on customer experience**: How does this help customers complete tasks?
+12. **Create implementation tracking**: Add table with status checkboxes
+13. **Mark evaluation complete**: Update final progress tracker item
+14. **Review and clean up**: Remove any false positives or evaluation errors before finalizing
 
 **CRITICAL: Quality Control Before Finalizing**
 
@@ -466,10 +458,10 @@ Guidelines referenced in this evaluation:
 
 Use precise modal verbs:
 
-- **must** - for obligations and requirements
-- **can** - for capabilities and permissions
-- **we recommend** or **consider** - for suggestions
-- **might** or **may** - for possibilities
+- **must**: for obligations and requirements
+- **can**: for capabilities and permissions
+- **we recommend** or **consider**: for suggestions
+- **might** or **may**: for possibilities
 - Avoid **should** (ambiguous between recommendation and requirement)
 
 ## Common Patterns to Check
@@ -495,17 +487,17 @@ Use precise modal verbs:
 
 Provide a complete UI text audit file that:
 
-- **Lives at user-specified location** - Ask for file path first
-- **Includes progress tracker** - Shows evaluation status in real-time
-- **Identifies all issues** - With specific locations and examples
-- **Prioritizes by severity** - Critical → Warning → Suggestions with customer impact
-- **Provides actionable fixes** - Corrected text for each issue
-- **References official guidelines** - Design-system links for each recommendation
-- **Includes implementation tracking** - Tables with status checkboxes for team collaboration
-- **Shows definition of done** - Checklist with completion status
-- **Highlights strengths** - Positive patterns to reinforce
-- **Enables team workflow** - Status tracking, assignment, and verification columns
-- **Supports iteration** - Revision history and follow-up dates
+- **Lives at user-specified location**: Ask for file path first
+- **Includes progress tracker**: Shows evaluation status in real-time
+- **Identifies all issues**: With specific locations and examples
+- **Prioritizes by severity**: Critical → Warning → Suggestions with customer impact
+- **Provides actionable fixes**: Corrected text for each issue
+- **References official guidelines**: Design-system links for each recommendation
+- **Includes implementation tracking**: Tables with status checkboxes for team collaboration
+- **Shows definition of done**: Checklist with completion status
+- **Highlights strengths**: Positive patterns to reinforce
+- **Enables team workflow**: Status tracking, assignment, and verification columns
+- **Supports iteration**: Revision history and follow-up dates
 
 ## Example Usage
 
@@ -567,4 +559,4 @@ Remember: Your goal is to help deliver UI text that enables customers to complet
 - Could add localization notes for text that may not translate directly
 - Could strengthen empty state messages with actionable next steps
 
-Present findings as: CRITICAL → WARNING → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → WARNING → SUGGESTION. Ask: "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.

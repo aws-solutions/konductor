@@ -1,0 +1,46 @@
+# $schema: ../schemas/workflow.schema.json
+# yaml-language-server: $schema=../schemas/workflow.schema.json
+# SPDX-License-Identifier: Apache-2.0
+# Demo workflow, small: a bug fix or a one-file change.
+# Three steps, one mechanical gate on the final code, and one short note that every step adds to.
+version: 1
+name: custom-example-small
+description: Lightweight loop for a small, well-understood change.
+steps:
+  - id: implementation
+    title: Implement
+    instruction: >
+      Make the smallest change that fixes the request, with a test that fails before it and passes
+      after. Record the command and its output in the note.
+    produces:
+      - artifact: implementation-report
+        path: .konductor/{slug}/implementation-report.md
+    updates:
+      - artifact: code
+        path: .
+  - id: code-review
+    title: Self review
+    instruction: >
+      Review your own diff, fix CRITICAL findings, add the review's outcome to the note, and
+      commit.
+    consumes:
+      - implementation-report
+    updates:
+      - artifact: implementation-report
+        path: .konductor/{slug}/implementation-report.md
+      - artifact: code
+        path: .
+    gates:
+      - check: default
+  - id: final-summary
+    title: Summary
+    instruction: >
+      Add one paragraph for the owner at the top of the note: what changed and how it was
+      verified.
+    consumes:
+      - implementation-report
+    updates:
+      - artifact: implementation-report
+        path: .konductor/{slug}/implementation-report.md
+    gates:
+      - owner-action: approve the change

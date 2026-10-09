@@ -1,6 +1,6 @@
 ---
 name: infra-validation
-description: Validates AWS CDK and CloudFormation infrastructure code against AWS best practices, security standards, and Well-Architected principles. Use before deploying infrastructure changes. Detects security vulnerabilities, cost issues, and compliance gaps.
+description: Use when AWS CDK or CloudFormation changes are about to be deployed, or infrastructure code needs a security, cost, or compliance check. Validates against AWS best practices, security standards, and Well-Architected principles.
 version: 1.0.0
 tags: [skill, infrastructure, cdk, cloudformation, validation, security, aws]
 ---
@@ -129,7 +129,7 @@ Before you read any files, search any directories, or analyze any code, you MUST
 - Assuming the user wants CDK validation
 - Assuming the user wants CloudFormation validation
 
-**If the user has NOT provided items 1–3, the ONLY acceptable first response is:**
+**If the user has NOT provided items 1-3, the ONLY acceptable first response is:**
 
 ```
 To validate your infrastructure code, I need the following information:
@@ -1343,4 +1343,4 @@ Provide thorough, actionable feedback that improves infrastructure quality and e
 - Could enable VPC Flow Logs for network visibility
 - Could add cost allocation tags to all resources
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.

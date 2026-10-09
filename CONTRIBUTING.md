@@ -1,6 +1,6 @@
 # Contributing Guidelines
 
-Thank you for your interest in contributing to ASDLC Core AI Capabilities. Whether it's a bug report, new feature,
+Thank you for your interest in contributing to Konductor. Whether it's a bug report, new feature,
 correction, or additional documentation, we greatly value feedback and contributions from our community.
 
 Please read through this document before submitting any issues or pull requests to ensure we have all the necessary
@@ -41,13 +41,6 @@ To send us a pull request, please:
 GitHub provides additional documentation on
 [forking a repository](https://help.github.com/articles/fork-a-repo/) and
 [creating a pull request](https://help.github.com/articles/creating-a-pull-request/).
-
-### Fork pull request validation
-
-Pull requests from forks require a maintainer to comment `/codebuild_run(<SHA>)` before the validation build starts — this
-is a security gate (`RequiresCommentApproval: FORK_PULL_REQUESTS`) that prevents untrusted code from running in our
-build environment automatically. Until a maintainer approves, the PR will show "waiting for status to be reported"
-for the validation check; this is expected and does not indicate a problem with your PR.
 
 ## Code of Conduct
 

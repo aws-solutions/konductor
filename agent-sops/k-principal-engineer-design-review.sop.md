@@ -18,8 +18,8 @@ This SOP uses `design-quality-check` for the slop and quality gate and `argument
 
 **Constraints for parameter acquisition:**
 
-- You MUST have `doc_input` — if not provided, ask for it before proceeding
-- You MUST NOT ask for `output_file` — use the default and proceed
+- You MUST have `doc_input`. If not provided, ask for it before proceeding
+- You MUST NOT ask for `output_file`. Use the default and proceed
 - If `doc_input` is a file path, You MUST verify the file exists before proceeding
 
 ## Steps
@@ -47,7 +47,7 @@ Run the `design-quality-check` skill on the full document.
 - You MUST check structural completeness (required outside-in sections present)
 - You MUST run slop detection across all issue types: `filler_phrases`, `hedge_words`, `unsupported_claims`, `passive_voice_overuse`, `circular_reasoning`, `yagni_violation`, `missing_section`
 - You MUST compute the quality score (1–5)
-- If score < 3, You MUST stop the SOP, present the issues to the engineer, and request revision before continuing — do not proceed to Step 2 with a score < 3
+- If score < 3, You MUST stop the SOP, present the issues to the engineer, and request revision before continuing. Do not proceed to Step 2 with a score < 3
 - You MUST NOT proceed to Step 2 until quality score ≥ 3
 
 **Expected Output:** Quality score, IMPORTANT issues list, MINOR issues list
@@ -73,14 +73,14 @@ Run adversarial review of all design decisions, trade-offs, and architectural ch
 **Constraints:**
 
 - You MUST apply the `adversarial-design-review` skill
-- Before the first round, You MUST resolve `deliberation-panel`'s `consent_confirmed` parameter once — either by obtaining the engineer's explicit opt-in per `adversarial-design-review`'s Deliberation Panel Confirmation Gate, or by proceeding single-voice without the panel. You MUST carry the resulting `consent_confirmed` value through every round of this loop — do not re-prompt or re-resolve it per round.
+- Before the first round, You MUST resolve `deliberation-panel`'s `consent_confirmed` parameter once, either by obtaining the engineer's explicit opt-in per `adversarial-design-review`'s Deliberation Panel Confirmation Gate, or by proceeding single-voice without the panel. You MUST carry the resulting `consent_confirmed` value through every round of this loop. Do not re-prompt or re-resolve it per round.
 - You MUST apply the `argumentation-reference` skill and run fallacy checking to every decision justification
 - You MUST classify all findings using the following taxonomy:
   - **CRITICAL (architectural):** Wrong architecture choice, missing security boundary, fundamental scalability flaw.
   - **CRITICAL (factual):** Incorrect technical claim, wrong service behavior.
   - **IMPORTANT:** Weak justification, missing alternative, incomplete trade-off.
   - **MINOR:** Style, clarity, minor omission.
-- **Escalation rule:** If any CRITICAL (architectural) finding is present after round 2, You MUST stop the loop immediately, present the finding to the engineer, and state that a fundamental redesign is needed — do not continue the loop
+- **Escalation rule:** If any CRITICAL (architectural) finding is present after round 2, You MUST stop the loop immediately, present the finding to the engineer, and state that a fundamental redesign is needed. Do not continue the loop
 - Evaluate the escalation rule before applying corrections. After each round, You MUST apply corrections to the document and re-run the `design-quality-check` skill to confirm quality score remains ≥ 3
 - **Exit condition:** 0 CRITICAL + 0 IMPORTANT + fewer than 3 MINOR findings
 - **Loop cap:** Maximum 5 rounds. If exit condition is not met after 5 rounds, You MUST present the remaining findings to the engineer for manual resolution and proceed to Step 4 with the current state
@@ -139,7 +139,7 @@ Produce the review report and present the verdict.
   - 0 CRITICAL + ≥1 IMPORTANT remaining (after 5 rounds) → **REVISIONS NEEDED**
   - Any CRITICAL (factual) remaining after 5 rounds → **REVISIONS NEEDED** (a wrong technical claim is correctable by revision)
   - Any CRITICAL (architectural) after round 2 escalation → **FUNDAMENTAL REDESIGN REQUIRED**
-- You MUST NOT print the full report in your response — reference the file path
+- You MUST NOT print the full report in your response. Reference the file path
 - You MUST display: verdict, finding counts by severity, and a one-line description of each remaining CRITICAL finding
 
 **Expected Output:** Report written to `output_file`, verdict and critical finding summary presented to engineer
@@ -148,4 +148,4 @@ Produce the review report and present the verdict.
 
 **PE-READY** requires: quality score ≥ 3, 0 CRITICAL findings, 0 IMPORTANT findings, fewer than 3 MINOR findings.
 
-**CRITICAL findings block PE-READY** — the verdict MUST be REVISIONS NEEDED or FUNDAMENTAL REDESIGN REQUIRED if any CRITICAL finding remains after the loop.
+**CRITICAL findings block PE-READY**. The verdict MUST be REVISIONS NEEDED or FUNDAMENTAL REDESIGN REQUIRED if any CRITICAL finding remains after the loop.

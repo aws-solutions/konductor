@@ -1,6 +1,6 @@
 ---
 name: argumentation-reference
-description: Reference primer for argumentation theory — Toulmin model, fallacy taxonomy, argument scoring rubric. Use during adversarial design review to identify weak arguments and logical fallacies.
+description: 'Use when checking a design document''s reasoning for weak arguments or logical fallacies, for example during an adversarial design review. Reference primer: the Toulmin model, a fallacy taxonomy, and an argument scoring rubric.'
 version: 1
 ---
 
@@ -12,12 +12,12 @@ A reference primer for argumentation theory covering Toulmin model, informal/for
 
 Every argument has six components:
 
-- **Claim** — the conclusion being argued
-- **Data/Grounds** — evidence supporting the claim
-- **Warrant** — the logical bridge from data to claim
-- **Backing** — support for the warrant itself
-- **Qualifier** — degree of certainty (always, usually, presumably)
-- **Rebuttal** — conditions under which the claim does not hold
+- **Claim**: the conclusion being argued
+- **Data/Grounds**: evidence supporting the claim
+- **Warrant**: the logical bridge from data to claim
+- **Backing**: support for the warrant itself
+- **Qualifier**: degree of certainty (always, usually, presumably)
+- **Rebuttal**: conditions under which the claim does not hold
 
 A strong argument makes all six components explicit. A weak argument omits warrant or backing.
 
@@ -25,28 +25,28 @@ A strong argument makes all six components explicit. A weak argument omits warra
 
 ### Relevance Fallacies
 
-- **Ad hominem** — attacking the person, not the argument
-- **Appeal to authority** — citing authority without evidence
-- **Appeal to popularity** — "everyone does it"
-- **Red herring** — distracting with irrelevant information
-- **Straw man** — misrepresenting the opposing argument
+- **Ad hominem**: attacking the person, not the argument
+- **Appeal to authority**: citing authority without evidence
+- **Appeal to popularity**: "everyone does it"
+- **Red herring**: distracting with irrelevant information
+- **Straw man**: misrepresenting the opposing argument
 
 ### Presumption Fallacies
 
-- **Begging the question** — conclusion assumed in premise
-- **False dichotomy** — presenting only two options when more exist
-- **Slippery slope** — assuming one event inevitably leads to another
-- **Hasty generalization** — drawing broad conclusions from few examples
+- **Begging the question**: conclusion assumed in premise
+- **False dichotomy**: presenting only two options when more exist
+- **Slippery slope**: assuming one event inevitably leads to another
+- **Hasty generalization**: drawing broad conclusions from few examples
 
 ### Ambiguity Fallacies
 
-- **Equivocation** — using a word with two meanings interchangeably
-- **Amphiboly** — ambiguous grammatical structure
+- **Equivocation**: using a word with two meanings interchangeably
+- **Amphiboly**: ambiguous grammatical structure
 
 ### Formal Fallacies
 
-- **Affirming the consequent** — if P then Q; Q; therefore P
-- **Denying the antecedent** — if P then Q; not P; therefore not Q
+- **Affirming the consequent**: if P then Q; Q; therefore P
+- **Denying the antecedent**: if P then Q; not P; therefore not Q
 
 ## Scoring Rubric (0–3 per criterion, max 15)
 

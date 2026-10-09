@@ -1,16 +1,13 @@
 {
-  "name": "asdlc-core-ai-capabilities-benchmark",
+  "name": "fuse-konductor",
   "version": "0.1.0",
   "private": true,
-  "description": "Aim-free benchmark harness for ASDLCCoreAICapabilities agents — no internal-only build tooling required. See docs/guides/benchmarking.md.",
+  "description": "Root test orchestration for fuse-konductor.",
   "scripts": {
-    "generate-agents": "node scripts/generate-agent-files.js",
-    "generate-notice": "node scripts/generate-notice.js",
-    "benchmark": "node scripts/benchmark.js",
-    "benchmark:regression": "node tests/scripts/check-benchmark-regression.js",
-    "test": "node --test \"tests/scripts/**/*.test.js\""
-  },
-  "engines": {
-    "node": ">=22"
+    "test": "bun run test:repository && bun run test:skills && bun run test:flow && bun run test:komposer",
+    "test:repository": "bun test --timeout 60000 ./tests/install ./tests/scripts ./tests/repo",
+    "test:skills": "for f in tests/skills/*/*.sh; do bash \"$f\" || exit 1; done",
+    "test:flow": "bun install --cwd fuse/flow --frozen-lockfile && bun run --cwd fuse/flow test --timeout 60000",
+    "test:komposer": "bun install --cwd fuse/komposer --frozen-lockfile && bun run --cwd fuse/komposer test --timeout 60000"
   }
 }

@@ -1,8 +1,8 @@
 ---
 name: architecture-diagram-generation
-description: Generates AWS architecture diagrams in draw.io XML format compatible with Amazon Design Inspector. Use when you need a visual diagram from a system design document. Produces single or multi-account diagrams with official AWS service icons and directional data flows.
+description: Use when a system design document needs a visual AWS architecture diagram, or someone asks to draw or diagram an AWS architecture. Generates draw.io XML with official AWS icons and directional data flows, single- or multi-account, as standard draw.io XML.
 version: 1.0.0
-tags: [skill, architecture, diagram, drawio, design-inspector, aws]
+tags: [skill, architecture, diagram, drawio, aws]
 ---
 
 # Architecture Diagram Generation
@@ -16,7 +16,7 @@ Generates draw.io XML diagrams from system design descriptions. Diagrams follow 
 Use this skill when:
 
 - Converting a system design document into a visual diagram
-- Preparing diagrams for Design Inspector or stakeholder review
+- Preparing diagrams for stakeholder or security review
 - Documenting multi-account or multi-region architectures
 
 ## Core Concepts
@@ -27,7 +27,7 @@ Diagrams follow AWS Well-Architected Framework conventions: official AWS service
 
 ### Output Format
 
-Produces draw.io XML compatible with Amazon Design Inspector. Supports single-account and multi-account architectures.
+Produces standard draw.io (diagrams.net) XML. Supports single-account and multi-account architectures.
 
 ## Execution
 
@@ -39,18 +39,18 @@ When this skill is activated, use the following as your full instruction set for
 
 ## Purpose
 
-This document provides specific implementation guidance for generating AWS architecture diagrams using draw.io XML format that are compatible with Design Inspector, a diagramming platform built on DrawIO with AWS-specific features and security integration.
+This document provides specific implementation guidance for generating AWS architecture diagrams in standard draw.io (diagrams.net) XML format.
 
 ## Prerequisites
 
 - **Draw.io or Lucidchart**: For importing and editing XML templates
 - **XML Editor**: For manual template creation and modification
 - **AWS Icon Library**: Official AWS architecture icons
-- **Project Analysis**: Complete architecture analysis from main steering document
+- **Project Analysis**: Complete architecture analysis from the system design document
 
-## Design Inspector Compatible XML Standards
+## Draw.io XML Standards
 
-These standards ensure compatibility with both Design Inspector and standard draw.io implementations:
+These standards keep the XML valid for standard draw.io implementations:
 
 ### 1. XML Structure Foundation
 
@@ -126,13 +126,13 @@ These standards ensure compatibility with both Design Inspector and standard dra
 - **Clear account boundaries**: Depict AWS account boundary, even for single account solutions
 - **Regional/AZ separation**: Show regional and availability zone boundaries
 - **Logical service grouping**: Group related services with boxes and intermittent lines
-- **Security zones identification**: Clearly mark security boundaries and zones (essential for Design Inspector threat modeling)
-- **Threat Model Compatibility**: Structure diagrams to support Design Inspector's automated threat detection
-- **Security Properties**: Include security-relevant metadata that Design Inspector can analyze
+- **Security zones identification**: Clearly mark security boundaries and zones (essential for threat modeling)
+- **Threat Model Compatibility**: Structure diagrams so that threat modeling tools and reviewers can trace components, boundaries and data flows
+- **Security Properties**: Include security-relevant metadata that reviewers and analysis tools can read
 
-## Design Inspector Compatible XML Templates
+## Draw.io XML Templates
 
-These templates are optimized for Design Inspector's security analysis and threat modeling features:
+These templates support security analysis and threat modeling:
 
 ### Single Account Architecture Template
 
@@ -282,7 +282,7 @@ These templates are optimized for Design Inspector's security analysis and threa
 - Use dashed lines for return traffic
 - Validate all source/target references
 
-### 6. Design Inspector Validation Checklist
+### 6. Validation Checklist
 
 - [ ] All AWS services use official icons
 - [ ] Service scope is correctly represented (global/regional/VPC)
@@ -291,13 +291,13 @@ These templates are optimized for Design Inspector's security analysis and threa
 - [ ] VPC services (EC2, RDS, ECS) are properly contained within VPC boundaries
 - [ ] Data flow arrows show correct direction
 - [ ] Return traffic is indicated with dashed/intermittent arrows
-- [ ] Security boundaries are clearly marked (critical for Design Inspector threat modeling)
+- [ ] Security boundaries are clearly marked (critical for threat modeling)
 - [ ] Account boundaries are properly depicted
 - [ ] Diagram title is descriptive and clear, positioned on top
 - [ ] Logical grouping is shown with boxes and intermittent lines
 - [ ] Color-coded relationships are used for complex multi-region scenarios
-- [ ] XML structure is valid for Design Inspector import
-- [ ] All IDs are unique and follow Design Inspector naming conventions
+- [ ] XML structure is valid for draw.io import
+- [ ] All IDs are unique and follow a consistent naming convention
 - [ ] Proper parent-child relationships maintained
 - [ ] Security zones are properly defined for threat analysis
 - [ ] Data classification boundaries are indicated where applicable
@@ -389,20 +389,20 @@ These templates are optimized for Design Inspector's security analysis and threa
 
 ## Output Requirements
 
-Generate complete Design Inspector compatible XML that includes:
+Generate complete, standard draw.io XML that includes:
 
-1. **Valid XML Structure**: Proper mxGraphModel format compatible with Design Inspector
+1. **Valid XML Structure**: Proper mxGraphModel format that draw.io opens without errors
 2. **Comprehensive Service Representation**: All relevant AWS services with official icons
 3. **Clear Data Flow**: Directional arrows with labels for security analysis
 4. **Proper Boundaries**: Account, region, VPC boundaries clearly marked for threat modeling
-5. **Professional Formatting**: Consistent styling and layout following Design Inspector standards
+5. **Professional Formatting**: Consistent styling and layout following the standards above
 6. **Complete Documentation**: Service descriptions and relationships with security context
-7. **Interactive Elements**: Properly structured for editing in Design Inspector
+7. **Interactive Elements**: Properly structured for editing in draw.io
 8. **Security Metadata**: Include security-relevant properties for automated threat detection
 9. **Trust Boundaries**: Clearly defined security zones for threat modeling workflows
-10. **Compliance Markers**: Elements that support Design Inspector's security review integration
+10. **Compliance Markers**: Elements that support a security review
 
-The generated diagram should be immediately importable into Design Inspector and represent a production-ready AWS architecture following all best practices and Well-Architected Framework principles.
+The generated diagram should be immediately importable into draw.io and represent a production-ready AWS architecture following all best practices and Well-Architected Framework principles.
 
 ---
 
@@ -425,4 +425,4 @@ The generated diagram should be immediately importable into Design Inspector and
 - Could add availability zone separation for HA architectures
 - Could annotate flows with protocol or data type
 
-Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]" — unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.
+Present findings as: CRITICAL → IMPORTANT → SUGGESTION. Ask: "Fix these issues? [y/n]", unless `scope_confirmed` is true, in which case report all the findings and leave fixing to the caller, without asking.

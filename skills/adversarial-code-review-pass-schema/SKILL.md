@@ -1,19 +1,19 @@
 ---
 name: adversarial-code-review-pass-schema
-description: 'Reviews a diff through the lens of schema and contract — API/schema/type changes, backward compatibility, validation completeness. One pass of the parallelized adversarial review; the coordinator spawns this alongside security and integrity passes.'
+description: 'Use when a diff needs a focused schema and contract review: API, schema, or type changes, backward compatibility, and validation completeness. One of three parallel passes that adversarial-code-review runs; for a full adversarial review, use that skill.'
 version: 1.0.0
 tags: [skill, schema, code-review, adversarial, pass]
 ---
 
-# Adversarial Code Review — Schema / Contract Pass
+# Adversarial Code Review: Schema / Contract Pass
 
 ## Overview
 
-Reviews a diff through the lens of schema and contract stability — API shapes, type changes, validation completeness, and backward compatibility. This is one of three parallel review passes spawned by an adversarial-review coordinator SOP. The framing is neutral by design: review through the lens of contract, do not assume any specific issue exists.
+Reviews a diff through the lens of schema and contract stability: API shapes, type changes, validation completeness, and backward compatibility. This is one of three parallel review passes run by an adversarial-review SOP. The framing is neutral by design: review through the lens of contract, do not assume any specific issue exists.
 
 ## Usage
 
-Spawned by an adversarial-review coordinator SOP (such as `k-adversarial-pull-request-review`) as one of three parallel subagent passes. May also be run directly against a diff.
+Run by an adversarial-review SOP (such as `k-adversarial-pull-request-review`) as one of three parallel subagent passes. May also be run directly against a diff.
 
 ## What to look for
 
@@ -32,7 +32,7 @@ For each concern, name the file:line, the concrete failure scenario (which clien
 
 ## Out of scope
 
-- Do not flag validation issues on synthetic fixture data in test files — test fixtures intentionally skip production validation paths. This exempts fixture DATA specifically, not test files as a category: a genuine contract/schema defect in production-reachable code that happens to live in a test file is still in scope and must be flagged.
+- Do not flag validation issues on synthetic fixture data in test files. Test fixtures intentionally skip production validation paths. This exempts fixture DATA specifically, not test files as a category: a genuine contract/schema defect in production-reachable code that happens to live in a test file is still in scope and must be flagged.
 
 ## Codebase awareness
 
@@ -44,13 +44,13 @@ Before flagging a missing implementation, check whether the codebase already pro
 
 ## Checker handoff
 
-Findings produced by this pass are candidates, not verdicts. The coordinator forwards them to a different-persona checker that applies `adversarial-code-review` in Validator Mode before anything reaches the CR. Produce your honest read.
+Findings produced by this pass are candidates, not verdicts. The review procedure forwards them to a different-persona checker that applies `adversarial-code-review` in Validator Mode before anything reaches the pull request. Produce your honest read.
 
 ## Severity guidance
 
-- **CRITICAL** — breaking change to a shipped API or data model without a migration path; new field required by write path but not defaulted in read path (existing records unparseable)
-- **IMPORTANT** — validate-then-act ordering violation (validation exists but runs after a side effect); integration wiring gap (handler present, not wired to auth or middleware); missing guard on a map/optional access that will be reached at runtime
-- **SUGGESTION** — new field validated at one entry point but not another; enum change that consumers may pattern-match on
+- **CRITICAL**: breaking change to a shipped API or data model without a migration path; new field required by write path but not defaulted in read path (existing records unparseable)
+- **IMPORTANT**: validate-then-act ordering violation (validation exists but runs after a side effect); integration wiring gap (handler present, not wired to auth or middleware); missing guard on a map/optional access that will be reached at runtime
+- **SUGGESTION**: new field validated at one entry point but not another; enum change that consumers may pattern-match on
 
 ## Output format
 
@@ -60,4 +60,4 @@ Problem: {what is wrong and why it is a risk}
 Fix: {concrete suggested change}
 ```
 
-Return the findings list. Do not deduplicate against other passes — the coordinator does that.
+Return the findings list. Do not deduplicate against other passes. The review procedure does that.

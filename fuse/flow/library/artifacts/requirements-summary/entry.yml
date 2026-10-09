@@ -1,0 +1,2 @@
+# yaml-language-server: $schema=../../../workflows/schemas/library-entry.schema.json
+description: "The request resolved into goals, prohibited behavior, deferred behavior, what is out of scope, constraints and open decisions, each open decision with a recommendation."

@@ -1,0 +1,91 @@
+# $schema: ../schemas/workflow.schema.json
+# yaml-language-server: $schema=../schemas/workflow.schema.json
+# SPDX-License-Identifier: Apache-2.0
+# Demo workflow, medium: one feature in an existing codebase.
+# Analysis and requirements do not depend on each other, then a short design,
+# one owner gate on the design, and testing and code review, which both follow
+# the implementation.
+version: 1
+name: custom-example-medium
+description: One feature, known codebase, one design checkpoint.
+steps:
+  - id: codebase-analysis
+    title: Codebase analysis
+    instruction: Map the code the feature touches, with file and line.
+    produces:
+      - artifact: codebase-analysis
+        path: .konductor/{slug}/codebase-analysis.md
+  - id: requirements
+    title: Requirements
+    produces:
+      - artifact: user-stories
+        path: .konductor/{slug}/user-stories.md
+    instruction: Write user stories and acceptance criteria for the requested feature.
+  - id: design
+    title: Design
+    instruction: A one-to-two page design grounded in the analysis.
+    produces:
+      - artifact: design
+        path: .konductor/{slug}/design.md
+    consumes:
+      - codebase-analysis
+      - user-stories
+    gates:
+      - owner-action: approve the design
+  - id: implementation
+    title: Implementation
+    produces:
+      - artifact: implementation-report
+        path: .konductor/{slug}/implementation-report.md
+    instruction: Implement the approved design, verify the change, and record the commands and results.
+    consumes:
+      - design
+    updates:
+      - artifact: code
+        path: .
+    gates:
+      - check: default
+  - id: code-review
+    title: Code review and pull request
+    produces:
+      - artifact: code-review
+        path: .konductor/{slug}/code-review.md
+    instruction: >
+      Commit on the feature branch and open a draft pull request, or push the branch when the
+      project has no pull request tool. Get the review, fix the required findings, and record the
+      review and the pull request's URL.
+    consumes:
+      - design
+      - implementation-report
+    updates:
+      - artifact: code
+        path: .
+    gates:
+      - check: default
+      - agent: review the branch's diff against the approved design
+        max_rounds: 2
+        route_back_to: implementation
+  - id: testing
+    title: Testing
+    produces:
+      - artifact: test-coverage
+        path: .konductor/{slug}/test-coverage.md
+    instruction: Find test coverage gaps, add missing tests where required, and record the remaining gaps.
+    consumes:
+      - user-stories
+      - design
+      - implementation-report
+    updates:
+      - artifact: code
+        path: .
+    gates:
+      - check: default
+  - id: final-summary
+    title: Summary
+    instruction: What shipped, the pull request, what was verified, what is open.
+    produces:
+      - artifact: sdlc-summary
+        path: .konductor/{slug}/sdlc-summary.md
+    consumes:
+      - code-review
+      - test-coverage

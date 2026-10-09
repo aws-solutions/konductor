@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
+# Shim so an agent can run fuse-flow by this file's path from any directory.
+# Runs the TypeScript entry point directly, with Bun when it is installed and
+# otherwise with Node 22.18+, 23.6+ or 24+; no build step.
+set -euo pipefail
+
+self="${BASH_SOURCE[0]}"
+while [ -L "$self" ]; do
+  target="$(readlink "$self")"
+  case "$target" in
+    /*) self="$target" ;;
+    *) self="$(dirname "$self")/$target" ;;
+  esac
+done
+here="$(cd "$(dirname "$self")" && pwd)"
+
+# The dependencies (zod and yaml) are installed when they are missing, so a
+# fresh clone works without a separate setup step and an interrupted install
+# is retried. Present means each package's package.json is there; versions
+# are not compared.
+deps_installed() {
+  [ -f "$here/node_modules/zod/package.json" ] && [ -f "$here/node_modules/yaml/package.json" ]
+}
+install_deps() { # install_deps <command...>
+  if ! deps_installed; then
+    echo "fuse-flow: installing dependencies in $here" >&2
+    (cd "$here" && "$@" >/dev/null) && deps_installed || {
+      echo "fuse-flow: dependency install failed; run '$*' in $here" >&2
+      exit 69
+    }
+  fi
+}
+
+if command -v bun >/dev/null 2>&1; then
+  bun_bin="$(command -v bun)"
+elif [ -x "${BUN_INSTALL:-$HOME/.bun}/bin/bun" ]; then
+  bun_bin="${BUN_INSTALL:-$HOME/.bun}/bin/bun"
+elif [ -x "$HOME/.local/bin/bun" ]; then
+  bun_bin="$HOME/.local/bin/bun"
+elif command -v node >/dev/null 2>&1 &&
+  node -e 'const [a, b] = process.versions.node.split(".").map(Number); process.exit(a >= 24 || (a === 23 && b >= 6) || (a === 22 && b >= 18) ? 0 : 1)'; then
+  # Node runs .ts files without a flag from 22.18, 23.6 and 24.0 on.
+  if ! deps_installed && ! command -v npm >/dev/null 2>&1; then
+    echo "fuse-flow: needs npm next to node to install its dependencies; found node but not npm" >&2
+    exit 69
+  fi
+  install_deps npm install --omit=dev --no-package-lock --no-audit --no-fund --no-update-notifier
+  FUSE_FLOW_COMMAND="$here/fuse-flow" exec node --no-warnings=ExperimentalWarning "$here/src/cli.ts" "$@"
+else
+  echo "fuse-flow: needs bun, or node 22.18, 23.6, 24 or later with npm; found neither" >&2
+  exit 69
+fi
+
+install_deps "$bun_bin" install
+# Printed follow-up commands use this script's path, so they work without PATH.
+FUSE_FLOW_COMMAND="$here/fuse-flow" exec "$bun_bin" run "$here/src/cli.ts" "$@"
