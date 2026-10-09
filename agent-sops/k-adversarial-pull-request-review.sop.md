@@ -4,20 +4,20 @@
 
 Runs an adversarial review of code changes. Not a replacement for standard code review. It runs after standard review to catch what style and quality reviewers miss: information disclosure, data integrity failures, and schema/validation gaps.
 
-Structure: three independent generator passes (security, integrity, schema), an independent reuse pass, a validator (checker) pass, and a historical-issues filter. Generator and checker independence is what keeps false positives out of the CR.
+Structure: three independent generator passes (security, integrity, schema), an independent reuse pass, a validator (checker) pass, and a historical-issues filter. Generator and checker independence is what keeps false positives out of the review.
 
 ## Parameters
 
-- **diff_input** (required on ASDLC, see the `pr_url` note below): The changes to review. Accepts:
+- **diff_input** (required, see the `pr_url` note below): The changes to review. Accepts:
   - Git diff output (`git diff` or `git diff HEAD~N`)
   - File paths to read directly
   - Raw pull request diff content
-- **pr_url** (optional, context only on ASDLC): Pull request URL. **Diff auto-fetch from `pr_url` is unsupported on ASDLC.** the agent running this SOP has no tool that resolves an arbitrary pull-request URL to its diff content (see Roles); `diff_input` MUST always be supplied directly, even when `pr_url` is also given. When `pr_url` is present, Step 0 still uses it to look up linked issues or design docs referenced in the pull request description via generic `web_fetch`.
+- **pr_url** (optional, context only): Pull request URL. **This SOP does not fetch a diff from `pr_url`.** It assumes no tool that resolves an arbitrary pull-request URL to its diff content (see Roles); `diff_input` MUST always be supplied directly, even when `pr_url` is also given. When `pr_url` is present, Step 0 still uses it to look up linked issues or design docs referenced in the pull request description via generic `web_fetch`.
 - **output_file** (optional, default: `adversarial-review-report.md`): Path to write the findings report
 
 **Constraints for parameter acquisition:**
 
-- You MUST have `diff_input`; if it is not provided, ask for it before proceeding, even when `pr_url` is present (diff auto-fetch from `pr_url` is unsupported on ASDLC, see the `pr_url` note above)
+- You MUST have `diff_input`; if it is not provided, ask for it before proceeding, even when `pr_url` is present (this SOP does not fetch a diff from `pr_url`, see the `pr_url` note above)
 - You MUST NOT ask for `output_file`; use the default and proceed
 - If `diff_input` is file paths, You MUST verify the files exist before proceeding
 - If `pr_url` is provided, You MAY use it in Step 0 to read the pull request's own description for linked issues/docs, but You MUST NOT attempt to derive `diff_input` from it
@@ -26,7 +26,7 @@ Structure: three independent generator passes (security, integrity, schema), an 
 
 - **Generator**: Run one isolated pass for each of `adversarial-code-review-pass-security`, `-integrity`, and `-schema`, plus the fresh reuse pass in Step 3. Each pass produces candidate findings.
 - **Validator / Checker**: Run `adversarial-code-review` in Validator Mode. The checker MUST NOT have authored any candidate finding. When generic subagents are available, run the checker in a separate subagent. Otherwise, run it as a separate pass started without the generator passes' conclusions or reasoning beyond their returned findings, and explicitly adopt the validator persona. See Step 4.
-- **Historical filter**: this SOP invokes `historical-issues-registry` in load and filter phases. **Currently unavailable on ASDLC:** `historical-issues-registry` is an abstract skill. Per its own Usage section, it is "Not run standalone... provide the concrete mapping for your platform in a delta layer that extends this skill." No such delta exists for ASDLC today, and the available tooling does not expose an API for reading a pull request's prior review comment threads. This is why Steps 0.5 and 5 below are documented as no-ops rather than silently returning empty results. The same tooling gap means an arbitrary `pr_url` cannot be resolved to its diff content. See the Parameters section's `pr_url` note and Step 0 for how that separate gap is handled.
+- **Historical filter**: this SOP invokes `historical-issues-registry` in load and filter phases. **Unavailable without a platform mapping:** `historical-issues-registry` is an abstract skill. Per its own Usage section, it is not run standalone and needs a concrete mapping for the code review platform in use. This package provides no such mapping, and this SOP assumes no tool that reads a pull request's prior review comment threads. This is why Steps 0.5 and 5 below are documented no-ops when no mapping is available, rather than silently returning empty results. When the caller provides a concrete mapping and a tool that reads prior review threads, they run as `historical-issues-registry` describes. The same assumption means an arbitrary `pr_url` cannot be resolved to its diff content. See the Parameters section's `pr_url` note and Step 0 for how that separate gap is handled.
 
 Independence rests on separate execution context or separate isolated passes, no shared conclusions between generator passes, a checker that did not author the findings, and the mechanical literal-diff-verification rule inside the checker skill.
 
@@ -40,7 +40,7 @@ Before reviewing the diff, autonomously gather the context needed to produce cod
 
 **Constraints:**
 
-- If `pr_url` is provided without `diff_input`, You MUST NOT attempt to fetch the pull request diff from it. Diff auto-fetch from `pr_url` is unsupported on ASDLC (see Parameters). Ask for `diff_input` directly instead
+- If `pr_url` is provided without `diff_input`, You MUST NOT attempt to fetch the pull request diff from it. This SOP does not fetch a diff from `pr_url` (see Parameters). Ask for `diff_input` directly instead
 - You MUST search for linked issues, design docs, or referenced documentation in the diff or commit message and read them
 - You MUST search the codebase for existing patterns related to the changed files: error-mapping layers, transaction helpers, validation middleware, pagination utilities
 - You MUST limit ramp-up to: the pull request description and linked issues (max 3), directly referenced design docs (max 3), and a targeted codebase search for patterns in the changed files only
@@ -52,15 +52,15 @@ Before reviewing the diff, autonomously gather the context needed to produce cod
 
 ### 0.5. Load Prior Review State
 
-**On ASDLC, this step is always skipped. It is a documented no-op, not a silent one.** No concrete platform delta exists for ASDLC (see Roles above): `historical-issues-registry` is an abstract skill that cannot fetch prior review state without one, and the tools available to the session running this SOP expose no API for reading a pull request's prior review comment threads. Calling the skill's load phase without a concrete mapping would have no way to fetch real thread state; an unguarded call would silently return an empty list, indistinguishable from "no prior revisions," which misrepresents the reason nothing was loaded.
+**Without a concrete platform mapping, this step is skipped. It is a documented no-op, not a silent one.** This package ships no such mapping (see Roles above): `historical-issues-registry` is an abstract skill that cannot fetch prior review state without one, and this SOP assumes no tool that reads a pull request's prior review comment threads. Calling the skill's load phase without a concrete mapping would have no way to fetch real thread state; an unguarded call would silently return an empty list, indistinguishable from "no prior revisions," which misrepresents the reason nothing was loaded. When a concrete mapping and a tool that reads prior review threads are available, run the load phase as `historical-issues-registry` describes instead.
 
 **Constraints:**
 
-- You MUST NOT call `historical-issues-registry`'s load phase on ASDLC; skip it outright
-- You MUST note in the context summary that historical filtering is unavailable for ASDLC (no concrete platform delta), not that there were no prior revisions
+- You MUST NOT call `historical-issues-registry`'s load phase without a concrete platform mapping; skip it outright
+- When you skip it, you MUST note in the context summary that historical filtering is unavailable (no concrete platform mapping), not that there were no prior revisions
 - You MUST NOT treat the absence of a fingerprint list in Step 5 as "no prior revisions"; it means "not checked," not "nothing found"
 
-**Expected Output:** Note recorded: "historical filtering unavailable for ASDLC — no concrete platform delta"
+**Expected Output:** Note recorded: "historical filtering unavailable: no concrete platform mapping"
 
 ### 1. Ingest Diff
 
@@ -129,12 +129,12 @@ Run `adversarial-code-review` in Validator Mode to filter the consolidated findi
 
 ### 5. Historical Filter
 
-**On ASDLC, this step is always skipped. Step 0.5 never produces a fingerprint list to filter against (see Step 0.5).** Pass the checker-approved findings straight through to Step 6 unchanged.
+**When Step 0.5 was skipped, skip this step too: there is no fingerprint list to filter against (see Step 0.5).** Pass the checker-approved findings straight through to Step 6 unchanged.
 
 **Constraints:**
 
-- You MUST NOT call `historical-issues-registry`'s filter phase on ASDLC; skip it outright and pass the checker-approved findings through to Step 6 unchanged
-- You MUST note in the summary that historical filtering was unavailable, not that zero matches were found
+- You MUST NOT call `historical-issues-registry`'s filter phase when Step 0.5 was skipped; skip it outright and pass the checker-approved findings through to Step 6 unchanged
+- When you skip it, you MUST note in the summary that historical filtering was unavailable, not that zero matches were found
 
 **Expected Output:** Checker-approved findings list passed through unchanged; note recorded that historical filtering was unavailable
 
@@ -160,7 +160,7 @@ Consolidate the surviving findings and produce a verdict.
   Findings: {N} CRITICAL, {N} IMPORTANT, {N} SUGGESTION
   Filtered by checker: {N}
   Isolation: {isolated | single-context (generator and checker independence reduced)}
-  Historical filtering: unavailable for ASDLC (no concrete platform delta — see Step 0.5)
+  Historical filtering: unavailable (no concrete platform mapping; see Step 0.5)
 
   ## Critical Findings
 
@@ -171,7 +171,7 @@ Consolidate the surviving findings and produce a verdict.
   ## Filter Log
   ```
 
-  Every surviving finding goes in exactly one severity section (`## Critical Findings` / `## Important Findings` / `## Suggestions`). Steps 0.5 and 5 are always-skipped no-ops on ASDLC today (see Step 0.5); no finding is ever tagged "regressed since ..." or "carried over from ...", so there is no separate historical-section machinery for a finding to land in instead of its own severity section.
+  Every surviving finding goes in exactly one severity section (`## Critical Findings` / `## Important Findings` / `## Suggestions`). Without a concrete platform mapping, Steps 0.5 and 5 are skipped no-ops (see Step 0.5); no finding is ever tagged "regressed since ..." or "carried over from ...", so there is no separate historical-section machinery for a finding to land in instead of its own severity section.
 
 - You MUST NOT print the full report in your response; reference the file path
 - You MUST display: verdict, isolation mode, finding counts by severity, checker rejection count, and a one-line description of each CRITICAL-severity finding

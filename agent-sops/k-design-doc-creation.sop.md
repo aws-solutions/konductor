@@ -10,7 +10,7 @@ Invoked when the engineer asks to create or write a design document (e.g., "Desi
 
 - **topic** (required): The system, feature, or problem to design. Accepts a free-form description, user stories, or a problem statement.
 - **output_path** (optional, default: `docs/design/<slugified-topic>.md`): Path to write the design doc.
-- **validation_output_dir** (optional, default: `docs/design/`): Directory for Phase 3's AWS-validation and trade-off reports. Its default reproduces today's hardcoded location exactly, so a caller that omits this parameter sees no change in where those two reports land.
+- **validation_output_dir** (optional, default: `docs/design/`): Directory for Phase 3's AWS-validation and trade-off reports. A caller that omits this parameter gets both reports in `docs/design/`.
 - **elicitation_depth** (optional, default: `standard`): Depth of requirements elicitation: `quick` (5 questions), `standard` (10 questions, default), or `deep` (15 questions). Engineer can also say "skip elicitation" to bypass Phase 1 entirely.
 
 **Constraints for parameter acquisition:**

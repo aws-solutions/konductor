@@ -90,7 +90,7 @@ If `k-adversarial-pull-request-review` is available, run it in a separate generi
 
 - You MUST skip this step if `k-adversarial-pull-request-review` is unavailable, or if `review_type` is `frontend` only (adversarial review targets backend/infra gaps)
 - You MUST pass the same diff used in Step 1 as `diff_input`
-- If the k-code-review-workflow was invoked with a CR URL, You MUST also pass it to `k-adversarial-pull-request-review` as its `pr_url` parameter. That is the name that SOP declares, and passing `cr_url` instead leaves it unset so the review degrades to diff-only. Do not send it to `adversarial-cr-review`, a different SOP that declares `cr_url`; on agents where both are loadable, name the target by filename.
+- If the k-code-review-workflow was invoked with `cr_url`, You MUST also pass it to `k-adversarial-pull-request-review` as its `pr_url` parameter. That is the name that SOP declares, and passing `cr_url` instead leaves it unset so the review degrades to diff-only.
 - You MUST apply the same false-positive criteria from Step 5 to adversarial findings before merging them
 - You MUST merge any new CRITICAL or IMPORTANT findings into the consolidated list from Step 5
 - You MUST NOT re-report findings already present in the consolidated list
@@ -119,7 +119,7 @@ Write the consolidated report to the output file.
   [Numbered list]
   ```
 
-- You MUST state the verdict: READY FOR CR / NEEDS FIXES
+- You MUST state the verdict: READY FOR REVIEW / NEEDS FIXES
 - You MUST NOT print the full report in your response. Reference the file instead.
 
 **Expected Output:** Report file at `output_file` with verdict and finding counts

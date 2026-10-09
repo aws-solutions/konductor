@@ -2,7 +2,7 @@
 
 ## Overview
 
-This SOP removes AI-generated slop from code before CR submission. It diffs the current branch against main/mainline, identifies unnecessary artifacts, cleans them, and runs review skills on the result.
+This SOP removes AI-generated slop from code before a pull request is opened. It diffs the current branch against main/mainline, identifies unnecessary artifacts, cleans them, and runs review skills on the result.
 
 ## Parameters
 

@@ -8,8 +8,6 @@ Invoked when the engineer asks to build something end to end (e.g., "Build X", "
 
 The implementation guide document format is out of scope. This SOP produces a README and developer guide, not a separately-published guide artifact.
 
-This is not the same SOP as the similarly-named full SDLC pass SOP in the internal extension package, which adds an earlier investment-validation phase and additional internal-tooling handoffs this package does not have.
-
 ## Parameters
 
 - **project_description** (required): The project or feature to build.
@@ -116,7 +114,7 @@ Steps 1 through 5 are project-wide and write directly under `output_dir`. Step 6
 
 Create a directory only when a step writes into it. A skipped phase leaves no empty directory behind.
 
-One set of artifacts lands outside `output_dir`: `k-design-doc-creation` writes its validation and trade-off reports into `docs/design/` by default, using names derived from the topic it was given. That SOP now accepts an optional `validation_output_dir` parameter to redirect them, but this SOP does not pass it. The Step 3 subagent instead reports the two paths it actually wrote onto the checklist, and Step 11 lists them from there.
+One set of artifacts lands outside `output_dir`: `k-design-doc-creation` writes its validation and trade-off reports into `docs/design/` by default, using names derived from the topic it was given. That SOP accepts an optional `validation_output_dir` parameter to redirect them, but this SOP does not pass it. The Step 3 subagent instead reports the two paths it actually wrote onto the checklist, and Step 11 lists them from there.
 
 ## Steps
 
@@ -180,7 +178,7 @@ Run the `k-design-doc-creation` SOP and produce the design document. You MAY use
 - You MUST check that SOP's own reported exit state before marking this step COMPLETED on the checklist. Its adversarial loop can itself end early, blocked on an unresolved CRITICAL, an engineer override, or a stopped run, and a subagent report of "done" does not by itself confirm which. If it did not reach its own completed state, You MUST mark this step BLOCKED with that reason rather than COMPLETED, and MUST NOT proceed to Step 4 with a design document that SOP itself does not consider finished.
 - Record the `design` phase's outcome via the `sop-state-management` skill at the same point you update the checklist: `COMPLETED` with a one-line summary only when the bullet above confirms that SOP's own completed state, `BLOCKED` otherwise.
 
-**Expected Output:** `output_dir/design/system-design.md`. That SOP also writes validation and trade-off reports to `docs/design/` by default (it now accepts an optional `validation_output_dir` override, which this SOP does not use), naming them from a slug of the `topic` it was given, which this SOP cannot predict. You MUST have the Step 3 subagent report back the two paths it actually wrote and record them on the checklist, so Step 11 lists real paths instead of guessing.
+**Expected Output:** `output_dir/design/system-design.md`. That SOP also writes validation and trade-off reports to `docs/design/` by default (it accepts an optional `validation_output_dir` override, which this SOP does not use), naming them from a slug of the `topic` it was given, which this SOP cannot predict. You MUST have the Step 3 subagent report back the two paths it actually wrote and record them on the checklist, so Step 11 lists real paths instead of guessing.
 
 ### 4. Principal Engineer Design Review
 

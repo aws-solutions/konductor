@@ -14,7 +14,7 @@ End-to-end workflow that transforms PM and design artifacts into Kiro IDE spec d
 - **feature_scope_path** (required): Path to feature-split file containing this feature's scoped user stories, key components, and dependencies
 - **user_stories_path** (required): Path to full user stories file from user-story-writing skill
 - **design_artifacts_path** (required): Path to design artifacts directory from architect phase
-- **spec_dir** (optional): path where spec artifacts are written. If the caller does not provide one, You MUST resolve it yourself, right now, to `.kiro/specs/{feature_name}/`. Do not leave it unresolved and do not defer resolution to the skills in Steps 1-3. This is the single place the default is decided; every step below passes the resulting concrete value down explicitly. A caller that wants a different location (e.g. `k-full-sdlc`/`full-sdlc-pass`) passes its own `spec_dir` explicitly. That override always wins.
+- **spec_dir** (optional): path where spec artifacts are written. If the caller does not provide one, You MUST resolve it yourself, right now, to `.kiro/specs/{feature_name}/`. Do not leave it unresolved and do not defer resolution to the skills in Steps 1-3. This is the single place the default is decided; every step below passes the resulting concrete value down explicitly. A caller that wants a different location (e.g. `k-full-sdlc`) passes its own `spec_dir` explicitly. That override always wins.
 
 ## Steps
 

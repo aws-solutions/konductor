@@ -6,7 +6,7 @@ This SOP performs comprehensive codebase analysis covering architecture, design 
 
 Use this SOP when joining an unfamiliar codebase, before major refactoring, during architecture reviews, or when assessing technical debt.
 
-This SOP differs from the `analyze` SOP, which performs pre-implementation context gathering across multiple research agents. Codebase analysis produces a comprehensive architectural assessment document with SOLID evaluation, design pattern identification, and technical debt scoring. It's a deep-dive reference document, not a pre-task research step.
+This SOP differs from the `k-context-gathering` SOP, which performs pre-implementation context gathering. Codebase analysis produces a comprehensive architectural assessment document with SOLID evaluation, design pattern identification, and technical debt scoring. It's a deep-dive reference document, not a pre-task research step.
 
 ## Parameters
 
@@ -67,7 +67,7 @@ Survey the codebase to understand its structure, languages, frameworks, and entr
 - You MUST scan the directory tree and identify:
   - Top-level directory structure
   - Primary languages (by file extension count)
-  - Frameworks and libraries (from dependency manifests: `package.json`, `pom.xml`, `Cargo.toml`, `Config`, `requirements.txt`, etc.)
+  - Frameworks and libraries (from dependency manifests: `package.json`, `pom.xml`, `Cargo.toml`, `requirements.txt`, etc.)
   - Entry points (main files, handlers, CLI entry points)
   - Build system (`make`, `npm`, `cargo`, `gradle`, `maven`, etc.)
 - You MUST generate a Mermaid diagram showing the high-level directory/module structure:

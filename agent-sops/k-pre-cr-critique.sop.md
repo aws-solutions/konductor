@@ -4,7 +4,7 @@
 
 This SOP performs a lightweight, read-only pre-submission code critique on local changes. Unlike the full `k-code-review-workflow` SOP (which runs multi-skill reviews and generates a review report), this is faster, focused on local changes, and produces a structured critique document with issue-level resolution tracking.
 
-Use this SOP before creating a CR, after finishing a feature, or when you want a quick sanity check on uncommitted work.
+Use this SOP before opening a pull request, after finishing a feature, or when you want a quick sanity check on uncommitted work.
 
 This SOP is **strictly read-only**. It never modifies source files, creates commits, or runs builds/tests.
 
@@ -39,7 +39,7 @@ Validate the critique scope, set defaults, and detect project context.
 - You MUST default `output_dir` to `.agents/scratchpad` if not provided
 - You MUST default `mode` to `auto` if not provided
 - You MUST verify the working directory is a git repository (unless `critique_scope` is specific file paths)
-- You MUST detect the project language/framework from project files (`package.json`, `Cargo.toml`, `Config`, `go.mod`, `pyproject.toml`) to inform critique context
+- You MUST detect the project language/framework from project files (`package.json`, `Cargo.toml`, `go.mod`, `pyproject.toml`) to inform critique context
 - You MUST create `output_dir` if it does not exist
 - You MUST determine the next critique number by scanning `output_dir` for existing `critique-NNN.md` files
 - You MUST NOT ask the user for parameters that have defaults
