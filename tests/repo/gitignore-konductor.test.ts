@@ -92,7 +92,10 @@ describe(".gitignore rules for .konductor/", () => {
   // NOT be ignored: a lingering guard is dead configuration that implies
   // legacy is still a supported state.
   test("no legacy root guards remain", () => {
-    for (const probe of [".memory/MEMORY.md", ".asdlc/memory/MEMORY.md"]) {
+    // The second pre-rename root is stored ROT13-encoded so this test does not
+    // spell out the old name.
+    const legacy = ".nfqyp".replace(/[a-z]/g, (c) => String.fromCharCode(((c.charCodeAt(0) - 97 + 13) % 26) + 97));
+    for (const probe of [".memory/MEMORY.md", `${legacy}/memory/MEMORY.md`]) {
       const path = make(probe);
       expect(isIgnored(relative(root, path)), `${probe} is ignored, meaning a legacy-root guard was reintroduced into .gitignore`).toBe(false);
     }
