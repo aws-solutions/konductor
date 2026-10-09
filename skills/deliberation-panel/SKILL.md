@@ -25,7 +25,7 @@ The skill takes an explicit `consent_confirmed` parameter (see below) precisely 
 1. If `consent_confirmed` is `false` or omitted: STOP after Phase 0 (Axis Derivation) and present the derived axis count plus the cost estimate to the user. Do not proceed to Phase 1 until the caller re-invokes with `consent_confirmed=true`.
 2. If `consent_confirmed` is `true`: the caller has already obtained consent (either the end user said yes directly, or an upstream skill like `socratic-elicitation` relayed an in-conversation opt-in). Proceed straight through Phases 0-3 without pausing again.
 
-There is no second, implicit "re-confirm if invoked directly" path. Whoever invokes this skill, the user, `socratic-elicitation`, or `asdlc-aspect-review`, sets `consent_confirmed` explicitly and is responsible for what they pass. The skill itself never infers consent from conversational tone.
+There is no second, implicit "re-confirm if invoked directly" path. Whoever invokes this skill, the user, `socratic-elicitation`, or `k-aspect-review`, sets `consent_confirmed` explicitly and is responsible for what they pass. The skill itself never infers consent from conversational tone.
 
 ---
 
@@ -152,7 +152,7 @@ The arbiter's synthesis is the panel's final output: a scorecard, not a six-part
 
 - **Consent is explicit, not inferred.** See Consent Gate; `consent_confirmed` is the only signal this skill acts on.
 - **Axes are re-derived every invocation.** Never carry over a prior decision's axis list, and never default to a fixed named roster regardless of domain.
-- **Once-per-session-per-topic guard (when called from `socratic-elicitation` or `asdlc-aspect-review`).** The host skill enforces this guard; the panel itself does not duplicate it.
+- **Once-per-session-per-topic guard (when called from `socratic-elicitation` or `k-aspect-review`).** The host skill enforces this guard; the panel itself does not duplicate it.
 - **Graceful degradation.** If the panel cannot spawn the subagents Phase 1/2 require (environment limitation, token budget, or tool unavailability), offer the user the option to deliberate inline instead: "A full deliberation panel isn't available right now. Would you like to reason through the axes together directly?"
 - **Parameter contract is fixed.** `decision_domain`, `stance`, and `consent_confirmed` must not be renamed or aliased by callers.
 

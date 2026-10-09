@@ -1,5 +1,5 @@
 ---
-name: asdlc-aspect-review
+name: k-aspect-review
 description: Use when the user asks for an "aspect review", "n-aspect review", or "multi-aspect review", or wants a design, spec, code change, or other artifact reviewed thoroughly from several angles at once. Runs one subagent per aspect in parallel.
 version: 1.0.0
 tags: [skill, aspect-review, review, subagent, parallel, quality]

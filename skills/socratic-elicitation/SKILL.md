@@ -11,7 +11,7 @@ tags: [skill, elicitation, requirements, intake, challenge, socratic, pre-planni
 
 Socratic Elicitation surfaces what is missing, ambiguous, or assumed BEFORE work begins (Mode A), or stress-tests a plan the user already holds before any artifact exists to review (Mode B). It works through one focused question at a time, waits for the answer, and lets each answer determine whether to follow up or move on, never a fixed script read start to finish.
 
-This is a conversation with the human, not an evaluation of a document. If a finished artifact already exists, evaluate it with `asdlc-aspect-review` instead of running this skill against the human who wrote it.
+This is a conversation with the human, not an evaluation of a document. If a finished artifact already exists, evaluate it with `k-aspect-review` instead of running this skill against the human who wrote it.
 
 Both modes draw on the same underlying discipline: [Socratic questioning](https://en.wikipedia.org/wiki/Socratic_questioning), a public method of directed inquiry with six recognized question categories: clarification, probing assumptions, probing evidence/reasons, probing implications, examining alternative viewpoints, and questioning the question itself. Mode A and Mode B apply that discipline to two different situations.
 
@@ -45,7 +45,7 @@ Both modes draw on the same underlying discipline: [Socratic questioning](https:
 
 ## Mode B: Challenge Mode (plan not yet an artifact)
 
-**Purpose:** Stress-test an idea, plan, or decision the user already holds, while it still exists only as an intention, before it has become a document or a design an evaluator could review. If a completed artifact exists, use `asdlc-aspect-review` instead.
+**Purpose:** Stress-test an idea, plan, or decision the user already holds, while it still exists only as an intention, before it has become a document or a design an evaluator could review. If a completed artifact exists, use `k-aspect-review` instead.
 
 **Triggers:**
 

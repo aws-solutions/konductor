@@ -1,5 +1,5 @@
 ---
-name: asdlc-code-simplifier
+name: k-code-simplifier
 description: Use when recently modified code should be cleaned up, refactored for readability, brought in line with coding standards, or made less complex without changing its behavior. Simplifies code while preserving functionality.
 version: 1.0.0
 tags: [refactor, simplify, readability, maintainability]
