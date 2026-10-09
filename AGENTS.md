@@ -93,7 +93,7 @@ describes the result.
   and are meant to be benchmarked against `fuse` and against each other. They live on
   `candidates/<NAME>`. A candidate is not an incremental change and is never merged piecemeal:
   most candidates are discarded, and a selected candidate replaces `fuse` as a whole. Replacing
-  `fuse` is the owner's call; tag the previous tip first (`git tag fuse-before-<NAME> fuse`) so it
+  `fuse` is the maintainers' call; tag the previous tip first (`git tag fuse-before-<NAME> fuse`) so it
   stays reachable.
 
 ## Authoring Agents & Skills

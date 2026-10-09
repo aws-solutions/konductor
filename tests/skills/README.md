@@ -1,10 +1,9 @@
 # Skill regression tests
 
 Standalone Bash regression tests for shell scripts under `skills/`. These
-live here — outside `skills/<name>/tests/` — because every file under
-`skills/<name>/` ships unconditionally into every installed AIM plugin
-bundle with no exclusion mechanism; keeping test-only content here means it
-never gets bundled into what end users install.
+live here, outside `skills/<name>/tests/`, because the installer copies each
+`skills/<name>/` directory as a whole, with no way to exclude files; keeping
+test-only content here means it never gets installed with the skill.
 
 Each subdirectory mirrors the skill it tests (e.g. `persistent-memory/`
 covers `skills/persistent-memory/`), to avoid filename collisions between
@@ -19,7 +18,7 @@ skills that happen to test the same concept.
 Each test is self-contained: it mocks the binaries it needs or works in an
 isolated throwaway git repository, and cleans up its own temp directory on
 exit. `test-nonbullet-injection.sh` was relocated here from
-`skills/persistent-memory/tests/` for the plugin-bundling reason above, with
+`skills/persistent-memory/tests/` for the packaging reason above, with
 its script-under-test path updated to the three-levels-up `PKG_ROOT`
 convention below.
 
