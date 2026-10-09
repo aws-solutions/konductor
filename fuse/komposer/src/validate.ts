@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Komposer never restates workflow rules. The engine parses and validates the
 // current text; this module only translates its issue paths/codes into UI field
-// locations and the handoff's reader-facing wording.
+// locations and Komposer's reader-facing wording.
 
 import YAML from "yaml";
 import { parseWorkflowText, type WorkflowIssue } from "../../flow/src/parse.ts";

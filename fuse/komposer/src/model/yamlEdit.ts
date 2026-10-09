@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Structured edits to a fuse-flow workflow YAML file that patch the source
-// text instead of re-serializing the whole document (decision 13 of
-// docs/specs/2026-10-04-komposer-editor-build.md): `yaml`'s Document.toString
+// text instead of re-serializing the whole document: `yaml`'s Document.toString
 // is not byte-identical for these files (folded scalars rewrap), so every
 // edit here finds the exact source range of the node or key it changes and
 // splices new text into the original string. Everything the edit does not
@@ -281,7 +280,7 @@ function blockScalarLines(key: string, indent: string, text: string, style: ">" 
 // Does `text` fit comfortably as a plain scalar on one line (no block style
 // needed)? Used to decide whether setInstruction with style '>' still
 // produces a block or can stay a short plain scalar when parsed back and
-// re-edited. Per the brief, setInstruction always honors the chosen style
+// re-edited. setInstruction always honors the chosen style
 // when the text is written as a block; but a very short instruction reads
 // fine as a plain scalar too. We only use a plain scalar when the text has
 // no newlines and is short enough that a reader would normally not use a
@@ -1100,7 +1099,7 @@ function applySetGate(text: string, edit: { step: number; index: number; fields:
   if (!isMap(item) && !isScalar(item)) fail(`gate index ${edit.index} is out of range`);
 
   // A gate in string form is rewritten as a mapping the first time it is
-  // edited (decision 15).
+  // edited.
   if (isScalar(item)) {
     const indent = dashIndent(text, (item.range as Range)[0]);
     const rendered = gateLines(indent, next.kind, next.text, next);

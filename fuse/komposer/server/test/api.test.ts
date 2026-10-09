@@ -8,7 +8,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { request } from "node:http";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { type KomposerServer, startServer } from "../app.ts";
 
 const CLI = resolve(import.meta.dir, "..", "..", "..", "flow", "src", "cli.ts");
@@ -629,5 +629,99 @@ steps:
     expect(out.gates.map((g: any) => [g.step, g.gate])).toEqual([[0, 1], [1, 0]]);
     const res = await api("/api/review-guides", { method: "POST", body: JSON.stringify({ path: join(root, "x.yml"), text: FLOW }) });
     expect(res.status).toBe(403);
+  });
+
+  describe("reads guides only inside the project, the libraries and the workflow locations", () => {
+    let outsideDir: string;
+    let secret: string;
+
+    beforeEach(() => {
+      outsideDir = realpathSync(mkdtempSync(join(tmpdir(), "komposer-outside-")));
+      secret = write(join(outsideDir, "secret.md"), "not for Komposer\n");
+    });
+
+    afterEach(() => {
+      rmSync(outsideDir, { recursive: true, force: true });
+    });
+
+    const askFor = async (guide: string) => {
+      const text = FLOW.replace("guide: rules/review.md", `guide: ${guide}`);
+      const path = write(join(root, ".konductor", "workflows", "reviewed.yml"), text);
+      return json("/api/review-guides", { method: "POST", body: JSON.stringify({ path, text }) });
+    };
+
+    const expectRefused = (out: any) => {
+      expect(out.gates[0].gateGuide).toEqual({ path: secret, display: secret, outside: true, exists: false });
+      expect(out.gates[0].reviews[1].guide).toEqual({ path: secret, display: secret, outside: true, source: "gate" });
+      expect(out.files[secret]).toBeUndefined();
+      expect(Object.values(out.files)).not.toContain("not for Komposer\n");
+    };
+
+    test("refuses an absolute guide path outside them", async () => {
+      expectRefused(await askFor(secret));
+    });
+
+    test("refuses a ../ guide path that leaves the project", async () => {
+      const relativeSecret = relative(join(root, ".konductor", "workflows"), secret);
+      expect(relativeSecret.startsWith("..")).toBe(true);
+      expectRefused(await askFor(relativeSecret));
+    });
+
+    test("refuses a guide inside the project that is a symlink to a file outside", async () => {
+      const link = join(root, ".konductor", "workflows", "rules", "linked.md");
+      mkdirSync(dirname(link), { recursive: true });
+      symlinkSync(secret, link);
+      const out = await askFor("rules/linked.md");
+      expect(out.gates[0].gateGuide).toMatchObject({ path: link, outside: true, exists: false });
+      expect(out.files[link]).toBeUndefined();
+    });
+
+    test("refuses a project library guide that is a symlink to a file outside", async () => {
+      const link = join(root, ".konductor", "library", "artifacts", "essay", "review.md");
+      mkdirSync(dirname(link), { recursive: true });
+      symlinkSync(secret, link);
+      const text = FLOW.replace("        guide: rules/review.md\n", "");
+      const path = write(join(root, ".konductor", "workflows", "reviewed.yml"), text);
+      const out = await json("/api/review-guides", { method: "POST", body: JSON.stringify({ path, text }) });
+      const refs = out.gates[0].reviews.flatMap((r: any) => [r.guide, r.ownGuide].filter(Boolean));
+      expect(refs.length).toBeGreaterThan(0);
+      for (const ref of refs.filter((r: any) => r.path === link || r.path === secret)) {
+        expect(ref.outside).toBe(true);
+      }
+      expect(refs.some((r: any) => r.path === link || r.path === secret)).toBe(true);
+      expect(out.files[link]).toBeUndefined();
+      expect(out.files[secret]).toBeUndefined();
+      expect(Object.values(out.files)).not.toContain("not for Komposer\n");
+    });
+
+    test("refuses another skill file in the clone that no shipped library entry names", async () => {
+      const skill = join(import.meta.dir, "..", "..", "..", "..", "skills", "humanize-writing", "SKILL.md");
+      expect(existsSync(skill)).toBe(true);
+      const out = await askFor(skill);
+      expect(out.gates[0].gateGuide).toMatchObject({ path: skill, outside: true, exists: false });
+      expect(out.files[skill]).toBeUndefined();
+    });
+
+    test("answers the same for a missing file outside them as for an existing one", async () => {
+      const missing = join(outsideDir, "missing.md");
+      const out = await askFor(missing);
+      expect(out.gates[0].gateGuide).toEqual({ path: missing, display: missing, outside: true, exists: false });
+    });
+
+    test("still reads a guide inside them, and a shipped guide that links to a skill", async () => {
+      write(join(root, ".konductor", "workflows", "rules", "review.md"), "gate rules\n");
+      const out = await askFor("rules/review.md");
+      const gateGuide = join(root, ".konductor", "workflows", "rules", "review.md");
+      expect(out.gates[0].gateGuide).toEqual({ path: gateGuide, display: ".konductor/workflows/rules/review.md", exists: true });
+      expect(out.files[gateGuide]).toBe("gate rules\n");
+
+      const text = FLOW.replace("artifact: essay", "artifact: design").replace("        guide: rules/review.md\n", "");
+      const path = write(join(root, ".konductor", "workflows", "reviewed.yml"), text);
+      const shipped = await json("/api/review-guides", { method: "POST", body: JSON.stringify({ path, text }) });
+      const guide = shipped.gates[0].reviews[0].guide;
+      expect(guide.source).toBe("package library");
+      expect(guide.outside).toBeUndefined();
+      expect(shipped.files[guide.path]).toBe(readFileSync(guide.path, "utf8"));
+    });
   });
 });

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// End-to-end tests of the instruction pre-fill (decision 18): real workflow
+// End-to-end tests of the instruction pre-fill: real workflow
 // text, the edits applied with applyEdit, the result read back with the
 // engine's own parser. The descriptions are the shipped library's entry.yml
 // files. No mocks of our own code.

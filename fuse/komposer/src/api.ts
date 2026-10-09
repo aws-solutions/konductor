@@ -90,6 +90,9 @@ export interface FileRef {
   path: string;
   // Relative to the project, or to the repository that holds a link's target.
   display: string;
+  // Set when the file lies outside the locations Komposer reads guides from;
+  // its text is not sent then.
+  outside?: boolean;
 }
 
 export type ReviewGuideSource =

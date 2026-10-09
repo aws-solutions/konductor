@@ -186,7 +186,7 @@ export function App() {
       showToast(e instanceof Error ? e.message : String(e));
     }
   };
-  // Adding an artifact pre-fills a generated instruction (decision 18).
+  // Adding an artifact pre-fills a generated instruction.
   const addArtifact = (step: number, mode: OutputMode, artifact: string, path = suggestPath(artifact)) => {
     if (!workflow) return;
     try {

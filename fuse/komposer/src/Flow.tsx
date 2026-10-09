@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // The centre diagram: phase headings, step cards (number tile, title, id,
 // condition row, description, artifact chips, gate pills, error line) and
-// the SVG edge overlay. Read-only for step 3: no seam/drag/append/buttons.
+// the SVG edge overlay.
 
 import { useLayoutEffect, useRef, useState, type DragEvent } from "react";
 import { ArrowDown, ArrowUp, X } from "lucide-react";

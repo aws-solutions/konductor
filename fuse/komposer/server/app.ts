@@ -3,11 +3,14 @@
 // workflow files, the library and the workstreams of one project, and the
 // built app itself. Every location rule comes from fuse-flow's own code.
 //
-// The server writes files, so it guards itself (decision 5 of the build
-// spec): it listens on 127.0.0.1 only, wants the token it was started with on
-// every API request, refuses a foreign Host header (DNS rebinding), and writes
-// only .yml files inside the three workflow locations and its own
-// working-copy folder.
+// The server writes files, so it guards itself: it listens on 127.0.0.1 only,
+// wants the token it was started with on every API request, refuses a foreign
+// Host header (DNS rebinding), and writes only .yml files inside the three
+// workflow locations and its own working-copy folder. It reads a review guide
+// that a workflow names only when the guide's real path, with symlinks
+// resolved, lies inside the project, the three libraries or the three
+// workflow locations, or is a file of a shipped package-library entry; any other guide is
+// reported as outside those locations, without its content.
 
 import { createHash } from "node:crypto";
 import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, rmSync, statSync, watch, writeFileSync } from "node:fs";
@@ -15,7 +18,7 @@ import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } 
 import { summarizeRun, runEvents } from "../../flow/src/history.ts";
 import { parseWorkflowText } from "../../flow/src/parse.ts";
 import { display, libraryEntry, listLibrary, loadProject, reviewGuideSource } from "../../flow/src/policy.ts";
-import { findRepoRoot, workflowDirs, workflowFilesBelow } from "../../flow/src/project.ts";
+import { findRepoRoot, libraryDirs, workflowDirs, workflowFilesBelow } from "../../flow/src/project.ts";
 import { listWorkstreams } from "../../flow/src/workstream.ts";
 
 export interface ServerOptions {
@@ -205,21 +208,52 @@ export function startServer(options: ServerOptions): KomposerServer {
     }),
   });
 
+  // Whether a guide may be read: its real path lies inside the project, a
+  // library or a workflow location, or it is a file of an entry in the
+  // package library, which ships with fuse-konductor and links its guides to
+  // skills in the same clone. Links in the project and user libraries get no
+  // such exception. A path that does not exist is judged by its own form, so
+  // the answer for a path outside these locations does not tell whether the
+  // file exists.
+  const guideScope = () => {
+    const bases = [root, ...Object.values(libraryDirs(root)), ...locations.map((l) => l.path)];
+    const roots = [...new Set([...bases, ...bases.filter((b) => existsSync(b)).map((b) => realpathSync(b))])];
+    const within = (path: string) => roots.some((r) => path === r || path.startsWith(r + sep));
+    const shipped = new Set(
+      listLibrary(root)
+        .filter((e) => e.level === "package")
+        .flatMap((e) => [e.guide, e.template, e.review].filter((f): f is string => !!f && existsSync(f)).map((f) => realpathSync(f))),
+    );
+    return (file: string): { readable: boolean; outside: boolean } => {
+      if (!existsSync(file)) return { readable: false, outside: !within(resolve(file)) };
+      const real = realpathSync(file);
+      const inside = within(real) || shipped.has(real);
+      return { readable: inside && statSync(real).isFile(), outside: !inside };
+    };
+  };
+
   // The review guide each agent gate of the sent text uses for each artifact
   // of its step, with the layer it comes from (the engine's own rule), the
-  // gate's own guide, and the text of every file named. The text sent is the
-  // open version, saved or not; a gate's guide is relative to the workflow
-  // file, as the engine reads it.
+  // gate's own guide, and the text of every file named that may be read. The
+  // text sent is the open version, saved or not; a gate's guide is relative to
+  // the workflow file, as the engine reads it.
   const reviewGuides = (body: any) => {
     const { path } = locate(body.path);
     if (typeof body.text !== "string") throw new HttpError(400, "text is required");
     const parsed = parseWorkflowText(body.text);
     if (!parsed.ok) return { gates: [], files: {} };
     const p = loadProject(root);
+    const scope = guideScope();
     const files: Record<string, string> = {};
     const ref = (file: string) => {
-      if (existsSync(file) && statSync(file).isFile()) files[file] ??= readFileSync(file, "utf8");
-      return { path: file, display: display(p, file) };
+      const { readable, outside } = scope(file);
+      if (readable) files[file] ??= readFileSync(file, "utf8");
+      return { path: file, display: display(p, file), ...(outside ? { outside: true } : {}) };
+    };
+    // A gate guide outside the allowed locations is not said to exist.
+    const gateGuide = (file: string) => {
+      const out = ref(file);
+      return { ...out, exists: !out.outside && existsSync(file) };
     };
     const gates = parsed.workflow.steps.flatMap((step, stepIndex) =>
       step.gates.flatMap((gate, gateIndex) => {
@@ -236,7 +270,7 @@ export function startServer(options: ServerOptions): KomposerServer {
           {
             step: stepIndex,
             gate: gateIndex,
-            ...(resolved.guide ? { gateGuide: { ...ref(resolved.guide), exists: existsSync(resolved.guide) } } : {}),
+            ...(resolved.guide ? { gateGuide: gateGuide(resolved.guide) } : {}),
             reviews,
           },
         ];

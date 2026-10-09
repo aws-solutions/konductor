@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Edge layout for the diagram: consumes buses (left gutter) and route-back
-// lines (right gutter), with greedy lane assignment. Ported from the
-// prototype's `layout()` / `flowSvg()` (Workflow Editor v2.dc.html).
+// lines (right gutter), with greedy lane assignment.
 
 import type { StepView } from "./workflowView.ts";
 

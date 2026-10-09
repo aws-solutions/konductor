@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Field tooltip text, read from the schemas' `.meta({ description })` at
-// build time (decision 16) rather than copied into Komposer. Each
+// build time rather than copied into Komposer. Each
 // description ends with an "Engine effect:" sentence; we split on it.
 
 import type { ZodType } from "zod";

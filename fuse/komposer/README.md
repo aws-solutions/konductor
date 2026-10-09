@@ -49,7 +49,9 @@ serves the app with Vite on port 5173 and passes `/api` to the server started wi
   steps that a running workstream depends on.
 - **The server is for your machine only.** It listens on 127.0.0.1, requires the token from the
   printed URL, refuses requests that come with another host name, and writes only `.yml` files in
-  the three workflow folders and its own working-copy folder.
+  the three workflow folders and its own working-copy folder. It shows a review guide that a
+  workflow names only when the guide lies in the project, a library or a workflow folder, or is
+  a guide shipped with the package library.
 - **Known limitation:** comments inside a flow list (`[...]`) that spans several lines are lost
   when an item of that list is added, removed or moved, or when a gate in it is edited. No shipped
   workflow uses that form.

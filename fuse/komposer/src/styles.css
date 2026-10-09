@@ -1,9 +1,8 @@
 /* SPDX-License-Identifier: Apache-2.0
-   Komposer's styles, from the design handoff
-   (docs/specs/2026-10-04-komposer-design-handoff/README.md). Colors come
-   from the On Coding tokens, including the --tint-* tokens for gate kinds,
-   run states, errors and routes back, which keep the handoff's values in
-   the light theme and have their own values in the dark theme. */
+   Komposer's styles. Colors come from the tokens in tokens/colors.css,
+   including the --tint-* tokens for gate kinds, run states, errors and
+   routes back, which have one set of values in the light theme and another
+   in the dark theme. */
 
 body {
   margin: 0;
@@ -1119,7 +1118,7 @@ select {
   overflow: auto;
 }
 
-/* Editing and saving (steps 4–5). */
+/* Editing and saving. */
 .grow { flex: 1; }
 .new-workflow-btn { cursor: pointer; opacity: 1; }
 .save-btn.is-enabled { background: var(--brand-gradient); color: #fff; cursor: pointer; }
@@ -1188,7 +1187,7 @@ select {
 .diff-same { color: var(--text-muted); }
 .diff-skip { color: var(--text-faint); }
 
-/* Step 6–7 and visual overflow corrections. */
+/* The save dialog, the run view, the library panel and overflow corrections. */
 .discard-btn { white-space: nowrap; flex: none; }
 .field-textarea { height: auto; min-height: calc(5 * 1.5em + 16px); }
 .save-modal { min-width: 0; overflow-x: hidden; }

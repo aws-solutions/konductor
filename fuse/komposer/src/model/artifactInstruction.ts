@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // Adding an artifact to a step, with the step's instruction pre-filled from the
-// library's description of the artifact (decision 18 of the Komposer build
-// spec). An empty instruction becomes "Write the <id>: <description>". An
-// instruction that is still nothing but such lines, for artifacts the step
-// already has, gets one more line. Any other instruction is the author's and
-// is left alone.
+// library's description of the artifact. An empty instruction becomes "Write
+// the <id>: <description>". An instruction that is still nothing but such
+// lines, for artifacts the step already has, gets one more line. Any other
+// instruction is the author's and is left alone.
 
 import YAML from "yaml";
 import { applyEdit, type Edit, type OutputMode } from "./yamlEdit.ts";
@@ -20,7 +19,7 @@ export interface DescribedEntry {
 }
 
 // The entry an artifact id resolves to: project, then personal, then package.
-// The most specific entry wins as a whole (decision 24 of the schema redesign).
+// The most specific entry wins as a whole.
 export function winningEntry<E extends DescribedEntry>(entries: E[], artifactId: string): E | undefined {
   const order: DescribedEntry["level"][] = ["project", "user", "package"];
   return order.map((level) => entries.find((e) => e.id === artifactId && e.level === level)).find(Boolean);

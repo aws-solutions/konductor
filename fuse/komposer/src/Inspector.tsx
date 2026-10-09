@@ -60,7 +60,8 @@ export function Inspector({
   diffBase: string;
   compareRequest: number;
   onEdit: (edit: Edit) => void;
-  // Adds an artifact to a step, with the instruction pre-fill of decision 18.
+  // Adds an artifact to a step and pre-fills the step's instruction from the
+  // library's description of the artifact.
   onAddArtifact: (step: number, mode: OutputMode, artifact: string, path?: string) => void;
   // The review guides of the open text's agent gates, from the server.
   reviewGuides: ReviewGuides | null;
@@ -671,11 +672,11 @@ function StepTab({
                             <button
                               type="button"
                               className="text-button"
-                              disabled={!gateGuides(fileIndex)!.gateGuide!.exists}
+                              disabled={!gateGuides(fileIndex)!.gateGuide!.exists && !gateGuides(fileIndex)!.gateGuide!.outside}
                               title={gateGuides(fileIndex)!.gateGuide!.path}
                               onClick={() => onViewFile("Gate guide", gateGuides(fileIndex)!.gateGuide!)}
                             >
-                              {gateGuides(fileIndex)!.gateGuide!.exists ? "Open" : "Not found"}
+                              {gateGuides(fileIndex)!.gateGuide!.exists || gateGuides(fileIndex)!.gateGuide!.outside ? "Open" : "Not found"}
                             </button>
                           )}
                         </span>
@@ -1412,7 +1413,11 @@ function FileViewer({
         <div className="file-path mono" title={file.path}>
           {file.display}
         </div>
-        {text === undefined ? (
+        {file.outside ? (
+          <div className="inspector-empty">
+            Komposer shows guides only from the project, the libraries and the workflow locations.
+          </div>
+        ) : text === undefined ? (
           <div className="inspector-empty">The file does not exist.</div>
         ) : (
           <pre className="library-file">{text}</pre>
