@@ -73,11 +73,6 @@ Evaluate UI text in console-style applications against Cloudscape design standar
 2. **Cloudscape Alert Component**: https://cloudscape.design/components/alert/
 3. **Cloudscape Accessibility Guidance**: https://cloudscape.design/foundation/core-principles/accessibility/
 
-> This checklist's internal counterpart also cites a dedicated AWS Style Guide (voice, consoles-and-UI,
-> global-English, legal-guidelines, safe-names) and an internal AWS content-strategy standards page. No public
-> equivalent exists for those references. The corresponding guidance below is retained as general principles
-> without a source link, and each gap is called out explicitly rather than papered over with an unrelated link.
-
 ## Evaluation Checklist
 
 ### 1. Voice and Tone (CRITICAL)
@@ -150,9 +145,8 @@ Evaluate UI text in console-style applications against Cloudscape design standar
 **✅ VERIFY:**
 
 - Consistent terminology within the application and with its public documentation
-- Correct capitalization of service and product names. No public equivalent exists for this checklist's
-  internal source-of-truth reference (an internal service-name registry); verify against the product's own
-  published documentation instead
+- Correct capitalization of service and product names; verify against the product's own published
+  documentation
 - Third-party names match official branding
 - New feature names use lowercase (not Title Case)
 - Acronyms follow standard technical-writing guidance (spell out on first use unless in exception list)
@@ -221,17 +215,15 @@ Evaluate UI text in console-style applications against Cloudscape design standar
 - Concise wording (allows 30% expansion)
 - Global English (appropriate for worldwide audience)
 - No culturally-specific idioms or expressions
-- No public equivalent exists for this checklist's internal global-English source-of-truth reference; apply
-  general plain-language and internationalization best practices instead
+- Plain-language and internationalization best practices applied
 
 ### 9. Legal and Compliance
 
 **✅ CHECK:**
 
 - No internal company information exposed
-- Fictitious names use legally approved examples only
-- No public equivalent exists for this checklist's internal legal-guidelines and safe/fictitious-names
-  source-of-truth references; consult your organization's own legal and brand guidance instead
+- Fictitious names use legally approved examples only; consult your organization's own legal and brand
+  guidance
 
 ### 10. Technical Accuracy
 

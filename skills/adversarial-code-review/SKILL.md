@@ -34,7 +34,7 @@ This skill operates in two modes. The invoker selects the mode; the two modes mu
 
 ### Generator Mode (Maker)
 
-The default. Read the diff, produce findings across the gap categories in `Core Concepts`. Findings may be incomplete or noisy. That is expected. A different persona in Validator Mode will filter them before they reach the CR.
+The default. Read the diff, produce findings across the gap categories in `Core Concepts`. Findings may be incomplete or noisy. That is expected. A different persona in Validator Mode will filter them before they reach the pull request.
 
 ### Validator Mode (Checker)
 
@@ -48,7 +48,7 @@ For each proposed finding you review:
 - Reject style-only nits already caught by lint, formatter, or type-checker.
 - Reject praise of correct code. It is not a finding.
 - Reject duplicates: if two findings reference the same file:line and the same root cause, keep the highest-severity one and drop the rest.
-- When in doubt, reject. A false positive posted to a CR wastes reviewer attention and erodes trust in the whole review pipeline. A missed issue costs less.
+- When in doubt, reject. A false positive posted to a pull request wastes reviewer attention and erodes trust in the whole review pipeline. A missed issue costs less.
 
 Output for each finding: `KEEP` with the finding unchanged, or `REJECT` with a one-line reason drawn from the list above.
 

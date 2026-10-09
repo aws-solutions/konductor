@@ -384,8 +384,6 @@ This philosophy will guide coverage analysis and gap identification.
 
 **Store:** testing_philosophy
 
-**Requirements:** 0.1, 0.2, 0.3
-
 ---
 
 ## Stage 1: Mode Selection & Context Gathering
@@ -468,8 +466,6 @@ Validate all paths exist and are readable.
 **Output:** `✅ Configuration: Mode: [mode] | Depth: [level] | Types: [types] | Report: [file_path]`
 
 Store: mode, analysis_depth, test_directories, artifact_paths, output_file_path
-
-**Requirements:** 1.1, 1.2
 
 ---
 
@@ -586,8 +582,6 @@ Test Discovery Results:
 
 **Store:** features_map, test_coverage_map, parsing_errors, nfr_map, integration_points_map
 
-**Requirements:** 2.1, 2.2, 3.1
-
 ---
 
 ## Stage 3: Test Distribution Analysis
@@ -697,8 +691,6 @@ Calculate alignment:
 
 **Store:** validation_results.philosophy_analysis
 
-**Requirements:** 0.4, 0.5
-
 ---
 
 ## Stage 4: Functional Test Coverage Analysis
@@ -734,8 +726,6 @@ Calculate alignment:
 **Update Progress Tracker:** Mark "Functional test coverage calculated" as complete and update timestamp.
 
 **Store:** validation_results.functional_coverage_analysis
-
-**Requirements:** 3.2, 3.3, 4.1
 
 ---
 
@@ -894,8 +884,6 @@ Overall:
 **Update Progress Tracker:** Mark "Non-functional test coverage analyzed" as complete and update timestamp.
 
 **Store:** validation_results.nfr_coverage_analysis
-
-**Requirements:** 4.2, 4.3
 
 ---
 
@@ -1088,8 +1076,6 @@ Overall:
 **Update Progress Tracker:** Mark "Integration points analyzed" as complete and update timestamp.
 
 **Store:** validation_results.integration_point_analysis
-
-**Requirements:** 4.4, 4.5
 
 ---
 
@@ -1396,8 +1382,6 @@ File-Level Recommendations: [N] specific code locations identified
 
 **Store:** validation_results.gap_analysis
 
-**Requirements:** 4.2, 4.3, 5.1, 5.2
-
 ---
 
 ## Stage 8: Pattern Analysis
@@ -1483,8 +1467,6 @@ For backend (Pyramid model):
 
 **Report:** Include test value assessment in pattern analysis section. List high-value tests to maintain, low-value tests to consider removing or refactoring.
 
-**Requirements:** 6.1, 6.2, 6.3
-
 ---
 
 ## Stage 9: Readiness Assessment (Readiness Mode Only)
@@ -1557,8 +1539,6 @@ Apply thresholds based on testing philosophy:
 
 **Store:** validation_results.readiness_assessment
 
-**Requirements:** 7.1, 7.2, 7.3
-
 ---
 
 ## Stage 10: Risk Evaluation (Readiness Mode Only)
@@ -1608,8 +1588,6 @@ For each high/critical risk:
 
 **Store:** validation_results.risk_evaluation
 
-**Requirements:** 7.4, 7.5
-
 ---
 
 ## Final Report Generation
@@ -1648,8 +1626,6 @@ Next Steps:
 [Mode-specific guidance]
 
 ```
-
-**Requirements:** 9.1, 9.2, 9.3
 
 ---
 

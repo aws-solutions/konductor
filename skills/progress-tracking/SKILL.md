@@ -193,8 +193,6 @@ If ambiguous, ask: "Which validation mode? (initial/progress/final)" with descri
 
 Store: mode, feature_plan_path, detailed_analysis, save_history
 
-**Requirements:** 8.1, 8.2
-
 ---
 
 ## Stage 2: Spec Discovery & Parsing
@@ -231,8 +229,6 @@ Apply error handling patterns for missing files, malformed markdown, invalid for
 
 Store: features_map, parsing_errors
 
-**Requirements:** 1.1, 1.2, 3.1
-
 ---
 
 ## Stage 3A: Structure Validation (Initial & Final)
@@ -261,8 +257,6 @@ Store: features_map, parsing_errors
 **Decision:** PASS (no critical) → Stage 4 | PASS with WARNINGS → recommend fixes, allow proceed | FAIL (critical) → block, require fixes.
 
 Store: validation_results.structure
-
-**Requirements:** 1.2, 1.3
 
 ---
 
@@ -296,8 +290,6 @@ Store: validation_results.structure
 
 Store: validation_results.progress
 
-**Requirements:** 2.1, 2.2, 2.3, 2.4
-
 ---
 
 ## Stage 4: Coverage Analysis (Initial & Final)
@@ -323,8 +315,6 @@ Store: validation_results.progress
 
 Store: validation_results.coverage
 
-**Requirements:** 1.3, 5.1
-
 ---
 
 ## Stage 5: Dependency Validation (Initial & Final)
@@ -348,8 +338,6 @@ Store: validation_results.coverage
 
 Store: validation_results.dependencies
 
-**Requirements:** 1.4, 6.1, 6.2
-
 ---
 
 ## Stage 6: Code Analysis (Final Mode Only)
@@ -372,17 +360,15 @@ Store: validation_results.dependencies
 
 Store: validation_results.code_analysis
 
-**Requirements:** 3.2, 3.3, 3.4, 3.5
-
 ---
 
 ## Stage 7: Pattern Matching (Final Mode Only)
 
-**Objective:** Use MCP Code Search to find similar implementations and compare patterns.
+**Objective:** Use the code search tools available to find similar implementations and compare patterns.
 
 **Mode:** Final only.
 
-**Query MCP:** For each major component: query `[component-name] implementation [language]`, limit 10 results, cache 1 hour. Handle: MCP unavailable → skip, report warning | Timeout (>30s) → use partial | No results → report, continue.
+**Query code search:** For each major component: query `[component-name] implementation [language]`, limit 10 results, cache 1 hour. Handle: code search unavailable → skip, report warning | Timeout (>30s) → use partial | No results → report, continue.
 
 **Extract Patterns:** Analyze results for: Naming (camelCase, PascalCase, snake_case, kebab-case), Architecture (class-based, functional, DI, singleton), Structure (error handling, validation, logging, config). Count frequency.
 
@@ -391,8 +377,6 @@ Store: validation_results.code_analysis
 **Report:** Use standard template. Summary: searches count, patterns analyzed, overall alignment. Naming Conventions: functions/classes/files with user approach, pattern match, score. Architectural Patterns: error handling/validation/async with comparisons. Code Structure: logging/config with comparisons. Pattern Alignment Score: table with categories. Recommendations: critical/warnings/info with code examples. Detailed mode: all search results, code examples, refactoring guidance. Summary mode: deviations and recommendations only.
 
 Store: validation_results.pattern_analysis
-
-**Requirements:** 4.1, 4.2, 4.3, 4.4
 
 ---
 
@@ -412,8 +396,6 @@ Store: validation_results.pattern_analysis
 
 Store: validation_results.traceability
 
-**Requirements:** 5.1, 5.2, 5.3, 5.4
-
 ---
 
 ## Final Report Generation
@@ -429,8 +411,6 @@ After completing mode-specific stages, generate consolidated report using standa
 **Next Steps:** Mode-specific guidance (Initial: fix issues, begin implementation | Progress: unblock, continue, re-run | Final: fix gaps, proceed to release).
 
 **History:** If enabled, note saved location.
-
-**Requirements:** 7.1, 7.2, 7.3, 7.4, 7.5
 
 ---
 

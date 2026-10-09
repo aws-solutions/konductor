@@ -50,7 +50,7 @@ Transform E2E test strategy into actionable Cypress test implementation plan wit
 
 ## Prerequisites
 
-1. **E2E Test Strategy**: Output from E2E Test Strategy Planner prompt
+1. **E2E Test Strategy**: Output from the `e2e-test-strategy` skill
    - Location: `testing-quality-assurance/outputs/e2e-test-strategy.md`
    - Contains: Prioritized E2E test matrix, user journeys, test specifications
 

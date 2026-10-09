@@ -81,7 +81,7 @@ Rules:
 - For tasks sourced from external tickets: include the ticket ID and URL in the Asana task description
 - Add a comment to the task to link to source tickets or context
 
-### CR Integration
+### Pull Request Integration
 
 Link tasks to code reviews by including the Asana task URL in the commit message or pull request description.
 

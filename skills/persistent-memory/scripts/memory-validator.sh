@@ -25,8 +25,8 @@ CONFIG_FILE="${GIT_ROOT}/.konductor/memory-config.json"
 # Anchor a relative TARGET to the repo root too, mirroring CONFIG_FILE
 # above -- the skill's real invocation always passes the relative literal
 # ".konductor/memory/MEMORY.md", so without this a write from a package
-# subdirectory (e.g. src/SomePackage/) lands at
-# src/SomePackage/.konductor/memory/MEMORY.md instead of the canonical,
+# subdirectory (e.g. packages/app/) lands at
+# packages/app/.konductor/memory/MEMORY.md instead of the canonical,
 # root-anchored path the .gitignore rule assumes protects it. An
 # already-absolute TARGET is left untouched.
 case "$TARGET" in
@@ -213,7 +213,7 @@ normalize_entry() {
 }
 
 # Derive the "entry" text a line contributes to content validation.
-# CWE-20 fix: content checks must not be limited to bullet lines -- an
+# Content checks (CWE-20) must not be limited to bullet lines -- an
 # injection payload formatted as a heading, paragraph, blockquote, or
 # numbered-list item must be checked too, since it is written to disk
 # verbatim just like a bullet entry. This strips a leading bullet marker
@@ -222,8 +222,8 @@ normalize_entry() {
 #
 # The bullet strip is ANCHORED (matches the numbered-item branch below):
 # it removes exactly one leading marker char and its following space(s),
-# nothing more. A prior version used the bash "${line#*[-*] }" shortest-
-# prefix expansion, which matches the FIRST occurrence anywhere in the
+# nothing more. The bash "${line#*[-*] }" shortest-prefix expansion is
+# not used because it matches the FIRST occurrence anywhere in the
 # line of a "-"/"*" followed by a space -- not necessarily the leading
 # one. When the leading marker is not immediately followed by a single
 # space (e.g. "-1 *payload* text"), that shortest-match can land on a
@@ -298,7 +298,7 @@ fi
 
 # Validate proposed entries. Every non-blank line is checked -- bullets,
 # numbered items, headings, paragraphs, blockquotes, etc. -- not just
-# bullet lines (CWE-20 fix).
+# bullet lines (CWE-20).
 while IFS= read -r line; do
   [[ "$line" =~ ^[[:space:]]*$ ]] && continue
 

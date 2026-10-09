@@ -184,7 +184,7 @@ If the system uses DynamoDB or requires API design:
 4. **Consistency Requirements**: Strong consistency needed or eventual consistency acceptable?
 5. **Data Lifecycle**: How long is data retained? Archive strategy?
 
-**Handoff Note**: "Based on these patterns, I recommend using the **Smithy Expert** prompt for API design and **DynamoDB Design Expert** maker/checker pair for data modeling."
+**Handoff Note**: "Based on these patterns, I recommend using the `smithy-modeling` skill for API design and the `dynamodb-design` and `dynamodb-validation` maker/checker pair for data modeling."
 
 ## Output Deliverables
 
@@ -269,7 +269,7 @@ After completing the interview, generate:
 
 ## API Design Overview
 
-[High-level API structure - input for Smithy Expert]
+[High-level API structure - input for smithy-modeling]
 
 ## Deployment Strategy
 
@@ -291,7 +291,7 @@ After completing the interview, generate:
 ## Next Steps
 
 1. [Immediate next actions]
-2. [Recommended follow-up prompts]
+2. [Recommended follow-up skills]
 ```
 
 ### 2. Threat Model Input
@@ -397,12 +397,11 @@ After completing the interview, generate:
 
 [How we'll know the implementation is successful]
 
-## Recommended Next Prompts
+## Recommended Next Skills
 
-- **Smithy Expert**: For API design (if applicable)
-- **DynamoDB Design Expert**: For data modeling (if applicable)
-- **Threat Model Generator**: For detailed security analysis
-- **CDK Implementation Guide**: For infrastructure as code
+- **smithy-modeling**: For API design (if applicable)
+- **dynamodb-design** and **dynamodb-validation**: For data modeling (if applicable)
+- **threat-modeling**: For detailed security analysis
 ```
 
 ## Interview Best Practices

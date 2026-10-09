@@ -45,7 +45,7 @@ Before flagging a missing implementation, check whether the codebase already pro
 
 ## Checker handoff
 
-Findings produced by this pass are candidates, not verdicts. The review procedure forwards them to a different-persona checker that applies `adversarial-code-review` in Validator Mode before anything reaches the CR. Produce your honest read.
+Findings produced by this pass are candidates, not verdicts. The review procedure forwards them to a different-persona checker that applies `adversarial-code-review` in Validator Mode before anything reaches the pull request. Produce your honest read.
 
 ## Severity guidance
 

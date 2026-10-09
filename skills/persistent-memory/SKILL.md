@@ -112,7 +112,7 @@ Every 5-10 turns, self-evaluate: _Is there anything worth persisting?_
 
 ---
 
-## Routing Note (§6.2.2)
+## Routing Note
 
 This skill handles **declarative facts, preferences, decisions, and conventions only**. Route
 reusable multi-step procedures to `workspace-skills` instead.
@@ -125,7 +125,7 @@ reusable multi-step procedures to `workspace-skills` instead.
 
 ---
 
-## Proactive Capture Triggers (§6.2.3 — do not wait to be asked)
+## Proactive Capture Triggers (do not wait to be asked)
 
 ### Primary triggers (act on any one)
 
@@ -146,7 +146,7 @@ reusable multi-step procedures to `workspace-skills` instead.
 
 ---
 
-## Scan-Before-Create (§6.2.4 — hard gate)
+## Scan-Before-Create (hard gate)
 
 **BEFORE creating a new memory entry, you MUST check for overlap.**
 
@@ -164,7 +164,7 @@ Duplicates dilute memory quality and degrade recall.
 
 ---
 
-## Provenance Markers (§6.2.5 — user entries are immutable to agents)
+## Provenance Markers (user entries are immutable to agents)
 
 Every agent-created memory entry **MUST** carry `[origin:agent]` inline after the timestamp.
 When the user explicitly dictates what to remember, write `[origin:user]`.
@@ -190,7 +190,7 @@ the original.
 
 ---
 
-## Notification & Reduced Friction (§7.2)
+## Notification & Reduced Friction
 
 | Capture type                | Confirmation?          | Notification?                |
 | --------------------------- | ---------------------- | ---------------------------- |

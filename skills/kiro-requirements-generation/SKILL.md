@@ -239,7 +239,7 @@ Read the approved user stories from the upstream artifact. Sources (in priority 
 
 ### Step 2: Confirm Feature Scope
 
-This skill produces one `requirements.md` per invocation, for the single feature identified by `spec_dir` (or its default `.kiro/specs/{feature-name}/`). Feature splitting happens upstream, via `task-decomposition`. If the user stories read in Step 1 span multiple features, filter to only those in scope for this invocation's feature before continuing. Do not group them into multiple features or write more than one `requirements.md` in a single run. If multiple features need specs, invoke this skill once per feature with that feature's own `spec_dir`, the same way `kiro-spec-workflow` does by passing a single `feature_name`.
+This skill produces one `requirements.md` per invocation, for the single feature identified by `spec_dir` (or its default `.kiro/specs/{feature-name}/`). Feature splitting happens upstream, via `task-decomposition`. If the user stories read in Step 1 span multiple features, filter to only those in scope for this invocation's feature before continuing. Do not group them into multiple features or write more than one `requirements.md` in a single run. If multiple features need specs, invoke this skill once per feature with that feature's own `spec_dir`, the same way the `kiro-spec-workflow` SOP does by passing a single `feature_name`.
 
 ### Step 3: Create Output Path
 

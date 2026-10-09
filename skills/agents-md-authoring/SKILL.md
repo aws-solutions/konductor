@@ -41,7 +41,7 @@ Author AGENTS.md with these sections, adapted to the project as follows: infer w
 4. **Setup & Commands.** Build, test, install commands
 5. **Code Style & Conventions.** Formatting, naming, language rules; if a `.kiro/steering/*.md` file already documents these, reference it (`See .kiro/steering/<file>.md`) rather than duplicating its content
 6. **Testing.** How to run tests
-7. **Workflow.** Git/PR/CR conventions
+7. **Workflow.** Git and pull request conventions
 8. **Domain Knowledge (optional).** Durable project-specific facts
 
 ## Context-loading instruction block (always include)
