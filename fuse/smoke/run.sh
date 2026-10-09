@@ -14,7 +14,9 @@ usage: run.sh [--workflow <name or file>] [--fuse-harness kiro|opencode] [--fuse
 defaults: _k-phase-chain; fuse agent opencode with amazon-bedrock/global.openai.gpt-6-luna;
           orchestrator opencode with amazon-bedrock/global.openai.gpt-6.1-sol; ~/fuse-smoke-runs, 30 turns,
           60 minutes for the whole run, 30 minutes per fuse agent turn,
-          opencode on Amazon Bedrock with AWS profile opencode-bedrock in us-west-2
+          opencode on Amazon Bedrock with the standard AWS credential chain: without
+          --opencode-profile and --opencode-region, opencode reads AWS_PROFILE and AWS_REGION,
+          and uses us-east-1 when no region is set
 A workflow name is looked up at any depth of fuse/flow/workflows/, then in fuse/smoke/fixtures/. A workflow
 that does not ship with fuse-flow is copied into the project's .konductor/workflows/, so the
 fuse agent finds it by name. A sibling <workflow>.policy-overrides file is copied to the
@@ -30,8 +32,8 @@ fuse_harness=opencode
 fuse_model=amazon-bedrock/global.openai.gpt-6-luna
 orchestrator_harness=opencode
 orchestrator_model=amazon-bedrock/global.openai.gpt-6.1-sol
-opencode_profile=opencode-bedrock
-opencode_region=us-west-2
+opencode_profile=
+opencode_region=
 out="$HOME/fuse-smoke-runs"
 max_turns=30
 timeout_min=60
@@ -129,14 +131,24 @@ EOF
   git push -q -u origin main
 ) || { echo "run.sh: project setup failed; see $run/install.log" >&2; exit 1; }
 
+# Profile and region go into the opencode config only when given, so that
+# otherwise opencode takes them from AWS_PROFILE and AWS_REGION.
+bedrock_options=
+[ -n "$opencode_profile" ] && bedrock_options="\"profile\": \"$opencode_profile\""
+[ -n "$opencode_region" ] && bedrock_options="${bedrock_options:+$bedrock_options, }\"region\": \"$opencode_region\""
+
 # opencode reads skills and instructions from the home directory (~/.agents,
 # ~/.claude, ~/.config/opencode), so each opencode role gets a home of its own:
 # the opencode config for Bedrock, the clone pointer install.sh wrote, and a
-# git identity. AWS credentials come from the environment, not from HOME.
+# git identity. The AWS SDK looks for profiles and cached sign-ins under
+# ~/.aws, so that one directory links back to the real home.
 # $2 is a JSON array of instruction files, or [] for none.
 opencode_home() {
   mkdir -p "$1/.config/opencode" "$1/.konductor" || return 1
   cp "$HOME/.konductor/fuse-konductor-clone" "$1/.konductor/" || return 1
+  if [ -d "$HOME/.aws" ]; then
+    ln -s "$HOME/.aws" "$1/.aws" || return 1
+  fi
   printf '[user]\n\tname = smoke\n\temail = smoke@localhost\n' > "$1/.gitconfig"
   cat > "$1/.config/opencode/opencode.json" <<EOF
 {
@@ -145,7 +157,7 @@ opencode_home() {
   "share": "disabled",
   "autoupdate": false,
   "instructions": $2,
-  "provider": { "amazon-bedrock": { "options": { "profile": "$opencode_profile", "region": "$opencode_region" } } }
+  "provider": { "amazon-bedrock": { "options": { $bedrock_options } } }
 }
 EOF
 }

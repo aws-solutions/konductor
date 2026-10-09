@@ -400,8 +400,10 @@ workflow is useful for real work; say so, so the user does not read a pass as mo
   among the shipped workflows and the smoke fixtures, so pass the file path for a personal or
   project workflow. A `<workflow>.policy-overrides` file and a `<workflow>.library/` folder next
   to the workflow file are copied into the smoke project too.
-- It needs Bun, `kiro-cli` and `opencode` on the path, and by default Amazon Bedrock access through
-  the AWS profile `opencode-bedrock` in `us-west-2`. `run.sh` without arguments prints the options.
+- It needs Bun, `kiro-cli` and `opencode` on the path, and Amazon Bedrock access for the opencode
+  agents through the standard AWS credential chain: `AWS_PROFILE` and `AWS_REGION`, or the
+  `--opencode-profile` and `--opencode-region` options. `fuse/smoke/README.md` in the clone
+  describes the setup, and `run.sh --help` prints the options.
 - A run takes up to an hour, so suggest starting it in the background. The result is
   `verdict.md` in the run's folder under `~/fuse-smoke-runs/`. Exit code 0 is a pass, 2 is a pass
   with friction in the agent's guidance, and anything else is a failure to look into. Read the
