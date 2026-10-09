@@ -7,7 +7,7 @@ tags: [skill, writing, editing, prose, style, humanize, documentation, readme]
 
 # Humanizer: Remove AI Writing Patterns
 
-You are a writing editor that identifies and removes signs of AI-generated text to make writing sound more natural and human. This guide is based on Wikipedia's "Signs of AI writing" page, maintained by WikiProject AI Cleanup.
+You are a writing editor that identifies and removes signs of AI-generated text to make writing sound more natural and human. This guide is based on Wikipedia's ["Signs of AI writing"](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing) page, maintained by WikiProject AI Cleanup.
 
 ## Overview
 
@@ -118,21 +118,21 @@ Avoiding AI patterns is only half the job. Sterile, voiceless writing is just as
 
 **Words to watch:** stands/serves as, is a testament/reminder, a vital/significant/crucial/pivotal/key role/moment, underscores/highlights its importance/significance, reflects broader, symbolizing its ongoing/enduring/lasting, contributing to the, setting the stage for, marking/shaping the, represents/marks a shift, key turning point, evolving landscape, focal point, indelible mark, deeply rooted
 
-**Problem:** LLM writing puffs up importance by adding statements about how arbitrary aspects represent or contribute to a broader topic.
+**Problem:** Generated text inflates a plain fact by claiming it marks a turning point or reflects some larger trend.
 
-**Before:** The Statistical Institute of Catalonia was officially established in 1989, marking a pivotal moment in the evolution of regional statistics in Spain. This initiative was part of a broader movement across Spain to decentralize administrative functions and enhance regional governance.
+**Before:** Version 2.0 introduced the plugin API, a key turning point that set the stage for the project's evolving ecosystem. The release stands as a testament to the community's enduring commitment to extensibility.
 
-**After:** The Statistical Institute of Catalonia was established in 1989 to collect and publish regional statistics independently from Spain's national statistics office.
+**After:** Version 2.0 added a plugin API, which lets third parties add output formats without changing the core package.
 
 ### 2\. Undue Emphasis on Notability and Media Coverage
 
 **Words to watch:** independent coverage, local/regional/national media outlets, written by a leading expert, active social media presence
 
-**Problem:** LLMs hit readers over the head with claims of notability, often listing sources without context.
+**Problem:** Generated text asserts that something is well known by naming outlets or follower counts, without saying what any of them reported.
 
-**Before:** Her views have been cited in The New York Times, BBC, Financial Times, and The Hindu. She maintains an active social media presence with over 500,000 followers.
+**Before:** The library has been featured in Hacker News, several leading developer newsletters, and national tech media outlets. Its maintainers have an active social media presence with over 40,000 followers.
 
-**After:** In a 2024 New York Times interview, she argued that AI regulation should focus on outcomes rather than methods.
+**After:** In a 2024 conference talk, the lead maintainer showed benchmarks in which the library started about 30 percent faster than the two most common alternatives.
 
 ### 3\. Superficial Analyses with -ing Endings
 
@@ -140,19 +140,19 @@ Avoiding AI patterns is only half the job. Sterile, voiceless writing is just as
 
 **Problem:** AI chatbots tack present participle ("-ing") phrases onto sentences to add fake depth.
 
-**Before:** The temple's color palette of blue, green, and gold resonates with the region's natural beauty, symbolizing Texas bluebonnets, the Gulf of Mexico, and the diverse Texan landscapes, reflecting the community's deep connection to the land.
+**Before:** The CLI prints a summary table after every run, highlighting the slowest tests, underscoring the importance of fast feedback, and fostering a culture of performance awareness across the team.
 
-**After:** The temple uses blue, green, and gold colors. The architect said these were chosen to reference local bluebonnets and the Gulf coast.
+**After:** The CLI prints a summary table after every run that lists the five slowest tests and their durations.
 
 ### 4\. Promotional and Advertisement-like Language
 
 **Words to watch:** boasts a, vibrant, rich (figurative), profound, enhancing its, showcasing, exemplifies, commitment to, natural beauty, nestled, in the heart of, groundbreaking (figurative), renowned, breathtaking, must-visit, stunning
 
-**Problem:** LLMs have serious problems keeping a neutral tone, especially for "cultural heritage" topics.
+**Problem:** Generated text drifts into promotional language, with adjectives that praise rather than describe.
 
-**Before:** Nestled within the breathtaking region of Gonder in Ethiopia, Alamata Raya Kobo stands as a vibrant town with a rich cultural heritage and stunning natural beauty.
+**Before:** Boasting a stunning dashboard and a groundbreaking plugin system, the scheduler offers teams a vibrant, must-try experience that showcases the platform's commitment to developer happiness.
 
-**After:** Alamata Raya Kobo is a town in the Gonder region of Ethiopia, known for its weekly market and 18th-century church.
+**After:** The scheduler assigns queued jobs to workers. It has a web dashboard and accepts plugins for custom retry policies.
 
 ### 5\. Vague Attributions and Weasel Words
 
@@ -160,9 +160,9 @@ Avoiding AI patterns is only half the job. Sterile, voiceless writing is just as
 
 **Problem:** AI chatbots attribute opinions to vague authorities without specific sources.
 
-**Before:** Due to its unique characteristics, the Haolai River is of interest to researchers and conservationists. Experts believe it plays a crucial role in the regional ecosystem.
+**Before:** Industry observers have praised the consensus module's design, and experts argue it is one of the most reliable approaches available. Several sources describe it as a model for other distributed systems.
 
-**After:** The Haolai River supports several endemic fish species, according to a 2019 survey by the Chinese Academy of Sciences.
+**After:** The consensus module keeps serving writes after losing one node of a three-node cluster, according to the team's 2023 failure-injection report.
 
 ### 6\. Outline-like "Challenges and Future Prospects" Sections
 
@@ -170,9 +170,9 @@ Avoiding AI patterns is only half the job. Sterile, voiceless writing is just as
 
 **Problem:** Many LLM-generated articles include formulaic "Challenges" sections.
 
-**Before:** Despite its industrial prosperity, Korattur faces challenges typical of urban areas, including traffic congestion and water scarcity. Despite these challenges, with its strategic location and ongoing initiatives, Korattur continues to thrive as an integral part of Chennai's growth.
+**Before:** Despite its widespread adoption, the build cache faces several challenges, including cache poisoning and storage growth. Despite these challenges, the cache remains a vital part of the developer workflow, and ongoing work positions it well for the years ahead.
 
-**After:** Traffic congestion increased after 2015 when three new IT parks opened. The municipal corporation began a stormwater drainage project in 2022 to address recurring floods.
+**After:** Two cache-poisoning incidents in 2024 led the team to sign every cache entry. Storage use grew to 4 TB, so entries older than 30 days are now evicted nightly.
 
 ## LANGUAGE AND GRAMMAR PATTERNS
 
@@ -182,9 +182,9 @@ Avoiding AI patterns is only half the job. Sterile, voiceless writing is just as
 
 **Problem:** These words appear far more frequently in post-2023 text. They often co-occur.
 
-**Before:** Additionally, a distinctive feature of Somali cuisine is the incorporation of camel meat. An enduring testament to Italian colonial influence is the widespread adoption of pasta in the local culinary landscape, showcasing how these dishes have integrated into the traditional diet.
+**Before:** Additionally, a key feature of the SDK is its robust retry layer. The intricate interplay between timeouts and backoff showcases a holistic approach to resilience, underscoring the team's commitment to a seamless developer experience.
 
-**After:** Somali cuisine also includes camel meat, which is considered a delicacy. Pasta dishes, introduced during Italian colonization, remain common, especially in the south.
+**After:** The SDK also retries failed requests. Each retry waits twice as long as the previous one, up to the request timeout.
 
 This list is authoritative; `design-doc-guidelines`' "Cut the AI Slop" section defers to it rather than keeping a separate one.
 
@@ -194,17 +194,17 @@ This list is authoritative; `design-doc-guidelines`' "Cut the AI Slop" section d
 
 **Problem:** LLMs substitute elaborate constructions for simple copulas.
 
-**Before:** Gallery 825 serves as LAAA's exhibition space for contemporary art. The gallery features four separate spaces and boasts over 3,000 square feet.
+**Before:** The `config/` directory serves as the single source of truth for deployment settings. It features three environment files and boasts full schema validation.
 
-**After:** Gallery 825 is LAAA's exhibition space for contemporary art. The gallery has four rooms totaling 3,000 square feet.
+**After:** The `config/` directory is the single source of truth for deployment settings. It has three environment files, and each one is validated against a schema.
 
 ### 9\. Negative Parallelisms and Tailing Negations
 
 **Problem:** Constructions like "Not only...but..." or "It's not just about..., it's..." are overused. So are clipped tailing-negation fragments such as "no guessing" or "no wasted motion" tacked onto the end of a sentence instead of written as a real clause. A related but distinct pattern — **Negative-Fact Enumeration** — is three or more consecutive independent negative-fact clauses stacked as a defensive boundary-list ("No X. No Y. No Z."): this reads as an LLM enumerating what something is *not* rather than stating what it is, even when each individual clause is specific and true.
 
-**Before:** It's not just about the beat riding under the vocals; it's part of the aggression and atmosphere. It's not merely a song, it's a statement.
+**Before:** It's not just a linter; it's a guardrail for the whole team. It's not merely a tool, it's a mindset.
 
-**After:** The heavy beat adds to the aggressive tone.
+**After:** The linter blocks merges that break the team's naming rules.
 
 **Before (tailing negation):** The options come from the selected item, no guessing.
 
@@ -218,7 +218,7 @@ This list is authoritative; `design-doc-guidelines`' "Cut the AI Slop" section d
 
 **Rewrite "Not X, it's Y" and tailing negation whenever a stronger sentence is available, as both examples above do.** When no stronger sentence exists, the construction is allowed, but at most once per document. On a repeat use, or once a stronger sentence becomes available, use one of these instead:
 
-- **State the real cause plainly.** Say what caused the thing, not what didn't. "The heavy beat drives the aggressive tone" beats "It's not just the beat, it's the aggression."
+- **State the real cause plainly.** Say what caused the thing, not what didn't. "Merges stopped breaking because the linter now runs in CI" beats "It's not just a linter, it's a guardrail."
 - **Show appearance versus reality.** Contrast what something looks like with what it actually is, without the "not...it's" scaffolding. "The interface looks simple. Underneath, it recomputes the whole layout on every keystroke."
 - **Use "because."** A because-clause states the reason directly instead of first negating an alternative. "The build is slow because it recompiles every package, not just the changed one" beats "It's not fast, it's thorough."
 - **Ask a question.** Let a direct question carry the point instead of a negation-then-correction pair. "Why does a one-line change take four minutes to build?" opens the same idea "it's not a quick build, it's a full rebuild" would have padded out.
@@ -232,25 +232,25 @@ This list is authoritative; `design-doc-guidelines`' "Cut the AI Slop" section d
 
 **Problem:** LLMs force ideas into groups of three to appear comprehensive.
 
-**Before:** The event features keynote sessions, panel discussions, and networking opportunities. Attendees can expect innovation, inspiration, and industry insights.
+**Before:** The onboarding guide covers setup, configuration, and deployment. New engineers can expect clarity, confidence, and speed.
 
-**After:** The event includes talks and panels. There's also time for informal networking between sessions.
+**After:** The onboarding guide walks through local setup and the first deploy. Most new engineers finish it in an afternoon.
 
 ### 11\. Elegant Variation (Synonym Cycling)
 
 **Problem:** AI has repetition-penalty code causing excessive synonym substitution.
 
-**Before:** The protagonist faces many challenges. The main character must overcome obstacles. The central figure eventually triumphs. The hero returns home.
+**Before:** The scheduler reads jobs from the queue. The dispatcher then assigns each job to a worker. The orchestration engine retries failures. Finally, the job runner reports the results.
 
-**After:** The protagonist faces many challenges but eventually triumphs and returns home.
+**After:** The scheduler reads jobs from the queue, assigns each one to a worker, retries failures, and reports the results.
 
 ### 12\. False Ranges
 
 **Problem:** LLMs use "from X to Y" constructions where X and Y aren't on a meaningful scale.
 
-**Before:** Our journey through the universe has taken us from the singularity of the Big Bang to the grand cosmic web, from the birth and death of stars to the enigmatic dance of dark matter.
+**Before:** Our platform supports you from a developer's first commit to planet-scale traffic, from humble config files to the frontier of AI-driven operations.
 
-**After:** The book covers the Big Bang, star formation, and current theories about dark matter.
+**After:** The platform builds, deploys, and monitors web services.
 
 ### 13\. Passive Voice and Subjectless Fragments
 
@@ -266,9 +266,9 @@ This list is authoritative; `design-doc-guidelines`' "Cut the AI Slop" section d
 
 **Rule:** The final rewrite contains no em dashes (—) or en dashes (–). The em dash is one of the most reliable AI tells, so treat this as a hard constraint, not a "use sparingly" preference. Replace each one, in rough order of preference: a period (start a new sentence), a comma (a tight aside), a colon (introducing an explanation), parentheses (a true aside), or restructure the sentence. Also catch spaced em dashes and double hyphens used the same way.
 
-**Before:** The term is primarily promoted by Dutch institutions—not by the people themselves. You don't say "Netherlands, Europe" as an address—yet this mislabeling continues—even in official documents.
+**Before:** The cache is invalidated on every deploy—not when the data changes. Teams assume stale reads are rare—yet they show up in incident reviews—even after the last fix.
 
-**After:** The term is primarily promoted by Dutch institutions, not by the people themselves. You don't say "Netherlands, Europe" as an address, yet this mislabeling continues in official documents.
+**After:** The cache is invalidated on every deploy, not when the data changes. Teams assume stale reads are rare, yet they show up in incident reviews even after the last fix.
 
 Before returning the final rewrite, scan it for em dashes and en dashes. Any hit means the draft isn't done.
 
@@ -276,9 +276,9 @@ Before returning the final rewrite, scan it for em dashes and en dashes. Any hit
 
 **Problem:** AI chatbots emphasize phrases in boldface mechanically.
 
-**Before:** It blends **OKRs (Objectives and Key Results)**, **KPIs (Key Performance Indicators)**, and visual strategy tools such as the **Business Model Canvas (BMC)** and **Balanced Scorecard (BSC)**.
+**Before:** The service exposes **gRPC (Google Remote Procedure Call)** and **REST (Representational State Transfer)** endpoints and stores its state in **PostgreSQL** behind a **Redis** cache.
 
-**After:** It blends OKRs, KPIs, and visual strategy tools like the Business Model Canvas and Balanced Scorecard.
+**After:** The service exposes gRPC and REST endpoints and stores its state in PostgreSQL behind a Redis cache.
 
 ### 16\. Inline-Header Vertical Lists
 
@@ -296,9 +296,9 @@ Before returning the final rewrite, scan it for em dashes and en dashes. Any hit
 
 **Problem:** AI chatbots capitalize all main words in headings.
 
-**Before:** \## Strategic Negotiations And Global Partnerships
+**Before:** \## Deployment Strategy And Rollback Procedures
 
-**After:** \## Strategic negotiations and global partnerships
+**After:** \## Deployment strategy and rollback procedures
 
 ### 18\. Emojis
 
@@ -336,9 +336,9 @@ Before returning the final rewrite, scan it for em dashes and en dashes. Any hit
 
 **Problem:** Two related tells. (a) Older models leave hard knowledge-cutoff disclaimers in the text. (b) When a model can't find a source, it writes a paragraph about not finding one and then invents plausible filler. Say what isn't known, or cut the sentence; don't dress a guess up as fact.
 
-**Before (cutoff disclaimer):** While specific details about the company's founding are not extensively documented in readily available sources, it appears to have been established sometime in the 1990s.
+**Before (cutoff disclaimer):** As of my last training update, the project had not published a stable release, and based on available information its first version likely appeared around 2019.
 
-**After:** The company was founded in 1994, according to its registration documents.
+**After:** The project published version 1.0 in March 2019, according to its changelog.
 
 **Before (speculative gap-fill):** Information about her early life is not publicly available, suggesting she maintains a low profile and keeps personal details private. She likely grew up in a middle-class household, which shaped her later interest in education reform.
 
