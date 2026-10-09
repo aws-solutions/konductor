@@ -102,7 +102,7 @@ export function checkSlug(slug: string): void {
 
 // Where artifact guides are looked up, the most specific first: the project's
 // own library, the user's, then the one that ships with fuse-flow. Each holds
-// artifacts/<id>/ folders (decisions 16, 24 and 29).
+// artifacts/<id>/ folders.
 export function libraryDirs(root: string): { project: string; user: string; package: string } {
   return {
     project: join(root, ".konductor", "library"),
@@ -111,7 +111,7 @@ export function libraryDirs(root: string): { project: string; user: string; pack
   };
 }
 
-// The policy files, from the most general to the most specific (decision 44).
+// The policy files, from the most general to the most specific.
 export function policyFiles(root: string): { user: string; team: string; local: string } {
   return {
     user: join(homeDir(), ".konductor", "policy-overrides.yml"),

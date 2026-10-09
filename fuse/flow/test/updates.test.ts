@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Updates: a step that changes existing artifacts, such as code, accounts for
-// each of them on continue (decision 43), and the hand-over block lists what
+// each of them on continue, and the hand-over block lists what
 // it changed.
 
 import { afterEach, beforeEach, expect, test } from "bun:test";
@@ -52,7 +52,7 @@ test("continue is refused until every updates artifact is reported as updated or
   expect(state.unchanged).toEqual({ changelog: "nothing user-facing" });
 });
 
-test("a missing updates path is reported when the step is handed out, not refused (decision 45)", () => {
+test("a missing updates path is reported when the step is handed out, not refused", () => {
   repo.cleanupPath("CHANGELOG.md");
   expect(repo.start("feat", CHANGE)).toContain("UPDATE CHANGELOG.md (changelog). CHANGELOG.md does not exist yet; create it and report it with --updated.");
   repo.write("CHANGELOG.md");

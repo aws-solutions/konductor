@@ -5,8 +5,8 @@
 // A workstream is a state machine. The current step is the first step in file
 // order that is neither COMPLETED nor SKIPPED. Every command ends by handing
 // out the current step, if it is PENDING, and printing what to do next: the
-// step block when it is the agent's turn (decision 26), the hand-over block
-// when it is the owner's (decision 22).
+// step block when it is the agent's turn, the hand-over block when it is the
+// owner's.
 
 import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
@@ -93,8 +93,10 @@ function currentStep(wf: Workflow, ws: Workstream): Step | undefined {
 
 const position = (c: Ctx, step: Step) => `${c.wf.steps.indexOf(step) + 1} of ${c.wf.steps.length}`;
 
-// The gates in the order they run (decision 27): checks, then agent reviews,
-// then the owner. Within a kind, the order the workflow lists them in.
+// The gates in the order they run: checks, then agent reviews, then the
+// owner, so that the cheap deterministic checks fail first and the owner sees
+// only work that has already passed review. Within a kind, the order the
+// workflow lists them in.
 function gatesInOrder(step: Step): Gate[] {
   const rank = (g: Gate) => (g.kind === "check" || g.kind === "script" ? 0 : g.kind === "agent" ? 1 : 2);
   return [...step.gates].sort((a, b) => rank(a) - rank(b));
@@ -273,7 +275,7 @@ function present(c: Ctx): string[] {
   }
 }
 
-// What the agent does now (decision 26).
+// What the agent does now.
 function stepBlock(c: Ctx, ws: Workstream, step: Step, state: StepState): string[] {
   const lines = [`STEP ${step.id} (${position(c, step)}): ${step.instruction.replace(/\s+/g, " ").trim()}`];
   const owned = rulings(c.p);
@@ -538,7 +540,7 @@ function reviewText(c: Ctx, g: Gate, step: Step, state: StepState, reviewed: Pla
 }
 
 // The PRODUCED line: the files the step created or changed, and the reasons
-// for what it left out (decisions 22, 43 and 45).
+// for what it left out.
 function producedLine(c: Ctx, step: Step, state: StepState): string {
   const existed = new Set(state.existed ?? []);
   const files: string[] = [];
@@ -584,7 +586,7 @@ function stepsWithArtifacts(c: Ctx, step: Step): string {
     .join(", ");
 }
 
-// When it is the owner's turn: the hand-over block, pre-filled (decision 22).
+// When it is the owner's turn: the hand-over block, pre-filled.
 function handOver(c: Ctx, ws: Workstream, step: Step | undefined): string[] {
   const skipped = skippedSteps(c, ws);
   const intro =
@@ -940,7 +942,7 @@ function skipStep(c: Ctx, step: Step, reason: string): string[] {
 
 // The owner raises the round cap of the step's agent gates by `n`, on a
 // blocked step, which is handed back to the agent, or ahead of time on a step
-// in progress (decision 45).
+// in progress.
 function grantRounds(c: Ctx, step: Step, n: number, note?: string): string[] {
   if (!step.gates.some((g) => g.kind === "agent")) {
     throw new FlowError(`step "${step.id}" has no agent gate, so there are no review rounds to grant`);
@@ -1024,7 +1026,7 @@ function sendBack(c: Ctx, step: Step, target: string, note: string | undefined, 
 }
 
 // The owner jumps forward: the current step and every step before `target`
-// are SKIPPED with the owner's note (decision 33).
+// are SKIPPED with the owner's note.
 function forwardTo(c: Ctx, step: Step, target: string, note?: string): string[] {
   const to = c.wf.steps.findIndex((s) => s.id === target);
   const at = c.wf.steps.indexOf(step);

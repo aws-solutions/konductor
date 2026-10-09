@@ -173,7 +173,7 @@ test("a check gate runs the command the policy binds, and says where the binding
   }
 });
 
-test("the policy files override each other from the general to the specific (decisions 37 and 44)", () => {
+test("the policy files override each other from the general to the specific", () => {
   const r = new Repo();
   try {
     r.write("home/.konductor/policy-overrides.yml", "checks:\n  default: echo user\n  lint: echo user-lint\n");
@@ -192,7 +192,7 @@ test("the policy files override each other from the general to the specific (dec
   }
 });
 
-test("a check names a kind; a command written as a check is refused with the script form (decision 41)", () => {
+test("a check names a kind; a command written as a check is refused with the script form", () => {
   const out = repo.refused("validate", repo.write("bad.yml", CHECKED.replace("check: lint", "check: npm test")));
   expect(out).toContain("check names a kind of check, a single lower-case word such as default; for a command use `script: npm test`");
   for (const legacy of ["owner", "none"]) {
@@ -208,7 +208,7 @@ test("failed checks never block a step; the agent reports it blocked, and the ow
 
   const blocked = repo.ok("continue", "feat", "--blocked", "the test needs a database this host does not have");
   expect(blocked).toStartWith("build: BLOCKED: the test needs a database this host does not have\n\nOWNER'S TURN:");
-  // The last refused attempt's results stay visible to the owner (decision 22).
+  // The last refused attempt's results stay visible to the owner.
   expect(blocked).toContain("VERIFICATION: script `test -f tests.pass`: failed (exit 1)\n");
   expect(blocked).toContain("STATUS: blocked. blocked by the agent: the test needs a database this host does not have\n");
   expect(repo.status("feat", "build")).toBe("BLOCKED");
@@ -351,7 +351,7 @@ steps:
   }
 });
 
-test("a review guide decides the pass rule; a project's own replaces the workflow's gate guide (decision 17)", () => {
+test("a review guide decides the pass rule; a project's own replaces the workflow's gate guide", () => {
   const r = new Repo();
   try {
     r.write("flows/review-rules.md", "# rules\n");
@@ -407,7 +407,7 @@ steps:
     instruction: Release it.
 `;
 
-test("the owner can grant more review rounds, on a blocked step or ahead of time (decision 45)", () => {
+test("the owner can grant more review rounds, on a blocked step or ahead of time", () => {
   const other = new Repo();
   try {
     other.start("feat", REVIEWED);

@@ -1,10 +1,9 @@
 # $schema: ../schemas/workflow.schema.json
 # yaml-language-server: $schema=../schemas/workflow.schema.json
 #
-# One feature in an existing codebase, in the spirit of decently-capable-powers: agree a spec
-# with the owner, build it against acceptance tests taken from the spec, and let independent agent
-# review raise the bar before the owner looks. The steps say what to achieve and leave the how to
-# the agent and its harness.
+# One feature in an existing codebase: agree a spec with the owner, build it against acceptance
+# tests taken from the spec, and let independent agent review raise the bar before the owner
+# looks. The steps say what to achieve and leave the how to the agent and its harness.
 # Step and artifact names follow _k-phase-chain where they fit; review.md next to this file is
 # the review guide for both agent gates.
 #

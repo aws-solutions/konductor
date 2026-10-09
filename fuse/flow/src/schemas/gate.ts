@@ -11,7 +11,7 @@ export type GateKind = (typeof GATE_KINDS)[number];
 // `text` is what the gate says: the owner's action, the kind of check, the
 // command, or what the agent reviews. max_rounds and guide are set on agent
 // gates only; max_rounds is undefined when the workflow does not set it, so
-// policy can fill it in (decision 37). route_back_to lists the steps to
+// policy can fill it in. route_back_to lists the steps to
 // suggest sending the work back to.
 export type Gate = { kind: GateKind; text: string; description?: string; max_rounds?: number; guide?: string; route_back_to: string[] };
 
@@ -23,7 +23,8 @@ export const STEP_ID = z.string().regex(/^[a-z0-9][a-z0-9-]*$/, "must be lowerca
 const isStepId = (v: unknown): v is string => STEP_ID.safeParse(v).success;
 
 // A kind of check names what to run, not how: a single lower-case word that
-// the project's policy binds to a command (decisions 24, 41 and 47).
+// the project's policy binds to a command, so that one workflow runs in
+// projects that build and test in different ways.
 export const CHECK_KIND = /^[a-z][a-z0-9]*$/;
 
 // How many review rounds that end with a required fix an agent gate allows,

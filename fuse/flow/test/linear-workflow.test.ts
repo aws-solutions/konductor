@@ -67,7 +67,7 @@ test("work, continue, repeated until the workflow is complete, which prints the 
   repo.write("docs/design.md");
   const first = repo.ok("continue", "feat");
   expect(first).toStartWith("design: COMPLETED\n\nSTEP build (2 of 3): Build it.\nPRODUCE src/app.ts (app).\n");
-  // A step without an owner gate approves its artifacts when it completes (decision 46).
+  // A step without an owner gate approves its artifacts when it completes.
   expect(repo.state("feat").steps.design.artifacts).toEqual([{ artifact: "sketch", path: "docs/design.md", status: "approved" }]);
 
   repo.write("src/app.ts");
@@ -97,7 +97,7 @@ test("continue is refused while a produces artifact is missing, repeats the step
   expect(repo.status("feat", "design")).toBe("IN_PROGRESS");
 });
 
-test("an artifact the step rightly does not produce is reported with its reason instead (decision 45)", () => {
+test("an artifact the step rightly does not produce is reported with its reason instead", () => {
   repo.start("feat", LINEAR);
   expect(repo.usage("continue", "feat", "--not-produced", "sketch")).toContain("--not-produced takes an artifact and a reason");
   expect(repo.refused("continue", "feat", "--not-produced", "app", "x")).toContain(
@@ -148,7 +148,7 @@ test("status lists every step and marks the current one", () => {
   );
 });
 
-test("a state file written before the six step states is read and migrated (decision 40)", () => {
+test("a state file written before the six step states is read and migrated", () => {
   repo.start("feat", LINEAR);
   repo.write(
     ".konductor/workstreams/feat.yml",

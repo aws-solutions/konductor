@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
-// Sending work back to an earlier step, end to end. Each test reproduces a
-// surprise from a real workstream that was sent back from its prototype step
-// to its requirements step (docs/specs/2026-10-07-fuse-flow-send-back-rules.md).
+// Sending work back to an earlier step, end to end, for example from a
+// prototype step to a requirements step. Each test covers one rule for what
+// a send-back keeps, records or reopens, so that the owner and the agent see
+// the state they expect on the next pass.
 
 import { afterEach, beforeEach, expect, test } from "bun:test";
 import { Repo } from "./helpers.ts";

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Inputs: a step reads what earlier steps produced or updated (decision 38),
+// Inputs: a step reads what earlier steps produced or updated,
 // and the step block says whether each input exists. Steps still run one at a
 // time, in file order.
 

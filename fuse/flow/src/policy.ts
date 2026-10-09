@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // What the policy files and the libraries say for one project: the command a
 // kind of check is bound to, the round cap and review guide of an agent gate,
-// an artifact's path, guide and template. Each answer follows the override
-// order of decision 37, from the general to the specific: the engine's
-// defaults, the user's policy, the workflow, the team's policy, the user's
-// local policy for the project.
+// an artifact's path, guide and template. Each answer follows one override
+// order, from the general to the specific: the engine's defaults, the user's
+// policy, the workflow, the team's policy, the user's local policy for the
+// project.
 
 import { existsSync, lstatSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
@@ -124,7 +124,7 @@ export type ReviewGuideSource =
 
 // The review guide an agent gate uses for one of the step's artifacts, and
 // which layer it comes from, or undefined when there is none: the generic
-// review text applies then (decision 17).
+// review text applies then.
 export function reviewGuideSource(
   p: Project,
   gate: Gate,
@@ -219,11 +219,11 @@ function entryFolder(libraryDir: string, id: string): string | undefined {
 }
 
 // An artifact's folder in the library: the project's own replaces the user's,
-// which replaces the package's (decisions 16 and 24). Its guide and template
+// which replaces the package's. Its guide and template
 // come from that folder only; undefined when no library has the artifact. A
 // folder without guide.md is an artifact without a guide; a guide.md that
 // cannot be read, such as a symlink to a skill that is not installed, is a
-// missing guide (decision 11).
+// missing guide.
 export function libraryEntry(
   p: Project,
   id: string,
@@ -264,7 +264,7 @@ export interface LibraryListing {
   // Why entry.yml could not be read, when it exists but does not match.
   entryProblem?: string;
   // The level of the entry with the same id that this one replaces, or that
-  // replaces it: the most specific level wins as a whole (decision 24).
+  // replaces it: the most specific level wins as a whole.
   hides?: LibraryLevel;
   hiddenBy?: LibraryLevel;
 }

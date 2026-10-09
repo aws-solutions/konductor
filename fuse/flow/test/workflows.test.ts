@@ -108,13 +108,13 @@ describe("invalid workflows are refused with the reason", () => {
   const cases: Array<[string, string, string]> = [
     ["not YAML", "version: 1\nsteps: [", "is not valid YAML"],
     ["unknown field", ONE_STEP + "    owner: me\n", "Unrecognized key"],
-    ["a skill, which steps no longer name (decision 28)", ONE_STEP + "    skill: demo/SKILL.md\n", "Unrecognized key"],
-    ["depends_on, replaced by consumes (decision 38)", ONE_STEP + "    depends_on: []\n", "Unrecognized key"],
+    ["a skill, which steps no longer name", ONE_STEP + "    skill: demo/SKILL.md\n", "Unrecognized key"],
+    ["depends_on, replaced by consumes", ONE_STEP + "    depends_on: []\n", "Unrecognized key"],
     ["the gate alias, replaced by gates", ONE_STEP + "    gate: { agent: review }\n", "Unrecognized key"],
     ["duplicate step id", ONE_STEP + "  - id: only\n    instruction: again\n", 'duplicate step id "only"'],
     ["bad gate", ONE_STEP + "    gates: sometimes\n", 'must be one of owner-action, check, script or agent'],
     ["empty script", ONE_STEP + '    gates: "script:"\n', "script needs a text"],
-    ["step without an instruction (decision 35)", "version: 1\nname: x\nsteps:\n  - id: a\n", "steps.0.instruction"],
+    ["step without an instruction", "version: 1\nname: x\nsteps:\n  - id: a\n", "steps.0.instruction"],
     ["agent gate max_rounds below 1", ONE_STEP + "    gates: { agent: review, max_rounds: 0 }\n", "max_rounds must be a whole number, 1 or more"],
     ["max_rounds on a script gate", ONE_STEP + "    gates: { script: bun test, max_rounds: 2 }\n", "max_rounds goes on an agent gate only"],
     ["guide on an owner gate", ONE_STEP + "    gates: { owner-action: approve, guide: x.md }\n", "guide goes on an agent gate only"],
@@ -191,7 +191,7 @@ describe("finding an artifact's guide and template in the library", () => {
     expect(block()).toBe("PRODUCE essay.md (essay). Follow the process in .konductor/library/artifacts/essay/guide.md.");
   });
 
-  test("a guide that is a symlink is printed where it really lives; a broken one is a missing guide (decision 11)", () => {
+  test("a guide that is a symlink is printed where it really lives; a broken one is a missing guide", () => {
     repo.write("skills/essay-writing/SKILL.md");
     repo.write(".konductor/library/artifacts/essay/.keep");
     symlinkSync("../../../../skills/essay-writing/SKILL.md", join(repo.root, ".konductor/library/artifacts/essay/guide.md"));

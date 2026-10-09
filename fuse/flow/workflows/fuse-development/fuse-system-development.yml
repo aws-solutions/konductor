@@ -4,9 +4,8 @@
 # A new system built from scratch, or a significant new module of an existing system that needs
 # architecture of its own: new infrastructure, new scalability concerns, a new persistence layer,
 # new channels. Work that extends code within the existing architecture uses
-# fuse-feature-development; a migration needs its own workflow. In the spirit of
-# decently-capable-powers and decently-coordinated-loops: the owner approves what to build and
-# how, and independent agent review raises the bar before each owner decision. The workflow ends
+# fuse-feature-development; a migration needs its own workflow. The owner approves what to build
+# and how, and independent agent review raises the bar before each owner decision. The workflow ends
 # with the approved requirements, design and build order on the integration branch. Each entry of
 # the build order, or a few of them combined, is then built as its own fuse-feature-development
 # workstream, by the owner or by teammates in parallel where the order allows. Each feature is

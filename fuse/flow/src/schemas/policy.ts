@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // The schema of a policy file, policy-overrides.yml: the values a project or a
-// user sets instead of the defaults of the engine and the workflows
-// (decisions 24, 37 and 44). It holds only values the engine reads. `bun run
-// schema` writes it to policy.schema.json.
+// user sets instead of the defaults of the engine and the workflows. It holds
+// only values the engine reads. `bun run schema` writes it to
+// policy.schema.json.
 
 import { z } from "zod";
 import { CHECK_KIND } from "./gate.ts";
@@ -45,7 +45,7 @@ export const PolicySchema = z
           "Each kind of check a workflow's `check:` gates name, bound to the command that runs it from the " +
           "repository root, or to `none` where the kind does not apply. Engine effect: a `check` gate runs the " +
           "bound command; a kind bound to none passes and is reported as not configured in this project.",
-        examples: [{ default: "bun run check" }, { default: "brazil-build release", test: "none" }],
+        examples: [{ default: "bun run check" }, { default: "npm run build", test: "none" }],
       }),
     review: z
       .object({
@@ -98,7 +98,7 @@ export const PolicySchema = z
           "The owner's rulings where fuse-flow and another installed skill or always-on instruction overlap, " +
           "in plain sentences, such as which of two review mechanisms runs. Every layer's rulings apply, the more " +
           "specific file's last. Engine effect: printed with every step.",
-        examples: [["In fuse-flow workstreams, the workflow's review gates replace the DCL completion review."]],
+        examples: [["In fuse-flow workstreams, the workflow's review gates replace the code-review skill's own review loop."]],
       }),
     artifacts: z
       .record(ARTIFACT_ID, z.object({ path: z.string().min(1) }).strict())

@@ -2,7 +2,7 @@
 // The schema of a workstream's state file, .konductor/workstreams/<slug>.yml:
 // where each step of the workflow stands. Only fuse-flow writes this file, and
 // git ignores it. State files written before the six step states are read and
-// migrated (decision 40).
+// migrated, so a workstream started with an earlier fuse-flow can continue.
 
 import { z } from "zod";
 
@@ -16,7 +16,7 @@ const LEGACY_STATES: Record<string, StepStatus> = {
   done: "COMPLETED",
 };
 
-// An artifact the workstream recorded, with its status (decision 34).
+// An artifact the workstream recorded, with its status.
 export const RecordedArtifactSchema = z
   .object({
     artifact: z.string().optional().meta({ description: "The artifact's id; absent in migrated state files." }),

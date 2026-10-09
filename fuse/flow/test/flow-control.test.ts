@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
-// Optional steps and jumps: a condition says when a step runs (decision 32),
+// Optional steps and jumps: a condition says when a step runs,
 // --skip skips a step, and the owner can start at a later step or jump
-// forward (decision 33).
+// forward.
 
 import { afterEach, beforeEach, expect, test } from "bun:test";
 import { Repo } from "./helpers";
@@ -76,7 +76,7 @@ test("a mandatory step is skipped only on the owner's request, and the history s
   repo.start("feat", flow(""));
   repo.ok("continue", "feat"); // research
   repo.ok("continue", "feat"); // build
-  // The last step, which --forward-to cannot reach past (decision 45).
+  // The last step, which --forward-to cannot reach past.
   const out = repo.ok("continue", "feat", "--skip", "the owner releases it by hand");
   expect(out).toContain("STATUS: workflow complete");
   expect(out).toContain("Skipped steps: release (the owner releases it by hand).");
