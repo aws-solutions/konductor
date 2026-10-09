@@ -9,8 +9,9 @@
 // owner's.
 
 import { spawnSync } from "node:child_process";
-import { existsSync, readdirSync } from "node:fs";
-import { basename, dirname, isAbsolute, relative, resolve } from "node:path";
+import { closeSync, existsSync, fstatSync, mkdtempSync, openSync, readdirSync, readSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { FlowError } from "./errors.ts";
 import { EVENT, SKIP_REASON, stamp } from "./history.ts";
 import {
@@ -181,17 +182,42 @@ function bindInstruction(c: Ctx, check: string): string {
 
 // Runs from the repository root with the caller's environment, like a
 // Makefile target. Keeps only the end of the output: enough to see why it
-// failed without flooding the agent's context.
+// failed without flooding the agent's context. The output goes to a file
+// rather than into memory, so a check that prints any amount still finishes
+// and reports its own exit code.
+const OUTPUT_TAIL_LINES = 20;
+const OUTPUT_TAIL_BYTES = 64 * 1024;
+
 function runCommand(c: Ctx, command: string, stepId: string) {
-  const proc = spawnSync("sh", ["-c", command], {
-    cwd: c.root,
-    env: { ...process.env, FUSE_FLOW_SLUG: c.slug, FUSE_FLOW_STEP: stepId },
-    encoding: "utf8",
-    maxBuffer: 256 * 1024 * 1024, // a test suite can print a lot; keep it all, then trim
-  });
-  if (proc.error) throw proc.error;
-  const text = (proc.stdout + proc.stderr).trim();
-  return { exitCode: proc.status, output: text.split("\n").slice(-20).join("\n") };
+  const dir = mkdtempSync(join(tmpdir(), "fuse-flow-check-"));
+  try {
+    const fd = openSync(join(dir, "output"), "w+");
+    try {
+      const proc = spawnSync("sh", ["-c", command], {
+        cwd: c.root,
+        env: { ...process.env, FUSE_FLOW_SLUG: c.slug, FUSE_FLOW_STEP: stepId },
+        stdio: ["ignore", fd, fd],
+      });
+      if (proc.error) throw proc.error;
+      return { exitCode: proc.status, output: outputTail(fd) };
+    } finally {
+      closeSync(fd);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+// The last lines of the output file. Reads only its end; when that cuts a
+// line, the cut line is dropped.
+function outputTail(fd: number): string {
+  const size = fstatSync(fd).size;
+  const length = Math.min(size, OUTPUT_TAIL_BYTES);
+  const buffer = Buffer.alloc(length);
+  readSync(fd, buffer, 0, length, size - length);
+  let text = buffer.toString("utf8");
+  if (length < size && text.includes("\n")) text = text.slice(text.indexOf("\n") + 1);
+  return text.trim().split("\n").slice(-OUTPUT_TAIL_LINES).join("\n");
 }
 
 // ------------------------------------------------------------------ hand-out

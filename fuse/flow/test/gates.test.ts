@@ -131,6 +131,31 @@ steps:
   }
 });
 
+test("a script that prints more than fits in memory still reports its exit code and the end of its output", () => {
+  const repo2 = new Repo();
+  try {
+    // 300 MB of output, then a cut-off line longer than the part of the output
+    // that is read back, then the lines that explain the failure.
+    repo2.start(
+      "loud",
+      `version: 1
+name: loud
+steps:
+  - id: build
+    instruction: x
+    gates:
+      - script: yes | head -c 300000000; head -c 100000 /dev/zero | tr '\\0' z; echo; echo why it failed; exit 3
+`,
+    );
+    const out = repo2.refused("continue", "loud");
+    expect(out).toContain("failed (exit 3)");
+    expect(out).toContain("\nwhy it failed\n");
+    expect(out).not.toContain("zzzzzzzzzz");
+  } finally {
+    repo2.cleanup();
+  }
+});
+
 const CHECKED = `version: 1
 name: checked
 steps:
