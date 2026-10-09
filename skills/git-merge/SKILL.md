@@ -1,51 +1,51 @@
 ---
 name: git-merge
-description: 'Use when merging branches, every time: a feature or dev branch into mainline, or a release merge ("merge", "merge branch", "merge into mainline", "release merge", "merge dev"). Runs the standard four-phase merge with `--no-ff --no-commit`, so the merge can be inspected before it is committed; mandatory for merges.'
+description: 'Use when merging branches, every time: a feature or dev branch into main, or a release merge ("merge", "merge branch", "merge into main", "release merge", "merge dev"). Runs the standard four-phase merge with `--no-ff --no-commit`, so the merge can be inspected before it is committed; mandatory for merges.'
 version: 1.0.0
-tags: [skill, git, merge, branch, mainline, release]
+tags: [skill, git, merge, branch, main, release]
 ---
 
 # Git Merge
 
 ## Overview
 
-Merge a feature branch into mainline safely using `--no-ff --no-commit` for inspectable merge commits. This skill defines the standard 4-phase merge workflow that preserves branch history and allows pre-commit inspection.
+Merge a feature branch into main safely using `--no-ff --no-commit` for inspectable merge commits. The commands use `main` for the default branch; use the repository's own default branch name if it differs. This skill defines the standard 4-phase merge workflow that preserves branch history and allows pre-commit inspection.
 
 ## Usage
 
 Use this skill when:
 
-- Merging a feature branch into mainline
-- Merging dev into mainline
+- Merging a feature branch into main
+- Merging dev into main
 - Performing release merges
 - Any branch merge that should preserve history
 
-Trigger words: `merge`, `merge branch`, `merge into mainline`, `release merge`, `merge dev`
+Trigger words: `merge`, `merge branch`, `merge into main`, `release merge`, `merge dev`
 
 ## Workflow
 
-### Phase 1: Merge mainline into feature branch first
+### Phase 1: Merge main into feature branch first
 
-Ensure the feature branch is up to date with mainline before merging back.
+Ensure the feature branch is up to date with main before merging back.
 
 ```bash
-git switch mainline
+git switch main
 git pull
 git switch <feature_branch>
-git merge --no-commit --no-ff mainline
+git merge --no-commit --no-ff main
 # Fix any merge conflicts
-git commit -m "Merging mainline into <feature_branch>"
+git commit -m "Merging main into <feature_branch>"
 git push
 ```
 
-### Phase 2: Merge feature branch into mainline
+### Phase 2: Merge feature branch into main
 
 ```bash
-git switch mainline
+git switch main
 git pull
 git merge --no-ff --no-commit <feature_branch>
 # Fix any merge conflicts, verify build
-git commit -m "Merging <feature_branch> into mainline"
+git commit -m "Merging <feature_branch> into main"
 git push
 ```
 
@@ -72,16 +72,16 @@ git push -d origin <feature_branch>   # delete remote
 
 ## Anti-Patterns
 
-1. **NEVER** fast-forward merge into mainline. Always use `--no-ff`
-2. **NEVER** merge into mainline without pulling latest first
-3. **NEVER** skip merging mainline into feature branch first
-4. **NEVER** force push to mainline
+1. **NEVER** fast-forward merge into main. Always use `--no-ff`
+2. **NEVER** merge into main without pulling latest first
+3. **NEVER** skip merging main into feature branch first
+4. **NEVER** force push to main
 
 ## Quick Reference
 
 | Task                  | Command                                            |
 | --------------------- | -------------------------------------------------- |
-| Update mainline       | `git switch mainline && git pull`                  |
+| Update main       | `git switch main && git pull`                  |
 | Merge with inspection | `git merge --no-ff --no-commit <branch>`           |
 | Tag release           | `git tag v<version> && git push origin v<version>` |
 | Delete local branch   | `git branch -d <branch>`                           |
@@ -91,10 +91,10 @@ git push -d origin <feature_branch>   # delete remote
 
 **CRITICAL (block merge):**
 
-- Merging into mainline without `--no-ff` flag: branch history will be lost
-- Merging into mainline without pulling latest first: risks overwriting others' changes
-- Skipping Phase 1 (merging mainline into feature branch first): conflicts should be resolved on the feature branch, not mainline
-- Force pushing to mainline
+- Merging into main without `--no-ff` flag: branch history will be lost
+- Merging into main without pulling latest first: risks overwriting others' changes
+- Skipping Phase 1 (merging main into feature branch first): conflicts should be resolved on the feature branch, not main
+- Force pushing to main
 
 **IMPORTANT (fix before proceeding):**
 
@@ -104,6 +104,6 @@ git push -d origin <feature_branch>   # delete remote
 
 **SUGGESTION:**
 
-- Tag releases after merging to mainline for traceability
+- Tag releases after merging to main for traceability
 - Clean up feature branches after successful merge to reduce clutter
 - Verify tests pass on the feature branch after Phase 1 before proceeding to Phase 2

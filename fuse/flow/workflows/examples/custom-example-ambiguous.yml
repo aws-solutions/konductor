@@ -20,7 +20,7 @@ steps:
       - owner-action: approve the requirements summary
   - id: prior-art
     title: Prior art research
-    instruction: How others solved this, inside and outside the company.
+    instruction: How others solved this, inside and outside the team.
     produces:
       - artifact: prior-art
         path: .konductor/{slug}/prior-art.md

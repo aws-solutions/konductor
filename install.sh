@@ -70,18 +70,15 @@
 #     to someone else;
 #   - move an old version aside, never delete it, until the new one is in
 #     place; put it back if the move fails or the script is interrupted (the
-#     exit handler restores it; review obligation E1-R4-F1). Every loop runs
+#     exit handler restores it). Every loop runs
 #     in the main shell, not in a pipeline, so the exit handler sees that
 #     state and the temporary files;
 #   - sync before and after the rename, for instruction files and fallback
-#     copies alike (review obligation E1-R5-F1); an old copy moved aside stays
-#     known to the exit handler until it is deleted (E1-R5-F2).
-# This covers review obligations E1-R3-F1 (sync) and E1-R3-F2 (staging and
-# rollback of fallback copies).
+#     copies alike; an old copy moved aside stays known to the exit handler
+#     until it is deleted.
 #
-# Design note: project skill ownership (review of 2026-09-28, epoch 2). Two
-# rounds found gaps in how the script tells an edited project copy from its
-# own. The invariants, all of which the code keeps:
+# Design note: project skill ownership. How the script tells an edited project
+# copy from its own. The invariants, all of which the code keeps:
 #   1. A project skill directory is the script's only if the manifest records
 #      it; anything else with the name is reported and skipped.
 #   2. A record is written only after its copy is in place, by the loop or by
@@ -94,19 +91,15 @@
 #      checked before any comparison with the clone and is never replaced or
 #      deleted; update and uninstall keep it and report it.
 #   5. A replaced copy stays moved aside until the new one is in place.
-# Decision: keep this design and route every edit check through skill_hash.
-# Removing edit preservation (documenting that a rerun overwrites the project
-# copy) was considered and rejected, because project installs are meant to
-# be edited with the project. The findings were each a comparison that did not
-# go through one complete checksum: a record without a checksum
-# (E1-R3-F1) and the execute bit (E1-R4-F1). This covers obligations
-# E1-R2-F2, E1-R3-F1 and E1-R4-F1.
+# Every edit check goes through skill_hash, so no comparison relies on a partial
+# checksum. Edits are preserved rather than overwritten on a rerun because
+# project installs are meant to be edited with the project.
 #
 # Limits: the script is meant to be run by hand, on a machine and a project you
 # trust. It takes no locks, so another program that writes the same file in the
 # instant between the script's last check and its rename can lose that write.
-# It checks for symlinked project
-# directories before it starts and again before each deletion, not in between.
+# It checks for symlinked project directories before it starts and again
+# before each deletion, not in between.
 # A symlinked global skills directory, such as ~/.claude/skills pointing into a
 # dotfiles checkout, is followed on purpose; only entries proven to be ours are
 # changed there.
@@ -138,39 +131,23 @@ COPY_MARK=.fuse-konductor-copy
 # Where a project install records this clone's path, one line, for the agent
 # block in the project's committed AGENTS.md to point at.
 #
-# Why in $HOME and not in the project (step-back note, review epoch 5, rounds
-# 1 to 3). The clone's path is a fact about this machine, not about the
-# project. The first design wrote it to <project>/.konductor/fuse-konductor-
-# clone and had to keep these invariants: the committed tree never carries a
-# machine path; the file is git-ignored by a rule the installer adds without
-# disturbing other rules or a last line without a newline; the install changes
-# nothing when the file cannot be written (symlinks, a .konductor that is not
-# a directory, a .gitignore that is not a file, a foreign file at the path);
-# only a pointer-shaped file is replaced, atomically; uninstall removes the
-# pointer only when it names this clone and the ignore rule only when it is
-# alone; any teammate's clone may re-point the project. Three review rounds
-# patched that list one guard at a time. The invariant family is removed
-# rather than patched: the pointer lives in the user's own $HOME/.konductor,
-# where fuse-flow already looks for the user's workflows and skills. What is
-# left: one line, "clone=<absolute path>", written by rename, refused when
-# something that is not that file is in the way (the prefix is the mark). The project tree gets nothing but the
-# committed block, which reads the same for every developer, and uninstalling
-# one project leaves the pointer, because other projects on the machine use
-# it too. Obligations E5-R2-F3, E5-R2-F5, E5-R2-F8 and E5-R3-F2 fell away with
-# the code they were about; round 4 confirmed them fixed.
+# Why in $HOME and not in the project: the clone's path is a fact about this
+# machine, not about the project. Keeping it in the project would need a
+# git-ignored file and a set of guards around writing, ignoring and removing
+# it. Instead the pointer lives in the user's own $HOME/.konductor, where
+# fuse-flow already looks for the user's workflows and skills. The project tree
+# gets nothing but the committed block, which reads the same for every
+# developer, and uninstalling one project leaves the pointer, because other
+# projects on the machine use it too.
 #
-# Round 4 left one thread (E5-R2-F4, E5-R3-F1, E5-R4-F1): a one-line absolute
-# path is the file's shape, not proof that this script wrote it, so a foreign
-# file of that shape would be replaced. Decision: continue patching, once,
-# with the smallest change that settles the question rather than a sidecar or
-# a versioned format: the line is "clone=<path>", and the prefix is the mark.
-# The invariant list is then complete: (1) the project tree carries no machine
+# A one-line absolute path is only the file's shape, not proof that this
+# script wrote it, so the line is "clone=<path>" and the prefix is the mark.
+# The invariants: (1) the project tree carries no machine
 # path; (2) the pointer is $HOME/.konductor/fuse-konductor-clone, one line,
 # "clone=" followed by an absolute path, newline-terminated; (3) it is written
 # before anything in the project changes and by rename; (4) a file of any other
 # shape, a symlink, or a .konductor that is not a directory stops the install;
 # (5) install from any clone replaces the pointer, and uninstall leaves it.
-# That covers E5-R2-F4, E5-R3-F1 and E5-R4-F1.
 CLONE_FILE=$HOME/.konductor/fuse-konductor-clone
 LINK_HOP_LIMIT=64
 NL='

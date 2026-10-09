@@ -86,7 +86,7 @@ Good: "Throughput increased from 1,200 to 3,400 requests/second under identical 
 ### Always Include Baselines
 
 Bad: "Latency improved by 40%."
-Good: "Latency improved by 40%, from 450ms p99 to 270ms p99 (measured over 7 days in gamma, [dashboard link])."
+Good: "Latency improved by 40%, from 450ms p99 to 270ms p99 (measured over 7 days in the staging environment, [dashboard link])."
 
 ### Cite Your Sources
 

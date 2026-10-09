@@ -68,7 +68,7 @@ Examples:
 | Command                     | Purpose                                  |
 | --------------------------- | ---------------------------------------- |
 | `git log --oneline -20`     | Recent commit history                    |
-| `git log --author=<alias>`  | Commits by author                        |
+| `git log --author=<name>`   | Commits by author                        |
 | `git blame <file>`          | Line-by-line attribution                 |
 | `git bisect start/bad/good` | Binary search for regression             |
 | `git log -S "<string>"`     | Find commits that added/removed a string |
