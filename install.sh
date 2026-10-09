@@ -26,7 +26,8 @@
 # replaced: by the clone's path in a global instruction file, and by a pointer
 # to ~/.konductor/fuse-konductor-clone in a project's AGENTS.md, which is shared.
 # The block is written between
-# markers inside a <GENERATED> wrapper that DCP and DCL share:
+# markers inside a <GENERATED> wrapper, which other installers may also write
+# their own sections into:
 #
 #   <GENERATED>
 #   <FUSE-KONDUCTOR>
@@ -103,8 +104,8 @@
 #
 # Limits: the script is meant to be run by hand, on a machine and a project you
 # trust. It takes no locks, so another program that writes the same file in the
-# instant between the script's last check and its rename can lose that write;
-# the DCP installer accepts the same race. It checks for symlinked project
+# instant between the script's last check and its rename can lose that write.
+# It checks for symlinked project
 # directories before it starts and again before each deletion, not in between.
 # A symlinked global skills directory, such as ~/.claude/skills pointing into a
 # dotfiles checkout, is followed on purpose; only entries proven to be ours are

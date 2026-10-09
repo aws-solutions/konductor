@@ -667,16 +667,16 @@ describe("the managed block", () => {
     expect(sb.read(target())).toBe(wrapped("# fuse-konductor\n"));
   });
 
-  test("shares one GENERATED wrapper with DCP and leaves DCP's section alone", () => {
-    const dcp = "# Operating guide\n<GENERATED>\n<DECENTLY-CAPABLE-POWERS>\nDCP rules\n</DECENTLY-CAPABLE-POWERS>\n</GENERATED>\n";
-    sb.write(target(), dcp);
+  test("shares one GENERATED wrapper with another tool and leaves its section alone", () => {
+    const other = "# Operating guide\n<GENERATED>\n<OTHER-TOOL>\nOther rules\n</OTHER-TOOL>\n</GENERATED>\n";
+    sb.write(target(), other);
     sb.ok("--global", target());
     expect(sb.read(target())).toBe(
-      "# Operating guide\n<GENERATED>\n<DECENTLY-CAPABLE-POWERS>\nDCP rules\n</DECENTLY-CAPABLE-POWERS>\n" +
+      "# Operating guide\n<GENERATED>\n<OTHER-TOOL>\nOther rules\n</OTHER-TOOL>\n" +
         `<FUSE-KONDUCTOR>\n${BLOCK}</FUSE-KONDUCTOR>\n</GENERATED>\n`,
     );
     sb.ok("--global", target(), "--uninstall");
-    expect(sb.read(target())).toBe(dcp);
+    expect(sb.read(target())).toBe(other);
   });
 
   test("keeps the file's permissions", () => {
@@ -690,9 +690,9 @@ describe("the managed block", () => {
 
   test("a malformed section of another tool inside the wrapper is refused", () => {
     for (const content of [
-      "<GENERATED>\n<DECENTLY-CAPABLE-POWERS>\nnever closed\n</GENERATED>\n",
-      "<GENERATED>\n<DECENTLY-CAPABLE-POWERS>\n</DECENTLY-COORDINATED-LOOPS>\n</GENERATED>\n",
-      "<GENERATED>\n<DECENTLY-CAPABLE-POWERS>\n<FUSE-KONDUCTOR>\nx\n</FUSE-KONDUCTOR>\n</DECENTLY-CAPABLE-POWERS>\n</GENERATED>\n",
+      "<GENERATED>\n<OTHER-TOOL>\nnever closed\n</GENERATED>\n",
+      "<GENERATED>\n<OTHER-TOOL>\n</THIRD-TOOL>\n</GENERATED>\n",
+      "<GENERATED>\n<OTHER-TOOL>\n<FUSE-KONDUCTOR>\nx\n</FUSE-KONDUCTOR>\n</OTHER-TOOL>\n</GENERATED>\n",
     ]) {
       sb.write(target(), content);
       const result = sb.run("--global", target());
