@@ -6,6 +6,19 @@ This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Entries are consolidated per release,
 not per individual commit.
 
+## [1.0.4] - 2026-10-10
+
+### Fixed
+
+- Kiro CLI v3 synth now prints a warning when `toolsSettings.subagent.availableAgents` (or any
+  other unmapped `toolsSettings` key) is dropped from an agent's config, instead of dropping it
+  silently.
+- Doc comments in the kiro-v3 synth module now cite the real sources for its `hooks` and
+  `trustedAgents`/`availableAgents` mappings (public kiro.dev pages and live testing against the
+  installed Kiro CLI `agent upgrade` engine) instead of a vendored module that doesn't exist in
+  this repository, and correctly state that `install/registry.rs` registers three install
+  strategies, not two.
+
 ## [1.0.3] - 2026-10-01
 
 ### Fixed
