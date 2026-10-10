@@ -661,12 +661,22 @@ fn regex_to_glob(pattern: &str, for_allow_surface: bool) -> Option<String> {
     Some(widen_unanchored_ends_for_deny(widened, pattern, false))
 }
 
+/// The `toolsSettings` keys this module has a confirmed V3 mapping for.
+/// Single source of truth for "confirmed" shared by `derive_permission_rules`
+/// (which gates its per-key match on membership before dispatching, since it
+/// still needs distinct rule-building logic per key) and
+/// `collect_dropped_tools_settings_warnings` (which uses membership directly
+/// as a skip-the-generic-warning check). Add a key here only once a real
+/// mapping exists for it in `derive_permission_rules`.
+const CONFIRMED_TOOLS_SETTINGS_KEYS: &[&str] = &["execute_bash", "fs_read", "fs_write", "subagent"];
+
 /// Derives `permissions.rules[]` from the source agent-spec's
 /// `toolsSettings` (raw-JSON passthrough in the V2 IR) and `allowedTools`
 /// fields, per the migration guide's own `toolsSettings` ->
 /// `permissions.rules` table.
 ///
-/// `toolsSettings` handling, one match arm per confirmed key:
+/// `toolsSettings` handling, one match arm per key in
+/// `CONFIRMED_TOOLS_SETTINGS_KEYS`:
 ///   - `execute_bash.allowedCommands`/`deniedCommands` -> `shell`
 ///     `allow`/`deny` rules (glob-converted via
 ///     `regex_to_glob_best_effort`). `execute_bash.denyByDefault: true`
@@ -730,6 +740,12 @@ fn derive_permission_rules(
 
     if let serde_json::Value::Object(map) = tools_settings {
         for (tool_key, settings) in map {
+            if !CONFIRMED_TOOLS_SETTINGS_KEYS.contains(&tool_key.as_str()) {
+                // No kiro.dev-documented mapping into permissions.rules
+                // for this key; the caller surfaces its drop via
+                // collect_dropped_tools_settings_warnings instead.
+                continue;
+            }
             match tool_key.as_str() {
                 "execute_bash" => {
                     push_path_or_command_rules(
@@ -771,12 +787,18 @@ fn derive_permission_rules(
                         settings,
                     );
                 }
-                _ => {
-                    // No kiro.dev-documented mapping into permissions.rules
-                    // for this key (see this function's docstring); the
-                    // caller surfaces its drop via
-                    // collect_dropped_tools_settings_warnings instead.
-                }
+                // Unreachable by construction: the membership check above
+                // only lets a key through when it's in
+                // CONFIRMED_TOOLS_SETTINGS_KEYS, and every key in that
+                // array has a match arm above. A key added to the array
+                // without a matching arm here hits this panic rather than
+                // silently falling through -- see
+                // `tools_settings_sentinel_key_is_rejected_consistently_by_both_functions`
+                // in the test module for the consistency check this
+                // guards.
+                _ => unreachable!(
+                    "'{tool_key}' is in CONFIRMED_TOOLS_SETTINGS_KEYS but has no match arm here"
+                ),
             }
         }
     }
@@ -1026,10 +1048,9 @@ fn push_trusted_agent_rules(
 /// a stopgap until the mapping exists, not a claim the field is
 /// unmappable.
 ///
-/// Any other top-level `toolsSettings` key gets the generic message:
-/// no agent spec in this repository uses one today, but a future
-/// per-tool settings block would hit it and deserves the same
-/// visibility.
+/// Any other key not in `CONFIRMED_TOOLS_SETTINGS_KEYS` gets the generic
+/// message: no agent spec in this repository uses one today, but a future
+/// per-tool settings block would hit it and deserves the same visibility.
 fn collect_dropped_tools_settings_warnings(
     agent_name: &str,
     tools_settings: &serde_json::Value,
@@ -1039,29 +1060,33 @@ fn collect_dropped_tools_settings_warnings(
         return warnings;
     };
     for (tool_key, settings) in map {
-        match tool_key.as_str() {
-            "subagent" => {
-                let has_available_agents = settings
-                    .get("availableAgents")
-                    .and_then(serde_json::Value::as_array)
-                    .is_some_and(|arr| !arr.is_empty());
-                if has_available_agents {
-                    warnings.push(format!(
-                        "agent '{agent_name}': toolsSettings.subagent.availableAgents was \
-                         dropped during V3 synth -- this transformer does not yet emit the \
-                         scoped `subagent/<name>` tool tags the real Kiro CLI upgrade engine \
-                         uses for this field, so the agent's V3 `tools` array will show the \
-                         unscoped `subagent` capability instead of the restricted list"
-                    ));
-                }
-            }
-            "execute_bash" | "fs_read" | "fs_write" => {}
-            other => {
+        if tool_key == "subagent" {
+            // `subagent` is itself a confirmed key (see
+            // CONFIRMED_TOOLS_SETTINGS_KEYS), but still needs its own
+            // check layered on top: `trustedAgents` is fully mapped by
+            // push_trusted_agent_rules, while `availableAgents` is
+            // dropped despite having a real mapping this module doesn't
+            // implement yet (see this function's docstring).
+            let has_available_agents = settings
+                .get("availableAgents")
+                .and_then(serde_json::Value::as_array)
+                .is_some_and(|arr| !arr.is_empty());
+            if has_available_agents {
                 warnings.push(format!(
-                    "agent '{agent_name}': toolsSettings.{other} has no V3 mapping in this \
-                     synth target and was dropped"
+                    "agent '{agent_name}': toolsSettings.subagent.availableAgents was \
+                     dropped during V3 synth -- this transformer does not yet emit the \
+                     scoped `subagent/<name>` tool tags the real Kiro CLI upgrade engine \
+                     uses for this field, so the agent's V3 `tools` array will show the \
+                     unscoped `subagent` capability instead of the restricted list"
                 ));
             }
+            continue;
+        }
+        if !CONFIRMED_TOOLS_SETTINGS_KEYS.contains(&tool_key.as_str()) {
+            warnings.push(format!(
+                "agent '{agent_name}': toolsSettings.{tool_key} has no V3 mapping in this \
+                 synth target and was dropped"
+            ));
         }
     }
     warnings
@@ -1952,6 +1977,91 @@ mod tests {
         assert!(warnings[0].contains("web_fetch"));
     }
 
+    // ── CONFIRMED_TOOLS_SETTINGS_KEYS: single source of truth ─────────
+    //
+    // `derive_permission_rules` and `collect_dropped_tools_settings_warnings`
+    // both read `CONFIRMED_TOOLS_SETTINGS_KEYS` instead of each listing its
+    // own four strings (see that const's own docstring). A `const` can't be
+    // mutated from within a test to literally prove "adding a key changes
+    // both functions' behavior", so the two tests below prove the same
+    // claim the only way a compile-time array allows: by iterating the real
+    // array (so a future edit to it is picked up automatically) and showing
+    // both functions treat every member as confirmed, while a key held out
+    // of the array is treated as unconfirmed by both.
+
+    /// Every key in `CONFIRMED_TOOLS_SETTINGS_KEYS` must be dispatched to a
+    /// real match arm in `derive_permission_rules` (not silently absorbed,
+    /// not hitting that function's `unreachable!` catch-all) and must never
+    /// trigger `collect_dropped_tools_settings_warnings`'s generic "has no
+    /// V3 mapping" message. `subagent` is checked with `trustedAgents` only
+    /// so it exercises the fully-mapped path without also tripping its
+    /// separate, deliberately-kept `availableAgents` warning (see
+    /// `collect_dropped_tools_settings_warnings_flags_available_agents`
+    /// above for that distinct behavior).
+    #[test]
+    fn confirmed_tools_settings_keys_are_dispatched_consistently_by_both_functions() {
+        let settings_for = |key: &str| -> serde_json::Value {
+            match key {
+                "execute_bash" => serde_json::json!({"allowedCommands": ["^git status$"]}),
+                "fs_read" | "fs_write" => serde_json::json!({"allowedPaths": ["src/**"]}),
+                "subagent" => serde_json::json!({"trustedAgents": ["helper-one"]}),
+                other => panic!(
+                    "no representative settings fixture for '{other}' -- add one here when \
+                     adding it to CONFIRMED_TOOLS_SETTINGS_KEYS"
+                ),
+            }
+        };
+
+        for key in CONFIRMED_TOOLS_SETTINGS_KEYS {
+            let tools_settings = serde_json::json!({ *key: settings_for(key) });
+
+            let rules = derive_permission_rules(&tools_settings, &[]);
+            assert!(
+                !rules.is_empty(),
+                "expected '{key}' to be dispatched to a rule-producing match arm \
+                 in derive_permission_rules, got no rules"
+            );
+
+            let warnings = collect_dropped_tools_settings_warnings("k-example", &tools_settings);
+            assert!(
+                !warnings.iter().any(|w| w.contains("has no V3 mapping")),
+                "expected '{key}' to be recognized by \
+                 collect_dropped_tools_settings_warnings as confirmed, got: {warnings:?}"
+            );
+        }
+    }
+
+    /// The mirror of the test above: a key deliberately NOT in
+    /// `CONFIRMED_TOOLS_SETTINGS_KEYS` must be rejected the same way by
+    /// both functions -- no rule from `derive_permission_rules`, and
+    /// exactly the generic "has no V3 mapping" warning from
+    /// `collect_dropped_tools_settings_warnings`.
+    #[test]
+    fn tools_settings_sentinel_key_is_rejected_consistently_by_both_functions() {
+        const SENTINEL_KEY: &str = "__sentinel_unconfirmed_key_for_test__";
+        assert!(
+            !CONFIRMED_TOOLS_SETTINGS_KEYS.contains(&SENTINEL_KEY),
+            "test sentinel must stay outside the confirmed-keys list for this test to mean \
+             anything"
+        );
+        let tools_settings = serde_json::json!({ SENTINEL_KEY: {"anything": true} });
+
+        let rules = derive_permission_rules(&tools_settings, &[]);
+        assert!(
+            rules.is_empty(),
+            "expected no rule for a key outside CONFIRMED_TOOLS_SETTINGS_KEYS, got: {rules:?}"
+        );
+
+        let warnings = collect_dropped_tools_settings_warnings("k-example", &tools_settings);
+        assert_eq!(
+            warnings.len(),
+            1,
+            "expected exactly the generic unconfirmed-key warning, got: {warnings:?}"
+        );
+        assert!(warnings[0].contains(SENTINEL_KEY));
+        assert!(warnings[0].contains("has no V3 mapping"));
+    }
+
     /// Generic, unscoped `allowedTools` entries (a bare `fs_read` or
     /// `subagent` grant, neither of which carries any scope of its own)
     /// still map onto an unscoped `allow` rule -- this remains the only
@@ -2453,6 +2563,66 @@ mod tests {
             parsed.get("toolsSettings").is_none(),
             "toolsSettings must not appear in V3 output, got: {parsed}"
         );
+    }
+
+    /// End-to-end guard for `transform`'s own call site of
+    /// `collect_dropped_tools_settings_warnings` (the one place in this
+    /// module the two functions' outputs must stay consistent with each
+    /// other): a real agent with `subagent.availableAgents` set must not
+    /// have a rule for the available-but-not-trusted name leak into the
+    /// rendered agent file's `permissions.rules`, even though the sibling
+    /// `trustedAgents` name on the same `subagent` key legitimately does.
+    /// All six existing `collect_dropped_tools_settings_warnings_*` and
+    /// `derive_permission_rules_*` tests call those functions directly;
+    /// this is the only test that drives them through the real `transform`
+    /// call site to prove the wiring, not just the pure functions.
+    ///
+    /// This covers the file-output side of that wiring only. It does not
+    /// assert on the warning text `transform` prints via `eprintln!` --
+    /// this test harness has no stderr-capture mechanism, the same gap
+    /// noted for `parse_canonical.rs::check_skill_scope_consistency`'s own
+    /// call site (see this module's `collect_dropped_tools_settings_warnings`
+    /// docstring for that cross-reference).
+    #[test]
+    fn transform_does_not_leak_available_agents_only_name_into_permission_rules() {
+        let kiro = KiroCliConfig {
+            tools_settings: serde_json::json!({
+                "subagent": {
+                    "trustedAgents": ["helper-trusted"],
+                    "availableAgents": ["helper-trusted", "helper-available-only"]
+                }
+            }),
+            ..Default::default()
+        };
+        let dir = temp_dir("available-agents-no-leak");
+        let model = CanonicalModel {
+            agents: vec![agent_with_kiro("k-subagents", kiro)],
+            ..Default::default()
+        };
+        KiroCliV3Transformer.transform(&model, &dir).unwrap();
+
+        let agent_file = dir.join(expected_output_dir()).join("k-subagents.json");
+        let contents = fs::read_to_string(&agent_file).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&contents).unwrap();
+
+        assert!(
+            !contents.contains("helper-available-only"),
+            "availableAgents-only name must not appear anywhere in rendered \
+             output, got: {contents}"
+        );
+        assert_eq!(
+            parsed["permissions"]["rules"],
+            serde_json::json!([{
+                "capability": "subagent",
+                "match": ["helper-trusted"],
+                "effect": "allow",
+            }]),
+            "expected exactly the trustedAgents-derived rule and nothing \
+             from availableAgents, got: {}",
+            parsed["permissions"]["rules"]
+        );
+
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
