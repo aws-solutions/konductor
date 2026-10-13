@@ -110,6 +110,7 @@ Accepted before or after a subcommand.
 | `init` | `--preset <PRESET>` | enum | No | `solo`, `team`, `org` |
 | `init` | `--force` | flag | No | Overwrite an existing `.konductor/` instead of failing |
 | `synth` | `--from <PATH>` | path | No | Synthesize this source tree instead of the current directory. Output goes to `<PATH>/dist/` |
+| `synth` | `--claude-bundled-mcp-servers <LIST>` | string | No | Comma-separated allowlist of `dependencies.mcpRegistry` server names to merge into each agent's rendered Claude Code `mcpServers:` frontmatter. Omitted: nothing is merged. `make synth` and `make claude-plugin` pass this from `scripts/claude-plugin-mcp-servers.json` |
 | `metrics` | `--since <WINDOW>` | string | No | Limit the report to runs within a time window. `metrics` is a stub in this release |
 
 

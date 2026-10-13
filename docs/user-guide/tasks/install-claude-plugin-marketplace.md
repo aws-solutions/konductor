@@ -65,6 +65,10 @@ The plugin bundles `aws-mcp` for `k-architect` and `k-developer`. Install
 pinned; AWS documentation and skills still come from the managed endpoint at
 request time.
 
+The plugin build selects `aws-mcp` for bundling by passing `synth
+--claude-bundled-mcp-servers` (see the [CLI
+reference](../reference.md#per-command-flags-and-arguments)).
+
 A plugin-level MCP server starts for the whole plugin session once the
 plugin is enabled, not only while `k-architect` or `k-developer` is active,
 and it runs under your own AWS credentials for that entire session. Use the
