@@ -41,8 +41,8 @@ browser-output/
 # from agents/*.agent-spec.json, skills/*/SKILL.md, and agent-sops/*.sop.md
 # via `konductor synth`/`konductor install --harness claude` -- never
 # committed to main. The actual published Claude Code plugin content lives
-# on the `claude-plugin` branch, published by
-# .github/workflows/release.yml's `publish-claude-plugin` job; see
-# generated/claude-plugin/README.md.
+# on the `release/plugins` branch, reached via a candidate branch and draft
+# PR built by .github/workflows/release.yml's `publish-claude-plugin` job;
+# see generated/claude-plugin/README.md.
 generated/claude-plugin/agents/
 generated/claude-plugin/skills/
