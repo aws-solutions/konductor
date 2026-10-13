@@ -51,8 +51,10 @@ place -- there is no separate assembled/published copy anymore.
 """
 import argparse
 import json
+import os
 import re
 import sys
+import tempfile
 from pathlib import Path
 
 # Mirrors the Agent Plugins v1.0.0 schema's own `name` pattern exactly
@@ -119,7 +121,20 @@ def main() -> int:
         return 1
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(plugin, indent=2) + "\n", encoding="utf-8")
+    # Written through a same-directory temp file + os.replace, rather than
+    # a direct write_text, so a reader (or a concurrent `make kiro-power`)
+    # never observes a partially-written plugin.json -- os.replace is an
+    # atomic rename on both POSIX and Windows.
+    fd, tmp_path = tempfile.mkstemp(
+        dir=args.output.parent, prefix=f".{args.output.name}.", suffix=".tmp"
+    )
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(json.dumps(plugin, indent=2) + "\n")
+        os.replace(tmp_path, args.output)
+    except BaseException:
+        os.unlink(tmp_path)
+        raise
     return 0
 
 

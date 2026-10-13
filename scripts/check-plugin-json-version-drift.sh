@@ -46,7 +46,27 @@ if [[ ! -f "$PLUGIN_JSON" ]]; then
 fi
 
 VERSION_VALUE="$(tr -d '[:space:]' < "$VERSION_FILE")"
-PLUGIN_JSON_VERSION="$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['version'])" "$PLUGIN_JSON")"
+# Guards malformed JSON and a missing "version" key itself -- rather than
+# letting either surface as an uncaught Python traceback with no
+# "[check-plugin-json-version-drift]" prefix -- and still exits non-zero
+# either way.
+PLUGIN_JSON_VERSION="$(python3 - "$PLUGIN_JSON" <<'PY'
+import json
+import sys
+
+path = sys.argv[1]
+try:
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+except json.JSONDecodeError as e:
+    print(f"error: [check-plugin-json-version-drift] {path} is not valid JSON: {e}", file=sys.stderr)
+    sys.exit(1)
+if "version" not in data:
+    print(f"error: [check-plugin-json-version-drift] {path} has no 'version' field", file=sys.stderr)
+    sys.exit(1)
+print(data["version"])
+PY
+)" || exit 1
 
 if [[ "$VERSION_VALUE" != "$PLUGIN_JSON_VERSION" ]]; then
   echo "error: [check-plugin-json-version-drift] VERSION says '${VERSION_VALUE}' but ${PLUGIN_JSON} says '${PLUGIN_JSON_VERSION}' -- these must always match. Run 'make kiro-power' to re-render powers/konductor/plugin.json from VERSION, then commit both together (this file is the Power's published manifest directly -- users import it from github.com/aws-solutions/konductor/tree/main/powers/konductor, so a drifted version here ships to them, not just to direct-from-dev-tree runs and tests)." >&2
