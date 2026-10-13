@@ -232,6 +232,7 @@ kiro-power-check:
 	echo "=== [kiro-power-check] Validating skill frontmatter ==="; \
 	python3 scripts/validate-kiro-power-skill-frontmatter.py powers/konductor || exit 1; \
 	echo "=== [kiro-power-check] Shellchecking konductor-setup's scripts/ and tests/kiro-power/ ==="; \
+	shellcheck_skipped=0; \
 	if command -v shellcheck >/dev/null 2>&1; then \
 		installed_ver="$$(shellcheck --version | awk '/^version:/{print $$2}')"; \
 		if [ "$$installed_ver" != "$(KIRO_POWER_SHELLCHECK_VERSION)" ]; then \
@@ -240,11 +241,16 @@ kiro-power-check:
 		(cd powers/konductor/skills/konductor-setup/scripts && shellcheck -x ./*.sh) || exit 1; \
 		(cd tests/kiro-power && shellcheck -x ./*.sh) || exit 1; \
 	else \
+		shellcheck_skipped=1; \
 		echo "notice: [kiro-power-check] 'shellcheck' not found on PATH -- skipping" >&2; \
 	fi; \
 	echo "=== [kiro-power-check] Running tests/kiro-power/ against the committed tree ==="; \
 	bash tests/kiro-power/run-all.sh || exit 1; \
-	echo "=== [kiro-power-check] All checks passed ==="
+	if [ "$$shellcheck_skipped" -eq 1 ]; then \
+		echo "=== [kiro-power-check] All checks passed (shellcheck skipped) ==="; \
+	else \
+		echo "=== [kiro-power-check] All checks passed ==="; \
+	fi
 
 # ── user guide ────────────────────────────────────────────────────────────────
 # The guide is authored, not compiled, so these keep the FACTS in step with the
