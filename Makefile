@@ -171,13 +171,15 @@ claude-plugin:
 claude-plugin-check:
 	$(MAKE) -C cli build TARGET=$(TARGET)
 	@test -x "$(KONDUCTOR_BIN)" || { echo "error: $(KONDUCTOR_BIN) not found; run 'make -C cli build' first" >&2; exit 1; }
-	@if command -v claude >/dev/null 2>&1; then \
+	@validated=1; \
+	if command -v claude >/dev/null 2>&1; then \
 		echo "=== [claude-plugin-check] Validating marketplace.json ==="; \
 		claude plugin validate .claude-plugin/marketplace.json --strict || exit 1; \
 	else \
 		echo "notice: [claude-plugin-check] 'claude' CLI not found on PATH -- skipping validation" >&2; \
-	fi
-	@scratch=$$(mktemp -d)/claude-plugin-branch; \
+		validated=0; \
+	fi; \
+	scratch=$$(mktemp -d)/claude-plugin-branch; \
 	KONDUCTOR_BIN=$(KONDUCTOR_BIN) scripts/assemble-claude-plugin-branch.sh --out "$$scratch"; \
 	status=0; \
 	if command -v claude >/dev/null 2>&1; then \
@@ -185,13 +187,18 @@ claude-plugin-check:
 		claude plugin validate "$$scratch" --strict || status=1; \
 	else \
 		echo "notice: [claude-plugin-check] 'claude' CLI not found on PATH -- skipping validation" >&2; \
+		validated=0; \
 	fi; \
 	rm -rf "$$(dirname "$$scratch")"; \
 	if [ "$$status" -ne 0 ]; then \
 		echo "=== [claude-plugin-check] FAILED: the flat branch plugin tree did not validate ===" >&2; \
 		exit 1; \
+	fi; \
+	if [ "$$validated" -eq 1 ]; then \
+		echo "=== [claude-plugin-check] marketplace.json and the flat plugin tree validated successfully ==="; \
+	else \
+		echo "notice: [claude-plugin-check] validation skipped: claude CLI not found" >&2; \
 	fi
-	@echo "=== [claude-plugin-check] marketplace.json and the flat plugin tree validated successfully ==="
 
 # ── test-rust ─────────────────────────────────────────────────────────────────
 test-rust:
