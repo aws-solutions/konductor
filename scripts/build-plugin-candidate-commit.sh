@@ -38,6 +38,9 @@
 #          [--author-name <name>] [--author-email <email>]
 set -euo pipefail
 
+# shellcheck source=lib/protected-branches.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/protected-branches.sh"
+
 REPO_ROOT="."
 REMOTE="origin"
 BASE_BRANCH=""
@@ -118,12 +121,10 @@ fi
 # and validate-plugin-publish-preconditions.sh already apply before this
 # script runs -- repeated here because this script must not trust that an
 # earlier step enforced it correctly.
-case "$CANDIDATE_BRANCH" in
-  main|mainline|release/plugins)
-    echo "FATAL: --candidate-branch '$CANDIDATE_BRANCH' equals a protected ref name. Failing closed." >&2
-    exit 1
-    ;;
-esac
+if is_protected_branch "$CANDIDATE_BRANCH"; then
+  echo "FATAL: --candidate-branch '$CANDIDATE_BRANCH' equals a protected ref name. Failing closed." >&2
+  exit 1
+fi
 
 cd "$REPO_ROOT"
 

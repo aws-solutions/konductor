@@ -15,6 +15,9 @@
 # Prints the candidate branch name to stdout on success.
 set -euo pipefail
 
+# shellcheck source=lib/protected-branches.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/protected-branches.sh"
+
 VERSION=""
 RUN_ID=""
 RUN_ATTEMPT=""
@@ -75,12 +78,10 @@ CANDIDATE_BRANCH="${PREFIX}/${VERSION}-${RUN_ID}-${RUN_ATTEMPT}"
 # Defense in depth: the inputs above already make these equalities
 # structurally impossible, but a candidate branch publish must never equal
 # a protected ref name under any future change to this derivation.
-case "$CANDIDATE_BRANCH" in
-  main|mainline|release/plugins)
-    echo "FATAL: derived candidate branch '$CANDIDATE_BRANCH' equals a protected ref name. Failing closed." >&2
-    exit 1
-    ;;
-esac
+if is_protected_branch "$CANDIDATE_BRANCH"; then
+  echo "FATAL: derived candidate branch '$CANDIDATE_BRANCH' equals a protected ref name. Failing closed." >&2
+  exit 1
+fi
 
 # git-check-ref-format enforces the real git ref grammar (no "..", no
 # control characters, no leading/trailing "/", no trailing ".lock", etc.)

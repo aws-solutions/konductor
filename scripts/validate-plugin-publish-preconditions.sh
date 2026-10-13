@@ -29,6 +29,9 @@
 # Requires GH_TOKEN in the environment (used only by `gh`, never printed).
 set -euo pipefail
 
+# shellcheck source=lib/protected-branches.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/protected-branches.sh"
+
 REPO=""
 EXPECTED_REF=""
 CANDIDATE_BRANCH=""
@@ -103,12 +106,10 @@ fi
 # derive-plugin-candidate-branch.sh's own check, but this script is the
 # single fail-closed gate immediately before the push -- it must not trust
 # that an earlier step enforced this correctly.
-case "$CANDIDATE_BRANCH" in
-  main|mainline|release/plugins)
-    echo "FATAL: candidate branch '$CANDIDATE_BRANCH' equals a protected ref name. Failing closed." >&2
-    exit 1
-    ;;
-esac
+if is_protected_branch "$CANDIDATE_BRANCH"; then
+  echo "FATAL: candidate branch '$CANDIDATE_BRANCH' equals a protected ref name. Failing closed." >&2
+  exit 1
+fi
 if ! git check-ref-format "refs/heads/$CANDIDATE_BRANCH" >/dev/null 2>&1; then
   echo "FATAL: candidate branch '$CANDIDATE_BRANCH' is not a valid git ref name. Failing closed." >&2
   exit 1
