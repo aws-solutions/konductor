@@ -10,7 +10,7 @@
 # or that collides with a protected branch name.
 #
 # Usage: derive-plugin-candidate-branch.sh --version <vX.Y.Z> --run-id <id> \
-#          --run-attempt <attempt> [--prefix <prefix>]
+#          --run-attempt <attempt>
 #
 # Prints the candidate branch name to stdout on success.
 set -euo pipefail
@@ -18,7 +18,7 @@ set -euo pipefail
 VERSION=""
 RUN_ID=""
 RUN_ATTEMPT=""
-PREFIX="plugin-candidate"
+readonly PREFIX="plugin-candidate"
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -35,11 +35,6 @@ while [ $# -gt 0 ]; do
     --run-attempt)
       [ $# -ge 2 ] || { echo "derive-plugin-candidate-branch.sh: --run-attempt requires an argument" >&2; exit 64; }
       RUN_ATTEMPT="$2"
-      shift 2
-      ;;
-    --prefix)
-      [ $# -ge 2 ] || { echo "derive-plugin-candidate-branch.sh: --prefix requires an argument" >&2; exit 64; }
-      PREFIX="$2"
       shift 2
       ;;
     *)
@@ -72,13 +67,6 @@ if ! printf '%s' "$RUN_ID" | grep -qE '^[0-9]+$'; then
 fi
 if ! printf '%s' "$RUN_ATTEMPT" | grep -qE '^[0-9]+$'; then
   echo "FATAL: --run-attempt '$RUN_ATTEMPT' is not purely numeric. Failing closed." >&2
-  exit 1
-fi
-
-# PREFIX is caller-controlled (release.yml passes a fixed literal, never
-# user input), but validate it anyway rather than trust the caller.
-if ! printf '%s' "$PREFIX" | grep -qE '^[A-Za-z0-9][A-Za-z0-9_-]*$'; then
-  echo "FATAL: --prefix '$PREFIX' contains characters unsafe for a git ref component. Failing closed." >&2
   exit 1
 fi
 

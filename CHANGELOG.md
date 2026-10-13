@@ -43,10 +43,7 @@ not per individual commit.
   branch with an unreleased `VERSION` bump could trigger a real `gh release create`, and by
   default, a force-push to the public `claude-plugin` branch. Removed the manual-dispatch path
   entirely; `validate-pr.yml` now runs `claude plugin validate --strict` against the assembled
-  plugin tree on every PR instead, with no publish or push step anywhere in its job graph. A
-  separate opt-in rehearsal workflow (`plugin-publish-dry-run.yml`) can push a throwaway
-  candidate branch and open a draft PR for review, gated behind a typed confirmation input; it
-  cannot create a release, tag, merge, or write to `release/plugins`.
+  plugin tree on every PR instead, with no publish or push step anywhere in its job graph.
 
 ## [1.0.3] - 2026-10-01
 

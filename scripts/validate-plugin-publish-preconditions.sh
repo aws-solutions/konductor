@@ -116,9 +116,8 @@ fi
 
 # 3. Existing candidate branch collision check: the derived name includes
 # the run id/attempt specifically to make this exceedingly unlikely, but a
-# manually created branch of the same name (or a retained branch from a
-# dry run that was not cleaned up) must still block the push rather than be
-# silently overwritten.
+# manually created branch of the same name must still block the push
+# rather than be silently overwritten.
 #
 # `git ls-remote --exit-code` returns 0 (ref found), 2 (ref not found -- the
 # only "safe to proceed" outcome), or any other code for a real error

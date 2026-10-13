@@ -178,8 +178,9 @@ def test_no_run_body_contains_a_raw_input_expression():
 
     The free-form workflow_dispatch pr_number input must be bound through
     a step's `env:` block and referenced in the shell as a quoted
-    variable instead -- the same shell-injection concern
-    plugin-publish-dry-run.yml's confirm_dry_run input guards against.
+    variable instead -- a raw `${{ inputs.* }}` substitution would expand
+    into the script source before the shell runs it, letting shell
+    metacharacters in the input execute as code.
     """
     job = _load_job()
     offending_steps = []

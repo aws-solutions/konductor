@@ -3,11 +3,8 @@
 
 Covers the collision-resistant naming scheme (version + run id + run
 attempt), the protected-ref refusal (defense in depth even though the
-inputs make an exact collision structurally unlikely), input validation
-(version format, numeric run id/attempt), and the custom --prefix path
-plugin-publish-dry-run.yml uses to keep its own candidate branches outside
-the real "plugin-candidate/" namespace tag-claude-plugin-release.yml looks
-for.
+inputs make an exact collision structurally unlikely), and input
+validation (version format, numeric run id/attempt).
 
 Run:  cd tests && pytest test_derive_plugin_candidate_branch.py -v
 """
@@ -33,17 +30,6 @@ def test_derives_the_expected_branch_name():
     assert result.stdout.strip() == "plugin-candidate/v1.0.4-123456789-1"
 
 
-def test_custom_prefix_is_honored():
-    result = _run(
-        "--version", "v1.0.4",
-        "--run-id", "42",
-        "--run-attempt", "2",
-        "--prefix", "plugin-candidate-dryrun",
-    )
-    assert result.returncode == 0, result.stderr
-    assert result.stdout.strip() == "plugin-candidate-dryrun/v1.0.4-42-2"
-
-
 def test_different_run_attempts_produce_different_names():
     first = _run("--version", "v1.0.4", "--run-id", "99", "--run-attempt", "1").stdout.strip()
     second = _run("--version", "v1.0.4", "--run-id", "99", "--run-attempt", "2").stdout.strip()
@@ -66,15 +52,6 @@ def test_rejects_non_numeric_run_attempt():
     result = _run("--version", "v1.0.4", "--run-id", "1", "--run-attempt", "x")
     assert result.returncode != 0
     assert "run-attempt" in result.stderr
-
-
-def test_rejects_a_prefix_with_unsafe_characters():
-    result = _run(
-        "--version", "v1.0.4", "--run-id", "1", "--run-attempt", "1",
-        "--prefix", "release/plugins",
-    )
-    assert result.returncode != 0
-    assert "unsafe" in result.stderr
 
 
 def test_missing_required_argument_fails_with_usage_error():

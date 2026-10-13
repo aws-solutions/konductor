@@ -3,9 +3,9 @@
 
 Covers tag-claude-plugin-release.yml's exact tagging guards: merged=true,
 base ref == release/plugins, head ref under the real "plugin-candidate/"
-prefix (never the dry-run prefix), and version format. Exit code 10 means
-"this PR doesn't qualify, skip without error" -- distinct from exit code 1
-(malformed input, a real failure) so the workflow can tell the two apart.
+prefix, and version format. Exit code 10 means "this PR doesn't qualify,
+skip without error" -- distinct from exit code 1 (malformed input, a real
+failure) so the workflow can tell the two apart.
 
 Run:  cd tests && pytest test_compute_plugin_release_tag.py -v
 """
@@ -58,11 +58,14 @@ def test_wrong_base_branch_is_skipped_not_errored():
     assert "merge base" in result.stderr
 
 
-def test_dry_run_candidate_prefix_never_qualifies():
+def test_similar_prefix_without_slash_boundary_never_qualifies():
+    """A head branch that merely starts with the candidate prefix string
+    (no slash boundary) must not match -- "plugin-candidate-other/..."
+    is not "plugin-candidate/..."."""
     result = _run(
         "--merged", "true",
         "--base-ref", "release/plugins",
-        "--head-ref", "plugin-candidate-dryrun/v1.0.4-123-1",
+        "--head-ref", "plugin-candidate-other/v1.0.4-123-1",
         "--version", "1.0.4",
     )
     assert result.returncode == 10

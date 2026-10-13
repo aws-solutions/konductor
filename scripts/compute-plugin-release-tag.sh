@@ -101,9 +101,6 @@ fi
 # Guard 3: head branch must be a real publish candidate, not some other PR
 # that happened to target release/plugins (the branch ruleset blocks direct
 # writes there, but does not restrict which branch a PR's head may be).
-# This also excludes a dry-run candidate branch, which uses a distinct
-# prefix (see scripts/derive-plugin-candidate-branch.sh's --prefix) and must
-# never produce a real tag even if someone merges its draft PR by mistake.
 case "$HEAD_REF" in
   "${CANDIDATE_PREFIX}"/*) ;;
   *)

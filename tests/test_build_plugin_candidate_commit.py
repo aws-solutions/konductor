@@ -17,9 +17,8 @@ committing -- so the candidate always:
 (c) is built with no push and no write to the base branch itself -- the
     script only ever runs `git fetch`/`git checkout -b`/`git commit`
     against a disposable local clone, never `git push`;
-(d) is exercised identically by both release.yml's publish-claude-plugin
-    job and plugin-publish-dry-run.yml's dry-run job, since both now call
-    this one script instead of each inlining their own `git init`.
+(d) is called by release.yml's publish-claude-plugin job instead of that
+    job inlining its own `git init`.
 
 Run:  cd tests && pytest test_build_plugin_candidate_commit.py -v
 """
@@ -32,7 +31,6 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = REPO_ROOT / "scripts" / "build-plugin-candidate-commit.sh"
 WORKFLOW_RELEASE = REPO_ROOT / ".github" / "workflows" / "release.yml"
-WORKFLOW_DRY_RUN = REPO_ROOT / ".github" / "workflows" / "plugin-publish-dry-run.yml"
 
 
 def _git(*args: str, cwd: Path, check: bool = True) -> subprocess.CompletedProcess[str]:
@@ -180,17 +178,13 @@ def test_script_never_pushes_or_writes_the_base_branch(checkout, assembled, remo
     assert base_tip_after == base_tip_before
 
 
-def test_dry_run_and_release_workflows_both_call_this_script(remote):
-    """(d) Both the real publish job and the dry-run rehearsal must build
-    their candidate commit through this one script, not through
-    independent `git init` paths that could drift apart again."""
+def test_release_workflow_calls_this_script(remote):
+    """(d) The real publish job must build its candidate commit through
+    this one script, not through its own independent `git init` path."""
     release_text = WORKFLOW_RELEASE.read_text(encoding="utf-8")
-    dry_run_text = WORKFLOW_DRY_RUN.read_text(encoding="utf-8")
 
     assert "scripts/build-plugin-candidate-commit.sh" in release_text
-    assert "scripts/build-plugin-candidate-commit.sh" in dry_run_text
     assert "git init" not in release_text
-    assert "git init" not in dry_run_text
 
 
 def test_refuses_to_target_a_protected_ref_as_the_candidate(checkout, assembled, remote):

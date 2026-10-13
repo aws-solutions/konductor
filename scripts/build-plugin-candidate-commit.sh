@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: Apache-2.0
 #
-# Builds the candidate-branch commit shared by release.yml's
-# publish-claude-plugin job and plugin-publish-dry-run.yml: a new branch,
-# based on the base branch's (release/plugins) current remote tip, whose
-# tree is replaced wholesale with an already-assembled flat plugin tree.
+# Builds the candidate-branch commit for release.yml's publish-claude-plugin
+# job: a new branch, based on the base branch's (release/plugins) current
+# remote tip, whose tree is replaced wholesale with an already-assembled
+# flat plugin tree.
 #
 # A prior revision built this commit with `git init` in a throwaway
 # directory, so the candidate shared no history with release/plugins and
