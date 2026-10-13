@@ -38,6 +38,8 @@ _KNOWN_ROOT_FIELDS = frozenset(
 )
 # `author`'s own `additionalProperties: false` sub-object.
 _KNOWN_AUTHOR_FIELDS = frozenset({"name", "email", "url"})
+# The schema's own top-level `"required": ["$schema", "name"]`.
+_REQUIRED_ROOT_FIELDS = ("$schema", "name")
 
 
 def validate(plugin: dict) -> list[str]:
@@ -52,17 +54,17 @@ def validate(plugin: dict) -> list[str]:
             f"root object has additional properties not allowed by the schema: {sorted(unknown_root)}"
         )
 
-    # required: ["$schema", "name"]
-    if "$schema" not in plugin:
-        errors.append("missing required field: $schema")
-    elif plugin["$schema"] != _EXPECTED_SCHEMA_ID:
+    # required: see _REQUIRED_ROOT_FIELDS's own doc comment above.
+    for field in _REQUIRED_ROOT_FIELDS:
+        if field not in plugin:
+            errors.append(f"missing required field: {field}")
+
+    if "$schema" in plugin and plugin["$schema"] != _EXPECTED_SCHEMA_ID:
         errors.append(
             f"$schema must equal the const value {_EXPECTED_SCHEMA_ID!r}, got {plugin['$schema']!r}"
         )
 
-    if "name" not in plugin:
-        errors.append("missing required field: name")
-    else:
+    if "name" in plugin:
         name = plugin["name"]
         if not isinstance(name, str):
             errors.append(f"name must be a string, got {type(name).__name__}")
