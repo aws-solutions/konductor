@@ -59,6 +59,7 @@ mkdir -p "$AGENTS_OUT_DIR" "$SKILLS_OUT_DIR"
 cp dist/claude/agents/*.md "$AGENTS_OUT_DIR/"
 
 for d in "$SCRATCH_TARGET"/.claude/skills/sop-*/; do
+  [ -d "$d" ] || continue
   name="$(basename "$d")"
   # This native skill shares the SOP-derived naming prefix.
   [ "$name" = "sop-state-management" ] && continue
