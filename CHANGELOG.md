@@ -6,7 +6,7 @@ This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Entries are consolidated per release,
 not per individual commit.
 
-## [1.1.0] - 2026-09-30
+## [1.1.0] - 2026-10-13
 
 ### Added
 
@@ -18,6 +18,12 @@ not per individual commit.
 - `make kiro-power` and `make kiro-power-check`, wired into `.github/workflows/validate-pr.yml`.
 - An "Install via Kiro Power" page in the user guide, and a matching section in `README.md`.
 - Manual setup docs for the AWS documentation-lookup MCP server and for Playwright.
+
+### Security
+
+- `konductor-setup` now rejects a malformed release tag or version (from `--tag` or
+  `KONDUCTOR_POWER_VERSION`) before using it in a download URL, a cache path, or a
+  `git clone --branch` ref, instead of passing it through unchecked.
 
 ## [1.0.3] - 2026-10-01
 
