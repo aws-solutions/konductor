@@ -31,6 +31,13 @@ from pathlib import Path
 
 _NAME_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 _MAX_DESCRIPTION_CHARS = 1024
+# YAML block-scalar indicators: `|`/`>`, optionally followed by a chomping
+# indicator (`+`/`-`) and/or an explicit indentation indicator (a digit).
+# The real value of a block-scalar field lives on the FOLLOWING indented
+# lines, which this line-based parser never reads -- parse_frontmatter
+# would otherwise silently treat the bare indicator itself as the whole
+# value.
+_BLOCK_SCALAR_PATTERN = re.compile(r"^[|>][+-]?[0-9]*$")
 
 
 def parse_frontmatter(text: str) -> dict | None:
@@ -78,7 +85,12 @@ def check_skill(skill_dir: Path) -> list[str]:
         return [f"{skill_md}: missing or malformed YAML frontmatter (must open and close with '---')"]
 
     name = frontmatter.get("name")
-    if not name:
+    if name is not None and _BLOCK_SCALAR_PATTERN.match(name):
+        errors.append(
+            f"{skill_md}: frontmatter field 'name' is a YAML block scalar indicator ({name!r}) -- "
+            "block scalars aren't supported here; use a plain single-line value"
+        )
+    elif not name:
         errors.append(f"{skill_md}: missing required frontmatter field 'name'")
     else:
         if not (1 <= len(name) <= 64):
@@ -94,7 +106,12 @@ def check_skill(skill_dir: Path) -> list[str]:
             )
 
     description = frontmatter.get("description")
-    if not description:
+    if description is not None and _BLOCK_SCALAR_PATTERN.match(description):
+        errors.append(
+            f"{skill_md}: frontmatter field 'description' is a YAML block scalar indicator ({description!r}) -- "
+            "block scalars aren't supported here; use a plain single-line value"
+        )
+    elif not description:
         errors.append(f"{skill_md}: missing required frontmatter field 'description'")
     elif len(description) > _MAX_DESCRIPTION_CHARS:
         errors.append(
