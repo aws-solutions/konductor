@@ -197,16 +197,28 @@ konductor_write_power_cli_record() {
   konductor_require_cmd jq
   power_cli_dir="${target_dir}/.konductor"
   power_cli_json="${power_cli_dir}/power-cli.json"
-  tmp_file="${power_cli_json}.tmp.$$"
 
   mkdir -p "$power_cli_dir"
+  # Unpredictable temp name (matching konductor_publish_cached_binary's own
+  # mktemp pattern below) -- the old "${power_cli_json}.tmp.$$" name was
+  # derivable from target_dir and the caller's own PID alone, so a symlink
+  # planted at that exact path ahead of time turned this write into a
+  # write-through-symlink into whatever it pointed at.
+  tmp_file="$(mktemp "${power_cli_dir}/.power-cli.json.tmp.XXXXXX")" || {
+    konductor_die "failed to create a temporary file for power-cli.json in ${power_cli_dir}."
+    return 1
+  }
   if ! jq -n --arg v "$cli_version" --arg b "$binary_path" \
     '{cli_version: $v, binary: $b}' > "$tmp_file"; then
     rm -f "$tmp_file"
     konductor_die "failed to render power-cli.json's content for ${target_dir}."
     return 1
   fi
-  mv -f "$tmp_file" "$power_cli_json"
+  if ! mv -f "$tmp_file" "$power_cli_json"; then
+    rm -f "$tmp_file"
+    konductor_die "failed to publish power-cli.json for ${target_dir}."
+    return 1
+  fi
   konductor_log "Recorded ${binary_path} (version ${cli_version}) as this target's own CLI binary in ${power_cli_json}"
 }
 
