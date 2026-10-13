@@ -25,6 +25,13 @@ not per individual commit.
   bundled-server list lives in `scripts/claude-plugin-mcp-servers.json`.
 - The plugin and standalone Claude Code builds launch `aws-mcp` through `mcp-proxy-for-aws-cli==1.7.0`. Pinning the proxy prevents unreviewed client changes while the managed endpoint continues to supply current AWS documentation and skills.
 
+### Fixed
+
+- `publish-claude-plugin` no longer fails when the assembled plugin tree already matches
+  `release/plugins`' tip exactly (e.g. a re-release of unchanged plugin content). The job now
+  skips the push and draft-PR steps and ends green with a notice instead of pushing an empty
+  branch and failing at `gh pr create` with "No commits between".
+
 ### Security
 
 - `aws-mcp` uses `mcp-proxy-for-aws-cli==1.7.0` instead of a moving package version. The managed endpoint still supplies current AWS documentation and skills.

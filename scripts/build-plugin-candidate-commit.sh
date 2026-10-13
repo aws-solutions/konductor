@@ -23,6 +23,14 @@
 # it only builds a commit on a new local branch. The caller pushes that
 # branch, by its own name only, after this script succeeds.
 #
+# If the assembled tree already matches the base branch's tip exactly,
+# there's nothing to commit -- that's a legitimate outcome (e.g. a
+# re-release of unchanged plugin content), not an error. This script
+# reports which case happened via a `committed=true|false` line on stdout
+# and, when $GITHUB_OUTPUT is set, as a step output of the same name, so a
+# caller running as a GitHub Actions step can skip pushing a branch and
+# opening a PR when there's nothing to publish.
+#
 # Usage: build-plugin-candidate-commit.sh \
 #          --base-branch <branch> --candidate-branch <branch> \
 #          --assemble-dir <dir> --commit-message <msg> \
@@ -157,8 +165,16 @@ git add -A
 
 if git diff --cached --quiet; then
   echo "Candidate branch '$CANDIDATE_BRANCH' has no changes relative to $REMOTE/$BASE_BRANCH ($BASE_SHA); nothing to commit."
+  echo "committed=false"
+  if [ -n "${GITHUB_OUTPUT:-}" ]; then
+    echo "committed=false" >> "$GITHUB_OUTPUT"
+  fi
   exit 0
 fi
 
 git -c user.name="$AUTHOR_NAME" -c user.email="$AUTHOR_EMAIL" commit -q -m "$COMMIT_MESSAGE"
 echo "Built candidate commit $(git rev-parse HEAD) on branch '$CANDIDATE_BRANCH', based on $REMOTE/$BASE_BRANCH ($BASE_SHA)."
+echo "committed=true"
+if [ -n "${GITHUB_OUTPUT:-}" ]; then
+  echo "committed=true" >> "$GITHUB_OUTPUT"
+fi

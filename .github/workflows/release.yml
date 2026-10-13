@@ -628,13 +628,16 @@ jobs:
         # doesn't already exist, and that the immutable release tag doesn't
         # either. See the script's own comments for why each check fails
         # closed (not open) on an inconclusive remote lookup.
+        env:
+          CANDIDATE_BRANCH: ${{ steps.candidate.outputs.candidate_branch }}
+          CANDIDATE_TAG: ${{ steps.candidate.outputs.tag }}
         run: |
           set -e
           scripts/validate-plugin-publish-preconditions.sh \
             --repo "${{ github.repository }}" \
             --expected-ref "$RELEASE_VERSION" \
-            --candidate-branch "${{ steps.candidate.outputs.candidate_branch }}" \
-            --tag "${{ steps.candidate.outputs.tag }}"
+            --candidate-branch "$CANDIDATE_BRANCH" \
+            --tag "$CANDIDATE_TAG"
 
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
@@ -664,11 +667,21 @@ jobs:
         # root commit -- this is what gives GitHub a common ancestor to
         # diff against, so the draft PR below can open at all. See the
         # script's own header comment for the full rationale.
+        #
+        # `id:` lets the push and draft-PR steps below (and the no-op
+        # notice step) read this step's `committed` output: when the
+        # assembled tree already matches release/plugins' tip exactly,
+        # the script has nothing to commit, and running those steps
+        # anyway would push an empty branch and fail at `gh pr create`
+        # with "No commits between".
+        id: candidate_commit
+        env:
+          CANDIDATE_BRANCH: ${{ steps.candidate.outputs.candidate_branch }}
         run: |
           set -e
           scripts/build-plugin-candidate-commit.sh \
             --base-branch "$BASE_BRANCH" \
-            --candidate-branch "${{ steps.candidate.outputs.candidate_branch }}" \
+            --candidate-branch "$CANDIDATE_BRANCH" \
             --assemble-dir "$ASSEMBLE_DIR" \
             --commit-message "Publish Claude Code plugin candidate for $RELEASE_VERSION"
 
@@ -683,11 +696,14 @@ jobs:
         # contents: write. Re-adding a second Authorization header here
         # (as the pre-fix version did, operating in its own
         # credential-free standalone repo) would duplicate it instead.
+        if: steps.candidate_commit.outputs.committed == 'true'
+        env:
+          CANDIDATE_BRANCH: ${{ steps.candidate.outputs.candidate_branch }}
         run: |
           set -e
           git push origin \
-            "${{ steps.candidate.outputs.candidate_branch }}:refs/heads/${{ steps.candidate.outputs.candidate_branch }}"
-          echo "Pushed candidate branch ${{ steps.candidate.outputs.candidate_branch }} at $(git rev-parse "${{ steps.candidate.outputs.candidate_branch }}")"
+            "$CANDIDATE_BRANCH:refs/heads/$CANDIDATE_BRANCH"
+          echo "Pushed candidate branch $CANDIDATE_BRANCH at $(git rev-parse "$CANDIDATE_BRANCH")"
 
       - name: Open a draft pull request into release/plugins
         # The merge, and therefore the write to release/plugins itself, is
@@ -695,19 +711,35 @@ jobs:
         # writing there directly, and the org-wide ruleset requires two
         # approvals before any merge regardless. tag-claude-plugin-release.yml
         # creates the immutable release tag only after that PR merges.
+        if: steps.candidate_commit.outputs.committed == 'true'
+        env:
+          CANDIDATE_BRANCH: ${{ steps.candidate.outputs.candidate_branch }}
+          CANDIDATE_TAG: ${{ steps.candidate.outputs.tag }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
         run: |
           set -e
           PR_BODY="Automated Claude Code plugin candidate for release $RELEASE_VERSION.
 
-          - Source: ${{ steps.candidate.outputs.candidate_branch }} (built from $RELEASE_VERSION, run ${{ github.run_id }}/${{ github.run_attempt }})
+          - Source: $CANDIDATE_BRANCH (built from $RELEASE_VERSION, run $RUN_ID/$RUN_ATTEMPT)
           - Validated with \`claude plugin validate --strict\` before this branch was pushed.
           - Merging this PR into \`release/plugins\` is what makes the release public; merging is a manual, reviewed action under the \`plugins\` and org-wide branch rulesets.
-          - On merge, tag-claude-plugin-release.yml creates the immutable tag \`${{ steps.candidate.outputs.tag }}\`."
+          - On merge, tag-claude-plugin-release.yml creates the immutable tag \`$CANDIDATE_TAG\`."
           PR_URL="$(gh pr create \
             --repo "${{ github.repository }}" \
             --base "$BASE_BRANCH" \
-            --head "${{ steps.candidate.outputs.candidate_branch }}" \
+            --head "$CANDIDATE_BRANCH" \
             --title "Publish Claude Code plugin $RELEASE_VERSION" \
             --body "$PR_BODY" \
             --draft)"
           echo "Opened draft PR: $PR_URL"
+
+      - name: Report when there is nothing new to publish
+        # The counterpart to the two gated steps above: when the assembled
+        # plugin tree already matches release/plugins' tip exactly, there's
+        # nothing to push or open a PR for -- a legitimate outcome (e.g. a
+        # re-release of unchanged plugin content), not a failure, so the
+        # job still ends green but with a clear reason why those steps
+        # didn't run.
+        if: steps.candidate_commit.outputs.committed != 'true'
+        run: echo "No plugin changes since release/plugins' tip; nothing to publish for $RELEASE_VERSION."

@@ -23,10 +23,12 @@ committing -- so the candidate always:
 Run:  cd tests && pytest test_build_plugin_candidate_commit.py -v
 """
 
+import os
 import subprocess
 from pathlib import Path
 
 import pytest
+import yaml
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = REPO_ROOT / "scripts" / "build-plugin-candidate-commit.sh"
@@ -88,11 +90,22 @@ def assembled(tmp_path):
     return out
 
 
-def _run(checkout: Path, *args: str) -> subprocess.CompletedProcess[str]:
+def _run(
+    checkout: Path, *args: str, github_output: Path | None = None
+) -> subprocess.CompletedProcess[str]:
+    env = dict(os.environ)
+    if github_output is not None:
+        env["GITHUB_OUTPUT"] = str(github_output)
+    else:
+        # The real `GITHUB_OUTPUT` is only ever set inside a GitHub Actions
+        # runner -- strip any leftover value so a test run outside that
+        # env still exercises the "no GITHUB_OUTPUT set" path.
+        env.pop("GITHUB_OUTPUT", None)
     return subprocess.run(
         ["bash", str(SCRIPT), "--repo-root", str(checkout), *args],
         capture_output=True,
         text=True,
+        env=env,
     )
 
 
@@ -187,6 +200,78 @@ def test_release_workflow_calls_this_script(remote):
     assert "git init" not in release_text
 
 
+def _load_publish_claude_plugin_job():
+    with WORKFLOW_RELEASE.open(encoding="utf-8") as f:
+        doc = yaml.safe_load(f)
+    return doc["jobs"]["publish-claude-plugin"]
+
+
+def _steps_by_name(job):
+    return {step["name"]: step for step in job["steps"]}
+
+
+def test_build_candidate_commit_step_exposes_a_committed_output_id():
+    """F1: release.yml must read the script's `committed` output through a
+    step id -- without one, `steps.<id>.outputs.committed` has nothing to
+    resolve against and the push/draft-PR gates below are unreachable."""
+    job = _load_publish_claude_plugin_job()
+    steps = _steps_by_name(job)
+    build_step = steps["Build the candidate commit on top of release/plugins' tip"]
+    assert build_step.get("id"), (
+        "the step running build-plugin-candidate-commit.sh must have an 'id' "
+        "so later steps can read steps.<id>.outputs.committed"
+    )
+
+
+def test_push_and_pr_steps_are_gated_on_the_committed_output():
+    """F1: the fix for PR #28's defect -- `gh pr create` failing with 'No
+    commits between' and leaving a dangling pushed branch whenever the
+    assembled tree already matches release/plugins' tip exactly. Both the
+    push and the draft-PR step must only run when the candidate-commit step
+    actually built a commit."""
+    job = _load_publish_claude_plugin_job()
+    steps = _steps_by_name(job)
+    build_step = steps["Build the candidate commit on top of release/plugins' tip"]
+    build_id = build_step["id"]
+    expected_if = f"steps.{build_id}.outputs.committed == 'true'"
+
+    push_step = steps["Push the candidate branch"]
+    assert push_step.get("if") == expected_if
+
+    pr_step = steps["Open a draft pull request into release/plugins"]
+    assert pr_step.get("if") == expected_if
+
+
+def test_job_reports_and_ends_green_when_there_is_nothing_to_publish():
+    """F1: when build-plugin-candidate-commit.sh reports committed=false,
+    the job must print a clear notice instead of silently skipping two
+    steps with no explanation -- and must not fail (a no-op release is a
+    legitimate outcome, not an error)."""
+    job = _load_publish_claude_plugin_job()
+    steps = job["steps"]
+    build_index = next(
+        i
+        for i, s in enumerate(steps)
+        if s["name"] == "Build the candidate commit on top of release/plugins' tip"
+    )
+    build_id = steps[build_index]["id"]
+    no_op_steps = [
+        s
+        for i, s in enumerate(steps)
+        if i > build_index
+        and s.get("if") == f"steps.{build_id}.outputs.committed != 'true'"
+    ]
+    assert no_op_steps, (
+        "expected a step gated on committed != 'true' that reports there is "
+        "nothing new to publish, so the job ends green with a clear notice "
+        "instead of silently skipping the push/draft-PR steps"
+    )
+    for step in no_op_steps:
+        assert "exit 1" not in (step.get("run") or ""), (
+            f"step '{step['name']}' must not fail the job on the no-op path"
+        )
+
+
 def test_refuses_to_target_a_protected_ref_as_the_candidate(checkout, assembled, remote):
     """A protected-ref candidate name other than --base-branch itself (e.g.
     'main') must still be rejected by the defense-in-depth check -- the
@@ -267,6 +352,63 @@ def test_identical_artifact_content_is_a_no_op(checkout, assembled, remote, tmp_
     )
     assert result.returncode == 0, result.stderr
     assert "nothing to commit" in result.stdout
+    # F1 fix: release.yml's publish step must be able to tell a no-op build
+    # apart from a real commit without parsing prose -- the no-op case
+    # prints this machine-readable line even when GITHUB_OUTPUT isn't set
+    # (e.g. a developer running the script locally).
+    assert "committed=false" in result.stdout
+
+
+def test_commit_writes_committed_true_to_github_output(checkout, assembled, remote, tmp_path):
+    """F1: when the script builds a real commit, it must report
+    committed=true through $GITHUB_OUTPUT so release.yml's publish-
+    claude-plugin job can gate its push/draft-PR steps on it -- the fix
+    for PR #28's defect where those steps ran unconditionally even when
+    build-plugin-candidate-commit.sh had nothing to commit."""
+    github_output = tmp_path / "github_output.txt"
+    github_output.write_text("", encoding="utf-8")
+    result = _run(
+        checkout,
+        "--base-branch", "release/plugins",
+        "--candidate-branch", "plugin-candidate/v1.0.0-1-1",
+        "--assemble-dir", str(assembled),
+        "--commit-message", "test candidate",
+        github_output=github_output,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "committed=true" in github_output.read_text(encoding="utf-8")
+    assert "committed=true" in result.stdout
+
+
+def test_no_op_writes_committed_false_to_github_output(checkout, assembled, remote, tmp_path):
+    """F1: the no-op case (release/plugins already matches the assembled
+    artifact exactly) must report committed=false through $GITHUB_OUTPUT,
+    not just in prose on stdout, so the workflow's `if:` gate on the push
+    and draft-PR steps actually works."""
+    merged_clone = tmp_path / "merged-clone"
+    _git("clone", "-q", str(remote), str(merged_clone), cwd=tmp_path)
+    _git("checkout", "-q", "release/plugins", cwd=merged_clone)
+    _git("config", "user.email", "a@b.com", cwd=merged_clone)
+    _git("config", "user.name", "tester", cwd=merged_clone)
+    _git("rm", "-rq", ".", cwd=merged_clone)
+    subprocess.run(["cp", "-a", f"{assembled}/.", str(merged_clone)], check=True)
+    _git("add", "-A", cwd=merged_clone)
+    _git("commit", "-q", "-m", "simulated merge", cwd=merged_clone)
+    _git("push", "-q", "origin", "release/plugins", cwd=merged_clone)
+
+    github_output = tmp_path / "github_output.txt"
+    github_output.write_text("", encoding="utf-8")
+    result = _run(
+        checkout,
+        "--base-branch", "release/plugins",
+        "--candidate-branch", "plugin-candidate/v1.0.0-1-1",
+        "--assemble-dir", str(assembled),
+        "--commit-message", "test candidate",
+        github_output=github_output,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "committed=false" in github_output.read_text(encoding="utf-8")
+    assert "committed=true" not in github_output.read_text(encoding="utf-8")
 
 
 def test_missing_assemble_dir_fails_closed(checkout, remote, tmp_path):
