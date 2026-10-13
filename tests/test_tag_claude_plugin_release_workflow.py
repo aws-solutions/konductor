@@ -235,7 +235,6 @@ def test_gh_token_is_scoped_to_only_the_steps_that_need_it():
     expected_token_steps = {
         "Read the pull request's state, base, head, and merge commit",
         "Confirm the tag does not already exist",
-        "Create and push the immutable release tag",
     }
     actual_token_steps = {
         step["name"]
@@ -258,11 +257,29 @@ def test_gh_token_is_scoped_to_only_the_steps_that_need_it():
         "Validate artifact presence at the merge commit",
         "Parse and validate the version from .claude-plugin/plugin.json",
         "Decide the tag name (re-confirms every guard against the real version)",
+        # F2 fix: the tag push authenticates through the checkout step's
+        # persisted write-scoped credentials, not a manually built
+        # AUTHORIZATION header -- so this step has no remaining use for
+        # GH_TOKEN.
+        "Create and push the immutable release tag",
     ]
     for name in no_token_step_names:
         step = steps[name]
         env = step.get("env") or {}
         assert "GH_TOKEN" not in env, f"step '{name}' must not bind GH_TOKEN"
+
+
+def test_job_has_a_concurrency_group():
+    """F4: without a concurrency group, two operator-triggered dispatches
+    for different merged PRs could both pass "Confirm the tag does not
+    already exist" before either pushes, then race to create the same
+    immutable tag ref -- matching release.yml's publish-claude-plugin
+    concurrency block."""
+    job = _load_job()
+    concurrency = job.get("concurrency")
+    assert concurrency is not None, "the tag-release job must declare a concurrency group"
+    assert concurrency.get("group") == "claude-plugin-tag-release"
+    assert concurrency.get("cancel-in-progress") is False
 
 
 def test_permissions_are_minimal():
@@ -380,3 +397,27 @@ def test_tag_push_step_creates_an_annotated_tag_and_pushes_only_the_tag_ref():
     assert "refs/tags/" in code_body
     assert "--force" not in code_body
     assert ":refs/heads/" not in code_body
+
+
+def test_tag_push_step_authenticates_via_checkout_not_a_manual_auth_header():
+    """F2: the manually built `AUTHORIZATION: basic ...` header was dead --
+    the merge-commit checkout step above already persists write-scoped
+    credentials (actions/checkout's default persist-credentials behavior,
+    enabled by this job's `permissions: contents: write`), so the plain
+    `git push` authenticates on its own, the same pattern release.yml's
+    candidate-branch push uses."""
+    job = _load_job()
+    steps = _steps_by_name(job)
+    push_step = steps["Create and push the immutable release tag"]
+    run_body = push_step["run"]
+    assert "AUTHORIZATION" not in run_body
+    assert "http.extraHeader" not in run_body
+    assert "base64" not in run_body
+    env = push_step.get("env") or {}
+    assert "GH_TOKEN" not in env
+
+    checkout_step = steps["Check out the merge commit on release/plugins"]
+    assert checkout_step.get("with", {}).get("persist-credentials") is not False
+
+    job_perms = job["permissions"]
+    assert job_perms.get("contents") == "write"

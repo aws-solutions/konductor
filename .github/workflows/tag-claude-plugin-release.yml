@@ -73,6 +73,13 @@ jobs:
     permissions:
       contents: write
       pull-requests: read
+    # One tag-release dispatch in flight at a time, so two concurrent
+    # operator-triggered runs can't both pass "tag does not already exist"
+    # for the same PR and then race to push the same tag ref -- matching
+    # release.yml's publish-claude-plugin concurrency block.
+    concurrency:
+      group: claude-plugin-tag-release
+      cancel-in-progress: false
 
     steps:
       - name: Fail closed unless dispatched from main
@@ -308,8 +315,14 @@ jobs:
           esac
 
       - name: Create and push the immutable release tag
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # No manual auth header: the "Check out the merge commit on
+        # release/plugins" checkout step above already persisted
+        # write-scoped credentials (actions/checkout's default
+        # persist-credentials behavior) into this same working copy's git
+        # config, since this job's `permissions:` block grants
+        # contents: write. A manually built AUTHORIZATION header here was
+        # simply ignored in favor of that persisted credential -- the same
+        # pattern release.yml's candidate-branch push documents and avoids.
         run: |
           set -e
           git config user.name "github-actions[bot]"
@@ -317,10 +330,9 @@ jobs:
           git tag -a "${{ steps.decide.outputs.tag }}" \
             -m "Claude Code plugin release ${{ steps.version.outputs.version }}" \
             "${{ steps.pr.outputs.merge_sha }}"
-          AUTH_HEADER="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
           # Plain push of a new tag ref -- no --force, no branch write, no
           # product release assets. plugin-release-tags itself still blocks
           # anything but creation if this ever tries to touch an existing tag.
-          git -c http.extraHeader="$AUTH_HEADER" push origin \
+          git push origin \
             "refs/tags/${{ steps.decide.outputs.tag }}"
           echo "Tagged ${{ steps.pr.outputs.merge_sha }} as ${{ steps.decide.outputs.tag }}"
