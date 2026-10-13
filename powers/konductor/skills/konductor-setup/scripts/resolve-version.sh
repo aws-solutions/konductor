@@ -45,6 +45,19 @@ construct_tag() {
     konductor_die "construct_tag: empty version given -- refusing to build a bare 'v' tag."
     return 1
   fi
+  # Validated BEFORE it is ever embedded in the tag this function returns --
+  # that tag goes on to be used in a download URL, a cache path, and a
+  # `git clone --branch` ref by this Power's other scripts (see
+  # KONDUCTOR_CLI_VERSION_REGEX's own doc comment in lib.sh). fetch_verify_
+  # binary and build_from_source validate their own tag argument too (a
+  # --tag value reaches them directly, never through this function), but
+  # an unvalidated version here would still let a hand-edited plugin.json
+  # or KONDUCTOR_POWER_VERSION produce a bad tag with no chance to catch it
+  # at its actual source.
+  if [[ ! "$version" =~ $KONDUCTOR_CLI_VERSION_REGEX ]]; then
+    konductor_die "construct_tag: '${version}' is not a valid bare semver (expected X.Y.Z, e.g. 1.0.2) -- refusing to build a tag from it."
+    return 1
+  fi
   echo "v${version}"
 }
 

@@ -162,6 +162,39 @@ konductor_suggest_rate_limit_retry() {
 # time this ever ran for real, not just a lint nit.
 KONDUCTOR_CLI_VERSION_REGEX='^[0-9]+\.[0-9]+\.[0-9]+$'
 
+# KONDUCTOR_CLI_TAG_REGEX -- the v-prefixed form of the same bare semver
+# above, matching exactly what resolve-version.sh's construct_tag builds
+# and what every real GitHub release tag on this repo looks like (see
+# scripts/validate-version-semver.sh and .github/workflows/release.yml's
+# own `RELEASE_VERSION="v${RAW_VERSION}"` -- no pre-release suffix is a
+# valid tag anywhere in this repo's own release pipeline, so none is
+# accepted here either).
+#
+# resolve-version.sh's construct_tag, fetch-verify-binary.sh's
+# fetch_verify_binary, and build-from-source.sh's build_from_source each
+# validate their own tag/version argument against this (or
+# KONDUCTOR_CLI_VERSION_REGEX, for construct_tag's bare-version input)
+# BEFORE using it in a path, a download URL, or a `git clone --branch`
+# ref -- a tag can arrive from --tag or KONDUCTOR_POWER_VERSION, values
+# this Power's own scripts did not necessarily produce, and both are
+# embedded directly into asset filenames, cache paths under
+# ~/.konductor/cli-releases, and a git ref with zero further escaping.
+# An unvalidated "../../etc/cron.d/x" or "; rm -rf ~" would turn any of
+# those into a path-traversal write or a git-ref/shell-adjacent injection.
+#
+# Deliberately NOT `readonly` -- same multiple-sourcing rationale as
+# KONDUCTOR_CLI_VERSION_REGEX immediately above.
+#
+# Unlike KONDUCTOR_CLI_VERSION_REGEX, nothing in THIS file reads this one
+# -- only fetch-verify-binary.sh and build-from-source.sh do, each after
+# their own `source lib.sh` -- so shellcheck's own single-file view of
+# lib.sh alone has no way to see that read and flags SC2034. `shellcheck
+# -x fetch-verify-binary.sh` and `shellcheck -x build-from-source.sh` are
+# the authoritative check (matching KONDUCTOR_RESOLVE_TARGET_BINARY_RESULT's
+# own identical disable comment elsewhere in this file).
+# shellcheck disable=SC2034
+KONDUCTOR_CLI_TAG_REGEX='^v[0-9]+\.[0-9]+\.[0-9]+$'
+
 # konductor_write_power_cli_record <target-dir> <cli-version> <binary-path>
 # Writes/refreshes <target-dir>/.konductor/power-cli.json -- this Power's
 # OWN record of exactly which `konductor` CLI binary (and its own

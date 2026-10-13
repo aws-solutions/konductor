@@ -58,6 +58,17 @@ build_from_source() {
   fi
   konductor_require_cmd git "Install git to clone aws-solutions/konductor."
 
+  # Validated BEFORE any use -- $tag is passed straight to `git clone
+  # --branch` as a ref and embedded directly into stable_path (a path
+  # under the stable release cache) with zero further escaping. $tag can
+  # arrive from --tag or KONDUCTOR_POWER_VERSION, values this Power's own
+  # scripts did not necessarily produce (see KONDUCTOR_CLI_TAG_REGEX's own
+  # doc comment in lib.sh).
+  if [[ ! "$tag" =~ $KONDUCTOR_CLI_TAG_REGEX ]]; then
+    konductor_die "build_from_source: '${tag}' is not a valid release tag (expected a v-prefixed semver like v1.0.2) -- refusing to use it as a git ref or in a path."
+    return 1
+  fi
+
   if [[ -e "$clone_dir" ]]; then
     konductor_die "${clone_dir} already exists -- refusing to clone into it. Remove it or choose a different directory."
     return 1

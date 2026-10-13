@@ -71,6 +71,17 @@ fetch_verify_binary() {
 
   konductor_require_cmd curl "Install curl to download the konductor binary."
 
+  # Validated BEFORE any use -- $tag is embedded directly into a filename
+  # (asset_name/stable_path, both ultimately paths under dest_dir and the
+  # stable release cache) and a download URL with zero further escaping.
+  # $tag can arrive from --tag or KONDUCTOR_POWER_VERSION, values this
+  # Power's own scripts did not necessarily produce (see
+  # KONDUCTOR_CLI_TAG_REGEX's own doc comment in lib.sh).
+  if [[ ! "$tag" =~ $KONDUCTOR_CLI_TAG_REGEX ]]; then
+    konductor_die "fetch_verify_binary: '${tag}' is not a valid release tag (expected a v-prefixed semver like v1.0.2) -- refusing to use it in a download URL or path."
+    return 1
+  fi
+
   asset_name="konductor-${tag}-${triple}"
   sidecar_name="${asset_name}.sha256"
   base_url="https://github.com/${repo}/releases/download/${tag}"
@@ -80,13 +91,17 @@ fetch_verify_binary() {
   mkdir -p "$dest_dir"
 
   konductor_log "Downloading ${asset_name} from release ${tag} of ${repo}"
-  if ! curl -fsSL -o "$asset_path" "${base_url}/${asset_name}"; then
+  # --proto '=https' refuses any curl-supported protocol other than https
+  # for this transfer (even if the URL above were somehow http://); --tlsv1.2
+  # refuses to negotiate down to an older, weaker TLS version. Both are
+  # curl-side guards independent of whatever the URL string says.
+  if ! curl -fsSL --proto '=https' --tlsv1.2 -o "$asset_path" "${base_url}/${asset_name}"; then
     konductor_die "release ${tag} of ${repo} does not publish a '${asset_name}' asset (the release tag may not exist, or no binary is published for ${triple} on this release). Not retrying against 'latest' -- that would install a version this Power was not validated against."
     return 1
   fi
 
   konductor_log "Downloading checksum sidecar ${sidecar_name}"
-  if ! curl -fsSL -o "$sidecar_path" "${base_url}/${sidecar_name}"; then
+  if ! curl -fsSL --proto '=https' --tlsv1.2 -o "$sidecar_path" "${base_url}/${sidecar_name}"; then
     konductor_die "downloaded ${asset_name} but its checksum sidecar ${sidecar_name} is missing from release ${tag}. Refusing to install an unverified binary."
     return 1
   fi

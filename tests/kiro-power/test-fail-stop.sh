@@ -121,9 +121,9 @@ STUB
 chmod +x "${FAKE_BIN_2}/curl"
 
 t_run env HOME="$FAKE_HOME" PATH="${FAKE_BIN_2}:${PATH}" \
-  bash "$ORCHESTRATOR" --target "$TARGET_DIR" --tag "v9999.0.0-does-not-exist" --allow-non-default-repo --confirmed
+  bash "$ORCHESTRATOR" --target "$TARGET_DIR" --tag "v9999.0.0" --allow-non-default-repo --confirmed
 t_assert_status "run-onboarding.sh exits non-zero when the download itself fails" 1
-t_assert_contains "the failure is attributed to the specific tag, not a generic message" "v9999.0.0-does-not-exist"
+t_assert_contains "the failure is attributed to the specific tag, not a generic message" "v9999.0.0"
 t_assert_contains "the failure explicitly says it will not fall back to latest" "Not retrying against 'latest'"
 
 if [[ -f "$DOCTOR_MARKER" ]]; then

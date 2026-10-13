@@ -47,9 +47,14 @@ STUB
 chmod +x "${FAKE_BIN}/make"
 
 # Stub git: `clone --branch <tag> --depth 1 <url> <dir>` fails closed for
-# any tag containing "badtag" (mirrors the real, verified
+# the specific tag "v9999.0.0" (mirrors the real, verified
 # "fatal: Remote branch <tag> not found in upstream origin" / exit 128 a
-# real nonexistent tag produces). Otherwise "clones" by creating <dir> and
+# real nonexistent tag produces). Deliberately a validly-SHAPED tag
+# (v-prefixed semver, matching KONDUCTOR_CLI_TAG_REGEX) that simply does
+# not exist upstream -- a malformed tag now fails earlier, in
+# build_from_source's own format validation, before this stub is ever
+# reached, which is tag-FORMAT validation's own job to cover (see
+# test-tag-version-validation.sh). Otherwise "clones" by creating <dir> and
 # recording what `describe --tags --exact-match` should report back for
 # it, via $STUB_DESCRIBE_RESULT (defaults to the tag actually requested,
 # i.e. the honest, matching case) -- letting each test below control
@@ -68,7 +73,7 @@ case "$1" in
     done
     dir="${args[-1]}"
     case "$tag" in
-      *badtag*)
+      v9999.0.0)
         echo "fatal: Remote branch $tag not found in upstream origin" >&2
         exit 128
         ;;
@@ -99,9 +104,9 @@ source "$SCRIPT"
 # ── Test 1: a nonexistent tag fails at clone, never reaches make build ──
 CLONE_DIR_1="${SCRATCH}/clone-1"
 t_run env HOME="$FAKE_HOME" PATH="${FAKE_BIN}:${PATH}" \
-  bash "$SCRIPT" "https://github.com/aws-solutions/konductor.git" "v9999.0.0-badtag" "$CLONE_DIR_1"
+  bash "$SCRIPT" "https://github.com/aws-solutions/konductor.git" "v9999.0.0" "$CLONE_DIR_1"
 t_assert_status "a nonexistent tag fails build-from-source.sh closed" 1
-t_assert_contains "the failure names the specific tag that doesn't exist" "v9999.0.0-badtag"
+t_assert_contains "the failure names the specific tag that doesn't exist" "v9999.0.0"
 t_assert_contains "the failure says it's refusing to build an unpinned checkout" "Not building an unpinned checkout"
 if [[ -f "${CLONE_DIR_1}/build/cli/konductor" ]]; then
   t_fail "make build must never run when the clone itself failed" "found: ${CLONE_DIR_1}/build/cli/konductor"
