@@ -23,6 +23,7 @@ lifecycle (SDLC).
    - [Install for Kiro CLI](tasks/install-kiro-cli.md)
    - [Install for Claude Code](tasks/install-claude-code.md)
    - [Install via Kiro Power](tasks/install-kiro-power.md)
+   - [Install via the Claude Code plugin marketplace](tasks/install-claude-plugin-marketplace.md)
    - [Initialize a project](tasks/initialize-a-project.md)
    - [Diagnose problems](tasks/diagnose-problems.md)
    - [Update an installation](tasks/update.md)

@@ -1,0 +1,33 @@
+{
+  "name": "konductor",
+  "description": "Konductor packaged as a Claude Code plugin marketplace: a coordinated team of SDLC agents (product manager, architect, developer, QA, researcher, TPM, browser, media analyzer, plus three orchestrators), their skills, and their SOP-derived skills.",
+  "owner": {
+    "name": "AWS Solutions",
+    "url": "https://github.com/aws-solutions"
+  },
+  "plugins": [
+    {
+      "name": "konductor",
+      "source": {
+        "source": "github",
+        "repo": "aws-solutions/konductor",
+        "ref": "release/plugins"
+      },
+      "description": "Open-source AI agent framework that automates the software development lifecycle (SDLC) through a coordinated team of specialist agents and a structured delegation protocol.",
+      "category": "developer-tools",
+      "tags": [
+        "sdlc",
+        "ai-agents",
+        "subagents",
+        "orchestration",
+        "aws-solutions",
+        "software-development-lifecycle",
+        "kiro",
+        "multi agent orchestration",
+        "sdlc workflow",
+        "ai sdlc workflow",
+        "end to end development"
+      ]
+    }
+  ]
+}
