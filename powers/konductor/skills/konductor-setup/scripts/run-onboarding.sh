@@ -301,6 +301,16 @@ BINARY_OWN_VERSION="$("$BINARY_PATH" --version 2>/dev/null | awk '{print $2}')"
 if [[ -z "$BINARY_OWN_VERSION" ]]; then
   konductor_die "${BINARY_PATH} produced no '--version' output -- refusing to record it in power-cli.json." || exit 1
 fi
+# Validated against the same bare-semver shape konductor_resolve_target_
+# binary itself requires before trusting a recorded cli_version for a
+# glob or path lookup (KONDUCTOR_CLI_VERSION_REGEX, from lib.sh) --
+# refusing a malformed value HERE, before it is ever written, is what
+# keeps that later read trustworthy; a non-semver value recorded now
+# would otherwise fail update/uninstall's own resolution much later,
+# with no connection back to this step.
+if [[ ! "$BINARY_OWN_VERSION" =~ $KONDUCTOR_CLI_VERSION_REGEX ]]; then
+  konductor_die "${BINARY_PATH} --version produced '${BINARY_OWN_VERSION}', which is not a bare semver (expected e.g. 1.0.2) -- refusing to record it in power-cli.json." || exit 1
+fi
 konductor_write_power_cli_record "$TARGET_DIR" "$BINARY_OWN_VERSION" "$BINARY_PATH"
 
 # ── Step 7: verify with doctor ────────────────────────────────────────────

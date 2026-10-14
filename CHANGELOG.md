@@ -55,6 +55,9 @@ not per individual commit.
 - `konductor-setup` now rejects a malformed release tag or version (from `--tag` or
   `KONDUCTOR_POWER_VERSION`) before using it in a download URL, a cache path, or a
   `git clone --branch` ref, instead of passing it through unchecked.
+- `konductor-setup`'s onboarding script now validates the installing binary's own `--version`
+  output as a bare semver before recording it in `power-cli.json`, instead of only checking it
+  for emptiness.
 - `aws-mcp` uses `mcp-proxy-for-aws-cli==1.7.0` instead of a moving package version. The managed endpoint still supplies current AWS documentation and skills.
 - The plugin release no longer force-pushes directly to a public branch. `publish-claude-plugin`
   pushes a fresh, collision-resistant candidate branch (release version plus workflow run
