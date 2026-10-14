@@ -85,12 +85,22 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool, color: ColorMode) 
             harness,
             dry_run,
         } => crate::cli::uninstall::dispatch_uninstall(target, all, harness, dry_run, json, color),
-        Commands::Synth { from } => {
+        Commands::Synth {
+            from,
+            claude_bundled_mcp_servers,
+        } => {
             let cwd = match resolve_cwd_reporting_json("synth", json, color) {
                 Ok(dir) => dir,
                 Err(code) => return code,
             };
-            crate::cli::synth::dispatch_synth_with(&cwd, from, verbose, json, color)
+            crate::cli::synth::dispatch_synth_with(
+                &cwd,
+                from,
+                claude_bundled_mcp_servers,
+                verbose,
+                json,
+                color,
+            )
         }
         Commands::Init { preset, force } => {
             let cwd = match resolve_cwd("init", color) {

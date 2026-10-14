@@ -15,6 +15,7 @@ Looking to change how the agents behave, or build the CLI yourself? That is
 | --- | --- |
 | [Install for Kiro CLI](install-kiro-cli.md) | The agent team registered with `kiro-cli` |
 | [Install for Claude Code](install-claude-code.md) | The agent team registered with `claude`, including the two settings agent teams require |
+| [Install via the Claude Code plugin marketplace](install-claude-plugin-marketplace.md) | Install the agent team with `/plugin install` after the first plugin release |
 | [Initialize a project](initialize-a-project.md) | A `.konductor/` directory with a starter config |
 | [Diagnose problems](diagnose-problems.md) | `konductor doctor`, plus manual checks for behaviour it cannot see |
 | [Update an installation](update.md) | The latest release, with your local modifications kept |
@@ -33,9 +34,11 @@ flowchart TD
 
     A -->|Yes| B{Which runtime?}
     B -->|Kiro CLI| K["install-kiro-cli.md"]
-    B -->|Claude Code| C["install-claude-code.md"]
+    B -->|"Claude Code, via the konductor CLI"| C["install-claude-code.md"]
+    B -->|"Claude Code, via /plugin install"| P["install-claude-plugin-marketplace.md"]
     K --> E["initialize-a-project.md"]
     C --> E
+    P --> E
 
     A -->|"No, something is broken"| H["diagnose-problems.md"]
     H --> I["../troubleshooting.md"]
