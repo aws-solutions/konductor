@@ -18,6 +18,7 @@
 #
 # Usage:
 #   run-update.sh --target <dir> [--version <v>] [--use-github-token]
+#                  [--harness <name>]
 #
 #   --target <dir>   REQUIRED. Same target run-onboarding.sh installed into.
 #   --version <v>    Optional: update to a specific tagged release instead
@@ -29,6 +30,19 @@
 #                     rationale as run-onboarding.sh's identical flag (see
 #                     that script's own doc comment). The agent must say a
 #                     token will be sent when offering this.
+#   --harness <name>  Optional: which tracked harness to update, forwarded
+#                     verbatim as `--harness <name>` to `konductor update`.
+#                     Only needed when the target tracks more than one
+#                     harness -- `konductor update` otherwise reports a
+#                     usage error naming this flag. Omitted means the
+#                     prior single-harness behavior (nothing forwarded).
+#                     Validated against lib.sh's own
+#                     KONDUCTOR_HARNESS_NAME_REGEX before use -- the CLI
+#                     itself already validates the value against its
+#                     registered harnesses, so this script does not
+#                     duplicate that allowlist; it only refuses an unsafe
+#                     shape before the value is ever forwarded as an
+#                     argv entry.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -38,6 +52,8 @@ source "${SCRIPT_DIR}/lib.sh"
 TARGET_DIR=""
 VERSION_ARGS=()
 USE_GITHUB_TOKEN_ARGS=()
+HARNESS_VALUE=""
+HARNESS_ARGS=()
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -53,6 +69,10 @@ while [[ $# -gt 0 ]]; do
       USE_GITHUB_TOKEN_ARGS=(--use-github-token)
       shift 1
       ;;
+    --harness)
+      HARNESS_VALUE="${2:?--harness requires a value}"
+      shift 2
+      ;;
     *)
       konductor_die "unknown argument: $1" || exit 64
       ;;
@@ -60,7 +80,19 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "$TARGET_DIR" ]]; then
-  konductor_die "usage: run-update.sh --target <dir> [--version <v>] [--use-github-token]" || exit 64
+  konductor_die "usage: run-update.sh --target <dir> [--version <v>] [--use-github-token] [--harness <name>]" || exit 64
+fi
+
+# Validated BEFORE any use -- forwarded directly as an argv entry to the
+# underlying `konductor update` call below. See KONDUCTOR_HARNESS_NAME_
+# REGEX's own doc comment in lib.sh for why this script validates a safe
+# shape itself rather than relying solely on the CLI's own harness-name
+# allowlist.
+if [[ -n "$HARNESS_VALUE" ]]; then
+  if [[ ! "$HARNESS_VALUE" =~ $KONDUCTOR_HARNESS_NAME_REGEX ]]; then
+    konductor_die "'${HARNESS_VALUE}' is not a valid --harness value (expected lowercase letters, digits, and hyphens, starting with a letter or digit) -- refusing to forward it to konductor update." || exit 64
+  fi
+  HARNESS_ARGS=(--harness "$HARNESS_VALUE")
 fi
 
 # NOT a bare `~/.local/bin/konductor` assumption: that symlink is shared
@@ -86,7 +118,7 @@ KONDUCTOR_BIN_VERSION="$KONDUCTOR_RESOLVE_TARGET_BINARY_VERSION_RESULT"
 # konductor_run_cli (not konductor_run): detects a GitHub rate-limit/auth
 # signature in this command's own stderr and prints an exact retry command
 # -- see lib.sh's konductor_run_cli/konductor_suggest_rate_limit_retry.
-konductor_run_cli "$KONDUCTOR_BIN" update --target "$TARGET_DIR" "${VERSION_ARGS[@]}" "${USE_GITHUB_TOKEN_ARGS[@]}"
+konductor_run_cli "$KONDUCTOR_BIN" update --target "$TARGET_DIR" "${VERSION_ARGS[@]}" "${USE_GITHUB_TOKEN_ARGS[@]}" "${HARNESS_ARGS[@]}"
 
 # Refresh this target's own power-cli.json with the binary this run
 # actually used, only now that `update` has actually succeeded (a failed

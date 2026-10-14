@@ -93,6 +93,9 @@ Always use an explicit target. The update script resolves the CLI binary
 recorded for that target instead of trusting the shared
 `~/.local/bin/konductor` symlink.
 
+If the update fails because the target tracks more than one harness, ask
+the user which one and rerun with `--harness <name>`.
+
 ## Telemetry
 
 To opt out during setup:
@@ -125,6 +128,9 @@ scripts/run-uninstall.sh --target "<current-project-dir>" --confirmed
 
 Do not combine uninstall with reinstall. A real uninstall removes this
 Power’s per-target CLI record but leaves `.konductor/config.yml` intact.
+
+If the uninstall fails because the target tracks more than one harness, ask
+the user which one and rerun with `--harness <name>`.
 
 ## MCP servers
 

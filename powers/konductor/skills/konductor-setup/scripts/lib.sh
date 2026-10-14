@@ -195,6 +195,34 @@ KONDUCTOR_CLI_VERSION_REGEX='^[0-9]+\.[0-9]+\.[0-9]+$'
 # shellcheck disable=SC2034
 KONDUCTOR_CLI_TAG_REGEX='^v[0-9]+\.[0-9]+\.[0-9]+$'
 
+# KONDUCTOR_HARNESS_NAME_REGEX -- a safe shape for an optional `--harness
+# <value>` passed to run-update.sh/run-uninstall.sh and forwarded
+# verbatim as `--harness <value>` to `konductor update`/`uninstall`:
+# lowercase alphanumerics and hyphens, starting with one of those (e.g.
+# "claude", "kiro-v3"). This is NOT a second allowlist of real harness
+# names -- the `konductor` CLI itself already validates the value
+# against its own registered-transformer list (see cli.rs's
+# harness_value_parser(), shared by install/update/uninstall) and reports
+# a target that doesn't track the requested harness as a usage error.
+# This regex exists only so the two wrapper scripts refuse an unsafe
+# shape (shell metacharacters, a path-traversal payload, an empty
+# string) before the value is ever forwarded as an argv entry, matching
+# this file's existing validate-before-use convention for every other
+# externally-sourced value (see KONDUCTOR_CLI_TAG_REGEX immediately
+# above).
+#
+# Deliberately NOT `readonly` -- same multiple-sourcing rationale as
+# KONDUCTOR_CLI_VERSION_REGEX/KONDUCTOR_CLI_TAG_REGEX above.
+#
+# Unlike KONDUCTOR_CLI_VERSION_REGEX, nothing in THIS file reads this one
+# -- only run-update.sh and run-uninstall.sh do, each after their own
+# `source lib.sh` -- so shellcheck's own single-file view of lib.sh alone
+# has no way to see that read and flags SC2034. `shellcheck -x
+# run-update.sh` and `shellcheck -x run-uninstall.sh` are the
+# authoritative check.
+# shellcheck disable=SC2034
+KONDUCTOR_HARNESS_NAME_REGEX='^[a-z0-9][a-z0-9-]*$'
+
 # konductor_write_power_cli_record <target-dir> <cli-version> <binary-path>
 # Writes/refreshes <target-dir>/.konductor/power-cli.json -- this Power's
 # OWN record of exactly which `konductor` CLI binary (and its own

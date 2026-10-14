@@ -110,6 +110,9 @@ project may have changed.
 Updates overwrite managed agents, skills, and SOPs. Use the CLI dry run if
 you need to inspect affected files first.
 
+If the update fails because the project tracks more than one harness, choose
+one and rerun with `--harness <name>`.
+
 ## Uninstall
 
 Start with a dry run:
@@ -121,6 +124,9 @@ konductor uninstall --target <current-project-dir> --dry-run
 Review the output, then confirm a real removal through the Power. The Power
 removes its per-project CLI record only after a successful uninstall. It leaves
 `.konductor/config.yml` in place.
+
+If the uninstall fails because the project tracks more than one harness,
+choose one and rerun with `--harness <name>`.
 
 ## MCP servers
 

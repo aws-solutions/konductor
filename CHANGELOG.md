@@ -25,6 +25,9 @@ not per individual commit.
   plugin-candidate PR into `release/plugins`, that creates an immutable `claude-plugin-vX.Y.Z`
   tag on the merge commit -- so a `marketplace.json` entry can pin to a specific release instead
   of the branch's moving HEAD.
+- `konductor-setup`'s `run-update.sh` and `run-uninstall.sh` accept an optional `--harness
+  <name>`, forwarded to `konductor update`/`uninstall`, for a target that tracks more than one
+  harness.
 
 ### Changed
 
