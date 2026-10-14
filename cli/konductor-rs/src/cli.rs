@@ -333,14 +333,18 @@ pub enum Commands {
     /// current working directory and writes a starter
     /// `.konductor/config.yml` derived from the CLI's preset defaults.
     Init {
-        /// Initialization preset to apply.
-        #[arg(long, value_parser = ["solo", "team", "org"])]
-        preset: Option<String>,
-
         /// Overwrite an existing `.konductor/` directory instead of
         /// failing when one is already present.
         #[arg(long, action = ArgAction::SetTrue)]
         force: bool,
+
+        /// Deprecated and hidden: accepted for backward compatibility
+        /// with scripts still passing it, but has no effect on the
+        /// scaffolded output. Printing a warning (dispatch.rs) rather
+        /// than rejecting it outright gives those scripts a release to
+        /// drop the flag before it is removed for good.
+        #[arg(long, hide = true, value_parser = ["solo", "team", "org"])]
+        preset: Option<String>,
     },
 
     /// Inspect a Konductor installation/checkout for problems and print
@@ -1473,18 +1477,6 @@ mod tests {
     }
 
     #[test]
-    fn parses_init_with_valid_preset() {
-        let cli = Cli::try_parse_from(["konductor", Commands::INIT, "--preset", "solo"]).unwrap();
-        match cli.command {
-            Some(Commands::Init { preset, force }) => {
-                assert_eq!(preset, Some("solo".to_string()));
-                assert!(!force);
-            }
-            other => panic!("expected Init, got {other:?}"),
-        }
-    }
-
-    #[test]
     fn parses_init_with_force_flag() {
         let cli = Cli::try_parse_from(["konductor", Commands::INIT, "--force"]).unwrap();
         match cli.command {
@@ -1493,10 +1485,55 @@ mod tests {
         }
     }
 
+    // ── init --preset (hidden, deprecated) ──────────────────────────────
+
     #[test]
-    fn rejects_init_with_invalid_preset() {
+    fn parses_init_with_preset_for_each_accepted_value() {
+        for value in ["solo", "team", "org"] {
+            let cli =
+                Cli::try_parse_from(["konductor", Commands::INIT, "--preset", value]).unwrap();
+            match cli.command {
+                Some(Commands::Init { preset, .. }) => {
+                    assert_eq!(preset, Some(value.to_string()));
+                }
+                other => panic!("expected Init, got {other:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn init_preset_defaults_to_none_when_omitted() {
+        let cli = Cli::try_parse_from(["konductor", Commands::INIT]).unwrap();
+        match cli.command {
+            Some(Commands::Init { preset, .. }) => assert_eq!(preset, None),
+            other => panic!("expected Init, got {other:?}"),
+        }
+    }
+
+    /// An unrecognized `--preset` value is a clap usage error, remapped
+    /// to exit 64 by `parse_or_exit` -- never a silent accept.
+    #[test]
+    fn rejects_init_with_unknown_preset_value() {
         let result = Cli::try_parse_from(["konductor", Commands::INIT, "--preset", "bogus"]);
-        assert!(result.is_err());
+        assert!(
+            result.is_err(),
+            "an unsupported --preset value must be rejected at parse time"
+        );
+    }
+
+    /// `--preset` is hidden (`hide = true`): it must not appear in
+    /// `init --help`, even though it still parses.
+    #[test]
+    fn init_help_does_not_show_preset() {
+        let mut cmd = Cli::command();
+        let init_cmd = cmd
+            .find_subcommand_mut(Commands::INIT)
+            .expect("init subcommand must exist");
+        let help_text = init_cmd.render_help().to_string();
+        assert!(
+            !help_text.contains("--preset"),
+            "init --help must not show the hidden --preset flag, got: {help_text}"
+        );
     }
 
     #[test]

@@ -147,7 +147,7 @@ defaults are the kind of detail that drifts across versions.
 
 | Subcommand  | What it does                                                                                                                                                                             |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `init`      | Create `.konductor/config.yml` in the current directory from a preset (`solo`, `team`, or `org`).                                                                                        |
+| `init`      | Create `.konductor/config.yml` in the current directory from the CLI's starter defaults. Optional, since most work needs no project config at all.                                      |
 | `install`   | Install Konductor into a target directory from a `--from <repo-root>` source. `--from` (source) and `--target` (destination) are distinct flags — don't conflate them.                   |
 | `update`    | Re-run the same file-copy `install` uses against a tracked install, unconditionally overwriting every tracked file. No diffing, no `--force` flag, no protection for a hand-edited file. |
 | `uninstall` | Remove a tracked install.                                                                                                                                                                |

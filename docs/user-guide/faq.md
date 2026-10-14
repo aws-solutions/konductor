@@ -156,30 +156,6 @@ Full detail in [Contributing and customizing](appendix/contributing.md).
 
 ---
 
-## How do I make a setting apply to every project?
-
-Create a user-level config. Precedence is preset → user → project, merged per field, project
-winning.
-
-```bash
-mkdir -p ~/.konductor
-```
-
-Then put only the fields you want to override into `~/.konductor/config.yml`:
-
-```yaml
-version: 1
-tier: major
-```
-
-Any project's own `.konductor/config.yml` still overrides this for the fields it sets.
-
-This is also the answer to "why is my config not what I expect?" — a forgotten user-level file is
-the usual culprit, since it applies everywhere and nothing surfaces it. See
-[Diagnose problems → which layer supplied a value](tasks/diagnose-problems.md#why-is-a-config-value-what-it-is).
-
----
-
 ## Is any of my data sent anywhere?
 
 The CLI touches the network in one place only: `install`, fetching the release it installs from.

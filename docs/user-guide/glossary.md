@@ -164,12 +164,6 @@ which matters most when a SOP instructs an agent to use it. Something to check a
 see [Contributing and customizing](appendix/contributing.md#check-skill-coverage).
 
 
-### Preset
-
-`konductor init --preset solo|team|org` — selects the starter configuration that matches how the
-project is worked on. See [Initialize a project](tasks/initialize-a-project.md#the---preset-flag).
-
-
 ### Read-only
 
 Applied to an **agent**, it means the agent never mutates state — no file writes, no shell
@@ -196,9 +190,10 @@ testing, and operations. Konductor ships specialists for each phase.
 
 ### Severity
 
-How serious a finding is. Most **SOPs** use a three-level vocabulary —
-**CRITICAL / IMPORTANT / SUGGESTION** — sorted in that order. The severity vocabulary the CLI ships is
-declared in the file named by the `severities_source` config key.
+How serious a finding is. Most **SOPs** use a three-level vocabulary,
+**CRITICAL / IMPORTANT / SUGGESTION**, sorted in that order. The CLI's own five-level severity
+vocabulary (`CRITICAL`, `HIGH`, `MEDIUM`, `LOW`, `INFO`) is declared in `severity-schema.yml`,
+referenced internally by the `severities_source` key.
 
 
 ### Skill
@@ -229,8 +224,9 @@ with a file and a reason.
 
 ### Tier
 
-A classification of how large a change is. The tier vocabulary the CLI ships is declared in the file
-named by the `tiers_source` config key.
+A classification of how large a change is. The CLI's own tier vocabulary (`trivial`, `bugfix`,
+`minor`, `major`, `full`) is declared in `scope-table.yml`, referenced internally by the
+`tiers_source` key.
 
 
 ### tmux / zellij
