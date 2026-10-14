@@ -160,6 +160,7 @@ project’s MCP integration documentation for setup details.
 
 - [Install for Kiro CLI](install-kiro-cli.md)
 - [Install for Claude Code](install-claude-code.md)
+- [Install via the Claude Code plugin marketplace](install-claude-plugin-marketplace.md)
 - [Troubleshooting](../troubleshooting.md)
 - <https://aws-solutions.github.io/konductor/>
 
