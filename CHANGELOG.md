@@ -46,6 +46,9 @@ not per individual commit.
   `konductor install` succeeds, before `doctor` runs. A `doctor` failure no longer leaves a
   target without the `power-cli.json` record that `run-update.sh`/`run-uninstall.sh` need to
   resolve the right binary.
+- `konductor-setup`'s uninstall script no longer deletes `power-cli.json` after a `--harness
+  <name>` removal that leaves another harness still tracked at the target. It now clears the
+  record only once nothing remains installed there.
 
 ### Security
 

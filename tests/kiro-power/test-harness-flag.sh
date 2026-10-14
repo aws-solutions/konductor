@@ -135,9 +135,16 @@ if [[ -f "$UNINSTALL_MARKER" ]]; then
 else
   t_fail "a confirmed real removal with --harness present must still actually run" "no marker at: $UNINSTALL_MARKER"
 fi
-# A real removal clears power-cli.json (see run-uninstall.sh's own real-
-# removal cleanup) -- restore it for the remaining scenarios below, which
-# each need konductor_resolve_target_binary to succeed again.
+# A real removal clears power-cli.json whenever nothing is left tracked
+# at the target -- see run-uninstall.sh's own real-removal cleanup, which
+# now keys that off `.konductor/manifest`'s own presence afterward.
+# TARGET_DIR here never has a `.konductor/manifest` file at all (this
+# file's stub `uninstall` never creates one), so every scenario below
+# still falls into the "nothing left" case and power-cli.json is cleared
+# just as it was before that cleanup became conditional -- restore it for
+# the remaining scenarios below, which each need konductor_resolve_
+# target_binary to succeed again. See test-uninstall-power-cli-cleanup.sh
+# for the multi-harness case where a surviving harness keeps the record.
 cat > "${TARGET_DIR}/.konductor/power-cli.json" <<JSON
 {"cli_version": "1.0.2", "binary": "${STUB_BIN}"}
 JSON

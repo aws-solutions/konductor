@@ -118,15 +118,37 @@ KONDUCTOR_BIN="$KONDUCTOR_RESOLVE_TARGET_BINARY_RESULT"
 konductor_run "$KONDUCTOR_BIN" uninstall --target "$TARGET_DIR" "${DRY_RUN_ARGS[@]}" "${HARNESS_ARGS[@]}"
 
 # On a REAL removal that actually succeeded (a failed `konductor_run` call
-# above already `exit`ed via `set -e` before this line is ever reached;
-# --dry-run never reaches here with anything to remove, since DRY_RUN_ARGS
-# is empty only on the real-removal path and this target's own files are
-# already gone by this point either way): remove this Power's own
-# power-cli.json for this target along with everything else `uninstall`
-# just removed. `konductor uninstall` has no knowledge of this file at all
-# -- it is this Power's own record, not the CLI's -- so it is this
-# script's job, not the CLI's, to clean it up. Never done on --dry-run,
-# which must not touch the filesystem in any way.
+# above already `exit`ed via `set -e` before this line is ever reached):
+# remove this Power's own power-cli.json for this target, but ONLY if the
+# target no longer tracks ANY harness. `konductor uninstall` has no
+# knowledge of this file at all -- it is this Power's own record, not the
+# CLI's -- so it is this script's job, not the CLI's, to clean it up, and
+# that cleanup must be scoped the same way the CLI's own teardown is: a
+# `--harness <name>` uninstall on a target that still tracks ANOTHER
+# harness (e.g. `claude` surviving a `--harness kiro-v3` removal) must
+# leave power-cli.json in place -- deleting it there would strand that
+# surviving harness's next update/uninstall on konductor_resolve_target_
+# binary's legacy path (see lib.sh's own doc comment: "legacy" trusts the
+# shared ~/.local/bin/konductor outright, with no version check at all).
+# Only the LAST tracked harness's removal clears it, matching the
+# single-harness target's existing behavior.
+#
+# Signal used: whether `<target>/.konductor/manifest` itself still exists
+# afterward. `konductor uninstall` (cli/konductor-rs/src/cli/install/
+# manifest.rs's `remove_strategy_locked`/`delete_and_remove_strategy_
+# locked`) deletes that exact file -- never leaves behind an empty
+# `{"strategies": []}` document -- precisely when the removal just
+# performed leaves no strategy tracked at all, and only ever writes the
+# file back (naming the survivor(s)) when another strategy remains. The
+# file's own existence is therefore the CLI's own direct, already-durable
+# signal for "is anything still installed here"; no parsing is needed to
+# read it (unlike power-cli.json itself, elsewhere in this Power's
+# scripts, which does need jq). Never done on --dry-run, which must not
+# touch the filesystem in any way.
 if [[ -z "$DRY_RUN" ]]; then
-  rm -f "${TARGET_DIR}/.konductor/power-cli.json"
+  if [[ ! -f "${TARGET_DIR}/.konductor/manifest" ]]; then
+    rm -f "${TARGET_DIR}/.konductor/power-cli.json"
+  else
+    konductor_log "${TARGET_DIR}/.konductor/manifest still exists after this uninstall -- another harness is still tracked at this target, so this Power's own power-cli.json record is kept."
+  fi
 fi
