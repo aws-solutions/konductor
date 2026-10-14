@@ -169,6 +169,10 @@ case "\$1" in
     touch "${DOCTOR_MARKER}"
     exit 0
     ;;
+  --version)
+    echo "konductor ${REPO_ROOT_VERSION}"
+    exit 0
+    ;;
   *)
     echo "fake-konductor: unexpected subcommand: \$1" >&2
     exit 1
@@ -187,6 +191,11 @@ t_assert_contains "the suggested retry command tells the user to supply GITHUB_T
 
 # ── Test 5: the SAME signature on `doctor` suggests --no-version-check,
 # never --use-github-token (doctor has no such flag at all).
+#
+# This stub's `install` succeeds, so run-onboarding.sh now writes
+# power-cli.json (which calls the binary's own `--version`) before
+# doctor ever runs -- the `--version` case below is required for this
+# scenario to reach doctor at all, not just for realism.
 rm -f "$DOCTOR_MARKER"
 cat > "${FAKE_BIN}/fake-konductor-body.sh" <<STUB
 #!/usr/bin/env bash
@@ -197,6 +206,10 @@ case "\$1" in
   doctor)
     echo "could not determine the latest available CLI version: GitHub API responded with HTTP status 403 while fetching release metadata -- if this repository is private, set the GITHUB_TOKEN environment variable and pass --use-github-token" >&2
     exit 1
+    ;;
+  --version)
+    echo "konductor ${REPO_ROOT_VERSION}"
+    exit 0
     ;;
   *)
     echo "fake-konductor: unexpected subcommand: \$1" >&2

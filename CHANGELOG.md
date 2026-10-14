@@ -39,6 +39,10 @@ not per individual commit.
   `release/plugins`' tip exactly (e.g. a re-release of unchanged plugin content). The job now
   skips the push and draft-PR steps and ends green with a notice instead of pushing an empty
   branch and failing at `gh pr create` with "No commits between".
+- `konductor-setup`'s onboarding script now records the installing CLI binary as soon as
+  `konductor install` succeeds, before `doctor` runs. A `doctor` failure no longer leaves a
+  target without the `power-cli.json` record that `run-update.sh`/`run-uninstall.sh` need to
+  resolve the right binary.
 
 ### Security
 

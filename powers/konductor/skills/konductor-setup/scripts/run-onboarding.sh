@@ -286,6 +286,23 @@ if [[ -n "$NO_TELEMETRY" ]]; then
 fi
 konductor_run_cli "${INSTALL_ARGS[@]}"
 
+# ── Record this run's own CLI binary for konductor_resolve_target_binary ──
+# Written as soon as install succeeds -- deliberately BEFORE doctor runs,
+# not after. Doctor can fail (a real, non-zero exit this script still
+# propagates below, per the fail-stop rule) on a target where install
+# already wrote real files; a user in that state still needs
+# run-update.sh/run-uninstall.sh to resolve the CLI binary that performed
+# the install, so this record must exist regardless of what doctor
+# reports afterward. BINARY_PATH, not the mutable LINKED_BIN symlink --
+# see konductor_write_power_cli_record's own doc comment in lib.sh for
+# why that distinction matters and how run-update.sh/run-uninstall.sh
+# read this record back.
+BINARY_OWN_VERSION="$("$BINARY_PATH" --version 2>/dev/null | awk '{print $2}')"
+if [[ -z "$BINARY_OWN_VERSION" ]]; then
+  konductor_die "${BINARY_PATH} produced no '--version' output -- refusing to record it in power-cli.json." || exit 1
+fi
+konductor_write_power_cli_record "$TARGET_DIR" "$BINARY_OWN_VERSION" "$BINARY_PATH"
+
 # ── Step 7: verify with doctor ────────────────────────────────────────────
 # `doctor` has NO --use-github-token flag at all (confirmed against
 # cli.rs's Commands::Doctor variant) -- USE_GITHUB_TOKEN is deliberately
@@ -293,15 +310,3 @@ konductor_run_cli "${INSTALL_ARGS[@]}"
 # the network call that a rate limit would otherwise hit; see
 # konductor-help/SKILL.md's troubleshooting note for when to reach for it.
 konductor_run_cli "$LINKED_BIN" doctor --target "$TARGET_DIR"
-
-# ── Record this run's own CLI binary for konductor_resolve_target_binary ──
-# Written only once the whole flow above has actually succeeded.
-# BINARY_PATH, not the mutable LINKED_BIN symlink -- see
-# konductor_write_power_cli_record's own doc comment in lib.sh for why
-# that distinction matters and how run-update.sh/run-uninstall.sh read
-# this record back.
-BINARY_OWN_VERSION="$("$BINARY_PATH" --version 2>/dev/null | awk '{print $2}')"
-if [[ -z "$BINARY_OWN_VERSION" ]]; then
-  konductor_die "${BINARY_PATH} produced no '--version' output -- refusing to record it in power-cli.json." || exit 1
-fi
-konductor_write_power_cli_record "$TARGET_DIR" "$BINARY_OWN_VERSION" "$BINARY_PATH"
