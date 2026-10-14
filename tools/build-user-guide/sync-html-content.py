@@ -229,10 +229,6 @@ EDITS = [
     # Nothing has been published to download, and the step already built from a
     # clone -- the heading and the lead-in were the last two places still framing
     # it as a fetch, one of them by narrating the absent release.
-    ("qs prereq row: release framing",
-     ">No release has been published yet, so you build the CLI from a clone — rustup is the "
-     "usual way to get one<",
-     ">Built from a clone of the repository — rustup is the usual way to get a toolchain<"),
     ("qs step 1 heading", ">Download the CLI</h3>", ">Build the CLI</h3>"),
     ("qs step 1 toc", ">1 — Download the CLI</a>", ">1 — Build the CLI</a>"),
     ("qs step 1 intro", ">Get the build for your platform:</p>",
@@ -381,7 +377,7 @@ ROSTER = [
 ]
 
 
-def apply_all(page, problems):
+def apply_all(page, problems, edits=None):
     """Apply every edit exactly once, and never twice.
 
     Whether an edit has already been applied cannot be decided the same way for
@@ -404,7 +400,7 @@ def apply_all(page, problems):
     roster and card targets differ only by a little surrounding markup -- would
     be silently rewritten too. Counting first turns that into a loud failure.
     """
-    for label, old, new in EDITS + ROSTER + SOP_EDITS:
+    for label, old, new in (EDITS + ROSTER + SOP_EDITS if edits is None else edits):
         hits = page.count(old)
         if hits > 1:
             problems.append(f"{label} (matched {hits}x, expected 1)")
@@ -458,6 +454,15 @@ def main():
         if new == page:
             print(f"  {rel}: no change")
             continue
+        # Per-edit already-applied checks can't see two edits undoing each other.
+        if not problems and apply_all(new, []) != new:
+            failed = True
+            again = [e[0] for e in EDITS + ROSTER + SOP_EDITS if apply_all(new, [], [e]) != new]
+            print(f"  {rel}: NOT written — a second pass would change the result again; "
+                  f"edit(s) still firing:")
+            for label in again or ["(only in combination)"]:
+                print(f"      - {label}")
+            continue
         matched = len(EDITS) + len(ROSTER) + len(SOP_EDITS) - len(problems)
         # Never write a partially-patched bundle. Without this guard an --apply
         # run with unmatched targets still saved the subset that did match and
@@ -475,7 +480,7 @@ def main():
             htmlbundle.save(bundle, new)
 
     if failed:
-        print("\nSome edits did not match. The bundle has moved on -- update EDITS.",
+        print("\nSome edits did not match or are not idempotent -- update EDITS.",
               file=sys.stderr)
         return 1
     if not args.apply:
