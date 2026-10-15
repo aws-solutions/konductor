@@ -8,6 +8,8 @@ not per individual commit.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-15
+
 ### Added
 
 - A Claude Code plugin marketplace install path: `/plugin marketplace add
