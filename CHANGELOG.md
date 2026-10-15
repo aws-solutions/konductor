@@ -20,6 +20,10 @@ not per individual commit.
 
 ### Changed
 
+- Every agent spec under `agents/` now runs `claude-sonnet-5.5` instead of `claude-sonnet-5`.
+  The benchmark registry's `subjectModel` moves with it, so benchmarks measure the model that
+  ships. Benchmark results recorded against `claude-sonnet-5` aren't comparable with new runs;
+  the regression check refuses to compare across model pins.
 - `make synth` (and `konductor synth`) now pre-wires AWS MCP (`aws-mcp`) into the standalone
   Claude Code install, matching the plugin build. Everything else stays bring-your-own. The
   bundled-server list lives in `scripts/claude-plugin-mcp-servers.json`.
