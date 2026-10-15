@@ -19,6 +19,8 @@ not per individual commit.
   plugin-candidate PR into `release/plugins`, that creates an immutable `claude-plugin-vX.Y.Z`
   tag on the merge commit -- so a `marketplace.json` entry can pin to a specific release instead
   of the branch's moving HEAD.
+- The README links to the hosted [User Guide](https://aws-solutions.github.io/konductor/) and to
+  the self-paced [Konductor on Kiro workshop](https://catalog.us-east-1.prod.workshops.aws/workshops/b2bfcd20-ddbe-4ee3-bea8-351c4e2f6156).
 
 ### Changed
 
