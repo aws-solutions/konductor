@@ -40,7 +40,8 @@
 #                     target's own script first and renders plugin.json/
 #                     .mcp.json at the flat tree's root afterward -- there
 #                     is no separate repo-root plugin layout.
-#   claude-plugin-check PR-time smoke test: assembles the flat branch tree
+#   claude-plugin-check PR-time smoke test: runs the plugin telemetry hook's
+#                     node tests, assembles the flat branch tree
 #                     (scripts/assemble-claude-plugin-branch.sh, which
 #                     calls claude-plugin's own generation first) into a
 #                     scratch directory, then validates it (--strict) when
@@ -187,6 +188,8 @@ claude-plugin:
 # (see assemble-claude-plugin-branch.sh and claude-plugin's own comment
 # above).
 claude-plugin-check:
+	@echo "=== [claude-plugin-check] Running the plugin telemetry hook tests ==="
+	node --test tests/scripts/claude-plugin-telemetry-hook.test.js
 	$(MAKE) -C cli build TARGET=$(TARGET)
 	@test -x "$(KONDUCTOR_BIN)" || { echo "error: $(KONDUCTOR_BIN) not found; run 'make -C cli build' first" >&2; exit 1; }
 	@validated=1; \

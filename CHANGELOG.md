@@ -6,6 +6,16 @@ This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Entries are consolidated per release,
 not per individual commit.
 
+## [Unreleased]
+
+### Added
+
+- Claude Code plugin telemetry. A plugin hook sends `agent_invocation` and
+  `subagent_invocation` events for Konductor's own agents, in the CLI's format, with
+  `claude-plugin` as the harness. It is on by default and shares the machine ID in
+  `~/.konductor/telemetry.json` with the CLI. Turn it off with the plugin's
+  `telemetry_enabled` option or any existing opt-out.
+
 ## [1.1.0] - 2026-10-14
 
 ### Added
