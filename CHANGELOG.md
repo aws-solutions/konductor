@@ -42,22 +42,9 @@ not per individual commit.
   `release/plugins`' tip exactly (e.g. a re-release of unchanged plugin content). The job now
   skips the push and draft-PR steps and ends green with a notice instead of pushing an empty
   branch and failing at `gh pr create` with "No commits between".
-- `konductor-setup`'s onboarding script now records the installing CLI binary as soon as
-  `konductor install` succeeds, before `doctor` runs. A `doctor` failure no longer leaves a
-  target without the `power-cli.json` record that `run-update.sh`/`run-uninstall.sh` need to
-  resolve the right binary.
-- `konductor-setup`'s uninstall script no longer deletes `power-cli.json` after a `--harness
-  <name>` removal that leaves another harness still tracked at the target. It now clears the
-  record only once nothing remains installed there.
 
 ### Security
 
-- `konductor-setup` now rejects a malformed release tag or version (from `--tag` or
-  `KONDUCTOR_POWER_VERSION`) before using it in a download URL, a cache path, or a
-  `git clone --branch` ref, instead of passing it through unchecked.
-- `konductor-setup`'s onboarding script now validates the installing binary's own `--version`
-  output as a bare semver before recording it in `power-cli.json`, instead of only checking it
-  for emptiness.
 - `aws-mcp` uses `mcp-proxy-for-aws-cli==1.7.0` instead of a moving package version. The managed endpoint still supplies current AWS documentation and skills.
 - The plugin release no longer force-pushes directly to a public branch. `publish-claude-plugin`
   pushes a fresh, collision-resistant candidate branch (release version plus workflow run
