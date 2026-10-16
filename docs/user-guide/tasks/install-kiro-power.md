@@ -81,8 +81,7 @@ How you start depends on where you are.
 **In Kiro IDE:** open the agent selector in the chat input bar, next to the
 model picker, and choose `konductor` from the Workspace group (or a
 specialist such as `k-architect` or `k-developer`). Then ask in plain
-language, for example "What is Konductor and what can I ask it?", which
-triggers the `about-konductor` orientation.
+language, for example "What is Konductor and what can I ask it?".
 
 **In kiro-cli:** start a session and ask in plain language:
 
