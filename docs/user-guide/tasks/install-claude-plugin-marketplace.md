@@ -97,8 +97,9 @@ Add `--scope user` to make that server available across projects.
 The plugin sends usage telemetry to AWS by default. A hook runs when a
 session starts with a Konductor agent and when a Konductor agent is
 delegated to. Each event carries the agent name, the delegating Konductor
-agent's name when Claude Code exposes it, the plugin version, and a hashed
-session ID. Your own agents and Claude Code's built-in agents are never
+agent's name when Claude Code exposes it, the plugin version, a hashed
+session ID, and `claude-plugin` as the harness so plugin events can be told
+apart from CLI ones. Your own agents and Claude Code's built-in agents are never
 reported. Prompts, file paths, and tool inputs are never sent.
 
 Events also carry the machine ID stored in `~/.konductor/telemetry.json`.

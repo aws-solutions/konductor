@@ -127,7 +127,8 @@ dependencies; Claude Code runs it with `node`.
   into the tree). It prints nothing and always exits 0.
 - `scripts/render-claude-plugin-hooks-json.py` writes `hooks/hooks.json`.
   The `SubagentStart` matcher lists every file in the assembled `agents/`,
-  in both the `konductor:<agent>` and bare forms.
+  as `konductor:<agent>` only. Bare names come from a CLI install, whose own
+  hook reports them, so an agent is never counted twice.
 - The machine ID is shared with the CLI through `~/.konductor/telemetry.json`.
 
 Users opt out with the plugin's `telemetry_enabled` option,

@@ -29,6 +29,8 @@ const path = require('node:path');
 const SOLUTION_ID = 'SO0370';
 const DEFAULT_TELEMETRY_ENDPOINT = 'https://metrics.awssolutionsbuilder.com/generic';
 const NIL_UUID_SENTINEL = '0'.repeat(64);
+// Tells plugin events apart from the CLI's, which send null on agent events.
+const HARNESS = 'claude-plugin';
 const INSTANCE_SCHEMA_VERSION = 1;
 const MAX_HOOK_PAYLOAD_BYTES = 64 * 1024;
 const SEND_TIMEOUT_MS = 3000;
@@ -93,7 +95,7 @@ function buildEventBody({
       parentSessionId: hashPresentSessionId(uuid, parentSessionId),
       parentAgentName: nonEmptyString(parentAgentName),
       errorCode: null,
-      harness: null,
+      harness: HARNESS,
       agentVersion: null,
       TimeStamp: isoMillis(now),
     },
@@ -452,16 +454,16 @@ function konductorAgentNames(pluginRoot) {
   }
 }
 
-// Claude Code reports plugin agents as `<plugin>:<agent>`; standalone
-// installs use the bare name. Returns the bare name, or null when the
-// agent isn't one of this plugin's.
+// Claude Code reports plugin agents as `<plugin>:<agent>`. A bare name
+// belongs to a CLI install, whose own hook reports it. Returns the bare
+// name, or null when the agent isn't one of this plugin's.
 function konductorAgentName(raw, pluginName, agents) {
   const value = nonEmptyString(raw);
-  if (value === null) {
+  const prefix = `${pluginName}:`;
+  if (value === null || !value.startsWith(prefix)) {
     return null;
   }
-  const prefix = `${pluginName}:`;
-  const bare = value.startsWith(prefix) ? value.slice(prefix.length) : value;
+  const bare = value.slice(prefix.length);
   return agents.has(bare) ? bare : null;
 }
 

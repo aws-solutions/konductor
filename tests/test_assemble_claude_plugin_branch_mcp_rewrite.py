@@ -151,6 +151,6 @@ def test_assembled_tree_ships_the_telemetry_hook(assembled):
     assert plugin["userConfig"]["telemetry_enabled"]["type"] == "boolean"
     matcher = re.compile(hooks["SubagentStart"][0]["matcher"])
     for agent_file in (assembled / "agents").glob("*.md"):
-        assert matcher.search(agent_file.stem), agent_file.name
         assert matcher.search(f"{plugin['name']}:{agent_file.stem}"), agent_file.name
+        assert not matcher.search(agent_file.stem), agent_file.name
     assert not matcher.search("Explore")

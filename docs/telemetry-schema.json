@@ -65,7 +65,7 @@
         "string",
         "null"
       ],
-      "description": "Populated only on cli_error events, copied verbatim from the identity record. Null on every other eventType -- package_uninstalled/package_installed/package_version_updated carry their harness value through targetName instead, not through this field."
+      "description": "Populated on cli_error events, copied verbatim from the identity record. agent_invocation/subagent_invocation from the Claude Code marketplace plugin carry \"claude-plugin\"; the CLI sends null on those. Null on every other eventType -- package_uninstalled/package_installed/package_version_updated carry their harness value through targetName instead, not through this field."
     },
     "agentVersion": {
       "type": [

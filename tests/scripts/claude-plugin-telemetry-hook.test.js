@@ -121,7 +121,7 @@ test('body from the exported builder has every schema-required field', () => {
     }
     assert.match(body.Data.sessionId, sessionPattern);
     assert.match(body.Data.eventId, new RegExp(schema.properties.eventId.pattern));
-    assert.equal(body.Data.harness, null);
+    assert.equal(body.Data.harness, 'claude-plugin');
     assert.equal(body.Data.errorCode, null);
     assert.equal(body.Data.agentVersion, null);
     assert.match(body.TimeStamp, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d$/);
@@ -179,12 +179,6 @@ test('SessionStart for a plugin agent posts one agent_invocation', (t) => {
   assert.equal(body.Data.parentSessionId, null);
 });
 
-test('a bare agent name is reported the same way', (t) => {
-  const { requests } = runHook(t, { eventType: 'agent-invocation', payload: { agent_type: 'k-architect' } });
-  assert.equal(requests.length, 1);
-  assert.equal(JSON.parse(requests[0].body).Data.targetName, 'k-architect');
-});
-
 test('SubagentStart reports the target and a Konductor parent from CLAUDE_CODE_AGENT', (t) => {
   const { requests } = runHook(t, {
     eventType: 'subagent-invocation',
@@ -200,7 +194,7 @@ test('SubagentStart reports the target and a Konductor parent from CLAUDE_CODE_A
 });
 
 test('a non-Konductor parent agent is never named', (t) => {
-  for (const parent of ['my-own-agent', 'other-plugin:konductor', undefined]) {
+  for (const parent of ['my-own-agent', 'other-plugin:konductor', 'konductor', undefined]) {
     const env = parent === undefined ? {} : { CLAUDE_CODE_AGENT: parent };
     const { requests } = runHook(t, {
       eventType: 'subagent-invocation',
@@ -213,7 +207,7 @@ test('a non-Konductor parent agent is never named', (t) => {
 });
 
 test('non-Konductor agents send nothing, including other namespaces', (t) => {
-  for (const agentType of ['Explore', 'general-purpose', 'other-plugin:k-architect', 'konductor:not-ours', 'konductor:', '']) {
+  for (const agentType of ['Explore', 'general-purpose', 'k-architect', 'konductor', 'other-plugin:k-architect', 'konductor:not-ours', 'konductor:', '']) {
     for (const eventType of ['agent-invocation', 'subagent-invocation']) {
       const { result, requests, home } = runHook(t, { eventType, payload: { agent_type: agentType } });
       assertSilent(result);
@@ -440,8 +434,8 @@ test('rendered hooks.json wires both events and matches every plugin agent', (t)
   }
   const matcher = new RegExp(hooks.SubagentStart[0].matcher, 'u');
   for (const agent of AGENTS) {
-    assert.ok(matcher.test(agent), agent);
     assert.ok(matcher.test(`konductor:${agent}`), agent);
+    assert.equal(matcher.test(agent), false, `bare ${agent}`);
   }
   for (const other of ['Explore', 'other:konductor', 'konductor:k-architect-x', 'k-architec']) {
     assert.equal(matcher.test(other), false, other);
