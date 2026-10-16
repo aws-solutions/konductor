@@ -1,8 +1,6 @@
 # Getting Started with Claude Code
 
-> **Publication pending:** The release artifact for this package is not yet published to GitHub. Until the release is available, this guide describes the intended install and usage.
-
-This guide covers how to install and use the ASDLC Core AI Capabilities agent team with Claude Code.
+This guide covers how to install and use the Konductor agent team with Claude Code.
 
 ## Prerequisites
 
@@ -11,18 +9,32 @@ This guide covers how to install and use the ASDLC Core AI Capabilities agent te
 
 ## Installation
 
-```bash
-aim plugins install ASDLCCoreAICapabilities --namespaces standalone
-```
+Pick one of two ways:
 
-`aim plugins install` installs the package as a Claude Code plugin under `~/.claude/plugins/` — it does not copy individual agent, skill, or SOP files into `~/.claude/` directly. No cloud infrastructure or additional dependencies beyond the `aim` CLI are required.
+- **Standalone install** with the `konductor` CLI, which copies agents and skills into `.claude/`.
+  See [Install for Claude Code](../user-guide/tasks/install-claude-code.md).
+
+  ```bash
+  konductor install --harness claude
+  ```
+
+- **Plugin marketplace**, which installs Konductor as a Claude Code plugin. See
+  [Install via the Claude Code plugin marketplace](../user-guide/tasks/install-claude-plugin-marketplace.md).
+
+  ```text
+  /plugin marketplace add aws-solutions/konductor
+  /plugin install konductor@konductor
+  ```
+
+No cloud infrastructure is required.
 
 ## Invoking an Agent
 
-Installing as a plugin namespaces agent names by package, so the orchestrator's name is prefixed: `ASDLCCoreAICapabilities-konductor`, not the bare `konductor`.
+A standalone install uses bare agent names. A plugin install prefixes them with `konductor:`.
 
 ```bash
-claude --agent ASDLCCoreAICapabilities-konductor
+claude --agent konductor            # standalone install
+claude --agent konductor:konductor  # plugin install
 ```
 
 The orchestrator coordinates the rest of the team — you do not need to invoke specialist agents directly for most tasks.
@@ -100,7 +112,7 @@ A skill's own `allowed-tools` frontmatter field pre-approves specific tools **fo
 
 ## Agent Team (Optional)
 
-The ASDLC package ships a coordinated hub-and-spoke team:
+Konductor ships a coordinated hub-and-spoke team:
 
 | Agent                        | Role                                                                |
 | ---------------------------- | ------------------------------------------------------------------- |
