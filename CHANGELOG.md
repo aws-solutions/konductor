@@ -6,6 +6,19 @@ This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Entries are consolidated per release,
 not per individual commit.
 
+## [Unreleased]
+
+### Fixed
+
+- `scripts/build-plugin-candidate-commit.sh` now builds the Claude Code plugin candidate
+  commit's tree directly from `--assemble-dir`, instead of running `git rm -rq .` + `cp -a` +
+  `git add -A` in the same checkout `make -C cli build` already ran in. That checkout's
+  untracked build output (`cli/konductor-rs/target/`, `build/cli/konductor`, `dist/`,
+  `generated/claude-plugin/`) could reach the candidate commit, since `git rm -rq .` also
+  deleted the checked-out `.gitignore` that would otherwise have excluded it. The script now
+  also verifies the candidate commit's tree matches `--assemble-dir`'s file listing exactly
+  before creating the branch.
+
 ## [1.1.0] - 2026-10-14
 
 ### Added
