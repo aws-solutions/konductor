@@ -574,3 +574,17 @@ def test_executable_bit_and_symlinks_are_kept(checkout, assembled, remote):
     assert any(line.startswith("100755 ") and line.endswith("\tagents/run.sh") for line in listing.splitlines())
     assert any(line.startswith("120000 ") and line.endswith("\tagents/link.md") for line in listing.splitlines())
 
+
+CHECK_TREE = REPO_ROOT / "scripts" / "check-claude-plugin-tree.sh"
+
+
+def test_check_tree_rejects_a_dangling_top_level_symlink(assembled):
+    (assembled / "cli").symlink_to("does-not-exist")
+    result = subprocess.run(["bash", str(CHECK_TREE), str(assembled)], capture_output=True, text=True)
+    assert result.returncode != 0
+    assert "cli" in result.stderr
+
+
+def test_check_tree_accepts_the_allowed_entries(assembled):
+    result = subprocess.run(["bash", str(CHECK_TREE), str(assembled)], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr

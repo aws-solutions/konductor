@@ -15,7 +15,7 @@ ALLOWED=".claude-plugin .mcp.json LICENSE.txt README.md agents docs hooks skills
 
 unexpected=()
 for entry in "$PLUGIN_DIR"/* "$PLUGIN_DIR"/.[!.]* "$PLUGIN_DIR"/..?*; do
-  [ -e "$entry" ] || continue
+  [ -e "$entry" ] || [ -L "$entry" ] || continue
   name="$(basename "$entry")"
   case " $ALLOWED " in
     *" $name "*) ;;
