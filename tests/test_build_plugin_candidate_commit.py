@@ -414,22 +414,8 @@ def test_no_op_writes_committed_false_to_github_output(checkout, assembled, remo
 def test_untracked_build_junk_in_checkout_never_reaches_the_candidate(
     checkout, assembled, remote, tmp_path
 ):
-    """Regression test for the v1.1.0 candidate PR #56 defect: the script
-    used to run `git rm -rq .` + `cp -a "$ASSEMBLE_DIR"/. .` + `git add -A`
-    directly in the job's own checkout -- the same checkout `make -C cli
-    build` and scripts/generate-claude-plugin.sh already ran in. `git rm
-    -rq .` deletes the checked-out .gitignore along with everything else
-    tracked, so `git add -A` then picks up whatever untracked build
-    output is sitting there (cli/konductor-rs/target/, build/cli/
-    konductor, dist/, generated/claude-plugin/), with no .gitignore left
-    to exclude it.
-
-    This reproduces that precisely: release/plugins tracks a .gitignore
-    that would exclude these paths if it survived, and the checkout has
-    the same untracked junk a real job leaves behind. The fix builds the
-    candidate's tree directly from --assemble-dir and never reads the
-    checkout's working directory at all, so the junk can never reach the
-    candidate commit regardless of what happens to .gitignore."""
+    """release/plugins tracks a .gitignore and the checkout holds untracked
+    build output. The candidate must contain only the assembled files."""
     base_with_gitignore = tmp_path / "base-with-gitignore"
     _git("clone", "-q", str(remote), str(base_with_gitignore), cwd=tmp_path)
     _git("checkout", "-q", "release/plugins", cwd=base_with_gitignore)
