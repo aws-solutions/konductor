@@ -9,7 +9,7 @@ description: Delegate tasks to parallel agent sessions via tmux or zellij. Auto-
 
 The orchestrator always dispatches via panes. The dispatch script selects the CLI automatically:
 
-- **Claude Code** (`$CLAUDECODE` is set): runs `claude --agent <PREFIX><agent-name> --dangerously-skip-permissions -p "<prompt>"` in the pane, where `<agent-name>` is the exact value passed via `--agent` (e.g. `k-developer`) — this script never adds or strips a role prefix. `<PREFIX>` is the package-install prefix (e.g. `local-ASDLCCoreAICapabilities-`), derived by searching `~/.claude/agents/` for any installed agent file ending in `-<agent-name>.md` (local- installs preferred over registry installs, checked as separate tiers). No package name is hardcoded, so this resolves correctly for any installed package. **`--agent` must be a fully-qualified name** — if it matches 2+ installed agent files within the same tier (e.g. a partial name like `orchestrator` matching both `konductor-mux-orchestrator` and `konductor-cmux-orchestrator`), the script errors and lists the candidates rather than guessing. `--agent` values are also restricted to `[a-z0-9-]+` before any of this runs. Completion is detected via process exit (claude -p exits on task completion); the script then `touch`es the `.done` marker file.
+- **Claude Code** (`$CLAUDECODE` is set): runs `claude --agent <PREFIX><agent-name> --dangerously-skip-permissions -p "<prompt>"` in the pane, where `<agent-name>` is the exact value passed via `--agent` (e.g. `k-developer`) — this script never adds or strips a role prefix. `<PREFIX>` is the package-install prefix (e.g. `local-your-package-`), derived by searching `~/.claude/agents/` for any installed agent file ending in `-<agent-name>.md` (local- installs preferred over registry installs, checked as separate tiers). No package name is hardcoded, so this resolves correctly for any installed package. **`--agent` must be a fully-qualified name** — if it matches 2+ installed agent files within the same tier (e.g. a partial name like `orchestrator` matching both `konductor-mux-orchestrator` and `konductor-cmux-orchestrator`), the script errors and lists the candidates rather than guessing. `--agent` values are also restricted to `[a-z0-9-]+` before any of this runs. Completion is detected via process exit (claude -p exits on task completion); the script then `touch`es the `.done` marker file.
 - **kiro-cli** (default): runs `kiro-cli chat --agent <agent-name> ...` in the pane, using the exact `--agent` value passed in — no prefix is added or stripped. Completion is detected via the kiro-cli `stop` hook writing the `.done` file.
 
 ## Overview
@@ -28,16 +28,50 @@ Use this skill when:
 
 **You MUST immediately run the dispatch script without pre-checking the environment.** The script handles all validation and exits with a clear error if anything is missing.
 
-## Multiplexer Detection
+## Locating dispatch.sh
 
-**Always call `dispatch.sh` — never detect-then-branch yourself.** It resolves its
-own directory (works from any cwd, including a monorepo root where a
-relative `skills/mux-dispatch/...` path would not resolve), detects the active
-multiplexer, and `exec`s the matching backend script with your arguments
-unchanged:
+`dispatch.sh` resolves its own directory once bash has found and started it
+(works from any cwd, including a monorepo root), so it can find its sibling
+backend scripts (`tmux-dispatch.sh` / `zellij-dispatch.sh`) next to itself.
+That doesn't help bash find `dispatch.sh` in the first place — a relative
+`skills/mux-dispatch/dispatch.sh` path resolves only when the cwd happens to
+be a checkout of this repository, which is not true for a plugin install or a
+Kiro install, where the user's project is the cwd and there is no `skills/`
+directory under it.
+
+Resolve the skill's own directory once, in order, and reuse it for every
+invocation below:
 
 ```bash
-bash skills/mux-dispatch/dispatch.sh --agent <name> --task "..." --cwd <path>
+MUX_DISPATCH_DIR="${CLAUDE_SKILL_DIR:-}"
+[ -d "$MUX_DISPATCH_DIR" ] || MUX_DISPATCH_DIR="$(git rev-parse --show-toplevel 2>/dev/null)/skills/mux-dispatch"
+[ -d "$MUX_DISPATCH_DIR" ] || MUX_DISPATCH_DIR="${SKILLS_HOME:-$HOME/.konductor/skills}/mux-dispatch"
+[ -d "$MUX_DISPATCH_DIR" ] || MUX_DISPATCH_DIR="$(git rev-parse --show-toplevel 2>/dev/null)/.konductor/skills/mux-dispatch"
+```
+
+- `${CLAUDE_SKILL_DIR}` — Claude Code substitutes this to this skill's own
+  directory before you see this text, for both a plugin install and a
+  standalone `.claude/skills/` install. On a runtime that doesn't perform
+  this substitution, the variable is empty and the check falls through.
+- `$(git rev-parse --show-toplevel)/skills/mux-dispatch` — running from a
+  source checkout of this repository.
+- `${SKILLS_HOME:-$HOME/.konductor/skills}/mux-dispatch` — a global Kiro CLI
+  install (`konductor install` with no `--target`), which lands under `$HOME`.
+- `$(git rev-parse --show-toplevel)/.konductor/skills/mux-dispatch` — a
+  project-level Kiro CLI install, which lands `.konductor/` at the project
+  root alongside `.kiro/`.
+
+If none of these is a directory, dispatch cannot run — tell the user and fall
+back to the base orchestrator.
+
+## Multiplexer Detection
+
+**Always call `dispatch.sh` — never detect-then-branch yourself.** It detects
+the active multiplexer and `exec`s the matching backend script with your
+arguments unchanged:
+
+```bash
+bash "$MUX_DISPATCH_DIR/dispatch.sh" --agent <name> --task "..." --cwd <path>
 ```
 
 | Env var set | Backend | Script routed to                       |
@@ -70,13 +104,13 @@ unchanged when calling them through `dispatch.sh`.
 
 ```bash
 # Delegate implementation (split right, default)
-bash skills/mux-dispatch/tmux-dispatch.sh \
+bash "$MUX_DISPATCH_DIR/tmux-dispatch.sh" \
   --agent k-developer \
   --cwd /path/to/project \
   --task "Implement the user authentication API endpoint"
 
 # Side-by-side split downward
-bash skills/mux-dispatch/tmux-dispatch.sh \
+bash "$MUX_DISPATCH_DIR/tmux-dispatch.sh" \
   --agent k-architect \
   --cwd /path/to/project \
   --split down \
@@ -90,13 +124,13 @@ Same flags as `tmux-dispatch.sh`. Uses `env MUX_WORKSPACE_ID=...` wrapper to pas
 **`--split stacked` is zellij-only** — creates a stacked pane via `zellij action new-pane --stacked` (no `--direction`; conflicts with `--stacked`). tmux and cmux do not support stacked panes.
 
 ```bash
-bash skills/mux-dispatch/zellij-dispatch.sh \
+bash "$MUX_DISPATCH_DIR/zellij-dispatch.sh" \
   --agent k-developer \
   --cwd /path/to/project \
   --task "Implement the user authentication API endpoint"
 
 # Stacked pane (zellij only)
-bash skills/mux-dispatch/zellij-dispatch.sh \
+bash "$MUX_DISPATCH_DIR/zellij-dispatch.sh" \
   --agent k-developer \
   --cwd /path/to/project \
   --split stacked \
@@ -176,7 +210,7 @@ list`/`git worktree add` work there with no extra `cd`. Pass the named
 target in the dispatched task instead:
 
 ```bash
-bash skills/mux-dispatch/dispatch.sh \
+bash "$MUX_DISPATCH_DIR/dispatch.sh" \
   --agent k-developer \
   --cwd <primary-working-tree> \
   --task "Worktree wt-<id> already exists at <path> — cd in, do not create
