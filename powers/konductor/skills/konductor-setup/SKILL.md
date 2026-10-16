@@ -69,6 +69,27 @@ The script:
 Native Windows is not supported. Direct the user to WSL. If any step fails,
 show the command output and stop.
 
+## After a successful install
+
+Report what `doctor` showed, then tell the user how to start, matched to the
+surface you are running in. If you cannot tell which one that is, show both.
+
+**In Kiro IDE:** open the agent selector in the chat input bar, next to the
+model picker, and choose `konductor` from the Workspace group (or a
+specialist such as `k-architect` or `k-developer` for a narrower task). Then
+ask in plain language, for example "What is Konductor and what can I ask
+it?", which triggers the `about-konductor` orientation.
+
+**In kiro-cli:** start a session and ask in plain language:
+
+```bash
+kiro-cli chat --agent konductor
+```
+
+More detail: [Kiro Power install guide](https://github.com/aws-solutions/konductor/blob/v1.1.0/docs/user-guide/tasks/install-kiro-power.md),
+[agents reference](https://github.com/aws-solutions/konductor/blob/v1.1.0/docs/user-guide/agents.md),
+[`about-konductor`](https://github.com/aws-solutions/konductor/blob/v1.1.0/docs/user-guide/sop-workflows/orchestration.md#about-konductor).
+
 ## GitHub rate limits
 
 Install and update can use `--use-github-token` after a new consent statement

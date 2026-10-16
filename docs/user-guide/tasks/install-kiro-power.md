@@ -74,6 +74,26 @@ It stops if a command fails. `doctor` reports source, runtime, manifest,
 configuration, container, index, telemetry, CLI version, and content version
 status. Read the failing check's `fix:` guidance before retrying.
 
+## After installing
+
+How you start depends on where you are.
+
+**In Kiro IDE:** open the agent selector in the chat input bar, next to the
+model picker, and choose `konductor` from the Workspace group (or a
+specialist such as `k-architect` or `k-developer`). Then ask in plain
+language, for example "What is Konductor and what can I ask it?", which
+triggers the `about-konductor` orientation.
+
+**In kiro-cli:** start a session and ask in plain language:
+
+```bash
+kiro-cli chat --agent konductor
+```
+
+See the [agents reference](../agents.md) for what each installed agent can
+do, and [`about-konductor`](../sop-workflows/orchestration.md#about-konductor)
+for a full orientation.
+
 ## Telemetry
 
 Telemetry is enabled by default and is disclosed before setup begins. To opt
