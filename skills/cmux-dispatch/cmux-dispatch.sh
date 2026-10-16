@@ -71,10 +71,10 @@ done
 
 [[ -z "$AGENT" ]] && { echo "ERROR: --agent required" >&2; exit 1; }
 [[ -z "$TASK" ]]  && { echo "ERROR: --task required" >&2; exit 1; }
-# AGENT is used verbatim -- the caller (orchestrator routing table) is the
-# single source of truth for the fully-qualified agent name (e.g. 'k-developer').
-# This script never adds or strips a role prefix.
-[[ "$AGENT" =~ ^[a-z0-9-]+$ ]] || { echo "ERROR: --agent must be alphanumeric/hyphens only" >&2; exit 1; }
+# AGENT is the name from the orchestrator routing table (e.g. 'k-developer'),
+# or one already qualified with a Claude Code plugin name ('konductor:k-developer').
+# This script never strips a prefix; it adds only the plugin name, below.
+[[ "$AGENT" =~ ^([a-z0-9-]+:)?[a-z0-9-]+$ ]] || { echo "ERROR: --agent must be alphanumeric/hyphens only, optionally prefixed with '<plugin>:'" >&2; exit 1; }
 CMUX_BIN="${CMUX_BIN:-/Applications/cmux.app/Contents/MacOS/cmux}"
 [[ -x "$CMUX_BIN" ]] || { echo "ERROR: cmux binary not found or not executable (set CMUX_BIN to override)" >&2; exit 1; }
 cmux() { "$CMUX_BIN" "$@"; }
@@ -160,37 +160,55 @@ if [ -n "${CLAUDECODE:-}" ]; then
   # glob order. FOUND is tracked separately from PREFIX so a legitimate
   # empty prefix (a hypothetical prefix-less "<agent>.md" install) is not
   # mistaken for "not found".
+  # If ~/.claude/agents has no match, fall back to the agents this skill's
+  # own plugin ships: in a Claude Code plugin this script sits at
+  # <plugin root>/skills/cmux-dispatch/, and the plugin's agents are named
+  # <plugin>:<agent>. A plugin-qualified AGENT is launched as-is.
+  PLUGIN_ROOT="$(cd -P "$SCRIPT_DIR/../.." && pwd)"
+  PLUGIN_NAME=""
+  if [[ -f "$PLUGIN_ROOT/.claude-plugin/plugin.json" ]]; then
+    PLUGIN_NAME="$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1])).get("name", ""))' \
+      "$PLUGIN_ROOT/.claude-plugin/plugin.json" 2>/dev/null || true)"
+    [[ "$PLUGIN_NAME" =~ ^[a-z0-9-]+$ ]] || PLUGIN_NAME=""
+  fi
   PREFIX="" FOUND="" AMBIGUOUS=""
-  LOCAL_MATCHES=()
-  for f in "$HOME"/.claude/agents/local-*-"${AGENT}".md; do
-    [ -f "$f" ] || continue
-    LOCAL_MATCHES+=("$f")
-  done
-  if [ "${#LOCAL_MATCHES[@]}" -eq 1 ]; then
-    base=$(basename "${LOCAL_MATCHES[0]}" .md)
-    PREFIX="${base%"${AGENT}"}"
+  if [[ "$AGENT" == *:* ]]; then
     FOUND=1
-  elif [ "${#LOCAL_MATCHES[@]}" -gt 1 ]; then
-    AMBIGUOUS="${LOCAL_MATCHES[*]}"
   else
-    REGISTRY_MATCHES=()
-    for f in "$HOME"/.claude/agents/*-"${AGENT}".md; do
+    LOCAL_MATCHES=()
+    for f in "$HOME"/.claude/agents/local-*-"${AGENT}".md; do
       [ -f "$f" ] || continue
-      case "$(basename "$f")" in
-        local-*) continue ;;
-      esac
-      REGISTRY_MATCHES+=("$f")
+      LOCAL_MATCHES+=("$f")
     done
-    if [ "${#REGISTRY_MATCHES[@]}" -eq 1 ]; then
-      base=$(basename "${REGISTRY_MATCHES[0]}" .md)
+    if [ "${#LOCAL_MATCHES[@]}" -eq 1 ]; then
+      base=$(basename "${LOCAL_MATCHES[0]}" .md)
       PREFIX="${base%"${AGENT}"}"
       FOUND=1
-    elif [ "${#REGISTRY_MATCHES[@]}" -gt 1 ]; then
-      AMBIGUOUS="${REGISTRY_MATCHES[*]}"
-    elif [ -f "$HOME/.claude/agents/${AGENT}.md" ]; then
-      # Bare, no-prefix install
-      PREFIX=""
-      FOUND=1
+    elif [ "${#LOCAL_MATCHES[@]}" -gt 1 ]; then
+      AMBIGUOUS="${LOCAL_MATCHES[*]}"
+    else
+      REGISTRY_MATCHES=()
+      for f in "$HOME"/.claude/agents/*-"${AGENT}".md; do
+        [ -f "$f" ] || continue
+        case "$(basename "$f")" in
+          local-*) continue ;;
+        esac
+        REGISTRY_MATCHES+=("$f")
+      done
+      if [ "${#REGISTRY_MATCHES[@]}" -eq 1 ]; then
+        base=$(basename "${REGISTRY_MATCHES[0]}" .md)
+        PREFIX="${base%"${AGENT}"}"
+        FOUND=1
+      elif [ "${#REGISTRY_MATCHES[@]}" -gt 1 ]; then
+        AMBIGUOUS="${REGISTRY_MATCHES[*]}"
+      elif [ -f "$HOME/.claude/agents/${AGENT}.md" ]; then
+        # Bare, no-prefix install
+        PREFIX=""
+        FOUND=1
+      elif [[ -n "$PLUGIN_NAME" && -f "$PLUGIN_ROOT/agents/${AGENT}.md" ]]; then
+        PREFIX="${PLUGIN_NAME}:"
+        FOUND=1
+      fi
     fi
   fi
   if [ -n "$AMBIGUOUS" ]; then
