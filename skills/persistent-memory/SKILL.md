@@ -66,7 +66,7 @@ Load `.konductor/memory/MEMORY.md` and `.konductor/memory/USER.md` via `fs_read`
 4. **Exit 0** → write succeeded (validator performs atomic write).
 5. **Exit 1** → read stderr for reason, adjust and retry once, or skip if unresolvable.
 
-**Missing validator:** If nothing matches, the snippet exits 1. Fail closed — do not write, log the error, continue the session normally.
+**Missing validator:** If nothing matches, the snippet exits 1. Fail closed: do not write, log the error, and continue the session normally.
 
 ### Add an entry
 
