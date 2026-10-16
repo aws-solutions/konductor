@@ -14,48 +14,22 @@
 #   [local-bin-dir]   defaults to $HOME/.local/bin; override for tests to
 #                      avoid touching a real $HOME
 #
-# On success, sets LINK_BINARY_RESULT to the path of the created symlink
-# and returns 0 -- same rationale as fetch-verify-binary.sh's
-# FETCH_VERIFY_BINARY_RESULT (this function's own PATH note, printed via
-# konductor_log, must stay visible rather than be captured away by a
-# caller retrieving the result). Idempotent: re-running with the same
-# binary re-creates the same symlink; re-running after a rebuild repoints
-# it.
+# On success, sets LINK_BINARY_RESULT to the created symlink's path.
+# Idempotent: re-running repoints the same symlink.
 #
-# Fails closed rather than writing anywhere unexpected: if
-# <local-bin-dir>/konductor already exists as a directory -- a REAL one,
-# OR a symlink that itself RESOLVES to one -- or as anything else (a
-# regular file, FIFO, socket, device node, etc.) that is not a symlink
-# this Power itself created, this function refuses and returns non-zero
-# -- it never overwrites a foreign file, and it never falls into the
-# directory-clobbering gotcha both `ln -sf` AND plain `mv` share: `ln -sf
-# target existing-dir` silently creates `existing-dir/<basename of
-# target>` INSTEAD of replacing `existing-dir` (reproduced directly
-# against this host's own `ln`), and `mv src existing-dir` does the exact
-# same "move src INSIDE me" thing for ANY existing-dir, symlink or not,
-# since `mv` decides "is the destination a directory" the same way `-d`
-# does: by following a symlink straight through to what it resolves to.
-# The `mv -f "$tmp_link" "$link_path"` step below would otherwise hit
-# this identical footgun whenever $link_path was a symlink pointing AT a
-# directory -- a case a bare `! -L` directory check would miss, since a
-# symlink IS `-L`; the explicit `-L && -d` check below closes that gap --
-# which is exactly a "writes somewhere else" bug this file's own header
-# claims cannot happen, regardless of which of `ln -sf`'s or `mv`'s two
-# independent codepaths would have caused it.
+# Fails closed on anything at <local-bin-dir>/konductor this function did
+# not itself create -- a real directory, a symlink resolving to one, or
+# any other non-symlink node -- and never falls into the directory-
+# clobbering gotcha `ln -sf`/`mv` both share: given an existing directory
+# (or a symlink to one) as the destination, both write INSIDE it instead
+# of replacing it, since both decide "is this a directory" by following a
+# symlink through to its target.
 #
-# The actual replacement is atomic: a new symlink is created at a
-# same-directory temp name, then `mv`d onto the real link path in one
-# rename -- never an in-place `ln -sf`, which first unlinks the old target
-# and then creates the new one as two separate syscalls, leaving a window
-# where a concurrent reader (a second onboarding run in a different
-# project, invoked at the same moment) could observe the link briefly
-# missing entirely. A rename onto an existing filename is atomic on every POSIX
-# filesystem this Power supports, on both Linux and macOS -- no GNU-only
-# `mv -T` needed, since every directory-shaped case above (real directory
-# or symlink-to-directory) is already refused before this point is ever
-# reached. The temp symlink itself is cleaned up on every failure path
-# after it is created -- a failed `ln`/`mv` never leaves a stray
-# `konductor.tmp.<pid>` file behind at $local_bin.
+# The actual replacement is atomic: a new symlink at a same-directory
+# temp name, then one `mv` rename onto the real link path -- never an
+# in-place `ln -sf`, which unlinks-then-creates as two separate syscalls
+# and could leave a concurrent reader seeing the link briefly missing.
+# The temp symlink is cleaned up on every failure path.
 set -euo pipefail
 
 LINK_BINARY_RESULT=""
@@ -75,47 +49,24 @@ link_binary() {
 
   mkdir -p "$local_bin"
 
-  # Fail closed on anything at $link_path this function did not itself
-  # create -- see this file's header for exactly why: never fall into the
-  # directory gotcha `ln -sf` and `mv` both share, never clobber a
-  # foreign file.
+  # Three fail-closed checks, see this file's header: a real directory; a
+  # symlink resolving to one (`-L` alone misses this, since it's also
+  # `-d`); and any other non-symlink node (file, FIFO, socket, device).
   if [[ -d "$link_path" && ! -L "$link_path" ]]; then
     konductor_die "${link_path} already exists as a DIRECTORY, not a file this Power created -- refusing to link there (an in-place \`ln -sf\` would silently write inside it instead of replacing it). Remove or rename it, then re-run."
     return 1
   fi
-  # A symlink pointing AT a directory has `-L` true (it IS a symlink) but
-  # ALSO `-d` true (it RESOLVES to a directory) -- the check above
-  # requires `! -L` and so never catches this case, and neither does the
-  # foreign-regular-file check below (same `! -L` requirement). Left
-  # unguarded, the `mv -f "$tmp_link" "$link_path"` step further down
-  # would hit the identical "moves INSIDE the directory instead of
-  # replacing it" footgun the directory check above exists to prevent --
-  # see this file's own header for why `mv` shares that behavior with
-  # `ln -sf`. Same refusal message as the real-directory case: from a
-  # caller's perspective a symlink-to-a-directory and a real directory at
-  # $link_path are the identical hazard.
   if [[ -L "$link_path" && -d "$link_path" ]]; then
     konductor_die "${link_path} already exists as a DIRECTORY, not a file this Power created -- refusing to link there (an in-place \`ln -sf\` would silently write inside it instead of replacing it). Remove or rename it, then re-run."
     return 1
   fi
-  # `-e && ! -L` matches ANY existing, non-symlink node at $link_path --
-  # a regular file, but also a FIFO, socket, or device node -- so the
-  # message says "something other than a symlink", not "a regular file",
-  # which would be wrong for the non-regular-file cases this same check
-  # also catches.
   if [[ -e "$link_path" && ! -L "$link_path" ]]; then
     konductor_die "${link_path} already exists as something other than a symlink this Power created -- refusing to overwrite it. Remove or rename it, then re-run."
     return 1
   fi
 
-  # Atomic replace: symlink at a same-directory temp name, then one
-  # rename onto the real path -- see this file's header for why this is
-  # never a two-step in-place `ln -sf`. Every failure path below cleans up
-  # $tmp_link explicitly -- `if ! cmd; then ...` (not a bare `cmd`) is
-  # deliberate: under this file's own `set -e`, testing a command's exit
-  # status in an `if` is exempt from triggering `-e` directly, which is
-  # what lets the matching `rm -f "$tmp_link"` actually run on failure
-  # instead of the whole function exiting out from under it first.
+  # `if ! cmd; then rm ...` not a bare `cmd`: testing a command's status
+  # in an `if` is exempt from `set -e`, letting the cleanup actually run.
   tmp_link="${link_path}.tmp.$$"
   rm -f "$tmp_link"
   if ! ln -s "$binary_path" "$tmp_link"; then
@@ -129,11 +80,8 @@ link_binary() {
     return 1
   fi
 
-  # Post-check exactly what SKILL.md promises this path always is:
-  # a symlink (-L), resolving to a regular file (-f, follows the link),
-  # that is executable (-x, follows the link). $tmp_link no longer exists
-  # by this point (already renamed onto $link_path above), so there is
-  # nothing left to clean up on this remaining failure path either.
+  # Post-check what SKILL.md promises this path always is: a symlink
+  # resolving to an executable regular file.
   if [[ ! ( -L "$link_path" && -f "$link_path" && -x "$link_path" ) ]]; then
     konductor_die "linked ${link_path} -> ${binary_path}, but the post-check (symlink, resolves to an executable regular file) failed."
     return 1

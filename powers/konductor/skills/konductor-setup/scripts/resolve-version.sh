@@ -5,14 +5,11 @@
 # its bare-semver `version` field, and constructs the matching GitHub
 # release tag by prepending "v".
 #
-# Tag construction is NOT optional and must match exactly: `plugin.json`'s
-# `version` is bare semver (e.g. "1.0.2"); GitHub's release tags carry a "v"
-# prefix (e.g. "v1.0.2"); `install/github.rs`'s tag-fetch endpoint uses
-# whatever string it is given verbatim, with zero normalization -- a bare
-# "1.0.2" 404s. This is the same construction `.github/workflows/
-# release.yml`'s `check-version` job uses: `RELEASE_VERSION="v${RAW_VERSION}"`
-# from the repo-root VERSION file's bare value. "1.0.2" and "v1.0.2" are two
-# different strings; only one of them resolves.
+# `plugin.json`'s `version` is bare semver (e.g. "1.0.2"); GitHub's release
+# tags carry a "v" prefix (e.g. "v1.0.2"), and the tag-fetch endpoint uses
+# whatever string it is given verbatim -- a bare "1.0.2" 404s. Same
+# construction as release.yml's check-version job
+# (`RELEASE_VERSION="v${RAW_VERSION}"`).
 #
 # Usage:
 #   resolve-version.sh                  # auto-locates plugin.json, prints the tag
@@ -23,14 +20,9 @@
 # never guesses or falls back to a hardcoded default.
 set -euo pipefail
 
-# Computed once and reused below (for sourcing lib.sh, and as the explicit
-# argument to resolve_plugin_version's own standalone-invocation call site)
-# rather than re-running the same `dirname`/`pwd` subshell twice in this
-# file. Deliberately NOT named the generic "SCRIPT_DIR": this file is also
-# sourced (not just run standalone) by run-onboarding.sh, which already
-# declares its own top-level "SCRIPT_DIR" before sourcing this file --
-# reusing that name here would silently overwrite the caller's variable
-# the moment this file is sourced into the same shell.
+# Not named the generic "SCRIPT_DIR": run-onboarding.sh sources this file
+# after declaring its own top-level "SCRIPT_DIR", and reusing that name
+# would silently overwrite the caller's variable.
 RESOLVE_VERSION_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # shellcheck source=lib.sh
@@ -45,15 +37,10 @@ construct_tag() {
     konductor_die "construct_tag: empty version given -- refusing to build a bare 'v' tag."
     return 1
   fi
-  # Validated BEFORE it is ever embedded in the tag this function returns --
-  # that tag goes on to be used in a download URL, a cache path, and a
-  # `git clone --branch` ref by this Power's other scripts (see
-  # KONDUCTOR_CLI_VERSION_REGEX's own doc comment in lib.sh). fetch_verify_
-  # binary and build_from_source validate their own tag argument too (a
-  # --tag value reaches them directly, never through this function), but
-  # an unvalidated version here would still let a hand-edited plugin.json
-  # or KONDUCTOR_POWER_VERSION produce a bad tag with no chance to catch it
-  # at its actual source.
+  # Validated before it is embedded in the tag this function returns, which
+  # other scripts use in a download URL, a cache path, and a
+  # `git clone --branch` ref (see KONDUCTOR_CLI_VERSION_REGEX in lib.sh) --
+  # catches a bad hand-edited plugin.json/KONDUCTOR_POWER_VERSION at its source.
   if [[ ! "$version" =~ $KONDUCTOR_CLI_VERSION_REGEX ]]; then
     konductor_die "construct_tag: '${version}' is not a valid bare semver (expected X.Y.Z, e.g. 1.0.2) -- refusing to build a tag from it."
     return 1
@@ -62,14 +49,11 @@ construct_tag() {
 }
 
 # resolve_plugin_version [script-dir]
-# Walks upward from the scripts/ directory looking for the Power's own
-# plugin.json (identified by "name": "konductor" so an unrelated plugin.json
-# elsewhere on disk is never mistaken for this one), bounded to 5 levels so
-# a search miss fails fast rather than walking to filesystem root. Known
-# layout: scripts/ -> konductor-setup/ -> skills/ -> <power-root>/plugin.json
-# is 3 levels up; the extra headroom (5) tolerates a harness that nests the
-# installed skill one or two directories deeper than the source tree does,
-# without searching indefinitely.
+# Walks upward looking for the Power's own plugin.json (identified by
+# "name": "konductor", never an unrelated plugin.json elsewhere on disk),
+# bounded to 5 levels: the known layout is 3 levels up
+# (scripts/ -> konductor-setup/ -> skills/ -> plugin.json), with headroom
+# for a harness that nests the installed skill deeper.
 resolve_plugin_version() {
   local start_dir="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
   local dir="$start_dir" candidate name version i
@@ -90,7 +74,7 @@ resolve_plugin_version() {
         return 1
       fi
     fi
-    # Stop walking once we hit the filesystem root -- dirname("/") == "/".
+    # dirname("/") == "/" -- stop walking at the filesystem root.
     if [[ "$dir" == "/" ]]; then
       break
     fi
@@ -104,17 +88,12 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if [[ -n "${KONDUCTOR_POWER_VERSION:-}" ]]; then
     PLUGIN_VERSION="$KONDUCTOR_POWER_VERSION"
   else
-    # Pass the already-computed script dir explicitly rather than relying
-    # on resolve_plugin_version's own [script-dir] default: this is the
-    # only call site in this file, so leaving it bare made ShellCheck
-    # 0.9.0 (the version pinned on GitHub-hosted ubuntu-latest runners --
-    # see the Makefile's own kiro-power-check comment) flag SC2120 on the
-    # function definition and SC2119 here, even though a newer local
-    # ShellCheck (0.11.0+) no longer flags a $1 with a ${1:-default}
-    # fallback. The function keeps its own default -- it is still a
-    # legitimate, documented [script-dir] optional argument for any other
-    # caller that sources this file and calls it bare -- this call site
-    # just stops being that caller.
+    # Passed explicitly, not relying on resolve_plugin_version's own
+    # [script-dir] default: ShellCheck 0.9.0 (pinned in CI) flags SC2119/
+    # SC2120 on a bare call to a function whose only param has a
+    # ${1:-default} fallback, even though 0.11.0+ no longer does. The
+    # function keeps its default for any other caller that sources this
+    # file and calls it bare.
     PLUGIN_VERSION="$(resolve_plugin_version "$RESOLVE_VERSION_SCRIPT_DIR")"
   fi
   construct_tag "$PLUGIN_VERSION"

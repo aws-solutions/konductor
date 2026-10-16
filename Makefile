@@ -245,43 +245,26 @@ clean:
 	$(MAKE) -C shared clean
 
 # ── kiro-power-check ──────────────────────────────────────────────────────────
-# PR-time smoke test: checks VERSION/plugin.json for drift and that every
-# committed import URL names the matching release tag, then validates the
-# COMMITTED powers/konductor/ tree directly, in place -- plugin.json against
-# the Agent Plugins v1.0.0 schema, every skill's SKILL.md frontmatter, the
-# pytest suite pinning those two checkers (tests/test_validate_kiro_power_*.py),
-# shellcheck across konductor-setup's scripts/, and the full
-# tests/kiro-power/ suite. No commits, no push; this is read-only validation
-# of the tree that ships on main.
+# PR-time smoke test: VERSION/plugin.json drift, import URLs name the
+# matching release tag, plugin.json against the Agent Plugins v1.0.0
+# schema, every skill's SKILL.md frontmatter, the pytest suite pinning
+# those two checkers, shellcheck, and the full tests/kiro-power/ suite.
+# No commits, no push -- read-only validation of the tree that ships on main.
 #
-# The shellcheck step below `cd`s into the scripts directory first rather
-# than shellchecking a subdirectory-qualified or absolute path: `shellcheck
-# -x` resolves a `source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"`-shaped
-# line relative to the CURRENT DIRECTORY it's invoked from, not the checked
-# file's own directory -- a bare `./*.sh` glob run from inside that
-# directory is what actually makes `-x` follow the source; anything else
-# reports a false SC1091 "not following" for every such line.
+# The shellcheck step `cd`s into the scripts directory first: `-x`
+# resolves a `source "$(dirname ...)/lib.sh"` line relative to the
+# current directory, not the checked file's own directory, so a bare
+# `./*.sh` glob run from inside it is what makes `-x` actually follow it.
 #
-# KONDUCTOR_SETUP_SCRIPTS_DIR is left unset here on purpose: every
-# test-*.sh file's own default already resolves to
-# powers/konductor/skills/konductor-setup/scripts -- the committed,
-# in-place tree -- when the variable is unset, so an override would be
-# redundant now that there is no separate assembled copy to point at.
+# KONDUCTOR_SETUP_SCRIPTS_DIR is left unset: every test-*.sh file's own
+# default already resolves to the committed, in-place tree.
 #
-# KIRO_POWER_SHELLCHECK_VERSION pins the ShellCheck version GitHub-hosted
-# ubuntu-latest runners ship (actions/runner-images' own
-# Ubuntu2404-Readme.md software manifest lists shellcheck 0.9.0-1) -- not
-# because a newer local install is unsupported, but because 0.9.0 and a
-# newer one (confirmed on 0.11.0) can DISAGREE on SC2119/SC2120 for a
-# function whose only parameter has a `${1:-default}` fallback and is
-# never otherwise called with an argument in the same file: 0.9.0 still
-# flags it, a newer ShellCheck silently does not. There is no ShellCheck
-# flag that restores the old behavior on a newer binary -- it is a version
-# difference, not a settings difference -- so the check below only warns
-# on a mismatch rather than trying to force it. A version-pinned download
-# is deliberately not done here either: CI's own binary is already
-# preinstalled at 0.9.0, and this repo has non-Linux/non-x86_64
-# contributors for whom a Linux x86_64 binary wouldn't even run.
+# KIRO_POWER_SHELLCHECK_VERSION pins what GitHub-hosted ubuntu-latest
+# ships: 0.9.0 and a newer ShellCheck (confirmed on 0.11.0) can disagree
+# on SC2119/SC2120 for a function whose only parameter has a
+# `${1:-default}` fallback and no bare call in the same file -- there is
+# no flag that restores the old behavior, so a mismatch only warns here
+# rather than being forced.
 KIRO_POWER_SHELLCHECK_VERSION := 0.9.0
 kiro-power-check:
 	@echo "=== [kiro-power-check] Checking VERSION/plugin.json for drift ==="; \

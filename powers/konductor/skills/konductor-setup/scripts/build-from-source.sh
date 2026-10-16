@@ -1,19 +1,17 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: Apache-2.0
 #
-# build-from-source.sh -- konductor-setup step 3: the Intel Mac
+# build-from-source.sh -- konductor-setup step 3: Intel Mac
 # (x86_64-apple-darwin) fallback. No binary is published for this triple
 # (no free-tier Intel macOS GitHub runner), so this clones the pinned
-# release tag and builds the `konductor` CLI binary locally via the
-# repo's own root Makefile.
+# release tag and builds the `konductor` CLI binary via the repo's own
+# root Makefile.
 #
-# Only the CLI binary needs this fallback -- the packaged content artifact
-# (agents/skills/SOPs) is architecture-independent and still downloads
-# normally via `konductor install`'s own no-`--from` GitHub-release path,
-# so this script does NOT run `synth`/`install` itself; it only produces a
-# working `konductor` binary for the caller to use in place of a
-# downloaded one, mirroring scripts/konductor-clone-install.sh's own
-# clone+build logic but stopping short of its final `install` line.
+# Only the CLI binary needs this -- the content artifact
+# (agents/skills/SOPs) is architecture-independent and still downloads via
+# `konductor install`'s own no-`--from` GitHub-release path, so this script
+# never runs `synth`/`install` itself; it only produces a working
+# `konductor` binary.
 #
 # Usage:
 #   build-from-source.sh <repo-url> <tag> <clone-dir>
@@ -22,25 +20,16 @@
 #   <tag>        the v-prefixed release tag to build (see resolve-version.sh)
 #   <clone-dir>  directory to clone into; must not already exist
 #
-# Requires a Rust toolchain (cargo) on PATH. If missing, this is a clear,
-# named stop pointing at https://rustup.rs -- this script never tries to
-# install a toolchain on the user's behalf.
+# Requires cargo on PATH; if missing, stops with a named pointer to
+# https://rustup.rs rather than installing a toolchain itself.
 #
-# On success, sets BUILD_FROM_SOURCE_RESULT to the path of the built,
-# executable `konductor` binary and returns 0. That path is under a STABLE
-# location -- `${HOME}/.konductor/cli-releases/` -- not under <clone-dir>:
-# the built binary is copied there once the build succeeds, before
-# returning. Same reason as fetch-verify-binary.sh's identical relocation
-# (see that file's header): a caller (run-onboarding.sh) treats <clone-dir>
-# as disposable and removes it via an EXIT trap the moment the whole
-# onboarding script finishes, success or failure alike -- returning a path
-# under <clone-dir> would leave the `~/.local/bin/konductor` symlink
-# dangling within moments of a SUCCESSFUL build, not just a failed one.
+# On success, sets BUILD_FROM_SOURCE_RESULT to the built binary's path
+# under the STABLE `${HOME}/.konductor/cli-releases/` cache, not under
+# <clone-dir>: run-onboarding.sh removes <clone-dir> via an EXIT trap the
+# moment it finishes, which would leave a path under it dangling.
 #
-# Separately: `git clone`'s and `make build`'s own real output must stream
-# straight to the terminal, not be captured away by a caller trying to
-# retrieve this function's result -- same rationale as
-# fetch-verify-binary.sh's FETCH_VERIFY_BINARY_RESULT.
+# `git clone`'s and `make build`'s own output streams straight to the
+# terminal, never captured.
 set -euo pipefail
 
 BUILD_FROM_SOURCE_RESULT=""
@@ -58,12 +47,9 @@ build_from_source() {
   fi
   konductor_require_cmd git "Install git to clone aws-solutions/konductor."
 
-  # Validated BEFORE any use -- $tag is passed straight to `git clone
-  # --branch` as a ref and embedded directly into stable_path (a path
-  # under the stable release cache) with zero further escaping. $tag can
-  # arrive from --tag or KONDUCTOR_POWER_VERSION, values this Power's own
-  # scripts did not necessarily produce (see KONDUCTOR_CLI_TAG_REGEX's own
-  # doc comment in lib.sh).
+  # Validated BEFORE any use: $tag goes straight into `git clone --branch`
+  # and a cache path with zero further escaping, and may arrive from
+  # --tag or KONDUCTOR_POWER_VERSION (see KONDUCTOR_CLI_TAG_REGEX in lib.sh).
   if [[ ! "$tag" =~ $KONDUCTOR_CLI_TAG_REGEX ]]; then
     konductor_die "build_from_source: '${tag}' is not a valid release tag (expected a v-prefixed semver like v1.0.2) -- refusing to use it as a git ref or in a path."
     return 1
@@ -74,27 +60,19 @@ build_from_source() {
     return 1
   fi
 
-  # --branch "$tag" clones and checks out the pinned tag directly (the
-  # same $tag resolve-version.sh built, e.g. "v1.0.2") -- never main/HEAD.
-  # A tag that does not exist upstream is a real fail-stop right here:
-  # `git clone --branch <nonexistent>` exits non-zero with a clear "Remote
-  # branch <tag> not found in upstream origin" (verified directly), so the
-  # `if ! konductor_run git clone ...` guard below already catches it.
+  # --branch "$tag" clones and checks out the pinned tag directly, never
+  # main/HEAD. A nonexistent tag exits non-zero with a clear "Remote
+  # branch <tag> not found", caught by the guard below.
   konductor_log "Cloning ${repo_url} at ${tag} into ${clone_dir}"
   if ! konductor_run git clone --branch "$tag" --depth 1 "$repo_url" "$clone_dir"; then
     konductor_die "failed to clone ${repo_url} at tag ${tag} -- the tag may not exist on this repository. Not building an unpinned checkout."
     return 1
   fi
 
-  # Explicit, second verification that HEAD is EXACTLY the pinned tag --
-  # not "whatever --branch happened to resolve" -- before building
-  # anything. `git describe --tags --exact-match` is chosen over a
-  # redundant `git checkout "$tag"` (which would silently no-op here,
-  # proving nothing new) because it specifically confirms the checked-out
-  # commit carries the pinned TAG, catching the one case --branch's own
-  # resolution could get wrong: a same-named BRANCH shadowing the tag
-  # upstream. Confirmed the tag ref is present locally even in this
-  # --depth 1 shallow clone (verified directly).
+  # Second verification that HEAD is EXACTLY the pinned tag, not whatever
+  # --branch resolved: `git describe --tags --exact-match` catches a
+  # same-named BRANCH shadowing the tag upstream, which a bare
+  # `git checkout "$tag"` would silently miss.
   konductor_log "Verifying the clone is checked out at the pinned tag ${tag}"
   if ! checked_out_ref="$(cd "$clone_dir" && git describe --tags --exact-match 2>/dev/null)"; then
     konductor_die "cloned ${repo_url} but could not verify HEAD is exactly tag ${tag} (git describe --tags --exact-match found no exact tag match) -- refusing to build an unverified checkout."

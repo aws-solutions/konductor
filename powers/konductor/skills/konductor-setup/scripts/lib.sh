@@ -13,44 +13,30 @@
 # immediately with that command's own error text intact -- never
 # softened, retried against a fallback, or swallowed.
 
-# `set -u` here (not `-e`/`-o pipefail`) so a caller that sources this file
-# before setting its own `set -euo pipefail` still gets unset-variable
-# protection; the caller is expected to set the rest itself, since `-e`'s
-# interaction with a sourced file's own function definitions is easy to get
-# wrong (a function body's early `return` inside a conditional can look like
+# `set -u` here (not `-e`/`-o pipefail`): a caller that sources this file
+# before its own `set -euo pipefail` still gets unset-variable protection;
+# `-e`'s interaction with a sourced file's own function definitions is
+# easy to get wrong (an early `return` inside a conditional can look like
 # a failure to a caller relying on `-e` alone).
 set -u
 
-# Set by konductor_resolve_target_binary (below); read by its callers
-# (run-update.sh, run-uninstall.sh) after calling it. Declared here,
-# alongside the function, matching the *_RESULT convention this Power's
-# scripts use throughout (see fetch-verify-binary.sh/build-from-source.sh/
-# link-binary.sh's own identical pattern and its rationale).
+# Set by konductor_resolve_target_binary; read by its callers
+# (run-update.sh, run-uninstall.sh).
 KONDUCTOR_RESOLVE_TARGET_BINARY_RESULT=""
-# Companion result: the resolved binary's OWN --version output (not any
-# content version) -- callers write this straight into power-cli.json via
-# konductor_write_power_cli_record without re-invoking --version
-# themselves.
+# Companion: the resolved binary's OWN --version output, written straight
+# into power-cli.json without re-invoking --version.
 KONDUCTOR_RESOLVE_TARGET_BINARY_VERSION_RESULT=""
-# Set by konductor_resolve_and_check_binary (below); read only within this
-# same file, by konductor_resolve_target_binary, immediately after each
-# call -- unlike the two *_RESULT variables above, no cross-file read
-# exists for this one.
+# Set by konductor_resolve_and_check_binary; read only within this file.
 KONDUCTOR_RESOLVE_AND_CHECK_BINARY_RESULT=""
 
 # konductor_log <message...>
-# A single, greppable "=== [konductor-setup] ... ===" line, matching the
-# visible-progress style scripts/konductor-bootstrap.sh already uses.
-# Every step prints one of these BEFORE it does anything.
+# A single, greppable "=== [konductor-setup] ... ===" progress line,
+# printed BEFORE each step does anything.
 #
-# Written to STDERR, deliberately: several functions in this file's sibling
-# scripts (fetch_verify_binary, build_from_source, link_binary) return their
-# actual result -- a file path -- to their caller via a final `echo` on
-# STDOUT, captured with `$(...)`. If this progress narration also went to
-# stdout, it would land inside that captured string ahead of the real
-# value, corrupting it. Stderr keeps the narration visible in the terminal
-# (nothing here is ever captured on that stream) while leaving stdout free
-# to carry exactly one thing: the value a caller asked for.
+# Written to stderr: fetch_verify_binary/build_from_source/link_binary
+# return their result -- a file path -- via a final `echo` on stdout,
+# captured with `$(...)`. Narration on stdout would land inside that
+# captured string ahead of the real value, corrupting it.
 konductor_log() {
   echo "=== [konductor-setup] $* ===" >&2
 }
@@ -65,34 +51,22 @@ konductor_die() {
 }
 
 # konductor_run <command...>
-# Runs a command with its real stdout/stderr streamed directly -- never
-# `$(...)`-captured -- and returns its exact exit status. This is the one
-# indirection every step-level script uses to invoke an external command,
-# so "never capture, always stream, always propagate the real exit code" is
-# enforced in one place rather than re-implemented at each call site.
+# Runs a command with its real stdout/stderr streamed directly, never
+# `$(...)`-captured, and returns its exact exit status.
 konductor_run() {
   konductor_log "Running: $*"
   "$@"
 }
 
 # konductor_run_cli <konductor-binary> <subcommand> [args...]
-# Like konductor_run, but specific to invoking the `konductor` CLI itself
-# (install/update/uninstall/doctor). Stdout still streams live, exactly as
-# konductor_run's does. Stderr is captured to a temp file first and then
-# relayed to the real stderr IN FULL, immediately after the command exits
-# -- a deliberate, narrow trade-off from konductor_run's fully-live dual
-# stream, made only here, not generally: it is what lets this helper
-# inspect the CLI's own error text afterward for a GitHub rate-limit/auth
-# signature and print an exact, copy-pasteable retry command, without ever
-# inventing or guessing at what the CLI actually said. Every line of that
-# stderr is still shown, verbatim, in full -- fail-stop's relay-word-for-
-# word guarantee holds -- only the timing changes (all at once right after
-# exit, instead of interleaved character-by-character during the run).
-# Applied only to the `konductor` CLI's own install/update/uninstall/doctor
-# calls (fast, one-shot, sub-second in the common case), never to
-# `konductor_run`'s other real callers (`git clone`, `make build` in
-# build-from-source.sh), which are longer-running and where interleaved
-# live stderr is worth keeping.
+# Like konductor_run, for the `konductor` CLI itself (install/update/
+# uninstall/doctor). Stdout still streams live. Stderr is captured to a
+# temp file and relayed to the real stderr IN FULL immediately after the
+# command exits -- every line is still shown verbatim, only the timing
+# changes -- which lets this helper inspect it afterward for a GitHub
+# rate-limit/auth signature and print a retry command. Applied only to
+# these fast, one-shot CLI calls, never to konductor_run's other callers
+# (`git clone`, `make build`), where interleaved live stderr matters more.
 konductor_run_cli() {
   local logfile status subcommand
   konductor_log "Running: $*"
@@ -113,21 +87,13 @@ konductor_run_cli() {
 # konductor_suggest_rate_limit_retry <subcommand> <command...>
 # Prints an exact, copy-pasteable retry command after konductor_run_cli
 # detects a GitHub rate-limit/auth signature ("HTTP status 401/403" or
-# "rate limit", matching install/github.rs's own GithubFetchError::
-# MetadataHttp/DownloadHttp wording and doctor.rs's identical version-check
-# fetch error) in a `konductor` CLI invocation's own stderr.
+# "rate limit") in a `konductor` CLI invocation's own stderr.
 #
-# `doctor` has NO --use-github-token flag at all -- confirmed directly
-# against cli.rs's `Commands::Doctor` variant, which declares only `from`/
-# `target`/`all`/`no_version_check`. This matters because doctor.rs's own
-# error text for this exact failure still says "...pass --use-github-token"
-# (it reuses install's shared hint-rendering code, which has no way to
-# know which command is calling it) -- a real, stale suggestion baked into
-# the CLI itself that this function does NOT repeat. Passing
-# --use-github-token to doctor would itself be a usage error (clap
-# rejects an unrecognized flag), so doctor's own retry suggestion is
-# --no-version-check instead -- the one flag doctor DOES have to skip the
-# network call that triggered this in the first place.
+# `doctor` has no --use-github-token flag at all, even though its own
+# error text for this failure still suggests one (it reuses install's
+# shared hint-rendering code) -- this function does not repeat that stale
+# suggestion. --no-version-check is doctor's own way to skip the network
+# call that triggered this in the first place.
 konductor_suggest_rate_limit_retry() {
   local subcommand="$1"
   shift
@@ -143,84 +109,34 @@ konductor_suggest_rate_limit_retry() {
   fi
 }
 
+# None of the three regexes below are `readonly`: lib.sh is sourced more
+# than once per run (every sibling script sources it again), and
+# `readonly` would be a real `set -e`-fatal error on the second sourcing.
+
 # KONDUCTOR_CLI_VERSION_REGEX -- a bare semver, matching exactly what
-# `konductor --version` itself prints after the "konductor " prefix (see
-# cli.rs's `run_inner`: `println!("konductor {}", env!("CARGO_PKG_VERSION"))`).
+# `konductor --version` prints after the "konductor " prefix.
 # konductor_resolve_target_binary validates power-cli.json's cli_version
-# against this BEFORE using it in any glob or path -- a value read from a
-# file this Power's own scripts did not necessarily write (see that
-# function's own doc comment on power-cli.json's trust boundary) must
-# never be trusted as glob-safe or path-safe just because it parsed as
-# JSON.
-#
-# Deliberately NOT `readonly`: lib.sh is sourced more than once in a
-# single run (every sibling script that sources link-binary.sh/
-# fetch-verify-binary.sh/build-from-source.sh sources lib.sh a second
-# time via each of THEIR own top-of-file `source .../lib.sh` lines, on
-# top of run-onboarding.sh's own direct one) -- `readonly` on a second
-# sourcing would itself be a real, `set -e`-fatal error the very first
-# time this ever ran for real, not just a lint nit.
+# against this BEFORE using it in any glob or path -- that value comes
+# from a file this Power's own scripts did not necessarily write.
 KONDUCTOR_CLI_VERSION_REGEX='^[0-9]+\.[0-9]+\.[0-9]+$'
 
-# KONDUCTOR_CLI_TAG_REGEX -- the v-prefixed form of the same bare semver
-# above, matching exactly what resolve-version.sh's construct_tag builds
-# and what every real GitHub release tag on this repo looks like (see
-# scripts/validate-version-semver.sh and .github/workflows/release.yml's
-# own `RELEASE_VERSION="v${RAW_VERSION}"` -- no pre-release suffix is a
-# valid tag anywhere in this repo's own release pipeline, so none is
-# accepted here either).
-#
-# resolve-version.sh's construct_tag, fetch-verify-binary.sh's
-# fetch_verify_binary, and build-from-source.sh's build_from_source each
-# validate their own tag/version argument against this (or
-# KONDUCTOR_CLI_VERSION_REGEX, for construct_tag's bare-version input)
-# BEFORE using it in a path, a download URL, or a `git clone --branch`
-# ref -- a tag can arrive from --tag or KONDUCTOR_POWER_VERSION, values
-# this Power's own scripts did not necessarily produce, and both are
-# embedded directly into asset filenames, cache paths under
-# ~/.konductor/cli-releases, and a git ref with zero further escaping.
-# An unvalidated "../../etc/cron.d/x" or "; rm -rf ~" would turn any of
-# those into a path-traversal write or a git-ref/shell-adjacent injection.
-#
-# Deliberately NOT `readonly` -- same multiple-sourcing rationale as
-# KONDUCTOR_CLI_VERSION_REGEX immediately above.
-#
-# Unlike KONDUCTOR_CLI_VERSION_REGEX, nothing in THIS file reads this one
-# -- only fetch-verify-binary.sh and build-from-source.sh do, each after
-# their own `source lib.sh` -- so shellcheck's own single-file view of
-# lib.sh alone has no way to see that read and flags SC2034. `shellcheck
-# -x fetch-verify-binary.sh` and `shellcheck -x build-from-source.sh` are
-# the authoritative check (matching KONDUCTOR_RESOLVE_TARGET_BINARY_RESULT's
-# own identical disable comment elsewhere in this file).
-# shellcheck disable=SC2034
+# KONDUCTOR_CLI_TAG_REGEX -- the v-prefixed form of the same semver,
+# matching every real GitHub release tag on this repo. construct_tag,
+# fetch_verify_binary, and build_from_source each validate their own
+# tag/version argument against this (or KONDUCTOR_CLI_VERSION_REGEX)
+# BEFORE using it in a path, download URL, or `git clone --branch` ref --
+# the value can arrive from --tag or KONDUCTOR_POWER_VERSION, and an
+# unvalidated one would be a path-traversal write or a git-ref injection.
+# shellcheck disable=SC2034 # read only by fetch-verify-binary.sh/build-from-source.sh after sourcing this file
 KONDUCTOR_CLI_TAG_REGEX='^v[0-9]+\.[0-9]+\.[0-9]+$'
 
-# KONDUCTOR_HARNESS_NAME_REGEX -- a safe shape for an optional `--harness
-# <value>` passed to run-update.sh/run-uninstall.sh and forwarded
-# verbatim as `--harness <value>` to `konductor update`/`uninstall`:
-# lowercase alphanumerics and hyphens, starting with one of those (e.g.
-# "claude", "kiro-v3"). This is NOT a second allowlist of real harness
-# names -- the `konductor` CLI itself already validates the value
-# against its own registered-transformer list (see cli.rs's
-# harness_value_parser(), shared by install/update/uninstall) and reports
-# a target that doesn't track the requested harness as a usage error.
-# This regex exists only so the two wrapper scripts refuse an unsafe
-# shape (shell metacharacters, a path-traversal payload, an empty
-# string) before the value is ever forwarded as an argv entry, matching
-# this file's existing validate-before-use convention for every other
-# externally-sourced value (see KONDUCTOR_CLI_TAG_REGEX immediately
-# above).
-#
-# Deliberately NOT `readonly` -- same multiple-sourcing rationale as
-# KONDUCTOR_CLI_VERSION_REGEX/KONDUCTOR_CLI_TAG_REGEX above.
-#
-# Unlike KONDUCTOR_CLI_VERSION_REGEX, nothing in THIS file reads this one
-# -- only run-update.sh and run-uninstall.sh do, each after their own
-# `source lib.sh` -- so shellcheck's own single-file view of lib.sh alone
-# has no way to see that read and flags SC2034. `shellcheck -x
-# run-update.sh` and `shellcheck -x run-uninstall.sh` are the
-# authoritative check.
-# shellcheck disable=SC2034
+# KONDUCTOR_HARNESS_NAME_REGEX -- a safe shape (not an allowlist of real
+# harness names, which the CLI itself already validates) for an optional
+# `--harness <value>` forwarded verbatim to `konductor update`/`uninstall`
+# by run-update.sh/run-uninstall.sh: refuses shell metacharacters, a
+# path-traversal payload, or an empty string before the value is ever
+# forwarded as an argv entry.
+# shellcheck disable=SC2034 # read only by run-update.sh/run-uninstall.sh after sourcing this file
 KONDUCTOR_HARNESS_NAME_REGEX='^[a-z0-9][a-z0-9-]*$'
 
 # konductor_write_power_cli_record <target-dir> <cli-version> <binary-path>
@@ -228,29 +144,19 @@ KONDUCTOR_HARNESS_NAME_REGEX='^[a-z0-9][a-z0-9-]*$'
 # OWN record of exactly which `konductor` CLI binary (and its own
 # self-reported `--version`) it last used successfully for this target.
 #
-# Deliberately a SEPARATE file from the CLI's own <target-dir>/.konductor/
-# install-info.json, never read or written by the `konductor` CLI itself.
-# install-info.json's `agent_version` field records the installed
-# CONTENT's own version -- confirmed directly against install_info.rs's
-# own header comment ("the installed content's own version, reported
-# separately from the running binary's version") -- and `update --version
-# <v>` (cli.rs's `release_version` field on `Commands::Update`) changes
-# that CONTENT version on purpose, on ANY CLI binary, with no effect on
-# and no relationship to which binary ran the command. Comparing
-# power-cli.json's `cli_version` against install-info.json's
-# `agent_version` directly would conflate two independent axes: a
-# legitimate content-version bump such as `run-update.sh --version 2.0.0`
-# (run with the SAME, perfectly good 1.0.2 CLI binary) would then lock
-# every LATER update/uninstall out entirely, since nothing on the machine
-# reports `--version` as "2.0.0" (that string names a content release,
-# not a CLI release, and 2.0.0 may not even be a real CLI release at
-# all). power-cli.json exists specifically so this Power tracks the
-# CLI-binary axis on its own, never inferring it from a field that was
-# never about the CLI binary in the first place.
+# Deliberately a SEPARATE file from the CLI's own install-info.json,
+# never read or written by the `konductor` CLI itself. install-info.json's
+# `agent_version` is the installed CONTENT's own version, and
+# `update --version <v>` changes ONLY that, on whichever CLI binary
+# happens to be resolved -- comparing power-cli.json's `cli_version`
+# against it would conflate two unrelated axes: a legitimate content bump
+# (`run-update.sh --version 2.0.0`, run on a perfectly good 1.0.2 CLI
+# binary) would then lock every later update/uninstall out, since nothing
+# reports `--version` as "2.0.0". power-cli.json tracks the CLI-binary
+# axis on its own.
 #
-# Called only after a REAL success (a completed `konductor install`/
-# `update` run) -- never on a failed run, so a failure never overwrites a
-# still-good prior record with the mid-failure state.
+# Called only after a REAL success -- never on a failed run, so a failure
+# never overwrites a still-good prior record.
 konductor_write_power_cli_record() {
   local target_dir="$1" cli_version="$2" binary_path="$3"
   local power_cli_dir power_cli_json tmp_file
@@ -260,11 +166,9 @@ konductor_write_power_cli_record() {
   power_cli_json="${power_cli_dir}/power-cli.json"
 
   mkdir -p "$power_cli_dir"
-  # Unpredictable temp name (matching konductor_publish_cached_binary's own
-  # mktemp pattern below) -- the old "${power_cli_json}.tmp.$$" name was
-  # derivable from target_dir and the caller's own PID alone, so a symlink
-  # planted at that exact path ahead of time turned this write into a
-  # write-through-symlink into whatever it pointed at.
+  # Unpredictable temp name, not "${power_cli_json}.tmp.$$": a name
+  # derivable from target_dir and the PID alone lets a symlink planted
+  # ahead of time turn this write into a write-through-symlink.
   tmp_file="$(mktemp "${power_cli_dir}/.power-cli.json.tmp.XXXXXX")" || {
     konductor_die "failed to create a temporary file for power-cli.json in ${power_cli_dir}."
     return 1
@@ -287,30 +191,22 @@ konductor_write_power_cli_record() {
 # Resolves <candidate-path> through any symlink chain and confirms the
 # FULLY-RESOLVED underlying file -- never the candidate path as given --
 # is an existing regular file that is a DIRECT CHILD of <releases-dir>.
-# Sets KONDUCTOR_RESOLVE_AND_CHECK_BINARY_RESULT to that resolved path and
-# returns 0 when trusted; returns 1 (no message printed -- the caller
-# decides how loud to be) otherwise.
+# Sets KONDUCTOR_RESOLVE_AND_CHECK_BINARY_RESULT and returns 0 when
+# trusted; returns 1 (no message -- the caller decides how loud) otherwise.
 #
-# This is the single trust check every one of konductor_resolve_target_
-# binary's three candidate sources goes through: power-cli.json's own
-# recorded `binary`, each `konductor-v<version>-*` cache-glob match, and
-# the shared `~/.local/bin/konductor` symlink itself. A path-STRING check
-# alone (e.g. "does this literal path start with releases_dir") is not
-# enough: a SYMLINK sitting directly inside releases_dir (dropped there
-# by a crafted power-cli.json, or by anything else with write access to
-# that directory) can still point anywhere else on disk while its own
-# name looks like a perfectly ordinary direct child -- and the shared
-# `~/.local/bin/konductor` path is a symlink BY DESIGN (link-binary.sh
-# creates it as one on purpose), so refusing "any symlink" outright would
-# refuse the one candidate this Power itself relies on. Resolving fully
-# and re-checking the RESOLVED path is what actually proves where the
-# bytes that would run come from, for every candidate alike.
+# The trust check every konductor_resolve_target_binary candidate goes
+# through (power-cli.json's recorded `binary`, each cache-glob match, the
+# shared `~/.local/bin/konductor` symlink). A path-STRING check alone is
+# not enough: a symlink dropped directly inside releases_dir can still
+# point anywhere while its own name looks like an ordinary direct child
+# -- and the shared symlink is a symlink BY DESIGN, so refusing "any
+# symlink" outright would refuse the one candidate this Power relies on.
+# Resolving fully and re-checking the RESOLVED path is what actually
+# proves where the bytes that would run come from.
 #
-# Bounded to 20 hops to guard against a symlink cycle. Deliberately NOT
-# `readlink -f`: that flag is a GNU extension not guaranteed present on
-# macOS's BSD `readlink` (this Power supports macOS on both Apple Silicon
-# and Intel), so this resolves one hop at a time with plain `readlink`,
-# which both implementations support identically.
+# Bounded to 20 hops against a symlink cycle. Not `readlink -f`: that
+# GNU extension isn't guaranteed on macOS's BSD `readlink`, so this
+# resolves one hop at a time with plain `readlink`.
 konductor_resolve_and_check_binary() {
   local path="$1" releases_dir="$2"
   local resolved hops target
@@ -358,72 +254,47 @@ konductor_resolve_and_check_binary() {
 # konductor_resolve_target_binary <target-dir>
 # Resolves the `konductor` binary that ACTUALLY matches a given target's
 # OWN recorded CLI binary, rather than assuming the machine-wide
-# `~/.local/bin/konductor` symlink is still that binary. That symlink is
-# shared across every project on the machine and re-pointed by every
-# onboarding run -- a project onboarded weeks ago, then left alone while
-# OTHER projects were onboarded/updated with newer pinned releases, ends
-# up with a shared binary that no longer matches what THIS target
-# actually needs.
+# `~/.local/bin/konductor` symlink is still that binary -- that symlink
+# is shared across every project and re-pointed by every onboarding run,
+# so a project left alone while others were updated ends up with a
+# shared binary that no longer matches what it needs.
 #
 # Reads <target-dir>/.konductor/power-cli.json (see
-# konductor_write_power_cli_record's own doc comment for exactly why this
-# is a SEPARATE file from install-info.json, never the CLI's own
-# `agent_version`, which is a content version and independent of which
-# CLI binary ran the command).
+# konductor_write_power_cli_record for why this is separate from
+# install-info.json's content-version `agent_version`).
 #
 # Sets KONDUCTOR_RESOLVE_TARGET_BINARY_RESULT to a verified-matching,
-# FULLY-RESOLVED binary path (never a symlink -- konductor_resolve_and_
-# check_binary's own resolution result, run directly) and KONDUCTOR_
-# RESOLVE_TARGET_BINARY_VERSION_RESULT to that binary's own confirmed
-# `--version` output, and returns 0 on success. Resolution order:
-#   1. power-cli.json's own recorded binary, if the file exists and
-#      RESOLVES (see konductor_resolve_and_check_binary and the trust-
-#      boundary note below) to a trusted, direct-child regular file
-#      whose own `--version` output still matches the recorded
+# fully-resolved binary path (never a symlink) and KONDUCTOR_
+# RESOLVE_TARGET_BINARY_VERSION_RESULT to its own confirmed `--version`
+# output, and returns 0 on success. Resolution order:
+#   1. power-cli.json's own recorded binary, once trusted (see the trust
+#      boundary below) and its `--version` matches the recorded
 #      cli_version exactly.
 #   2. A cached ~/.konductor/cli-releases/konductor-v<cli_version>-*
-#      binary (every binary ever verified-and-cached by
-#      fetch-verify-binary.sh or build-from-source.sh, regardless of
-#      platform triple or whether it was downloaded or built from
-#      source) that likewise resolves to a trusted, direct-child regular
-#      file whose OWN `--version` output matches cli_version -- never
-#      trusting the filename alone as proof of content, and never
-#      trusting a glob match's own path string alone either.
-#   3. The shared ~/.local/bin/konductor, once RESOLVED to a trusted,
-#      direct-child regular file whose own `--version` output matches
+#      binary (downloaded or built, any platform triple) that likewise
+#      resolves trusted and matches cli_version.
+#   3. The shared ~/.local/bin/konductor, once trusted and matching
 #      cli_version.
-#   4. LEGACY targets with no power-cli.json at all (onboarded before
-#      this Power tracked its own CLI binary per target): trust the
-#      shared binary for this one run (still subject to the same
-#      resolve-and-check trust boundary as every other candidate --
-#      "legacy" only waives the version comparison, never the location
-#      check), log a clear notice, and let the caller write a fresh
-#      power-cli.json afterward (via konductor_write_power_cli_record)
-#      once the run actually succeeds -- every later run then resolves
-#      through step 1 above instead.
-#   5. If nothing above matches, fail closed with a message naming
-#      exactly what was checked and pointing at re-running onboarding --
-#      never silently falls back to a mismatched binary "close enough"
-#      to what was recorded.
+#   4. LEGACY targets with no power-cli.json at all: trust the shared
+#      binary outright for this one run (still subject to the same trust
+#      boundary -- "legacy" waives only the version comparison), log a
+#      clear notice, and let the caller write a fresh power-cli.json
+#      once the run succeeds -- every later run then resolves via step 1.
+#   5. Otherwise fail closed, naming exactly what was checked -- never
+#      falls back to a mismatched binary "close enough" to what was
+#      recorded.
 #
-# Trust boundary on every one of the three candidate sources below (power-
-# cli.json's own recorded `binary`, each cache-glob match, and the shared
-# `~/.local/bin/konductor` symlink): only konductor_resolve_and_check_
-# binary's fully-RESOLVED path -- never the candidate path as given -- is
-# ever executed, and only once that resolved path is confirmed to be a
-# regular file that is a DIRECT child of the flat `~/.konductor/
-# cli-releases` cache directory (see that directory's own invariant,
-# documented at its first use below). Every candidate that does not
-# resolve that way is treated exactly like a missing one -- falling
-# through to the next resolution step -- never executed. This is the
-# guard against a crafted or hand-edited power-cli.json naming an
-# arbitrary executable elsewhere on disk, OR a symlink dropped directly
-# inside cli-releases (matching the cache-glob's own naming convention on
-# its face) that actually points somewhere else entirely; the shared
-# `~/.local/bin/konductor` path is allowed to itself be a symlink -- that
-# is how link-binary.sh creates it on purpose -- but only once resolving
-# it lands on a real, direct-child file under cli-releases, exactly like
-# every other trusted candidate.
+# Trust boundary on every candidate (power-cli.json's recorded `binary`,
+# each cache-glob match, the shared symlink): only
+# konductor_resolve_and_check_binary's fully-RESOLVED path is ever
+# executed, and only once confirmed to be a regular file that is a DIRECT
+# child of the flat `~/.konductor/cli-releases` cache directory. A
+# candidate that does not resolve that way is treated as missing, never
+# executed -- the guard against a crafted power-cli.json naming an
+# arbitrary executable, or a symlink dropped inside cli-releases that
+# points elsewhere. The shared `~/.local/bin/konductor` path is itself
+# allowed to be a symlink (link-binary.sh creates it that way on
+# purpose), but only once it resolves onto a real cli-releases file too.
 konductor_resolve_target_binary() {
   local target_dir="$1"
   local power_cli_json="${target_dir}/.konductor/power-cli.json"
@@ -432,31 +303,21 @@ konductor_resolve_target_binary() {
   local recorded_binary recorded_version candidate candidate_version shared_version
   local legacy=""
 
-  # Proof of onboarding is this Power's OWN power-cli.json, or (for a
-  # legacy target with no power-cli.json yet) the `konductor` CLI's own
-  # manifest file -- never install-info.json. install-info.json is
-  # telemetry's opt-in record alone: `konductor install --no-telemetry`
-  # never writes it at all (finalize_install_telemetry only calls
-  # write_install_info when telemetry is ON), and `update --no-telemetry`
-  # deletes it on a target that previously had it. Gating on it here
-  # would wrongly refuse update/uninstall for every telemetry-opted-out
-  # target. power-cli.json and manifest are both written unconditionally
-  # of telemetry -- manifest by the CLI's own upsert_strategy on every
-  # install, power-cli.json by this Power's own run-onboarding.sh right
-  # after install succeeds (see konductor_write_power_cli_record).
+  # Proof of onboarding is power-cli.json or (legacy target) the CLI's
+  # own manifest file -- NEVER install-info.json, which is telemetry's
+  # opt-in record alone: `install --no-telemetry` never writes it, and
+  # `update --no-telemetry` deletes it. Gating on it would wrongly refuse
+  # update/uninstall for every telemetry-opted-out target. power-cli.json
+  # and manifest are both written unconditionally of telemetry.
   if [[ ! -f "$power_cli_json" && ! -f "$manifest_file" ]]; then
     konductor_die "no power-cli.json or manifest found at ${target_dir}/.konductor -- this target was not onboarded by this Power (or both files were removed). Run scripts/run-onboarding.sh --target ${target_dir} --confirmed first."
     return 1
   fi
   konductor_require_cmd jq
 
-  # `~/.konductor/cli-releases` is a FLAT directory -- every binary ever
-  # verified-and-cached by fetch-verify-binary.sh (`stable_path="${releases_dir}/${asset_name}"`)
-  # or build-from-source.sh (`stable_path="${releases_dir}/konductor-${tag}-source-build"`)
-  # lands directly in it, never in a subdirectory -- so "does this path
-  # have exactly one path separator past the releases_dir prefix" is a
-  # complete, sufficient test for "is this a direct child of it", not an
-  # approximation.
+  # `~/.konductor/cli-releases` is a FLAT directory -- every cached
+  # binary lands directly in it, never a subdirectory -- so "exactly one
+  # path separator past the prefix" is a sufficient direct-child test.
   releases_dir="${HOME:?HOME must be set}/.konductor/cli-releases"
   shared_bin="${HOME}/.local/bin/konductor"
 
@@ -469,8 +330,7 @@ konductor_resolve_target_binary() {
       return 1
     fi
 
-    # Trust-boundary check (see this function's own doc comment above) --
-    # resolves any symlink chain and re-validates the RESOLVED path.
+    # Trust-boundary check -- see this function's own doc comment above.
     if [[ -n "$recorded_binary" ]] && konductor_resolve_and_check_binary "$recorded_binary" "$releases_dir"; then
       resolved="$KONDUCTOR_RESOLVE_AND_CHECK_BINARY_RESULT"
       candidate_version="$("$resolved" --version 2>/dev/null | awk '{print $2}')"
@@ -488,12 +348,9 @@ konductor_resolve_target_binary() {
     konductor_log "No power-cli.json found for ${target_dir} (a target onboarded before this Power tracked its own CLI binary per target) -- trusting the shared ${shared_bin} for this one run; a fresh record is written once this run succeeds."
   fi
 
-  # LEGACY path: no recorded cli_version exists yet to compare anything
-  # against, so trust the shared binary outright, whatever version it
-  # currently is -- see this function's own doc comment, resolution
-  # order step 4. Still goes through the same resolve-and-check trust
-  # boundary as every other candidate -- "legacy" waives the version
-  # comparison, never the location check.
+  # LEGACY path (resolution order step 4): no cli_version to compare
+  # against, so trust the shared binary outright -- still through the
+  # same resolve-and-check trust boundary; only the version check is waived.
   if [[ -n "$legacy" ]]; then
     if konductor_resolve_and_check_binary "$shared_bin" "$releases_dir"; then
       resolved="$KONDUCTOR_RESOLVE_AND_CHECK_BINARY_RESULT"
@@ -508,14 +365,10 @@ konductor_resolve_target_binary() {
     return 1
   fi
 
-  # Non-legacy fallback: power-cli.json named a real cli_version, but its
-  # own recorded binary didn't pan out -- search the cache, then the
-  # shared symlink, for ANY binary that still reports that exact version.
-  # Every glob match still goes through the same resolve-and-check trust
-  # boundary before ever being run -- a symlink dropped directly inside
-  # cli-releases with a name matching this glob pattern is not
-  # automatically trusted just because ITS OWN NAME looks like a direct
-  # child; only its fully-resolved target being one is what matters.
+  # Non-legacy fallback: the recorded binary didn't pan out -- search the
+  # cache, then the shared symlink, for any binary still reporting that
+  # exact version. Every glob match still goes through the same
+  # resolve-and-check trust boundary before ever being run.
   if [[ -d "$releases_dir" ]]; then
     for candidate in "${releases_dir}"/konductor-v"${recorded_version}"-*; do
       [[ -e "$candidate" ]] || continue
@@ -536,15 +389,9 @@ konductor_resolve_target_binary() {
     shared_version="$("$resolved" --version 2>/dev/null | awk '{print $2}')"
     if [[ "$shared_version" == "$recorded_version" ]]; then
       konductor_log "Using the shared ${shared_bin} (resolved to ${resolved}; version ${shared_version} matches this target's recorded cli_version)"
-      # Both assignments below are read only by run-update.sh/run-uninstall.sh,
-      # which source this file -- see lib.sh's own top-of-file declaration
-      # comment for why shellchecking lib.sh BY ITSELF can never see that
-      # read (no standalone entrypoint of its own to reference it from
-      # within this same file); `shellcheck -x run-update.sh` and
-      # `shellcheck -x run-uninstall.sh` are the authoritative check.
-      # shellcheck disable=SC2034
+      # shellcheck disable=SC2034 # read only by run-update.sh/run-uninstall.sh after sourcing this file
       KONDUCTOR_RESOLVE_TARGET_BINARY_RESULT="$resolved"
-      # shellcheck disable=SC2034
+      # shellcheck disable=SC2034 # read only by run-update.sh/run-uninstall.sh after sourcing this file
       KONDUCTOR_RESOLVE_TARGET_BINARY_VERSION_RESULT="$shared_version"
       return 0
     fi

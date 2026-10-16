@@ -6,11 +6,10 @@
 # triples, plus its `.sha256` sidecar, and verify the download before it is
 # ever executed or linked onto PATH.
 #
-# Asset naming and download URL shape mirror scripts/konductor-install.sh
-# exactly: `konductor-<tag>-<triple>` and `<same>.sha256`, fetched directly
-# from `https://github.com/<repo>/releases/download/<tag>/<asset>` -- no
-# GitHub API metadata lookup needed here, since the tag is already known
-# (resolved from this Power's own plugin.json, not "latest").
+# Asset naming/URL shape mirrors scripts/konductor-install.sh exactly:
+# `konductor-<tag>-<triple>` and `<same>.sha256` under
+# `https://github.com/<repo>/releases/download/<tag>/<asset>` -- the tag
+# is already known (from plugin.json), so no "latest" API lookup.
 #
 # Usage:
 #   fetch-verify-binary.sh <repo> <tag> <triple> <download-dir>
@@ -18,44 +17,20 @@
 #   <repo>          e.g. aws-solutions/konductor (overridable for a fork/test)
 #   <tag>           the v-prefixed release tag, e.g. v1.0.2 (see resolve-version.sh)
 #   <triple>        one of the three published triples (see detect-platform.sh)
-#   <download-dir>  scratch directory for the download + checksum verify --
-#                   may be (and, from run-onboarding.sh, is) an ephemeral
-#                   directory the caller removes when it's done. The final
-#                   verified binary is NOT left here; see below.
+#   <download-dir>  scratch directory for the download + checksum verify;
+#                   the verified binary is relocated out of it, see below.
 #
-# On success, sets FETCH_VERIFY_BINARY_RESULT to the path of the verified,
-# executable binary and returns 0. That path is under a STABLE location --
-# `${HOME}/.konductor/cli-releases/` -- not under <download-dir>: the
-# verified binary is moved there once checksum verification passes, before
-# returning. This matters beyond tidiness -- run-onboarding.sh symlinks
-# `~/.local/bin/konductor` to whatever path this function returns, and its
-# own <download-dir> is an ephemeral `mktemp -d` directory removed via an
-# EXIT trap the moment the whole onboarding script finishes, success or
-# failure alike. Returning a path under <download-dir> would leave that
-# symlink dangling within moments of a SUCCESSFUL run, not just a failed
-# one. `${HOME}/.konductor/cli-releases/` mirrors the exact convention
-# scripts/konductor-install.sh already uses for the identical reason (see
-# that script's own `KONDUCTOR_RELEASES_DIR`) -- reuse, not a new
-# convention invented for this Power.
+# On success, sets FETCH_VERIFY_BINARY_RESULT to the verified binary's path
+# under the STABLE `${HOME}/.konductor/cli-releases/` cache (same
+# convention scripts/konductor-install.sh uses), not under <download-dir>:
+# run-onboarding.sh symlinks `~/.local/bin/konductor` to this path, and its
+# own <download-dir> is removed via an EXIT trap the moment it finishes.
 #
-# Deliberately NOT "prints the path on stdout, capture with $(...)": curl's
-# and sha256sum's own real output must stream straight to the terminal
-# ("visible commands only" -- never captured into a variable and
-# replaced with a summary), and capturing this function's whole stdout
-# to retrieve its result would swallow that same real output instead of
-# showing it. A global result variable keeps the two concerns separate:
-# real command output stays live on the terminal, and the actual return
-# value travels through a channel a caller reads deliberately, not by
-# accident. (The standalone CLI entrypoint at the bottom of this file still
-# echoes the result for a human running this script directly -- that's a
-# fresh process's own stdout, never captured by anything.)
+# A global result variable, not stdout capture: curl's and sha256sum's own
+# output must stream straight to the terminal, never swallowed by a
+# caller capturing this function's result.
 #
-# On any failure -- network error, missing asset (tag/platform not
-# published), or checksum mismatch -- prints a clear error to stderr and
-# exits non-zero. A tag that does not resolve (e.g. plugin.json's version
-# has drifted from what was actually tagged) is a hard stop here -- this
-# script NEVER falls back to
-# "latest" as a silent substitute for a 404, since that would install a
+# Never falls back to "latest" on a missing asset -- that would install a
 # version this Power was not validated against.
 set -euo pipefail
 
@@ -71,12 +46,9 @@ fetch_verify_binary() {
 
   konductor_require_cmd curl "Install curl to download the konductor binary."
 
-  # Validated BEFORE any use -- $tag is embedded directly into a filename
-  # (asset_name/stable_path, both ultimately paths under dest_dir and the
-  # stable release cache) and a download URL with zero further escaping.
-  # $tag can arrive from --tag or KONDUCTOR_POWER_VERSION, values this
-  # Power's own scripts did not necessarily produce (see
-  # KONDUCTOR_CLI_TAG_REGEX's own doc comment in lib.sh).
+  # Validated BEFORE any use: $tag goes straight into a filename, a cache
+  # path, and a download URL with zero further escaping, and may arrive
+  # from --tag or KONDUCTOR_POWER_VERSION (see KONDUCTOR_CLI_TAG_REGEX in lib.sh).
   if [[ ! "$tag" =~ $KONDUCTOR_CLI_TAG_REGEX ]]; then
     konductor_die "fetch_verify_binary: '${tag}' is not a valid release tag (expected a v-prefixed semver like v1.0.2) -- refusing to use it in a download URL or path."
     return 1
@@ -91,10 +63,8 @@ fetch_verify_binary() {
   mkdir -p "$dest_dir"
 
   konductor_log "Downloading ${asset_name} from release ${tag} of ${repo}"
-  # --proto '=https' refuses any curl-supported protocol other than https
-  # for this transfer (even if the URL above were somehow http://); --tlsv1.2
-  # refuses to negotiate down to an older, weaker TLS version. Both are
-  # curl-side guards independent of whatever the URL string says.
+  # --proto '=https' refuses any non-https transfer regardless of the URL
+  # string; --tlsv1.2 refuses to negotiate down to a weaker TLS version.
   if ! curl -fsSL --proto '=https' --tlsv1.2 -o "$asset_path" "${base_url}/${asset_name}"; then
     konductor_die "release ${tag} of ${repo} does not publish a '${asset_name}' asset (the release tag may not exist, or no binary is published for ${triple} on this release). Not retrying against 'latest' -- that would install a version this Power was not validated against."
     return 1
