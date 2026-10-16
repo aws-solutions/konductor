@@ -6,6 +6,13 @@ This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Entries are consolidated per release,
 not per individual commit.
 
+## [Unreleased]
+
+### Fixed
+
+- The skill-lookup MCP server's `mcp_tool_call` events now include `parentAgentName` (as
+  `null`), which `docs/telemetry-schema.json` requires on every event.
+
 ## [1.1.0] - 2026-10-14
 
 ### Added
