@@ -3,8 +3,8 @@
 #
 # test-plugin-agent-resolution.sh: which `claude --agent` name cmux-dispatch.sh
 # launches on Claude Code, for a CLI install (~/.claude/agents), a plugin-only
-# install (<plugin>:<agent>), an already qualified name, an ambiguous name,
-# and an agent that is not installed.
+# install, plugin-qualified names, an ambiguous name, agents that are not
+# installed, and an agent filename that tries to inject a command.
 #
 # Usage: bash test-plugin-agent-resolution.sh
 # Exit code: 0 = all assertions passed, 1 = a regression was detected.
@@ -70,7 +70,7 @@ dispatch() {
   rm -f "$CLAUDE_RECORD" "$PANE_CMD_FILE"
   rm -rf "$KONDUCTOR_CMUX_REGISTRY_DIR"
   HOME="$home" bash "$skill_dir/cmux-dispatch.sh" --agent "$agent" --task "t" >"$WORKDIR/out" 2>&1
-  [[ -f "$PANE_CMD_FILE" ]] && bash -c "$(cat "$PANE_CMD_FILE")" >>"$WORKDIR/out" 2>&1
+  [[ -f "$PANE_CMD_FILE" ]] && (cd "$WORKDIR" && bash -c "$(cat "$PANE_CMD_FILE")") >>"$WORKDIR/out" 2>&1
   return 0
 }
 
@@ -97,23 +97,46 @@ expect_error() {
   fi
 }
 
-dispatch "$CLI_HOME" "$CLI_HOME/.claude/skills/cmux-dispatch" k-developer
+CLI=("$CLI_HOME" "$CLI_HOME/.claude/skills/cmux-dispatch")
+PLUGIN=("$PLUGIN_HOME" "$PLUGIN_ROOT/skills/cmux-dispatch")
+
+dispatch "${CLI[@]}" k-developer
 expect_launch "CLI install" k-developer
 
-dispatch "$CLI_HOME" "$CLI_HOME/.claude/skills/cmux-dispatch" k-tpm
+dispatch "${CLI[@]}" k-tpm
 expect_error "CLI install, ambiguous name" "matches multiple installed agents"
 
-dispatch "$PLUGIN_HOME" "$PLUGIN_ROOT/skills/cmux-dispatch" k-developer
-expect_launch "plugin-only install" konductor:k-developer
+dispatch "${CLI[@]}" konductor:k-developer
+expect_error "CLI install, qualified name without a plugin" "claude agent konductor:k-developer not installed"
 
-dispatch "$PLUGIN_HOME" "$PLUGIN_ROOT/skills/cmux-dispatch" konductor:k-developer
-expect_launch "qualified name" konductor:k-developer
+dispatch "${PLUGIN[@]}" k-developer
+expect_launch "plugin-only install, bare name" k-developer
 
-dispatch "$PLUGIN_HOME" "$PLUGIN_ROOT/skills/cmux-dispatch" k-missing
+dispatch "${PLUGIN[@]}" konductor:k-developer
+expect_launch "plugin-only install, qualified name" konductor:k-developer
+
+dispatch "${PLUGIN[@]}" konductor:k-missing
+expect_error "qualified name the plugin does not ship" "claude agent konductor:k-missing not installed"
+
+dispatch "${PLUGIN[@]}" other:k-developer
+expect_error "qualified name for another plugin" "claude agent other:k-developer not installed"
+
+dispatch "${PLUGIN[@]}" k-missing
 expect_error "plugin-only install, unknown agent" "claude agent k-missing not installed"
 
-dispatch "$PLUGIN_HOME" "$PLUGIN_ROOT/skills/cmux-dispatch" "konductor:k-dev;id"
+dispatch "${PLUGIN[@]}" "konductor:k-dev;id"
 expect_error "invalid name" "ERROR: --agent must be"
+
+# The prefix comes from a filename under ~/.claude/agents and is pasted
+# into the pane command, so it must not be able to run anything.
+touch "$CLI_HOME/.claude/agents/local-\$(echo>pwned)-k-qa.md"
+dispatch "${CLI[@]}" k-qa
+expect_error "agent filename with a command substitution" "unsafe agent file name"
+if [[ -e "$WORKDIR/pwned" ]]; then
+  log_fail "agent filename with a command substitution: the injected command ran"
+else
+  log_pass "agent filename with a command substitution: the injected command did not run"
+fi
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"

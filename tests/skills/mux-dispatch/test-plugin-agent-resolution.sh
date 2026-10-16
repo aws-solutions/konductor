@@ -3,8 +3,8 @@
 #
 # test-plugin-agent-resolution.sh: which `claude --agent` name tmux-dispatch.sh
 # and zellij-dispatch.sh launch on Claude Code, for a CLI install
-# (~/.claude/agents), a plugin-only install (<plugin>:<agent>), an already
-# qualified name, an ambiguous name, and an agent that is not installed.
+# (~/.claude/agents), a plugin-only install, plugin-qualified names, an
+# ambiguous name, and agents that are not installed.
 #
 # Usage: bash test-plugin-agent-resolution.sh
 # Exit code: 0 = all assertions passed, 1 = a regression was detected.
@@ -114,22 +114,34 @@ expect_error() {
 }
 
 for backend in tmux zellij; do
-  dispatch "$backend" "$CLI_HOME" "$CLI_HOME/.claude/skills/mux-dispatch" k-developer
+  CLI=("$CLI_HOME" "$CLI_HOME/.claude/skills/mux-dispatch")
+  PLUGIN=("$PLUGIN_HOME" "$PLUGIN_ROOT/skills/mux-dispatch")
+
+  dispatch "$backend" "${CLI[@]}" k-developer
   expect_launch "$backend CLI install" k-developer
 
-  dispatch "$backend" "$CLI_HOME" "$CLI_HOME/.claude/skills/mux-dispatch" k-tpm
+  dispatch "$backend" "${CLI[@]}" k-tpm
   expect_error "$backend CLI install, ambiguous name" "matches multiple installed agents"
 
-  dispatch "$backend" "$PLUGIN_HOME" "$PLUGIN_ROOT/skills/mux-dispatch" k-developer
-  expect_launch "$backend plugin-only install" konductor:k-developer
+  dispatch "$backend" "${CLI[@]}" konductor:k-developer
+  expect_error "$backend CLI install, qualified name without a plugin" "claude agent konductor:k-developer not installed"
 
-  dispatch "$backend" "$PLUGIN_HOME" "$PLUGIN_ROOT/skills/mux-dispatch" konductor:k-developer
-  expect_launch "$backend qualified name" konductor:k-developer
+  dispatch "$backend" "${PLUGIN[@]}" k-developer
+  expect_launch "$backend plugin-only install, bare name" k-developer
 
-  dispatch "$backend" "$PLUGIN_HOME" "$PLUGIN_ROOT/skills/mux-dispatch" k-missing
+  dispatch "$backend" "${PLUGIN[@]}" konductor:k-developer
+  expect_launch "$backend plugin-only install, qualified name" konductor:k-developer
+
+  dispatch "$backend" "${PLUGIN[@]}" konductor:k-missing
+  expect_error "$backend qualified name the plugin does not ship" "claude agent konductor:k-missing not installed"
+
+  dispatch "$backend" "${PLUGIN[@]}" other:k-developer
+  expect_error "$backend qualified name for another plugin" "claude agent other:k-developer not installed"
+
+  dispatch "$backend" "${PLUGIN[@]}" k-missing
   expect_error "$backend plugin-only install, unknown agent" "claude agent k-missing not installed"
 
-  dispatch "$backend" "$PLUGIN_HOME" "$PLUGIN_ROOT/skills/mux-dispatch" "konductor:k-dev;id"
+  dispatch "$backend" "${PLUGIN[@]}" "konductor:k-dev;id"
   expect_error "$backend invalid name" "ERROR: --agent must be"
 done
 

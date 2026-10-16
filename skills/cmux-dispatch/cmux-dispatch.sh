@@ -72,8 +72,7 @@ done
 [[ -z "$AGENT" ]] && { echo "ERROR: --agent required" >&2; exit 1; }
 [[ -z "$TASK" ]]  && { echo "ERROR: --task required" >&2; exit 1; }
 # AGENT is the name from the orchestrator routing table (e.g. 'k-developer'),
-# or one already qualified with a Claude Code plugin name ('konductor:k-developer').
-# This script never strips a prefix; it adds only the plugin name, below.
+# or one qualified with this plugin's name ('konductor:k-developer').
 [[ "$AGENT" =~ ^([a-z0-9-]+:)?[a-z0-9-]+$ ]] || { echo "ERROR: --agent must be alphanumeric/hyphens only, optionally prefixed with '<plugin>:'" >&2; exit 1; }
 CMUX_BIN="${CMUX_BIN:-/Applications/cmux.app/Contents/MacOS/cmux}"
 [[ -x "$CMUX_BIN" ]] || { echo "ERROR: cmux binary not found or not executable (set CMUX_BIN to override)" >&2; exit 1; }
@@ -160,10 +159,10 @@ if [ -n "${CLAUDECODE:-}" ]; then
   # glob order. FOUND is tracked separately from PREFIX so a legitimate
   # empty prefix (a hypothetical prefix-less "<agent>.md" install) is not
   # mistaken for "not found".
-  # If ~/.claude/agents has no match, fall back to the agents this skill's
-  # own plugin ships: in a Claude Code plugin this script sits at
-  # <plugin root>/skills/cmux-dispatch/, and the plugin's agents are named
-  # <plugin>:<agent>. A plugin-qualified AGENT is launched as-is.
+  # If ~/.claude/agents has no match, an agent this skill's own plugin ships
+  # (this script sits at <plugin root>/skills/cmux-dispatch/) launches by its
+  # bare name; Claude resolves it to <plugin>:<agent>. A qualified AGENT must
+  # name this plugin and one of its agents.
   PLUGIN_ROOT="$(cd -P "$SCRIPT_DIR/../.." && pwd)"
   PLUGIN_NAME=""
   if [[ -f "$PLUGIN_ROOT/.claude-plugin/plugin.json" ]]; then
@@ -173,7 +172,9 @@ if [ -n "${CLAUDECODE:-}" ]; then
   fi
   PREFIX="" FOUND="" AMBIGUOUS=""
   if [[ "$AGENT" == *:* ]]; then
-    FOUND=1
+    if [[ -n "$PLUGIN_NAME" && "${AGENT%%:*}" == "$PLUGIN_NAME" && -f "$PLUGIN_ROOT/agents/${AGENT#*:}.md" ]]; then
+      FOUND=1
+    fi
   else
     LOCAL_MATCHES=()
     for f in "$HOME"/.claude/agents/local-*-"${AGENT}".md; do
@@ -206,7 +207,6 @@ if [ -n "${CLAUDECODE:-}" ]; then
         PREFIX=""
         FOUND=1
       elif [[ -n "$PLUGIN_NAME" && -f "$PLUGIN_ROOT/agents/${AGENT}.md" ]]; then
-        PREFIX="${PLUGIN_NAME}:"
         FOUND=1
       fi
     fi
@@ -218,8 +218,16 @@ if [ -n "${CLAUDECODE:-}" ]; then
     cmux close-surface --surface "$SURFACE_ID" 2>/dev/null || true
     exit 1
   fi
+  # PREFIX comes from a filename and is pasted into PANE_CMD below.
+  if [[ ! "$PREFIX" =~ ^[A-Za-z0-9._-]*$ ]]; then
+    echo "ERROR: unsafe agent file name for ${AGENT} under ~/.claude/agents (prefix '${PREFIX}'); not dispatching" >&2
+    mkdir -p "$REGISTRY_DIR"
+    python3 -c "import json; json.dump({'workspace_id':'${WS_ID:-$DONE_KEY}','status':'error','summary':'unsafe agent file name'},open('${REGISTRY_DIR}/${DONE_KEY}.done','w'))"
+    cmux close-surface --surface "$SURFACE_ID" 2>/dev/null || true
+    exit 1
+  fi
   if [ -z "$FOUND" ]; then
-    echo "ERROR: claude agent ${AGENT} not installed under ~/.claude/agents (checked local-/registry installs); not dispatching" >&2
+    echo "ERROR: claude agent ${AGENT} not installed under ~/.claude/agents or in this plugin; not dispatching" >&2
     mkdir -p "$REGISTRY_DIR"
     python3 -c "import json; json.dump({'workspace_id':'${WS_ID:-$DONE_KEY}','status':'error','summary':'agent not installed'},open('${REGISTRY_DIR}/${DONE_KEY}.done','w'))"
     cmux close-surface --surface "$SURFACE_ID" 2>/dev/null || true

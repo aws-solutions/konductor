@@ -20,7 +20,8 @@ not per individual commit.
   doesn't ship. `k-architect` also lost a stale package prefix on its grants.
 - `mux-dispatch` and `cmux-dispatch` refused to dispatch in plugin installs: they only looked
   in `~/.claude/agents/` and rejected `:` in `--agent`. They now fall back to the plugin's own
-  agents and accept `konductor:<agent>`.
+  agents and accept `konductor:<agent>` for an agent the plugin ships. `cmux-dispatch` also
+  refuses an agent file name that could inject a command into the pane.
 - `mux-dispatch`, `cmux-dispatch`, `persistent-memory` and `legacy-to-agentic-estimate` could
   not find their bundled scripts in plugin installs. They now look in `${CLAUDE_SKILL_DIR}`
   first, then the global install, then a project install with a `.konductor/manifest`, then a

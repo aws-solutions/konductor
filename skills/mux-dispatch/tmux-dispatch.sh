@@ -34,8 +34,7 @@ done
 [[ -z "${TMUX:-}" ]]  && { echo "ERROR: Not running inside a tmux session" >&2; exit 1; }
 [[ "$SPLIT_DIR" == "stacked" ]] && { echo "ERROR: tmux does not support stacked panes (see tmux#2770); use zellij for stacked, or --split right|down" >&2; exit 1; }
 # AGENT is the name from the orchestrator routing table (e.g. 'k-developer'),
-# or one already qualified with a Claude Code plugin name ('konductor:k-developer').
-# This script never strips a prefix; it adds only the plugin name, below.
+# or one qualified with this plugin's name ('konductor:k-developer').
 [[ "$AGENT" =~ ^([a-z0-9-]+:)?[a-z0-9-]+$ ]] || { echo "ERROR: --agent must be alphanumeric/hyphens only, optionally prefixed with '<plugin>:'" >&2; exit 1; }
 
 # In a Claude Code plugin this skill sits at <plugin root>/skills/mux-dispatch/,
@@ -104,11 +103,14 @@ fi
     # "konductor-mux-orchestrator" and "konductor-cmux-orchestrator") -- error instead of
     # silently picking one by glob order. FOUND is tracked separately from
     # PREFIX so a legitimate empty prefix is not mistaken for "not found".
-    # If ~/.claude/agents has no match, fall back to the agents this skill's
-    # own plugin ships. A plugin-qualified AGENT is launched as-is.
+    # If ~/.claude/agents has no match, an agent this skill's own plugin
+    # ships launches by its bare name; Claude resolves it to <plugin>:<agent>.
+    # A qualified AGENT must name this plugin and one of its agents.
     echo 'PREFIX="" FOUND="" AMBIGUOUS=""'
     if [[ "$AGENT" == *:* ]]; then
-      echo 'FOUND=1'
+      if [[ -n "$PLUGIN_NAME" && "${AGENT%%:*}" == "$PLUGIN_NAME" && -f "$PLUGIN_ROOT/agents/${AGENT#*:}.md" ]]; then
+        echo 'FOUND=1'
+      fi
     else
       echo 'LOCAL_MATCHES=()'
       printf 'for f in "$HOME"/.claude/agents/local-*-%s.md; do\n' "$AGENT"
@@ -142,7 +144,6 @@ fi
       echo '    FOUND=1'
       if [[ -n "$PLUGIN_NAME" ]]; then
         printf '  elif [ -f %q ]; then\n' "$PLUGIN_ROOT/agents/$AGENT.md"
-        printf '    PREFIX=%q\n' "$PLUGIN_NAME:"
         echo '    FOUND=1'
       fi
       echo '  fi'
@@ -152,7 +153,7 @@ fi
     printf '  echo "ERROR: --agent %s matches multiple installed agents; pass a fully-qualified name. Candidates: $AMBIGUOUS"\n' "$AGENT"
     printf '  EXIT_CODE=1\n'
     printf 'elif [ -z "$FOUND" ]; then\n'
-    printf '  echo "ERROR: claude agent %s not installed under ~/.claude/agents (checked local-/registry installs); not dispatching"\n' "$AGENT"
+    printf '  echo "ERROR: claude agent %s not installed under ~/.claude/agents or in this plugin; not dispatching"\n' "$AGENT"
     printf '  EXIT_CODE=1\n'
     printf 'else\n'
     printf '  claude --agent "${PREFIX}%s" --dangerously-skip-permissions -p "$TASK"\n' "$AGENT"
