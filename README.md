@@ -130,7 +130,7 @@ It then runs `konductor install` against `$HOME`, which fetches the agents, skil
 <br/>
 
 Use this for a pinned commit, a platform without a published binary, or to audit the code before
-installing. The CLI builds with plain `cargo`; nothing is Amazon-internal.
+installing. The CLI builds with plain `cargo` and a public Rust toolchain.
 [`scripts/konductor-clone-install.sh`](scripts/konductor-clone-install.sh) does all of this in one
 command and keeps a checkout under `~/.konductor/git/konductor` up to date on re-runs. It honors the
 same `KONDUCTOR_HARNESS` variable.
