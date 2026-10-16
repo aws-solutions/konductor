@@ -57,10 +57,23 @@
 #                     on cli's build)
 #   clean             Remove build artifacts in cli/, mcp/, and shared/
 #   help              Show this usage summary
+#
+#   kiro-power-check  Check VERSION/plugin.json for drift and that every
+#                     committed import URL names the matching release tag,
+#                     then validate the COMMITTED powers/konductor/ tree in
+#                     place: plugin.json against the Agent Plugins v1.0.0
+#                     schema, every skill's SKILL.md frontmatter, the
+#                     pytest suite pinning those two checkers
+#                     (tests/test_validate_kiro_power_*.py), shellcheck
+#                     across konductor-setup's scripts/, and the full
+#                     tests/kiro-power/ suite (each test's own default
+#                     KONDUCTOR_SETUP_SCRIPTS_DIR already resolves to
+#                     powers/konductor/skills/konductor-setup/scripts, so no
+#                     override is needed here). No commits, no push.
 
 .PHONY: all build fmt lint install link synth claude-plugin claude-plugin-check \
         test test-rust test-schema-dump clean help \
-        guide guide-check guide-sync guide-html guide-record
+        guide guide-check guide-sync guide-html guide-record kiro-power-check
 
 all: build
 
@@ -82,6 +95,11 @@ help:
 	@echo "  make test-rust          Run Rust unit tests, cli/mcp/shared (no internet required)"
 	@echo "  make test-schema-dump   Smoke-check __dump_schema (cli only)"
 	@echo "  make clean              Remove build artifacts in cli/, mcp/, and shared/"
+	@echo ""
+	@echo "  Konductor Kiro Power (powers/konductor/, imported by users directly from main)"
+	@echo "  make kiro-power-check   Drift check + validate the committed tree in place"
+	@echo "                          (schema, skill frontmatter, shellcheck, full test"
+	@echo "                          suite) -- no commits, no push"
 	@echo ""
 	@echo "  User guide (docs/user-guide/ + docs/site/, docs/index.html)"
 	@echo "  make guide-check        Report drift between the guide and the source tree"
@@ -225,6 +243,60 @@ clean:
 	$(MAKE) -C cli clean
 	$(MAKE) -C mcp clean
 	$(MAKE) -C shared clean
+
+# ── kiro-power-check ──────────────────────────────────────────────────────────
+# PR-time smoke test: VERSION/plugin.json drift, import URLs name the
+# matching release tag, plugin.json against the Agent Plugins v1.0.0
+# schema, every skill's SKILL.md frontmatter, the pytest suite pinning
+# those two checkers, shellcheck, and the full tests/kiro-power/ suite.
+# No commits, no push -- read-only validation of the tree that ships on main.
+#
+# The shellcheck step `cd`s into the scripts directory first: `-x`
+# resolves a `source "$(dirname ...)/lib.sh"` line relative to the
+# current directory, not the checked file's own directory, so a bare
+# `./*.sh` glob run from inside it is what makes `-x` actually follow it.
+#
+# KONDUCTOR_SETUP_SCRIPTS_DIR is left unset: every test-*.sh file's own
+# default already resolves to the committed, in-place tree.
+#
+# KIRO_POWER_SHELLCHECK_VERSION pins what GitHub-hosted ubuntu-latest
+# ships: 0.9.0 and a newer ShellCheck (confirmed on 0.11.0) can disagree
+# on SC2119/SC2120 for a function whose only parameter has a
+# `${1:-default}` fallback and no bare call in the same file -- there is
+# no flag that restores the old behavior, so a mismatch only warns here
+# rather than being forced.
+KIRO_POWER_SHELLCHECK_VERSION := 0.9.0
+kiro-power-check:
+	@echo "=== [kiro-power-check] Checking VERSION/plugin.json for drift ==="; \
+	scripts/check-plugin-json-version-drift.sh || exit 1; \
+	echo "=== [kiro-power-check] Checking import URLs name the current release tag ==="; \
+	scripts/check-kiro-power-import-url-version.sh || exit 1; \
+	echo "=== [kiro-power-check] Validating plugin.json against the Agent Plugins v1.0.0 schema ==="; \
+	python3 scripts/validate-kiro-power-plugin-json.py powers/konductor/plugin.json || exit 1; \
+	echo "=== [kiro-power-check] Validating skill frontmatter ==="; \
+	python3 scripts/validate-kiro-power-skill-frontmatter.py powers/konductor || exit 1; \
+	echo "=== [kiro-power-check] Running the plugin.json schema-sync and skill-frontmatter Python tests ==="; \
+	python3 -m pytest -q tests/test_validate_kiro_power_plugin_json_schema_sync.py tests/test_validate_kiro_power_skill_frontmatter.py || exit 1; \
+	echo "=== [kiro-power-check] Shellchecking konductor-setup's scripts/ and tests/kiro-power/ ==="; \
+	shellcheck_skipped=0; \
+	if command -v shellcheck >/dev/null 2>&1; then \
+		installed_ver="$$(shellcheck --version | awk '/^version:/{print $$2}')"; \
+		if [ "$$installed_ver" != "$(KIRO_POWER_SHELLCHECK_VERSION)" ]; then \
+			echo "warning: [kiro-power-check] shellcheck $$installed_ver is on PATH; CI runs $(KIRO_POWER_SHELLCHECK_VERSION). A newer ShellCheck has been observed to miss an SC2119/SC2120 case that 0.9.0 still flags -- a function param with a default-value fallback, never otherwise called with an argument in the same file -- so a clean run here is not a guarantee CI will also pass." >&2; \
+		fi; \
+		(cd powers/konductor/skills/konductor-setup/scripts && shellcheck -x ./*.sh) || exit 1; \
+		(cd tests/kiro-power && shellcheck -x ./*.sh) || exit 1; \
+	else \
+		shellcheck_skipped=1; \
+		echo "notice: [kiro-power-check] 'shellcheck' not found on PATH -- skipping" >&2; \
+	fi; \
+	echo "=== [kiro-power-check] Running tests/kiro-power/ against the committed tree ==="; \
+	bash tests/kiro-power/run-all.sh || exit 1; \
+	if [ "$$shellcheck_skipped" -eq 1 ]; then \
+		echo "=== [kiro-power-check] All checks passed (shellcheck skipped) ==="; \
+	else \
+		echo "=== [kiro-power-check] All checks passed ==="; \
+	fi
 
 # ── user guide ────────────────────────────────────────────────────────────────
 # The guide is authored, not compiled, so these keep the FACTS in step with the

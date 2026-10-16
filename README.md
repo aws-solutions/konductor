@@ -80,6 +80,7 @@ at the end. Piping a script to `bash` runs code you haven't read; to check it fi
 Using the Claude Code plugin marketplace instead? Run `/plugin marketplace add aws-solutions/konductor`,
 then `/plugin install konductor@konductor`
 ([details](docs/user-guide/tasks/install-claude-plugin-marketplace.md)).
+Using Kiro IDE? [Install via a Kiro Power](#install-via-kiro-power).
 
 **2. Start the orchestrator:**
 
@@ -160,6 +161,30 @@ claude --agent konductor
 ```
 
 See [`cli/README.md`](cli/README.md#getting-started) for prerequisites and a full walkthrough.
+
+</details>
+
+<details>
+<summary id="install-via-kiro-power"><b>Install via a Kiro Power (Kiro IDE and Kiro CLI v3)</b></summary>
+
+<br/>
+
+[`powers/konductor/`](powers/konductor/) is a Kiro [Power](https://kiro.dev/docs/powers/), imported
+straight from GitHub. It's a third install path, alongside the install script and a source build.
+
+1. In Kiro, open the Powers panel and choose **Add Custom Power** → **Import power from GitHub**.
+2. Enter `https://github.com/aws-solutions/konductor/tree/v1.1.0/powers/konductor`.
+3. Choose **Install**. This registers the Power's manifest; onboarding itself runs separately, the first time you invoke it (step 4 below).
+4. Either say "konductor", "install konductor", or "set up konductor" in a chat session, or use the Try-power action in the installed Powers list. Both trigger the same onboarding skill.
+
+The `konductor-setup` skill then does what the install script does: it detects your platform,
+downloads and checksum-verifies the pinned `konductor` release (or builds it from source on Intel
+macOS; on Windows, use WSL), and runs `konductor install --harness kiro-v3`. It installs into the
+project you invoked it from, never `$HOME`, and shows you the plan and asks once before it starts.
+A second skill, `konductor-help`, answers questions about the install afterward.
+
+See [Install via Kiro Power](docs/user-guide/tasks/install-kiro-power.md) for supported platforms,
+updating, uninstalling, MCP server setup and troubleshooting.
 
 </details>
 

@@ -51,6 +51,28 @@ jobs:
             exit 1
           fi
 
+      - name: Install pytest for the Kiro Power's Python test suite
+        # tests/test_validate_kiro_power_plugin_json_schema_sync.py and
+        # tests/test_validate_kiro_power_skill_frontmatter.py are pytest-style
+        # (plain `assert` functions, not unittest.TestCase subclasses), and
+        # pytest is not preinstalled on ubuntu-latest -- `make kiro-power-check`
+        # below runs them via `python3 -m pytest`.
+        run: python3 -m pip install --user pytest
+
+      - name: Validate the Kiro Power (powers/konductor/)
+        # Users import the Power from the tagged release matching VERSION
+        # (github.com/aws-solutions/konductor/tree/v<VERSION>/powers/konductor),
+        # cut from this exact commit once it is merged and tagged -- so
+        # every PR must keep the committed tree passing: VERSION/plugin.json
+        # drift, the Agent Plugins v1.0.0 schema,
+        # both skills' SKILL.md frontmatter, the pytest suite pinning those two
+        # checkers, shellcheck across konductor-setup's scripts/, and the full
+        # tests/kiro-power/ suite. `make kiro-power-check` needs python3,
+        # pytest (installed above), and shellcheck (preinstalled on
+        # ubuntu-latest) -- no Rust toolchain required, so this runs before
+        # the toolchain setup below rather than depending on it.
+        run: make kiro-power-check
+
       - name: Require a CHANGELOG.md entry alongside any VERSION bump
         # CHANGELOG.md's own convention (entries consolidated per release,
         # not per commit) is otherwise unenforced -- a PR could bump VERSION

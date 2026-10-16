@@ -96,6 +96,7 @@ Add `--scope user` to make that server available across projects.
 
 - [Install for Claude Code](install-claude-code.md)
 - [Install for Kiro CLI](install-kiro-cli.md)
+- [Install via Kiro Power](install-kiro-power.md)
 - [Plugin build output](../../../generated/claude-plugin/README.md)
 - <https://aws-solutions.github.io/konductor/>
 
