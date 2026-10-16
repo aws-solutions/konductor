@@ -22,7 +22,7 @@ alternative to the Kiro CLI and Claude Code installation paths.
 3. Enter:
 
    ```text
-   https://github.com/aws-solutions/konductor/tree/main/powers/konductor
+   https://github.com/aws-solutions/konductor/tree/v1.1.0/powers/konductor
    ```
 
 4. Choose **Install**.

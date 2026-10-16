@@ -108,7 +108,7 @@ claude --agent konductor
 Kiro CLI v3 and the unified Kiro IDE support a distributable, keyword-activated install unit called a [Power](https://kiro.dev/docs/powers/). This repo ships one at [`powers/konductor/`](powers/konductor/) directly on `main`: that directory already has the flat shape Kiro's GitHub import expects (`plugin.json` at its own root, `skills/` alongside it), so there is no separate publish branch or assembly step. `make kiro-power-check` (see the [`Makefile`](Makefile)) validates this same committed tree in place; bump its version by editing `powers/konductor/plugin.json`'s own `version` field directly alongside `VERSION`. For the full walkthrough, including the exact click path, what the consent prompt shows, supported platforms, updating, uninstalling, bring-your-own MCP server setup, and troubleshooting, see [Install via Kiro Power](docs/user-guide/tasks/install-kiro-power.md) in the user guide.
 
 1. In Kiro, open the Powers panel and choose **Add Custom Power** → **Import power from GitHub**.
-2. Enter `https://github.com/aws-solutions/konductor/tree/main/powers/konductor`.
+2. Enter `https://github.com/aws-solutions/konductor/tree/v1.1.0/powers/konductor`.
 3. Choose **Install**. This registers the Power's manifest; onboarding itself runs separately, the first time you invoke it (step 4 below).
 4. Either say "konductor", "install konductor", or "set up konductor" in a chat session, or use the Try-power action in the installed Powers list. Both trigger the same onboarding skill.
 

@@ -8,10 +8,11 @@
 # Why both copies exist at all: VERSION is this repo's single source of
 # truth for the released version (Cargo.toml, the packaged tarball name,
 # and this script all key off it). powers/konductor/plugin.json is the
-# Kiro Power's own manifest -- users import the Power straight from
-# github.com/aws-solutions/konductor/tree/main/powers/konductor, so this
-# checked-in file IS the published artifact directly, not a convenience
-# mirror of some separately-assembled copy. It is ALSO what
+# Kiro Power's own manifest -- users import the Power straight from the
+# tagged release matching VERSION
+# (github.com/aws-solutions/konductor/tree/v<VERSION>/powers/konductor), so
+# this checked-in file IS the published artifact directly, not a
+# convenience mirror of some separately-assembled copy. It is ALSO what
 # resolve-version.sh's resolve_plugin_version() reads: it walks upward
 # from powers/konductor/skills/konductor-setup/scripts/ looking for a
 # sibling plugin.json, and finds this exact file, so a stale version here
@@ -69,7 +70,7 @@ PY
 )" || exit 1
 
 if [[ "$VERSION_VALUE" != "$PLUGIN_JSON_VERSION" ]]; then
-  echo "error: [check-plugin-json-version-drift] VERSION says '${VERSION_VALUE}' but ${PLUGIN_JSON} says '${PLUGIN_JSON_VERSION}' -- these must always match. Edit ${PLUGIN_JSON}'s own \"version\" field to match VERSION, then commit both together (this file is the Power's published manifest directly -- users import it from github.com/aws-solutions/konductor/tree/main/powers/konductor, so a drifted version here ships to them, not just to direct-from-dev-tree runs and tests)." >&2
+  echo "error: [check-plugin-json-version-drift] VERSION says '${VERSION_VALUE}' but ${PLUGIN_JSON} says '${PLUGIN_JSON_VERSION}' -- these must always match. Edit ${PLUGIN_JSON}'s own \"version\" field to match VERSION, then commit both together (this file is the Power's published manifest directly -- users import it from the tagged release matching VERSION, so a drifted version here ships to them, not just to direct-from-dev-tree runs and tests)." >&2
   exit 1
 fi
 

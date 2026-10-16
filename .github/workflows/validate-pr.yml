@@ -60,10 +60,11 @@ jobs:
         run: python3 -m pip install --user pytest
 
       - name: Validate the Kiro Power (powers/konductor/)
-        # Users import the Power directly from
-        # github.com/aws-solutions/konductor/tree/main/powers/konductor -- the
-        # committed tree IS the published artifact, so every PR must keep it
-        # passing: VERSION/plugin.json drift, the Agent Plugins v1.0.0 schema,
+        # Users import the Power from the tagged release matching VERSION
+        # (github.com/aws-solutions/konductor/tree/v<VERSION>/powers/konductor),
+        # cut from this exact commit once it is merged and tagged -- so
+        # every PR must keep the committed tree passing: VERSION/plugin.json
+        # drift, the Agent Plugins v1.0.0 schema,
         # both skills' SKILL.md frontmatter, the pytest suite pinning those two
         # checkers, shellcheck across konductor-setup's scripts/, and the full
         # tests/kiro-power/ suite. `make kiro-power-check` needs python3,

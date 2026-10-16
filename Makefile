@@ -58,13 +58,15 @@
 #   clean             Remove build artifacts in cli/, mcp/, and shared/
 #   help              Show this usage summary
 #
-#   kiro-power-check  Check VERSION/plugin.json for drift, then validate the
-#                     COMMITTED powers/konductor/ tree in place: plugin.json
-#                     against the Agent Plugins v1.0.0 schema, every skill's
-#                     SKILL.md frontmatter, the pytest suite pinning those two
-#                     checkers (tests/test_validate_kiro_power_*.py),
-#                     shellcheck across konductor-setup's scripts/, and the
-#                     full tests/kiro-power/ suite (each test's own default
+#   kiro-power-check  Check VERSION/plugin.json for drift and that every
+#                     committed import URL names the matching release tag,
+#                     then validate the COMMITTED powers/konductor/ tree in
+#                     place: plugin.json against the Agent Plugins v1.0.0
+#                     schema, every skill's SKILL.md frontmatter, the
+#                     pytest suite pinning those two checkers
+#                     (tests/test_validate_kiro_power_*.py), shellcheck
+#                     across konductor-setup's scripts/, and the full
+#                     tests/kiro-power/ suite (each test's own default
 #                     KONDUCTOR_SETUP_SCRIPTS_DIR already resolves to
 #                     powers/konductor/skills/konductor-setup/scripts, so no
 #                     override is needed here). No commits, no push.
@@ -243,7 +245,8 @@ clean:
 	$(MAKE) -C shared clean
 
 # ── kiro-power-check ──────────────────────────────────────────────────────────
-# PR-time smoke test: checks VERSION/plugin.json for drift, then validates the
+# PR-time smoke test: checks VERSION/plugin.json for drift and that every
+# committed import URL names the matching release tag, then validates the
 # COMMITTED powers/konductor/ tree directly, in place -- plugin.json against
 # the Agent Plugins v1.0.0 schema, every skill's SKILL.md frontmatter, the
 # pytest suite pinning those two checkers (tests/test_validate_kiro_power_*.py),
@@ -283,6 +286,8 @@ KIRO_POWER_SHELLCHECK_VERSION := 0.9.0
 kiro-power-check:
 	@echo "=== [kiro-power-check] Checking VERSION/plugin.json for drift ==="; \
 	scripts/check-plugin-json-version-drift.sh || exit 1; \
+	echo "=== [kiro-power-check] Checking import URLs name the current release tag ==="; \
+	scripts/check-kiro-power-import-url-version.sh || exit 1; \
 	echo "=== [kiro-power-check] Validating plugin.json against the Agent Plugins v1.0.0 schema ==="; \
 	python3 scripts/validate-kiro-power-plugin-json.py powers/konductor/plugin.json || exit 1; \
 	echo "=== [kiro-power-check] Validating skill frontmatter ==="; \

@@ -11,7 +11,7 @@ not per individual commit.
 ### Added
 
 - The Konductor Kiro Power at `powers/konductor/`, imported from
-  `github.com/aws-solutions/konductor/tree/main/powers/konductor`.
+  `github.com/aws-solutions/konductor/tree/v1.1.0/powers/konductor`.
 - `konductor-setup`, a skill that installs Konductor into the current project.
 - `konductor-help`, a skill that answers questions about an existing install.
 - 13 activation keywords in `powers/konductor/plugin.json`.
