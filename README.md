@@ -36,7 +36,7 @@ right specialist, checks what comes back, and sends it back for fixes when it fa
 
 - 🎼 **One request, the whole lifecycle.** Requirements, design, code, tests and docs, without
   hand-carrying artifacts between chats.
-- ✅ **Nothing ships unchecked.** Every deliverable passes a maker-checker gate, and failed checks
+- ✅ **Every deliverable gets checked.** Work passes a maker-checker gate, and failed checks
   go back for up to two fix cycles.
 - 🧠 **Expertise built in.** 82 skills and 19 step-by-step workflows (SOPs) cover threat models,
   IAM policies, DynamoDB design, code review, E2E testing and more.
@@ -75,7 +75,8 @@ curl -fsSL https://raw.githubusercontent.com/aws-solutions/konductor/refs/heads/
 ```
 
 That installs for Kiro CLI. For Claude Code, run the same command with `| KONDUCTOR_HARNESS=claude bash`
-at the end.
+at the end. Piping a script to `bash` runs code you haven't read; to check it first, see
+[what the install script does](#what-the-install-script-does) below.
 Using the Claude Code plugin marketplace instead? Run `/plugin marketplace add aws-solutions/konductor`,
 then `/plugin install konductor@konductor`
 ([details](docs/user-guide/tasks/install-claude-plugin-marketplace.md)).
@@ -97,7 +98,7 @@ The orchestrator sends the design to `k-architect`, the implementation to `k-dev
 test plan to `k-quality-assurance`, and verifies each handoff before moving on.
 
 <details>
-<summary><b>What the install script does, and how to audit it</b></summary>
+<summary id="what-the-install-script-does"><b>What the install script does, and how to audit it</b></summary>
 
 <br/>
 
@@ -177,12 +178,12 @@ auto-detection. Paths are relative to `--target <dir>`, or `$HOME` if you don't 
 | Harness       | Agents           | Skills                          | SOPs                                    |
 | ------------- | ---------------- | ------------------------------- | --------------------------------------- |
 | `kiro-cli-v2` | `.kiro/agents/`  | `.konductor/skills/<name>/`     | `.konductor/sops/` (as `.sop.md`)       |
-| `kiro-v3`     | Kiro CLI's V3 (KAS) engine directories | same | same |
+| `kiro-v3`     | `.kiro/agents/`  | `.konductor/skills/<name>/`     | `.konductor/sops/` (as `.sop.md`)       |
 | `claude`      | `.claude/agents/` | `.claude/skills/`              | `.claude/skills/sop-<name>/SKILL.md`    |
 
 Kiro skills live in `.konductor/skills/`, not `.kiro/skills/`, so Kiro doesn't expose every skill
-to every agent. A target tracks one harness: installing a different `--harness` into an
-already-tracked target is refused, so use a separate target for a second runtime.
+to every agent. `kiro-cli-v2` and `kiro-v3` share those paths, so installing one over the other
+replaces it (with a warning). `claude` installs alongside either one in the same target.
 
 Without `--from`, `install` fetches a published GitHub release, including the platform's
 `skill-lookup-mcp` binary. On a platform with no published binary, install still succeeds and only
@@ -210,17 +211,17 @@ when a quality gate fails (up to two fix cycles).
 
 | Agent | What it does |
 | --- | --- |
-| 🎼 `konductor` | Coordinates every specialist across the lifecycle, tracks progress and enforces quality gates |
-| 🪟 `konductor-mux-orchestrator` | Same job, with specialists running in parallel tmux or zellij panes (auto-detected) |
-| 🪟 `konductor-cmux-orchestrator` | Same job, with specialists in parallel [cmux](https://github.com/manaflow-ai/cmux) surfaces |
-| 📋 `k-product-manager` | User stories, requirements summaries and decision research, validated before handoff |
-| 🏛️ `k-architect` | System designs, API specs, data models and threat models, validated before implementation |
-| 🛠️ `k-developer` | Task breakdown, backend and frontend code, code review, infrastructure-as-code checks |
-| 🧪 `k-quality-assurance` | Test coverage analysis, E2E test strategy, security tests, Cypress tracking |
-| 🔎 `k-researcher` | External docs, web and AWS documentation; Slack search with a Slack MCP server |
-| 📊 `k-tpm` | Program plans, status reports, risk tracking and program-level decision docs |
-| 🌐 `k-browser` | Browser automation with Playwright: navigation, forms, screenshots, E2E runs |
-| 🖼️ `k-media-analyzer` | PDFs, images and diagrams that need more than text extraction |
+| `konductor` | Coordinates every specialist across the lifecycle, tracks progress and enforces quality gates |
+| `konductor-mux-orchestrator` | Same job, with specialists running in parallel tmux or zellij panes (auto-detected) |
+| `konductor-cmux-orchestrator` | Same job, with specialists in parallel [cmux](https://github.com/manaflow-ai/cmux) surfaces |
+| `k-product-manager` | User stories, requirements summaries and decision research, validated before handoff |
+| `k-architect` | System designs, API specs, data models and threat models, validated before implementation |
+| `k-developer` | Task breakdown, backend and frontend code, code review, infrastructure-as-code checks |
+| `k-quality-assurance` | Test coverage analysis, E2E test strategy, security tests, Cypress tracking |
+| `k-researcher` | External docs, web and AWS documentation; Slack search with a Slack MCP server |
+| `k-tpm` | Program plans, status reports, risk tracking and program-level decision docs |
+| `k-browser` | Browser automation with Playwright: navigation, forms, screenshots, E2E runs |
+| `k-media-analyzer` | PDFs, images and diagrams that need more than text extraction |
 
 Every agent runs `claude-sonnet-5.5`. Full details, including each agent's tools, are in the
 [agents reference](docs/user-guide/agents.md).
@@ -420,7 +421,7 @@ UUID, so events from different projects can be linked to one machine, though not
 | To stop reporting for | Do this |
 | --- | --- |
 | One project | Run `konductor install` or `konductor update` with `--no-telemetry`, or set `telemetry.enabled: false` in `.konductor/config.yml` |
-| One shell or CI job | Set `KONDUCTOR_TELEMETRY=off` |
+| Any process with the variable set (a shell, a CI job, a fleet) | Set `KONDUCTOR_TELEMETRY=off` |
 | The whole machine | Set `"telemetry_consent": false` in `$HOME/.konductor/telemetry.json` |
 
 - `--no-telemetry` also removes an opt-in record left by an earlier install, and stops a global
