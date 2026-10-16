@@ -28,6 +28,11 @@ mkdir -p "${FAKE_HOME}/.local/bin" "${FAKE_HOME}/.konductor/cli-releases" "${TAR
 cat > "${TARGET_DIR}/.konductor/install-info.json" <<'JSON'
 {"schema_version": 1, "agent_version": "1.0.2", "harness": "kiro-v3", "installed_at": "2026-01-01T00:00:00Z"}
 JSON
+# No power-cli.json here on purpose -- this is the LEGACY resolution path
+# (konductor_resolve_target_binary falls back to the shared bin). The
+# manifest file is the CLI's own unconditional per-target install record
+# and is what proves this target was onboarded at all.
+echo '{"strategies":[{"name":"kiro-v3"}]}' > "${TARGET_DIR}/.konductor/manifest"
 
 UNINSTALL_MARKER="${SCRATCH}/real-uninstall-was-called.marker"
 # Placed directly under cli-releases, with the shared bin as a SYMLINK

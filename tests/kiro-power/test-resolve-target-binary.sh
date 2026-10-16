@@ -69,12 +69,16 @@ STUB
 }
 
 # make_target <dir> [content-version]
-# Writes a minimal <dir>/.konductor/install-info.json -- konductor_resolve_
-# target_binary now only checks this file's EXISTENCE (proof the target
-# was onboarded by this Power at all); its own agent_version content is
-# deliberately given an UNRELATED value here (default "9.9.9-content-only",
-# never matching any stub binary's own --version) to prove the resolver
-# never reads it for binary matching.
+# Writes a minimal <dir>/.konductor/install-info.json. Every scenario
+# below also writes its own power-cli.json (via make_power_cli_json) or,
+# for the LEGACY scenario, its own manifest -- one of those two is what
+# konductor_resolve_target_binary actually requires as proof the target
+# was onboarded; install-info.json's own agent_version content is
+# deliberately given an UNRELATED value here (default
+# "9.9.9-content-only", never matching any stub binary's own --version)
+# to prove the resolver never reads it for binary matching -- see
+# test-no-telemetry-lockout.sh for the case where install-info.json does
+# not exist at all (telemetry opted out).
 make_target() {
   local dir="$1" content_version="${2:-9.9.9-content-only}"
   mkdir -p "${dir}/.konductor"
@@ -153,9 +157,13 @@ t_assert_contains "resolves to the shared bin's own RESOLVED target once it matc
 # clear notice, and a SECOND resolve call after the caller writes a fresh
 # record (simulating what run-update.sh does after a real success) takes
 # the direct-record path instead. The shared bin is a REAL symlink into
-# cli-releases, matching link-binary.sh's own real convention.
+# cli-releases, matching link-binary.sh's own real convention. A manifest
+# (never a power-cli.json) is what this scenario relies on as proof of
+# onboarding -- matching a target onboarded before this Power tracked its
+# own CLI binary per target, where only the CLI's own manifest exists.
 TARGET_D="${SCRATCH}/project-d"
 make_target "$TARGET_D"
+echo '{"strategies":[{"name":"kiro-v3"}]}' > "${TARGET_D}/.konductor/manifest"
 ln -sf "$BIN_1_0_2" "${FAKE_HOME}/.local/bin/konductor"
 t_run env HOME="$FAKE_HOME" bash -c "source '${SCRIPTS_DIR}/lib.sh'; konductor_resolve_target_binary '$TARGET_D' && echo \"RESULT=\$KONDUCTOR_RESOLVE_TARGET_BINARY_RESULT VERSION=\$KONDUCTOR_RESOLVE_TARGET_BINARY_VERSION_RESULT\""
 t_assert_status "a legacy target (no power-cli.json) resolves via the shared bin" 0

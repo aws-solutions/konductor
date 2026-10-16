@@ -426,14 +426,26 @@ konductor_resolve_and_check_binary() {
 # every other trusted candidate.
 konductor_resolve_target_binary() {
   local target_dir="$1"
-  local install_info="${target_dir}/.konductor/install-info.json"
   local power_cli_json="${target_dir}/.konductor/power-cli.json"
+  local manifest_file="${target_dir}/.konductor/manifest"
   local releases_dir shared_bin resolved
   local recorded_binary recorded_version candidate candidate_version shared_version
   local legacy=""
 
-  if [[ ! -f "$install_info" ]]; then
-    konductor_die "no install-info found at ${install_info} -- this target was not onboarded by this Power (or the file was removed). Run scripts/run-onboarding.sh --target ${target_dir} --confirmed first."
+  # Proof of onboarding is this Power's OWN power-cli.json, or (for a
+  # legacy target with no power-cli.json yet) the `konductor` CLI's own
+  # manifest file -- never install-info.json. install-info.json is
+  # telemetry's opt-in record alone: `konductor install --no-telemetry`
+  # never writes it at all (finalize_install_telemetry only calls
+  # write_install_info when telemetry is ON), and `update --no-telemetry`
+  # deletes it on a target that previously had it. Gating on it here
+  # would wrongly refuse update/uninstall for every telemetry-opted-out
+  # target. power-cli.json and manifest are both written unconditionally
+  # of telemetry -- manifest by the CLI's own upsert_strategy on every
+  # install, power-cli.json by this Power's own run-onboarding.sh right
+  # after install succeeds (see konductor_write_power_cli_record).
+  if [[ ! -f "$power_cli_json" && ! -f "$manifest_file" ]]; then
+    konductor_die "no power-cli.json or manifest found at ${target_dir}/.konductor -- this target was not onboarded by this Power (or both files were removed). Run scripts/run-onboarding.sh --target ${target_dir} --confirmed first."
     return 1
   fi
   konductor_require_cmd jq

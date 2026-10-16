@@ -40,8 +40,9 @@ FAKE_HOME="${SCRATCH}/fake-home"
 mkdir -p "${FAKE_HOME}/.local/bin" "${FAKE_HOME}/.konductor/cli-releases"
 
 # make_target <dir>
-# Minimal <dir>/.konductor/install-info.json -- konductor_resolve_target_
-# binary only requires this file's existence.
+# Minimal <dir>/.konductor/install-info.json. Every scenario below also
+# writes its own power-cli.json and manifest, which is what
+# konductor_resolve_target_binary actually requires to prove onboarding.
 make_target() {
   local dir="$1"
   mkdir -p "${dir}/.konductor"
