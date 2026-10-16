@@ -66,6 +66,19 @@ cp -R "$SKILL_SRC" "$CLI_HOME/.claude/skills/mux-dispatch"
 touch "$CLI_HOME/.claude/agents/k-developer.md" \
   "$CLI_HOME/.claude/agents/local-a-k-tpm.md" "$CLI_HOME/.claude/agents/local-b-k-tpm.md"
 
+# Package-prefixed installs: a local- install, a registry install, and both.
+LOCAL_HOME="$WORKDIR/local-home"
+REGISTRY_HOME="$WORKDIR/registry-home"
+BOTH_HOME="$WORKDIR/both-home"
+for home in "$LOCAL_HOME" "$REGISTRY_HOME" "$BOTH_HOME"; do
+  mkdir -p "$home/.claude/skills" "$home/.claude/agents"
+  cp -R "$SKILL_SRC" "$home/.claude/skills/mux-dispatch"
+done
+touch "$LOCAL_HOME/.claude/agents/local-yourpkg-k-developer.md" \
+  "$REGISTRY_HOME/.claude/agents/yourpkg-k-developer.md" \
+  "$BOTH_HOME/.claude/agents/local-yourpkg-k-developer.md" \
+  "$BOTH_HOME/.claude/agents/yourpkg-k-developer.md"
+
 # Plugin-only install: nothing under ~/.claude/agents.
 PLUGIN_HOME="$WORKDIR/plugin-home"
 PLUGIN_ROOT="$WORKDIR/plugins/cache/market/konductor/1.0.0"
@@ -125,6 +138,15 @@ for backend in tmux zellij; do
 
   dispatch "$backend" "${CLI[@]}" konductor:k-developer
   expect_error "$backend CLI install, qualified name without a plugin" "claude agent konductor:k-developer not installed"
+
+  dispatch "$backend" "$LOCAL_HOME" "$LOCAL_HOME/.claude/skills/mux-dispatch" k-developer
+  expect_launch "$backend local- prefixed install" local-yourpkg-k-developer
+
+  dispatch "$backend" "$REGISTRY_HOME" "$REGISTRY_HOME/.claude/skills/mux-dispatch" k-developer
+  expect_launch "$backend registry prefixed install" yourpkg-k-developer
+
+  dispatch "$backend" "$BOTH_HOME" "$BOTH_HOME/.claude/skills/mux-dispatch" k-developer
+  expect_launch "$backend local- and registry installs, local- wins" local-yourpkg-k-developer
 
   dispatch "$backend" "${PLUGIN[@]}" k-developer
   expect_launch "$backend plugin-only install, bare name" k-developer

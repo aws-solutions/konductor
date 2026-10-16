@@ -56,6 +56,19 @@ cp -R "$SKILL_SRC" "$CLI_HOME/.claude/skills/cmux-dispatch"
 touch "$CLI_HOME/.claude/agents/k-developer.md" \
   "$CLI_HOME/.claude/agents/local-a-k-tpm.md" "$CLI_HOME/.claude/agents/local-b-k-tpm.md"
 
+# Package-prefixed installs: a local- install, a registry install, and both.
+LOCAL_HOME="$WORKDIR/local-home"
+REGISTRY_HOME="$WORKDIR/registry-home"
+BOTH_HOME="$WORKDIR/both-home"
+for home in "$LOCAL_HOME" "$REGISTRY_HOME" "$BOTH_HOME"; do
+  mkdir -p "$home/.claude/skills" "$home/.claude/agents"
+  cp -R "$SKILL_SRC" "$home/.claude/skills/cmux-dispatch"
+done
+touch "$LOCAL_HOME/.claude/agents/local-yourpkg-k-developer.md" \
+  "$REGISTRY_HOME/.claude/agents/yourpkg-k-developer.md" \
+  "$BOTH_HOME/.claude/agents/local-yourpkg-k-developer.md" \
+  "$BOTH_HOME/.claude/agents/yourpkg-k-developer.md"
+
 PLUGIN_HOME="$WORKDIR/plugin-home"
 PLUGIN_ROOT="$WORKDIR/plugins/cache/market/konductor/1.0.0"
 mkdir -p "$PLUGIN_HOME" "$PLUGIN_ROOT/.claude-plugin" "$PLUGIN_ROOT/agents" "$PLUGIN_ROOT/skills"
@@ -102,6 +115,15 @@ PLUGIN=("$PLUGIN_HOME" "$PLUGIN_ROOT/skills/cmux-dispatch")
 
 dispatch "${CLI[@]}" k-developer
 expect_launch "CLI install" k-developer
+
+dispatch "$LOCAL_HOME" "$LOCAL_HOME/.claude/skills/cmux-dispatch" k-developer
+expect_launch "local- prefixed install" local-yourpkg-k-developer
+
+dispatch "$REGISTRY_HOME" "$REGISTRY_HOME/.claude/skills/cmux-dispatch" k-developer
+expect_launch "registry prefixed install" yourpkg-k-developer
+
+dispatch "$BOTH_HOME" "$BOTH_HOME/.claude/skills/cmux-dispatch" k-developer
+expect_launch "local- and registry installs, local- wins" local-yourpkg-k-developer
 
 dispatch "${CLI[@]}" k-tpm
 expect_error "CLI install, ambiguous name" "matches multiple installed agents"
