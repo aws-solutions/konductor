@@ -49,6 +49,9 @@ not per individual commit.
 
 ### Security
 
+- `rustls` moves from `0.23.43` to `0.23.45` in the CLI, the skill-lookup MCP server, and the
+  shared telemetry test sink, fixing GHSA-2mjx-qc3c-rqvc (TLS 1.3 handshake messages were
+  accepted across encryption level boundaries).
 - `aws-mcp` uses `mcp-proxy-for-aws-cli==1.7.0` instead of a moving package version. The managed endpoint still supplies current AWS documentation and skills.
 - The plugin release no longer force-pushes directly to a public branch. `publish-claude-plugin`
   pushes a fresh, collision-resistant candidate branch (release version plus workflow run
