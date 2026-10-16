@@ -466,6 +466,25 @@ def test_untracked_build_junk_in_checkout_never_reaches_the_candidate(
         assert junk not in tracked
 
 
+@pytest.mark.parametrize("extra", ["cli", "mcp", "dist", ".github"])
+def test_unexpected_top_level_entry_in_assembled_tree_fails_closed(checkout, assembled, remote, extra):
+    (assembled / extra).mkdir()
+    (assembled / extra / "x").write_text("not part of the plugin\n", encoding="utf-8")
+
+    result = _run(
+        checkout,
+        "--base-branch", "release/plugins",
+        "--candidate-branch", "plugin-candidate/v1.0.0-1-1",
+        "--assemble-dir", str(assembled),
+        "--commit-message", "test candidate",
+    )
+
+    assert result.returncode != 0
+    assert extra in result.stderr
+    assert _git("show-ref", "--verify", "--quiet", "refs/heads/plugin-candidate/v1.0.0-1-1",
+                cwd=checkout, check=False).returncode != 0
+
+
 def test_missing_assemble_dir_fails_closed(checkout, remote, tmp_path):
     result = _run(
         checkout,

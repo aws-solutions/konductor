@@ -123,6 +123,7 @@ fi
 # would otherwise point at the wrong place once the working directory
 # changes.
 ASSEMBLE_DIR="$(cd "$ASSEMBLE_DIR" && pwd)"
+"$(dirname "${BASH_SOURCE[0]}")/check-claude-plugin-tree.sh" "$ASSEMBLE_DIR"
 
 if [ "$CANDIDATE_BRANCH" = "$BASE_BRANCH" ]; then
   echo "FATAL: --candidate-branch must not equal --base-branch ('$BASE_BRANCH'). Failing closed." >&2

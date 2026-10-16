@@ -200,6 +200,7 @@ claude-plugin-check:
 	scratch=$$(mktemp -d)/claude-plugin-branch; \
 	KONDUCTOR_BIN=$(KONDUCTOR_BIN) scripts/assemble-claude-plugin-branch.sh --out "$$scratch"; \
 	status=0; \
+	scripts/check-claude-plugin-tree.sh "$$scratch" || status=1; \
 	if command -v claude >/dev/null 2>&1; then \
 		echo "=== [claude-plugin-check] Validating flat branch plugin shape ==="; \
 		claude plugin validate "$$scratch" --strict || status=1; \
