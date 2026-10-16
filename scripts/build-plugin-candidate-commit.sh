@@ -3,25 +3,36 @@
 #
 # Builds the candidate-branch commit for release.yml's publish-claude-plugin
 # job: a new branch, based on the base branch's (release/plugins) current
-# remote tip, whose tree is replaced wholesale with an already-assembled
-# flat plugin tree.
+# remote tip, whose tree is exactly an already-assembled flat plugin tree.
 #
 # A prior revision built this commit with `git init` in a throwaway
 # directory, so the candidate shared no history with release/plugins and
-# `gh pr create` had no common ancestor to diff against. This script fixes
-# that: the candidate is checked out directly on top of
-# <remote>/<base-branch>, so the resulting commit's parent is release/
-# plugins' own tip -- a real merge base, not a disconnected root.
+# `gh pr create` had no common ancestor to diff against. A later revision
+# fixed that by checking the candidate branch out directly on top of
+# <remote>/<base-branch>, then running `git rm -rq .` + `cp -a
+# "$ASSEMBLE_DIR"/. .` + `git add -A` in the job's own checkout. That
+# checkout is the same one `make -C cli build` and
+# scripts/generate-claude-plugin.sh already ran in, so it carries
+# untracked build output (cli/konductor-rs/target/, build/cli/konductor,
+# dist/, generated/claude-plugin/). `git rm -rq .` also deletes the
+# checked-out .gitignore, so `git add -A` picks that untracked output up
+# alongside the assembled tree.
 #
-# Every previously tracked path is removed before the assembled tree is
-# copied in, so the resulting commit's tree is exactly the assembled
-# tree's contents regardless of what release/plugins currently contains --
-# a merge of this candidate always leaves release/plugins an artifact-only
-# tree, never retaining source-tree leftovers from its own history.
+# This revision builds the candidate's tree directly from --assemble-dir's
+# own contents, using a scratch git index that is never associated with
+# the job's checkout: `GIT_WORK_TREE=<assemble-dir> git add -A` plus
+# `git write-tree` and `git commit-tree`. The job's checkout is never
+# read, written, or switched to the candidate branch, so whatever is
+# untracked there -- however it got there -- can never reach the
+# candidate commit. The resulting commit's tree is exactly
+# --assemble-dir's contents, verified again below as a final safety
+# check, regardless of what the base branch or the checkout currently
+# contain.
 #
 # This script never pushes anything and never writes to the base branch:
-# it only builds a commit on a new local branch. The caller pushes that
-# branch, by its own name only, after this script succeeds.
+# it only builds a commit on a new local branch ref in --repo-root's
+# repository. The caller pushes that branch, by its own name only, after
+# this script succeeds.
 #
 # If the assembled tree already matches the base branch's tip exactly,
 # there's nothing to commit -- that's a legitimate outcome (e.g. a
@@ -128,11 +139,11 @@ fi
 
 cd "$REPO_ROOT"
 
-# Discard any uncommitted tracked-file changes earlier workflow steps left
-# behind (e.g. release.yml writes a release-tag-derived VERSION into the
-# checkout before this script runs) -- without this, switching to the base
-# branch's tip below can conflict with those local modifications.
-git reset -q --hard
+# Resolved once, up front: every plumbing command below targets this
+# repository's object store and refs explicitly via GIT_DIR, regardless of
+# which directory it's invoked from (including the --assemble-dir subshell
+# below).
+GIT_DIR_ABS="$(git rev-parse --absolute-git-dir)"
 
 # Explicit refspec, not a bare `git fetch <remote> <branch>` (which lands
 # in FETCH_HEAD under some remote configs, not necessarily
@@ -141,30 +152,30 @@ git reset -q --hard
 # origin's own fetch refspec.
 git fetch -q "$REMOTE" "+refs/heads/$BASE_BRANCH:refs/remotes/$REMOTE/$BASE_BRANCH"
 BASE_SHA="$(git rev-parse "$REMOTE/$BASE_BRANCH")"
+BASE_TREE="$(git rev-parse "$BASE_SHA^{tree}")"
 
 if git show-ref --verify --quiet "refs/heads/$CANDIDATE_BRANCH"; then
   echo "FATAL: local branch '$CANDIDATE_BRANCH' already exists. Refusing to overwrite it. Failing closed." >&2
   exit 1
 fi
 
-# Base the candidate directly on the base branch's current tip, not a
-# disconnected root -- this is what gives the branch a real merge base
-# with release/plugins, so GitHub can diff and open a pull request
-# against it.
-git checkout -q -b "$CANDIDATE_BRANCH" "$REMOTE/$BASE_BRANCH"
+# Build the candidate's tree object directly from --assemble-dir's own
+# contents, via a scratch index that's never associated with this
+# repository's real index or work tree. `git add -A` here never looks at
+# $REPO_ROOT's working directory at all -- only at $ASSEMBLE_DIR -- so
+# whatever is untracked in $REPO_ROOT's checkout (left over from an
+# earlier build step, or anything else) can never be picked up, with or
+# without a .gitignore.
+SCRATCH_DIR="$(mktemp -d)"
+trap 'rm -rf "$SCRATCH_DIR"' EXIT
+SCRATCH_INDEX="$SCRATCH_DIR/index"
+(
+  cd "$ASSEMBLE_DIR"
+  GIT_INDEX_FILE="$SCRATCH_INDEX" GIT_DIR="$GIT_DIR_ABS" GIT_WORK_TREE="$ASSEMBLE_DIR" git add -A
+)
+ASSEMBLED_TREE="$(GIT_INDEX_FILE="$SCRATCH_INDEX" GIT_DIR="$GIT_DIR_ABS" git write-tree)"
 
-# Clear every tracked path from the new branch before overlaying the
-# assembled artifact, so the resulting tree is exactly the artifact's
-# contents -- never a mix of the artifact and whatever release/plugins
-# happened to contain already.
-if [ -n "$(git ls-files)" ]; then
-  git rm -rq .
-fi
-
-cp -a "$ASSEMBLE_DIR"/. .
-git add -A
-
-if git diff --cached --quiet; then
+if [ "$ASSEMBLED_TREE" = "$BASE_TREE" ]; then
   echo "Candidate branch '$CANDIDATE_BRANCH' has no changes relative to $REMOTE/$BASE_BRANCH ($BASE_SHA); nothing to commit."
   echo "committed=false"
   if [ -n "${GITHUB_OUTPUT:-}" ]; then
@@ -173,8 +184,30 @@ if git diff --cached --quiet; then
   exit 0
 fi
 
-git -c user.name="$AUTHOR_NAME" -c user.email="$AUTHOR_EMAIL" commit -q -m "$COMMIT_MESSAGE"
-echo "Built candidate commit $(git rev-parse HEAD) on branch '$CANDIDATE_BRANCH', based on $REMOTE/$BASE_BRANCH ($BASE_SHA)."
+# Based directly on the base branch's current tip, not a disconnected
+# root -- this is what gives the branch a real merge base with
+# release/plugins, so GitHub can diff and open a pull request against it.
+NEW_COMMIT="$(git -c user.name="$AUTHOR_NAME" -c user.email="$AUTHOR_EMAIL" commit-tree "$ASSEMBLED_TREE" -p "$BASE_SHA" -m "$COMMIT_MESSAGE")"
+
+# Final safety check, independent of how the tree above was built: the
+# candidate commit's own file listing must match --assemble-dir's file
+# listing on disk exactly. This is what the fixed defect violated --
+# verifying it here means a future change to this script that
+# reintroduces a dependency on the job's checkout fails loudly instead of
+# silently shipping extra files again.
+COMMIT_FILES="$(git ls-tree -r --name-only "$NEW_COMMIT" | sort)"
+ASSEMBLE_DIR_FILES="$(cd "$ASSEMBLE_DIR" && find . -type f | sed 's|^\./||' | sort)"
+if [ "$COMMIT_FILES" != "$ASSEMBLE_DIR_FILES" ]; then
+  echo "FATAL: candidate commit's tree does not match --assemble-dir's file listing exactly. Failing closed." >&2
+  echo "--- only in candidate commit ---" >&2
+  comm -23 <(printf '%s\n' "$COMMIT_FILES") <(printf '%s\n' "$ASSEMBLE_DIR_FILES") >&2
+  echo "--- only in --assemble-dir ---" >&2
+  comm -13 <(printf '%s\n' "$COMMIT_FILES") <(printf '%s\n' "$ASSEMBLE_DIR_FILES") >&2
+  exit 1
+fi
+
+git update-ref "refs/heads/$CANDIDATE_BRANCH" "$NEW_COMMIT"
+echo "Built candidate commit $NEW_COMMIT on branch '$CANDIDATE_BRANCH', based on $REMOTE/$BASE_BRANCH ($BASE_SHA)."
 echo "committed=true"
 if [ -n "${GITHUB_OUTPUT:-}" ]; then
   echo "committed=true" >> "$GITHUB_OUTPUT"

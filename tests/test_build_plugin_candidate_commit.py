@@ -411,6 +411,75 @@ def test_no_op_writes_committed_false_to_github_output(checkout, assembled, remo
     assert "committed=true" not in github_output.read_text(encoding="utf-8")
 
 
+def test_untracked_build_junk_in_checkout_never_reaches_the_candidate(
+    checkout, assembled, remote, tmp_path
+):
+    """Regression test for the v1.1.0 candidate PR #56 defect: the script
+    used to run `git rm -rq .` + `cp -a "$ASSEMBLE_DIR"/. .` + `git add -A`
+    directly in the job's own checkout -- the same checkout `make -C cli
+    build` and scripts/generate-claude-plugin.sh already ran in. `git rm
+    -rq .` deletes the checked-out .gitignore along with everything else
+    tracked, so `git add -A` then picks up whatever untracked build
+    output is sitting there (cli/konductor-rs/target/, build/cli/
+    konductor, dist/, generated/claude-plugin/), with no .gitignore left
+    to exclude it.
+
+    This reproduces that precisely: release/plugins tracks a .gitignore
+    that would exclude these paths if it survived, and the checkout has
+    the same untracked junk a real job leaves behind. The fix builds the
+    candidate's tree directly from --assemble-dir and never reads the
+    checkout's working directory at all, so the junk can never reach the
+    candidate commit regardless of what happens to .gitignore."""
+    base_with_gitignore = tmp_path / "base-with-gitignore"
+    _git("clone", "-q", str(remote), str(base_with_gitignore), cwd=tmp_path)
+    _git("checkout", "-q", "release/plugins", cwd=base_with_gitignore)
+    _git("config", "user.email", "a@b.com", cwd=base_with_gitignore)
+    _git("config", "user.name", "tester", cwd=base_with_gitignore)
+    (base_with_gitignore / ".gitignore").write_text(
+        "cli/konductor-rs/target/\nbuild/\ndist/\ngenerated/claude-plugin/\n",
+        encoding="utf-8",
+    )
+    _git("add", "-A", cwd=base_with_gitignore)
+    _git("commit", "-q", "-m", "track a .gitignore on release/plugins", cwd=base_with_gitignore)
+    _git("push", "-q", "origin", "release/plugins", cwd=base_with_gitignore)
+
+    junk_paths = [
+        checkout / "cli" / "konductor-rs" / "target" / "x",
+        checkout / "build" / "cli" / "konductor",
+        checkout / "dist" / "x",
+        checkout / "generated" / "claude-plugin" / "x",
+    ]
+    for junk in junk_paths:
+        junk.parent.mkdir(parents=True, exist_ok=True)
+        junk.write_text("leftover build output\n", encoding="utf-8")
+
+    result = _run(
+        checkout,
+        "--base-branch", "release/plugins",
+        "--candidate-branch", "plugin-candidate/v1.0.0-1-1",
+        "--assemble-dir", str(assembled),
+        "--commit-message", "test candidate",
+    )
+    assert result.returncode == 0, result.stderr
+
+    tracked = set(
+        _git("ls-tree", "-r", "--name-only", "plugin-candidate/v1.0.0-1-1", cwd=checkout)
+        .stdout.strip()
+        .splitlines()
+    )
+    expected = {
+        "agents/k-architect.md",
+        ".claude-plugin/plugin.json",
+        "README.md",
+    }
+    assert tracked == expected, (
+        f"candidate tree picked up untracked build junk from the checkout: "
+        f"tracked={tracked}, expected={expected}"
+    )
+    for junk in ("cli/konductor-rs/target/x", "build/cli/konductor", "dist/x", "generated/claude-plugin/x"):
+        assert junk not in tracked
+
+
 def test_missing_assemble_dir_fails_closed(checkout, remote, tmp_path):
     result = _run(
         checkout,
