@@ -69,9 +69,10 @@
 #   kiro-power-check  Check VERSION/plugin.json for drift, then validate the
 #                     COMMITTED powers/konductor/ tree in place: plugin.json
 #                     against the Agent Plugins v1.0.0 schema, every skill's
-#                     SKILL.md frontmatter, shellcheck across
-#                     konductor-setup's scripts/, and the full
-#                     tests/kiro-power/ suite (each test's own default
+#                     SKILL.md frontmatter, the pytest suite pinning those two
+#                     checkers (tests/test_validate_kiro_power_*.py),
+#                     shellcheck across konductor-setup's scripts/, and the
+#                     full tests/kiro-power/ suite (each test's own default
 #                     KONDUCTOR_SETUP_SCRIPTS_DIR already resolves to
 #                     powers/konductor/skills/konductor-setup/scripts, so no
 #                     override is needed here). No commits, no push.
@@ -272,7 +273,8 @@ kiro-power:
 # ── kiro-power-check ──────────────────────────────────────────────────────────
 # PR-time smoke test: checks VERSION/plugin.json for drift, then validates the
 # COMMITTED powers/konductor/ tree directly, in place -- plugin.json against
-# the Agent Plugins v1.0.0 schema, every skill's SKILL.md frontmatter,
+# the Agent Plugins v1.0.0 schema, every skill's SKILL.md frontmatter, the
+# pytest suite pinning those two checkers (tests/test_validate_kiro_power_*.py),
 # shellcheck across konductor-setup's scripts/, and the full
 # tests/kiro-power/ suite. No commits, no push; this is read-only validation
 # of the tree that ships on main.
@@ -313,6 +315,8 @@ kiro-power-check:
 	python3 scripts/validate-kiro-power-plugin-json.py powers/konductor/plugin.json || exit 1; \
 	echo "=== [kiro-power-check] Validating skill frontmatter ==="; \
 	python3 scripts/validate-kiro-power-skill-frontmatter.py powers/konductor || exit 1; \
+	echo "=== [kiro-power-check] Running the plugin.json schema-sync and skill-frontmatter Python tests ==="; \
+	python3 -m pytest -q tests/test_validate_kiro_power_plugin_json_schema_sync.py tests/test_validate_kiro_power_skill_frontmatter.py || exit 1; \
 	echo "=== [kiro-power-check] Shellchecking konductor-setup's scripts/ and tests/kiro-power/ ==="; \
 	shellcheck_skipped=0; \
 	if command -v shellcheck >/dev/null 2>&1; then \
