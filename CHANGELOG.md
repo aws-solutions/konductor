@@ -12,6 +12,8 @@ not per individual commit.
 
 - The skill-lookup MCP server's `mcp_tool_call` events now include `parentAgentName` (as
   `null`), which `docs/telemetry-schema.json` requires on every event.
+- `konductor update --cli` retries its smoke test of the downloaded binary when exec fails with
+  "Text file busy" (ETXTBSY), instead of failing the update.
 
 ## [1.1.0] - 2026-10-14
 
