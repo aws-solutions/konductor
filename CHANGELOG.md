@@ -6,6 +6,28 @@ This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Entries are consolidated per release,
 not per individual commit.
 
+## [Unreleased]
+
+### Fixed
+
+- `mux-dispatch` and `cmux-dispatch`: the SKILL.md guidance and the
+  `konductor-mux-orchestrator`/`konductor-cmux-orchestrator` agents told the model to invoke
+  `dispatch.sh`/`cmux-dispatch.sh` by a path relative to the current working directory, which
+  does not exist in a plugin install (there is no `skills/` directory under the user's project).
+  Both skills now resolve the script's own directory first via `${CLAUDE_SKILL_DIR}` (Claude
+  Code), falling back to a source checkout, a global Kiro CLI install, or a project-level Kiro
+  CLI install. `cmux-dispatch.sh` also locates its sibling files from its own real location
+  (`BASH_SOURCE[0]`, symlink-safe), matching `dispatch.sh`.
+- `persistent-memory` and `legacy-to-agentic-estimate`: the same script-path problem for
+  `memory-validator.sh` and `convert_estimates.py`. Both now try `${CLAUDE_SKILL_DIR}` first,
+  and `legacy-to-agentic-estimate` now fails closed with a clear error instead of running
+  `python3` against an empty path when none of its known locations resolves.
+- `k-architect`'s Claude Code tool grant referenced its sub-agents with a package-install
+  prefix left over from the internal mirror this package is built from, so `Agent(...)` could
+  not resolve to the shipped `k-developer`/`k-quality-assurance` agents in a plugin install.
+  Changed to `Agent(k-developer, k-quality-assurance)`, matching every other agent spec's
+  convention.
+
 ## [1.1.0] - 2026-10-14
 
 ### Added
