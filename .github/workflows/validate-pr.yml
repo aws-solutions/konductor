@@ -125,16 +125,13 @@ jobs:
         run: make test-py
 
       - name: Run the Rust tests for cli, mcp and shared
-        # cli runs through cargo directly to skip two tests that fail
-        # intermittently on a 4-vCPU runner. Drop a --skip once that test is fixed:
-        #   update_finalize_index_reflects_a_concurrently_installed_other_strategy
-        #     returns exit code 64 in some rounds, even when run alone.
-        #   real_smoke_test_succeeds_and_returns_stdout hits ETXTBSY on exec (#47).
+        # cli runs through cargo directly to skip a test that fails intermittently
+        # on a 4-vCPU runner (update_one_target sometimes returns 64). Drop the
+        # --skip once it's fixed.
         run: |
           set -e
           (cd cli/konductor-rs && cargo test -- --exact \
-            --skip cli::update::tests::update_finalize_index_reflects_a_concurrently_installed_other_strategy \
-            --skip cli::install::cli_self_update::tests::real_smoke_test_succeeds_and_returns_stdout)
+            --skip cli::update::tests::update_finalize_index_reflects_a_concurrently_installed_other_strategy)
           make -C mcp test-rust
           make -C shared test-rust
 
