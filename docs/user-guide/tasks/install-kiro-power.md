@@ -31,8 +31,8 @@ Installation registers the Power. It does not install Konductor or run any
 commands yet.
 
 For a local checkout, use **Import power from a folder** and select
-`powers/konductor/`. Run `make kiro-power` first if you changed the Power
-manifest template or `VERSION`.
+`powers/konductor/`. If you changed `VERSION`, update
+`powers/konductor/plugin.json`'s own `version` field to match first.
 
 ## Start setup
 

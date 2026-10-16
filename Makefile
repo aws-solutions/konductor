@@ -58,14 +58,6 @@
 #   clean             Remove build artifacts in cli/, mcp/, and shared/
 #   help              Show this usage summary
 #
-#   kiro-power        Render powers/konductor/plugin.json in place from
-#                     scripts/kiro-power.template.json + the repo-root
-#                     VERSION file. Run this after editing the template or
-#                     bumping VERSION, then commit the result -- users
-#                     import the Power directly from
-#                     github.com/aws-solutions/konductor/tree/main/powers/konductor,
-#                     so the checked-in plugin.json IS the published
-#                     artifact; there is no separate assembly/publish step.
 #   kiro-power-check  Check VERSION/plugin.json for drift, then validate the
 #                     COMMITTED powers/konductor/ tree in place: plugin.json
 #                     against the Agent Plugins v1.0.0 schema, every skill's
@@ -79,7 +71,7 @@
 
 .PHONY: all build fmt lint install link synth claude-plugin claude-plugin-check \
         test test-rust test-schema-dump clean help \
-        guide guide-check guide-sync guide-html guide-record kiro-power kiro-power-check
+        guide guide-check guide-sync guide-html guide-record kiro-power-check
 
 all: build
 
@@ -103,8 +95,6 @@ help:
 	@echo "  make clean              Remove build artifacts in cli/, mcp/, and shared/"
 	@echo ""
 	@echo "  Konductor Kiro Power (powers/konductor/, imported by users directly from main)"
-	@echo "  make kiro-power         Render powers/konductor/plugin.json in place from"
-	@echo "                          VERSION -- commit the result"
 	@echo "  make kiro-power-check   Drift check + validate the committed tree in place"
 	@echo "                          (schema, skill frontmatter, shellcheck, full test"
 	@echo "                          suite) -- no commits, no push"
@@ -251,24 +241,6 @@ clean:
 	$(MAKE) -C cli clean
 	$(MAKE) -C mcp clean
 	$(MAKE) -C shared clean
-
-# ── kiro-power ────────────────────────────────────────────────────────────────
-# Renders powers/konductor/plugin.json IN PLACE from
-# scripts/kiro-power.template.json + the repo-root VERSION file, overwriting
-# the checked-in copy directly. Users import the Power straight from
-# github.com/aws-solutions/konductor/tree/main/powers/konductor -- that
-# directory already has the flat shape Kiro's GitHub import expects
-# (plugin.json at its own root, skills/ alongside it) -- so there is no
-# separate publish branch or assembly step; the committed tree here IS what
-# gets imported. Run this whenever the template or VERSION changes, then
-# commit the result.
-kiro-power:
-	@echo "=== [kiro-power] Rendering powers/konductor/plugin.json from VERSION ==="; \
-	python3 scripts/render-kiro-power-plugin-json.py \
-		--template scripts/kiro-power.template.json \
-		--version-file VERSION \
-		--output powers/konductor/plugin.json; \
-	echo "=== [kiro-power] Done -- powers/konductor/plugin.json is up to date ==="
 
 # ── kiro-power-check ──────────────────────────────────────────────────────────
 # PR-time smoke test: checks VERSION/plugin.json for drift, then validates the

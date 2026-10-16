@@ -22,8 +22,8 @@
 # This script is what keeps that fact from ever silently drifting: a
 # version bump to one file without the other is a hard, loud failure here,
 # not a Power whose plugin.json quietly claims a version VERSION itself
-# disagrees with. Re-render powers/konductor/plugin.json with `make
-# kiro-power` after bumping VERSION, then commit both together.
+# disagrees with. Edit powers/konductor/plugin.json's own "version" field
+# to match after bumping VERSION, then commit both together.
 #
 # Wired into `make kiro-power-check` as a
 # pre-check, run before the rest of that target's validation steps.
@@ -69,7 +69,7 @@ PY
 )" || exit 1
 
 if [[ "$VERSION_VALUE" != "$PLUGIN_JSON_VERSION" ]]; then
-  echo "error: [check-plugin-json-version-drift] VERSION says '${VERSION_VALUE}' but ${PLUGIN_JSON} says '${PLUGIN_JSON_VERSION}' -- these must always match. Run 'make kiro-power' to re-render powers/konductor/plugin.json from VERSION, then commit both together (this file is the Power's published manifest directly -- users import it from github.com/aws-solutions/konductor/tree/main/powers/konductor, so a drifted version here ships to them, not just to direct-from-dev-tree runs and tests)." >&2
+  echo "error: [check-plugin-json-version-drift] VERSION says '${VERSION_VALUE}' but ${PLUGIN_JSON} says '${PLUGIN_JSON_VERSION}' -- these must always match. Edit ${PLUGIN_JSON}'s own \"version\" field to match VERSION, then commit both together (this file is the Power's published manifest directly -- users import it from github.com/aws-solutions/konductor/tree/main/powers/konductor, so a drifted version here ships to them, not just to direct-from-dev-tree runs and tests)." >&2
   exit 1
 fi
 

@@ -15,7 +15,7 @@ not per individual commit.
 - `konductor-setup`, a skill that installs Konductor into the current project.
 - `konductor-help`, a skill that answers questions about an existing install.
 - 13 activation keywords in `powers/konductor/plugin.json`.
-- `make kiro-power` and `make kiro-power-check`, wired into `.github/workflows/validate-pr.yml`.
+- `make kiro-power-check`, wired into `.github/workflows/validate-pr.yml`.
 - An "Install via Kiro Power" page in the user guide, and a matching section in `README.md`.
 - Manual setup docs for the AWS documentation-lookup MCP server and for Playwright.
 - A Claude Code plugin marketplace install path: `/plugin marketplace add
