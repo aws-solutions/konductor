@@ -77,12 +77,11 @@ status. Read the failing check's `fix:` guidance before retrying.
 ## Telemetry
 
 Telemetry is enabled by default and is disclosed before setup begins. To opt
-out during setup, use:
-
-```bash
-konductor install --harness kiro-v3 --target <current-project-dir> --version <pinned-tag> \
-  --no-telemetry
-```
+out during setup, tell the Power to decline telemetry when it states its
+plan; it passes `--no-telemetry` to the `konductor install` it runs on your
+behalf, using the exact binary it resolved and verified for this project.
+Running `konductor install --no-telemetry` yourself invokes whichever
+`konductor` is first on your `PATH` instead, which may not be that binary.
 
 To opt out later, use one of these settings:
 
@@ -97,15 +96,12 @@ project-level `config.yml` opt-out.
 
 ## Update
 
-Use the Power’s update action, or run:
-
-```bash
-konductor update --target <current-project-dir>
-```
-
-The Power resolves the CLI binary recorded for that project before updating.
-This avoids using a shared `~/.local/bin/konductor` symlink that another
-project may have changed.
+Ask the Power to update this project. It resolves the CLI binary recorded
+for that project before updating, which avoids using a shared
+`~/.local/bin/konductor` symlink that another project may have changed.
+Running `konductor update --target <current-project-dir>` yourself invokes
+whichever `konductor` is first on your `PATH` instead, not necessarily the
+binary recorded for this project.
 
 Updates overwrite managed agents, skills, and SOPs. Use the CLI dry run if
 you need to inspect affected files first.
@@ -115,14 +111,13 @@ one and rerun with `--harness <name>`.
 
 ## Uninstall
 
-Start with a dry run:
-
-```bash
-konductor uninstall --target <current-project-dir> --dry-run
-```
-
-Review the output, then confirm a real removal through the Power. The Power
-removes its per-project CLI record only after a successful uninstall. It leaves
+Ask the Power to uninstall this project. It starts with a dry run and shows
+you the result before removing anything. Running
+`konductor uninstall --target <current-project-dir> --dry-run` yourself
+invokes whichever `konductor` is first on your `PATH` instead, not
+necessarily the binary recorded for this project. Review the dry run's
+output, then confirm a real removal through the Power. The Power removes
+its per-project CLI record only after a successful uninstall. It leaves
 `.konductor/config.yml` in place.
 
 If the uninstall fails because the project tracks more than one harness,
@@ -160,7 +155,8 @@ confirmation. Use the `aws:ViaAWSMCPService` and `aws:CalledViaAWSMCP` IAM
 condition keys to limit agent-initiated calls.
 
 `k-browser` requires a separately configured Playwright MCP server. See the
-project’s MCP integration documentation for setup details.
+[`playwright-mcp` entry](../reference.md#mcp-registry-entries) in the CLI
+reference for its definition.
 
 ## Related
 
