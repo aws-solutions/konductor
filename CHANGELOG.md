@@ -10,41 +10,21 @@ not per individual commit.
 
 ### Fixed
 
-- `scripts/build-plugin-candidate-commit.sh` now builds the Claude Code plugin candidate
-  commit's tree directly from `--assemble-dir`, instead of running `git rm -rq .` + `cp -a` +
-  `git add -A` in the same checkout `make -C cli build` already ran in. That checkout's
-  untracked build output (`cli/konductor-rs/target/`, `build/cli/konductor`, `dist/`,
-  `generated/claude-plugin/`) could reach the candidate commit, since `git rm -rq .` also
-  deleted the checked-out `.gitignore` that would otherwise have excluded it. The script now
-  also verifies the candidate commit's tree matches `--assemble-dir`'s file listing exactly
-  before creating the branch.
-- `mux-dispatch` and `cmux-dispatch`: the SKILL.md guidance and the
-  `konductor-mux-orchestrator`/`konductor-cmux-orchestrator` agents told the model to invoke
-  `dispatch.sh`/`cmux-dispatch.sh` by a path relative to the current working directory, which
-  does not exist in a plugin install (there is no `skills/` directory under the user's project).
-  Both skills now resolve the script's own directory first via `${CLAUDE_SKILL_DIR}` (Claude
-  Code), falling back to a source checkout, a global Kiro CLI install, or a project-level Kiro
-  CLI install. `cmux-dispatch.sh` also locates its sibling files from its own real location
-  (`BASH_SOURCE[0]`, symlink-safe), matching `dispatch.sh`.
-- `persistent-memory` and `legacy-to-agentic-estimate`: the same script-path problem for
-  `memory-validator.sh` and `convert_estimates.py`. Both now try `${CLAUDE_SKILL_DIR}` first,
-  and `legacy-to-agentic-estimate` now fails closed with a clear error instead of running
-  `python3` against an empty path when none of its known locations resolves.
-- `k-architect`'s Claude Code tool grant referenced its sub-agents with a stale package-install
-  prefix, so `Agent(...)` could
-  not resolve to the shipped `k-developer`/`k-quality-assurance` agents in a plugin install.
-  Changed to `Agent(k-developer, k-quality-assurance)`, matching every other agent spec's
-  convention.
-- Claude Code plugin installs could not delegate to specialists. Claude Code names plugin
-  agents `<plugin>:<agent>` (`konductor:k-developer`), so the bare `Agent(k-developer, ...)`
-  grants matched nothing. Plugin assembly now rewrites each grant to the plugin-qualified name
-  (`scripts/rewrite-claude-plugin-agent-grants.py`) and fails if a grant names an agent the
-  plugin does not ship. Source specs keep bare names for `.claude/agents/` installs.
-- `tmux-dispatch.sh`, `zellij-dispatch.sh`, and `cmux-dispatch.sh` refused to dispatch in a
-  plugin-only install: they only looked under `~/.claude/agents/` and rejected `:` in
-  `--agent`. They now fall back to the agents shipped by the plugin the skill belongs to and
-  launch `claude --agent <plugin>:<agent>`, and accept an already-qualified
-  `<plugin>:<agent>`.
+- The Claude Code plugin release candidate could include untracked build output (`cli/`,
+  `build/`, `dist/`, `generated/`) from the release job's checkout. The candidate is now built
+  only from the assembled plugin tree, its file list is checked against that tree, and any
+  top-level entry outside the plugin's own files fails the build.
+- Plugin installs could not delegate to specialists. Claude Code names plugin agents
+  `konductor:<agent>`, so bare `Agent(k-developer, ...)` grants matched nothing. Plugin assembly
+  now qualifies each grant with the plugin name and fails on a grant for an agent the plugin
+  doesn't ship. `k-architect` also lost a stale package prefix on its grants.
+- `mux-dispatch` and `cmux-dispatch` refused to dispatch in plugin installs: they only looked
+  in `~/.claude/agents/` and rejected `:` in `--agent`. They now fall back to the plugin's own
+  agents and accept `konductor:<agent>`.
+- `mux-dispatch`, `cmux-dispatch`, `persistent-memory` and `legacy-to-agentic-estimate` could
+  not find their bundled scripts in plugin installs. They now look in `${CLAUDE_SKILL_DIR}`
+  first, then the existing locations. `legacy-to-agentic-estimate` now stops with a clear
+  error when its script is missing.
 
 ## [1.1.0] - 2026-10-14
 
