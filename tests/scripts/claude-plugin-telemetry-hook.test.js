@@ -20,6 +20,9 @@ const HOOK_SOURCE = path.join(REPO_ROOT, 'scripts', 'claude-plugin-telemetry-hoo
 const HOOKS_RENDERER = path.join(REPO_ROOT, 'scripts', 'render-claude-plugin-hooks-json.py');
 const SCHEMA_PATH = path.join(REPO_ROOT, 'docs', 'telemetry-schema.json');
 const REPORT_RS = path.join(REPO_ROOT, 'cli', 'konductor-rs', 'src', 'cli', 'telemetry', 'report.rs');
+const TELEMETRY_HOOK_RS = path.join(REPO_ROOT, 'cli', 'konductor-rs', 'src', 'cli', 'telemetry_hook.rs');
+const IDENTITY_RS = path.join(REPO_ROOT, 'shared', 'konductor-telemetry', 'src', 'identity.rs');
+const NET_RS = path.join(REPO_ROOT, 'shared', 'konductor-telemetry', 'src', 'net.rs');
 const STUB = path.join(__dirname, 'claude-plugin-telemetry-https-stub.js');
 
 const hook = require(HOOK_SOURCE);
@@ -153,6 +156,137 @@ test('endpoint and solution id match the CLI source', () => {
   assert.ok(endpoint && solution, 'constants not found in report.rs');
   assert.equal(hook.DEFAULT_TELEMETRY_ENDPOINT, endpoint[1]);
   assert.equal(hook.SOLUTION_ID, solution[1]);
+});
+
+function rustConst(file, name) {
+  const match = new RegExp(`const ${name}: [^=]+=\\s*([^;]+);`).exec(fs.readFileSync(file, 'utf8'));
+  assert.ok(match, `${name} not found in ${path.relative(REPO_ROOT, file)}`);
+  return match[1].trim();
+}
+
+test('identity and payload constants match the Rust sources', () => {
+  assert.equal(hook.NIL_UUID_SENTINEL, JSON.parse(rustConst(IDENTITY_RS, 'NIL_UUID_SENTINEL')));
+  assert.equal(hook.INSTANCE_SCHEMA_VERSION, Number(rustConst(IDENTITY_RS, 'INSTANCE_SCHEMA_VERSION')));
+  const maxPayload = rustConst(TELEMETRY_HOOK_RS, 'MAX_HOOK_PAYLOAD_BYTES');
+  assert.match(maxPayload, /^[\d\s*]+$/);
+  assert.equal(hook.MAX_HOOK_PAYLOAD_BYTES, maxPayload.split('*').reduce((n, f) => n * Number(f), 1));
+});
+
+function rustFnBody(source, name) {
+  const start = source.indexOf(`fn ${name}(`);
+  assert.notEqual(start, -1, `fn ${name} not found in net.rs`);
+  const open = source.indexOf('{', start);
+  let depth = 0;
+  for (let i = open; i < source.length; i++) {
+    depth += source[i] === '{' ? 1 : source[i] === '}' ? -1 : 0;
+    if (depth === 0) {
+      return source.slice(open, i + 1);
+    }
+  }
+  throw new Error(`unbalanced fn ${name}`);
+}
+
+test('host allowlist ranges match net.rs', () => {
+  const source = fs.readFileSync(NET_RS, 'utf8');
+  const hex = (text) => parseInt(text.replace(/_/g, ''), text.startsWith('0b') ? 2 : 16);
+  const bin = (text) => parseInt(text.replace(/^0b/, '').replace(/_/g, ''), 2);
+
+  // Each std predicate maps to sample addresses inside and just outside its range.
+  const ipv4Predicates = {
+    is_unspecified: { in: ['0.0.0.0'], out: [] },
+    is_loopback: { in: ['127.0.0.1', '127.255.255.255'], out: ['128.0.0.1'] },
+    is_link_local: { in: ['169.254.0.1', '169.254.255.255'], out: ['169.255.0.1'] },
+    is_private: {
+      in: ['10.0.0.1', '10.255.255.255', '172.16.0.1', '172.31.255.255', '192.168.0.1'],
+      out: ['11.0.0.1', '172.15.255.255', '172.32.0.1', '192.169.0.1'],
+    },
+    is_shared_address_space_cgnat: { in: [], out: [] },
+  };
+  const ipv4Body = rustFnBody(source, 'is_disallowed_ipv4');
+  const used = [...ipv4Body.matchAll(/\b(is_\w+)\(/g)].map((m) => m[1]).sort();
+  assert.deepEqual(used, Object.keys(ipv4Predicates).sort(), 'is_disallowed_ipv4 changed; update the JS allowlist');
+  for (const { in: inside, out } of Object.values(ipv4Predicates)) {
+    inside.forEach((host) => assert.equal(hook.isDisallowedHost(host), true, host));
+    out.forEach((host) => assert.equal(hook.isDisallowedHost(host), false, host));
+  }
+
+  const cgnat = /octets\[0\] == (\d+) && \(octets\[1\] & (0b[01_]+)\) == (0b[01_]+)/.exec(
+    rustFnBody(source, 'is_shared_address_space_cgnat'),
+  );
+  assert.ok(cgnat, 'CGNAT range not found');
+  const [first, mask, value] = [Number(cgnat[1]), bin(cgnat[2]), bin(cgnat[3])];
+  const low = value;
+  const high = value | (~mask & 0xff);
+  assert.equal(hook.isDisallowedHost(`${first}.${low}.0.0`), true);
+  assert.equal(hook.isDisallowedHost(`${first}.${high}.255.255`), true);
+  assert.equal(hook.isDisallowedHost(`${first}.${low - 1}.255.255`), false);
+  assert.equal(hook.isDisallowedHost(`${first}.${high + 1}.0.0`), false);
+
+  const ipBody = rustFnBody(source, 'is_disallowed_ip');
+  const prefixes = [...ipBody.matchAll(/\(v6\.segments\(\)\[0\] & (0x[0-9a-f]+)\) == (0x[0-9a-f]+)/g)];
+  assert.equal(prefixes.length, 2, 'IPv6 prefix checks changed; update the JS allowlist');
+  for (const [, maskText, valueText] of prefixes) {
+    const prefixMask = hex(maskText);
+    const prefix = hex(valueText);
+    const top = prefix | (~prefixMask & 0xffff);
+    assert.equal(hook.isDisallowedHost(`${prefix.toString(16)}::1`), true, valueText);
+    assert.equal(hook.isDisallowedHost(`${top.toString(16)}:ffff::1`), true, valueText);
+    assert.equal(hook.isDisallowedHost(`${((top + 1) & 0xffff).toString(16)}::1`), false, valueText);
+  }
+
+  const sixToFour = /segments\[0\] != (0x[0-9a-f]+)/.exec(rustFnBody(source, 'six_to_four_embedded_ipv4'));
+  assert.ok(sixToFour, '6to4 prefix not found');
+  assert.equal(hook.isDisallowedHost(`${hex(sixToFour[1]).toString(16)}:a00:1::`), true);
+  assert.equal(hook.isDisallowedHost(`${hex(sixToFour[1]).toString(16)}:808:808::`), false);
+
+  const nat64 = /segments\[\.\.6\] != \[(0x[0-9a-f]+), (0x[0-9a-f]+), 0, 0, 0, 0\]/.exec(
+    rustFnBody(source, 'nat64_well_known_prefix_embedded_ipv4'),
+  );
+  assert.ok(nat64, 'NAT64 prefix not found');
+  const nat64Prefix = `${hex(nat64[1]).toString(16)}:${hex(nat64[2]).toString(16)}`;
+  assert.equal(hook.isDisallowedHost(`${nat64Prefix}::a00:1`), true);
+  assert.equal(hook.isDisallowedHost(`${nat64Prefix}::808:808`), false);
+
+  assert.match(rustFnBody(source, 'is_disallowed_local_host'), /eq_ignore_ascii_case\("localhost"\)/);
+});
+
+function jsonType(value) {
+  if (value === null) return 'null';
+  if (Array.isArray(value)) return 'array';
+  if (Number.isInteger(value)) return 'integer';
+  return typeof value;
+}
+
+test('every event field matches its schema type and pattern', () => {
+  const schema = JSON.parse(fs.readFileSync(SCHEMA_PATH, 'utf8'));
+  const bodies = [
+    hook.buildEventBody({ eventType: 'agent_invocation', targetName: 'konductor', uuid: VALID_UUID, version: '1', sessionId: RAW_SESSION_ID }),
+    hook.buildEventBody({ eventType: 'agent_invocation', targetName: 'konductor', uuid: VALID_UUID, version: '1' }),
+    hook.buildEventBody({
+      eventType: 'subagent_invocation',
+      targetName: 'k-developer',
+      uuid: VALID_UUID,
+      version: '1',
+      sessionId: RAW_SESSION_ID,
+      parentSessionId: RAW_SESSION_ID,
+      parentAgentName: 'konductor',
+    }),
+  ];
+  for (const { Data } of bodies) {
+    for (const [key, value] of Object.entries(Data)) {
+      const property = schema.properties[key];
+      assert.ok(property, `${key} is not in the schema`);
+      const types = [].concat(property.type);
+      const actual = jsonType(value);
+      assert.ok(types.includes(actual) || (actual === 'integer' && types.includes('number')), `${key}: ${actual} not in ${types}`);
+      if (typeof value === 'string' && property.pattern) {
+        assert.match(value, new RegExp(property.pattern), key);
+      }
+      if (typeof value === 'string' && property.format === 'date-time') {
+        assert.ok(!Number.isNaN(Date.parse(value)), key);
+      }
+    }
+  }
 });
 
 // ── End to end ───────────────────────────────────────────────────────────
@@ -419,6 +553,23 @@ test('a newer-schema record keeps its UUID but fails closed on consent', (t) => 
   const home = scratchDir(t, 'newer-home');
   writeRecord(home, { schema_version: 2, UUID: VALID_UUID, telemetry_consent: true });
   assert.deepEqual(hook.ensureInstance(home), { UUID: VALID_UUID, telemetry_consent: false });
+});
+
+test('creates ~/.konductor with mode 0700', { skip: process.platform === 'win32' }, (t) => {
+  const { requests, home } = runHook(t, AGENT_EVENT);
+  assert.equal(requests.length, 1);
+  assert.equal(fs.lstatSync(path.join(home, '.konductor')).mode & 0o777, 0o700);
+});
+
+test('a symlinked ~/.konductor sends nothing and writes nothing into the target', { skip: process.platform === 'win32' }, (t) => {
+  const home = scratchDir(t, 'symlink-home');
+  const target = scratchDir(t, 'symlink-target');
+  fs.symlinkSync(target, path.join(home, '.konductor'));
+  const { result, requests } = runHook(t, { ...AGENT_EVENT, home });
+  assertSilent(result);
+  assert.equal(requests.length, 0);
+  assert.deepEqual(fs.readdirSync(target), []);
+  assert.equal(fs.lstatSync(path.join(home, '.konductor')).isSymbolicLink(), true);
 });
 
 function withWriteSync(t, replacement) {
