@@ -33,20 +33,40 @@ Load `.konductor/memory/MEMORY.md` and `.konductor/memory/USER.md` via `fs_read`
 
 1. Re-read the target file from disk.
 2. Prepare the **full file content** — all existing entries plus the new/updated one.
-3. Pipe through the validator:
+3. Pipe through the validator. Try these locations in order and use the first
+   executable match:
 
    ```bash
-   VALIDATOR="$(git rev-parse --show-toplevel 2>/dev/null)/skills/persistent-memory/scripts/memory-validator.sh"
+   VALIDATOR="${CLAUDE_SKILL_DIR:-}/scripts/memory-validator.sh"
+   if [[ ! -x "$VALIDATOR" ]]; then
+     VALIDATOR="$(git rev-parse --show-toplevel 2>/dev/null)/skills/persistent-memory/scripts/memory-validator.sh"
+   fi
    if [[ ! -x "$VALIDATOR" ]]; then
      VALIDATOR="${SKILLS_HOME:-$HOME/.konductor/skills}/persistent-memory/scripts/memory-validator.sh"
+   fi
+   if [[ ! -x "$VALIDATOR" ]]; then
+     VALIDATOR="$(git rev-parse --show-toplevel 2>/dev/null)/.konductor/skills/persistent-memory/scripts/memory-validator.sh"
    fi
    printf '%s' "$PROPOSED_CONTENT" | bash "$VALIDATOR" ".konductor/memory/MEMORY.md"
    ```
 
+   - `${CLAUDE_SKILL_DIR}` — Claude Code substitutes this to this skill's own
+     directory on disk before you ever see this text, for both a plugin
+     install and a standalone `.claude/skills/` install. On a runtime that
+     doesn't perform this substitution, the variable is empty and the check
+     falls through to the next location.
+   - `$(git rev-parse --show-toplevel)/skills/...` — running from a source
+     checkout of this repository.
+   - `${SKILLS_HOME:-$HOME/.konductor/skills}/...` — a global (`konductor
+     install` with no `--target`) Kiro CLI install, which lands under `$HOME`.
+   - `$(git rev-parse --show-toplevel)/.konductor/skills/...` — a project-level
+     Kiro CLI install (`konductor install --target <project-dir>`), which
+     lands `.konductor/` at the project root alongside `.kiro/`.
+
 4. **Exit 0** → write succeeded (validator performs atomic write).
 5. **Exit 1** → read stderr for reason, adjust and retry once, or skip if unresolvable.
 
-**Missing validator:** If neither path resolves to an executable validator, fail closed — do not write, log the error, continue the session normally.
+**Missing validator:** If none of the above resolves to an executable validator, fail closed — do not write, log the error, continue the session normally.
 
 ### Add an entry
 
