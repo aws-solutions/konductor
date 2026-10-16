@@ -35,6 +35,16 @@ not per individual commit.
   not resolve to the shipped `k-developer`/`k-quality-assurance` agents in a plugin install.
   Changed to `Agent(k-developer, k-quality-assurance)`, matching every other agent spec's
   convention.
+- Claude Code plugin installs could not delegate to specialists. Claude Code names plugin
+  agents `<plugin>:<agent>` (`konductor:k-developer`), so the bare `Agent(k-developer, ...)`
+  grants matched nothing. Plugin assembly now rewrites each grant to the plugin-qualified name
+  (`scripts/rewrite-claude-plugin-agent-grants.py`) and fails if a grant names an agent the
+  plugin does not ship. Source specs keep bare names for `.claude/agents/` installs.
+- `tmux-dispatch.sh`, `zellij-dispatch.sh`, and `cmux-dispatch.sh` refused to dispatch in a
+  plugin-only install: they only looked under `~/.claude/agents/` and rejected `:` in
+  `--agent`. They now fall back to the agents shipped by the plugin the skill belongs to and
+  launch `claude --agent <plugin>:<agent>`, and accept an already-qualified
+  `<plugin>:<agent>`.
 
 ## [1.1.0] - 2026-10-14
 
