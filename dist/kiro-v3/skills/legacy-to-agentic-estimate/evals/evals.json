@@ -1,0 +1,196 @@
+[
+  {
+    "id": "h1-lone-weak-match-escalates",
+    "category": "confidence-formula",
+    "description": "A single weight-1 keyword match ('api') must yield confidence below the 0.55 escalation threshold so the item is sent for model judgment rather than locked into the tightest band.",
+    "input": {
+      "function": "infer_tier",
+      "args": ["call the api"]
+    },
+    "expect": {
+      "tier": "medium",
+      "confidence_lt": 0.55,
+      "needs_llm": true
+    },
+    "rationale": "Bug: previously confidence=1.0 because share=1.0 and margin=1.0 for any uncontested match, ignoring the absolute score. Fix folds abs_saturation (top/3 clamped to 1) into the formula so a lone weight-1 hit yields ~0.33."
+  },
+  {
+    "id": "h1-strong-match-high-confidence",
+    "category": "confidence-formula",
+    "description": "A strong multi-signal high-tier match (CRUD + boilerplate) must still read as high confidence and NOT escalate.",
+    "input": {
+      "function": "infer_tier",
+      "args": ["Add CRUD boilerplate and DTOs"]
+    },
+    "expect": {
+      "tier": "high",
+      "confidence_gte": 0.55,
+      "needs_llm": false
+    },
+    "rationale": "Regression guard: the abs_saturation fix must not collapse confidence for legitimately strong signals."
+  },
+  {
+    "id": "h1-weight2-medium-no-escalation",
+    "category": "confidence-formula",
+    "description": "A weight-2 medium signal ('integrate the webhook') should produce confidence >= 0.55 and NOT escalate.",
+    "input": {
+      "function": "infer_tier",
+      "args": ["integrate the webhook"]
+    },
+    "expect": {
+      "tier": "medium",
+      "confidence_gte": 0.55,
+      "needs_llm": false
+    },
+    "rationale": "A weight-2 match gives abs_saturation=0.667, which multiplied by share+margin terms still clears the 0.55 threshold."
+  },
+  {
+    "id": "h2-missing-e-legacy-key",
+    "category": "e-legacy-validation",
+    "description": "An item without the 'E_legacy' key must produce a friendly InvalidELegacyError, not a KeyError stack trace.",
+    "input": {
+      "function": "_require_e_legacy",
+      "args": [{ "description": "Add CRUD endpoints" }, 0]
+    },
+    "expect": {
+      "raises": "InvalidELegacyError",
+      "message_contains": "Please clarify that row"
+    },
+    "rationale": "SKILL.md contract: 'if a value is non-numeric, ask the user to clarify that row.' Previously this raised a raw KeyError."
+  },
+  {
+    "id": "h2-non-numeric-e-legacy",
+    "category": "e-legacy-validation",
+    "description": "A non-numeric 'E_legacy' value must produce a friendly InvalidELegacyError naming the bad value, not a ValueError stack trace.",
+    "input": {
+      "function": "convert_batch",
+      "args": [
+        [{ "E_legacy": "not-a-number", "description": "Add CRUD endpoints" }]
+      ]
+    },
+    "expect": {
+      "raises": "InvalidELegacyError",
+      "message_contains": "Please clarify that row",
+      "message_contains_value": "not-a-number"
+    },
+    "rationale": "Previously float(item['E_legacy']) threw a raw ValueError with no guidance for the user."
+  },
+  {
+    "id": "h2-cli-non-numeric-friendly-exit",
+    "category": "e-legacy-validation",
+    "description": "CLI must exit non-zero with a human-readable 'error:' line when E_legacy is non-numeric — no traceback.",
+    "input": {
+      "cli_command": "convert",
+      "items": [
+        { "E_legacy": "tbd", "description": "Refactor the auth module" }
+      ]
+    },
+    "expect": {
+      "exit_code": 1,
+      "stderr_starts_with": "error:",
+      "no_traceback": true
+    },
+    "rationale": "Validates the CLI exception handler catches InvalidELegacyError alongside MissingDescriptionError."
+  },
+  {
+    "id": "h3-per-item-c-override-fourth-worked-example",
+    "category": "c-override",
+    "description": "High-tier item with per-item C=0.20 via the documented API (tau stays at tier-preset 0.10) must produce low=38.2, mid=39.4, high=40.6, delta=-2%. This is the reproducible API result for the SKILL.md example-4 headline: the same high-leverage task collapses from -42% to -2% purely by dropping C.",
+    "input": {
+      "function": "convert_batch",
+      "args": [
+        [
+          {
+            "E_legacy": 40,
+            "description": "Add CRUD endpoints for the settings module",
+            "C": 0.2
+          }
+        ]
+      ],
+      "band": 0.15
+    },
+    "expect": {
+      "rows[0].tier": "high",
+      "rows[0].mid": 39.4,
+      "rows[0].delta_pct": -2.0
+    },
+    "rationale": "Documented API: per-item C=0.20 overrides only C; tau stays at high-tier preset 0.10. Formula: L_eff=0.75*0.20=0.15, bracket=0.30+0.70*0.85=0.895, E_mid=40*0.895*1.10=39.38≈39.4, delta=-2%. τ is a tier-level calibration, not a per-item input — no tau_override path exists in the API."
+  },
+  {
+    "id": "h3-per-item-c-override-via-convert-batch",
+    "category": "c-override",
+    "description": "convert_batch with a per-item C=0.20 override on a high-tier item must use the overridden C, not the preset default C=0.90. The output must differ from the no-override run.",
+    "input": {
+      "function": "convert_batch",
+      "args": [
+        [
+          {
+            "E_legacy": 40,
+            "description": "Add CRUD endpoints for the settings module",
+            "C": 0.2
+          }
+        ]
+      ]
+    },
+    "expect": {
+      "rows[0].tier": "high",
+      "rows[0].mid_lt": 42.0,
+      "rows[0].mid_gt": 38.0,
+      "rows[0].delta_pct_ne": -42
+    },
+    "rationale": "Without C override, high-tier mid ≈ 23 (−42%). With C=0.20 and default tau=0.10, mid ≈ 39 (−2%). Override is applied."
+  },
+  {
+    "id": "h3-c-override-invalid-range",
+    "category": "c-override",
+    "description": "A C override outside (0, 1] must produce a friendly InvalidELegacyError, not an unguarded float.",
+    "input": {
+      "function": "convert_batch",
+      "args": [
+        [{ "E_legacy": 40, "description": "Add CRUD endpoints", "C": 1.5 }]
+      ]
+    },
+    "expect": {
+      "raises": "InvalidELegacyError",
+      "message_contains": "Please supply a decimal between 0 (exclusive) and 1 (inclusive)"
+    },
+    "rationale": "C=1.5 or C=0.0 would silently produce nonsense output. Validation catches it with a user-facing message."
+  },
+  {
+    "id": "h3-c-override-zero-boundary",
+    "category": "c-override",
+    "description": "C=0.0 is invalid (exclusive lower bound). Must raise InvalidELegacyError.",
+    "input": {
+      "function": "convert_batch",
+      "args": [
+        [{ "E_legacy": 40, "description": "Add CRUD endpoints", "C": 0.0 }]
+      ]
+    },
+    "expect": {
+      "raises": "InvalidELegacyError",
+      "message_contains": "Please supply a decimal between 0 (exclusive) and 1 (inclusive)"
+    },
+    "rationale": "C=0 would yield L_eff=0 (zero leverage) which is valid semantically but excluded to avoid a common off-by-one input error."
+  },
+  {
+    "id": "regression-no-override-high-tier-minus-42",
+    "category": "regression",
+    "description": "Without C override, a high-tier item must still produce the expected −42% result (preset C=0.90, tau=0.10).",
+    "input": {
+      "function": "convert_batch",
+      "args": [
+        [
+          {
+            "E_legacy": 40,
+            "description": "Add CRUD endpoints and DTOs for the settings API"
+          }
+        ]
+      ]
+    },
+    "expect": {
+      "rows[0].tier": "high",
+      "rows[0].delta_pct": -42.0
+    },
+    "rationale": "Regression guard: per-item C override must not change behavior when C is absent from the item."
+  }
+]
