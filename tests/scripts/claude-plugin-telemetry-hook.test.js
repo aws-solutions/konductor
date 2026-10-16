@@ -271,27 +271,96 @@ test('the plugin telemetry_enabled option set to false suppresses sending', (t) 
   assert.equal(enabled.requests.length, 1);
 });
 
-test('config parser reads telemetry.enabled the way the CLI does', () => {
-  const off = [
-    'telemetry:\n  enabled: false\n',
-    'telemetry:\n  endpoint: https://x\n  enabled: false # off\n',
-    'telemetry: {enabled: false}\n',
-    'other: 1\ntelemetry:\n    enabled: False\n',
-  ];
-  const on = [
-    'telemetry:\n  enabled: true\n',
-    'telemetry:\n  enabled: "false"\n',
-    'enabled: false\n',
-    'other:\n  enabled: false\n',
-    'telemetry:\n  nested:\n    enabled: false\n',
-    '# telemetry:\n#   enabled: false\n',
-    '',
-  ];
-  for (const text of off) {
-    assert.equal(hook.configDisablesTelemetry(text), true, JSON.stringify(text));
+function writeConfig(dir, text) {
+  fs.mkdirSync(path.join(dir, '.konductor'), { recursive: true });
+  fs.writeFileSync(path.join(dir, '.konductor', 'config.yml'), text);
+}
+
+function agentEventIn(cwd) {
+  return {
+    eventType: 'agent-invocation',
+    stdin: JSON.stringify({ cwd, session_id: RAW_SESSION_ID, agent_type: 'konductor:konductor' }),
+  };
+}
+
+test('an opt-out in a parent directory of cwd suppresses sending', (t) => {
+  const project = scratchDir(t, 'parent-config');
+  writeConfig(project, 'telemetry:\n  enabled: false\n');
+  const subdir = path.join(project, 'packages', 'app');
+  fs.mkdirSync(subdir, { recursive: true });
+  const { result, requests } = runHook(t, agentEventIn(subdir));
+  assertSilent(result);
+  assert.equal(requests.length, 0);
+});
+
+test('an opt-out in $HOME/.konductor/config.yml suppresses sending', (t) => {
+  const home = scratchDir(t, 'home-config');
+  writeConfig(home, 'telemetry:\n  enabled: false\n');
+  const { result, requests } = runHook(t, { ...AGENT_EVENT, home });
+  assertSilent(result);
+  assert.equal(requests.length, 0);
+  assert.equal(fs.existsSync(recordPath(home)), false);
+});
+
+test('a nearer config with telemetry on does not override an opt-out further up', (t) => {
+  const home = scratchDir(t, 'home-config-off');
+  writeConfig(home, 'telemetry:\n  enabled: false\n');
+  const project = scratchDir(t, 'project-config-on');
+  writeConfig(project, 'telemetry:\n  enabled: true\n');
+  const { requests } = runHook(t, { ...agentEventIn(project), home });
+  assert.equal(requests.length, 0);
+});
+
+test('an unreadable config fails open, as the CLI does', (t) => {
+  const asDirectory = scratchDir(t, 'config-dir');
+  fs.mkdirSync(path.join(asDirectory, '.konductor', 'config.yml'), { recursive: true });
+  assert.equal(runHook(t, agentEventIn(asDirectory)).requests.length, 1);
+  if (process.platform !== 'win32' && process.getuid() !== 0) {
+    const noRead = scratchDir(t, 'config-noread');
+    writeConfig(noRead, 'telemetry:\n  enabled: false\n');
+    fs.chmodSync(path.join(noRead, '.konductor', 'config.yml'), 0o000);
+    assert.equal(runHook(t, agentEventIn(noRead)).requests.length, 1);
   }
-  for (const text of on) {
-    assert.equal(hook.configDisablesTelemetry(text), false, JSON.stringify(text));
+});
+
+test('config parser treats telemetry.enabled: false as off in every YAML form', () => {
+  const off = {
+    block: 'telemetry:\n  enabled: false\n',
+    'block with comment': 'telemetry:\n  endpoint: https://x\n  enabled: false # off\n',
+    'flow value': 'telemetry: {enabled: false}\n',
+    'capitalized, deeper indent': 'other: 1\ntelemetry:\n    enabled: False\n',
+    'quoted key': '"telemetry":\n  "enabled": false\n',
+    'single-quoted key': "'telemetry':\n  'enabled': false\n",
+    BOM: '\uFEFFtelemetry:\n  enabled: false\n',
+    'flow top': '{telemetry: {enabled: false}}\n',
+    JSON: '{"telemetry": {"enabled": false, "endpoint": "https://x/y"}}\n',
+    'flow quoted': "telemetry: {'enabled': false}\n",
+    'flow top quoted': "{'telemetry': {\"enabled\": false}}\n",
+    'multi-line flow': 'telemetry: {\n  endpoint: https://x/y,\n  enabled: false\n}\n',
+    '!!bool tag': 'telemetry:\n  enabled: !!bool false\n',
+    'anchor and merge': 'defaults: &d\n  enabled: false\ntelemetry:\n  <<: *d\n',
+    'quoted scalar': 'telemetry:\n  enabled: "false"\n',
+    'nested enabled': 'telemetry:\n  nested:\n    enabled: false\n',
+    'commented out': '# telemetry:\n#   enabled: false\n',
+    'duplicate key': 'telemetry:\n  enabled: true\n  enabled: false\n',
+    'unclosed flow': 'telemetry: {enabled: true\n',
+  };
+  const on = {
+    block: 'telemetry:\n  enabled: true\n',
+    'block with endpoint': 'telemetry:\n  endpoint: https://x/y # here\n  enabled: TRUE\n',
+    JSON: '{"telemetry": {"enabled": true}}',
+    'flow top': '{telemetry: {enabled: true, endpoint: https://x/y}}\n',
+    BOM: '\uFEFFtelemetry:\n  enabled: true\n',
+    'no enabled key': 'telemetry:\n  endpoint: https://x\n',
+    'no telemetry key': 'enabled: false\n',
+    'other section': 'other:\n  enabled: false\n',
+    empty: '',
+  };
+  for (const [name, text] of Object.entries(off)) {
+    assert.equal(hook.configDisablesTelemetry(text), true, name);
+  }
+  for (const [name, text] of Object.entries(on)) {
+    assert.equal(hook.configDisablesTelemetry(text), false, name);
   }
 });
 
@@ -352,6 +421,33 @@ test('a newer-schema record keeps its UUID but fails closed on consent', (t) => 
   assert.deepEqual(hook.ensureInstance(home), { UUID: VALID_UUID, telemetry_consent: false });
 });
 
+function withWriteSync(t, replacement) {
+  const original = fs.writeSync;
+  fs.writeSync = (fd, data, ...rest) => replacement(original, fd, data, ...rest);
+  t.after(() => {
+    fs.writeSync = original;
+  });
+}
+
+test('a short write still publishes the whole record', (t) => {
+  const home = scratchDir(t, 'short-write-home');
+  withWriteSync(t, (original, fd, data, offset = 0, length) => {
+    const bytes = Buffer.isBuffer(data) ? data : Buffer.from(String(data));
+    return original(fd, bytes, offset, Math.min(7, length ?? bytes.length - offset));
+  });
+  const record = hook.ensureInstance(home);
+  assert.equal(record.telemetry_consent, true);
+  assert.deepEqual(JSON.parse(fs.readFileSync(recordPath(home), 'utf8')), record);
+});
+
+test('a write that makes no progress fails closed and publishes nothing', (t) => {
+  const home = scratchDir(t, 'stalled-write-home');
+  withWriteSync(t, () => 0);
+  assert.deepEqual(hook.ensureInstance(home), { UUID: hook.NIL_UUID_SENTINEL, telemetry_consent: false });
+  assert.equal(fs.existsSync(recordPath(home)), false);
+  assert.deepEqual(fs.readdirSync(path.join(home, '.konductor')), []);
+});
+
 // ── Endpoint ─────────────────────────────────────────────────────────────
 
 test('KONDUCTOR_METRICS_ENDPOINT overrides the default when it passes the allowlist', (t) => {
@@ -382,6 +478,70 @@ test('host allowlist matches the CLI ranges', () => {
   for (const host of allowed) {
     assert.equal(hook.isDisallowedHost(host), false, host);
   }
+});
+
+test('localhost names are rejected with or without a trailing dot', () => {
+  for (const host of ['localhost.', 'LOCALHOST.', 'foo.localhost', 'a.b.localhost.', '127.0.0.1.']) {
+    assert.equal(hook.resolveEndpoint({ KONDUCTOR_METRICS_ENDPOINT: `https://${host}/in` }), null, host);
+  }
+  assert.notEqual(hook.resolveEndpoint({ KONDUCTOR_METRICS_ENDPOINT: 'https://notlocalhost.example/in' }), null);
+});
+
+function lookupWith(answer, options = {}) {
+  const fakeDns = (hostname, opts, callback) => {
+    assert.equal(opts.all, true);
+    if (answer !== 'hang') {
+      setImmediate(() => callback(null, answer.map((address) => ({ address, family: address.includes(':') ? 6 : 4 }))));
+    }
+  };
+  const lookup = hook.checkedLookup(fakeDns, 50);
+  return new Promise((resolve) => {
+    lookup('collector.example.com', options, (err, address, family) => resolve({ err, address, family }));
+  });
+}
+
+test('the connection lookup rejects any resolved address on the denylist', async () => {
+  for (const answer of [['127.0.0.1'], ['10.1.2.3'], ['::1'], ['8.8.8.8', '192.168.0.1'], ['::ffff:169.254.169.254'], []]) {
+    const { err } = await lookupWith(answer);
+    assert.ok(err instanceof Error, answer.join(','));
+  }
+});
+
+test('the connection lookup pins the checked address in both callback shapes', async () => {
+  const single = await lookupWith(['8.8.8.8', '2001:4860:4860::8888']);
+  assert.equal(single.err, null);
+  assert.equal(single.address, '8.8.8.8');
+  assert.equal(single.family, 4);
+  const all = await lookupWith(['2001:4860:4860::8888'], { all: true });
+  assert.equal(all.err, null);
+  assert.deepEqual(all.address, [{ address: '2001:4860:4860::8888', family: 6 }]);
+});
+
+test('the connection lookup fails closed when DNS does not answer in time', async () => {
+  const started = Date.now();
+  const { err } = await lookupWith('hang');
+  assert.ok(err instanceof Error);
+  assert.ok(Date.now() - started < 1000);
+});
+
+test('a hostname that resolves to a private address sends nothing', (t) => {
+  for (const address of ['127.0.0.1', '10.0.0.7', '::1']) {
+    const { result, requests } = runHook(t, { ...AGENT_EVENT, env: { TELEMETRY_STUB_DNS: address } });
+    assertSilent(result);
+    assert.equal(requests.length, 0, address);
+  }
+  const { requests } = runHook(t, { ...AGENT_EVENT, env: { TELEMETRY_STUB_DNS: '8.8.8.8' } });
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].pinned, '8.8.8.8');
+});
+
+test('the local-endpoint escape hatch skips the lookup check', (t) => {
+  const { requests } = runHook(t, {
+    ...AGENT_EVENT,
+    env: { TELEMETRY_STUB_DNS: '127.0.0.1', KONDUCTOR_TELEMETRY_ALLOW_LOCAL_ENDPOINT: '1' },
+  });
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].hasLookup, false);
 });
 
 // ── Bad input ────────────────────────────────────────────────────────────

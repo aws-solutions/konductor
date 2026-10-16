@@ -20,6 +20,7 @@
 'use strict';
 
 const crypto = require('node:crypto');
+const dns = require('node:dns');
 const fs = require('node:fs');
 const https = require('node:https');
 const net = require('node:net');
@@ -33,6 +34,7 @@ const NIL_UUID_SENTINEL = '0'.repeat(64);
 const HARNESS = 'claude-plugin';
 const INSTANCE_SCHEMA_VERSION = 1;
 const MAX_HOOK_PAYLOAD_BYTES = 64 * 1024;
+const DNS_TIMEOUT_MS = 500;
 const SEND_TIMEOUT_MS = 3000;
 const AGENT_INVOCATION = 'agent-invocation';
 const SUBAGENT_INVOCATION = 'subagent-invocation';
@@ -108,54 +110,221 @@ function telemetryOffByEnv(env) {
   return env.KONDUCTOR_TELEMETRY === 'off';
 }
 
-// Minimal read of `telemetry.enabled` from .konductor/config.yml: a block
-// mapping under a top-level `telemetry:` key, or a one-line flow mapping.
-function configDisablesTelemetry(text) {
-  const isFalse = (value) => ['false', 'False', 'FALSE'].includes(value);
-  let inSection = false;
-  let childIndent = null;
-  for (const rawLine of text.split(/\r?\n/)) {
-    const line = rawLine.replace(/(^|\s)#.*$/, '').replace(/\s+$/, '');
-    if (line.trim() === '' || line === '---') {
-      continue;
+const TRUE_SCALARS = ['true', 'True', 'TRUE'];
+const FALSE_SCALARS = ['false', 'False', 'FALSE'];
+
+function stripComment(line) {
+  let quote = null;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (quote) {
+      if (c === quote) {
+        quote = null;
+      }
+    } else if (c === '"' || c === "'") {
+      quote = c;
+    } else if (c === '#' && (i === 0 || /\s/.test(line[i - 1]))) {
+      return line.slice(0, i);
     }
-    const indent = line.length - line.trimStart().length;
-    if (indent === 0) {
-      const top = /^telemetry\s*:\s*(.*)$/.exec(line);
-      inSection = top !== null;
-      childIndent = null;
-      if (top && top[1].startsWith('{')) {
-        const flow = /[{,]\s*enabled\s*:\s*([^,}\s]+)\s*[,}]/.exec(top[1]);
-        if (flow && isFalse(flow[1])) {
-          return true;
-        }
+  }
+  return line;
+}
+
+// Turns a YAML flow mapping (or JSON) into JSON text. Plain scalars become
+// strings except booleans, null and numbers. A `:` only splits a key from its
+// value when followed by a space or after a quoted key, so URLs stay whole.
+function flowToJson(text) {
+  const out = [];
+  let i = 0;
+  let afterQuoted = false;
+  while (i < text.length) {
+    const c = text[i];
+    if (/\s/.test(c)) {
+      i++;
+    } else if ('{}[],'.includes(c)) {
+      out.push(c);
+      afterQuoted = false;
+      i++;
+    } else if (c === ':' && (afterQuoted || i + 1 === text.length || /[\s,}\]]/.test(text[i + 1]))) {
+      out.push(':');
+      afterQuoted = false;
+      i++;
+    } else if (c === '"') {
+      const end = /^"(?:[^"\\]|\\.)*"/.exec(text.slice(i));
+      if (!end) {
+        return null;
+      }
+      out.push(end[0]);
+      afterQuoted = true;
+      i += end[0].length;
+    } else if (c === "'") {
+      const end = /^'(?:[^']|'')*'/.exec(text.slice(i));
+      if (!end) {
+        return null;
+      }
+      out.push(JSON.stringify(end[0].slice(1, -1).replace(/''/g, "'")));
+      afterQuoted = true;
+      i += end[0].length;
+    } else {
+      let j = i;
+      while (j < text.length && !',{}[]'.includes(text[j]) && !(text[j] === ':' && (j + 1 === text.length || /[\s,}\]]/.test(text[j + 1])))) {
+        j++;
+      }
+      const plain = text.slice(i, j).trim();
+      if (TRUE_SCALARS.includes(plain)) {
+        out.push('true');
+      } else if (FALSE_SCALARS.includes(plain)) {
+        out.push('false');
+      } else if (plain === 'null' || plain === '~') {
+        out.push('null');
+      } else if (/^-?\d+(\.\d+)?$/.test(plain)) {
+        out.push(plain);
+      } else {
+        out.push(JSON.stringify(plain));
+      }
+      afterQuoted = false;
+      i = j;
+    }
+  }
+  return out.join('');
+}
+
+function parseFlow(text) {
+  const json = flowToJson(text);
+  if (json === null) {
+    return undefined;
+  }
+  try {
+    return JSON.parse(json);
+  } catch {
+    return undefined;
+  }
+}
+
+const KEY_LINE = /^(\s*)(?:"([^"]*)"|'([^']*)'|([^\s'"{[#][^:]*?))\s*:(?:\s+(.*))?$/;
+
+// `telemetry.enabled` from the top level of a block mapping: true, false,
+// or undefined when it can't be read with confidence.
+function blockEnabled(lines) {
+  let section = null;
+  for (let index = 0; index < lines.length; index++) {
+    const line = lines[index];
+    const match = KEY_LINE.exec(line);
+    if (match === null) {
+      if (line.trimStart().startsWith('-') && section !== null) {
+        return undefined;
       }
       continue;
     }
-    if (!inSection) {
+    const [, indent, dq, sq, plain, rest = ''] = match;
+    const key = dq ?? sq ?? plain;
+    if (indent === '') {
+      if (key !== 'telemetry') {
+        if (section !== null) {
+          section.done = true;
+        }
+        continue;
+      }
+      if (section !== null) {
+        return undefined;
+      }
+      section = { values: [], childIndent: null, done: false };
+      if (rest.startsWith('{')) {
+        let flow = rest;
+        while (!balanced(flow) && index + 1 < lines.length) {
+          flow += `\n${lines[++index]}`;
+        }
+        const value = parseFlow(flow);
+        if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+          return undefined;
+        }
+        if (Object.hasOwn(value, 'enabled')) {
+          section.values.push(value.enabled);
+        }
+        section.done = true;
+      } else if (rest !== '') {
+        return undefined;
+      }
       continue;
     }
-    if (childIndent === null) {
-      childIndent = indent;
-    }
-    if (indent !== childIndent) {
+    if (section === null || section.done) {
       continue;
     }
-    const entry = /^\s+enabled\s*:\s*(\S+)$/.exec(line);
-    if (entry && isFalse(entry[1])) {
-      return true;
+    if (section.childIndent === null) {
+      section.childIndent = indent.length;
+    }
+    if (indent.length === section.childIndent && key === 'enabled') {
+      section.values.push(TRUE_SCALARS.includes(rest) ? true : FALSE_SCALARS.includes(rest) ? false : rest);
     }
   }
-  return false;
+  if (section === null || section.values.length === 0) {
+    return null;
+  }
+  return section.values.length === 1 && typeof section.values[0] === 'boolean' ? section.values[0] : undefined;
 }
 
-function telemetryOffByConfig(cwd) {
-  try {
-    const text = fs.readFileSync(path.join(cwd, '.konductor', 'config.yml'), 'utf8');
-    return configDisablesTelemetry(text);
-  } catch {
+function balanced(text) {
+  let depth = 0;
+  for (const c of text) {
+    depth += '{['.includes(c) ? 1 : '}]'.includes(c) ? -1 : 0;
+  }
+  return depth <= 0;
+}
+
+// Reads `telemetry.enabled` from .konductor/config.yml. Fails closed: if the
+// file mentions both `telemetry` and `enabled` and does not plainly set it to
+// true, telemetry is treated as off. YAML tags, anchors, aliases and merge
+// keys are never interpreted.
+function configDisablesTelemetry(rawText) {
+  const text = rawText.replace(/^\uFEFF/, '');
+  const mentionsSetting = /telemetry/i.test(text) && /enabled/i.test(text);
+  if (!mentionsSetting) {
     return false;
   }
+  if (/(^|[\s:,[{-])[&*!]|<</.test(text)) {
+    return true;
+  }
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => stripComment(line).replace(/\s+$/, ''))
+    .filter((line) => line.trim() !== '' && !/^(---|\.\.\.)$/.test(line));
+  let enabled;
+  if (lines.length > 0 && lines[0].startsWith('{')) {
+    const value = parseFlow(lines.join('\n'));
+    const section = value && typeof value === 'object' ? value.telemetry : undefined;
+    enabled = section && typeof section === 'object' && !Array.isArray(section) ? section.enabled : undefined;
+  } else {
+    enabled = blockEnabled(lines);
+  }
+  return enabled !== true;
+}
+
+function configPaths(cwd, home) {
+  const dirs = [];
+  for (let dir = path.resolve(cwd); ; dir = path.dirname(dir)) {
+    dirs.push(dir);
+    if (path.dirname(dir) === dir) {
+      break;
+    }
+  }
+  if (home !== null && !dirs.includes(path.resolve(home))) {
+    dirs.push(path.resolve(home));
+  }
+  return dirs.map((dir) => path.join(dir, '.konductor', 'config.yml'));
+}
+
+// Nearest first, as the CLI walks install roots, then $HOME. An unreadable
+// file is skipped, as the CLI's read_telemetry_config does.
+function telemetryOffByConfig(cwd, home) {
+  return configPaths(cwd, home).some((file) => {
+    let text;
+    try {
+      text = fs.readFileSync(file, 'utf8');
+    } catch {
+      return false;
+    }
+    return configDisablesTelemetry(text);
+  });
 }
 
 // Plugin userConfig `telemetry_enabled`, exported by Claude Code to hooks.
@@ -248,6 +417,17 @@ function createPrivateDir(dir) {
   fs.chmodSync(dir, 0o700);
 }
 
+function writeAll(fd, bytes) {
+  let offset = 0;
+  while (offset < bytes.length) {
+    const written = fs.writeSync(fd, bytes, offset, bytes.length - offset);
+    if (!(written > 0)) {
+      throw new Error('short write');
+    }
+    offset += written;
+  }
+}
+
 let tempCounter = 0;
 
 // Mirrors identity.rs `ensure_instance`: publish with link(2) so a racing
@@ -284,7 +464,7 @@ function ensureInstance(home, now = new Date()) {
       if (process.platform !== 'win32') {
         fs.fchmodSync(fd, 0o600);
       }
-      fs.writeSync(fd, `${JSON.stringify(record, null, 2)}\n`);
+      writeAll(fd, Buffer.from(`${JSON.stringify(record, null, 2)}\n`, 'utf8'));
     } finally {
       fs.closeSync(fd);
     }
@@ -385,8 +565,9 @@ function isDisallowedIpv6(s) {
   return (s[0] & 0xffc0) === 0xfe80 || (s[0] & 0xfe00) === 0xfc00;
 }
 
-function isDisallowedHost(host) {
-  if (host.toLowerCase() === 'localhost') {
+function isDisallowedHost(rawHost) {
+  const host = rawHost.toLowerCase().replace(/\.$/, '');
+  if (host === 'localhost' || host.endsWith('.localhost')) {
     return true;
   }
   if (net.isIPv4(host)) {
@@ -399,8 +580,13 @@ function isDisallowedHost(host) {
   return false;
 }
 
-// No DNS resolution or pinning here, unlike the CLI: a hostname that
-// resolves to a private address is not caught.
+function allowLocalEndpoint(env) {
+  return nonEmptyString(env.KONDUCTOR_TELEMETRY_ALLOW_LOCAL_ENDPOINT) !== null;
+}
+
+// Like the CLI's endpoint_host_is_allowed_with_pin: the host is checked
+// here, and its resolved addresses are checked by checkedLookup when the
+// request connects.
 function resolveEndpoint(env) {
   const candidate = nonEmptyString(env.KONDUCTOR_METRICS_ENDPOINT) || DEFAULT_TELEMETRY_ENDPOINT;
   if (!candidate.startsWith('https://')) {
@@ -415,13 +601,53 @@ function resolveEndpoint(env) {
   if (url.protocol !== 'https:' || url.hostname === '') {
     return null;
   }
-  if (!nonEmptyString(env.KONDUCTOR_TELEMETRY_ALLOW_LOCAL_ENDPOINT)) {
+  if (!allowLocalEndpoint(env)) {
     const host = url.hostname.replace(/^\[(.*)\]$/, '$1');
     if (isDisallowedHost(host)) {
       return null;
     }
   }
   return url;
+}
+
+// A `lookup` for https.request: resolves every address, refuses the
+// connection if any is disallowed, and hands the socket the address it
+// checked, so a second resolution can't swap it. A slow resolver is denied,
+// as in the CLI.
+function checkedLookup(lookupAll = (...args) => dns.lookup(...args), timeoutMs = DNS_TIMEOUT_MS) {
+  return (hostname, options, callback) => {
+    if (typeof options === 'function') {
+      callback = options;
+      options = {};
+    }
+    let settled = false;
+    const finish = (err, chosen) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      clearTimeout(timer);
+      if (err) {
+        callback(err);
+      } else if (options && options.all) {
+        callback(null, [chosen]);
+      } else {
+        callback(null, chosen.address, chosen.family);
+      }
+    };
+    const timer = setTimeout(() => finish(new Error('DNS lookup timed out')), timeoutMs);
+    lookupAll(hostname, { all: true, verbatim: true }, (err, addresses) => {
+      if (err) {
+        finish(err);
+      } else if (!Array.isArray(addresses) || addresses.length === 0) {
+        finish(new Error('no addresses'));
+      } else if (addresses.some(({ address }) => net.isIP(String(address)) === 0 || isDisallowedHost(String(address)))) {
+        finish(new Error('endpoint resolves to a disallowed address'));
+      } else {
+        finish(null, addresses[0]);
+      }
+    });
+  };
 }
 
 // ── Agent names ──────────────────────────────────────────────────────────
@@ -492,7 +718,7 @@ function resolveInvocation(eventType, payload, env, pluginName, agents) {
 
 // ── Transport ────────────────────────────────────────────────────────────
 
-function send(url, body) {
+function send(url, body, env) {
   return new Promise((resolve) => {
     let request;
     const done = () => {
@@ -504,14 +730,18 @@ function send(url, body) {
         request.destroy();
       }
       done();
-    }, SEND_TIMEOUT_MS);
+    }, DNS_TIMEOUT_MS + SEND_TIMEOUT_MS);
     try {
       const payload = Buffer.from(JSON.stringify(body), 'utf8');
-      request = https.request(url, {
+      const options = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Content-Length': payload.length },
         timeout: SEND_TIMEOUT_MS,
-      });
+      };
+      if (!allowLocalEndpoint(env)) {
+        options.lookup = checkedLookup();
+      }
+      request = https.request(url, options);
       request.on('response', (response) => {
         response.resume();
         response.on('end', done);
@@ -567,8 +797,9 @@ async function run(argv, env) {
   if (telemetryOffByEnv(env)) {
     return;
   }
+  const home = homeDir(env);
   const cwd = nonEmptyString(payload.cwd) || process.cwd();
-  if (telemetryOffByConfig(cwd) || telemetryOffByPluginOption(env)) {
+  if (telemetryOffByConfig(cwd, home) || telemetryOffByPluginOption(env)) {
     return;
   }
 
@@ -590,7 +821,6 @@ async function run(argv, env) {
   if (endpoint === null) {
     return;
   }
-  const home = homeDir(env);
   if (home === null) {
     return;
   }
@@ -599,7 +829,7 @@ async function run(argv, env) {
     return;
   }
 
-  await send(endpoint, buildEventBody({ ...invocation, uuid: record.UUID, version: manifest.version }));
+  await send(endpoint, buildEventBody({ ...invocation, uuid: record.UUID, version: manifest.version }), env);
 }
 
 function main() {
@@ -607,7 +837,7 @@ function main() {
   process.on('uncaughtException', quietExit);
   process.on('unhandledRejection', quietExit);
   // Backstop in case stdin never closes.
-  setTimeout(quietExit, SEND_TIMEOUT_MS + 2000).unref();
+  setTimeout(quietExit, DNS_TIMEOUT_MS + SEND_TIMEOUT_MS + 2000).unref();
   run(process.argv.slice(2), process.env).then(quietExit, quietExit);
 }
 
@@ -617,9 +847,12 @@ if (require.main === module) {
 
 module.exports = {
   DEFAULT_TELEMETRY_ENDPOINT,
+  INSTANCE_SCHEMA_VERSION,
+  MAX_HOOK_PAYLOAD_BYTES,
   NIL_UUID_SENTINEL,
   SOLUTION_ID,
   buildEventBody,
+  checkedLookup,
   configDisablesTelemetry,
   ensureInstance,
   isDisallowedHost,
