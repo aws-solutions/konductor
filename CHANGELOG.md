@@ -23,8 +23,9 @@ not per individual commit.
   agents and accept `konductor:<agent>`.
 - `mux-dispatch`, `cmux-dispatch`, `persistent-memory` and `legacy-to-agentic-estimate` could
   not find their bundled scripts in plugin installs. They now look in `${CLAUDE_SKILL_DIR}`
-  first, then the existing locations. `legacy-to-agentic-estimate` now stops with a clear
-  error when its script is missing.
+  first, then the global install, then a project install with a `.konductor/manifest`, then a
+  konductor source checkout. A `skills/` directory in any other repo is never used, and each
+  stops with a clear error when its script is missing.
 
 ## [1.1.0] - 2026-10-14
 

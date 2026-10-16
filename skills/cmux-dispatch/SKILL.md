@@ -41,26 +41,33 @@ Resolve the skill's own directory once, in order, and reuse it for every
 invocation below:
 
 ```bash
-CMUX_DISPATCH_DIR="${CLAUDE_SKILL_DIR:-}"
-[ -d "$CMUX_DISPATCH_DIR" ] || CMUX_DISPATCH_DIR="$(git rev-parse --show-toplevel 2>/dev/null)/skills/cmux-dispatch"
-[ -d "$CMUX_DISPATCH_DIR" ] || CMUX_DISPATCH_DIR="${SKILLS_HOME:-$HOME/.konductor/skills}/cmux-dispatch"
-[ -d "$CMUX_DISPATCH_DIR" ] || CMUX_DISPATCH_DIR="$(git rev-parse --show-toplevel 2>/dev/null)/.konductor/skills/cmux-dispatch"
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+PROJECT="" CHECKOUT=""
+[ -n "$ROOT" ] && [ -f "$ROOT/.konductor/manifest" ] && PROJECT="$ROOT/.konductor/skills/cmux-dispatch"
+[ -n "$ROOT" ] && grep -qs '"name": *"konductor"' "$ROOT/.claude-plugin/marketplace.json" && CHECKOUT="$ROOT/skills/cmux-dispatch"
+CMUX_DISPATCH_DIR=""
+for d in "${CLAUDE_SKILL_DIR}" "${SKILLS_HOME:-$HOME/.konductor/skills}/cmux-dispatch" "$PROJECT" "$CHECKOUT"; do
+  [ -n "$d" ] && [ -f "$d/cmux-dispatch.sh" ] && { CMUX_DISPATCH_DIR="$d"; break; }
+done
+[ -n "$CMUX_DISPATCH_DIR" ] || { echo "ERROR: cmux-dispatch.sh not found; not dispatching" >&2; exit 1; }
 ```
 
-- `${CLAUDE_SKILL_DIR}` — Claude Code substitutes this to this skill's own
-  directory before you see this text, for both a plugin install and a
-  standalone `.claude/skills/` install. On a runtime that doesn't perform
-  this substitution, the variable is empty and the check falls through.
-- `$(git rev-parse --show-toplevel)/skills/cmux-dispatch` — running from a
-  source checkout of this repository.
-- `${SKILLS_HOME:-$HOME/.konductor/skills}/cmux-dispatch` — a global Kiro CLI
-  install (`konductor install` with no `--target`), which lands under `$HOME`.
-- `$(git rev-parse --show-toplevel)/.konductor/skills/cmux-dispatch` — a
-  project-level Kiro CLI install, which lands `.konductor/` at the project
-  root alongside `.kiro/`.
+Trust order, first match wins:
 
-If none of these is a directory, dispatch cannot run — tell the user and fall
-back to the base orchestrator.
+1. `${CLAUDE_SKILL_DIR}`: Claude Code replaces this with the skill's own
+   directory, for a plugin install and a `.claude/skills/` install. Other
+   runtimes leave it empty, so it is skipped.
+2. `${SKILLS_HOME:-$HOME/.konductor/skills}/cmux-dispatch`: a global Kiro CLI
+   install (`konductor install` with no `--target`).
+3. `<git root>/.konductor/skills/cmux-dispatch`: a project install, used only
+   when that root has konductor's install record, `.konductor/manifest`.
+4. `<git root>/skills/cmux-dispatch`: a konductor source checkout, used only
+   when `.claude-plugin/marketplace.json` there names `konductor`.
+
+A `skills/` directory in any other repo is never used.
+
+If nothing matches, the snippet exits 1. Dispatch cannot run, so tell the
+user and fall back to the base orchestrator.
 
 ## Deterministic Script
 

@@ -1,24 +1,19 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Regression test: every skill under `skills/` that resolves the absolute
-path of a bundled script it runs with `python3`/`bash` must try the skill's
-own installed directory FIRST, before falling back to a source checkout
-(`git rev-parse --show-toplevel`) or a global/project `.konductor` install.
+"""Regression tests for how skills locate the scripts they bundle.
 
-Background: `${CLAUDE_SKILL_DIR}` is the one location that resolves
-correctly for every install shape Claude Code supports -- a marketplace
-plugin install, and a standalone `.claude/skills/` install -- because
-Claude Code substitutes it to the skill's own directory before the model
-ever sees the text (see docs/en/skills' "Available string substitutions").
-A SKILL.md that resolves its script ONLY via `git rev-parse --show-toplevel`
-(a source checkout) or `$HOME/.konductor/skills` (a global Kiro CLI install)
-has no path that works in a plugin install at all, which is exactly the bug
-this test pins shut for persistent-memory, legacy-to-agentic-estimate,
-mux-dispatch, and cmux-dispatch.
+Claude Code substitutes only the exact text `${CLAUDE_SKILL_DIR}` in a
+SKILL.md; `${CLAUDE_SKILL_DIR:-}` is left alone and expands to nothing. On
+runtimes without the substitution (Kiro), each snippet falls back, in order,
+to a global install, a recorded project install, then a konductor source
+checkout. Any other repo's `skills/` directory must never be picked.
 
 Run:  cd tests && pytest test_skill_script_path_resolution.py -v
 """
 
+import os
 import re
+import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -26,76 +21,130 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SKILLS_DIR = REPO_ROOT / "skills"
 
-# Skills whose SKILL.md resolves a bundled script's absolute path at
-# runtime (as opposed to being pure prose/no bundled script).
-SKILLS_WITH_SCRIPT_RESOLUTION = [
-    "persistent-memory",
-    "legacy-to-agentic-estimate",
-    "mux-dispatch",
-    "cmux-dispatch",
+# skill -> (variable the snippet resolves, its target relative to the skill dir)
+SKILLS_WITH_SCRIPT_RESOLUTION = {
+    "persistent-memory": ("VALIDATOR", "scripts/memory-validator.sh"),
+    "legacy-to-agentic-estimate": ("SCRIPT", "scripts/convert_estimates.py"),
+    "mux-dispatch": ("MUX_DISPATCH_DIR", ""),
+    "cmux-dispatch": ("CMUX_DISPATCH_DIR", ""),
+}
+
+CLAUDE_SKILL_DIR_RE = re.compile(r"\$\{CLAUDE_SKILL_DIR\}")
+BASH_BLOCK_RE = re.compile(r"^[ \t]*```bash\n(.*?)^[ \t]*```", re.S | re.M)
+
+
+def _resolution_snippets(skill):
+    """Each bash block using ${CLAUDE_SKILL_DIR}, cut after its fail-closed line."""
+    text = (SKILLS_DIR / skill / "SKILL.md").read_text(encoding="utf-8")
+    snippets = []
+    for block in BASH_BLOCK_RE.findall(text):
+        if not CLAUDE_SKILL_DIR_RE.search(block):
+            continue
+        lines = block.splitlines()
+        end = next((i for i, line in enumerate(lines) if "exit 1" in line), None)
+        if end is not None:
+            snippets.append("\n".join(lines[: end + 1]))
+    return snippets
+
+
+@pytest.mark.parametrize("skill", SKILLS_WITH_SCRIPT_RESOLUTION)
+def test_only_the_exact_substitutable_form_is_used(skill):
+    text = (SKILLS_DIR / skill / "SKILL.md").read_text(encoding="utf-8")
+    assert CLAUDE_SKILL_DIR_RE.search(text), f"{skill}: never uses ${{CLAUDE_SKILL_DIR}}"
+    assert "${CLAUDE_SKILL_DIR:" not in text, (
+        f"{skill}: Claude Code does not substitute ${{CLAUDE_SKILL_DIR:...}}"
+    )
+    assert _resolution_snippets(skill), f"{skill}: no resolution snippet that fails closed"
+
+
+CASES = [
+    (skill, i)
+    for skill in SKILLS_WITH_SCRIPT_RESOLUTION
+    for i in range(len(_resolution_snippets(skill)))
 ]
 
-CLAUDE_SKILL_DIR_RE = re.compile(r"\$\{CLAUDE_SKILL_DIR\b")
-GIT_TOPLEVEL_RE = re.compile(r"git rev-parse --show-toplevel")
-HOME_KONDUCTOR_RE = re.compile(r"\$\{SKILLS_HOME:-\$HOME/\.konductor/skills\}")
 
+@pytest.fixture(params=CASES, ids=[f"{skill}-{i}" for skill, i in CASES])
+def case(request, tmp_path):
+    skill, index = request.param
+    var, target = SKILLS_WITH_SCRIPT_RESOLUTION[skill]
+    snippet = _resolution_snippets(skill)[index]
+    home = tmp_path / "home"
+    home.mkdir()
 
-@pytest.mark.parametrize("skill_name", SKILLS_WITH_SCRIPT_RESOLUTION)
-def test_skill_md_tries_claude_skill_dir_before_git_toplevel_or_home_konductor(skill_name):
-    skill_md = SKILLS_DIR / skill_name / "SKILL.md"
-    assert skill_md.is_file(), f"missing {skill_md}"
-    text = skill_md.read_text(encoding="utf-8")
-
-    claude_skill_dir_pos = _first_match_pos(CLAUDE_SKILL_DIR_RE, text)
-    assert claude_skill_dir_pos is not None, (
-        f"{skill_md} never references ${{CLAUDE_SKILL_DIR}} -- it can only "
-        "resolve its bundled script in a source checkout or a global Kiro "
-        "CLI install, never in a Claude Code plugin install"
-    )
-
-    git_toplevel_pos = _first_match_pos(GIT_TOPLEVEL_RE, text)
-    home_konductor_pos = _first_match_pos(HOME_KONDUCTOR_RE, text)
-
-    for label, pos in (
-        ("git rev-parse --show-toplevel", git_toplevel_pos),
-        ("${SKILLS_HOME:-$HOME/.konductor/skills}", home_konductor_pos),
-    ):
-        if pos is None:
-            continue
-        assert claude_skill_dir_pos < pos, (
-            f"{skill_md}: {label!r} appears before ${{CLAUDE_SKILL_DIR}} in "
-            "the resolution order -- ${CLAUDE_SKILL_DIR} (the one location "
-            "that resolves in a plugin install) must be tried first"
+    def resolve(cwd, skill_dir=None):
+        """Runs the snippet as the model would. With skill_dir it emulates
+        Claude Code's substitution; without, Kiro (variable unset)."""
+        text = snippet
+        if skill_dir is not None:
+            text = text.replace("${CLAUDE_SKILL_DIR}", str(skill_dir))
+        env = {k: v for k, v in os.environ.items() if k not in ("SKILLS_HOME", "CLAUDE_SKILL_DIR")}
+        env["HOME"] = str(home)
+        env["GIT_CEILING_DIRECTORIES"] = str(tmp_path)
+        result = subprocess.run(
+            ["bash", "-c", f'{text}\nprintf "%s" "${var}"'],
+            cwd=cwd, env=env, capture_output=True, text=True,
         )
+        return result.returncode, result.stdout
+
+    def expected(skill_dir):
+        return str(skill_dir / target) if target else str(skill_dir)
+
+    return skill, home, resolve, expected
 
 
-def _first_match_pos(pattern, text):
-    match = pattern.search(text)
-    return match.start() if match else None
+def _install(dest, skill):
+    shutil.copytree(SKILLS_DIR / skill, dest)
+    return dest
 
 
-def test_fixture_without_claude_skill_dir_fails(tmp_path):
-    """Sanity check on the test's own detection logic: a SKILL.md that only
-    ever resolves via git-root or $HOME/.konductor must be caught."""
-    skill_md = tmp_path / "SKILL.md"
-    skill_md.write_text(
-        'SCRIPT="$(git rev-parse --show-toplevel)/skills/x/scripts/run.sh"\n'
-        '[ -f "$SCRIPT" ] || SCRIPT="${SKILLS_HOME:-$HOME/.konductor/skills}/x/scripts/run.sh"\n',
-        encoding="utf-8",
-    )
-    text = skill_md.read_text(encoding="utf-8")
-    assert _first_match_pos(CLAUDE_SKILL_DIR_RE, text) is None
+def _git_repo(path):
+    path.mkdir(parents=True)
+    subprocess.run(["git", "init", "-q", str(path)], check=True)
+    return path
 
 
-def test_fixture_with_claude_skill_dir_first_passes():
-    text = (
-        'SCRIPT="${CLAUDE_SKILL_DIR:-}/scripts/run.sh"\n'
-        '[ -f "$SCRIPT" ] || SCRIPT="$(git rev-parse --show-toplevel)/skills/x/scripts/run.sh"\n'
-        '[ -f "$SCRIPT" ] || SCRIPT="${SKILLS_HOME:-$HOME/.konductor/skills}/x/scripts/run.sh"\n'
-    )
-    claude_pos = _first_match_pos(CLAUDE_SKILL_DIR_RE, text)
-    git_pos = _first_match_pos(GIT_TOPLEVEL_RE, text)
-    home_pos = _first_match_pos(HOME_KONDUCTOR_RE, text)
-    assert claude_pos is not None
-    assert claude_pos < git_pos
-    assert claude_pos < home_pos
+def test_claude_skill_dir_wins(case, tmp_path):
+    skill, home, resolve, expected = case
+    own = _install(tmp_path / "plugin" / "skills" / skill, skill)
+    _install(home / ".konductor" / "skills" / skill, skill)
+    assert resolve(home, skill_dir=own) == (0, expected(own))
+
+
+def test_kiro_global_install_beats_hostile_repo_skills(case, tmp_path):
+    skill, home, resolve, expected = case
+    hostile = _git_repo(tmp_path / "hostile")
+    _install(hostile / "skills" / skill, skill)
+    global_dir = _install(home / ".konductor" / "skills" / skill, skill)
+    assert resolve(hostile) == (0, expected(global_dir))
+
+
+def test_hostile_repo_skills_are_never_picked(case, tmp_path):
+    skill, home, resolve, _ = case
+    hostile = _git_repo(tmp_path / "hostile")
+    _install(hostile / "skills" / skill, skill)
+    _install(hostile / ".konductor" / "skills" / skill, skill)
+    assert resolve(hostile) == (1, "")
+
+
+def test_project_install_needs_the_install_manifest(case, tmp_path):
+    skill, home, resolve, expected = case
+    project = _git_repo(tmp_path / "project")
+    project_dir = _install(project / ".konductor" / "skills" / skill, skill)
+    (project / ".konductor" / "manifest").write_text("{}\n", encoding="utf-8")
+    assert resolve(project) == (0, expected(project_dir))
+
+
+def test_konductor_source_checkout_is_used_last(case, tmp_path):
+    skill, home, resolve, expected = case
+    checkout = _git_repo(tmp_path / "konductor")
+    shutil.copytree(REPO_ROOT / ".claude-plugin", checkout / ".claude-plugin")
+    checkout_dir = _install(checkout / "skills" / skill, skill)
+    assert resolve(checkout) == (0, expected(checkout_dir))
+    global_dir = _install(home / ".konductor" / "skills" / skill, skill)
+    assert resolve(checkout) == (0, expected(global_dir))
+
+
+def test_fails_closed_outside_any_repo(case):
+    _, home, resolve, _ = case
+    assert resolve(home) == (1, "")
