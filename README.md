@@ -392,21 +392,49 @@ Apache License 2.0. See [LICENSE.txt](LICENSE.txt); third-party attributions are
 
 ## Data Collection
 
-`konductor` sends operational metrics to AWS about how this solution is used. This is not anonymous: every event carries a persistent identifier.
+Konductor sends usage metrics to AWS. They are **not anonymous**: every event carries an identifier
+that stays the same across all projects on your machine.
 
-**What's collected.** Seven event types: `agent_invocation`, `subagent_invocation`, `mcp_tool_call`, `cli_error`, `package_installed`, `package_version_updated`, `package_uninstalled`. Agent events are sent only for Konductor's own agents (the orchestrators and `k-*` specialists), never for your own agents or a harness's built-in ones, and carry the agent's name plus, for a delegation, the delegating Konductor agent's name when the harness exposes it. Other events carry the CLI subcommand that failed (for errors), which harness ran it (`kiro-cli-v2`, `kiro-v3`, or `claude`), the CLI's own version, and — for install/update events — the installed content's own version. A session identifier is included when the harness exposes one, but never the raw value — it's hashed together with that project's own per-install identifier first, so the same underlying session ID produces a different value on a different install. Project paths, directory names, and file contents are never collected. See [`docs/telemetry-schema.json`](docs/telemetry-schema.json) for the exact schema.
+**What's sent**
 
-**The identifier is machine-scoped, not per-project.** The first time Konductor successfully reports a telemetry event anywhere on a machine — typically the first `konductor install` that isn't run with `--no-telemetry` — it mints one UUID and stores it at `$HOME/.konductor/telemetry.json`. That same UUID is then sent on every event from every project you install Konductor into on that machine — a receiving service can tell that events from several different projects came from the same machine, even though it can't tell which projects.
+- **Seven event types:** `agent_invocation`, `subagent_invocation`, `mcp_tool_call`, `cli_error`,
+  `package_installed`, `package_version_updated` and `package_uninstalled`.
+- **Agent events** cover only Konductor's own agents (the orchestrators and `k-*` specialists),
+  never your agents or a runtime's built-in ones. They carry the agent's name and, for a
+  delegation, the delegating Konductor agent's name when the runtime exposes it.
+- **Other events** carry the failed CLI subcommand (for errors), the runtime (`kiro-cli-v2`,
+  `kiro-v3` or `claude`), the CLI version and, for install and update events, the installed content
+  version.
+- **Session IDs**, when the runtime exposes one, are hashed with a per-install identifier first, so
+  the raw value is never sent and the same session hashes differently on another install.
 
-**Opting out.** `konductor install --no-telemetry` disables reporting for that install — the opt-in record it would otherwise write is never created (and one left by an earlier install is removed), and no telemetry event is ever sent for that target, including from a global install's hooks firing in that project. This is per-project: it applies to the specific target directory that install ran against, not the whole machine.
+**What's never sent:** project paths, directory names or file contents. The exact schema is in
+[`docs/telemetry-schema.json`](docs/telemetry-schema.json).
 
-To decline for the whole machine, edit `$HOME/.konductor/telemetry.json` and set `"telemetry_consent": false`. This file is created the first time any telemetry event actually gets reported on the machine (a successful install, an agent invocation, and so on — never a `--no-telemetry` install, which reports nothing) — if it doesn't exist yet, there's nothing to edit. Once it exists, just flip that one field; Konductor reads this file but never resets an existing value, so a consent you set by hand stays in place across later installs and updates on that machine. A record missing any of its four fields (`schema_version`, `UUID`, `created_at`, `telemetry_consent`) or carrying a `UUID` that isn't exactly 64 lowercase hex characters is treated as unreadable — but it does not get replaced. Konductor never deletes or overwrites this file once it exists, so a malformed record is permanent: every subsequent event silently drops to an untraceable placeholder identifier and no consent flag is read until you repair the JSON or delete the file by hand.
+**The machine identifier.** The first time an event is reported on a machine, Konductor creates a
+UUID and stores it in `$HOME/.konductor/telemetry.json`. Every project on that machine sends the same
+UUID, so events from different projects can be linked to one machine, though not to which projects.
 
-Reporting for any given install requires both the per-project flag and this machine-level setting to allow it; either one being off is enough to suppress it. `konductor doctor` reports which of these is in effect for the current install, including whether a machine-level decline is the reason a project that never opted out isn't reporting.
+**Opting out**
+
+| To stop reporting for | Do this |
+| --- | --- |
+| One project | Run `konductor install` or `konductor update` with `--no-telemetry`, or set `telemetry.enabled: false` in `.konductor/config.yml` |
+| One shell or CI job | Set `KONDUCTOR_TELEMETRY=off` |
+| The whole machine | Set `"telemetry_consent": false` in `$HOME/.konductor/telemetry.json` |
+
+- `--no-telemetry` also removes an opt-in record left by an earlier install, and stops a global
+  install's hooks from reporting in that project.
+- `telemetry.json` exists only after the first event is reported; a `--no-telemetry` install never
+  creates it. Konductor never resets a consent value you set.
+- Reporting needs both the project and the machine setting to allow it. `konductor doctor` shows
+  which one is in effect.
+- Keep `telemetry.json` valid. It needs all four fields (`schema_version`, `UUID`, `created_at`,
+  `telemetry_consent`) and a `UUID` of exactly 64 lowercase hex characters. Konductor never repairs,
+  replaces or deletes the file, so if it's malformed, events fall back to an untraceable placeholder
+  identifier and your consent setting is ignored until you fix or delete it by hand.
 
 This solution sends operational metrics to AWS (the "Data") about the use of this solution. We use this Data to better understand how customers use this solution and related services and products. AWS's collection of this Data is subject to the [AWS Privacy Notice](https://aws.amazon.com/privacy/).
-
-To opt out, pass `--no-telemetry` to `konductor install`/`konductor update`, set `telemetry.enabled: false` in `.konductor/config.yml`, or set `KONDUCTOR_TELEMETRY=off` in your environment.
 
 ---
 
