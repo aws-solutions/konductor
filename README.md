@@ -109,7 +109,7 @@ Kiro CLI v3 and the unified Kiro IDE support a distributable, keyword-activated 
 
 1. In Kiro, open the Powers panel and choose **Add Custom Power** → **Import power from GitHub**.
 2. Enter `https://github.com/aws-solutions/konductor/tree/main/powers/konductor`.
-3. Choose **Install**. Per Kiro's own docs, this only registers the Power's manifest; nothing runs yet.
+3. Choose **Install**. This registers the Power's manifest; onboarding itself runs separately, the first time you invoke it (step 4 below).
 4. Either say "konductor", "install konductor", or "set up konductor" in a chat session, or use the Try-power action in the installed Powers list. Both trigger the same onboarding skill.
 
 The onboarding skill (`konductor-setup`) then does everything the [Quick install](#quick-install-single-command) and [Installing from source](#installing-from-source) sections above do by hand: detect your platform, download and checksum-verify the pinned `konductor` release (or build it from source on Intel Mac; native Windows isn't supported in v1, use WSL), symlink it onto `PATH`, and run `konductor install --harness kiro-v3`. But it's scoped to whichever project you invoked it in (`--target` is always that project's directory, never `$HOME`), and only after showing you the exact plan and getting one confirmation first. A second skill, `konductor-help`, answers ongoing questions about the install afterward (CLI flags, `doctor` diagnostics, which SOPs are available); see [`powers/konductor/skills/konductor-help/SKILL.md`](powers/konductor/skills/konductor-help/SKILL.md).
