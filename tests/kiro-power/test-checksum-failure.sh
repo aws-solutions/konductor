@@ -42,7 +42,7 @@ for ((i = 0; i < ${#args[@]}; i++)); do
     out="${args[$((i + 1))]}"
   fi
 done
-url="${args[-1]}"
+url="${args[$((${#args[@]} - 1))]}"
 name="$(basename "$url")"
 
 case "$name" in

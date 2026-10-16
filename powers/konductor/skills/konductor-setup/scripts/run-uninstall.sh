@@ -115,7 +115,12 @@ fi
 konductor_resolve_target_binary "$TARGET_DIR"
 KONDUCTOR_BIN="$KONDUCTOR_RESOLVE_TARGET_BINARY_RESULT"
 
-konductor_run "$KONDUCTOR_BIN" uninstall --target "$TARGET_DIR" "${DRY_RUN_ARGS[@]}" "${HARNESS_ARGS[@]}"
+# ${arr[@]+"${arr[@]}"}, not a bare "${arr[@]}": DRY_RUN_ARGS/HARNESS_ARGS
+# are often empty, and bash 3.2 (stock macOS) treats expanding an empty
+# array under `set -u` as an unbound variable. The `+` operator
+# short-circuits to nothing when the array has no elements, before
+# `set -u` ever sees it.
+konductor_run "$KONDUCTOR_BIN" uninstall --target "$TARGET_DIR" ${DRY_RUN_ARGS[@]+"${DRY_RUN_ARGS[@]}"} ${HARNESS_ARGS[@]+"${HARNESS_ARGS[@]}"}
 
 # On a REAL removal that actually succeeded (a failed `konductor_run` call
 # above already `exit`ed via `set -e` before this line is ever reached):

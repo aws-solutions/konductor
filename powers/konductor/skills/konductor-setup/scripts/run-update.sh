@@ -118,7 +118,12 @@ KONDUCTOR_BIN_VERSION="$KONDUCTOR_RESOLVE_TARGET_BINARY_VERSION_RESULT"
 # konductor_run_cli (not konductor_run): detects a GitHub rate-limit/auth
 # signature in this command's own stderr and prints an exact retry command
 # -- see lib.sh's konductor_run_cli/konductor_suggest_rate_limit_retry.
-konductor_run_cli "$KONDUCTOR_BIN" update --target "$TARGET_DIR" "${VERSION_ARGS[@]}" "${USE_GITHUB_TOKEN_ARGS[@]}" "${HARNESS_ARGS[@]}"
+# ${arr[@]+"${arr[@]}"}, not a bare "${arr[@]}": VERSION_ARGS/
+# USE_GITHUB_TOKEN_ARGS/HARNESS_ARGS are often empty, and bash 3.2 (stock
+# macOS) treats expanding an empty array under `set -u` as an unbound
+# variable. The `+` operator short-circuits to nothing when the array has
+# no elements, before `set -u` ever sees it.
+konductor_run_cli "$KONDUCTOR_BIN" update --target "$TARGET_DIR" ${VERSION_ARGS[@]+"${VERSION_ARGS[@]}"} ${USE_GITHUB_TOKEN_ARGS[@]+"${USE_GITHUB_TOKEN_ARGS[@]}"} ${HARNESS_ARGS[@]+"${HARNESS_ARGS[@]}"}
 
 # Refresh this target's own power-cli.json with the binary this run
 # actually used, only now that `update` has actually succeeded (a failed

@@ -71,7 +71,7 @@ case "$1" in
         tag="${args[$((i + 1))]}"
       fi
     done
-    dir="${args[-1]}"
+    dir="${args[$((${#args[@]} - 1))]}"
     case "$tag" in
       v9999.0.0)
         echo "fatal: Remote branch $tag not found in upstream origin" >&2

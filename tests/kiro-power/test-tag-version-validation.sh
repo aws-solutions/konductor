@@ -63,7 +63,7 @@ for ((i = 0; i < \${#args[@]}; i++)); do
     out="\${args[\$((i + 1))]}"
   fi
 done
-url="\${args[-1]}"
+url="\${args[\$((\${#args[@]} - 1))]}"
 name="\$(basename "\$url")"
 case "\$name" in
   *.sha256)
@@ -158,7 +158,7 @@ touch "${GIT_MARKER}"
 case "\$1" in
   clone)
     args=("\$@")
-    dir="\${args[-1]}"
+    dir="\${args[\$((\${#args[@]} - 1))]}"
     tag=""
     for ((i = 0; i < \${#args[@]}; i++)); do
       if [[ "\${args[\$i]}" == "--branch" ]]; then
