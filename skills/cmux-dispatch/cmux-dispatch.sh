@@ -12,6 +12,41 @@
 #   - Completion hook: child agents write .done files via cmux-completion-hook.sh
 set -euo pipefail
 
+# Resolve the real path of this script before taking dirname, so invocation
+# through a symlink (direct or via a relative link target) still locates
+# sibling files next to the REAL file, not next to the symlink. Mirrors
+# dispatch.sh's own resolution so a caller that found this script via an
+# absolute path (per mux-dispatch/cmux-dispatch SKILL.md's resolution order)
+# gets the same guarantee: this script can find its sibling resources
+# (e.g. cmux-completion-hook.sh) regardless of the caller's cwd. No
+# `readlink -f` (GNU-only; macOS readlink lacks it) -- loop-resolve one level
+# at a time with plain `readlink` + `cd -P`.
+SOURCE="${BASH_SOURCE[0]}"
+MAX_SYMLINK_HOPS=40
+hop_count=0
+while [[ -L "$SOURCE" ]]; do
+  hop_count=$((hop_count + 1))
+  if (( hop_count > MAX_SYMLINK_HOPS )); then
+    echo "ERROR: symlink resolution exceeded ${MAX_SYMLINK_HOPS} hops (possible cyclic symlink) while resolving '$SOURCE'." >&2
+    exit 1
+  fi
+  DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+  LINK_TARGET="$(readlink "$SOURCE")"
+  case "$LINK_TARGET" in
+    /*) SOURCE="$LINK_TARGET" ;;              # absolute link target
+    *)  SOURCE="$DIR/$LINK_TARGET" ;;          # relative link target
+  esac
+done
+SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+
+# Sanity check: the kiro-cli completion hook (wired via the dispatched
+# agent's own `clientConfig.kiroCli.hooks.stop` config) lives next to this
+# script. Warn early if a broken install is missing it, rather than let
+# completion detection silently fall back to the shell-fallback .done path.
+if [[ ! -f "$SCRIPT_DIR/cmux-completion-hook.sh" ]]; then
+  echo "WARNING: cmux-completion-hook.sh not found next to $SCRIPT_DIR/cmux-dispatch.sh -- completion detection will rely on the shell fallback only." >&2
+fi
+
 AGENT="" TASK="" CWD="" NAME="" MODE="split" SPLIT_DIR="right" CLOSE=false INTERACTIVE=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
