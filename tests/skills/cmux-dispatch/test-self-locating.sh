@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: Apache-2.0
 #
-# test-self-locating.sh — Regression test: cmux-dispatch.sh resolves its own
+# test-self-locating.sh: regression test: cmux-dispatch.sh resolves its own
 # real directory (BASH_SOURCE[0], symlink-safe) before doing anything else,
 # so once given its correct absolute path (as cmux-dispatch/SKILL.md's
 # resolution order now produces) it works from ANY caller cwd -- including

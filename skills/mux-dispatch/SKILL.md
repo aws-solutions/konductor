@@ -33,7 +33,7 @@ Use this skill when:
 `dispatch.sh` resolves its own directory once bash has found and started it
 (works from any cwd, including a monorepo root), so it can find its sibling
 backend scripts (`tmux-dispatch.sh` / `zellij-dispatch.sh`) next to itself.
-That doesn't help bash find `dispatch.sh` in the first place — a relative
+That doesn't help bash find `dispatch.sh` in the first place. A relative
 `skills/mux-dispatch/dispatch.sh` path resolves only when the cwd happens to
 be a checkout of this repository, which is not true for a plugin install or a
 Kiro install, where the user's project is the cwd and there is no `skills/`
@@ -73,7 +73,7 @@ user and fall back to the base orchestrator.
 
 ## Multiplexer Detection
 
-**Always call `dispatch.sh` — never detect-then-branch yourself.** It detects
+**Always call `dispatch.sh`. Never detect-then-branch yourself.** It detects
 the active multiplexer and `exec`s the matching backend script with your
 arguments unchanged:
 

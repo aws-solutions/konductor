@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: Apache-2.0
 #
-# test-dispatch-sh-cwd-independence.sh — Regression test: dispatch.sh, once
+# test-dispatch-sh-cwd-independence.sh: regression test: dispatch.sh, once
 # given its correct absolute path (as mux-dispatch/SKILL.md's resolution
 # order now produces), locates its sibling tmux-dispatch.sh / zellij-
 # dispatch.sh and runs correctly from ANY caller cwd -- including through a
