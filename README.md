@@ -364,6 +364,8 @@ This solution sends operational metrics to AWS (the "Data") about the use of thi
 
 To opt out, pass `--no-telemetry` to `konductor install`/`konductor update`, set `telemetry.enabled: false` in `.konductor/config.yml`, or set `KONDUCTOR_TELEMETRY=off` in your environment.
 
+**Claude Code plugin.** The marketplace plugin sends `agent_invocation` and `subagent_invocation` events in the same format through a plugin hook, and shares the machine ID in `$HOME/.konductor/telemetry.json` with the CLI. Turn it off with the plugin's `telemetry_enabled` option, or any of the opt-outs above other than `--no-telemetry`. See [Install via the Claude Code plugin marketplace](docs/user-guide/tasks/install-claude-plugin-marketplace.md#telemetry).
+
 ---
 
 Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.

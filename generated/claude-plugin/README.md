@@ -68,6 +68,9 @@ The published branch contains:
 .mcp.json
 agents/
 skills/
+hooks/hooks.json
+hooks/konductor-telemetry.js
+docs/telemetry-schema.json
 README.md
 LICENSE.txt
 ```
@@ -110,6 +113,31 @@ mcp__plugin_konductor_aws-mcp__*
 
 Bring-your-own servers, including `playwright-mcp`, keep their bare grants and
 must be configured by the user.
+
+## Telemetry
+
+The plugin ships a telemetry hook. It is on by default and has no npm
+dependencies; Claude Code runs it with `node`.
+
+- `scripts/claude-plugin-telemetry-hook.js` is copied to
+  `hooks/konductor-telemetry.js`. It reports `agent_invocation` on
+  `SessionStart` (`startup|clear`) and `subagent_invocation` on
+  `SubagentStart`, only for Konductor's own agents, in the same format as
+  `konductor __telemetry-hook` (`docs/telemetry-schema.json`, also copied
+  into the tree). It prints nothing and always exits 0.
+- `scripts/render-claude-plugin-hooks-json.py` writes `hooks/hooks.json`.
+  The `SubagentStart` matcher lists every file in the assembled `agents/`,
+  in both the `konductor:<agent>` and bare forms.
+- The machine ID is shared with the CLI through `~/.konductor/telemetry.json`.
+
+Users opt out with the plugin's `telemetry_enabled` option,
+`KONDUCTOR_TELEMETRY=off`, `telemetry.enabled: false` in
+`.konductor/config.yml`, or `"telemetry_consent": false` in
+`~/.konductor/telemetry.json`. See the
+[install guide](../../docs/user-guide/tasks/install-claude-plugin-marketplace.md#telemetry)
+and the root README's [Data Collection](../../README.md#data-collection)
+section. Tests: `node --test tests/scripts/claude-plugin-telemetry-hook.test.js`,
+also run by `make claude-plugin-check`.
 
 ## Kiro CLI
 
