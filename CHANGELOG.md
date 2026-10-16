@@ -6,10 +6,18 @@ This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Entries are consolidated per release,
 not per individual commit.
 
-## [Unreleased]
+## [1.1.0] - 2026-10-14
 
 ### Added
 
+- The Konductor Kiro Power at `powers/konductor/`, imported from
+  `github.com/aws-solutions/konductor/tree/v1.1.0/powers/konductor`.
+- `konductor-setup`, a skill that installs Konductor into the current project.
+- `konductor-help`, a skill that answers questions about an existing install.
+- 13 activation keywords in `powers/konductor/plugin.json`.
+- `make kiro-power-check`, wired into `.github/workflows/validate-pr.yml`.
+- An "Install via Kiro Power" page in the user guide, and a matching section in `README.md`.
+- Manual setup docs for the AWS documentation-lookup MCP server and for Playwright.
 - A Claude Code plugin marketplace install path: `/plugin marketplace add
   aws-solutions/konductor` then `/plugin install konductor@konductor`. See [Install via the
   Claude Code plugin marketplace](docs/user-guide/tasks/install-claude-plugin-marketplace.md).
@@ -17,6 +25,9 @@ not per individual commit.
   plugin-candidate PR into `release/plugins`, that creates an immutable `claude-plugin-vX.Y.Z`
   tag on the merge commit -- so a `marketplace.json` entry can pin to a specific release instead
   of the branch's moving HEAD.
+- `konductor-setup`'s `run-update.sh` and `run-uninstall.sh` accept an optional `--harness
+  <name>`, forwarded to `konductor update`/`uninstall`, for a target that tracks more than one
+  harness.
 
 ### Changed
 
