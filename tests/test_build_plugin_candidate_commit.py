@@ -501,3 +501,76 @@ def test_missing_required_argument_fails_with_usage_error(checkout):
     result = _run(checkout, "--base-branch", "release/plugins")
     assert result.returncode != 0
     assert "required" in result.stderr
+
+
+def _push_as_base(remote, tmp_path, assembled):
+    """Makes release/plugins hold exactly what a plain `git add -A` of
+    `assembled` produces, so ignore rules and filters apply as usual."""
+    clone = tmp_path / "base-clone"
+    _git("clone", "-q", str(remote), str(clone), cwd=tmp_path)
+    _git("checkout", "-q", "release/plugins", cwd=clone)
+    _git("config", "user.email", "a@b.com", cwd=clone)
+    _git("config", "user.name", "tester", cwd=clone)
+    _git("rm", "-rq", ".", cwd=clone)
+    subprocess.run(["cp", "-a", f"{assembled}/.", str(clone)], check=True)
+    _git("add", "-A", cwd=clone)
+    _git("commit", "-q", "-m", "base", cwd=clone)
+    _git("push", "-q", "origin", "release/plugins", cwd=clone)
+
+
+def test_ignored_file_in_assembled_dir_is_still_committed(checkout, assembled, remote, tmp_path):
+    (assembled / "agents" / ".gitignore").write_text("*.log\n", encoding="utf-8")
+    _push_as_base(remote, tmp_path, assembled)
+    (assembled / "agents" / "notes.log").write_text("shipped\n", encoding="utf-8")
+
+    result = _run(
+        checkout,
+        "--base-branch", "release/plugins",
+        "--candidate-branch", "plugin-candidate/v1.0.0-1-1",
+        "--assemble-dir", str(assembled),
+        "--commit-message", "test candidate",
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "committed=true" in result.stdout
+    tracked = _git("ls-tree", "-r", "--name-only", "plugin-candidate/v1.0.0-1-1", cwd=checkout).stdout
+    assert "agents/notes.log" in tracked.splitlines()
+
+
+def test_content_rewritten_by_git_attributes_fails_closed(checkout, assembled, remote):
+    (assembled / "agents" / ".gitattributes").write_text("*.md text\n", encoding="utf-8")
+    (assembled / "agents" / "crlf.md").write_bytes(b"line one\r\nline two\r\n")
+
+    result = _run(
+        checkout,
+        "--base-branch", "release/plugins",
+        "--candidate-branch", "plugin-candidate/v1.0.0-1-1",
+        "--assemble-dir", str(assembled),
+        "--commit-message", "test candidate",
+    )
+
+    assert result.returncode != 0
+    assert "agents/crlf.md" in result.stderr
+    assert _git("show-ref", "--verify", "--quiet", "refs/heads/plugin-candidate/v1.0.0-1-1",
+                cwd=checkout, check=False).returncode != 0
+
+
+def test_executable_bit_and_symlinks_are_kept(checkout, assembled, remote):
+    hook = assembled / "agents" / "run.sh"
+    hook.write_text("#!/bin/sh\n", encoding="utf-8")
+    hook.chmod(0o755)
+    (assembled / "agents" / "link.md").symlink_to("k-architect.md")
+
+    result = _run(
+        checkout,
+        "--base-branch", "release/plugins",
+        "--candidate-branch", "plugin-candidate/v1.0.0-1-1",
+        "--assemble-dir", str(assembled),
+        "--commit-message", "test candidate",
+    )
+
+    assert result.returncode == 0, result.stderr
+    listing = _git("ls-tree", "-r", "plugin-candidate/v1.0.0-1-1", cwd=checkout).stdout
+    assert any(line.startswith("100755 ") and line.endswith("\tagents/run.sh") for line in listing.splitlines())
+    assert any(line.startswith("120000 ") and line.endswith("\tagents/link.md") for line in listing.splitlines())
+

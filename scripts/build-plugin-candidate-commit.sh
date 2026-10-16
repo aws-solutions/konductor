@@ -18,16 +18,13 @@
 # checked-out .gitignore, so `git add -A` picks that untracked output up
 # alongside the assembled tree.
 #
-# This revision builds the candidate's tree directly from --assemble-dir's
-# own contents, using a scratch git index that is never associated with
-# the job's checkout: `GIT_WORK_TREE=<assemble-dir> git add -A` plus
-# `git write-tree` and `git commit-tree`. The job's checkout is never
-# read, written, or switched to the candidate branch, so whatever is
-# untracked there -- however it got there -- can never reach the
-# candidate commit. The resulting commit's tree is exactly
-# --assemble-dir's contents, verified again below as a final safety
-# check, regardless of what the base branch or the checkout currently
-# contain.
+# This script builds the tree from --assemble-dir alone, through a scratch
+# index the job's checkout never touches: `git add -A -f` (so no ignore rule
+# can drop a file), then `git write-tree` and `git commit-tree`. Untracked
+# output in the checkout can never reach the candidate. Before the no-op
+# check, the tree must match --assemble-dir exactly: same paths, modes, and
+# blob IDs from `git hash-object --no-filters`. A file dropped by an ignore
+# rule or rewritten by git attributes fails the build.
 #
 # This script never pushes anything and never writes to the base branch:
 # it only builds a commit on a new local branch ref in --repo-root's
@@ -160,21 +157,47 @@ if git show-ref --verify --quiet "refs/heads/$CANDIDATE_BRANCH"; then
   exit 1
 fi
 
-# Build the candidate's tree object directly from --assemble-dir's own
-# contents, via a scratch index that's never associated with this
-# repository's real index or work tree. `git add -A` here never looks at
-# $REPO_ROOT's working directory at all -- only at $ASSEMBLE_DIR -- so
-# whatever is untracked in $REPO_ROOT's checkout (left over from an
-# earlier build step, or anything else) can never be picked up, with or
-# without a .gitignore.
+# The scratch index is never associated with $REPO_ROOT's own index or work
+# tree, so nothing untracked in the checkout can be picked up.
 SCRATCH_DIR="$(mktemp -d)"
 trap 'rm -rf "$SCRATCH_DIR"' EXIT
 SCRATCH_INDEX="$SCRATCH_DIR/index"
 (
   cd "$ASSEMBLE_DIR"
-  GIT_INDEX_FILE="$SCRATCH_INDEX" GIT_DIR="$GIT_DIR_ABS" GIT_WORK_TREE="$ASSEMBLE_DIR" git add -A
+  GIT_INDEX_FILE="$SCRATCH_INDEX" GIT_DIR="$GIT_DIR_ABS" GIT_WORK_TREE="$ASSEMBLE_DIR" \
+    git -c core.autocrlf=false -c core.fileMode=true -c core.symlinks=true add -A -f
 )
 ASSEMBLED_TREE="$(GIT_INDEX_FILE="$SCRATCH_INDEX" GIT_DIR="$GIT_DIR_ABS" git write-tree)"
+
+# Prints "<mode> <blob>\t<path>" for each file and symlink under $1, like
+# `git ls-tree -r` without the object type.
+dir_listing() (
+  cd "$1"
+  hash_files() {
+    local mode="$1" paths
+    shift
+    paths="$(find . -type f "$@" | sed 's|^\./||')"
+    [ -n "$paths" ] || return 0
+    printf '%s\n' "$paths" | GIT_DIR="$GIT_DIR_ABS" git hash-object --no-filters --stdin-paths \
+      | sed "s/^/$mode /" | paste - <(printf '%s\n' "$paths")
+  }
+  hash_files 100755 -perm -u+x
+  hash_files 100644 ! -perm -u+x
+  find . -type l | sed 's|^\./||' | while IFS= read -r link; do
+    printf '120000 %s\t%s\n' "$(printf '%s' "$(readlink "$link")" | GIT_DIR="$GIT_DIR_ABS" git hash-object --stdin)" "$link"
+  done
+)
+
+TREE_LISTING="$(git -c core.quotePath=false ls-tree -r "$ASSEMBLED_TREE" | sed 's/^\([0-7]*\) [a-z]* /\1 /' | LC_ALL=C sort)"
+ASSEMBLE_DIR_LISTING="$(dir_listing "$ASSEMBLE_DIR" | LC_ALL=C sort)"
+if [ "$TREE_LISTING" != "$ASSEMBLE_DIR_LISTING" ]; then
+  echo "FATAL: the candidate tree does not match --assemble-dir's paths, modes, and contents exactly. Failing closed." >&2
+  echo "--- only in candidate tree ---" >&2
+  comm -23 <(printf '%s\n' "$TREE_LISTING") <(printf '%s\n' "$ASSEMBLE_DIR_LISTING") >&2
+  echo "--- only in --assemble-dir ---" >&2
+  comm -13 <(printf '%s\n' "$TREE_LISTING") <(printf '%s\n' "$ASSEMBLE_DIR_LISTING") >&2
+  exit 1
+fi
 
 if [ "$ASSEMBLED_TREE" = "$BASE_TREE" ]; then
   echo "Candidate branch '$CANDIDATE_BRANCH' has no changes relative to $REMOTE/$BASE_BRANCH ($BASE_SHA); nothing to commit."
@@ -190,24 +213,8 @@ fi
 # release/plugins, so GitHub can diff and open a pull request against it.
 NEW_COMMIT="$(git -c user.name="$AUTHOR_NAME" -c user.email="$AUTHOR_EMAIL" commit-tree "$ASSEMBLED_TREE" -p "$BASE_SHA" -m "$COMMIT_MESSAGE")"
 
-# Final safety check, independent of how the tree above was built: the
-# candidate commit's own file listing must match --assemble-dir's file
-# listing on disk exactly. This is what the fixed defect violated --
-# verifying it here means a future change to this script that
-# reintroduces a dependency on the job's checkout fails loudly instead of
-# silently shipping extra files again.
-COMMIT_FILES="$(git ls-tree -r --name-only "$NEW_COMMIT" | sort)"
-ASSEMBLE_DIR_FILES="$(cd "$ASSEMBLE_DIR" && find . -type f | sed 's|^\./||' | sort)"
-if [ "$COMMIT_FILES" != "$ASSEMBLE_DIR_FILES" ]; then
-  echo "FATAL: candidate commit's tree does not match --assemble-dir's file listing exactly. Failing closed." >&2
-  echo "--- only in candidate commit ---" >&2
-  comm -23 <(printf '%s\n' "$COMMIT_FILES") <(printf '%s\n' "$ASSEMBLE_DIR_FILES") >&2
-  echo "--- only in --assemble-dir ---" >&2
-  comm -13 <(printf '%s\n' "$COMMIT_FILES") <(printf '%s\n' "$ASSEMBLE_DIR_FILES") >&2
-  exit 1
-fi
-
-git update-ref "refs/heads/$CANDIDATE_BRANCH" "$NEW_COMMIT"
+# The empty old value makes update-ref fail if the branch appeared meanwhile.
+git update-ref "refs/heads/$CANDIDATE_BRANCH" "$NEW_COMMIT" ""
 echo "Built candidate commit $NEW_COMMIT on branch '$CANDIDATE_BRANCH', based on $REMOTE/$BASE_BRANCH ($BASE_SHA)."
 echo "committed=true"
 if [ -n "${GITHUB_OUTPUT:-}" ]; then
