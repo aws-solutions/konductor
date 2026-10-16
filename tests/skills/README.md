@@ -18,9 +18,11 @@ happen to test the same concept (e.g. both `mux-dispatch` and
 | `mux-dispatch/test-registry-lock.sh`            | `tmux-dispatch.sh` / `zellij-dispatch.sh`: concurrent dispatches never lose a `dispatched.json` registry entry.                                                                                                                                        |
 | `mux-dispatch/test-close-pane-registry-lock.sh` | `mux-close-pane.sh`: concurrent pane closes race correctly against concurrent dispatches; a lock-open failure surfaces a distinct error instead of being misreported as "not found"/"registry is empty".                                               |
 | `mux-dispatch/test-worktree-provision-cmd.sh`   | `tmux-dispatch.sh` / `zellij-dispatch.sh`: `WORKTREE_PROVISION_CMD` is forwarded intact into the dispatched pane, survives shell metacharacters, and is never forced into the launcher when unset.                                                     |
+| `mux-dispatch/test-dispatch-sh-cwd-independence.sh` | `dispatch.sh`: given an absolute path (direct or through a symlink) from an unrelated cwd, it reaches the correct real sibling script (`tmux-dispatch.sh` / `zellij-dispatch.sh`) instead of a path-not-found error, and reports its own clear error when neither multiplexer is active. |
 | `cmux-dispatch/test-registry-lock.sh`           | `cmux-dispatch.sh`: concurrent dispatches never lose a `dispatched.json` registry entry.                                                                                                                                                               |
 | `cmux-dispatch/test-worktree-provision-cmd.sh`  | `cmux-dispatch.sh`: `WORKTREE_PROVISION_CMD` is forwarded intact into the dispatched surface, survives shell metacharacters, and is never forced into the pane command when unset.                                                                     |
 | `cmux-dispatch/test-cwd-injection.sh`           | `cmux-dispatch.sh`: a malicious `--cwd` value cannot break out of the generated `PANE_CMD`'s quoting to inject arbitrary shell commands (CWE-78); a benign `--cwd` containing a space still changes directory correctly.                               |
+| `cmux-dispatch/test-self-locating.sh`           | `cmux-dispatch.sh`: resolves its own real directory (`BASH_SOURCE[0]`, symlink-safe) before anything else, so it runs correctly from any caller cwd or through a symlink, and warns rather than silently misbehaving when `cmux-completion-hook.sh` is missing from a broken install. |
 | `persistent-memory/test-nonbullet-injection.sh` | `memory-validator.sh`: non-bullet-formatted lines (headings, paragraphs, blockquotes, numbered items) still run through every content check (instruction-like language, URL allowlist, code-block ban, length cap) instead of bypassing them (CWE-20). |
 
 Each test is self-contained: it mocks the `tmux`/`zellij`/`cmux`/`kiro-cli`
@@ -45,9 +47,11 @@ packages). No build or install step; run any file directly:
 bash tests/skills/mux-dispatch/test-registry-lock.sh
 bash tests/skills/mux-dispatch/test-close-pane-registry-lock.sh
 bash tests/skills/mux-dispatch/test-worktree-provision-cmd.sh
+bash tests/skills/mux-dispatch/test-dispatch-sh-cwd-independence.sh
 bash tests/skills/cmux-dispatch/test-registry-lock.sh
 bash tests/skills/cmux-dispatch/test-worktree-provision-cmd.sh
 bash tests/skills/cmux-dispatch/test-cwd-injection.sh
+bash tests/skills/cmux-dispatch/test-self-locating.sh
 bash tests/skills/persistent-memory/test-nonbullet-injection.sh
 ```
 
