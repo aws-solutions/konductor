@@ -96,7 +96,7 @@ def main() -> int:
         rewritten, count = rewrite_frontmatter(frontmatter, plugin_name, bundled_servers)
         if count == 0:
             continue
-        md_path.write_text(rewritten + body, encoding="utf-8")
+        md_path.write_text(rewritten + "\n" + body, encoding="utf-8")
         files_changed += 1
         replacements += count
 

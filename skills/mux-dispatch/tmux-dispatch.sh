@@ -33,10 +33,19 @@ done
 [[ -z "$CWD" ]]   && { echo "ERROR: --cwd required" >&2; exit 1; }
 [[ -z "${TMUX:-}" ]]  && { echo "ERROR: Not running inside a tmux session" >&2; exit 1; }
 [[ "$SPLIT_DIR" == "stacked" ]] && { echo "ERROR: tmux does not support stacked panes (see tmux#2770); use zellij for stacked, or --split right|down" >&2; exit 1; }
-# AGENT is used verbatim -- the caller (orchestrator routing table) is the
-# single source of truth for the fully-qualified agent name (e.g. 'k-developer').
-# This script never adds or strips a role prefix.
-[[ "$AGENT" =~ ^[a-z0-9-]+$ ]] || { echo "ERROR: --agent must be alphanumeric/hyphens only" >&2; exit 1; }
+# AGENT is the name from the orchestrator routing table (e.g. 'k-developer'),
+# or one qualified with this plugin's name ('konductor:k-developer').
+[[ "$AGENT" =~ ^([a-z0-9-]+:)?[a-z0-9-]+$ ]] || { echo "ERROR: --agent must be alphanumeric/hyphens only, optionally prefixed with '<plugin>:'" >&2; exit 1; }
+
+# In a Claude Code plugin this skill sits at <plugin root>/skills/mux-dispatch/,
+# and Claude Code names the plugin's agents <plugin>:<agent>.
+PLUGIN_ROOT="$(cd -P "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+PLUGIN_NAME=""
+if [[ -f "$PLUGIN_ROOT/.claude-plugin/plugin.json" ]]; then
+  PLUGIN_NAME="$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1])).get("name", ""))' \
+    "$PLUGIN_ROOT/.claude-plugin/plugin.json" 2>/dev/null || true)"
+  [[ "$PLUGIN_NAME" =~ ^[a-z0-9-]+$ ]] || PLUGIN_NAME=""
+fi
 
 LABEL="${NAME:-$AGENT: $(printf '%s' "$TASK" | head -c 40)}"
 # Fix: python3 uuid is portable across macOS and Linux (date +%s%N and md5sum are GNU-only)
@@ -94,44 +103,57 @@ fi
     # "konductor-mux-orchestrator" and "konductor-cmux-orchestrator") -- error instead of
     # silently picking one by glob order. FOUND is tracked separately from
     # PREFIX so a legitimate empty prefix is not mistaken for "not found".
+    # If ~/.claude/agents has no match, an agent this skill's own plugin
+    # ships launches by its bare name; Claude resolves it to <plugin>:<agent>.
+    # A qualified AGENT must name this plugin and one of its agents.
     echo 'PREFIX="" FOUND="" AMBIGUOUS=""'
-    echo 'LOCAL_MATCHES=()'
-    printf 'for f in "$HOME"/.claude/agents/local-*-%s.md; do\n' "$AGENT"
-    echo '  [ -f "$f" ] || continue'
-    echo '  LOCAL_MATCHES+=("$f")'
-    echo 'done'
-    echo 'if [ "${#LOCAL_MATCHES[@]}" -eq 1 ]; then'
-    echo '  base=$(basename "${LOCAL_MATCHES[0]}" .md)'
-    printf '  PREFIX="${base%%%s}"\n' "$AGENT"
-    echo '  FOUND=1'
-    echo 'elif [ "${#LOCAL_MATCHES[@]}" -gt 1 ]; then'
-    echo '  AMBIGUOUS="${LOCAL_MATCHES[*]}"'
-    echo 'else'
-    echo '  REGISTRY_MATCHES=()'
-    printf '  for f in "$HOME"/.claude/agents/*-%s.md; do\n' "$AGENT"
-    echo '    [ -f "$f" ] || continue'
-    echo '    case "$(basename "$f")" in'
-    echo '      local-*) continue ;;'
-    echo '    esac'
-    echo '    REGISTRY_MATCHES+=("$f")'
-    echo '  done'
-    echo '  if [ "${#REGISTRY_MATCHES[@]}" -eq 1 ]; then'
-    echo '    base=$(basename "${REGISTRY_MATCHES[0]}" .md)'
-    printf '    PREFIX="${base%%%s}"\n' "$AGENT"
-    echo '    FOUND=1'
-    echo '  elif [ "${#REGISTRY_MATCHES[@]}" -gt 1 ]; then'
-    echo '    AMBIGUOUS="${REGISTRY_MATCHES[*]}"'
-    printf '  elif [ -f "$HOME/.claude/agents/%s.md" ]; then\n' "$AGENT"
-    echo '    # Bare, no-prefix install'
-    echo '    PREFIX=""'
-    echo '    FOUND=1'
-    echo '  fi'
-    echo 'fi'
+    if [[ "$AGENT" == *:* ]]; then
+      if [[ -n "$PLUGIN_NAME" && "${AGENT%%:*}" == "$PLUGIN_NAME" && -f "$PLUGIN_ROOT/agents/${AGENT#*:}.md" ]]; then
+        echo 'FOUND=1'
+      fi
+    else
+      echo 'LOCAL_MATCHES=()'
+      printf 'for f in "$HOME"/.claude/agents/local-*-%s.md; do\n' "$AGENT"
+      echo '  [ -f "$f" ] || continue'
+      echo '  LOCAL_MATCHES+=("$f")'
+      echo 'done'
+      echo 'if [ "${#LOCAL_MATCHES[@]}" -eq 1 ]; then'
+      echo '  base=$(basename "${LOCAL_MATCHES[0]}" .md)'
+      printf '  PREFIX="${base%%%s}"\n' "$AGENT"
+      echo '  FOUND=1'
+      echo 'elif [ "${#LOCAL_MATCHES[@]}" -gt 1 ]; then'
+      echo '  AMBIGUOUS="${LOCAL_MATCHES[*]}"'
+      echo 'else'
+      echo '  REGISTRY_MATCHES=()'
+      printf '  for f in "$HOME"/.claude/agents/*-%s.md; do\n' "$AGENT"
+      echo '    [ -f "$f" ] || continue'
+      echo '    case "$(basename "$f")" in'
+      echo '      local-*) continue ;;'
+      echo '    esac'
+      echo '    REGISTRY_MATCHES+=("$f")'
+      echo '  done'
+      echo '  if [ "${#REGISTRY_MATCHES[@]}" -eq 1 ]; then'
+      echo '    base=$(basename "${REGISTRY_MATCHES[0]}" .md)'
+      printf '    PREFIX="${base%%%s}"\n' "$AGENT"
+      echo '    FOUND=1'
+      echo '  elif [ "${#REGISTRY_MATCHES[@]}" -gt 1 ]; then'
+      echo '    AMBIGUOUS="${REGISTRY_MATCHES[*]}"'
+      printf '  elif [ -f "$HOME/.claude/agents/%s.md" ]; then\n' "$AGENT"
+      echo '    # Bare, no-prefix install'
+      echo '    PREFIX=""'
+      echo '    FOUND=1'
+      if [[ -n "$PLUGIN_NAME" ]]; then
+        printf '  elif [ -f %q ]; then\n' "$PLUGIN_ROOT/agents/$AGENT.md"
+        echo '    FOUND=1'
+      fi
+      echo '  fi'
+      echo 'fi'
+    fi
     printf 'if [ -n "$AMBIGUOUS" ]; then\n'
     printf '  echo "ERROR: --agent %s matches multiple installed agents; pass a fully-qualified name. Candidates: $AMBIGUOUS"\n' "$AGENT"
     printf '  EXIT_CODE=1\n'
     printf 'elif [ -z "$FOUND" ]; then\n'
-    printf '  echo "ERROR: claude agent %s not installed under ~/.claude/agents (checked local-/registry installs); not dispatching"\n' "$AGENT"
+    printf '  echo "ERROR: claude agent %s not installed under ~/.claude/agents or in this plugin; not dispatching"\n' "$AGENT"
     printf '  EXIT_CODE=1\n'
     printf 'else\n'
     printf '  claude --agent "${PREFIX}%s" --dangerously-skip-permissions -p "$TASK"\n' "$AGENT"

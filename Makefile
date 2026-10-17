@@ -198,18 +198,21 @@ claude-plugin-check:
 		validated=0; \
 	fi; \
 	scratch=$$(mktemp -d)/claude-plugin-branch; \
-	KONDUCTOR_BIN=$(KONDUCTOR_BIN) scripts/assemble-claude-plugin-branch.sh --out "$$scratch"; \
 	status=0; \
-	if command -v claude >/dev/null 2>&1; then \
+	KONDUCTOR_BIN=$(KONDUCTOR_BIN) scripts/assemble-claude-plugin-branch.sh --out "$$scratch" || status=1; \
+	if [ "$$status" -eq 0 ]; then \
+		scripts/check-claude-plugin-tree.sh "$$scratch" || status=1; \
+	fi; \
+	if [ "$$status" -eq 0 ] && command -v claude >/dev/null 2>&1; then \
 		echo "=== [claude-plugin-check] Validating flat branch plugin shape ==="; \
 		claude plugin validate "$$scratch" --strict || status=1; \
-	else \
+	elif [ "$$status" -eq 0 ]; then \
 		echo "notice: [claude-plugin-check] 'claude' CLI not found on PATH -- skipping validation" >&2; \
 		validated=0; \
 	fi; \
 	rm -rf "$$(dirname "$$scratch")"; \
 	if [ "$$status" -ne 0 ]; then \
-		echo "=== [claude-plugin-check] FAILED: the flat branch plugin tree did not validate ===" >&2; \
+		echo "=== [claude-plugin-check] FAILED: the flat branch plugin tree did not assemble or validate ===" >&2; \
 		exit 1; \
 	fi; \
 	if [ "$$validated" -eq 1 ]; then \

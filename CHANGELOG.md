@@ -6,6 +6,28 @@ This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Entries are consolidated per release,
 not per individual commit.
 
+## [Unreleased]
+
+### Fixed
+
+- The Claude Code plugin release candidate could include untracked build output (`cli/`,
+  `build/`, `dist/`, `generated/`) from the release job's checkout. The candidate is now built
+  only from the assembled plugin tree, its file list is checked against that tree, and any
+  top-level entry outside the plugin's own files fails the build.
+- Plugin installs could not delegate to specialists. Claude Code names plugin agents
+  `konductor:<agent>`, so bare `Agent(k-developer, ...)` grants matched nothing. Plugin assembly
+  now qualifies each grant with the plugin name and fails on a grant for an agent the plugin
+  doesn't ship. `k-architect` also lost a stale package prefix on its grants.
+- `mux-dispatch` and `cmux-dispatch` refused to dispatch in plugin installs: they only looked
+  in `~/.claude/agents/` and rejected `:` in `--agent`. They now fall back to the plugin's own
+  agents and accept `konductor:<agent>` for an agent the plugin ships. `cmux-dispatch` also
+  refuses an agent file name that could inject a command into the pane.
+- `mux-dispatch`, `cmux-dispatch`, `persistent-memory` and `legacy-to-agentic-estimate` could
+  not find their bundled scripts in plugin installs. They now look in `${CLAUDE_SKILL_DIR}`
+  first, then the global install, then a project install with a `.konductor/manifest`, then a
+  konductor source checkout. A `skills/` directory in any other repo is never used, and each
+  stops with a clear error when its script is missing.
+
 ## [1.1.0] - 2026-10-14
 
 ### Added

@@ -9,7 +9,7 @@ description: Delegate tasks to parallel agent sessions via cmux. Use when the us
 
 The orchestrator always dispatches via panes. The dispatch script selects the CLI automatically:
 
-- **Claude Code** (`$CLAUDECODE` is set): runs `claude --agent <PREFIX><agent-name> --dangerously-skip-permissions -p "<prompt>"` in the pane, where `<agent-name>` is the exact value passed via `--agent` (e.g. `k-developer`) — this script never adds or strips a role prefix. `<PREFIX>` is the package-install prefix (e.g. `local-ASDLCCoreAICapabilities-`), derived by searching `~/.claude/agents/` for any installed agent file ending in `-<agent-name>.md` (local- installs preferred over registry installs, checked as separate tiers). No package name is hardcoded, so this resolves correctly for any installed package. **`--agent` must be a fully-qualified name** — if it matches 2+ installed agent files within the same tier (e.g. a partial name like `orchestrator` matching both `konductor-mux-orchestrator` and `konductor-cmux-orchestrator`), the script errors and lists the candidates rather than guessing. `--agent` values are also restricted to `[a-z0-9-]+` before any of this runs. Completion is detected via process exit (claude -p exits on task completion); the script then writes the `.done` marker file.
+- **Claude Code** (`$CLAUDECODE` is set): runs `claude --agent <PREFIX><agent-name> --dangerously-skip-permissions -p "<prompt>"` in the pane, where `<agent-name>` is the exact value passed via `--agent` (e.g. `k-developer`). The script never strips a prefix. `<PREFIX>` is the package-install prefix (e.g. `local-your-package-`), derived by searching `~/.claude/agents/` for any installed agent file ending in `-<agent-name>.md` (local- installs preferred over registry installs, checked as separate tiers). No package name is hardcoded, so this resolves correctly for any installed package. If `~/.claude/agents/` has no match and the skill ships inside a Claude Code plugin whose `agents/` has that agent, the bare name is launched and Claude resolves it to `<plugin>:<agent>`. A qualified `--agent` (`konductor:k-developer`) is launched only if the prefix is this plugin's name (from its `.claude-plugin/plugin.json`) and the plugin ships that agent; anything else is refused as not installed. **`--agent` must be a fully-qualified name.** If it matches 2+ installed agent files within the same tier (e.g. a partial name like `orchestrator` matching both `konductor-mux-orchestrator` and `konductor-cmux-orchestrator`), the script errors and lists the candidates rather than guessing. `--agent` values are also restricted to `[a-z0-9-]+`, optionally prefixed with `<plugin>:`, before any of this runs. A `<PREFIX>` derived from a file name must match `[A-Za-z0-9._-]*`, or the dispatch is refused. Completion is detected via process exit (claude -p exits on task completion); the script then writes the `.done` marker file.
 - **kiro-cli** (default): runs `kiro-cli chat --agent <agent-name> ...` in the pane, using the exact `--agent` value passed in — no prefix is added or stripped. Completion is detected via the kiro-cli `stop` hook writing the `.done` file.
 
 ## Overview
@@ -27,6 +27,48 @@ Use this skill when:
 
 **You MUST immediately run the dispatch script without pre-checking the environment.** The script handles all validation (cmux availability, CMUX_WORKSPACE_ID) and exits with a clear error if anything is missing.
 
+## Locating cmux-dispatch.sh
+
+A relative `skills/cmux-dispatch/cmux-dispatch.sh` path only resolves when the
+cwd happens to be a checkout of this repository, which is not true for a
+plugin install or a Kiro install, where the user's project is the cwd and
+there is no `skills/` directory under it. `cmux-dispatch.sh` itself locates
+its sibling resources (e.g. `cmux-completion-hook.sh`) from its own real
+location once invoked, so once bash is given the correct absolute path it
+works from any cwd.
+
+Resolve the skill's own directory once, in order, and reuse it for every
+invocation below:
+
+```bash
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+PROJECT="" CHECKOUT=""
+[ -n "$ROOT" ] && [ -f "$ROOT/.konductor/manifest" ] && PROJECT="$ROOT/.konductor/skills/cmux-dispatch"
+[ -n "$ROOT" ] && grep -qs '"name": *"konductor"' "$ROOT/.claude-plugin/marketplace.json" && CHECKOUT="$ROOT/skills/cmux-dispatch"
+CMUX_DISPATCH_DIR=""
+for d in "${CLAUDE_SKILL_DIR}" "${SKILLS_HOME:-$HOME/.konductor/skills}/cmux-dispatch" "$PROJECT" "$CHECKOUT"; do
+  [ -n "$d" ] && [ -f "$d/cmux-dispatch.sh" ] && { CMUX_DISPATCH_DIR="$d"; break; }
+done
+[ -n "$CMUX_DISPATCH_DIR" ] || { echo "ERROR: cmux-dispatch.sh not found; not dispatching" >&2; exit 1; }
+```
+
+Trust order, first match wins:
+
+1. `${CLAUDE_SKILL_DIR}`: Claude Code replaces this with the skill's own
+   directory, for a plugin install and a `.claude/skills/` install. Other
+   runtimes leave it empty, so it is skipped.
+2. `${SKILLS_HOME:-$HOME/.konductor/skills}/cmux-dispatch`: a global Kiro CLI
+   install (`konductor install` with no `--target`).
+3. `<git root>/.konductor/skills/cmux-dispatch`: a project install, used only
+   when that root has konductor's install record, `.konductor/manifest`.
+4. `<git root>/skills/cmux-dispatch`: a konductor source checkout, used only
+   when `.claude-plugin/marketplace.json` there names `konductor`.
+
+A `skills/` directory in any other repo is never used.
+
+If nothing matches, the snippet exits 1. Dispatch cannot run, so tell the
+user and fall back to the base orchestrator.
+
 ## Deterministic Script
 
 ### cmux-dispatch.sh
@@ -37,7 +79,7 @@ Spawns a agent session in a cmux tab, split, or workspace.
 
 | Flag                  | Required | Description                                                                                                              |
 | --------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `--agent`             | Yes      | Fully-qualified agent name, passed through verbatim (e.g. `k-developer`, `k-architect`) — no prefix is added or stripped |
+| `--agent`             | Yes      | Agent name (e.g. `k-developer`) or a plugin-qualified name (`konductor:k-developer`). On Claude Code the install prefix is resolved as described above |
 | `--task`              | Yes      | Task prompt to send to the agent                                                                                         |
 | `--cwd`               | Yes      | Absolute path to project root — agent starts here                                                                        |
 | `--name`              | No       | Tab/workspace title (defaults to agent + task summary)                                                                   |
@@ -51,20 +93,20 @@ Spawns a agent session in a cmux tab, split, or workspace.
 
 ```bash
 # Delegate implementation to developer (split right, default)
-bash skills/cmux-dispatch/cmux-dispatch.sh \
+bash "$CMUX_DISPATCH_DIR/cmux-dispatch.sh" \
   --agent k-developer \
   --cwd /path/to/project \
   --task "Implement the user authentication API endpoint"
 
 # Side-by-side split for architecture review
-bash skills/cmux-dispatch/cmux-dispatch.sh \
+bash "$CMUX_DISPATCH_DIR/cmux-dispatch.sh" \
   --agent k-architect \
   --cwd /path/to/project \
   --split right \
   --task "Review the DynamoDB table design"
 
 # Auto-close tab when done
-bash skills/cmux-dispatch/cmux-dispatch.sh \
+bash "$CMUX_DISPATCH_DIR/cmux-dispatch.sh" \
   --agent k-quality-assurance \
   --cwd /path/to/project \
   --task "Run the full test suite" --close
@@ -118,7 +160,7 @@ list`/`git worktree add` work there with no extra `cd`. Pass the named
 target in the dispatched task instead:
 
 ```bash
-bash skills/cmux-dispatch/cmux-dispatch.sh \
+bash "$CMUX_DISPATCH_DIR/cmux-dispatch.sh" \
   --agent k-developer \
   --cwd <primary-working-tree> \
   --task "Worktree wt-<id> already exists at <path> — cd in, do not create
