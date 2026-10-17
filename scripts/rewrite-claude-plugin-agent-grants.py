@@ -102,7 +102,7 @@ def main() -> int:
         rewritten, prefixed, unknown = rewrite_frontmatter(frontmatter, plugin_name, shipped)
         failures.extend(f"{md_path.name}: Agent(...) names {name!r}" for name in unknown)
         if rewritten != frontmatter:
-            rewrites[md_path] = rewritten + body
+            rewrites[md_path] = rewritten + "\n" + body
             prefixed_total += prefixed
 
     if failures:

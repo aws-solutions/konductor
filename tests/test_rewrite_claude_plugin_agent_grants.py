@@ -138,3 +138,16 @@ def test_assembled_tree_grants_are_prefixed_and_name_shipped_agents(tmp_path):
     assert names, "expected at least one Agent(...) grant in the assembled agents"
     unresolved = [f"{file}: {name}" for file, name in names if name not in shipped]
     assert not unresolved, "Agent(...) grants not naming a shipped plugin agent:\n" + "\n".join(unresolved)
+
+
+@pytest.mark.parametrize("after_fence", ["\n\n# k-architect\n", "\n# k-architect\n"])
+def test_only_the_grant_changes_and_the_fence_spacing_is_kept(tmp_path, after_fence):
+    agents_dir, plugin_json = _write_tree(tmp_path, "konductor", {"k-architect": "Agent(k-developer)", "k-developer": "Read"})
+    original = "---\nname: k-architect\ndescription: d\ntools:\n- Agent(k-developer)\n---" + after_fence
+    (agents_dir / "k-architect.md").write_text(original, encoding="utf-8")
+
+    result = _run(agents_dir, plugin_json)
+
+    assert result.returncode == 0, result.stderr
+    expected = original.replace("Agent(k-developer)", "Agent(konductor:k-developer)")
+    assert (agents_dir / "k-architect.md").read_text(encoding="utf-8") == expected
