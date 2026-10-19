@@ -102,15 +102,19 @@ rm -rf dist
 
 Always safe — `dist/` is regenerable with `konductor synth` and is gitignored.
 
-### User-level configuration and logs
+### Logs
 
-Removes the optional user-level config and the invocation log:
+`~/.konductor/` holds the invocation log. It may also hold a `config.yml` if you created one by
+hand (for example, following older guidance): telemetry ignores that file, but `konductor doctor`
+still merges it into its reported `tier`/`default_severity` until a follow-up change removes those
+fields (see [CLI reference → configuration file](../reference.md#configuration-file)). Removing
+the directory clears both.
 
 ```bash
 rm -rf ~/.konductor
 ```
 
-To keep the config and drop only the log:
+To drop only the log and leave the directory in place:
 
 ```bash
 rm -f ~/.konductor/logs/konductor.log
@@ -181,7 +185,7 @@ For reference, so you can confirm nothing is left behind:
 | `<project>/.konductor/config.yml` | `konductor init` | you, manually |
 | `<project>/dist/` | `konductor synth` | you, manually — gitignored |
 | `~/.konductor/logs/konductor.log` | every CLI invocation | you, manually |
-| `~/.konductor/config.yml` | you, by hand | you, manually |
+| `~/.konductor/config.yml` (if present) | you, manually following older guidance | you, manually |
 | The `konductor` binary | you, downloading or building it | you, manually |
 
 ---
