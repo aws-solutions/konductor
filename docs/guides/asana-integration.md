@@ -16,7 +16,7 @@ with this package.
 ## Step 1 — Register an OAuth2 application
 
 1. Open [https://app.asana.com/0/my-apps](https://app.asana.com/0/my-apps) in your browser.
-2. Click **Create new app** and fill in a name (e.g. `ASDLC Agent`).
+2. Click **Create new app** and fill in a name (e.g. `Konductor Agent`).
 3. Copy the **Client ID** and **Client Secret** that are displayed after creation.
    - Store the secret in your system's secure credential store — never paste it in plain text into
      config files or commit it to source control.
