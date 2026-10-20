@@ -72,7 +72,7 @@
         "string",
         "null"
       ],
-      "description": "The installed CONTENT's own version (distinct from the outer envelope's Version, which is always the CLI binary's own env!(\"CARGO_PKG_VERSION\")) -- populated only on package_installed and package_version_updated, sourced from that install's <target_dir>/.konductor/install-info.json record. Null on every other eventType (agent_invocation, subagent_invocation, mcp_tool_call, cli_error, package_uninstalled), and also null on package_installed/package_version_updated when the install source predates the VERSION-in-dist/ convention or that file could not be read -- never a fabricated version string."
+      "description": "The installed CONTENT's own version (distinct from the outer envelope's Version, which is the CLI binary's own env!(\"CARGO_PKG_VERSION\") on CLI events and the plugin manifest version on Claude Code plugin events) -- populated only on package_installed and package_version_updated, sourced from that install's <target_dir>/.konductor/install-info.json record. Null on every other eventType (agent_invocation, subagent_invocation, mcp_tool_call, cli_error, package_uninstalled), and also null on package_installed/package_version_updated when the install source predates the VERSION-in-dist/ convention or that file could not be read -- never a fabricated version string."
     },
     "TimeStamp": {
       "type": "string",

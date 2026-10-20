@@ -54,6 +54,9 @@ def command(event_type: str) -> dict:
         "type": "command",
         "command": f'node "${{CLAUDE_PLUGIN_ROOT}}/{HOOK_SCRIPT}" {event_type}',
         "async": True,
+        # Seconds. Claude Code doesn't enforce it on async hooks, so it only
+        # applies if async is dropped; the hook exits within about 5 anyway.
+        "timeout": 10,
     }
 
 

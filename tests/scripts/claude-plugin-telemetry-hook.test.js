@@ -10,7 +10,8 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { spawnSync } = require('node:child_process');
+const { spawn, spawnSync } = require('node:child_process');
+const { once } = require('node:events');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -55,24 +56,30 @@ function makePluginTree(t) {
 
 // Runs the hook once. `env` is the whole environment apart from PATH, HOME
 // and the stub's output file, so the developer's own settings never leak in.
-function runHook(t, { eventType, payload, env = {}, home, stdin }) {
+function runHook(t, { eventType, payload, env = {}, home, stdin, preload = [], setupPlugin, timeout = 15000 }) {
   const plugin = makePluginTree(t);
+  if (setupPlugin) {
+    setupPlugin(plugin);
+  }
   const homeDir = home || scratchDir(t, 'home');
   const project = scratchDir(t, 'project');
   const stubOut = path.join(scratchDir(t, 'stub'), 'requests.jsonl');
   const input =
     stdin !== undefined ? stdin : JSON.stringify({ cwd: project, session_id: RAW_SESSION_ID, ...payload });
+  const requires = [STUB, ...preload].flatMap((file) => ['--require', file]);
+  const started = Date.now();
   const result = spawnSync(
     process.execPath,
-    ['--require', STUB, path.join(plugin, 'hooks', 'konductor-telemetry.js'), ...(eventType ? [eventType] : [])],
+    [...requires, path.join(plugin, 'hooks', 'konductor-telemetry.js'), ...(eventType ? [eventType] : [])],
     {
       input,
       cwd: project,
       env: { PATH: process.env.PATH, HOME: homeDir, TELEMETRY_STUB_OUT: stubOut, ...env },
       encoding: 'utf8',
-      timeout: 15000,
+      timeout,
     },
   );
+  const elapsed = Date.now() - started;
   const requests = fs.existsSync(stubOut)
     ? fs
         .readFileSync(stubOut, 'utf8')
@@ -80,7 +87,7 @@ function runHook(t, { eventType, payload, env = {}, home, stdin }) {
         .split('\n')
         .map((line) => JSON.parse(line))
     : [];
-  return { result, requests, home: homeDir, project };
+  return { result, requests, home: homeDir, project, elapsed };
 }
 
 function recordPath(home) {
@@ -397,6 +404,11 @@ test('config parser treats telemetry.enabled: false as off in every YAML form', 
     'quoted scalar': 'telemetry:\n  enabled: "false"\n',
     'duplicate key': 'telemetry:\n  enabled: true\n  enabled: false\n',
     'unclosed flow': 'telemetry: {enabled: true\n',
+    'flow after ---': '--- {telemetry: {enabled: false}}\n',
+    'uniform root indent': '  telemetry:\n    enabled: false\n',
+    'indented after ---': '--- \n  telemetry:\n    enabled: false\n',
+    'indented JSON': '  {\n  "telemetry": {\n    "enabled": false\n  }\n}\n',
+    'complex key': '? telemetry\n: enabled: false\n',
   };
   const on = {
     block: 'telemetry:\n  enabled: true\n',
@@ -409,6 +421,8 @@ test('config parser treats telemetry.enabled: false as off in every YAML form', 
     'other section': 'other:\n  enabled: false\n',
     'nested enabled': 'telemetry:\n  nested:\n    enabled: false\n',
     'commented out': '# telemetry:\n#   enabled: false\n',
+    'after ---': '--- \ntelemetry:\n  enabled: true\n',
+    'flow after ---': '--- {telemetry: {enabled: true}}\n',
     empty: '',
   };
   for (const [name, text] of Object.entries(off)) {
@@ -417,6 +431,99 @@ test('config parser treats telemetry.enabled: false as off in every YAML form', 
   for (const [name, text] of Object.entries(on)) {
     assert.equal(hook.configDisablesTelemetry(text), false, name);
   }
+});
+
+// ── File reads ───────────────────────────────────────────────────────────
+
+const POSIX_ONLY = { skip: process.platform === 'win32' };
+
+function mkfifo(file) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const made = spawnSync('mkfifo', [file]);
+  assert.equal(made.status, 0, 'mkfifo failed');
+}
+
+test('a FIFO config.yml is skipped without blocking the hook', POSIX_ONLY, (t) => {
+  const project = scratchDir(t, 'fifo-config');
+  mkfifo(path.join(project, '.konductor', 'config.yml'));
+  const { result, requests, elapsed } = runHook(t, { ...agentEventIn(project), timeout: 8000 });
+  assertSilent(result);
+  assert.ok(elapsed < 3000, `took ${elapsed} ms`);
+  assert.equal(requests.length, 1);
+});
+
+test('a FIFO telemetry.json or plugin.json exits promptly and sends nothing', POSIX_ONLY, (t) => {
+  const fifoHome = scratchDir(t, 'fifo-home');
+  mkfifo(recordPath(fifoHome));
+  const fifoManifest = (plugin) => {
+    const manifest = path.join(plugin, '.claude-plugin', 'plugin.json');
+    fs.rmSync(manifest);
+    mkfifo(manifest);
+  };
+  for (const options of [{ home: fifoHome }, { setupPlugin: fifoManifest }]) {
+    const { result, requests, elapsed } = runHook(t, { ...AGENT_EVENT, ...options, timeout: 8000 });
+    assertSilent(result);
+    assert.ok(elapsed < 3000, `took ${elapsed} ms`);
+    assert.equal(requests.length, 0);
+  }
+});
+
+test('a config.yml over 64 KiB is treated as unreadable', (t) => {
+  const optOut = 'telemetry:\n  enabled: false\n';
+  const atCap = scratchDir(t, 'config-at-cap');
+  writeConfig(atCap, optOut + '#'.repeat(64 * 1024 - optOut.length - 1) + '\n');
+  assert.equal(runHook(t, agentEventIn(atCap)).requests.length, 0);
+  const overCap = scratchDir(t, 'config-over-cap');
+  writeConfig(overCap, optOut + '#'.repeat(64 * 1024 - optOut.length) + '\n');
+  assert.equal(runHook(t, agentEventIn(overCap)).requests.length, 1);
+});
+
+test('an oversized telemetry.json fails closed and is left alone', (t) => {
+  const home = scratchDir(t, 'big-record-home');
+  const text = writeRecord(home, {
+    schema_version: 1,
+    UUID: VALID_UUID,
+    created_at: '2026-01-01T00:00:00.000Z',
+    telemetry_consent: true,
+    pad: 'x'.repeat(64 * 1024),
+  });
+  const { result, requests } = runHook(t, { ...AGENT_EVENT, home });
+  assertSilent(result);
+  assert.equal(requests.length, 0);
+  assert.equal(fs.readFileSync(recordPath(home), 'utf8'), text);
+});
+
+test('a non-Konductor session opens no config files', (t) => {
+  const traceDir = scratchDir(t, 'trace');
+  const traceOut = path.join(traceDir, 'opened.txt');
+  const tracer = path.join(traceDir, 'trace-config-reads.js');
+  fs.writeFileSync(
+    tracer,
+    `'use strict';
+const fs = require('node:fs');
+for (const name of ['openSync', 'readFileSync', 'statSync', 'existsSync']) {
+  const original = fs[name];
+  fs[name] = function (file, ...rest) {
+    if (String(file).endsWith('config.yml')) {
+      fs.appendFileSync(${JSON.stringify(traceOut)}, String(file) + '\\n');
+    }
+    return original.call(this, file, ...rest);
+  };
+}
+`,
+  );
+  const project = scratchDir(t, 'traced-project');
+  writeConfig(project, 'telemetry:\n  enabled: true\n');
+  const opened = () => (fs.existsSync(traceOut) ? fs.readFileSync(traceOut, 'utf8') : '');
+  const stdin = (agentType) => JSON.stringify({ cwd: project, session_id: RAW_SESSION_ID, agent_type: agentType });
+
+  const other = runHook(t, { eventType: 'agent-invocation', stdin: stdin('Explore'), preload: [tracer] });
+  assertSilent(other.result);
+  assert.equal(opened(), '');
+
+  const ours = runHook(t, { eventType: 'agent-invocation', stdin: stdin('konductor:konductor'), preload: [tracer] });
+  assert.equal(ours.requests.length, 1);
+  assert.notEqual(opened(), '', 'the tracer saw no reads at all');
 });
 
 // ── Identity ─────────────────────────────────────────────────────────────
@@ -520,7 +627,7 @@ test('a write that makes no progress fails closed and publishes nothing', (t) =>
   assert.deepEqual(fs.readdirSync(path.join(home, '.konductor')), []);
 });
 
-// ── Endpoint ─────────────────────────────────────────────────────────────
+// ── Failure handling ─────────────────────────────────────────────────────
 
 test('bad input prints nothing and exits 0', (t) => {
   const cases = [
@@ -548,6 +655,40 @@ test('an unwritable HOME prints nothing and exits 0', (t) => {
   assert.equal(requests.length, 0);
 });
 
+test('a request that never responds is dropped after SEND_TIMEOUT_MS', (t) => {
+  const { result, requests, elapsed } = runHook(t, { ...AGENT_EVENT, env: { TELEMETRY_STUB_MODE: 'hang' } });
+  assertSilent(result);
+  assert.equal(requests.length, 1);
+  assert.ok(elapsed >= hook.SEND_TIMEOUT_MS - 200 && elapsed < hook.SEND_TIMEOUT_MS + 1500, `took ${elapsed} ms`);
+});
+
+test('stdin that never closes still exits 0 through the backstop', async (t) => {
+  const plugin = makePluginTree(t);
+  const stubOut = path.join(scratchDir(t, 'stub'), 'requests.jsonl');
+  const started = Date.now();
+  const child = spawn(process.execPath, ['--require', STUB, path.join(plugin, 'hooks', 'konductor-telemetry.js'), 'agent-invocation'], {
+    cwd: scratchDir(t, 'project'),
+    env: { PATH: process.env.PATH, HOME: scratchDir(t, 'home'), TELEMETRY_STUB_OUT: stubOut },
+    stdio: ['pipe', 'ignore', 'ignore'],
+  });
+  const killer = setTimeout(() => child.kill('SIGKILL'), 10000);
+  const [code] = await once(child, 'exit');
+  clearTimeout(killer);
+  child.stdin.destroy();
+  const elapsed = Date.now() - started;
+  assert.equal(code, 0);
+  assert.ok(elapsed < hook.SEND_TIMEOUT_MS + 3500, `took ${elapsed} ms`);
+  assert.equal(fs.existsSync(stubOut), false);
+});
+
+test('the endpoint is fixed: KONDUCTOR_METRICS_ENDPOINT and telemetry.endpoint are ignored', (t) => {
+  const project = scratchDir(t, 'endpoint-config');
+  writeConfig(project, 'telemetry:\n  enabled: true\n  endpoint: https://config.example/generic\n');
+  const { requests } = runHook(t, { ...agentEventIn(project), env: { KONDUCTOR_METRICS_ENDPOINT: 'https://x.example/' } });
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].url, hook.DEFAULT_TELEMETRY_ENDPOINT);
+});
+
 // ── hooks.json ───────────────────────────────────────────────────────────
 
 test('rendered hooks.json wires both events and matches every plugin agent', (t) => {
@@ -566,6 +707,7 @@ test('rendered hooks.json wires both events and matches every plugin agent', (t)
     const [handler] = hooks[event][0].hooks;
     assert.equal(handler.type, 'command');
     assert.equal(handler.async, true);
+    assert.equal(handler.timeout, 10);
     assert.equal(handler.command, `node "\${CLAUDE_PLUGIN_ROOT}/hooks/konductor-telemetry.js" ${arg}`);
   }
   const matcher = new RegExp(hooks.SubagentStart[0].matcher, 'u');

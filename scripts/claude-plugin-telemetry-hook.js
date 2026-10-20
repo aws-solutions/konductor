@@ -12,10 +12,9 @@
 // It reads the hook payload from stdin, prints nothing, and always exits 0.
 // SessionStart stdout becomes model context, so any output would be a bug.
 //
-// Wire format and rules mirror cli/konductor-rs/src/cli/telemetry_hook.rs,
-// cli/konductor-rs/src/cli/telemetry/{report,envelope}.rs and
-// shared/konductor-telemetry/src/identity.rs, so plugin and CLI events line
-// up and share one machine identity in ~/.konductor/telemetry.json.
+// The wire format matches cli/konductor-rs/src/cli/telemetry/envelope.rs, so
+// plugin and CLI events line up. Both use the machine identity in
+// ~/.konductor/telemetry.json.
 
 'use strict';
 
@@ -32,6 +31,7 @@ const NIL_UUID_SENTINEL = '0'.repeat(64);
 const HARNESS = 'claude-plugin';
 const INSTANCE_SCHEMA_VERSION = 1;
 const MAX_HOOK_PAYLOAD_BYTES = 64 * 1024;
+const MAX_FILE_BYTES = 64 * 1024;
 const SEND_TIMEOUT_MS = 3000;
 const AGENT_INVOCATION = 'agent-invocation';
 const SUBAGENT_INVOCATION = 'subagent-invocation';
@@ -49,6 +49,37 @@ function isValidUuidShape(value) {
 
 function nonEmptyString(value) {
   return typeof value === 'string' && value !== '' ? value : null;
+}
+
+// Returns the text of a regular file of at most MAX_FILE_BYTES, else null.
+// O_NONBLOCK stops a FIFO from blocking the open, which would also stall the
+// backstop timer.
+function readSmallFile(file) {
+  let fd;
+  try {
+    fd = fs.openSync(file, fs.constants.O_RDONLY | (fs.constants.O_NONBLOCK || 0));
+  } catch {
+    return null;
+  }
+  try {
+    if (!fs.fstatSync(fd).isFile()) {
+      return null;
+    }
+    const buffer = Buffer.alloc(MAX_FILE_BYTES + 1);
+    let size = 0;
+    while (size < buffer.length) {
+      const read = fs.readSync(fd, buffer, size, buffer.length - size, null);
+      if (read === 0) {
+        break;
+      }
+      size += read;
+    }
+    return size > MAX_FILE_BYTES ? null : buffer.toString('utf8', 0, size);
+  } catch {
+    return null;
+  } finally {
+    fs.closeSync(fd);
+  }
 }
 
 function isoMillis(date) {
@@ -201,7 +232,8 @@ function parseFlow(text) {
 const KEY_LINE = /^(\s*)(?:"([^"]*)"|'([^']*)'|([^\s'"{[#][^:]*?))\s*:(?:\s+(.*))?$/;
 
 // `telemetry.enabled` from the top level of a block mapping: true, false,
-// or undefined when it can't be read with confidence.
+// null when the section has no `enabled`, or undefined when it can't be
+// read with confidence.
 function blockEnabled(lines) {
   let section = null;
   for (let index = 0; index < lines.length; index++) {
@@ -254,7 +286,10 @@ function blockEnabled(lines) {
       section.values.push(TRUE_SCALARS.includes(rest) ? true : FALSE_SCALARS.includes(rest) ? false : rest);
     }
   }
-  if (section === null || section.values.length === 0) {
+  if (section === null) {
+    return undefined;
+  }
+  if (section.values.length === 0) {
     return null;
   }
   return section.values.length === 1 && typeof section.values[0] === 'boolean' ? section.values[0] : undefined;
@@ -270,11 +305,13 @@ function balanced(text) {
 
 // Reads `telemetry.enabled` from .konductor/config.yml. A missing setting
 // leaves telemetry on, as in the CLI. Fails closed: if `enabled` is set but
-// not plainly to true, telemetry is treated as off. YAML tags, anchors,
-// aliases and merge keys are never interpreted.
+// not plainly to true, or the file mentions both words but has no plain
+// top-level `telemetry` key, telemetry is treated as off. YAML tags,
+// anchors, aliases and merge keys are never interpreted.
 function configDisablesTelemetry(rawText) {
   const lines = rawText
     .replace(/^\uFEFF/, '')
+    .replace(/^---[ \t]+(?=\S)/, '')
     .split(/\r?\n/)
     .map((line) => stripComment(line).replace(/\s+$/, ''))
     .filter((line) => line.trim() !== '' && !/^(---|\.\.\.)$/.test(line));
@@ -292,9 +329,6 @@ function configDisablesTelemetry(rawText) {
       return true;
     }
     const section = value.telemetry;
-    if (section === undefined) {
-      return false;
-    }
     if (section === null || typeof section !== 'object' || Array.isArray(section)) {
       return true;
     }
@@ -320,16 +354,12 @@ function configPaths(cwd, home) {
 }
 
 // Nearest first, as the CLI walks install roots, then $HOME. An unreadable
-// file is skipped, as the CLI's read_telemetry_config does.
+// file is skipped, as the CLI's read_telemetry_config does. A non-regular or
+// oversized file counts as unreadable.
 function telemetryOffByConfig(cwd, home) {
   return configPaths(cwd, home).some((file) => {
-    let text;
-    try {
-      text = fs.readFileSync(file, 'utf8');
-    } catch {
-      return false;
-    }
-    return configDisablesTelemetry(text);
+    const text = readSmallFile(file);
+    return text !== null && configDisablesTelemetry(text);
   });
 }
 
@@ -361,7 +391,7 @@ function instancePath(home) {
 function readInstanceRaw(home) {
   let value;
   try {
-    value = JSON.parse(fs.readFileSync(instancePath(home), 'utf8'));
+    value = JSON.parse(readSmallFile(instancePath(home)));
   } catch {
     return { kind: 'absent' };
   }
@@ -498,9 +528,7 @@ function ensureInstance(home, now = new Date()) {
 
 function readPluginManifest(pluginRoot) {
   try {
-    const manifest = JSON.parse(
-      fs.readFileSync(path.join(pluginRoot, '.claude-plugin', 'plugin.json'), 'utf8'),
-    );
+    const manifest = JSON.parse(readSmallFile(path.join(pluginRoot, '.claude-plugin', 'plugin.json')));
     const version = nonEmptyString(manifest.version);
     if (version === null) {
       return null;
@@ -635,15 +663,9 @@ async function run(argv, env) {
     return;
   }
 
-  if (telemetryOffByEnv(env)) {
+  if (telemetryOffByEnv(env) || telemetryOffByPluginOption(env)) {
     return;
   }
-  const home = homeDir(env);
-  const cwd = nonEmptyString(payload.cwd) || process.cwd();
-  if (telemetryOffByConfig(cwd, home) || telemetryOffByPluginOption(env)) {
-    return;
-  }
-
   const manifest = readPluginManifest(PLUGIN_ROOT);
   if (manifest === null) {
     return;
@@ -658,9 +680,15 @@ async function run(argv, env) {
   if (invocation === null) {
     return;
   }
+  const home = homeDir(env);
   if (home === null) {
     return;
   }
+  const cwd = nonEmptyString(payload.cwd) || process.cwd();
+  if (telemetryOffByConfig(cwd, home)) {
+    return;
+  }
+
   const record = ensureInstance(home);
   if (!record.telemetry_consent) {
     return;
@@ -687,6 +715,7 @@ module.exports = {
   INSTANCE_SCHEMA_VERSION,
   MAX_HOOK_PAYLOAD_BYTES,
   NIL_UUID_SENTINEL,
+  SEND_TIMEOUT_MS,
   SOLUTION_ID,
   buildEventBody,
   configDisablesTelemetry,
