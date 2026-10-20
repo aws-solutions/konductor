@@ -16,6 +16,12 @@ not per individual commit.
   `~/.konductor/telemetry.json` with the CLI. Turn it off with the plugin's
   `telemetry_enabled` option or any existing opt-out.
 
+### Changed
+
+- The `constraints` skill, loaded by every agent, has a new WRITING section: no em or en
+  dashes, less text focused on what the reader needs, no filler sections, and no promotional
+  vocabulary. The skill's own text now follows it.
+
 ### Fixed
 
 - The Claude Code plugin release candidate could include untracked build output (`cli/`,
