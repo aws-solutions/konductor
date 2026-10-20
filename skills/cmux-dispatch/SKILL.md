@@ -29,16 +29,9 @@ Use this skill when:
 
 ## Locating cmux-dispatch.sh
 
-A relative `skills/cmux-dispatch/cmux-dispatch.sh` path only resolves when the
-cwd happens to be a checkout of this repository, which is not true for a
-plugin install or a Kiro install, where the user's project is the cwd and
-there is no `skills/` directory under it. `cmux-dispatch.sh` itself locates
-its sibling resources (e.g. `cmux-completion-hook.sh`) from its own real
-location once invoked, so once bash is given the correct absolute path it
-works from any cwd.
-
-Resolve the skill's own directory once, in order, and reuse it for every
-invocation below:
+Run this once. It prints the skill's directory; use that absolute path for
+`<CMUX_DISPATCH_DIR>` in every command below. A shell variable doesn't survive to the
+next command.
 
 ```bash
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
@@ -50,24 +43,11 @@ for d in "${CLAUDE_SKILL_DIR}" "${SKILLS_HOME:-$HOME/.konductor/skills}/cmux-dis
   [ -n "$d" ] && [ -f "$d/cmux-dispatch.sh" ] && { CMUX_DISPATCH_DIR="$d"; break; }
 done
 [ -n "$CMUX_DISPATCH_DIR" ] || { echo "ERROR: cmux-dispatch.sh not found; not dispatching" >&2; exit 1; }
+echo "CMUX_DISPATCH_DIR=$CMUX_DISPATCH_DIR"
 ```
 
-Trust order, first match wins:
-
-1. `${CLAUDE_SKILL_DIR}`: Claude Code replaces this with the skill's own
-   directory, for a plugin install and a `.claude/skills/` install. Other
-   runtimes leave it empty, so it is skipped.
-2. `${SKILLS_HOME:-$HOME/.konductor/skills}/cmux-dispatch`: a global Kiro CLI
-   install (`konductor install` with no `--target`).
-3. `<git root>/.konductor/skills/cmux-dispatch`: a project install, used only
-   when that root has konductor's install record, `.konductor/manifest`.
-4. `<git root>/skills/cmux-dispatch`: a konductor source checkout, used only
-   when `.claude-plugin/marketplace.json` there names `konductor`.
-
-A `skills/` directory in any other repo is never used.
-
-If nothing matches, the snippet exits 1. Dispatch cannot run, so tell the
-user and fall back to the base orchestrator.
+If it exits 1, dispatch can't run: tell the user and fall back to the base
+orchestrator.
 
 ## Deterministic Script
 
@@ -93,20 +73,20 @@ Spawns a agent session in a cmux tab, split, or workspace.
 
 ```bash
 # Delegate implementation to developer (split right, default)
-bash "$CMUX_DISPATCH_DIR/cmux-dispatch.sh" \
+bash "<CMUX_DISPATCH_DIR>/cmux-dispatch.sh" \
   --agent k-developer \
   --cwd /path/to/project \
   --task "Implement the user authentication API endpoint"
 
 # Side-by-side split for architecture review
-bash "$CMUX_DISPATCH_DIR/cmux-dispatch.sh" \
+bash "<CMUX_DISPATCH_DIR>/cmux-dispatch.sh" \
   --agent k-architect \
   --cwd /path/to/project \
   --split right \
   --task "Review the DynamoDB table design"
 
 # Auto-close tab when done
-bash "$CMUX_DISPATCH_DIR/cmux-dispatch.sh" \
+bash "<CMUX_DISPATCH_DIR>/cmux-dispatch.sh" \
   --agent k-quality-assurance \
   --cwd /path/to/project \
   --task "Run the full test suite" --close
@@ -160,7 +140,7 @@ list`/`git worktree add` work there with no extra `cd`. Pass the named
 target in the dispatched task instead:
 
 ```bash
-bash "$CMUX_DISPATCH_DIR/cmux-dispatch.sh" \
+bash "<CMUX_DISPATCH_DIR>/cmux-dispatch.sh" \
   --agent k-developer \
   --cwd <primary-working-tree> \
   --task "Worktree wt-<id> already exists at <path> — cd in, do not create

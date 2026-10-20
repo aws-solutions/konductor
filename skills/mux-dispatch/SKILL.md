@@ -30,17 +30,9 @@ Use this skill when:
 
 ## Locating dispatch.sh
 
-`dispatch.sh` resolves its own directory once bash has found and started it
-(works from any cwd, including a monorepo root), so it can find its sibling
-backend scripts (`tmux-dispatch.sh` / `zellij-dispatch.sh`) next to itself.
-That doesn't help bash find `dispatch.sh` in the first place. A relative
-`skills/mux-dispatch/dispatch.sh` path resolves only when the cwd happens to
-be a checkout of this repository, which is not true for a plugin install or a
-Kiro install, where the user's project is the cwd and there is no `skills/`
-directory under it.
-
-Resolve the skill's own directory once, in order, and reuse it for every
-invocation below:
+Run this once. It prints the skill's directory; use that absolute path for
+`<MUX_DISPATCH_DIR>` in every command below. A shell variable doesn't survive to the
+next command.
 
 ```bash
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
@@ -52,24 +44,11 @@ for d in "${CLAUDE_SKILL_DIR}" "${SKILLS_HOME:-$HOME/.konductor/skills}/mux-disp
   [ -n "$d" ] && [ -f "$d/dispatch.sh" ] && { MUX_DISPATCH_DIR="$d"; break; }
 done
 [ -n "$MUX_DISPATCH_DIR" ] || { echo "ERROR: dispatch.sh not found; not dispatching" >&2; exit 1; }
+echo "MUX_DISPATCH_DIR=$MUX_DISPATCH_DIR"
 ```
 
-Trust order, first match wins:
-
-1. `${CLAUDE_SKILL_DIR}`: Claude Code replaces this with the skill's own
-   directory, for a plugin install and a `.claude/skills/` install. Other
-   runtimes leave it empty, so it is skipped.
-2. `${SKILLS_HOME:-$HOME/.konductor/skills}/mux-dispatch`: a global Kiro CLI
-   install (`konductor install` with no `--target`).
-3. `<git root>/.konductor/skills/mux-dispatch`: a project install, used only
-   when that root has konductor's install record, `.konductor/manifest`.
-4. `<git root>/skills/mux-dispatch`: a konductor source checkout, used only
-   when `.claude-plugin/marketplace.json` there names `konductor`.
-
-A `skills/` directory in any other repo is never used.
-
-If nothing matches, the snippet exits 1. Dispatch cannot run, so tell the
-user and fall back to the base orchestrator.
+If it exits 1, dispatch can't run: tell the user and fall back to the base
+orchestrator.
 
 ## Multiplexer Detection
 
@@ -78,7 +57,7 @@ the active multiplexer and `exec`s the matching backend script with your
 arguments unchanged:
 
 ```bash
-bash "$MUX_DISPATCH_DIR/dispatch.sh" --agent <name> --task "..." --cwd <path>
+bash "<MUX_DISPATCH_DIR>/dispatch.sh" --agent <name> --task "..." --cwd <path>
 ```
 
 | Env var set | Backend | Script routed to                       |
@@ -111,13 +90,13 @@ unchanged when calling them through `dispatch.sh`.
 
 ```bash
 # Delegate implementation (split right, default)
-bash "$MUX_DISPATCH_DIR/tmux-dispatch.sh" \
+bash "<MUX_DISPATCH_DIR>/tmux-dispatch.sh" \
   --agent k-developer \
   --cwd /path/to/project \
   --task "Implement the user authentication API endpoint"
 
 # Side-by-side split downward
-bash "$MUX_DISPATCH_DIR/tmux-dispatch.sh" \
+bash "<MUX_DISPATCH_DIR>/tmux-dispatch.sh" \
   --agent k-architect \
   --cwd /path/to/project \
   --split down \
@@ -131,13 +110,13 @@ Same flags as `tmux-dispatch.sh`. Uses `env MUX_WORKSPACE_ID=...` wrapper to pas
 **`--split stacked` is zellij-only** — creates a stacked pane via `zellij action new-pane --stacked` (no `--direction`; conflicts with `--stacked`). tmux and cmux do not support stacked panes.
 
 ```bash
-bash "$MUX_DISPATCH_DIR/zellij-dispatch.sh" \
+bash "<MUX_DISPATCH_DIR>/zellij-dispatch.sh" \
   --agent k-developer \
   --cwd /path/to/project \
   --task "Implement the user authentication API endpoint"
 
 # Stacked pane (zellij only)
-bash "$MUX_DISPATCH_DIR/zellij-dispatch.sh" \
+bash "<MUX_DISPATCH_DIR>/zellij-dispatch.sh" \
   --agent k-developer \
   --cwd /path/to/project \
   --split stacked \
@@ -217,7 +196,7 @@ list`/`git worktree add` work there with no extra `cd`. Pass the named
 target in the dispatched task instead:
 
 ```bash
-bash "$MUX_DISPATCH_DIR/dispatch.sh" \
+bash "<MUX_DISPATCH_DIR>/dispatch.sh" \
   --agent k-developer \
   --cwd <primary-working-tree> \
   --task "Worktree wt-<id> already exists at <path> — cd in, do not create

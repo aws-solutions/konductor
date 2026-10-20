@@ -148,3 +148,26 @@ def test_konductor_source_checkout_is_used_last(case, tmp_path):
 def test_fails_closed_outside_any_repo(case):
     _, home, resolve, _ = case
     assert resolve(home) == (1, "")
+
+
+DISPATCH_SKILLS = {
+    "mux-dispatch": ("MUX_DISPATCH_DIR", "konductor-mux-orchestrator"),
+    "cmux-dispatch": ("CMUX_DISPATCH_DIR", "konductor-cmux-orchestrator"),
+}
+
+
+@pytest.mark.parametrize("skill", DISPATCH_SKILLS)
+def test_dispatch_commands_use_the_printed_path_not_a_shell_variable(skill):
+    """Each Bash call starts a fresh shell, so a variable set by the resolver
+    is gone by the next command. The resolver prints the path instead, and
+    every command uses it through the <VAR> placeholder."""
+    var, orchestrator = DISPATCH_SKILLS[skill]
+    skill_md = (SKILLS_DIR / skill / "SKILL.md").read_text(encoding="utf-8")
+    spec = (REPO_ROOT / "agents" / f"{orchestrator}.agent-spec.json").read_text(encoding="utf-8")
+
+    resolver = next(b for b in BASH_BLOCK_RE.findall(skill_md) if CLAUDE_SKILL_DIR_RE.search(b))
+    assert f'echo "{var}=${var}"' in resolver, f"{skill}: resolver must print the resolved path"
+
+    for name, text in ((f"{skill}/SKILL.md", skill_md.replace(resolver, "")), (f"{orchestrator}.agent-spec.json", spec)):
+        assert f"${var}" not in text, f"{name}: uses ${var} outside the resolver"
+        assert f"<{var}>/" in text, f"{name}: commands should use the <{var}> placeholder"
