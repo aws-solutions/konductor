@@ -10,6 +10,7 @@
     "skills": {
       "skillNames": [
         "constraints",
+        "humanize-writing",
         "delegation-protocol",
         "sdlc-navigator",
         "git-merge",
@@ -68,6 +69,7 @@
       ],
       "skills": [
         "constraints",
+        "humanize-writing",
         "delegation-protocol",
         "sdlc-navigator",
         "git-merge",
