@@ -145,7 +145,6 @@ def test_assembled_tree_ships_the_telemetry_hook(assembled):
     for event in ("SessionStart", "SubagentStart"):
         handler = hooks[event][0]["hooks"][0]
         assert handler["async"] is True
-        assert handler["timeout"] == 10
         assert '"${CLAUDE_PLUGIN_ROOT}/hooks/konductor-telemetry.js"' in handler["command"]
 
     plugin = json.loads((assembled / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))

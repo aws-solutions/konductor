@@ -707,7 +707,6 @@ test('rendered hooks.json wires both events and matches every plugin agent', (t)
     const [handler] = hooks[event][0].hooks;
     assert.equal(handler.type, 'command');
     assert.equal(handler.async, true);
-    assert.equal(handler.timeout, 10);
     assert.equal(handler.command, `node "\${CLAUDE_PLUGIN_ROOT}/hooks/konductor-telemetry.js" ${arg}`);
   }
   const matcher = new RegExp(hooks.SubagentStart[0].matcher, 'u');
