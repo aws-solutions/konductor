@@ -61,7 +61,7 @@ Load `.konductor/memory/MEMORY.md` and `.konductor/memory/USER.md` via `fs_read`
    4. `<git root>/skills/persistent-memory`: a konductor source checkout, used only
       when `.claude-plugin/marketplace.json` there names `konductor`.
 
-   A `skills/` directory in any other repo is never used.
+   A repo is searched only if it has `.konductor/manifest` or a `.claude-plugin/marketplace.json` that names `konductor`.
 
 4. **Exit 0** → write succeeded (validator performs atomic write).
 5. **Exit 1** → read stderr for reason, adjust and retry once, or skip if unresolvable.
