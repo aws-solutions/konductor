@@ -28,7 +28,9 @@ not per individual commit.
   questions themselves instead of spawning a specialist for each. One table in
   `context/k-orchestrator-routing-rules.md` defines what is allowed, and `claude-teams-behavior`,
   `mux-dispatch`, and `cmux-dispatch` point at it. Writes, state-changing git, builds, tests,
-  and whole phases still go to specialists.
+  and whole phases still go to specialists. The three orchestrator prompts also drop the
+  Ultrawork framing, state the parallel rule once, and remove rules already defined in the
+  `constraints` skill and the routing rules.
 
 ### Fixed
 
