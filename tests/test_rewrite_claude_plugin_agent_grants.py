@@ -151,3 +151,35 @@ def test_only_the_grant_changes_and_the_fence_spacing_is_kept(tmp_path, after_fe
     assert result.returncode == 0, result.stderr
     expected = original.replace("Agent(k-developer)", "Agent(konductor:k-developer)")
     assert (agents_dir / "k-architect.md").read_text(encoding="utf-8") == expected
+
+
+@pytest.mark.parametrize(
+    "original",
+    [
+        "# lead\n\nno frontmatter, Agent(missing-agent)\n",
+        "---\nname: lead\ntools:\n- Agent(missing-agent)\n",
+    ],
+    ids=["none", "unterminated"],
+)
+def test_agent_file_without_frontmatter_fails_before_writing(tmp_path, original):
+    agents_dir, plugin_json = _write_tree(tmp_path, "acme", {"lead": "Read", "worker": "Agent(worker)"})
+    (agents_dir / "lead.md").write_text(original, encoding="utf-8")
+    before = {path.name: path.read_text(encoding="utf-8") for path in agents_dir.glob("*.md")}
+
+    result = _run(agents_dir, plugin_json)
+
+    assert result.returncode != 0
+    assert "lead.md" in result.stderr
+    assert {path.name: path.read_text(encoding="utf-8") for path in agents_dir.glob("*.md")} == before
+
+
+def test_indented_fence_in_a_block_scalar_does_not_end_the_frontmatter(tmp_path):
+    agents_dir, plugin_json = _write_tree(tmp_path, "acme", {"lead": "Read", "worker": "Read"})
+    original = "---\nname: lead\ndescription: |\n  intro\n  ---\n  more\ntools:\n- Agent(worker)\n---\n# lead\n"
+    (agents_dir / "lead.md").write_text(original, encoding="utf-8")
+
+    result = _run(agents_dir, plugin_json)
+
+    assert result.returncode == 0, result.stderr
+    expected = original.replace("Agent(worker)", "Agent(acme:worker)")
+    assert (agents_dir / "lead.md").read_text(encoding="utf-8") == expected

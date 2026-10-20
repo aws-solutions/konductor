@@ -4,8 +4,9 @@
 
 Claude Code names plugin agents "<plugin>:<agent>", and a bare grant such as
 Agent(k-developer) does not match them. This script prefixes every name in an
-Agent(...) frontmatter grant with the plugin name and fails if a grant names
-an agent the plugin does not ship. Prompt bodies are left unchanged.
+Agent(...) frontmatter grant with the plugin name. It fails, writing nothing,
+if a grant names an agent the plugin does not ship or an agent file has no
+frontmatter. Prompt bodies are left unchanged.
 """
 
 import argparse
@@ -35,7 +36,7 @@ def _split_frontmatter(text: str) -> tuple[str, str, bool]:
     if not lines or lines[0].strip() != FRONTMATTER_FENCE:
         return "", text, False
     for index in range(1, len(lines)):
-        if lines[index].strip() == FRONTMATTER_FENCE:
+        if lines[index].rstrip() == FRONTMATTER_FENCE:
             return "\n".join(lines[: index + 1]), "\n".join(lines[index + 1 :]), True
     return "", text, False
 
@@ -98,6 +99,7 @@ def main() -> int:
     for md_path in sorted(args.agents_dir.glob("*.md")):
         frontmatter, body, has_frontmatter = _split_frontmatter(md_path.read_text(encoding="utf-8"))
         if not has_frontmatter:
+            failures.append(f"{md_path.name}: no --- frontmatter block, so its grants cannot be checked")
             continue
         rewritten, prefixed, unknown = rewrite_frontmatter(frontmatter, plugin_name, shipped)
         failures.extend(f"{md_path.name}: Agent(...) names {name!r}" for name in unknown)
@@ -107,7 +109,7 @@ def main() -> int:
 
     if failures:
         print(
-            f"error: Agent(...) grants name agents the {plugin_name} plugin does not ship:\n  "
+            f"error: Agent(...) grants cannot be prefixed for the {plugin_name} plugin:\n  "
             + "\n  ".join(failures),
             file=sys.stderr,
         )

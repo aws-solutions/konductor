@@ -29,7 +29,7 @@ def _split_frontmatter(text: str) -> tuple[str, str, bool]:
     if not lines or lines[0].strip() != FRONTMATTER_FENCE:
         return "", text, False
     for index in range(1, len(lines)):
-        if lines[index].strip() == FRONTMATTER_FENCE:
+        if lines[index].rstrip() == FRONTMATTER_FENCE:
             return "\n".join(lines[: index + 1]), "\n".join(lines[index + 1 :]), True
     return "", text, False
 
