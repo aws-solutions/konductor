@@ -6,6 +6,17 @@ This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Entries are consolidated per release,
 not per individual commit.
 
+## [Unreleased]
+
+### Changed
+
+- The orchestrators (`konductor`, `konductor-mux-orchestrator`, `konductor-cmux-orchestrator`)
+  may now read files, search the codebase, run read-only shell commands, and answer lookup
+  questions themselves instead of spawning a specialist for each. One table in
+  `context/k-orchestrator-routing-rules.md` defines what is allowed, and `claude-teams-behavior`,
+  `mux-dispatch`, and `cmux-dispatch` point at it. Writes, state-changing git, builds, tests,
+  and whole phases still go to specialists.
+
 ## [1.1.0] - 2026-10-14
 
 ### Added

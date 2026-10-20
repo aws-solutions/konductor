@@ -81,6 +81,8 @@ Poll (glob-free — an unmatched `*.done` glob is a hard error under zsh, which
 aborts the whole compound command before `2>/dev/null` can apply):
 `find /tmp/konductor-cmux -maxdepth 1 -name '*.done' 2>/dev/null`
 
+Running the dispatch script, polling, and reading result files are orchestrator direct work, as defined in the Orchestrator Direct Work table of `k-orchestrator-routing-rules.md`. Run them yourself; never dispatch them to another surface.
+
 The `summary` field in the `.done` payload is a short status string (and is
 literally `"shell fallback"` / `"claude exit"` when the completion hook didn't
 run) — not a substitute for the deliverable. Dispatch prompts SHOULD instruct
