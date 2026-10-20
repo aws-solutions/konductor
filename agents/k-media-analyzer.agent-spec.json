@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "skills": {
-      "skillNames": ["constraints"]
+      "skillNames": ["constraints", "humanize-writing"]
     },
     "context": {
       "contextNames": []
@@ -49,7 +49,7 @@
         "TodoWrite",
         "Skill"
       ],
-      "skills": ["constraints"]
+      "skills": ["constraints", "humanize-writing"]
     }
   }
 }

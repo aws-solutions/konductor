@@ -33,7 +33,8 @@ This skill is always active. It applies to every task across all Konductor agent
 ### ALWAYS DO
 
 1. **Read before edit** — Always read the complete file before making changes
-2. **Follow existing patterns** — Always match the conventions already in the codebase
+2. **Follow existing patterns** — Always match the codebase's code conventions (naming, structure, libraries, error handling). Prose style is not one of them: new or changed prose, comments, and docs follow `humanize-writing` even when the surrounding text does not.
+   Leave text you are not otherwise changing as is, and never restyle code, string literals, or quoted or verbatim text.
 3. **Maker-checker** — Always run the maker-checker pattern: generate artifact → validate with the corresponding checker skill before presenting to the user
 4. **Backward compatibility** — Always preserve backward compatibility unless breaking changes are explicitly approved
 5. **Comment complex logic** — Always add inline comments for non-obvious or complex logic
