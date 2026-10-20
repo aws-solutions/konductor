@@ -474,8 +474,6 @@ test('config parser treats telemetry.enabled: false as off in every YAML form', 
     '!!bool tag': 'telemetry:\n  enabled: !!bool false\n',
     'anchor and merge': 'defaults: &d\n  enabled: false\ntelemetry:\n  <<: *d\n',
     'quoted scalar': 'telemetry:\n  enabled: "false"\n',
-    'nested enabled': 'telemetry:\n  nested:\n    enabled: false\n',
-    'commented out': '# telemetry:\n#   enabled: false\n',
     'duplicate key': 'telemetry:\n  enabled: true\n  enabled: false\n',
     'unclosed flow': 'telemetry: {enabled: true\n',
   };
@@ -488,6 +486,8 @@ test('config parser treats telemetry.enabled: false as off in every YAML form', 
     'no enabled key': 'telemetry:\n  endpoint: https://x\n',
     'no telemetry key': 'enabled: false\n',
     'other section': 'other:\n  enabled: false\n',
+    'nested enabled': 'telemetry:\n  nested:\n    enabled: false\n',
+    'commented out': '# telemetry:\n#   enabled: false\n',
     empty: '',
   };
   for (const [name, text] of Object.entries(off)) {
@@ -762,4 +762,18 @@ test('hooks.json rendering fails when an agent name differs from its file name',
     { encoding: 'utf8' },
   );
   assert.notEqual(render.status, 0);
+});
+
+test('a config without telemetry.enabled leaves telemetry on, as the CLI does', () => {
+  const { configDisablesTelemetry } = require('../../scripts/claude-plugin-telemetry-hook.js');
+  assert.equal(configDisablesTelemetry('telemetry:\n  endpoint: https://metrics.example.com/generic\nmcp:\n  enabled: true\n'), false);
+  assert.equal(configDisablesTelemetry('{"telemetry": {"endpoint": "x"}, "mcp": {"enabled": true}}\n'), false);
+  assert.equal(configDisablesTelemetry('mcp:\n  enabled: false\n'), false);
+});
+
+test('comments do not affect the telemetry.enabled reading', () => {
+  const { configDisablesTelemetry } = require('../../scripts/claude-plugin-telemetry-hook.js');
+  assert.equal(configDisablesTelemetry('telemetry:\n  enabled: true  # see **docs**\n'), false);
+  assert.equal(configDisablesTelemetry('# telemetry enabled: false\nmcp: {}\n'), false);
+  assert.equal(configDisablesTelemetry('telemetry:\n  enabled: false  # opted out\n'), true);
 });

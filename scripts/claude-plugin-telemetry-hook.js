@@ -271,32 +271,41 @@ function balanced(text) {
   return depth <= 0;
 }
 
-// Reads `telemetry.enabled` from .konductor/config.yml. Fails closed: if the
-// file mentions both `telemetry` and `enabled` and does not plainly set it to
-// true, telemetry is treated as off. YAML tags, anchors, aliases and merge
-// keys are never interpreted.
+// Reads `telemetry.enabled` from .konductor/config.yml. A missing setting
+// leaves telemetry on, as in the CLI. Fails closed: if `enabled` is set but
+// not plainly to true, telemetry is treated as off. YAML tags, anchors,
+// aliases and merge keys are never interpreted.
 function configDisablesTelemetry(rawText) {
-  const text = rawText.replace(/^\uFEFF/, '');
-  const mentionsSetting = /telemetry/i.test(text) && /enabled/i.test(text);
-  if (!mentionsSetting) {
-    return false;
-  }
-  if (/(^|[\s:,[{-])[&*!]|<</.test(text)) {
-    return true;
-  }
-  const lines = text
+  const lines = rawText
+    .replace(/^\uFEFF/, '')
     .split(/\r?\n/)
     .map((line) => stripComment(line).replace(/\s+$/, ''))
     .filter((line) => line.trim() !== '' && !/^(---|\.\.\.)$/.test(line));
+  const body = lines.join('\n');
+  if (!/telemetry/i.test(body) || !/enabled/i.test(body)) {
+    return false;
+  }
+  if (/(^|[\s:,[{-])[&*!]|<</.test(body)) {
+    return true;
+  }
   let enabled;
-  if (lines.length > 0 && lines[0].startsWith('{')) {
-    const value = parseFlow(lines.join('\n'));
-    const section = value && typeof value === 'object' ? value.telemetry : undefined;
-    enabled = section && typeof section === 'object' && !Array.isArray(section) ? section.enabled : undefined;
+  if (lines[0].startsWith('{')) {
+    const value = parseFlow(body);
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+      return true;
+    }
+    const section = value.telemetry;
+    if (section === undefined) {
+      return false;
+    }
+    if (section === null || typeof section !== 'object' || Array.isArray(section)) {
+      return true;
+    }
+    enabled = Object.hasOwn(section, 'enabled') ? section.enabled : null;
   } else {
     enabled = blockEnabled(lines);
   }
-  return enabled !== true;
+  return enabled !== null && enabled !== true;
 }
 
 function configPaths(cwd, home) {
