@@ -28,17 +28,17 @@ registry entries.
 
 | Agent | Role | Model | Skills | SOPs | MCP |
 | --- | --- | --- | --- | --- | --- |
-| `konductor` | Coordinator. Delegates everything, implements nothing. | `claude-sonnet-5.5` | 13 | 10 | — |
-| `konductor-mux-orchestrator` | Same, dispatching into tmux/zellij panes. | `claude-sonnet-5.5` | 10 | 9 | — |
-| `konductor-cmux-orchestrator` | Same, dispatching into cmux surfaces. | `claude-sonnet-5.5` | 10 | 9 | — |
+| `konductor` | Coordinator. Delegates everything, implements nothing. | `claude-sonnet-5.5` | 14 | 10 | — |
+| `konductor-mux-orchestrator` | Same, dispatching into tmux/zellij panes. | `claude-sonnet-5.5` | 11 | 9 | — |
+| `konductor-cmux-orchestrator` | Same, dispatching into cmux surfaces. | `claude-sonnet-5.5` | 11 | 9 | — |
 | `k-product-manager` | Requirements, user stories, decision research. | `claude-sonnet-5.5` | 16 | 0 | — |
 | `k-architect` | System designs, APIs, data models, threat models. | `claude-sonnet-5.5` | **38** | 4 | `aws-mcp` |
 | `k-developer` | Implementation, code review, git, builds. | `claude-sonnet-5.5` | 27 | 4 | `aws-mcp` |
-| `k-quality-assurance` | Test coverage, E2E strategy, security tests. | `claude-sonnet-5.5` | 12 | 1 | — |
+| `k-quality-assurance` | Test coverage, E2E strategy, security tests. | `claude-sonnet-5.5` | 13 | 1 | — |
 | `k-tpm` | Program plans, status, risk, estimation. | `claude-sonnet-5.5` | 14 | 0 | — |
-| `k-researcher` | External documentation and web research. | `claude-sonnet-5.5` | 8 | 0 | — |
-| `k-browser` | Browser automation via Playwright. | `claude-sonnet-5.5` | 4 | 0 | `playwright-mcp` |
-| `k-media-analyzer` | Interprets PDFs, images, diagrams. | `claude-sonnet-5.5` | 1 | 0 | — |
+| `k-researcher` | External documentation and web research. | `claude-sonnet-5.5` | 9 | 0 | — |
+| `k-browser` | Browser automation via Playwright. | `claude-sonnet-5.5` | 5 | 0 | `playwright-mcp` |
+| `k-media-analyzer` | Interprets PDFs, images, diagrams. | `claude-sonnet-5.5` | 2 | 0 | — |
 
 A few things stand out and are worth knowing before you pick an agent:
 
@@ -227,7 +227,7 @@ The default entry point, and the one to use unless you have a specific reason no
 | --- | --- |
 | **Model** | `claude-sonnet-5.5` |
 | **SOPs** (10) | `kiro-spec-workflow`, `k-delegate`, `k-plan`, `k-context-gathering`, `k-verify`, `k-light-ui-testing`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `about-konductor` |
-| **Skills** (13) | `constraints`, `delegation-protocol`, `agents-md-authoring`, `claude-teams-behavior`, `pre-planning-analysis`, `socratic-elicitation`, `deliberation-panel`, `verification`, `persistent-memory`, `workspace-skills`, `sdlc-navigator`, `sop-state-management`, `about-konductor` — `claude-teams-behavior` is Claude Code only, so Kiro CLI loads 12 |
+| **Skills** (14) | `constraints`, `humanize-writing`, `delegation-protocol`, `agents-md-authoring`, `claude-teams-behavior`, `pre-planning-analysis`, `socratic-elicitation`, `deliberation-panel`, `verification`, `persistent-memory`, `workspace-skills`, `sdlc-navigator`, `sop-state-management`, `about-konductor` — `claude-teams-behavior` is Claude Code only, so Kiro CLI loads 13 |
 | **Kiro CLI tools** | `@builtin`, `subagent`; `allowedTools` is `fs_read` **only** |
 | **Claude Code tools** | `Workflow`, `WebFetch`, `WebSearch`, `TodoWrite`, `Agent(...)` over the 8 specialists, `SendMessage`, `Read`, `Glob`, `Grep`, `Bash`, `Write`, `Skill` |
 | **Can mutate?** | In Claude Code, yes — it declares `Bash` and `Write`. In Kiro CLI it can too, but nothing beyond reading is pre-approved: `allowedTools` is `fs_read` alone, so every write or command stops to ask you |
@@ -241,7 +241,7 @@ specialists — and the only one that declares
 | | |
 | --- | --- |
 | **SOPs** (9) | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `about-konductor` — `konductor`'s ten, minus `k-delegate` |
-| **Skills** (10) | `constraints`, `delegation-protocol`, `sdlc-navigator`, `git-merge`, `pre-planning-analysis`, `socratic-elicitation`, `verification`, `sop-state-management`, `about-konductor`, plus `mux-dispatch` or `cmux-dispatch` |
+| **Skills** (11) | `constraints`, `humanize-writing`, `delegation-protocol`, `sdlc-navigator`, `git-merge`, `pre-planning-analysis`, `socratic-elicitation`, `verification`, `sop-state-management`, `about-konductor`, plus `mux-dispatch` or `cmux-dispatch` |
 | **Kiro CLI tools** | `@builtin`, `read`, `shell`, `todo`; `allowedTools` is `fs_read`, `shell` |
 | **Claude Code tools** | `Workflow`, `TodoWrite`, `Read`, `Bash`, `Grep`, `Glob`, `Write`, `Skill` |
 | **Can mutate?** | In Kiro CLI, shell is **pre-approved** — needed for pane dispatch — and writes ask first. In Claude Code, **both** are granted: they declare `Write` as well as `Bash` |
@@ -289,7 +289,7 @@ lands here. It owns the only source-modifying SOP, `k-code-cleanup`.
 | | |
 | --- | --- |
 | **SOPs** | `k-test-coverage-review` |
-| **Skills** | 12 — `test-coverage-analysis`, `e2e-test-strategy`, `cypress-test-implementation`, `playwright-test-implementation`, `security-test-generation`, `dom-inspection`, `ui-text-validation`, and others |
+| **Skills** | 13 — `test-coverage-analysis`, `e2e-test-strategy`, `cypress-test-implementation`, `playwright-test-implementation`, `security-test-generation`, `dom-inspection`, `ui-text-validation`, and others |
 | **Can mutate?** | Write and shell in both runtimes — pre-approved in Kiro CLI, granted in Claude Code |
 | **Can delegate to** | `k-developer`, `k-browser` — in both runtimes |
 
@@ -322,7 +322,7 @@ Owns `legacy-to-agentic-estimate` and its `convert_estimates.py` script, which i
 | | |
 | --- | --- |
 | **SOPs** | **none** — skill-driven |
-| **Skills** | 8 — `external-research`, `sdlc-navigator`, `document-formats`, `deliberation-panel`, `socratic-elicitation`, `persistent-memory`, `workspace-skills`, `constraints` |
+| **Skills** | 9 — `external-research`, `sdlc-navigator`, `document-formats`, `deliberation-panel`, `socratic-elicitation`, `persistent-memory`, `workspace-skills`, `constraints`, `humanize-writing` |
 | **Kiro CLI tools** | `@builtin`, `subagent`; `allowedTools` is `fs_read` only |
 | **Claude Code tools** | `WebFetch`, `WebSearch`, `TodoWrite`, `Read`, `Skill` — the narrowest tool list of any agent, and the only one with no write or shell tool |
 | **Can mutate?** | **Not in Claude Code** — no write or shell tool is granted at all. In Kiro CLI it pre-approves `fs_read` only, so anything more asks first |
@@ -339,7 +339,7 @@ Optional Slack search is opt-in — see
 | | |
 | --- | --- |
 | **SOPs** | **none** |
-| **Skills** | 4 — `constraints`, `sdlc-navigator`, `app-discovery`, `dom-inspection` |
+| **Skills** | 5 — `constraints`, `sdlc-navigator`, `app-discovery`, `dom-inspection`, `humanize-writing` |
 | **MCP** | `playwright-mcp` (`@playwright/mcp@latest`). Kiro CLI `allowedTools` enumerates 13 specific browser tools — snapshot, screenshot, console messages, network requests, tabs, navigate, navigate back, wait for, click, type, select option, press key, close |
 | **Can mutate?** | Pre-approved for reads only in Kiro CLI, so writes and commands ask first; **write and shell granted in Claude Code** |
 
@@ -351,7 +351,7 @@ explicit allowlist — it cannot, for example, upload files or evaluate arbitrar
 | | |
 | --- | --- |
 | **SOPs** | **none** |
-| **Skills** | 1 — `constraints` only |
+| **Skills** | 2 — `constraints` and `humanize-writing` |
 | **Kiro CLI tools** | `@builtin`; `allowedTools` is `fs_read`, `web_fetch` |
 | **Can mutate?** | Pre-approved for reads only in Kiro CLI, so writes and commands ask first; **write and shell granted in Claude Code** |
 
