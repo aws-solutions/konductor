@@ -23,6 +23,12 @@ not per individual commit.
   AI vocabulary, or filler in new sentences, even when nearby text has them.
 - Every agent declares `humanize-writing`, and its description now covers writing as well
   as editing.
+- The orchestrators (`konductor`, `konductor-mux-orchestrator`, `konductor-cmux-orchestrator`)
+  may now read files, search the codebase, run read-only shell commands, and answer lookup
+  questions themselves instead of spawning a specialist for each. One table in
+  `context/k-orchestrator-routing-rules.md` defines what is allowed, and `claude-teams-behavior`,
+  `mux-dispatch`, and `cmux-dispatch` point at it. Writes, state-changing git, builds, tests,
+  and whole phases still go to specialists.
 
 ### Fixed
 
