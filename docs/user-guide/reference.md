@@ -356,17 +356,17 @@ per runtime, delegation targets, and the full per-agent breakdown, see the
 
 | Agent | Model | SOPs declared | Skills | MCP registry |
 | --- | --- | --- | --- | --- |
-| `konductor` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-delegate`, `k-plan`, `k-context-gathering`, `k-verify`, `k-light-ui-testing`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `about-konductor` | 13 | — |
-| `konductor-mux-orchestrator` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `about-konductor` | 10 | — |
-| `konductor-cmux-orchestrator` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `about-konductor` | 10 | — |
+| `konductor` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-delegate`, `k-plan`, `k-context-gathering`, `k-verify`, `k-light-ui-testing`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `about-konductor` | 14 | — |
+| `konductor-mux-orchestrator` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `about-konductor` | 11 | — |
+| `konductor-cmux-orchestrator` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `about-konductor` | 11 | — |
 | `k-architect` | `claude-sonnet-5.5` | `k-design-doc-creation`, `k-existing-design-review`, `k-principal-engineer-design-review`, `k-adversarial-pull-request-review` | 38 | `aws-mcp` |
 | `k-developer` | `claude-sonnet-5.5` | `k-code-cleanup`, `k-pre-cr-critique`, `k-codebase-analysis`, `k-code-review-workflow` | 27 | `aws-mcp` |
-| `k-quality-assurance` | `claude-sonnet-5.5` | `k-test-coverage-review` | 12 | — |
+| `k-quality-assurance` | `claude-sonnet-5.5` | `k-test-coverage-review` | 13 | — |
 | `k-product-manager` | `claude-sonnet-5.5` | — | 16 | — |
 | `k-tpm` | `claude-sonnet-5.5` | — | 14 | — |
-| `k-researcher` | `claude-sonnet-5.5` | — | 8 | — |
-| `k-browser` | `claude-sonnet-5.5` | — | 4 | `playwright-mcp` |
-| `k-media-analyzer` | `claude-sonnet-5.5` | — | 1 | — |
+| `k-researcher` | `claude-sonnet-5.5` | — | 9 | — |
+| `k-browser` | `claude-sonnet-5.5` | — | 5 | `playwright-mcp` |
+| `k-media-analyzer` | `claude-sonnet-5.5` | — | 2 | — |
 
 Every agent runs `claude-sonnet-5.5`. The SOP column is each spec's
 `dependencies.agentSops.agentSopNames`; the skill count is
