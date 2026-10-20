@@ -22,7 +22,6 @@ const SCHEMA_PATH = path.join(REPO_ROOT, 'docs', 'telemetry-schema.json');
 const REPORT_RS = path.join(REPO_ROOT, 'cli', 'konductor-rs', 'src', 'cli', 'telemetry', 'report.rs');
 const TELEMETRY_HOOK_RS = path.join(REPO_ROOT, 'cli', 'konductor-rs', 'src', 'cli', 'telemetry_hook.rs');
 const IDENTITY_RS = path.join(REPO_ROOT, 'shared', 'konductor-telemetry', 'src', 'identity.rs');
-const NET_RS = path.join(REPO_ROOT, 'shared', 'konductor-telemetry', 'src', 'net.rs');
 const STUB = path.join(__dirname, 'claude-plugin-telemetry-https-stub.js');
 
 const hook = require(HOOK_SOURCE);
@@ -170,84 +169,6 @@ test('identity and payload constants match the Rust sources', () => {
   const maxPayload = rustConst(TELEMETRY_HOOK_RS, 'MAX_HOOK_PAYLOAD_BYTES');
   assert.match(maxPayload, /^[\d\s*]+$/);
   assert.equal(hook.MAX_HOOK_PAYLOAD_BYTES, maxPayload.split('*').reduce((n, f) => n * Number(f), 1));
-});
-
-function rustFnBody(source, name) {
-  const start = source.indexOf(`fn ${name}(`);
-  assert.notEqual(start, -1, `fn ${name} not found in net.rs`);
-  const open = source.indexOf('{', start);
-  let depth = 0;
-  for (let i = open; i < source.length; i++) {
-    depth += source[i] === '{' ? 1 : source[i] === '}' ? -1 : 0;
-    if (depth === 0) {
-      return source.slice(open, i + 1);
-    }
-  }
-  throw new Error(`unbalanced fn ${name}`);
-}
-
-test('host allowlist ranges match net.rs', () => {
-  const source = fs.readFileSync(NET_RS, 'utf8');
-  const hex = (text) => parseInt(text.replace(/_/g, ''), text.startsWith('0b') ? 2 : 16);
-  const bin = (text) => parseInt(text.replace(/^0b/, '').replace(/_/g, ''), 2);
-
-  // Each std predicate maps to sample addresses inside and just outside its range.
-  const ipv4Predicates = {
-    is_unspecified: { in: ['0.0.0.0'], out: [] },
-    is_loopback: { in: ['127.0.0.1', '127.255.255.255'], out: ['128.0.0.1'] },
-    is_link_local: { in: ['169.254.0.1', '169.254.255.255'], out: ['169.255.0.1'] },
-    is_private: {
-      in: ['10.0.0.1', '10.255.255.255', '172.16.0.1', '172.31.255.255', '192.168.0.1'],
-      out: ['11.0.0.1', '172.15.255.255', '172.32.0.1', '192.169.0.1'],
-    },
-    is_shared_address_space_cgnat: { in: [], out: [] },
-  };
-  const ipv4Body = rustFnBody(source, 'is_disallowed_ipv4');
-  const used = [...ipv4Body.matchAll(/\b(is_\w+)\(/g)].map((m) => m[1]).sort();
-  assert.deepEqual(used, Object.keys(ipv4Predicates).sort(), 'is_disallowed_ipv4 changed; update the JS allowlist');
-  for (const { in: inside, out } of Object.values(ipv4Predicates)) {
-    inside.forEach((host) => assert.equal(hook.isDisallowedHost(host), true, host));
-    out.forEach((host) => assert.equal(hook.isDisallowedHost(host), false, host));
-  }
-
-  const cgnat = /octets\[0\] == (\d+) && \(octets\[1\] & (0b[01_]+)\) == (0b[01_]+)/.exec(
-    rustFnBody(source, 'is_shared_address_space_cgnat'),
-  );
-  assert.ok(cgnat, 'CGNAT range not found');
-  const [first, mask, value] = [Number(cgnat[1]), bin(cgnat[2]), bin(cgnat[3])];
-  const low = value;
-  const high = value | (~mask & 0xff);
-  assert.equal(hook.isDisallowedHost(`${first}.${low}.0.0`), true);
-  assert.equal(hook.isDisallowedHost(`${first}.${high}.255.255`), true);
-  assert.equal(hook.isDisallowedHost(`${first}.${low - 1}.255.255`), false);
-  assert.equal(hook.isDisallowedHost(`${first}.${high + 1}.0.0`), false);
-
-  const ipBody = rustFnBody(source, 'is_disallowed_ip');
-  const prefixes = [...ipBody.matchAll(/\(v6\.segments\(\)\[0\] & (0x[0-9a-f]+)\) == (0x[0-9a-f]+)/g)];
-  assert.equal(prefixes.length, 2, 'IPv6 prefix checks changed; update the JS allowlist');
-  for (const [, maskText, valueText] of prefixes) {
-    const prefixMask = hex(maskText);
-    const prefix = hex(valueText);
-    const top = prefix | (~prefixMask & 0xffff);
-    assert.equal(hook.isDisallowedHost(`${prefix.toString(16)}::1`), true, valueText);
-    assert.equal(hook.isDisallowedHost(`${top.toString(16)}:ffff::1`), true, valueText);
-    assert.equal(hook.isDisallowedHost(`${((top + 1) & 0xffff).toString(16)}::1`), false, valueText);
-  }
-
-  const sixToFour = /segments\[0\] != (0x[0-9a-f]+)/.exec(rustFnBody(source, 'six_to_four_embedded_ipv4'));
-  assert.ok(sixToFour, '6to4 prefix not found');
-  assert.equal(hook.isDisallowedHost(`${hex(sixToFour[1]).toString(16)}:a00:1::`), true);
-  assert.equal(hook.isDisallowedHost(`${hex(sixToFour[1]).toString(16)}:808:808::`), false);
-
-  const nat64 = /segments\[\.\.6\] != \[(0x[0-9a-f]+), (0x[0-9a-f]+), 0, 0, 0, 0\]/.exec(
-    rustFnBody(source, 'nat64_well_known_prefix_embedded_ipv4'),
-  );
-  assert.ok(nat64, 'NAT64 prefix not found');
-  const nat64Prefix = `${hex(nat64[1]).toString(16)}:${hex(nat64[2]).toString(16)}`;
-  assert.equal(hook.isDisallowedHost(`${nat64Prefix}::a00:1`), true);
-  assert.equal(hook.isDisallowedHost(`${nat64Prefix}::808:808`), false);
-
-  assert.match(rustFnBody(source, 'is_disallowed_local_host'), /eq_ignore_ascii_case\("localhost"\)/);
 });
 
 function jsonType(value) {
@@ -600,102 +521,6 @@ test('a write that makes no progress fails closed and publishes nothing', (t) =>
 });
 
 // ── Endpoint ─────────────────────────────────────────────────────────────
-
-test('KONDUCTOR_METRICS_ENDPOINT overrides the default when it passes the allowlist', (t) => {
-  const allowed = runHook(t, { ...AGENT_EVENT, env: { KONDUCTOR_METRICS_ENDPOINT: 'https://collector.example.com/in' } });
-  assert.equal(allowed.requests.length, 1);
-  assert.equal(allowed.requests[0].url, 'https://collector.example.com/in');
-  for (const endpoint of ['http://collector.example.com/in', 'https://127.0.0.1/in', 'https://x@localhost/in', 'https://[::1]/in']) {
-    const { result, requests } = runHook(t, { ...AGENT_EVENT, env: { KONDUCTOR_METRICS_ENDPOINT: endpoint } });
-    assertSilent(result);
-    assert.equal(requests.length, 0, endpoint);
-  }
-});
-
-test('host allowlist matches the CLI ranges', () => {
-  const disallowed = [
-    'localhost', 'LocalHost', '127.0.0.1', '10.1.2.3', '172.16.0.1', '172.31.255.255', '192.168.1.1',
-    '169.254.169.254', '0.0.0.0', '100.64.0.1', '100.127.255.255', '::', '::1', 'fe80::1', 'febf::1',
-    'fc00::1', 'fd12::1', '::ffff:127.0.0.1', '::ffff:7f00:1', '::10.0.0.1', '2002:7f00:1::',
-    '64:ff9b::a00:1', '64:ff9b::192.168.0.1',
-  ];
-  const allowed = [
-    'metrics.awssolutionsbuilder.com', '8.8.8.8', '172.32.0.1', '100.128.0.1', '2001:db8::1',
-    '::ffff:808:808', '2002:808:808::', '64:ff9b::808:808',
-  ];
-  for (const host of disallowed) {
-    assert.equal(hook.isDisallowedHost(host), true, host);
-  }
-  for (const host of allowed) {
-    assert.equal(hook.isDisallowedHost(host), false, host);
-  }
-});
-
-test('localhost names are rejected with or without a trailing dot', () => {
-  for (const host of ['localhost.', 'LOCALHOST.', 'foo.localhost', 'a.b.localhost.', '127.0.0.1.']) {
-    assert.equal(hook.resolveEndpoint({ KONDUCTOR_METRICS_ENDPOINT: `https://${host}/in` }), null, host);
-  }
-  assert.notEqual(hook.resolveEndpoint({ KONDUCTOR_METRICS_ENDPOINT: 'https://notlocalhost.example/in' }), null);
-});
-
-function lookupWith(answer, options = {}) {
-  const fakeDns = (hostname, opts, callback) => {
-    assert.equal(opts.all, true);
-    if (answer !== 'hang') {
-      setImmediate(() => callback(null, answer.map((address) => ({ address, family: address.includes(':') ? 6 : 4 }))));
-    }
-  };
-  const lookup = hook.checkedLookup(fakeDns, 50);
-  return new Promise((resolve) => {
-    lookup('collector.example.com', options, (err, address, family) => resolve({ err, address, family }));
-  });
-}
-
-test('the connection lookup rejects any resolved address on the denylist', async () => {
-  for (const answer of [['127.0.0.1'], ['10.1.2.3'], ['::1'], ['8.8.8.8', '192.168.0.1'], ['::ffff:169.254.169.254'], []]) {
-    const { err } = await lookupWith(answer);
-    assert.ok(err instanceof Error, answer.join(','));
-  }
-});
-
-test('the connection lookup pins the checked address in both callback shapes', async () => {
-  const single = await lookupWith(['8.8.8.8', '2001:4860:4860::8888']);
-  assert.equal(single.err, null);
-  assert.equal(single.address, '8.8.8.8');
-  assert.equal(single.family, 4);
-  const all = await lookupWith(['2001:4860:4860::8888'], { all: true });
-  assert.equal(all.err, null);
-  assert.deepEqual(all.address, [{ address: '2001:4860:4860::8888', family: 6 }]);
-});
-
-test('the connection lookup fails closed when DNS does not answer in time', async () => {
-  const started = Date.now();
-  const { err } = await lookupWith('hang');
-  assert.ok(err instanceof Error);
-  assert.ok(Date.now() - started < 1000);
-});
-
-test('a hostname that resolves to a private address sends nothing', (t) => {
-  for (const address of ['127.0.0.1', '10.0.0.7', '::1']) {
-    const { result, requests } = runHook(t, { ...AGENT_EVENT, env: { TELEMETRY_STUB_DNS: address } });
-    assertSilent(result);
-    assert.equal(requests.length, 0, address);
-  }
-  const { requests } = runHook(t, { ...AGENT_EVENT, env: { TELEMETRY_STUB_DNS: '8.8.8.8' } });
-  assert.equal(requests.length, 1);
-  assert.equal(requests[0].pinned, '8.8.8.8');
-});
-
-test('the local-endpoint escape hatch skips the lookup check', (t) => {
-  const { requests } = runHook(t, {
-    ...AGENT_EVENT,
-    env: { TELEMETRY_STUB_DNS: '127.0.0.1', KONDUCTOR_TELEMETRY_ALLOW_LOCAL_ENDPOINT: '1' },
-  });
-  assert.equal(requests.length, 1);
-  assert.equal(requests[0].hasLookup, false);
-});
-
-// ── Bad input ────────────────────────────────────────────────────────────
 
 test('bad input prints nothing and exits 0', (t) => {
   const cases = [

@@ -115,8 +115,8 @@ To opt out, do any one of these:
 - Set `"telemetry_consent": false` in `~/.konductor/telemetry.json`. This
   also stops the CLI from reporting on this machine.
 
-The plugin sends to the default endpoint unless `KONDUCTOR_METRICS_ENDPOINT`
-is set. It does not read `telemetry.endpoint` from `.konductor/config.yml`.
+The plugin always sends to the default endpoint. It ignores
+`KONDUCTOR_METRICS_ENDPOINT` and `telemetry.endpoint`.
 
 See [Data Collection](../../../README.md#data-collection) for the full
 details and the event schema.

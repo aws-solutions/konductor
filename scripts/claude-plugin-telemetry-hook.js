@@ -20,10 +20,8 @@
 'use strict';
 
 const crypto = require('node:crypto');
-const dns = require('node:dns');
 const fs = require('node:fs');
 const https = require('node:https');
-const net = require('node:net');
 const os = require('node:os');
 const path = require('node:path');
 
@@ -34,7 +32,6 @@ const NIL_UUID_SENTINEL = '0'.repeat(64);
 const HARNESS = 'claude-plugin';
 const INSTANCE_SCHEMA_VERSION = 1;
 const MAX_HOOK_PAYLOAD_BYTES = 64 * 1024;
-const DNS_TIMEOUT_MS = 500;
 const SEND_TIMEOUT_MS = 3000;
 const AGENT_INVOCATION = 'agent-invocation';
 const SUBAGENT_INVOCATION = 'subagent-invocation';
@@ -497,168 +494,6 @@ function ensureInstance(home, now = new Date()) {
   }
 }
 
-// ── Endpoint allowlist (same rules as konductor-telemetry-report.sh) ─────
-
-function parseIpv4(text) {
-  const parts = text.split('.');
-  if (parts.length !== 4 || !parts.every((p) => /^\d{1,3}$/.test(p) && Number(p) <= 255)) {
-    return null;
-  }
-  return parts.map(Number);
-}
-
-function parseIpv6(text) {
-  let head = text;
-  let tail = [];
-  const lastColon = text.lastIndexOf(':');
-  if (text.slice(lastColon + 1).includes('.')) {
-    const v4 = parseIpv4(text.slice(lastColon + 1));
-    if (v4 === null) {
-      return null;
-    }
-    head = text.slice(0, lastColon + 1);
-    if (head.endsWith(':') && !head.endsWith('::')) {
-      head = head.slice(0, -1);
-    }
-    tail = [(v4[0] << 8) | v4[1], (v4[2] << 8) | v4[3]];
-  }
-  const hextets = (part) => (part === '' ? [] : part.split(':').map((h) => parseInt(h, 16)));
-  const halves = head.split('::');
-  if (halves.length > 2) {
-    return null;
-  }
-  const left = hextets(halves[0]);
-  const right = halves.length === 2 ? hextets(halves[1]) : [];
-  const fill = 8 - left.length - right.length - tail.length;
-  if (fill < 0 || (halves.length === 1 && fill !== 0)) {
-    return null;
-  }
-  const segments = [...left, ...new Array(fill).fill(0), ...right, ...tail];
-  return segments.every((s) => Number.isInteger(s) && s >= 0 && s <= 0xffff) ? segments : null;
-}
-
-function isDisallowedIpv4([a, b]) {
-  return (
-    a === 0 ||
-    a === 127 ||
-    a === 10 ||
-    (a === 169 && b === 254) ||
-    (a === 172 && b >= 16 && b <= 31) ||
-    (a === 192 && b === 168) ||
-    (a === 100 && (b & 0xc0) === 0x40)
-  );
-}
-
-function embeddedIpv4(hi, lo) {
-  return [hi >> 8, hi & 0xff, lo >> 8, lo & 0xff];
-}
-
-function isDisallowedIpv6(s) {
-  const zeroThrough = (n) => s.slice(0, n).every((x) => x === 0);
-  if (zeroThrough(5) && s[5] === 0xffff) {
-    return isDisallowedIpv4(embeddedIpv4(s[6], s[7]));
-  }
-  if (zeroThrough(6)) {
-    // `::` and `::1`; anything else here is the IPv4-compatible form.
-    if (s[6] === 0 && (s[7] === 0 || s[7] === 1)) {
-      return true;
-    }
-    return isDisallowedIpv4(embeddedIpv4(s[6], s[7]));
-  }
-  if (s[0] === 0x2002) {
-    return isDisallowedIpv4(embeddedIpv4(s[1], s[2]));
-  }
-  if (s[0] === 0x64 && s[1] === 0xff9b && s.slice(2, 6).every((x) => x === 0)) {
-    return isDisallowedIpv4(embeddedIpv4(s[6], s[7]));
-  }
-  return (s[0] & 0xffc0) === 0xfe80 || (s[0] & 0xfe00) === 0xfc00;
-}
-
-function isDisallowedHost(rawHost) {
-  const host = rawHost.toLowerCase().replace(/\.$/, '');
-  if (host === 'localhost' || host.endsWith('.localhost')) {
-    return true;
-  }
-  if (net.isIPv4(host)) {
-    return isDisallowedIpv4(parseIpv4(host));
-  }
-  if (net.isIPv6(host)) {
-    const segments = parseIpv6(host);
-    return segments === null || isDisallowedIpv6(segments);
-  }
-  return false;
-}
-
-function allowLocalEndpoint(env) {
-  return nonEmptyString(env.KONDUCTOR_TELEMETRY_ALLOW_LOCAL_ENDPOINT) !== null;
-}
-
-// Like the CLI's endpoint_host_is_allowed_with_pin: the host is checked
-// here, and its resolved addresses are checked by checkedLookup when the
-// request connects.
-function resolveEndpoint(env) {
-  const candidate = nonEmptyString(env.KONDUCTOR_METRICS_ENDPOINT) || DEFAULT_TELEMETRY_ENDPOINT;
-  if (!candidate.startsWith('https://')) {
-    return null;
-  }
-  let url;
-  try {
-    url = new URL(candidate);
-  } catch {
-    return null;
-  }
-  if (url.protocol !== 'https:' || url.hostname === '') {
-    return null;
-  }
-  if (!allowLocalEndpoint(env)) {
-    const host = url.hostname.replace(/^\[(.*)\]$/, '$1');
-    if (isDisallowedHost(host)) {
-      return null;
-    }
-  }
-  return url;
-}
-
-// A `lookup` for https.request: resolves every address, refuses the
-// connection if any is disallowed, and hands the socket the address it
-// checked, so a second resolution can't swap it. A slow resolver is denied,
-// as in the CLI.
-function checkedLookup(lookupAll = (...args) => dns.lookup(...args), timeoutMs = DNS_TIMEOUT_MS) {
-  return (hostname, options, callback) => {
-    if (typeof options === 'function') {
-      callback = options;
-      options = {};
-    }
-    let settled = false;
-    const finish = (err, chosen) => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      clearTimeout(timer);
-      if (err) {
-        callback(err);
-      } else if (options && options.all) {
-        callback(null, [chosen]);
-      } else {
-        callback(null, chosen.address, chosen.family);
-      }
-    };
-    const timer = setTimeout(() => finish(new Error('DNS lookup timed out')), timeoutMs);
-    lookupAll(hostname, { all: true, verbatim: true }, (err, addresses) => {
-      if (err) {
-        finish(err);
-      } else if (!Array.isArray(addresses) || addresses.length === 0) {
-        finish(new Error('no addresses'));
-      } else if (addresses.some(({ address }) => net.isIP(String(address)) === 0 || isDisallowedHost(String(address)))) {
-        finish(new Error('endpoint resolves to a disallowed address'));
-      } else {
-        finish(null, addresses[0]);
-      }
-    });
-  };
-}
-
 // ── Agent names ──────────────────────────────────────────────────────────
 
 function readPluginManifest(pluginRoot) {
@@ -727,7 +562,7 @@ function resolveInvocation(eventType, payload, env, pluginName, agents) {
 
 // ── Transport ────────────────────────────────────────────────────────────
 
-function send(url, body, env) {
+function send(url, body) {
   return new Promise((resolve) => {
     let request;
     const done = () => {
@@ -739,7 +574,7 @@ function send(url, body, env) {
         request.destroy();
       }
       done();
-    }, DNS_TIMEOUT_MS + SEND_TIMEOUT_MS);
+    }, SEND_TIMEOUT_MS);
     try {
       const payload = Buffer.from(JSON.stringify(body), 'utf8');
       const options = {
@@ -747,9 +582,6 @@ function send(url, body, env) {
         headers: { 'Content-Type': 'application/json', 'Content-Length': payload.length },
         timeout: SEND_TIMEOUT_MS,
       };
-      if (!allowLocalEndpoint(env)) {
-        options.lookup = checkedLookup();
-      }
       request = https.request(url, options);
       request.on('response', (response) => {
         response.resume();
@@ -826,10 +658,6 @@ async function run(argv, env) {
   if (invocation === null) {
     return;
   }
-  const endpoint = resolveEndpoint(env);
-  if (endpoint === null) {
-    return;
-  }
   if (home === null) {
     return;
   }
@@ -838,7 +666,7 @@ async function run(argv, env) {
     return;
   }
 
-  await send(endpoint, buildEventBody({ ...invocation, uuid: record.UUID, version: manifest.version }), env);
+  await send(DEFAULT_TELEMETRY_ENDPOINT, buildEventBody({ ...invocation, uuid: record.UUID, version: manifest.version }));
 }
 
 function main() {
@@ -846,7 +674,7 @@ function main() {
   process.on('uncaughtException', quietExit);
   process.on('unhandledRejection', quietExit);
   // Backstop in case stdin never closes.
-  setTimeout(quietExit, DNS_TIMEOUT_MS + SEND_TIMEOUT_MS + 2000).unref();
+  setTimeout(quietExit, SEND_TIMEOUT_MS + 2000).unref();
   run(process.argv.slice(2), process.env).then(quietExit, quietExit);
 }
 
@@ -861,12 +689,9 @@ module.exports = {
   NIL_UUID_SENTINEL,
   SOLUTION_ID,
   buildEventBody,
-  checkedLookup,
   configDisablesTelemetry,
   ensureInstance,
-  isDisallowedHost,
   konductorAgentName,
   readInstanceRaw,
-  resolveEndpoint,
   resolveInvocation,
 };
