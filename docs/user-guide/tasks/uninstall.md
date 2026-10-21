@@ -25,7 +25,7 @@ Would remove Konductor 1.0.0 from Kiro CLI:
   agents          11
   skills          82
   SOPs            19
-  context files    2
+  context files    1
 
   skills/backend-review/SKILL.md   (local edits would be destroyed)
 

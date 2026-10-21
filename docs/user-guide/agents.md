@@ -50,16 +50,12 @@ A few things stand out and are worth knowing before you pick an agent:
   both runtimes; `claude-teams-behavior` is declared only in the spec's
   `clientConfig.claudeCli` block, so Kiro CLI sees 12. Every other agent loads the same
   set on both.
-- **`humanize-writing` loads on demand for seven agents.** The three orchestrators,
-  `k-quality-assurance`, `k-researcher`, `k-browser` and `k-media-analyzer` declare it but do
-  not preload it, so the counts above leave it out for them.
 - **Five agents declare zero SOPs**: `k-product-manager`, `k-tpm`, `k-researcher`,
   `k-browser`, and `k-media-analyzer`. They are skill-driven — you ask for an outcome and
   they apply the relevant skills, rather than following a scripted procedure.
 
-Every agent declares the `context/k-core-rules.md` context file. Only the three orchestrators
-also declare `context/k-orchestrator-routing-rules.md`, which is what makes them behave as
-dispatchers.
+Only the three orchestrators declare a context file
+(`context/k-orchestrator-routing-rules.md`), which is what makes them behave as dispatchers.
 
 ---
 
