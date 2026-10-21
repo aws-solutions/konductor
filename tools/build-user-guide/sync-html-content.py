@@ -113,8 +113,18 @@ EDITS = [
      "Both are owned by <code style=\"font-family:'JetBrains Mono',monospace;font-size:.87em;color:var(--tx)\">k-architect</code>, which carries 37 of the package's 82 skills — close to half, and by far the largest share of any agent.",
      "Both are owned by <code style=\"font-family:'JetBrains Mono',monospace;font-size:.87em;color:var(--tx)\">k-architect</code>, which carries 38 of the package's 82 skills — close to half, and by far the largest share of any agent."),
     ("reference roster note",
-     "k-architect is the only agent on a different model. Skill counts are from each spec's clientConfig.claudeCli.skills array.",
-     "Every agent runs claude-sonnet-5.5. Skill counts are from each spec's clientConfig.claudeCli.skills array, which matches dependencies.skills.skillNames everywhere except konductor — that one adds claude-teams-behavior for Claude Code only, so Kiro CLI sees 12.",),
+     "Every agent runs claude-sonnet-5.5. Skill counts are from each spec's clientConfig.claudeCli.skills array, which matches dependencies.skills.skillNames everywhere except konductor — that one adds claude-teams-behavior for Claude Code only, so Kiro CLI sees 12.",
+     "Every agent runs claude-sonnet-5.5. Skill counts are from each spec's clientConfig.claudeCli.skills array, the set Claude Code preloads. It differs from dependencies.skills.skillNames in two places. konductor declares claude-teams-behavior for Claude Code only. Seven agents (the three orchestrators, k-quality-assurance, k-researcher, k-browser, k-media-analyzer) declare humanize-writing in skillNames but do not preload it, so both runtimes load it on demand.",),
+    # ---- humanize-writing is declared by every agent, preloaded by four -----
+    ("skills catalog: humanize-writing row",
+     '"k":"humanize-writing","v":"Rewrites text to remove AI-writing tells across 34 categories while preserving meaning and voice. — REACH FOR IT: A draft is accurate but obviously machine-written. · DECLARED BY: architect, product-manager, tpm"',
+     '"k":"humanize-writing","v":"Rewrites text to remove AI-writing tells across 34 categories while preserving meaning and voice. — REACH FOR IT: Writing or editing prose, or a draft reads machine-written. · DECLARED BY: architect, developer, product-manager, tpm preload it; every other agent loads it on demand"'),
+    ("skills most: k-media-analyzer and the preload note",
+     "k-media-analyzer carries only constraints — its capability is the model's ability to interpret PDFs and images, not a skill library.\"]",
+     "k-media-analyzer carries constraints and humanize-writing, and preloads only constraints. Its capability is the model's ability to interpret PDFs and images, not a skill library.\",\"The counts are the skills Claude Code preloads (clientConfig.claudeCli.skills). Seven agents, the three orchestrators plus k-quality-assurance, k-researcher, k-browser and k-media-analyzer, also declare humanize-writing and load it on demand, so it is not counted for them.\"]"),
+    ("agents bullet: humanize-writing loads on demand",
+     '"Five agents declare zero SOPs: product-manager',
+     '"humanize-writing loads on demand for seven agents. The three orchestrators, k-quality-assurance, k-researcher, k-browser and k-media-analyzer declare it but do not preload it, so the counts above leave it out for them.", "Five agents declare zero SOPs: product-manager'),
     # ---- Claude Code does not prefix agent names ----------------------------
     # Spent: the prefix sentences these edits produced have since been removed
     # from the guide entirely, so neither their `old` nor their `new` exists any
