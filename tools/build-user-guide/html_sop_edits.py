@@ -173,10 +173,10 @@ SOP_EDITS += [
 SOP_EDITS += [
     ("agents bullet: architect model",
      "k-architect is the only agent on a different model (claude-opus-4.6) and carries 32 skills \u2014 nearly a third of the library.",
-     "k-architect carries 37 skills \u2014 close to half the library, and by far the largest share of any agent. Every agent runs the same model, claude-sonnet-5."),
+     "k-architect carries 37 skills \u2014 close to half the library, and by far the largest share of any agent. Every agent runs the same model, claude-sonnet-5.5."),
     ("specialists table: architect",
      '{ k: "k-architect", v: "claude-opus-4.6, the only agent not on Sonnet. SOPs: k-design-doc-creation, k-existing-design-review, k-adversarial-pull-request-review. 32 skills.',
-     '{ k: "k-architect", v: "claude-sonnet-5, the model every agent runs. SOPs: k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review, k-adversarial-pull-request-review. 38 skills.'),
+     '{ k: "k-architect", v: "claude-sonnet-5.5, the model every agent runs. SOPs: k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review, k-adversarial-pull-request-review. 38 skills.'),
     ("specialists table: developer skills",
      '{ k: "k-developer", v: "SOPs: k-code-cleanup, k-pre-cr-critique, k-codebase-analysis, k-code-review-workflow. 19 skills',
      '{ k: "k-developer", v: "SOPs: k-code-cleanup, k-pre-cr-critique, k-codebase-analysis, k-code-review-workflow. 27 skills'),
@@ -766,7 +766,7 @@ SOP_EDITS += [
      "\n\n          "),
     ("prerequisites: essentials gains a Rust row",
      "<div style=\"display:grid;grid-template-columns:1.2fr 1.7fr 1.1fr\">\n                <div style=\"padding:13px 16px;font-size:14.5px;font-weight:600\">A terminal</div>",
-     "<div style=\"display:grid;grid-template-columns:1.2fr 1.7fr 1.1fr;border-bottom:1px solid var(--bd)\">\n                <div style=\"padding:13px 16px;font-size:14.5px;font-weight:600\">A Rust toolchain</div>\n                <div style=\"padding:13px 16px;font-size:14.5px;line-height:1.55;color:var(--mu)\">No release has been published yet, so you build the CLI from a clone — rustup is the usual way to get one</div>\n                <div style=\"padding:13px 16px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--lav)\">cargo --version</div>\n              </div>\n              <div style=\"display:grid;grid-template-columns:1.2fr 1.7fr 1.1fr\">\n                <div style=\"padding:13px 16px;font-size:14.5px;font-weight:600\">A terminal</div>"),
+     "<div style=\"display:grid;grid-template-columns:1.2fr 1.7fr 1.1fr;border-bottom:1px solid var(--bd)\">\n                <div style=\"padding:13px 16px;font-size:14.5px;font-weight:600\">A Rust toolchain</div>\n                <div style=\"padding:13px 16px;font-size:14.5px;line-height:1.55;color:var(--mu)\">Built from a clone of the repository — rustup is the usual way to get a toolchain</div>\n                <div style=\"padding:13px 16px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--lav)\">cargo --version</div>\n              </div>\n              <div style=\"display:grid;grid-template-columns:1.2fr 1.7fr 1.1fr\">\n                <div style=\"padding:13px 16px;font-size:14.5px;font-weight:600\">A terminal</div>"),
 ]
 
 # A SECOND "install detects the runtime" claim, on the Kiro CLI install page --
