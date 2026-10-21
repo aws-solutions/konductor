@@ -49,7 +49,7 @@
         "TodoWrite",
         "Skill"
       ],
-      "skills": ["constraints", "humanize-writing"]
+      "skills": ["constraints"]
     }
   }
 }

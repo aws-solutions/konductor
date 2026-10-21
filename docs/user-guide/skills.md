@@ -126,7 +126,7 @@ Checking a design before anyone builds it.
 | `doc-accuracy-analyzer` | Six-step verification of a technical document against primary sources: extracts claims, investigates each, classifies, reports. | You need to know which claims in a document are actually true. | `k-architect` |
 | `aws-service-validator` | Validates AWS service and feature claims against live AWS documentation. Catches hallucinated AWS assertions. | Any design that names AWS services. This is the anti-hallucination gate. | `k-architect` |
 | `adversarial-design-review` | Reviews design sections from an adversarial stance, classifying CRITICAL / IMPORTANT / MINOR. Path B fallback when no devil's-advocate subagent is installed. | You want the design attacked and have no separate adversarial agent available. | `k-architect` |
-| `humanize-writing` | Rewrites text to remove AI-writing tells across 34 categories while preserving meaning and voice. | Writing or editing prose, or a draft reads machine-written. | `konductor`, `konductor-mux-orchestrator`, `konductor-cmux-orchestrator`, `k-product-manager`, `k-architect`, `k-developer`, `k-quality-assurance`, `k-tpm`, `k-researcher`, `k-browser`, `k-media-analyzer` |
+| `humanize-writing` | Rewrites text to remove AI-writing tells across 34 categories while preserving meaning and voice. | Writing or editing prose, or a draft reads machine-written. | `k-architect`, `k-developer`, `k-product-manager`, `k-tpm` preload it; every other agent loads it on demand |
 
 ---
 
@@ -252,17 +252,23 @@ Useful when deciding which agent to talk to directly.
 | `k-developer` | 27 |
 | `k-product-manager` | 16 |
 | `k-tpm` | 14 |
-| `konductor` | 14 |
-| `k-quality-assurance` | 13 |
-| `konductor-cmux-orchestrator` | 11 |
-| `konductor-mux-orchestrator` | 11 |
-| `k-researcher` | 9 |
-| `k-browser` | 5 |
-| `k-media-analyzer` | 2 |
+| `konductor` | 13 |
+| `k-quality-assurance` | 12 |
+| `konductor-cmux-orchestrator` | 10 |
+| `konductor-mux-orchestrator` | 10 |
+| `k-researcher` | 8 |
+| `k-browser` | 4 |
+| `k-media-analyzer` | 1 |
 
 `k-architect` carries by far the most, which is why design work routed anywhere else tends to
-come back thinner. `k-media-analyzer` carries only `constraints` — its capability is the
-model's ability to interpret PDFs and images, not a skill library.
+come back thinner. `k-media-analyzer` carries `constraints` and `humanize-writing`, and preloads
+only `constraints`. Its capability is the model's ability to interpret PDFs and images, not a
+skill library.
+
+The counts are the skills Claude Code preloads (`clientConfig.claudeCli.skills`). Seven agents,
+the three orchestrators plus `k-quality-assurance`, `k-researcher`, `k-browser` and
+`k-media-analyzer`, also declare `humanize-writing` and load it on demand, so it is not counted
+for them.
 
 ---
 
