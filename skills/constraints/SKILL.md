@@ -33,8 +33,7 @@ This skill is always active. It applies to every task across all Konductor agent
 ### ALWAYS DO
 
 1. **Read before edit** — Always read the complete file before making changes
-2. **Follow existing patterns** — Match the codebase's conventions for code and docs: naming, structure, libraries, error handling, templates, terminology, and formatting. Do not copy its writing habits: in sentences you write or rewrite (docs, comments, messages), avoid the patterns `humanize-writing` lists, such as em dashes and AI vocabulary, even when nearby text uses them.
-   Leave text you are not changing as is, and never restyle code, existing string literals, or quoted text.
+2. **Follow existing patterns** — Always match the conventions already in the codebase. This covers code and doc conventions, not writing habits: in sentences you write or rewrite, do not use em or en dashes, AI vocabulary, or filler even when nearby text does (see the `humanize-writing` skill for how to rewrite them). A project's explicit style guide or a document-specific checker skill takes precedence. Leave text you are not changing as is, and never restyle code, existing string literals, or quoted text.
 3. **Maker-checker** — Always run the maker-checker pattern: generate artifact → validate with the corresponding checker skill before presenting to the user
 4. **Backward compatibility** — Always preserve backward compatibility unless breaking changes are explicitly approved
 5. **Comment complex logic** — Always add inline comments for non-obvious or complex logic

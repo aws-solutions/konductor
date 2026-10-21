@@ -47,7 +47,6 @@
       "tools": ["WebFetch", "WebSearch", "TodoWrite", "Read", "Skill"],
       "skills": [
         "constraints",
-        "humanize-writing",
         "external-research",
         "sdlc-navigator",
         "document-formats",
