@@ -17,4 +17,4 @@ These rules apply to every Konductor agent in every interaction. Violating a NEV
 
 ## Writing habits
 
-In sentences you write or rewrite, do not use em or en dashes, AI vocabulary, or filler even when nearby text does (see the `humanize-writing` skill for how to rewrite them). A project's explicit style guide or a document-specific checker skill takes precedence. Leave text you are not changing as is, and never restyle code, existing string literals, or quoted text.
+This covers code and doc conventions, not writing habits: in sentences you write or rewrite, do not use em or en dashes, AI vocabulary, or filler even when nearby text does (see the `humanize-writing` skill for how to rewrite them). A project's explicit style guide or a document-specific checker skill takes precedence. Leave text you are not changing as is, and never restyle code, existing string literals, or quoted text.
