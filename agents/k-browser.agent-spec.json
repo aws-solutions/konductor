@@ -17,7 +17,7 @@
       ]
     },
     "context": {
-      "contextNames": []
+      "contextNames": ["k-core-rules.md"]
     },
     "mcpRegistry": {
       "playwright-mcp": {

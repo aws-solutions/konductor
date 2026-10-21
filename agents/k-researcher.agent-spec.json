@@ -24,7 +24,7 @@
       "agentSopNames": []
     },
     "context": {
-      "contextNames": []
+      "contextNames": ["k-core-rules.md"]
     }
   },
   "clientConfig": {
