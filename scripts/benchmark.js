@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: Apache-2.0
 /**
- * benchmark.js — the ASDLCCoreAICapabilities benchmark CLI (interim entry
+ * benchmark.js — the Konductor benchmark CLI (interim entry
  * point).
  *
  * One-command flow: generate + install agent files for `--agent`, run the
