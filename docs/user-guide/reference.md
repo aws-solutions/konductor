@@ -302,6 +302,7 @@ konductor/
 ├── agent-sops/                   19 SOPs (*.sop.md)
 ├── skills/                       82 skills (<name>/SKILL.md, plus optional helper files)
 ├── context/                      Loaded at agent startup
+│   ├── k-core-rules.md
 │   └── k-orchestrator-routing-rules.md
 ├── cli/                          The Konductor CLI
 │   ├── README.md                 CLI-specific docs
@@ -377,8 +378,8 @@ for Claude Code only. Seven agents (the three orchestrators, `k-quality-assuranc
 but do not preload it, so both runtimes load it on demand. Every skill is catalogued in the
 [Skills catalog](skills.md).
 
-Only the three orchestrators declare a context file
-(`context/k-orchestrator-routing-rules.md`).
+Every agent declares `context/k-core-rules.md`. Only the three orchestrators also declare
+`context/k-orchestrator-routing-rules.md`.
 
 ### MCP registry entries
 

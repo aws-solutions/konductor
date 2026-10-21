@@ -39,7 +39,7 @@
       ]
     },
     "context": {
-      "contextNames": ["k-orchestrator-routing-rules.md"]
+      "contextNames": ["k-orchestrator-routing-rules.md", "k-core-rules.md"]
     }
   },
   "clientConfig": {

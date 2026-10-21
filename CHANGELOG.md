@@ -6,6 +6,16 @@ This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Entries are consolidated per release,
 not per individual commit.
 
+## [Unreleased]
+
+### Changed
+
+- Every agent now loads `context/k-core-rules.md` at session start. It holds the NEVER DO
+  rules, moved from the `constraints` skill, and a writing-habits rule: no em or en dashes,
+  AI vocabulary, or filler in new sentences, even when nearby text has them.
+- Every agent declares `humanize-writing`, and its description now covers writing as well
+  as editing.
+
 ## [1.1.0] - 2026-10-14
 
 ### Added
