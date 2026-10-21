@@ -392,7 +392,7 @@ konductor/
 ├── agents/        11 agent specs (*.agent-spec.json)
 ├── agent-sops/    19 SOPs (*.sop.md)
 ├── skills/        82 skills (skills/<name>/SKILL.md)
-├── context/       Context loaded at agent startup (core rules for every agent, orchestrator routing rules)
+├── context/       Context loaded at agent startup (orchestrator routing rules)
 ├── cli/           The konductor CLI (Rust)
 ├── mcp/           The skill-lookup MCP server
 ├── shared/        Shared Rust crates (telemetry)

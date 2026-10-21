@@ -158,7 +158,7 @@ The rule itself:
 konductor doctor
 ```
 
-Look at the `context files` line — it should report `2 registered`.
+Look at the `context files` line — it should report `1 registered`.
 
 2. If it reports `0`, reinstall and start a **new** session. Context files are read at session start,
    so an in-flight session keeps the old state.
