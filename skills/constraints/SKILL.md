@@ -19,7 +19,7 @@ This skill is always active. It applies to every task across all Konductor agent
 
 ### NEVER DO
 
-The NEVER DO rules live in `context/k-core-rules.md`, which every agent loads at session start.
+The NEVER DO rules live in the core rules, which every agent loads at session start.
 
 ### ALWAYS DO
 
@@ -58,7 +58,7 @@ When responding, state whether you are working from:
 
 **CRITICAL (immediate stop):**
 
-- Any NEVER DO rule violated (see `context/k-core-rules.md`)
+- Any NEVER DO rule violated (see the core rules)
 - Artifact presented to user without checker validation (maker-checker bypass)
 - Code left in non-compiling state
 - Secrets or credentials in source code
