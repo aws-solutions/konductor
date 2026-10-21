@@ -6,6 +6,14 @@ This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Entries are consolidated per release,
 not per individual commit.
 
+## [Unreleased]
+
+### Fixed
+
+- `k-architect`'s Claude Code `Agent(...)` permission now names the installed agents
+  `k-developer` and `k-quality-assurance`. It previously used package-prefixed names that never
+  match a Konductor install, so Claude Code reported no spawnable agents for `k-architect`.
+
 ## [1.1.0] - 2026-10-14
 
 ### Added
