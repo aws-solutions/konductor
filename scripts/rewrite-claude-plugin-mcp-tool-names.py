@@ -29,7 +29,7 @@ def _split_frontmatter(text: str) -> tuple[str, str, bool]:
     if not lines or lines[0].strip() != FRONTMATTER_FENCE:
         return "", text, False
     for index in range(1, len(lines)):
-        if lines[index].strip() == FRONTMATTER_FENCE:
+        if lines[index].rstrip() == FRONTMATTER_FENCE:
             return "\n".join(lines[: index + 1]), "\n".join(lines[index + 1 :]), True
     return "", text, False
 
@@ -96,7 +96,7 @@ def main() -> int:
         rewritten, count = rewrite_frontmatter(frontmatter, plugin_name, bundled_servers)
         if count == 0:
             continue
-        md_path.write_text(rewritten + body, encoding="utf-8")
+        md_path.write_text(rewritten + "\n" + body, encoding="utf-8")
         files_changed += 1
         replacements += count
 

@@ -441,6 +441,11 @@ that stays the same across all projects on your machine.
 UUID and stores it in `$HOME/.konductor/telemetry.json`. Every project on that machine sends the same
 UUID, so events from different projects can be linked to one machine, though not to which projects.
 
+**Claude Code plugin.** The marketplace plugin sends `agent_invocation` and
+`subagent_invocation` the same way, through a plugin hook, with `claude-plugin` as the runtime. It
+shares the machine identifier in `$HOME/.konductor/telemetry.json` with the CLI. See
+[Install via the Claude Code plugin marketplace](docs/user-guide/tasks/install-claude-plugin-marketplace.md#telemetry).
+
 **Opting out**
 
 | To stop reporting for | Do this |
@@ -448,6 +453,7 @@ UUID, so events from different projects can be linked to one machine, though not
 | One project | Run `konductor install` or `konductor update` with `--no-telemetry`, or set `telemetry.enabled: false` in `.konductor/config.yml` |
 | Any process with the variable set (a shell, a CI job, a fleet) | Set `KONDUCTOR_TELEMETRY=off` |
 | The whole machine | Set `"telemetry_consent": false` in `$HOME/.konductor/telemetry.json` |
+| The Claude Code plugin | Turn off the plugin's `telemetry_enabled` option. The variable, `config.yml` and machine settings above also apply; `--no-telemetry` doesn't |
 
 - `--no-telemetry` also removes an opt-in record left by an earlier install, and stops a global
   install's hooks from reporting in that project.

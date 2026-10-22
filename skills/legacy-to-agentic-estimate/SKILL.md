@@ -130,8 +130,15 @@ semantic judgment from the model; a clean handoff between them.
 ## Workflow
 
 The agent drives the bundled script with the **Bash tool** and `python3`,
-resolving the script path at runtime (repo root or installed location). Every
-command block below is one that was run against this script.
+resolving the script path at runtime. Each command block below takes the
+first match of: `${CLAUDE_SKILL_DIR}` (substituted by Claude Code for a
+plugin install and a `.claude/skills/` install), a global Kiro CLI install
+(`${SKILLS_HOME:-$HOME/.konductor/skills}`), a project install at the git
+root (only with konductor's `.konductor/manifest`), then a konductor source
+checkout (only when `.claude-plugin/marketplace.json` names `konductor`).
+If none matches, the block prints an error and exits 1 instead of running
+`python3` against an empty path. Every command block below is one
+that was run against this script.
 
 ### Step 1 — Parse the input estimates
 
@@ -148,8 +155,15 @@ Run the deterministic Phase-1 seam. It validates descriptions, resolves each
 item's tier by keyword, and reports which items need model judgment.
 
 ```bash
-SCRIPT="$(git rev-parse --show-toplevel 2>/dev/null)/skills/legacy-to-agentic-estimate/scripts/convert_estimates.py"
-[ -f "$SCRIPT" ] || SCRIPT="${SKILLS_HOME:-$HOME/.konductor/skills}/legacy-to-agentic-estimate/scripts/convert_estimates.py"
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+PROJECT="" CHECKOUT=""
+[ -n "$ROOT" ] && [ -f "$ROOT/.konductor/manifest" ] && PROJECT="$ROOT/.konductor/skills/legacy-to-agentic-estimate"
+[ -n "$ROOT" ] && grep -qs '"name": *"konductor"' "$ROOT/.claude-plugin/marketplace.json" && CHECKOUT="$ROOT/skills/legacy-to-agentic-estimate"
+SCRIPT=""
+for d in "${CLAUDE_SKILL_DIR}" "${SKILLS_HOME:-$HOME/.konductor/skills}/legacy-to-agentic-estimate" "$PROJECT" "$CHECKOUT"; do
+  [ -n "$d" ] && [ -f "$d/scripts/convert_estimates.py" ] && { SCRIPT="$d/scripts/convert_estimates.py"; break; }
+done
+[ -n "$SCRIPT" ] || { echo "ERROR: convert_estimates.py not found; stopping" >&2; exit 1; }
 python3 "$SCRIPT" \
   prepare --items '[{"E_legacy":30,"description":"Revamp the onboarding flow"}]'
 ```
@@ -180,8 +194,15 @@ architecture, security, cross-system, high blast radius.
 Merge the agent's judgment back in and compute the bands.
 
 ```bash
-SCRIPT="$(git rev-parse --show-toplevel 2>/dev/null)/skills/legacy-to-agentic-estimate/scripts/convert_estimates.py"
-[ -f "$SCRIPT" ] || SCRIPT="${SKILLS_HOME:-$HOME/.konductor/skills}/legacy-to-agentic-estimate/scripts/convert_estimates.py"
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+PROJECT="" CHECKOUT=""
+[ -n "$ROOT" ] && [ -f "$ROOT/.konductor/manifest" ] && PROJECT="$ROOT/.konductor/skills/legacy-to-agentic-estimate"
+[ -n "$ROOT" ] && grep -qs '"name": *"konductor"' "$ROOT/.claude-plugin/marketplace.json" && CHECKOUT="$ROOT/skills/legacy-to-agentic-estimate"
+SCRIPT=""
+for d in "${CLAUDE_SKILL_DIR}" "${SKILLS_HOME:-$HOME/.konductor/skills}/legacy-to-agentic-estimate" "$PROJECT" "$CHECKOUT"; do
+  [ -n "$d" ] && [ -f "$d/scripts/convert_estimates.py" ] && { SCRIPT="$d/scripts/convert_estimates.py"; break; }
+done
+[ -n "$SCRIPT" ] || { echo "ERROR: convert_estimates.py not found; stopping" >&2; exit 1; }
 python3 "$SCRIPT" \
   finalize \
   --items '[{"E_legacy":30,"description":"Revamp the onboarding flow"}]' \
@@ -198,8 +219,15 @@ array printed by `prepare`.
   in one call (it wraps `convert_batch` → `render_markdown`):
 
 ```bash
-SCRIPT="$(git rev-parse --show-toplevel 2>/dev/null)/skills/legacy-to-agentic-estimate/scripts/convert_estimates.py"
-[ -f "$SCRIPT" ] || SCRIPT="${SKILLS_HOME:-$HOME/.konductor/skills}/legacy-to-agentic-estimate/scripts/convert_estimates.py"
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+PROJECT="" CHECKOUT=""
+[ -n "$ROOT" ] && [ -f "$ROOT/.konductor/manifest" ] && PROJECT="$ROOT/.konductor/skills/legacy-to-agentic-estimate"
+[ -n "$ROOT" ] && grep -qs '"name": *"konductor"' "$ROOT/.claude-plugin/marketplace.json" && CHECKOUT="$ROOT/skills/legacy-to-agentic-estimate"
+SCRIPT=""
+for d in "${CLAUDE_SKILL_DIR}" "${SKILLS_HOME:-$HOME/.konductor/skills}/legacy-to-agentic-estimate" "$PROJECT" "$CHECKOUT"; do
+  [ -n "$d" ] && [ -f "$d/scripts/convert_estimates.py" ] && { SCRIPT="$d/scripts/convert_estimates.py"; break; }
+done
+[ -n "$SCRIPT" ] || { echo "ERROR: convert_estimates.py not found; stopping" >&2; exit 1; }
 python3 "$SCRIPT" \
   convert --items '[{"E_legacy":24,"description":"Add CRUD endpoints and DTOs for the settings API"},{"E_legacy":60,"description":"Design multi-region failover architecture for the datastore"}]'
 ```
