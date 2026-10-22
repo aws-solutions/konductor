@@ -26,7 +26,8 @@ not per individual commit.
 
 - Routing skills now agree with the orchestrator prompts. `mux-dispatch` peeks at a running
   pane only on the prompt's polling fallback, and `delegation-protocol` applies rule 5's
-  fix-attempt cap and 2-Strike Circuit Breaker instead of its own cycle count.
+  fix-attempt cap and 2-Strike Circuit Breaker instead of its own cycle count, and limits its
+  retry-once recovery to spawns that error, time out, or return nothing.
 
 ## [1.1.0] - 2026-10-14
 
