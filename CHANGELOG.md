@@ -1,18 +1,82 @@
 # Changelog
 
-All notable changes to ASDLC Core AI Capabilities will be documented here.
+All notable changes to Konductor are documented here.
 
 This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Entries are consolidated per release,
 not per individual commit.
 
-## [1.0.4] - 2026-10-06
+## [Unreleased]
 
 ### Fixed
 
-- `k-architect` and `k-developer` no longer tell agents to use `aws___call_aws`, a tool the AWS MCP server has removed. Both now point at `aws___run_script`, the server's own replacement for running AWS CLI commands.
-- `find-aws-skills`' failure-handling fallback no longer references `aws___suggest_aws_commands`, which the AWS MCP server does not expose. It now points at `aws___run_script` instead.
+- `k-architect` and `k-developer` no longer tell agents to use `aws___call_aws`, a tool the AWS MCP server has removed. Both now point at `aws___run_script`, which runs sandboxed Python with AWS API access.
+- `find-aws-skills`' failure-handling fallback no longer references `aws___suggest_aws_commands`, which the AWS MCP server does not expose. It now offers direct AWS API calls via `aws___run_script` (sandboxed Python).
 - `aws-service-validator` calls `aws___get_regional_availability` with the parameters the AWS MCP server actually requires (`regions`, `resource_type`, `filters`), instead of a bare service-and-region call that fails with a missing-required-field error.
+
+## [1.1.0] - 2026-10-14
+
+### Added
+
+- The Konductor Kiro Power at `powers/konductor/`, imported from
+  `github.com/aws-solutions/konductor/tree/v1.1.0/powers/konductor`.
+- `konductor-setup`, a skill that installs Konductor into the current project.
+- `konductor-help`, a skill that answers questions about an existing install.
+- 13 activation keywords in `powers/konductor/plugin.json`.
+- `make kiro-power-check`, wired into `.github/workflows/validate-pr.yml`.
+- An "Install via Kiro Power" page in the user guide, and a matching section in `README.md`.
+- Manual setup docs for the AWS documentation-lookup MCP server and for Playwright.
+- A Claude Code plugin marketplace install path: `/plugin marketplace add
+  aws-solutions/konductor` then `/plugin install konductor@konductor`. See [Install via the
+  Claude Code plugin marketplace](docs/user-guide/tasks/install-claude-plugin-marketplace.md).
+- `tag-claude-plugin-release.yml` is a manually dispatched workflow, run after a human merges a
+  plugin-candidate PR into `release/plugins`, that creates an immutable `claude-plugin-vX.Y.Z`
+  tag on the merge commit -- so a `marketplace.json` entry can pin to a specific release instead
+  of the branch's moving HEAD.
+- `konductor-setup`'s `run-update.sh` and `run-uninstall.sh` accept an optional `--harness
+  <name>`, forwarded to `konductor update`/`uninstall`, for a target that tracks more than one
+  harness.
+
+### Changed
+
+- Every agent spec under `agents/` now runs `claude-sonnet-5.5` instead of `claude-sonnet-5`.
+  The benchmark registry's `subjectModel` moves with it, so benchmarks measure the model that
+  ships. Benchmark results recorded against `claude-sonnet-5` aren't comparable with new runs;
+  the regression check refuses to compare across model pins.
+- `make synth` (and `konductor synth`) now pre-wires AWS MCP (`aws-mcp`) into the standalone
+  Claude Code install, matching the plugin build. Everything else stays bring-your-own. The
+  bundled-server list lives in `scripts/claude-plugin-mcp-servers.json`.
+- The plugin and standalone Claude Code builds launch `aws-mcp` through `mcp-proxy-for-aws-cli==1.7.0`. Pinning the proxy prevents unreviewed client changes while the managed endpoint continues to supply current AWS documentation and skills.
+
+### Fixed
+
+- `publish-claude-plugin` no longer fails when the assembled plugin tree already matches
+  `release/plugins`' tip exactly (e.g. a re-release of unchanged plugin content). The job now
+  skips the push and draft-PR steps and ends green with a notice instead of pushing an empty
+  branch and failing at `gh pr create` with "No commits between".
+
+### Security
+
+- `rustls` moves from `0.23.43` to `0.23.45` in the CLI, the skill-lookup MCP server, and the
+  shared telemetry test sink, fixing GHSA-2mjx-qc3c-rqvc (TLS 1.3 handshake messages were
+  accepted across encryption level boundaries).
+- `aws-mcp` uses `mcp-proxy-for-aws-cli==1.7.0` instead of a moving package version. The managed endpoint still supplies current AWS documentation and skills.
+- The plugin release no longer force-pushes directly to a public branch. `publish-claude-plugin`
+  pushes a fresh, collision-resistant candidate branch (release version plus workflow run
+  identifier) and opens a **draft** pull request into the protected `release/plugins` branch,
+  using `GITHUB_TOKEN` scoped to `contents: write` and `pull-requests: write` only. The
+  `plugins` branch ruleset (creation/update/deletion/non-fast-forward blocked, zero bypass
+  actors) and the org-wide two-approval PR ruleset gate the actual merge. A separate workflow,
+  `tag-claude-plugin-release.yml`, creates the immutable `claude-plugin-vX.Y.Z` tag only after
+  that PR is merged into `release/plugins` by a human reviewer.
+- `k-architect`/`k-developer` still grant AWS MCP's full tool surface, unchanged. Use the
+  `aws:ViaAWSMCPService`/`aws:CalledViaAWSMCP` IAM condition keys to scope or audit
+  agent-originated calls.
+- `release.yml`'s `workflow_dispatch` trigger bypassed `check-version`'s branch gating: any
+  branch with an unreleased `VERSION` bump could trigger a real `gh release create`, and by
+  default, a force-push to the public `claude-plugin` branch. Removed the manual-dispatch path
+  entirely; `validate-pr.yml` now runs `claude plugin validate --strict` against the assembled
+  plugin tree on every PR instead, with no publish or push step anywhere in its job graph.
 
 ## [1.0.3] - 2026-10-01
 

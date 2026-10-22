@@ -67,13 +67,24 @@ EDITS = [
      "├── agent-sops/                   19 SOPs (*.sop.md)"),
     ("layout tree skills", "├── skills/                       75 skills (<name>/SKILL.md",
      "├── skills/                       82 skills (<name>/SKILL.md"),
+    # ---- aws-mcp launches a pinned version, not a floating @latest ----------
+    ("reference MCP registry note: pinned aws-mcp",
+     'note":"MCP registry entries — aws-mcp (k-architect, k-developer): command uvx, args '
+     'mcp-proxy-for-aws@latest, https://aws-mcp.us-east-1.api.aws/mcp, --metadata, AWS_REGION=us-east-1.',
+     'note":"MCP registry entries — aws-mcp (k-architect, k-developer): command uvx, args '
+     'mcp-proxy-for-aws-cli==1.7.0, https://aws-mcp.us-east-1.api.aws/mcp, --metadata, AWS_REGION=us-east-1.'),
+    ("architect card: pinned aws-mcp",
+     'MCP: aws-mcp, launched via uvx mcp-proxy-for-aws@latest — allowedTools grants documentation '
+     'search/read, region list, and regional availability.',
+     'MCP: aws-mcp, launched via uvx mcp-proxy-for-aws-cli==1.7.0 — allowedTools grants documentation '
+     'search/read, region list, and regional availability.'),
     # ---- k-architect is no longer on a different model ----------------------
     ("architect model prose",
      "Both are owned by <code style=\"font-family:'JetBrains Mono',monospace;font-size:.87em;color:var(--tx)\">k-architect</code>, which carries 37 of the package's 82 skills — close to half, and by far the largest share of any agent.",
      "Both are owned by <code style=\"font-family:'JetBrains Mono',monospace;font-size:.87em;color:var(--tx)\">k-architect</code>, which carries 38 of the package's 82 skills — close to half, and by far the largest share of any agent."),
     ("reference roster note",
      "k-architect is the only agent on a different model. Skill counts are from each spec's clientConfig.claudeCli.skills array.",
-     "Every agent runs claude-sonnet-5. Skill counts are from each spec's clientConfig.claudeCli.skills array, which matches dependencies.skills.skillNames everywhere except konductor — that one adds claude-teams-behavior for Claude Code only, so Kiro CLI sees 12.",),
+     "Every agent runs claude-sonnet-5.5. Skill counts are from each spec's clientConfig.claudeCli.skills array, which matches dependencies.skills.skillNames everywhere except konductor — that one adds claude-teams-behavior for Claude Code only, so Kiro CLI sees 12.",),
     # ---- Claude Code does not prefix agent names ----------------------------
     # Spent: the prefix sentences these edits produced have since been removed
     # from the guide entirely, so neither their `old` nor their `new` exists any
@@ -229,10 +240,6 @@ EDITS = [
     # Nothing has been published to download, and the step already built from a
     # clone -- the heading and the lead-in were the last two places still framing
     # it as a fetch, one of them by narrating the absent release.
-    ("qs prereq row: release framing",
-     ">No release has been published yet, so you build the CLI from a clone — rustup is the "
-     "usual way to get one<",
-     ">Built from a clone of the repository — rustup is the usual way to get a toolchain<"),
     ("qs step 1 heading", ">Download the CLI</h3>", ">Build the CLI</h3>"),
     ("qs step 1 toc", ">1 — Download the CLI</a>", ">1 — Build the CLI</a>"),
     ("qs step 1 intro", ">Get the build for your platform:</p>",
@@ -290,32 +297,32 @@ EDITS = [
 # `new` and move the previous `new` into `old`.
 ROSTER = [
     ("ref konductor",
-     '{"k":"konductor","v":"claude-sonnet-5 · kiro-spec-workflow, k-delegate, k-plan, k-context-gathering, k-verify · 9 · —"}',
-     '{"k":"konductor","v":"claude-sonnet-5 · kiro-spec-workflow, k-delegate, k-plan, k-context-gathering, k-verify, k-light-ui-testing, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, about-konductor · 13 · —"}'),
+     '{"k":"konductor","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-delegate, k-plan, k-context-gathering, k-verify · 9 · —"}',
+     '{"k":"konductor","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-delegate, k-plan, k-context-gathering, k-verify, k-light-ui-testing, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, about-konductor · 13 · —"}'),
     ("ref mux",
-     '{"k":"konductor-mux-orchestrator","v":"claude-sonnet-5 · kiro-spec-workflow, k-plan, k-context-gathering, k-verify · 8 · —"}',
-     '{"k":"konductor-mux-orchestrator","v":"claude-sonnet-5 · kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, about-konductor · 10 · —"}'),
+     '{"k":"konductor-mux-orchestrator","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-plan, k-context-gathering, k-verify · 8 · —"}',
+     '{"k":"konductor-mux-orchestrator","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, about-konductor · 10 · —"}'),
     ("ref cmux",
-     '{"k":"konductor-cmux-orchestrator","v":"claude-sonnet-5 · kiro-spec-workflow, k-plan, k-context-gathering, k-verify · 8 · —"}',
-     '{"k":"konductor-cmux-orchestrator","v":"claude-sonnet-5 · kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, about-konductor · 10 · —"}'),
+     '{"k":"konductor-cmux-orchestrator","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-plan, k-context-gathering, k-verify · 8 · —"}',
+     '{"k":"konductor-cmux-orchestrator","v":"claude-sonnet-5.5 · kiro-spec-workflow, k-plan, k-context-gathering, k-verify, k-comprehensive-search, k-full-sdlc, k-e2e-test-generation, k-light-ui-testing, about-konductor · 10 · —"}'),
     ("ref architect",
-     '{"k":"k-architect","v":"claude-sonnet-5 · k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review, k-adversarial-pull-request-review · 37 · aws-mcp"}',
-     '{"k":"k-architect","v":"claude-sonnet-5 · k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review, k-adversarial-pull-request-review · 38 · aws-mcp"}'),
+     '{"k":"k-architect","v":"claude-sonnet-5.5 · k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review, k-adversarial-pull-request-review · 37 · aws-mcp"}',
+     '{"k":"k-architect","v":"claude-sonnet-5.5 · k-design-doc-creation, k-existing-design-review, k-principal-engineer-design-review, k-adversarial-pull-request-review · 38 · aws-mcp"}'),
     ("ref developer",
-     '{"k":"k-developer","v":"claude-sonnet-5 · k-code-cleanup, k-pre-cr-critique, k-codebase-analysis, k-code-review-workflow · 26 · aws-mcp"}',
-     '{"k":"k-developer","v":"claude-sonnet-5 · k-code-cleanup, k-pre-cr-critique, k-codebase-analysis, k-code-review-workflow · 27 · aws-mcp"}'),
+     '{"k":"k-developer","v":"claude-sonnet-5.5 · k-code-cleanup, k-pre-cr-critique, k-codebase-analysis, k-code-review-workflow · 26 · aws-mcp"}',
+     '{"k":"k-developer","v":"claude-sonnet-5.5 · k-code-cleanup, k-pre-cr-critique, k-codebase-analysis, k-code-review-workflow · 27 · aws-mcp"}'),
     # k-code-review-workflow was removed from k-quality-assurance's spec as
     # unusable (it spawns k-architect, which QA cannot reach), so QA is down to
     # one declared SOP.
     ("ref qa",
-     '{"k":"k-quality-assurance","v":"claude-sonnet-5 · k-test-coverage-review, k-code-review-workflow · 11 · —"}',
-     '{"k":"k-quality-assurance","v":"claude-sonnet-5 · k-test-coverage-review · 12 · —"}'),
+     '{"k":"k-quality-assurance","v":"claude-sonnet-5.5 · k-test-coverage-review, k-code-review-workflow · 11 · —"}',
+     '{"k":"k-quality-assurance","v":"claude-sonnet-5.5 · k-test-coverage-review · 12 · —"}'),
     ("ref pm",
-     '{"k":"k-product-manager","v":"claude-sonnet-5 · none · 15 · —"}',
-     '{"k":"k-product-manager","v":"claude-sonnet-5 · none · 16 · —"}'),
+     '{"k":"k-product-manager","v":"claude-sonnet-5.5 · none · 15 · —"}',
+     '{"k":"k-product-manager","v":"claude-sonnet-5.5 · none · 16 · —"}'),
     ("ref researcher",
-     '{"k":"k-researcher","v":"claude-sonnet-5 · none · 7 · —"}',
-     '{"k":"k-researcher","v":"claude-sonnet-5 · none · 8 · —"}'),
+     '{"k":"k-researcher","v":"claude-sonnet-5.5 · none · 7 · —"}',
+     '{"k":"k-researcher","v":"claude-sonnet-5.5 · none · 8 · —"}'),
     ("sop owners: k-code-review-workflow",
      '{"k":"k-code-review-workflow","v":"k-developer, k-quality-assurance · source_dir"}',
      '{"k":"k-code-review-workflow","v":"k-developer · source_dir"}'),
@@ -362,26 +369,26 @@ ROSTER = [
      '"rows":[{"k":"k-architect","v":"32"},{"k":"k-developer","v":"20"},{"k":"k-product-manager","v":"14"},{"k":"k-tpm","v":"14"},{"k":"konductor","v":"12"},{"k":"konductor-cmux-orchestrator","v":"11"},{"k":"konductor-mux-orchestrator","v":"11"},{"k":"k-quality-assurance","v":"10"},{"k":"k-researcher","v":"7"},{"k":"k-browser","v":"4"},{"k":"k-media-analyzer","v":"1"}]',
      '"rows":[{"k":"k-architect","v":"38"},{"k":"k-developer","v":"27"},{"k":"k-product-manager","v":"16"},{"k":"k-tpm","v":"14"},{"k":"konductor","v":"13"},{"k":"k-quality-assurance","v":"12"},{"k":"konductor-cmux-orchestrator","v":"10"},{"k":"konductor-mux-orchestrator","v":"10"},{"k":"k-researcher","v":"8"},{"k":"k-browser","v":"4"},{"k":"k-media-analyzer","v":"1"}]'),
     # at-a-glance cards
-    ("card konductor", 'Coordinator. Delegates everything, implements nothing. claude-sonnet-5 · 9 skills · 5 SOPs',
-     'Coordinator. Delegates everything, implements nothing. claude-sonnet-5 · 13 skills · 10 SOPs'),
-    ("card mux", 'Same, dispatching into tmux/zellij panes. claude-sonnet-5 · 8 skills · 4 SOPs',
-     'Same, dispatching into tmux/zellij panes. claude-sonnet-5 · 10 skills · 9 SOPs'),
-    ("card cmux", 'Same, dispatching into cmux surfaces. claude-sonnet-5 · 8 skills · 4 SOPs',
-     'Same, dispatching into cmux surfaces. claude-sonnet-5 · 10 skills · 9 SOPs'),
-    ("card pm", 'Requirements, user stories, decision research. claude-sonnet-5 · 15 skills · 0 SOPs',
-     'Requirements, user stories, decision research. claude-sonnet-5 · 16 skills · 0 SOPs'),
-    ("card architect", 'System designs, APIs, data models, threat models. claude-sonnet-5 · 37 skills · 4 SOPs · aws-mcp',
-     'System designs, APIs, data models, threat models. claude-sonnet-5 · 38 skills · 4 SOPs · aws-mcp'),
-    ("card developer", 'Implementation, code review, git, builds. claude-sonnet-5 · 26 skills · 4 SOPs · aws-mcp',
-     'Implementation, code review, git, builds. claude-sonnet-5 · 27 skills · 4 SOPs · aws-mcp'),
-    ("card qa", 'Test coverage, E2E strategy, security tests. claude-sonnet-5 · 11 skills · 2 SOPs',
-     'Test coverage, E2E strategy, security tests. claude-sonnet-5 · 12 skills · 1 SOP'),
-    ("card researcher", 'External documentation and web research. claude-sonnet-5 · 7 skills · 0 SOPs',
-     'External documentation and web research. claude-sonnet-5 · 8 skills · 0 SOPs'),
+    ("card konductor", 'Coordinator. Delegates everything, implements nothing. claude-sonnet-5.5 · 9 skills · 5 SOPs',
+     'Coordinator. Delegates everything, implements nothing. claude-sonnet-5.5 · 13 skills · 10 SOPs'),
+    ("card mux", 'Same, dispatching into tmux/zellij panes. claude-sonnet-5.5 · 8 skills · 4 SOPs',
+     'Same, dispatching into tmux/zellij panes. claude-sonnet-5.5 · 10 skills · 9 SOPs'),
+    ("card cmux", 'Same, dispatching into cmux surfaces. claude-sonnet-5.5 · 8 skills · 4 SOPs',
+     'Same, dispatching into cmux surfaces. claude-sonnet-5.5 · 10 skills · 9 SOPs'),
+    ("card pm", 'Requirements, user stories, decision research. claude-sonnet-5.5 · 15 skills · 0 SOPs',
+     'Requirements, user stories, decision research. claude-sonnet-5.5 · 16 skills · 0 SOPs'),
+    ("card architect", 'System designs, APIs, data models, threat models. claude-sonnet-5.5 · 37 skills · 4 SOPs · aws-mcp',
+     'System designs, APIs, data models, threat models. claude-sonnet-5.5 · 38 skills · 4 SOPs · aws-mcp'),
+    ("card developer", 'Implementation, code review, git, builds. claude-sonnet-5.5 · 26 skills · 4 SOPs · aws-mcp',
+     'Implementation, code review, git, builds. claude-sonnet-5.5 · 27 skills · 4 SOPs · aws-mcp'),
+    ("card qa", 'Test coverage, E2E strategy, security tests. claude-sonnet-5.5 · 11 skills · 2 SOPs',
+     'Test coverage, E2E strategy, security tests. claude-sonnet-5.5 · 12 skills · 1 SOP'),
+    ("card researcher", 'External documentation and web research. claude-sonnet-5.5 · 7 skills · 0 SOPs',
+     'External documentation and web research. claude-sonnet-5.5 · 8 skills · 0 SOPs'),
 ]
 
 
-def apply_all(page, problems):
+def apply_all(page, problems, edits=None):
     """Apply every edit exactly once, and never twice.
 
     Whether an edit has already been applied cannot be decided the same way for
@@ -404,7 +411,7 @@ def apply_all(page, problems):
     roster and card targets differ only by a little surrounding markup -- would
     be silently rewritten too. Counting first turns that into a loud failure.
     """
-    for label, old, new in EDITS + ROSTER + SOP_EDITS:
+    for label, old, new in (EDITS + ROSTER + SOP_EDITS if edits is None else edits):
         hits = page.count(old)
         if hits > 1:
             problems.append(f"{label} (matched {hits}x, expected 1)")
@@ -458,6 +465,15 @@ def main():
         if new == page:
             print(f"  {rel}: no change")
             continue
+        # Per-edit already-applied checks can't see two edits undoing each other.
+        if not problems and apply_all(new, []) != new:
+            failed = True
+            again = [e[0] for e in EDITS + ROSTER + SOP_EDITS if apply_all(new, [], [e]) != new]
+            print(f"  {rel}: NOT written — a second pass would change the result again; "
+                  f"edit(s) still firing:")
+            for label in again or ["(only in combination)"]:
+                print(f"      - {label}")
+            continue
         matched = len(EDITS) + len(ROSTER) + len(SOP_EDITS) - len(problems)
         # Never write a partially-patched bundle. Without this guard an --apply
         # run with unmatched targets still saved the subset that did match and
@@ -475,7 +491,7 @@ def main():
             htmlbundle.save(bundle, new)
 
     if failed:
-        print("\nSome edits did not match. The bundle has moved on -- update EDITS.",
+        print("\nSome edits did not match or are not idempotent -- update EDITS.",
               file=sys.stderr)
         return 1
     if not args.apply:

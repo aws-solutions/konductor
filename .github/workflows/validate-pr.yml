@@ -51,6 +51,28 @@ jobs:
             exit 1
           fi
 
+      - name: Install pytest for the Kiro Power's Python test suite
+        # tests/test_validate_kiro_power_plugin_json_schema_sync.py and
+        # tests/test_validate_kiro_power_skill_frontmatter.py are pytest-style
+        # (plain `assert` functions, not unittest.TestCase subclasses), and
+        # pytest is not preinstalled on ubuntu-latest -- `make kiro-power-check`
+        # below runs them via `python3 -m pytest`.
+        run: python3 -m pip install --user pytest
+
+      - name: Validate the Kiro Power (powers/konductor/)
+        # Users import the Power from the tagged release matching VERSION
+        # (github.com/aws-solutions/konductor/tree/v<VERSION>/powers/konductor),
+        # cut from this exact commit once it is merged and tagged -- so
+        # every PR must keep the committed tree passing: VERSION/plugin.json
+        # drift, the Agent Plugins v1.0.0 schema,
+        # both skills' SKILL.md frontmatter, the pytest suite pinning those two
+        # checkers, shellcheck across konductor-setup's scripts/, and the full
+        # tests/kiro-power/ suite. `make kiro-power-check` needs python3,
+        # pytest (installed above), and shellcheck (preinstalled on
+        # ubuntu-latest) -- no Rust toolchain required, so this runs before
+        # the toolchain setup below rather than depending on it.
+        run: make kiro-power-check
+
       - name: Require a CHANGELOG.md entry alongside any VERSION bump
         # CHANGELOG.md's own convention (entries consolidated per release,
         # not per commit) is otherwise unenforced -- a PR could bump VERSION
@@ -96,6 +118,28 @@ jobs:
               exit 1
             fi
           done
+
+      - name: Install claude CLI for validation
+        # Pinned to the same version release.yml's publish-claude-plugin job
+        # uses, so a PR and the post-merge release job apply the identical
+        # `claude plugin validate` check against the same plugin tree.
+        run: npm install --global @anthropic-ai/claude-code@2.1.284
+
+      - name: Verify the Claude Code plugin still generates and validates (make claude-plugin-check)
+        # PR-time check for a change to agents/*.agent-spec.json,
+        # skills/*/SKILL.md, or agent-sops/*.sop.md: confirms
+        # scripts/generate-claude-plugin.sh and
+        # scripts/assemble-claude-plugin-branch.sh still produce the flat
+        # plugin tree published via a candidate branch and draft PR into
+        # `release/plugins` (see that target's own comment in the root
+        # Makefile), and that `claude plugin validate --strict` passes on
+        # it -- the same validation release.yml's publish-claude-plugin job
+        # runs before pushing the candidate branch, but here entirely
+        # read-only: this job never pushes, opens a PR, or creates a
+        # release. The CLI is already built by the `make synth` step above,
+        # so this re-invocation of `make -C cli build` inside the target is
+        # a fast no-op.
+        run: make claude-plugin-check
 
       - name: Verify packaged tarball asset count and version
         # PR-time analog of two release.yml checks that otherwise only run

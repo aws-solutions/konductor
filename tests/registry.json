@@ -9,7 +9,7 @@
       "description": "Benchmark tests for the Quality Assurance agent: test coverage gap analysis, security test generation, E2E test strategy, Cypress test planning, and UI text validation",
       "datasetPath": "./asdlc-quality-assurance",
       "defaultJudge": "claude-code",
-      "subjectModel": "claude-sonnet-5"
+      "subjectModel": "claude-sonnet-5.5"
     },
     {
       "name": "k-developer",
@@ -18,7 +18,7 @@
       "description": "Benchmark tests for the Software Development Engineer agent: code review, task decomposition, backend development, git workflow, code-review triage, persistent memory, and workspace skill capture",
       "datasetPath": "./asdlc-developer",
       "defaultJudge": "claude-code",
-      "subjectModel": "claude-sonnet-5",
+      "subjectModel": "claude-sonnet-5.5",
       "requiredMcpServer": "aws-mcp"
     }
   ]

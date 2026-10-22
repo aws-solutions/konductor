@@ -110,6 +110,7 @@ Accepted before or after a subcommand.
 | `init` | `--preset <PRESET>` | enum | No | `solo`, `team`, `org` |
 | `init` | `--force` | flag | No | Overwrite an existing `.konductor/` instead of failing |
 | `synth` | `--from <PATH>` | path | No | Synthesize this source tree instead of the current directory. Output goes to `<PATH>/dist/` |
+| `synth` | `--claude-bundled-mcp-servers <LIST>` | string | No | Comma-separated allowlist of `dependencies.mcpRegistry` server names to merge into each agent's rendered Claude Code `mcpServers:` frontmatter. Omitted: nothing is merged. `make synth` and `make claude-plugin` pass this from `scripts/claude-plugin-mcp-servers.json` |
 | `metrics` | `--since <WINDOW>` | string | No | Limit the report to runs within a time window. `metrics` is a stub in this release |
 
 
@@ -355,19 +356,19 @@ per runtime, delegation targets, and the full per-agent breakdown, see the
 
 | Agent | Model | SOPs declared | Skills | MCP registry |
 | --- | --- | --- | --- | --- |
-| `konductor` | `claude-sonnet-5` | `kiro-spec-workflow`, `k-delegate`, `k-plan`, `k-context-gathering`, `k-verify`, `k-light-ui-testing`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `about-konductor` | 13 | — |
-| `konductor-mux-orchestrator` | `claude-sonnet-5` | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `about-konductor` | 10 | — |
-| `konductor-cmux-orchestrator` | `claude-sonnet-5` | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `about-konductor` | 10 | — |
-| `k-architect` | `claude-sonnet-5` | `k-design-doc-creation`, `k-existing-design-review`, `k-principal-engineer-design-review`, `k-adversarial-pull-request-review` | 38 | `aws-mcp` |
-| `k-developer` | `claude-sonnet-5` | `k-code-cleanup`, `k-pre-cr-critique`, `k-codebase-analysis`, `k-code-review-workflow` | 27 | `aws-mcp` |
-| `k-quality-assurance` | `claude-sonnet-5` | `k-test-coverage-review` | 12 | — |
-| `k-product-manager` | `claude-sonnet-5` | — | 16 | — |
-| `k-tpm` | `claude-sonnet-5` | — | 14 | — |
-| `k-researcher` | `claude-sonnet-5` | — | 8 | — |
-| `k-browser` | `claude-sonnet-5` | — | 4 | `playwright-mcp` |
-| `k-media-analyzer` | `claude-sonnet-5` | — | 1 | — |
+| `konductor` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-delegate`, `k-plan`, `k-context-gathering`, `k-verify`, `k-light-ui-testing`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `about-konductor` | 13 | — |
+| `konductor-mux-orchestrator` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `about-konductor` | 10 | — |
+| `konductor-cmux-orchestrator` | `claude-sonnet-5.5` | `kiro-spec-workflow`, `k-plan`, `k-context-gathering`, `k-verify`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `k-light-ui-testing`, `about-konductor` | 10 | — |
+| `k-architect` | `claude-sonnet-5.5` | `k-design-doc-creation`, `k-existing-design-review`, `k-principal-engineer-design-review`, `k-adversarial-pull-request-review` | 38 | `aws-mcp` |
+| `k-developer` | `claude-sonnet-5.5` | `k-code-cleanup`, `k-pre-cr-critique`, `k-codebase-analysis`, `k-code-review-workflow` | 27 | `aws-mcp` |
+| `k-quality-assurance` | `claude-sonnet-5.5` | `k-test-coverage-review` | 12 | — |
+| `k-product-manager` | `claude-sonnet-5.5` | — | 16 | — |
+| `k-tpm` | `claude-sonnet-5.5` | — | 14 | — |
+| `k-researcher` | `claude-sonnet-5.5` | — | 8 | — |
+| `k-browser` | `claude-sonnet-5.5` | — | 4 | `playwright-mcp` |
+| `k-media-analyzer` | `claude-sonnet-5.5` | — | 1 | — |
 
-Every agent runs `claude-sonnet-5`. The SOP column is each spec's
+Every agent runs `claude-sonnet-5.5`. The SOP column is each spec's
 `dependencies.agentSops.agentSopNames`; the skill count is
 `clientConfig.claudeCli.skills`, which matches `dependencies.skills.skillNames` for every
 agent except `konductor` — that one declares `claude-teams-behavior` for Claude Code only,
@@ -381,7 +382,7 @@ Only the three orchestrators declare a context file
 
 | Entry | Declared by | Definition |
 | --- | --- | --- |
-| `aws-mcp` | `k-architect`, `k-developer` | `command: uvx`, args `mcp-proxy-for-aws@latest`, `https://aws-mcp.us-east-1.api.aws/mcp`, `--metadata`, `AWS_REGION=us-east-1` |
+| `aws-mcp` | `k-architect`, `k-developer` | `command: uvx`, args `mcp-proxy-for-aws-cli==1.7.0`, `https://aws-mcp.us-east-1.api.aws/mcp`, `--metadata`, `AWS_REGION=us-east-1` |
 | `playwright-mcp` | `k-browser` | args `-y`, `@playwright/mcp@latest` |
 
 In Claude Code these agents request the corresponding tools via globs — `mcp__aws-mcp__*` and
