@@ -3034,6 +3034,73 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
+    fn installed_konductor_skills_args(target_dir: &Path) -> Vec<String> {
+        let value: serde_json::Value = serde_json::from_str(
+            &fs::read_to_string(target_dir.join(".kiro/agents/k-example.json")).unwrap(),
+        )
+        .unwrap();
+        value["mcpServers"]["konductor-skills"]["args"]
+            .as_array()
+            .expect("args must be an array")
+            .iter()
+            .map(|a| a.as_str().unwrap().to_string())
+            .collect()
+    }
+
+    #[test]
+    fn install_from_local_mcp_server_telemetry_arg_follows_no_telemetry() {
+        let repo_root = scratch_dir("mcp-telemetry-arg-repo");
+        seed_synthed_agent_with_skill_resource(&repo_root, "k-example", "constraints");
+        seed_synthed_skill(
+            &repo_root,
+            "constraints",
+            b"---\nname: constraints\n---\nBody\n",
+            &[],
+        );
+        seed_mcp_binary(&repo_root, "skill-lookup-mcp", b"binary bytes\n");
+        let install = |target_dir: &Path, no_telemetry: bool| {
+            KiroCliInstallStrategy
+                .install_from_local(
+                    target_dir,
+                    Some(repo_root.to_str().unwrap()),
+                    "2026-01-01T00:00:00Z",
+                    no_telemetry,
+                )
+                .expect("install must succeed");
+        };
+        let opted_in = scratch_dir("mcp-telemetry-arg-opted-in");
+        let opted_out = scratch_dir("mcp-telemetry-arg-opted-out");
+
+        install(&opted_in, false);
+        install(&opted_out, true);
+        install(&opted_out, true);
+
+        assert_eq!(
+            installed_konductor_skills_args(&opted_in),
+            [
+                "--skills-dir",
+                "~/.konductor/skills",
+                "--skills-dir",
+                ".konductor/skills"
+            ]
+        );
+        assert_eq!(
+            installed_konductor_skills_args(&opted_out),
+            [
+                "--skills-dir",
+                "~/.konductor/skills",
+                "--skills-dir",
+                ".konductor/skills",
+                "--telemetry",
+                "off"
+            ]
+        );
+
+        fs::remove_dir_all(&opted_in).ok();
+        fs::remove_dir_all(&opted_out).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
     /// Reachability proof for the Claude/V3 `permissions.allow` grant
     /// and the telemetry hooks wired after it: both fire through this
     /// unmodified strategy's `install_from_local` whenever the target

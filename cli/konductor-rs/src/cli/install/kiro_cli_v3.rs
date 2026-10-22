@@ -334,7 +334,7 @@ impl InstallStrategy for KiroCliV3InstallStrategy {
         raw_files.extend(bin_files.clone());
         assert_bin_files_are_on_disk(target_dir, &bin_files)?;
         let (agent_files, any_mcp_server_injected) =
-            install_agents(&harness_dir, target_dir, &bin_files)?;
+            install_agents(&harness_dir, target_dir, &bin_files, no_telemetry)?;
         raw_files.extend(agent_files);
 
         // The standalone V3 telemetry hook document, written
@@ -498,6 +498,7 @@ fn install_agents(
     harness_dir: &Path,
     target_dir: &Path,
     bin_files: &[ManifestFile],
+    no_telemetry: bool,
 ) -> Result<(Vec<ManifestFile>, bool), String> {
     let source_dir = harness_dir.join(AGENTS_CONTENT_TYPE_DIR);
     let entries = list_agent_files(&source_dir)?;
@@ -535,6 +536,7 @@ fn install_agents(
         bin_files,
         agent_sop_names: &agent_sop_names,
         agent_skill_names: &agent_skill_names,
+        no_telemetry,
     };
 
     let (mut files, any_mcp_server_injected) =
@@ -958,6 +960,67 @@ mod tests {
             .any(|f| f.path == ".konductor/bin/skill-lookup-mcp"));
 
         fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn install_from_local_mcp_server_telemetry_arg_follows_no_telemetry() {
+        let repo_root = scratch_dir("install-mcp-telemetry-arg-repo");
+        let contents = br#"{
+            "name": "k-example",
+            "resources": ["skill://skills/constraints/SKILL.md"],
+            "permissions": {"rules": []}
+        }"#;
+        seed_synthed_agent(&repo_root, "k-example", contents);
+        seed_synthed_skill(&repo_root, "constraints", b"body\n", &[]);
+        seed_mcp_binary(&repo_root, "skill-lookup-mcp", b"fake binary");
+        let install = |target_dir: &Path, no_telemetry: bool| {
+            KiroCliV3InstallStrategy
+                .install_from_local(
+                    target_dir,
+                    Some(repo_root.to_str().unwrap()),
+                    "2026-01-01T00:00:00Z",
+                    no_telemetry,
+                )
+                .expect("install must succeed");
+        };
+        let args = |target_dir: &Path| -> serde_json::Value {
+            let installed: serde_json::Value = serde_json::from_slice(
+                &fs::read(target_dir.join(".kiro/agents/k-example.json")).unwrap(),
+            )
+            .unwrap();
+            installed["mcpServers"]["konductor-skills"]["args"].clone()
+        };
+        let opted_in = scratch_dir("install-mcp-telemetry-arg-opted-in");
+        let opted_out = scratch_dir("install-mcp-telemetry-arg-opted-out");
+
+        install(&opted_in, false);
+        install(&opted_out, true);
+        install(&opted_out, true);
+
+        assert_eq!(
+            args(&opted_in),
+            serde_json::json!([
+                "--skills-dir",
+                "~/.konductor/skills",
+                "--skills-dir",
+                ".konductor/skills"
+            ])
+        );
+        assert_eq!(
+            args(&opted_out),
+            serde_json::json!([
+                "--skills-dir",
+                "~/.konductor/skills",
+                "--skills-dir",
+                ".konductor/skills",
+                "--telemetry",
+                "off"
+            ])
+        );
+
+        fs::remove_dir_all(&opted_in).ok();
+        fs::remove_dir_all(&opted_out).ok();
         fs::remove_dir_all(&repo_root).ok();
     }
 

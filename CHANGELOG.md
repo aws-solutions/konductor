@@ -22,6 +22,10 @@ not per individual commit.
   serialized against a concurrent install or update at the same project, so a telemetry record a
   different harness just wrote can no longer be silently destroyed by a race between reading and
   removing it.
+- An opted-out Kiro CLI project (`install --no-telemetry`, `update --no-telemetry`, or a plain
+  `update` that carries the opt-out forward) now launches the skill-lookup MCP server with
+  `--telemetry off`, so it no longer reports tool-call usage. `update --enable-telemetry` drops
+  the flag again.
 
 ## [1.1.0] - 2026-10-14
 

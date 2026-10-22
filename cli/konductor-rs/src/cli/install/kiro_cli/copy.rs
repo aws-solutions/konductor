@@ -216,14 +216,10 @@ pub(in crate::cli::install) fn install_agents(
         bin_files,
         agent_sop_names: &agent_sop_names,
         agent_skill_names: &agent_skill_names,
-    };
-    let (mut files, any_mcp_server_injected) = copy_agent_files_rewriting_resources(
-        &source_dir,
-        &destination,
-        &ctx,
-        entries,
         no_telemetry,
-    )?;
+    };
+    let (mut files, any_mcp_server_injected) =
+        copy_agent_files_rewriting_resources(&source_dir, &destination, &ctx, entries)?;
     for file in &mut files {
         file.path =
             content_manifest_path(KIRO_DESTINATION_ROOT, AGENTS_CONTENT_TYPE_DIR, &file.path);
@@ -480,9 +476,10 @@ pub(in crate::cli::install) fn copy_agent_files(
 /// before writing it: rewrites `file://context/<name>` and
 /// `skill://skills/<name>/SKILL.md` resources to absolute paths, and
 /// injects an `mcpServers.konductor-skills` entry for a skill-bearing
-/// agent when the MCP binary was installed, and, unless `no_telemetry`,
-/// adds the `hooks.agentSpawn` telemetry hook. See `resource_rewrite`'s
-/// module doc comment for how the passes are ordered.
+/// agent when the MCP binary was installed, and, unless
+/// `ctx.no_telemetry`, adds the `hooks.agentSpawn` telemetry hook. See
+/// `resource_rewrite`'s module doc comment for how the passes are
+/// ordered.
 ///
 /// Always reads `src` fresh from `dist/`, so a rewritten value is
 /// never actually re-encountered. After the pipeline runs, every
@@ -494,9 +491,8 @@ fn copy_agent_files_rewriting_resources(
     destination: &Path,
     ctx: &super::super::resource_rewrite::RewriteContext<'_>,
     file_names: Vec<String>,
-    no_telemetry: bool,
 ) -> Result<(Vec<ManifestFile>, bool), String> {
-    let passes = super::super::resource_rewrite::standard_passes(no_telemetry);
+    let passes = super::super::resource_rewrite::standard_passes(ctx.no_telemetry);
 
     let mut files = Vec::with_capacity(file_names.len());
     let mut any_mcp_server_injected = false;
@@ -527,7 +523,7 @@ fn copy_agent_files_rewriting_resources(
         // unaffected agent stays byte-identical to synth's `dist/`
         // output.
         //
-        // `no_telemetry` is required in this condition:
+        // `ctx.no_telemetry` is required in this condition:
         // `TelemetryHookPass::matches` is unconditionally `true`, so
         // without this clause an agent matching none of the other
         // conditions would take this fast path and never reach
@@ -535,7 +531,7 @@ fn copy_agent_files_rewriting_resources(
         // injection for exactly the agents that most need it.
         let contents = String::from_utf8(original_bytes.clone())
             .map_err(|e| format!("{} is not valid UTF-8: {e}", src.display()))?;
-        if no_telemetry
+        if ctx.no_telemetry
             && !contents.contains(CONTEXT_RESOURCE_PREFIX)
             && !contents.contains(super::super::resource_rewrite::SKILL_RESOURCE_PREFIX)
             && !agent_has_sop_names

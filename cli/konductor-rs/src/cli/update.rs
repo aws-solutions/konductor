@@ -2845,6 +2845,166 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
+    // ── `update` rewrites the MCP server's `--telemetry` arg ──────────
+
+    /// Seeds a V2 repo with one skill-bearing agent and the MCP binary,
+    /// plus a dual-marker target, so every install/update below injects
+    /// `mcpServers.konductor-skills`.
+    fn seed_mcp_telemetry_fixture(label: &str) -> (PathBuf, PathBuf) {
+        let target_dir = scratch_dir(&format!("{label}-target"));
+        fs::create_dir_all(target_dir.join(".kiro")).unwrap();
+        fs::create_dir_all(target_dir.join(".claude")).unwrap();
+        let repo_root = scratch_dir(&format!("{label}-repo"));
+        seed_synthed_agent_with_skill_resource(&repo_root, "k-example", "constraints");
+        seed_synthed_skill(
+            &repo_root,
+            "constraints",
+            b"---\nname: constraints\n---\nBody\n",
+        );
+        seed_mcp_binary(&repo_root, "skill-lookup-mcp", b"binary bytes\n");
+        (target_dir, repo_root)
+    }
+
+    fn install_v2(repo_root: &Path, target_dir: &Path, no_telemetry: bool) {
+        let code = super::super::install::dispatch_install_with(
+            Some(repo_root.to_str().unwrap().to_string()),
+            Some(target_dir.to_str().unwrap().to_string()),
+            "kiro-cli-v2".to_string(),
+            false,
+            no_telemetry,
+            false,
+            None,
+            false,
+            false,
+            false,
+            ColorMode::disabled(),
+        );
+        assert_eq!(code, 0, "install must succeed");
+    }
+
+    fn update_from(
+        repo_root: &Path,
+        target_dir: &Path,
+        no_telemetry: bool,
+        enable_telemetry: bool,
+    ) {
+        let code = dispatch_update_with(
+            Some(repo_root.to_str().unwrap().to_string()),
+            Some(target_dir.to_str().unwrap().to_string()),
+            false,
+            None,
+            no_telemetry,
+            enable_telemetry,
+            false,
+            false,
+            false,
+            None,
+            false,
+            false,
+            false,
+            ColorMode::disabled(),
+        );
+        assert_eq!(code, 0, "update must succeed");
+    }
+
+    fn konductor_skills_args(target_dir: &Path) -> Vec<String> {
+        let agent: serde_json::Value = serde_json::from_str(
+            &fs::read_to_string(target_dir.join(".kiro/agents/k-example.json")).unwrap(),
+        )
+        .unwrap();
+        agent["mcpServers"]["konductor-skills"]["args"]
+            .as_array()
+            .expect("konductor-skills args must be an array")
+            .iter()
+            .map(|a| a.as_str().unwrap().to_string())
+            .collect()
+    }
+
+    fn has_telemetry_off(args: &[String]) -> bool {
+        args.ends_with(&["--telemetry".to_string(), "off".to_string()])
+            && args.iter().filter(|a| *a == "--telemetry").count() == 1
+    }
+
+    #[test]
+    fn update_no_telemetry_adds_mcp_server_telemetry_off() {
+        let _home = HomeGuard::new("update-mcp-telemetry-no-telemetry-home");
+        let (target_dir, repo_root) =
+            seed_mcp_telemetry_fixture("update-mcp-telemetry-no-telemetry");
+        install_v2(&repo_root, &target_dir, false);
+        assert!(!konductor_skills_args(&target_dir).contains(&"--telemetry".to_string()));
+
+        update_from(&repo_root, &target_dir, true, false);
+
+        let args = konductor_skills_args(&target_dir);
+        assert!(has_telemetry_off(&args), "got: {args:?}");
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn plain_update_on_opted_out_target_keeps_mcp_server_telemetry_off() {
+        let _home = HomeGuard::new("update-mcp-telemetry-carry-forward-home");
+        let (target_dir, repo_root) =
+            seed_mcp_telemetry_fixture("update-mcp-telemetry-carry-forward");
+        install_v2(&repo_root, &target_dir, true);
+        let args = konductor_skills_args(&target_dir);
+        assert!(
+            has_telemetry_off(&args),
+            "after install --no-telemetry, got: {args:?}"
+        );
+
+        update_from(&repo_root, &target_dir, false, false);
+
+        let args = konductor_skills_args(&target_dir);
+        assert!(
+            has_telemetry_off(&args),
+            "after plain update, got: {args:?}"
+        );
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    #[test]
+    fn update_enable_telemetry_removes_mcp_server_telemetry_off() {
+        let _home = HomeGuard::new("update-mcp-telemetry-enable-home");
+        let (target_dir, repo_root) = seed_mcp_telemetry_fixture("update-mcp-telemetry-enable");
+        install_v2(&repo_root, &target_dir, true);
+        let args = konductor_skills_args(&target_dir);
+        assert!(
+            has_telemetry_off(&args),
+            "after install --no-telemetry, got: {args:?}"
+        );
+
+        update_from(&repo_root, &target_dir, false, true);
+
+        let args = konductor_skills_args(&target_dir);
+        assert!(!args.contains(&"--telemetry".to_string()), "got: {args:?}");
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// Opts out, back in with `--enable-telemetry`, then runs a plain
+    /// `update` on the now opted-in target.
+    #[test]
+    fn plain_update_on_opted_in_target_leaves_mcp_server_telemetry_arg_out() {
+        let _home = HomeGuard::new("update-mcp-telemetry-opted-in-home");
+        let (target_dir, repo_root) = seed_mcp_telemetry_fixture("update-mcp-telemetry-opted-in");
+        install_v2(&repo_root, &target_dir, true);
+        let args = konductor_skills_args(&target_dir);
+        assert!(
+            has_telemetry_off(&args),
+            "after install --no-telemetry, got: {args:?}"
+        );
+        update_from(&repo_root, &target_dir, false, true);
+
+        update_from(&repo_root, &target_dir, false, false);
+
+        let args = konductor_skills_args(&target_dir);
+        assert!(!args.contains(&"--telemetry".to_string()), "got: {args:?}");
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
     /// The identity file is no longer written by any install path, so
     /// it is seeded directly to reconstruct a developer machine that
     /// predates this file's retirement.

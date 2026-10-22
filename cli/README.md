@@ -492,7 +492,9 @@ above) - read `GITHUB_TOKEN` from the environment and send it on the same
 it, so the opt-out carries forward to a later plain `update` too, instead of silently
 re-enabling telemetry the moment the flag is omitted. Without the flag, `update` carries
 forward the target's earlier choice the same way: a missing `install-info.json` already
-means opted out, with nothing left to carry forward differently.
+means opted out, with nothing left to carry forward differently. An opted-out Kiro CLI
+install or update also adds `--telemetry off` to the `konductor-skills` MCP server's args,
+so `skill-lookup-mcp` sends no telemetry either.
 
 `--enable-telemetry` is the reverse: it forces telemetry on for this run regardless of any
 carried-forward opt-out, and durably re-creates `install-info.json`, the same way a fresh

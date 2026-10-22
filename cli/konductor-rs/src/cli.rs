@@ -184,8 +184,9 @@ pub enum Commands {
         link_bin: bool,
 
         /// Opt out of usage-analytics telemetry for this install. No
-        /// install record or telemetry hook is written, and any record a
-        /// prior install at this target wrote is removed.
+        /// install record or telemetry hook is written, any record a
+        /// prior install at this target wrote is removed, and the
+        /// skill-lookup MCP server is launched with `--telemetry off`.
         ///
         /// Scoped to the whole target directory, NOT to `--harness`:
         /// `install-info.json` is one file per target, shared by every
@@ -262,9 +263,11 @@ pub enum Commands {
         /// carries forward the target's earlier choice the same way: the
         /// absence of `.konductor/install-info.json` on an existing
         /// install means it is opted out, with nothing left to carry
-        /// forward differently. Pass `--enable-telemetry` to reverse an
-        /// opt-out. An `--all` batch resolves this independently per
-        /// target. Mutually exclusive with `--enable-telemetry`.
+        /// forward differently. An opted-out update also launches the
+        /// skill-lookup MCP server with `--telemetry off`. Pass
+        /// `--enable-telemetry` to reverse an opt-out. An `--all` batch
+        /// resolves this independently per target. Mutually exclusive
+        /// with `--enable-telemetry`.
         ///
         /// Scoped to the whole target directory, NOT to `--harness`:
         /// `install-info.json` is one file per target, shared by every
