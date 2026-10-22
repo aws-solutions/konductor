@@ -1,8 +1,8 @@
 {
-  "name": "asdlc-core-ai-capabilities-benchmark",
+  "name": "konductor-benchmark",
   "version": "0.1.0",
   "private": true,
-  "description": "Aim-free benchmark harness for ASDLCCoreAICapabilities agents — no internal-only build tooling required. See docs/guides/benchmarking.md.",
+  "description": "Benchmark harness for Konductor agents. See docs/guides/benchmarking.md.",
   "scripts": {
     "generate-agents": "node scripts/generate-agent-files.js",
     "generate-notice": "node scripts/generate-notice.js",

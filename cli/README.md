@@ -4,7 +4,7 @@
 
 The Konductor CLI is the command-line utility for setting up, building, and maintaining
 a Konductor-managed repository. It handles installation, configuration, and diagnostics
-for the ASDLC agent/skill/SOP content that Konductor manages - it does not itself run
+for the agent, skill and SOP content that Konductor manages — it does not itself run
 SDLC workflows (that's the Konductor Kiro agent's job).
 
 > **Status:** `init`, `install`, `update`, `uninstall`, `synth`, and `doctor` now
