@@ -328,6 +328,23 @@ pub enum Commands {
         /// Path to a local repo root to synthesize against, instead of the cwd.
         #[arg(long)]
         from: Option<String>,
+
+        /// Comma-separated allowlist of `dependencies.mcpRegistry` server
+        /// names the Claude Code transformer is permitted to merge into
+        /// each agent's rendered `mcpServers:` frontmatter. Omitted (the
+        /// default): the allowlist is empty, so no `mcpRegistry` entry is
+        /// ever merged -- matching this field's behavior before any
+        /// caller opts a server in. This is deliberately opt-in, not
+        /// opt-out: an MCP server most callers of this general-purpose
+        /// CLI have no reason to auto-launch on a caller's machine (e.g.
+        /// a browser-automation server) should never be bundled just
+        /// because a downstream repo's own agent spec happens to declare
+        /// it in `dependencies.mcpRegistry` -- see
+        /// `scripts/claude-plugin-mcp-servers.json` for this repo's own
+        /// choice (`aws-mcp` only, not `playwright-mcp`) and the
+        /// rationale recorded there.
+        #[arg(long = "claude-bundled-mcp-servers")]
+        claude_bundled_mcp_servers: Option<String>,
     },
 
     /// Initialize a new Konductor project: creates `.konductor/` in the

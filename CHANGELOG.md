@@ -1,12 +1,20 @@
 # Changelog
 
-All notable changes to ASDLC Core AI Capabilities will be documented here.
+All notable changes to Konductor are documented here.
 
 This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Entries are consolidated per release,
 not per individual commit.
 
-## [1.0.4] - 2026-10-10
+## [Unreleased]
+
+### Added
+
+- Claude Code plugin telemetry. A plugin hook sends `agent_invocation` and
+  `subagent_invocation` events for Konductor's own agents, in the CLI's format, with
+  `claude-plugin` as the harness. It is on by default and shares the machine ID in
+  `~/.konductor/telemetry.json` with the CLI. Turn it off with the plugin's
+  `telemetry_enabled` option or any existing opt-out.
 
 ### Fixed
 
@@ -18,6 +26,92 @@ not per individual commit.
   installed Kiro CLI `agent upgrade` engine) instead of a vendored module that doesn't exist in
   this repository, and correctly state that `install/registry.rs` registers three install
   strategies, not two.
+- The Claude Code plugin release candidate could include untracked build output (`cli/`,
+  `build/`, `dist/`, `generated/`) from the release job's checkout. The candidate is now built
+  only from the assembled plugin tree, its file list is checked against that tree, and any
+  top-level entry outside the plugin's own files fails the build.
+- Plugin installs could not delegate to specialists. Claude Code names plugin agents
+  `konductor:<agent>`, so bare `Agent(k-developer, ...)` grants matched nothing. Plugin assembly
+  now qualifies each grant with the plugin name and fails on a grant for an agent the plugin
+  doesn't ship. `k-architect` also lost a stale package prefix on its grants.
+- `mux-dispatch` and `cmux-dispatch` refused to dispatch in plugin installs: they only looked
+  in `~/.claude/agents/` and rejected `:` in `--agent`. They now fall back to the plugin's own
+  agents and accept `konductor:<agent>` for an agent the plugin ships. `cmux-dispatch` also
+  refuses an agent file name that could inject a command into the pane.
+- `mux-dispatch`, `cmux-dispatch`, `persistent-memory` and `legacy-to-agentic-estimate` could
+  not find their bundled scripts in plugin installs. They now look in `${CLAUDE_SKILL_DIR}`
+  first, then the global install, then a project install with a `.konductor/manifest`, then a
+  konductor source checkout. A repo is searched only if it has `.konductor/manifest` or a
+  `.claude-plugin/marketplace.json` that names `konductor`. Each skill stops with a clear error
+  when its script is missing.
+- The skill-lookup MCP server's `mcp_tool_call` events now include `parentAgentName` (as
+  `null`), which `docs/telemetry-schema.json` requires on every event.
+- `konductor update --cli` retries its smoke test of the downloaded binary when exec fails with
+  "Text file busy" (ETXTBSY), instead of failing the update.
+
+## [1.1.0] - 2026-10-14
+
+### Added
+
+- The Konductor Kiro Power at `powers/konductor/`, imported from
+  `github.com/aws-solutions/konductor/tree/v1.1.0/powers/konductor`.
+- `konductor-setup`, a skill that installs Konductor into the current project.
+- `konductor-help`, a skill that answers questions about an existing install.
+- 13 activation keywords in `powers/konductor/plugin.json`.
+- `make kiro-power-check`, wired into `.github/workflows/validate-pr.yml`.
+- An "Install via Kiro Power" page in the user guide, and a matching section in `README.md`.
+- Manual setup docs for the AWS documentation-lookup MCP server and for Playwright.
+- A Claude Code plugin marketplace install path: `/plugin marketplace add
+  aws-solutions/konductor` then `/plugin install konductor@konductor`. See [Install via the
+  Claude Code plugin marketplace](docs/user-guide/tasks/install-claude-plugin-marketplace.md).
+- `tag-claude-plugin-release.yml` is a manually dispatched workflow, run after a human merges a
+  plugin-candidate PR into `release/plugins`, that creates an immutable `claude-plugin-vX.Y.Z`
+  tag on the merge commit -- so a `marketplace.json` entry can pin to a specific release instead
+  of the branch's moving HEAD.
+- `konductor-setup`'s `run-update.sh` and `run-uninstall.sh` accept an optional `--harness
+  <name>`, forwarded to `konductor update`/`uninstall`, for a target that tracks more than one
+  harness.
+
+### Changed
+
+- Every agent spec under `agents/` now runs `claude-sonnet-5.5` instead of `claude-sonnet-5`.
+  The benchmark registry's `subjectModel` moves with it, so benchmarks measure the model that
+  ships. Benchmark results recorded against `claude-sonnet-5` aren't comparable with new runs;
+  the regression check refuses to compare across model pins.
+- `make synth` (and `konductor synth`) now pre-wires AWS MCP (`aws-mcp`) into the standalone
+  Claude Code install, matching the plugin build. Everything else stays bring-your-own. The
+  bundled-server list lives in `scripts/claude-plugin-mcp-servers.json`.
+- The plugin and standalone Claude Code builds launch `aws-mcp` through `mcp-proxy-for-aws-cli==1.7.0`. Pinning the proxy prevents unreviewed client changes while the managed endpoint continues to supply current AWS documentation and skills.
+
+### Fixed
+
+- `publish-claude-plugin` no longer fails when the assembled plugin tree already matches
+  `release/plugins`' tip exactly (e.g. a re-release of unchanged plugin content). The job now
+  skips the push and draft-PR steps and ends green with a notice instead of pushing an empty
+  branch and failing at `gh pr create` with "No commits between".
+
+### Security
+
+- `rustls` moves from `0.23.43` to `0.23.45` in the CLI, the skill-lookup MCP server, and the
+  shared telemetry test sink, fixing GHSA-2mjx-qc3c-rqvc (TLS 1.3 handshake messages were
+  accepted across encryption level boundaries).
+- `aws-mcp` uses `mcp-proxy-for-aws-cli==1.7.0` instead of a moving package version. The managed endpoint still supplies current AWS documentation and skills.
+- The plugin release no longer force-pushes directly to a public branch. `publish-claude-plugin`
+  pushes a fresh, collision-resistant candidate branch (release version plus workflow run
+  identifier) and opens a **draft** pull request into the protected `release/plugins` branch,
+  using `GITHUB_TOKEN` scoped to `contents: write` and `pull-requests: write` only. The
+  `plugins` branch ruleset (creation/update/deletion/non-fast-forward blocked, zero bypass
+  actors) and the org-wide two-approval PR ruleset gate the actual merge. A separate workflow,
+  `tag-claude-plugin-release.yml`, creates the immutable `claude-plugin-vX.Y.Z` tag only after
+  that PR is merged into `release/plugins` by a human reviewer.
+- `k-architect`/`k-developer` still grant AWS MCP's full tool surface, unchanged. Use the
+  `aws:ViaAWSMCPService`/`aws:CalledViaAWSMCP` IAM condition keys to scope or audit
+  agent-originated calls.
+- `release.yml`'s `workflow_dispatch` trigger bypassed `check-version`'s branch gating: any
+  branch with an unreleased `VERSION` bump could trigger a real `gh release create`, and by
+  default, a force-push to the public `claude-plugin` branch. Removed the manual-dispatch path
+  entirely; `validate-pr.yml` now runs `claude plugin validate --strict` against the assembled
+  plugin tree on every PR instead, with no publish or push step anywhere in its job graph.
 
 ## [1.0.3] - 2026-10-01
 

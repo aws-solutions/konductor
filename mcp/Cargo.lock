@@ -504,7 +504,7 @@ dependencies = [
 
 [[package]]
 name = "konductor-telemetry"
-version = "1.0.4"
+version = "1.0.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -722,9 +722,9 @@ checksum = "b74b56ffa8bb2830709a538c2cbcae9aa062db0d2a42563bfb09bdaae44020eb"
 
 [[package]]
 name = "rustls"
-version = "0.23.43"
+version = "0.23.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0283386ce02abc0151e1761d08802dfe86c173b0b494af5cbc086574e453da06"
+checksum = "0d41d731c7d2f962d1ccc364cec258de3c0e93b38c2fb3ba97ac74513048d634"
 dependencies = [
  "once_cell",
  "ring",
@@ -923,7 +923,7 @@ dependencies = [
 
 [[package]]
 name = "skill-lookup-core"
-version = "1.0.4"
+version = "1.0.3"
 dependencies = [
  "konductor-telemetry",
  "serde",
@@ -936,7 +936,7 @@ dependencies = [
 
 [[package]]
 name = "skill-lookup-mcp"
-version = "1.0.4"
+version = "1.0.3"
 dependencies = [
  "clap",
  "rmcp",
@@ -990,7 +990,7 @@ dependencies = [
 
 [[package]]
 name = "telemetry-test-sink"
-version = "1.0.4"
+version = "1.0.3"
 dependencies = [
  "rcgen",
  "rustls",

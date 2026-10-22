@@ -1,6 +1,6 @@
 [package]
 name = "telemetry-test-sink"
-version = "1.0.4"
+version = "1.0.3"
 edition = "2021"
 description = "Test-only loopback HTTP sink standing in for the real telemetry endpoint, shared by cli/konductor-rs's and mcp/lib/skill-lookup-core's test suites so neither ever sends telemetry to a real endpoint during a test run"
 # Lives in the shared/ workspace, sibling to cli/ and mcp/, for the
@@ -39,7 +39,7 @@ path = "src/lib.rs"
 # crate's own Cargo.toml) rather than the default `aws-lc-rs` backend,
 # which needs a cmake/C build this offline mirror has no cached
 # tarball for.
-rustls = { version = "=0.23.43", default-features = false, features = ["ring", "std", "tls12"] }
+rustls = { version = "=0.23.45", default-features = false, features = ["ring", "std", "tls12"] }
 # Generates this sink's throwaway self-signed certificate + key
 # in-process (src/lib.rs's `generate_self_signed_cert`) -- no `openssl`
 # CLI subprocess, and no assumption that the build environment has an

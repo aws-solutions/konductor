@@ -1,47 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// synth/claude.rs -- `HarnessTransformer` for the Claude Code harness
-// target: writes each agent, skill, and SOP in a `CanonicalModel` out
-// as Claude Code output (agent markdown with YAML frontmatter,
-// `SKILL.md` + auxiliary files, `.sop.md`).
+// synth/claude.rs renders CanonicalModel content for Claude Code.
 //
-// Agent output shape is grounded against AIM's own live Claude Code
-// materialization for this package, not a written spec: YAML
-// frontmatter with `name`/`description`/`model`/`tools`/`skills`,
-// followed by the system prompt as a plain markdown body with no
-// wrapping heading.
+// Standalone agent files can declare `mcpServers` frontmatter. Plugin agent
+// files cannot, so the plugin generator writes a shared `.mcp.json` instead.
+// Agent context is rendered into the prompt body because Claude Code has no
+// generic context-resource frontmatter field.
 //
-// A few shapes are deliberately scoped down to what the live artifact
-// confirms, to be extended once a real spec needs more:
-// - No `# System Prompt` heading in the body.
-// - `allowedTools`/`hooks`/`mcpServers` each render as their own
-//   frontmatter key (see `ClaudeAgentFrontmatter`), omitted entirely
-//   (not rendered empty) when the corresponding `claudeCli` field is
-//   empty. `hooks` renders `ClaudeCliConfig::hooks`'s parsed structure
-//   as-is, but each leaf goes through `hooks_to_yaml`/
-//   `json_value_to_yaml_value` first, since this crate's `serde_json`
-//   `arbitrary_precision` feature makes `Number`'s `Serialize` impl
-//   incompatible with `serde_yaml` (a numeric leaf would otherwise
-//   render as a corrupted nested map). `mcpServers` renders as a YAML
-//   sequence of single-key maps, not a plain map keyed by server name,
-//   so `render_mcp_servers` reshapes it into that sequence via
-//   `McpServerRender`; `command`/`args`/`url` are omitted per-entry
-//   when absent in the source.
-// - No fallback to `dependencies.skills.skillNames` when
-//   `claudeCli.skills` is absent -- every real spec in this repo's
-//   fixture corpus sets both today, so the fallback path is untested.
-// - `agent.dependencies.context.context_names` isn't referenced in the
-//   rendered frontmatter (Claude Code has no generic "resources" field
-//   like Kiro's). Instead, each named context file's content is
-//   spliced directly into the rendered body, wrapped in a `<Context:
-//   filename.md>...</Context: filename.md>` marker, one block per name
-//   in order (see `render_agent_md`) -- this mirrors the real
-//   materialization behavior, confirmed against a live installed agent
-//   file. `dist/claude/context/` is still written even though the
-//   Claude agent output no longer needs to read it back, in case some
-//   other consumer of `dist/claude/` wants the raw per-file content.
+// The renderer intentionally preserves the distinction between omitted tools
+// (inherit defaults) and an empty tools list (no tools).
 
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -270,6 +239,41 @@ fn render_mcp_servers(
         .collect()
 }
 
+/// Merges `mcp_registry` (an agent's `dependencies.mcpRegistry` --
+/// cross-harness MCP server declarations every harness's transformer is
+/// meant to read) with `claude_mcp_servers` (an agent's
+/// `clientConfig.claudeCli.mcpServers` -- a Claude-specific override or
+/// addition) into the single map `render_agent_md` actually renders. See
+/// this module's own docstring for why this merge exists at all.
+///
+/// `mcp_registry` entries are inserted first, in `BTreeMap`'s own sorted-
+/// by-server-name order (deterministic regardless of the source JSON's
+/// declaration order, since `AgentDependencies.mcp_registry` is itself a
+/// `BTreeMap`, not an order-preserving map). `claude_mcp_servers` entries
+/// are then applied on top: a same-named entry REPLACES the registry-
+/// derived one in place (an author who explicitly sets
+/// `clientConfig.claudeCli.mcpServers` for a server name already in the
+/// registry is customizing that server's Claude-specific launch config,
+/// not adding a duplicate), while any new name is appended after every
+/// registry entry, in its own declared order. `IndexMap::insert`'s own
+/// semantics make this fallout naturally: inserting an already-present
+/// key updates its value without moving its position; only a genuinely
+/// new key extends the tail.
+fn merge_mcp_servers(
+    mcp_registry: &BTreeMap<String, McpServerDef>,
+    claude_mcp_servers: &IndexMap<String, McpServerDef>,
+) -> IndexMap<String, McpServerDef> {
+    let mut merged: IndexMap<String, McpServerDef> =
+        IndexMap::with_capacity(mcp_registry.len() + claude_mcp_servers.len());
+    for (name, def) in mcp_registry {
+        merged.insert(name.clone(), def.clone());
+    }
+    for (name, def) in claude_mcp_servers {
+        merged.insert(name.clone(), def.clone());
+    }
+    merged
+}
+
 /// Transforms `CanonicalModel` agents, skills, and SOPs into Claude Code
 /// output. Agents with no `clientConfig.claudeCli` section are skipped;
 /// skills and SOPs are always emitted. Each content type is staged in a
@@ -308,6 +312,7 @@ impl HarnessTransformer for ClaudeTransformer {
                     &agent.dependencies.context.context_names,
                     &model.context,
                     &skill_names,
+                    &agent.dependencies.mcp_registry,
                 )?;
                 write_agent_file(staging_dir, &agent.name, &rendered)?;
             }
@@ -353,6 +358,12 @@ impl HarnessTransformer for ClaudeTransformer {
 /// -- see that function's own doc comment -- so every name here is
 /// guaranteed to match a real `ContextDef` in `context_defs` by the time
 /// this function runs).
+///
+/// `mcp_registry` is an agent spec's `dependencies.mcpRegistry` -- merged
+/// with `claude.mcp_servers` (`clientConfig.claudeCli.mcpServers`) via
+/// `merge_mcp_servers` (see that function's own doc comment for the
+/// precedence rule) before rendering, so the frontmatter's `mcpServers:`
+/// key reflects both sources rather than only the Claude-specific one.
 fn render_agent_md(
     name: &str,
     config: &super::parser::AgentConfig,
@@ -360,6 +371,7 @@ fn render_agent_md(
     context_names: &[String],
     context_defs: &[super::model::ContextDef],
     skill_names: &HashSet<&str>,
+    mcp_registry: &BTreeMap<String, McpServerDef>,
 ) -> Result<String, String> {
     for skill_name in &claude.skills {
         if !skill_names.contains(skill_name.as_str()) {
@@ -370,6 +382,7 @@ fn render_agent_md(
         }
     }
 
+    let merged_mcp_servers = merge_mcp_servers(mcp_registry, &claude.mcp_servers);
     let frontmatter = ClaudeAgentFrontmatter {
         name,
         description: &config.description,
@@ -378,7 +391,7 @@ fn render_agent_md(
         skills: &claude.skills,
         allowed_tools: &claude.allowed_tools,
         hooks: hooks_to_yaml(&claude.hooks),
-        mcp_servers: render_mcp_servers(&claude.mcp_servers),
+        mcp_servers: render_mcp_servers(&merged_mcp_servers),
     };
     let yaml = serde_yaml::to_string(&frontmatter)
         .map_err(|e| format!("failed to serialize frontmatter for agent '{name}': {e}"))?;
@@ -541,6 +554,7 @@ mod tests {
             &[],
             &[],
             &skill_names,
+            &BTreeMap::new(),
         )
         .unwrap();
 
@@ -593,6 +607,7 @@ mod tests {
             &[],
             &[],
             &HashSet::new(),
+            &BTreeMap::new(),
         )
         .unwrap();
 
@@ -630,6 +645,7 @@ mod tests {
             &[],
             &[],
             &HashSet::new(),
+            &BTreeMap::new(),
         )
         .unwrap();
 
@@ -659,6 +675,7 @@ mod tests {
             &[],
             &[],
             &HashSet::new(),
+            &BTreeMap::new(),
         )
         .unwrap();
 
@@ -745,6 +762,7 @@ mod tests {
             &[],
             &[],
             &HashSet::new(),
+            &BTreeMap::new(),
         )
         .unwrap();
 
@@ -797,6 +815,7 @@ mod tests {
             &[],
             &[],
             &HashSet::new(),
+            &BTreeMap::new(),
         )
         .unwrap();
 
@@ -854,6 +873,7 @@ mod tests {
             &[],
             &[],
             &HashSet::new(),
+            &BTreeMap::new(),
         )
         .unwrap();
 
@@ -909,6 +929,7 @@ mod tests {
             &[],
             &[],
             &HashSet::new(),
+            &BTreeMap::new(),
         )
         .unwrap();
 
@@ -946,6 +967,7 @@ mod tests {
             &[],
             &[],
             &HashSet::new(),
+            &BTreeMap::new(),
         )
         .unwrap();
 
@@ -961,6 +983,260 @@ mod tests {
             mcp_zebra < mcp_apple,
             "expected mcpServers keys in source order (zebra-mcp, apple-mcp), got: {rendered}"
         );
+    }
+
+    // ── dependencies.mcpRegistry -> rendered mcpServers frontmatter ────────
+
+    /// CRITICAL regression guard for the fix in this module: an agent
+    /// declaring `dependencies.mcpRegistry` but no
+    /// `clientConfig.claudeCli.mcpServers` at all (`k-browser`'s and
+    /// `k-architect`'s real shape) must still render a `mcpServers:`
+    /// frontmatter key built from the registry -- before this fix,
+    /// `mcp_registry` was parsed but never read by this transformer, so an
+    /// agent granting `mcp__playwright-mcp__*` in `tools` rendered with no
+    /// `mcpServers:` key naming how to launch that server at all.
+    #[test]
+    fn render_agent_md_renders_mcp_servers_from_dependencies_mcp_registry_when_claude_cli_mcp_servers_is_empty(
+    ) {
+        let claude = ClaudeCliConfig {
+            tools: Some(vec!["mcp__playwright-mcp__*".to_string()]),
+            ..Default::default()
+        };
+        let agent = agent_with_claude("k-example", claude);
+        let claude_cfg = agent.client_config.claude_cli.as_ref().unwrap();
+        let mut mcp_registry = BTreeMap::new();
+        mcp_registry.insert(
+            "playwright-mcp".to_string(),
+            McpServerDef {
+                command: None,
+                args: vec![
+                    "-y".to_string(),
+                    "@playwright/mcp@latest".to_string(),
+                    "--output-dir".to_string(),
+                    "browser-output".to_string(),
+                ],
+                url: None,
+            },
+        );
+        let rendered = render_agent_md(
+            "k-example",
+            &agent.config,
+            claude_cfg,
+            &[],
+            &[],
+            &HashSet::new(),
+            &mcp_registry,
+        )
+        .unwrap();
+
+        let frontmatter_yaml = rendered
+            .split("---\n")
+            .nth(1)
+            .expect("frontmatter section present");
+        let parsed: serde_yaml::Value = serde_yaml::from_str(frontmatter_yaml).unwrap();
+        let mcp_seq = parsed["mcpServers"]
+            .as_sequence()
+            .expect("mcpServers must render as a sequence, got no such key or wrong shape");
+        assert_eq!(mcp_seq.len(), 1);
+        assert_eq!(
+            mcp_seq[0]["playwright-mcp"]["args"].as_sequence().unwrap(),
+            &vec![
+                serde_yaml::Value::String("-y".to_string()),
+                serde_yaml::Value::String("@playwright/mcp@latest".to_string()),
+                serde_yaml::Value::String("--output-dir".to_string()),
+                serde_yaml::Value::String("browser-output".to_string()),
+            ]
+        );
+        assert!(
+            mcp_seq[0]["playwright-mcp"].get("command").is_none()
+                || mcp_seq[0]["playwright-mcp"]["command"].is_null(),
+            "no command was declared in the registry entry, so none should render, got: {frontmatter_yaml}"
+        );
+    }
+
+    /// Companion to the test above: when an agent declares the SAME server
+    /// name in both `dependencies.mcpRegistry` AND
+    /// `clientConfig.claudeCli.mcpServers`, the explicit `claudeCli`
+    /// definition wins for that name (the author is customizing the
+    /// Claude-specific launch config), while a registry entry under a
+    /// DIFFERENT name still comes through unmodified.
+    #[test]
+    fn render_agent_md_explicit_claude_cli_mcp_server_overrides_same_named_registry_entry() {
+        let mut mcp_servers = IndexMap::new();
+        mcp_servers.insert(
+            "aws-mcp".to_string(),
+            McpServerDef {
+                command: Some("custom-command".to_string()),
+                args: vec!["--claude-specific-flag".to_string()],
+                url: None,
+            },
+        );
+        let claude = ClaudeCliConfig {
+            mcp_servers,
+            ..Default::default()
+        };
+        let agent = agent_with_claude("k-example", claude);
+        let claude_cfg = agent.client_config.claude_cli.as_ref().unwrap();
+        let mut mcp_registry = BTreeMap::new();
+        mcp_registry.insert(
+            "aws-mcp".to_string(),
+            McpServerDef {
+                command: Some("uvx".to_string()),
+                args: vec!["mcp-proxy-for-aws@latest".to_string()],
+                url: None,
+            },
+        );
+        mcp_registry.insert(
+            "another-mcp".to_string(),
+            McpServerDef {
+                command: Some("another-command".to_string()),
+                args: vec![],
+                url: None,
+            },
+        );
+        let rendered = render_agent_md(
+            "k-example",
+            &agent.config,
+            claude_cfg,
+            &[],
+            &[],
+            &HashSet::new(),
+            &mcp_registry,
+        )
+        .unwrap();
+
+        let frontmatter_yaml = rendered
+            .split("---\n")
+            .nth(1)
+            .expect("frontmatter section present");
+        let parsed: serde_yaml::Value = serde_yaml::from_str(frontmatter_yaml).unwrap();
+        let mcp_seq = parsed["mcpServers"].as_sequence().unwrap();
+        assert_eq!(mcp_seq.len(), 2, "expected both servers, no duplicates");
+        // BTreeMap iterates sorted by key ("another-mcp" < "aws-mcp"
+        // lexicographically), not by either insertion call's order --
+        // registry entries render in THAT sorted order (see
+        // `merge_mcp_servers`'s own doc comment), so "another-mcp" is
+        // first here regardless of which `mcp_registry.insert` call ran
+        // second above.
+        assert_eq!(
+            mcp_seq[0]["another-mcp"]["command"].as_str(),
+            Some("another-command"),
+            "a registry-only entry under a different name must still come through \
+             unmodified, got: {frontmatter_yaml}"
+        );
+        assert_eq!(
+            mcp_seq[1]["aws-mcp"]["command"].as_str(),
+            Some("custom-command"),
+            "the explicit claudeCli.mcpServers definition must win over the same-named \
+             registry entry, got: {frontmatter_yaml}"
+        );
+    }
+
+    /// Ordering regression guard: registry entries render first, in
+    /// `BTreeMap`'s own sorted-by-name order, and any `claudeCli.mcpServers`
+    /// entry whose name is NOT already in the registry is appended after
+    /// every registry entry, in its own declared order -- not interleaved
+    /// or re-sorted.
+    #[test]
+    fn render_agent_md_appends_claude_only_mcp_server_after_every_registry_entry() {
+        let mut mcp_servers = IndexMap::new();
+        mcp_servers.insert("claude-only-mcp".to_string(), McpServerDef::default());
+        let claude = ClaudeCliConfig {
+            mcp_servers,
+            ..Default::default()
+        };
+        let agent = agent_with_claude("k-example", claude);
+        let claude_cfg = agent.client_config.claude_cli.as_ref().unwrap();
+        let mut mcp_registry = BTreeMap::new();
+        // Deliberately out of alphabetical insertion order into the
+        // BTreeMap constructor calls -- BTreeMap iterates sorted by key
+        // regardless of insertion order, so "zebra-mcp" must still render
+        // before "apple-mcp".
+        mcp_registry.insert("zebra-mcp".to_string(), McpServerDef::default());
+        mcp_registry.insert("apple-mcp".to_string(), McpServerDef::default());
+        let rendered = render_agent_md(
+            "k-example",
+            &agent.config,
+            claude_cfg,
+            &[],
+            &[],
+            &HashSet::new(),
+            &mcp_registry,
+        )
+        .unwrap();
+
+        let apple_pos = rendered.find("apple-mcp").unwrap();
+        let zebra_pos = rendered.find("zebra-mcp").unwrap();
+        let claude_only_pos = rendered.find("claude-only-mcp").unwrap();
+        assert!(
+            apple_pos < zebra_pos,
+            "registry entries must render in BTreeMap's sorted order, got: {rendered}"
+        );
+        assert!(
+            zebra_pos < claude_only_pos,
+            "a claudeCli-only entry must render after every registry entry, got: {rendered}"
+        );
+    }
+
+    /// Both sources empty (the pre-fix default for most agents) must still
+    /// omit the `mcpServers:` key entirely, matching
+    /// `render_agent_md_omits_allowed_tools_hooks_and_mcp_servers_when_empty`
+    /// above -- the merge must not itself manufacture an empty-but-present
+    /// key.
+    #[test]
+    fn render_agent_md_omits_mcp_servers_key_when_registry_and_claude_cli_both_empty() {
+        let claude = ClaudeCliConfig::default();
+        let agent = agent_with_claude("k-example", claude);
+        let claude_cfg = agent.client_config.claude_cli.as_ref().unwrap();
+        let rendered = render_agent_md(
+            "k-example",
+            &agent.config,
+            claude_cfg,
+            &[],
+            &[],
+            &HashSet::new(),
+            &BTreeMap::new(),
+        )
+        .unwrap();
+
+        assert!(!rendered.contains("mcpServers:"), "got: {rendered}");
+    }
+
+    /// End-to-end through `transform` (not just `render_agent_md` directly):
+    /// confirms the `transform()` call site actually threads
+    /// `agent.dependencies.mcp_registry` through, not just that the
+    /// lower-level function works in isolation -- mirrors
+    /// `transform_inlines_context_into_written_agent_file`'s own
+    /// end-to-end shape for the context-splicing fix.
+    #[test]
+    fn transform_renders_mcp_servers_from_dependencies_mcp_registry_in_written_agent_file() {
+        let dir = temp_dir("mcp-registry-transform-e2e");
+        let mut agent = agent_with_claude("k-example", ClaudeCliConfig::default());
+        agent.dependencies.mcp_registry.insert(
+            "aws-mcp".to_string(),
+            McpServerDef {
+                command: Some("uvx".to_string()),
+                args: vec!["mcp-proxy-for-aws@latest".to_string()],
+                url: None,
+            },
+        );
+        let model = CanonicalModel {
+            agents: vec![agent],
+            ..Default::default()
+        };
+
+        ClaudeTransformer.transform(&model, &dir).unwrap();
+
+        let written = dir.join(expected_output_dir()).join("k-example.md");
+        let contents = fs::read_to_string(&written).unwrap();
+        assert!(
+            contents.contains("mcpServers:"),
+            "expected the transform() call site to thread dependencies.mcp_registry into the \
+             rendered frontmatter, got:\n{contents}"
+        );
+        assert!(contents.contains("aws-mcp"), "got:\n{contents}");
+
+        let _ = fs::remove_dir_all(&dir);
     }
 
     /// Data-integrity regression guard: a `claudeCli.skills` entry naming
@@ -984,6 +1260,7 @@ mod tests {
             &[],
             &[],
             &HashSet::new(),
+            &BTreeMap::new(),
         );
         let err = match result {
             Ok(_) => panic!("expected a dangling claudeCli skill reference to be rejected"),
@@ -1176,6 +1453,7 @@ mod tests {
             &context_names,
             &context_defs,
             &HashSet::new(),
+            &BTreeMap::new(),
         )
         .unwrap();
 
@@ -1220,6 +1498,7 @@ mod tests {
             &context_names,
             &context_defs,
             &HashSet::new(),
+            &BTreeMap::new(),
         )
         .unwrap();
 
@@ -1249,6 +1528,7 @@ mod tests {
             &[],
             &[],
             &HashSet::new(),
+            &BTreeMap::new(),
         )
         .unwrap();
         assert!(!rendered.contains("<Context:"));
