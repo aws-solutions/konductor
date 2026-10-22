@@ -158,8 +158,8 @@ pub(crate) fn remove_install_info(target_dir: &Path) -> std::io::Result<()> {
 /// unchanged, so callers resolve a carry-forward opt-out or a
 /// broken-record warning exactly as they would from a bare
 /// `read_install_info_detailed` call. `remove_error` is `Some` only when
-/// a removal was both called for and attempted (the locked read found an
-/// `Ok` record) and either the removal itself failed, or the lock could
+/// a removal was both called for and attempted (the locked read found a
+/// record, valid or not; only `NotFound` skips it) and either the removal itself failed, or the lock could
 /// not be acquired at all with a removal pending.
 pub(crate) fn read_and_maybe_remove_locked(
     target_dir: &Path,
@@ -179,8 +179,9 @@ pub(crate) fn read_and_maybe_remove_locked(
             // still unlocked and best-effort, the same as calling
             // `read_install_info_detailed` directly with no lock held.
             let read = read_install_info_detailed(target_dir);
-            let remove_error =
-                (remove_if_enabled && read.is_ok()).then(|| std::io::Error::other(err.to_string()));
+            let remove_error = (remove_if_enabled
+                && !matches!(read, Err(InstallInfoAbsence::NotFound)))
+            .then(|| std::io::Error::other(err.to_string()));
             return (read, remove_error);
         }
     };
@@ -189,7 +190,7 @@ pub(crate) fn read_and_maybe_remove_locked(
     if let Some(hook) = LOCKED_READ_SYNC_HOOK.with(|h| h.borrow_mut().take()) {
         hook();
     }
-    let remove_error = if remove_if_enabled && read.is_ok() {
+    let remove_error = if remove_if_enabled && !matches!(read, Err(InstallInfoAbsence::NotFound)) {
         remove_install_info(target_dir).err()
     } else {
         None
@@ -765,6 +766,27 @@ mod tests {
 
         fs::remove_dir_all(&target).ok();
         fs::remove_dir_all(&source).ok();
+    }
+
+    /// An explicit opt-out removes any record that exists, including one
+    /// this binary can't parse, such as a newer binary's schema. Keeping it
+    /// would let that newer binary turn telemetry back on at the next update.
+    #[test]
+    fn read_and_maybe_remove_locked_removes_a_record_this_binary_cannot_read() {
+        let target = scratch_dir("locked-remove-unknown-schema");
+        let path = install_info_path(&target);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(&path, r#"{"schema_version":999,"harness":"claude"}"#).unwrap();
+
+        let (read, remove_error) = read_and_maybe_remove_locked(&target, true);
+
+        assert!(matches!(read, Err(InstallInfoAbsence::Broken)));
+        assert!(remove_error.is_none(), "{remove_error:?}");
+        assert!(
+            !path.exists(),
+            "an explicit opt-out must remove an unreadable record"
+        );
+        fs::remove_dir_all(&target).ok();
     }
 
     /// The regression test for the fix (see the test above for the
