@@ -64,7 +64,8 @@ not per individual commit.
 - `aws-service-validator` calls `aws___get_regional_availability` with `resource_type` (required), `regions`, and `filters` (required for more than one region), instead of a bare service-and-region call.
 - Routing skills now agree with the orchestrator prompts. `mux-dispatch` peeks at a running
   pane only on the prompt's polling fallback, and `delegation-protocol` applies rule 5's
-  fix-attempt cap and 2-Strike Circuit Breaker instead of its own cycle count.
+  fix-attempt cap and 2-Strike Circuit Breaker instead of its own cycle count, and limits its
+  retry-once recovery to spawns that error, time out, or return nothing.
 
 ### Security
 
