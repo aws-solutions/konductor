@@ -24,11 +24,9 @@ not per individual commit.
 
 ### Fixed
 
-- Routing rules and skills now agree with the orchestrator prompts. The delegate table names
-  only git operations that change refs or the working tree, so read-only `git branch --list`
-  stays direct work. `mux-dispatch` peeks at a running pane only on the prompt's polling
-  fallback, and `delegation-protocol` applies rule 5's fix-attempt cap and 2-Strike Circuit
-  Breaker instead of its own cycle count.
+- Routing skills now agree with the orchestrator prompts. `mux-dispatch` peeks at a running
+  pane only on the prompt's polling fallback, and `delegation-protocol` applies rule 5's
+  fix-attempt cap and 2-Strike Circuit Breaker instead of its own cycle count.
 
 ## [1.1.0] - 2026-10-14
 
