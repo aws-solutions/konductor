@@ -129,7 +129,10 @@ should read that file once `.done` appears. Use a pane-content dump (see below)
 only as a fallback when no result file was written or the pane exited before
 producing one.
 
-### Peeking at a running pane (fallback, before `.done` appears)
+### Peeking at a running pane (polling fallback, before `.done` appears)
+
+Peek only when the polling fallback in the orchestrator prompt's Completion
+Detection section calls for it, not on every poll.
 
 ```bash
 # tmux — last 10 lines of a running pane
