@@ -33,20 +33,40 @@ Load `.konductor/memory/MEMORY.md` and `.konductor/memory/USER.md` via `fs_read`
 
 1. Re-read the target file from disk.
 2. Prepare the **full file content** — all existing entries plus the new/updated one.
-3. Pipe through the validator:
+3. Pipe through the validator. Try these locations in order and use the first
+   executable match:
 
    ```bash
-   VALIDATOR="$(git rev-parse --show-toplevel 2>/dev/null)/skills/persistent-memory/scripts/memory-validator.sh"
-   if [[ ! -x "$VALIDATOR" ]]; then
-     VALIDATOR="${SKILLS_HOME:-$HOME/.konductor/skills}/persistent-memory/scripts/memory-validator.sh"
-   fi
+   ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+   PROJECT="" CHECKOUT=""
+   [ -n "$ROOT" ] && [ -f "$ROOT/.konductor/manifest" ] && PROJECT="$ROOT/.konductor/skills/persistent-memory"
+   [ -n "$ROOT" ] && grep -qs '"name": *"konductor"' "$ROOT/.claude-plugin/marketplace.json" && CHECKOUT="$ROOT/skills/persistent-memory"
+   VALIDATOR=""
+   for d in "${CLAUDE_SKILL_DIR}" "${SKILLS_HOME:-$HOME/.konductor/skills}/persistent-memory" "$PROJECT" "$CHECKOUT"; do
+     [ -n "$d" ] && [ -x "$d/scripts/memory-validator.sh" ] && { VALIDATOR="$d/scripts/memory-validator.sh"; break; }
+   done
+   [ -n "$VALIDATOR" ] || { echo "ERROR: memory-validator.sh not found; not writing memory" >&2; exit 1; }
    printf '%s' "$PROPOSED_CONTENT" | bash "$VALIDATOR" ".konductor/memory/MEMORY.md"
    ```
+
+   Trust order, first match wins:
+
+   1. `${CLAUDE_SKILL_DIR}`: Claude Code replaces this with the skill's own
+      directory, for a plugin install and a `.claude/skills/` install. Other
+      runtimes leave it empty, so it is skipped.
+   2. `${SKILLS_HOME:-$HOME/.konductor/skills}/persistent-memory`: a global Kiro CLI
+      install (`konductor install` with no `--target`).
+   3. `<git root>/.konductor/skills/persistent-memory`: a project install, used only
+      when that root has konductor's install record, `.konductor/manifest`.
+   4. `<git root>/skills/persistent-memory`: a konductor source checkout, used only
+      when `.claude-plugin/marketplace.json` there names `konductor`.
+
+   A repo is searched only if it has `.konductor/manifest` or a `.claude-plugin/marketplace.json` that names `konductor`.
 
 4. **Exit 0** → write succeeded (validator performs atomic write).
 5. **Exit 1** → read stderr for reason, adjust and retry once, or skip if unresolvable.
 
-**Missing validator:** If neither path resolves to an executable validator, fail closed — do not write, log the error, continue the session normally.
+**Missing validator:** If nothing matches, the snippet exits 1. Fail closed: do not write, log the error, and continue the session normally.
 
 ### Add an entry
 

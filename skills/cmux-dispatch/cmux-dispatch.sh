@@ -12,6 +12,41 @@
 #   - Completion hook: child agents write .done files via cmux-completion-hook.sh
 set -euo pipefail
 
+# Resolve the real path of this script before taking dirname, so invocation
+# through a symlink (direct or via a relative link target) still locates
+# sibling files next to the REAL file, not next to the symlink. Mirrors
+# dispatch.sh's own resolution so a caller that found this script via an
+# absolute path (per mux-dispatch/cmux-dispatch SKILL.md's resolution order)
+# gets the same guarantee: this script can find its sibling resources
+# (e.g. cmux-completion-hook.sh) regardless of the caller's cwd. No
+# `readlink -f` (GNU-only; macOS readlink lacks it) -- loop-resolve one level
+# at a time with plain `readlink` + `cd -P`.
+SOURCE="${BASH_SOURCE[0]}"
+MAX_SYMLINK_HOPS=40
+hop_count=0
+while [[ -L "$SOURCE" ]]; do
+  hop_count=$((hop_count + 1))
+  if (( hop_count > MAX_SYMLINK_HOPS )); then
+    echo "ERROR: symlink resolution exceeded ${MAX_SYMLINK_HOPS} hops (possible cyclic symlink) while resolving '$SOURCE'." >&2
+    exit 1
+  fi
+  DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+  LINK_TARGET="$(readlink "$SOURCE")"
+  case "$LINK_TARGET" in
+    /*) SOURCE="$LINK_TARGET" ;;              # absolute link target
+    *)  SOURCE="$DIR/$LINK_TARGET" ;;          # relative link target
+  esac
+done
+SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+
+# Sanity check: the kiro-cli completion hook (wired via the dispatched
+# agent's own `clientConfig.kiroCli.hooks.stop` config) lives next to this
+# script. Warn early if a broken install is missing it, rather than let
+# completion detection silently fall back to the shell-fallback .done path.
+if [[ ! -f "$SCRIPT_DIR/cmux-completion-hook.sh" ]]; then
+  echo "WARNING: cmux-completion-hook.sh not found next to $SCRIPT_DIR/cmux-dispatch.sh -- completion detection will rely on the shell fallback only." >&2
+fi
+
 AGENT="" TASK="" CWD="" NAME="" MODE="split" SPLIT_DIR="right" CLOSE=false INTERACTIVE=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -36,10 +71,9 @@ done
 
 [[ -z "$AGENT" ]] && { echo "ERROR: --agent required" >&2; exit 1; }
 [[ -z "$TASK" ]]  && { echo "ERROR: --task required" >&2; exit 1; }
-# AGENT is used verbatim -- the caller (orchestrator routing table) is the
-# single source of truth for the fully-qualified agent name (e.g. 'k-developer').
-# This script never adds or strips a role prefix.
-[[ "$AGENT" =~ ^[a-z0-9-]+$ ]] || { echo "ERROR: --agent must be alphanumeric/hyphens only" >&2; exit 1; }
+# AGENT is the name from the orchestrator routing table (e.g. 'k-developer'),
+# or one qualified with this plugin's name ('konductor:k-developer').
+[[ "$AGENT" =~ ^([a-z0-9-]+:)?[a-z0-9-]+$ ]] || { echo "ERROR: --agent must be alphanumeric/hyphens only, optionally prefixed with '<plugin>:'" >&2; exit 1; }
 CMUX_BIN="${CMUX_BIN:-/Applications/cmux.app/Contents/MacOS/cmux}"
 [[ -x "$CMUX_BIN" ]] || { echo "ERROR: cmux binary not found or not executable (set CMUX_BIN to override)" >&2; exit 1; }
 cmux() { "$CMUX_BIN" "$@"; }
@@ -125,37 +159,56 @@ if [ -n "${CLAUDECODE:-}" ]; then
   # glob order. FOUND is tracked separately from PREFIX so a legitimate
   # empty prefix (a hypothetical prefix-less "<agent>.md" install) is not
   # mistaken for "not found".
+  # If ~/.claude/agents has no match, an agent this skill's own plugin ships
+  # (this script sits at <plugin root>/skills/cmux-dispatch/) launches by its
+  # bare name; Claude resolves it to <plugin>:<agent>. A qualified AGENT must
+  # name this plugin and one of its agents.
+  PLUGIN_ROOT="$(cd -P "$SCRIPT_DIR/../.." && pwd)"
+  PLUGIN_NAME=""
+  if [[ -f "$PLUGIN_ROOT/.claude-plugin/plugin.json" ]]; then
+    PLUGIN_NAME="$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1])).get("name", ""))' \
+      "$PLUGIN_ROOT/.claude-plugin/plugin.json" 2>/dev/null || true)"
+    [[ "$PLUGIN_NAME" =~ ^[a-z0-9-]+$ ]] || PLUGIN_NAME=""
+  fi
   PREFIX="" FOUND="" AMBIGUOUS=""
-  LOCAL_MATCHES=()
-  for f in "$HOME"/.claude/agents/local-*-"${AGENT}".md; do
-    [ -f "$f" ] || continue
-    LOCAL_MATCHES+=("$f")
-  done
-  if [ "${#LOCAL_MATCHES[@]}" -eq 1 ]; then
-    base=$(basename "${LOCAL_MATCHES[0]}" .md)
-    PREFIX="${base%"${AGENT}"}"
-    FOUND=1
-  elif [ "${#LOCAL_MATCHES[@]}" -gt 1 ]; then
-    AMBIGUOUS="${LOCAL_MATCHES[*]}"
+  if [[ "$AGENT" == *:* ]]; then
+    if [[ -n "$PLUGIN_NAME" && "${AGENT%%:*}" == "$PLUGIN_NAME" && -f "$PLUGIN_ROOT/agents/${AGENT#*:}.md" ]]; then
+      FOUND=1
+    fi
   else
-    REGISTRY_MATCHES=()
-    for f in "$HOME"/.claude/agents/*-"${AGENT}".md; do
+    LOCAL_MATCHES=()
+    for f in "$HOME"/.claude/agents/local-*-"${AGENT}".md; do
       [ -f "$f" ] || continue
-      case "$(basename "$f")" in
-        local-*) continue ;;
-      esac
-      REGISTRY_MATCHES+=("$f")
+      LOCAL_MATCHES+=("$f")
     done
-    if [ "${#REGISTRY_MATCHES[@]}" -eq 1 ]; then
-      base=$(basename "${REGISTRY_MATCHES[0]}" .md)
+    if [ "${#LOCAL_MATCHES[@]}" -eq 1 ]; then
+      base=$(basename "${LOCAL_MATCHES[0]}" .md)
       PREFIX="${base%"${AGENT}"}"
       FOUND=1
-    elif [ "${#REGISTRY_MATCHES[@]}" -gt 1 ]; then
-      AMBIGUOUS="${REGISTRY_MATCHES[*]}"
-    elif [ -f "$HOME/.claude/agents/${AGENT}.md" ]; then
-      # Bare, no-prefix install
-      PREFIX=""
-      FOUND=1
+    elif [ "${#LOCAL_MATCHES[@]}" -gt 1 ]; then
+      AMBIGUOUS="${LOCAL_MATCHES[*]}"
+    else
+      REGISTRY_MATCHES=()
+      for f in "$HOME"/.claude/agents/*-"${AGENT}".md; do
+        [ -f "$f" ] || continue
+        case "$(basename "$f")" in
+          local-*) continue ;;
+        esac
+        REGISTRY_MATCHES+=("$f")
+      done
+      if [ "${#REGISTRY_MATCHES[@]}" -eq 1 ]; then
+        base=$(basename "${REGISTRY_MATCHES[0]}" .md)
+        PREFIX="${base%"${AGENT}"}"
+        FOUND=1
+      elif [ "${#REGISTRY_MATCHES[@]}" -gt 1 ]; then
+        AMBIGUOUS="${REGISTRY_MATCHES[*]}"
+      elif [ -f "$HOME/.claude/agents/${AGENT}.md" ]; then
+        # Bare, no-prefix install
+        PREFIX=""
+        FOUND=1
+      elif [[ -n "$PLUGIN_NAME" && -f "$PLUGIN_ROOT/agents/${AGENT}.md" ]]; then
+        FOUND=1
+      fi
     fi
   fi
   if [ -n "$AMBIGUOUS" ]; then
@@ -165,8 +218,16 @@ if [ -n "${CLAUDECODE:-}" ]; then
     cmux close-surface --surface "$SURFACE_ID" 2>/dev/null || true
     exit 1
   fi
+  # PREFIX comes from a filename and is pasted into PANE_CMD below.
+  if [[ ! "$PREFIX" =~ ^[A-Za-z0-9._-]*$ ]]; then
+    echo "ERROR: unsafe agent file name for ${AGENT} under ~/.claude/agents (prefix '${PREFIX}'); not dispatching" >&2
+    mkdir -p "$REGISTRY_DIR"
+    python3 -c "import json; json.dump({'workspace_id':'${WS_ID:-$DONE_KEY}','status':'error','summary':'unsafe agent file name'},open('${REGISTRY_DIR}/${DONE_KEY}.done','w'))"
+    cmux close-surface --surface "$SURFACE_ID" 2>/dev/null || true
+    exit 1
+  fi
   if [ -z "$FOUND" ]; then
-    echo "ERROR: claude agent ${AGENT} not installed under ~/.claude/agents (checked local-/registry installs); not dispatching" >&2
+    echo "ERROR: claude agent ${AGENT} not installed under ~/.claude/agents or in this plugin; not dispatching" >&2
     mkdir -p "$REGISTRY_DIR"
     python3 -c "import json; json.dump({'workspace_id':'${WS_ID:-$DONE_KEY}','status':'error','summary':'agent not installed'},open('${REGISTRY_DIR}/${DONE_KEY}.done','w'))"
     cmux close-surface --surface "$SURFACE_ID" 2>/dev/null || true
