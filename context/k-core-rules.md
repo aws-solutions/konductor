@@ -13,7 +13,7 @@ These rules apply to every Konductor agent in every interaction. Violating a NEV
 7. **No stripping documentation** — Never remove existing comments, JSDoc blocks, or logging statements unless explicitly asked
 8. **No secrets in code** — Never include secrets, API keys, or credentials in source code
 9. **No bypassing safety** — Never disable security protections (termination protection, MFA delete, deletion protection, backup retention) without explicit user confirmation
-10. **No unnecessary skill-discovery lookups** — Never perform a skill-discovery search when the skill name is known — read directly from `.kiro/skills/{skill-name}/SKILL.md`. Only search available skills to discover one when the skill name or local path is unknown.
+10. **No unnecessary skill-discovery lookups** — Never search for a skill whose name you already know. Load it by name with your runtime's skill tool (the `Skill` tool on Claude Code, or the konductor-skills `get_skill` tool on Kiro CLI), and search available skills only when you do not know the name.
 
 ## Writing habits
 
