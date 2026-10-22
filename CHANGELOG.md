@@ -69,10 +69,9 @@ not per individual commit.
 - `aws-service-validator` calls `aws___get_regional_availability` with `resource_type` (required), `regions`, and `filters` (required for more than one region), instead of a bare service-and-region call.
 - Routing rules and skills now agree with the orchestrator prompts. The delegate table names
   only git operations that change refs or the working tree, so read-only `git branch --list`
-  stays direct work. SOP Selection Contract item 1 matches a request against a row's whole
-  workflow, which covers the single-phase SOPs in the trigger table. `mux-dispatch` peeks at a
-  running pane only on the prompt's polling fallback, and `delegation-protocol` applies rule 5's
-  fix-attempt cap and 2-Strike Circuit Breaker instead of its own cycle count.
+  stays direct work. `mux-dispatch` peeks at a running pane only on the prompt's polling
+  fallback, and `delegation-protocol` applies rule 5's fix-attempt cap and 2-Strike Circuit
+  Breaker instead of its own cycle count.
 
 ### Security
 
