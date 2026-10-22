@@ -173,8 +173,7 @@ After code changes, run the maker-checker cycle:
 1. Get the git diff of all changes
 2. Spawn the appropriate reviewer agent (e.g., `k-developer` with `backend-review` or `frontend-review`)
 3. Address all CRITICAL findings
-4. Re-review. Allow at most 2 fix attempts per artifact, as orchestration rule 5 in your prompt sets out
-5. If CRITICAL findings persist after 2 fix attempts, follow rule 5: apply the 2-Strike Circuit Breaker if both failed on the same error, otherwise escalate to the user
+4. Re-review. Follow the fix-attempt cap in your orchestrator prompt's verify rule.
 
 ## Failure Recovery
 
