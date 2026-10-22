@@ -62,11 +62,9 @@ not per individual commit.
 - `k-architect` and `k-developer` no longer tell agents to use `aws___call_aws`, a tool the AWS MCP server has removed. Both now point at `aws___run_script`, which runs sandboxed Python with AWS API access.
 - `find-aws-skills`' failure-handling fallback no longer references `aws___suggest_aws_commands`, which the AWS MCP server does not expose. It now offers direct AWS API calls via `aws___run_script` (sandboxed Python).
 - `aws-service-validator` calls `aws___get_regional_availability` with `resource_type` (required), `regions`, and `filters` (required for more than one region), instead of a bare service-and-region call.
-- Routing rules and skills now agree with the orchestrator prompts. The delegate table names
-  only git operations that change refs or the working tree, so read-only `git branch --list`
-  stays direct work. `mux-dispatch` peeks at a running pane only on the prompt's polling
-  fallback, and `delegation-protocol` applies rule 5's fix-attempt cap and 2-Strike Circuit
-  Breaker instead of its own cycle count.
+- Routing skills now agree with the orchestrator prompts. `mux-dispatch` peeks at a running
+  pane only on the prompt's polling fallback, and `delegation-protocol` applies rule 5's
+  fix-attempt cap and 2-Strike Circuit Breaker instead of its own cycle count.
 
 ### Security
 
