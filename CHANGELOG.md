@@ -54,6 +54,10 @@ not per individual commit.
   `null`), which `docs/telemetry-schema.json` requires on every event.
 - `konductor update --cli` retries its smoke test of the downloaded binary when exec fails with
   "Text file busy" (ETXTBSY), instead of failing the update.
+- Routing skills now agree with the orchestrator prompts. `mux-dispatch` peeks at a running
+  pane only on the prompt's polling fallback, and `delegation-protocol` applies rule 5's
+  fix-attempt cap and 2-Strike Circuit Breaker instead of its own cycle count, and limits its
+  retry-once recovery to spawns that error, time out, or return nothing.
 
 ## [1.1.0] - 2026-10-14
 
