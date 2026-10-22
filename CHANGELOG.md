@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to ASDLC Core AI Capabilities will be documented here.
+All notable changes to Konductor are documented here.
 
 This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Entries are consolidated per release,
@@ -28,6 +28,10 @@ not per individual commit.
   konductor source checkout. A repo is searched only if it has `.konductor/manifest` or a
   `.claude-plugin/marketplace.json` that names `konductor`. Each skill stops with a clear error
   when its script is missing.
+- The skill-lookup MCP server's `mcp_tool_call` events now include `parentAgentName` (as
+  `null`), which `docs/telemetry-schema.json` requires on every event.
+- `konductor update --cli` retries its smoke test of the downloaded binary when exec fails with
+  "Text file busy" (ETXTBSY), instead of failing the update.
 
 ## [1.1.0] - 2026-10-14
 
@@ -72,6 +76,9 @@ not per individual commit.
 
 ### Security
 
+- `rustls` moves from `0.23.43` to `0.23.45` in the CLI, the skill-lookup MCP server, and the
+  shared telemetry test sink, fixing GHSA-2mjx-qc3c-rqvc (TLS 1.3 handshake messages were
+  accepted across encryption level boundaries).
 - `aws-mcp` uses `mcp-proxy-for-aws-cli==1.7.0` instead of a moving package version. The managed endpoint still supplies current AWS documentation and skills.
 - The plugin release no longer force-pushes directly to a public branch. `publish-claude-plugin`
   pushes a fresh, collision-resistant candidate branch (release version plus workflow run
