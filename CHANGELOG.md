@@ -8,6 +8,14 @@ not per individual commit.
 
 ## [Unreleased]
 
+### Added
+
+- Claude Code plugin telemetry. A plugin hook sends `agent_invocation` and
+  `subagent_invocation` events for Konductor's own agents, in the CLI's format, with
+  `claude-plugin` as the harness. It is on by default and shares the machine ID in
+  `~/.konductor/telemetry.json` with the CLI. Turn it off with the plugin's
+  `telemetry_enabled` option or any existing opt-out.
+
 ### Changed
 
 - The orchestrators (`konductor`, `konductor-mux-orchestrator`, `konductor-cmux-orchestrator`)
@@ -24,6 +32,28 @@ not per individual commit.
 
 ### Fixed
 
+- The Claude Code plugin release candidate could include untracked build output (`cli/`,
+  `build/`, `dist/`, `generated/`) from the release job's checkout. The candidate is now built
+  only from the assembled plugin tree, its file list is checked against that tree, and any
+  top-level entry outside the plugin's own files fails the build.
+- Plugin installs could not delegate to specialists. Claude Code names plugin agents
+  `konductor:<agent>`, so bare `Agent(k-developer, ...)` grants matched nothing. Plugin assembly
+  now qualifies each grant with the plugin name and fails on a grant for an agent the plugin
+  doesn't ship. `k-architect` also lost a stale package prefix on its grants.
+- `mux-dispatch` and `cmux-dispatch` refused to dispatch in plugin installs: they only looked
+  in `~/.claude/agents/` and rejected `:` in `--agent`. They now fall back to the plugin's own
+  agents and accept `konductor:<agent>` for an agent the plugin ships. `cmux-dispatch` also
+  refuses an agent file name that could inject a command into the pane.
+- `mux-dispatch`, `cmux-dispatch`, `persistent-memory` and `legacy-to-agentic-estimate` could
+  not find their bundled scripts in plugin installs. They now look in `${CLAUDE_SKILL_DIR}`
+  first, then the global install, then a project install with a `.konductor/manifest`, then a
+  konductor source checkout. A repo is searched only if it has `.konductor/manifest` or a
+  `.claude-plugin/marketplace.json` that names `konductor`. Each skill stops with a clear error
+  when its script is missing.
+- The skill-lookup MCP server's `mcp_tool_call` events now include `parentAgentName` (as
+  `null`), which `docs/telemetry-schema.json` requires on every event.
+- `konductor update --cli` retries its smoke test of the downloaded binary when exec fails with
+  "Text file busy" (ETXTBSY), instead of failing the update.
 - Routing skills now agree with the orchestrator prompts. `mux-dispatch` peeks at a running
   pane only on the prompt's polling fallback, and `delegation-protocol` applies rule 5's
   fix-attempt cap and 2-Strike Circuit Breaker instead of its own cycle count, and limits its

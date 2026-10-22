@@ -375,13 +375,62 @@ fn mark_executable(_path: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
+/// Max attempts (including the first) before giving up on an
+/// `ExecutableFileBusy` spawn failure.
+const SMOKE_TEST_BUSY_MAX_ATTEMPTS: u32 = 10;
+
+/// Delay between `ExecutableFileBusy` retries. 10 attempts at this
+/// value spread the retries over roughly 1 second.
+const SMOKE_TEST_BUSY_RETRY_DELAY: std::time::Duration = std::time::Duration::from_millis(100);
+
+/// Whether `err` is the raw ETXTBSY a fork/exec race can produce (see
+/// `real_smoke_test`). Checks `ErrorKind::ExecutableFileBusy` first and
+/// falls back to the raw errno (26 on Linux), in case some platform
+/// doesn't map it to that `ErrorKind`.
+fn is_executable_file_busy(err: &std::io::Error) -> bool {
+    err.kind() == std::io::ErrorKind::ExecutableFileBusy || err.raw_os_error() == Some(26)
+}
+
+/// Calls `spawn` (production: a real `Command::output()`), retrying
+/// while it fails with `ExecutableFileBusy`, up to
+/// `SMOKE_TEST_BUSY_MAX_ATTEMPTS` attempts, sleeping
+/// `SMOKE_TEST_BUSY_RETRY_DELAY` between tries via the injected `sleep`.
+/// `sleep` is a seam so tests can drive every retry with no real delay
+/// and no real process spawn.
+fn retry_on_executable_file_busy(
+    mut spawn: impl FnMut() -> std::io::Result<std::process::Output>,
+    sleep: impl Fn(std::time::Duration),
+) -> std::io::Result<std::process::Output> {
+    let mut attempt = 0;
+    loop {
+        attempt += 1;
+        match spawn() {
+            Err(err) if is_executable_file_busy(&err) && attempt < SMOKE_TEST_BUSY_MAX_ATTEMPTS => {
+                sleep(SMOKE_TEST_BUSY_RETRY_DELAY);
+            }
+            result => return result,
+        }
+    }
+}
+
 /// Production smoke-test wrapper: spawns `<path> --version`, requiring
 /// a zero exit and returning stdout on success.
+///
+/// Retries on ETXTBSY (`ErrorKind::ExecutableFileBusy`, errno 26):
+/// `fork()` duplicates every fd open anywhere in the process, so an
+/// unrelated `Command::spawn()` running elsewhere in this same process
+/// can fork a child that inherits a write handle on `path` -- opened
+/// moments ago by whoever wrote the binary we're about to exec -- and
+/// hold it open until that child itself execs or exits. Until then,
+/// exec of `path` here fails with ETXTBSY even though our own write
+/// handle on `path` (see `write_temp_file_durably`) closed well before
+/// this function was ever called. See rust-lang/rust#114554.
 pub(crate) fn real_smoke_test(path: &Path) -> Result<String, String> {
-    let output = Command::new(path)
-        .arg("--version")
-        .output()
-        .map_err(|err| format!("could not execute downloaded binary: {err}"))?;
+    let output = retry_on_executable_file_busy(
+        || Command::new(path).arg("--version").output(),
+        std::thread::sleep,
+    )
+    .map_err(|err| format!("could not execute downloaded binary: {err}"))?;
     if !output.status.success() {
         return Err(format!(
             "downloaded binary exited with status {:?}",
@@ -516,6 +565,100 @@ mod tests {
         assert_eq!(fs::read(&file_path).unwrap(), b"NEW BINARY CONTENTS");
 
         fs::remove_dir_all(&dir).ok();
+    }
+
+    /// Builds a fake successful `Output` without spawning a real
+    /// process -- `ExitStatusExt::from_raw` is the standard seam for
+    /// constructing an `ExitStatus` by hand on Unix.
+    #[cfg(unix)]
+    fn fake_success_output(stdout: &str) -> std::process::Output {
+        use std::os::unix::process::ExitStatusExt;
+        std::process::Output {
+            status: std::process::ExitStatus::from_raw(0),
+            stdout: stdout.as_bytes().to_vec(),
+            stderr: Vec::new(),
+        }
+    }
+
+    fn fake_busy_error() -> std::io::Error {
+        std::io::Error::from(std::io::ErrorKind::ExecutableFileBusy)
+    }
+
+    /// `retry_on_executable_file_busy` must retry through transient
+    /// ETXTBSY failures and return the eventual success, without any
+    /// real delay (the injected `sleep` is a no-op) and without
+    /// spawning a real process.
+    #[cfg(unix)]
+    #[test]
+    fn retry_on_executable_file_busy_retries_until_success() {
+        let attempts = std::cell::RefCell::new(0u32);
+        let busy_failures = 3u32;
+
+        let result = retry_on_executable_file_busy(
+            || {
+                let mut count = attempts.borrow_mut();
+                *count += 1;
+                if *count <= busy_failures {
+                    Err(fake_busy_error())
+                } else {
+                    Ok(fake_success_output("konductor 9.9.9"))
+                }
+            },
+            |_duration| {}, // no real sleep -- keeps the test instant
+        );
+
+        let output = result.expect("must eventually succeed after transient ETXTBSY failures");
+        assert_eq!(output.stdout, b"konductor 9.9.9");
+        assert_eq!(
+            *attempts.borrow(),
+            busy_failures + 1,
+            "must retry exactly once per busy failure, then succeed"
+        );
+    }
+
+    /// `retry_on_executable_file_busy` must give up after
+    /// `SMOKE_TEST_BUSY_MAX_ATTEMPTS` attempts and surface the final
+    /// ETXTBSY error rather than retrying forever.
+    #[test]
+    fn retry_on_executable_file_busy_gives_up_after_max_attempts() {
+        let attempts = std::cell::RefCell::new(0u32);
+
+        let result = retry_on_executable_file_busy(
+            || {
+                let mut count = attempts.borrow_mut();
+                *count += 1;
+                Err(fake_busy_error())
+            },
+            |_duration| {},
+        );
+
+        let err = result.expect_err("must surface the error once attempts are exhausted");
+        assert!(is_executable_file_busy(&err));
+        assert_eq!(
+            *attempts.borrow(),
+            SMOKE_TEST_BUSY_MAX_ATTEMPTS,
+            "must stop at exactly the configured attempt cap"
+        );
+    }
+
+    /// A non-ETXTBSY spawn failure must surface immediately, with no
+    /// retry at all.
+    #[test]
+    fn retry_on_executable_file_busy_does_not_retry_other_errors() {
+        let attempts = std::cell::RefCell::new(0u32);
+
+        let result = retry_on_executable_file_busy(
+            || {
+                let mut count = attempts.borrow_mut();
+                *count += 1;
+                Err(std::io::Error::from(std::io::ErrorKind::NotFound))
+            },
+            |_duration| panic!("must not sleep/retry on a non-busy error"),
+        );
+
+        let err = result.expect_err("must surface the non-busy error");
+        assert_eq!(err.kind(), std::io::ErrorKind::NotFound);
+        assert_eq!(*attempts.borrow(), 1);
     }
 
     /// A real smoke test against a binary that exits non-zero must

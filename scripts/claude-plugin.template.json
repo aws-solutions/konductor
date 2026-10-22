@@ -28,6 +28,14 @@
   "skills": [
     "./generated/claude-plugin/skills/"
   ],
+  "userConfig": {
+    "telemetry_enabled": {
+      "type": "boolean",
+      "title": "Send usage telemetry to AWS",
+      "description": "Report which Konductor agents run. Each event carries the agent name, the delegating Konductor agent's name on a delegation, the plugin version, a hashed session ID, the claude-plugin harness tag, and the machine ID in ~/.konductor/telemetry.json, which the Konductor CLI also uses. See Data Collection in the README.",
+      "default": true
+    }
+  },
   "metadata": {
     "sourceRepo": "https://github.com/aws-solutions/konductor",
     "generatedFrom": "agents/*.agent-spec.json, skills/*/SKILL.md, agent-sops/*.sop.md",

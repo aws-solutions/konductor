@@ -58,9 +58,9 @@ If a section is not applicable, write `N/A` — never omit the section. `TARGET 
 
 Resolve the exact identifier from the runtime's own available-agents list for the current session — do not guess or hardcode a single form, since the correct literal string is install-dependent:
 
-- **Claude Code:** use the agent name exactly as it appears in your own tool definitions / available-agent list for this session (e.g. `<package>-k-architect` for a published-plugin install, `local-<package>-k-architect` for a local/dev install).
+- **Claude Code:** use the agent name exactly as it appears in your own tool definitions / available-agent list for this session (e.g. `konductor:k-architect` for a Claude Code plugin install, `k-architect` for a `konductor install` into `.claude/agents/`).
 - **Kiro CLI:** use the bare name from `toolsSettings.subagent.availableAgents` (e.g. `k-architect`).
-- **`Workflow` `agent()` calls:** set the `agentType` option using the same Claude Code naming form as above (e.g. `agentType: "local-<package>-k-researcher"`) — the `Workflow` tool is a Claude Code–only feature, so there is no Kiro CLI equivalent to resolve.
+- **`Workflow` `agent()` calls:** set the `agentType` option using the same Claude Code naming form as above (e.g. `agentType: "konductor:k-researcher"`). The `Workflow` tool is Claude Code only, so there is no Kiro CLI equivalent to resolve.
 
 This is distinct from spawning the wrong agent for the task (an IMPORTANT-tier Quality Gate issue below) — this rule guards against spawning _no_ agent at all.
 

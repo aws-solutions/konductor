@@ -108,12 +108,12 @@ is always wrong.
 
 When spawning subagents via `Agent()`, use the **full installed agent name** — short names do not resolve. Derive the correct prefix from your own agent name:
 
-- Your agent name contains the package prefix (e.g., `<package>-konductor` or `local-<package>-konductor`)
+- Your agent name contains the install prefix, if any (e.g., `konductor:konductor` for a Claude Code plugin install, `konductor` for a `.claude/agents/` install)
 - Replace your role suffix with the target specialist's role to get the full name
-- Example: if you are `<package>-konductor`, spawn `<package>-k-developer`
-- Example: if you are `local-<package>-konductor`, spawn `local-<package>-k-developer`
+- Example: if you are `konductor:konductor`, spawn `konductor:k-developer`
+- Example: if you are `konductor`, spawn `k-developer`
 
-The prefix varies by install type (registry vs local). Always match your own prefix.
+The prefix varies by install type (plugin vs `.claude/agents/`). Always match your own prefix.
 
 ## SendMessage / Background Agents
 
@@ -152,8 +152,8 @@ Do NOT use background agents when:
 
 ```text
 # Step 1 — spawn independent agents simultaneously
-researcher_id = Agent(subagent_type: "<package>-k-researcher", run_in_background: true, prompt: "Research X")
-developer_id = Agent(subagent_type: "<package>-k-developer", run_in_background: true, prompt: "Implement Y")
+researcher_id = Agent(subagent_type: "konductor:k-researcher", run_in_background: true, prompt: "Research X")
+developer_id = Agent(subagent_type: "konductor:k-developer", run_in_background: true, prompt: "Implement Y")
 
 # Step 2 — inject follow-up context mid-run if needed (hub only — never specialist-to-specialist)
 SendMessage(to: researcher_id, message: "Also check Z")
