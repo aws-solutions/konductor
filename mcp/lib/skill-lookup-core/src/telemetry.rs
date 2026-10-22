@@ -474,6 +474,7 @@ fn build_mcp_tool_call_data(
         "targetName": target_name,
         "sessionId": null,
         "parentSessionId": null,
+        "parentAgentName": null,
         "errorCode": error_code,
         "harness": null,
         // Explicit `null`, never omitted. agentVersion has no

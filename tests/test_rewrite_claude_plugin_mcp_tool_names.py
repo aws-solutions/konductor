@@ -18,6 +18,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = REPO_ROOT / "scripts" / "rewrite-claude-plugin-mcp-tool-names.py"
 
@@ -223,3 +225,49 @@ def test_per_tool_grants_are_rewritten_not_just_wildcard_grants(tmp_path):
             f"expected {tool}'s bare grant not to survive in the frontmatter block, "
             f"got:\n{rewritten}"
         )
+
+
+@pytest.mark.parametrize("after_fence", ["\n\n# agent\n", "\n# agent\n"])
+def test_only_the_grant_changes_and_the_fence_spacing_is_kept(tmp_path, after_fence):
+    agents_dir = tmp_path / "agents"
+    agents_dir.mkdir()
+    original = "---\nname: agent\ntools:\n- mcp__aws-mcp__*\n---" + after_fence
+    (agents_dir / "agent.md").write_text(original, encoding="utf-8")
+    plugin_json = tmp_path / "plugin.json"
+    _write_plugin_json(plugin_json, "konductor")
+
+    result = _run(agents_dir, plugin_json, "aws-mcp")
+
+    assert result.returncode == 0, result.stderr
+    expected = original.replace("mcp__aws-mcp__*", "mcp__plugin_konductor_aws-mcp__*")
+    assert (agents_dir / "agent.md").read_text(encoding="utf-8") == expected
+
+
+def test_indented_fence_in_a_block_scalar_does_not_end_the_frontmatter(tmp_path):
+    agents_dir = tmp_path / "agents"
+    agents_dir.mkdir()
+    original = "---\nname: agent\ndescription: |\n  intro\n  ---\n  more\ntools:\n- mcp__aws-mcp__*\n---\n# agent\n"
+    (agents_dir / "agent.md").write_text(original, encoding="utf-8")
+    plugin_json = tmp_path / "plugin.json"
+    _write_plugin_json(plugin_json, "konductor")
+
+    result = _run(agents_dir, plugin_json, "aws-mcp")
+
+    assert result.returncode == 0, result.stderr
+    expected = original.replace("mcp__aws-mcp__*", "mcp__plugin_konductor_aws-mcp__*")
+    assert (agents_dir / "agent.md").read_text(encoding="utf-8") == expected
+
+
+# The agent-grants script runs next in assembly and fails on these files.
+def test_file_without_frontmatter_is_left_untouched(tmp_path):
+    agents_dir = tmp_path / "agents"
+    agents_dir.mkdir()
+    original = "# agent\n\nmcp__aws-mcp__* in prose\n"
+    (agents_dir / "agent.md").write_text(original, encoding="utf-8")
+    plugin_json = tmp_path / "plugin.json"
+    _write_plugin_json(plugin_json, "konductor")
+
+    result = _run(agents_dir, plugin_json, "aws-mcp")
+
+    assert result.returncode == 0, result.stderr
+    assert (agents_dir / "agent.md").read_text(encoding="utf-8") == original
