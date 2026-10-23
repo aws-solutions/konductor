@@ -18,6 +18,14 @@ not per individual commit.
 
 ### Fixed
 
+- Kiro CLI v3 synth now prints a warning when `toolsSettings.subagent.availableAgents` (or any
+  other unmapped `toolsSettings` key) is dropped from an agent's config, instead of dropping it
+  silently.
+- Doc comments in the kiro-v3 synth module now cite the real sources for its `hooks` and
+  `trustedAgents`/`availableAgents` mappings (public kiro.dev pages and live testing against the
+  installed Kiro CLI `agent upgrade` engine) instead of a vendored module that doesn't exist in
+  this repository, and correctly state that `install/registry.rs` registers three install
+  strategies, not two.
 - The Claude Code plugin release candidate could include untracked build output (`cli/`,
   `build/`, `dist/`, `generated/`) from the release job's checkout. The candidate is now built
   only from the assembled plugin tree, its file list is checked against that tree, and any
