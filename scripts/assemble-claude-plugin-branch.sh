@@ -77,4 +77,19 @@ python3 "$REPO_ROOT/scripts/rewrite-claude-plugin-mcp-tool-names.py" \
   --plugin-json "$OUT/.claude-plugin/plugin.json" \
   --bundled-mcp-servers "$BUNDLED_MCP_SERVERS"
 
+# Same reason for Agent(...) grants: plugin agents are named <plugin>:<agent>.
+python3 "$REPO_ROOT/scripts/rewrite-claude-plugin-agent-grants.py" \
+  --agents-dir "$OUT/agents" \
+  --plugin-json "$OUT/.claude-plugin/plugin.json"
+
+# Telemetry hook. hooks.json is generated from the assembled agents/ so the
+# SubagentStart matcher covers every agent shipped.
+mkdir -p "$OUT/hooks" "$OUT/docs"
+cp "$REPO_ROOT/scripts/claude-plugin-telemetry-hook.js" "$OUT/hooks/konductor-telemetry.js"
+cp "$REPO_ROOT/docs/telemetry-schema.json" "$OUT/docs/telemetry-schema.json"
+python3 "$REPO_ROOT/scripts/render-claude-plugin-hooks-json.py" \
+  --agents-dir "$OUT/agents" \
+  --plugin-json "$OUT/.claude-plugin/plugin.json" \
+  --output "$OUT/hooks/hooks.json"
+
 echo "=== [assemble-claude-plugin] Done: flat plugin tree at $OUT ==="

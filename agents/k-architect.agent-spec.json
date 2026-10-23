@@ -114,7 +114,7 @@
         "TodoWrite",
         "Skill",
         "mcp__aws-mcp__*",
-        "Agent(ASDLCCoreAICapabilities-k-developer, ASDLCCoreAICapabilities-k-quality-assurance)"
+        "Agent(k-developer, k-quality-assurance)"
       ],
       "skills": [
         "constraints",

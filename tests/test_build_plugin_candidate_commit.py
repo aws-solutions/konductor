@@ -411,6 +411,80 @@ def test_no_op_writes_committed_false_to_github_output(checkout, assembled, remo
     assert "committed=true" not in github_output.read_text(encoding="utf-8")
 
 
+def test_untracked_build_junk_in_checkout_never_reaches_the_candidate(
+    checkout, assembled, remote, tmp_path
+):
+    """release/plugins tracks a .gitignore and the checkout holds untracked
+    build output. The candidate must contain only the assembled files."""
+    base_with_gitignore = tmp_path / "base-with-gitignore"
+    _git("clone", "-q", str(remote), str(base_with_gitignore), cwd=tmp_path)
+    _git("checkout", "-q", "release/plugins", cwd=base_with_gitignore)
+    _git("config", "user.email", "a@b.com", cwd=base_with_gitignore)
+    _git("config", "user.name", "tester", cwd=base_with_gitignore)
+    (base_with_gitignore / ".gitignore").write_text(
+        "cli/konductor-rs/target/\nbuild/\ndist/\ngenerated/claude-plugin/\n",
+        encoding="utf-8",
+    )
+    _git("add", "-A", cwd=base_with_gitignore)
+    _git("commit", "-q", "-m", "track a .gitignore on release/plugins", cwd=base_with_gitignore)
+    _git("push", "-q", "origin", "release/plugins", cwd=base_with_gitignore)
+
+    junk_paths = [
+        checkout / "cli" / "konductor-rs" / "target" / "x",
+        checkout / "build" / "cli" / "konductor",
+        checkout / "dist" / "x",
+        checkout / "generated" / "claude-plugin" / "x",
+    ]
+    for junk in junk_paths:
+        junk.parent.mkdir(parents=True, exist_ok=True)
+        junk.write_text("leftover build output\n", encoding="utf-8")
+
+    result = _run(
+        checkout,
+        "--base-branch", "release/plugins",
+        "--candidate-branch", "plugin-candidate/v1.0.0-1-1",
+        "--assemble-dir", str(assembled),
+        "--commit-message", "test candidate",
+    )
+    assert result.returncode == 0, result.stderr
+
+    tracked = set(
+        _git("ls-tree", "-r", "--name-only", "plugin-candidate/v1.0.0-1-1", cwd=checkout)
+        .stdout.strip()
+        .splitlines()
+    )
+    expected = {
+        "agents/k-architect.md",
+        ".claude-plugin/plugin.json",
+        "README.md",
+    }
+    assert tracked == expected, (
+        f"candidate tree picked up untracked build junk from the checkout: "
+        f"tracked={tracked}, expected={expected}"
+    )
+    for junk in ("cli/konductor-rs/target/x", "build/cli/konductor", "dist/x", "generated/claude-plugin/x"):
+        assert junk not in tracked
+
+
+@pytest.mark.parametrize("extra", ["cli", "mcp", "dist", ".github"])
+def test_unexpected_top_level_entry_in_assembled_tree_fails_closed(checkout, assembled, remote, extra):
+    (assembled / extra).mkdir()
+    (assembled / extra / "x").write_text("not part of the plugin\n", encoding="utf-8")
+
+    result = _run(
+        checkout,
+        "--base-branch", "release/plugins",
+        "--candidate-branch", "plugin-candidate/v1.0.0-1-1",
+        "--assemble-dir", str(assembled),
+        "--commit-message", "test candidate",
+    )
+
+    assert result.returncode != 0
+    assert extra in result.stderr
+    assert _git("show-ref", "--verify", "--quiet", "refs/heads/plugin-candidate/v1.0.0-1-1",
+                cwd=checkout, check=False).returncode != 0
+
+
 def test_missing_assemble_dir_fails_closed(checkout, remote, tmp_path):
     result = _run(
         checkout,
@@ -427,3 +501,90 @@ def test_missing_required_argument_fails_with_usage_error(checkout):
     result = _run(checkout, "--base-branch", "release/plugins")
     assert result.returncode != 0
     assert "required" in result.stderr
+
+
+def _push_as_base(remote, tmp_path, assembled):
+    """Makes release/plugins hold exactly what a plain `git add -A` of
+    `assembled` produces, so ignore rules and filters apply as usual."""
+    clone = tmp_path / "base-clone"
+    _git("clone", "-q", str(remote), str(clone), cwd=tmp_path)
+    _git("checkout", "-q", "release/plugins", cwd=clone)
+    _git("config", "user.email", "a@b.com", cwd=clone)
+    _git("config", "user.name", "tester", cwd=clone)
+    _git("rm", "-rq", ".", cwd=clone)
+    subprocess.run(["cp", "-a", f"{assembled}/.", str(clone)], check=True)
+    _git("add", "-A", cwd=clone)
+    _git("commit", "-q", "-m", "base", cwd=clone)
+    _git("push", "-q", "origin", "release/plugins", cwd=clone)
+
+
+def test_ignored_file_in_assembled_dir_is_still_committed(checkout, assembled, remote, tmp_path):
+    (assembled / "agents" / ".gitignore").write_text("*.log\n", encoding="utf-8")
+    _push_as_base(remote, tmp_path, assembled)
+    (assembled / "agents" / "notes.log").write_text("shipped\n", encoding="utf-8")
+
+    result = _run(
+        checkout,
+        "--base-branch", "release/plugins",
+        "--candidate-branch", "plugin-candidate/v1.0.0-1-1",
+        "--assemble-dir", str(assembled),
+        "--commit-message", "test candidate",
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "committed=true" in result.stdout
+    tracked = _git("ls-tree", "-r", "--name-only", "plugin-candidate/v1.0.0-1-1", cwd=checkout).stdout
+    assert "agents/notes.log" in tracked.splitlines()
+
+
+def test_content_rewritten_by_git_attributes_fails_closed(checkout, assembled, remote):
+    (assembled / "agents" / ".gitattributes").write_text("*.md text\n", encoding="utf-8")
+    (assembled / "agents" / "crlf.md").write_bytes(b"line one\r\nline two\r\n")
+
+    result = _run(
+        checkout,
+        "--base-branch", "release/plugins",
+        "--candidate-branch", "plugin-candidate/v1.0.0-1-1",
+        "--assemble-dir", str(assembled),
+        "--commit-message", "test candidate",
+    )
+
+    assert result.returncode != 0
+    assert "agents/crlf.md" in result.stderr
+    assert _git("show-ref", "--verify", "--quiet", "refs/heads/plugin-candidate/v1.0.0-1-1",
+                cwd=checkout, check=False).returncode != 0
+
+
+def test_executable_bit_and_symlinks_are_kept(checkout, assembled, remote):
+    hook = assembled / "agents" / "run.sh"
+    hook.write_text("#!/bin/sh\n", encoding="utf-8")
+    hook.chmod(0o755)
+    (assembled / "agents" / "link.md").symlink_to("k-architect.md")
+
+    result = _run(
+        checkout,
+        "--base-branch", "release/plugins",
+        "--candidate-branch", "plugin-candidate/v1.0.0-1-1",
+        "--assemble-dir", str(assembled),
+        "--commit-message", "test candidate",
+    )
+
+    assert result.returncode == 0, result.stderr
+    listing = _git("ls-tree", "-r", "plugin-candidate/v1.0.0-1-1", cwd=checkout).stdout
+    assert any(line.startswith("100755 ") and line.endswith("\tagents/run.sh") for line in listing.splitlines())
+    assert any(line.startswith("120000 ") and line.endswith("\tagents/link.md") for line in listing.splitlines())
+
+
+CHECK_TREE = REPO_ROOT / "scripts" / "check-claude-plugin-tree.sh"
+
+
+def test_check_tree_rejects_a_dangling_top_level_symlink(assembled):
+    (assembled / "cli").symlink_to("does-not-exist")
+    result = subprocess.run(["bash", str(CHECK_TREE), str(assembled)], capture_output=True, text=True)
+    assert result.returncode != 0
+    assert "cli" in result.stderr
+
+
+def test_check_tree_accepts_the_allowed_entries(assembled):
+    result = subprocess.run(["bash", str(CHECK_TREE), str(assembled)], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
