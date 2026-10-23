@@ -58,6 +58,9 @@ not per individual commit.
   pane only on the prompt's polling fallback, and `delegation-protocol` applies rule 5's
   fix-attempt cap and 2-Strike Circuit Breaker instead of its own cycle count, and limits its
   retry-once recovery to spawns that error, time out, or return nothing.
+- The SOP Selection Contract no longer rules out single-procedure SOPs such as `k-plan` and
+  `k-verify`. A request matches a SOP row when it asks for what the row's User intent describes,
+  a whole workflow or one named procedure. Keyword overlap and lookups match no row.
 
 ## [1.1.0] - 2026-10-14
 
