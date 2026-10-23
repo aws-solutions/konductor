@@ -1,0 +1,53 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Lint, typecheck, test and build for workflow-canvas/. Runs only when that
+# folder (or this workflow) changes. The integration/** and wc/** targets
+# cover stacked PRs, where a PR's base is another feature branch rather than
+# main.
+#
+# Triggers on `pull_request`, NOT `pull_request_target`, so PR-head code runs
+# with a read-only, secret-free token even for fork PRs.
+name: Workflow canvas
+
+on:
+  pull_request:
+    branches: [main, 'integration/**', 'wc/**']
+    paths:
+      - 'workflow-canvas/**'
+      - '.github/workflows/workflow-canvas.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  workflow-canvas:
+    name: Lint, typecheck, test, build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: workflow-canvas
+    steps:
+      - name: Checkout
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: workflow-canvas/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
