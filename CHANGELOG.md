@@ -15,6 +15,9 @@ not per individual commit.
   `claude-plugin` as the harness. It is on by default and shares the machine ID in
   `~/.konductor/telemetry.json` with the CLI. Turn it off with the plugin's
   `telemetry_enabled` option or any existing opt-out.
+- `workflow-canvas/`, a browser UI for designing and running workflows, built with Vite,
+  React, TypeScript and Cloudscape. This first step is an empty page with Designer and
+  Execution tabs, plus a CI workflow that lints, typechecks, tests and builds it.
 
 ### Changed
 
