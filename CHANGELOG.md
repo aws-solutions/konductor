@@ -16,6 +16,14 @@ not per individual commit.
   `~/.konductor/telemetry.json` with the CLI. Turn it off with the plugin's
   `telemetry_enabled` option or any existing opt-out.
 
+### Changed
+
+- Every agent now loads `context/k-core-rules.md` at session start. It holds the NEVER DO
+  rules, moved from the `constraints` skill, and a writing-habits rule: no em or en dashes,
+  AI vocabulary, or filler in new sentences, even when nearby text has them.
+- Every agent declares `humanize-writing`, and its description now covers writing as well
+  as editing.
+
 ### Fixed
 
 - The Claude Code plugin release candidate could include untracked build output (`cli/`,
