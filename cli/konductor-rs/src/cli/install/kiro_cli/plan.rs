@@ -335,6 +335,8 @@ pub(in crate::cli::install) fn plan_claude_settings_grant(
             bin_files: &empty_bin_files,
             agent_sop_names: &agent_sop_names,
             agent_skill_names: &agent_skill_names,
+            // Only `matches` reads this context, and it ignores `no_telemetry`.
+            no_telemetry: false,
         };
         if super::super::resource_rewrite::ResourceRewritePass::matches(
             &super::super::resource_rewrite::McpServerPass,

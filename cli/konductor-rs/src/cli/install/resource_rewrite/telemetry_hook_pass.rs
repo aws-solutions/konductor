@@ -433,6 +433,7 @@ mod tests {
             bin_files: &[],
             agent_sop_names: empty_map(),
             agent_skill_names: empty_map(),
+            no_telemetry: false,
         }
     }
 

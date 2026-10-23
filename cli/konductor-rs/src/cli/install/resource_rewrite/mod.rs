@@ -99,6 +99,10 @@ pub(super) struct RewriteContext<'a> {
     /// entry and empty `Vec` both mean "do not pass
     /// `--skill-name-filter` at all".
     pub(super) agent_skill_names: &'a std::collections::HashMap<String, Vec<String>>,
+    /// Whether this run is opted out of telemetry. Gates
+    /// `TelemetryHookPass` in `standard_passes` and makes the MCP passes
+    /// launch `skill-lookup-mcp` with `--telemetry off`.
+    pub(super) no_telemetry: bool,
 }
 
 impl RewriteContext<'_> {
@@ -435,6 +439,7 @@ mod tests {
             bin_files,
             agent_sop_names: empty_agent_sop_names(),
             agent_skill_names: empty_agent_skill_names(),
+            no_telemetry: false,
         }
     }
 
@@ -448,6 +453,7 @@ mod tests {
             bin_files: &[],
             agent_sop_names: empty_agent_sop_names(),
             agent_skill_names: empty_agent_skill_names(),
+            no_telemetry: false,
         }
     }
 

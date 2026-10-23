@@ -218,7 +218,8 @@ fn mcp_server_command_path(ctx: &RewriteContext<'_>) -> String {
 /// `McpServerPassV3` (V3): the same fixed `--skills-dir` pair, the same
 /// conditional `--agent-sop-paths`/`--agent-sop-filter` pair, and the
 /// same conditional `--skill-name-filter` flag, gated on the exact same
-/// per-agent lookups (`agent_has_sop_names`/`agent_has_skill_names`).
+/// per-agent lookups (`agent_has_sop_names`/`agent_has_skill_names`),
+/// and a trailing `--telemetry off` when `ctx.no_telemetry`.
 fn build_mcp_server_args(
     value: &serde_json::Value,
     ctx: &RewriteContext<'_>,
@@ -267,6 +268,12 @@ fn build_mcp_server_args(
             .expect("agent_has_skill_names just confirmed a non-empty entry exists");
         args.push(serde_json::Value::String("--skill-name-filter".to_string()));
         args.push(serde_json::Value::String(agent_skill_names.join(",")));
+    }
+    // Appended last and only when opted out, so an opted-in agent's args
+    // stay byte-identical. `skill-lookup-mcp` defaults to `--telemetry on`.
+    if ctx.no_telemetry {
+        args.push(serde_json::Value::String("--telemetry".to_string()));
+        args.push(serde_json::Value::String("off".to_string()));
     }
     args
 }
@@ -690,6 +697,7 @@ mod tests {
             bin_files,
             agent_sop_names: empty_agent_sop_names(),
             agent_skill_names: empty_agent_skill_names(),
+            no_telemetry: false,
         }
     }
 
@@ -704,6 +712,7 @@ mod tests {
             bin_files: &[],
             agent_sop_names: empty_agent_sop_names(),
             agent_skill_names: empty_agent_skill_names(),
+            no_telemetry: false,
         }
     }
 
@@ -1056,6 +1065,7 @@ mod tests {
             bin_files: &[],
             agent_sop_names: &agent_sop_names,
             agent_skill_names: empty_agent_skill_names(),
+            no_telemetry: false,
         };
         assert!(
             McpServerPass.matches(&sop_only, &ctx),
@@ -1092,6 +1102,7 @@ mod tests {
                 bin_files: &bin_files,
                 agent_sop_names: &agent_sop_names,
                 agent_skill_names: empty_agent_skill_names(),
+                no_telemetry: false,
             },
         );
         let mut expected_args: Vec<String> =
@@ -1139,6 +1150,7 @@ mod tests {
                 bin_files: &bin_files,
                 agent_sop_names: &agent_sop_names,
                 agent_skill_names: empty_agent_skill_names(),
+                no_telemetry: false,
             },
         );
         let args = value["mcpServers"]["konductor-skills"]["args"]
@@ -1182,6 +1194,7 @@ mod tests {
                 bin_files: &bin_files,
                 agent_sop_names: &agent_sop_names,
                 agent_skill_names: empty_agent_skill_names(),
+                no_telemetry: false,
             },
         );
         assert_eq!(
@@ -1210,6 +1223,7 @@ mod tests {
             bin_files: &[],
             agent_sop_names: empty_agent_sop_names(),
             agent_skill_names: &agent_skill_names,
+            no_telemetry: false,
         };
         assert!(
             McpServerPass.matches(&skill_names_only, &ctx),
@@ -1249,6 +1263,7 @@ mod tests {
                 bin_files: &bin_files,
                 agent_sop_names: empty_agent_sop_names(),
                 agent_skill_names: &agent_skill_names,
+                no_telemetry: false,
             },
         );
         let mut expected_args: Vec<String> =
@@ -1296,6 +1311,7 @@ mod tests {
                 bin_files: &bin_files,
                 agent_sop_names: empty_agent_sop_names(),
                 agent_skill_names: &agent_skill_names,
+                no_telemetry: false,
             },
         );
         assert_eq!(
@@ -1332,6 +1348,7 @@ mod tests {
                 bin_files: &bin_files,
                 agent_sop_names: empty_agent_sop_names(),
                 agent_skill_names: &agent_skill_names,
+                no_telemetry: false,
             },
         );
         assert_eq!(
@@ -1367,6 +1384,7 @@ mod tests {
                 bin_files: &bin_files,
                 agent_sop_names: &agent_sop_names,
                 agent_skill_names: &agent_skill_names,
+                no_telemetry: false,
             },
         );
         let args = value["mcpServers"]["konductor-skills"]["args"]
@@ -1388,6 +1406,98 @@ mod tests {
              the SOP block), got: {args:?}"
         );
         fs::remove_dir_all(&dir).ok();
+    }
+
+    fn injected_args(value: &serde_json::Value) -> Vec<&str> {
+        value["mcpServers"]["konductor-skills"]["args"]
+            .as_array()
+            .expect("args must be an array")
+            .iter()
+            .map(|v| v.as_str().unwrap())
+            .collect()
+    }
+
+    /// Runs `pass.rewrite` on a skill-bearing agent with SOP and skill-name
+    /// scoping, so the `--telemetry` arg is checked against the longest
+    /// arg list the pass builds.
+    fn rewrite_scoped_agent(
+        pass: &dyn ResourceRewritePass,
+        no_telemetry: bool,
+        label: &str,
+    ) -> serde_json::Value {
+        let dir = scratch_dir(label);
+        let context_dir = dir.join("context");
+        let skills_dir = dir.join("skills");
+        let bin_dir = dir.join(".konductor").join("bin");
+        let mut value = serde_json::json!({
+            "name": "k-example",
+            "resources": ["skill://skills/constraints/SKILL.md"],
+            "permissions": {"rules": []}
+        });
+        let bin_files = [bin_file_entry()];
+        let mut agent_sop_names = std::collections::HashMap::new();
+        agent_sop_names.insert("k-example".to_string(), vec!["ticket-sync".to_string()]);
+        let mut agent_skill_names = std::collections::HashMap::new();
+        agent_skill_names.insert("k-example".to_string(), vec!["constraints".to_string()]);
+        pass.rewrite(
+            &mut value,
+            &RewriteContext {
+                context_dir: &context_dir,
+                skills_dir: &skills_dir,
+                bin_dir: &bin_dir,
+                bin_files: &bin_files,
+                agent_sop_names: &agent_sop_names,
+                agent_skill_names: &agent_skill_names,
+                no_telemetry,
+            },
+        );
+        fs::remove_dir_all(&dir).ok();
+        value
+    }
+
+    const SCOPED_AGENT_ARGS: &[&str] = &[
+        "--skills-dir",
+        "~/.konductor/skills",
+        "--skills-dir",
+        ".konductor/skills",
+        "--agent-sop-paths",
+        "~/.konductor/sops",
+        "--agent-sop-paths",
+        ".konductor/sops",
+        "--agent-sop-filter",
+        "ticket-sync",
+        "--skill-name-filter",
+        "constraints",
+    ];
+
+    #[test]
+    fn mcp_pass_rewrite_args_unchanged_when_telemetry_enabled() {
+        let value = rewrite_scoped_agent(&McpServerPass, false, "mcp-args-telemetry-on");
+        assert_eq!(injected_args(&value), SCOPED_AGENT_ARGS);
+    }
+
+    #[test]
+    fn mcp_pass_rewrite_appends_telemetry_off_when_no_telemetry() {
+        let value = rewrite_scoped_agent(&McpServerPass, true, "mcp-args-telemetry-off");
+        assert_eq!(
+            injected_args(&value),
+            [SCOPED_AGENT_ARGS, &["--telemetry", "off"]].concat()
+        );
+    }
+
+    #[test]
+    fn mcp_pass_v3_rewrite_args_unchanged_when_telemetry_enabled() {
+        let value = rewrite_scoped_agent(&McpServerPassV3, false, "mcp-v3-args-telemetry-on");
+        assert_eq!(injected_args(&value), SCOPED_AGENT_ARGS);
+    }
+
+    #[test]
+    fn mcp_pass_v3_rewrite_appends_telemetry_off_when_no_telemetry() {
+        let value = rewrite_scoped_agent(&McpServerPassV3, true, "mcp-v3-args-telemetry-off");
+        assert_eq!(
+            injected_args(&value),
+            [SCOPED_AGENT_ARGS, &["--telemetry", "off"]].concat()
+        );
     }
 
     #[test]
@@ -1499,6 +1609,7 @@ mod tests {
             bin_files: &[],
             agent_sop_names: &agent_sop_names,
             agent_skill_names: empty_agent_skill_names(),
+            no_telemetry: false,
         };
         let mut sop_only_named = sop_only.clone();
         sop_only_named["name"] = serde_json::json!("k-example");
