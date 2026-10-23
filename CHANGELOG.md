@@ -60,7 +60,11 @@ not per individual commit.
   retry-once recovery to spawns that error, time out, or return nothing.
 - The SOP Selection Contract no longer rules out single-procedure SOPs such as `k-plan` and
   `k-verify`. A request matches a SOP row when it asks for what the row's User intent describes,
-  a whole workflow or one named procedure. Keyword overlap and lookups match no row.
+  a whole workflow or one named procedure. A single deliverable that no row describes still goes
+  to an agent. Keyword overlap matches no row, and neither does a lookup the orchestrator answers
+  within its read budget. A thorough codebase or documentation search matches
+  `k-comprehensive-search`. The three orchestrator prompts now run the SOP check on every
+  request, not only on multi-phase ones.
 
 ## [1.1.0] - 2026-10-14
 
