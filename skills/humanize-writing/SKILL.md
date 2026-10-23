@@ -68,13 +68,13 @@ Read the sample first and note: sentence-length patterns, word-choice level (cas
 -   **Validate**: No `—`/`–`, no curly quotes, register matches, coverage matches the original
 -   **On failure**: Re-scan and fix before delivering.
 
-### Step 6: Deliver (and optionally save)
+### Step 6: Deliver
 
 -   **Mode**: `agentic`
 -   **Input**: Draft, "still-AI" bullets, final rewrite
--   **Output**: The deliverable (see Output section)
--   **Validate**: If a `{{file_path}}` was the source and the user asked to save, write the final rewrite back with `file_write`/`file_edit`, only after confirming.
--   **On failure**: If unsure whether to overwrite the source file, ask first.
+-   **Output**: For a file edit, the updated file and a brief report. Otherwise, the deliverable in the Output section.
+-   **Validate**: If the user asked you to edit a file (for example "tighten the README"), or the text is a file you are writing as part of the task, apply the final rewrite to that file with your edit tools. Don't ask first, and don't paste the rewrite in chat instead of editing. Return the rewrite inline only when the user pasted the text or asked to see it.
+-   **On failure**: If the edit fails, report the error and say the file is unchanged.
 
 ## Voice Calibration — how to provide a sample
 
@@ -526,14 +526,14 @@ When you see these, lean toward leaving the prose alone:
 
 ## Output
 
-Deliver, in this order:
+For a file edit, write the final rewrite to the file (see Step 6). Then report briefly: the file you changed and the main tells you removed. Don't repeat the draft or the rewrite in chat unless the user asks.
+
+For pasted text, or when the user asks to see the text, deliver in this order:
 
 1.  **Draft rewrite** — the first pass.
 2.  **"Still-AI" bullets** — a brief answer to "What makes this so obviously AI generated?" naming any remaining tells.
 3.  **Final rewrite** — addresses the tells and contains no em or en dashes.
 4.  *(Optional)* **Summary of changes** — a short note on what was removed and why.
-
-If the source was a file and the user asked to save, write the final rewrite back to the file only after confirming.
 
 ## Lessons Learned
 
@@ -563,5 +563,4 @@ If the source was a file and the user asked to save, write the final rewrite bac
 ### When to Ask the User
 
 -   No text or file was provided.
--   The source is a file and it's unclear whether to overwrite it in place.
 -   The target register is ambiguous (formal reference vs. personal essay) and it changes whether to add voice.
