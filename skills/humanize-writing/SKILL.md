@@ -73,8 +73,8 @@ Read the sample first and note: sentence-length patterns, word-choice level (cas
 -   **Mode**: `agentic`
 -   **Input**: Draft, "still-AI" bullets, final rewrite
 -   **Output**: For a file edit, the updated file and a brief report. Otherwise, the deliverable in the Output section.
--   **Validate**: If the user asked you to edit a file (for example "tighten the README"), or the text is a file you are writing as part of the task, apply the final rewrite to that file with your edit tools. Don't ask first, and don't paste the rewrite in chat instead of editing. Return the rewrite inline only when the user pasted the text or asked to see it.
--   **On failure**: If the edit fails, report the error and say the file is unchanged.
+-   **Validate**: If the user asked you to edit a file (for example "tighten the README"), or the text is a file you are writing as part of the task, apply the final rewrite to that file with your edit tools. Don't ask first, and don't paste the rewrite in chat instead of editing. In every other case (pasted text, text you drafted that isn't on disk, or a request only to review or check a file), return the rewrite inline and don't edit any file. For `.docx`, `.pdf` or other non-text sources, return the rewrite inline and say the file was not modified.
+-   **On failure**: If an edit fails, re-read the file, report the error and which changes landed, and return the final rewrite inline.
 
 ## Voice Calibration — how to provide a sample
 
@@ -528,7 +528,7 @@ When you see these, lean toward leaving the prose alone:
 
 For a file edit, write the final rewrite to the file (see Step 6). Then report briefly: the file you changed and the main tells you removed. Don't repeat the draft or the rewrite in chat unless the user asks.
 
-For pasted text, or when the user asks to see the text, deliver in this order:
+Otherwise, deliver in this order:
 
 1.  **Draft rewrite** — the first pass.
 2.  **"Still-AI" bullets** — a brief answer to "What makes this so obviously AI generated?" naming any remaining tells.
