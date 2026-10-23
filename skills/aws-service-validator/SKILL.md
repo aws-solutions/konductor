@@ -35,7 +35,7 @@ For each extracted claim, use the `aws-mcp` tools in this order:
 
 1. **`aws___search_documentation`** — search for the service + feature to locate the relevant doc page
 2. **`aws___read_documentation`** — read the located page to confirm or deny the assertion
-3. **`aws___get_regional_availability`** — for any regional availability claim, call this tool with the service and region
+3. **`aws___get_regional_availability`** — for any regional availability claim, call this tool with `resource_type` (required: `"product"`, `"api"`, or `"cfn"`), `regions` (up to 10), and `filters` set to the exact catalog name: a product or sub-feature (e.g. `"Amazon Bedrock"`), an API (`"SdkServiceId+Operation"`, e.g. `"CloudFormation+CreateStack"`), or a CloudFormation resource type (e.g. `"AWS::Lambda::Function"`). `filters` is required when checking more than one region. If you are unsure of the exact name, call once for one region with no filters to list the valid names. That list is paginated, so keep passing the returned `next_token` until the name you need appears or no `next_token` comes back
 
 Do not accept the document's own assertion as evidence. Always consult the primary source.
 
@@ -70,7 +70,7 @@ Output a markdown report in this format:
 
 - **Do not block on UNVERIFIED** — mark and proceed. New services may not yet appear in documentation.
 - **Do not validate pricing claims from memory** — always call `aws___search_documentation` for pricing pages.
-- **Regional availability changes frequently** — always call `aws___get_regional_availability` rather than relying on prior knowledge.
+- **Regional availability changes frequently** — always call `aws___get_regional_availability` rather than relying on prior knowledge. It requires `resource_type`, plus `filters` for a multi-region call, and filter values must exactly match AWS's catalog names. When listing names with an unfiltered single-region call, follow `next_token` before concluding a name doesn't exist.
 - **Feature names drift** — search by both the marketing name and the API/console name if the first search returns no results.
 
 ## Verification
