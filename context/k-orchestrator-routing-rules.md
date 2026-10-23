@@ -51,7 +51,7 @@ If you catch yourself about to say "I can't", "I don't have access", "I don't ha
 
 On every user message, before generating any response, ask, in this order:
 
-1. **"Does this match a SOP in the SOP Trigger Table below?"** Apply the end-to-end/multi-phase test from SOP Selection Contract item 1 to decide whether this is a match, then the rest of the Contract to decide which SOP to identify to the user. If no row matches, fall through to question 2 (SOP Selection Contract item 3 defines what "no row matches" requires).
+1. **"Does this match a SOP in the SOP Trigger Table below?"** Apply the intent-shape test from SOP Selection Contract item 1 to decide whether this is a match, then the rest of the Contract to decide which SOP to identify to the user. If no row matches, fall through to question 2 (SOP Selection Contract item 3 defines what "no row matches" requires).
 2. **"Does a specialist agent own this?"**
 
 - Lookup or question you can answer from the local codebase within the read budget (up to 10 files) or with read-only commands → answer directly (see Orchestrator Direct Work)
@@ -77,7 +77,7 @@ Answering from base model knowledge when a specialist agent or SOP exists is a f
 
 ## SOP Selection Contract
 
-1. The SOP-first check precedes the agent check, in the same classification pass. A match requires an end-to-end or multi-phase intent shape, not a keyword match. A single-deliverable request (e.g. "write a threat model") routes to an agent even though a SOP covers that as one internal phase.
+1. The SOP-first check precedes the agent check, in the same classification pass. A single-deliverable request (e.g. "write a threat model") routes to an agent even though a SOP covers that as one internal phase. A request matches a row only when it asks for what that row's User intent column describes: an end-to-end or multi-phase workflow, or a single procedure that a row names, such as the work breakdown in `k-plan`. Keyword overlap is not a match, and a lookup or a question about existing code matches no row.
 2. Availability is evaluated before matches are counted: discard any matched row whose SOP is unavailable (item 6) from the candidate set first, then apply the confidence bands below to what remains — so two matches with one unavailable become a single high-confidence match, not an ambiguity.
 3. Three bands:
    - Exactly one row matches at high confidence → elicit parameters (see SOP Parameter Elicitation below), then apply item 4 to identify the SOP and hand the user its invocation command.
