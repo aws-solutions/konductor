@@ -40,6 +40,9 @@ not per individual commit.
   `null`), which `docs/telemetry-schema.json` requires on every event.
 - `konductor update --cli` retries its smoke test of the downloaded binary when exec fails with
   "Text file busy" (ETXTBSY), instead of failing the update.
+- `k-architect` and `k-developer` no longer tell agents to use `aws___call_aws`, a tool the AWS MCP server has removed. Both now point at `aws___run_script`, which runs sandboxed Python with AWS API access.
+- `find-aws-skills`' failure-handling fallback no longer references `aws___suggest_aws_commands`, which the AWS MCP server does not expose. It now offers direct AWS API calls via `aws___run_script` (sandboxed Python).
+- `aws-service-validator` calls `aws___get_regional_availability` with `resource_type` (required), `regions`, and `filters` (required for more than one region), instead of a bare service-and-region call.
 - `update --no-telemetry` now opts a project out for good: it removes the project's telemetry
   record instead of only skipping that one run's write, so a later plain `update` can't quietly
   turn telemetry back on. Pass the new `--enable-telemetry` flag to opt back in.
