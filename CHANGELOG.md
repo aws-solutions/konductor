@@ -40,6 +40,9 @@ not per individual commit.
   `null`), which `docs/telemetry-schema.json` requires on every event.
 - `konductor update --cli` retries its smoke test of the downloaded binary when exec fails with
   "Text file busy" (ETXTBSY), instead of failing the update.
+- `k-architect`'s Claude Code `Agent(...)` permission now names the installed agents
+  `k-developer` and `k-quality-assurance`. It previously used package-prefixed names that never
+  match a Konductor install, so Claude Code reported no spawnable agents for `k-architect`.
 
 ## [1.1.0] - 2026-10-14
 
