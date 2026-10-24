@@ -14,7 +14,7 @@
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
     "test": "vitest run",
-    "api:lint": "vitest run api",
+    "api:lint": "vitest run api/openapi.test.ts",
     "test:e2e": "playwright test",
     "screenshots": "playwright test --config playwright.screenshots.config.ts"
   },
