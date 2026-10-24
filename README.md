@@ -397,6 +397,7 @@ konductor/
 ├── mcp/           The skill-lookup MCP server
 ├── shared/        Shared Rust crates (telemetry)
 ├── docs/          User guide, integration guides, GitHub Pages site
+├── workflow-canvas/ Browser UI for workflows (Vite, React); see its README
 ├── scripts/       Install, release and plugin tooling
 └── tests/         Benchmark scenarios and script tests
 ```
