@@ -7,16 +7,12 @@ import { RunSimulator } from '../core/runs.ts';
 import { SAMPLE_FILES, SAMPLE_ROOT } from '../core/sample.ts';
 import { WorkflowStore } from '../core/store.ts';
 import { WorkflowApi } from '../core/workflow-api.ts';
+import { DEFAULT_PORT, LOOPBACK, originOf } from '../address.ts';
 import { dispatch, type Dispatcher } from './dispatch.ts';
 import { errorReply, faultReply, send } from './respond.ts';
 import { buildRoutes } from './routes.ts';
 import { SessionGate } from './session.ts';
 import { newRunSuffix, newSecret, systemClock } from './system.ts';
-
-/** The port of the server URL in the contract. */
-export const DEFAULT_PORT = 5174;
-/** The stub listens here and nowhere else. */
-export const LOOPBACK = '127.0.0.1';
 
 export interface StubOptions {
   /** `0` picks a free port. */
@@ -31,11 +27,11 @@ export interface StubOptions {
 }
 
 export interface RunningStub {
+  /** The address the socket is bound to, as the operating system reports it. */
+  host: string;
   port: number;
   origin: string;
   launchCode: string;
-  /** The address to open, with the launch code in the fragment. */
-  launchAddress: string;
   close(): Promise<void>;
 }
 
@@ -70,13 +66,13 @@ export async function startStub(
       .then((reply) => send(res, reply));
   });
   await listen(server, options.port ?? DEFAULT_PORT);
-  const port = portOf(server);
-  const origin = `http://${LOOPBACK}:${port}`;
+  session.openWindow();
+  const { address, port } = server.address() as AddressInfo;
   return {
+    host: address,
     port,
-    origin,
+    origin: originOf(port),
     launchCode,
-    launchAddress: `${origin}/#${launchCode}`,
     close: () => close(server),
   };
 }

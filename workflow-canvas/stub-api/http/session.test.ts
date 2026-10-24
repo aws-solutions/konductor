@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
-// @vitest-environment node
 /** Calls POST /api/session over HTTP and checks it against the contract. */
+import { connect } from 'node:net';
+import { networkInterfaces } from 'node:os';
 import { describe, expect, it } from 'vitest';
+import { LOOPBACK, originOf } from '../address.ts';
 import { expectContract, expectError } from '../test-support/contract.ts';
 import { LAUNCH_CODE, openStub, useStub } from '../test-support/harness.ts';
-import { LAUNCH_WINDOW_MS } from './session.ts';
+import { FakeClock } from '../test-support/fake-clock.ts';
+import { LAUNCH_WINDOW_MS, SessionGate } from './session.ts';
 
 const SESSION = '/api/session';
 
@@ -107,15 +110,58 @@ describe('the other calls', () => {
   });
 });
 
+describe('the launch window', () => {
+  const makeGate = () => {
+    const clock = new FakeClock();
+    return { clock, gate: new SessionGate({ clock, launchCode: LAUNCH_CODE }) };
+  };
+
+  it('starts when it is opened, not when the gate is built', () => {
+    const { clock, gate } = makeGate();
+    clock.advance(10 * LAUNCH_WINDOW_MS);
+    gate.openWindow();
+    clock.advance(LAUNCH_WINDOW_MS - 1);
+    expect(gate.exchange(LAUNCH_CODE)).not.toBe('');
+  });
+
+  it('is closed until it is opened', () => {
+    const { gate } = makeGate();
+    expect(() => gate.exchange(LAUNCH_CODE)).toThrow('not valid');
+  });
+});
+
 describe('the stub', () => {
-  it('listens on the loopback address only', async () => {
+  it('is bound to the loopback address and nothing else', async () => {
     const { stub, client } = await openStub();
     try {
-      expect(stub.origin).toBe(`http://127.0.0.1:${stub.port}`);
-      expect(stub.launchAddress).toBe(`${stub.origin}/#${stub.launchCode}`);
+      expect(stub.host).toBe(LOOPBACK);
+      expect(stub.origin).toBe(originOf(stub.port));
       expect((await client.get('/api/workflow')).status).toBe(401);
+      for (const address of otherAddresses()) {
+        await expect(connectTo(address, stub.port)).rejects.toMatchObject({
+          code: 'ECONNREFUSED',
+        });
+      }
     } finally {
       await stub.close();
     }
   });
 });
+
+// The IPv4 addresses of this machine that are not loopback; there may be none.
+function otherAddresses(): string[] {
+  return Object.values(networkInterfaces())
+    .flatMap((list) => list ?? [])
+    .filter((entry) => entry.family === 'IPv4' && !entry.internal)
+    .map((entry) => entry.address);
+}
+
+function connectTo(host: string, port: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const socket = connect({ host, port }, () => {
+      socket.destroy();
+      resolve();
+    });
+    socket.once('error', reject);
+  });
+}
