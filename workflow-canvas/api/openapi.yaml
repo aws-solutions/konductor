@@ -116,7 +116,10 @@ info:
     file. `PUT /api/workflow` sends it back as `base_hash`. If the file changed
     in between, the save is refused with 409 `conflict` and the `current_hash`.
     A `base_hash` of `null` means the file must not exist yet. If it does, the
-    save is refused with 409 `conflict` and the `current_hash`.
+    save is refused with 409 `conflict` and the `current_hash`. A `base_hash`
+    that is a hash, for a file that does not exist (it was deleted outside the
+    canvas), is also 409 `conflict`, with no `current_hash` because there is no
+    file to hash.
 
     If the answer to a save is lost, the client sends `GET /api/workflow`
     again. Its own save went through when the `hash` equals the SHA-256 of the
@@ -195,7 +198,7 @@ info:
     | `YAML_UNSUPPORTED` | the node                     | The text has an anchor, alias, merge key, tag or a second document.          |
     | `NOT_A_MAPPING`    | the whole text, or the stage | The text, or a stage, is not a mapping. Text that is empty or only blank lines or comments is not a mapping, and its position is line 1, column 1, with the same end. |
     | `UNKNOWN_KEY`      | the key                      | A mapping has a key that this version does not list. `suggestion` is the listed key with the smallest edit distance (insertions, deletions and substitutions of code points), the first in the table above if two tie, and only when that distance is at most 2. Otherwise it is left out. |
-    | `DUPLICATE_KEY`    | the later key                | A key appears again in a mapping, the same string after parsing. The first is used and the check goes on as if each later one were not there. It is reported once for each later one. |
+    | `DUPLICATE_KEY`    | the later key                | A key appears again in a mapping. Keys are compared as strings after parsing, so `1` and `'1'` are one key. The first is used and the check goes on as if each later one were not there. It is reported once for each later one. An unknown key that is repeated has `UNKNOWN_KEY` at the first and `DUPLICATE_KEY` at each later one. |
     | `MISSING_KEY`      | the mapping                  | `intent`, `stages`, `outcome`, or a stage's `name` or `agent` is absent.     |
     | `WRONG_TYPE`       | the value                    | A value is the wrong kind, such as `stages` that is not a list, or a `name`, `agent`, `version` or `intent` that is not a string. A number or a boolean is not a string, so `version: 1.1`, `name: 123` and `name: true` are all this code. |
     | `INVALID_NAME`     | the value                    | A name or agent id that is a string does not match the pattern above.        |
@@ -467,15 +470,25 @@ paths:
               $ref: '#/components/headers/XKonductorApi'
           description: |
             The file changed since `base_hash`, or `base_hash` is `null` and
-            the file exists. `current_hash` is the hash of the file now.
+            the file exists, or `base_hash` is a hash and the file does not
+            exist. `current_hash` is the hash of the file now, and is left out
+            when there is no file.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-              example:
-                error: The file changed on disk.
-                code: conflict
-                current_hash: 8b078f12e495ee77e017b0e1aade09ba493cc00b3d27b54dd4935e9a6f5cc67e
+              examples:
+                changed:
+                  summary: The file changed since base_hash
+                  value:
+                    error: The file changed on disk.
+                    code: conflict
+                    current_hash: 8b078f12e495ee77e017b0e1aade09ba493cc00b3d27b54dd4935e9a6f5cc67e
+                deleted:
+                  summary: The file is gone, so there is no current_hash
+                  value:
+                    error: The file no longer exists.
+                    code: conflict
         '413':
           $ref: '#/components/responses/TooLarge'
         '422':
@@ -1412,7 +1425,7 @@ components:
           $ref: '#/components/schemas/ErrorCode'
         current_hash:
           $ref: '#/components/schemas/Hash'
-          description: With `conflict`. The hash of the file now.
+          description: With `conflict`, when the file exists. The hash of the file now.
         run_id:
           $ref: '#/components/schemas/RunId'
           description: With `already_running`. The run that is active.
