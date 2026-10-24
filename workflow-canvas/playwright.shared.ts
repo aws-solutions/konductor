@@ -4,25 +4,22 @@ import {
   type PlaywrightTestConfig,
   type Project,
 } from '@playwright/test';
-import { LOOPBACK, originOf, portOf } from './stub-api/address';
-import { apiTargetOrExit, type ApiTarget } from './stub-api/target';
+import { apiTargetOrExit } from './stub-api/target';
+import {
+  APP_URL,
+  STUB_LAUNCH_CODE,
+  webServersFor,
+} from './stub-api/web-servers';
 
-type WebServer = Extract<
-  PlaywrightTestConfig['webServer'],
-  { command: string }
->;
-
-const HOST = LOOPBACK;
-const APP_PORT = 4173;
-const APP_URL = originOf(APP_PORT);
+export { STUB_LAUNCH_CODE };
 
 /**
  * Where the API listens during a run: the stub, or the server named by
- * `WC_API_TARGET`. A real server must be started with this launch code.
+ * `WC_API_TARGET`. This is the only place that reads the variable for
+ * Playwright; the server definitions are in `stub-api/web-servers.ts`.
  */
 export const API_TARGET = apiTargetOrExit();
 export const API_URL = API_TARGET.origin;
-export const STUB_LAUNCH_CODE = 'e2e-launch-code';
 
 /**
  * One viewport and render mode for every project. With the pinned font and the
@@ -41,37 +38,6 @@ export const stableRendering: NonNullable<Project['use']> = {
     args: ['--font-render-hinting=none', '--disable-lcd-text'],
   },
 };
-
-const appServer: WebServer = {
-  name: 'app',
-  command: `npm run build && npx vite preview --host ${HOST} --port ${APP_PORT} --strictPort`,
-  url: APP_URL,
-  reuseExistingServer: false,
-  timeout: 120_000,
-};
-
-const stubServer = (target: ApiTarget): WebServer => ({
-  name: 'stub-api',
-  command: 'npm run stub',
-  env: {
-    STUB_PORT: String(portOf(target.origin)),
-    STUB_LAUNCH_CODE,
-  },
-  // The stub answers 401 here until a session exists, which counts as up.
-  url: `${target.origin}/api/workflow`,
-  reuseExistingServer: false,
-  timeout: 30_000,
-});
-
-/**
- * The servers a run depends on, started before and stopped after it. The app
- * is served from a production build. The stub API starts after the app build,
- * because its launch code works for 60 seconds. It starts only when it is the
- * target; a real server is started by whoever set `WC_API_TARGET`.
- */
-export function webServersFor(target: ApiTarget): WebServer[] {
-  return target.isStub ? [appServer, stubServer(target)] : [appServer];
-}
 
 /** Settings shared by the functional run and the screenshot capture. */
 export const sharedConfig: PlaywrightTestConfig = {

@@ -12,13 +12,16 @@ export interface ApiTarget {
 }
 
 /**
- * `value` without what may be secret in it: the user and password before an
- * `@`, and everything after a `?` or `#`.
+ * `value` without what may be secret in it. Everything up to the last `@` is
+ * masked, because a password may hold a `/`, `?` or `#` that ends the
+ * authority only after parsing. Then everything after a `?` or `#` goes. This
+ * may also mask a path that holds an `@`: hiding too much is the safe error.
  */
 export function redact(value: string): string {
   return value
+    .trim()
     .replace(
-      /^(?:([a-z][a-z0-9+.-]*):\/\/)?[^/?#]*@/i,
+      /^(?:([a-z][a-z0-9+.-]*):\/\/)?.*@/is,
       (_, scheme?: string) => `${scheme ? `${scheme}://` : ''}***@`,
     )
     .replace(/([?#]).*$/s, '$1...');
