@@ -103,7 +103,8 @@ npm run stub
 The launch code is new each time and works once, within 60 seconds of the
 moment the stub starts listening. `POST /api/session` trades it for the token
 that the other calls send as `Authorization: Bearer <token>`. `STUB_PORT`
-sets the port. `STUB_LAUNCH_CODE` sets the code, for tests only: it can be
+sets the port (a whole number from 1 to 65535; anything else stops the command
+with a one-line error). `STUB_LAUNCH_CODE` sets the code, for tests only: it can be
 weaker than the contract asks.
 
 The data covers the first release: a workflow of an intent and stages, and the
@@ -127,13 +128,18 @@ curl -s -X POST http://127.0.0.1:5173/api/session \
   -H 'Content-Type: application/json' -d '{"code":"<launch code>"}'
 ```
 
+The launcher sends SIGTERM to the other command when one exits, and SIGKILL
+to a command that is still running 5 seconds later.
+
 ## Choose the API backend
 
 The page always calls the relative `/api`. Only the proxy target changes, and
 one variable sets it: `WC_API_TARGET`, an origin such as
 `http://127.0.0.1:8080`. When it is unset, the target is the stub. A bad value
-(not an http or https origin, or one with a path) stops the command with a
-one-line error. `stub-api/target.ts` is the only place that reads it.
+(not an http or https origin, or one with a path) stops the command that needs
+it (`dev`, `preview`, `test:e2e`, `screenshots`) with a one-line error that
+hides any user, password or query in the value. `build` and `npm test` never
+read it. `stub-api/target.ts` is the only place that reads it.
 
 - Stubbed dev: `npm run dev:stub`
 - Real dev: `WC_API_TARGET=http://127.0.0.1:8080 npm run dev`
@@ -143,7 +149,8 @@ one-line error. `stub-api/target.ts` is the only place that reads it.
 `dev:stub` ignores `WC_API_TARGET`, since it starts the stub. For real e2e,
 Playwright does not start the stub, so start the real server first with the
 launch code `e2e-launch-code`, and run the tests within 60 seconds of it
-listening.
+listening. The launch code works once, so restart the server before each run;
+a second run against the same server fails with a 401.
 
 The proxy sends the `Origin` of the target. A real server must pass the same
 Origin check as the stub, and the same `POST /api/session` step from
