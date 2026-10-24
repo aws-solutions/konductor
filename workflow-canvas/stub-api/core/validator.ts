@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { isMap, isScalar, isSeq, type YAMLMap } from 'yaml';
 import {
+  codePointLength,
   isName,
   isUsableStageName,
   MAX_INTENT_CHARS,
@@ -14,6 +15,7 @@ import { suggestKey } from './suggest.ts';
 import {
   entriesOf,
   findUnsupported,
+  documentSpanOf,
   parseDocuments,
   spanOf,
   valueSpanOf,
@@ -75,7 +77,7 @@ function readWorkflow(text: string, ctx: Context): WorkflowView | undefined {
   }
   for (const doc of others) {
     const message = 'Only one YAML document is allowed.';
-    reporter.report('YAML_UNSUPPORTED', [], spanOf(doc), message);
+    reporter.report('YAML_UNSUPPORTED', [], documentSpanOf(doc), message);
   }
   if (reporter.hasErrors()) return undefined;
   if (!isMap(root)) {
@@ -148,9 +150,13 @@ function readEntries(
   return entries;
 }
 
-// Names a key in a message, unless it is long or odd enough to be a secret.
+// Names a key in a message only if it is short and plain. A longer key, or a
+// key of 12 or more characters with a digit, may be an access key, a token or
+// a hash, and is never echoed.
 function quote(text: string): string {
-  return /^[\w.~-]{1,32}$/.test(text) ? `\`${text}\`` : '(not shown)';
+  const plain = /^[\w.~-]{1,24}$/.test(text);
+  const looksSecret = text.length >= 12 && /\d/.test(text);
+  return plain && !looksSecret ? `\`${text}\`` : '(not shown)';
 }
 
 function reportMissing(
@@ -243,7 +249,7 @@ function readOutcome(entry: MapEntry, path: Segment[], ctx: Context): string {
 function outcomeProblem(text: string): string | undefined {
   if (text === '') return 'must not be empty';
   if (/[\r\n]/.test(text)) return 'must be one line';
-  if ([...text].length > MAX_INTENT_CHARS) {
+  if (codePointLength(text) > MAX_INTENT_CHARS) {
     return `must have at most ${MAX_INTENT_CHARS} characters`;
   }
   return undefined;
