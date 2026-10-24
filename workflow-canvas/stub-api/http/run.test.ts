@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: Apache-2.0
-// @vitest-environment node
 /** Calls POST /api/run and GET /api/runs/{id} over HTTP; time is a fake clock. */
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_STAGE_MS } from '../core/runs.ts';
@@ -9,6 +8,7 @@ import {
   responseExample,
 } from '../test-support/contract.ts';
 import { useStub, type TestStub } from '../test-support/harness.ts';
+import { oneStageWorkflow } from '../test-support/workflows.ts';
 
 const RUN = '/api/run';
 const RUNS = '/api/runs/{id}';
@@ -61,8 +61,7 @@ describe('POST /api/run', () => {
     const { client } = stub();
     const runId = await start(stub());
     const loaded = (await client.get('/api/workflow')).body as { hash: string };
-    const text =
-      'name: hello\nintent: x\nstages:\n  - name: only\n    agent: k-developer\n';
+    const text = oneStageWorkflow('only', 'k-developer');
     expect(
       (await client.put('/api/workflow', { text, base_hash: loaded.hash }))
         .status,
