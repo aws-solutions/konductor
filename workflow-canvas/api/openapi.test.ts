@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // @vitest-environment node
+/**
+ * Checks openapi.yaml as a contract: its shape, its error codes, how it may
+ * grow, and that every example matches its schema and the other examples.
+ */
 import SwaggerParser from '@apidevtools/swagger-parser';
 import Ajv2020 from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
@@ -97,6 +101,7 @@ const STAGE_LETTER: Record<string, string> = {
 
 const ajv = addFormats(new Ajv2020({ strict: true, allowUnionTypes: true }));
 
+/** Compiles with strict JSON Schema 2020-12 so a loose schema fails loudly. */
 function valueMatchesSchema(schema: Schema, value: unknown): boolean {
   return ajv.compile(schema)(value);
 }
@@ -183,6 +188,7 @@ function listResponseBodies(spec: Spec): Body[] {
   );
 }
 
+/** Every example in the spec paired with the schema it must satisfy. */
 function listCases(spec: Spec): Case[] {
   const parameters = listOperations(spec).flatMap(
     ({ method, path, operation }) =>
