@@ -10,6 +10,7 @@ follow-up changes.
 ## Layout
 
 - `src/`: the UI.
+- `api/`: the HTTP API contract (`openapi.yaml`) and its test.
 - `e2e/`: Playwright tests (`tests/`), the screenshot capture (`capture/`),
   shared page objects and helpers (`support/`) and the committed PNGs
   (`screenshots/`).
@@ -18,7 +19,6 @@ Directories added in later PRs:
 
 - `stub-api/`: a TypeScript stub server for local development and end-to-end
   tests, started by the same Playwright `webServer` config.
-- `api/`: the API contract shared with the backend.
 
 A single `package.json` serves all of the above.
 
@@ -31,11 +31,37 @@ npm ci
 npm run dev        # Vite dev server on http://127.0.0.1:5173
 npm run lint       # ESLint and Prettier check
 npm run typecheck
-npm test           # Vitest
+npm test           # Vitest, including the API contract test
+npm run api:lint   # Only the API contract test
 npm run build
 npm run test:e2e    # Playwright, headless Chromium
 npm run screenshots # regenerate e2e/screenshots/*.png
 ```
+
+## API contract
+
+`api/openapi.yaml` is the OpenAPI 3.1 description of the HTTP API that the
+canvas calls. It covers five operations: load, save and check a workflow, start
+a run, and get the status of a run. A workflow in this version has a `name`, an
+`intent` and `stages`, and each stage is a `name` and an `agent`. The only
+harness is `kiro-cli`.
+
+The contract is the one source of truth for the API. The stub server (a later
+change) and the real backend both follow it, so a change to the API starts as a
+change to this file. Responses may gain fields without a new version, so
+clients ignore fields they do not know.
+
+`npm run api:lint` checks the file. The test in `api/openapi.test.ts`:
+
+- parses the file and validates it against the OpenAPI 3.1 specification,
+  including that every `$ref` resolves;
+- checks that the operations are exactly the five above, that each has an
+  `operationId` and a `summary`, and that every request and response body has
+  an example;
+- checks that every error response uses the one `Error` schema;
+- validates every example against its schema.
+
+CI runs it on each pull request, and `npm test` includes it.
 
 ## End-to-end tests
 
