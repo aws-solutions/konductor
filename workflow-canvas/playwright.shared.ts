@@ -10,9 +10,8 @@ const APP_PORT = 4173;
 const APP_URL = `http://${HOST}:${APP_PORT}`;
 
 /**
- * One viewport and one render mode for every project. Combined with the pinned
- * font that the screenshot helper loads and the text rasterisation flags below,
- * a screenshot differs between runs and machines only when the UI does.
+ * One viewport and render mode for every project. With the pinned font and the
+ * text flags below, a screenshot differs between runs only when the UI does.
  */
 export const stableRendering: NonNullable<Project['use']> = {
   ...devices['Desktop Chrome'],
