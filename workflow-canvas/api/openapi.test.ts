@@ -35,6 +35,7 @@ interface Parameter extends Example {
 interface Operation {
   operationId?: string;
   summary?: string;
+  description?: string;
   parameters?: Parameter[];
   requestBody?: Response;
   responses?: Record<string, Response>;
@@ -284,6 +285,13 @@ function textBetween(text: string, d: Record<string, unknown>): string {
   );
 }
 
+// The line numbers, from 1, of the lines of a text that start with a prefix.
+function linesStartingWith(text: string, prefix: string): number[] {
+  return text
+    .split('\n')
+    .flatMap((line, index) => (line.startsWith(prefix) ? [index + 1] : []));
+}
+
 // The name quoted in a diagnostic message, such as `owner`.
 function quotedIn(message: string): string | undefined {
   return /`([^`]+)`/.exec(message)?.[1];
@@ -337,9 +345,8 @@ function namedExample(media: MediaType, name: string) {
 }
 
 /**
- * Each answer example next to the text it answers: a check answer with the
- * check request of the same name, a load with its own text, the save answer
- * and the refused save with the save requests they follow.
+ * Each answer example next to the text it answers: a check with the request
+ * of its name, a load with its own text, and a save with the request it follows.
  */
 function listTextsAndAnswers(spec: Spec): TextAndAnswer[] {
   const checkRequest = jsonBodyOf(spec, 'POST /api/validate');
@@ -397,9 +404,6 @@ function runProblems(run: Record<string, unknown>): string[] {
   }
   if (new Set(order).size !== order.length) problems.push('order repeats');
   if (!allowed?.test(letters.join(''))) problems.push('stage statuses');
-  if (run['status'] === 'running' && letters.every((l) => l === 'P')) {
-    problems.push('a running run has no stage left');
-  }
   return problems;
 }
 
@@ -601,11 +605,7 @@ describe('workflow canvas API contract', () => {
           ({ label }) => label === 'check duplicateKey',
         )!;
         const [diagnostic] = answer['diagnostics'] as Record<string, unknown>[];
-        const secondIntent = text
-          .split('\n')
-          .flatMap((line, index) =>
-            line.startsWith('intent:') ? [index + 1] : [],
-          )[1];
+        const secondIntent = linesStartingWith(text, 'intent:')[1];
         expect(diagnostic?.['code']).toBe('DUPLICATE_KEY');
         expect(diagnostic).toMatchObject({
           line: secondIntent,
@@ -615,13 +615,42 @@ describe('workflow canvas API contract', () => {
         });
       });
 
-      it('says how repeated keys are compared and reported', () => {
-        expect(spec.info.description).toMatch(
-          /compared as strings after parsing, so `1` and `'1'` are one key/,
+      it('reports a repeated unknown key at the first and at each later one', () => {
+        const { text, answer } = pairs.find(
+          ({ label }) => label === 'check unknownKeyTwice',
+        )!;
+        const [first, later] = linesStartingWith(text, 'owner:');
+        const found = (answer['diagnostics'] as Record<string, unknown>[]).map(
+          (d) => [d['code'], d['line'], d['path']],
         );
-        expect(spec.info.description).toMatch(
-          /unknown key that is repeated has `UNKNOWN_KEY` at the first/,
+        expect(found).toEqual([
+          ['UNKNOWN_KEY', first, 'owner'],
+          ['DUPLICATE_KEY', later, 'owner'],
+        ]);
+      });
+
+      it('keeps keys whose text differs apart, even when they read alike', () => {
+        const { answer } = pairs.find(
+          ({ label }) => label === 'check distinctKeys',
+        )!;
+        const found = (answer['diagnostics'] as Record<string, unknown>[]).map(
+          (d) => [d['code'], d['path']],
         );
+        expect(found).toEqual([
+          ['UNKNOWN_KEY', 'True'],
+          ['UNKNOWN_KEY', 'true'],
+          ['UNKNOWN_KEY', '1.0'],
+          ['UNKNOWN_KEY', '1'],
+        ]);
+      });
+
+      it('says how keys are compared and which are not supported', () => {
+        const description = spec.info.description;
+        expect(description).toMatch(
+          /before they are read as a number, boolean or null/,
+        );
+        expect(description).toMatch(/`1` and `'1'` are one key/);
+        expect(description).toMatch(/a key that is not a scalar/);
       });
     });
 
@@ -638,10 +667,13 @@ describe('workflow canvas API contract', () => {
     it('has a conflict with and without the hash of the file now', () => {
       const body = jsonBodyOf(spec, 'PUT /api/workflow', '409');
       const changed = namedExample(body, 'changed');
+      const exists = namedExample(body, 'exists');
       const deleted = namedExample(body, 'deleted');
       expect(changed).toHaveProperty('current_hash');
+      expect(exists).toHaveProperty('current_hash');
       expect(deleted).not.toHaveProperty('current_hash');
-      expect([changed['code'], deleted['code']]).toEqual([
+      expect([changed['code'], exists['code'], deleted['code']]).toEqual([
+        'conflict',
         'conflict',
         'conflict',
       ]);
@@ -680,7 +712,49 @@ describe('workflow canvas API contract', () => {
     });
   });
 
+  describe('what two servers must do alike', () => {
+    const words = (text: string) => text.replace(/\s+/g, ' ');
+
+    it('makes a save check the hash and write as one step, and create exclusively', () => {
+      const description = words(spec.info.description);
+      expect(description).toMatch(
+        /Checking `base_hash` and writing are one step with respect to any other save/,
+      );
+      expect(description).toMatch(
+        /of two saves with the same `base_hash`, one succeeds and the other is 409 `conflict`/,
+      );
+      expect(description).toMatch(
+        /With a `base_hash` of `null` the server creates the file exclusively/,
+      );
+      const save = spec.paths['/api/workflow']?.['put']?.description ?? '';
+      expect(words(save)).toMatch(
+        /check of `base_hash` and the write are one step/,
+      );
+    });
+
+    it('starts the 60 second launch window when the address is printed', () => {
+      const fromPrint =
+        /60 seconds (of|from)\s+the moment the server prints the launch address/;
+      const session = spec.paths['/api/session']?.['post']?.description ?? '';
+      expect(words(spec.info.description)).toMatch(fromPrint);
+      expect(words(session)).toMatch(fromPrint);
+    });
+  });
+
   describe('the checks themselves', () => {
+    it('accepts a running run between two stages', () => {
+      const [answer] = valuesFor(
+        cases,
+        spec.components.schemas['RunStatusResponse']!,
+      );
+      const between = {
+        ...(answer!['run'] as Record<string, unknown>),
+        order: ['write'],
+        stages: { write: { status: 'passed' } },
+      };
+      expect(runProblems(between)).toEqual([]);
+    });
+
     it('rejects an example that does not match its schema', () => {
       const run = spec.components.schemas['Run']!;
       expect(valueMatchesSchema(run, { run_id: 'not-a-run-id' })).toBe(false);
