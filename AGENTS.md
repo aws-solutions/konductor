@@ -18,11 +18,11 @@ Konductor is an open-source multi-agent orchestration framework that provides a 
 ## Project Structure
 
 ```
-agents/        # Agent definitions (.agent-spec.json, one per agent)
-skills/        # Skill definitions (SKILL.md + optional scripts)
-agent-sops/    # Standard operating procedures (user-invoked workflows)
-context/       # Context files loaded at agent startup (system prompts, routing rules)
-cli/           # Konductor CLI; see cli/README.md
+agents/          # Agent definitions (.agent-spec.json, one per agent)
+skills/          # Skill definitions (SKILL.md + optional scripts)
+agent-sops/      # Standard operating procedures (user-invoked workflows)
+context/         # Context files loaded at agent startup (system prompts, routing rules)
+cli/             # Konductor CLI; see cli/README.md
 workflow-canvas/ # Browser UI for workflows (Vite, React, Cloudscape); see its README
 ```
 
