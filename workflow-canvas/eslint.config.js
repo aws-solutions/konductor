@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
+import { defineConfig } from 'eslint/config';
 import tseslint from 'typescript-eslint';
 
-export default tseslint.config(
+export default defineConfig(
   { ignores: ['dist/**', 'node_modules/**'] },
-  ...tseslint.configs.recommended,
+  tseslint.configs.recommended,
   {
     files: ['src/**/*.{ts,tsx}'],
     rules: {
