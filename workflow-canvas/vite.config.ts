@@ -7,7 +7,9 @@ import { apiTargetOrExit } from './stub-api/target.ts';
 /**
  * Where `/api` goes, or `undefined` for a command that serves no page. A bad
  * `WC_API_TARGET` then stops only `dev` and `preview`: `build` and Vitest
- * (mode `test`) never use the proxy, so they never read the variable.
+ * (mode `test`) never use the proxy, so they never read the variable. The unit
+ * tests of the Playwright config set the variable themselves, so a bad value in
+ * the shell does not reach them either.
  */
 function proxyTarget(command: string, mode: string): string | undefined {
   return command === 'serve' && mode !== 'test'

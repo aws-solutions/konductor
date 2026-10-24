@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { webServersFor } from '../playwright.shared.ts';
 import { originOf } from './address.ts';
 import { apiTarget } from './target.ts';
+import { webServersFor } from './web-servers.ts';
 
 const names = (env: NodeJS.ProcessEnv) =>
   webServersFor(apiTarget(env)).map((server) => server.name);
@@ -33,6 +33,9 @@ describe('the Playwright web servers', () => {
   });
 });
 
+// `playwright.shared.ts` reads the environment when it loads, so it is imported
+// only here, after the test has set the environment. The static imports above
+// read none, which keeps a mistyped shell variable from failing `npm test`.
 describe('the shared Playwright config, read from the environment', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
