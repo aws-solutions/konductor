@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { IncomingMessage } from 'node:http';
-import { ApiError } from '../core/errors.ts';
+import { ApiError, badRequest } from '../core/errors.ts';
 
 /** The `Host` of the request, if it is this server on a loopback name. */
 export function requireLocalHost(req: IncomingMessage, port: number): string {
@@ -41,6 +41,6 @@ export function requireOwnOrigin(
 export function requireJsonContentType(req: IncomingMessage): void {
   const type = req.headers['content-type'] ?? '';
   if (!/^application\/json\s*(;\s*charset=utf-8\s*)?$/i.test(type)) {
-    throw new ApiError('bad_request', 'The request body is not valid.');
+    throw badRequest();
   }
 }

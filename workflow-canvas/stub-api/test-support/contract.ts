@@ -17,6 +17,7 @@ interface Operation {
   responses: Record<string, { content?: Record<string, Media> }>;
 }
 interface Spec {
+  info: { description: string };
   paths: Record<string, Record<string, Operation>>;
   components: { schemas: Record<string, Json> };
 }
@@ -112,4 +113,42 @@ export function responseExampleNames(
     'application/json'
   ];
   return Object.keys(media?.examples ?? {});
+}
+
+/** The description of the whole API, which holds the rules in prose. */
+export function contractDescription(): string {
+  return spec.info.description;
+}
+
+/** A named schema of the contract, with its `$ref` pointers resolved. */
+export function schemaOf(name: string): Json {
+  const schema = spec.components.schemas[name];
+  if (!schema) throw new Error(`api/openapi.yaml has no schema ${name}`);
+  return schema;
+}
+
+/** Every error example of the contract: the status, and the `code` it shows. */
+export function errorExamples(): { status: number; code: string }[] {
+  return Object.values(spec.paths).flatMap((methods) =>
+    Object.values(methods).flatMap((operation) =>
+      Object.entries(operation.responses).flatMap(([status, response]) => {
+        const media = response.content?.['application/json'];
+        const values = [
+          media?.example,
+          ...Object.values(media?.examples ?? {}).map((e) => e.value),
+        ];
+        return values
+          .filter((v): v is { code: string } => hasCode(v))
+          .map((v) => ({ status: Number(status), code: v.code }));
+      }),
+    ),
+  );
+}
+
+function hasCode(value: unknown): value is { code: string } {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as { code?: unknown }).code === 'string'
+  );
 }

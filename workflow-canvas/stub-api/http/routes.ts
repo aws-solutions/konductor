@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { API_VERSION, HARNESS } from '../core/contract.ts';
-import { ApiError } from '../core/errors.ts';
+import { badName } from '../core/errors.ts';
 import type { WorkflowApi } from '../core/workflow-api.ts';
 import {
   readCheckRequest,
@@ -43,7 +43,7 @@ const ok = (body: unknown): Reply => ({ status: 200, body });
 function nameFrom(query: URLSearchParams): string | undefined {
   const names = query.getAll('name');
   if (names.length > 1) {
-    throw new ApiError('bad_name', 'The workflow name is not valid.');
+    throw badName();
   }
   return names[0];
 }
