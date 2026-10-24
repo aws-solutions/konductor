@@ -15,6 +15,7 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "api:lint": "vitest run api/openapi.test.ts",
+    "test:stub": "vitest run stub-api",
     "test:e2e": "playwright test",
     "screenshots": "playwright test --config playwright.screenshots.config.ts"
   },
@@ -44,6 +45,7 @@
     "typescript": "6.0.3",
     "typescript-eslint": "8.72.0",
     "vite": "8.3.5",
-    "vitest": "5.0.5"
+    "vitest": "5.0.5",
+    "yaml": "2.9.1"
   }
 }
