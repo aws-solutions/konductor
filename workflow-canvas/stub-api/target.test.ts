@@ -107,6 +107,8 @@ describe('the message of a refused target', () => {
     'user:sec/ret@127.0.0.1:8080',
     'http://127.0.0.1:8080/?k=a@secret',
     'http://127.0.0.1:8080/#a@secret',
+    'http://u:x@secret/more@h:1',
+    'http://u:p@ss/word@h:1',
   ])('does not repeat the secret in %s', (value) => {
     expect(message(value)).not.toContain('secret');
   });
@@ -133,6 +135,10 @@ describe('the message of a refused target', () => {
     ['http://h:1/?k=a@secret', 'http://***'],
     ['http://h:1/#a@secret', 'http://***'],
     ['http://h:1/p@q', 'http://***'],
+    // A password with both an `@` and a `/`: the first `@` is not the end of
+    // the userinfo, so the text after it may be secret.
+    ['http://u:x@secret/more@h:1', 'http://***'],
+    ['http://u:p@ss/word@h:1', 'http://***'],
     ['HTTP://u:p@h:1', 'HTTP://***@h:1'],
     ['http://h:1', 'http://h:1'],
     ['nope', 'nope'],
