@@ -85,8 +85,9 @@ info:
     `http://127.0.0.1:<port>/#<code>`, so the code is in the fragment, which
     the browser never sends to a server. The page reads it from there and
     removes it from the address bar. The client posts it to `POST /api/session`
-    within 60 seconds and gets the session token. A code works once, so another
-    session needs a new code. The launch code and the token are each at least
+    within 60 seconds of the moment the server prints the launch address, and
+    gets the session token. A code works once, so another session needs a new
+    code. The launch code and the token are each at least
     128 bits from a secure random source, and the server compares them in
     constant time. A token is valid until the server stops.
 
@@ -116,7 +117,12 @@ info:
     file. `PUT /api/workflow` sends it back as `base_hash`. If the file changed
     in between, the save is refused with 409 `conflict` and the `current_hash`.
     A `base_hash` of `null` means the file must not exist yet. If it does, the
-    save is refused with 409 `conflict` and the `current_hash`. A `base_hash`
+    save is refused with 409 `conflict` and the `current_hash`. Checking
+    `base_hash` and writing are one step with respect to any other save: of two
+    saves with the same `base_hash`, one succeeds and the other is 409
+    `conflict`. With a `base_hash` of `null` the server creates the file
+    exclusively, so it fails if the file exists, even when it was created
+    after the server last looked. A `base_hash`
     that is a hash, for a file that does not exist (it was deleted outside the
     canvas), is also 409 `conflict`, with no `current_hash` because there is no
     file to hash.
@@ -155,10 +161,10 @@ info:
     YAML 1.2 read with the core schema. So only `true` and `false` (in the
     forms `true`, `True` and `TRUE`, and the same for `false`) are booleans,
     `on`, `off`, `yes` and `no` are plain strings, and a plain value that looks
-    like a number is a number. The YAML is a plain subset: one document, and no
-    anchors, aliases, merge keys or tags. A key that appears twice in one
-    mapping is an error, not a case of the last one winning. The text is a
-    mapping with these keys and no others:
+    like a number is a number. The YAML is a plain subset: one document, no
+    anchors, aliases, merge keys or tags, and only scalar keys. A key that
+    appears twice in one mapping is an error, not a case of the last one
+    winning. The text is a mapping with these keys and no others:
 
     | Key       | Required | Value                                                                                                  |
     | --------- | -------- | ------------------------------------------------------------------------------------------------------ |
@@ -195,10 +201,10 @@ info:
     | Code               | Path                         | Reported when                                                                |
     | ------------------ | ---------------------------- | ---------------------------------------------------------------------------- |
     | `YAML_SYNTAX`      | the whole text               | The text is not valid YAML. The position is where the parser found the problem, and the end is the same place. |
-    | `YAML_UNSUPPORTED` | the node                     | The text has an anchor, alias, merge key, tag or a second document.          |
+    | `YAML_UNSUPPORTED` | the node                     | The text has an anchor, alias, merge key, tag, a second document or a key that is not a scalar, such as `? [a]`. |
     | `NOT_A_MAPPING`    | the whole text, or the stage | The text, or a stage, is not a mapping. Text that is empty or only blank lines or comments is not a mapping, and its position is line 1, column 1, with the same end. |
-    | `UNKNOWN_KEY`      | the key                      | A mapping has a key that this version does not list. `suggestion` is the listed key with the smallest edit distance (insertions, deletions and substitutions of code points), the first in the table above if two tie, and only when that distance is at most 2. Otherwise it is left out. |
-    | `DUPLICATE_KEY`    | the later key                | A key appears again in a mapping. Keys are compared as strings after parsing, so `1` and `'1'` are one key. The first is used and the check goes on as if each later one were not there. It is reported once for each later one. An unknown key that is repeated has `UNKNOWN_KEY` at the first and `DUPLICATE_KEY` at each later one. |
+    | `UNKNOWN_KEY`      | the key                      | A mapping has a key that this version does not list. `suggestion` is the listed key with the smallest edit distance (insertions, deletions and substitutions of code points), the first in the table above (for a stage, `name` before `agent`) if two tie, and only when that distance is at most 2. Otherwise it is left out. |
+    | `DUPLICATE_KEY`    | the later key                | A key appears again in a mapping. Two keys are one key when their text is the same: the characters of the key after quotes and escapes are resolved, and before they are read as a number, boolean or null. So `1` and `'1'` are one key, but `true` and `True`, `1`, `1.0` and `0x1`, and `null` and `~` are each different keys. The first is used and the check goes on as if each later one were not there. It is reported once for each later one. An unknown key that is repeated has `UNKNOWN_KEY` at the first and `DUPLICATE_KEY` at each later one. |
     | `MISSING_KEY`      | the mapping                  | `intent`, `stages`, `outcome`, or a stage's `name` or `agent` is absent.     |
     | `WRONG_TYPE`       | the value                    | A value is the wrong kind, such as `stages` that is not a list, or a `name`, `agent`, `version` or `intent` that is not a string. A number or a boolean is not a string, so `version: 1.1`, `name: 123` and `name: true` are all this code. |
     | `INVALID_NAME`     | the value                    | A name or agent id that is a string does not match the pattern above.        |
@@ -231,7 +237,8 @@ paths:
       summary: Start a session
       description: |
         Exchanges the launch code for the session token that every other call
-        needs. This call needs no token. A code works once and for 60 seconds.
+        needs. This call needs no token. A code works once, and for 60 seconds from
+        the moment the server prints the launch address.
       tags: [Session]
       security: []
       requestBody:
@@ -369,8 +376,9 @@ paths:
       description: |
         Writes the text of the workflow exactly as sent. The text must pass the
         same check as `POST /api/validate` with no errors, or nothing is
-        written. The write is atomic, and it is refused if the file changed
-        since `base_hash`. If the file is a link, a directory or another file
+        written. The check of `base_hash` and the write are one step (see
+        **Optimistic concurrency**), and the write is atomic. It is refused if
+        the file changed since `base_hash`. If the file is a link, a directory or another file
         that is not a regular file, or one that `GET /api/workflow` would
         refuse, the save is 404 `not_found` and nothing is written, so a
         client cannot overwrite what it could not load.
@@ -484,6 +492,12 @@ paths:
                     error: The file changed on disk.
                     code: conflict
                     current_hash: 8b078f12e495ee77e017b0e1aade09ba493cc00b3d27b54dd4935e9a6f5cc67e
+                exists:
+                  summary: The file exists, though base_hash is null
+                  value:
+                    error: The file already exists.
+                    code: conflict
+                    current_hash: 8b078f12e495ee77e017b0e1aade09ba493cc00b3d27b54dd4935e9a6f5cc67e
                 deleted:
                   summary: The file is gone, so there is no current_hash
                   value:
@@ -526,6 +540,16 @@ paths:
                 value:
                   name: hello
                   text: "name: hello\nintent: Add a greeting to the README\nintent: Add a changelog line\nstages:\n  - name: write\n    agent: k-developer\n"
+              unknownKeyTwice:
+                summary: An unknown key that is repeated
+                value:
+                  name: hello
+                  text: "name: hello\nowner: me\nintent: Add a greeting to the README\nowner: you\nstages:\n  - name: write\n    agent: k-developer\n"
+              distinctKeys:
+                summary: Keys with different text are different keys
+                value:
+                  name: hello
+                  text: "name: hello\nintent: Add a greeting to the README\nTrue: a\ntrue: b\n1.0: c\n1: d\nstages:\n  - name: write\n    agent: k-developer\n"
       responses:
         '200':
           headers:
@@ -593,6 +617,84 @@ paths:
                         end_line: 3
                         end_column: 7
                         message: The key `intent` is already used.
+                    summary:
+                      valid: false
+                      counts:
+                        stages: 0
+                unknownKeyTwice:
+                  summary: An unknown key that is repeated
+                  value:
+                    errors: 2
+                    warnings: 0
+                    infos: 0
+                    view: null
+                    diagnostics:
+                      - code: UNKNOWN_KEY
+                        severity: error
+                        file: hello.yml
+                        path: owner
+                        line: 2
+                        column: 1
+                        end_line: 2
+                        end_column: 6
+                        message: Unknown key `owner`.
+                      - code: DUPLICATE_KEY
+                        severity: error
+                        file: hello.yml
+                        path: owner
+                        line: 4
+                        column: 1
+                        end_line: 4
+                        end_column: 6
+                        message: The key `owner` is already used.
+                    summary:
+                      valid: false
+                      counts:
+                        stages: 0
+                distinctKeys:
+                  summary: Keys with different text are different keys
+                  value:
+                    errors: 4
+                    warnings: 0
+                    infos: 0
+                    view: null
+                    diagnostics:
+                      - code: UNKNOWN_KEY
+                        severity: error
+                        file: hello.yml
+                        path: 'True'
+                        line: 3
+                        column: 1
+                        end_line: 3
+                        end_column: 5
+                        message: Unknown key `True`.
+                      - code: UNKNOWN_KEY
+                        severity: error
+                        file: hello.yml
+                        path: 'true'
+                        line: 4
+                        column: 1
+                        end_line: 4
+                        end_column: 5
+                        message: Unknown key `true`.
+                      - code: UNKNOWN_KEY
+                        severity: error
+                        file: hello.yml
+                        path: '1.0'
+                        line: 5
+                        column: 1
+                        end_line: 5
+                        end_column: 4
+                        message: Unknown key `1.0`.
+                      - code: UNKNOWN_KEY
+                        severity: error
+                        file: hello.yml
+                        path: '1'
+                        line: 6
+                        column: 1
+                        end_line: 6
+                        end_column: 2
+                        message: Unknown key `1`.
                     summary:
                       valid: false
                       counts:
@@ -1134,7 +1236,7 @@ components:
           description: Send this back as `base_hash` when saving. `null` if the file does not exist yet.
         read_only:
           type: boolean
-          description: True when the file cannot be saved. It is `false` for the root.
+          description: True when the file cannot be saved. This version loads only the root, so it is always `false`.
         view:
           oneOf:
             - $ref: '#/components/schemas/WorkflowView'
