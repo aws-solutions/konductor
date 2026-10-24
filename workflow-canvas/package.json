@@ -9,6 +9,7 @@
   },
   "scripts": {
     "dev": "vite",
+    "stub": "node stub-api/main.ts",
     "build": "vite build",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p e2e/tsconfig.json",
     "lint": "eslint . && prettier --check .",
