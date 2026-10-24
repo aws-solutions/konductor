@@ -2,6 +2,7 @@
 import type { Clock } from './clock.ts';
 import { HARNESS } from './contract.ts';
 import type { Run, StageStatus } from './model.ts';
+import { formatTimestamp, runIdPrefix } from './timestamp.ts';
 
 /** How long each simulated stage takes. */
 export const DEFAULT_STAGE_MS = 3000;
@@ -74,8 +75,8 @@ export class RunSimulator {
       workflow: run.workflow,
       harness: HARNESS,
       status: done ? 'passed' : 'running',
-      started_at: toTimestamp(run.startedAt),
-      finished_at: done ? toTimestamp(this.finishTime(run)) : null,
+      started_at: formatTimestamp(run.startedAt),
+      finished_at: done ? formatTimestamp(this.finishTime(run)) : null,
       exit_code: done ? 0 : null,
       order: [...run.order],
       stages,
@@ -94,15 +95,9 @@ export class RunSimulator {
   }
 
   private newRunId(startedAt: number): string {
-    const [date, time] = toTimestamp(startedAt).split('T');
-    const prefix = `${date?.replaceAll('-', '')}-${time?.slice(0, 5).replace(':', '')}`;
+    const prefix = runIdPrefix(startedAt);
     let runId = `${prefix}-${this.suffix()}`;
     while (this.runs.has(runId)) runId = `${prefix}-${this.suffix()}`;
     return runId;
   }
-}
-
-// A UTC time to the whole second, ending in Z.
-function toTimestamp(ms: number): string {
-  return new Date(ms).toISOString().replace(/\.\d{3}Z$/, 'Z');
 }

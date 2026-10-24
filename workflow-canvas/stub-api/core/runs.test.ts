@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: Apache-2.0
-// @vitest-environment node
 /** Checks the simulated run against a clock that the test moves. */
 import { beforeEach, describe, expect, it } from 'vitest';
 import { countingSuffix, FakeClock } from '../test-support/fake-clock.ts';
