@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 import { STUB_LAUNCH_CODE, STUB_URL } from '../../playwright.shared';
 
 // Shows that the Playwright config starts the stub and that a test can reach
-// it. No page uses the stub yet; a later change points the UI at it.
+// it. No page calls the stub.
 test('the stub API gives a session for the launch code of the config', async ({
   request,
 }) => {

@@ -3,7 +3,7 @@ import type { Clock } from '../core/clock.ts';
 import { ApiError } from '../core/errors.ts';
 import { newSecret, sameSecret } from './system.ts';
 
-/** How long the launch code works, from the moment the stub starts. */
+/** How long the launch code works, from the moment the stub listens. */
 export const LAUNCH_WINDOW_MS = 60_000;
 
 export interface SessionGateOptions {
@@ -18,13 +18,17 @@ export interface SessionGateOptions {
 export class SessionGate {
   private readonly clock: Clock;
   private readonly launchCode: string;
-  private readonly expiresAt: number;
+  private expiresAt = 0;
   private token: string | undefined;
 
   constructor(options: SessionGateOptions) {
     this.clock = options.clock;
     this.launchCode = options.launchCode;
-    this.expiresAt = options.clock.now() + LAUNCH_WINDOW_MS;
+  }
+
+  /** Starts the launch window: call it as the stub hands out the code. */
+  openWindow(): void {
+    this.expiresAt = this.clock.now() + LAUNCH_WINDOW_MS;
   }
 
   /** Trades the launch code for the token. The code works once. */
