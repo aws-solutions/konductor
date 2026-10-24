@@ -4,15 +4,24 @@ import {
   type PlaywrightTestConfig,
   type Project,
 } from '@playwright/test';
-import { DEFAULT_PORT, LOOPBACK, originOf } from './stub-api/address';
+import { LOOPBACK, originOf } from './stub-api/address';
+import { apiTargetOrExit, type ApiTarget } from './stub-api/target';
+
+type WebServer = Extract<
+  PlaywrightTestConfig['webServer'],
+  { command: string }
+>;
 
 const HOST = LOOPBACK;
 const APP_PORT = 4173;
 const APP_URL = originOf(APP_PORT);
 
-/** Where the stub API listens during a run, and the launch code it accepts. */
-export const STUB_PORT = DEFAULT_PORT;
-export const STUB_URL = originOf(STUB_PORT);
+/**
+ * Where the API listens during a run: the stub, or the server named by
+ * `WC_API_TARGET`. A real server must be started with this launch code.
+ */
+export const API_TARGET = apiTargetOrExit();
+export const API_URL = API_TARGET.origin;
 export const STUB_LAUNCH_CODE = 'e2e-launch-code';
 
 /**
@@ -33,6 +42,37 @@ export const stableRendering: NonNullable<Project['use']> = {
   },
 };
 
+const appServer: WebServer = {
+  name: 'app',
+  command: `npm run build && npx vite preview --host ${HOST} --port ${APP_PORT} --strictPort`,
+  url: APP_URL,
+  reuseExistingServer: false,
+  timeout: 120_000,
+};
+
+const stubServer = (target: ApiTarget): WebServer => ({
+  name: 'stub-api',
+  command: 'npm run stub',
+  env: {
+    STUB_PORT: new URL(target.origin).port,
+    STUB_LAUNCH_CODE,
+  },
+  // The stub answers 401 here until a session exists, which counts as up.
+  url: `${target.origin}/api/workflow`,
+  reuseExistingServer: false,
+  timeout: 30_000,
+});
+
+/**
+ * The servers a run depends on, started before and stopped after it. The app
+ * is served from a production build. The stub API starts after the app build,
+ * because its launch code works for 60 seconds. It starts only when it is the
+ * target; a real server is started by whoever set `WC_API_TARGET`.
+ */
+export function webServersFor(target: ApiTarget): WebServer[] {
+  return target.isStub ? [appServer, stubServer(target)] : [appServer];
+}
+
 /** Settings shared by the functional run and the screenshot capture. */
 export const sharedConfig: PlaywrightTestConfig = {
   outputDir: 'test-results',
@@ -40,28 +80,5 @@ export const sharedConfig: PlaywrightTestConfig = {
   // A flaky test must fail the run, not pass on a retry.
   retries: 0,
   use: { baseURL: APP_URL, trace: 'retain-on-failure' },
-  // Servers the tests depend on, started before and stopped after the run.
-  // The app is served from a production build. The stub API starts after the
-  // app build, because its launch code works for 60 seconds. No page calls it.
-  webServer: [
-    {
-      name: 'app',
-      command: `npm run build && npx vite preview --host ${HOST} --port ${APP_PORT} --strictPort`,
-      url: APP_URL,
-      reuseExistingServer: false,
-      timeout: 120_000,
-    },
-    {
-      name: 'stub-api',
-      command: 'npm run stub',
-      env: {
-        STUB_PORT: String(STUB_PORT),
-        STUB_LAUNCH_CODE,
-      },
-      // The stub answers 401 here until a session exists, which counts as up.
-      url: `${STUB_URL}/api/workflow`,
-      reuseExistingServer: false,
-      timeout: 30_000,
-    },
-  ],
+  webServer: webServersFor(API_TARGET),
 };
