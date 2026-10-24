@@ -26,8 +26,9 @@ info:
     **Conventions**
 
     - Bodies are UTF-8 JSON with `Content-Type: application/json`. Field names
-      are `snake_case`. A time is an ISO 8601 UTC string. A hash is the SHA-256
-      of a file's bytes, as 64 lower-case hex digits.
+      are `snake_case`. A time is a UTC string that ends in `Z`, to the whole
+      second, such as `2026-10-24T04:12:05Z`. A hash is the SHA-256 of a
+      file's bytes, as 64 lower-case hex digits.
     - A response may gain fields in a later release, and an enum in a response
       may gain values. A client ignores a field it does not know and treats a
       value it does not know like any other failure with the same status. A
@@ -36,10 +37,11 @@ info:
     - Every call but `POST /api/session` carries `Authorization: Bearer <token>`.
       A missing or wrong token is 401 `unauthorized`. A client keeps the token
       in memory only.
-    - A `Host` that is not the server's own loopback address is 403
-      `forbidden_host`. A `PUT` or `POST` must carry an `Origin` equal to the
-      server's own, or it is 403 `forbidden_origin`. A `GET` is held to a
-      weaker rule: an `Origin` that is present must equal the server's own, and
+    - The `Host` must be `127.0.0.1:<port>` or `localhost:<port>`, with the
+      port the server listens on, or the call is 403 `forbidden_host`. The
+      server's own `Origin` is `http://` and that `Host`. A `PUT` or `POST`
+      must carry it, or it is 403 `forbidden_origin`. A `GET` is held to a
+      weaker rule: an `Origin` that is present must be the server's own, and
       a `Sec-Fetch-Site` that is present must be `same-origin` or `none`, or it
       is 403 `forbidden_origin`.
     - A request with a body must have `Content-Type: application/json`, or it
@@ -48,20 +50,32 @@ info:
       `not_found`. The server sends no CORS headers and sets no cookies.
     - Every response carries `X-Konductor-Api: 1` and `Cache-Control: no-store`.
     - A request body is at most 1 MiB. The `text` of a workflow is at most
-      262144 bytes (256 KiB) of UTF-8, and a `goal` is at most 2048 bytes. A
-      larger body or text is 413 `too_large`. A longer `goal` is 422
-      `bad_params`.
+      262144 bytes (256 KiB) of UTF-8, and a `goal` is at most 2048
+      characters. A larger body or text is 413 `too_large`. A longer `goal` is
+      422 `bad_params`.
     - A failure of the server's own storage is 500 `io_error` with a fixed
       message. It never contains a path.
     - An `error`, `message` or `suggestion` never quotes a value that looks
       like a secret.
     - A malformed run id in a path is 404 `not_found`, so a client cannot tell
       a bad id from a missing run.
+    - A `name` that is not a valid workflow name is 400 `bad_name`, whether it
+      is in the query of a `GET` or in the body of a `PUT` or `POST`. A `name`
+      that is left out is the root.
+
+    **Order of checks.** A call is refused by the first check below that it
+    fails: `Host`, `Origin` (and `Sec-Fetch-Site`), the bearer token (all but
+    `POST /api/session`), `Content-Type`, body size, the body's shape (JSON,
+    fields, types), `name` format, `name` is the root, `base_hash` format, the
+    workflow text (413 over the limit, then 422 for errors), and last the state
+    of the file or of the run (404, 409).
 
     **Session.** The server is started with a one-time launch code, which
-    whoever started it gives to the client. The client posts it to
-    `POST /api/session` within 60 seconds and gets the session token. A code
-    works once.
+    whoever started it gives to the client. The server prints a launch address
+    `http://127.0.0.1:<port>/#<code>`, so the code is in the fragment, which
+    the browser never sends to a server. The page reads it from there and
+    removes it from the address bar. The client posts it to `POST /api/session`
+    within 60 seconds and gets the session token. A code works once.
 
     **Which workflow.** A server is started on one workflow, the `root`
     that `POST /api/session` returns. Only the root can be loaded, saved,
@@ -69,6 +83,18 @@ info:
     `not_found`, and `PUT /api/workflow` or `POST /api/validate` with another
     `name` is 403 `read_only_workflow`. The root may not have a file yet: a
     file is created by the first save with a `base_hash` of `null`.
+
+    **The file.** The file is `<name>.yml` in the server's workflow folder. It
+    is opened by that name only. A path that is a link, a directory or any
+    other file that is not a regular file is treated as not there for a
+    reader and as in the way for a writer, in both cases with 404 `not_found`
+    and nothing read or written. So is a file of more than 262144 bytes or one
+    that is not valid UTF-8, which someone may have put there outside the
+    canvas. The server never follows a link, because a repository can hold a
+    link with the name of a workflow. The server writes `text` exactly as it
+    was sent, with no change to its bytes: no byte order mark, no line-ending
+    change, no newline added at the end. This is what lets a `hash` be the
+    hash of the `text` that was sent.
 
     **Optimistic concurrency.** `GET /api/workflow` returns the `hash` of the
     file. `PUT /api/workflow` sends it back as `base_hash`. If the file changed
@@ -82,8 +108,26 @@ info:
     a run is active, because a run works from a copy of the file taken when it
     started.
 
+    **How a run goes.** A run is of the root workflow, as saved when
+    `POST /api/run` was called. The stages run one at a time, in the order of
+    the file. Each stage is a fresh `kiro-cli` session for the stage's agent,
+    given the `outcome` of the intent and the `goal` of the run. Stages share
+    the working folder and nothing else: a stage does not see another stage's
+    session. A stage is `passed` when its session ends with exit status 0.
+    Any other end is `blocked`: a non-zero exit status, a session that cannot
+    be started, or an agent id that no agent has, which is not looked up at
+    check time. A blocked stage ends the run as `halted`, with `exit_code` 1
+    in this version. The stages after it stay `pending`. When every stage has
+    passed, the run is `passed` with `exit_code` 0. If the server stops while
+    a run is `running`, the run reads as `halted` after the server starts
+    again: the stage that was running (or the next `pending` one if none was)
+    is `blocked`, `exit_code` is 1, and `finished_at` is the time the server
+    found it. A `running` run is never left behind.
+
     **Following a run.** Poll `GET /api/runs/{id}` about once a second until
-    `status` is `passed` or `halted`. A finished run stays readable.
+    `status` is `passed` or `halted`. A finished run stays readable. A client
+    that does not know the `run_id`, such as a second tab, gets it from the
+    409 `already_running` that `POST /api/run` answers while a run is active.
 
     **Workflow text.** A workflow is one YAML file, `<name>.yml`. The YAML is a
     plain subset: one document, and no anchors, aliases, merge keys or tags.
@@ -114,23 +158,24 @@ info:
     `stages.write.agent`, or by its place in the list, as in `stages[1].name`,
     when its name is missing, malformed or already used. `line` and `column`
     count from 1, a column counts characters, and the end position is the first
-    place after the text. The position is the key for `UNKNOWN_KEY`, the
-    enclosing mapping for `MISSING_KEY` and the value for the other codes. The
-    `file` is `<name>.yml`.
+    place after the key or value, so it is after the start, except for the two
+    cases in the table that have no width. The position is the key for
+    `UNKNOWN_KEY`, the enclosing mapping for `MISSING_KEY` and the value for
+    the other codes. The `file` is `<name>.yml`.
 
     | Code               | Path                         | Reported when                                                                |
     | ------------------ | ---------------------------- | ---------------------------------------------------------------------------- |
-    | `YAML_SYNTAX`      | the whole text               | The text is not valid YAML.                                                  |
+    | `YAML_SYNTAX`      | the whole text               | The text is not valid YAML. The position is where the parser found the problem, and the end is the same place. |
     | `YAML_UNSUPPORTED` | the node                     | The text has an anchor, alias, merge key, tag or a second document.          |
-    | `NOT_A_MAPPING`    | the whole text, or the stage | The text, or a stage, is not a mapping.                                      |
+    | `NOT_A_MAPPING`    | the whole text, or the stage | The text, or a stage, is not a mapping. Text that is empty or only blank lines or comments is not a mapping, and its position is line 1, column 1, with the same end. |
     | `UNKNOWN_KEY`      | the key                      | A mapping has a key that this version does not list. `suggestion` is the nearest listed key. |
     | `MISSING_KEY`      | the mapping                  | `intent`, `stages`, `outcome`, or a stage's `name` or `agent` is absent.     |
-    | `WRONG_TYPE`       | the value                    | A value is the wrong kind, such as `stages` that is not a list.              |
-    | `INVALID_NAME`     | the value                    | A name or agent id does not match the pattern above.                         |
+    | `WRONG_TYPE`       | the value                    | A value is the wrong kind, such as `stages` that is not a list, or a `name`, `agent`, `version` or `intent` that is not a string. A number is not a string, so `version: 1.1` and `name: 123` are both this code. |
+    | `INVALID_NAME`     | the value                    | A name or agent id that is a string does not match the pattern above.        |
     | `RESERVED_NAME`    | the stage's `name`           | A stage is named `start`, `end`, `run` or `halt`.                            |
     | `DUPLICATE_STAGE`  | the later stage's `name`     | A stage name is already used by an earlier stage.                            |
     | `NAME_MISMATCH`    | `name`                       | `name` is not the name of the file.                                          |
-    | `INVALID_VALUE`    | the value                    | `version` is not `'1.1'`, `intent` is empty, has a line break or is over 300 characters, or `stages` has no entry or more than 40. |
+    | `INVALID_VALUE`    | the value                    | `version` is a string other than `'1.1'`, `intent` is empty, has a line break or is over 300 characters, or `stages` has no entry or more than 40. |
 servers:
   - url: http://127.0.0.1:{port}
     description: |
@@ -207,7 +252,8 @@ paths:
         Returns the text of a workflow file, its hash and a parsed view for
         drawing it. The root workflow may not have a file yet, and then `text`,
         `hash` and `view` are `null`. A `name` other than the root is 404, even
-        when a file of that name exists.
+        when a file of that name exists. So is a root file that is a link, a
+        directory, over 262144 bytes or not valid UTF-8 (see **The file**).
       tags: [Workflow]
       parameters:
         - name: name
@@ -263,9 +309,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-              example:
-                error: The workflow name is not valid.
-                code: bad_name
+              examples:
+                badName:
+                  $ref: '#/components/examples/BadNameError'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -274,7 +320,9 @@ paths:
           headers:
             X-Konductor-Api:
               $ref: '#/components/headers/XKonductorApi'
-          description: The `name` is not the root.
+          description: |
+            The `name` is not the root, or the root file is not a plain
+            readable file of at most 262144 bytes of UTF-8.
           content:
             application/json:
               schema:
@@ -288,9 +336,13 @@ paths:
       operationId: saveWorkflow
       summary: Save a workflow
       description: |
-        Writes the text of the workflow. The text must pass the same check as
-        `POST /api/validate` with no errors, or nothing is written. The write
-        is atomic, and it is refused if the file changed since `base_hash`.
+        Writes the text of the workflow exactly as sent. The text must pass the
+        same check as `POST /api/validate` with no errors, or nothing is
+        written. The write is atomic, and it is refused if the file changed
+        since `base_hash`. If the file is a link, a directory or another file
+        that is not a regular file, or one that `GET /api/workflow` would
+        refuse, the save is 404 `not_found` and nothing is written, so a
+        client cannot overwrite what it could not load.
       tags: [Workflow]
       requestBody:
         required: true
@@ -311,6 +363,12 @@ paths:
                   name: hello
                   text: "name: hello\nintent: Add a greeting to the README\nstages:\n  - name: write\n    agent: k-developer\n"
                   base_hash: null
+              unknownKey:
+                summary: A key this version does not list
+                value:
+                  name: hello
+                  text: "name: hello\nintent: Add a greeting to the README\nowner: me\nstages:\n  - name: write\n    agent: k-developer\n"
+                  base_hash: 71683aa25e747b95c805b93ec90f4b18490eef07dd4066e36943d58ba7c5dc8b
       responses:
         '200':
           headers:
@@ -338,8 +396,8 @@ paths:
             X-Konductor-Api:
               $ref: '#/components/headers/XKonductorApi'
           description: |
-            The body is malformed (`bad_request`), or `base_hash` is not a hash
-            or `null` (`bad_hash`).
+            The body is malformed (`bad_request`), `name` is not a valid name
+            (`bad_name`), or `base_hash` is not a hash or `null` (`bad_hash`).
           content:
             application/json:
               schema:
@@ -347,6 +405,8 @@ paths:
               examples:
                 malformed:
                   $ref: '#/components/examples/BadRequestError'
+                badName:
+                  $ref: '#/components/examples/BadNameError'
                 badHash:
                   value:
                     error: base_hash must be 64 hex digits or null.
@@ -371,6 +431,8 @@ paths:
                   value:
                     error: The Origin header does not match this server.
                     code: forbidden_origin
+        '404':
+          $ref: '#/components/responses/NotRegularFile'
         '409':
           headers:
             X-Konductor-Api:
@@ -467,7 +529,21 @@ paths:
                       counts:
                         stages: 0
         '400':
-          $ref: '#/components/responses/BadRequest'
+          headers:
+            X-Konductor-Api:
+              $ref: '#/components/headers/XKonductorApi'
+          description: |
+            The body is malformed (`bad_request`), or `name` is not a valid
+            name (`bad_name`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                malformed:
+                  $ref: '#/components/examples/BadRequestError'
+                badName:
+                  $ref: '#/components/examples/BadNameError'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -496,7 +572,8 @@ paths:
         Starts a run of the root workflow and returns at once with its id.
         The run works from the file as last saved, so a client saves first. A
         save after this call does not change the run. Follow the run with
-        `GET /api/runs/{id}`. Only one run can be active at a time.
+        `GET /api/runs/{id}`. Only one run can be active at a time. See **How
+        a run goes** for what the run does.
       tags: [Run]
       requestBody:
         required: true
@@ -529,7 +606,10 @@ paths:
           headers:
             X-Konductor-Api:
               $ref: '#/components/headers/XKonductorApi'
-          description: The root workflow has not been saved yet, so there is nothing to run.
+          description: |
+            The root workflow has not been saved yet, so there is nothing to
+            run, or its file is not a plain readable file of at most 262144
+            bytes of UTF-8 (see **The file**).
           content:
             application/json:
               schema:
@@ -542,9 +622,9 @@ paths:
             X-Konductor-Api:
               $ref: '#/components/headers/XKonductorApi'
           description: |
-            Another run is active (`already_running`), or a stage needs a
-            harness that is not installed or not signed in
-            (`harness_unavailable`, with `fix` saying what to do).
+            Another run is active (`already_running`, with the `run_id` of
+            that run), or a stage needs a harness that is not installed or not
+            signed in (`harness_unavailable`, with `fix` saying what to do).
           content:
             application/json:
               schema:
@@ -554,6 +634,7 @@ paths:
                   value:
                     error: A run is already active.
                     code: already_running
+                    run_id: 20261024-0412-a7b3c
                 missingHarness:
                   value:
                     error: kiro-cli is not installed.
@@ -568,7 +649,7 @@ paths:
           description: |
             The saved workflow has errors (`invalid_workflow`, with
             `diagnostics`), or `params` is missing a `goal`, has another key,
-            or has a `goal` over 2048 bytes (`bad_params`).
+            or has a `goal` over 2048 characters (`bad_params`).
           content:
             application/json:
               schema:
@@ -582,7 +663,7 @@ paths:
                     code: bad_params
                 goalTooLong:
                   value:
-                    error: The goal is longer than 2048 bytes.
+                    error: The goal is longer than 2048 characters.
                     code: bad_params
         '500':
           $ref: '#/components/responses/StorageFailure'
@@ -767,7 +848,26 @@ components:
           example:
             error: The server could not read or write its files.
             code: io_error
+    NotRegularFile:
+      headers:
+        X-Konductor-Api:
+          $ref: '#/components/headers/XKonductorApi'
+      description: |
+        The root file is a link, a directory, over 262144 bytes or not valid
+        UTF-8, so nothing was written (see **The file**).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: The workflow file cannot be used.
+            code: not_found
   examples:
+    BadNameError:
+      summary: The name is not a valid workflow name
+      value:
+        error: The workflow name is not valid.
+        code: bad_name
     BadRequestError:
       summary: The body is not valid JSON, has an unknown field, or has the wrong content type
       value:
@@ -1006,6 +1106,7 @@ components:
       properties:
         name:
           $ref: '#/components/schemas/Name'
+          description: The workflow to save. It defaults to the root.
         text:
           type: string
           description: The whole file text, at most 262144 bytes.
@@ -1035,6 +1136,9 @@ components:
       properties:
         name:
           $ref: '#/components/schemas/Name'
+          description: |
+            The workflow the text is for. It defaults to the root. The check
+            compares it with the `name` key of the text.
         text:
           type: string
           description: The whole file text, at most 262144 bytes.
@@ -1081,7 +1185,7 @@ components:
               type: string
               minLength: 1
               maxLength: 2048
-              description: What the run should achieve, at most 2048 bytes. Every stage is given it.
+              description: What the run should achieve, at most 2048 characters. Every stage is given it.
     RunStarted:
       type: object
       required: [run_id]
@@ -1104,6 +1208,12 @@ components:
       properties:
         status:
           $ref: '#/components/schemas/StageStatus'
+    Timestamp:
+      type: string
+      format: date-time
+      pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$'
+      description: A UTC time to the whole second, ending in `Z`.
+      examples: ['2026-10-24T04:12:05Z']
     RunStatus:
       type: string
       enum: [running, passed, halted]
@@ -1142,17 +1252,19 @@ components:
         status:
           $ref: '#/components/schemas/RunStatus'
         started_at:
-          type: string
-          format: date-time
+          $ref: '#/components/schemas/Timestamp'
         finished_at:
-          type: [string, 'null']
-          format: date-time
+          oneOf:
+            - $ref: '#/components/schemas/Timestamp'
+            - type: 'null'
           description: '`null` while the run is `running`.'
         exit_code:
           type: [integer, 'null']
           description: |
-            `0` when the run passed, above 0 when it halted, and `null` while it
-            is `running`.
+            `0` when the run passed, and `null` while it is `running`. When it
+            halted it is `1` in this version: a stage was blocked. A later
+            version may use other values above 0, so a client treats any value
+            above 0 as a halt.
         order:
           type: array
           items:
@@ -1240,9 +1352,11 @@ components:
         code:
           $ref: '#/components/schemas/ErrorCode'
         current_hash:
-          allOf:
-            - $ref: '#/components/schemas/Hash'
+          $ref: '#/components/schemas/Hash'
           description: With `conflict`. The hash of the file now.
+        run_id:
+          $ref: '#/components/schemas/RunId'
+          description: With `already_running`. The run that is active.
         diagnostics:
           type: array
           description: With `invalid_workflow`.
