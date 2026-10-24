@@ -5,7 +5,7 @@ import {
   MAX_TEXT_BYTES,
   RUN_ID_PATTERN,
 } from './contract.ts';
-import { ApiError } from './errors.ts';
+import { ApiError, badName } from './errors.ts';
 import type {
   CheckResult,
   Run,
@@ -109,7 +109,7 @@ export class WorkflowApi {
   private nameOrRoot(name: string | undefined): string {
     if (name === undefined) return this.root;
     if (!isName(name)) {
-      throw new ApiError('bad_name', 'The workflow name is not valid.');
+      throw badName();
     }
     return name;
   }
