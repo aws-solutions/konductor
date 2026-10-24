@@ -7,6 +7,10 @@ import Tabs from '@cloudscape-design/components/tabs';
 
 const placeholder = <Box color="text-status-inactive">Nothing here yet.</Box>;
 
+/**
+ * Root component: the page title and the Designer and Execution tabs. Both
+ * tabs show a placeholder until their content is built.
+ */
 export function App() {
   return (
     <AppLayout
