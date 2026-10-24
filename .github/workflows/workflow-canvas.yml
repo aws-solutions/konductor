@@ -12,7 +12,8 @@
 # until 26 becomes LTS on 2026-10-28.
 #
 # The e2e job runs the Playwright tests in Chromium on Node 24 only (the
-# browser, not Node, is what they exercise) and also regenerates the
+# browser, not Node, is what they exercise), starts the stub API beside the
+# app (its config is in playwright.shared.ts) and also regenerates the
 # screenshots, which must match the committed files. Both the HTML report and
 # the screenshots are uploaded whether the tests pass or fail.
 #
@@ -74,6 +75,9 @@ jobs:
 
       - name: API contract (also part of Test, run alone for a clear label)
         run: npm run api:lint
+
+      - name: Stub API (also part of Test, run alone for a clear label)
+        run: npm run test:stub
 
       - name: Build
         run: npm run build
