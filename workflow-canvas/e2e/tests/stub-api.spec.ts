@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 import { expect, test } from '@playwright/test';
-import { STUB_LAUNCH_CODE, STUB_URL } from '../../playwright.shared';
+import { API_URL, STUB_LAUNCH_CODE } from '../../playwright.shared';
 
-// Shows that the Playwright config starts the stub and that a test can reach
-// it. No page calls the stub.
-test('the stub API gives a session for the launch code of the config', async ({
+// Shows that a test can reach the API: the stub that the Playwright config
+// starts, or the server named by `WC_API_TARGET`. No page calls it.
+test('the API gives a session for the launch code of the config', async ({
   request,
 }) => {
-  const reply = await request.post(`${STUB_URL}/api/session`, {
+  const reply = await request.post(`${API_URL}/api/session`, {
     data: { code: STUB_LAUNCH_CODE },
-    headers: { Origin: STUB_URL },
+    headers: { Origin: API_URL },
   });
   expect(reply.status()).toBe(200);
   expect(await reply.json()).toMatchObject({
