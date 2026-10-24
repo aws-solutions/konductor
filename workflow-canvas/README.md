@@ -44,6 +44,9 @@ The tests in `e2e/tests/` drive the production build in headless Chromium.
 http://127.0.0.1:4173, so no server needs to be running first. Its `webServer`
 list is where a backing service starts when the app needs one.
 
+Port 4173 must be free. The config never reuses a server, so a `vite preview`
+you left running there makes the run fail at startup; stop it first.
+
 Install the browser once (on Linux add `--with-deps` to also install system
 libraries):
 
@@ -74,5 +77,5 @@ Only that script writes the PNGs. It uses its own config,
 The capture loads the Open Sans font from the `@fontsource-variable/open-sans`
 dev dependency (Cloudscape names Open Sans first but does not ship it) and
 turns off text hinting and LCD smoothing, so the PNGs come out byte-identical
-on different machines and in CI. CI uploads its own set as the `screenshots`
-artifact.
+on different machines and in CI. CI regenerates them, uploads that set as the
+`screenshots` artifact, and fails when it differs from the committed files.
