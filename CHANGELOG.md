@@ -28,7 +28,8 @@ not per individual commit.
 - HTTP API contract for the workflow canvas, `workflow-canvas/api/openapi.yaml` (OpenAPI 3.1).
   It describes the session, load, save and check of a workflow, and start and status of a run,
   for a workflow of `name`, `intent` and `stages` (each a `name` and an `agent`) on the `kiro-cli`
-  harness. It also states the accepted workflow text, the check rules and the diagnostic codes.
+  harness. It also states the accepted workflow text (YAML 1.2, core schema), the check rules and
+  the diagnostic codes.
   `npm run api:lint` validates the file against the OpenAPI 3.1 specification and checks every
   example against its schema and against the rules of the contract, and CI runs it. The local stub
   server and the real backend will both follow this contract.
