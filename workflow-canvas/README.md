@@ -4,21 +4,19 @@ A browser UI for designing and running Konductor workflows. This folder is an
 independent npm project (Vite, React, TypeScript, Cloudscape) and is not part
 of the agent package or the CLI.
 
-Currently an empty page with Designer and Execution tabs. Features land in
-follow-up changes.
+The page is a shell with Designer and Execution tabs. It does not call the
+API; the contract, the stub that serves it and the tests around both are in
+this folder.
 
 ## Layout
 
 - `src/`: the UI.
 - `api/`: the HTTP API contract (`openapi.yaml`) and its test.
+- `stub-api/`: a TypeScript stub server for the contract, for local
+  development and tests.
 - `e2e/`: Playwright tests (`tests/`), the screenshot capture (`capture/`),
   shared page objects and helpers (`support/`) and the committed PNGs
   (`screenshots/`).
-
-Directories added in later PRs:
-
-- `stub-api/`: a TypeScript stub server for local development and end-to-end
-  tests, started by the same Playwright `webServer` config.
 
 A single `package.json` serves all of the above.
 
@@ -28,14 +26,16 @@ Run from this folder with Node 24.15 or later (`.nvmrc` selects 24):
 
 ```bash
 npm ci
-npm run dev        # Vite dev server on http://127.0.0.1:5173
-npm run lint       # ESLint and Prettier check
+npm run dev         # Vite dev server on http://127.0.0.1:5173, /api goes to the stub
+npm run build       # production build into dist/
+npm run lint        # ESLint and Prettier check
 npm run typecheck
-npm test           # Vitest, including the API contract test
-npm run api:lint   # Only the API contract test
-npm run build
-npm run test:e2e    # Playwright, headless Chromium
-npm run screenshots # regenerate e2e/screenshots/*.png
+npm test            # Vitest: UI, API contract and stub API
+npm run api:lint    # Only the API contract test
+npm run stub        # The stub API on http://127.0.0.1:5174
+npm run test:stub   # Only the stub API tests
+npm run test:e2e    # Playwright, headless Chromium, with the stub running
+npm run screenshots # Regenerate e2e/screenshots/*.png
 ```
 
 ## API contract
@@ -82,6 +82,67 @@ know, and requests with a field the contract does not name are refused.
   follow its status.
 
 CI runs it on each pull request, and `npm test` includes it.
+
+## Stub API
+
+`stub-api/` serves the six calls of `api/openapi.yaml` from memory, so the UI
+and the real backend can be built against the same contract. It is a local
+development and test stub with no real auth: the launch code and the session
+token only exercise the session flow. It listens on `127.0.0.1` only and keeps
+nothing on disk, so a restart brings back the sample data.
+
+```bash
+npm run stub
+# Workflow canvas stub API (local development only, no real auth)
+# Listening on http://127.0.0.1:5174
+# The stub serves no page. With `npm run dev` running, open:
+# http://127.0.0.1:5173/#<launch code>
+```
+
+The launch code is new each time and works once, within 60 seconds of the
+moment the stub starts listening. `POST /api/session` trades it for the token
+that the other calls send as `Authorization: Bearer <token>`. `STUB_PORT`
+sets the port. `STUB_LAUNCH_CODE` sets the code, for tests only: it can be
+weaker than the contract asks.
+
+The data covers the first release: a workflow of an intent and stages, and the
+`kiro-cli` harness. It is a `hello` workflow with a `draft` stage
+(`k-developer`) and a `review` stage (`k-quality-assurance`). A saved change
+lasts until the stub stops. A run is faked and calls no agent: its stages run
+for 3 seconds each, one after the other, and all of them pass.
+
+### Run the page against the stub
+
+Start the stub in one terminal and `npm run dev` in another, then open the
+address that the stub prints. The dev server forwards `/api` to the stub
+(`vite.config.ts`), so the page and the API share one origin. The stub sends
+no CORS headers and accepts only its own `Origin`, so the proxy sends that one.
+The page does not call the API, so try it with `curl`:
+
+```bash
+curl -s -X POST http://127.0.0.1:5173/api/session \
+  -H 'Content-Type: application/json' -d '{"code":"<launch code>"}'
+```
+
+### Code
+
+The code is in two parts, so the rules can be tested without a server:
+
+- `core/`: the workflow check, the file store and the run simulator. It does
+  no IO and takes its clock as a parameter. A test fails if a core file
+  imports anything but its own modules, `yaml` and `createHash`, or reads the
+  clock, randomness or the environment.
+- `http/`: a thin adapter on `node:http` that checks headers and bodies and
+  hands the rest to the core.
+
+`npm run test:stub` runs the tests. Those in `http/` start the stub on a free
+port, call it over HTTP and check each reply against the schema of the
+contract. They move a fake clock by hand, so none of them waits. A test
+compares the error codes, diagnostic codes, limits and patterns of the stub
+with the contract, so a change to one without the other fails.
+
+Playwright starts the stub beside the app (`playwright.shared.ts` holds its
+port and launch code), so an end-to-end test can call it.
 
 ## End-to-end tests
 
