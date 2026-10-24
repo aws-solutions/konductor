@@ -59,11 +59,10 @@ the checks that make a text invalid, the list of diagnostic codes, how a file
 that is not a plain file is handled, and what a run does stage by stage. A
 client follows a run by polling `GET /api/runs/{id}`.
 
-The contract is the one source of truth for the API. The stub server (a later
-change) and the real backend will both follow it, so a change to the API starts
-as a change to this file. Responses may gain fields without a new version, so
-clients ignore fields they do not know, and requests with a field the contract
-does not name are refused.
+The contract is the one source of truth for the API. Every server of the API
+follows it, so a change to the API starts as a change to this file. Responses
+may gain fields without a new version, so clients ignore fields they do not
+know, and requests with a field the contract does not name are refused.
 
 `npm run api:lint` checks the file. The test in `api/openapi.test.ts`:
 
