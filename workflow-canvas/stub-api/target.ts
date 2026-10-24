@@ -20,6 +20,10 @@ export interface ApiTarget {
  * `http://h:1/?k=a@x` cannot be told apart: both have an `@` only after the
  * authority ends. Then everything after `://` is masked (`http://***`), which
  * hides the host as well. Hiding too much is the safe error.
+ *
+ * The same holds when the authority has an `@` and the path after it has one
+ * too (`http://u:x@secret/more@h:1`): the password may hold a `/`, so the
+ * "host" could be part of it. Then everything after `://` is masked.
  */
 export function redact(value: string): string {
   const text = value.trim();
@@ -30,7 +34,10 @@ export function redact(value: string): string {
   const authority = end < 0 ? rest : rest.slice(0, end);
   const tail = end < 0 ? '' : rest.slice(end);
   const at = authority.lastIndexOf('@');
-  if (at < 0 && tail.includes('@')) return `${prefix}***`;
+  const path = tail.replace(/[?#].*$/s, '');
+  if ((at < 0 && tail.includes('@')) || path.includes('@')) {
+    return `${prefix}***`;
+  }
   const host = at < 0 ? authority : `***@${authority.slice(at + 1)}`;
   return `${prefix}${host}${tail.replace(/([?#]).*$/s, '$1...')}`;
 }
