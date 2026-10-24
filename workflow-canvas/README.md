@@ -33,8 +33,8 @@ npm run lint       # ESLint and Prettier check
 npm run typecheck
 npm test           # Vitest
 npm run build
-npm run test:e2e     # Playwright, headless Chromium
-npm run screenshots  # regenerate e2e/screenshots/*.png
+npm run test:e2e    # Playwright, headless Chromium
+npm run screenshots # regenerate e2e/screenshots/*.png
 ```
 
 ## End-to-end tests
@@ -65,8 +65,14 @@ the app.
 `npm run screenshots` saves a full-page PNG of each tab to
 `e2e/screenshots/`, in the light theme at 1280x800 with animations frozen.
 Pull request descriptions embed these files, so regenerate and commit them
-when the UI changes. The capture asserts nothing and is separate from
-`test:e2e`, so a normal test run never rewrites committed files. Text
-rendering depends on the fonts installed on the machine, so small differences
-between machines are expected; CI uploads its own set as the `screenshots`
+when the UI changes.
+
+Only that script writes the PNGs. It uses its own config,
+`playwright.screenshots.config.ts`, so `npm run test:e2e`, a bare
+`npx playwright test` and editor integrations never touch committed files.
+
+The capture loads the Open Sans font from the `@fontsource-variable/open-sans`
+dev dependency (Cloudscape names Open Sans first but does not ship it) and
+turns off text hinting and LCD smoothing, so the PNGs come out byte-identical
+on different machines and in CI. CI uploads its own set as the `screenshots`
 artifact.
