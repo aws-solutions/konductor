@@ -246,16 +246,64 @@ function checkResponseProblems(answer: Record<string, unknown>): string[] {
   return problems;
 }
 
+// A range has no width only where the contract says so: the place a YAML
+// parser stopped, and a text that is empty.
+function mayHaveNoWidth(d: Record<string, unknown>): boolean {
+  return d['code'] === 'YAML_SYNTAX' || d['path'] === '';
+}
+
 function diagnosticRangeProblems(diagnostics: Record<string, unknown>[]) {
   return diagnostics
     .filter((d) => {
       const start = [d['line'], d['column']] as number[];
       const end = [d['end_line'], d['end_column']] as number[];
-      return (
-        end[0]! < start[0]! || (end[0] === start[0] && end[1]! <= start[1]!)
-      );
+      const before =
+        end[0]! < start[0]! || (end[0] === start[0] && end[1]! < start[1]!);
+      const empty = end[0] === start[0] && end[1] === start[1];
+      return before || (empty && !mayHaveNoWidth(d));
     })
     .map((d) => String(d['path']));
+}
+
+// The text between two positions, which count from 1.
+function textBetween(text: string, d: Record<string, unknown>): string {
+  const lines = text.split('\n');
+  const offset = (line: number, column: number) =>
+    lines.slice(0, line - 1).reduce((sum, l) => sum + l.length + 1, 0) +
+    column -
+    1;
+  return text.slice(
+    offset(d['line'] as number, d['column'] as number),
+    offset(d['end_line'] as number, d['end_column'] as number),
+  );
+}
+
+// The name quoted in a diagnostic message, such as `owner`.
+function quotedIn(message: string): string | undefined {
+  return /`([^`]+)`/.exec(message)?.[1];
+}
+
+// The stage names and the intent of a workflow text in the form the examples
+// use, which has one stage per `- name:` line.
+function readExampleText(text: string) {
+  return {
+    outcome: /^intent: (.*)$/m.exec(text)?.[1],
+    stages: [...text.matchAll(/^\s*- name: (\S+)$/gm)].map((m) => m[1]),
+  };
+}
+
+function viewAgreesWithText(view: unknown, texts: string[]): boolean {
+  const { intent, stages } = view as {
+    intent: { outcome: string };
+    stages: { name: string }[];
+  };
+  const names = JSON.stringify(stages.map((s) => s.name));
+  return texts.some((text) => {
+    const read = readExampleText(text);
+    return (
+      read.outcome === intent.outcome && JSON.stringify(read.stages) === names
+    );
+  });
 }
 
 // What a run promises about its own fields. Returns the broken promises.
@@ -429,6 +477,56 @@ describe('workflow canvas API contract', () => {
       expect(update['base_hash']).toBe(loaded?.['hash']);
     });
 
+    describe('against the text they are about', () => {
+      const textsOf = () =>
+        cases.flatMap(({ value }) =>
+          collectObjects(value)
+            .map((node) => node['text'])
+            .filter((text): text is string => typeof text === 'string'),
+        );
+      const objectsWith = (key: string) =>
+        cases.flatMap(({ value }) =>
+          collectObjects(value).filter((node) => key in node),
+        );
+
+      it('has a view that is what the text says', () => {
+        const views = objectsWith('view')
+          .map((node) => node['view'])
+          .filter(isRecord);
+        expect(views.length).toBeGreaterThan(0);
+        for (const view of views) {
+          expect(
+            viewAgreesWithText(view, textsOf()),
+            JSON.stringify(view),
+          ).toBe(true);
+        }
+      });
+
+      it('has a diagnostic that points at the name in its message', () => {
+        const diagnostics = objectsWith('diagnostics').flatMap(
+          (node) => node['diagnostics'] as Record<string, unknown>[],
+        );
+        expect(diagnostics.length).toBeGreaterThan(0);
+        for (const d of diagnostics) {
+          const quoted = quotedIn(String(d['message']));
+          const found = textsOf().some(
+            (text) => textBetween(text, d) === quoted,
+          );
+          expect(found, String(d['message'])).toBe(true);
+        }
+      });
+    });
+
+    it('has the run that is already active in an already_running answer', () => {
+      const busy = cases
+        .map((c) => c.value)
+        .filter((v) => isRecord(v) && v['code'] === 'already_running');
+      expect(busy.length).toBeGreaterThan(0);
+      for (const answer of busy) {
+        expect(answer).toHaveProperty('run_id');
+      }
+    });
+
     it('has check answers that add up', () => {
       const answers = valuesFor(
         cases,
@@ -463,6 +561,24 @@ describe('workflow canvas API contract', () => {
     it('rejects an example that does not match its schema', () => {
       const run = spec.components.schemas['Run']!;
       expect(valueMatchesSchema(run, { run_id: 'not-a-run-id' })).toBe(false);
+    });
+
+    it('rejects a time that is not UTC to the whole second', () => {
+      const timestamp = spec.components.schemas['Timestamp']!;
+      expect(valueMatchesSchema(timestamp, '2026-10-24T04:12:05Z')).toBe(true);
+      expect(valueMatchesSchema(timestamp, '2026-10-24T06:12:05+02:00')).toBe(
+        false,
+      );
+      expect(valueMatchesSchema(timestamp, '2026-10-24T04:12:05.250Z')).toBe(
+        false,
+      );
+    });
+
+    it('finds a diagnostic that points at the wrong place', () => {
+      const text = 'name: hello\nowner: me\n';
+      const d = { line: 2, column: 1, end_line: 2, end_column: 6 };
+      expect(textBetween(text, d)).toBe('owner');
+      expect(textBetween(text, { ...d, column: 2 })).not.toBe('owner');
     });
 
     it('rejects a passed run that has an exit code of 1', () => {
