@@ -78,7 +78,7 @@ does not name are refused.
 - checks that request schemas refuse unknown fields and response schemas do not;
 - validates every example, including the ones inside schemas, against its schema;
 - checks that the examples agree with the rules in the contract: a hash is the
-  SHA-256 of its text, a view lists what its text says, a diagnostic points at
+  SHA-256 of its text, a view lists what its own text says, a diagnostic points at
   the name in its message, the counts of a check add up, and a run's stages
   follow its status.
 
