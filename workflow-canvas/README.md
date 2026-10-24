@@ -26,7 +26,8 @@ Run from this folder with Node 24.15 or later (`.nvmrc` selects 24):
 
 ```bash
 npm ci
-npm run dev         # Vite dev server on http://127.0.0.1:5173, /api goes to the stub
+npm run dev         # Vite dev server on http://127.0.0.1:5173, /api goes to WC_API_TARGET or the stub
+npm run dev:stub    # The stub and the Vite dev server together; Ctrl+C stops both
 npm run build       # production build into dist/
 npm run lint        # ESLint and Prettier check
 npm run typecheck
@@ -34,7 +35,7 @@ npm test            # Vitest: UI, API contract and stub API
 npm run api:lint    # Only the API contract test
 npm run stub        # The stub API on http://127.0.0.1:5174
 npm run test:stub   # Only the stub API tests
-npm run test:e2e    # Playwright, headless Chromium, with the stub running
+npm run test:e2e    # Playwright, headless Chromium, against the stub or WC_API_TARGET
 npm run screenshots # Regenerate e2e/screenshots/*.png
 ```
 
@@ -113,16 +114,42 @@ for 3 seconds each, one after the other, and all of them pass.
 
 ### Run the page against the stub
 
-Start the stub in one terminal and `npm run dev` in another, then open the
-address that the stub prints. The dev server forwards `/api` to the stub
-(`vite.config.ts`), so the page and the API share one origin. The stub sends
-no CORS headers and accepts only its own `Origin`, so the proxy sends that one.
-The page does not call the API, so try it with `curl`:
+Run `npm run dev:stub`. It starts the stub and `npm run dev` together, and
+Ctrl+C stops both. Or start the stub in one terminal and `npm run dev` in
+another. Then open the address that the stub prints. The dev server forwards
+`/api` to the stub (`vite.config.ts`), so the page and the API share one
+origin. The stub sends no CORS headers and accepts only its own `Origin`, so
+the proxy sends that one. The page does not call the API, so try it with
+`curl`:
 
 ```bash
 curl -s -X POST http://127.0.0.1:5173/api/session \
   -H 'Content-Type: application/json' -d '{"code":"<launch code>"}'
 ```
+
+## Choose the API backend
+
+The page always calls the relative `/api`. Only the proxy target changes, and
+one variable sets it: `WC_API_TARGET`, an origin such as
+`http://127.0.0.1:8080`. When it is unset, the target is the stub. A bad value
+(not an http or https origin, or one with a path) stops the command with a
+one-line error. `stub-api/target.ts` is the only place that reads it.
+
+- Stubbed dev: `npm run dev:stub`
+- Real dev: `WC_API_TARGET=http://127.0.0.1:8080 npm run dev`
+- Stubbed e2e: `npm run test:e2e`
+- Real e2e: `WC_API_TARGET=http://127.0.0.1:8080 npm run test:e2e`
+
+`dev:stub` ignores `WC_API_TARGET`, since it starts the stub. For real e2e,
+Playwright does not start the stub, so start the real server first with the
+launch code `e2e-launch-code`, and run the tests within 60 seconds of it
+listening.
+
+The proxy sends the `Origin` of the target. A real server must pass the same
+Origin check as the stub, and the same `POST /api/session` step from
+`api/openapi.yaml`, where the launch code is traded for the token that the
+other calls send. The e2e and contract tests then show whether the real server
+answers as the stub does.
 
 ### Code
 
@@ -142,7 +169,8 @@ compares the error codes, diagnostic codes, limits and patterns of the stub
 with the contract, so a change to one without the other fails.
 
 Playwright starts the stub beside the app (`playwright.shared.ts` holds its
-port and launch code), so an end-to-end test can call it.
+launch code), so an end-to-end test can call it. With `WC_API_TARGET` set it
+does not, and the same tests call that server instead.
 
 ## End-to-end tests
 
