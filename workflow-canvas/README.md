@@ -10,15 +10,18 @@ follow-up changes.
 ## Layout
 
 - `src/`: the UI.
+
+Directories added in later PRs:
+
 - `stub-api/`: a TypeScript stub server for local development and end-to-end
-  tests. Added in a later change.
-- `api/`: the API contract shared with the backend. Added in a later change.
+  tests.
+- `api/`: the API contract shared with the backend.
 
 A single `package.json` serves all of the above.
 
 ## Commands
 
-Run from this folder with Node 24, 24.15 or later (`.nvmrc` selects it):
+Run from this folder with Node 24.15 or later (`.nvmrc` selects 24):
 
 ```bash
 npm ci
