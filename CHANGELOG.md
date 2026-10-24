@@ -25,6 +25,14 @@ not per individual commit.
   font so they match across machines. ESLint checks the e2e code for missing `await` and fixed
   waits. CI runs both, uploads the HTML report and screenshots as artifacts, and fails when the
   screenshots differ from the committed files.
+- HTTP API contract for the workflow canvas, `workflow-canvas/api/openapi.yaml` (OpenAPI 3.1).
+  It describes the session, load, save and check of a workflow, and start and status of a run,
+  for a workflow of `name`, `intent` and `stages` (each a `name` and an `agent`) on the `kiro-cli`
+  harness. It also states the accepted workflow text (YAML 1.2, core schema), the check rules and
+  the diagnostic codes.
+  `npm run api:lint` validates the file against the OpenAPI 3.1 specification and checks every
+  example against its schema and against the rules of the contract, and CI runs it. Every server of
+  the API follows this contract.
 
 ### Fixed
 
