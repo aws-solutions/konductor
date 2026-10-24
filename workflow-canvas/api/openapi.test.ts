@@ -298,18 +298,88 @@ function readExampleText(text: string) {
   };
 }
 
-function viewAgreesWithText(view: unknown, texts: string[]): boolean {
+function viewAgreesWithText(view: unknown, text: string): boolean {
   const { intent, stages } = view as {
     intent: { outcome: string };
     stages: { name: string }[];
   };
-  const names = JSON.stringify(stages.map((s) => s.name));
-  return texts.some((text) => {
-    const read = readExampleText(text);
-    return (
-      read.outcome === intent.outcome && JSON.stringify(read.stages) === names
-    );
+  const read = readExampleText(text);
+  return (
+    read.outcome === intent.outcome &&
+    JSON.stringify(read.stages) ===
+      JSON.stringify(stages.map((stage) => stage.name))
+  );
+}
+
+// An example answer and the workflow text it is an answer about.
+interface TextAndAnswer {
+  label: string;
+  text: string;
+  answer: Record<string, unknown>;
+}
+
+function jsonBodyOf(spec: Spec, route: string, status?: string): MediaType {
+  const [method, path] = route.split(' ') as [string, string];
+  const operation = spec.paths[path]?.[method.toLowerCase()];
+  const holder =
+    status === undefined
+      ? operation?.requestBody
+      : operation?.responses?.[status];
+  const media = holder?.content?.['application/json'];
+  if (!media) throw new Error(`No JSON body for ${route} ${status ?? ''}`);
+  return media;
+}
+
+function namedExample(media: MediaType, name: string) {
+  const value = media.examples?.[name]?.value;
+  if (!isRecord(value)) throw new Error(`No example named ${name}`);
+  return value;
+}
+
+/**
+ * Each answer example next to the text it answers: a check answer with the
+ * check request of the same name, a load with its own text, the save answer
+ * and the refused save with the save requests they follow.
+ */
+function listTextsAndAnswers(spec: Spec): TextAndAnswer[] {
+  const checkRequest = jsonBodyOf(spec, 'POST /api/validate');
+  const checkAnswer = jsonBodyOf(spec, 'POST /api/validate', '200');
+  const saveRequest = jsonBodyOf(spec, 'PUT /api/workflow');
+  const loaded = jsonBodyOf(spec, 'GET /api/workflow', '200');
+  const textOf = (media: MediaType, name: string) =>
+    namedExample(media, name)['text'] as string;
+
+  const checks = Object.keys(checkAnswer.examples ?? {}).map((name) => ({
+    label: `check ${name}`,
+    text: textOf(checkRequest, name),
+    answer: namedExample(checkAnswer, name),
+  }));
+  // A root that has no file yet has no text, which reads as an empty one.
+  const loads = Object.keys(loaded.examples ?? {}).map((name) => {
+    const answer = namedExample(loaded, name);
+    return {
+      label: `load ${name}`,
+      text: (answer['text'] as string | null) ?? '',
+      answer,
+    };
   });
+  const saved = {
+    label: 'save update',
+    text: textOf(saveRequest, 'update'),
+    answer: jsonBodyOf(spec, 'PUT /api/workflow', '200').example as Record<
+      string,
+      unknown
+    >,
+  };
+  const refused = {
+    label: 'save unknownKey',
+    text: textOf(saveRequest, 'unknownKey'),
+    answer: namedExample(
+      jsonBodyOf(spec, 'PUT /api/workflow', '422'),
+      'invalid',
+    ),
+  };
+  return [...checks, ...loads, saved, refused];
 }
 
 // What a run promises about its own fields. Returns the broken promises.
@@ -409,6 +479,12 @@ describe('workflow canvas API contract', () => {
       );
     });
 
+    it('says which YAML the workflow text is', () => {
+      expect(spec.info.description).toMatch(
+        /YAML 1\.2 read with the core schema/,
+      );
+    });
+
     it('describes every diagnostic code, and only those', () => {
       const declared = spec.components.schemas['DiagnosticCode']?.['enum'];
       const described = [
@@ -484,42 +560,51 @@ describe('workflow canvas API contract', () => {
     });
 
     describe('against the text they are about', () => {
-      const textsOf = () =>
-        cases.flatMap(({ value }) =>
-          collectObjects(value)
-            .map((node) => node['text'])
-            .filter((text): text is string => typeof text === 'string'),
-        );
-      const objectsWith = (key: string) =>
-        cases.flatMap(({ value }) =>
-          collectObjects(value).filter((node) => key in node),
-        );
+      let pairs: TextAndAnswer[];
+      beforeAll(() => {
+        pairs = listTextsAndAnswers(spec);
+      });
 
-      it('has a view that is what the text says', () => {
-        const views = objectsWith('view')
-          .map((node) => node['view'])
-          .filter(isRecord);
-        expect(views.length).toBeGreaterThan(0);
-        for (const view of views) {
-          expect(
-            viewAgreesWithText(view, textsOf()),
-            JSON.stringify(view),
-          ).toBe(true);
+      it('has a text for every answer that has a view or diagnostics', () => {
+        const paired = new Set(pairs.map(({ answer }) => answer));
+        const unpaired = cases
+          .flatMap(({ value }) => collectObjects(value))
+          .filter((node) => 'view' in node || 'diagnostics' in node)
+          .filter((node) => !paired.has(node));
+        expect(unpaired).toEqual([]);
+      });
+
+      it('has a view that is what its own text says', () => {
+        const withView = pairs.filter(({ answer }) => isRecord(answer['view']));
+        expect(withView.length).toBeGreaterThan(0);
+        for (const { label, text, answer } of withView) {
+          expect(viewAgreesWithText(answer['view'], text), label).toBe(true);
         }
       });
 
       it('has a diagnostic that points at the name in its message', () => {
-        const diagnostics = objectsWith('diagnostics').flatMap(
-          (node) => node['diagnostics'] as Record<string, unknown>[],
+        const found = pairs.flatMap(({ label, text, answer }) =>
+          (answer['diagnostics'] as Record<string, unknown>[]).map((d) => ({
+            label: `${label}: ${String(d['message'])}`,
+            pointedAt: textBetween(text, d),
+            quoted: quotedIn(String(d['message'])),
+          })),
         );
-        expect(diagnostics.length).toBeGreaterThan(0);
-        for (const d of diagnostics) {
-          const quoted = quotedIn(String(d['message']));
-          const found = textsOf().some(
-            (text) => textBetween(text, d) === quoted,
-          );
-          expect(found, String(d['message'])).toBe(true);
+        expect(found.length).toBeGreaterThan(0);
+        for (const { label, pointedAt, quoted } of found) {
+          expect(pointedAt, label).toBe(quoted);
         }
+      });
+
+      it('reports a repeated key at the later one', () => {
+        const { text, answer } = pairs.find(
+          ({ label }) => label === 'check duplicateKey',
+        )!;
+        const [diagnostic] = answer['diagnostics'] as Record<string, unknown>[];
+        const firstLine =
+          text.split('\n').findIndex((line) => line.startsWith('intent:')) + 1;
+        expect(diagnostic?.['code']).toBe('DUPLICATE_KEY');
+        expect(diagnostic?.['line']).toBeGreaterThan(firstLine);
       });
     });
 

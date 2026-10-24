@@ -44,15 +44,18 @@ info:
       weaker rule: an `Origin` that is present must be the server's own, and
       a `Sec-Fetch-Site` that is present must be `same-origin` or `none`, or it
       is 403 `forbidden_origin`.
-    - A request with a body must have `Content-Type: application/json`, or it
-      is 400 `bad_request`. A method this document does not list for a path is
+    - A request with a body must have a `Content-Type` whose media type is
+      `application/json`, with no parameter or with `charset=utf-8`, or it is
+      400 `bad_request`. A method this document does not list for a path is
       405 `method_not_allowed` with an `Allow` header. An unknown path is 404
       `not_found`. The server sends no CORS headers and sets no cookies.
     - Every response carries `X-Konductor-Api: 1` and `Cache-Control: no-store`.
     - A request body is at most 1 MiB. The `text` of a workflow is at most
       262144 bytes (256 KiB) of UTF-8, and a `goal` is at most 2048
       characters. A larger body or text is 413 `too_large`. A longer `goal` is
-      422 `bad_params`.
+      422 `bad_params`. Here and below, a length in characters counts Unicode
+      code points, not bytes or UTF-16 units, as `maxLength` does in JSON
+      Schema.
     - A failure of the server's own storage is 500 `io_error` with a fixed
       message. It never contains a path.
     - An `error`, `message` or `suggestion` never quotes a value that looks
@@ -61,21 +64,31 @@ info:
       a bad id from a missing run.
     - A `name` that is not a valid workflow name is 400 `bad_name`, whether it
       is in the query of a `GET` or in the body of a `PUT` or `POST`. A `name`
-      that is left out is the root.
+      that is left out is the root. A `name` given more than once in a query is
+      400 `bad_name`, and a query parameter other than `name` is ignored.
 
     **Order of checks.** A call is refused by the first check below that it
     fails: `Host`, `Origin` (and `Sec-Fetch-Site`), the bearer token (all but
     `POST /api/session`), `Content-Type`, body size, the body's shape (JSON,
     fields, types), `name` format, `name` is the root, `base_hash` format, the
     workflow text (413 over the limit, then 422 for errors), and last the state
-    of the file or of the run (404, 409).
+    of the file or of the run (404, 409). The body's shape includes the `goal`
+    of a run, so a bad `goal` is 422 `bad_params` before anything about the
+    run is looked at. `POST /api/run` has no text in its body: it reads the
+    saved file, so after the body its order is 404 for the file, then 422
+    `invalid_workflow`, then 409 `already_running`, then 409
+    `harness_unavailable`. These orders are normative, so that two servers
+    answer one bad call with one status.
 
     **Session.** The server is started with a one-time launch code, which
     whoever started it gives to the client. The server prints a launch address
     `http://127.0.0.1:<port>/#<code>`, so the code is in the fragment, which
     the browser never sends to a server. The page reads it from there and
     removes it from the address bar. The client posts it to `POST /api/session`
-    within 60 seconds and gets the session token. A code works once.
+    within 60 seconds and gets the session token. A code works once, so another
+    session needs a new code. The launch code and the token are each at least
+    128 bits from a secure random source, and the server compares them in
+    constant time. A token is valid until the server stops.
 
     **Which workflow.** A server is started on one workflow, the `root`
     that `POST /api/session` returns. Only the root can be loaded, saved,
@@ -93,13 +106,17 @@ info:
     canvas. The server never follows a link, because a repository can hold a
     link with the name of a workflow. The server writes `text` exactly as it
     was sent, with no change to its bytes: no byte order mark, no line-ending
-    change, no newline added at the end. This is what lets a `hash` be the
-    hash of the `text` that was sent.
+    change, no newline added at the end. The server reads a file the same way:
+    `text` is the file's bytes decoded as UTF-8 with no change, so a line
+    ending stays as it is and a byte order mark stays as the character U+FEFF.
+    This is what lets a `hash` be the hash of the `text` that was sent or
+    loaded.
 
     **Optimistic concurrency.** `GET /api/workflow` returns the `hash` of the
     file. `PUT /api/workflow` sends it back as `base_hash`. If the file changed
     in between, the save is refused with 409 `conflict` and the `current_hash`.
-    A `base_hash` of `null` means the file must not exist yet.
+    A `base_hash` of `null` means the file must not exist yet. If it does, the
+    save is refused with 409 `conflict` and the `current_hash`.
 
     If the answer to a save is lost, the client sends `GET /api/workflow`
     again. Its own save went through when the `hash` equals the SHA-256 of the
@@ -122,16 +139,23 @@ info:
     a run is `running`, the run reads as `halted` after the server starts
     again: the stage that was running (or the next `pending` one if none was)
     is `blocked`, `exit_code` is 1, and `finished_at` is the time the server
-    found it. A `running` run is never left behind.
+    found it. If every stage had `passed`, there is none to block, and the run
+    reads as `passed` with `exit_code` 0. A `running` run is never left
+    behind.
 
     **Following a run.** Poll `GET /api/runs/{id}` about once a second until
     `status` is `passed` or `halted`. A finished run stays readable. A client
     that does not know the `run_id`, such as a second tab, gets it from the
     409 `already_running` that `POST /api/run` answers while a run is active.
 
-    **Workflow text.** A workflow is one YAML file, `<name>.yml`. The YAML is a
-    plain subset: one document, and no anchors, aliases, merge keys or tags.
-    The text is a mapping with these keys and no others:
+    **Workflow text.** A workflow is one YAML file, `<name>.yml`. The text is
+    YAML 1.2 read with the core schema. So only `true` and `false` (in the
+    forms `true`, `True` and `TRUE`, and the same for `false`) are booleans,
+    `on`, `off`, `yes` and `no` are plain strings, and a plain value that looks
+    like a number is a number. The YAML is a plain subset: one document, and no
+    anchors, aliases, merge keys or tags. A key that appears twice in one
+    mapping is an error, not a case of the last one winning. The text is a
+    mapping with these keys and no others:
 
     | Key       | Required | Value                                                                                                  |
     | --------- | -------- | ------------------------------------------------------------------------------------------------------ |
@@ -157,10 +181,12 @@ info:
     empty string for the whole text. A stage is addressed by its name, as in
     `stages.write.agent`, or by its place in the list, as in `stages[1].name`,
     when its name is missing, malformed or already used. `line` and `column`
-    count from 1, a column counts characters, and the end position is the first
-    place after the key or value, so it is after the start, except for the two
-    cases in the table that have no width. The position is the key for
-    `UNKNOWN_KEY`, the enclosing mapping for `MISSING_KEY` and the value for
+    count from 1. A line ends at `\n`, `\r\n` or a lone `\r`, and a last line
+    with no line break at its end is still a line. A column counts code points,
+    and a tab counts as one. The end position is the first place after the key
+    or value, so it is after the start, except for the two cases in the table
+    that have no width. The position is the key for `UNKNOWN_KEY` and
+    `DUPLICATE_KEY`, the enclosing mapping for `MISSING_KEY` and the value for
     the other codes. The `file` is `<name>.yml`.
 
     | Code               | Path                         | Reported when                                                                |
@@ -168,9 +194,10 @@ info:
     | `YAML_SYNTAX`      | the whole text               | The text is not valid YAML. The position is where the parser found the problem, and the end is the same place. |
     | `YAML_UNSUPPORTED` | the node                     | The text has an anchor, alias, merge key, tag or a second document.          |
     | `NOT_A_MAPPING`    | the whole text, or the stage | The text, or a stage, is not a mapping. Text that is empty or only blank lines or comments is not a mapping, and its position is line 1, column 1, with the same end. |
-    | `UNKNOWN_KEY`      | the key                      | A mapping has a key that this version does not list. `suggestion` is the nearest listed key. |
+    | `UNKNOWN_KEY`      | the key                      | A mapping has a key that this version does not list. `suggestion` is the listed key with the smallest edit distance (insertions, deletions and substitutions of code points), the first in the table above if two tie, and only when that distance is at most 2. Otherwise it is left out. |
+    | `DUPLICATE_KEY`    | the later key                | A key appears again in a mapping, the same string after parsing. The first is used and the check goes on as if each later one were not there. It is reported once for each later one. |
     | `MISSING_KEY`      | the mapping                  | `intent`, `stages`, `outcome`, or a stage's `name` or `agent` is absent.     |
-    | `WRONG_TYPE`       | the value                    | A value is the wrong kind, such as `stages` that is not a list, or a `name`, `agent`, `version` or `intent` that is not a string. A number is not a string, so `version: 1.1` and `name: 123` are both this code. |
+    | `WRONG_TYPE`       | the value                    | A value is the wrong kind, such as `stages` that is not a list, or a `name`, `agent`, `version` or `intent` that is not a string. A number or a boolean is not a string, so `version: 1.1`, `name: 123` and `name: true` are all this code. |
     | `INVALID_NAME`     | the value                    | A name or agent id that is a string does not match the pattern above.        |
     | `RESERVED_NAME`    | the stage's `name`           | A stage is named `start`, `end`, `run` or `halt`.                            |
     | `DUPLICATE_STAGE`  | the later stage's `name`     | A stage name is already used by an earlier stage.                            |
@@ -180,7 +207,8 @@ servers:
   - url: http://127.0.0.1:{port}
     description: |
       The server binds to the loopback address on a port it chooses and prints
-      when it starts. `5174` is the default for local development.
+      when it starts. The port below is a default for tools that need one,
+      and the stub server uses it.
     variables:
       port:
         default: '5174'
@@ -437,7 +465,9 @@ paths:
           headers:
             X-Konductor-Api:
               $ref: '#/components/headers/XKonductorApi'
-          description: The file changed since `base_hash`.
+          description: |
+            The file changed since `base_hash`, or `base_hash` is `null` and
+            the file exists. `current_hash` is the hash of the file now.
           content:
             application/json:
               schema:
@@ -478,6 +508,11 @@ paths:
                 value:
                   name: hello
                   text: "name: hello\nintent: Add a greeting to the README\nstages:\n  - name: write\n    agent: k-developer\n  - name: write\n    agent: k-quality-assurance\n"
+              duplicateKey:
+                summary: One key twice in a mapping
+                value:
+                  name: hello
+                  text: "name: hello\nintent: Add a greeting to the README\nintent: Add a changelog line\nstages:\n  - name: write\n    agent: k-developer\n"
       responses:
         '200':
           headers:
@@ -524,6 +559,27 @@ paths:
                         end_line: 6
                         end_column: 16
                         message: The stage name `write` is already used.
+                    summary:
+                      valid: false
+                      counts:
+                        stages: 0
+                duplicateKey:
+                  summary: One key twice in a mapping
+                  value:
+                    errors: 1
+                    warnings: 0
+                    infos: 0
+                    view: null
+                    diagnostics:
+                      - code: DUPLICATE_KEY
+                        severity: error
+                        file: hello.yml
+                        path: intent
+                        line: 3
+                        column: 1
+                        end_line: 3
+                        end_column: 7
+                        message: The key `intent` is already used.
                     summary:
                       valid: false
                       counts:
@@ -917,7 +973,9 @@ components:
       pattern: '^[0-9]{8}-[0-9]{4}-[a-z0-9]{5}$'
       description: |
         Made by the server and unique. A client treats it as opaque and does
-        not read meaning into its parts.
+        not read meaning into its parts. The pattern holds in this version, so
+        that a malformed id in a path can be told from a missing run, and only
+        a new major version changes it.
       examples: [20261024-0412-a7b3c]
     Stage:
       type: object
@@ -972,6 +1030,7 @@ components:
         - YAML_UNSUPPORTED
         - NOT_A_MAPPING
         - UNKNOWN_KEY
+        - DUPLICATE_KEY
         - MISSING_KEY
         - WRONG_TYPE
         - INVALID_NAME
@@ -1054,7 +1113,7 @@ components:
           $ref: '#/components/schemas/Name'
         text:
           type: [string, 'null']
-          description: The file text, or `null` if the file does not exist yet.
+          description: The file text exactly as stored, or `null` if the file does not exist yet.
         hash:
           oneOf:
             - $ref: '#/components/schemas/Hash'
