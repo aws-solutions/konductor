@@ -1,19 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /** The wire shapes of api/openapi.yaml that the core produces. */
-export type DiagnosticCode =
-  | 'YAML_SYNTAX'
-  | 'YAML_UNSUPPORTED'
-  | 'NOT_A_MAPPING'
-  | 'UNKNOWN_KEY'
-  | 'DUPLICATE_KEY'
-  | 'MISSING_KEY'
-  | 'WRONG_TYPE'
-  | 'INVALID_NAME'
-  | 'RESERVED_NAME'
-  | 'DUPLICATE_STAGE'
-  | 'NAME_MISMATCH'
-  | 'INVALID_VALUE';
+export const DIAGNOSTIC_CODES = [
+  'YAML_SYNTAX',
+  'YAML_UNSUPPORTED',
+  'NOT_A_MAPPING',
+  'UNKNOWN_KEY',
+  'DUPLICATE_KEY',
+  'MISSING_KEY',
+  'WRONG_TYPE',
+  'INVALID_NAME',
+  'RESERVED_NAME',
+  'DUPLICATE_STAGE',
+  'NAME_MISMATCH',
+  'INVALID_VALUE',
+] as const;
+
+export type DiagnosticCode = (typeof DIAGNOSTIC_CODES)[number];
 
 export interface Diagnostic {
   code: DiagnosticCode;

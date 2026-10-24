@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: Apache-2.0
-// @vitest-environment node
 /** Calls POST /api/validate over HTTP and checks it against the contract. */
 import { describe, expect, it } from 'vitest';
 import {
@@ -10,6 +9,7 @@ import {
   responseExampleNames,
 } from '../test-support/contract.ts';
 import { useStub } from '../test-support/harness.ts';
+import { oneStageWorkflow } from '../test-support/workflows.ts';
 
 const PATH = '/api/validate';
 
@@ -51,14 +51,12 @@ describe('POST /api/validate', () => {
   it('writes nothing', async () => {
     const { client } = stub();
     const before = await client.get('/api/workflow');
-    await client.post(PATH, {
-      text: 'name: hello\nintent: x\nstages:\n  - name: a\n    agent: b\n',
-    });
+    await client.post(PATH, { text: oneStageWorkflow() });
     expect(await client.get('/api/workflow')).toEqual(before);
   });
 
   it('checks the name of the text against the name of the request', async () => {
-    const text = 'name: hello\nintent: x\nstages:\n  - name: a\n    agent: b\n';
+    const text = oneStageWorkflow();
     const reply = await stub().client.post(PATH, { name: 'hello', text });
     expect((reply.body as { errors: number }).errors).toBe(0);
   });

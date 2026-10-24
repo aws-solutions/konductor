@@ -5,7 +5,7 @@ import { ApiError, type ErrorCode } from '../core/errors.ts';
 import type { Reply } from './routes.ts';
 
 /** The status that goes with each error code. */
-const STATUS_BY_CODE: Record<ErrorCode, number> = {
+export const STATUS_BY_CODE: Record<ErrorCode, number> = {
   bad_request: 400,
   bad_name: 400,
   bad_hash: 400,

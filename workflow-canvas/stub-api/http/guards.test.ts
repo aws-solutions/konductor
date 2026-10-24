@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: Apache-2.0
-// @vitest-environment node
 /** Checks the rules that apply to every call: headers, bodies and routing. */
 import { describe, expect, it } from 'vitest';
 import { expectError } from '../test-support/contract.ts';
