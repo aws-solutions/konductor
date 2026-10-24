@@ -4,7 +4,7 @@ import {
   type PlaywrightTestConfig,
   type Project,
 } from '@playwright/test';
-import { LOOPBACK, originOf } from './stub-api/address';
+import { LOOPBACK, originOf, portOf } from './stub-api/address';
 import { apiTargetOrExit, type ApiTarget } from './stub-api/target';
 
 type WebServer = Extract<
@@ -54,7 +54,7 @@ const stubServer = (target: ApiTarget): WebServer => ({
   name: 'stub-api',
   command: 'npm run stub',
   env: {
-    STUB_PORT: new URL(target.origin).port,
+    STUB_PORT: String(portOf(target.origin)),
     STUB_LAUNCH_CODE,
   },
   // The stub answers 401 here until a session exists, which counts as up.
