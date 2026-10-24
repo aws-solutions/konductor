@@ -40,7 +40,8 @@ not per individual commit.
   functional tests (`npm run test:stub`) call it over HTTP and check each reply against the
   contract. CI runs them, and the Playwright config starts the stub beside the app. In
   `npm run dev`, the Vite server forwards `/api` to the stub, so the page and the API share one
-  origin.
+  origin. `WC_API_TARGET` points `/api` (and the end-to-end tests) at a real server instead, and
+  `npm run dev:stub` starts the stub and the dev server together.
 
 ### Changed
 
