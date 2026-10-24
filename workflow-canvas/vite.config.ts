@@ -4,8 +4,8 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   plugins: [react()],
+  // Relative asset paths so the built app works from any mount point.
   base: './',
-  build: { outDir: 'dist', emptyOutDir: true, sourcemap: false },
   server: { host: '127.0.0.1', port: 5173, strictPort: true },
   test: {
     environment: 'jsdom',

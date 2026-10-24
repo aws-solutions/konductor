@@ -2,7 +2,7 @@
 import { cleanup } from '@testing-library/react';
 import { afterEach } from 'vitest';
 
-// jsdom has no ResizeObserver, which Cloudscape components rely on.
+// jsdom has no ResizeObserver, which some Cloudscape components rely on.
 class ResizeObserverStub {
   observe(): void {}
   unobserve(): void {}
