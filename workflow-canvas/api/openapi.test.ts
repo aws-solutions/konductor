@@ -601,10 +601,27 @@ describe('workflow canvas API contract', () => {
           ({ label }) => label === 'check duplicateKey',
         )!;
         const [diagnostic] = answer['diagnostics'] as Record<string, unknown>[];
-        const firstLine =
-          text.split('\n').findIndex((line) => line.startsWith('intent:')) + 1;
+        const secondIntent = text
+          .split('\n')
+          .flatMap((line, index) =>
+            line.startsWith('intent:') ? [index + 1] : [],
+          )[1];
         expect(diagnostic?.['code']).toBe('DUPLICATE_KEY');
-        expect(diagnostic?.['line']).toBeGreaterThan(firstLine);
+        expect(diagnostic).toMatchObject({
+          line: secondIntent,
+          column: 1,
+          end_line: secondIntent,
+          end_column: 1 + 'intent'.length,
+        });
+      });
+
+      it('says how repeated keys are compared and reported', () => {
+        expect(spec.info.description).toMatch(
+          /compared as strings after parsing, so `1` and `'1'` are one key/,
+        );
+        expect(spec.info.description).toMatch(
+          /unknown key that is repeated has `UNKNOWN_KEY` at the first/,
+        );
       });
     });
 
@@ -616,6 +633,21 @@ describe('workflow canvas API contract', () => {
       for (const answer of busy) {
         expect(answer).toHaveProperty('run_id');
       }
+    });
+
+    it('has a conflict with and without the hash of the file now', () => {
+      const body = jsonBodyOf(spec, 'PUT /api/workflow', '409');
+      const changed = namedExample(body, 'changed');
+      const deleted = namedExample(body, 'deleted');
+      expect(changed).toHaveProperty('current_hash');
+      expect(deleted).not.toHaveProperty('current_hash');
+      expect([changed['code'], deleted['code']]).toEqual([
+        'conflict',
+        'conflict',
+      ]);
+      expect(spec.info.description).toMatch(
+        /for a file that does not exist[^.]*is also 409 `conflict`, with no `current_hash`/s,
+      );
     });
 
     it('has check answers that add up', () => {
