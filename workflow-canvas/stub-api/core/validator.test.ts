@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: Apache-2.0
-// @vitest-environment node
 /** Checks the rules of the workflow check, one problem per case. */
 import { describe, expect, it } from 'vitest';
 import { SAMPLE_FILES, SAMPLE_ROOT } from './sample.ts';
@@ -107,9 +106,15 @@ describe('the whole text', () => {
     expect(found?.slice(0, 3)).toEqual(['YAML_UNSUPPORTED', path, line]);
   });
 
-  it('does not allow a second document', () => {
-    expect(codesOf(`${HEAD + STAGES}---\na: 1\n`).map((d) => d[0])).toEqual([
-      'YAML_UNSUPPORTED',
+  it('reports a second document at its --- line, to the end of its content', () => {
+    expect(spansOf(`${HEAD + STAGES}---\na: 1\n`)).toEqual([
+      ['YAML_UNSUPPORTED', '', 6, 1, 8, 1],
+    ]);
+  });
+
+  it('reports a second document after an empty first one on line 2', () => {
+    expect(spansOf('---\n---\nintent: x\n')).toEqual([
+      ['YAML_UNSUPPORTED', '', 2, 1, 4, 1],
     ]);
   });
 });
@@ -284,5 +289,31 @@ describe('positions', () => {
     expect(codesOf(lone)).toEqual([['UNKNOWN_KEY', 'owner', 3, 1]]);
     const crlf = `name: hello\r\nintent: x\r\nowner: 1\r\n${STAGES}`;
     expect(codesOf(crlf)).toEqual([['UNKNOWN_KEY', 'owner', 3, 1]]);
+  });
+});
+
+describe('a key in a message', () => {
+  function unknownKeyMessage(key: string): string | undefined {
+    const text = `${HEAD}${key}: 1\n${STAGES}`;
+    return checkWorkflowText(text, 'hello').diagnostics.find(
+      (d) => d.code === 'UNKNOWN_KEY',
+    )?.message;
+  }
+
+  it('is named when it is a short plain word', () => {
+    expect(unknownKeyMessage('owner')).toBe('Unknown key `owner`.');
+    expect(unknownKeyMessage('max_retries')).toBe('Unknown key `max_retries`.');
+    expect(unknownKeyMessage('key2')).toBe('Unknown key `key2`.');
+  });
+
+  it.each([
+    ['an access key id', 'AKIAIOSFODNN7EXAMPLE'],
+    ['a 32-digit hex key', '0123456789abcdef0123456789abcdef'],
+    ['a token with a prefix', `ghp_${'a'.repeat(36)}`],
+    ['a word of 12 characters with a digit', 'abcdefgh1234'],
+    ['a long word', 'a'.repeat(25)],
+  ])('is not shown for %s', (_, key) => {
+    const message = unknownKeyMessage(key);
+    expect(message).toBe('Unknown key (not shown).');
   });
 });
