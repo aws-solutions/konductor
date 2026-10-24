@@ -17,6 +17,7 @@ const FONT_FILE = createRequire(import.meta.url).resolve(
   '@fontsource-variable/open-sans/files/open-sans-latin-wght-normal.woff2',
 );
 
+/** Loads the bundled font into the page and waits until it can paint. */
 async function pinFont(page: Page): Promise<void> {
   const fontData = (await readFile(FONT_FILE)).toString('base64');
   await page.addStyleTag({

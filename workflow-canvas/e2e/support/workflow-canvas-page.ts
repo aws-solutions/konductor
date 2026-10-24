@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 import { expect, type Locator, type Page } from '@playwright/test';
 
+/** Tab labels in display order; also used to look up each tab and its panel. */
 export const TAB_NAMES = ['Designer', 'Execution'] as const;
 export type TabName = (typeof TAB_NAMES)[number];
 
+/** Text each tab shows until it has real content. */
 export const PLACEHOLDER_TEXT = 'Nothing here yet.';
 
 /** Page object for the workflow canvas shell: title, landmark and tabs. */
@@ -16,6 +18,7 @@ export class WorkflowCanvasPage {
     this.title = this.main.getByRole('heading', { level: 1 });
   }
 
+  /** Loads the app and waits for the title so tests start on a real page. */
   async open(): Promise<void> {
     await this.page.goto('/');
     await this.title.waitFor();
