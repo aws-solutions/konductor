@@ -99,6 +99,12 @@ describe('the message of a refused target', () => {
     'user:secret@127.0.0.1:8080',
     'http://127.0.0.1:8080/?token=secret',
     'http://127.0.0.1:8080/#secret',
+    '  http://user:secret@127.0.0.1:8080',
+    'http://user:secret@127.0.0.1:8080  ',
+    'http://user:sec/ret@127.0.0.1:8080',
+    'http://user:sec#ret@127.0.0.1:8080',
+    'http://user:sec?ret@127.0.0.1:8080',
+    'user:sec/ret@127.0.0.1:8080',
   ])('does not repeat the secret in %s', (value) => {
     expect(message(value)).not.toContain('secret');
   });
@@ -113,6 +119,12 @@ describe('the message of a refused target', () => {
     ['http://u:p@h:1', 'http://***@h:1'],
     ['u:p@h:1', '***@h:1'],
     ['http://h:1/a?x=1#y', 'http://h:1/a?...'],
+    ['  http://u:p@h:1  ', 'http://***@h:1'],
+    ['http://u:p/q@h:1', 'http://***@h:1'],
+    ['http://u:p#q@h:1', 'http://***@h:1'],
+    ['http://u:p?q@h:1', 'http://***@h:1'],
+    ['http://u:p@ss@h:1', 'http://***@h:1'],
+    ['HTTP://u:p@h:1', 'HTTP://***@h:1'],
     ['http://h:1', 'http://h:1'],
     ['nope', 'nope'],
   ])('redacts %s to %s', (value, shown) => {
