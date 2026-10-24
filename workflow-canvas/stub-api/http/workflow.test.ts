@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: Apache-2.0
-// @vitest-environment node
 /** Calls GET and PUT /api/workflow over HTTP and checks them against the contract. */
 import { describe, expect, it } from 'vitest';
 import { sha256Hex } from '../core/hash.ts';
