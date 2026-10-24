@@ -32,6 +32,8 @@ export const stableRendering: NonNullable<Project['use']> = {
 export const sharedConfig: PlaywrightTestConfig = {
   outputDir: 'test-results',
   forbidOnly: Boolean(process.env.CI),
+  // A flaky test must fail the run, not pass on a retry.
+  retries: 0,
   use: { baseURL: APP_URL, trace: 'retain-on-failure' },
   // Servers the tests depend on, started before and stopped after the run.
   // The app is served from a production build, as users get it. A backing

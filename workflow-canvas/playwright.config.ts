@@ -7,8 +7,6 @@ import { sharedConfig, stableRendering } from './playwright.shared';
 // of these can rewrite a committed file; see playwright.screenshots.config.ts.
 export default defineConfig({
   ...sharedConfig,
-  // A flaky test must fail the run, not pass on a retry.
-  retries: 0,
   reporter: [['list'], ['html', { open: 'never' }]],
   projects: [
     { name: 'functional', testDir: 'e2e/tests', use: stableRendering },
