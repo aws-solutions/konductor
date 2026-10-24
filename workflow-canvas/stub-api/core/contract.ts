@@ -18,6 +18,11 @@ export const RESERVED_STAGE_NAMES: ReadonlySet<string> = new Set([
   'halt',
 ]);
 
+/** The length of a text in code points, which is how the contract counts. */
+export function codePointLength(text: string): number {
+  return [...text].length;
+}
+
 /** A workflow name, stage name or agent id is lower-case words with hyphens. */
 export function isName(value: string): boolean {
   return NAME_PATTERN.test(value);

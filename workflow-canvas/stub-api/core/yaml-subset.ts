@@ -50,6 +50,11 @@ export function spanOf(node: unknown, fallback: Span = [0, 0]): Span {
   return range ? [range[0], range[1]] : fallback;
 }
 
+/** The span of a document: from its `---` line to the end of its content. */
+export function documentSpanOf(doc: Document.Parsed): Span {
+  return [doc.range[0], doc.range[1]];
+}
+
 /** The span of an entry's value, or of its key when the value has no text. */
 export function valueSpanOf(entry: MapEntry): Span {
   const span = spanOf(entry.value);
