@@ -68,7 +68,8 @@ info:
       400 `bad_name`, and a query parameter other than `name` is ignored.
 
     **Order of checks.** A call is refused by the first check below that it
-    fails: `Host`, `Origin` (and `Sec-Fetch-Site`), the bearer token (all but
+    fails: `Host`, the path (404 `not_found`), the method (405
+    `method_not_allowed`), `Origin` (and `Sec-Fetch-Site`), the bearer token (all but
     `POST /api/session`), `Content-Type`, body size, the body's shape (JSON,
     fields, types), `name` format, `name` is the root, `base_hash` format, the
     workflow text (413 over the limit, then 422 for errors), and last the state
@@ -201,7 +202,7 @@ info:
     | Code               | Path                         | Reported when                                                                |
     | ------------------ | ---------------------------- | ---------------------------------------------------------------------------- |
     | `YAML_SYNTAX`      | the whole text               | The text is not valid YAML. The position is where the parser found the problem, and the end is the same place. |
-    | `YAML_UNSUPPORTED` | the node                     | The text has an anchor, alias, merge key, tag, a second document or a key that is not a scalar, such as `? [a]`. |
+    | `YAML_UNSUPPORTED` | the node                     | The text has an anchor, alias, merge key, tag, a second document or a key that is not a scalar, such as `? [a]`. For a second document, the position is its `---` line and the end is the end of its content. |
     | `NOT_A_MAPPING`    | the whole text, or the stage | The text, or a stage, is not a mapping. Text that is empty or only blank lines or comments is not a mapping, and its position is line 1, column 1, with the same end. |
     | `UNKNOWN_KEY`      | the key                      | A mapping has a key that this version does not list. `suggestion` is the listed key with the smallest edit distance (insertions, deletions and substitutions of code points), the first in the table above (for a stage, `name` before `agent`) if two tie, and only when that distance is at most 2. Otherwise it is left out. |
     | `DUPLICATE_KEY`    | the later key                | A key appears again in a mapping. Two keys are one key when their text is the same: the characters of the key after quotes and escapes are resolved, and before they are read as a number, boolean or null. So `1` and `'1'` are one key, but `true` and `True`, `1`, `1.0` and `0x1`, and `null` and `~` are each different keys. The first is used and the check goes on as if each later one were not there. It is reported once for each later one. An unknown key that is repeated has `UNKNOWN_KEY` at the first and `DUPLICATE_KEY` at each later one. |
