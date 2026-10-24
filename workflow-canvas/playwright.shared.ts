@@ -4,14 +4,15 @@ import {
   type PlaywrightTestConfig,
   type Project,
 } from '@playwright/test';
+import { DEFAULT_PORT, LOOPBACK, originOf } from './stub-api/address';
 
-const HOST = '127.0.0.1';
+const HOST = LOOPBACK;
 const APP_PORT = 4173;
-const APP_URL = `http://${HOST}:${APP_PORT}`;
+const APP_URL = originOf(APP_PORT);
 
 /** Where the stub API listens during a run, and the launch code it accepts. */
-export const STUB_PORT = 5174;
-export const STUB_URL = `http://${HOST}:${STUB_PORT}`;
+export const STUB_PORT = DEFAULT_PORT;
+export const STUB_URL = originOf(STUB_PORT);
 export const STUB_LAUNCH_CODE = 'e2e-launch-code';
 
 /**
@@ -40,10 +41,8 @@ export const sharedConfig: PlaywrightTestConfig = {
   retries: 0,
   use: { baseURL: APP_URL, trace: 'retain-on-failure' },
   // Servers the tests depend on, started before and stopped after the run.
-  // The app is served from a production build, as users get it. A backing
-  // service the app calls gets its own entry here, so one command starts
-  // everything. The stub API starts after the app, because its launch code
-  // works for 60 seconds from the start. No page calls it yet.
+  // The app is served from a production build. The stub API starts after the
+  // app build, because its launch code works for 60 seconds. No page calls it.
   webServer: [
     {
       name: 'app',
