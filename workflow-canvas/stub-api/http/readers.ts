@@ -1,12 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
-import { MAX_GOAL_CHARS } from '../core/contract.ts';
-import { ApiError } from '../core/errors.ts';
+import { codePointLength, MAX_GOAL_CHARS } from '../core/contract.ts';
+import { ApiError, badRequest } from '../core/errors.ts';
 
 /** Reads one value of a request body, or throws the error to answer with. */
 export type Reader<T> = (value: unknown) => T;
-
-const badRequest = () =>
-  new ApiError('bad_request', 'The request body is not valid.');
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -32,7 +29,7 @@ export const boundedString =
   (min: number, max: number): Reader<string> =>
   (value) => {
     const text = string(value);
-    const length = [...text].length;
+    const length = codePointLength(text);
     if (length < min || length > max) throw badRequest();
     return text;
   };
@@ -63,7 +60,7 @@ const runParams: Reader<{ goal: string }> = (value) => {
     throw badParams('Only a goal is allowed.');
   if (goal === undefined) throw badParams('The run needs a goal.');
   const text = string(goal);
-  const length = [...text].length;
+  const length = codePointLength(text);
   if (length < 1) throw badParams('The run needs a goal.');
   if (length > MAX_GOAL_CHARS) {
     throw badParams(`The goal is longer than ${MAX_GOAL_CHARS} characters.`);
