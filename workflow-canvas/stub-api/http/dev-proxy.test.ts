@@ -6,7 +6,7 @@ import {
   type Server,
 } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { createServer, type ViteDevServer } from 'vite';
+import { createServer, resolveConfig, type ViteDevServer } from 'vite';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { LOOPBACK, originOf } from '../address.ts';
 import { LAUNCH_CODE, openStub } from '../test-support/harness.ts';
@@ -137,4 +137,24 @@ describe('the Vite dev server', () => {
       expect.stringContaining('WC_API_TARGET="not-a-target" is not usable'),
     );
   });
+
+  it.each([
+    ['build', 'build', 'production'],
+    ['the test runner', 'serve', 'test'],
+  ] as const)(
+    'ignores a bad WC_API_TARGET for %s, which has no proxy',
+    async (_name, command, mode) => {
+      useEnv({ WC_API_TARGET: 'not-a-target' });
+      const exit = vi.spyOn(process, 'exit');
+
+      const config = await resolveConfig(
+        { configFile: CONFIG, logLevel: 'silent' },
+        command,
+        mode,
+      );
+
+      expect(exit).not.toHaveBeenCalled();
+      expect(config.server.proxy).toBeUndefined();
+    },
+  );
 });
