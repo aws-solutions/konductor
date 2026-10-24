@@ -79,6 +79,7 @@ instructions.
   - Python: `# SPDX-License-Identifier: Apache-2.0`
   - JS/TS, Go: `// SPDX-License-Identifier: Apache-2.0`
   - Shell, YAML: `# SPDX-License-Identifier: Apache-2.0`
+  - HTML: `<!-- SPDX-License-Identifier: Apache-2.0 -->`, placed before `<!doctype html>`.
 
   Formats that have no comment syntax at all (JSON and similar) cannot carry a header and are exempt -- do not add one and do not treat its absence as a violation.
 
