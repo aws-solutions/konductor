@@ -21,7 +21,9 @@ not per individual commit.
 - Playwright end-to-end tests for `workflow-canvas/`: a functional suite (page title, `main`
   landmark, tab switching, axe accessibility check on each tab) run by `npm run test:e2e`, and
   `npm run screenshots`, which regenerates the committed full-page tab screenshots that pull
-  requests embed. CI runs both and uploads the HTML report and screenshots as artifacts.
+  requests embed. Only that script writes the screenshots, and it renders them with a pinned
+  font so they match across machines. ESLint checks the e2e code for missing `await` and fixed
+  waits. CI runs both and uploads the HTML report and screenshots as artifacts.
 
 ### Changed
 

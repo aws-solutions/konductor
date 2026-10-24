@@ -114,7 +114,7 @@ jobs:
         with:
           name: playwright-report
           path: workflow-canvas/playwright-report/
-          if-no-files-found: ignore
+          if-no-files-found: warn
           retention-days: 14
 
       - name: Upload screenshots
@@ -123,5 +123,5 @@ jobs:
         with:
           name: screenshots
           path: workflow-canvas/e2e/screenshots/
-          if-no-files-found: ignore
+          if-no-files-found: error
           retention-days: 14
