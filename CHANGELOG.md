@@ -31,8 +31,8 @@ not per individual commit.
   harness. It also states the accepted workflow text (YAML 1.2, core schema), the check rules and
   the diagnostic codes.
   `npm run api:lint` validates the file against the OpenAPI 3.1 specification and checks every
-  example against its schema and against the rules of the contract, and CI runs it. The local stub
-  server and the real backend will both follow this contract.
+  example against its schema and against the rules of the contract, and CI runs it. Every server of
+  the API follows this contract.
 
 ### Changed
 
