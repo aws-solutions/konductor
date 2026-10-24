@@ -38,7 +38,9 @@ not per individual commit.
   `hello` workflow and runs that are faked over time. It is a development stub with no real
   auth. Its rules (the workflow check, the file store and the run simulator) do no IO, and
   functional tests (`npm run test:stub`) call it over HTTP and check each reply against the
-  contract. CI runs them, and the Playwright config starts the stub beside the app.
+  contract. CI runs them, and the Playwright config starts the stub beside the app. In
+  `npm run dev`, the Vite server forwards `/api` to the stub, so the page and the API share one
+  origin.
 
 ### Fixed
 
