@@ -11,14 +11,10 @@ follow-up changes.
 
 - `src/`: the UI.
 - `api/`: the HTTP API contract (`openapi.yaml`) and its test.
+- `stub-api/`: a TypeScript stub server for the contract, for local development and tests.
 - `e2e/`: Playwright tests (`tests/`), the screenshot capture (`capture/`),
   shared page objects and helpers (`support/`) and the committed PNGs
   (`screenshots/`).
-
-Directories added in later PRs:
-
-- `stub-api/`: a TypeScript stub server for local development and end-to-end
-  tests, started by the same Playwright `webServer` config.
 
 A single `package.json` serves all of the above.
 
@@ -33,6 +29,8 @@ npm run lint       # ESLint and Prettier check
 npm run typecheck
 npm test           # Vitest, including the API contract test
 npm run api:lint   # Only the API contract test
+npm run stub       # The stub API on http://127.0.0.1:5174
+npm run test:stub  # Only the stub API tests
 npm run build
 npm run test:e2e    # Playwright, headless Chromium
 npm run screenshots # regenerate e2e/screenshots/*.png
@@ -82,6 +80,47 @@ know, and requests with a field the contract does not name are refused.
   follow its status.
 
 CI runs it on each pull request, and `npm test` includes it.
+
+## Stub API
+
+`stub-api/` serves the six calls of `api/openapi.yaml` from memory, so the UI
+and the real backend can be built against the same contract. It is a local
+development stub with no real auth: the launch code and the session token only
+exercise the session flow. It listens on `127.0.0.1` only and keeps nothing on
+disk, so a restart brings back the sample data.
+
+```bash
+npm run stub
+# Workflow canvas stub API (local development only, no real auth)
+# Listening on http://127.0.0.1:5174
+# Launch address: http://127.0.0.1:5174/#<launch code>
+```
+
+It prints the launch address with a new launch code each time. The code works
+once, within 60 seconds of the start. `POST /api/session` trades it for the
+token that the other calls send as `Authorization: Bearer <token>`. Set
+`STUB_PORT` or `STUB_LAUNCH_CODE` to choose the port or the code.
+
+It covers the first release only: a workflow of an intent and stages, and the
+`kiro-cli` harness. The data is fixed: a `hello` workflow with a `draft` stage
+(`k-developer`) and a `review` stage (`k-quality-assurance`). A saved change
+lasts until the stub stops. A run is faked: it calls no agent. Its stages run
+for 3 seconds each, one after the other, and all of them pass.
+
+The code is in two parts, so the rules can be tested without a server:
+
+- `core/`: the workflow check, the file store and the run simulator. It does
+  no IO and takes its clock as a parameter. A test fails if a core file imports
+  a module that does IO or reads the clock or randomness.
+- `http/`: a thin adapter on `node:http` that checks headers and bodies and
+  hands the rest to the core.
+
+`npm run test:stub` runs the tests. Those in `http/` start the stub on a free
+port, call it over HTTP and check each reply against the schema of the
+contract. They move a fake clock by hand, so none of them waits.
+
+Playwright starts the stub beside the app (`playwright.shared.ts` holds its
+port and launch code), so an end-to-end test can call it. No page uses it yet.
 
 ## End-to-end tests
 

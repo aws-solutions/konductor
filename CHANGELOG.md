@@ -33,6 +33,12 @@ not per individual commit.
   `npm run api:lint` validates the file against the OpenAPI 3.1 specification and checks every
   example against its schema and against the rules of the contract, and CI runs it. Every server of
   the API follows this contract.
+- Stub API for the workflow canvas, `workflow-canvas/stub-api/`. A local server on `127.0.0.1`
+  (`npm run stub`) that serves the six calls of the API contract from memory, with a fixed
+  `hello` workflow and runs that are faked over time. It is a development stub with no real
+  auth. Its rules (the workflow check, the file store and the run simulator) do no IO, and
+  functional tests (`npm run test:stub`) call it over HTTP and check each reply against the
+  contract. CI runs them, and the Playwright config starts the stub beside the app.
 
 ### Fixed
 
