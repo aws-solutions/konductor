@@ -59,8 +59,11 @@ describe('runTogether', () => {
 });
 
 describe('runTogether escalation', () => {
-  // Ignores SIGTERM, and tells its parent over IPC once it does.
+  // Ignores SIGTERM, and tells its parent over IPC once it does. It exits when
+  // the IPC channel closes, which happens when its parent dies, so a test run
+  // that is killed cannot leave it behind.
   const IGNORES_TERM = `process.on('SIGTERM', () => {});
+process.on('disconnect', () => process.exit(0));
 process.send?.('ready'); setInterval(() => {}, 1 << 30);`;
 
   /** Deps whose timer waits for the test to fire it, and that record children. */

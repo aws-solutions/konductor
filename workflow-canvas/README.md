@@ -129,7 +129,8 @@ curl -s -X POST http://127.0.0.1:5173/api/session \
 ```
 
 The launcher sends SIGTERM to the other command when one exits, and SIGKILL
-to a command that is still running 5 seconds later.
+to a command that is still running 5 seconds later. If the launcher itself is
+killed with SIGKILL, the stub and Vite may keep running; stop them yourself.
 
 ## Choose the API backend
 
@@ -139,7 +140,9 @@ one variable sets it: `WC_API_TARGET`, an origin such as
 (not an http or https origin, or one with a path) stops the command that needs
 it (`dev`, `preview`, `test:e2e`, `screenshots`) with a one-line error that
 hides any user, password or query in the value. `build` and `npm test` never
-read it. `stub-api/target.ts` is the only place that reads it.
+read it, so a mistyped value in your shell cannot fail them (the tests of the
+Playwright config set it themselves). `stub-api/target.ts` is the only place
+that reads it.
 
 - Stubbed dev: `npm run dev:stub`
 - Real dev: `WC_API_TARGET=http://127.0.0.1:8080 npm run dev`
@@ -175,8 +178,8 @@ contract. They move a fake clock by hand, so none of them waits. A test
 compares the error codes, diagnostic codes, limits and patterns of the stub
 with the contract, so a change to one without the other fails.
 
-Playwright starts the stub beside the app (`playwright.shared.ts` holds its
-launch code), so an end-to-end test can call it. With `WC_API_TARGET` set it
+Playwright starts the stub beside the app (`stub-api/web-servers.ts` holds its
+launch code and the server list), so an end-to-end test can call it. With `WC_API_TARGET` set it
 does not, and the same tests call that server instead.
 
 ## End-to-end tests
