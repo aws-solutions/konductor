@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { Locator, Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 export const TAB_NAMES = ['Designer', 'Execution'] as const;
 export type TabName = (typeof TAB_NAMES)[number];
+
+export const PLACEHOLDER_TEXT = 'Nothing here yet.';
 
 /** Page object for the workflow canvas shell: title, landmark and tabs. */
 export class WorkflowCanvasPage {
@@ -30,5 +32,16 @@ export class WorkflowCanvasPage {
   async selectTab(name: TabName): Promise<void> {
     await this.tab(name).click();
     await this.tabPanel(name).waitFor();
+  }
+
+  /** Asserts `name` is the only selected tab and its panel is showing. */
+  async expectTabShown(name: TabName): Promise<void> {
+    for (const tabName of TAB_NAMES) {
+      await expect(this.tab(tabName)).toHaveAttribute(
+        'aria-selected',
+        String(tabName === name),
+      );
+    }
+    await expect(this.tabPanel(name)).toContainText(PLACEHOLDER_TEXT);
   }
 }
