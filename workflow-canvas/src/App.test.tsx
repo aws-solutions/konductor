@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { App } from './App';
 
@@ -8,7 +8,12 @@ describe('App', () => {
     render(<App />);
 
     const main = screen.getByRole('main');
-    expect(main.querySelector('h1')?.textContent).toBe('Workflow canvas');
+    expect(
+      within(main).getByRole('heading', {
+        level: 1,
+        name: 'Workflow canvas',
+      }),
+    ).toBeTruthy();
   });
 
   it('renders the Designer and Execution tabs with Designer selected', () => {
