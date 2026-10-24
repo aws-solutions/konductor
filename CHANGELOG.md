@@ -41,7 +41,8 @@ not per individual commit.
   contract. CI runs them, and the Playwright config starts the stub beside the app. In
   `npm run dev`, the Vite server forwards `/api` to the stub, so the page and the API share one
   origin. `WC_API_TARGET` points `/api` (and the end-to-end tests) at a real server instead, and
-  `npm run dev:stub` starts the stub and the dev server together.
+  `npm run dev:stub` starts the stub and the dev server together. A bad `WC_API_TARGET` or `STUB_PORT` stops only the commands that need it, with a one-line
+  error that hides credentials.
 
 ### Fixed
 

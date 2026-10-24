@@ -14,7 +14,33 @@ export interface Together {
   done: Promise<number>;
 }
 
+/** The parts of `runTogether` that a test replaces. */
+export interface TogetherDeps {
+  spawn: typeof spawn;
+  /** Runs `run` once after `ms`, and returns a function that cancels it. */
+  schedule: (run: () => void, ms: number) => () => void;
+  /** How long a command may take to exit after SIGTERM before SIGKILL. */
+  graceMs: number;
+}
+
 const STOP_SIGNALS: NodeJS.Signals[] = ['SIGINT', 'SIGTERM'];
+
+const realDeps: TogetherDeps = {
+  spawn,
+  schedule: (run, ms) => {
+    const timer = setTimeout(run, ms).unref();
+    return () => clearTimeout(timer);
+  },
+  graceMs: 5000,
+};
+
+/** The environment a command runs with: the base, then its own variables. */
+export function environmentOf(
+  command: Command,
+  base: NodeJS.ProcessEnv = process.env,
+): NodeJS.ProcessEnv {
+  return { ...base, ...command.env };
+}
 
 /** The exit code of a child. Being stopped by a stop signal is not a failure. */
 function exitCodeOf(
@@ -25,18 +51,38 @@ function exitCodeOf(
   return signal && STOP_SIGNALS.includes(signal) ? 0 : 1;
 }
 
+function isRunning(child: ChildProcess): boolean {
+  return child.exitCode === null && child.signalCode === null;
+}
+
 /**
  * Runs the commands with the terminal's output. When one exits, or `stop` is
- * called, the rest get SIGTERM. `done` settles once every command has exited,
- * with the code of the first one to exit, or 0 after a `stop`.
+ * called, the rest get SIGTERM, and SIGKILL after `graceMs` if they are still
+ * running. `done` settles once every command has exited, with the code of the
+ * first one to exit, or 0 after a `stop`.
  */
-export function runTogether(commands: Command[]): Together {
-  const children = commands.map(({ file, args, env }) =>
-    spawn(file, args, { stdio: 'inherit', env: { ...process.env, ...env } }),
+export function runTogether(
+  commands: Command[],
+  deps: Partial<TogetherDeps> = {},
+): Together {
+  const { spawn, schedule, graceMs } = { ...realDeps, ...deps };
+  const children = commands.map((command) =>
+    spawn(command.file, command.args, {
+      stdio: 'inherit',
+      env: environmentOf(command),
+    }),
   );
   let firstCode: number | undefined;
+  let cancelKill: (() => void) | undefined;
 
-  const stop = (): void => terminate(children);
+  const stop = (): void => {
+    const running = children.filter(isRunning);
+    if (running.length === 0) return;
+    for (const child of running) child.kill('SIGTERM');
+    cancelKill ??= schedule(() => {
+      for (const child of children.filter(isRunning)) child.kill('SIGKILL');
+    }, graceMs);
+  };
   const done = Promise.all(
     children.map(
       (child) =>
@@ -53,15 +99,10 @@ export function runTogether(commands: Command[]): Together {
           });
         }),
     ),
-  ).then(() => firstCode ?? 0);
+  ).then(() => {
+    cancelKill?.();
+    return firstCode ?? 0;
+  });
 
   return { stop, done };
-}
-
-function terminate(children: ChildProcess[]): void {
-  for (const child of children) {
-    if (child.exitCode === null && child.signalCode === null) {
-      child.kill('SIGTERM');
-    }
-  }
 }
