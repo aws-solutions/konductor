@@ -9,7 +9,7 @@ export default defineConfig({
   server: { host: '127.0.0.1', port: 5173, strictPort: true },
   test: {
     environment: 'jsdom',
-    include: ['src/**/*.test.{ts,tsx}'],
+    include: ['src/**/*.test.{ts,tsx}', 'api/**/*.test.ts'],
     setupFiles: ['src/test-support/setup.ts'],
     css: false,
   },
