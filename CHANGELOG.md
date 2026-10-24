@@ -16,8 +16,8 @@ not per individual commit.
   `~/.konductor/telemetry.json` with the CLI. Turn it off with the plugin's
   `telemetry_enabled` option or any existing opt-out.
 - `workflow-canvas/`, a browser UI for designing and running workflows, built with Vite,
-  React, TypeScript and Cloudscape. This first step is an empty page with Designer and
-  Execution tabs, plus a CI workflow that lints, typechecks, tests and builds it.
+  React, TypeScript and Cloudscape, on Node 24. This first step is an empty page with
+  Designer and Execution tabs, plus a CI workflow that lints, typechecks, tests and builds it.
 
 ### Changed
 
