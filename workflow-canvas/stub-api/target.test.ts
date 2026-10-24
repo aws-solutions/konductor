@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { DEFAULT_PORT, originOf } from './address.ts';
-import { apiTarget, apiTargetOrExit, ApiTargetError } from './target.ts';
+import { DEFAULT_PORT, originOf, StubPortError } from './address.ts';
+import {
+  apiTarget,
+  apiTargetOrExit,
+  ApiTargetError,
+  redact,
+} from './target.ts';
 
 describe('apiTarget', () => {
   it('defaults to the stub on its default port', () => {
@@ -34,6 +39,28 @@ describe('apiTarget', () => {
     });
   });
 
+  it('writes the default stub origin the way a browser does, for port 80', () => {
+    expect(apiTarget({ STUB_PORT: '80' }).origin).toBe('http://127.0.0.1');
+  });
+
+  it('uses the default port for an empty STUB_PORT', () => {
+    expect(apiTarget({ STUB_PORT: '' }).origin).toBe(originOf(DEFAULT_PORT));
+  });
+
+  it.each(['abc', '5174x', '-1', '0', '65536', '1.5', ' 80', '1e3'])(
+    'refuses STUB_PORT=%s with a message that names it',
+    (port) => {
+      const attempt = () => apiTarget({ STUB_PORT: port });
+      expect(attempt).toThrow(StubPortError);
+      expect(attempt).toThrow('STUB_PORT');
+    },
+  );
+
+  it('ignores a bad STUB_PORT when a target is set', () => {
+    const env = { WC_API_TARGET: 'http://127.0.0.1:8080', STUB_PORT: 'abc' };
+    expect(apiTarget(env).origin).toBe('http://127.0.0.1:8080');
+  });
+
   it('ignores STUB_PORT when a target is set', () => {
     const env = { WC_API_TARGET: 'http://127.0.0.1:8080', STUB_PORT: '6000' };
     expect(apiTarget(env).origin).toBe('http://127.0.0.1:8080');
@@ -53,6 +80,43 @@ describe('apiTarget', () => {
     expect(attempt).toThrow(ApiTargetError);
     expect(attempt).toThrow(reason);
     expect(attempt).toThrow('WC_API_TARGET');
+  });
+});
+
+describe('the message of a refused target', () => {
+  const message = (value: string): string => {
+    try {
+      apiTarget({ WC_API_TARGET: value });
+    } catch (error) {
+      return (error as Error).message;
+    }
+    throw new Error('expected a refusal');
+  };
+
+  it.each([
+    'http://user:secret@127.0.0.1:8080',
+    'http://:secret@127.0.0.1:8080',
+    'user:secret@127.0.0.1:8080',
+    'http://127.0.0.1:8080/?token=secret',
+    'http://127.0.0.1:8080/#secret',
+  ])('does not repeat the secret in %s', (value) => {
+    expect(message(value)).not.toContain('secret');
+  });
+
+  it('still shows the part that helps', () => {
+    expect(message('http://user:secret@127.0.0.1:8080')).toContain(
+      'http://***@127.0.0.1:8080',
+    );
+  });
+
+  it.each([
+    ['http://u:p@h:1', 'http://***@h:1'],
+    ['u:p@h:1', '***@h:1'],
+    ['http://h:1/a?x=1#y', 'http://h:1/a?...'],
+    ['http://h:1', 'http://h:1'],
+    ['nope', 'nope'],
+  ])('redacts %s to %s', (value, shown) => {
+    expect(redact(value)).toBe(shown);
   });
 });
 
@@ -79,5 +143,18 @@ describe('apiTargetOrExit', () => {
     const [message] = print.mock.calls[0] as [string];
     expect(message).toContain('WC_API_TARGET="nope" is not usable');
     expect(message).not.toMatch(/\n\s+at /);
+  });
+
+  it('prints one line and exits with 1 for a bad STUB_PORT', () => {
+    const exit = vi.spyOn(process, 'exit').mockImplementation((() => {
+      throw new Error('exit called');
+    }) as never);
+    const print = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    expect(() => apiTargetOrExit({ STUB_PORT: 'abc' })).toThrow('exit called');
+
+    expect(exit).toHaveBeenCalledWith(1);
+    const [message] = print.mock.calls[0] as [string];
+    expect(message).toMatch(/^error: STUB_PORT="abc" is not usable: [^\n]*$/);
   });
 });
