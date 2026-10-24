@@ -23,7 +23,8 @@ not per individual commit.
   `npm run screenshots`, which regenerates the committed full-page tab screenshots that pull
   requests embed. Only that script writes the screenshots, and it renders them with a pinned
   font so they match across machines. ESLint checks the e2e code for missing `await` and fixed
-  waits. CI runs both and uploads the HTML report and screenshots as artifacts.
+  waits. CI runs both, uploads the HTML report and screenshots as artifacts, and fails when the
+  screenshots differ from the committed files.
 
 ### Fixed
 

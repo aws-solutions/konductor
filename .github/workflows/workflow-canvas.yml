@@ -13,8 +13,8 @@
 #
 # The e2e job runs the Playwright tests in Chromium on Node 24 only (the
 # browser, not Node, is what they exercise) and also regenerates the
-# screenshots. Both the HTML report and the screenshots are uploaded whether
-# the tests pass or fail.
+# screenshots, which must match the committed files. Both the HTML report and
+# the screenshots are uploaded whether the tests pass or fail.
 #
 # Triggers on `pull_request`, NOT `pull_request_target`, so PR-head code runs
 # with a read-only, secret-free token even for fork PRs.
@@ -107,6 +107,14 @@ jobs:
       - name: Capture screenshots
         if: ${{ !cancelled() }}
         run: npm run screenshots
+
+      - name: Check committed screenshots are current
+        run: |
+          git add --intent-to-add e2e/screenshots
+          git diff --exit-code -- e2e/screenshots || {
+            echo '::error::Screenshots are out of date. Run `npm run screenshots` and commit the result.'
+            exit 1
+          }
 
       - name: Upload Playwright report
         if: ${{ !cancelled() }}

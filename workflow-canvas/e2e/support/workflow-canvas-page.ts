@@ -3,6 +3,7 @@ import { expect, type Locator, type Page } from '@playwright/test';
 
 /** Tab labels in display order; also used to look up each tab and its panel. */
 export const TAB_NAMES = ['Designer', 'Execution'] as const;
+/** The label of one tab. */
 export type TabName = (typeof TAB_NAMES)[number];
 
 /** Text each tab shows until it has real content. */
