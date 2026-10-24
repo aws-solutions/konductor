@@ -43,8 +43,8 @@ not per individual commit.
   origin. `WC_API_TARGET` points `/api` (and the end-to-end tests) at a real server instead, and
   `npm run dev:stub` starts the stub and the dev server together. A bad `WC_API_TARGET` or
   `STUB_PORT` stops only the commands that need it (not `build` or `npm test`), with a one-line
-  error that hides credentials. `STUB_PORT=0` is now rejected: the stub needs a fixed port from 1
-  to 65535.
+  error that hides credentials. `STUB_PORT` must be 1-65535, so `STUB_PORT=0` is rejected: the stub
+  needs a fixed port.
 
 ### Changed
 

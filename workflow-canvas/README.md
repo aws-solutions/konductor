@@ -179,8 +179,8 @@ compares the error codes, diagnostic codes, limits and patterns of the stub
 with the contract, so a change to one without the other fails.
 
 Playwright starts the stub beside the app (`stub-api/web-servers.ts` holds its
-launch code and the server list), so an end-to-end test can call it. With `WC_API_TARGET` set it
-does not, and the same tests call that server instead.
+launch code and the server list), so an end-to-end test can call it. With
+`WC_API_TARGET` set it does not, and the same tests call that server instead.
 
 ## End-to-end tests
 

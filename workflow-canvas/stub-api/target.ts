@@ -12,19 +12,27 @@ export interface ApiTarget {
 }
 
 /**
- * `value` without what may be secret in it. Everything up to the last `@` is
- * masked, because a password may hold a `/`, `?` or `#` that ends the
- * authority only after parsing. Then everything after a `?` or `#` goes. This
- * may also mask a path that holds an `@`: hiding too much is the safe error.
+ * `value` without what may be secret in it. The authority runs from `://` to
+ * the first `/`, `?` or `#`. If it holds an `@`, the text up to the last `@`
+ * is the userinfo and is masked; the host stays. Text after a `?` or `#` goes.
+ *
+ * A password may hold an unencoded `/`, `?` or `#`, so `http://u:p/q@h` and
+ * `http://h:1/?k=a@x` cannot be told apart: both have an `@` only after the
+ * authority ends. Then everything after `://` is masked (`http://***`), which
+ * hides the host as well. Hiding too much is the safe error.
  */
 export function redact(value: string): string {
-  return value
-    .trim()
-    .replace(
-      /^(?:([a-z][a-z0-9+.-]*):\/\/)?.*@/is,
-      (_, scheme?: string) => `${scheme ? `${scheme}://` : ''}***@`,
-    )
-    .replace(/([?#]).*$/s, '$1...');
+  const text = value.trim();
+  const [, scheme, rest = ''] =
+    /^(?:([a-z][a-z0-9+.-]*):\/\/)?(.*)$/is.exec(text) ?? [];
+  const prefix = scheme ? `${scheme}://` : '';
+  const end = rest.search(/[/?#]/);
+  const authority = end < 0 ? rest : rest.slice(0, end);
+  const tail = end < 0 ? '' : rest.slice(end);
+  const at = authority.lastIndexOf('@');
+  if (at < 0 && tail.includes('@')) return `${prefix}***`;
+  const host = at < 0 ? authority : `***@${authority.slice(at + 1)}`;
+  return `${prefix}${host}${tail.replace(/([?#]).*$/s, '$1...')}`;
 }
 
 /** A `WC_API_TARGET` value that is not an http(s) origin. */
