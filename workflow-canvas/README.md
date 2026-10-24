@@ -55,8 +55,9 @@ canvas calls. It covers six operations:
 A workflow in this version has a `name`, an `intent` and `stages`, and each
 stage is a `name` and an `agent`. The only harness is `kiro-cli`. The file also
 holds what a backend needs to implement the calls: the accepted workflow text,
-the checks that make a text invalid, and the list of diagnostic codes. A client
-follows a run by polling `GET /api/runs/{id}`.
+the checks that make a text invalid, the list of diagnostic codes, how a file
+that is not a plain file is handled, and what a run does stage by stage. A
+client follows a run by polling `GET /api/runs/{id}`.
 
 The contract is the one source of truth for the API. The stub server (a later
 change) and the real backend will both follow it, so a change to the API starts
@@ -77,8 +78,9 @@ does not name are refused.
 - checks that request schemas refuse unknown fields and response schemas do not;
 - validates every example, including the ones inside schemas, against its schema;
 - checks that the examples agree with the rules in the contract: a hash is the
-  SHA-256 of its text, the counts of a check add up, and a run's stages follow
-  its status.
+  SHA-256 of its text, a view lists what its text says, a diagnostic points at
+  the name in its message, the counts of a check add up, and a run's stages
+  follow its status.
 
 CI runs it on each pull request, and `npm test` includes it.
 
