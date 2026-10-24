@@ -15,7 +15,7 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "test:e2e": "playwright test --project=functional",
-    "screenshots": "playwright test --project=screenshots"
+    "screenshots": "playwright test --project=screenshots --reporter=list"
   },
   "dependencies": {
     "@cloudscape-design/components": "3.0.1404",
