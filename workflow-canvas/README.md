@@ -18,7 +18,7 @@ A single `package.json` serves all of the above.
 
 ## Commands
 
-Run from this folder with Node 22 or later:
+Run from this folder with Node 24, 24.15 or later (`.nvmrc` selects it):
 
 ```bash
 npm ci
