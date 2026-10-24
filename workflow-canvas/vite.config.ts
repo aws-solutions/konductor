@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
-import {
-  DEV_PAGE_PORT,
-  LOOPBACK,
-  originOf,
-  stubPort,
-} from './stub-api/address.ts';
+import { DEV_PAGE_PORT, LOOPBACK } from './stub-api/address.ts';
+import { apiTargetOrExit } from './stub-api/target.ts';
 
-const stubOrigin = originOf(stubPort());
+// The page always calls the relative `/api`. Only this target changes: the
+// stub by default, or the server named by `WC_API_TARGET`.
+const { origin: apiOrigin } = apiTargetOrExit();
 
 export default defineConfig({
   plugins: [react()],
@@ -18,13 +16,13 @@ export default defineConfig({
     host: LOOPBACK,
     port: DEV_PAGE_PORT,
     strictPort: true,
-    // The page and the stub API share one origin in the browser. The stub
-    // accepts only its own `Origin`, so the proxy sends that one.
+    // The page and the API share one origin in the browser. The server
+    // accepts only its own `Origin`, so the proxy sends the target's.
     proxy: {
       '/api': {
-        target: stubOrigin,
+        target: apiOrigin,
         changeOrigin: true,
-        headers: { Origin: stubOrigin },
+        headers: { Origin: apiOrigin },
       },
     },
   },
