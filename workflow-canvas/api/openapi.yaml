@@ -281,6 +281,8 @@ paths:
                 code: invalid_code
         '403':
           $ref: '#/components/responses/Forbidden'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
         '413':
           $ref: '#/components/responses/TooLarge'
   /api/workflow:
@@ -355,6 +357,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
         '404':
           headers:
             X-Konductor-Api:
@@ -471,6 +475,8 @@ paths:
                   value:
                     error: The Origin header does not match this server.
                     code: forbidden_origin
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
         '404':
           $ref: '#/components/responses/NotRegularFile'
         '409':
@@ -732,6 +738,8 @@ paths:
               examples:
                 readOnly:
                   $ref: '#/components/examples/ReadOnlyError'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
         '413':
           $ref: '#/components/responses/TooLarge'
         '500':
@@ -774,6 +782,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
         '404':
           headers:
             X-Konductor-Api:
@@ -921,6 +931,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
         '404':
           headers:
             X-Konductor-Api:
@@ -947,7 +959,26 @@ components:
       schema:
         type: string
         const: '1'
+    Allow:
+      description: The methods the path accepts, separated by commas.
+      schema:
+        type: string
+      example: GET, PUT
   responses:
+    MethodNotAllowed:
+      headers:
+        X-Konductor-Api:
+          $ref: '#/components/headers/XKonductorApi'
+        Allow:
+          $ref: '#/components/headers/Allow'
+      description: The path exists, but not for this method. `Allow` lists the methods it does accept.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: This path does not accept that method.
+            code: method_not_allowed
     Unauthorized:
       headers:
         X-Konductor-Api:
