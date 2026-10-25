@@ -1,0 +1,118 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+"""Check that cli/gate-config/sop-orchestration.yml, the SOP marker lines
+and agent-sops/*.sop.md agree.
+
+Usage: check-sop-orchestration.py [repo-root]
+
+Exit 0 and print nothing when they agree. Exit 1 and print one
+`<code>: <detail>` line per violation to stderr when they do not.
+Exit 64 on a bad invocation.
+"""
+import sys
+from pathlib import Path
+
+MAP_PATH = Path("cli/gate-config/sop-orchestration.yml")
+SOP_DIR = Path("agent-sops")
+SOP_SUFFIX = ".sop.md"
+GATE_KINDS = {"approval", "check-threshold", "loop-exit"}
+TOP_LEVEL_KEYS = {"version", "marker", "gated", "not_gated"}
+EX_USAGE = 64
+
+
+def first_overview_line(text):
+    """Return the first non-blank line after `## Overview`, or None."""
+    in_overview = False
+    for line in text.splitlines():
+        if in_overview and line.strip():
+            return line.strip()
+        if line.strip() == "## Overview":
+            in_overview = True
+    return None
+
+
+def check_map_shape(data):
+    errors = []
+    for key in sorted(TOP_LEVEL_KEYS - data.keys()):
+        errors.append(f"bad-entry: missing top-level key '{key}'")
+    for key in sorted(data.keys() - TOP_LEVEL_KEYS):
+        errors.append(f"bad-entry: unknown top-level key '{key}'")
+    marker = data.get("marker")
+    if "marker" in data and not (isinstance(marker, str) and marker.strip()):
+        errors.append("bad-entry: 'marker' must be a non-empty string")
+    for section in ("gated", "not_gated"):
+        if section in data and not isinstance(data[section], dict):
+            errors.append(f"bad-entry: '{section}' must be a mapping of SOP names")
+    for name, entry in (data.get("gated") or {}).items():
+        gates = entry.get("gates") if isinstance(entry, dict) else None
+        basis = entry.get("basis") if isinstance(entry, dict) else None
+        if not (isinstance(gates, list) and gates and set(gates) <= GATE_KINDS):
+            errors.append(
+                f"bad-entry: gated '{name}' needs a non-empty 'gates' list of "
+                f"{', '.join(sorted(GATE_KINDS))}"
+            )
+        if not (isinstance(basis, str) and basis.strip()):
+            errors.append(f"bad-entry: gated '{name}' needs a non-empty 'basis'")
+    for name, basis in (data.get("not_gated") or {}).items():
+        if not (isinstance(basis, str) and basis.strip()):
+            errors.append(f"bad-entry: not_gated '{name}' needs a non-empty basis string")
+    return errors
+
+
+def check_agreement(root, gated, not_gated, marker):
+    errors = []
+    sop_files = {p.name[: -len(SOP_SUFFIX)]: p for p in (root / SOP_DIR).glob("*" + SOP_SUFFIX)}
+    for name in sorted(gated.keys() & not_gated.keys()):
+        errors.append(f"listed-twice: '{name}' is in both gated and not_gated")
+    for name in sorted(sop_files.keys() - gated.keys() - not_gated.keys()):
+        errors.append(f"unlisted-sop: {SOP_DIR / (name + SOP_SUFFIX)} is in neither gated nor not_gated")
+    for name in sorted((gated.keys() | not_gated.keys()) - sop_files.keys()):
+        errors.append(f"missing-sop-file: '{name}' is listed but {SOP_DIR / (name + SOP_SUFFIX)} does not exist")
+    for name in sorted(sop_files.keys() & gated.keys()):
+        text = sop_files[name].read_text(encoding="utf-8")
+        if first_overview_line(text) != marker:
+            errors.append(f"missing-marker: gated '{name}' must open its Overview with '{marker}'")
+        if text.count(marker) > 1:
+            errors.append(f"unexpected-marker: gated '{name}' has the marker more than once")
+    for name in sorted(sop_files.keys() & not_gated.keys()):
+        if marker in sop_files[name].read_text(encoding="utf-8"):
+            errors.append(f"unexpected-marker: not_gated '{name}' contains '{marker}'")
+    return errors
+
+
+def check(root):
+    try:
+        import yaml
+    except ImportError:
+        return ["setup: PyYAML is required (python3 -m pip install pyyaml)"]
+    map_file = root / MAP_PATH
+    if not map_file.is_file():
+        return [f"bad-entry: {MAP_PATH} does not exist"]
+    data = yaml.safe_load(map_file.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        return [f"bad-entry: {MAP_PATH} must be a mapping"]
+    errors = check_map_shape(data)
+    gated = data.get("gated") if isinstance(data.get("gated"), dict) else {}
+    not_gated = data.get("not_gated") if isinstance(data.get("not_gated"), dict) else {}
+    marker = data.get("marker")
+    if isinstance(marker, str) and marker.strip():
+        errors += check_agreement(root, gated, not_gated, marker.strip())
+    return errors
+
+
+def main(argv):
+    if len(argv) > 2 or (len(argv) == 2 and argv[1].startswith("-")):
+        print("usage: check-sop-orchestration.py [repo-root]", file=sys.stderr)
+        return EX_USAGE
+    root = Path(argv[1]) if len(argv) == 2 else Path(".")
+    if not root.is_dir():
+        print(f"usage: repo root '{root}' is not a directory", file=sys.stderr)
+        return EX_USAGE
+    errors = check(root)
+    for error in errors:
+        print(error, file=sys.stderr)
+    return 1 if errors else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

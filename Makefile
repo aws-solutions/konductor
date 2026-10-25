@@ -74,7 +74,8 @@
 
 .PHONY: all build fmt lint install link synth claude-plugin claude-plugin-check \
         test test-rust test-schema-dump test-py test-skills-sh clean help \
-        guide guide-check guide-sync guide-html guide-record kiro-power-check
+        guide guide-check guide-sync guide-html guide-record kiro-power-check \
+        sop-orchestration-check
 
 all: build
 
@@ -97,6 +98,7 @@ help:
 	@echo "  make test-schema-dump   Smoke-check __dump_schema (cli only)"
 	@echo "  make test-py            Run the pytest suite under tests/"
 	@echo "  make test-skills-sh     Run every tests/skills/*/*.sh regression test"
+	@echo "  make sop-orchestration-check  Check the gated SOP list against agent-sops/"
 	@echo "  make clean              Remove build artifacts in cli/, mcp/, and shared/"
 	@echo ""
 	@echo "  Konductor Kiro Power (powers/konductor/, imported by users directly from main)"
@@ -327,6 +329,11 @@ kiro-power-check:
 	else \
 		echo "=== [kiro-power-check] All checks passed ==="; \
 	fi
+
+# ── sop-orchestration-check ───────────────────────────────────────────────────
+# Needs python3 and PyYAML.
+sop-orchestration-check:
+	python3 scripts/check-sop-orchestration.py .
 
 # ── user guide ────────────────────────────────────────────────────────────────
 # The guide is authored, not compiled, so these keep the FACTS in step with the

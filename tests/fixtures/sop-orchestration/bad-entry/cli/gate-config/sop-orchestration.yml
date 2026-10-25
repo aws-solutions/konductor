@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+version: 1
+marker: 'Orchestration: strict (phase-gated SOP)'
+gated:
+  alpha-gated:
+    gates: [vibes]
+    basis: Step 1 output needs approval before Step 2.
+not_gated:
+  beta-plain: No stop rule between steps.

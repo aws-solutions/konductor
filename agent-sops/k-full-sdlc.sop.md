@@ -2,6 +2,8 @@
 
 ## Overview
 
+Orchestration: strict (phase-gated SOP)
+
 This SOP takes a project or feature through the full lifecycle: codebase analysis, requirements, design, principal engineer review, feature splitting, per-feature specs, implementation, code review, test coverage, and documentation. Each phase delegates to an existing SOP where one covers the work, or spawns a specialist agent where none does. Every phase is skippable and gated.
 
 Invoked when the engineer asks to build something end to end (e.g., "Build X", "Take Y from requirements through tests"). For a single phase, run that phase's SOP directly.
