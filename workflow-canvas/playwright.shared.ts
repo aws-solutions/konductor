@@ -42,6 +42,8 @@ export const stableRendering: NonNullable<Project['use']> = {
 /** Settings shared by the functional run and the screenshot capture. */
 export const sharedConfig: PlaywrightTestConfig = {
   outputDir: 'test-results',
+  // Opens the session that the tests share, once the servers are up.
+  globalSetup: './e2e/global-setup.ts',
   forbidOnly: Boolean(process.env.CI),
   // A flaky test must fail the run, not pass on a retry.
   retries: 0,
