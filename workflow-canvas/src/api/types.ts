@@ -6,6 +6,7 @@ export interface Session {
   token: string;
   root: string;
   harness: string;
+  /** The major version of the API. */
   apiVersion: number;
 }
 
@@ -25,7 +26,8 @@ export interface WorkflowView {
 /** A problem the server found in the workflow text. */
 export interface DiagnosticView {
   message: string;
-  line: number;
+  /** The line in the text, counted from 1; `undefined` when the reply has none. */
+  line: number | undefined;
 }
 
 /** What `GET /api/workflow` returns. */
