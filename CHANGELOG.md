@@ -55,6 +55,15 @@ not per individual commit.
   `GET /api/workflow`, and shows loading, error and empty states. The graph is built by an IO-free
   core, tested like the stub core, and the end-to-end tests and screenshots now cover the canvas
   on the stub.
+- The workflow canvas page now has the look of the Konductor docs theme: its colours, the Outfit
+  and JetBrains Mono fonts (bundled with the page, so no font is requested from another site),
+  and its corner radii, applied through the public Cloudscape theming API. A top bar with the K
+  logo, the page name and a light/dark toggle sits above a dark header band with the breadcrumb
+  `Workflows > hello`, the title and the Designer and Execution tabs. The mode follows the system
+  setting on the first visit, and a choice made with the toggle is kept in local storage. Nodes,
+  the `S` run-order ports and the links are drawn in the same theme in both modes. Text meets
+  WCAG AA in both modes, checked by unit tests and by axe in the end-to-end tests. A dark-mode
+  Designer screenshot joins the committed screenshots.
 
 ### Changed
 
