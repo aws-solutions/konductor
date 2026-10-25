@@ -102,3 +102,10 @@ export async function loadWorkflow(
     ? failure(NO_LAUNCH_CODE)
     : resume(api, kept, memory);
 }
+
+/** The name of the workflow that a load drew, or `undefined` if none is open. */
+export function openWorkflowName(
+  result: LoadResult | undefined,
+): string | undefined {
+  return result?.ok ? result.workflow.document.view?.name : undefined;
+}
