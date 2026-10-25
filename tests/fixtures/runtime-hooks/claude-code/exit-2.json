@@ -1,0 +1,112 @@
+{
+  "runtime": "claude-code",
+  "runtime_version": "2.1.308",
+  "engine": "n/a",
+  "model": "claude-opus-5",
+  "date": "2026-10-25",
+  "experiment": "exit-2",
+  "prompt": "Read probe.txt and reply with its first line only.",
+  "answer": "A PreToolUse hook blocked reading that file:\n\n```\nhook-probe: blocked (exit 2)\n```\n\nThe block comes from `hook-probe/hook_probe.py` configured as a PreToolUse hook on Read, so I can't read `probe.txt`...<truncated>",
+  "observed": {
+    "event_order": [
+      "SessionStart",
+      "UserPromptSubmit",
+      "PreToolUse",
+      "Stop"
+    ],
+    "pre_tool_events": 1,
+    "post_tool_events": 0,
+    "sentinel_in_answer": false,
+    "sentinel_in_stdout": false,
+    "block_message_in_stdout": true,
+    "block_message_in_stderr": false,
+    "block_message_in_answer": true,
+    "tool_call_blocked": "yes",
+    "failed_tool_results": [
+      "PreToolUse:Read hook error: [python3 <SANDBOX>/hook-probe/hook_probe.py exit2 PreToolUse]: hook-probe: blocked (exit 2)\n"
+    ]
+  },
+  "hook_env_keys": [
+    "CLAUDE_CODE_CHILD_SESSION",
+    "CLAUDE_CODE_ENTRYPOINT",
+    "CLAUDE_CODE_MESSAGING_SOCKET",
+    "CLAUDE_CODE_MESSAGING_TOKEN",
+    "CLAUDE_CODE_SESSION_ATTENDED",
+    "CLAUDE_CODE_SESSION_ID",
+    "CLAUDE_CODE_USE_BEDROCK",
+    "CLAUDE_CONFIG_DIR",
+    "CLAUDE_EFFORT",
+    "CLAUDE_ENV_FILE",
+    "CLAUDE_PID",
+    "CLAUDE_PROJECT_DIR"
+  ],
+  "events": [
+    {
+      "label": "SessionStart",
+      "mode": "log",
+      "payload": {
+        "cwd": "<SANDBOX>/project",
+        "hook_event_name": "SessionStart",
+        "session_id": "<SESSION_ID>",
+        "source": "startup",
+        "transcript_path": "<TRANSCRIPT_PATH>"
+      },
+      "seq": 1
+    },
+    {
+      "label": "UserPromptSubmit",
+      "mode": "log",
+      "payload": {
+        "cwd": "<SANDBOX>/project",
+        "hook_event_name": "UserPromptSubmit",
+        "permission_mode": "bypassPermissions",
+        "prompt": "Read probe.txt and reply with its first line only.",
+        "prompt_id": "<PROMPT_ID>",
+        "session_id": "<SESSION_ID>",
+        "transcript_path": "<TRANSCRIPT_PATH>"
+      },
+      "seq": 2
+    },
+    {
+      "label": "PreToolUse",
+      "mode": "exit2",
+      "payload": {
+        "cwd": "<SANDBOX>/project",
+        "effort": {
+          "level": "high"
+        },
+        "hook_event_name": "PreToolUse",
+        "permission_mode": "bypassPermissions",
+        "prompt_id": "<PROMPT_ID>",
+        "session_id": "<SESSION_ID>",
+        "tool_input": {
+          "file_path": "<SANDBOX>/project/probe.txt"
+        },
+        "tool_name": "Read",
+        "tool_use_id": "<TOOL_USE_ID>",
+        "transcript_path": "<TRANSCRIPT_PATH>"
+      },
+      "seq": 3
+    },
+    {
+      "label": "Stop",
+      "mode": "log",
+      "payload": {
+        "background_tasks": [],
+        "cwd": "<SANDBOX>/project",
+        "effort": {
+          "level": "high"
+        },
+        "hook_event_name": "Stop",
+        "last_assistant_message": "A PreToolUse hook blocked reading that file:\n\n```\nhook-probe: blocked (exit 2)\n```\n\nThe block comes from `hook-probe/hook_probe.py` configured as a PreToolUse hook on Read, so I can't read `probe.txt` and don't want to route around a block you've configured. If that hook isn't meant to fire here, adjust or disable it and I'll retry - or tell me explicitly to read the file another way.",
+        "permission_mode": "bypassPermissions",
+        "prompt_id": "<PROMPT_ID>",
+        "session_crons": [],
+        "session_id": "<SESSION_ID>",
+        "stop_hook_active": false,
+        "transcript_path": "<TRANSCRIPT_PATH>"
+      },
+      "seq": 4
+    }
+  ]
+}

@@ -1,0 +1,82 @@
+{
+  "runtime": "kiro-cli-v2",
+  "runtime_version": "2.34.0",
+  "engine": "v2",
+  "model": "auto",
+  "date": "2026-10-25",
+  "experiment": "exit-2",
+  "prompt": "Read probe.txt and reply with its first line only.",
+  "answer": "The file couldn't be read - a hook blocked the operation (hook-probe: blocked, exit 2). I'm unable to access probe.txt to retrieve its first line.",
+  "observed": {
+    "event_order": [
+      "userPromptSubmit",
+      "preToolUse",
+      "stop"
+    ],
+    "pre_tool_events": 1,
+    "post_tool_events": 0,
+    "sentinel_in_answer": false,
+    "sentinel_in_stdout": false,
+    "block_message_in_stdout": true,
+    "block_message_in_stderr": false,
+    "block_message_in_answer": true,
+    "tool_call_blocked": "yes",
+    "failed_tool_results": []
+  },
+  "hook_env_keys": [
+    "KIRO_CLI_ACP_CLIENT_NAME",
+    "KIRO_CLI_IS_CHILD_PROCESS",
+    "KIRO_CLI_PATH",
+    "KIRO_HOME",
+    "KIRO_SESSION_ID"
+  ],
+  "events": [
+    {
+      "label": "userPromptSubmit",
+      "mode": "log",
+      "payload": {
+        "cwd": "<SANDBOX>/project",
+        "hook_event_name": "userPromptSubmit",
+        "prompt": "Read probe.txt and reply with its first line only.",
+        "session_id": "<SESSION_ID>"
+      },
+      "seq": 1
+    },
+    {
+      "label": "preToolUse",
+      "mode": "exit2",
+      "payload": {
+        "cwd": "<SANDBOX>/project",
+        "hook_event_name": "preToolUse",
+        "session_id": "<SESSION_ID>",
+        "tool_input": {
+          "__tool_use_purpose": "Read probe.txt to get its first line.",
+          "operations": [
+            {
+              "limit": 1,
+              "mode": "Line",
+              "path": "probe.txt"
+            }
+          ]
+        },
+        "tool_name": "read",
+        "tool_tags": [
+          "read",
+          "@builtin"
+        ]
+      },
+      "seq": 2
+    },
+    {
+      "label": "stop",
+      "mode": "log",
+      "payload": {
+        "assistant_response": "The file couldn't be read - a hook blocked the operation (hook-probe: blocked, exit 2). I'm unable to access probe.txt to retrieve its first line.",
+        "cwd": "<SANDBOX>/project",
+        "hook_event_name": "stop",
+        "session_id": "<SESSION_ID>"
+      },
+      "seq": 3
+    }
+  ]
+}

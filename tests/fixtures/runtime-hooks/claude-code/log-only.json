@@ -1,0 +1,143 @@
+{
+  "runtime": "claude-code",
+  "runtime_version": "2.1.308",
+  "engine": "n/a",
+  "model": "claude-opus-5",
+  "date": "2026-10-25",
+  "experiment": "log-only",
+  "prompt": "Read probe.txt and reply with its first line only.",
+  "answer": "SENTINEL-7Q4",
+  "observed": {
+    "event_order": [
+      "SessionStart",
+      "UserPromptSubmit",
+      "PreToolUse",
+      "PostToolUse",
+      "Stop"
+    ],
+    "pre_tool_events": 1,
+    "post_tool_events": 1,
+    "sentinel_in_answer": true,
+    "sentinel_in_stdout": true,
+    "block_message_in_stdout": false,
+    "block_message_in_stderr": false,
+    "block_message_in_answer": false,
+    "tool_call_blocked": "no",
+    "failed_tool_results": []
+  },
+  "hook_env_keys": [
+    "CLAUDE_CODE_CHILD_SESSION",
+    "CLAUDE_CODE_ENTRYPOINT",
+    "CLAUDE_CODE_MESSAGING_SOCKET",
+    "CLAUDE_CODE_MESSAGING_TOKEN",
+    "CLAUDE_CODE_SESSION_ATTENDED",
+    "CLAUDE_CODE_SESSION_ID",
+    "CLAUDE_CODE_USE_BEDROCK",
+    "CLAUDE_CONFIG_DIR",
+    "CLAUDE_EFFORT",
+    "CLAUDE_ENV_FILE",
+    "CLAUDE_PID",
+    "CLAUDE_PROJECT_DIR"
+  ],
+  "events": [
+    {
+      "label": "SessionStart",
+      "mode": "log",
+      "payload": {
+        "cwd": "<SANDBOX>/project",
+        "hook_event_name": "SessionStart",
+        "session_id": "<SESSION_ID>",
+        "source": "startup",
+        "transcript_path": "<TRANSCRIPT_PATH>"
+      },
+      "seq": 1
+    },
+    {
+      "label": "UserPromptSubmit",
+      "mode": "log",
+      "payload": {
+        "cwd": "<SANDBOX>/project",
+        "hook_event_name": "UserPromptSubmit",
+        "permission_mode": "bypassPermissions",
+        "prompt": "Read probe.txt and reply with its first line only.",
+        "prompt_id": "<PROMPT_ID>",
+        "session_id": "<SESSION_ID>",
+        "transcript_path": "<TRANSCRIPT_PATH>"
+      },
+      "seq": 2
+    },
+    {
+      "label": "PreToolUse",
+      "mode": "log",
+      "payload": {
+        "cwd": "<SANDBOX>/project",
+        "effort": {
+          "level": "high"
+        },
+        "hook_event_name": "PreToolUse",
+        "permission_mode": "bypassPermissions",
+        "prompt_id": "<PROMPT_ID>",
+        "session_id": "<SESSION_ID>",
+        "tool_input": {
+          "file_path": "<SANDBOX>/project/probe.txt"
+        },
+        "tool_name": "Read",
+        "tool_use_id": "<TOOL_USE_ID>",
+        "transcript_path": "<TRANSCRIPT_PATH>"
+      },
+      "seq": 3
+    },
+    {
+      "label": "PostToolUse",
+      "mode": "log",
+      "payload": {
+        "cwd": "<SANDBOX>/project",
+        "duration_ms": 1,
+        "effort": {
+          "level": "high"
+        },
+        "hook_event_name": "PostToolUse",
+        "permission_mode": "bypassPermissions",
+        "prompt_id": "<PROMPT_ID>",
+        "session_id": "<SESSION_ID>",
+        "tool_input": {
+          "file_path": "<SANDBOX>/project/probe.txt"
+        },
+        "tool_name": "Read",
+        "tool_response": {
+          "file": {
+            "content": "SENTINEL-7Q4\nsecond line\n",
+            "filePath": "<SANDBOX>/project/probe.txt",
+            "numLines": 3,
+            "startLine": 1,
+            "totalLines": 3
+          },
+          "type": "text"
+        },
+        "tool_use_id": "<TOOL_USE_ID>",
+        "transcript_path": "<TRANSCRIPT_PATH>"
+      },
+      "seq": 4
+    },
+    {
+      "label": "Stop",
+      "mode": "log",
+      "payload": {
+        "background_tasks": [],
+        "cwd": "<SANDBOX>/project",
+        "effort": {
+          "level": "high"
+        },
+        "hook_event_name": "Stop",
+        "last_assistant_message": "SENTINEL-7Q4",
+        "permission_mode": "bypassPermissions",
+        "prompt_id": "<PROMPT_ID>",
+        "session_crons": [],
+        "session_id": "<SESSION_ID>",
+        "stop_hook_active": false,
+        "transcript_path": "<TRANSCRIPT_PATH>"
+      },
+      "seq": 5
+    }
+  ]
+}

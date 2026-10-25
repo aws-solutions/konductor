@@ -1,0 +1,124 @@
+{
+  "runtime": "kiro-cli-v2",
+  "runtime_version": "2.34.0",
+  "engine": "v2",
+  "model": "auto",
+  "date": "2026-10-25",
+  "experiment": "ordering",
+  "prompt": "Read probe.txt, then read other.txt, then reply DONE.",
+  "answer": "I'll read both files.DONE",
+  "observed": {
+    "event_order": [
+      "userPromptSubmit",
+      "preToolUse",
+      "postToolUse",
+      "stop"
+    ],
+    "pre_tool_events": 1,
+    "post_tool_events": 1,
+    "sentinel_in_answer": false,
+    "sentinel_in_stdout": false,
+    "block_message_in_stdout": false,
+    "block_message_in_stderr": false,
+    "block_message_in_answer": false,
+    "tool_call_blocked": "not-tested",
+    "failed_tool_results": []
+  },
+  "hook_env_keys": [
+    "KIRO_CLI_ACP_CLIENT_NAME",
+    "KIRO_CLI_IS_CHILD_PROCESS",
+    "KIRO_CLI_PATH",
+    "KIRO_HOME",
+    "KIRO_SESSION_ID"
+  ],
+  "events": [
+    {
+      "label": "userPromptSubmit",
+      "mode": "log",
+      "payload": {
+        "cwd": "<SANDBOX>/project",
+        "hook_event_name": "userPromptSubmit",
+        "prompt": "Read probe.txt, then read other.txt, then reply DONE.",
+        "session_id": "<SESSION_ID>"
+      },
+      "seq": 1
+    },
+    {
+      "label": "preToolUse",
+      "mode": "log",
+      "payload": {
+        "cwd": "<SANDBOX>/project",
+        "hook_event_name": "preToolUse",
+        "session_id": "<SESSION_ID>",
+        "tool_input": {
+          "__tool_use_purpose": "Reading the two requested files.",
+          "operations": [
+            {
+              "mode": "Line",
+              "path": "probe.txt"
+            },
+            {
+              "mode": "Line",
+              "path": "other.txt"
+            }
+          ]
+        },
+        "tool_name": "read",
+        "tool_tags": [
+          "read",
+          "@builtin"
+        ]
+      },
+      "seq": 2
+    },
+    {
+      "label": "postToolUse",
+      "mode": "log",
+      "payload": {
+        "cwd": "<SANDBOX>/project",
+        "hook_event_name": "postToolUse",
+        "session_id": "<SESSION_ID>",
+        "tool_input": {
+          "__tool_use_purpose": "Reading the two requested files.",
+          "operations": [
+            {
+              "mode": "Line",
+              "path": "probe.txt"
+            },
+            {
+              "mode": "Line",
+              "path": "other.txt"
+            }
+          ]
+        },
+        "tool_name": "read",
+        "tool_response": {
+          "items": [
+            {
+              "Text": "SENTINEL-7Q4\nsecond line"
+            },
+            {
+              "Text": "OTHER-3K8"
+            }
+          ]
+        },
+        "tool_tags": [
+          "read",
+          "@builtin"
+        ]
+      },
+      "seq": 3
+    },
+    {
+      "label": "stop",
+      "mode": "log",
+      "payload": {
+        "assistant_response": "DONE",
+        "cwd": "<SANDBOX>/project",
+        "hook_event_name": "stop",
+        "session_id": "<SESSION_ID>"
+      },
+      "seq": 4
+    }
+  ]
+}

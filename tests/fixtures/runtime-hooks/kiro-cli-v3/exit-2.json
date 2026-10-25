@@ -1,0 +1,87 @@
+{
+  "runtime": "kiro-cli-v3",
+  "runtime_version": "2.34.0",
+  "engine": "v3",
+  "model": "auto",
+  "date": "2026-10-25",
+  "experiment": "exit-2",
+  "prompt": "Read probe.txt and reply with its first line only.",
+  "answer": "I couldn't read probe.txt. A PreToolUse hook (\"hook-probe\") blocked the read and exited with code 2, which means the action is denied. I didn't retry or try another way around it, since that would byp...<truncated>",
+  "observed": {
+    "event_order": [
+      "SessionStart",
+      "UserPromptSubmit",
+      "PreToolUse",
+      "Stop"
+    ],
+    "pre_tool_events": 1,
+    "post_tool_events": 0,
+    "sentinel_in_answer": false,
+    "sentinel_in_stdout": false,
+    "block_message_in_stdout": false,
+    "block_message_in_stderr": false,
+    "block_message_in_answer": false,
+    "tool_call_blocked": "yes",
+    "failed_tool_results": [
+      "{\"status\": \"failed\", \"content\": null}"
+    ]
+  },
+  "hook_env_keys": [
+    "<OTHER_ENV_KEY>",
+    "KIRO_CLI_PATH",
+    "KIRO_CONTENT_COLLECTION_ENABLED",
+    "KIRO_CUSTOM_USER_AGENT",
+    "KIRO_HOME",
+    "KIRO_REMOTE_SESSIONS_ENDPOINT",
+    "KIRO_SESSION_ID"
+  ],
+  "events": [
+    {
+      "label": "SessionStart",
+      "mode": "log",
+      "payload": {
+        "cwd": "<SANDBOX>/project",
+        "hook_event_name": "SessionStart",
+        "session_id": "<SESSION_ID>"
+      },
+      "seq": 1
+    },
+    {
+      "label": "UserPromptSubmit",
+      "mode": "log",
+      "payload": {
+        "cwd": "<SANDBOX>/project",
+        "hook_event_name": "UserPromptSubmit",
+        "prompt": "Read probe.txt and reply with its first line only.",
+        "session_id": "<SESSION_ID>"
+      },
+      "seq": 2
+    },
+    {
+      "label": "PreToolUse",
+      "mode": "exit2",
+      "payload": {
+        "cwd": "<SANDBOX>/project",
+        "hook_event_name": "PreToolUse",
+        "session_id": "<SESSION_ID>",
+        "tool_input": {
+          "limit": 1,
+          "offset": null,
+          "path": "<SANDBOX>/project/probe.txt"
+        },
+        "tool_name": "read_file"
+      },
+      "seq": 3
+    },
+    {
+      "label": "Stop",
+      "mode": "log",
+      "payload": {
+        "cwd": "<SANDBOX>/project",
+        "hook_event_name": "Stop",
+        "session_id": "<SESSION_ID>"
+      },
+      "seq": 4
+    }
+  ]
+}

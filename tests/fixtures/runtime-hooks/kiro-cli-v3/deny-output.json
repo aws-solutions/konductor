@@ -1,0 +1,103 @@
+{
+  "runtime": "kiro-cli-v3",
+  "runtime_version": "2.34.0",
+  "engine": "v3",
+  "model": "auto",
+  "date": "2026-10-25",
+  "experiment": "deny-output",
+  "prompt": "Read probe.txt and reply with its first line only.",
+  "answer": "SENTINEL-7Q4",
+  "observed": {
+    "event_order": [
+      "SessionStart",
+      "UserPromptSubmit",
+      "PreToolUse",
+      "PostToolUse",
+      "Stop"
+    ],
+    "pre_tool_events": 1,
+    "post_tool_events": 1,
+    "sentinel_in_answer": true,
+    "sentinel_in_stdout": true,
+    "block_message_in_stdout": false,
+    "block_message_in_stderr": false,
+    "block_message_in_answer": false,
+    "tool_call_blocked": "no",
+    "failed_tool_results": []
+  },
+  "hook_env_keys": [
+    "<OTHER_ENV_KEY>",
+    "KIRO_CLI_PATH",
+    "KIRO_CONTENT_COLLECTION_ENABLED",
+    "KIRO_CUSTOM_USER_AGENT",
+    "KIRO_HOME",
+    "KIRO_REMOTE_SESSIONS_ENDPOINT",
+    "KIRO_SESSION_ID"
+  ],
+  "events": [
+    {
+      "label": "SessionStart",
+      "mode": "log",
+      "payload": {
+        "cwd": "<SANDBOX>/project",
+        "hook_event_name": "SessionStart",
+        "session_id": "<SESSION_ID>"
+      },
+      "seq": 1
+    },
+    {
+      "label": "UserPromptSubmit",
+      "mode": "log",
+      "payload": {
+        "cwd": "<SANDBOX>/project",
+        "hook_event_name": "UserPromptSubmit",
+        "prompt": "Read probe.txt and reply with its first line only.",
+        "session_id": "<SESSION_ID>"
+      },
+      "seq": 2
+    },
+    {
+      "label": "PreToolUse",
+      "mode": "deny",
+      "payload": {
+        "cwd": "<SANDBOX>/project",
+        "hook_event_name": "PreToolUse",
+        "session_id": "<SESSION_ID>",
+        "tool_input": {
+          "limit": 1,
+          "offset": null,
+          "path": "<SANDBOX>/project/probe.txt"
+        },
+        "tool_name": "read_file"
+      },
+      "seq": 3
+    },
+    {
+      "label": "PostToolUse",
+      "mode": "log",
+      "payload": {
+        "cwd": "<SANDBOX>/project",
+        "hook_event_name": "PostToolUse",
+        "session_id": "<SESSION_ID>",
+        "tool_input": {
+          "limit": 1,
+          "offset": null,
+          "path": "<SANDBOX>/project/probe.txt"
+        },
+        "tool_name": "read_file",
+        "tool_response": "<file name=\"<SANDBOX>/project/probe.txt\" language=\"plaintext\" >\n<content>\nSENTINEL-7Q4\n</content>\n</file>\nNote: To continue, use offset 1."
+      },
+      "seq": 4
+    },
+    {
+      "label": "Stop",
+      "mode": "log",
+      "payload": {
+        "cwd": "<SANDBOX>/project",
+        "hook_event_name": "Stop",
+        "session_id": "<SESSION_ID>"
+      },
+      "seq": 5
+    }
+  ]
+}
