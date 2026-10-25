@@ -50,6 +50,27 @@ describe('buildGraph', () => {
     ]);
   });
 
+  it('names each node for a screen reader', () => {
+    const { nodes } = buildGraph(HELLO, 'kiro-cli');
+
+    expect(nodes.map((node) => node.ariaLabel)).toEqual([
+      'Intent: Add a greeting to the README',
+      'Stage draft, agent k-developer, harness kiro-cli',
+      'Stage review, agent k-quality-assurance, harness kiro-cli',
+      'End',
+    ]);
+  });
+
+  it('names each edge by the nodes it joins, not by their ids', () => {
+    const { edges } = buildGraph(HELLO, 'kiro-cli');
+
+    expect(edges.map((edge) => edge.ariaLabel)).toEqual([
+      'Run order from intent to stage draft',
+      'Run order from stage draft to stage review',
+      'Run order from stage review to end',
+    ]);
+  });
+
   it('joins each node to the next with an edge, in list order', () => {
     const { edges } = buildGraph(HELLO, 'kiro-cli');
 

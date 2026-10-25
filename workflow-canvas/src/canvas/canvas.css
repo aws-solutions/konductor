@@ -4,6 +4,8 @@
 .wf-canvas {
   --wf-canvas-bg: #f5f3ee;
   --wf-canvas-dots: #c9c1b3;
+  --wf-edge: #5f6b7a;
+  --wf-focus: #0b57d0;
   --wf-node-bg: #ffffff;
   --wf-node-border: #7a7490;
   --wf-text: #16131f;
@@ -12,9 +14,15 @@
   --wf-port-text: #ffffff;
   --wf-port-ring: #16131f;
 
-  height: 560px;
   border-radius: 12px;
   background: var(--wf-canvas-bg);
+}
+
+/* The ring that shows which node the keyboard is on. */
+.wf-canvas .react-flow__node:focus-visible {
+  border-radius: 12px;
+  outline: 3px solid var(--wf-focus);
+  outline-offset: 3px;
 }
 
 .wf-node {

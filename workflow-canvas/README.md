@@ -214,7 +214,11 @@ The rest wraps the core, so the rules can be tested without a browser:
   with errors, with their messages), or the canvas.
 - `canvas/` draws the graph with [React Flow](https://reactflow.dev)
   (`@xyflow/react`). Nodes cannot be moved, selected or connected; the view
-  can be panned, and zoomed with the controls.
+  can be panned, and zoomed with the controls. Each node can be reached with
+  the Tab key and has a name for screen readers. The view starts zoomed out
+  far enough to show the longest workflow the API allows (40 stages), where the
+  text is small; zoom in with the controls, or Tab to a node to bring it into
+  view.
 
 ## End-to-end tests
 
@@ -251,9 +255,9 @@ the app.
 ## Screenshots
 
 `npm run screenshots` saves a full-page PNG of each tab to
-`e2e/screenshots/`, with the Designer tab drawn from the stub, in the light theme at 1280x800 with animations frozen.
-Pull request descriptions embed these files, so regenerate and commit them
-when the UI changes.
+`e2e/screenshots/`, with the Designer tab drawn from the stub, in the light
+theme at 1280x800 with animations frozen. Pull request descriptions embed these
+files, so regenerate and commit them when the UI changes.
 
 Only that script writes the PNGs. It uses its own config,
 `playwright.screenshots.config.ts`, so `npm run test:e2e`, a bare
