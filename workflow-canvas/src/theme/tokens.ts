@@ -42,11 +42,14 @@ export interface Colors {
   overlay: string;
 }
 
+/** White: light-mode surfaces, text on filled buttons, hovered links on the band. */
+export const WHITE = '#ffffff';
+
 /** Light mode: the paper tones of the konductor docs theme. */
 export const LIGHT: Colors = {
   bg: '#f5f3ee',
-  field: '#ffffff',
-  surface: '#ffffff',
+  field: WHITE,
+  surface: WHITE,
   surfaceAlt: '#faf8f4',
   border: '#e0dad0',
   borderStrong: '#cfc7ba',
@@ -113,8 +116,11 @@ export const BAND = {
   text: '#f5f3ee',
   textMuted: '#c9c2e0',
   link: '#c4b2ff',
-  /** The hairline under the top bar and under the tabs. */
-  divider: '#2a2450',
+  /**
+   * The hairline under the top bar and under the tabs. The band is dark in
+   * both modes, so it takes the hairline of the dark palette.
+   */
+  divider: DARK.border,
 } as const;
 
 /** The font of the page text. Self-hosted by `fonts.ts`. */
@@ -180,9 +186,9 @@ function buttonTokens(): Tokens {
     colorTextButtonNormalDefault: perMode((c) => c.link),
     colorTextButtonNormalHover: perMode((c) => c.linkHover),
     colorTextButtonNormalActive: perMode((c) => c.linkHover),
-    colorTextButtonPrimaryDefault: '#ffffff',
-    colorTextButtonPrimaryHover: '#ffffff',
-    colorTextButtonPrimaryActive: '#ffffff',
+    colorTextButtonPrimaryDefault: WHITE,
+    colorTextButtonPrimaryHover: WHITE,
+    colorTextButtonPrimaryActive: WHITE,
     colorTextButtonInlineIconDefault: perMode((c) => c.link),
     colorTextButtonInlineIconHover: perMode((c) => c.linkHover),
     colorBorderButtonNormalDefault: perMode((c) => c.link),
@@ -274,13 +280,13 @@ function headerBandTokens(): Tokens {
   return {
     colorTextAccent: BAND.link,
     colorTextLinkDefault: BAND.link,
-    colorTextLinkHover: '#ffffff',
+    colorTextLinkHover: WHITE,
     colorTextBodySecondary: BAND.textMuted,
     colorTextBreadcrumbCurrent: BAND.textMuted,
     colorTextBreadcrumbIcon: BAND.textMuted,
     colorTextInteractiveDefault: BAND.textMuted,
-    colorTextInteractiveHover: '#ffffff',
-    colorTextInteractiveActive: '#ffffff',
+    colorTextInteractiveHover: WHITE,
+    colorTextInteractiveActive: WHITE,
     colorBorderItemFocused: BAND.link,
   };
 }
@@ -311,12 +317,19 @@ export const APP_THEME: Theme = {
         colorTextHeadingDefault: BAND.text,
         colorTextTopNavigationTitle: BAND.text,
         colorTextInteractiveDefault: BAND.text,
-        colorTextInteractiveHover: '#ffffff',
+        colorTextInteractiveHover: WHITE,
         colorBorderDividerDefault: BAND.divider,
       },
     },
   },
 };
+
+/**
+ * Where the strip of the page tabs is, for `TAB_STRIP_THEME`: the element
+ * that holds the tab list, found through its role so no library class is
+ * needed. `chrome.css` paints the same element with the band.
+ */
+export const TAB_STRIP_SELECTOR = '.wf-tab-strip :has(> * > [role="tablist"])';
 
 /**
  * The same roles for the strip of the Designer and Execution tabs, which is

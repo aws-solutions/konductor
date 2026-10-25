@@ -5,16 +5,10 @@ import {
   APP_THEME,
   BAND,
   FONT_TEXT,
+  TAB_STRIP_SELECTOR,
   TAB_STRIP_THEME,
   type ThemeMode,
 } from './tokens';
-
-/**
- * Where the strip of the page tabs is, for `TAB_STRIP_THEME`: the element
- * that holds the tab list, found through its role so no library class is
- * needed. `chrome.css` paints the same element with the band.
- */
-export const TAB_STRIP_SELECTOR = '.wf-tab-strip :has(> * > [role="tablist"])';
 
 // The band colours that `chrome.css` reads, as custom properties.
 const BAND_VARIABLES = {

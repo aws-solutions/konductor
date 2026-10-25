@@ -16,12 +16,8 @@
   --wf-node-border: #7a7490;
   --wf-text: #16131f;
   --wf-text-muted: #56516a;
-  --wf-port-rim: #16191f;
   --wf-port-fill: #5f6b7a;
   --wf-port-letter-out: #ffffff;
-  --wf-port-inner: #ffffff;
-  --wf-port-ring: #5f6b7a;
-  --wf-port-letter-in: #414d5c;
   --wf-controls-bg: #ffffff;
   --wf-controls-bg-hover: #efebff;
   --wf-controls-border: #cfc7ba;
@@ -49,12 +45,8 @@
   --wf-controls-bg: #171331;
   --wf-controls-bg-hover: #1f1a44;
   --wf-controls-border: #3a3168;
-  --wf-port-rim: #0b0a12;
   --wf-port-fill: #a39bc0;
   --wf-port-letter-out: #0b0a12;
-  --wf-port-inner: #171331;
-  --wf-port-ring: #a39bc0;
-  --wf-port-letter-in: #f5f3ee;
 }
 
 .wf-canvas .react-flow__attribution a {
@@ -69,13 +61,13 @@
 }
 
 .wf-node {
+  position: relative;
+  /* The outline is drawn behind the content, inside this box. */
+  isolation: isolate;
   box-sizing: border-box;
   width: 100%;
   height: 100%;
-  padding: 10px 12px;
-  border: 2px solid var(--wf-node-border);
-  border-radius: 10px;
-  background: var(--wf-node-bg);
+  padding: 12px 14px;
   color: var(--wf-text);
   font-size: 12px;
   line-height: 1.35;
@@ -87,11 +79,6 @@
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-/* Keeps a long name clear of the run order notch at the top right. */
-.wf-node-stage .wf-node-title {
-  padding-right: 32px;
 }
 
 .wf-node-sub {
@@ -115,94 +102,65 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 22px;
 }
 
 /*
- * A run order port is a piece of a jigsaw: the S out tab hangs below the card,
- * the S in notch is cut into the card at the top, both at the right. They have
- * the same outline, so a tab fits a notch. The outline and the fills are an
- * SVG (see nodes.tsx); the letter is drawn over it.
+ * A run order port is a piece of a jigsaw: the S out knob hangs from the
+ * bottom edge of a card and the S in socket is cut into the top edge, both at
+ * the same place on the right. The card, the knob and the socket are one SVG
+ * (see nodes.tsx and jigsaw.ts); this file only gives them colours.
  */
+.wf-node-shape {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: -1;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.wf-node-body {
+  fill: var(--wf-node-bg);
+  stroke: var(--wf-node-border);
+  stroke-linejoin: round;
+}
+
+/* The socket shows the canvas through the card. */
+.wf-socket {
+  fill: var(--wf-canvas-bg);
+}
+
+.wf-knob {
+  fill: var(--wf-port-fill);
+  stroke: var(--wf-port-fill);
+  stroke-linejoin: round;
+}
+
+.wf-port-letter {
+  /* The pinned page font, not a system family, so the letter looks the same
+     on every machine. */
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.wf-port-letter-knob {
+  fill: var(--wf-port-letter-out);
+}
+
+.wf-port-letter-socket {
+  fill: var(--wf-text-muted);
+}
+
+/* The handle is only the box that a link measures from. */
 .react-flow .wf-port {
-  display: block;
-  width: 26px;
-  height: 16px;
   min-width: 0;
   min-height: 0;
   padding: 0;
   border: none;
   border-radius: 0;
   background: none;
-  overflow: visible;
   pointer-events: none;
-  right: 16px;
-  left: auto;
-  transform: translate(50%, 0);
-}
-
-.react-flow .wf-port-in {
-  top: 0;
-  bottom: auto;
-}
-
-.react-flow .wf-port-out {
-  top: 100%;
-  bottom: auto;
-}
-
-.wf-port-svg {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 26px;
-  height: 16px;
-  overflow: visible;
-}
-
-.wf-port-rim {
-  fill: var(--wf-port-rim);
-  stroke: var(--wf-port-rim);
-  stroke-linejoin: round;
-  stroke-width: 3.6;
-}
-
-.wf-port-fill {
-  fill: var(--wf-port-fill);
-}
-
-.wf-port-inner {
-  fill: var(--wf-port-inner);
-}
-
-.wf-port-ring {
-  fill: none;
-  stroke: var(--wf-port-ring);
-  stroke-linejoin: round;
-  stroke-width: 2.4;
-}
-
-.wf-port-letter {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  width: 26px;
-  height: 16px;
-  padding-top: 4px;
-  /* The pinned page font, not a system family, so the letter looks the same
-     on every machine. */
-  font-family: inherit;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.wf-port-out .wf-port-letter {
-  color: var(--wf-port-letter-out);
-}
-
-.wf-port-in .wf-port-letter {
-  color: var(--wf-port-letter-in);
 }
