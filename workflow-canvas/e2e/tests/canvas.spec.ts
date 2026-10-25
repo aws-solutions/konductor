@@ -4,6 +4,7 @@ import { STUB_LAUNCH_CODE } from '../../playwright.shared';
 import { expect, test } from '../support/fixtures';
 import { sharedSession } from '../support/session';
 import {
+  NODE_IDS,
   NODE_NAMES,
   WorkflowCanvasPage,
 } from '../support/workflow-canvas-page';
@@ -131,6 +132,45 @@ test('shows in full the Japanese text that a node cuts short', async ({
     `Intent: ${outcome}`,
   );
   await expect(page.getByTestId(`full-stage-${name}`)).toBeVisible();
+});
+
+test('draws a knob under every node but the end and a socket in every node but the intent', async ({
+  canvas,
+}) => {
+  await canvas.expectWorkflowDrawn();
+
+  for (const id of NODE_IDS) {
+    await expect(canvas.knob(id)).toHaveCount(id === 'node-end' ? 0 : 1);
+    await expect(canvas.socket(id)).toHaveCount(id === 'node-intent' ? 0 : 1);
+  }
+});
+
+test('lines each knob up with the socket under it and ends the link above the socket', async ({
+  canvas,
+}) => {
+  await canvas.expectWorkflowDrawn();
+  const links = canvas.edges.locator('.react-flow__edge-path');
+
+  for (let i = 0; i < NODE_IDS.length - 1; i += 1) {
+    const [knob, socket, link, card] = [
+      await canvas.knob(NODE_IDS[i]!).boundingBox(),
+      await canvas.socket(NODE_IDS[i + 1]!).boundingBox(),
+      await links.nth(i).boundingBox(),
+      await canvas.node(NODE_IDS[i + 1]!).boundingBox(),
+    ];
+    const centre = (box: typeof knob) => (box?.x ?? 0) + (box?.width ?? 0) / 2;
+
+    expect(Math.abs(centre(knob) - centre(socket))).toBeLessThan(1);
+    expect(Math.abs(centre(link) - centre(knob))).toBeLessThan(1);
+    // The link starts at the tip of the knob and stops above the card, so the
+    // arrowhead never covers the socket.
+    expect(
+      (link?.y ?? 0) - ((knob?.y ?? 0) + (knob?.height ?? 0)),
+    ).toBeLessThan(1);
+    expect((link?.y ?? 0) + (link?.height ?? 0)).toBeLessThanOrEqual(
+      (card?.y ?? 0) + 0.5,
+    );
+  }
 });
 
 test('removes the launch code from the address', async ({ canvas }) => {
