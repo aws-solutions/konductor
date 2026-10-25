@@ -87,6 +87,7 @@ describe.each(MODES)('canvas.css colours in %s', (mode, v) => {
     expect(v['--wf-node-bg']).toBe(c.surface);
     expect(v['--wf-node-border']).toBe(c.control);
     expect(v['--wf-text']).toBe(c.text);
+    expect(v['--wf-text-muted']).toBe(c.textMuted);
     expect(v['--wf-focus']).toBe(c.link);
     expect(v['--wf-controls-bg']).toBe(c.surface);
     expect(v['--wf-controls-border']).toBe(c.borderStrong);
