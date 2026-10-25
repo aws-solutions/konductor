@@ -4,13 +4,18 @@ A browser UI for designing and running Konductor workflows. This folder is an
 independent npm project (Vite, React, TypeScript, Cloudscape) and is not part
 of the agent package or the CLI.
 
-The page is a shell with Designer and Execution tabs. It does not call the
-API; the contract, the stub that serves it and the tests around both are in
-this folder.
+The page has Designer and Execution tabs. The Designer tab loads the workflow
+from the API and draws it, read-only: the intent, each stage in list order
+(name, agent and harness) and the end, joined by run-order edges. It shows a
+loading message, an error message or an empty message when there is nothing to
+draw. The Execution tab is still a placeholder. The contract, the stub that
+serves it and the tests around both are in this folder.
 
 ## Layout
 
-- `src/`: the UI.
+- `src/`: the UI. `graph/` turns a workflow into nodes and edges and does no
+  IO; `api/` is the typed client of the API; `launch/` and `workflow/` open the
+  session and load the workflow; `designer/` and `canvas/` draw it.
 - `api/`: the HTTP API contract (`openapi.yaml`) and its test.
 - `stub-api/`: a TypeScript stub server for the contract, for local
   development and tests.
@@ -128,8 +133,10 @@ Ctrl+C stops both. Or start the stub in one terminal and `npm run dev` in
 another. Then open the address that the stub prints. The dev server forwards
 `/api` to the stub (`vite.config.ts`), so the page and the API share one
 origin. The stub sends no CORS headers and accepts only its own `Origin`, so
-the proxy sends that one. The page does not call the API, so try it with
-`curl`:
+the proxy sends that one. The page reads the launch code from the address
+(`#<launch code>`), removes it from the address bar, trades it for a token with
+`POST /api/session` and loads the workflow with `GET /api/workflow`. The token
+is kept in memory only. To try the calls by hand:
 
 ```bash
 curl -s -X POST http://127.0.0.1:5173/api/session \
@@ -169,7 +176,7 @@ Origin check as the stub, and the same `POST /api/session` step from
 other calls send. The e2e and contract tests then show whether the real server
 answers as the stub does.
 
-### Code
+### Code of the stub
 
 The code is in two parts, so the rules can be tested without a server:
 
@@ -191,12 +198,45 @@ launch code and the server list), with `--with-dev-server` so that a test can
 open the page again with the same code. So an end-to-end test can call it. With
 `WC_API_TARGET` set it does not, and the same tests call that server instead.
 
+## The canvas
+
+`src/graph/` is the core of the canvas. `buildGraph(workflow, harness)` turns
+the workflow view into nodes (the intent, one per stage, the end) and edges
+(one from each node to the next, from its `S` out port at the bottom right to
+the `S` in port at the top right of the next), placed in one column. It imports
+only its own modules. A test (`test-support/graph-purity.test.ts`) fails if it
+imports anything else, or reads a clock, randomness, the environment or the
+network, and the stub core is held to the same rule by the same scan
+(`test-support/purity.ts`).
+
+The rest wraps the core, so the rules can be tested without a browser:
+
+- `api/`: `WorkflowApi` is the port with the two calls the page makes;
+  `createHttpApi` is its adapter over `fetch`. It ignores fields it does not
+  know and turns a failed call into an `ApiError` with a message fit to show.
+- `launch/launch-code.ts` and `workflow/load-workflow.ts` take the launch code
+  from the address and load the workflow. `loadWorkflow` never rejects: it
+  returns `{ ok: true, workflow }` or `{ ok: false, message }`. It is started
+  once, before React renders, because a launch code works once and strict mode
+  runs effects twice.
+- `designer/` shows the result: loading, error, empty (no file yet, or a file
+  with errors, with their messages), or the canvas.
+- `canvas/` draws the graph with [React Flow](https://reactflow.dev)
+  (`@xyflow/react`). Nodes cannot be moved, selected or connected; the view
+  can be panned, and zoomed with the controls.
+
 ## End-to-end tests
 
 The tests in `e2e/tests/` drive the production build in headless Chromium.
 `playwright.config.ts` builds the app and serves it with `vite preview` on
 http://127.0.0.1:4173, so no server needs to be running first. Its `webServer`
 list is where a backing service starts when the app needs one.
+
+A launch code works once, so `e2e/global-setup.ts` trades the code of the
+config for a session once per run, and the `canvas` fixture answers the page's
+own `POST /api/session` with that session. Every other call, such as
+`GET /api/workflow`, reaches the API. A test that needs the error state opens
+the page with a wrong code or none.
 
 Port 4173 must be free. The config never reuses a server, so a `vite preview`
 you left running there makes the run fail at startup; stop it first.
@@ -210,7 +250,7 @@ npx playwright install chromium
 
 Then `npm run test:e2e`. The HTML report is written to `playwright-report/`;
 open it with `npx playwright show-report`. Accessibility is checked with
-axe-core on each tab.
+axe-core on each tab and on the error state.
 
 Shared page objects and helpers live in `e2e/support/`. New tests should
 extend them rather than repeat selectors: import `test` and `expect` from
@@ -220,7 +260,7 @@ the app.
 ## Screenshots
 
 `npm run screenshots` saves a full-page PNG of each tab to
-`e2e/screenshots/`, in the light theme at 1280x800 with animations frozen.
+`e2e/screenshots/`, with the Designer tab drawn from the stub, in the light theme at 1280x800 with animations frozen.
 Pull request descriptions embed these files, so regenerate and commit them
 when the UI changes.
 

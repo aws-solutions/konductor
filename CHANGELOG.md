@@ -47,6 +47,12 @@ not per individual commit.
   needs a fixed port. The stub of `npm run dev:stub` and the one that Playwright starts take the
   launch code again and give the same token, so opening the printed address again after a
   reload works; `npm run stub` on its own keeps the contract's one use.
+- The Designer tab of the workflow canvas draws the workflow from the API, read-only: the intent,
+  each stage in list order with its agent and harness, and the end, joined by run-order edges,
+  using React Flow. The page opens a session with the launch code in its address, loads
+  `GET /api/workflow`, and shows loading, error and empty states. The graph is built by an IO-free
+  core, tested like the stub core, and the end-to-end tests and screenshots now cover the canvas
+  on the stub.
 
 ### Fixed
 
