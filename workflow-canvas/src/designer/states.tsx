@@ -36,8 +36,10 @@ export function EmptyState({
       </Box>
       {diagnostics.length > 0 && (
         <ul aria-label="Problems in the workflow file">
-          {diagnostics.map(({ line, message }) => (
-            <li key={`${line ?? ''}:${message}`}>
+          {diagnostics.map(({ line, message }, index) => (
+            // The server may repeat an identical diagnostic, so the position
+            // is part of the key. The list never reorders.
+            <li key={`${index}:${line ?? ''}:${message}`}>
               {line === undefined ? message : `Line ${line}: ${message}`}
             </li>
           ))}
