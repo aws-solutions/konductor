@@ -105,13 +105,17 @@ export function colorsOf(mode: ThemeMode): Colors {
 
 /**
  * The header band and the top bar are dark in both modes. These are the
- * colours of the text and controls on them; each pair reaches 4.5:1 on
- * `BAND_BACKGROUND`.
+ * colours of the text and controls on them. Text and the selected-tab
+ * indicator reach their contrast (4.5:1 and 3:1) on `background`.
  */
-export const BAND_BACKGROUND = '#141026';
-const BAND_TEXT = '#f5f3ee';
-const BAND_TEXT_MUTED = '#c9c2e0';
-const BAND_LINK = '#c4b2ff';
+export const BAND = {
+  background: '#141026',
+  text: '#f5f3ee',
+  textMuted: '#c9c2e0',
+  link: '#c4b2ff',
+  /** The hairline under the top bar and under the tabs. */
+  divider: '#2a2450',
+} as const;
 
 /** The font of the page text. Self-hosted by `fonts.ts`. */
 export const FONT_TEXT =
@@ -134,7 +138,7 @@ export const LOGO_DATA_URI = `data:image/svg+xml;utf8,${encodeURIComponent(
 
 type Tokens = Theme['tokens'];
 
-/** A token that has one value in light mode and one in dark mode. */
+// A token that has one value in light mode and one in dark mode.
 function perMode(pick: (colors: Colors) => string) {
   return { light: pick(LIGHT), dark: pick(DARK) };
 }
@@ -155,7 +159,7 @@ function backgroundTokens(): Tokens {
     colorBackgroundItemSelected: perMode((c) => c.tintStrong),
     colorBackgroundCellShaded: perMode((c) => c.surfaceAlt),
     colorBackgroundToggleDefault: perMode((c) => c.control),
-    colorBackgroundHomeHeader: BAND_BACKGROUND,
+    colorBackgroundHomeHeader: BAND.background,
     colorBackgroundStatusError: perMode((c) => c.errorBg),
     colorBackgroundStatusInfo: perMode((c) => c.infoBg),
     colorBackgroundStatusSuccess: perMode((c) => c.successBg),
@@ -214,8 +218,8 @@ function textTokens(): Tokens {
     colorTextDropdownItemHighlighted: perMode((c) => c.text),
     colorTextDropdownItemSecondary: perMode((c) => c.textMuted),
     colorTextGroupLabel: perMode((c) => c.textMuted),
-    colorTextHomeHeaderDefault: BAND_TEXT,
-    colorTextHomeHeaderSecondary: BAND_TEXT_MUTED,
+    colorTextHomeHeaderDefault: BAND.text,
+    colorTextHomeHeaderSecondary: BAND.textMuted,
     colorTextBreadcrumbCurrent: perMode((c) => c.textMuted),
     colorTextBreadcrumbIcon: perMode((c) => c.textMuted),
   };
@@ -263,23 +267,21 @@ function shapeTokens(): Tokens {
   };
 }
 
-/**
- * Inside the dark band the global text and border colours do not apply, so
- * the same roles are set again here. Cloudscape reads these in the page
- * header, which holds the breadcrumbs and the title.
- */
+// Inside the dark band the global text and border colours do not apply, so
+// the same roles are set again here. Cloudscape reads these in the page
+// header, which holds the breadcrumbs and the title.
 function headerBandTokens(): Tokens {
   return {
-    colorTextAccent: BAND_LINK,
-    colorTextLinkDefault: BAND_LINK,
+    colorTextAccent: BAND.link,
+    colorTextLinkDefault: BAND.link,
     colorTextLinkHover: '#ffffff',
-    colorTextBodySecondary: BAND_TEXT_MUTED,
-    colorTextBreadcrumbCurrent: BAND_TEXT_MUTED,
-    colorTextBreadcrumbIcon: BAND_TEXT_MUTED,
-    colorTextInteractiveDefault: BAND_TEXT_MUTED,
+    colorTextBodySecondary: BAND.textMuted,
+    colorTextBreadcrumbCurrent: BAND.textMuted,
+    colorTextBreadcrumbIcon: BAND.textMuted,
+    colorTextInteractiveDefault: BAND.textMuted,
     colorTextInteractiveHover: '#ffffff',
     colorTextInteractiveActive: '#ffffff',
-    colorBorderItemFocused: BAND_LINK,
+    colorBorderItemFocused: BAND.link,
   };
 }
 
@@ -299,29 +301,40 @@ export const APP_THEME: Theme = {
     header: {
       tokens: {
         ...headerBandTokens(),
-        colorBackgroundLayoutMain: BAND_BACKGROUND,
+        colorBackgroundLayoutMain: BAND.background,
       },
     },
     'top-navigation': {
       tokens: {
         ...headerBandTokens(),
-        colorBackgroundContainerContent: BAND_BACKGROUND,
-        colorTextHeadingDefault: BAND_TEXT,
-        colorTextTopNavigationTitle: BAND_TEXT,
-        colorTextInteractiveDefault: BAND_TEXT,
+        colorBackgroundContainerContent: BAND.background,
+        colorTextHeadingDefault: BAND.text,
+        colorTextTopNavigationTitle: BAND.text,
+        colorTextInteractiveDefault: BAND.text,
         colorTextInteractiveHover: '#ffffff',
-        colorBorderDividerDefault: '#2a2450',
+        colorBorderDividerDefault: BAND.divider,
       },
     },
   },
 };
 
 /**
- * The same roles for the Designer and Execution tabs, which sit on the band
- * but are page content, so the header context does not reach them.
+ * The same roles for the strip of the Designer and Execution tabs, which is
+ * page content that sits on the band, so the header context does not reach
+ * it. The selected-tab indicator is set too.
  */
 export const TAB_STRIP_THEME: Theme = {
   tokens: {
     ...headerBandTokens(),
+    colorBorderItemSelected: BAND.link,
   },
 };
+
+/**
+ * The `style` of the page tabs: the line between two tabs, in the colour of
+ * the other hairlines of the band. (The rule under the strip is set in
+ * `chrome.css`.)
+ */
+export const TAB_STRIP_STYLE = {
+  tabSeparator: { color: BAND.divider },
+} as const;
