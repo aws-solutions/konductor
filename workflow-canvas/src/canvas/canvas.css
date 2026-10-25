@@ -1,21 +1,57 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 
-/* Colours of the light theme for the parts that the canvas draws itself. */
+/*
+ * The colours of the parts that the canvas draws itself, for the light and the
+ * dark mode. The dark values are set when Cloudscape puts its dark mode class
+ * on the page. A test (canvas-contrast.test.ts) reads this file and checks
+ * that the text and the edges reach WCAG AA in both modes.
+ */
 .wf-canvas {
   --wf-canvas-bg: #f5f3ee;
   --wf-canvas-dots: #c9c1b3;
   --wf-edge: #5f6b7a;
-  --wf-focus: #0b57d0;
+  --wf-focus: #6236f0;
   --wf-node-bg: #ffffff;
   --wf-node-border: #7a7490;
   --wf-text: #16131f;
   --wf-text-muted: #56516a;
-  --wf-port-bg: #414d5c;
-  --wf-port-text: #ffffff;
-  --wf-port-ring: #16131f;
+  --wf-port-rim: #16191f;
+  --wf-port-fill: #5f6b7a;
+  --wf-port-letter-out: #ffffff;
+  --wf-port-inner: #ffffff;
+  --wf-port-ring: #5f6b7a;
+  --wf-port-letter-in: #414d5c;
+  --wf-controls-bg: #ffffff;
+  --wf-controls-bg-hover: #efebff;
+  --wf-controls-border: #cfc7ba;
 
   border-radius: 12px;
   background: var(--wf-canvas-bg);
+  /* The graph library reads these for its zoom buttons and its credit line. */
+  --xy-controls-button-background-color: var(--wf-controls-bg);
+  --xy-controls-button-background-color-hover: var(--wf-controls-bg-hover);
+  --xy-controls-button-color: var(--wf-text);
+  --xy-controls-button-color-hover: var(--wf-text);
+  --xy-controls-button-border-color: var(--wf-controls-border);
+  --xy-attribution-background-color: var(--wf-controls-bg);
+}
+
+.awsui-dark-mode .wf-canvas {
+  --wf-canvas-bg: #0b0a12;
+  --wf-canvas-dots: #3a3168;
+  --wf-edge: #a39bc0;
+  --wf-focus: #a78bfa;
+  --wf-node-bg: #171331;
+  --wf-node-border: #8f86ad;
+  --wf-text: #f5f3ee;
+  --wf-text-muted: #b2a9cc;
+  --wf-controls-bg: #171331;
+  --wf-controls-bg-hover: #1f1a44;
+  --wf-controls-border: #3a3168;
+}
+
+.wf-canvas .react-flow__attribution a {
+  color: var(--wf-text-muted);
 }
 
 /* The ring that shows which node the keyboard is on. */
@@ -31,7 +67,7 @@
   height: 100%;
   padding: 10px 12px;
   border: 2px solid var(--wf-node-border);
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--wf-node-bg);
   color: var(--wf-text);
   font-size: 12px;
@@ -44,6 +80,11 @@
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Keeps a long name clear of the run order notch at the top right. */
+.wf-node-stage .wf-node-title {
+  padding-right: 32px;
 }
 
 .wf-node-sub {
@@ -67,40 +108,92 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 22px;
 }
 
-/* A run order port: a small square with an S, at the right of the node. */
+/*
+ * A run order port is a piece of a jigsaw: the S out tab hangs below the card,
+ * the S in notch is cut into the card at the top, both at the right. They have
+ * the same outline, so a tab fits a notch. The outline is an SVG; the tab is
+ * filled by clipping the letter box to the same outline.
+ */
 .react-flow .wf-port {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
+  display: block;
+  width: 26px;
+  height: 16px;
   min-width: 0;
   min-height: 0;
-  border: 2px solid var(--wf-port-ring);
-  border-radius: 4px;
-  background: var(--wf-port-bg);
-  color: var(--wf-port-text);
-  /* Inherit the page font. Naming a system family here (Arial) would resolve
-     to a different face per host and make the screenshots differ. */
-  font-family: inherit;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  overflow: visible;
   pointer-events: none;
+  right: 16px;
+  left: auto;
+  transform: translate(50%, 0);
 }
 
 .react-flow .wf-port-in {
   top: 0;
-  right: 16px;
-  left: auto;
-  transform: translate(50%, -50%);
+  bottom: auto;
 }
 
 .react-flow .wf-port-out {
-  right: 16px;
-  bottom: 0;
-  left: auto;
-  transform: translate(50%, 50%);
+  top: 100%;
+  bottom: auto;
+}
+
+.wf-port-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 26px;
+  height: 16px;
+  overflow: visible;
+}
+
+.wf-port-rim {
+  fill: var(--wf-port-rim);
+  stroke: var(--wf-port-rim);
+  stroke-linejoin: round;
+  stroke-width: 3.6;
+}
+
+.wf-port-inner {
+  fill: var(--wf-port-inner);
+}
+
+.wf-port-ring {
+  fill: none;
+  stroke: var(--wf-port-ring);
+  stroke-linejoin: round;
+  stroke-width: 2.4;
+}
+
+.wf-port-letter {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 26px;
+  height: 16px;
+  padding-top: 4px;
+  /* The pinned page font, not a system family, so the letter looks the same
+     on every machine. */
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.wf-port-out .wf-port-letter {
+  background: var(--wf-port-fill);
+  clip-path: path('M9.5 0V4H7V16H19V4H16.5V0Z');
+  color: var(--wf-port-letter-out);
+}
+
+.wf-port-in .wf-port-letter {
+  color: var(--wf-port-letter-in);
 }

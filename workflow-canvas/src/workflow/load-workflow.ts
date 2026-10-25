@@ -45,3 +45,10 @@ export async function loadWorkflow(
     return { ok: false, message: messageOf(error) };
   }
 }
+
+/** The name of the workflow that a load drew, or `undefined` if none is open. */
+export function openWorkflowName(
+  result: LoadResult | undefined,
+): string | undefined {
+  return result?.ok ? result.workflow.document.view?.name : undefined;
+}
