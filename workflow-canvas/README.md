@@ -79,3 +79,7 @@ dev dependency (Cloudscape names Open Sans first but does not ship it) and
 turns off text hinting and LCD smoothing, so the PNGs come out byte-identical
 on different machines and in CI. CI regenerates them, uploads that set as the
 `screenshots` artifact, and fails when it differs from the committed files.
+
+The comparison is byte-exact, so CI fails if a committed screenshot differs by
+even one byte. After a toolchain bump (Playwright, Chromium, fonts or Node), run
+`npm run screenshots` and commit the new images.
