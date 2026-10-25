@@ -14,18 +14,11 @@ function isMode(value: unknown): value is ThemeMode {
   return value === 'light' || value === 'dark';
 }
 
-// Reading `localStorage` can throw when the browser blocks storage.
-function storageOf(env: ModeEnvironment) {
-  try {
-    return env.localStorage;
-  } catch {
-    return undefined;
-  }
-}
-
+// Reading `localStorage` can throw when the browser blocks storage, so the
+// read of the property is inside the `try` too.
 function storedMode(env: ModeEnvironment): ThemeMode | undefined {
   try {
-    const value = storageOf(env)?.getItem(MODE_STORAGE_KEY);
+    const value = env.localStorage?.getItem(MODE_STORAGE_KEY);
     return isMode(value) ? value : undefined;
   } catch {
     return undefined;
@@ -53,7 +46,7 @@ export function otherMode(mode: ThemeMode): ThemeMode {
 /** Keeps a chosen mode for the next visit. A blocked storage is ignored. */
 export function rememberMode(env: ModeEnvironment, mode: ThemeMode): void {
   try {
-    storageOf(env)?.setItem(MODE_STORAGE_KEY, mode);
+    env.localStorage?.setItem(MODE_STORAGE_KEY, mode);
   } catch {
     // The choice then lasts until the page closes.
   }
