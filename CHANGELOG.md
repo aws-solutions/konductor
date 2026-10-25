@@ -18,7 +18,8 @@ not per individual commit.
 - `cli/gate-config/sop-orchestration.yml` classifies every shipped SOP as `gated` or
   `not_gated`, with the gate kind and step for each gated one. The four gated SOPs
   (`k-full-sdlc`, `k-design-doc-creation`, `k-principal-engineer-design-review`,
-  `kiro-spec-workflow`) now open their Overview with `Orchestration: strict (phase-gated SOP)`.
+  `kiro-spec-workflow`) now carry the line `Orchestration: strict (phase-gated SOP)` above
+  their Overview, so installed skill descriptions are unchanged.
   `make sop-orchestration-check`, run on every pull request, fails when the list, the marker
   lines and `agent-sops/` disagree.
 

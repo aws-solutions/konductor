@@ -1,10 +1,10 @@
 # alpha-gated
 
+    Orchestration: strict (phase-gated SOP)
+
 ## Overview
 
 Fixture SOP alpha-gated.
-
-Orchestration: strict (phase-gated SOP)
 
 ## Steps
 

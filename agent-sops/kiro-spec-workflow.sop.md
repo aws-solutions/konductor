@@ -1,8 +1,8 @@
 # Kiro Spec Workflow
 
-## Overview
-
 Orchestration: strict (phase-gated SOP)
+
+## Overview
 
 End-to-end workflow that transforms PM and design artifacts into Kiro IDE spec documents. Chains three skills in sequence: kiro-requirements-generation → kiro-design-generation → kiro-task-generation, producing a complete `.kiro/specs/{feature-name}/` directory (by default — see `spec_dir` below) with requirements.md, design.md, and tasks.md.
 

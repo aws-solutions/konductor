@@ -12,12 +12,17 @@
 #                    threshold (severity count, score)
 #   loop-exit        a review loop on the artifact reaches its exit condition
 #                    or round cap
-# Not gates: parameter or path preconditions, confirming what to examine or
-# run, build/test/lint prerequisites, a self-check of the SOP's own output,
-# joining parallel passes, and a final verdict.
+# A gate judges the content of an artifact. A confirmation that authorizes
+# effort on discovered or generated scope, one a caller flag such as
+# scope_confirmed can pre-authorize, is not a gate. Also not gates: parameter
+# or path preconditions, build/test/lint prerequisites, a self-check of the
+# SOP's own output, joining parallel passes, and a final verdict.
 #
-# Each gated SOP opens its Overview with the marker line below. No not_gated
-# SOP contains it.
+# Each gated SOP has the marker line below as its own paragraph right after
+# its title, above ## Overview, so installed skill descriptions are
+# unchanged. No not_gated SOP contains it.
+#
+# Update a gated SOP's basis when that SOP's steps change.
 version: 1
 marker: 'Orchestration: strict (phase-gated SOP)'
 gated:
