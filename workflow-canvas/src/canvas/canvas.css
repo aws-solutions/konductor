@@ -2,9 +2,10 @@
 
 /*
  * The colours of the parts that the canvas draws itself, for the light and the
- * dark mode. The dark values are set when Cloudscape puts its dark mode class
- * on the page. A test (canvas-contrast.test.ts) reads this file and checks
- * that the text and the edges reach WCAG AA in both modes.
+ * dark mode. The dark values apply when the page root has data-theme="dark".
+ * A test (canvas-contrast.test.ts) reads this file, checks that the text, the
+ * edges and the ports reach WCAG AA in both modes, and that the colours and
+ * radii match the theme module.
  */
 .wf-canvas {
   --wf-canvas-bg: #f5f3ee;
@@ -36,7 +37,7 @@
   --xy-attribution-background-color: var(--wf-controls-bg);
 }
 
-.awsui-dark-mode .wf-canvas {
+:root[data-theme='dark'] .wf-canvas {
   --wf-canvas-bg: #0b0a12;
   --wf-canvas-dots: #3a3168;
   --wf-edge: #a39bc0;
@@ -48,6 +49,12 @@
   --wf-controls-bg: #171331;
   --wf-controls-bg-hover: #1f1a44;
   --wf-controls-border: #3a3168;
+  --wf-port-rim: #0b0a12;
+  --wf-port-fill: #a39bc0;
+  --wf-port-letter-out: #0b0a12;
+  --wf-port-inner: #171331;
+  --wf-port-ring: #a39bc0;
+  --wf-port-letter-in: #f5f3ee;
 }
 
 .wf-canvas .react-flow__attribution a {
@@ -114,8 +121,8 @@
 /*
  * A run order port is a piece of a jigsaw: the S out tab hangs below the card,
  * the S in notch is cut into the card at the top, both at the right. They have
- * the same outline, so a tab fits a notch. The outline is an SVG; the tab is
- * filled by clipping the letter box to the same outline.
+ * the same outline, so a tab fits a notch. The outline and the fills are an
+ * SVG (see nodes.tsx); the letter is drawn over it.
  */
 .react-flow .wf-port {
   display: block;
@@ -160,6 +167,10 @@
   stroke-width: 3.6;
 }
 
+.wf-port-fill {
+  fill: var(--wf-port-fill);
+}
+
 .wf-port-inner {
   fill: var(--wf-port-inner);
 }
@@ -189,8 +200,6 @@
 }
 
 .wf-port-out .wf-port-letter {
-  background: var(--wf-port-fill);
-  clip-path: path('M9.5 0V4H7V16H19V4H16.5V0Z');
   color: var(--wf-port-letter-out);
 }
 
