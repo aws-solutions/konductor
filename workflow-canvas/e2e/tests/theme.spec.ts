@@ -2,9 +2,14 @@
 import { STUB_LAUNCH_CODE } from '../../playwright.shared';
 import { expectNoAccessibilityViolations } from '../support/accessibility';
 import { expect, test } from '../support/fixtures';
+import type { WorkflowCanvasPage } from '../support/workflow-canvas-page';
 
 const DARK_CANVAS = 'rgb(11, 10, 18)';
 const LIGHT_CANVAS = 'rgb(245, 243, 238)';
+
+const BAND_RGB = 'rgb(20, 16, 38)';
+const BAND_DIVIDER_RGB = 'rgb(42, 36, 80)';
+const BAND_LINK_RGB = 'rgb(196, 178, 255)';
 
 test('shows the top bar, the breadcrumb and the title of the page', async ({
   canvas,
@@ -65,19 +70,28 @@ test.describe('dark system setting', () => {
 
   test('starts dark when the system asks for it', async ({ canvas }) => {
     await expect(canvas.themeButton).toHaveText('Theme: dark');
-    await expect(canvas.page.locator('body')).toHaveClass(/awsui-dark-mode/);
+    await expect(canvas.page.locator('html')).toHaveAttribute(
+      'data-theme',
+      'dark',
+    );
   });
 });
 
 test('switches to the dark mode and back', async ({ canvas }) => {
   await canvas.switchTheme();
 
-  await expect(canvas.page.locator('body')).toHaveClass(/awsui-dark-mode/);
+  await expect(canvas.page.locator('html')).toHaveAttribute(
+    'data-theme',
+    'dark',
+  );
   await expect(canvas.graph).toHaveCSS('background-color', DARK_CANVAS);
 
   await canvas.switchTheme();
 
-  await expect(canvas.page.locator('body')).not.toHaveClass(/awsui-dark-mode/);
+  await expect(canvas.page.locator('html')).toHaveAttribute(
+    'data-theme',
+    'light',
+  );
   await expect(canvas.graph).toHaveCSS('background-color', LIGHT_CANVAS);
 });
 
@@ -136,4 +150,50 @@ test('switches with the keyboard', async ({ canvas }) => {
   await canvas.page.keyboard.press('Enter');
 
   await expect(canvas.themeButton).toHaveText('Theme: dark');
+});
+
+// The strip of the tabs, the selected-tab indicator and the rule under it.
+async function expectTabStripOnBand(canvas: WorkflowCanvasPage) {
+  const strip = canvas.page
+    .getByRole('tablist')
+    .locator('xpath=ancestor::*[2]');
+  await expect(strip).toHaveCSS('background-color', BAND_RGB);
+  await expect(strip).toHaveCSS('border-bottom-color', BAND_DIVIDER_RGB);
+  // The indicator is drawn after the element that wraps the tab button.
+  const indicator = await canvas
+    .tab('Designer')
+    .evaluate(
+      (tab) => getComputedStyle(tab.parentElement!, '::after').backgroundColor,
+    );
+  expect(indicator).toBe(BAND_LINK_RGB);
+}
+
+test('puts the tab strip on the dark band in the light mode', async ({
+  canvas,
+}) => {
+  await expectTabStripOnBand(canvas);
+});
+
+test('puts the tab strip on the dark band in the dark mode', async ({
+  canvas,
+}) => {
+  await canvas.switchTheme();
+
+  await expectTabStripOnBand(canvas);
+});
+
+test('sets the saved mode before the app script runs', async ({ canvas }) => {
+  await canvas.switchTheme();
+  await canvas.page.route('**/*', (route) =>
+    route.request().resourceType() === 'script'
+      ? route.abort()
+      : route.fallback(),
+  );
+
+  await canvas.page.reload();
+
+  const root = canvas.page.locator('html');
+  await expect(root).toHaveAttribute('data-theme', 'dark');
+  await expect(root).toHaveCSS('color-scheme', 'dark');
+  await expect(canvas.themeButton).toHaveCount(0);
 });
