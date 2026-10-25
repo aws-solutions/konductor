@@ -19,7 +19,6 @@ const themeButton = (mode: 'light' | 'dark') =>
 
 afterEach(() => {
   window.localStorage.clear();
-  document.body.classList.remove('awsui-dark-mode');
   delete document.documentElement.dataset.theme;
   document.documentElement.style.colorScheme = '';
 });
@@ -128,7 +127,6 @@ describe('App', () => {
 
     fireEvent.click(themeButton('light'));
 
-    expect(document.body.classList.contains('awsui-dark-mode')).toBe(true);
     expect(document.documentElement.style.colorScheme).toBe('dark');
     expect(document.documentElement.dataset.theme).toBe('dark');
     expect(window.localStorage.getItem(MODE_STORAGE_KEY)).toBe('dark');
@@ -136,8 +134,8 @@ describe('App', () => {
 
     fireEvent.click(themeButton('dark'));
 
-    expect(document.body.classList.contains('awsui-dark-mode')).toBe(false);
     expect(document.documentElement.dataset.theme).toBe('light');
+    expect(themeButton('light').textContent).toBe('Theme: light');
     expect(window.localStorage.getItem(MODE_STORAGE_KEY)).toBe('light');
   });
 
@@ -146,8 +144,8 @@ describe('App', () => {
 
     render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
 
-    expect(document.body.classList.contains('awsui-dark-mode')).toBe(true);
-    expect(themeButton('dark')).toBeTruthy();
+    expect(document.documentElement.dataset.theme).toBe('dark');
+    expect(themeButton('dark').textContent).toBe('Theme: dark');
   });
 
   it('does not save a mode that nobody chose', () => {
