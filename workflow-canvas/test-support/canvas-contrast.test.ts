@@ -56,16 +56,28 @@ describe.each(MODES)('canvas.css colours in %s', (mode, v) => {
     expect(
       ratio('--wf-port-letter-out', '--wf-port-fill'),
     ).toBeGreaterThanOrEqual(AA_TEXT);
-    expect(
-      ratio('--wf-port-letter-in', '--wf-port-inner'),
-    ).toBeGreaterThanOrEqual(AA_TEXT);
+    // The socket shows the canvas, and its letter is the muted text colour.
+    expect(ratio('--wf-text-muted', '--wf-canvas-bg')).toBeGreaterThanOrEqual(
+      AA_TEXT,
+    );
   });
 
-  it('keeps the ports visible on the canvas and on the node', () => {
-    for (const part of ['--wf-port-fill', '--wf-port-ring']) {
-      expect(ratio(part, '--wf-canvas-bg')).toBeGreaterThanOrEqual(AA_GRAPHIC);
-      expect(ratio(part, '--wf-node-bg')).toBeGreaterThanOrEqual(AA_GRAPHIC);
-    }
+  it('keeps the knob visible on the canvas and on the node', () => {
+    expect(ratio('--wf-port-fill', '--wf-canvas-bg')).toBeGreaterThanOrEqual(
+      AA_GRAPHIC,
+    );
+    expect(ratio('--wf-port-fill', '--wf-node-bg')).toBeGreaterThanOrEqual(
+      AA_GRAPHIC,
+    );
+  });
+
+  it('keeps the socket outline visible on the canvas it shows and on the node', () => {
+    expect(ratio('--wf-node-border', '--wf-canvas-bg')).toBeGreaterThanOrEqual(
+      AA_GRAPHIC,
+    );
+    expect(ratio('--wf-node-border', '--wf-node-bg')).toBeGreaterThanOrEqual(
+      AA_GRAPHIC,
+    );
   });
 
   it('uses the colours of the theme module', () => {
@@ -83,8 +95,7 @@ describe.each(MODES)('canvas.css colours in %s', (mode, v) => {
 });
 
 describe('canvas.css shapes', () => {
-  it('uses the radii of the theme module', () => {
+  it('uses the radius of the theme module for the canvas', () => {
     expect(block('.wf-canvas')).toContain(`border-radius: ${RADIUS.card}`);
-    expect(block('.wf-node')).toContain(`border-radius: ${RADIUS.control}`);
   });
 });

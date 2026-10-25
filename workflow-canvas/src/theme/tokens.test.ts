@@ -7,6 +7,7 @@ import {
   colorsOf,
   TAB_STRIP_STYLE,
   TAB_STRIP_THEME,
+  WHITE,
   type ThemeMode,
 } from './tokens';
 
@@ -23,8 +24,8 @@ describe.each(MODES)('the %s palette', (mode) => {
     ['muted text on a raised area', c.textMuted, c.surfaceAlt],
     ['links on a surface', c.link, c.surface],
     ['hovered links on a surface', c.linkHover, c.surface],
-    ['white text on a filled button', '#ffffff', c.fill],
-    ['white text on a hovered filled button', '#ffffff', c.fillHover],
+    ['white text on a filled button', WHITE, c.fill],
+    ['white text on a hovered filled button', WHITE, c.fillHover],
     ['success text on a surface', c.success, c.surface],
     ['error text on a surface', c.error, c.surface],
     ['warning text on a surface', c.warning, c.surface],
