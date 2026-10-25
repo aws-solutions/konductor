@@ -20,6 +20,7 @@ const themeButton = (mode: 'light' | 'dark') =>
 afterEach(() => {
   window.localStorage.clear();
   document.body.classList.remove('awsui-dark-mode');
+  delete document.documentElement.dataset.theme;
   document.documentElement.style.colorScheme = '';
 });
 
@@ -109,17 +110,17 @@ describe('App', () => {
     );
   });
 
-  it('shows the breadcrumb Workflows > the open workflow', async () => {
+  it('shows the breadcrumb Workflows > the open workflow, with no dead link', async () => {
     render(<App load={settled(loaded(HELLO_DOCUMENT))} />);
 
     const trail = await screen.findByRole('navigation', {
       name: 'Breadcrumbs',
     });
-    expect(within(trail).getAllByText('Workflows').length).toBeGreaterThan(0);
-    // The trail holds a hidden copy that it measures, so the name appears twice.
-    expect((await within(trail).findAllByText('hello')).length).toBeGreaterThan(
-      0,
-    );
+    expect(within(trail).getByText('Workflows')).toBeTruthy();
+    expect(
+      (await within(trail).findByText('hello')).closest('[aria-current]'),
+    ).toBeTruthy();
+    expect(within(trail).queryAllByRole('link')).toEqual([]);
   });
 
   it('switches to the dark mode, remembers it and switches back', () => {
@@ -129,12 +130,14 @@ describe('App', () => {
 
     expect(document.body.classList.contains('awsui-dark-mode')).toBe(true);
     expect(document.documentElement.style.colorScheme).toBe('dark');
+    expect(document.documentElement.dataset.theme).toBe('dark');
     expect(window.localStorage.getItem(MODE_STORAGE_KEY)).toBe('dark');
     expect(themeButton('dark').textContent).toBe('Theme: dark');
 
     fireEvent.click(themeButton('dark'));
 
     expect(document.body.classList.contains('awsui-dark-mode')).toBe(false);
+    expect(document.documentElement.dataset.theme).toBe('light');
     expect(window.localStorage.getItem(MODE_STORAGE_KEY)).toBe('light');
   });
 

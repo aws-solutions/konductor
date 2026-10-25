@@ -1,7 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it } from 'vitest';
 import { AA_GRAPHIC, AA_TEXT, contrastRatio } from './contrast';
-import { APP_THEME, BAND_BACKGROUND, colorsOf, type ThemeMode } from './tokens';
+import {
+  APP_THEME,
+  BAND,
+  colorsOf,
+  TAB_STRIP_STYLE,
+  TAB_STRIP_THEME,
+  type ThemeMode,
+} from './tokens';
 
 const MODES: ThemeMode[] = ['light', 'dark'];
 
@@ -41,14 +48,29 @@ describe.each(MODES)('the %s palette', (mode) => {
 });
 
 describe('the header band', () => {
-  it.each([
-    ['#f5f3ee', 'text'],
-    ['#c9c2e0', 'muted text'],
-    ['#c4b2ff', 'links'],
-  ])('has AA contrast for %s (%s)', (colour) => {
-    expect(contrastRatio(colour, BAND_BACKGROUND)).toBeGreaterThanOrEqual(
-      AA_TEXT,
+  it.each([BAND.text, BAND.textMuted, BAND.link])(
+    'has AA contrast for %s',
+    (colour) => {
+      expect(contrastRatio(colour, BAND.background)).toBeGreaterThanOrEqual(
+        AA_TEXT,
+      );
+    },
+  );
+
+  it('draws the selected-tab indicator at 3:1 or more on the band', () => {
+    expect(contrastRatio(BAND.link, BAND.background)).toBeGreaterThanOrEqual(
+      AA_GRAPHIC,
     );
+  });
+});
+
+describe('TAB_STRIP_THEME', () => {
+  it('colours the selected-tab indicator from the band', () => {
+    expect(TAB_STRIP_THEME.tokens.colorBorderItemSelected).toBe(BAND.link);
+  });
+
+  it('colours the line between tabs from the band', () => {
+    expect(TAB_STRIP_STYLE.tabSeparator.color).toBe(BAND.divider);
   });
 });
 

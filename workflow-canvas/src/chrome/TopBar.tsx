@@ -23,6 +23,7 @@ export function TopBar({
       <TopNavigation
         identity={{
           href: '#',
+          onFollow: (event) => event.preventDefault(),
           title: 'Workflow canvas',
           logo: { src: LOGO_DATA_URI, alt: 'Konductor' },
         }}

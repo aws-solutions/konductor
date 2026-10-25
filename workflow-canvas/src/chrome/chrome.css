@@ -1,0 +1,27 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+
+/*
+ * The strip of the Designer and Execution tabs is part of the dark header
+ * band: it is painted with the band colour across the full width of the
+ * page, so the tab labels, the selected-tab indicator and the rule under
+ * them all sit on the band. The colours come from the theme module through
+ * `--wf-band-background` and `--wf-band-divider`.
+ */
+.wf-tab-strip :has(> * > [role='tablist']) {
+  background: var(--wf-band-background);
+  box-shadow: 0 0 0 100vmax var(--wf-band-background);
+  /* The library sets this colour with a more specific rule. */
+  border-block-end-color: var(--wf-band-divider) !important;
+  clip-path: inset(0 -100vmax);
+}
+
+/* The trail above the title. */
+.wf-crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
