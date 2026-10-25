@@ -483,6 +483,28 @@ describe('workflow canvas API contract', () => {
       );
     });
 
+    it('documents a response for every status that has an error code', () => {
+      const documented = new Set(listResponses(spec).map((r) => r.status));
+      const missing = Object.keys(ERROR_CODES_BY_STATUS).filter(
+        (status) => !documented.has(status),
+      );
+      expect(missing).toEqual([]);
+    });
+
+    it('answers a method the path does not list with 405 and an Allow header', () => {
+      for (const { method, path, operation } of listOperations(spec)) {
+        const response = operation.responses?.['405'];
+        const label = `${method} ${path}`;
+        expect(response?.headers?.['Allow'], label).toBeDefined();
+        const examples = bodiesOf(response, label, '405').flatMap(({ media }) =>
+          exampleValues(media),
+        );
+        expect(examples, label).toContainEqual(
+          expect.objectContaining({ code: 'method_not_allowed' }),
+        );
+      }
+    });
+
     it('says which YAML the workflow text is', () => {
       expect(spec.info.description).toMatch(
         /YAML 1\.2 read with the core schema/,
