@@ -111,9 +111,25 @@ describe('createHttpApi', () => {
 
     expect((await api.getWorkflow('t')).diagnostics).toEqual([
       { message: 'Missing key', line: 3 },
-      { message: 'Wrong type', line: 0 },
+      { message: 'Wrong type', line: undefined },
     ]);
   });
+
+  it.each([0, -1, 2.5, '3', null])(
+    'leaves out a line that is not a whole number from 1: %j',
+    async (line) => {
+      const body = {
+        ...DOCUMENT_BODY,
+        view: null,
+        diagnostics: [{ code: 'X', message: 'Odd line', line }],
+      };
+      const { api } = apiFor(reply(body));
+
+      expect((await api.getWorkflow('t')).diagnostics).toEqual([
+        { message: 'Odd line', line: undefined },
+      ]);
+    },
+  );
 
   it('fails with the sentence and code of an error body', async () => {
     const { api } = apiFor(
