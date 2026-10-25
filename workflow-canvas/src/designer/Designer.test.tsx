@@ -72,4 +72,34 @@ describe('Designer', () => {
       ).getByText('Line 2: Missing key: intent'),
     ).toBeTruthy();
   });
+
+  it('shows a problem that has no line without a line number', () => {
+    const broken = {
+      ...HELLO_DOCUMENT,
+      view: null,
+      diagnostics: [{ message: 'The file is empty', line: undefined }],
+    };
+
+    render(<Designer result={loaded(broken)} />);
+
+    const list = screen.getByRole('list', {
+      name: 'Problems in the workflow file',
+    });
+    expect(within(list).getByText('The file is empty')).toBeTruthy();
+    expect(list.textContent).not.toContain('Line');
+  });
+
+  it('gives each node a name for a screen reader', () => {
+    render(<Designer result={loaded(HELLO_DOCUMENT)} />);
+
+    const graph = screen.getByRole('region', { name: 'Workflow graph' });
+    for (const name of [
+      'Intent: Add a greeting to the README',
+      'Stage draft, agent k-developer, harness kiro-cli',
+      'Stage review, agent k-quality-assurance, harness kiro-cli',
+      'End',
+    ]) {
+      expect(within(graph).getByRole('group', { name })).toBeTruthy();
+    }
+  });
 });

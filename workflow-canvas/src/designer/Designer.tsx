@@ -4,24 +4,18 @@ import Header from '@cloudscape-design/components/header';
 import { useMemo } from 'react';
 import { WorkflowCanvas } from '../canvas/WorkflowCanvas';
 import { buildGraph } from '../graph';
+import type { WorkflowView } from '../api/types';
 import type { LoadedWorkflow, LoadResult } from '../workflow/load-workflow';
 import { EmptyState, ErrorState, LoadingState } from './states';
 
-function DrawnWorkflow({ workflow }: { workflow: LoadedWorkflow }) {
-  const { document, harness } = workflow;
-  const { view } = document;
-  const graph = useMemo(
-    () => (view ? buildGraph(view, harness) : undefined),
-    [view, harness],
-  );
-  if (!view || !graph) {
-    return (
-      <EmptyState
-        hasFile={document.text !== null}
-        diagnostics={document.diagnostics}
-      />
-    );
-  }
+function DrawnGraph({
+  view,
+  harness,
+}: {
+  view: WorkflowView;
+  harness: string;
+}) {
+  const graph = useMemo(() => buildGraph(view, harness), [view, harness]);
   return (
     <Container
       header={
@@ -36,6 +30,20 @@ function DrawnWorkflow({ workflow }: { workflow: LoadedWorkflow }) {
       <WorkflowCanvas graph={graph} />
     </Container>
   );
+}
+
+function DrawnWorkflow({ workflow }: { workflow: LoadedWorkflow }) {
+  const { document, harness } = workflow;
+  const { view } = document;
+  if (!view) {
+    return (
+      <EmptyState
+        hasFile={document.text !== null}
+        diagnostics={document.diagnostics}
+      />
+    );
+  }
+  return <DrawnGraph view={view} harness={harness} />;
 }
 
 /**
