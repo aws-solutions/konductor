@@ -492,10 +492,21 @@ describe('workflow canvas API contract', () => {
     });
 
     it('answers a method the path does not list with 405 and an Allow header', () => {
-      for (const { method, path, operation } of listOperations(spec)) {
+      const operations = listOperations(spec);
+      for (const { method, path, operation } of operations) {
         const response = operation.responses?.['405'];
         const label = `${method} ${path}`;
-        expect(response?.headers?.['Allow'], label).toBeDefined();
+        const allow = response?.headers?.['Allow'];
+        expect(allow, label).toBeDefined();
+        const listed = String((allow as { example?: unknown }).example)
+          .split(',')
+          .map((name) => name.trim())
+          .sort();
+        const accepted = operations
+          .filter((other) => other.path === path)
+          .map((other) => other.method)
+          .sort();
+        expect(listed, `${label} Allow`).toEqual(accepted);
         const examples = bodiesOf(response, label, '405').flatMap(({ media }) =>
           exampleValues(media),
         );

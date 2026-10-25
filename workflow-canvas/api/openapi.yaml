@@ -282,7 +282,7 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
         '405':
-          $ref: '#/components/responses/MethodNotAllowed'
+          $ref: '#/components/responses/MethodNotAllowedPost'
         '413':
           $ref: '#/components/responses/TooLarge'
   /api/workflow:
@@ -357,8 +357,6 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
-        '405':
-          $ref: '#/components/responses/MethodNotAllowed'
         '404':
           headers:
             X-Konductor-Api:
@@ -373,6 +371,8 @@ paths:
               example:
                 error: There is no workflow with this name.
                 code: not_found
+        '405':
+          $ref: '#/components/responses/MethodNotAllowedGetPut'
         '500':
           $ref: '#/components/responses/StorageFailure'
     put:
@@ -475,10 +475,10 @@ paths:
                   value:
                     error: The Origin header does not match this server.
                     code: forbidden_origin
-        '405':
-          $ref: '#/components/responses/MethodNotAllowed'
         '404':
           $ref: '#/components/responses/NotRegularFile'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowedGetPut'
         '409':
           headers:
             X-Konductor-Api:
@@ -739,7 +739,7 @@ paths:
                 readOnly:
                   $ref: '#/components/examples/ReadOnlyError'
         '405':
-          $ref: '#/components/responses/MethodNotAllowed'
+          $ref: '#/components/responses/MethodNotAllowedPost'
         '413':
           $ref: '#/components/responses/TooLarge'
         '500':
@@ -782,8 +782,6 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
-        '405':
-          $ref: '#/components/responses/MethodNotAllowed'
         '404':
           headers:
             X-Konductor-Api:
@@ -799,6 +797,8 @@ paths:
               example:
                 error: The workflow has not been saved yet.
                 code: not_found
+        '405':
+          $ref: '#/components/responses/MethodNotAllowedPost'
         '409':
           headers:
             X-Konductor-Api:
@@ -931,8 +931,6 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
-        '405':
-          $ref: '#/components/responses/MethodNotAllowed'
         '404':
           headers:
             X-Konductor-Api:
@@ -945,6 +943,8 @@ paths:
               example:
                 error: There is no run with this id.
                 code: not_found
+        '405':
+          $ref: '#/components/responses/MethodNotAllowedGet'
         '500':
           $ref: '#/components/responses/StorageFailure'
 components:
@@ -959,26 +959,64 @@ components:
       schema:
         type: string
         const: '1'
-    Allow:
+    AllowGet:
+      description: The methods the path accepts, separated by commas.
+      schema:
+        type: string
+      example: GET
+    AllowPost:
+      description: The methods the path accepts, separated by commas.
+      schema:
+        type: string
+      example: POST
+    AllowGetPut:
       description: The methods the path accepts, separated by commas.
       schema:
         type: string
       example: GET, PUT
   responses:
-    MethodNotAllowed:
+    MethodNotAllowedGet:
       headers:
         X-Konductor-Api:
           $ref: '#/components/headers/XKonductorApi'
         Allow:
-          $ref: '#/components/headers/Allow'
+          $ref: '#/components/headers/AllowGet'
       description: The path exists, but not for this method. `Allow` lists the methods it does accept.
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
-          example:
-            error: This path does not accept that method.
-            code: method_not_allowed
+          examples:
+            methodNotAllowed:
+              $ref: '#/components/examples/MethodNotAllowedError'
+    MethodNotAllowedPost:
+      headers:
+        X-Konductor-Api:
+          $ref: '#/components/headers/XKonductorApi'
+        Allow:
+          $ref: '#/components/headers/AllowPost'
+      description: The path exists, but not for this method. `Allow` lists the methods it does accept.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            methodNotAllowed:
+              $ref: '#/components/examples/MethodNotAllowedError'
+    MethodNotAllowedGetPut:
+      headers:
+        X-Konductor-Api:
+          $ref: '#/components/headers/XKonductorApi'
+        Allow:
+          $ref: '#/components/headers/AllowGetPut'
+      description: The path exists, but not for this method. `Allow` lists the methods it does accept.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            methodNotAllowed:
+              $ref: '#/components/examples/MethodNotAllowedError'
     Unauthorized:
       headers:
         X-Konductor-Api:
@@ -1066,6 +1104,11 @@ components:
             error: The workflow file cannot be used.
             code: not_found
   examples:
+    MethodNotAllowedError:
+      summary: The path does not accept the method
+      value:
+        error: This path does not accept that method.
+        code: method_not_allowed
     BadNameError:
       summary: The name is not a valid workflow name
       value:
