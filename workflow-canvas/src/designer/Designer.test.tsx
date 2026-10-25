@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { HELLO_DOCUMENT, failed, loaded } from '../test-support/fixtures';
 import { Designer } from './Designer';
 
@@ -87,6 +87,27 @@ describe('Designer', () => {
     });
     expect(within(list).getByText('The file is empty')).toBeTruthy();
     expect(list.textContent).not.toContain('Line');
+  });
+
+  it('lists every problem when the server repeats an identical one', () => {
+    const repeated = { message: 'Unknown key: owner', line: 3 };
+    const broken = {
+      ...HELLO_DOCUMENT,
+      view: null,
+      diagnostics: [repeated, repeated],
+    };
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    render(<Designer result={loaded(broken)} />);
+
+    const list = screen.getByRole('list', {
+      name: 'Problems in the workflow file',
+    });
+    expect(
+      within(list).getAllByText('Line 3: Unknown key: owner'),
+    ).toHaveLength(2);
+    expect(logged).not.toHaveBeenCalled();
+    logged.mockRestore();
   });
 
   it('gives each node a name for a screen reader', () => {
