@@ -103,6 +103,8 @@ jobs:
 
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+        with:
+          components: clippy, rustfmt
 
       - name: Build konductor and run synth (produces dist/)
         run: make synth
@@ -134,6 +136,13 @@ jobs:
             --skip cli::update::tests::update_finalize_index_reflects_a_concurrently_installed_other_strategy)
           make -C mcp test-rust
           make -C shared test-rust
+
+      - name: Lint the Rust crates (clippy -D warnings and rustfmt)
+        run: |
+          set -e
+          make -C cli lint
+          make -C mcp lint
+          make -C shared lint
 
       - name: Install claude CLI for validation
         # Pinned to the same version release.yml's publish-claude-plugin job

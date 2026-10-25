@@ -311,9 +311,13 @@ async fn get_skill_exact_name_match_case_insensitive() {
     with_server_over(dir, |mut stdin, mut reader| async move {
         complete_handshake(&mut stdin, &mut reader).await;
 
-        let response =
-            call_get_skill(&mut stdin, &mut reader, 2, serde_json::json!({"name": "mytestskill"}))
-                .await;
+        let response = call_get_skill(
+            &mut stdin,
+            &mut reader,
+            2,
+            serde_json::json!({"name": "mytestskill"}),
+        )
+        .await;
         let content = expect_success_body(&response);
         assert!(
             content.contains("The case-insensitive body line."),
@@ -572,7 +576,9 @@ async fn get_skill_body_with_special_characters_round_trips_correctly() {
             content.ends_with(special_body),
             "expected the special-character body to round-trip byte-for-byte \
              (modulo the frontmatter prefix); got tail: {:?}, expected suffix: {:?}",
-            &content[content.len().saturating_sub(special_body.len().min(content.len()))..],
+            &content[content
+                .len()
+                .saturating_sub(special_body.len().min(content.len()))..],
             special_body
         );
 
