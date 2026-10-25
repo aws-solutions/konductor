@@ -18,7 +18,7 @@ const BUNDLED_FACES = [
   "700 1em 'JetBrains Mono'",
 ];
 
-/** Waits until every bundled font can paint. */
+// Waits until every bundled font can paint.
 async function waitForFonts(page: Page): Promise<void> {
   await page.evaluate(
     (faces) => Promise.all(faces.map((face) => document.fonts.load(face))),
