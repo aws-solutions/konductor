@@ -51,7 +51,9 @@ pub struct SopDef {
 
 /// A per-agent context file: its name (the source filename under
 /// `context/`, matched against an agent spec's `contextNames`) and its
-/// full text content, written through verbatim.
+/// text content. Any `load` front matter is already stripped (see
+/// `context_load.rs`); a file without front matter is kept verbatim.
+/// `load: on_demand` does not yet change how the file loads.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ContextDef {
     pub name: String,

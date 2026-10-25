@@ -113,8 +113,8 @@ pub(crate) fn write_all_sops(output_dir: &Path, sops: &[SopDef]) -> Result<(), S
 
 /// Writes one context file's body to `<output_dir>/<context.name>`,
 /// preserving the source filename verbatim. Written through as-is (no
-/// frontmatter reconstruction -- `ContextDef` has no frontmatter
-/// fields, per `parse_canonical.rs`'s `parse_context`).
+/// frontmatter reconstruction -- `parse_context` already stripped any
+/// `load` front matter from `ContextDef.body`).
 pub(crate) fn write_context(output_dir: &Path, context: &ContextDef) -> Result<(), String> {
     reject_unsafe_context_name(&context.name)?;
     fs::create_dir_all(output_dir)

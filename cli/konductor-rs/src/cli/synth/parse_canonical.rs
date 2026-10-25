@@ -15,6 +15,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
+use crate::cli::synth::context_load::strip_load_front_matter;
 use crate::cli::synth::model::{AuxiliaryFile, CanonicalModel, ContextDef, SkillDef, SopDef};
 use crate::cli::synth::parser::{self, ParseError};
 use crate::cli::synth::path_safety::case_insensitive_fold_key;
@@ -500,7 +501,8 @@ fn parse_context(context_dir: &Path) -> Result<Vec<ContextDef>, ParseError> {
             })?
             .to_string();
         validate_context_name(&name, &file_label)?;
-        let body = read_checked_source_file(&file, &file_label)?;
+        let raw = read_checked_source_file(&file, &file_label)?;
+        let body = strip_load_front_matter(&name, &raw, &file_label)?.to_string();
         labels.push(file_label);
         context.push(ContextDef { name, body });
     }
@@ -665,13 +667,17 @@ fn parse_skill_dir(dir: &Path, skill_md: &Path, dir_name: &str) -> Result<SkillD
     })
 }
 
-/// Splits `SKILL.md` content into (frontmatter YAML text, body). Frontmatter
+/// Splits a Markdown file with leading `---` front matter (a `SKILL.md`
+/// or a context file) into (frontmatter YAML text, body). Frontmatter
 /// is delimited by `---` lines at the start of the file.
 ///
 /// Handles both LF and CRLF line endings: every line-boundary
 /// strip/search here also matches an optional trailing `\r` before
 /// the `\n`, not just the `\n` itself.
-fn split_frontmatter<'a>(raw: &'a str, file_label: &str) -> Result<(&'a str, &'a str), ParseError> {
+pub(super) fn split_frontmatter<'a>(
+    raw: &'a str,
+    file_label: &str,
+) -> Result<(&'a str, &'a str), ParseError> {
     let rest = raw.strip_prefix("---").ok_or_else(|| ParseError {
         file: file_label.to_string(),
         field: None,
@@ -1831,6 +1837,50 @@ mod tests {
         assert_eq!(
             model.agents[0].dependencies.context.context_names,
             vec!["routing-rules.md".to_string()]
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn context_load_front_matter_is_stripped_from_body() {
+        let dir = temp_dir("context-load-always");
+        fs::create_dir_all(dir.join("context")).unwrap();
+        fs::write(
+            dir.join("context").join("notes.md"),
+            "---\nload: always\n---\n\n# Notes\n",
+        )
+        .unwrap();
+
+        let model = parse_canonical(&dir).unwrap();
+        assert_eq!(model.context[0].body, "# Notes\n");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn context_without_front_matter_keeps_its_exact_body() {
+        let dir = temp_dir("context-no-front-matter");
+        write_context(&dir, "notes.md");
+
+        let model = parse_canonical(&dir).unwrap();
+        assert_eq!(model.context[0].body, "# notes.md\n\nContext body.\n");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn context_on_demand_on_pinned_file_fails_parse() {
+        let dir = temp_dir("context-pinned-on-demand");
+        fs::create_dir_all(dir.join("context")).unwrap();
+        fs::write(
+            dir.join("context").join("k-core-rules.md"),
+            "---\nload: on_demand\n---\n# Rules\n",
+        )
+        .unwrap();
+
+        let err = parse_canonical(&dir).unwrap_err();
+        assert_eq!(err.field.as_deref(), Some("load"));
+        assert!(
+            err.reason.contains("'k-core-rules.md' is pinned"),
+            "got: {err}"
         );
         let _ = fs::remove_dir_all(&dir);
     }

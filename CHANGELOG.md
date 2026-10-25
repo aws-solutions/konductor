@@ -15,6 +15,13 @@ not per individual commit.
   `claude-plugin` as the harness. It is on by default and shares the machine ID in
   `~/.konductor/telemetry.json` with the CLI. Turn it off with the plugin's
   `telemetry_enabled` option or any existing opt-out.
+- Context files may start with a `load` front matter block set to `always` or
+  `on_demand`. Synth strips the block from the emitted copy. Synth fails with exit 64 if
+  `context/k-core-rules.md` or `context/k-orchestrator-routing-rules.md` is marked
+  `load: on_demand`. `on_demand` is validated but does not yet change how a file loads.
+  A context file whose first line is `---` is parsed as front matter and may hold only
+  the `load` key; anything else fails synth with exit 64. Files without front matter
+  are emitted unchanged.
 
 ### Changed
 

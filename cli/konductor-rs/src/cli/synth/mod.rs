@@ -40,6 +40,7 @@ pub mod parser;
 pub mod registry;
 
 mod content_writers;
+mod context_load;
 mod frontmatter;
 pub(crate) mod package;
 // `pub(crate)`, not private: `install/kiro_cli/fs_util.rs` and

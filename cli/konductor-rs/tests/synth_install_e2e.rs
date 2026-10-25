@@ -1017,3 +1017,34 @@ fn real_synth_fails_on_dangling_skill_reference() {
 
     std::fs::remove_dir_all(&repo_root).ok();
 }
+
+/// A pinned context file marked `load: on_demand` must fail the real
+/// `synth` with the usage-error exit code (never 2), name the file, and
+/// write no dist/ output.
+#[test]
+fn real_synth_fails_when_a_pinned_context_file_is_on_demand() {
+    let sink = telemetry_test_sink::TelemetrySink::start();
+    let repo_root = scratch_dir("repo-pinned-on-demand");
+    let context_dir = repo_root.join("context");
+    std::fs::create_dir_all(&context_dir).unwrap();
+    std::fs::write(
+        context_dir.join("k-orchestrator-routing-rules.md"),
+        "---\nload: on_demand\n---\n# Routing\n",
+    )
+    .unwrap();
+
+    let synth_result = run_konductor(
+        &repo_root,
+        &sink,
+        &[CMD_SYNTH, "--from", &repo_root.display().to_string()],
+    );
+    assert_eq!(synth_result.status.code(), Some(64));
+    let stderr = String::from_utf8_lossy(&synth_result.stderr);
+    assert!(
+        stderr.contains("'k-orchestrator-routing-rules.md' is pinned"),
+        "error must name the pinned file, got: {stderr}"
+    );
+    assert!(!repo_root.join("dist").exists());
+
+    std::fs::remove_dir_all(&repo_root).ok();
+}
