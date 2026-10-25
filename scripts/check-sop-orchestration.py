@@ -20,15 +20,33 @@ TOP_LEVEL_KEYS = {"version", "marker", "gated", "not_gated"}
 EX_USAGE = 64
 
 
-def first_overview_line(text):
-    """Return the first non-blank line after `## Overview`, or None."""
-    in_overview = False
-    for line in text.splitlines():
-        if in_overview and line.strip():
-            return line.strip()
+def marker_is_placed(text, marker):
+    """True when the marker is its own paragraph right after the `# ` title
+    and nowhere in `## Overview`. The installer reads the first Overview
+    paragraph as the skill description, so the marker must stay out of it."""
+    lines = text.splitlines()
+    filled = [i for i, line in enumerate(lines) if line.strip()]
+    if len(filled) < 2 or not lines[filled[0]].startswith("# "):
+        return False
+    at = filled[1]
+    if lines[at].rstrip() != marker:
+        return False
+    if at + 1 < len(lines) and lines[at + 1].strip():
+        return False
+    return marker not in overview_text(lines)
+
+
+def overview_text(lines):
+    """Return the `## Overview` section, up to the next heading."""
+    section, inside = [], False
+    for line in lines:
         if line.strip() == "## Overview":
-            in_overview = True
-    return None
+            inside = True
+        elif inside and line.startswith("#"):
+            break
+        elif inside:
+            section.append(line)
+    return "\n".join(section)
 
 
 def check_map_shape(data):
@@ -70,8 +88,11 @@ def check_agreement(root, gated, not_gated, marker):
         errors.append(f"missing-sop-file: '{name}' is listed but {SOP_DIR / (name + SOP_SUFFIX)} does not exist")
     for name in sorted(sop_files.keys() & gated.keys()):
         text = sop_files[name].read_text(encoding="utf-8")
-        if first_overview_line(text) != marker:
-            errors.append(f"missing-marker: gated '{name}' must open its Overview with '{marker}'")
+        if not marker_is_placed(text, marker):
+            errors.append(
+                f"missing-marker: gated '{name}' must have '{marker}' as its own "
+                "paragraph right after the title, above ## Overview"
+            )
         if text.count(marker) > 1:
             errors.append(f"unexpected-marker: gated '{name}' has the marker more than once")
     for name in sorted(sop_files.keys() & not_gated.keys()):

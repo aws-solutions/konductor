@@ -1,8 +1,8 @@
 # alpha-gated
 
-## Overview
-
 Orchestration: strict (phase-gated SOP)
+
+## Overview
 
 Fixture SOP alpha-gated.
 
