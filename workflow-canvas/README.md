@@ -273,12 +273,16 @@ corner radii, in a light and a dark mode.
 - `src/theme/tokens.ts` holds every colour, font and radius of the theme, as
   two palettes and the Cloudscape token map built from them. Nothing else
   names a colour of Cloudscape. The colours of the canvas itself are in
-  `src/canvas/canvas.css`, with their dark values under `.awsui-dark-mode`.
+  `src/canvas/canvas.css`, with their dark values under
+  `:root[data-theme='dark']`. A test checks that they match the palettes.
 - `src/theme/install.ts` applies the token map with `applyTheme` from
   `@cloudscape-design/components/theming` (colours, fonts and radii only,
   with a value for each mode) and switches the mode with `applyMode` from
   `@cloudscape-design/global-styles`. The header band and the top bar are dark
   in both modes, so their text colours are set for the band in `tokens.ts`.
+  The root element gets `data-theme` (`light` or `dark`) and `color-scheme`; a
+  small script in `index.html` sets both before the first paint, so a dark page
+  does not flash white.
 - `src/theme/fonts.ts` loads Outfit and JetBrains Mono from the pinned
   `@fontsource/outfit` and `@fontsource/jetbrains-mono` packages (SIL Open
   Font License 1.1). The Latin files are bundled, so the page makes no request
@@ -287,19 +291,24 @@ corner radii, in a light and a dark mode.
   **Theme: light** / **Theme: dark** button. The first visit follows the
   system setting (`prefers-color-scheme`). Pressing the button saves the mode
   in local storage (`src/theme/mode.ts`), and the saved mode wins from then
-  on. A page that was never switched keeps following the system.
+  on. A page that was never switched keeps following the system, but only as it
+  was at load: a later change of the system setting, or of the choice in
+  another tab, shows after a reload.
 - The page header is a dark band with the breadcrumb `Workflows > <workflow>`
-  (the page has no list of workflows yet, so the first link stays on the
-  page), the title and the Designer and Execution tabs.
+  (the page has no list of workflows yet, so no crumb is a link), the title
+  and the Designer and Execution tabs. The whole tab strip, with its rule and
+  the selected-tab indicator, is part of the band.
 - Nodes are cards with the corner radius of the theme. The `S` run-order
   ports are pieces of a jigsaw: the out port is a square tab under the card,
   the in port a square notch in the top edge, both at the right, so a tab
   fits a notch. Links are rails with an arrowhead.
 
-Text meets WCAG 2 AA in both modes. `src/theme/tokens.test.ts` and
-`test-support/canvas-contrast.test.ts` check the contrast of each text and edge
-colour pair, and the end-to-end tests run axe (which includes colour
-contrast) in both modes.
+Text meets WCAG 2 AA (4.5:1) in both modes, and the edges of controls, nodes,
+ports and the selected-tab indicator reach 3:1. `src/theme/tokens.test.ts`
+and `test-support/canvas-contrast.test.ts` check each of these colour pairs
+for the palettes, the band and the canvas in both modes, and the end-to-end
+tests run axe (which checks text contrast) in both modes and read the colour
+of the tab strip.
 
 ## End-to-end tests
 
