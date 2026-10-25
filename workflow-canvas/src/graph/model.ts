@@ -9,6 +9,8 @@ export interface WorkflowSpec {
 
 interface Placed {
   id: string;
+  /** What a screen reader says for the node. */
+  ariaLabel: string;
   position: { x: number; y: number };
   width: number;
   height: number;
@@ -44,6 +46,8 @@ export type UnplacedNode =
 /** Run order from the sequence-out port of one node to the next one's in. */
 export interface GraphEdge {
   id: string;
+  /** What a screen reader says for the edge. */
+  ariaLabel: string;
   source: string;
   target: string;
   sourceHandle: typeof SEQUENCE_OUT;

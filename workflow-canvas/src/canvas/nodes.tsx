@@ -12,7 +12,7 @@ type FlowNode<N extends { type: string; data: Record<string, unknown> }> = Node<
   N['type']
 >;
 
-/** The port where run order arrives, at the top right of a node. */
+// The port where run order arrives, at the top right of a node.
 function SequenceIn() {
   return (
     <Handle
@@ -27,7 +27,7 @@ function SequenceIn() {
   );
 }
 
-/** The port where run order leaves, at the bottom right of a node. */
+// The port where run order leaves, at the bottom right of a node.
 function SequenceOut() {
   return (
     <Handle

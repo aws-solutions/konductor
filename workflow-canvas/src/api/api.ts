@@ -14,14 +14,15 @@ export interface WorkflowApi {
 
 /** A call that failed, with a message that is fit to show to a person. */
 export class ApiError extends Error {
-  constructor(
-    message: string,
-    /** The HTTP status, or 0 when the server did not answer. */
-    readonly status: number,
-    /** The `code` of the error body, when there was one. */
-    readonly code?: string,
-  ) {
+  /** The HTTP status, or 0 when the server did not answer. */
+  readonly status: number;
+  /** The `code` of the error body, when there was one. */
+  readonly code?: string;
+
+  constructor(message: string, status: number, code?: string) {
     super(message);
     this.name = 'ApiError';
+    this.status = status;
+    this.code = code;
   }
 }
