@@ -254,9 +254,13 @@ corner radii, in a light and a dark mode.
   and the Designer and Execution tabs. The whole tab strip, with its rule and
   the selected-tab indicator, is part of the band.
 - Nodes are cards with the corner radius of the theme. The `S` run-order
-  ports are pieces of a jigsaw: the out port is a square tab under the card,
-  the in port a square notch in the top edge, both at the right, so a tab
-  fits a notch. Links are rails with an arrowhead.
+  ports are pieces of a jigsaw: the out port is a round knob on a narrow neck
+  that hangs from the bottom edge, the in port a round socket of the same
+  shape cut into the top edge, both at the right, so a knob fits a socket. The
+  border of a card is one path that bends in around its socket and out around
+  its knob (`src/canvas/jigsaw.ts` defines the shape once). A link runs from
+  the tip of the knob to the socket, and its arrowhead stops at the mouth of
+  the socket.
 
 Text meets WCAG 2 AA (4.5:1) in both modes, and the edges of controls, nodes,
 ports and the selected-tab indicator reach 3:1. `src/theme/tokens.test.ts`
@@ -312,8 +316,9 @@ Only that script writes the PNGs. It uses its own config,
 
 The capture waits until the bundled Outfit and JetBrains Mono faces are loaded
 and turns off text hinting and LCD smoothing, so the PNGs come out
-byte-identical on different machines and in CI. CI regenerates them, uploads that set as the
-`screenshots` artifact, and fails when it differs from the committed files.
+byte-identical on different machines and in CI. CI regenerates them, uploads
+that set as the `screenshots` artifact, and fails when it differs from the
+committed files.
 
 The comparison is byte-exact, so CI fails if a committed screenshot differs by
 even one byte. After a toolchain bump (Playwright, Chromium, fonts or Node), run
