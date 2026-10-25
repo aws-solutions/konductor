@@ -1,0 +1,57 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "hook-probe-SessionStart",
+      "trigger": "SessionStart",
+      "action": {
+        "type": "command",
+        "command": "python3 {{PROBE}} log SessionStart"
+      },
+      "timeout": 10,
+      "enabled": true
+    },
+    {
+      "name": "hook-probe-UserPromptSubmit",
+      "trigger": "UserPromptSubmit",
+      "action": {
+        "type": "command",
+        "command": "python3 {{PROBE}} log UserPromptSubmit"
+      },
+      "timeout": 10,
+      "enabled": true
+    },
+    {
+      "name": "hook-probe-PreToolUse",
+      "trigger": "PreToolUse",
+      "matcher": "*",
+      "action": {
+        "type": "command",
+        "command": "python3 {{PROBE}} {{MODE}} PreToolUse"
+      },
+      "timeout": 10,
+      "enabled": true
+    },
+    {
+      "name": "hook-probe-PostToolUse",
+      "trigger": "PostToolUse",
+      "matcher": "*",
+      "action": {
+        "type": "command",
+        "command": "python3 {{PROBE}} log PostToolUse"
+      },
+      "timeout": 10,
+      "enabled": true
+    },
+    {
+      "name": "hook-probe-Stop",
+      "trigger": "Stop",
+      "action": {
+        "type": "command",
+        "command": "python3 {{PROBE}} log Stop"
+      },
+      "timeout": 10,
+      "enabled": true
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "name": "hook-probe",
+  "description": "Hook probe agent with no MCP servers.",
+  "mcpServers": {},
+  "tools": [
+    "*"
+  ],
+  "hooks": {
+    "agentSpawn": [
+      {
+        "command": "python3 {{PROBE}} log agentSpawn"
+      }
+    ],
+    "userPromptSubmit": [
+      {
+        "command": "python3 {{PROBE}} log userPromptSubmit"
+      }
+    ],
+    "preToolUse": [
+      {
+        "command": "python3 {{PROBE}} {{MODE}} preToolUse",
+        "matcher": "*"
+      }
+    ],
+    "postToolUse": [
+      {
+        "command": "python3 {{PROBE}} log postToolUse",
+        "matcher": "*"
+      }
+    ],
+    "stop": [
+      {
+        "command": "python3 {{PROBE}} log stop"
+      }
+    ]
+  }
+}
