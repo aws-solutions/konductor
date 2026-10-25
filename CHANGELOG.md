@@ -49,6 +49,12 @@ not per individual commit.
   reload works; `npm run stub` on its own keeps the contract's one use.
   The dev proxy sends the target's `Origin` only for a request from the page itself; any other
   `Origin`, or none, is forwarded unchanged, so the API refuses a page on another origin.
+- The Designer tab of the workflow canvas draws the workflow from the API, read-only: the intent,
+  each stage in list order with its agent and harness, and the end, joined by run-order edges,
+  using React Flow. The page opens a session with the launch code in its address, loads
+  `GET /api/workflow`, and shows loading, error and empty states. The graph is built by an IO-free
+  core, tested like the stub core, and the end-to-end tests and screenshots now cover the canvas
+  on the stub.
 
 ### Changed
 
