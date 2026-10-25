@@ -13,3 +13,11 @@ for (const name of TAB_NAMES) {
     await saveFullPageScreenshot(canvas.page, `${name.toLowerCase()}-tab`);
   });
 }
+
+// The Designer tab in the dark mode, switched with the button like a person would.
+test('capture the Designer tab in the dark mode', async ({ canvas }) => {
+  await canvas.switchTheme();
+  await canvas.expectTabLoaded('Designer');
+
+  await saveFullPageScreenshot(canvas.page, 'designer-tab-dark');
+});

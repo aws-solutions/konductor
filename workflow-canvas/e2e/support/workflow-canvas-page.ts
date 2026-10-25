@@ -6,6 +6,9 @@ export const TAB_NAMES = ['Designer', 'Execution'] as const;
 /** The label of one tab. */
 export type TabName = (typeof TAB_NAMES)[number];
 
+/** The two modes of the page. */
+export type ThemeName = 'light' | 'dark';
+
 /** Text the Execution tab shows until it has real content. */
 export const PLACEHOLDER_TEXT = 'Nothing here yet.';
 
@@ -36,12 +39,16 @@ export class WorkflowCanvasPage {
   readonly title: Locator;
   readonly graph: Locator;
   readonly edges: Locator;
+  readonly themeButton: Locator;
+  readonly breadcrumbs: Locator;
 
   constructor(readonly page: Page) {
     this.main = page.getByRole('main');
     this.title = this.main.getByRole('heading', { level: 1 });
     this.graph = page.getByRole('region', { name: 'Workflow graph' });
     this.edges = this.graph.locator('.react-flow__edge');
+    this.themeButton = page.getByRole('button', { name: /^Theme:/ });
+    this.breadcrumbs = page.getByRole('navigation', { name: 'Breadcrumbs' });
   }
 
   /**
@@ -51,6 +58,20 @@ export class WorkflowCanvasPage {
   async open(launchCode?: string): Promise<void> {
     await this.page.goto(launchCode ? `/#${launchCode}` : '/');
     await this.title.waitFor();
+  }
+
+  /** Presses the theme button and waits until the page is in the other mode. */
+  async switchTheme(): Promise<void> {
+    const next: ThemeName =
+      (await this.themeName()) === 'dark' ? 'light' : 'dark';
+    await this.themeButton.click();
+    await expect(this.themeButton).toHaveText(`Theme: ${next}`);
+  }
+
+  /** The mode the page is in, as the theme button says it. */
+  async themeName(): Promise<ThemeName> {
+    const text = (await this.themeButton.textContent()) ?? '';
+    return text.endsWith('dark') ? 'dark' : 'light';
   }
 
   tab(name: TabName): Locator {
