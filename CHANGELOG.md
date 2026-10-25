@@ -18,11 +18,12 @@ not per individual commit.
 
 ### Fixed
 
-- `konductor config set` rewrote `.konductor/config.yml` from its six known fields, so it
-  dropped every other key and block, including a `telemetry:` block that turns telemetry off
-  for the repo. It now changes only the named key and keeps every other key, block and the
-  key order. A file that is not a YAML mapping is refused with exit 64 and left unchanged.
-  Comments in the file are still not kept.
+- Setting a key in `.konductor/config.yml` from the CLI rewrote the file from its six known
+  fields, so it dropped every other key and block, including a `telemetry:` block that turns
+  telemetry off for the repo. It now changes only the named key and keeps every other key,
+  block and the key order. A file that is not a YAML mapping is refused with exit 64 and left
+  unchanged. The file is re-serialized, so comments, anchors and the original formatting of
+  values are not kept.
 - The Claude Code plugin release candidate could include untracked build output (`cli/`,
   `build/`, `dist/`, `generated/`) from the release job's checkout. The candidate is now built
   only from the assembled plugin tree, its file list is checked against that tree, and any

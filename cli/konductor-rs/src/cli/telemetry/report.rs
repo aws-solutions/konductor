@@ -1093,6 +1093,29 @@ mod tests {
     }
 
     #[test]
+    fn config_set_keeps_telemetry_opt_out() {
+        let dir = scratch_dir("config-set-keeps-opt-out");
+        let config_dir = dir.join(super::super::super::config::KONDUCTOR_DIR_NAME);
+        fs::create_dir_all(&config_dir).unwrap();
+        fs::write(
+            config_dir.join(super::super::super::config::CONFIG_FILE_NAME),
+            "tier: minor\ntelemetry:\n  enabled: false\n  endpoint: https://telemetry.example.com\n",
+        )
+        .unwrap();
+
+        super::super::super::config::set_config_value(&dir, "tier", "major")
+            .expect("set must succeed");
+
+        let section = read_telemetry_config(&dir).expect("telemetry section must survive");
+        assert_eq!(section.enabled, Some(false));
+        assert_eq!(
+            section.endpoint.as_deref(),
+            Some("https://telemetry.example.com")
+        );
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
     fn resolve_endpoint_respects_fleet_wide_telemetry_off_env_var() {
         let _lock = lock_telemetry_env();
         let dir = scratch_dir("endpoint-fleet-off");
