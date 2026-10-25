@@ -86,6 +86,16 @@ export class WorkflowCanvasPage {
     return this.graph.getByTestId(id);
   }
 
+  /** The knob under a node, where its run order leaves. */
+  knob(id: NodeId): Locator {
+    return this.node(id).locator('.wf-knob');
+  }
+
+  /** The socket in the top edge of a node, where its run order arrives. */
+  socket(id: NodeId): Locator {
+    return this.node(id).locator('.wf-socket');
+  }
+
   /** The node that a screen reader names `name`. */
   nodeNamed(name: string): Locator {
     return this.graph.getByRole('group', { name, exact: true });
