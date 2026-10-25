@@ -11,7 +11,9 @@ import {
 import '@xyflow/react/dist/style.css';
 import type { CanvasGraph } from '../graph';
 import './canvas.css';
+import { READ_ONLY_ARIA_LABELS } from './aria-labels';
 import { EndNode, IntentNode, StageNode } from './nodes';
+import { CANVAS_HEIGHT, FIT_PADDING, MIN_ZOOM } from './view';
 
 const NODE_TYPES: NodeTypes = {
   intent: IntentNode,
@@ -19,28 +21,30 @@ const NODE_TYPES: NodeTypes = {
   end: EndNode,
 };
 
-const EDGE_COLOR = '#5f6b7a';
-
 const EDGE_OPTIONS: DefaultEdgeOptions = {
   type: 'straight',
-  style: { stroke: EDGE_COLOR, strokeWidth: 2.5 },
+  style: { stroke: 'var(--wf-edge)', strokeWidth: 2.5 },
   markerEnd: {
     type: MarkerType.ArrowClosed,
-    color: EDGE_COLOR,
+    color: 'var(--wf-edge)',
     width: 16,
     height: 16,
   },
 };
 
-const DOT_COLOR = '#c9c1b3';
-
 /**
  * Draws a workflow graph, read-only. The view can be panned and zoomed, but
- * nodes cannot be moved, selected, connected or edited.
+ * nodes cannot be moved, selected, connected or edited. Each node can still
+ * be reached with the Tab key, which also brings it into view.
  */
 export function WorkflowCanvas({ graph }: { graph: CanvasGraph }) {
   return (
-    <div className="wf-canvas" role="region" aria-label="Workflow graph">
+    <div
+      className="wf-canvas"
+      role="region"
+      aria-label="Workflow graph"
+      style={{ height: CANVAS_HEIGHT }}
+    >
       <ReactFlow
         nodes={graph.nodes}
         edges={graph.edges}
@@ -50,13 +54,17 @@ export function WorkflowCanvas({ graph }: { graph: CanvasGraph }) {
         nodesConnectable={false}
         elementsSelectable={false}
         edgesFocusable={false}
+        ariaLabelConfig={READ_ONLY_ARIA_LABELS}
         zoomOnScroll={false}
         preventScrolling={false}
-        minZoom={0.4}
+        minZoom={MIN_ZOOM}
         fitView
-        fitViewOptions={{ padding: 0.12, maxZoom: 1 }}
+        fitViewOptions={{ padding: FIT_PADDING, maxZoom: 1 }}
       >
-        <Background variant={BackgroundVariant.Dots} color={DOT_COLOR} />
+        <Background
+          variant={BackgroundVariant.Dots}
+          color="var(--wf-canvas-dots)"
+        />
         <Controls showInteractive={false} />
       </ReactFlow>
     </div>

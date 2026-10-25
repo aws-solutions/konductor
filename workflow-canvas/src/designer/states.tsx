@@ -36,9 +36,9 @@ export function EmptyState({
       </Box>
       {diagnostics.length > 0 && (
         <ul aria-label="Problems in the workflow file">
-          {diagnostics.map((diagnostic, index) => (
-            <li key={index}>
-              Line {diagnostic.line}: {diagnostic.message}
+          {diagnostics.map(({ line, message }) => (
+            <li key={`${line ?? ''}:${message}`}>
+              {line === undefined ? message : `Line ${line}: ${message}`}
             </li>
           ))}
         </ul>
