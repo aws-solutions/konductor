@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { Locator } from '@playwright/test';
 import { expect, test } from '../support/fixtures';
-import { WorkflowCanvasPage } from '../support/workflow-canvas-page';
+import {
+  NODE_NAMES,
+  WorkflowCanvasPage,
+} from '../support/workflow-canvas-page';
 
 /** Where `to` is, relative to `from`, in whole pixels. */
 async function offsetBetween(from: Locator, to: Locator) {
@@ -90,6 +93,34 @@ test('does not let a node be dragged', async ({ canvas }) => {
   expect(await offsetBetween(draft, canvas.node('node-end'))).toEqual(
     gapBefore,
   );
+});
+
+test('reaches each node with the Tab key and names it', async ({ canvas }) => {
+  await canvas.expectWorkflowDrawn();
+  await canvas.tab('Designer').focus();
+
+  for (const name of NODE_NAMES) {
+    await canvas.tabToNextNode();
+    const node = canvas.nodeNamed(name);
+
+    await expect(node).toBeFocused();
+    await expect(node).toHaveAccessibleName(name);
+    await expect(node).toHaveAccessibleDescription(/^Read-only workflow graph/);
+    await expect(node).toHaveCSS('outline-style', 'solid');
+    await expect(node).toHaveCSS('outline-width', '3px');
+  }
+});
+
+test('names the edges by the nodes they join, not by ids', async ({
+  canvas,
+}) => {
+  await canvas.expectWorkflowDrawn();
+
+  await expect(canvas.edges.first()).toHaveAttribute(
+    'aria-label',
+    'Run order from intent to stage draft',
+  );
+  await expect(canvas.graph.locator('[aria-label*="stage-"]')).toHaveCount(0);
 });
 
 test('shows an error when the launch code is wrong', async ({ page }) => {
