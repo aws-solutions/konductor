@@ -61,10 +61,10 @@ not per individual commit.
   logo, the page name and a light/dark toggle sits above a dark header band with the breadcrumb
   `Workflows > hello`, the title and the Designer and Execution tabs. The mode follows the system
   setting on the first visit, and a choice made with the toggle is kept in local storage. Nodes,
-  the `S` run-order ports and the links are drawn in the same theme in both modes. The whole tab
-  strip is part of the dark band. Text meets WCAG AA in both modes, and the edges of the controls,
-  ports and the selected-tab indicator reach 3:1, checked by unit tests and by axe in the
-  end-to-end tests. A dark-mode Designer screenshot joins the committed screenshots.
+  the `S` run-order ports (a round knob that fits a round socket) and the links are drawn in the
+  same theme in both modes. The whole tab strip is part of the dark band. Text meets WCAG AA in
+  both modes, and the edges of the controls, ports and the selected-tab indicator reach 3:1,
+  checked by unit tests and by axe in the end-to-end tests. A dark-mode Designer screenshot joins the committed screenshots.
 
 ### Fixed
 
@@ -107,14 +107,14 @@ not per individual commit.
 - An "Install via Kiro Power" page in the user guide, and a matching section in `README.md`.
 - Manual setup docs for the AWS documentation-lookup MCP server and for Playwright.
 - A Claude Code plugin marketplace install path: `/plugin marketplace add
-aws-solutions/konductor` then `/plugin install konductor@konductor`. See [Install via the
+  aws-solutions/konductor` then `/plugin install konductor@konductor`. See [Install via the
   Claude Code plugin marketplace](docs/user-guide/tasks/install-claude-plugin-marketplace.md).
 - `tag-claude-plugin-release.yml` is a manually dispatched workflow, run after a human merges a
   plugin-candidate PR into `release/plugins`, that creates an immutable `claude-plugin-vX.Y.Z`
   tag on the merge commit -- so a `marketplace.json` entry can pin to a specific release instead
   of the branch's moving HEAD.
 - `konductor-setup`'s `run-update.sh` and `run-uninstall.sh` accept an optional `--harness
-<name>`, forwarded to `konductor update`/`uninstall`, for a target that tracks more than one
+  <name>`, forwarded to `konductor update`/`uninstall`, for a target that tracks more than one
   harness.
 
 ### Changed
