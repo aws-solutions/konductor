@@ -15,6 +15,12 @@ not per individual commit.
   `claude-plugin` as the harness. It is on by default and shares the machine ID in
   `~/.konductor/telemetry.json` with the CLI. Turn it off with the plugin's
   `telemetry_enabled` option or any existing opt-out.
+- `cli/gate-config/sop-orchestration.yml` classifies every shipped SOP as `gated` or
+  `not_gated`, with the gate kind and step for each gated one. The four gated SOPs
+  (`k-full-sdlc`, `k-design-doc-creation`, `k-principal-engineer-design-review`,
+  `kiro-spec-workflow`) now open their Overview with `Orchestration: strict (phase-gated SOP)`.
+  `make sop-orchestration-check`, run on every pull request, fails when the list, the marker
+  lines and `agent-sops/` disagree.
 
 ### Fixed
 
