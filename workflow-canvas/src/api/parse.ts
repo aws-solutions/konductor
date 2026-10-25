@@ -47,12 +47,19 @@ function parseView(value: unknown): WorkflowView | null {
   };
 }
 
+// The contract requires a line of 1 or more; anything else is left out
+// rather than shown as a line that does not exist.
+function lineOf(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 1
+    ? value
+    : undefined;
+}
+
 function parseDiagnostic(value: unknown): DiagnosticView {
   const diagnostic = objectOf(value);
-  const line = diagnostic.line;
   return {
     message: stringOf(diagnostic.message),
-    line: typeof line === 'number' ? line : 0,
+    line: lineOf(diagnostic.line),
   };
 }
 

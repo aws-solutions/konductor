@@ -19,6 +19,17 @@ export const NODE_IDS = [
 /** The test id of one node. */
 export type NodeId = (typeof NODE_IDS)[number];
 
+/** What a screen reader says for each node, top to bottom. */
+export const NODE_NAMES = [
+  'Intent: Add a greeting to the README',
+  'Stage draft, agent k-developer, harness kiro-cli',
+  'Stage review, agent k-quality-assurance, harness kiro-cli',
+  'End',
+] as const;
+
+/** The most Tab presses between one node and the next one to take focus. */
+const MAX_TABS_TO_NEXT_NODE = 10;
+
 /** Page object for the workflow canvas: title, landmark, tabs and the graph. */
 export class WorkflowCanvasPage {
   readonly main: Locator;
@@ -52,6 +63,23 @@ export class WorkflowCanvasPage {
 
   node(id: NodeId): Locator {
     return this.graph.getByTestId(id);
+  }
+
+  /** The node that a screen reader names `name`. */
+  nodeNamed(name: string): Locator {
+    return this.graph.getByRole('group', { name, exact: true });
+  }
+
+  /** Presses Tab until a node of the graph has focus. */
+  async tabToNextNode(): Promise<void> {
+    for (let press = 0; press < MAX_TABS_TO_NEXT_NODE; press += 1) {
+      await this.page.keyboard.press('Tab');
+      const onNode = await this.page.evaluate(() =>
+        document.activeElement?.classList.contains('react-flow__node'),
+      );
+      if (onNode) return;
+    }
+    throw new Error('Tab did not reach a node of the graph.');
   }
 
   async selectTab(name: TabName): Promise<void> {
