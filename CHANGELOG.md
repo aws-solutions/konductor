@@ -16,6 +16,12 @@ not per individual commit.
   `~/.konductor/telemetry.json` with the CLI. Turn it off with the plugin's
   `telemetry_enabled` option or any existing opt-out.
 
+### Changed
+
+- PR CI now lints the Rust crates: `make lint` (clippy with `-D warnings`, then
+  `cargo fmt --check`) runs for `cli`, `mcp` and `shared`. Four `mcp` test files that had
+  drifted from `rustfmt`'s output are reformatted.
+
 ### Fixed
 
 - The Claude Code plugin release candidate could include untracked build output (`cli/`,
