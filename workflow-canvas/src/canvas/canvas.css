@@ -82,9 +82,12 @@
   border-radius: 4px;
   background: var(--wf-port-bg);
   color: var(--wf-port-text);
-  font:
-    700 10px/1 Arial,
-    sans-serif;
+  /* Inherit the page font. Naming a system family here (Arial) would resolve
+     to a different face per host and make the screenshots differ. */
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
   pointer-events: none;
 }
 
