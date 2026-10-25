@@ -50,6 +50,23 @@ describe('loadWorkflow', () => {
     expect(api.getWorkflow).not.toHaveBeenCalled();
   });
 
+  it('fails without loading when the server speaks another API version', async () => {
+    const api = fakeApi({
+      createSession: vi
+        .fn()
+        .mockResolvedValue({ ...HELLO_SESSION, apiVersion: 2 }),
+    });
+
+    const result = await loadWorkflow(api, 'code-1');
+
+    expect(result).toEqual({
+      ok: false,
+      message:
+        'The server speaks a version of the API that this page does not understand.',
+    });
+    expect(api.getWorkflow).not.toHaveBeenCalled();
+  });
+
   it('fails with the message of a refused load', async () => {
     const api = fakeApi({
       getWorkflow: vi.fn().mockRejectedValue(new ApiError('Gone.', 404)),
