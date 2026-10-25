@@ -27,6 +27,7 @@ function PortShape({ kind }: { kind: 'tab' | 'notch' }) {
         focusable="false"
       >
         <path className="wf-port-rim" d={PORT_OUTLINE} />
+        {kind === 'tab' && <path className="wf-port-fill" d={PORT_OUTLINE} />}
         {kind === 'notch' && (
           <>
             <path className="wf-port-inner" d={PORT_OUTLINE} />
