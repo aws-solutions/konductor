@@ -5,9 +5,11 @@ import ContentLayout from '@cloudscape-design/components/content-layout';
 import Header from '@cloudscape-design/components/header';
 import Tabs from '@cloudscape-design/components/tabs';
 import { Breadcrumbs } from './chrome/Breadcrumbs';
+import './chrome/chrome.css';
 import { TOP_BAR_ID, TopBar } from './chrome/TopBar';
 import { Designer } from './designer/Designer';
 import { useSettled } from './designer/use-settled';
+import { TAB_STRIP_STYLE } from './theme/tokens';
 import { useThemeMode } from './theme/use-theme-mode';
 import { openWorkflowName, type LoadResult } from './workflow/load-workflow';
 
@@ -44,6 +46,7 @@ export function App({ load }: { load: Promise<LoadResult> }) {
             <div className="wf-tab-strip">
               <Tabs
                 ariaLabel="Workflow canvas views"
+                style={TAB_STRIP_STYLE}
                 tabs={[
                   {
                     id: 'designer',
