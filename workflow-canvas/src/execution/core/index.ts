@@ -20,5 +20,10 @@ export {
 } from './follow-run';
 export { GOAL_MAX_LENGTH, goalProblem } from './goal';
 export { nodeStatuses } from './node-statuses';
-export { RunAlreadyActive, type RunPort, type Scheduler } from './ports';
+export {
+  RunAlreadyActive,
+  RunReadRefused,
+  type RunPort,
+  type Scheduler,
+} from './ports';
 export { statusKind, statusText, type StatusKind } from './status-text';
