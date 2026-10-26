@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
 import AppLayout from '@cloudscape-design/components/app-layout';
-import Box from '@cloudscape-design/components/box';
 import ContentLayout from '@cloudscape-design/components/content-layout';
 import Header from '@cloudscape-design/components/header';
 import Tabs from '@cloudscape-design/components/tabs';
@@ -10,28 +9,37 @@ import './chrome/chrome.css';
 import { TOP_BAR_ID, TopBar } from './chrome/TopBar';
 import { Designer } from './designer/Designer';
 import { useSettled } from './designer/use-settled';
+import type { Scheduler } from './execution/core';
+import { Execution } from './execution/Execution';
+import { timerScheduler } from './execution/timer-scheduler';
+import { useExecution } from './execution/use-execution';
 import { TAB_STRIP_STYLE } from './theme/tokens';
 import { useThemeMode } from './theme/use-theme-mode';
 import { openWorkflowName, type LoadResult } from './workflow/load-workflow';
 
-const placeholder = <Box color="text-status-inactive">Nothing here yet.</Box>;
-
 /**
  * Root component: the top bar, then the page header (breadcrumbs and title)
- * with the Designer and Execution tabs. The Designer draws the workflow that
- * `load` settles with; the Execution tab shows a placeholder until its
- * content is built.
+ * with the Designer and Execution tabs. Both tabs draw the workflow that
+ * `load` settles with, and the Execution tab runs it, waiting with
+ * `scheduler` between two reads of the run.
  */
 export function App({
   load,
   notice,
+  scheduler = timerScheduler,
 }: {
   load: Promise<LoadResult>;
   /** Shown above the tabs, such as the refusal of a pasted launch address. */
   notice?: ReactNode;
+  scheduler?: Scheduler;
 }) {
   // Read here, not in the tab, so switching tabs does not load again.
   const result = useSettled(load);
+  // Kept here too, so a run goes on while the Designer tab is open.
+  const execution = useExecution(
+    result?.ok ? result.workflow.runs : undefined,
+    scheduler,
+  );
   const [mode, toggleMode] = useThemeMode();
   return (
     <>
@@ -62,7 +70,13 @@ export function App({
                     label: 'Designer',
                     content: <Designer result={result} />,
                   },
-                  { id: 'execution', label: 'Execution', content: placeholder },
+                  {
+                    id: 'execution',
+                    label: 'Execution',
+                    content: (
+                      <Execution result={result} execution={execution} />
+                    ),
+                  },
                 ]}
               />
             </div>
