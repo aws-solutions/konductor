@@ -258,7 +258,8 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
   of starting one. The line under the button says so, and the goal typed is not
   used for that run.
 - A read of the run that fails is tried again after a second; the tab gives up
-  after three failures in a row. A call that gets no answer in 15 seconds counts
+  after three failures in a row. Only a missing answer or a 5xx is tried again:
+  a 401, a 404 and a reply the page cannot read show the alert at once. A call that gets no answer in 15 seconds counts
   as a failure.
 - Each node shows a badge with a word and a colour: **Queued** (dashed
   outline), **Running**, **Done** and **Failed**. The intent is Done once the run
@@ -274,6 +275,8 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
   "See the error above." When a read fails, the nodes are cleared and the alert
   adds that the run may still be going on the server. A failed stage is a
   result, not an error, so it has no alert.
+- A run stage that is not in the graph is left out of the drawing. The graph is
+  read once, when the page loads, while the run works from the saved file.
 - A run goes on while the Designer tab is open, and the tab shows it again when
   you come back, with the goal box as it was: what you typed, or the goal of
   the run in flight. Closing the page stops the reading, not the run.
