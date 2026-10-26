@@ -138,10 +138,9 @@ test('keeps the keyboard ring of a node visible in the dark mode', async ({
 
   await canvas.tabToNextNode();
 
-  await expect(canvas.page.locator('.react-flow__node:focus')).toHaveCSS(
-    'outline-color',
-    'rgb(167, 139, 250)',
-  );
+  await expect(
+    canvas.page.locator('.react-flow__node:focus .wf-focus-ring'),
+  ).toHaveCSS('stroke', 'rgb(167, 139, 250)');
 });
 
 test('switches with the keyboard', async ({ canvas }) => {
