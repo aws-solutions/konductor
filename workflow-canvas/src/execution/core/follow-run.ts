@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
+import type { RunView } from '../../api/types';
 import type { ExecutionEvent } from './execution-state';
-import type { RunPort, Scheduler } from './ports';
+import { RunAlreadyActive, type RunPort, type Scheduler } from './ports';
 
 /** How long to wait between two reads of a run, as the API asks. */
 export const POLL_INTERVAL_MS = 1000;
+
+/** How many reads in a row may fail before the run is given up on. */
+export const MAX_READ_FAILURES = 3;
 
 const UNKNOWN_FAILURE = 'The run did not go as expected.';
 const OTHER_RUN = 'The server answered with a run that is not the one started.';
@@ -23,29 +27,68 @@ export interface FollowRequest {
   signal: AbortSignal;
 }
 
+// Starts a run, or names the run that is already active in its place.
+async function begin(
+  runs: RunPort,
+  goal: string,
+): Promise<{ runId: string; joined: boolean }> {
+  try {
+    return { runId: await runs.start(goal), joined: false };
+  } catch (error) {
+    if (error instanceof RunAlreadyActive) {
+      return { runId: error.runId, joined: true };
+    }
+    throw error;
+  }
+}
+
+// One reading of the run. A failed read is tried again after a poll interval
+// until `MAX_READ_FAILURES` in a row have failed; then the last error is thrown.
+async function read(
+  { runs, scheduler, signal }: FollowRequest,
+  runId: string,
+): Promise<RunView | undefined> {
+  for (let failures = 1; ; failures += 1) {
+    try {
+      return await runs.get(runId);
+    } catch (error) {
+      if (signal.aborted || failures >= MAX_READ_FAILURES) throw error;
+      await scheduler.wait(POLL_INTERVAL_MS, signal);
+      if (signal.aborted) return undefined;
+    }
+  }
+}
+
+async function follow(request: FollowRequest, runId: string): Promise<void> {
+  const { scheduler, emit, signal } = request;
+  for (;;) {
+    const run = await read(request, runId);
+    if (signal.aborted || run === undefined) return;
+    if (run.runId !== runId) {
+      emit({ type: 'failed', message: OTHER_RUN });
+      return;
+    }
+    emit({ type: 'snapshot', run });
+    if (run.status !== 'running') return;
+    await scheduler.wait(POLL_INTERVAL_MS, signal);
+    if (signal.aborted) return;
+  }
+}
+
 /**
- * Starts a run, then reads it every `POLL_INTERVAL_MS` until it is no longer
- * running, telling `emit` each step. It never rejects: a failed call ends the
- * loop with one `failed` event.
+ * Starts a run, or joins the one that is already active, then reads it every
+ * `POLL_INTERVAL_MS` until it is no longer running, telling `emit` each step.
+ * It never rejects: a failure ends the loop with one `failed` event.
  */
 export async function startAndFollow(request: FollowRequest): Promise<void> {
-  const { runs, scheduler, goal, emit, signal } = request;
+  const { runs, goal, emit, signal } = request;
   try {
-    const runId = await runs.start(goal);
+    const { runId, joined } = await begin(runs, goal);
     if (signal.aborted) return;
-    emit({ type: 'started', runId });
-    for (;;) {
-      const run = await runs.get(runId);
-      if (signal.aborted) return;
-      if (run.runId !== runId) {
-        emit({ type: 'failed', message: OTHER_RUN });
-        return;
-      }
-      emit({ type: 'snapshot', run });
-      if (run.status !== 'running') return;
-      await scheduler.wait(POLL_INTERVAL_MS, signal);
-      if (signal.aborted) return;
-    }
+    emit(
+      joined ? { type: 'started', runId, joined } : { type: 'started', runId },
+    );
+    await follow(request, runId);
   } catch (error) {
     if (!signal.aborted) emit({ type: 'failed', message: messageOf(error) });
   }
