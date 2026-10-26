@@ -81,3 +81,40 @@ export async function refuseRunsWith(
     route.fulfill({ status, json: body }),
   );
 }
+
+/**
+ * Makes the page's call to start a run answer 409 `already_running` with the
+ * id of a run, and its reads answer with `reply`, as a server does while a
+ * run from an earlier page load is still going.
+ */
+export async function joinActiveRunWith(
+  page: Page,
+  reply: ReturnType<typeof runReply>,
+): Promise<void> {
+  await page.route('**/api/run', (route) =>
+    route.fulfill({
+      status: 409,
+      json: {
+        error: 'A run is already active.',
+        code: 'already_running',
+        run_id: RUN_ID,
+      },
+    }),
+  );
+  await page.route('**/api/runs/*', (route) => route.fulfill({ json: reply }));
+}
+
+/**
+ * Makes the first read of a run fail as if the connection dropped, then
+ * answers every read with `reply`.
+ */
+export async function dropFirstReadThenAnswerWith(
+  page: Page,
+  reply: ReturnType<typeof runReply>,
+): Promise<void> {
+  let reads = 0;
+  await page.route('**/api/runs/*', (route) => {
+    reads += 1;
+    return reads === 1 ? route.abort() : route.fulfill({ json: reply });
+  });
+}
