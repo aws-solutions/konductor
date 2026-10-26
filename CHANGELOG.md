@@ -72,6 +72,17 @@ not per individual commit.
   reload) makes the tab follow the run that is already going. A call that gets no answer ends
   after 15 seconds. The run logic is an IO-free core with a clock port, tested without waiting,
   and the end-to-end tests and screenshots cover a run on the stub.
+- The Designer tab of the workflow canvas can edit a workflow, in `workflow-canvas/`: pick the
+  agent of a stage from a list, rename a stage, add an agent stage and delete one, then save
+  through `PUT /api/workflow` with the `base_hash` of the loaded file. The stages stay a `name`
+  and an `agent`, run in list order, with no other key. Only the block of stages of the file
+  changes. Edits are checked with `POST /api/validate` after a short pause and shown under the
+  field and in an alert; a save of a file that changed on disk (409) says so and offers to load
+  it again; Save is off while the check finds an error. Add, rename, delete and save work with
+  the keyboard and keep focus. The draft is kept when the tabs are switched, and the Execution
+  tab draws the saved workflow. The API contract is unchanged. The end-to-end tests gain an
+  `editing` project that saves to the stub, and `npm run screenshots` gains five Designer
+  captures.
 
 ### Fixed
 
