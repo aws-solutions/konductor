@@ -1,11 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { WorkflowApi } from '../api/api';
 import type { WorkflowDocument } from '../api/types';
+import type { RunPort } from '../execution/core';
 
-/** A workflow loaded from the server, with the harness that runs its stages. */
+/**
+ * A workflow loaded from the server, with the harness that runs its stages
+ * and the calls that run it. The calls hold the session token, so no other
+ * part of the page does.
+ */
 export interface LoadedWorkflow {
   harness: string;
   document: WorkflowDocument;
+  runs: RunPort;
 }
 
 /** The result of a load. It never rejects, so a caller cannot miss a failure. */
@@ -25,9 +31,16 @@ function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : 'The workflow did not load.';
 }
 
+function runPortFor(api: WorkflowApi, token: string): RunPort {
+  return {
+    start: (goal) => api.startRun(token, goal),
+    get: (runId) => api.getRun(token, runId),
+  };
+}
+
 /**
  * Opens a session with the launch code, then loads the workflow of the
- * session. The token stays in this function and is not kept.
+ * session. The token is kept only inside the run calls of the result.
  */
 export async function loadWorkflow(
   api: WorkflowApi,
@@ -40,7 +53,14 @@ export async function loadWorkflow(
       return { ok: false, message: UNSUPPORTED_API };
     }
     const document = await api.getWorkflow(session.token);
-    return { ok: true, workflow: { harness: session.harness, document } };
+    return {
+      ok: true,
+      workflow: {
+        harness: session.harness,
+        document,
+        runs: runPortFor(api, session.token),
+      },
+    };
   } catch (error) {
     return { ok: false, message: messageOf(error) };
   }
