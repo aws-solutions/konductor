@@ -51,6 +51,23 @@ export function problemsOf(
   }));
 }
 
+/** The latest check: the revision it spoke for, and what it found. */
+export interface Check {
+  revision: number;
+  diagnostics: readonly DiagnosticView[];
+  /** The findings placed on the stages of the draft that was checked. */
+  problems: readonly Problem[];
+}
+
+/** A check of `draft` at `revision`, with its findings placed on the stages. */
+export function checkOf(
+  revision: number,
+  diagnostics: readonly DiagnosticView[],
+  draft: Draft,
+): Check {
+  return { revision, diagnostics, problems: problemsOf(diagnostics, draft) };
+}
+
 /** The messages about one field of one stage. */
 export function problemsFor(
   problems: readonly Problem[],

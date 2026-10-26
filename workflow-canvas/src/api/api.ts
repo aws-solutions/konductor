@@ -29,18 +29,6 @@ export interface WorkflowApi {
   ): Promise<SaveResult>;
   /** Checks workflow text without writing it. */
   checkWorkflow(token: string, text: string): Promise<CheckResult>;
-  /**
-   * Writes the text of the root workflow if the file still has `baseHash`.
-   * A file that changed fails with code `conflict`; a text with errors fails
-   * with code `invalid_workflow` and its `diagnostics`.
-   */
-  saveWorkflow(
-    token: string,
-    text: string,
-    baseHash: string | null,
-  ): Promise<SaveResult>;
-  /** Checks workflow text without writing it. */
-  checkWorkflow(token: string, text: string): Promise<CheckResult>;
   /** Starts a run of the root workflow with the goal; resolves to its id. */
   startRun(token: string, goal: string): Promise<string>;
   /** Reads the state of a run, live or finished. */

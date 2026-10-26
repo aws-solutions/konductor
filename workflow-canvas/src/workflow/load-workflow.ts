@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 import { ApiError, canRetryStatus, type WorkflowApi } from '../api/api';
+import { messageOf } from '../api/message-of';
 import type { WorkflowDocument } from '../api/types';
-import { SaveConflict, SaveRefused, type EditPort } from '../designer/core';
+import {
+  SaveConflict,
+  SaveLost,
+  SaveRefused,
+  type EditPort,
+} from '../designer/core';
 import {
   RunAlreadyActive,
   RunReadRefused,
@@ -33,9 +39,7 @@ export const SUPPORTED_API_VERSION = 1;
 const UNSUPPORTED_API =
   'The server speaks a version of the API that this page does not understand.';
 
-function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : 'The workflow did not load.';
-}
+const LOAD_FAILED = 'The workflow did not load.';
 
 // The API names the active run in its 409; the core is told as its own error.
 function activeRunOf(error: unknown): RunAlreadyActive | undefined {
@@ -55,14 +59,16 @@ function readRefusedOf(error: unknown): RunReadRefused | undefined {
 }
 
 // A 409 `conflict` is the file changing under the page; a 422
-// `invalid_workflow` carries the findings of the check. The core is told each
+// `invalid_workflow` carries the findings of the check; no answer or a server
+// error leaves it unknown whether the file was written. The core is told each
 // as its own error.
 function saveErrorOf(error: unknown): Error | undefined {
   if (!(error instanceof ApiError)) return undefined;
   if (error.code === 'conflict') return new SaveConflict(error.message);
-  return error.code === 'invalid_workflow'
-    ? new SaveRefused(error.message, error.diagnostics)
-    : undefined;
+  if (error.code === 'invalid_workflow') {
+    return new SaveRefused(error.message, error.diagnostics);
+  }
+  return canRetryStatus(error.status) ? new SaveLost(error.message) : undefined;
 }
 
 function editPortFor(api: WorkflowApi, token: string): EditPort {
@@ -123,7 +129,7 @@ export async function loadWorkflow(
       },
     };
   } catch (error) {
-    return { ok: false, message: messageOf(error) };
+    return { ok: false, message: messageOf(error, LOAD_FAILED) };
   }
 }
 

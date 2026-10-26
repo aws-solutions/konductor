@@ -13,8 +13,9 @@ import type {
 export interface EditPort {
   /**
    * Writes the text if the file still has `baseHash`. It rejects with
-   * `SaveConflict` when the file changed, and with `SaveRefused` when the text
-   * has errors.
+   * `SaveConflict` when the file changed, with `SaveRefused` when the text
+   * has errors, and with `SaveLost` when the answer did not come or was a
+   * server error, so the file may or may not have been written.
    */
   save(text: string, baseHash: string): Promise<SaveResult>;
   /** Checks text without writing it. */
@@ -39,5 +40,13 @@ export class SaveRefused extends Error {
     super(message);
     this.name = 'SaveRefused';
     this.diagnostics = diagnostics;
+  }
+}
+
+/** The answer to a save did not come, so the file may have been written. */
+export class SaveLost extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SaveLost';
   }
 }

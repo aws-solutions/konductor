@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it } from 'vitest';
-import { withStages } from './stage-text';
+import { willRewriteWhole, withStages } from './stage-text';
 
 const VIEW = {
   name: 'hello',
@@ -118,5 +118,34 @@ describe('withStages', () => {
     ]);
 
     expect(next).toContain('intent: "Fix: the #1 bug"\n');
+  });
+});
+
+describe('willRewriteWhole', () => {
+  it('is false for stages in the block form', () => {
+    expect(willRewriteWhole(TEXT)).toBe(false);
+  });
+
+  it('is false when a comment follows the key', () => {
+    expect(willRewriteWhole('name: a\nstages: # run in order\n')).toBe(false);
+  });
+
+  it('is true for stages in the flow form', () => {
+    expect(willRewriteWhole('stages: [{name: a, agent: k-tpm}]\n')).toBe(true);
+  });
+
+  it('is true when the text has no stages key', () => {
+    expect(willRewriteWhole('name: a\n')).toBe(true);
+  });
+
+  it('agrees with what withStages does', () => {
+    const text =
+      'name: hello\n# kept\nstages:\n  # dropped\n  - name: a\n    agent: k-tpm\n';
+
+    const next = withStages(text, VIEW, [{ name: 'a', agent: 'k-tpm' }]);
+
+    expect(willRewriteWhole(text)).toBe(false);
+    expect(next).toContain('# kept');
+    expect(next).not.toContain('# dropped');
   });
 });

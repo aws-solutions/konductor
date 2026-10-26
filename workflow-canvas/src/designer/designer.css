@@ -22,3 +22,7 @@
 .wf-edit-alerts:not(:empty) {
   margin-block-end: 20px;
 }
+
+.wf-edit-notice {
+  margin-block-end: 20px;
+}

@@ -10,12 +10,13 @@ import {
 } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { App } from '../App';
-import { SaveConflict, SaveRefused } from './core';
+import { SaveConflict, SaveLost, SaveRefused } from './core';
 import { FakeScheduler } from '../test-support/fake-scheduler';
 import {
   acceptingEdits,
   finding,
   SAVED_HASH,
+  viewOfText,
   type FakeEdits,
 } from '../test-support/fake-edits';
 import {
@@ -445,6 +446,25 @@ describe('checking while typing', () => {
     expect(edits.save).not.toHaveBeenCalled();
   });
 
+  it('keeps the problems on show while the next check is still to come', async () => {
+    const edits = acceptingEdits();
+    edits.check.mockResolvedValueOnce({
+      view: null,
+      diagnostics: [finding('stages[0].name', 'Not a name.')],
+    });
+    const { scheduler } = await openDesigner(edits);
+    type('Bad');
+    await checkNow(scheduler);
+    const problems = await screen.findByTestId('problems');
+
+    type('Bad2');
+
+    expect(screen.getByTestId('problems')).toBe(problems);
+    expect(screen.getByText('Not a name.')).toBeTruthy();
+    await checkNow(scheduler);
+    await waitFor(() => expect(screen.queryByTestId('problems')).toBeNull());
+  });
+
   it('clears the problems when the next check finds none', async () => {
     const edits = acceptingEdits();
     edits.check.mockResolvedValueOnce({
@@ -594,6 +614,67 @@ describe('a save that fails', () => {
     fireEvent.click(saveButton());
     await waitFor(() => expect(status()).toBe('Saved'));
     expect(screen.queryByText('The server did not answer.')).toBeNull();
+  });
+});
+
+describe('a save whose answer is lost', () => {
+  it('counts the save as done when the file holds the text that was sent', async () => {
+    const edits = acceptingEdits();
+    let sent = '';
+    edits.save.mockImplementationOnce(async (text) => {
+      sent = text;
+      throw new SaveLost('The server did not answer.');
+    });
+    edits.reload.mockImplementationOnce(async () => ({
+      ...HELLO_DOCUMENT,
+      text: sent,
+      hash: SAVED_HASH,
+      view: viewOfText(sent),
+    }));
+    await openDesigner(edits);
+    type('write');
+
+    fireEvent.click(saveButton());
+
+    await waitFor(() => expect(status()).toBe('Saved'));
+    expect(screen.queryByText('The server did not answer.')).toBeNull();
+    expect(nameInput().value).toBe('write');
+  });
+
+  it('shows the failure when the file does not hold the text', async () => {
+    const edits = acceptingEdits();
+    edits.save.mockRejectedValueOnce(
+      new SaveLost('The server did not answer.'),
+    );
+    await openDesigner(edits);
+    type('write');
+
+    fireEvent.click(saveButton());
+
+    expect(await screen.findByText('The server did not answer.')).toBeTruthy();
+    expect(status()).toBe('Unsaved changes');
+  });
+});
+
+describe('a file whose stages are not a block', () => {
+  const FLOW = {
+    ...HELLO_DOCUMENT,
+    text: 'name: hello\nintent: Add a greeting to the README\nstages: [{name: draft, agent: k-developer}]\n',
+  };
+
+  it('says before a save that the file is written whole', async () => {
+    await openDesigner(acceptingEdits(), FLOW);
+
+    const note = screen.getByTestId('rewrite-notice');
+
+    expect(note.textContent).toContain('Saving rewrites this file');
+    expect(note.textContent).toContain('comments');
+  });
+
+  it('says nothing for a file with a block of stages', async () => {
+    await openDesigner();
+
+    expect(screen.queryByTestId('rewrite-notice')).toBeNull();
   });
 });
 

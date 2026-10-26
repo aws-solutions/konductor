@@ -251,29 +251,38 @@ way to link or reorder them yet.
 - **Delete stage** removes the stage, selects the one before it (or the next,
   for the first) and moves focus to its name. A workflow keeps at least one
   stage, so it is off for the last.
-- Choosing a stage by its node (click, or Enter or Space) moves focus to its
-  name.
+- Choosing a stage by its node (click, or Enter or Space) selects it and moves
+  focus to its name. Choosing the stage that is already selected changes
+  nothing, and focus stays where it is.
 
 Nothing is written until **Save**. The line beside it says **No changes**,
 **Unsaved changes**, **Saving** or **Saved** in a polite live region. Save
 sends the whole text with `PUT /api/workflow` and the `hash` of the file as it
 was loaded (`base_hash`), and takes the hash of the answer for the next save.
 Only the block of stages changes: the `name`, `intent`, `version` and the
-comments outside the block stay as they were. If the stages are not a block at
-the top level of the file (for example `stages: [...]`), the whole file is
-written from the view, in the plain layout, which drops its comments and
-`version`.
+comments outside the block stay as they were. Comments inside the block go with
+its old stages. If the stages are not a block at the top level of the file (for
+example `stages: [...]`), the whole file is written from the view, in the plain
+layout, which drops its comments and `version`; an info note above the graph
+says so before you save.
 
 - **Checking.** A moment (400 ms) after the last change, the text is checked
   with `POST /api/validate`. What it finds shows under the field it is about,
   and all of it in an alert above the graph, with the name of the stage in
-  front. Save is off while the check of the current draft has errors, with the
-  reason in a tooltip. A check that cannot reach the server says nothing; the
+  front. What the last check found stays on show while you type, until the
+  check of the new text answers, so the page does not jump at every key. The
+  server has the last word: Save is off while the check of the current draft
+  has errors, with the reason in a tooltip, and a save that goes out in the
+  pause is checked again by the server. A check that cannot reach the server says nothing; the
   save checks again and reports it.
 - **A refused save** (422) shows the findings the same way.
 - **A conflict** (409) means the file changed after the page loaded. Nothing
   is written, and an alert says so, with **Load the file again**, which loads
   the file from the server and drops the draft. Focus then moves to the name.
+- **A save whose answer is lost** (no answer, or a server error) may still
+  have written the file. The page reads the file again: if it holds the text
+  that was sent, the save counts as done; if not, the failure is shown in an
+  alert, and Save can be tried again.
 - **Any other failure** of a save shows its sentence in an alert, and Save can
   be tried again.
 - **Focus and keys.** Everything above works with the keyboard: Tab to **Add
@@ -294,7 +303,7 @@ The code follows the split of the Execution tab:
   are `EditPort` (save, check and reload) and the `Scheduler` of the run core,
   so a test moves time by hand and nothing sleeps.
   `test-support/designer-purity.test.ts` fails if the core imports anything
-  but its own modules, the wire types and the scheduler port, or reads a
+  but its own modules, the wire types, `messageOf` and the scheduler port, or reads a
   clock, randomness, the environment or the network.
 - `createHttpApi` has `saveWorkflow` and `checkWorkflow`; `loadWorkflow` ties
   them to the session token as the `EditPort`, and turns a 409 `conflict` and

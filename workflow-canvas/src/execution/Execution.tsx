@@ -113,7 +113,7 @@ function RunPanel({
 
 function UnsavedNote() {
   return (
-    <div className="wf-run-error">
+    <div className="wf-run-note">
       <Alert type="info" data-testid="unsaved-note">
         The Designer has changes that are not saved. A run uses the saved
         workflow, which is the one drawn here.

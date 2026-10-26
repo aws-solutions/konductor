@@ -47,6 +47,7 @@ describe('the wire types of the page read GET /api/workflow', () => {
       name: 'hello',
       text: expect.stringContaining('name: hello'),
       hash: sha256Hex(SAMPLE_FILES.hello ?? ''),
+      readOnly: false,
       view: {
         name: 'hello',
         intent: { outcome: 'Add a greeting to the README' },

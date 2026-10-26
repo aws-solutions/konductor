@@ -129,9 +129,24 @@ describe('createHttpApi', () => {
       name: 'hello',
       text: 'name: hello\n',
       hash: 'a'.repeat(64),
+      readOnly: false,
       view: DOCUMENT_BODY.view,
       diagnostics: [],
     });
+  });
+
+  it('reads a read-only workflow', async () => {
+    const { api } = apiFor(reply({ ...DOCUMENT_BODY, read_only: true }));
+
+    expect(await api.getWorkflow('t')).toMatchObject({ readOnly: true });
+  });
+
+  it('refuses a workflow that does not say whether it is read-only', async () => {
+    const without: Record<string, unknown> = { ...DOCUMENT_BODY };
+    delete without.read_only;
+    const { api } = apiFor(reply(without));
+
+    await expect(api.getWorkflow('t')).rejects.toBeInstanceOf(ApiError);
   });
 
   it('reads a workflow with no file as no text and no view', async () => {

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { EditState } from './edit-state';
 import { sameStages, stagesOf } from './draft';
-import { hasErrors, problemsOf, type Problem } from './problems';
+import { hasErrors, type Problem } from './problems';
 import { withStages } from './stage-text';
 
 /** Whether the draft differs from the saved workflow. */
@@ -20,13 +20,21 @@ function currentFindings(state: EditState) {
   return state.check.revision === state.revision ? state.check.diagnostics : [];
 }
 
-/** The problems of the draft; none while a check of it is still to come. */
+/**
+ * The problems to show: those of the latest check, which stay on show while
+ * the check of the new draft is still to come, so the page does not flicker
+ * at every key. A problem of a stage that was deleted is dropped.
+ */
 export function problemsOfDraft(state: EditState): Problem[] {
-  return problemsOf(currentFindings(state), state.draft);
+  const ids = new Set(state.draft.stages.map((stage) => stage.id));
+  return state.check.problems.filter(
+    (problem) => problem.stageId === undefined || ids.has(problem.stageId),
+  );
 }
 
 /** Why the draft cannot be saved now, or `undefined` when it can. */
 export function saveBlocker(state: EditState): string | undefined {
+  if (state.saved.readOnly) return 'The workflow is read-only.';
   switch (state.save.phase) {
     case 'saving':
       return 'The workflow is being saved.';

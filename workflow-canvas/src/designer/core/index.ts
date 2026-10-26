@@ -33,7 +33,8 @@ export {
   textOf,
   type SaveStatusKind,
 } from './edit-view';
-export { SaveConflict, SaveRefused, type EditPort } from './ports';
+export { SaveConflict, SaveLost, SaveRefused, type EditPort } from './ports';
+export { willRewriteWhole } from './stage-text';
 export { problemsFor, type Problem, type StageField } from './problems';
 export { CHECK_DELAY_MS, checkAfterPause } from './run-check';
 export { reloadWorkflow, saveDraft } from './run-save';

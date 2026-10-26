@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { HELLO_DOCUMENT, HELLO_VIEW } from '../../test-support/fixtures';
 import type { EditEvent } from './edit-state';
-import { SaveConflict, SaveRefused, type EditPort } from './ports';
+import { SaveConflict, SaveLost, SaveRefused, type EditPort } from './ports';
 import { reloadWorkflow, saveDraft } from './run-save';
 
 const RESULT = { hash: 'b'.repeat(64), view: HELLO_VIEW, diagnostics: [] };
@@ -57,6 +57,61 @@ describe('saveDraft', () => {
     expect(await save(port)).toEqual([
       { type: 'refused', revision: 3, diagnostics: findings },
     ]);
+  });
+
+  describe('when the answer of the save was lost', () => {
+    const lost = () => vi.fn().mockRejectedValue(new SaveLost('No answer.'));
+
+    it('counts the save as done when the file holds the text that was sent', async () => {
+      const written = { ...HELLO_DOCUMENT, text: 'text', hash: 'c'.repeat(64) };
+      const port = edits({
+        save: lost(),
+        reload: vi.fn().mockResolvedValue(written),
+      });
+
+      expect(await save(port)).toEqual([
+        {
+          type: 'saved',
+          text: 'text',
+          result: {
+            hash: 'c'.repeat(64),
+            view: HELLO_VIEW,
+            diagnostics: [],
+          },
+        },
+      ]);
+    });
+
+    it('reports the failure when the file holds other text', async () => {
+      const port = edits({ save: lost() });
+
+      expect(await save(port)).toEqual([
+        { type: 'failed', message: 'No answer.' },
+      ]);
+    });
+
+    it('reports the failure when the file cannot be read either', async () => {
+      const port = edits({
+        save: lost(),
+        reload: vi.fn().mockRejectedValue(new Error('Still down.')),
+      });
+
+      expect(await save(port)).toEqual([
+        { type: 'failed', message: 'No answer.' },
+      ]);
+    });
+
+    it('reports the failure when the file no longer has a view', async () => {
+      const gone = { ...HELLO_DOCUMENT, text: 'text', view: null };
+      const port = edits({
+        save: lost(),
+        reload: vi.fn().mockResolvedValue(gone),
+      });
+
+      expect(await save(port)).toEqual([
+        { type: 'failed', message: 'No answer.' },
+      ]);
+    });
   });
 
   it('gives the sentence of any other failure', async () => {

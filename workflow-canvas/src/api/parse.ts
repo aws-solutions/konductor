@@ -35,6 +35,10 @@ function stringOf(value: unknown): string {
   return typeof value === 'string' ? value : fail();
 }
 
+function booleanOf(value: unknown): boolean {
+  return typeof value === 'boolean' ? value : fail();
+}
+
 function arrayOf(value: unknown): unknown[] {
   return Array.isArray(value) ? value : fail();
 }
@@ -147,6 +151,7 @@ export function parseWorkflowDocument(body: unknown): WorkflowDocument {
     name: stringOf(document.name),
     text: text === null ? null : stringOf(text),
     hash: hash === null ? null : stringOf(hash),
+    readOnly: booleanOf(document.read_only),
     view: parseView(document.view),
     diagnostics: parseDiagnostics(document.diagnostics),
   };

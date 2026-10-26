@@ -16,7 +16,11 @@ import {
 
 const RULES: PurityRules = {
   dir: fileURLToPath(new URL('../src/designer/core/', import.meta.url)),
-  allowedPackages: new Set(['../../api/types', '../../execution/core']),
+  allowedPackages: new Set([
+    '../../api/types',
+    '../../api/message-of',
+    '../../execution/core',
+  ]),
   allowedNames: {},
 };
 

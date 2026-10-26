@@ -15,7 +15,8 @@ import {
   type Draft,
 } from './draft';
 import { openDocument, type EditEvent, type EditState } from './edit-state';
-import { canSave } from './edit-view';
+import { canSave, isDirty } from './edit-view';
+import { checkOf } from './problems';
 
 const NOT_EDITABLE =
   'The workflow on the server can no longer be edited here. Fix the file and reload the page.';
@@ -73,7 +74,7 @@ function checked(
   diagnostics: readonly DiagnosticView[],
 ): EditState {
   return revision === state.revision
-    ? { ...state, check: { revision, diagnostics } }
+    ? { ...state, check: checkOf(revision, diagnostics, state.draft) }
     : state;
 }
 
@@ -82,7 +83,7 @@ function savedAs(
   text: string,
   result: SaveResult,
 ): EditState {
-  return {
+  const next: EditState = {
     ...state,
     saved: {
       ...state.saved,
@@ -93,6 +94,14 @@ function savedAs(
     },
     save: { phase: 'saved' },
   };
+  // What was saved is what the findings of the save are about; if the draft
+  // changed meanwhile, the check of its new revision will speak.
+  return isDirty(next)
+    ? next
+    : {
+        ...next,
+        check: checkOf(state.revision, result.diagnostics, state.draft),
+      };
 }
 
 // Findings of a refused save are for the draft that was sent; if the draft
@@ -104,7 +113,7 @@ function refused(
 ): EditState {
   const next: EditState = { ...state, save: { phase: 'idle' } };
   return revision === state.revision
-    ? { ...next, check: { revision, diagnostics } }
+    ? { ...next, check: checkOf(revision, diagnostics, state.draft) }
     : next;
 }
 

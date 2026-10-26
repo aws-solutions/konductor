@@ -47,6 +47,8 @@ export interface WorkflowDocument {
   text: string | null;
   /** The hash to send back as `base_hash`; `null` when there is no file. */
   hash: string | null;
+  /** True when the file cannot be saved. */
+  readOnly: boolean;
   /** `null` when there is no text or the text has errors. */
   view: WorkflowView | null;
   diagnostics: DiagnosticView[];

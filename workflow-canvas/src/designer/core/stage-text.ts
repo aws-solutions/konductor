@@ -7,7 +7,7 @@ import type { StageView, WorkflowView } from '../../api/types';
 const PLAIN = /^[A-Za-z](?:[A-Za-z0-9 _.,()/-]*[A-Za-z0-9_.,()/-])?$/;
 const NOT_TEXT = /^(?:true|false|null)$/i;
 
-/** The value as YAML text: plain when that is safe, double-quoted if not. */
+// The value as YAML text: plain when that is safe, double-quoted if not.
 function scalar(value: string): string {
   return PLAIN.test(value) && !NOT_TEXT.test(value)
     ? value
@@ -33,11 +33,9 @@ function endingOf(text: string): string {
   return text.includes('\r\n') ? '\r\n' : '\n';
 }
 
-/**
- * Swaps the block of stages of `text` for `stages`, and leaves every other
- * byte alone. `undefined` when the text has no `stages:` key of the
- * block form at the top level.
- */
+// Swaps the block of stages of `text` for `stages`, and leaves every other
+// byte alone. `undefined` when the text has no `stages:` key of the block form
+// at the top level.
 function replaceStageBlock(
   text: string,
   stages: readonly StageView[],
@@ -56,7 +54,7 @@ function replaceStageBlock(
   return [...lines.slice(0, key + 1), ...block, ...lines.slice(end)].join('\n');
 }
 
-/** A whole file written from the view: the layout that nothing else fits. */
+// A whole file written from the view: the layout that nothing else fits.
 function writeWhole(view: WorkflowView, stages: readonly StageView[]): string {
   return [
     `name: ${scalar(view.name)}`,
@@ -70,9 +68,10 @@ function writeWhole(view: WorkflowView, stages: readonly StageView[]): string {
 /**
  * The text of the workflow with `stages` in place of its own. Only the block
  * of stages changes: the name, the intent, `version` and comments outside the
- * block stay as they are. A file whose `stages` are not a block at the top
- * level is written whole from `view`, in the plain layout, which drops its
- * comments and `version`.
+ * block stay as they are, and comments inside the block go with its old
+ * stages. A file whose `stages` are not a block at the top level is written
+ * whole from `view`, in the plain layout, which drops its comments and
+ * `version`.
  */
 export function withStages(
   text: string,
@@ -80,4 +79,13 @@ export function withStages(
   stages: readonly StageView[],
 ): string {
   return replaceStageBlock(text, stages) ?? writeWhole(view, stages);
+}
+
+/**
+ * Whether a save of `text` would write the file whole, in the plain layout,
+ * and so drop its comments and `version`: its `stages` are not a block at the
+ * top level.
+ */
+export function willRewriteWhole(text: string): boolean {
+  return replaceStageBlock(text, []) === undefined;
 }

@@ -148,7 +148,25 @@ describe('check', () => {
     expect(state.check).toEqual({
       revision: 1,
       diagnostics: [finding('stages[2].name')],
+      problems: [{ message: 'Wrong.', stageId: 's3', field: 'name' }],
     });
+  });
+
+  it('keeps the findings of an older draft on show until the new check answers', () => {
+    const state = run(
+      opened(),
+      { type: 'add' },
+      {
+        type: 'checked',
+        revision: 1,
+        diagnostics: [finding('stages[2].name')],
+      },
+      { type: 'rename', id: 's3', name: 'x' },
+    );
+
+    expect(state.revision).toBe(2);
+    expect(state.check.revision).toBe(1);
+    expect(state.check.diagnostics).toEqual([finding('stages[2].name')]);
   });
 
   it('drops the findings of a draft that has changed since', () => {
@@ -213,6 +231,54 @@ describe('save', () => {
     expect(stagesOf(saved.draft)[0]?.agent).toBe('k-tpm');
   });
 
+  it('replaces the findings of an older draft with those of the save', () => {
+    const saved = run(
+      opened(),
+      { type: 'set-agent', id: 's1', agent: 'nope' },
+      {
+        type: 'checked',
+        revision: 1,
+        diagnostics: [finding('stages[0].agent')],
+      },
+      { type: 'set-agent', id: 's1', agent: 'k-tpm' },
+      { type: 'save' },
+      {
+        type: 'saved',
+        text: 'x',
+        result: savedResult([
+          { name: 'draft', agent: 'k-tpm' },
+          HELLO_VIEW.stages[1]!,
+        ]),
+      },
+    );
+
+    expect(saved.check).toEqual({ revision: 2, diagnostics: [], problems: [] });
+  });
+
+  it('leaves the findings alone when the draft changed during the save', () => {
+    const saved = run(
+      opened(),
+      { type: 'set-agent', id: 's1', agent: 'nope' },
+      {
+        type: 'checked',
+        revision: 1,
+        diagnostics: [finding('stages[0].agent')],
+      },
+      { type: 'save' },
+      { type: 'rename', id: 's2', name: 'qa' },
+      {
+        type: 'saved',
+        text: 'x',
+        result: savedResult([
+          { name: 'draft', agent: 'nope' },
+          HELLO_VIEW.stages[1]!,
+        ]),
+      },
+    );
+
+    expect(saved.check.revision).toBe(1);
+  });
+
   it('keeps an edit made while the save was going', () => {
     const saved = run(
       dirty(),
@@ -270,6 +336,7 @@ describe('save', () => {
     expect(state.check).toEqual({
       revision: 1,
       diagnostics: [finding('stages[0].agent')],
+      problems: [{ message: 'Wrong.', stageId: 's1', field: 'agent' }],
     });
   });
 

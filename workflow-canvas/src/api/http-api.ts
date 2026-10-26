@@ -89,6 +89,13 @@ function bearer(token: string): Record<string, string> {
   return { Authorization: `Bearer ${token}` };
 }
 
+function jsonHeaders(token?: string): Record<string, string> {
+  return {
+    ...(token === undefined ? {} : bearer(token)),
+    'Content-Type': 'application/json',
+  };
+}
+
 /**
  * The adapter of the workflow API over HTTP. It calls the relative `/api`, so
  * the page and the server share one origin, and keeps no token itself.
@@ -103,7 +110,7 @@ export function createHttpApi(
     async createSession(code) {
       const body = await call('/api/session', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: jsonHeaders(),
         body: JSON.stringify({ code }),
       });
       return parseSession(body);
@@ -117,7 +124,7 @@ export function createHttpApi(
     async saveWorkflow(token, text, baseHash) {
       const body = await call('/api/workflow', {
         method: 'PUT',
-        headers: { ...bearer(token), 'Content-Type': 'application/json' },
+        headers: jsonHeaders(token),
         body: JSON.stringify({ text, base_hash: baseHash }),
       });
       return parseSaveResult(body);
@@ -125,7 +132,7 @@ export function createHttpApi(
     async checkWorkflow(token, text) {
       const body = await call('/api/validate', {
         method: 'POST',
-        headers: { ...bearer(token), 'Content-Type': 'application/json' },
+        headers: jsonHeaders(token),
         body: JSON.stringify({ text }),
       });
       return parseCheckResult(body);
@@ -133,7 +140,7 @@ export function createHttpApi(
     async startRun(token, goal) {
       const body = await call('/api/run', {
         method: 'POST',
-        headers: { ...bearer(token), 'Content-Type': 'application/json' },
+        headers: jsonHeaders(token),
         body: JSON.stringify({ params: { goal } }),
       });
       return parseRunStarted(body);

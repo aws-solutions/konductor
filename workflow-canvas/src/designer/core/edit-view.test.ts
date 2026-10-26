@@ -84,6 +84,13 @@ describe('saveBlocker', () => {
     expect(canSave(state)).toBe(true);
   });
 
+  it('says the workflow is read-only when the server says so', () => {
+    const open = openDocument({ ...HELLO_DOCUMENT, readOnly: true });
+    const state = reduce(open, AGENT_CHANGE);
+
+    expect(state && saveBlocker(state)).toBe('The workflow is read-only.');
+  });
+
   it.each([
     ['saving', [{ type: 'save' }], 'The workflow is being saved.'],
     [
@@ -110,13 +117,39 @@ describe('problemsOfDraft', () => {
     ]);
   });
 
-  it('lists none while the check of the draft is still to come', () => {
+  it('keeps the last problems on show while the check of the draft is still to come', () => {
     const state = run(
       { type: 'checked', revision: 0, diagnostics: [error('stages[0].agent')] },
       AGENT_CHANGE,
     );
 
-    expect(problemsOfDraft(state)).toEqual([]);
+    expect(problemsOfDraft(state)).toEqual([
+      { message: 'Wrong.', stageId: 's1', field: 'agent' },
+    ]);
+  });
+
+  it('keeps a problem on its stage when the stages move', () => {
+    const state = run(
+      { type: 'checked', revision: 0, diagnostics: [error('stages[1].name')] },
+      { type: 'remove', id: 's1' },
+    );
+
+    expect(problemsOfDraft(state)).toEqual([
+      { message: 'Wrong.', stageId: 's2', field: 'name' },
+    ]);
+  });
+
+  it('drops a problem of a stage that was deleted, and keeps one of the whole text', () => {
+    const state = run(
+      {
+        type: 'checked',
+        revision: 0,
+        diagnostics: [error('stages[1].name'), error('intent')],
+      },
+      { type: 'remove', id: 's2' },
+    );
+
+    expect(problemsOfDraft(state)).toEqual([{ message: 'Wrong.' }]);
   });
 });
 

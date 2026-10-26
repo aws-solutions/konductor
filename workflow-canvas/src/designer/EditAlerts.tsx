@@ -2,7 +2,7 @@
 import Alert from '@cloudscape-design/components/alert';
 import Button from '@cloudscape-design/components/button';
 import type { Draft, EditState, Problem } from './core';
-import { problemsOfDraft } from './core';
+import { problemsOfDraft, willRewriteWhole } from './core';
 
 const CONFLICT_TEXT =
   'The file was changed after this page loaded, so nothing was saved. Load it again to see it as it is now. The changes you made here are lost.';
@@ -88,6 +88,28 @@ export function EditAlerts({
         </Alert>
       )}
       {problems.length > 0 && <Problems problems={problems} draft={draft} />}
+    </div>
+  );
+}
+
+/**
+ * Says, before a save, that the file will be written in the plain layout
+ * because its stages are not a block, which drops its comments and `version`.
+ * It is a static note, not part of the live region.
+ */
+export function RewriteNotice({ text }: { text: string }) {
+  if (!willRewriteWhole(text)) return null;
+  return (
+    <div className="wf-edit-notice">
+      <Alert
+        type="info"
+        header="Saving rewrites this file"
+        data-testid="rewrite-notice"
+      >
+        The stages of this file are not written as a list under{' '}
+        <code>stages:</code>, so a save writes the whole file in the plain
+        layout. Its comments and <code>version</code> are not kept.
+      </Alert>
     </div>
   );
 }

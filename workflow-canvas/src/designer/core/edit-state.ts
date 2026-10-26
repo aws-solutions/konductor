@@ -6,6 +6,7 @@ import type {
   WorkflowView,
 } from '../../api/types';
 import { draftOf, type Draft } from './draft';
+import { checkOf, type Check } from './problems';
 
 /** A workflow that has a file, so it can be edited and saved. */
 export type EditableDocument = WorkflowDocument & {
@@ -32,8 +33,11 @@ export interface EditState {
   selectedId: string;
   /** Counts the changes of the draft; a check answers for one revision. */
   revision: number;
-  /** The latest check, and the revision of the draft that it checked. */
-  check: { revision: number; diagnostics: readonly DiagnosticView[] };
+  /**
+   * The latest check. It stays on show while the draft changes, until the
+   * check of the new revision answers.
+   */
+  check: Check;
   save: SaveState;
 }
 
@@ -79,7 +83,7 @@ export function openDocument(
     draft,
     selectedId: draft.stages[0]?.id ?? '',
     revision: 0,
-    check: { revision: 0, diagnostics: document.diagnostics },
+    check: checkOf(0, document.diagnostics, draft),
     save: { phase: 'idle' },
   };
 }

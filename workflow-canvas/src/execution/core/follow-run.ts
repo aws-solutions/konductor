@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { messageOf } from '../../api/message-of';
 import type { RunView } from '../../api/types';
 import type { ExecutionEvent } from './execution-state';
 import {
@@ -16,10 +17,6 @@ export const MAX_READ_FAILURES = 3;
 
 const UNKNOWN_FAILURE = 'The run did not go as expected.';
 const OTHER_RUN = 'The server answered with a run that is not the one started.';
-
-function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : UNKNOWN_FAILURE;
-}
 
 /** What `startAndFollow` needs: the ports, the goal and where events go. */
 export interface FollowRequest {
@@ -101,6 +98,7 @@ export async function startAndFollow(request: FollowRequest): Promise<void> {
     );
     await follow(request, runId);
   } catch (error) {
-    if (!signal.aborted) emit({ type: 'failed', message: messageOf(error) });
+    if (!signal.aborted)
+      emit({ type: 'failed', message: messageOf(error, UNKNOWN_FAILURE) });
   }
 }

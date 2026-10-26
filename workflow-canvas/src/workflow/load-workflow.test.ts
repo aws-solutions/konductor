@@ -8,7 +8,7 @@ import {
   HELLO_VIEW,
   helloRun,
 } from '../test-support/fixtures';
-import { SaveConflict, SaveRefused } from '../designer/core';
+import { SaveConflict, SaveLost, SaveRefused } from '../designer/core';
 import { RunAlreadyActive, RunReadRefused } from '../execution/core';
 import { loadWorkflow, withDocument } from './load-workflow';
 
@@ -127,8 +127,23 @@ describe('loadWorkflow', () => {
     expect((refused as SaveRefused).diagnostics).toEqual(findings);
   });
 
+  it.each([
+    ['no answer', 0],
+    ['a server error', 500],
+  ])('turns %s to a save into a lost answer', async (_, status) => {
+    const failure = new ApiError('The server did not answer.', status);
+    const api = fakeApi({ saveWorkflow: vi.fn().mockRejectedValue(failure) });
+    const result = await loadWorkflow(api, 'code-1');
+    if (!result.ok) throw new Error('The load failed.');
+
+    const lost = result.workflow.edits.save('text', HELLO_HASH);
+
+    await expect(lost).rejects.toBeInstanceOf(SaveLost);
+    await expect(lost).rejects.toThrow('The server did not answer.');
+  });
+
   it('lets any other failure of a save through as it is', async () => {
-    const failure = new ApiError('The server answered 500.', 500, 'io_error');
+    const failure = new ApiError('Not allowed.', 403, 'read_only_workflow');
     const api = fakeApi({ saveWorkflow: vi.fn().mockRejectedValue(failure) });
     const result = await loadWorkflow(api, 'code-1');
     if (!result.ok) throw new Error('The load failed.');

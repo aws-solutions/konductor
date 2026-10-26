@@ -56,7 +56,12 @@ function StageFields({
       </FormField>
       <FormField
         label="agent"
-        description={`${AGENT_NOTE} ${chosen?.summary ?? ''}`.trim()}
+        description={
+          <>
+            {AGENT_NOTE}
+            {chosen && <div>{chosen.summary}</div>}
+          </>
+        }
         errorText={agentProblems.join(' ') || undefined}
       >
         <Select

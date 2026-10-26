@@ -39,6 +39,7 @@ export const HELLO_DOCUMENT: WorkflowDocument = {
   name: 'hello',
   text: HELLO_TEXT,
   hash: HELLO_HASH,
+  readOnly: false,
   view: HELLO_VIEW,
   diagnostics: [],
 };

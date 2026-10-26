@@ -7,7 +7,7 @@ import type { CanvasSelection } from '../canvas/WorkflowCanvas';
 import { stageNodeId } from '../graph';
 import { canAddStage } from './core';
 import './designer.css';
-import { EditAlerts } from './EditAlerts';
+import { EditAlerts, RewriteNotice } from './EditAlerts';
 import { PropertiesPane } from './PropertiesPane';
 import { SaveControls } from './SaveControls';
 import { useFocusRequest, useFocusWhenDone } from './use-focus';
@@ -65,6 +65,7 @@ export function DesignerEditor({
   return (
     <div>
       <EditAlerts state={state} onReload={editor.reload} />
+      <RewriteNotice text={state.saved.text} />
       <div className="wf-designer">
         <WorkflowGraphCard
           view={spec}
