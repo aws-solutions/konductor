@@ -91,6 +91,20 @@ describe('statusText and statusKind', () => {
     );
   });
 
+  it('says that it joined a run that was already in progress', () => {
+    const joined: ExecutionState = {
+      phase: 'following',
+      runId: helloRun(0).runId,
+      run: helloRun(0),
+      joined: true,
+    };
+
+    expect(statusText(joined)).toBe(
+      'Following the run that was already in progress. Running draft. 0 of 2 stages done.',
+    );
+    expect(statusKind(joined)).toBe('busy');
+  });
+
   it('follows a whole run from the first click to the end', () => {
     const states = [
       reduce(IDLE, { type: 'start' }),
