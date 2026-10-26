@@ -111,18 +111,32 @@ function RunPanel({
   );
 }
 
+function UnsavedNote() {
+  return (
+    <div className="wf-run-error">
+      <Alert type="info" data-testid="unsaved-note">
+        The Designer has changes that are not saved. A run uses the saved
+        workflow, which is the one drawn here.
+      </Alert>
+    </div>
+  );
+}
+
 function ExecutionView({
   workflow,
   execution,
+  unsaved,
 }: {
   workflow: DrawableWorkflow;
   execution: ExecutionController;
+  unsaved: boolean;
 }) {
   const { view, harness } = workflow;
   const run = runOf(execution.state);
   const statuses = useMemo(() => nodeStatuses(run), [run]);
   return (
     <div>
+      {unsaved && <UnsavedNote />}
       <RunError state={execution.state} />
       <div className="wf-execution">
         <WorkflowGraphCard view={view} harness={harness} statuses={statuses} />
@@ -135,19 +149,27 @@ function ExecutionView({
 /**
  * The Execution tab: the workflow graph, read-only, a goal and a Run button,
  * and the live state of every node while the run goes on. `execution` holds
- * the state, so a run goes on while the Designer tab is open.
+ * the state, so a run goes on while the Designer tab is open. `result` is the
+ * workflow as saved, which is what a run uses; `unsaved` says that the
+ * Designer holds changes that it does not have.
  */
 export function Execution({
   result,
   execution,
+  unsaved = false,
 }: {
   result: LoadResult | undefined;
   execution: ExecutionController;
+  unsaved?: boolean;
 }) {
   return (
     <WorkflowGate result={result}>
       {(workflow) => (
-        <ExecutionView workflow={workflow} execution={execution} />
+        <ExecutionView
+          workflow={workflow}
+          execution={execution}
+          unsaved={unsaved}
+        />
       )}
     </WorkflowGate>
   );

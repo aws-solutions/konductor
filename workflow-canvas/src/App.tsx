@@ -7,6 +7,8 @@ import { Breadcrumbs } from './chrome/Breadcrumbs';
 import './chrome/chrome.css';
 import { TOP_BAR_ID, TopBar } from './chrome/TopBar';
 import { Designer } from './designer/Designer';
+import { isDirty } from './designer/core';
+import { useEditor } from './designer/use-editor';
 import { useSettled } from './designer/use-settled';
 import type { Scheduler } from './execution/core';
 import { Execution } from './execution/Execution';
@@ -14,7 +16,11 @@ import { timerScheduler } from './execution/timer-scheduler';
 import { useExecution } from './execution/use-execution';
 import { TAB_STRIP_STYLE } from './theme/tokens';
 import { useThemeMode } from './theme/use-theme-mode';
-import { openWorkflowName, type LoadResult } from './workflow/load-workflow';
+import {
+  openWorkflowName,
+  withDocument,
+  type LoadResult,
+} from './workflow/load-workflow';
 
 /**
  * Root component: the top bar, then the page header (breadcrumbs and title)
@@ -37,6 +43,10 @@ export function App({
     scheduler,
   );
   const [mode, toggleMode] = useThemeMode();
+  // The Designer edits a draft; the run and the Execution tab use the file
+  // as it is saved.
+  const editor = useEditor(result?.ok ? result.workflow : undefined, scheduler);
+  const saved = editor ? withDocument(result, editor.state.saved) : result;
   return (
     <>
       <TopBar mode={mode} onToggle={toggleMode} />
@@ -50,9 +60,7 @@ export function App({
           <ContentLayout
             defaultPadding
             headerVariant="high-contrast"
-            breadcrumbs={
-              <Breadcrumbs workflowName={openWorkflowName(result)} />
-            }
+            breadcrumbs={<Breadcrumbs workflowName={openWorkflowName(saved)} />}
             header={<Header variant="h1">Workflow canvas</Header>}
           >
             <div className="wf-tab-strip">
@@ -63,13 +71,17 @@ export function App({
                   {
                     id: 'designer',
                     label: 'Designer',
-                    content: <Designer result={result} />,
+                    content: <Designer result={result} editor={editor} />,
                   },
                   {
                     id: 'execution',
                     label: 'Execution',
                     content: (
-                      <Execution result={result} execution={execution} />
+                      <Execution
+                        result={saved}
+                        execution={execution}
+                        unsaved={editor ? isDirty(editor.state) : false}
+                      />
                     ),
                   },
                 ]}

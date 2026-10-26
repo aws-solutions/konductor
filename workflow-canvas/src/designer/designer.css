@@ -1,0 +1,24 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+
+/*
+ * The graph beside Properties. A plain grid, not a library breakpoint, so the
+ * canvas has its final width when it first fits the graph in the view.
+ */
+.wf-designer {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .wf-designer {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Room under the alerts only while there are some, so the empty live region
+   leaves no gap. */
+.wf-edit-alerts:not(:empty) {
+  margin-block-end: 20px;
+}
