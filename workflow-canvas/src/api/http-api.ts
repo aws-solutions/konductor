@@ -18,10 +18,16 @@ const UNREACHABLE =
 /** How long a call may take before the page gives up on it. */
 export const REQUEST_TIMEOUT_MS = 15_000;
 
-async function bodyOf(response: Response): Promise<unknown> {
+// A body that cannot be read as JSON is `undefined`; a read that the timeout
+// aborted is an error, so a hung body is not taken for a bad reply.
+async function bodyOf(
+  response: Response,
+  signal: AbortSignal,
+): Promise<unknown> {
   try {
     return await response.json();
-  } catch {
+  } catch (error) {
+    if (signal.aborted) throw error;
     return undefined;
   }
 }
@@ -48,7 +54,7 @@ async function exchange(
   signal: AbortSignal,
 ): Promise<{ response: Response; body: unknown }> {
   const response = await fetchFn(path, { ...init, signal });
-  return { response, body: await bodyOf(response) };
+  return { response, body: await bodyOf(response, signal) };
 }
 
 async function send(
