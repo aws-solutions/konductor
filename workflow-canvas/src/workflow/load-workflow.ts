@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 import { ApiError, type WorkflowApi } from '../api/api';
 import type { WorkflowDocument } from '../api/types';
-import { RunAlreadyActive, type RunPort } from '../execution/core';
+import {
+  RunAlreadyActive,
+  RunReadRefused,
+  type RunPort,
+} from '../execution/core';
 
 /**
  * A workflow loaded from the server, with the harness that runs its stages
@@ -40,6 +44,14 @@ function activeRunOf(error: unknown): RunAlreadyActive | undefined {
     : undefined;
 }
 
+// Only a missing answer (status 0) or a server error (5xx) can be gone on the
+// next try; 401, 404 and a reply the page cannot read will not change.
+function readRefusedOf(error: unknown): RunReadRefused | undefined {
+  return error instanceof ApiError && error.status !== 0 && error.status < 500
+    ? new RunReadRefused(error.message)
+    : undefined;
+}
+
 function runPortFor(api: WorkflowApi, token: string): RunPort {
   return {
     start: async (goal) => {
@@ -49,7 +61,13 @@ function runPortFor(api: WorkflowApi, token: string): RunPort {
         throw activeRunOf(error) ?? error;
       }
     },
-    get: (runId) => api.getRun(token, runId),
+    get: async (runId) => {
+      try {
+        return await api.getRun(token, runId);
+      } catch (error) {
+        throw readRefusedOf(error) ?? error;
+      }
+    },
   };
 }
 
