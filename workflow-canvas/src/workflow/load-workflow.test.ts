@@ -1,8 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it, vi } from 'vitest';
 import { ApiError, type WorkflowApi } from '../api/api';
-import { HELLO_DOCUMENT, HELLO_SESSION } from '../test-support/fixtures';
 import { sessionStorageMemory } from '../launch/session-memory';
+import {
+  HELLO_DOCUMENT,
+  HELLO_SESSION,
+  helloRun,
+} from '../test-support/fixtures';
 import { freshMemory, memoryStorage } from '../test-support/memory-storage';
 import { loadOnOpen, loadWorkflow } from './load-workflow';
 
@@ -10,6 +14,8 @@ function fakeApi(overrides: Partial<WorkflowApi> = {}): WorkflowApi {
   return {
     createSession: vi.fn().mockResolvedValue(HELLO_SESSION),
     getWorkflow: vi.fn().mockResolvedValue(HELLO_DOCUMENT),
+    startRun: vi.fn().mockResolvedValue('20261024-0412-a7b3c'),
+    getRun: vi.fn().mockResolvedValue(helloRun(0)),
     ...overrides,
   };
 }
@@ -24,9 +30,25 @@ describe('loadWorkflow', () => {
     expect(api.getWorkflow).toHaveBeenCalledWith('token-1');
     expect(result).toEqual({
       ok: true,
-      workflow: { harness: 'kiro-cli', document: HELLO_DOCUMENT },
+      workflow: {
+        harness: 'kiro-cli',
+        document: HELLO_DOCUMENT,
+        runs: { start: expect.any(Function), get: expect.any(Function) },
+      },
       remember: expect.any(Function),
     });
+  });
+
+  it('ties the run calls to the session token', async () => {
+    const api = fakeApi();
+    const result = await loadWorkflow(api, 'code-1');
+    if (!result.ok) throw new Error('The load failed.');
+
+    const runId = await result.workflow.runs.start('Ship it');
+    await result.workflow.runs.get(runId);
+
+    expect(api.startRun).toHaveBeenCalledWith('token-1', 'Ship it');
+    expect(api.getRun).toHaveBeenCalledWith('token-1', runId);
   });
 
   it('fails without calling the API when there is no launch code', async () => {

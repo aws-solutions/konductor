@@ -2,7 +2,11 @@
 import { ApiError } from './api';
 import type {
   DiagnosticView,
+  RunStageView,
+  RunStatus,
+  RunView,
   Session,
+  StageRunStatus,
   StageView,
   WorkflowDocument,
   WorkflowView,
@@ -67,6 +71,48 @@ function parseDiagnostic(value: unknown): DiagnosticView {
   return {
     message: stringOf(diagnostic.message),
     line: lineOf(diagnostic.line),
+  };
+}
+
+const RUN_STATUSES: readonly RunStatus[] = ['running', 'passed', 'halted'];
+const STAGE_STATUSES: readonly StageRunStatus[] = [
+  'pending',
+  'running',
+  'passed',
+  'blocked',
+];
+
+function oneOf<T extends string>(value: unknown, allowed: readonly T[]): T {
+  return allowed.find((candidate) => candidate === value) ?? fail();
+}
+
+// The stages in `order`, each with its status from `stages`.
+function parseRunStages(order: unknown, stages: unknown): RunStageView[] {
+  const byName = objectOf(stages);
+  return arrayOf(order).map((entry) => {
+    const name = stringOf(entry);
+    const stage = Object.hasOwn(byName, name) ? byName[name] : fail();
+    return {
+      name,
+      status: oneOf(objectOf(stage).status, STAGE_STATUSES),
+    };
+  });
+}
+
+/** Reads a `RunStarted`: the id of the run that was accepted. */
+export function parseRunStarted(body: unknown): string {
+  return stringOf(objectOf(body).run_id);
+}
+
+/** Reads a `RunStatusResponse`; unknown fields are ignored. */
+export function parseRunStatus(body: unknown): RunView {
+  const run = objectOf(objectOf(body).run);
+  const exitCode = run.exit_code;
+  return {
+    runId: stringOf(run.run_id),
+    status: oneOf(run.status, RUN_STATUSES),
+    exitCode: typeof exitCode === 'number' ? exitCode : null,
+    stages: parseRunStages(run.order, run.stages),
   };
 }
 
