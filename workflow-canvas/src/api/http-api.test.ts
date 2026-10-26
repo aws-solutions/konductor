@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from './api';
 import { createHttpApi } from './http-api';
 
@@ -265,7 +265,24 @@ describe('createHttpApi', () => {
       message: 'A run is already active.',
       status: 409,
       code: 'already_running',
+      runId: '20261024-0412-a7b3c',
     });
+  });
+
+  it('carries no run id when the error body has none', async () => {
+    const { api } = apiFor(
+      reply(
+        { error: 'kiro-cli is not installed.', code: 'harness_unavailable' },
+        409,
+      ),
+    );
+
+    const error = await api
+      .startRun('t', 'g')
+      .catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(ApiError);
+    expect((error as ApiError).runId).toBeUndefined();
   });
 
   it('gets /api/runs/{id} with the bearer token', async () => {
@@ -374,5 +391,60 @@ describe('createHttpApi', () => {
     const { api } = apiFor(reply({}, 202));
 
     await expect(api.startRun('t', 'g')).rejects.toBeInstanceOf(ApiError);
+  });
+
+  describe('a call that does not end', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    // A fetch that ends only when its signal aborts, as a hung one does.
+    function hungFetch() {
+      return vi.fn(
+        (_path: string, init: RequestInit) =>
+          new Promise<Response>((_, reject) => {
+            init.signal?.addEventListener('abort', () =>
+              reject(new DOMException('Aborted', 'AbortError')),
+            );
+          }),
+      );
+    }
+
+    it('passes a signal to every call', async () => {
+      const { api, fetchFn } = apiFor(reply(RUN_BODY));
+
+      await api.getRun('t', 'r');
+
+      const [, init] = fetchFn.mock.calls[0] as unknown as [
+        string,
+        RequestInit,
+      ];
+      expect(init.signal).toBeInstanceOf(AbortSignal);
+    });
+
+    it('gives up after the timeout with the message of an unreachable server', async () => {
+      vi.useFakeTimers();
+      const fetchFn = hungFetch();
+      const api = createHttpApi(fetchFn as unknown as typeof fetch, 5000);
+
+      const outcome = api.getRun('t', 'r').catch((caught: unknown) => caught);
+      await vi.advanceTimersByTimeAsync(4999);
+      expect(fetchFn.mock.calls[0]?.[1].signal?.aborted).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+
+      expect(await outcome).toMatchObject({
+        status: 0,
+        message: 'The server did not answer. Check that it is still running.',
+      });
+    });
+
+    it('stops the timer once the call has ended', async () => {
+      vi.useFakeTimers();
+      const { api } = apiFor(reply(RUN_BODY));
+
+      await api.getRun('t', 'r');
+
+      expect(vi.getTimerCount()).toBe(0);
+    });
   });
 });

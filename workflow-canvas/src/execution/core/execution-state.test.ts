@@ -107,6 +107,26 @@ describe('reduce', () => {
     expect(runOf(state)).toBeUndefined();
   });
 
+  it('remembers that it joined a run that was already active, through every reading', () => {
+    const joined = after(
+      { type: 'start' },
+      { type: 'started', runId: RUN_ID, joined: true },
+    );
+    const reading = reduce(joined, { type: 'snapshot', run: helloRun(1) });
+
+    expect(joined).toEqual({
+      phase: 'following',
+      runId: RUN_ID,
+      run: undefined,
+      joined: true,
+    });
+    expect(reading).toMatchObject({ phase: 'following', joined: true });
+    expect(reduce(reading, { type: 'snapshot', run: helloRun(2) })).toEqual({
+      phase: 'finished',
+      run: helloRun(2),
+    });
+  });
+
   it('ignores a reading of another run', () => {
     const following = after(...STARTED);
     const other = { ...helloRun(1), runId: '20261024-0412-zzzzz' };
