@@ -6,6 +6,7 @@ import {
   HELLO_SESSION,
   helloRun,
 } from '../test-support/fixtures';
+import { RunAlreadyActive } from '../execution/core';
 import { loadWorkflow } from './load-workflow';
 
 function fakeApi(overrides: Partial<WorkflowApi> = {}): WorkflowApi {
@@ -46,6 +47,48 @@ describe('loadWorkflow', () => {
 
     expect(api.startRun).toHaveBeenCalledWith('token-1', 'Ship it');
     expect(api.getRun).toHaveBeenCalledWith('token-1', runId);
+  });
+
+  it('turns the 409 of an active run into the run to join, with its id', async () => {
+    const api = fakeApi({
+      startRun: vi
+        .fn()
+        .mockRejectedValue(
+          new ApiError(
+            'A run is already active.',
+            409,
+            'already_running',
+            'active-1',
+          ),
+        ),
+    });
+    const result = await loadWorkflow(api, 'code-1');
+    if (!result.ok) throw new Error('The load failed.');
+
+    const refused = result.workflow.runs.start('Ship it');
+
+    await expect(refused).rejects.toBeInstanceOf(RunAlreadyActive);
+    await expect(refused).rejects.toMatchObject({
+      message: 'A run is already active.',
+      runId: 'active-1',
+    });
+  });
+
+  it.each([
+    [
+      'a 409 that is not an active run',
+      new ApiError('kiro-cli is not installed.', 409, 'harness_unavailable'),
+    ],
+    [
+      'an active run with no id',
+      new ApiError('A run is already active.', 409, 'already_running'),
+    ],
+  ])('passes %s on as it is', async (_, error) => {
+    const api = fakeApi({ startRun: vi.fn().mockRejectedValue(error) });
+    const result = await loadWorkflow(api, 'code-1');
+    if (!result.ok) throw new Error('The load failed.');
+
+    await expect(result.workflow.runs.start('Ship it')).rejects.toBe(error);
   });
 
   it('fails without calling the API when there is no launch code', async () => {

@@ -2,6 +2,8 @@
 import { expect, test } from '../support/fixtures';
 import {
   answerRunsWith,
+  dropFirstReadThenAnswerWith,
+  joinActiveRunWith,
   refuseRunsWith,
   runReply,
 } from '../support/run-routes';
@@ -113,6 +115,42 @@ test('shows the error of the API in one alert when the run does not start', asyn
   await expect(canvas.runStatus).toContainText('The run did not start.');
   await canvas.expectBadges([null, null, null, null]);
   await expect(canvas.runButton).toBeEnabled();
+});
+
+test('follows the run that is already active when the server answers 409 with its id', async ({
+  canvas,
+}) => {
+  await joinActiveRunWith(
+    canvas.page,
+    runReply('running', ['running', 'pending']),
+  );
+
+  await canvas.runButton.click();
+
+  await canvas.expectBadges(['Done', 'Running', 'Queued', 'Queued']);
+  await expect(canvas.runStatus).toContainText(
+    'Following the run that was already in progress. Running draft.',
+  );
+  await expect(canvas.runError).toHaveCount(0);
+  await expect(canvas.runButton).toBeDisabled();
+});
+
+test('keeps following the run when one read of it fails', async ({
+  canvas,
+}) => {
+  await answerRunsWith(
+    canvas.page,
+    runReply('running', ['running', 'pending']),
+  );
+  await dropFirstReadThenAnswerWith(
+    canvas.page,
+    runReply('passed', ['passed', 'passed']),
+  );
+
+  await canvas.runButton.click();
+
+  await canvas.expectBadges(['Done', 'Done', 'Done', 'Passed']);
+  await expect(canvas.runError).toHaveCount(0);
 });
 
 test('keeps the run going while the Designer tab is open', async ({
