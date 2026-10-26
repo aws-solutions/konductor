@@ -8,10 +8,10 @@
   },
   "dependencies": {
     "skills": {
-      "skillNames": ["constraints"]
+      "skillNames": ["constraints", "humanize-writing"]
     },
     "context": {
-      "contextNames": []
+      "contextNames": ["k-core-rules.md"]
     },
     "mcpRegistry": {},
     "agentSops": {
