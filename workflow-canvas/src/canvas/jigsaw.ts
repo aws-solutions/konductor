@@ -27,11 +27,14 @@ const ARROW_GAP = 2;
 export const CARD_RADIUS = parseFloat(RADIUS.control);
 
 const HEAD_RADIUS = PORT_WIDTH / 2;
-const NECK_HALF = 4.5;
+const NECK_HALF = 3.5;
 const FILLET = 3.5;
+const NECK_STRAIGHT = 6;
+/** How far the neck of a piece runs, from the opening to the head. */
+export const NECK_LENGTH = FILLET + NECK_STRAIGHT;
 // Half the width of the opening, where the border bends into the neck.
 const MOUTH_HALF = NECK_HALF + FILLET;
-const HEAD_CENTRE = FILLET + Math.sqrt(HEAD_RADIUS ** 2 - NECK_HALF ** 2);
+const HEAD_CENTRE = NECK_LENGTH + Math.sqrt(HEAD_RADIUS ** 2 - NECK_HALF ** 2);
 
 /** How far a knob reaches out of a node and a socket reaches into it. */
 export const PORT_DEPTH = HEAD_CENTRE + HEAD_RADIUS;
@@ -43,14 +46,19 @@ const n = (value: number) => Number(value.toFixed(2));
 
 // The curve of a piece, from one side of its opening to the other, drawn
 // from the point (x - travel * MOUTH_HALF, y). `travel` is 1 for a left to
-// right line and -1 for a right to left one. The head is an arc of a circle.
+// right line and -1 for a right to left one. The neck is pinched and
+// straight, and the head is an arc of a circle.
 function curve(x: number, y: number, travel: 1 | -1): string {
   const neck = x - travel * NECK_HALF;
   const farNeck = x + travel * NECK_HALF;
   const sweep = travel === 1 ? 0 : 1;
+  const base = y + FILLET;
+  const head = y + NECK_LENGTH;
   return [
-    `Q${n(neck)} ${n(y)} ${n(neck)} ${n(y + FILLET)}`,
-    `A${HEAD_RADIUS} ${HEAD_RADIUS} 0 1 ${sweep} ${n(farNeck)} ${n(y + FILLET)}`,
+    `Q${n(neck)} ${n(y)} ${n(neck)} ${n(base)}`,
+    `L${n(neck)} ${n(head)}`,
+    `A${HEAD_RADIUS} ${HEAD_RADIUS} 0 1 ${sweep} ${n(farNeck)} ${n(head)}`,
+    `L${n(farNeck)} ${n(base)}`,
     `Q${n(farNeck)} ${n(y)} ${n(x + travel * MOUTH_HALF)} ${n(y)}`,
   ].join('');
 }
@@ -77,6 +85,19 @@ export interface OutlineOptions {
   socket: boolean;
   /** Whether a knob hangs from the bottom edge. */
   knob: boolean;
+}
+
+/** The clear space between a focused node and its focus ring. */
+export const FOCUS_GAP = 2;
+/** The thickness of the focus ring. */
+export const FOCUS_WIDTH = 3;
+
+/**
+ * The stroke width that makes the outline of a node grow by `spread` pixels
+ * on each side of its border, as the focus ring and its gap do.
+ */
+export function spreadStroke(spread: number): number {
+  return BORDER_WIDTH + 2 * spread;
 }
 
 /** The y of the border line along the top edge, and of the one along the bottom. */
