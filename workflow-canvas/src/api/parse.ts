@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 import { ApiError } from './api';
 import type {
+  CheckResult,
   DiagnosticView,
   RunStageView,
   RunStatus,
   RunView,
+  SaveResult,
   Session,
+  Severity,
   StageRunStatus,
   StageView,
   WorkflowDocument,
@@ -59,12 +62,26 @@ function lineOf(value: unknown): number | undefined {
     : undefined;
 }
 
+const SEVERITIES: readonly Severity[] = ['error', 'warning', 'info'];
+
+// A severity that a later version adds is taken as an error, so a finding of
+// a kind this page cannot judge never reads as harmless.
+function severityOf(value: unknown): Severity {
+  return SEVERITIES.find((candidate) => candidate === value) ?? 'error';
+}
+
 function parseDiagnostic(value: unknown): DiagnosticView {
   const diagnostic = objectOf(value);
   return {
     message: stringOf(diagnostic.message),
     line: lineOf(diagnostic.line),
+    path: typeof diagnostic.path === 'string' ? diagnostic.path : '',
+    severity: severityOf(diagnostic.severity),
   };
+}
+
+function parseDiagnostics(value: unknown): DiagnosticView[] {
+  return arrayOf(value).map(parseDiagnostic);
 }
 
 const RUN_STATUSES: readonly RunStatus[] = ['running', 'passed', 'halted'];
@@ -125,11 +142,33 @@ export function parseSession(body: unknown): Session {
 export function parseWorkflowDocument(body: unknown): WorkflowDocument {
   const document = objectOf(body);
   const text = document.text;
+  const hash = document.hash;
   return {
     name: stringOf(document.name),
     text: text === null ? null : stringOf(text),
+    hash: hash === null ? null : stringOf(hash),
     view: parseView(document.view),
-    diagnostics: arrayOf(document.diagnostics).map(parseDiagnostic),
+    diagnostics: parseDiagnostics(document.diagnostics),
+  };
+}
+
+/** Reads a `SaveResponse`; unknown fields are ignored. */
+export function parseSaveResult(body: unknown): SaveResult {
+  const saved = objectOf(body);
+  const view = parseView(saved.view);
+  return {
+    hash: stringOf(saved.hash),
+    view: view ?? fail(),
+    diagnostics: parseDiagnostics(saved.diagnostics),
+  };
+}
+
+/** Reads a `CheckResponse`; unknown fields are ignored. */
+export function parseCheckResult(body: unknown): CheckResult {
+  const check = objectOf(body);
+  return {
+    view: parseView(check.view),
+    diagnostics: parseDiagnostics(check.diagnostics),
   };
 }
 
@@ -152,4 +191,17 @@ export function errorCodeOf(body: unknown): string | undefined {
   return isObject(body) && typeof body.code === 'string'
     ? body.code
     : undefined;
+}
+
+/**
+ * The `diagnostics` of an `Error` body, or none when it has none or they
+ * cannot be read: the sentence of the error is still shown.
+ */
+export function errorDiagnosticsOf(body: unknown): DiagnosticView[] {
+  if (!isObject(body) || !Array.isArray(body.diagnostics)) return [];
+  try {
+    return parseDiagnostics(body.diagnostics);
+  } catch {
+    return [];
+  }
 }

@@ -1,0 +1,170 @@
+// SPDX-License-Identifier: Apache-2.0
+import { describe, expect, it } from 'vitest';
+import type { DiagnosticView } from '../../api/types';
+import { HELLO_DOCUMENT, HELLO_TEXT } from '../../test-support/fixtures';
+import { reduce } from './edit-reducer';
+import { openDocument, type EditEvent, type EditState } from './edit-state';
+import {
+  canSave,
+  isDirty,
+  problemsOfDraft,
+  saveBlocker,
+  saveStatus,
+  textOf,
+} from './edit-view';
+
+function run(...events: EditEvent[]): EditState {
+  let state = openDocument(HELLO_DOCUMENT);
+  for (const event of events) state = reduce(state, event);
+  if (!state) throw new Error('Nothing to edit.');
+  return state;
+}
+
+const AGENT_CHANGE: EditEvent = { type: 'set-agent', id: 's1', agent: 'k-tpm' };
+
+function error(path: string): DiagnosticView {
+  return { message: 'Wrong.', path, line: 1, severity: 'error' };
+}
+
+describe('isDirty', () => {
+  it('is true while the draft differs from the saved stages', () => {
+    expect(isDirty(run())).toBe(false);
+    expect(isDirty(run(AGENT_CHANGE))).toBe(true);
+  });
+
+  it('is false again when the change is undone', () => {
+    const undone = run(AGENT_CHANGE, {
+      type: 'set-agent',
+      id: 's1',
+      agent: 'k-developer',
+    });
+
+    expect(isDirty(undone)).toBe(false);
+  });
+});
+
+describe('textOf', () => {
+  it('is the saved text when nothing changed', () => {
+    expect(textOf(run())).toBe(HELLO_TEXT);
+  });
+
+  it('is the saved text with the stages of the draft', () => {
+    expect(textOf(run(AGENT_CHANGE))).toBe(
+      HELLO_TEXT.replace('k-developer', 'k-tpm'),
+    );
+  });
+});
+
+describe('saveBlocker', () => {
+  it('says there is nothing to save when nothing changed', () => {
+    expect(saveBlocker(run())).toBe('There are no changes to save.');
+  });
+
+  it('is nothing for a change that was not found wrong', () => {
+    expect(saveBlocker(run(AGENT_CHANGE))).toBeUndefined();
+    expect(canSave(run(AGENT_CHANGE))).toBe(true);
+  });
+
+  it('says to fix the problems when the check of the draft found errors', () => {
+    const state = run(AGENT_CHANGE, {
+      type: 'checked',
+      revision: 1,
+      diagnostics: [error('stages[0].agent')],
+    });
+
+    expect(saveBlocker(state)).toBe('Fix the problems in the workflow first.');
+  });
+
+  it('does not count a finding of the draft before the change', () => {
+    const state = run(
+      { type: 'checked', revision: 0, diagnostics: [error('stages[0].agent')] },
+      AGENT_CHANGE,
+    );
+
+    expect(canSave(state)).toBe(true);
+  });
+
+  it.each([
+    ['saving', [{ type: 'save' }], 'The workflow is being saved.'],
+    [
+      'a conflict',
+      [{ type: 'conflict' }],
+      'The file changed on disk. Reload it first.',
+    ],
+    ['reloading', [{ type: 'reload' }], 'The workflow is being loaded again.'],
+  ] as const)('says why not during %s', (_, events, reason) => {
+    expect(saveBlocker(run(AGENT_CHANGE, ...events))).toBe(reason);
+  });
+});
+
+describe('problemsOfDraft', () => {
+  it('lists the findings of the check of the draft as it is now', () => {
+    const state = run(AGENT_CHANGE, {
+      type: 'checked',
+      revision: 1,
+      diagnostics: [error('stages[0].agent')],
+    });
+
+    expect(problemsOfDraft(state)).toEqual([
+      { message: 'Wrong.', stageId: 's1', field: 'agent' },
+    ]);
+  });
+
+  it('lists none while the check of the draft is still to come', () => {
+    const state = run(
+      { type: 'checked', revision: 0, diagnostics: [error('stages[0].agent')] },
+      AGENT_CHANGE,
+    );
+
+    expect(problemsOfDraft(state)).toEqual([]);
+  });
+});
+
+describe('saveStatus', () => {
+  it.each([
+    ['nothing changed', [], 'pending', 'No changes'],
+    ['a change', [AGENT_CHANGE], 'warning', 'Unsaved changes'],
+    [
+      'a save under way',
+      [AGENT_CHANGE, { type: 'save' }],
+      'in-progress',
+      'Saving',
+    ],
+    ['a reload under way', [{ type: 'reload' }], 'in-progress', 'Loading'],
+    [
+      'a reload that ended',
+      [{ type: 'reload' }, { type: 'reloaded', document: HELLO_DOCUMENT }],
+      'success',
+      'Loaded again from the server',
+    ],
+  ] as const)('says it for %s', (_, events, kind, text) => {
+    expect(saveStatus(run(...events))).toEqual({ kind, text });
+  });
+
+  it('says Saved after a save, until the draft changes', () => {
+    const saved = run(
+      AGENT_CHANGE,
+      { type: 'save' },
+      {
+        type: 'saved',
+        text: 'x',
+        result: {
+          hash: 'b'.repeat(64),
+          view: {
+            ...HELLO_DOCUMENT.view!,
+            stages: [
+              { name: 'draft', agent: 'k-tpm' },
+              HELLO_DOCUMENT.view!.stages[1]!,
+            ],
+          },
+          diagnostics: [],
+        },
+      },
+    );
+
+    expect(saveStatus(saved)).toEqual({ kind: 'success', text: 'Saved' });
+    expect(saveStatus(reduce(saved, { type: 'add' })!).text).toBe(
+      'Unsaved changes',
+    );
+  });
+});

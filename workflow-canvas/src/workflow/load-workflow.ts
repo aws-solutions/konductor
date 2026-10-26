@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { ApiError, canRetryStatus, type WorkflowApi } from '../api/api';
 import type { WorkflowDocument } from '../api/types';
+import { SaveConflict, SaveRefused, type EditPort } from '../designer/core';
 import {
   RunAlreadyActive,
   RunReadRefused,
@@ -9,12 +10,13 @@ import {
 
 /**
  * A workflow loaded from the server, with the harness that runs its stages
- * and the calls that run it. The calls hold the session token, so no other
- * part of the page does.
+ * and the calls that edit and run it. The calls hold the session token, so no
+ * other part of the page does.
  */
 export interface LoadedWorkflow {
   harness: string;
   document: WorkflowDocument;
+  edits: EditPort;
   runs: RunPort;
 }
 
@@ -50,6 +52,31 @@ function readRefusedOf(error: unknown): RunReadRefused | undefined {
   return error instanceof ApiError && !canRetryStatus(error.status)
     ? new RunReadRefused(error.message)
     : undefined;
+}
+
+// A 409 `conflict` is the file changing under the page; a 422
+// `invalid_workflow` carries the findings of the check. The core is told each
+// as its own error.
+function saveErrorOf(error: unknown): Error | undefined {
+  if (!(error instanceof ApiError)) return undefined;
+  if (error.code === 'conflict') return new SaveConflict(error.message);
+  return error.code === 'invalid_workflow'
+    ? new SaveRefused(error.message, error.diagnostics)
+    : undefined;
+}
+
+function editPortFor(api: WorkflowApi, token: string): EditPort {
+  return {
+    save: async (text, baseHash) => {
+      try {
+        return await api.saveWorkflow(token, text, baseHash);
+      } catch (error) {
+        throw saveErrorOf(error) ?? error;
+      }
+    },
+    check: (text) => api.checkWorkflow(token, text),
+    reload: () => api.getWorkflow(token),
+  };
 }
 
 function runPortFor(api: WorkflowApi, token: string): RunPort {
@@ -91,6 +118,7 @@ export async function loadWorkflow(
       workflow: {
         harness: session.harness,
         document,
+        edits: editPortFor(api, session.token),
         runs: runPortFor(api, session.token),
       },
     };
@@ -104,4 +132,17 @@ export function openWorkflowName(
   result: LoadResult | undefined,
 ): string | undefined {
   return result?.ok ? result.workflow.document.view?.name : undefined;
+}
+
+/**
+ * The same result with another document, such as the one that was saved. A
+ * failed load, or no result yet, stays as it is.
+ */
+export function withDocument(
+  result: LoadResult | undefined,
+  document: WorkflowDocument,
+): LoadResult | undefined {
+  return result?.ok
+    ? { ok: true, workflow: { ...result.workflow, document } }
+    : result;
 }

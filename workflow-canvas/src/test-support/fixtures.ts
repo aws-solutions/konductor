@@ -5,6 +5,7 @@ import type {
   WorkflowDocument,
   WorkflowView,
 } from '../api/types';
+import type { EditPort } from '../designer/core';
 import type { RunPort } from '../execution/core';
 import type { LoadResult } from '../workflow/load-workflow';
 
@@ -26,10 +27,18 @@ export const HELLO_SESSION: Session = {
   apiVersion: 1,
 };
 
+/** The text of the file behind the workflow above. */
+export const HELLO_TEXT =
+  'name: hello\nintent: Add a greeting to the README\nstages:\n  - name: draft\n    agent: k-developer\n  - name: review\n    agent: k-quality-assurance\n';
+
+/** The hash that the server gives that text; a test only needs it to differ. */
+export const HELLO_HASH = 'a'.repeat(64);
+
 /** The document that `GET /api/workflow` returns for the workflow above. */
 export const HELLO_DOCUMENT: WorkflowDocument = {
   name: 'hello',
-  text: 'name: hello\n',
+  text: HELLO_TEXT,
+  hash: HELLO_HASH,
   view: HELLO_VIEW,
   diagnostics: [],
 };
@@ -40,12 +49,23 @@ export const NO_RUNS: RunPort = {
   get: () => Promise.reject(new Error('This test reads no run.')),
 };
 
+/** Edit calls that are never used, for a test that edits nothing. */
+export const NO_EDITS: EditPort = {
+  save: () => Promise.reject(new Error('This test saves nothing.')),
+  check: () => Promise.reject(new Error('This test checks nothing.')),
+  reload: () => Promise.reject(new Error('This test loads nothing again.')),
+};
+
 /** A load that succeeded with the document. */
 export function loaded(
   document: WorkflowDocument,
   runs: RunPort = NO_RUNS,
+  edits: EditPort = NO_EDITS,
 ): LoadResult {
-  return { ok: true, workflow: { harness: 'kiro-cli', document, runs } };
+  return {
+    ok: true,
+    workflow: { harness: 'kiro-cli', document, edits, runs },
+  };
 }
 
 const HELLO_STAGES = HELLO_VIEW.stages.map((stage) => stage.name);

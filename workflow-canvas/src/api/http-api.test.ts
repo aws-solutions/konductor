@@ -24,6 +24,29 @@ const DOCUMENT_BODY = {
   diagnostics: [],
 };
 
+const SAVE_BODY = {
+  hash: 'c'.repeat(64),
+  view: DOCUMENT_BODY.view,
+  diagnostics: [],
+};
+
+const CHECK_BODY = {
+  errors: 1,
+  warnings: 0,
+  infos: 0,
+  view: null,
+  diagnostics: [
+    {
+      code: 'DUPLICATE_STAGE',
+      severity: 'error',
+      path: 'stages[1].name',
+      line: 6,
+      message: 'The stage name `write` is already used.',
+    },
+  ],
+  summary: { valid: false, counts: { stages: 0 } },
+};
+
 const RUN_STARTED_BODY = { run_id: '20261024-0412-a7b3c' };
 
 const RUN_BODY = {
@@ -105,6 +128,7 @@ describe('createHttpApi', () => {
     expect(await api.getWorkflow('t')).toEqual({
       name: 'hello',
       text: 'name: hello\n',
+      hash: 'a'.repeat(64),
       view: DOCUMENT_BODY.view,
       diagnostics: [],
     });
@@ -116,24 +140,59 @@ describe('createHttpApi', () => {
 
     expect(await api.getWorkflow('t')).toMatchObject({
       text: null,
+      hash: null,
       view: null,
     });
   });
 
-  it('reads the message and line of each diagnostic', async () => {
+  it('reads the message, line, path and severity of each diagnostic', async () => {
     const body = {
       ...DOCUMENT_BODY,
       view: null,
       diagnostics: [
-        { code: 'MISSING_KEY', message: 'Missing key', line: 3 },
-        { code: 'WRONG_TYPE', message: 'Wrong type' },
+        {
+          code: 'MISSING_KEY',
+          severity: 'error',
+          path: 'stages.write',
+          message: 'Missing key',
+          line: 3,
+        },
+        {
+          code: 'WRONG_TYPE',
+          severity: 'warning',
+          path: 'intent',
+          message: 'Wrong type',
+        },
       ],
     };
     const { api } = apiFor(reply(body));
 
     expect((await api.getWorkflow('t')).diagnostics).toEqual([
-      { message: 'Missing key', line: 3 },
-      { message: 'Wrong type', line: undefined },
+      {
+        message: 'Missing key',
+        line: 3,
+        path: 'stages.write',
+        severity: 'error',
+      },
+      {
+        message: 'Wrong type',
+        line: undefined,
+        path: 'intent',
+        severity: 'warning',
+      },
+    ]);
+  });
+
+  it('takes a severity it does not know as an error', async () => {
+    const body = {
+      ...DOCUMENT_BODY,
+      view: null,
+      diagnostics: [{ message: 'Odd', severity: 'fatal', path: '' }],
+    };
+    const { api } = apiFor(reply(body));
+
+    expect((await api.getWorkflow('t')).diagnostics).toMatchObject([
+      { severity: 'error' },
     ]);
   });
 
@@ -147,7 +206,7 @@ describe('createHttpApi', () => {
       };
       const { api } = apiFor(reply(body));
 
-      expect((await api.getWorkflow('t')).diagnostics).toEqual([
+      expect((await api.getWorkflow('t')).diagnostics).toMatchObject([
         { message: 'Odd line', line: undefined },
       ]);
     },
@@ -283,6 +342,151 @@ describe('createHttpApi', () => {
 
     expect(error).toBeInstanceOf(ApiError);
     expect((error as ApiError).runId).toBeUndefined();
+  });
+
+  it('puts the text and base hash as JSON to /api/workflow with the token', async () => {
+    const { api, fetchFn } = apiFor(reply(SAVE_BODY));
+
+    await api.saveWorkflow('t-1', 'name: hello\n', 'b'.repeat(64));
+
+    const [path, init] = fetchFn.mock.calls[0] as unknown as [
+      string,
+      RequestInit,
+    ];
+    expect(path).toBe('/api/workflow');
+    expect(init.method).toBe('PUT');
+    expect(init.headers).toEqual({
+      Authorization: 'Bearer t-1',
+      'Content-Type': 'application/json',
+    });
+    expect(JSON.parse(init.body as string)).toEqual({
+      text: 'name: hello\n',
+      base_hash: 'b'.repeat(64),
+    });
+  });
+
+  it('reads the hash and view of a saved workflow', async () => {
+    const { api } = apiFor(reply({ ...SAVE_BODY, future_field: true }));
+
+    expect(await api.saveWorkflow('t', 'x', 'b'.repeat(64))).toEqual({
+      hash: 'c'.repeat(64),
+      view: DOCUMENT_BODY.view,
+      diagnostics: [],
+    });
+  });
+
+  it('fails when a save is answered without a view', async () => {
+    const { api } = apiFor(reply({ hash: 'c'.repeat(64), diagnostics: [] }));
+
+    await expect(api.saveWorkflow('t', 'x', null)).rejects.toBeInstanceOf(
+      ApiError,
+    );
+  });
+
+  it('fails a conflicting save with the code conflict', async () => {
+    const { api } = apiFor(
+      reply({ error: 'The file changed on disk.', code: 'conflict' }, 409),
+    );
+
+    await expect(
+      api.saveWorkflow('t', 'x', 'b'.repeat(64)),
+    ).rejects.toMatchObject({
+      status: 409,
+      code: 'conflict',
+      message: 'The file changed on disk.',
+    });
+  });
+
+  it('carries the findings of a refused save', async () => {
+    const { api } = apiFor(
+      reply(
+        {
+          error: 'The workflow has errors.',
+          code: 'invalid_workflow',
+          diagnostics: [
+            {
+              code: 'DUPLICATE_STAGE',
+              severity: 'error',
+              path: 'stages[1].name',
+              line: 6,
+              message: 'The stage name `write` is already used.',
+            },
+          ],
+        },
+        422,
+      ),
+    );
+
+    const error = await api
+      .saveWorkflow('t', 'x', 'b'.repeat(64))
+      .catch((caught: unknown) => caught);
+
+    expect(error).toMatchObject({ status: 422, code: 'invalid_workflow' });
+    expect((error as ApiError).diagnostics).toEqual([
+      {
+        message: 'The stage name `write` is already used.',
+        line: 6,
+        path: 'stages[1].name',
+        severity: 'error',
+      },
+    ]);
+  });
+
+  it('carries no findings when the error body has none or cannot be read', async () => {
+    const { api } = apiFor(
+      reply({ error: 'Bad.', code: 'invalid_workflow', diagnostics: [7] }, 422),
+    );
+
+    const error = await api
+      .saveWorkflow('t', 'x', null)
+      .catch((caught: unknown) => caught);
+
+    expect((error as ApiError).diagnostics).toEqual([]);
+  });
+
+  it('posts the text as JSON to /api/validate with the token', async () => {
+    const { api, fetchFn } = apiFor(reply(CHECK_BODY));
+
+    await api.checkWorkflow('t-1', 'name: hello\n');
+
+    const [path, init] = fetchFn.mock.calls[0] as unknown as [
+      string,
+      RequestInit,
+    ];
+    expect(path).toBe('/api/validate');
+    expect(init.method).toBe('POST');
+    expect(init.headers).toEqual({
+      Authorization: 'Bearer t-1',
+      'Content-Type': 'application/json',
+    });
+    expect(JSON.parse(init.body as string)).toEqual({ text: 'name: hello\n' });
+  });
+
+  it('reads the view and findings of a check', async () => {
+    const { api } = apiFor(reply(CHECK_BODY));
+
+    expect(await api.checkWorkflow('t', 'x')).toEqual({
+      view: null,
+      diagnostics: [
+        {
+          message: 'The stage name `write` is already used.',
+          line: 6,
+          path: 'stages[1].name',
+          severity: 'error',
+        },
+      ],
+    });
+  });
+
+  it('reads a check with no problems as a view', async () => {
+    const { api } = apiFor(
+      reply({ ...CHECK_BODY, view: DOCUMENT_BODY.view, diagnostics: [] }),
+    );
+
+    expect(await api.checkWorkflow('t', 'x')).toEqual({
+      view: DOCUMENT_BODY.view,
+      diagnostics: [],
+    });
   });
 
   it('gets /api/runs/{id} with the bearer token', async () => {
