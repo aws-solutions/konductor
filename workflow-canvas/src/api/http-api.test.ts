@@ -438,6 +438,30 @@ describe('createHttpApi', () => {
       });
     });
 
+    it('gives up on a body that does not arrive, as an unreachable server and not a bad reply', async () => {
+      vi.useFakeTimers();
+      // Headers arrive at once; the body ends only when the signal aborts.
+      const fetchFn = vi.fn((_path: string, init: RequestInit) => {
+        const body = new ReadableStream({
+          start(controller) {
+            init.signal?.addEventListener('abort', () =>
+              controller.error(new DOMException('Aborted', 'AbortError')),
+            );
+          },
+        });
+        return Promise.resolve(new Response(body, { status: 200 }));
+      });
+      const api = createHttpApi(fetchFn as unknown as typeof fetch, 5000);
+
+      const outcome = api.getRun('t', 'r').catch((caught: unknown) => caught);
+      await vi.advanceTimersByTimeAsync(5000);
+
+      expect(await outcome).toMatchObject({
+        status: 0,
+        message: 'The server did not answer. Check that it is still running.',
+      });
+    });
+
     it('stops the timer once the call has ended', async () => {
       vi.useFakeTimers();
       const { api } = apiFor(reply(RUN_BODY));
