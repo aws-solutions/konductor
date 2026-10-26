@@ -30,6 +30,8 @@ const MODES: [ThemeMode, Record<string, string>][] = [
   ['dark', dark],
 ];
 
+const RUN_STATES = ['queued', 'running', 'done', 'failed'] as const;
+
 describe.each(MODES)('canvas.css colours in %s', (mode, v) => {
   const ratio = (a: string, b: string) => contrastRatio(v[a]!, v[b]!);
 
@@ -80,6 +82,16 @@ describe.each(MODES)('canvas.css colours in %s', (mode, v) => {
     );
   });
 
+  it.each(RUN_STATES)(
+    'keeps the %s state readable in its badge and visible as an outline',
+    (state) => {
+      const color = `--wf-state-${state}`;
+      expect(ratio(color, `${color}-bg`)).toBeGreaterThanOrEqual(AA_TEXT);
+      expect(ratio(color, '--wf-canvas-bg')).toBeGreaterThanOrEqual(AA_GRAPHIC);
+      expect(ratio(color, '--wf-node-bg')).toBeGreaterThanOrEqual(AA_GRAPHIC);
+    },
+  );
+
   it('uses the colours of the theme module', () => {
     const c = colorsOf(mode);
 
@@ -92,6 +104,14 @@ describe.each(MODES)('canvas.css colours in %s', (mode, v) => {
     expect(v['--wf-controls-bg']).toBe(c.surface);
     expect(v['--wf-controls-border']).toBe(c.borderStrong);
     expect(v['--wf-controls-bg-hover']).toBe(c.infoBg);
+    expect(v['--wf-state-queued']).toBe(c.textMuted);
+    expect(v['--wf-state-queued-bg']).toBe(c.surfaceAlt);
+    expect(v['--wf-state-running']).toBe(c.link);
+    expect(v['--wf-state-running-bg']).toBe(c.infoBg);
+    expect(v['--wf-state-done']).toBe(c.success);
+    expect(v['--wf-state-done-bg']).toBe(c.successBg);
+    expect(v['--wf-state-failed']).toBe(c.error);
+    expect(v['--wf-state-failed-bg']).toBe(c.errorBg);
   });
 });
 
