@@ -32,7 +32,7 @@ test('runs the workflow on the stub: each stage goes from queued to running to d
 }) => {
   await canvas.runButton.click();
   await expect(canvas.runButton).toBeDisabled();
-  await expect(canvas.goal).toBeDisabled();
+  await expect(canvas.goal).not.toBeEditable();
 
   await expect(canvas.badge('node-stage-draft')).toHaveText('Running', {
     timeout: STEP_TIMEOUT_MS,
@@ -165,4 +165,17 @@ test('keeps the run going while the Designer tab is open', async ({
   await canvas.selectTab('Execution');
 
   await canvas.expectBadges(['Done', 'Done', 'Done', 'Passed']);
+});
+
+test('keeps keyboard focus in the goal box when Enter starts the run', async ({
+  canvas,
+}) => {
+  await canvas.goal.focus();
+
+  await canvas.goal.press('Enter');
+
+  await expect(canvas.runStatus).toContainText('Running draft.', {
+    timeout: STEP_TIMEOUT_MS,
+  });
+  await expect(canvas.goal).toBeFocused();
 });

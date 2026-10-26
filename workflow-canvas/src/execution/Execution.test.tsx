@@ -189,13 +189,27 @@ describe('a run', () => {
 
     await press(runButton());
     expect(isOff(runButton())).toBe(true);
-    expect(screen.getByLabelText('Goal').hasAttribute('disabled')).toBe(true);
+    expect(screen.getByLabelText('Goal').hasAttribute('readonly')).toBe(true);
     await press(runButton());
     expect(runs.start).toHaveBeenCalledOnce();
 
     await tick(scheduler);
     expect(isOff(runButton())).toBe(false);
-    expect(screen.getByLabelText('Goal').hasAttribute('disabled')).toBe(false);
+    expect(screen.getByLabelText('Goal').hasAttribute('readonly')).toBe(false);
+  });
+
+  it('keeps keyboard focus in the goal box when Enter starts the run', async () => {
+    await openExecution(serverShowing(helloRun(0)));
+    const goal = screen.getByLabelText('Goal');
+    goal.focus();
+
+    await act(async () => {
+      fireEvent.keyDown(goal, { key: 'Enter', keyCode: 13 });
+    });
+
+    expect(statusLine().textContent).toContain('Running draft.');
+    expect(document.activeElement).toBe(goal);
+    expect(goal.hasAttribute('disabled')).toBe(false);
   });
 
   it('disables Run from the moment of the click, before the run is accepted', async () => {
