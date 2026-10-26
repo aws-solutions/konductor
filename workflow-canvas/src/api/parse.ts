@@ -140,6 +140,13 @@ export function errorMessageOf(body: unknown): string | undefined {
     : undefined;
 }
 
+/** The `run_id` of an `Error` body, or `undefined` when it has none. */
+export function errorRunIdOf(body: unknown): string | undefined {
+  return isObject(body) && typeof body.run_id === 'string' && body.run_id !== ''
+    ? body.run_id
+    : undefined;
+}
+
 /** The `code` of an `Error` body, or `undefined` when it has none. */
 export function errorCodeOf(body: unknown): string | undefined {
   return isObject(body) && typeof body.code === 'string'

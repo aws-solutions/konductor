@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { WorkflowApi } from '../api/api';
+import { ApiError, type WorkflowApi } from '../api/api';
 import type { WorkflowDocument } from '../api/types';
-import type { RunPort } from '../execution/core';
+import { RunAlreadyActive, type RunPort } from '../execution/core';
 
 /**
  * A workflow loaded from the server, with the harness that runs its stages
@@ -31,9 +31,24 @@ function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : 'The workflow did not load.';
 }
 
+// The API names the active run in its 409; the core is told as its own error.
+function activeRunOf(error: unknown): RunAlreadyActive | undefined {
+  return error instanceof ApiError &&
+    error.code === 'already_running' &&
+    error.runId !== undefined
+    ? new RunAlreadyActive(error.message, error.runId)
+    : undefined;
+}
+
 function runPortFor(api: WorkflowApi, token: string): RunPort {
   return {
-    start: (goal) => api.startRun(token, goal),
+    start: async (goal) => {
+      try {
+        return await api.startRun(token, goal);
+      } catch (error) {
+        throw activeRunOf(error) ?? error;
+      }
+    },
     get: (runId) => api.getRun(token, runId),
   };
 }
