@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { RunView } from '../../api/types';
 import type { ExecutionEvent } from './execution-state';
-import { RunAlreadyActive, type RunPort, type Scheduler } from './ports';
+import {
+  RunAlreadyActive,
+  RunReadRefused,
+  type RunPort,
+  type Scheduler,
+} from './ports';
 
 /** How long to wait between two reads of a run, as the API asks. */
 export const POLL_INTERVAL_MS = 1000;
@@ -43,6 +48,7 @@ async function begin(
 
 // One reading of the run. A failed read is tried again after a poll interval
 // until `MAX_READ_FAILURES` in a row have failed; then the last error is thrown.
+// A refused read is thrown at once, as trying again cannot change the answer.
 async function read(
   { runs, scheduler, signal }: FollowRequest,
   runId: string,
@@ -51,7 +57,13 @@ async function read(
     try {
       return await runs.get(runId);
     } catch (error) {
-      if (signal.aborted || failures >= MAX_READ_FAILURES) throw error;
+      if (
+        signal.aborted ||
+        error instanceof RunReadRefused ||
+        failures >= MAX_READ_FAILURES
+      ) {
+        throw error;
+      }
       await scheduler.wait(POLL_INTERVAL_MS, signal);
       if (signal.aborted) return undefined;
     }
