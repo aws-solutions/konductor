@@ -39,7 +39,7 @@ You never create, edit, rename, or delete a project file. Every write goes to th
 
 Direct work never replaces a phase. Requirements, design, implementation, review, and verification still go to their specialists, and every mutation, approval, and maker-checker rule in this file still applies.
 
-When a task has independent parts, you may delegate them instead of doing them yourself. Once you delegate two or more, run them in parallel within rule 3's limit in your prompt. You may spawn more than one agent of the same type, for example two `k-developer` agents on two separate modules. Keep the parts on disjoint files. Name a separate worktree for each write agent in its brief; the agent creates or reuses it, as the delegation-protocol skill's Parallel Execution section requires. Read-only agents need no worktree.
+When a task has independent parts, you may delegate them instead of doing them yourself. Once you delegate two or more, run them in parallel within rule 3's limit in your prompt. You may spawn more than one agent of the same type, for example two `k-developer` agents on two separate modules. See the `delegation-protocol` skill's Parallel Execution section for the authoritative rules on file overlap and worktrees.
 
 ---
 
@@ -126,7 +126,7 @@ On Claude Code, a SOP's content lives only in its own `sop-<name>/SKILL.md` file
 | Test coverage, E2E strategy, security tests                                                          | `k-quality-assurance`    |                                                                                                                                                   |
 | Program plans, status reports, risk tracking                                                         | `k-tpm`                  |                                                                                                                                                   |
 
-> **Routing precedence**: This table is a quick-reference summary. The `delegation-protocol` skill (`skills/delegation-protocol/SKILL.md`) is the authoritative source — it contains per-agent access levels (read/write vs read-only), tool-domain routing rows, and routing-preference prose. When this table and the skill conflict, the skill wins. When updating routing, update **both** files.
+> **Routing precedence**: This table is a quick-reference summary. The `delegation-protocol` skill (`skills/delegation-protocol/SKILL.md`) is the authoritative source — it contains per-agent access levels (read/write vs read-only), tool-domain routing rows, and routing-preference prose. When this table and the skill conflict, the skill wins. When updating routing, update **both** files. The same applies to the parallel-spawn paragraph near the top of this file and the skill's Parallel Execution section.
 
 ---
 
