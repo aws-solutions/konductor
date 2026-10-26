@@ -11,6 +11,8 @@ import {
 import {
   BORDER_WIDTH,
   CARD_RADIUS,
+  FOCUS_GAP,
+  FOCUS_WIDTH,
   IN_HANDLE_STYLE,
   OUT_HANDLE_STYLE,
   PORT_CLEARANCE,
@@ -19,6 +21,7 @@ import {
   letterY,
   nodeOutline,
   pieceShape,
+  spreadStroke,
   type OutlineOptions,
 } from './jigsaw';
 
@@ -68,7 +71,8 @@ function PortLetter({ y, kind }: { y: number; kind: 'knob' | 'socket' }) {
 /**
  * The card behind the content of a node: one closed outline, with a socket
  * in the top edge when run order comes in and a knob under the bottom edge
- * when it goes out. A knob fills the socket of the node below it.
+ * when it goes out. A knob fills the socket of the node below it. The focus
+ * ring is drawn around the same outline, so it follows the knob.
  */
 function NodeShape({
   height,
@@ -80,6 +84,13 @@ function NodeShape({
   'socket' | 'knob'
 >) {
   const { top, bottom } = borderLines(height);
+  const outline = nodeOutline({
+    width: NODE_WIDTH,
+    height,
+    radius,
+    socket,
+    knob,
+  });
   return (
     <svg
       className="wf-node-shape"
@@ -88,12 +99,18 @@ function NodeShape({
       aria-hidden="true"
       focusable="false"
     >
-      {socket && <path className="wf-socket" d={pieceShape(top)} />}
       <path
-        className="wf-node-body"
-        strokeWidth={BORDER_WIDTH}
-        d={nodeOutline({ width: NODE_WIDTH, height, radius, socket, knob })}
+        className="wf-focus-ring"
+        strokeWidth={spreadStroke(FOCUS_GAP + FOCUS_WIDTH)}
+        d={outline}
       />
+      <path
+        className="wf-focus-gap"
+        strokeWidth={spreadStroke(FOCUS_GAP)}
+        d={outline}
+      />
+      {socket && <path className="wf-socket" d={pieceShape(top)} />}
+      <path className="wf-node-body" strokeWidth={BORDER_WIDTH} d={outline} />
       {knob && (
         <path
           className="wf-knob"
