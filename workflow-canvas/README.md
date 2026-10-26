@@ -298,8 +298,8 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
   used for that run.
 - A read of the run that fails is tried again after a second; the tab gives up
   after three failures in a row. Only a missing answer or a 5xx is tried again:
-  a 401, a 404 and a reply the page cannot read show the alert at once. A call that gets no answer in 15 seconds counts
-  as a failure.
+  any 4xx or a reply the page cannot read shows the alert at once. A call that
+  gets no answer in 15 seconds counts as a failure.
 - Each node shows a badge with a word and a colour: **Queued** (with a dashed
   outline), **Running**, **Done** and **Failed**. The word carries the state;
   only Queued and Not run also differ in shape. The intent is Done once the run
