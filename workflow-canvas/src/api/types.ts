@@ -39,3 +39,24 @@ export interface WorkflowDocument {
   view: WorkflowView | null;
   diagnostics: DiagnosticView[];
 }
+
+/** How far a stage of a run has got. `blocked` failed and stopped the run. */
+export type StageRunStatus = 'pending' | 'running' | 'passed' | 'blocked';
+
+/** How a run as a whole is going. `halted` means a stage failed. */
+export type RunStatus = 'running' | 'passed' | 'halted';
+
+/** One stage of a run, in run order. */
+export interface RunStageView {
+  name: string;
+  status: StageRunStatus;
+}
+
+/** What `GET /api/runs/{id}` returns: the state of a run, live or finished. */
+export interface RunView {
+  runId: string;
+  status: RunStatus;
+  /** `null` while the run is `running`. */
+  exitCode: number | null;
+  stages: RunStageView[];
+}
