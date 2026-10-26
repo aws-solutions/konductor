@@ -284,7 +284,8 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
   of starting one. The line under the button says so, and the goal typed is not
   used for that run.
 - A read of the run that fails is tried again after a second; the tab gives up
-  after three failures in a row. A call that gets no answer in 15 seconds counts
+  after three failures in a row. Only a missing answer or a 5xx is tried again:
+  a 401, a 404 and a reply the page cannot read show the alert at once. A call that gets no answer in 15 seconds counts
   as a failure.
 - Each node shows a badge with a word and a colour: **Queued** (with a dashed
   outline), **Running**, **Done** and **Failed**. The word carries the state;
@@ -305,8 +306,10 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
   alert. The goal is one line: line breaks in the outcome of the intent become
   spaces, and Enter that ends an input method composition starts no run.
 - A workflow can be saved while a run goes on, so the run may have other stages
-  than the graph. Node states attach by stage name, so a warning above the
-  graph names the stages that are not drawn and those that are not in the run.
+  than the graph. The graph is read once, when the page loads, while the run
+  works from the saved file. Node states attach by stage name, so a warning
+  above the graph names the stages that are not drawn and those that are not in
+  the run.
 - A run goes on while the Designer tab is open, and the tab shows it again when
   you come back, with the goal box as it was: what you typed, or the goal of
   the run in flight. Closing the page stops the reading, not the run.
