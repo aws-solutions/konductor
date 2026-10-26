@@ -66,6 +66,14 @@ not per individual commit.
   both modes, and the edges of the controls, ports and the selected-tab indicator reach 3:1,
   checked by unit tests and by axe in the end-to-end tests. A dark-mode Designer screenshot
   joins the committed screenshots.
+- The Execution tab of the workflow canvas draws the same graph as the Designer, read-only, with
+  a Run button and a goal box (it starts as the outcome of the intent). Run calls `POST /api/run`
+  and reads `GET /api/runs/{id}` once a second until the run ends, using the stub or the server
+  named by `WC_API_TARGET`. Each node shows its live state as a word and a colour from the theme
+  (queued, running, done, failed), the end shows the result, and the tab says where the run is in
+  a live region for screen readers. An error from the API shows in one alert. The run logic is an
+  IO-free core with a clock port, tested without waiting, and the end-to-end tests and
+  screenshots cover a run on the stub.
 
 ### Changed
 
