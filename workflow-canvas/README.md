@@ -246,14 +246,16 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
 
 - **Run** calls `POST /api/run` with the goal, then reads
   `GET /api/runs/{id}` once a second until the run is `passed` or `halted`.
-  Run and the goal box are off from the click until the run ends. Enter in the
+  Run and the goal box are off from the click until the run ends (the box
+  stays read-only, not disabled, so keyboard focus stays in it). Enter in the
   goal box runs too.
 - If the server answers 409 `already_running`, as it does after a page reload
   in the middle of a run, the tab follows the run named in that answer instead
   of starting one. The line under the button says so, and the goal typed is not
   used for that run.
 - A read of the run that fails is tried again after a second; the tab gives up
-  after three failures in a row. A call that gets no answer in 15 seconds counts
+  after three failures in a row. Only a missing answer or a 5xx is tried again:
+  a 401, a 404 and a reply the page cannot read show the alert at once. A call that gets no answer in 15 seconds counts
   as a failure.
 - Each node shows a badge with a word and a colour: **Queued** (dashed
   outline), **Running**, **Done** and **Failed**. The intent is Done once the run
@@ -266,6 +268,8 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
   in one alert above the graph, with the sentence the server gave. The alert
   sits in a region with `role="alert"`, so a screen reader reads that sentence.
   A failed stage is a result, not an error, so it has no alert.
+- A run stage that is not in the graph is left out of the drawing. The graph is
+  read once, when the page loads, while the run works from the saved file.
 - A run goes on while the Designer tab is open, and the tab shows it again when
   you come back. Closing the page stops the reading, not the run.
 - The colours of the states are in `src/canvas/canvas.css` and match the theme
