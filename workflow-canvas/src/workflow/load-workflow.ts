@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { ApiError, type WorkflowApi } from '../api/api';
+import { ApiError, canRetryStatus, type WorkflowApi } from '../api/api';
 import type { WorkflowDocument } from '../api/types';
 import {
   RunAlreadyActive,
@@ -44,10 +44,10 @@ function activeRunOf(error: unknown): RunAlreadyActive | undefined {
     : undefined;
 }
 
-// Only a missing answer (status 0) or a server error (5xx) can be gone on the
-// next try; 401, 404 and a reply the page cannot read will not change.
+// Only a missing answer or a server error can be gone on the next try; any
+// 4xx and a reply the page cannot read will not change.
 function readRefusedOf(error: unknown): RunReadRefused | undefined {
-  return error instanceof ApiError && error.status !== 0 && error.status < 500
+  return error instanceof ApiError && !canRetryStatus(error.status)
     ? new RunReadRefused(error.message)
     : undefined;
 }
