@@ -4,7 +4,10 @@ import { NODE_HEIGHT, NODE_WIDTH } from '../src/graph';
 import {
   BORDER_WIDTH,
   CARD_RADIUS,
+  FOCUS_GAP,
+  FOCUS_WIDTH,
   IN_HANDLE_STYLE,
+  NECK_LENGTH,
   OUT_HANDLE_STYLE,
   PORT_DEPTH,
   PORT_WIDTH,
@@ -12,6 +15,7 @@ import {
   letterY,
   nodeOutline,
   pieceShape,
+  spreadStroke,
 } from '../src/canvas/jigsaw.ts';
 
 const SIZE = { width: NODE_WIDTH, height: NODE_HEIGHT.stage, radius: 10 };
@@ -27,6 +31,15 @@ describe('the shape of a port', () => {
     const opening = pieceShape(0).match(/^M([\d.]+) /)?.[1];
     expect(Math.abs(Number(opening) - PORT_X) * 2).toBeLessThan(PORT_WIDTH);
     expect(PORT_DEPTH).toBeGreaterThan(PORT_WIDTH);
+  });
+
+  it('has a neck long enough to read as a jigsaw tab, with a straight run', () => {
+    // The neck is 9.5 pixels, and 8 or more of it shows between the opening
+    // and the top of the head.
+    expect(NECK_LENGTH).toBeGreaterThanOrEqual(8);
+    expect(PORT_DEPTH - PORT_WIDTH).toBeGreaterThanOrEqual(8);
+    // The neck runs straight down for part of its length: a vertical line.
+    expect(pieceShape(0)).toMatch(/L[\d.]+ [\d.]+A/);
   });
 
   it('is one curve for the knob and the socket, drawn from either side', () => {
@@ -90,6 +103,20 @@ describe('nodeOutline', () => {
 
     expect(path).not.toContain('Q');
     expect(count(path, 'A')).toBe(4);
+  });
+});
+
+describe('the focus ring', () => {
+  it('grows the outline by the gap and by the gap plus the ring', () => {
+    expect(spreadStroke(0)).toBe(BORDER_WIDTH);
+    expect(spreadStroke(FOCUS_GAP)).toBe(BORDER_WIDTH + 2 * FOCUS_GAP);
+    expect(
+      spreadStroke(FOCUS_GAP + FOCUS_WIDTH) - spreadStroke(FOCUS_GAP),
+    ).toBe(2 * FOCUS_WIDTH);
+  });
+
+  it('is at least 3 pixels thick, to stay visible', () => {
+    expect(FOCUS_WIDTH).toBeGreaterThanOrEqual(3);
   });
 });
 
