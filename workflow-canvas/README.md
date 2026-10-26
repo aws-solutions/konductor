@@ -8,15 +8,16 @@ The page has Designer and Execution tabs. The Designer tab loads the workflow
 from the API and draws it, read-only: the intent, each stage in list order
 (name, agent and harness) and the end, joined by run-order edges. It shows a
 loading message, an error message or an empty message when there is nothing to
-draw. The Execution tab is still a placeholder. The contract, the stub that
-serves it and the tests around both are in this folder.
+draw. The Execution tab draws the same graph and runs it: a Run button starts
+a run, and each node shows its live state until the run ends. The contract, the
+stub that serves it and the tests around both are in this folder.
 
 ## Layout
 
 - `src/`: the UI. `graph/` turns a workflow into nodes and edges and does no
   IO; `api/` is the typed client of the API; `launch/` and `workflow/` open the
   session and load the workflow; `designer/` and `canvas/` draw it;
-  `execution/core/` starts a run and follows it, and does no IO.
+  `execution/` runs it and shows the run; `execution/core/` does no IO.
 - `api/`: the HTTP API contract (`openapi.yaml`) and its test.
 - `stub-api/`: a TypeScript stub server for the contract, for local
   development and tests.
@@ -125,7 +126,8 @@ The data covers the first release: a workflow of an intent and stages, and the
 `kiro-cli` harness. It is a `hello` workflow with a `draft` stage
 (`k-developer`) and a `review` stage (`k-quality-assurance`). A saved change
 lasts until the stub stops. A run is faked and calls no agent: its stages run
-for 3 seconds each, one after the other, and all of them pass.
+for 3 seconds each, one after the other, and all of them pass. It runs one run
+at a time and never fails a stage.
 
 ### Run the page against the stub
 
@@ -240,6 +242,46 @@ The rest wraps the core, so the rules can be tested without a browser:
   text is small; zoom in with the controls, or Tab to a node to bring it into
   view.
 
+## The Execution tab
+
+The tab draws the same graph as the Designer, read-only, with a **Goal** box
+and a **Run** button beside it. The goal starts as the outcome of the
+intent, because the API needs one (1 to 2048 characters) to start a run.
+
+- **Run** calls `POST /api/run` with the goal, then reads
+  `GET /api/runs/{id}` once a second until the run is `passed` or `halted`.
+  Run and the goal box are off from the click until the run ends.
+- Each node shows a badge with a word and a colour: **Queued** (dashed
+  outline), **Running**, **Done** and **Failed**. The intent is Done once the run
+  has it. After a halt, the stages behind the failed one say **Not run**. The end
+  shows the result: **Passed** or **Halted**.
+- A line under the button says where the run is ("Running draft. 0 of 2 stages
+  done."). It is a polite live region, so a screen reader announces each
+  change, and each node's name for a screen reader ends with its state.
+- An error from the API, whether the run does not start or a read fails, shows
+  in one alert above the graph, with the sentence the server gave. A failed
+  stage is a result, not an error, so it has no alert.
+- A run goes on while the Designer tab is open, and the tab shows it again when
+  you come back. Closing the page stops the reading, not the run.
+- The colours of the states are in `src/canvas/canvas.css` and match the theme
+  module, checked in both modes by the contrast test.
+
+The code follows the ports-and-adapters split of the graph:
+
+- `src/execution/core/` is the core and does no IO: the state of the tab and
+  its reducer, the loop that starts a run and reads it (`startAndFollow`), the
+  node states and the status sentences. Its ports are `RunPort` (start and
+  read a run) and `Scheduler` (wait for some milliseconds), so a test moves
+  time by hand and nothing sleeps. A test (`test-support/execution-purity.test.ts`)
+  fails if the core imports anything but its own modules, the graph core and the
+  wire types, or reads a clock, randomness, the environment or the network.
+- The adapters are `createHttpApi` (`startRun`, `getRun`), which `loadWorkflow`
+  ties to the session token, and `timerScheduler`. The token is held only by
+  those run calls.
+- `useExecution` keeps the state in `App`, and `Execution` draws it. The
+  Designer and Execution tabs share `WorkflowGate` (loading, error and empty
+  states) and `WorkflowGraphCard` (the card with the graph).
+
 ## Theme
 
 The page has the look of the Konductor docs theme: its colours, fonts and
@@ -314,7 +356,14 @@ npx playwright install chromium
 
 Then `npm run test:e2e`. The HTML report is written to `playwright-report/`;
 open it with `npx playwright show-report`. Accessibility is checked with
-axe-core on each tab, on the error state and in both theme modes.
+axe-core on each tab, on the error state, on the Execution tab with a stage
+running, a failed stage and a passed run, and in both theme modes.
+
+The stub runs one run at a time and never fails a stage. So the one test that
+starts a real run on it (`execution.spec.ts`, the first run test) waits for the
+end of the run, and the tests of a failed stage or a refused run answer the
+run calls themselves (`e2e/support/run-routes.ts`). A test that starts another
+run on the stub must also wait for its end, or the next test gets a 409.
 
 Shared page objects and helpers live in `e2e/support/`. New tests should
 extend them rather than repeat selectors: import `test` and `expect` from
@@ -323,12 +372,16 @@ the app.
 
 ## Screenshots
 
-`npm run screenshots` saves a full-page PNG of each tab to
-`e2e/screenshots/`, with the Designer tab drawn from the stub, at 1280x800 with
-animations frozen. The tabs are in the light theme (`designer-tab.png`,
-`execution-tab.png`), and `designer-tab-dark.png` is the Designer tab after
-the theme button is pressed. Pull request descriptions embed these
-files, so regenerate and commit them when the UI changes.
+`npm run screenshots` saves full-page PNGs to `e2e/screenshots/`, drawn from
+the stub, at 1280x800 with animations frozen. The Designer tab is in the light
+theme (`designer-tab.png`) and in the dark one (`designer-tab-dark.png`, after
+the theme button is pressed). The Execution tab is saved before a run
+(`execution-tab-idle.png`), while the first stage runs
+(`execution-tab-running.png`) and after the run passed
+(`execution-tab-finished.png`), all in the light theme, and while the first
+stage runs in the dark theme (`execution-tab-dark.png`). Pull request
+descriptions embed these files, so regenerate and commit them when the UI
+changes.
 
 Only that script writes the PNGs. It uses its own config,
 `playwright.screenshots.config.ts`, so `npm run test:e2e`, a bare
