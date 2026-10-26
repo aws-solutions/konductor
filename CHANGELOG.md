@@ -62,7 +62,8 @@ not per individual commit.
   the `S` run-order ports (a round knob that fits a round socket) and the links are drawn in the
   same theme in both modes. The whole tab strip is part of the dark band. Text meets WCAG AA in
   both modes, and the edges of the controls, ports and the selected-tab indicator reach 3:1,
-  checked by unit tests and by axe in the end-to-end tests. A dark-mode Designer screenshot joins the committed screenshots.
+  checked by unit tests and by axe in the end-to-end tests. A dark-mode Designer screenshot
+  joins the committed screenshots.
 
 ### Fixed
 
