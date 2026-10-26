@@ -16,3 +16,9 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Room under the alert only while it has content, so the empty live region
+   leaves no gap. */
+.wf-run-error:not(:empty) {
+  margin-block-end: 20px;
+}

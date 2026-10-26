@@ -46,20 +46,25 @@ function RunStatusLine({ state }: { state: ExecutionState }) {
   );
 }
 
+// The wrapper is always on the page, so the alert that appears in it is
+// announced with the sentence of the server, which the status line leaves out.
 function RunError({ state }: { state: ExecutionState }) {
-  if (state.phase !== 'error') return null;
   return (
-    <Alert
-      type="error"
-      header={
-        state.started
-          ? 'The run could not be followed'
-          : 'The run did not start'
-      }
-      data-testid="run-error"
-    >
-      {state.message}
-    </Alert>
+    <div role="alert" className="wf-run-error">
+      {state.phase === 'error' && (
+        <Alert
+          type="error"
+          header={
+            state.started
+              ? 'The run could not be followed'
+              : 'The run did not start'
+          }
+          data-testid="run-error"
+        >
+          {state.message}
+        </Alert>
+      )}
+    </div>
   );
 }
 
@@ -73,6 +78,7 @@ function RunPanel({
   const [goal, setGoal] = useState(defaultGoal);
   const inFlight = isInFlight(execution.state);
   const problem = goalProblem(goal);
+  const canRun = !inFlight && problem === undefined;
   return (
     <Container header={<Header variant="h2">Run</Header>}>
       <SpaceBetween size="m">
@@ -86,11 +92,14 @@ function RunPanel({
             value={goal}
             disabled={inFlight}
             onChange={({ detail }) => setGoal(detail.value)}
+            onKeyDown={({ detail }) => {
+              if (detail.key === 'Enter' && canRun) execution.start(goal);
+            }}
           />
         </FormField>
         <Button
           variant="primary"
-          disabled={inFlight || problem !== undefined}
+          disabled={!canRun}
           disabledReason={inFlight ? 'A run is in progress.' : problem}
           onClick={() => execution.start(goal)}
         >
@@ -113,13 +122,13 @@ function ExecutionView({
   const run = runOf(execution.state);
   const statuses = useMemo(() => nodeStatuses(run), [run]);
   return (
-    <SpaceBetween size="l">
+    <div>
       <RunError state={execution.state} />
       <div className="wf-execution">
         <WorkflowGraphCard view={view} harness={harness} statuses={statuses} />
         <RunPanel defaultGoal={view.intent.outcome} execution={execution} />
       </div>
-    </SpaceBetween>
+    </div>
   );
 }
 
