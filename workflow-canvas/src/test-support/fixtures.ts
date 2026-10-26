@@ -1,5 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { Session, WorkflowDocument, WorkflowView } from '../api/types';
+import type {
+  RunView,
+  Session,
+  WorkflowDocument,
+  WorkflowView,
+} from '../api/types';
+import type { RunPort } from '../execution/core';
 import type { LoadResult } from '../workflow/load-workflow';
 
 /** The workflow that the stub serves: a draft stage, then a review stage. */
@@ -28,12 +34,53 @@ export const HELLO_DOCUMENT: WorkflowDocument = {
   diagnostics: [],
 };
 
+/** Run calls that are never used, for a test that does not run anything. */
+export const NO_RUNS: RunPort = {
+  start: () => Promise.reject(new Error('This test starts no run.')),
+  get: () => Promise.reject(new Error('This test reads no run.')),
+};
+
 /** A load that succeeded with the document. */
-export function loaded(document: WorkflowDocument): LoadResult {
+export function loaded(
+  document: WorkflowDocument,
+  runs: RunPort = NO_RUNS,
+): LoadResult {
   return {
     ok: true,
-    workflow: { harness: 'kiro-cli', document },
+    workflow: { harness: 'kiro-cli', document, runs },
     remember: () => undefined,
+  };
+}
+
+const HELLO_STAGES = HELLO_VIEW.stages.map((stage) => stage.name);
+
+/**
+ * The state of a run of the workflow above: stages before `at` have passed,
+ * the one at `at` runs and the ones after it wait. An `at` past the last
+ * stage is a run that passed. With `blockedAt`, that stage failed instead
+ * and the run halted.
+ */
+export function helloRun(
+  at: number,
+  { blockedAt }: { blockedAt?: number } = {},
+): RunView {
+  const halted = blockedAt !== undefined;
+  const finished = halted || at >= HELLO_STAGES.length;
+  return {
+    runId: '20261024-0412-a7b3c',
+    status: halted ? 'halted' : finished ? 'passed' : 'running',
+    exitCode: halted ? 1 : finished ? 0 : null,
+    stages: HELLO_STAGES.map((name, index) => ({
+      name,
+      status:
+        index === blockedAt
+          ? 'blocked'
+          : index < (blockedAt ?? at)
+            ? 'passed'
+            : index === at && !halted
+              ? 'running'
+              : 'pending',
+    })),
   };
 }
 

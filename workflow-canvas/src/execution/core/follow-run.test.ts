@@ -1,0 +1,215 @@
+// SPDX-License-Identifier: Apache-2.0
+import { describe, expect, it, vi } from 'vitest';
+import type { RunView } from '../../api/types';
+import { FakeScheduler } from '../../test-support/fake-scheduler';
+import { helloRun } from '../../test-support/fixtures';
+import type { ExecutionEvent } from './execution-state';
+import { POLL_INTERVAL_MS, startAndFollow } from './follow-run';
+import type { RunPort } from './ports';
+
+const RUN_ID = helloRun(0).runId;
+
+// Lets the loop run until it waits for the scheduler or ends.
+async function settle(): Promise<void> {
+  for (let turn = 0; turn < 20; turn += 1) await Promise.resolve();
+}
+
+function setup(readings: (RunView | Error)[], start?: RunPort['start']) {
+  const queue = [...readings];
+  const runs: RunPort = {
+    start: start ?? vi.fn().mockResolvedValue(RUN_ID),
+    get: vi.fn(async () => {
+      const next = queue.shift();
+      if (next === undefined) throw new Error('No reading left.');
+      if (next instanceof Error) throw next;
+      return next;
+    }),
+  };
+  const scheduler = new FakeScheduler();
+  const events: ExecutionEvent[] = [];
+  const abort = new AbortController();
+  const done = startAndFollow({
+    runs,
+    scheduler,
+    goal: 'Ship it',
+    emit: (event) => events.push(event),
+    signal: abort.signal,
+  });
+  return { runs, scheduler, events, abort, done };
+}
+
+describe('startAndFollow', () => {
+  it('starts the run with the goal, then reads it at once', async () => {
+    const { runs, events, done } = setup([helloRun(2)]);
+
+    await done;
+
+    expect(runs.start).toHaveBeenCalledWith('Ship it');
+    expect(runs.get).toHaveBeenCalledWith(RUN_ID);
+    expect(events).toEqual([
+      { type: 'started', runId: RUN_ID },
+      { type: 'snapshot', run: helloRun(2) },
+    ]);
+  });
+
+  it('reads again after each wait of a second, until the run is no longer running', async () => {
+    const { runs, scheduler, events, done } = setup([
+      helloRun(0),
+      helloRun(1),
+      helloRun(2),
+    ]);
+
+    await settle();
+    expect(runs.get).toHaveBeenCalledTimes(1);
+    expect(scheduler.waits).toEqual([POLL_INTERVAL_MS]);
+
+    scheduler.tick();
+    await settle();
+    expect(runs.get).toHaveBeenCalledTimes(2);
+
+    scheduler.tick();
+    await done;
+
+    expect(runs.get).toHaveBeenCalledTimes(3);
+    expect(scheduler.waits).toEqual([POLL_INTERVAL_MS, POLL_INTERVAL_MS]);
+    expect(events.map((event) => event.type)).toEqual([
+      'started',
+      'snapshot',
+      'snapshot',
+      'snapshot',
+    ]);
+  });
+
+  it('polls once a second', () => {
+    expect(POLL_INTERVAL_MS).toBe(1000);
+  });
+
+  it('stops after a halted run', async () => {
+    const halted = helloRun(0, { blockedAt: 0 });
+    const { runs, scheduler, done } = setup([halted]);
+
+    await done;
+
+    expect(runs.get).toHaveBeenCalledTimes(1);
+    expect(scheduler.waits).toEqual([]);
+  });
+
+  it('does not wait before the first reading', async () => {
+    const { scheduler, done } = setup([helloRun(2)]);
+
+    await done;
+
+    expect(scheduler.waits).toEqual([]);
+  });
+
+  it('ends with one failed event when the run does not start', async () => {
+    const { runs, events, done } = setup(
+      [],
+      vi.fn().mockRejectedValue(new Error('A run is already active.')),
+    );
+
+    await done;
+
+    expect(runs.get).not.toHaveBeenCalled();
+    expect(events).toEqual([
+      { type: 'failed', message: 'A run is already active.' },
+    ]);
+  });
+
+  it('ends with one failed event when a reading fails, and reads no more', async () => {
+    const { runs, scheduler, events, done } = setup([
+      helloRun(0),
+      new Error('The server did not answer.'),
+    ]);
+
+    await settle();
+    scheduler.tick();
+    await done;
+
+    expect(runs.get).toHaveBeenCalledTimes(2);
+    expect(events.map((event) => event.type)).toEqual([
+      'started',
+      'snapshot',
+      'failed',
+    ]);
+    expect(events.at(-1)).toEqual({
+      type: 'failed',
+      message: 'The server did not answer.',
+    });
+  });
+
+  it('gives a plain message for a failure that is not an Error', async () => {
+    const { events, done } = setup([], vi.fn().mockRejectedValue('boom'));
+
+    await done;
+
+    expect(events).toEqual([
+      { type: 'failed', message: 'The run did not go as expected.' },
+    ]);
+  });
+
+  it('emits nothing more once aborted while waiting', async () => {
+    const { runs, scheduler, events, abort, done } = setup([
+      helloRun(0),
+      helloRun(1),
+    ]);
+    await settle();
+
+    abort.abort();
+    await done;
+
+    expect(scheduler.pendingCount).toBe(0);
+    expect(runs.get).toHaveBeenCalledTimes(1);
+    expect(events.map((event) => event.type)).toEqual(['started', 'snapshot']);
+  });
+
+  it('emits nothing when aborted before the run is accepted', async () => {
+    let accept: (runId: string) => void = () => {};
+    const { runs, events, abort, done } = setup(
+      [],
+      () => new Promise((resolve) => (accept = resolve)),
+    );
+
+    abort.abort();
+    accept(RUN_ID);
+    await done;
+
+    expect(runs.get).not.toHaveBeenCalled();
+    expect(events).toEqual([]);
+  });
+
+  it('emits no reading that arrives after an abort', async () => {
+    let arrive: (run: RunView) => void = () => {};
+    const { scheduler, events, abort, done } = setup([]);
+    const runs: RunPort = {
+      start: async () => RUN_ID,
+      get: () => new Promise((resolve) => (arrive = resolve)),
+    };
+    const late = startAndFollow({
+      runs,
+      scheduler,
+      goal: 'Ship it',
+      emit: (event) => events.push(event),
+      signal: abort.signal,
+    });
+    await settle();
+
+    abort.abort();
+    arrive(helloRun(0));
+    await Promise.all([done, late]);
+
+    expect(events.map((event) => event.type)).not.toContain('snapshot');
+  });
+
+  it('does not report a failure after it was aborted', async () => {
+    const { events, abort, done } = setup(
+      [],
+      vi.fn().mockRejectedValue(new Error('Late.')),
+    );
+    abort.abort();
+
+    await done;
+
+    expect(events).toEqual([]);
+  });
+});
