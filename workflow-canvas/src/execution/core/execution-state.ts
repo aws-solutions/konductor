@@ -5,14 +5,20 @@ import type { RunView } from '../../api/types';
 export type ExecutionState =
   | { phase: 'idle' }
   | { phase: 'starting' }
-  | { phase: 'following'; runId: string; run: RunView | undefined }
+  | {
+      phase: 'following';
+      runId: string;
+      run: RunView | undefined;
+      /** Set when the tab joined a run that was already active. */
+      joined?: true;
+    }
   | { phase: 'finished'; run: RunView }
   | { phase: 'error'; message: string; started: boolean };
 
 /** Something that happened to the run, in the order it can. */
 export type ExecutionEvent =
   | { type: 'start' }
-  | { type: 'started'; runId: string }
+  | { type: 'started'; runId: string; joined?: boolean }
   | { type: 'snapshot'; run: RunView }
   | { type: 'failed'; message: string };
 
@@ -35,17 +41,23 @@ function startOf(state: ExecutionState): ExecutionState {
   return isInFlight(state) ? state : { phase: 'starting' };
 }
 
-function startedOf(state: ExecutionState, runId: string): ExecutionState {
-  return state.phase === 'starting'
-    ? { phase: 'following', runId, run: undefined }
-    : state;
+function startedOf(
+  state: ExecutionState,
+  runId: string,
+  joined: boolean | undefined,
+): ExecutionState {
+  if (state.phase !== 'starting') return state;
+  return joined
+    ? { phase: 'following', runId, run: undefined, joined: true }
+    : { phase: 'following', runId, run: undefined };
 }
 
 function snapshotOf(state: ExecutionState, run: RunView): ExecutionState {
   if (state.phase !== 'following' || state.runId !== run.runId) return state;
-  return run.status === 'running'
-    ? { phase: 'following', runId: run.runId, run }
-    : { phase: 'finished', run };
+  if (run.status !== 'running') return { phase: 'finished', run };
+  return state.joined
+    ? { phase: 'following', runId: run.runId, run, joined: true }
+    : { phase: 'following', runId: run.runId, run };
 }
 
 function failedOf(state: ExecutionState, message: string): ExecutionState {
@@ -67,7 +79,7 @@ export function reduce(
     case 'start':
       return startOf(state);
     case 'started':
-      return startedOf(state, event.runId);
+      return startedOf(state, event.runId, event.joined);
     case 'snapshot':
       return snapshotOf(state, event.run);
     case 'failed':
