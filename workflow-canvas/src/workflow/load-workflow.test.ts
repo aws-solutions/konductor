@@ -6,7 +6,7 @@ import {
   HELLO_SESSION,
   helloRun,
 } from '../test-support/fixtures';
-import { RunAlreadyActive } from '../execution/core';
+import { RunAlreadyActive, RunReadRefused } from '../execution/core';
 import { loadWorkflow } from './load-workflow';
 
 function fakeApi(overrides: Partial<WorkflowApi> = {}): WorkflowApi {
@@ -90,6 +90,38 @@ describe('loadWorkflow', () => {
 
     await expect(result.workflow.runs.start('Ship it')).rejects.toBe(error);
   });
+
+  it.each([
+    ['a 401', new ApiError('The session is not valid.', 401)],
+    ['a 404', new ApiError('There is no such run.', 404)],
+    ['a reply the page cannot read', new ApiError('Bad reply.', 200)],
+  ])(
+    'refuses a read that failed with %s, as reading again cannot help',
+    async (_, error) => {
+      const api = fakeApi({ getRun: vi.fn().mockRejectedValue(error) });
+      const result = await loadWorkflow(api, 'code-1');
+      if (!result.ok) throw new Error('The load failed.');
+
+      const read = result.workflow.runs.get('r-1');
+
+      await expect(read).rejects.toBeInstanceOf(RunReadRefused);
+      await expect(read).rejects.toMatchObject({ message: error.message });
+    },
+  );
+
+  it.each([
+    ['no answer', new ApiError('The server did not answer.', 0)],
+    ['a 503', new ApiError('The server answered 503.', 503)],
+  ])(
+    'passes a read that failed with %s on as it is, so it is tried again',
+    async (_, error) => {
+      const api = fakeApi({ getRun: vi.fn().mockRejectedValue(error) });
+      const result = await loadWorkflow(api, 'code-1');
+      if (!result.ok) throw new Error('The load failed.');
+
+      await expect(result.workflow.runs.get('r-1')).rejects.toBe(error);
+    },
+  );
 
   it('fails without calling the API when there is no launch code', async () => {
     const api = fakeApi();
