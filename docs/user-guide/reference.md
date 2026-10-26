@@ -371,11 +371,12 @@ per runtime, delegation targets, and the full per-agent breakdown, see the
 
 Every agent runs `claude-sonnet-5.5`. The SOP column is each spec's
 `dependencies.agentSops.agentSopNames`; the skill count is
-`clientConfig.claudeCli.skills`, the set Claude Code preloads. It differs from
-`dependencies.skills.skillNames` in two places. `konductor` declares `claude-teams-behavior`
-for Claude Code only. Seven agents (the three orchestrators, `k-quality-assurance`,
-`k-researcher`, `k-browser`, `k-media-analyzer`) declare `humanize-writing` in `skillNames`
-but do not preload it, so both runtimes load it on demand. Every skill is catalogued in the
+`clientConfig.claudeCli.skills`. Claude Code preloads that list only when the agent runs as a
+subagent. A top-level Claude Code agent, and every agent on Kiro CLI, loads skills on demand.
+The list differs from `dependencies.skills.skillNames` in two places. `konductor` declares
+`claude-teams-behavior` for Claude Code only. Seven agents (the three orchestrators,
+`k-quality-assurance`, `k-researcher`, `k-browser`, `k-media-analyzer`) declare
+`humanize-writing` in `skillNames` only, so no runtime preloads it for them. Every skill is catalogued in the
 [Skills catalog](skills.md).
 
 Every agent declares `context/k-core-rules.md`. Only the three orchestrators also declare

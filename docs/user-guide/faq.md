@@ -15,7 +15,7 @@ Configuration, registered with your runtime. Specifically:
 | Agents | 11 | Three orchestrators plus eight specialists |
 | Skills | 82 | On-demand knowledge modules |
 | SOPs | 19 | Written multi-step procedures |
-| Context files | 1 | The orchestrator routing rules, always active |
+| Context files | 2 | The core rules for every agent and the orchestrator routing rules, always active |
 
 No servers, no database, no cloud resources. The agents are files your existing Kiro CLI or Claude
 Code installation reads and executes.
