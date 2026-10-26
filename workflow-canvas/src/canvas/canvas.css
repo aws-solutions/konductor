@@ -53,11 +53,33 @@
   color: var(--wf-text-muted);
 }
 
-/* The ring that shows which node the keyboard is on. */
+/*
+ * The ring that shows which node the keyboard is on. It is drawn in the SVG
+ * of the node (see nodes.tsx), around the outline, so it follows the knob
+ * and does not cut across it. The gap is the canvas colour.
+ */
 .wf-canvas .react-flow__node:focus-visible {
-  border-radius: 12px;
-  outline: 3px solid var(--wf-focus);
-  outline-offset: 3px;
+  outline: none;
+}
+
+.wf-focus-ring,
+.wf-focus-gap {
+  fill: none;
+  stroke-linejoin: round;
+  visibility: hidden;
+}
+
+.wf-focus-ring {
+  stroke: var(--wf-focus);
+}
+
+.wf-focus-gap {
+  stroke: var(--wf-canvas-bg);
+}
+
+.react-flow__node:focus-visible .wf-focus-ring,
+.react-flow__node:focus-visible .wf-focus-gap {
+  visibility: visible;
 }
 
 .wf-node {
