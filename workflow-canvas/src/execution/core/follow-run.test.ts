@@ -9,7 +9,7 @@ import {
   POLL_INTERVAL_MS,
   startAndFollow,
 } from './follow-run';
-import { RunAlreadyActive, type RunPort } from './ports';
+import { RunAlreadyActive, RunReadRefused, type RunPort } from './ports';
 
 const RUN_ID = helloRun(0).runId;
 
@@ -162,6 +162,21 @@ describe('startAndFollow', () => {
       type: 'failed',
       message: 'The server did not answer.',
     });
+  });
+
+  it('does not read again after a refused reading, and fails with its message', async () => {
+    const { runs, scheduler, events, done } = setup([
+      new RunReadRefused('The launch code is not valid.'),
+    ]);
+
+    await done;
+
+    expect(runs.get).toHaveBeenCalledTimes(1);
+    expect(scheduler.waits).toEqual([]);
+    expect(events).toEqual([
+      { type: 'started', runId: RUN_ID },
+      { type: 'failed', message: 'The launch code is not valid.' },
+    ]);
   });
 
   it('counts only failures in a row: a good reading in between starts the count again', async () => {
