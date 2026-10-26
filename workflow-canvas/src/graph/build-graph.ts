@@ -14,8 +14,10 @@ import {
   type WorkflowSpec,
 } from './model';
 
-const INTENT_ID = 'intent';
-const END_ID = 'end';
+/** The id of the node that draws the intent. */
+export const INTENT_ID = 'intent';
+/** The id of the node that draws the end. */
+export const END_ID = 'end';
 
 /** The id of the node that draws the stage called `name`. */
 export function stageNodeId(name: string): string {
