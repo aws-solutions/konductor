@@ -52,6 +52,25 @@ def test_failure_fixture_reports_its_code(case, expected):
     assert expected in result.stderr
 
 
+def assert_one_clean_bad_entry(result, expected):
+    output = result.stdout + result.stderr
+    bad_entries = [line for line in output.splitlines() if line.startswith("bad-entry:")]
+    assert result.returncode != 0
+    assert len(bad_entries) == 1, output
+    assert expected in bad_entries[0]
+    assert "Traceback" not in output
+
+
+def test_malformed_map_reports_one_bad_entry():
+    result = run_check(FIXTURES / "malformed-map")
+    assert_one_clean_bad_entry(result, "bad-entry: cli/gate-config/sop-orchestration.yml: ")
+
+
+def test_non_utf8_sop_reports_one_bad_entry():
+    result = run_check(FIXTURES / "non-utf8-sop")
+    assert_one_clean_bad_entry(result, "bad-entry: agent-sops/beta-plain.sop.md: ")
+
+
 def test_removing_the_marker_from_a_valid_tree_fails(tmp_path):
     root = tmp_path / "repo"
     shutil.copytree(FIXTURES / "valid", root)

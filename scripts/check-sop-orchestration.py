@@ -86,8 +86,14 @@ def check_agreement(root, gated, not_gated, marker):
         errors.append(f"unlisted-sop: {SOP_DIR / (name + SOP_SUFFIX)} is in neither gated nor not_gated")
     for name in sorted((gated.keys() | not_gated.keys()) - sop_files.keys()):
         errors.append(f"missing-sop-file: '{name}' is listed but {SOP_DIR / (name + SOP_SUFFIX)} does not exist")
-    for name in sorted(sop_files.keys() & gated.keys()):
-        text = sop_files[name].read_text(encoding="utf-8")
+    texts = {}
+    for name in sorted(sop_files.keys() & (gated.keys() | not_gated.keys())):
+        try:
+            texts[name] = sop_files[name].read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError) as exc:
+            errors.append(f"bad-entry: {SOP_DIR / (name + SOP_SUFFIX)}: {first_line(exc)}")
+    for name in sorted(texts.keys() & gated.keys()):
+        text = texts[name]
         if not marker_is_placed(text, marker):
             errors.append(
                 f"missing-marker: gated '{name}' must have '{marker}' as its own "
@@ -95,10 +101,20 @@ def check_agreement(root, gated, not_gated, marker):
             )
         if text.count(marker) > 1:
             errors.append(f"unexpected-marker: gated '{name}' has the marker more than once")
-    for name in sorted(sop_files.keys() & not_gated.keys()):
-        if marker in sop_files[name].read_text(encoding="utf-8"):
+    for name in sorted(texts.keys() & not_gated.keys()):
+        if marker in texts[name]:
             errors.append(f"unexpected-marker: not_gated '{name}' contains '{marker}'")
     return errors
+
+
+def first_line(exc):
+    """Shorten an error to one line. A PyYAML error carries its cause and
+    position as attributes; its str() spans several lines."""
+    problem, mark = getattr(exc, "problem", None), getattr(exc, "problem_mark", None)
+    if problem and mark:
+        return f"{problem} at line {mark.line + 1}, column {mark.column + 1}"
+    lines = str(exc).strip().splitlines()
+    return lines[0] if lines else type(exc).__name__
 
 
 def check(root):
@@ -109,7 +125,10 @@ def check(root):
     map_file = root / MAP_PATH
     if not map_file.is_file():
         return [f"bad-entry: {MAP_PATH} does not exist"]
-    data = yaml.safe_load(map_file.read_text(encoding="utf-8"))
+    try:
+        data = yaml.safe_load(map_file.read_text(encoding="utf-8"))
+    except (yaml.YAMLError, UnicodeDecodeError, OSError) as exc:
+        return [f"bad-entry: {MAP_PATH}: {first_line(exc)}"]
     if not isinstance(data, dict):
         return [f"bad-entry: {MAP_PATH} must be a mapping"]
     errors = check_map_shape(data)
