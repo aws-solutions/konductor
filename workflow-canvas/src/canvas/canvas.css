@@ -3,6 +3,8 @@
 /*
  * The colours of the parts that the canvas draws itself, for the light and the
  * dark mode. The dark values apply when the page root has data-theme="dark".
+ * The --wf-state-* pairs colour the state of a node in a run: the text and the
+ * outline of a state, and the fill behind its label.
  * A test (canvas-contrast.test.ts) reads this file, checks that the text, the
  * edges and the ports reach WCAG AA in both modes, and that the colours and
  * radii match the theme module.
@@ -26,6 +28,14 @@
   --wf-controls-bg: #ffffff;
   --wf-controls-bg-hover: #efebff;
   --wf-controls-border: #cfc7ba;
+  --wf-state-queued: #56516a;
+  --wf-state-queued-bg: #faf8f4;
+  --wf-state-running: #6236f0;
+  --wf-state-running-bg: #efebff;
+  --wf-state-done: #0b7a52;
+  --wf-state-done-bg: #e7f5ee;
+  --wf-state-failed: #b3261e;
+  --wf-state-failed-bg: #fdecec;
 
   border-radius: 12px;
   background: var(--wf-canvas-bg);
@@ -50,6 +60,14 @@
   --wf-controls-bg: #171331;
   --wf-controls-bg-hover: #1f1a44;
   --wf-controls-border: #3a3168;
+  --wf-state-queued: #9c93b8;
+  --wf-state-queued-bg: #1c1740;
+  --wf-state-running: #a78bfa;
+  --wf-state-running-bg: #1f1a44;
+  --wf-state-done: #3ddc97;
+  --wf-state-done-bg: #10281f;
+  --wf-state-failed: #ff8b8b;
+  --wf-state-failed-bg: #2b1722;
 }
 
 .wf-canvas .react-flow__attribution a {
@@ -228,6 +246,63 @@
   border-radius: 0;
   background: none;
   pointer-events: none;
+}
+
+/*
+ * The state of a node in a run. The word in the badge is what says the state;
+ * the colour and the outline only back it up. A queued node has a dashed
+ * outline, so the states differ without colour too.
+ */
+.wf-badge {
+  position: absolute;
+  bottom: 10px;
+  left: 14px;
+  padding: 0 8px;
+  border: 1.5px solid var(--wf-badge-color);
+  border-radius: 8px;
+  background: var(--wf-badge-bg);
+  color: var(--wf-badge-color);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.wf-node-end .wf-badge {
+  top: 50%;
+  bottom: auto;
+  transform: translateY(-50%);
+}
+
+.wf-node {
+  --wf-badge-color: var(--wf-state-queued);
+  --wf-badge-bg: var(--wf-state-queued-bg);
+}
+
+.wf-node[data-state='running'] {
+  --wf-badge-color: var(--wf-state-running);
+  --wf-badge-bg: var(--wf-state-running-bg);
+}
+
+.wf-node[data-state='done'] {
+  --wf-badge-color: var(--wf-state-done);
+  --wf-badge-bg: var(--wf-state-done-bg);
+}
+
+.wf-node[data-state='failed'] {
+  --wf-badge-color: var(--wf-state-failed);
+  --wf-badge-bg: var(--wf-state-failed-bg);
+}
+
+.wf-node[data-state] .wf-node-body {
+  stroke: var(--wf-badge-color);
+}
+
+.wf-node[data-state='queued'] .wf-node-body {
+  stroke-dasharray: 6 4;
+}
+
+.wf-node[data-state='queued'] .wf-badge {
+  border-style: dashed;
 }
 
 /*
