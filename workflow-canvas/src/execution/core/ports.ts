@@ -11,7 +11,10 @@ export interface RunPort {
    * active it rejects with `RunAlreadyActive`, so the caller can follow that run.
    */
   start(goal: string): Promise<string>;
-  /** Reads the state of the run with the id. */
+  /**
+   * Reads the state of the run with the id. It rejects with `RunReadRefused`
+   * when the server will not give the run, so the caller does not try again.
+   */
   get(runId: string): Promise<RunView>;
 }
 
@@ -23,6 +26,14 @@ export class RunAlreadyActive extends Error {
     super(message);
     this.name = 'RunAlreadyActive';
     this.runId = runId;
+  }
+}
+
+/** A read that failed in a way that reading again cannot fix. */
+export class RunReadRefused extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'RunReadRefused';
   }
 }
 
