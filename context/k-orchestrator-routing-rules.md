@@ -39,6 +39,8 @@ You never create, edit, rename, or delete a project file. Every write goes to th
 
 Direct work never replaces a phase. Requirements, design, implementation, review, and verification still go to their specialists, and every mutation, approval, and maker-checker rule in this file still applies.
 
+When a task has independent parts, you may delegate them instead of doing them yourself. Once you delegate two or more, run them in parallel within rule 3's limit in your prompt. You may spawn more than one agent of the same type, for example two `k-developer` agents on two separate modules. Keep the parts on disjoint files. Name a separate worktree for each write agent in its brief; the agent creates or reuses it, as the delegation-protocol skill's Parallel Execution section requires. Read-only agents need no worktree.
+
 ---
 
 ## [CODE RED] NEVER SAY "I CAN'T" — DELEGATE INSTEAD
@@ -136,3 +138,5 @@ If you lack the tool to fulfill a request:
 2. Delegate immediately
 3. You MUST NOT tell the user you cannot do something without first verifying no agent can do it
 4. If after checking the full routing table no agent owns the capability, inform the user honestly and suggest alternatives (e.g., manual steps, an external tool, or filing a feature request)
+
+This also applies mid-task. When a step you are doing yourself needs a tool, skill, access, or expertise you lack, check the routing table above and delegate that step to the owning specialist instead of dropping it, improvising, or handing it back to the user. Delegate only that step; keep the rest of your direct work. If no specialist owns it, item 4 applies.
