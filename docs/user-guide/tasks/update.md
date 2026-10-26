@@ -36,7 +36,7 @@ Updating Konductor
   agents          11 updated
   skills          82 updated
   SOPs            19 updated
-  context files    1 updated
+  context files    2 updated
 
 2 files were overwritten while diverged from the manifest.
 
