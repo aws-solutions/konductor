@@ -9,9 +9,6 @@ export type TabName = (typeof TAB_NAMES)[number];
 /** The two modes of the page. */
 export type ThemeName = 'light' | 'dark';
 
-/** Text the Execution tab shows until it has real content. */
-export const PLACEHOLDER_TEXT = 'Nothing here yet.';
-
 /** The nodes of the workflow canvas, top to bottom, by test id. */
 export const NODE_IDS = [
   'node-intent',
@@ -30,6 +27,16 @@ export const NODE_NAMES = [
   'End',
 ] as const;
 
+/** The words a node shows for its state in a run. */
+export type BadgeText =
+  'Queued' | 'Running' | 'Done' | 'Failed' | 'Not run' | 'Passed' | 'Halted';
+
+/**
+ * How long to wait for a step of a run on the stub. A stage takes 3 seconds
+ * there and the page reads the run once a second.
+ */
+export const STEP_TIMEOUT_MS = 10_000;
+
 /** The most Tab presses between one node and the next one to take focus. */
 const MAX_TABS_TO_NEXT_NODE = 10;
 
@@ -41,6 +48,10 @@ export class WorkflowCanvasPage {
   readonly edges: Locator;
   readonly themeButton: Locator;
   readonly breadcrumbs: Locator;
+  readonly runButton: Locator;
+  readonly goal: Locator;
+  readonly runStatus: Locator;
+  readonly runError: Locator;
 
   constructor(readonly page: Page) {
     this.main = page.getByRole('main');
@@ -49,6 +60,10 @@ export class WorkflowCanvasPage {
     this.edges = this.graph.locator('.react-flow__edge');
     this.themeButton = page.getByRole('button', { name: /^Theme:/ });
     this.breadcrumbs = page.getByRole('navigation', { name: 'Breadcrumbs' });
+    this.runButton = page.getByRole('button', { name: 'Run', exact: true });
+    this.goal = page.getByLabel('Goal');
+    this.runStatus = page.getByTestId('run-status');
+    this.runError = page.getByTestId('run-error');
   }
 
   /**
@@ -96,6 +111,35 @@ export class WorkflowCanvasPage {
     return this.node(id).locator('.wf-port-notch');
   }
 
+  /** The label that a node shows for its state in a run. */
+  badge(id: NodeId): Locator {
+    return this.node(id).getByTestId('status-badge');
+  }
+
+  /**
+   * Asserts what every node shows for its state, top to bottom: the words of
+   * the badge, or `null` for a node with no badge.
+   */
+  async expectBadges(
+    texts: readonly [
+      BadgeText | null,
+      BadgeText | null,
+      BadgeText | null,
+      BadgeText | null,
+    ],
+  ): Promise<void> {
+    for (const [index, id] of NODE_IDS.entries()) {
+      const text = texts[index];
+      if (text === null || text === undefined) {
+        await expect(this.badge(id)).toHaveCount(0);
+      } else {
+        await expect(this.badge(id)).toHaveText(text, {
+          timeout: STEP_TIMEOUT_MS,
+        });
+      }
+    }
+  }
+
   /** The node that a screen reader names `name`. */
   nodeNamed(name: string): Locator {
     return this.graph.getByRole('group', { name, exact: true });
@@ -127,15 +171,16 @@ export class WorkflowCanvasPage {
       );
     }
     await expect(this.tabPanel(name)).toBeVisible();
-    if (name === 'Execution') {
-      await expect(this.tabPanel(name)).toContainText(PLACEHOLDER_TEXT);
-    }
   }
 
-  /** Asserts a tab has finished showing its content: the graph, for Designer. */
+  /**
+   * Asserts a tab has finished showing its content: the graph on both tabs,
+   * and the Run button on Execution.
+   */
   async expectTabLoaded(name: TabName): Promise<void> {
     await this.expectTabShown(name);
-    if (name === 'Designer') await this.expectWorkflowDrawn();
+    await this.expectWorkflowDrawn();
+    if (name === 'Execution') await expect(this.runButton).toBeVisible();
   }
 
   /** Asserts the whole graph is on screen: every node and every edge. */
