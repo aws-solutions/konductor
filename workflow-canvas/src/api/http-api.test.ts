@@ -24,6 +24,28 @@ const DOCUMENT_BODY = {
   diagnostics: [],
 };
 
+const RUN_STARTED_BODY = { run_id: '20261024-0412-a7b3c' };
+
+const RUN_BODY = {
+  run: {
+    run_id: '20261024-0412-a7b3c',
+    workflow: 'hello',
+    harness: 'kiro-cli',
+    status: 'running',
+    started_at: '2026-10-24T04:12:05Z',
+    finished_at: null,
+    exit_code: null,
+    order: ['write', 'review'],
+    stages: { write: { status: 'passed' }, review: { status: 'running' } },
+    future_field: true,
+  },
+};
+
+// The run above with some fields replaced.
+function run(changes: Record<string, unknown>) {
+  return { run: { ...RUN_BODY.run, ...changes } };
+}
+
 function reply(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status });
 }
@@ -199,5 +221,158 @@ describe('createHttpApi', () => {
     const { api } = apiFor(reply(body));
 
     await expect(api.getWorkflow('t')).rejects.toBeInstanceOf(ApiError);
+  });
+
+  it('posts the goal as JSON to /api/run with the bearer token', async () => {
+    const { api, fetchFn } = apiFor(reply(RUN_STARTED_BODY, 202));
+
+    await api.startRun('t-1', 'Ship it');
+
+    const [path, init] = fetchFn.mock.calls[0] as unknown as [
+      string,
+      RequestInit,
+    ];
+    expect(path).toBe('/api/run');
+    expect(init.method).toBe('POST');
+    expect(init.headers).toEqual({
+      Authorization: 'Bearer t-1',
+      'Content-Type': 'application/json',
+    });
+    expect(JSON.parse(init.body as string)).toEqual({
+      params: { goal: 'Ship it' },
+    });
+  });
+
+  it('reads the id of the run that was accepted', async () => {
+    const { api } = apiFor(reply(RUN_STARTED_BODY, 202));
+
+    expect(await api.startRun('t', 'g')).toBe('20261024-0412-a7b3c');
+  });
+
+  it('fails with the sentence of a refused run, such as one already active', async () => {
+    const { api } = apiFor(
+      reply(
+        {
+          error: 'A run is already active.',
+          code: 'already_running',
+          run_id: '20261024-0412-a7b3c',
+        },
+        409,
+      ),
+    );
+
+    await expect(api.startRun('t', 'g')).rejects.toMatchObject({
+      message: 'A run is already active.',
+      status: 409,
+      code: 'already_running',
+    });
+  });
+
+  it('gets /api/runs/{id} with the bearer token', async () => {
+    const { api, fetchFn } = apiFor(reply(RUN_BODY));
+
+    await api.getRun('t-1', '20261024-0412-a7b3c');
+
+    const [path, init] = fetchFn.mock.calls[0] as unknown as [
+      string,
+      RequestInit,
+    ];
+    expect(path).toBe('/api/runs/20261024-0412-a7b3c');
+    expect(init.headers).toEqual({ Authorization: 'Bearer t-1' });
+  });
+
+  it('encodes an id so it cannot change the path', async () => {
+    const { api, fetchFn } = apiFor(reply(RUN_BODY));
+
+    await api.getRun('t', '../workflow?x=1');
+
+    const [path] = fetchFn.mock.calls[0] as unknown as [string];
+    expect(path).toBe('/api/runs/..%2Fworkflow%3Fx%3D1');
+  });
+
+  it('reads a run that is running, with its stages in run order', async () => {
+    const { api } = apiFor(reply(RUN_BODY));
+
+    expect(await api.getRun('t', 'r')).toEqual({
+      runId: '20261024-0412-a7b3c',
+      status: 'running',
+      exitCode: null,
+      stages: [
+        { name: 'write', status: 'passed' },
+        { name: 'review', status: 'running' },
+      ],
+    });
+  });
+
+  it('reads a run that halted, with the stage that was blocked', async () => {
+    const halted = {
+      run: {
+        ...RUN_BODY.run,
+        status: 'halted',
+        finished_at: '2026-10-24T04:12:49Z',
+        exit_code: 1,
+        stages: { write: { status: 'blocked' }, review: { status: 'pending' } },
+      },
+    };
+    const { api } = apiFor(reply(halted));
+
+    expect(await api.getRun('t', 'r')).toMatchObject({
+      status: 'halted',
+      exitCode: 1,
+      stages: [
+        { name: 'write', status: 'blocked' },
+        { name: 'review', status: 'pending' },
+      ],
+    });
+  });
+
+  it('takes the order from `order`, not from the keys of `stages`', async () => {
+    const swapped = {
+      run: {
+        ...RUN_BODY.run,
+        order: ['review', 'write'],
+        stages: RUN_BODY.run.stages,
+      },
+    };
+    const { api } = apiFor(reply(swapped));
+
+    expect((await api.getRun('t', 'r')).stages.map((s) => s.name)).toEqual([
+      'review',
+      'write',
+    ]);
+  });
+
+  it('fails with the sentence of a run that is not there', async () => {
+    const { api } = apiFor(
+      reply({ error: 'There is no run with this id.', code: 'not_found' }, 404),
+    );
+
+    await expect(api.getRun('t', 'r')).rejects.toMatchObject({
+      message: 'There is no run with this id.',
+      status: 404,
+    });
+  });
+
+  it.each([
+    ['a body with no run', {}],
+    ['a run with an unknown status', run({ status: 'paused' })],
+    ['a run with no run id', run({ run_id: undefined })],
+    ['an order that is not a list', run({ order: 'write' })],
+    ['a stage in `order` that `stages` lacks', run({ order: ['nope'] })],
+    [
+      'a stage with an unknown status',
+      run({ stages: { write: { status: 'skipped' }, review: {} } }),
+    ],
+    ['stages that are not an object', run({ stages: [] })],
+  ])('fails on %s', async (_, body) => {
+    const { api } = apiFor(reply(body));
+
+    await expect(api.getRun('t', 'r')).rejects.toBeInstanceOf(ApiError);
+  });
+
+  it('fails when the run is accepted with no id', async () => {
+    const { api } = apiFor(reply({}, 202));
+
+    await expect(api.startRun('t', 'g')).rejects.toBeInstanceOf(ApiError);
   });
 });
