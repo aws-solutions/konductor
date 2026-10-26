@@ -90,7 +90,7 @@ function RunPanel({
         >
           <Input
             value={goal}
-            disabled={inFlight}
+            readOnly={inFlight}
             onChange={({ detail }) => setGoal(detail.value)}
             onKeyDown={({ detail }) => {
               if (detail.key === 'Enter' && canRun) execution.start(goal);
