@@ -1,12 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 import { ApiError, type WorkflowApi } from '../api/api';
 import type { WorkflowDocument } from '../api/types';
+import type { RunPort } from '../execution/core';
 import type { SessionMemory, SessionRecord } from '../launch/session-memory';
 
-/** A workflow loaded from the server, with the harness that runs its stages. */
+/**
+ * A workflow loaded from the server, with the harness that runs its stages
+ * and the calls that run it. The calls hold the session token, so no other
+ * part of the page does.
+ */
 export interface LoadedWorkflow {
   harness: string;
   document: WorkflowDocument;
+  runs: RunPort;
 }
 
 /**
@@ -67,6 +73,13 @@ function guardSession(
   };
 }
 
+function runPortFor(api: WorkflowApi, token: string): RunPort {
+  return {
+    start: (goal) => api.startRun(token, goal),
+    get: (runId) => api.getRun(token, runId),
+  };
+}
+
 async function loadWith(
   api: WorkflowApi,
   session: SessionRecord,
@@ -76,7 +89,11 @@ async function loadWith(
   const document = await guard(api.getWorkflow(session.token));
   return {
     ok: true,
-    workflow: { harness: session.harness, document },
+    workflow: {
+      harness: session.harness,
+      document,
+      runs: runPortFor(api, session.token),
+    },
     remember: () => memory.remember(session),
   };
 }
