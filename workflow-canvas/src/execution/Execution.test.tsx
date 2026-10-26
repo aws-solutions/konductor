@@ -12,7 +12,7 @@ import { App } from '../App';
 import type { RunView } from '../api/types';
 import { FakeScheduler } from '../test-support/fake-scheduler';
 import { HELLO_DOCUMENT, helloRun, loaded } from '../test-support/fixtures';
-import type { RunPort } from './core';
+import { MAX_READ_FAILURES, RunAlreadyActive, type RunPort } from './core';
 
 const RUN_ID = helloRun(0).runId;
 const MAY_STILL_BE_RUNNING = 'The run may still be going on the server.';
@@ -300,6 +300,38 @@ describe('a run', () => {
   });
 });
 
+describe('a run that is already active', () => {
+  function serverBusyWith(...readings: RunView[]): RunPort {
+    const runs = serverShowing(...readings);
+    runs.start = vi
+      .fn()
+      .mockRejectedValue(
+        new RunAlreadyActive('A run is already active.', RUN_ID),
+      );
+    return runs;
+  }
+
+  it('is followed, with no alert, and says so', async () => {
+    const runs = serverBusyWith(helloRun(1), helloRun(2));
+    const scheduler = await openExecution(runs);
+
+    await press(runButton());
+
+    expect(runs.get).toHaveBeenCalledWith(RUN_ID);
+    expect(screen.queryByTestId('run-error')).toBeNull();
+    expect(statusLine().textContent).toBe(
+      'Following the run that was already in progress. Running review. 1 of 2 stages done.',
+    );
+    expect(badges()).toEqual(['Done', 'Done', 'Running', 'Queued']);
+    expect(isOff(runButton())).toBe(true);
+
+    await tick(scheduler);
+
+    expect(badges()).toEqual(['Done', 'Done', 'Done', 'Passed']);
+    expect(isOff(runButton())).toBe(false);
+  });
+});
+
 describe('the goal', () => {
   const goalBox = () => screen.getByLabelText('Goal') as HTMLInputElement;
   const openTab = (name: string) =>
@@ -427,7 +459,10 @@ describe('errors from the API', () => {
     const scheduler = await openExecution(runs);
     await press(runButton());
 
-    await tick(scheduler);
+    for (let attempt = 0; attempt < MAX_READ_FAILURES; attempt += 1) {
+      expect(screen.queryByTestId('run-error')).toBeNull();
+      await tick(scheduler);
+    }
 
     const alert = screen.getByTestId('run-error');
     expect(
@@ -439,6 +474,27 @@ describe('errors from the API', () => {
     expect(statusLine().textContent).toContain('See the error above.');
     expect(badges()).toEqual([null, null, null, null]);
     expect(isOff(runButton())).toBe(false);
+  });
+
+  it('keeps following the run when one reading fails and the next works', async () => {
+    const runs: RunPort = {
+      start: vi.fn().mockResolvedValue(RUN_ID),
+      get: vi
+        .fn()
+        .mockResolvedValueOnce(helloRun(0))
+        .mockRejectedValueOnce(new Error('The server did not answer.'))
+        .mockResolvedValue(helloRun(1)),
+    };
+    const scheduler = await openExecution(runs);
+    await press(runButton());
+
+    await tick(scheduler);
+    expect(screen.queryByTestId('run-error')).toBeNull();
+    expect(isOff(runButton())).toBe(true);
+    await tick(scheduler);
+
+    expect(badges()).toEqual(['Done', 'Done', 'Running', 'Queued']);
+    expect(screen.queryByTestId('run-error')).toBeNull();
   });
 
   it('puts the alert inside an alert region that is always on the page, so the sentence is announced', async () => {

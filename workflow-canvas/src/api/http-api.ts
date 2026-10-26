@@ -15,6 +15,9 @@ type Fetch = typeof fetch;
 const UNREACHABLE =
   'The server did not answer. Check that it is still running.';
 
+/** How long a call may take before the page gives up on it. */
+export const REQUEST_TIMEOUT_MS = 15_000;
+
 async function bodyOf(response: Response): Promise<unknown> {
   try {
     return await response.json();
@@ -23,18 +26,46 @@ async function bodyOf(response: Response): Promise<unknown> {
   }
 }
 
-async function send(
+// Gives the call a signal that aborts after the timeout; the reading of the
+// body is covered too, and the timer never outlives the call.
+async function withTimeout<T>(
+  timeoutMs: number,
+  call: (signal: AbortSignal) => Promise<T>,
+): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await call(controller.signal);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function exchange(
   fetchFn: Fetch,
   path: string,
   init: RequestInit,
+  signal: AbortSignal,
+): Promise<{ response: Response; body: unknown }> {
+  const response = await fetchFn(path, { ...init, signal });
+  return { response, body: await bodyOf(response) };
+}
+
+async function send(
+  fetchFn: Fetch,
+  timeoutMs: number,
+  path: string,
+  init: RequestInit,
 ): Promise<unknown> {
-  let response: Response;
+  let reply: { response: Response; body: unknown };
   try {
-    response = await fetchFn(path, init);
+    reply = await withTimeout(timeoutMs, (signal) =>
+      exchange(fetchFn, path, init, signal),
+    );
   } catch {
     throw new ApiError(UNREACHABLE, 0);
   }
-  const body = await bodyOf(response);
+  const { response, body } = reply;
   if (response.ok) return body;
   throw new ApiError(
     errorMessageOf(body) ?? `The server answered ${response.status}.`,
@@ -52,10 +83,15 @@ function bearer(token: string): Record<string, string> {
  * The adapter of the workflow API over HTTP. It calls the relative `/api`, so
  * the page and the server share one origin, and keeps no token itself.
  */
-export function createHttpApi(fetchFn: Fetch = fetch): WorkflowApi {
+export function createHttpApi(
+  fetchFn: Fetch = fetch,
+  timeoutMs = REQUEST_TIMEOUT_MS,
+): WorkflowApi {
+  const call = (path: string, init: RequestInit) =>
+    send(fetchFn, timeoutMs, path, init);
   return {
     async createSession(code) {
-      const body = await send(fetchFn, '/api/session', {
+      const body = await call('/api/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code }),
@@ -63,13 +99,13 @@ export function createHttpApi(fetchFn: Fetch = fetch): WorkflowApi {
       return parseSession(body);
     },
     async getWorkflow(token) {
-      const body = await send(fetchFn, '/api/workflow', {
+      const body = await call('/api/workflow', {
         headers: bearer(token),
       });
       return parseWorkflowDocument(body);
     },
     async startRun(token, goal) {
-      const body = await send(fetchFn, '/api/run', {
+      const body = await call('/api/run', {
         method: 'POST',
         headers: { ...bearer(token), 'Content-Type': 'application/json' },
         body: JSON.stringify({ params: { goal } }),
@@ -77,13 +113,9 @@ export function createHttpApi(fetchFn: Fetch = fetch): WorkflowApi {
       return parseRunStarted(body);
     },
     async getRun(token, runId) {
-      const body = await send(
-        fetchFn,
-        `/api/runs/${encodeURIComponent(runId)}`,
-        {
-          headers: bearer(token),
-        },
-      );
+      const body = await call(`/api/runs/${encodeURIComponent(runId)}`, {
+        headers: bearer(token),
+      });
       return parseRunStatus(body);
     },
   };
