@@ -6,10 +6,24 @@ import type { RunView } from '../../api/types';
  * page depends on this port; `workflow/load-workflow.ts` builds the adapter.
  */
 export interface RunPort {
-  /** Starts a run with the goal and resolves to its id. */
+  /**
+   * Starts a run with the goal and resolves to its id. When a run is already
+   * active it rejects with `RunAlreadyActive`, so the caller can follow that run.
+   */
   start(goal: string): Promise<string>;
   /** Reads the state of the run with the id. */
   get(runId: string): Promise<RunView>;
+}
+
+/** A run was asked for while another is active; `runId` is the active one. */
+export class RunAlreadyActive extends Error {
+  readonly runId: string;
+
+  constructor(message: string, runId: string) {
+    super(message);
+    this.name = 'RunAlreadyActive';
+    this.runId = runId;
+  }
 }
 
 /**
