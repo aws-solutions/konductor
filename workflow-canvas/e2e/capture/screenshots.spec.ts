@@ -65,9 +65,12 @@ test('capture the Execution tab in the dark mode during a run', async ({
 
 // Editing. Each test puts the stub's workflow back afterwards (the fixture
 // does), so the captures above and below it see the sample.
+// These two change what a stage says but add none: a longer graph is fitted at
+// a fractional zoom, and the edges of such a view differ by a level of grey
+// between machines, which the byte-exact check cannot take.
 test('capture the Designer tab with unsaved edits', async ({ designer }) => {
   await designer.chooseAgent('k-architect');
-  await designer.add.click();
+  await designer.stage('review').click();
   await designer.rename('ship');
   await designer.expectStatus('Unsaved changes');
 
@@ -113,7 +116,8 @@ test('capture the Designer tab with unsaved edits in the dark mode', async ({
 }) => {
   await canvas.switchTheme();
   await designer.chooseAgent('k-architect');
-  await designer.add.click();
+  await designer.stage('review').click();
+  await designer.rename('ship');
   await designer.expectStatus('Unsaved changes');
 
   await saveFullPageScreenshot(designer.page, 'designer-editing-dark');
