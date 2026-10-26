@@ -82,6 +82,19 @@
   visibility: visible;
 }
 
+/* In forced-colors mode the system outline replaces the SVG ring. */
+@media (forced-colors: active) {
+  .wf-canvas .react-flow__node:focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+
+  .react-flow__node:focus-visible .wf-focus-ring,
+  .react-flow__node:focus-visible .wf-focus-gap {
+    visibility: hidden;
+  }
+}
+
 .wf-node {
   position: relative;
   /* The outline is drawn behind the content, inside this box. */
