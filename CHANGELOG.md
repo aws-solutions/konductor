@@ -43,9 +43,11 @@ not per individual commit.
 - `k-architect` and `k-developer` no longer tell agents to use `aws___call_aws`, a tool the AWS MCP server has removed. Both now point at `aws___run_script`, which runs sandboxed Python with AWS API access.
 - `find-aws-skills`' failure-handling fallback no longer references `aws___suggest_aws_commands`, which the AWS MCP server does not expose. It now offers direct AWS API calls via `aws___run_script` (sandboxed Python).
 - `aws-service-validator` calls `aws___get_regional_availability` with `resource_type` (required), `regions`, and `filters` (required for more than one region), instead of a bare service-and-region call.
-- `update --no-telemetry` now opts a project out for good: it removes the project's telemetry
-  record instead of only skipping that one run's write, so a later plain `update` can't quietly
-  turn telemetry back on. Pass the new `--enable-telemetry` flag to opt back in.
+- `update --no-telemetry` now opts a project out until you opt back in: it removes the
+  project's telemetry record instead of only skipping that one run's write, so a later plain
+  `update` can't quietly turn telemetry back on. Pass the new `--enable-telemetry` flag to opt
+  back in. Running `install` without `--no-telemetry` at that project also opts it back in, for
+  every harness installed there.
 - If removing that record fails (for example, a read-only `.konductor/` directory), `update` now
   warns about it in both plain-text and `--json` output instead of only printing to stderr, so the
   risk of telemetry silently turning back on is visible.
@@ -59,6 +61,8 @@ not per individual commit.
   `update` that carries the opt-out forward) now launches the skill-lookup MCP server with
   `--telemetry off`, so it no longer reports tool-call usage. `update --enable-telemetry` drops
   the flag again.
+  Only the harness the command runs against is rewritten. Another Kiro CLI harness at the same
+  project keeps its current MCP args until its own next `update`.
 
 ## [1.1.0] - 2026-10-14
 

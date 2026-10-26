@@ -191,10 +191,11 @@ pub enum Commands {
         /// Scoped to the whole target directory, NOT to `--harness`:
         /// `install-info.json` is one file per target, shared by every
         /// harness installed there, so `--harness <name> --no-telemetry`
-        /// still removes the ENTIRE target's record, including the
-        /// opt-in a different, coexisting harness at that same target
-        /// wrote -- there is no per-harness telemetry setting to opt
-        /// only one of them out of.
+        /// still removes the ENTIRE target's record, so telemetry hooks for every
+        /// harness at that target stop reporting. Only the named harness's agent
+        /// files are rewritten by this run: another Kiro CLI harness at the same
+        /// target keeps launching skill-lookup without `--telemetry off` until its
+        /// own next `update`.
         #[arg(long, display_order = 4)]
         no_telemetry: bool,
 
@@ -272,9 +273,11 @@ pub enum Commands {
         /// Scoped to the whole target directory, NOT to `--harness`:
         /// `install-info.json` is one file per target, shared by every
         /// harness installed there, so `--harness <name> --no-telemetry`
-        /// still opts the ENTIRE target out, including every other
-        /// harness coexisting at that same target -- there is no
-        /// per-harness telemetry setting to opt only one of them out of.
+        /// still removes the ENTIRE target's record, so telemetry hooks for every
+        /// harness at that target stop reporting. Only the named harness's agent
+        /// files are rewritten by this run: another Kiro CLI harness at the same
+        /// target keeps launching skill-lookup without `--telemetry off` until its
+        /// own next `update`.
         #[arg(long, conflicts_with = "enable_telemetry")]
         no_telemetry: bool,
 

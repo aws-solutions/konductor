@@ -506,8 +506,11 @@ same way each target's own `.konductor/config.yml` opt-out is resolved independe
 Both flags are scoped to the **whole target directory**, not to `--harness`.
 `install-info.json` is a single file per target, shared by every harness installed there,
 so there is no per-harness telemetry setting. Opting out (or back in) via one harness's
-`update` invocation, for example `update --harness kiro-cli-v2 --no-telemetry`, affects
-every harness coexisting at that target, not just the one named on the command line.
+`update`, for example `update --harness kiro-cli-v2 --no-telemetry`, changes the record
+for every harness at that target. Only the named harness's agent files are rewritten in
+that run; another Kiro CLI harness's `konductor-skills` MCP args pick up `--telemetry off`
+on its own next `update`. An `install` without `--no-telemetry` at the target opts every
+harness there back in.
 
 ### `--dry-run`
 

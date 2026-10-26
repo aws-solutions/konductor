@@ -138,7 +138,8 @@ pub(crate) fn remove_install_info(target_dir: &Path) -> std::io::Result<()> {
 }
 
 /// Reads the install-info record and, when `remove_if_enabled` is true
-/// and that read currently finds a usable (`Ok`) record, removes it --
+/// and that read currently finds any existing record (valid or not; only
+/// `NotFound` skips it), removes it --
 /// both steps inside ONE critical section under
 /// `INSTALL_INFO_LOCK_FILE_NAME`, the same per-target lock `write_record`
 /// holds for its own write.
@@ -159,8 +160,9 @@ pub(crate) fn remove_install_info(target_dir: &Path) -> std::io::Result<()> {
 /// broken-record warning exactly as they would from a bare
 /// `read_install_info_detailed` call. `remove_error` is `Some` only when
 /// a removal was both called for and attempted (the locked read found a
-/// record, valid or not; only `NotFound` skips it) and either the removal itself failed, or the lock could
-/// not be acquired at all with a removal pending.
+/// record, valid or not; only `NotFound` skips it) and the removal itself
+/// failed. If the lock cannot be acquired, the removal still runs
+/// unlocked; `remove_error` is `Some` only when that removal fails.
 pub(crate) fn read_and_maybe_remove_locked(
     target_dir: &Path,
     remove_if_enabled: bool,
@@ -171,17 +173,20 @@ pub(crate) fn read_and_maybe_remove_locked(
     let dir = target_dir.join(KONDUCTOR_DIR_NAME);
     let guard = match config_lock::acquire_named(&dir, INSTALL_INFO_LOCK_FILE_NAME) {
         Ok(guard) => guard,
-        Err(err) => {
-            // Contention most plausibly means a concurrent writer holds
-            // this exact lock right now -- i.e. the race this lock
-            // exists to prevent is actually in progress. Skip the
-            // removal rather than racing it unlocked; the read below is
-            // still unlocked and best-effort, the same as calling
-            // `read_install_info_detailed` directly with no lock held.
+        Err(lock_err) => {
+            // An explicit opt-out must not fail open. Removing unlocked reaches the
+            // same end state as "concurrent write, then opt-out", a legal ordering.
             let read = read_install_info_detailed(target_dir);
-            let remove_error = (remove_if_enabled
-                && !matches!(read, Err(InstallInfoAbsence::NotFound)))
-            .then(|| std::io::Error::other(err.to_string()));
+            let remove_error =
+                if remove_if_enabled && !matches!(read, Err(InstallInfoAbsence::NotFound)) {
+                    remove_install_info(target_dir).err().map(|err| {
+                        std::io::Error::other(format!(
+                            "{err} (install-info lock unavailable: {lock_err})"
+                        ))
+                    })
+                } else {
+                    None
+                };
             return (read, remove_error);
         }
     };
@@ -787,6 +792,32 @@ mod tests {
             "an explicit opt-out must remove an unreadable record"
         );
         fs::remove_dir_all(&target).ok();
+    }
+
+    /// An explicit opt-out must not fail open when the lock is held
+    /// elsewhere: the removal still runs, unlocked.
+    #[test]
+    fn read_and_maybe_remove_locked_still_removes_when_the_lock_is_unavailable() {
+        let target = scratch_dir("locked-remove-lock-unavailable-target");
+        let source = scratch_dir("locked-remove-lock-unavailable-source");
+        seed_dist_version(&source, "1.0.0\n");
+        write_install_info(&target, &source, "kiro-cli-v2", "2026-01-01T00:00:00Z").unwrap();
+        let _held = config_lock::acquire_named(
+            &target.join(KONDUCTOR_DIR_NAME),
+            INSTALL_INFO_LOCK_FILE_NAME,
+        )
+        .unwrap();
+
+        let (read, remove_error) = read_and_maybe_remove_locked(&target, true);
+
+        assert!(read.is_ok(), "{read:?}");
+        assert!(remove_error.is_none(), "{remove_error:?}");
+        assert!(
+            !install_info_path(&target).exists(),
+            "an explicit opt-out must remove the record even without the lock"
+        );
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&source).ok();
     }
 
     /// The regression test for the fix (see the test above for the

@@ -897,7 +897,9 @@ fn dispatch_install_with_remote_installer(
         // on the `None` ("latest") branch the pre-fetch itself is the
         // network call the skip decision depends on, so a match there
         // only avoids the larger download/re-copy that follows. `force`
-        // bypasses the skip either way. `use_github_token` authenticates
+        // bypasses the skip either way. An explicit `--no-telemetry` also
+        // bypasses it, so the opt-out removal and the `--telemetry off`
+        // MCP arg always run. `use_github_token` authenticates
         // this pre-fetch exactly like the real install below it.
         //
         // `install-info.json` holds exactly one `agent_version` +
@@ -939,7 +941,7 @@ fn dispatch_install_with_remote_installer(
                 let incoming_version = incoming_tag.trim_start_matches('v');
                 let comparison =
                     content_version::compare_known_versions(incoming_version, &recorded);
-                if content_version::should_skip_write(&comparison, force) {
+                if content_version::should_skip_write(&comparison, force || no_telemetry) {
                     let version = comparison.matched_version().unwrap_or("").to_string();
                     // The index write-ahead below must still run on
                     // the skip path, same as the ordinary install path
@@ -4655,6 +4657,61 @@ mod tests {
             "--force must bypass the version-match skip and reach the real fetch attempt"
         );
         assert_eq!(code, EXIT_USAGE_ERROR);
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// `--no-telemetry` on a target already at exactly the requested
+    /// `--version` must bypass the skip, so the opt-out still removes
+    /// the existing record.
+    #[test]
+    fn dispatch_install_with_version_matching_recorded_version_with_no_telemetry_still_opts_out() {
+        let _home = HomeGuard::new("install-version-no-telemetry-bypass-home");
+        let target = scratch_dir("install-version-no-telemetry-bypass-target");
+        let repo_root = scratch_dir("install-version-no-telemetry-bypass-repo");
+        seed_dist_version(&repo_root, "1.5.0");
+        crate::cli::telemetry::write_install_info(
+            &target,
+            &repo_root,
+            "kiro-cli-v2",
+            "2026-01-01T00:00:00Z",
+        )
+        .unwrap();
+
+        let remote_installer_called = std::rc::Rc::new(std::cell::Cell::new(false));
+        let remote_installer_called_check = remote_installer_called.clone();
+        let code = dispatch_install_with_remote_installer(
+            None,
+            Some(target.to_str().unwrap().to_string()),
+            "kiro-cli-v2".to_string(),
+            false,
+            true, // --no-telemetry
+            false,
+            Some("1.5.0".to_string()),
+            false,
+            false,
+            false,
+            ColorMode::disabled(),
+            move |_strategy, _destination, _installed_at, _no_telemetry| {
+                remote_installer_called_check.set(true);
+                Ok((
+                    remote_orchestrate::RemoteInstallSource::GithubRelease,
+                    remote::RemoteInstallOutcome {
+                        mcp_binary_version: None,
+                    },
+                ))
+            },
+        );
+        assert!(
+            remote_installer_called.get(),
+            "--no-telemetry must bypass the version-match skip and reach the install step"
+        );
+        assert_eq!(code, 0);
+        assert!(
+            !crate::cli::telemetry::install_info_path(&target).exists(),
+            "--no-telemetry must remove the existing record even at a matching version"
+        );
 
         fs::remove_dir_all(&target).ok();
         fs::remove_dir_all(&repo_root).ok();
