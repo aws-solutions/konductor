@@ -146,9 +146,29 @@ test('reaches each node with the Tab key and names it', async ({ canvas }) => {
     await expect(node).toBeFocused();
     await expect(node).toHaveAccessibleName(name);
     await expect(node).toHaveAccessibleDescription(/^Read-only workflow graph/);
-    await expect(node).toHaveCSS('outline-style', 'solid');
-    await expect(node).toHaveCSS('outline-width', '3px');
+    await expect(node.locator('.wf-focus-ring')).toBeVisible();
   }
+});
+
+test('draws the focus ring around the knob, not across it', async ({
+  canvas,
+}) => {
+  await canvas.expectWorkflowDrawn();
+  await canvas.tab('Designer').focus();
+
+  await canvas.tabToNextNode();
+  const focused = canvas.page.locator('.react-flow__node:focus');
+  const [ring, knob] = [
+    await focused.locator('.wf-focus-ring').boundingBox(),
+    await focused.locator('.wf-knob').boundingBox(),
+  ];
+
+  await expect(focused).toHaveCSS('outline-style', 'none');
+  // The ring reaches past the tip of the knob, so no part of it is a line
+  // across the neck.
+  expect((ring?.y ?? 0) + (ring?.height ?? 0)).toBeGreaterThan(
+    (knob?.y ?? 0) + (knob?.height ?? 0),
+  );
 });
 
 test('names the edges by the nodes they join, not by ids', async ({
