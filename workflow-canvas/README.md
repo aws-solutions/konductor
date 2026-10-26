@@ -270,6 +270,13 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
   Run is off and the goal box is read-only from the click until the run ends.
   Read-only, not greyed out, so the box keeps focus and shows the goal of that
   run. Enter in the box starts a run, like the button.
+- If the server answers 409 `already_running`, as it does after a page reload
+  in the middle of a run, the tab follows the run named in that answer instead
+  of starting one. The line under the button says so, and the goal typed is not
+  used for that run.
+- A read of the run that fails is tried again after a second; the tab gives up
+  after three failures in a row. A call that gets no answer in 15 seconds counts
+  as a failure.
 - Each node shows a badge with a word and a colour: **Queued** (with a dashed
   outline), **Running**, **Done** and **Failed**. The word carries the state;
   only Queued and Not run also differ in shape. The intent is Done once the run
@@ -308,7 +315,9 @@ The code follows the ports-and-adapters split of the graph:
   wire types, or reads a clock, randomness, the environment or the network.
 - The adapters are `createHttpApi` (`startRun`, `getRun`), which `loadWorkflow`
   ties to the session token, and `timerScheduler`. The token is held only by
-  those run calls.
+  those run calls. `createHttpApi` ends a call after a timeout, and
+  `loadWorkflow` turns the 409 `already_running`, which carries the `run_id`,
+  into the core's `RunAlreadyActive` so the core can follow that run.
 - `useExecution` keeps the state in `App`, and `Execution` draws it. The
   Designer and Execution tabs share `WorkflowGate` (loading, error and empty
   states) and `WorkflowGraphCard` (the card with the graph).
@@ -394,9 +403,11 @@ cannot be run, and in both theme modes.
 
 The stub runs one run at a time and never fails a stage. So the one test that
 starts a real run on it (`execution.spec.ts`, the first run test) waits for the
-end of the run, and the tests of a failed stage or a refused run answer the
-run calls themselves (`e2e/support/run-routes.ts`). A test that starts another
-run on the stub must also wait for its end, or the next test gets a 409.
+end of the run, and the tests of a failed stage, a refused run, a joined run
+and a dropped read answer the run calls themselves (`e2e/support/run-routes.ts`).
+A test that starts another run on the stub must also wait for its end, or the
+next test gets a 409. For the same reason, if that one test fails and Playwright
+retries it, the retry gets a 409 and follows the run still going.
 
 Shared page objects and helpers live in `e2e/support/`. New tests should
 extend them rather than repeat selectors: import `test` and `expect` from
