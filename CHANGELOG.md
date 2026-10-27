@@ -21,13 +21,8 @@ not per individual commit.
   specialists. The three orchestrator prompts also drop the
   Ultrawork framing, state the parallel rule once, and remove rules already defined in the
   `constraints` skill and the routing rules.
-- The orchestrators' routing rules now say to delegate any step they find they cannot do
-  mid-task (missing tool, skill, access, or expertise) to the owning specialist, and that they
-  may delegate independent parts to run in parallel, including several agents of the same type
-  on disjoint files, each write agent in its own worktree. Direct work is unchanged.
-  The `delegation-protocol` skill's Parallel Execution section now requires parallel write
-  agents to own disjoint files: a shared file goes to one agent, or the parts that touch it
-  run in sequence.
+- Orchestrators delegate a step they can't do to the owning specialist and may run independent
+  parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
 
 ### Fixed
 
