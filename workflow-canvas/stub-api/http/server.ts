@@ -18,6 +18,8 @@ export interface StubOptions {
   /** `0` picks a free port. */
   port?: number;
   launchCode?: string;
+  /** Lets the launch code be traded again; see `SessionGateOptions`. */
+  reusableLaunchCode?: boolean;
   clock?: Clock;
   runSuffix?: () => string;
   /** How long each simulated stage takes. */
@@ -50,7 +52,11 @@ export async function startStub(
       stageMs: options.stageMs,
     }),
   });
-  const session = new SessionGate({ clock, launchCode });
+  const session = new SessionGate({
+    clock,
+    launchCode,
+    reusableLaunchCode: options.reusableLaunchCode,
+  });
   const dispatcher: Dispatcher = {
     routes: buildRoutes(api, session),
     session,

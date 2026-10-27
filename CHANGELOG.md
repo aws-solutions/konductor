@@ -44,7 +44,9 @@ not per individual commit.
   `npm run dev:stub` starts the stub and the dev server together. A bad `WC_API_TARGET` or
   `STUB_PORT` stops only the commands that need it (not `build` or `npm test`), with a one-line
   error that hides credentials. `STUB_PORT` must be 1-65535, so `STUB_PORT=0` is rejected: the stub
-  needs a fixed port.
+  needs a fixed port. The stub of `npm run dev:stub` and the one that Playwright starts take the
+  launch code again and give the same token, so opening the printed address again after a
+  reload works; `npm run stub` on its own keeps the contract's one use.
 
 ### Fixed
 
