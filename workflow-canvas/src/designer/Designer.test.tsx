@@ -63,7 +63,14 @@ describe('Designer', () => {
     const broken = {
       ...HELLO_DOCUMENT,
       view: null,
-      diagnostics: [{ message: 'Missing key: intent', line: 2 }],
+      diagnostics: [
+        {
+          message: 'Missing key: intent',
+          line: 2,
+          path: '',
+          severity: 'error' as const,
+        },
+      ],
     };
 
     render(<Designer result={loaded(broken)} />);
@@ -82,7 +89,14 @@ describe('Designer', () => {
     const broken = {
       ...HELLO_DOCUMENT,
       view: null,
-      diagnostics: [{ message: 'The file is empty', line: undefined }],
+      diagnostics: [
+        {
+          message: 'The file is empty',
+          line: undefined,
+          path: '',
+          severity: 'error' as const,
+        },
+      ],
     };
 
     render(<Designer result={loaded(broken)} />);
@@ -95,7 +109,12 @@ describe('Designer', () => {
   });
 
   it('lists every problem when the server repeats an identical one', () => {
-    const repeated = { message: 'Unknown key: owner', line: 3 };
+    const repeated = {
+      message: 'Unknown key: owner',
+      line: 3,
+      path: 'owner',
+      severity: 'error' as const,
+    };
     const broken = {
       ...HELLO_DOCUMENT,
       view: null,
