@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: Apache-2.0
+version: 1
+marker: 'Orchestration: strict (phase-gated SOP)'
+gated:
+  alpha-gated:
+    gates: [approval, check-threshold]
+    basis: Step 0 needs approval; Step 1 stops on CRITICAL findings.
+    phases: [draft, review, summary]
+    boundaries:
+      - {phase: draft, kind: approval, scope: run}
+      - {phase: review, kind: check-threshold, scope: feature}
+not_gated: {}
