@@ -25,6 +25,9 @@ not per individual commit.
   mid-task (missing tool, skill, access, or expertise) to the owning specialist, and that they
   may delegate independent parts to run in parallel, including several agents of the same type
   on disjoint files, each write agent in its own worktree. Direct work is unchanged.
+  The `delegation-protocol` skill's Parallel Execution section now requires parallel write
+  agents to own disjoint files: a shared file goes to one agent, or the parts that touch it
+  run in sequence.
 
 ### Fixed
 
