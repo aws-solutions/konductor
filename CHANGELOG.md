@@ -77,13 +77,14 @@ not per individual commit.
   through `PUT /api/workflow` with the `base_hash` of the loaded file. The stages stay a `name`
   and an `agent`, run in list order, with no other key. Only the block of stages of the file
   changes. Edits are checked with `POST /api/validate` after a short pause and shown under the
-  field and in an alert; a save of a file that changed on disk (409) says so and offers to load
-  it again, and a save whose answer is lost is settled by reading the file; the last findings stay
-  on show until the next check answers; Save is off while the check finds an error. A file whose
-  stages are not a block is written whole on save, and a note says so. Add, rename, delete and
-  save work with the keyboard and keep focus. The draft is kept when the tabs are switched, and the Execution
-  tab draws the saved workflow. The API contract is unchanged. The end-to-end tests gain an
-  `editing` project that saves to the stub, and `npm run screenshots` gains five Designer
+  field and in an alert; a save of a file that changed on disk (409) says so and offers to load it
+  again, and a save whose answer is lost is settled by reading the file; the last findings stay on
+  show until the next check answers; Save is off only while the check finds an error; warnings and
+  notes show as notes. A read-only workflow turns the editing controls off. A file whose stages
+  are not a block is written whole on save, and a note says so. Add, rename, delete and save work
+  with the keyboard and keep focus. The draft is kept when the tabs are switched, and the
+  Execution tab draws the saved workflow. The API contract is unchanged. The end-to-end tests gain
+  an `editing` project that saves to the stub, and `npm run screenshots` gains five Designer
   captures.
 
 ### Fixed
@@ -127,14 +128,14 @@ not per individual commit.
 - An "Install via Kiro Power" page in the user guide, and a matching section in `README.md`.
 - Manual setup docs for the AWS documentation-lookup MCP server and for Playwright.
 - A Claude Code plugin marketplace install path: `/plugin marketplace add
-aws-solutions/konductor` then `/plugin install konductor@konductor`. See [Install via the
+  aws-solutions/konductor` then `/plugin install konductor@konductor`. See [Install via the
   Claude Code plugin marketplace](docs/user-guide/tasks/install-claude-plugin-marketplace.md).
 - `tag-claude-plugin-release.yml` is a manually dispatched workflow, run after a human merges a
   plugin-candidate PR into `release/plugins`, that creates an immutable `claude-plugin-vX.Y.Z`
   tag on the merge commit -- so a `marketplace.json` entry can pin to a specific release instead
   of the branch's moving HEAD.
 - `konductor-setup`'s `run-update.sh` and `run-uninstall.sh` accept an optional `--harness
-<name>`, forwarded to `konductor update`/`uninstall`, for a target that tracks more than one
+  <name>`, forwarded to `konductor update`/`uninstall`, for a target that tracks more than one
   harness.
 
 ### Changed
