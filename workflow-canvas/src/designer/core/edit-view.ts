@@ -65,3 +65,22 @@ export function saveBlocker(state: EditState): string | undefined {
 export function canSave(state: EditState): boolean {
   return saveBlocker(state) === undefined;
 }
+
+/** How the status line shows the state of saving. */
+export type SaveStatusKind = 'pending' | 'warning' | 'in-progress' | 'success';
+
+/** The words and the kind of the line that says whether work is saved. */
+export function saveStatus(state: EditState): {
+  kind: SaveStatusKind;
+  text: string;
+} {
+  const { phase } = state.save;
+  if (phase === 'saving') return { kind: 'in-progress', text: 'Saving' };
+  if (phase === 'reloading') return { kind: 'in-progress', text: 'Loading' };
+  if (isDirty(state)) return { kind: 'warning', text: 'Unsaved changes' };
+  if (phase === 'saved') return { kind: 'success', text: 'Saved' };
+  if (phase === 'reloaded') {
+    return { kind: 'success', text: 'Loaded again from the server' };
+  }
+  return { kind: 'pending', text: 'No changes' };
+}
