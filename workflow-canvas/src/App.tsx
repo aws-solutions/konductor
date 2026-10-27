@@ -9,6 +9,7 @@ import { TOP_BAR_ID, TopBar } from './chrome/TopBar';
 import { Designer } from './designer/Designer';
 import { isDirty } from './designer/core';
 import { useEditor } from './designer/use-editor';
+import { useLeaveGuard } from './designer/use-leave-guard';
 import { useSettled } from './designer/use-settled';
 import type { RunMemory, Scheduler } from './execution/core';
 import { Execution } from './execution/Execution';
@@ -49,6 +50,9 @@ export function App({
   // The Designer edits a draft; the run and the Execution tab use the file
   // as it is saved.
   const editor = useEditor(result?.ok ? result.workflow : undefined);
+  const unsaved = editor ? isDirty(editor.state) : false;
+  // The draft lives in the page, so leaving the page loses the changes.
+  useLeaveGuard(unsaved, window);
   return (
     <>
       <TopBar mode={mode} onToggle={toggleMode} />
@@ -86,7 +90,7 @@ export function App({
                         execution={execution}
                         goal={goal}
                         onGoalChange={setGoal}
-                        unsaved={editor ? isDirty(editor.state) : false}
+                        unsaved={unsaved}
                       />
                     ),
                   },
