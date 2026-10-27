@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 import { expectNoAccessibilityViolations } from '../support/accessibility';
 import { test } from '../support/fixtures';
-import { answerRunsWith, runReply } from '../support/run-routes';
+import {
+  answerRunsWith,
+  refuseRunsWith,
+  runReply,
+} from '../support/run-routes';
 import { TAB_NAMES, WorkflowCanvasPage } from '../support/workflow-canvas-page';
 
 for (const name of TAB_NAMES) {
@@ -55,6 +59,34 @@ test('Execution tab has no axe violations with a failed stage in the dark mode',
 
   await canvas.runButton.click();
   await canvas.badge('node-end').waitFor();
+
+  await expectNoAccessibilityViolations(canvas.page);
+});
+
+test('Execution tab has no axe violations with the error of the API shown', async ({
+  canvas,
+}) => {
+  await refuseRunsWith(canvas.page, 409, {
+    error: 'kiro-cli is not installed.',
+    code: 'harness_unavailable',
+  });
+  await canvas.selectTab('Execution');
+  await canvas.expectTabLoaded('Execution');
+
+  await canvas.runButton.click();
+  await canvas.runError.waitFor();
+
+  await expectNoAccessibilityViolations(canvas.page);
+});
+
+test('Execution tab has no axe violations with a goal that cannot be run', async ({
+  canvas,
+}) => {
+  await canvas.selectTab('Execution');
+  await canvas.expectTabLoaded('Execution');
+
+  await canvas.goal.fill('');
+  await canvas.page.getByText('Enter a goal to run.').first().waitFor();
 
   await expectNoAccessibilityViolations(canvas.page);
 });
