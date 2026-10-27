@@ -6,6 +6,14 @@ This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Entries are consolidated per release,
 not per individual commit.
 
+## [Unreleased]
+
+### Added
+
+- `make version-check`, run on every PR and before each release, fails when a
+  `Cargo.toml`, a `Cargo.lock` entry for one of Konductor's own crates, or the
+  `CHANGELOG.md` release heading disagrees with `VERSION`.
+
 ## [1.2.0] - 2026-10-26
 
 ### Added

@@ -98,6 +98,11 @@ jobs:
             scripts/validate-version-semver.sh "$RAW_VERSION"
           fi
 
+      - name: Check every crate, lockfile and CHANGELOG.md match VERSION
+        # Runs on every PR, not only VERSION bumps, so a crate or lockfile left
+        # behind by an earlier bump is caught too.
+        run: make version-check
+
       - name: Run the skill shell tests (make test-skills-sh)
         run: make test-skills-sh
 
