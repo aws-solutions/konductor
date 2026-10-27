@@ -24,6 +24,9 @@ A single `package.json` serves all of the above.
 
 ## Commands
 
+From the repo root, `make canvas` runs install, lint, typecheck, unit and
+end-to-end tests in order (`make help` lists the individual `canvas-*` targets).
+
 Run from this folder with Node 24.15 or later (`.nvmrc` selects 24):
 
 ```bash
