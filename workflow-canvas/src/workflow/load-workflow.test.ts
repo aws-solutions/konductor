@@ -142,6 +142,19 @@ describe('loadWorkflow', () => {
     await expect(lost).rejects.toThrow('The server did not answer.');
   });
 
+  it('tells a person what to do next in the message of a lost save', async () => {
+    const failure = new ApiError('The server answered 502.', 502);
+    const api = fakeApi({ saveWorkflow: vi.fn().mockRejectedValue(failure) });
+    const result = await loadWorkflow(api, 'code-1');
+    if (!result.ok) throw new Error('The load failed.');
+
+    const lost = result.workflow.edits.save('text', HELLO_HASH);
+
+    await expect(lost).rejects.toThrow(
+      'The server answered 502. If it stopped, start it again and open the launch address that it printed.',
+    );
+  });
+
   it('lets any other failure of a save through as it is', async () => {
     const failure = new ApiError('Not allowed.', 403, 'read_only_workflow');
     const api = fakeApi({ saveWorkflow: vi.fn().mockRejectedValue(failure) });
