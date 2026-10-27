@@ -86,14 +86,14 @@ export class WorkflowCanvasPage {
     return this.graph.getByTestId(id);
   }
 
-  /** The knob under a node, where its run order leaves. */
-  knob(id: NodeId): Locator {
-    return this.node(id).locator('.wf-knob');
+  /** The tab under a node, where its run order leaves. */
+  outPort(id: NodeId): Locator {
+    return this.node(id).locator('.wf-port-tab');
   }
 
-  /** The socket in the top edge of a node, where its run order arrives. */
-  socket(id: NodeId): Locator {
-    return this.node(id).locator('.wf-socket');
+  /** The notch in the top edge of a node, where its run order arrives. */
+  inPort(id: NodeId): Locator {
+    return this.node(id).locator('.wf-port-notch');
   }
 
   /** The node that a screen reader names `name`. */
