@@ -278,13 +278,13 @@ corner radii, in a light and a dark mode.
   and the Designer and Execution tabs. The whole tab strip, with its rule and
   the selected-tab indicator, is part of the band.
 - Nodes are cards with the corner radius of the theme. The `S` run-order
-  ports are pieces of a jigsaw: the out port is a round knob on a narrow neck
-  that hangs from the bottom edge, the in port a round socket of the same
-  shape cut into the top edge, both at the right, so a knob fits a socket. The
-  border of a card is one path that bends in around its socket and out around
-  its knob (`src/canvas/jigsaw.ts` defines the shape once). A link runs from
-  the tip of the knob to the socket, and its arrowhead stops at the mouth of
-  the socket.
+  ports are pieces of a jigsaw, 26 by 16 pixels, with a dark rim and a letter
+  `S`: the out port is a square tab that hangs from the bottom edge, the in
+  port a notch of the same outline in the top edge (white inside, with a ring
+  in the colour of the tab), both in the middle of the card, so a tab fits the
+  notch of the card under it (`src/canvas/jigsaw.ts` defines the shape once).
+  A link runs from the tip of the tab to the top of the notch. The keyboard
+  focus ring follows the outline of the card and of the tab.
 
 Text meets WCAG 2 AA (4.5:1) in both modes, and the edges of controls, nodes,
 ports and the selected-tab indicator reach 3:1. `src/theme/tokens.test.ts`

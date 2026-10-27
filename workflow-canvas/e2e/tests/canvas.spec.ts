@@ -60,6 +60,65 @@ test('stacks the nodes in the order of the stages', async ({ canvas }) => {
   expect(new Set(tops).size).toBe(tops.length);
 });
 
+test('draws a tab under every node but the end and a notch in every node but the intent', async ({
+  canvas,
+}) => {
+  await canvas.expectWorkflowDrawn();
+
+  for (const id of NODE_IDS) {
+    await expect(canvas.outPort(id)).toHaveCount(id === 'node-end' ? 0 : 1);
+    await expect(canvas.inPort(id)).toHaveCount(id === 'node-intent' ? 0 : 1);
+  }
+});
+
+test('puts each tab in the middle of its card, over the notch of the card under it', async ({
+  canvas,
+}) => {
+  await canvas.expectWorkflowDrawn();
+
+  for (let i = 0; i < NODE_IDS.length - 1; i += 1) {
+    const [tab, notch, card] = [
+      await canvas.outPort(NODE_IDS[i]!).boundingBox(),
+      await canvas.inPort(NODE_IDS[i + 1]!).boundingBox(),
+      await canvas.node(NODE_IDS[i]!).boundingBox(),
+    ];
+    const centre = (box: typeof tab) => (box?.x ?? 0) + (box?.width ?? 0) / 2;
+
+    expect(Math.abs(centre(tab) - centre(notch))).toBeLessThan(1);
+    expect(Math.abs(centre(tab) - centre(card))).toBeLessThan(1);
+    // The tab hangs below the card, and the notch is the same size.
+    expect((tab?.y ?? 0) + (tab?.height ?? 0)).toBeGreaterThan(
+      (card?.y ?? 0) + (card?.height ?? 0),
+    );
+    expect(Math.abs((tab?.width ?? 0) - (notch?.width ?? 0))).toBeLessThan(1);
+    expect(Math.abs((tab?.height ?? 0) - (notch?.height ?? 0))).toBeLessThan(1);
+  }
+});
+
+test('starts each link at the tip of a tab and ends it at the top of a notch', async ({
+  canvas,
+}) => {
+  await canvas.expectWorkflowDrawn();
+  const links = canvas.edges.locator('.react-flow__edge-path');
+  // The boxes of a port and of a link include the dark rim, the width of the
+  // line and the arrowhead, which add up to a few pixels.
+  const REACH = 4;
+
+  for (let i = 0; i < NODE_IDS.length - 1; i += 1) {
+    const [tab, notch, link] = [
+      await canvas.outPort(NODE_IDS[i]!).boundingBox(),
+      await canvas.inPort(NODE_IDS[i + 1]!).boundingBox(),
+      await links.nth(i).boundingBox(),
+    ];
+    const centre = (box: typeof tab) => (box?.x ?? 0) + (box?.width ?? 0) / 2;
+    const bottom = (box: typeof tab) => (box?.y ?? 0) + (box?.height ?? 0);
+
+    expect(Math.abs(centre(link) - centre(tab))).toBeLessThan(1);
+    expect(Math.abs((link?.y ?? 0) - bottom(tab))).toBeLessThan(REACH);
+    expect(Math.abs(bottom(link) - (notch?.y ?? 0))).toBeLessThan(REACH + 4);
+  }
+});
+
 test('fits every node of a workflow of 40 stages in the canvas', async ({
   page,
 }) => {
@@ -134,44 +193,6 @@ test('shows in full the Japanese text that a node cuts short', async ({
   await expect(page.getByTestId(`full-stage-${name}`)).toBeVisible();
 });
 
-test('draws a knob under every node but the end and a socket in every node but the intent', async ({
-  canvas,
-}) => {
-  await canvas.expectWorkflowDrawn();
-
-  for (const id of NODE_IDS) {
-    await expect(canvas.knob(id)).toHaveCount(id === 'node-end' ? 0 : 1);
-    await expect(canvas.socket(id)).toHaveCount(id === 'node-intent' ? 0 : 1);
-  }
-});
-
-test('lines each knob up with the socket under it and ends the link above the socket', async ({
-  canvas,
-}) => {
-  await canvas.expectWorkflowDrawn();
-  const links = canvas.edges.locator('.react-flow__edge-path');
-
-  for (let i = 0; i < NODE_IDS.length - 1; i += 1) {
-    const [knob, socket, link, card] = [
-      await canvas.knob(NODE_IDS[i]!).boundingBox(),
-      await canvas.socket(NODE_IDS[i + 1]!).boundingBox(),
-      await links.nth(i).boundingBox(),
-      await canvas.node(NODE_IDS[i + 1]!).boundingBox(),
-    ];
-    const centre = (box: typeof knob) => (box?.x ?? 0) + (box?.width ?? 0) / 2;
-
-    expect(Math.abs(centre(knob) - centre(socket))).toBeLessThan(1);
-    expect(Math.abs(centre(link) - centre(knob))).toBeLessThan(1);
-    // The link starts at the tip of the knob and stops above the card, so the
-    // arrowhead never covers the socket.
-    expect(
-      (link?.y ?? 0) - ((knob?.y ?? 0) + (knob?.height ?? 0)),
-    ).toBeLessThan(1);
-    expect((link?.y ?? 0) + (link?.height ?? 0)).toBeLessThanOrEqual(
-      (card?.y ?? 0) + 0.5,
-    );
-  }
-});
 
 test('removes the launch code from the address', async ({ canvas }) => {
   await canvas.expectWorkflowDrawn();
@@ -226,7 +247,7 @@ test('reaches each node with the Tab key and names it', async ({ canvas }) => {
   }
 });
 
-test('draws the focus ring around the knob, not across it', async ({
+test('draws the focus ring around the tab, not across it', async ({
   canvas,
 }) => {
   await canvas.expectWorkflowDrawn();
@@ -234,17 +255,18 @@ test('draws the focus ring around the knob, not across it', async ({
 
   await canvas.tabToNextNode();
   const focused = canvas.page.locator('.react-flow__node:focus');
-  const [ring, knob] = [
-    await focused.locator('.wf-focus-ring').boundingBox(),
-    await focused.locator('.wf-knob').boundingBox(),
+  const [ring, tab] = [
+    await focused.locator('.wf-focus-ring-port').boundingBox(),
+    await focused.locator('.wf-port-tab').boundingBox(),
   ];
 
   await expect(focused).toHaveCSS('outline-style', 'none');
-  // The ring reaches past the tip of the knob, so no part of it is a line
-  // across the neck.
+  // The ring reaches past the tip of the tab, so no part of it is a line
+  // across the tab.
   expect((ring?.y ?? 0) + (ring?.height ?? 0)).toBeGreaterThan(
-    (knob?.y ?? 0) + (knob?.height ?? 0),
+    (tab?.y ?? 0) + (tab?.height ?? 0),
   );
+  expect(ring?.width ?? 0).toBeGreaterThan(tab?.width ?? 0);
 });
 
 test('names the edges by the nodes they join, not by ids', async ({
