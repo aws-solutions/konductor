@@ -150,6 +150,7 @@ def main() -> int:
         specs[s["name"]] = {
             "model": s.get("config", {}).get("model", ""),
             "claude_skills": claude.get("skills", []),
+            "skill_names": s.get("dependencies", {}).get("skills", {}).get("skillNames", []),
             "sops": s.get("dependencies", {}).get("agentSops", {}).get("agentSopNames", []),
             "kiro_tools": kiro.get("tools", []),
             "kiro_allowed": kiro.get("allowedTools", []),
@@ -208,14 +209,14 @@ def main() -> int:
     # skips it, which is how it kept five stale counts through a roster rewrite.
     skills_counts = {}
     for header, rows in parse_md_tables(read(guide / "skills.md")):
-        if header[:2] != ["Agent", "Skills declared"]:
+        if header[:2] != ["Agent", "Skills preloaded (Claude Code)"]:
             continue
         for row in rows:
             name = strip_md(row[0])
             if name in specs and len(row) > 1:
                 skills_counts[name] = row[1]
     if not skills_counts:
-        fail("skills.md: no 'Agent | Skills declared' table found")
+        fail("skills.md: no 'Agent | Skills preloaded (Claude Code)' table found")
     else:
         bad = {n: v for n, v in skills_counts.items()
                if v != str(len(specs[n]["claude_skills"]))}
@@ -305,7 +306,8 @@ def main() -> int:
         if not m:
             continue
         for skill in re.findall(r"`([a-z0-9-]+)`", m.group(0)):
-            if skill in disk_skills and owner not in declared_by.get(skill, set()):
+            if (skill in disk_skills and owner not in declared_by.get(skill, set())
+                    and skill not in specs[owner]["skill_names"]):
                 named_fails.append(
                     f"agents.md: {owner}'s card names `{skill}`, which {owner} does not declare"
                 )

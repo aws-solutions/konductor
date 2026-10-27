@@ -10,11 +10,6 @@ not per individual commit.
 
 ### Added
 
-- Claude Code plugin telemetry. A plugin hook sends `agent_invocation` and
-  `subagent_invocation` events for Konductor's own agents, in the CLI's format, with
-  `claude-plugin` as the harness. It is on by default and shares the machine ID in
-  `~/.konductor/telemetry.json` with the CLI. Turn it off with the plugin's
-  `telemetry_enabled` option or any existing opt-out.
 - `cli/gate-config/sop-orchestration.yml` classifies every shipped SOP as `gated` or
   `not_gated`, with the gate kind and step for each gated one. The four gated SOPs
   (`k-full-sdlc`, `k-design-doc-creation`, `k-principal-engineer-design-review`,
@@ -23,14 +18,56 @@ not per individual commit.
   `make sop-orchestration-check`, run on every pull request, fails when the list, the marker
   lines and `agent-sops/` disagree.
 
+### Changed
+
+- The orchestrators (`konductor`, `konductor-mux-orchestrator`, `konductor-cmux-orchestrator`)
+  may now read files, search the codebase, run read-only shell commands, and answer lookup
+  questions themselves instead of spawning a specialist for each. One table in
+  `context/k-orchestrator-routing-rules.md` defines what is allowed, including the
+  `k-light-ui-testing` SOP-step exception, and `claude-teams-behavior`, `mux-dispatch`, and
+  `cmux-dispatch` point at it. The 10-file read budget covers requests the orchestrator answers
+  itself; for a request it will delegate, it reads only what routing and the brief need and
+  passes file paths. Writes, state-changing git, builds, tests, and whole phases still go to
+  specialists. The three orchestrator prompts also drop the
+  Ultrawork framing, state the parallel rule once, and remove rules already defined in the
+  `constraints` skill and the routing rules.
+
 ### Fixed
 
-- Setting a key in `.konductor/config.yml` from the CLI rewrote the file from its six known
-  fields, so it dropped every other key and block, including a `telemetry:` block that turns
-  telemetry off for the repo. It now changes only the named key and keeps every other key,
-  block and the key order. A file that is not a YAML mapping is refused with exit 64 and left
-  unchanged. The file is re-serialized, so comments, anchors and the original formatting of
-  values are not kept.
+- Routing skills now agree with the orchestrator prompts. `mux-dispatch` peeks at a running
+  pane only on the prompt's polling fallback, and `delegation-protocol` applies rule 5's
+  fix-attempt cap and 2-Strike Circuit Breaker instead of its own cycle count, and limits its
+  retry-once recovery to spawns that error, time out, or return nothing.
+- The SOP Selection Contract no longer rules out single-procedure SOPs such as `k-plan`. A
+  request matches a SOP row when it asks for what the row's User intent describes, a whole
+  workflow or one named procedure. A single deliverable that no row describes still goes to an
+  agent. Keyword overlap matches no row, and neither does a lookup the orchestrator answers within
+  its read budget. A thorough codebase or documentation search matches `k-comprehensive-search`.
+  The three orchestrator prompts now run the SOP check on every request, not only on multi-phase
+  ones.
+- `konductor config set` no longer drops other keys and blocks from `.konductor/config.yml`,
+  such as a `telemetry:` opt-out. It now changes only the named key.
+
+## [1.2.0] - 2026-10-26
+
+### Added
+
+- Claude Code plugin telemetry. A plugin hook sends `agent_invocation` and
+  `subagent_invocation` events for Konductor's own agents, in the CLI's format, with
+  `claude-plugin` as the harness. It is on by default and shares the machine ID in
+  `~/.konductor/telemetry.json` with the CLI. Turn it off with the plugin's
+  `telemetry_enabled` option or any existing opt-out.
+
+### Changed
+
+- Every agent now loads `context/k-core-rules.md` at session start. It holds the NEVER DO
+  rules, moved from the `constraints` skill, and a writing-habits rule: no em or en dashes,
+  AI vocabulary, or filler in new sentences, even when nearby text has them.
+- Every agent declares `humanize-writing`, and its description now covers writing as well
+  as editing.
+
+### Fixed
+
 - The Claude Code plugin release candidate could include untracked build output (`cli/`,
   `build/`, `dist/`, `generated/`) from the release job's checkout. The candidate is now built
   only from the assembled plugin tree, its file list is checked against that tree, and any
@@ -56,6 +93,12 @@ not per individual commit.
 - `k-architect` and `k-developer` no longer tell agents to use `aws___call_aws`, a tool the AWS MCP server has removed. Both now point at `aws___run_script`, which runs sandboxed Python with AWS API access.
 - `find-aws-skills`' failure-handling fallback no longer references `aws___suggest_aws_commands`, which the AWS MCP server does not expose. It now offers direct AWS API calls via `aws___run_script` (sandboxed Python).
 - `aws-service-validator` calls `aws___get_regional_availability` with `resource_type` (required), `regions`, and `filters` (required for more than one region), instead of a bare service-and-region call.
+
+### Security
+
+- `rustls` moves from `0.23.43` to `0.23.45` in the CLI, the skill-lookup MCP server, and the
+  shared telemetry test sink, fixing GHSA-2mjx-qc3c-rqvc (TLS 1.3 handshake messages were
+  accepted across encryption level boundaries).
 
 ## [1.1.0] - 2026-10-14
 
@@ -100,9 +143,6 @@ not per individual commit.
 
 ### Security
 
-- `rustls` moves from `0.23.43` to `0.23.45` in the CLI, the skill-lookup MCP server, and the
-  shared telemetry test sink, fixing GHSA-2mjx-qc3c-rqvc (TLS 1.3 handshake messages were
-  accepted across encryption level boundaries).
 - `aws-mcp` uses `mcp-proxy-for-aws-cli==1.7.0` instead of a moving package version. The managed endpoint still supplies current AWS documentation and skills.
 - The plugin release no longer force-pushes directly to a public branch. `publish-claude-plugin`
   pushes a fresh, collision-resistant candidate branch (release version plus workflow run
