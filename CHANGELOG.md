@@ -6,6 +6,22 @@ This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Entries are consolidated per release,
 not per individual commit.
 
+## [Unreleased]
+
+### Changed
+
+- The orchestrators (`konductor`, `konductor-mux-orchestrator`, `konductor-cmux-orchestrator`)
+  may now read files, search the codebase, run read-only shell commands, and answer lookup
+  questions themselves instead of spawning a specialist for each. One table in
+  `context/k-orchestrator-routing-rules.md` defines what is allowed, including the
+  `k-light-ui-testing` SOP-step exception, and `claude-teams-behavior`, `mux-dispatch`, and
+  `cmux-dispatch` point at it. The 10-file read budget covers requests the orchestrator answers
+  itself; for a request it will delegate, it reads only what routing and the brief need and
+  passes file paths. Writes, state-changing git, builds, tests, and whole phases still go to
+  specialists. The three orchestrator prompts also drop the
+  Ultrawork framing, state the parallel rule once, and remove rules already defined in the
+  `constraints` skill and the routing rules.
+
 ## [1.2.0] - 2026-10-26
 
 ### Added
@@ -23,17 +39,6 @@ not per individual commit.
   AI vocabulary, or filler in new sentences, even when nearby text has them.
 - Every agent declares `humanize-writing`, and its description now covers writing as well
   as editing.
-- The orchestrators (`konductor`, `konductor-mux-orchestrator`, `konductor-cmux-orchestrator`)
-  may now read files, search the codebase, run read-only shell commands, and answer lookup
-  questions themselves instead of spawning a specialist for each. One table in
-  `context/k-orchestrator-routing-rules.md` defines what is allowed, including the
-  `k-light-ui-testing` SOP-step exception, and `claude-teams-behavior`, `mux-dispatch`, and
-  `cmux-dispatch` point at it. The 10-file read budget covers requests the orchestrator answers
-  itself; for a request it will delegate, it reads only what routing and the brief need and
-  passes file paths. Writes, state-changing git, builds, tests, and whole phases still go to
-  specialists. The three orchestrator prompts also drop the
-  Ultrawork framing, state the parallel rule once, and remove rules already defined in the
-  `constraints` skill and the routing rules.
 
 ### Fixed
 
