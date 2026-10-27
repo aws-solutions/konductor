@@ -9,6 +9,12 @@ export const LAUNCH_WINDOW_MS = 60_000;
 export interface SessionGateOptions {
   clock: Clock;
   launchCode: string;
+  /**
+   * For a dev flow that reloads the page: the launch code works again, with
+   * no time limit, and gives the token it gave the first time. A reload
+   * drops the token from the page, and the address it was read from.
+   */
+  reusableLaunchCode?: boolean;
 }
 
 /**
@@ -18,12 +24,14 @@ export interface SessionGateOptions {
 export class SessionGate {
   private readonly clock: Clock;
   private readonly launchCode: string;
+  private readonly reusable: boolean;
   private expiresAt = 0;
   private token: string | undefined;
 
   constructor(options: SessionGateOptions) {
     this.clock = options.clock;
     this.launchCode = options.launchCode;
+    this.reusable = options.reusableLaunchCode === true;
   }
 
   /** Starts the launch window: call it as the stub hands out the code. */
@@ -31,16 +39,22 @@ export class SessionGate {
     this.expiresAt = this.clock.now() + LAUNCH_WINDOW_MS;
   }
 
-  /** Trades the launch code for the token. The code works once. */
+  /**
+   * Trades the launch code for the token. The code works once, unless the
+   * gate is reusable: then it works any time and gives the same token.
+   */
   exchange(code: string): string {
     const right = sameSecret(code, this.launchCode);
-    const open = this.token === undefined && this.clock.now() < this.expiresAt;
-    if (!right || !open) {
+    if (!right || !this.isOpen()) {
       throw new ApiError('invalid_code', 'The launch code is not valid.');
     }
-    const token = newSecret();
-    this.token = token;
-    return token;
+    this.token ??= newSecret();
+    return this.token;
+  }
+
+  private isOpen(): boolean {
+    if (this.reusable) return true;
+    return this.token === undefined && this.clock.now() < this.expiresAt;
   }
 
   /** Refuses a call whose `Authorization` header is not the session token. */

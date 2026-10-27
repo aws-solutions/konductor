@@ -79,6 +79,36 @@ describe('POST /api/session', () => {
   });
 });
 
+describe('POST /api/session on a stub with a reusable launch code', () => {
+  const stub = useStub({ reusableLaunchCode: true }, false);
+
+  it('gives the same token again for the same code, as a reloaded page needs', async () => {
+    const { client } = stub();
+    const first = await client.post(SESSION, { code: LAUNCH_CODE });
+    const again = await client.post(SESSION, { code: LAUNCH_CODE });
+    expectContract(again, 'POST', SESSION);
+    expect(again.status).toBe(200);
+    expect(again.body).toEqual(first.body);
+  });
+
+  it('keeps taking the code after the 60 seconds', async () => {
+    const { client, clock } = stub();
+    await client.post(SESSION, { code: LAUNCH_CODE });
+    clock.advance(10 * LAUNCH_WINDOW_MS);
+    const late = await client.post(SESSION, { code: LAUNCH_CODE });
+    expect(late.status).toBe(200);
+  });
+
+  it('still refuses a wrong code', async () => {
+    const { client } = stub();
+    await client.post(SESSION, { code: LAUNCH_CODE });
+    const wrong = await client.post(SESSION, { code: 'not-the-code' });
+    expectContract(wrong, 'POST', SESSION);
+    expect(wrong.status).toBe(401);
+    expect(wrong.body).toMatchObject({ code: 'invalid_code' });
+  });
+});
+
 describe('the other calls', () => {
   const stub = useStub({}, false);
   const calls: [string, string, unknown][] = [
