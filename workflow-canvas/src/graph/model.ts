@@ -1,10 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
 
+/** One stage to draw. */
+export interface StageSpec {
+  /**
+   * What names the stage's node. It defaults to the name of the stage, which
+   * is unique in a saved workflow. A workflow being edited may give two stages
+   * one name for a moment, or change a name, so it gives an id that does not.
+   */
+  id?: string;
+  name: string;
+  agent: string;
+}
+
 /** The part of a workflow that can be drawn. The API view satisfies it. */
 export interface WorkflowSpec {
   name: string;
   intent: { outcome: string };
-  stages: readonly { name: string; agent: string }[];
+  stages: readonly StageSpec[];
 }
 
 /** How far a node has got in a run. */
