@@ -6,6 +6,19 @@ This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Entries are consolidated per release,
 not per individual commit.
 
+## [Unreleased]
+
+### Added
+
+- `workflow-canvas/`, a browser UI for designing and running workflows (Vite, React, Cloudscape), with CI.
+- Playwright end-to-end tests and screenshots for `workflow-canvas/`, run in CI.
+- HTTP API contract for the workflow canvas (`workflow-canvas/api/openapi.yaml`), checked by `npm run api:lint`.
+- Stub API for the workflow canvas (`npm run stub`, `npm run dev:stub`); `WC_API_TARGET` points the page at a real server.
+- The Designer tab draws the workflow as a read-only graph.
+- The workflow canvas uses the Konductor docs theme, with light and dark modes.
+- The Execution tab runs the workflow and shows live node states.
+- The Designer tab edits stages (agent, rename, add, delete) and saves with checks while typing.
+
 ## [1.2.0] - 2026-10-26
 
 ### Added
@@ -15,85 +28,6 @@ not per individual commit.
   `claude-plugin` as the harness. It is on by default and shares the machine ID in
   `~/.konductor/telemetry.json` with the CLI. Turn it off with the plugin's
   `telemetry_enabled` option or any existing opt-out.
-- `workflow-canvas/`, a browser UI for designing and running workflows, built with Vite,
-  React, TypeScript and Cloudscape, on Node 24 and 26. This first step is an empty page with
-  Designer and Execution tabs, plus a CI workflow that lints, typechecks, tests and builds it.
-- Playwright end-to-end tests for `workflow-canvas/`: a functional suite (page title, `main`
-  landmark, tab switching, axe accessibility check on each tab) run by `npm run test:e2e`, and
-  `npm run screenshots`, which regenerates the committed full-page tab screenshots that pull
-  requests embed. Only that script writes the screenshots, and it renders them with a pinned
-  font so they match across machines. ESLint checks the e2e code for missing `await` and fixed
-  waits. CI runs both, uploads the HTML report and screenshots as artifacts, and fails when the
-  screenshots differ from the committed files.
-- HTTP API contract for the workflow canvas, `workflow-canvas/api/openapi.yaml` (OpenAPI 3.1).
-  It describes the session, load, save and check of a workflow, and start and status of a run,
-  for a workflow of `name`, `intent` and `stages` (each a `name` and an `agent`) on the `kiro-cli`
-  harness. It also states the accepted workflow text (YAML 1.2, core schema), the check rules and
-  the diagnostic codes.
-  `npm run api:lint` validates the file against the OpenAPI 3.1 specification and checks every
-  example against its schema and against the rules of the contract, and CI runs it. Every server of
-  the API follows this contract.
-- Stub API for the workflow canvas, `workflow-canvas/stub-api/`. A local server on `127.0.0.1`
-  (`npm run stub`) that serves the six calls of the API contract from memory, with a fixed
-  `hello` workflow and runs that are faked over time. It is a development stub with no real
-  auth. Its rules (the workflow check, the file store and the run simulator) do no IO, and
-  functional tests (`npm run test:stub`) call it over HTTP and check each reply against the
-  contract. CI runs them, and the Playwright config starts the stub beside the app. In
-  `npm run dev`, the Vite server forwards `/api` to the stub, so the page and the API share one
-  origin. `WC_API_TARGET` points `/api` (and the end-to-end tests) at a real server instead, and
-  `npm run dev:stub` starts the stub and the dev server together. A bad `WC_API_TARGET` or
-  `STUB_PORT` stops only the commands that need it (not `build` or `npm test`), with a one-line
-  error that hides credentials. `STUB_PORT` must be 1-65535, so `STUB_PORT=0` is rejected: the stub
-  needs a fixed port. The stub of `npm run dev:stub` and the one that Playwright starts take the
-  launch code again and give the same token, so opening the printed address again after a
-  reload works; `npm run stub` on its own keeps the contract's one use.
-  The dev proxy sends the target's `Origin` only for a request from the page itself; any other
-  `Origin`, or none, is forwarded unchanged, so the API refuses a page on another origin.
-- The Designer tab of the workflow canvas draws the workflow from the API, read-only: the intent,
-  each stage in list order with its agent and harness, and the end, joined by run-order edges,
-  using React Flow. The page opens a session with the launch code in its address, loads
-  `GET /api/workflow`, and shows loading, error and empty states. The graph is built by an IO-free
-  core, tested like the stub core, and the end-to-end tests and screenshots now cover the canvas
-  on the stub.
-- The workflow canvas page now has the look of the Konductor docs theme: its colours, the Outfit
-  and JetBrains Mono fonts (bundled with the page, so no font is requested from another site),
-  and its corner radii, applied through the public Cloudscape theming API. A top bar with the K
-  logo, the page name and a light/dark toggle sits above a dark header band with the breadcrumb
-  `Workflows > hello`, the title and the Designer and Execution tabs. The mode follows the system
-  setting on the first visit, and a choice made with the toggle is kept in local storage. Nodes,
-  the `S` run-order ports (a square tab that fits a square notch) and the links are drawn in the
-  same theme in both modes. The whole tab strip is part of the dark band. Text meets WCAG AA in
-  both modes, and the edges of the controls, ports and the selected-tab indicator reach 3:1,
-  checked by unit tests and by axe in the end-to-end tests. A dark-mode Designer screenshot
-  joins the committed screenshots.
-- The Execution tab of the workflow canvas draws the same graph as the Designer, read-only, with
-  a Run button and a goal box (it starts as the outcome of the intent). Run calls `POST /api/run`
-  and reads `GET /api/runs/{id}` once a second until the run ends, using the stub or the server
-  named by `WC_API_TARGET`. Each node shows its live state as a word and a colour from the theme
-  (queued, running, done, failed), the end shows the result, and the tab says where the run is in
-  a live region for screen readers. An error from the API shows in one alert that a screen reader
-  reads out. A failed read is tried again, and a 409 `already_running` makes the tab follow the run that
-  is already going. After a reload, when the launch address is opened again, the tab follows a
-  run that is still going, from the id it keeps in `sessionStorage`. A call that gets no answer ends
-  after 15 seconds. The run logic is an IO-free core with a clock port, tested without waiting,
-  and the end-to-end tests and screenshots cover a run on the stub.
-- The Designer tab of the workflow canvas can edit a workflow, in `workflow-canvas/`: pick the
-  agent of a stage from a list, rename a stage, add an agent stage and delete one, then save
-  through `PUT /api/workflow` with the `base_hash` of the loaded file. The stages stay a `name`
-  and an `agent`, run in list order, with no other key. Only the block of stages of the file
-  changes. Edits are checked with `POST /api/validate` after a short pause and shown under the
-  field and in an alert; a save of a file that changed on disk (409) says so and offers to load it
-  again, and a save whose answer is lost is settled by reading the file; the last findings stay on
-  show until the next check answers; Save is off only while the check finds an error; warnings and
-  notes show as notes. A read-only workflow turns the editing controls off. A file whose stages
-  are not a block is written whole on save, and a note says so. Add, rename, delete and save work
-  with the keyboard and keep focus. The draft is kept when the tabs are switched, and the
-  Execution tab draws the saved workflow. While the draft has changes that are not saved, closing
-  or reloading the page makes the browser ask first. A stage name that two stages share is marked
-  at the field of both, and a stage with no name is called by its place in the list of problems.
-  A message about a stopped server or a lost session ends with what to do next. The API contract
-  is unchanged. The end-to-end tests gain an `editing` project that saves to the stub, and
-  `npm run screenshots` gains five Designer captures.
 
 ### Changed
 
