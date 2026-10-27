@@ -22,11 +22,14 @@ export class ApiError extends Error {
   readonly status: number;
   /** The `code` of the error body, when there was one. */
   readonly code?: string;
+  /** The `run_id` of the error body, when there was one. */
+  readonly runId?: string;
 
-  constructor(message: string, status: number, code?: string) {
+  constructor(message: string, status: number, code?: string, runId?: string) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.code = code;
+    this.runId = runId;
   }
 }
