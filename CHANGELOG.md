@@ -18,6 +18,13 @@ not per individual commit.
 - `workflow-canvas/`, a browser UI for designing and running workflows, built with Vite,
   React, TypeScript and Cloudscape, on Node 24 and 26. This first step is an empty page with
   Designer and Execution tabs, plus a CI workflow that lints, typechecks, tests and builds it.
+- Playwright end-to-end tests for `workflow-canvas/`: a functional suite (page title, `main`
+  landmark, tab switching, axe accessibility check on each tab) run by `npm run test:e2e`, and
+  `npm run screenshots`, which regenerates the committed full-page tab screenshots that pull
+  requests embed. Only that script writes the screenshots, and it renders them with a pinned
+  font so they match across machines. ESLint checks the e2e code for missing `await` and fixed
+  waits. CI runs both, uploads the HTML report and screenshots as artifacts, and fails when the
+  screenshots differ from the committed files.
 
 ### Changed
 
