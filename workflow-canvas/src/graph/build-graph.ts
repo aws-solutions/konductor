@@ -9,6 +9,7 @@ import {
   type EndGraphNode,
   type IntentGraphNode,
   type StageGraphNode,
+  type StageSpec,
   type Unplaced,
   type UnplacedNode,
   type WorkflowSpec,
@@ -19,9 +20,12 @@ export const INTENT_ID = 'intent';
 /** The id of the node that draws the end. */
 export const END_ID = 'end';
 
-/** The id of the node that draws the stage called `name`. */
-export function stageNodeId(name: string): string {
-  return `stage-${name}`;
+/**
+ * The id of the node that draws a stage, from its `id`, or from its name if
+ * it has no id.
+ */
+export function stageNodeId(key: string): string {
+  return `stage-${key}`;
 }
 
 function intentNode(spec: WorkflowSpec): Unplaced<IntentGraphNode> {
@@ -35,11 +39,11 @@ function intentNode(spec: WorkflowSpec): Unplaced<IntentGraphNode> {
 }
 
 function stageNode(
-  stage: WorkflowSpec['stages'][number],
+  stage: StageSpec,
   harness: string,
 ): Unplaced<StageGraphNode> {
   return {
-    id: stageNodeId(stage.name),
+    id: stageNodeId(stage.id ?? stage.name),
     ariaLabel: `Stage ${stage.name}, agent ${stage.agent}, harness ${harness}`,
     type: 'stage',
     height: NODE_HEIGHT.stage,

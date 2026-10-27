@@ -8,6 +8,8 @@ import { Breadcrumbs } from './chrome/Breadcrumbs';
 import './chrome/chrome.css';
 import { TOP_BAR_ID, TopBar } from './chrome/TopBar';
 import { Designer } from './designer/Designer';
+import { isDirty } from './designer/core';
+import { useEditor } from './designer/use-editor';
 import { useSettled } from './designer/use-settled';
 import type { RunMemory, Scheduler } from './execution/core';
 import { Execution } from './execution/Execution';
@@ -49,6 +51,9 @@ export function App({
   );
   const [goal, setGoal] = useGoal(result);
   const [mode, toggleMode] = useThemeMode();
+  // The Designer edits a draft; the run and the Execution tab use the file
+  // as it is saved.
+  const editor = useEditor(result?.ok ? result.workflow : undefined);
   return (
     <>
       <TopBar mode={mode} onToggle={toggleMode} />
@@ -77,7 +82,7 @@ export function App({
                   {
                     id: 'designer',
                     label: 'Designer',
-                    content: <Designer result={result} />,
+                    content: <Designer result={result} editor={editor} />,
                   },
                   {
                     id: 'execution',
@@ -88,6 +93,7 @@ export function App({
                         execution={execution}
                         goal={goal}
                         onGoalChange={setGoal}
+                        unsaved={editor ? isDirty(editor.state) : false}
                       />
                     ),
                   },

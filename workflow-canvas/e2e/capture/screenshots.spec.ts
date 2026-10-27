@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { expect, test } from '../support/fixtures';
+import { expect, test } from '../support/editing-fixtures';
 import { answerRunsWith, runReply } from '../support/run-routes';
 import { saveFullPageScreenshot } from '../support/screenshots';
 import type { WorkflowCanvasPage } from '../support/workflow-canvas-page';
@@ -86,4 +86,30 @@ test('capture the Execution tab in the dark mode during a run', async ({
   await leaveRunButton(canvas);
 
   await saveFullPageScreenshot(canvas.page, 'execution-tab-dark');
+});
+
+// Editing. The stub's workflow is not touched: these only change the draft.
+// These two change what a stage says but add none: a longer graph is fitted at
+// a fractional zoom, and the edges of such a view differ by a level of grey
+// between machines, which the byte-exact check cannot take.
+test('capture the Designer tab with unsaved edits', async ({ designer }) => {
+  await designer.chooseAgent('k-architect');
+  await designer.stage('review').click();
+  await designer.rename('ship');
+  await designer.stage('ship').waitFor();
+
+  await saveFullPageScreenshot(designer.page, 'designer-editing');
+});
+
+test('capture the Designer tab with unsaved edits in the dark mode', async ({
+  canvas,
+  designer,
+}) => {
+  await canvas.switchTheme();
+  await designer.chooseAgent('k-architect');
+  await designer.stage('review').click();
+  await designer.rename('ship');
+  await designer.stage('ship').waitFor();
+
+  await saveFullPageScreenshot(designer.page, 'designer-editing-dark');
 });
