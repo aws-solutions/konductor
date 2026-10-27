@@ -8,6 +8,14 @@ not per individual commit.
 
 ## [Unreleased]
 
+### Added
+
+- Kiro installs (`kiro-cli-v2`, `kiro-v3`) write a small `ks-<name>/SKILL.md` pointer per skill
+  into `.kiro/skills/`, so Kiro lists every skill by name and description. The body still loads
+  through the `konductor-skills` MCP server's `get_skill`, so skill-load telemetry is unchanged;
+  if that tool is unavailable the pointer falls back to reading `.konductor/skills/<name>/SKILL.md`.
+  Pointers are tracked in the manifest and removed by `uninstall`. Claude installs are unchanged.
+
 ### Changed
 
 - The orchestrators (`konductor`, `konductor-mux-orchestrator`, `konductor-cmux-orchestrator`)

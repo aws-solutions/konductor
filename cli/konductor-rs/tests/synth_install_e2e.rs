@@ -281,11 +281,11 @@ fn real_synth_then_real_install_agree_on_output_path_and_bytes() {
         "synth's real skill output file must not be empty"
     );
 
-    let installed_skill_files = find_files_named(&target_dir, "SKILL.md");
+    let installed_skill_files = find_files_named(&target_dir.join(".konductor/skills"), "SKILL.md");
     assert_eq!(
         installed_skill_files.len(),
         1,
-        "expected exactly one installed SKILL.md somewhere under {}, found: {:?}",
+        "expected exactly one installed SKILL.md under {}/.konductor/skills, found: {:?}",
         target_dir.display(),
         installed_skill_files
     );
@@ -942,7 +942,13 @@ fn real_synth_then_real_install_scopes_skill_resources_to_konductor_skills() {
     assert!(target_dir
         .join(".konductor/skills/skill-b/SKILL.md")
         .is_file());
-    assert!(!target_dir.join(".kiro/skills").exists());
+    // Skill bodies stay out of `.kiro/skills/`; only the `ks-` pointers land there.
+    let mut kiro_skill_dirs: Vec<String> = std::fs::read_dir(target_dir.join(".kiro/skills"))
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    kiro_skill_dirs.sort();
+    assert_eq!(kiro_skill_dirs, ["ks-skill-a", "ks-skill-b"]);
 
     std::fs::remove_dir_all(&repo_root).ok();
     std::fs::remove_dir_all(&target_dir).ok();

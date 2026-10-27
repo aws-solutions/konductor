@@ -52,11 +52,11 @@
 use std::path::Path;
 
 use super::kiro_cli::{
-    attach_provenance, content_manifest_path, install_context, install_kiro_sop_skills,
-    install_skills, install_sops, list_agent_files, plan_additive_claude_sop_skill_files,
-    plan_all_files, plan_claude_hooks_file, plan_claude_settings_grant, read_skill_scopes_sidecar,
-    read_sop_scopes_sidecar, reject_unsafe_file_name, PlannedFile, KIRO_DESTINATION_ROOT,
-    KONDUCTOR_DESTINATION_ROOT,
+    attach_provenance, content_manifest_path, install_context, install_kiro_skill_pointers,
+    install_kiro_sop_skills, install_skills, install_sops, list_agent_files,
+    plan_additive_claude_sop_skill_files, plan_all_files, plan_claude_hooks_file,
+    plan_claude_settings_grant, read_skill_scopes_sidecar, read_sop_scopes_sidecar,
+    reject_unsafe_file_name, PlannedFile, KIRO_DESTINATION_ROOT, KONDUCTOR_DESTINATION_ROOT,
 };
 use super::manifest::{classify_provenance, ManifestFile, Provenance, Status, StrategyManifest};
 use super::resource_rewrite::{
@@ -315,6 +315,7 @@ impl InstallStrategy for KiroCliV3InstallStrategy {
         // Kiro-discoverable conversion, alongside the raw copy above --
         // see `install_kiro_sop_skills`'s own doc comment.
         raw_files.extend(install_kiro_sop_skills(&harness_dir, target_dir)?);
+        raw_files.extend(install_kiro_skill_pointers(&harness_dir, target_dir)?);
         // Additive Claude branch, mirroring `SopInstallPhase::run`'s
         // dual-marker branch: this run is this strategy's own, but the
         // target also has a pre-existing `.claude` marker. Always

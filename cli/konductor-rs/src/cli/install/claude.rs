@@ -915,7 +915,7 @@ fn strip_trailing_punctuation_artifacts(text: &str) -> &str {
 /// derived values). This is what makes an Overview line containing a
 /// colon safe as a YAML scalar: unlike a plain/unquoted scalar, `": "`
 /// inside a double-quoted string is never a mapping separator.
-fn yaml_double_quote(text: &str) -> String {
+pub(super) fn yaml_double_quote(text: &str) -> String {
     let mut out = String::with_capacity(text.len() + 2);
     out.push('"');
     for c in text.chars() {

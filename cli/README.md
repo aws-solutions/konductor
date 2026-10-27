@@ -276,7 +276,13 @@ below.
 
 Skills land under `.konductor/skills/`, deliberately outside `.kiro/skills/`: Kiro CLI's
 own skill discovery scans `.kiro/skills/` unconditionally and makes every skill visible
-to every agent regardless of what it declares, which defeats per-agent scoping. Skill
+to every agent regardless of what it declares, which defeats per-agent scoping. Only a
+small `ks-<name>/SKILL.md` pointer per skill is written there, carrying the skill's name
+and description plus instructions to load the body with the `konductor-skills` MCP
+server's `get_skill` tool (falling back to reading `.konductor/skills/<name>/SKILL.md`);
+the `ks-` prefix keeps pointers apart from same-named skills other tools install. The
+pointers are tracked in the manifest, so `update` and `uninstall` handle them; Claude
+installs get none. Skill
 install merges into `<target>/.konductor/skills/`: a skill directory this install did
 not emit (e.g. hand-authored) is left untouched, but a skill directory it does own is
 fully replaced so a file removed from the source doesn't linger in the destination.

@@ -13,8 +13,8 @@ use std::path::Path;
 use super::super::manifest::{classify_provenance, ManifestFile, Provenance, StrategyManifest};
 use super::super::runtime::{detect_runtimes, Runtime};
 use super::{
-    list_agent_files, list_agent_files_like, list_skill_dirs, CONTEXT_RESOURCE_PREFIX,
-    KIRO_DESTINATION_ROOT, KONDUCTOR_DESTINATION_ROOT,
+    list_agent_files, list_agent_files_like, list_skill_dirs, plan_kiro_skill_pointer_files,
+    CONTEXT_RESOURCE_PREFIX, KIRO_DESTINATION_ROOT, KONDUCTOR_DESTINATION_ROOT,
 };
 use crate::cli::synth::kiro_cli_v2::{
     AGENTS_CONTENT_TYPE_DIR, CONTEXT_CONTENT_TYPE_DIR, SKILLS_CONTENT_TYPE_DIR,
@@ -110,6 +110,11 @@ pub(in crate::cli::install) fn plan_all_files(
     plan.extend(plan_skill_files(harness_dir, target_dir, prior_manifest)?);
     plan.extend(plan_sop_files(harness_dir, target_dir, prior_manifest)?);
     plan.extend(plan_kiro_sop_skill_files(
+        harness_dir,
+        target_dir,
+        prior_manifest,
+    )?);
+    plan.extend(plan_kiro_skill_pointer_files(
         harness_dir,
         target_dir,
         prior_manifest,

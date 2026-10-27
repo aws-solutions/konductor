@@ -11,17 +11,20 @@
 // Skills land under `.konductor/skills/`, not `.kiro/skills/`: Kiro CLI's
 // native skill discovery scans `.kiro/skills/` unconditionally and makes
 // every skill visible to every agent, which defeats per-agent scoping.
-// Keeping skills outside that scanned directory means a skill is only
+// Keeping skill bodies outside that scanned directory means a body is only
 // visible to an agent that references it via a `skill://` resource entry.
+// Only the small `ks-<name>/SKILL.md` pointers (`skill_pointers.rs`) land in
+// `.kiro/skills/`, so every skill's name and description is discoverable.
 //
 // Skill install merges into `.konductor/skills/`: a directory this install
 // did not emit is left untouched; one it does own is replaced wholesale so
 // removed files don't linger.
 //
 // This file's logic is split under `kiro_cli/`: `plan.rs` (write-ahead
-// planning), `copy.rs` (copy/install execution), `fs_util.rs` (shared
-// filesystem primitives). This file keeps the `InstallStrategy` impl and
-// re-exports what sibling modules and tests depend on.
+// planning), `copy.rs` (copy/install execution), `skill_pointers.rs`
+// (native skill pointers), `fs_util.rs` (shared filesystem primitives).
+// This file keeps the `InstallStrategy` impl and re-exports what sibling
+// modules and tests depend on.
 
 use std::path::Path;
 
@@ -309,6 +312,7 @@ impl InstallStrategy for KiroCliInstallStrategy {
 mod copy;
 mod fs_util;
 mod plan;
+mod skill_pointers;
 
 // Re-exports so sibling `install` modules (`claude`, `mcp_server`) and this
 // module's own tests can keep using unqualified paths after the split into
@@ -324,6 +328,7 @@ pub(super) use plan::{
     plan_claude_hooks_file, plan_claude_settings_grant, plan_skill_dir_recursive,
     read_skill_scopes_sidecar, read_sop_scopes_sidecar, PlannedFile,
 };
+pub(super) use skill_pointers::{install_kiro_skill_pointers, plan_kiro_skill_pointer_files};
 
 #[cfg(test)]
 pub(super) mod test_support {

@@ -382,6 +382,10 @@ impl InstallPhase for SopInstallPhase {
                 staged_root,
                 target_dir,
             )?);
+            files.extend(super::kiro_cli::install_kiro_skill_pointers(
+                staged_root,
+                target_dir,
+            )?);
 
             // Additive Claude branch: this run is Kiro's own, but the
             // target also has a pre-existing `.claude` marker.

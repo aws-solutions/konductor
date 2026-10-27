@@ -671,7 +671,10 @@ fn parse_skill_dir(dir: &Path, skill_md: &Path, dir_name: &str) -> Result<SkillD
 /// Handles both LF and CRLF line endings: every line-boundary
 /// strip/search here also matches an optional trailing `\r` before
 /// the `\n`, not just the `\n` itself.
-fn split_frontmatter<'a>(raw: &'a str, file_label: &str) -> Result<(&'a str, &'a str), ParseError> {
+pub(crate) fn split_frontmatter<'a>(
+    raw: &'a str,
+    file_label: &str,
+) -> Result<(&'a str, &'a str), ParseError> {
     let rest = raw.strip_prefix("---").ok_or_else(|| ParseError {
         file: file_label.to_string(),
         field: None,
