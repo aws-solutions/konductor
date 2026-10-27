@@ -313,7 +313,11 @@ async fn get_skill_exact_name_match_case_insensitive() {
 
         let response =
             call_get_skill(&mut stdin, &mut reader, 2, serde_json::json!({"name": "mytestskill"}))
-                .await;pected case-insensitive lookup to return the seeded body, got: {content:?}"
+                .await;
+        let content = expect_success_body(&response);
+        assert!(
+            content.contains("The case-insensitive body line."),
+            "expected case-insensitive lookup to return the seeded body, got: {content:?}"
         );
 
         drop(stdin);
@@ -576,7 +580,9 @@ async fn get_skill_body_with_special_characters_round_trips_correctly() {
     })
     .await;
 }
-            &content[content.len().saturating_sub(special_body.len().min(content.len()))..],
+
+#[tokio::test]
+async fn get_skill_empty_name_is_rejected_or_not_found() {
     let dir = fresh_skills_dir("empty-name");
     write_skill_file(
         &dir,
@@ -723,8 +729,18 @@ async fn get_skill_returns_not_found_for_installed_skill_excluded_by_name_filter
     let base = fresh_skills_dir("name-filter-v2-manifest");
     let guard = TempDirGuard(base.clone());
     let skills_root = base.join(".konductor").join("skills");
-    write_skill_file(&skills_root, "keep-me", "Installed and in the filter", "keep-me body.\n");
-    write_skill_file(&skills_root, "drop-me", "Installed but outside the filter", "drop-me body.\n");
+    write_skill_file(
+        &skills_root,
+        "keep-me",
+        "Installed and in the filter",
+        "keep-me body.\n",
+    );
+    write_skill_file(
+        &skills_root,
+        "drop-me",
+        "Installed but outside the filter",
+        "drop-me body.\n",
+    );
     write_skill_file(
         &skills_root,
         "hand-authored",
@@ -768,14 +784,24 @@ async fn get_skill_returns_not_found_for_installed_skill_excluded_by_name_filter
     assert_eq!(counts["indexed"].as_u64(), Some(2), "{counts:?}");
     assert_eq!(counts["filtered_out"].as_u64(), Some(1), "{counts:?}");
 
-    let dropped =
-        call_get_skill(&mut stdin, &mut reader, 3, serde_json::json!({"name": "drop-me"})).await;
+    let dropped = call_get_skill(
+        &mut stdin,
+        &mut reader,
+        3,
+        serde_json::json!({"name": "drop-me"}),
+    )
+    .await;
     let (code, message) = expect_error(&dropped);
     assert_eq!(code, INVALID_PARAMS, "{message:?}");
     assert_eq!(message, "skill not found: drop-me");
 
-    let kept =
-        call_get_skill(&mut stdin, &mut reader, 4, serde_json::json!({"name": "keep-me"})).await;
+    let kept = call_get_skill(
+        &mut stdin,
+        &mut reader,
+        4,
+        serde_json::json!({"name": "keep-me"}),
+    )
+    .await;
     assert!(expect_success_body(&kept).contains("keep-me body."));
 
     let hand_authored = call_get_skill(
@@ -792,6 +818,9 @@ async fn get_skill_returns_not_found_for_installed_skill_excluded_by_name_filter
         .await
         .expect("timed out waiting for skill-lookup-mcp to exit")
         .expect("failed to wait on child process");
-    assert!(status.success(), "skill-lookup-mcp did not exit cleanly: {status:?}");
+    assert!(
+        status.success(),
+        "skill-lookup-mcp did not exit cleanly: {status:?}"
+    );
     drop(guard);
 }
