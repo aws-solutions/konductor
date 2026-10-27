@@ -17,6 +17,7 @@ not per individual commit.
 - The Designer tab draws the workflow as a read-only graph.
 - The Designer says when a pasted launch address is refused, and shows error names as code instead of in backticks.
 - Pasting a launch address into the open tab opens the new workflow without a reload, fitted to the canvas, and keeps the open one if the code is refused.
+- The workflow canvas uses the Konductor docs theme, with light and dark modes.
 
 ### Changed
 
