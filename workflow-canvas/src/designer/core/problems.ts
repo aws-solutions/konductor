@@ -13,6 +13,13 @@ export interface Problem {
   /** The stage it is about; `undefined` for a finding about the whole text. */
   stageId?: string;
   field?: StageField;
+  /**
+   * Set on a copy of the problem of a later stage with the same name. The
+   * server reports a name that two stages share on the later one only, so the
+   * copy marks the field of the earlier one too. A list of problems leaves
+   * the copies out; see `listedOf`.
+   */
+  echo?: true;
 }
 
 const BY_INDEX = /^stages\[(\d+)\]\.(name|agent)$/;
@@ -42,16 +49,44 @@ function targetOf(
   );
 }
 
-/** Turns the findings of a check into problems of the stages of the draft. */
+// The copies of the name problems of a stage for the earlier stages that have
+// the same name and no name problem of their own.
+function echoesOf(problems: readonly Problem[], draft: Draft): Problem[] {
+  const named = problems.filter((problem) => problem.field === 'name');
+  const marked = new Set(named.map((problem) => problem.stageId));
+  return named.flatMap((problem) => {
+    const at = draft.stages.findIndex(({ id }) => id === problem.stageId);
+    const name = draft.stages[at]?.name;
+    const earlier = draft.stages
+      .slice(0, Math.max(at, 0))
+      .find((stage) => stage.name === name && !marked.has(stage.id));
+    return earlier
+      ? [{ ...problem, stageId: earlier.id, echo: true as const }]
+      : [];
+  });
+}
+
+/**
+ * Turns the findings of a check into problems of the stages of the draft. A
+ * name problem is copied to the stages that share the name (see `Problem.echo`).
+ */
 export function problemsOf(
   diagnostics: readonly DiagnosticView[],
   draft: Draft,
 ): Problem[] {
-  return diagnostics.map(({ message, path, severity }) => ({
-    message,
-    severity,
-    ...targetOf(path, draft),
-  }));
+  const problems: Problem[] = diagnostics.map(
+    ({ message, path, severity }) => ({
+      message,
+      severity,
+      ...targetOf(path, draft),
+    }),
+  );
+  return [...problems, ...echoesOf(problems, draft)];
+}
+
+/** The problems without the copies, for a list that says each problem once. */
+export function listedOf(problems: readonly Problem[]): Problem[] {
+  return problems.filter((problem) => !problem.echo);
 }
 
 /** The latest check: the revision it spoke for, and what it found. */
@@ -90,9 +125,13 @@ export function notesOf(problems: readonly Problem[]): Problem[] {
   return problems.filter((problem) => problem.severity !== 'error');
 }
 
-/** The messages of `problems`, joined into one sentence, or `undefined`. */
+/**
+ * The messages of `problems`, each once, joined into one sentence, or
+ * `undefined`.
+ */
 export function joinMessages(problems: readonly Problem[]): string | undefined {
-  return problems.map((problem) => problem.message).join(' ') || undefined;
+  const messages = new Set(problems.map((problem) => problem.message));
+  return [...messages].join(' ') || undefined;
 }
 
 /** Whether any finding stops the workflow from being saved. */
