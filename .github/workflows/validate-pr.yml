@@ -104,6 +104,15 @@ jobs:
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
 
+      - name: Check NOTICE.txt lists every shipped third-party crate
+        # generate-notice.js pins cargo to cli/konductor-rs's rust-version, so
+        # install that toolchain first.
+        run: |
+          set -e
+          RUST_VERSION="$(sed -n 's/^rust-version = "\(.*\)"/\1/p' cli/konductor-rs/Cargo.toml)"
+          rustup toolchain install "$RUST_VERSION" --profile minimal
+          make notice-check
+
       - name: Build konductor and run synth (produces dist/)
         run: make synth
 
