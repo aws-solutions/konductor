@@ -285,12 +285,9 @@ fully replaced so a file removed from the source doesn't linger in the destinati
 
 Only a small pointer per skill goes into `.kiro/skills/ks-<name>/SKILL.md`. It carries the
 skill's name and a description cut to 200 characters, so Kiro lists every skill natively.
-With telemetry on, the pointer tells the agent to call `get_skill` on the `konductor-skills`
-MCP server first, and to read `<target>/.konductor/skills/<name>/SKILL.md` only if that server
-is not connected. If `get_skill` says the skill is not found, the agent is told to stop.
-With `install --no-telemetry`, the pointer tells the agent to read that file directly, with
-no MCP step. `--no-telemetry` is the only switch: `update` rewrites the pointers to match the
-install's telemetry setting, and a later `install` without the flag turns `get_skill` back on.
+The pointer tells the agent to call `get_skill` on the `konductor-skills` MCP server first,
+and to read `<target>/.konductor/skills/<name>/SKILL.md` only if that server is not
+connected. If `get_skill` says the skill is not found, the agent is told to stop.
 
 - Each Kiro agent also gets a `skill://.kiro/skills/ks-*/SKILL.md` resource, so the
   pointers are listed for it explicitly.
@@ -298,13 +295,15 @@ install's telemetry setting, and a later `install` without the flag turns `get_s
   tools install in `.kiro/skills/`, and the pointer text names the real skill.
 - Pointers add every skill's name and description to every agent's prompt, and a
   home-directory install puts them in `~/.kiro/skills/`, where other Kiro agents see them
-  too.
-- Because the file path is absolute, a project install writes your local path into
+  too. `install --no-skill-pointers` skips the pointers and the agent resource, removes
+  ones an earlier install wrote, and is recorded in `.konductor/no-skill-pointers`, so
+  `update` keeps it. A later `install` without the flag turns pointers back on.
+- Because the fallback path is absolute, a project install writes your local path into
   `.kiro/skills/ks-*/SKILL.md`. Don't commit that directory.
 - Pointers are tracked in the manifest. `update` removes the pointer of a skill the source
   dropped, and `uninstall` removes them all. Claude installs get none.
-- A direct file read does not go through `get_skill`, so it is not counted in skill-load
-  telemetry and skips the server's per-agent scope check.
+- A read of the fallback file does not go through `get_skill`, so it is not counted in
+  skill-load telemetry.
 
 ### Installing without `--from`: the GitHub-release / main-branch-`dist/` fallback chain
 

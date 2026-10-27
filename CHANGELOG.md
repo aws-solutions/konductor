@@ -10,8 +10,9 @@ not per individual commit.
 
 ### Added
 
-- Kiro installs write a `ks-<name>/SKILL.md` pointer per skill, so Kiro lists each skill natively.
-- A pointer calls `get_skill`; with `--no-telemetry` it reads the skill file directly instead.
+- Kiro installs write a short `ks-<name>/SKILL.md` pointer per skill into `.kiro/skills/` and list
+  them in every agent, so Kiro shows each skill natively. The pointer loads the body with
+  `get_skill`, reading the file only if the server is not connected. `install --no-skill-pointers` opts out.
 
 ### Changed
 

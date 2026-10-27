@@ -185,11 +185,17 @@ pub enum Commands {
 
         /// Opt out of usage-analytics telemetry for this install. No
         /// install record or telemetry hook is written, and any a prior
-        /// install at this target wrote is removed. Kiro skill pointers
-        /// then read the skill file directly instead of calling the MCP
-        /// server's `get_skill`.
+        /// install at this target wrote is removed.
         #[arg(long, display_order = 4)]
         no_telemetry: bool,
+
+        /// Kiro harnesses only: do not write the `ks-<name>` skill pointers
+        /// under `.kiro/skills/` or the matching `skill://` agent resource,
+        /// and remove ones an earlier install wrote. The choice is recorded
+        /// for this target, so `update` keeps it; a later `install` without
+        /// this flag turns the pointers back on.
+        #[arg(long = "no-skill-pointers", action = ArgAction::SetTrue)]
+        no_skill_pointers: bool,
 
         /// Opt in to reading `GITHUB_TOKEN` from the environment for the
         /// no-`--from` remote install path. Without this flag,

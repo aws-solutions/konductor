@@ -698,6 +698,67 @@ pub fn dispatch_install_with(
     )
 }
 
+/// Harness names whose installs write `ks-<name>` skill pointers.
+fn harness_writes_skill_pointers(harness: &str) -> bool {
+    matches!(harness, "kiro-cli-v2" | "kiro-v3")
+}
+
+/// `dispatch_install_with` after recording this run's `--no-skill-pointers`
+/// choice for a Kiro target. The strategy reads the recorded choice
+/// during the install, and `update` reads it too, so the opt-out
+/// outlasts this run. A changed choice also bypasses the
+/// already-at-version skip, since that skip would otherwise ignore it.
+#[allow(clippy::too_many_arguments)]
+pub fn dispatch_install_with_skill_pointer_choice(
+    from: Option<String>,
+    target: Option<String>,
+    harness: String,
+    link_bin: bool,
+    no_telemetry: bool,
+    no_skill_pointers: bool,
+    use_github_token: bool,
+    release_version: Option<String>,
+    force: bool,
+    verbose: bool,
+    json: bool,
+    color: ColorMode,
+) -> u8 {
+    let mut force = force;
+    if harness_writes_skill_pointers(&harness) {
+        if let Ok(destination) = resolve_destination(target.as_deref()) {
+            match kiro_cli::set_skill_pointers_opt_out(&destination, no_skill_pointers) {
+                Ok(changed) => force |= changed,
+                Err(message) => {
+                    super::report::report_error(
+                        "install",
+                        "install.skill_pointer_choice_failed",
+                        &destination,
+                        no_telemetry,
+                        &format!("could not record --no-skill-pointers: {message}"),
+                        Vec::new(),
+                        json,
+                        color,
+                    );
+                    return EXIT_USAGE_ERROR;
+                }
+            }
+        }
+    }
+    dispatch_install_with(
+        from,
+        target,
+        harness,
+        link_bin,
+        no_telemetry,
+        use_github_token,
+        release_version,
+        force,
+        verbose,
+        json,
+        color,
+    )
+}
+
 /// The full `dispatch_install_with` implementation, parameterized by
 /// `remote_installer` -- the no-`--from` remote-install attempt. In
 /// production, `dispatch_install_with` passes a closure that reaches
@@ -920,14 +981,9 @@ fn dispatch_install_with_remote_installer(
         // This is what makes `install --version <v>` skip only when the
         // target is already at exactly that requested version, not
         // merely because it happens to also match "latest".
-        //
-        // A record only exists while telemetry is on, so `--no-telemetry`
-        // over it is a change of setting, not an already-at-version no-op:
-        // the Kiro skill pointers must be rewritten to match.
         let recorded_for_this_harness = crate::cli::telemetry::read_install_info(&destination)
             .and_then(|record| (record.harness == harness).then_some(record.agent_version))
-            .flatten()
-            .filter(|_| !no_telemetry);
+            .flatten();
         if let Some(recorded) = recorded_for_this_harness {
             let incoming_tag = match release_version.as_deref() {
                 Some(requested) => Some(requested.to_string()),
@@ -4293,60 +4349,6 @@ mod tests {
         assert!(
             remote_installer_called.get(),
             "--force must bypass the version-match skip and reach the real fetch attempt"
-        );
-        assert_eq!(code, EXIT_USAGE_ERROR);
-
-        fs::remove_dir_all(&target).ok();
-        fs::remove_dir_all(&repo_root).ok();
-    }
-
-    /// Turning telemetry off over a target that is already at the requested
-    /// version is a change of setting, not an already-at-version no-op: the
-    /// install must reach the fetch so the skill pointers are rewritten.
-    #[test]
-    fn dispatch_install_with_no_telemetry_over_a_matching_recorded_version_still_fetches() {
-        let _home = HomeGuard::new("install-no-telemetry-matching-home");
-        let target = scratch_dir("install-no-telemetry-matching-target");
-        let repo_root = scratch_dir("install-no-telemetry-matching-repo");
-        seed_dist_version(&repo_root, "2.0.0");
-        crate::cli::telemetry::write_install_info(
-            &target,
-            &repo_root,
-            "kiro-cli-v2",
-            "2026-01-01T00:00:00Z",
-        )
-        .unwrap();
-
-        let remote_installer_called = std::rc::Rc::new(std::cell::Cell::new(false));
-        let remote_installer_called_check = remote_installer_called.clone();
-        let code = dispatch_install_with_remote_installer(
-            None,
-            Some(target.to_str().unwrap().to_string()),
-            "kiro-cli-v2".to_string(),
-            false,
-            true, // --no-telemetry
-            false,
-            Some("2.0.0".to_string()),
-            false,
-            false,
-            false,
-            ColorMode::disabled(),
-            move |_strategy, _destination, _installed_at, _no_telemetry| {
-                remote_installer_called_check.set(true);
-                Err(remote_orchestrate::FallbackChainError::ReleaseOnly(
-                    remote_orchestrate::RemoteOrchestrationError::Fetch(
-                        github::GithubFetchError::Network(
-                            "fake network error injected by a test -- no real network call \
-                             was made"
-                                .to_string(),
-                        ),
-                    ),
-                ))
-            },
-        );
-        assert!(
-            remote_installer_called.get(),
-            "--no-telemetry over a telemetry-on target must not be skipped as already-at-version"
         );
         assert_eq!(code, EXIT_USAGE_ERROR);
 

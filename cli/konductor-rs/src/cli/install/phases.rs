@@ -411,8 +411,7 @@ impl InstallPhase for SopInstallPhase {
 /// Writes the `.kiro/skills/ks-<name>/SKILL.md` pointers (see
 /// `kiro_cli::skill_pointers`) for the Kiro chain and prunes the ones a
 /// prior install tracked that this run no longer writes. Only in the Kiro
-/// chain: Claude installs get no pointers. The pointer body follows
-/// `no_telemetry`.
+/// chain: Claude installs get no pointers.
 pub(super) struct SkillPointerInstallPhase;
 
 impl InstallPhase for SkillPointerInstallPhase {
@@ -427,13 +426,12 @@ impl InstallPhase for SkillPointerInstallPhase {
         _repo_root: Option<&Path>,
         prior_manifest: Option<&StrategyManifest>,
         _phase_outputs: &PhaseOutputs,
-        no_telemetry: bool,
+        _no_telemetry: bool,
     ) -> Result<Vec<ManifestFile>, InstallError> {
         Ok(super::kiro_cli::install_kiro_skill_pointers(
             staged_root,
             target_dir,
             prior_manifest,
-            no_telemetry,
         )?)
     }
 }
