@@ -7,7 +7,7 @@ of the agent package or the CLI.
 The page has Designer and Execution tabs. The Designer tab loads the workflow
 from the API and draws it: the intent, each stage in list order (name, agent
 and harness) and the end, joined by run-order edges. You can pick the agent of
-a stage, rename it, add a stage and delete one. It shows a
+a stage, rename it, add a stage, delete one and save the file. It shows a
 loading message, an error message or an empty message when there is nothing to
 draw. The Execution tab draws the saved workflow and runs it: a Run button
 starts a run, and each node shows its live state until the run ends. The
@@ -246,11 +246,12 @@ The rest wraps the core, so the rules can be tested without a browser:
 
 ## The Designer tab
 
-The tab has the graph on the left, with **Add stage** above it, and
-**Properties** on the right. Properties shows the selected stage (the first
-one when the page opens): its `name` and its `agent`, and **Delete stage**. A
-stage is only a `name` and an `agent`, and the stages run in the order they are
-listed, so there is no other field and no way to link or reorder them yet.
+The tab has the graph on the left, with **Add stage** above it and the save
+line and **Save** in its header, and **Properties** on the right. Properties
+shows the selected stage (the first one when the page opens): its `name` and
+its `agent`, and **Delete stage**. A stage is only a `name` and an `agent`, and
+the stages run in the order they are listed, so there is no other field and no
+way to link or reorder them yet.
 
 - **Add stage** adds a stage at the end, named `agent-1` (the first free
   `agent-N`) with the agent `k-developer`, selects it and moves focus to its
@@ -268,36 +269,78 @@ listed, so there is no other field and no way to link or reorder them yet.
 - Choosing a stage by its node (click, or Enter or Space) selects it and moves
   focus to its name. Choosing the stage that is already selected changes
   nothing, and focus stays where it is.
+
+Nothing is written until **Save**. The line beside it says **No changes**,
+**Unsaved changes**, **Saving** or **Saved** in a polite live region. Save
+sends the whole text with `PUT /api/workflow` and the `hash` of the file as it
+was loaded (`base_hash`), and takes the hash of the answer for the next save.
+Only the block of stages changes: the `name`, `intent`, `version` and the
+comments outside the block stay as they were. Comments inside the block go with
+its old stages. If the stages are not a block at the top level of the file (for
+example `stages: [...]`), the whole file is written from the view, in the plain
+layout, which drops its comments and `version`; an info note above the graph
+says so before you save.
+
+- **Checking.** A moment (400 ms) after the last change, the text is checked
+  with `POST /api/validate`. What it finds shows under the field it is about,
+  and all of it in an alert above the graph, with the name of the stage in
+  front. What the last check found stays on show while you type, until the
+  check of the new text answers, so the page does not jump at every key. The
+  server has the last word: Save is off while the check of the current draft
+  has errors, with the reason in a tooltip, and a save that goes out in the
+  pause is checked again by the server. A check that cannot reach the server
+  says nothing; the save checks again and reports it. Only an error stops a
+  save: a warning or a note is shown as a note (a warning or info alert, and
+  the text under the field in the warning style) and Save stays on.
+- **A refused save** (422) shows the findings the same way.
+- **A conflict** (409) means the file changed after the page loaded. Nothing
+  is written, and an alert says so, with **Load the file again**, which loads
+  the file from the server and replaces the draft. Focus then moves to the name.
 - **A read-only workflow** (the server says `read_only`) can be looked at, and
   a stage can be selected, but the name is read-only and Add stage, Delete
-  stage and the agent list are off, with the reason in a tooltip.
+  stage, the agent list and Save are off, with the reason in a tooltip.
+- **A save whose answer is lost** (no answer, or a server error) may still
+  have written the file. The page reads the file again: if it holds the text
+  that was sent, the save counts as done; if not, the failure is shown in an
+  alert, and Save can be tried again.
+- **Any other failure** of a save shows its sentence in an alert, and Save can
+  be tried again.
 - **Focus and keys.** Everything above works with the keyboard: Tab to **Add
   stage** and press Enter; the new stage's name has focus. A button that is off
-  (Add stage, Delete stage) stays focusable and gives the reason in a tooltip,
-  so focus stays on the button that was pressed.
+  (Save, Add stage, Delete stage) stays focusable and gives the reason in a
+  tooltip, so focus stays on the button that was pressed, for instance Save
+  while it saves.
 - **The two tabs.** The draft lives in `App`, so it is kept when you switch
   tabs. The Execution tab draws the saved workflow, because a run uses the
   saved file, and says so when the Designer holds changes that are not saved.
 
-The page does not write the file in this version: the draft is only kept in the
-page. So while the draft differs from the file, closing or reloading the page
+While the draft differs from the saved file, closing or reloading the page
 makes the browser ask whether to leave (`useLeaveGuard`, a `beforeunload`
-handler that is on only then). A change that is put back, so the draft equals
-the file again, does not ask.
+handler that is on only then), because the draft lives in the page. A change
+that is put back, so the draft equals the file again, does not ask, and nor
+does a draft that has been saved.
 
 The code follows the split of the Execution tab:
 
-- `src/designer/core/` is the core and does no IO: the draft of the stages
-  (`draft.ts`), the text a save would write (`stage-text.ts`), the findings put
-  on the stage and field they are about (`problems.ts`), and the state of the
-  editor with its reducer. `test-support/designer-purity.test.ts` fails if the
-  core imports anything but its own modules and the wire types, or reads a
+- `src/designer/core/` is the core and does no IO: the draft of the stages, the
+  text that a save writes (`stage-text.ts`), the findings put on the stage and
+  field they are about (`problems.ts`), the state of the editor and its
+  reducer, and the two loops that check (after a pause) and save. Its ports
+  are `EditPort` (save, check and reload) and the `Scheduler` of the run core,
+  so a test moves time by hand and nothing sleeps.
+  `test-support/designer-purity.test.ts` fails if the core imports anything
+  but its own modules, the wire types, `messageOf` and the scheduler port, or reads a
   clock, randomness, the environment or the network.
-- `useEditor` keeps the state in `App`; `DesignerEditor` and `PropertiesPane`
-  draw it. `useLeaveGuard` asks the browser to confirm leaving while the draft
-  has changes. A stage keeps an id of its own while it is renamed, and the node is
-  named from that id, so two stages with one name for a moment still have two
-  nodes.
+- `createHttpApi` has `saveWorkflow` and `checkWorkflow`; `loadWorkflow` ties
+  them to the session token as the `EditPort`, and turns a 409 `conflict` and
+  a 422 `invalid_workflow` (with its `diagnostics`) into the core's own errors.
+- `useEditor` keeps the state in `App`; `DesignerEditor`, `PropertiesPane`,
+  `SaveControls` and `EditAlerts` draw it. `useLeaveGuard` asks the browser to
+  confirm leaving while the draft has changes. A stage keeps an id of its own
+  while it is renamed, and the node is named from that id, so two stages with
+  one name for a moment still have two nodes.
+- The API contract is unchanged. `test-support/editing-contract.test.ts`
+  checks the limits and calls that the Designer assumes against it.
 
 ## The Execution tab
 
@@ -337,7 +380,10 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
   sits in a region with `role="alert"`, so a screen reader reads that sentence.
   A failed stage is a result, not an error, so it has no alert.
 - A run stage that is not in the graph is left out of the drawing. The graph is
-  read once, when the page loads, while the run works from the saved file.
+  the saved workflow, and it is drawn again when the Designer saves, while a
+  run works from the file as it was saved when the run started. If the
+  Designer saves in the middle of a run, the nodes of stages that were renamed
+  or added show no state.
 - A run goes on while the Designer tab is open, and the tab shows it again when
   you come back. Closing the page stops the reading, not the run.
 - The colours of the states are in `src/canvas/canvas.css` and match the theme
@@ -462,8 +508,11 @@ the theme button is pressed). The Execution tab is saved before a run
 (`execution-tab-running.png`) and after the run passed
 (`execution-tab-finished.png`), all in the light theme, and while the first
 stage runs in the dark theme (`execution-tab-dark.png`). The Designer tab is
-also saved with edits in the draft (`designer-editing.png`, and
-`designer-editing-dark.png` in the dark theme). Pull request
+also saved with unsaved edits (`designer-editing.png`, and
+`designer-editing-dark.png` in the dark theme), after a save
+(`designer-saved.png`), with a problem the server found
+(`designer-problems.png`) and when the file changed on disk
+(`designer-conflict.png`). Pull request
 descriptions embed these files, so regenerate and commit them when the UI
 changes.
 

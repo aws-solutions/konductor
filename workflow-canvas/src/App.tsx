@@ -17,7 +17,11 @@ import { timerScheduler } from './execution/timer-scheduler';
 import { useExecution } from './execution/use-execution';
 import { TAB_STRIP_STYLE } from './theme/tokens';
 import { useThemeMode } from './theme/use-theme-mode';
-import { openWorkflowName, type LoadResult } from './workflow/load-workflow';
+import {
+  openWorkflowName,
+  withDocument,
+  type LoadResult,
+} from './workflow/load-workflow';
 
 /**
  * Root component: the top bar, then the page header (breadcrumbs and title)
@@ -46,10 +50,11 @@ export function App({
   const [mode, toggleMode] = useThemeMode();
   // The Designer edits a draft; the run and the Execution tab use the file
   // as it is saved.
-  const editor = useEditor(result?.ok ? result.workflow : undefined);
+  const editor = useEditor(result?.ok ? result.workflow : undefined, scheduler);
   const unsaved = editor ? isDirty(editor.state) : false;
   // The draft lives in the page, so leaving the page loses the changes.
   useLeaveGuard(unsaved, window);
+  const saved = editor ? withDocument(result, editor.state.saved) : result;
   return (
     <>
       <TopBar mode={mode} onToggle={toggleMode} />
@@ -63,9 +68,7 @@ export function App({
           <ContentLayout
             defaultPadding
             headerVariant="high-contrast"
-            breadcrumbs={
-              <Breadcrumbs workflowName={openWorkflowName(result)} />
-            }
+            breadcrumbs={<Breadcrumbs workflowName={openWorkflowName(saved)} />}
             header={<Header variant="h1">Workflow canvas</Header>}
           >
             <div className="wf-tab-strip">
@@ -83,7 +86,7 @@ export function App({
                     label: 'Execution',
                     content: (
                       <Execution
-                        result={result}
+                        result={saved}
                         execution={execution}
                         unsaved={unsaved}
                       />
