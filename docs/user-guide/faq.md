@@ -15,7 +15,7 @@ Configuration, registered with your runtime. Specifically:
 | Agents | 11 | Three orchestrators plus eight specialists |
 | Skills | 82 | On-demand knowledge modules |
 | SOPs | 19 | Written multi-step procedures |
-| Context files | 1 | The orchestrator routing rules, always active |
+| Context files | 2 | The core rules for every agent and the orchestrator routing rules, always active |
 
 No servers, no database, no cloud resources. The agents are files your existing Kiro CLI or Claude
 Code installation reads and executes.
@@ -134,6 +134,7 @@ Common edits, in ascending order of blast radius:
 
 | Edit | File | Effect |
 | --- | --- | --- |
+| Change the core rules | `context/k-core-rules.md` | NEVER DO rules and writing habits, loaded at session start for every agent |
 | Change routing | `context/k-orchestrator-routing-rules.md` | Which specialist gets which kind of request |
 | Change a procedure | `agent-sops/<name>.sop.md` | The steps, constraints, and gates of one workflow |
 | Change knowledge | `skills/<name>/SKILL.md` | How an agent reasons about one topic |
