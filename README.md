@@ -210,8 +210,8 @@ Kiro skills live in `.konductor/skills/`, not `.kiro/skills/`, so Kiro doesn't e
 body to every agent. Each skill also gets a short `ks-<name>/SKILL.md` pointer under `.kiro/skills/`
 with its name and a short description, so Kiro lists it natively. The pointer tells the agent to load
 the body with `get_skill` on the `konductor-skills` MCP server, and to read the file only if that
-server is not connected. Pass `--no-skill-pointers` to `install` to skip the pointers (`update` keeps
-that choice). `kiro-cli-v2` and `kiro-v3` share those paths, so installing one over the other
+server is not connected. With `--no-telemetry`, the pointer reads the file directly instead
+(`update` keeps the install's setting). `kiro-cli-v2` and `kiro-v3` share those paths, so installing one over the other
 replaces it (with a warning). `claude` installs alongside either one in the same target.
 
 Without `--from`, `install` fetches a published GitHub release, including the platform's

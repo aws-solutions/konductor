@@ -378,10 +378,9 @@ impl ResourceRewritePass for SkillResourcePass {
 // ── Pass 2b: skill pointer resource ─────────────────────────────────────
 
 /// Adds `skill://.kiro/skills/ks-*/SKILL.md` to an agent's `resources`
-/// so Kiro lists the `ks-<name>` pointers for that agent explicitly. Only
-/// in the pipeline when the target writes pointers (see
-/// `with_skill_pointer_pass`). The glob contains `*`, so
-/// `agent_needs_mcp_server` ignores it, like the `ws-*` glob.
+/// so Kiro lists the `ks-<name>` pointers for that agent explicitly. Added
+/// to the Kiro pipelines by `with_skill_pointer_pass`. The glob contains
+/// `*`, so `agent_needs_mcp_server` ignores it, like the `ws-*` glob.
 pub(super) struct SkillPointerResourcePass;
 
 impl ResourceRewritePass for SkillPointerResourcePass {
@@ -420,16 +419,12 @@ impl ResourceRewritePass for SkillPointerResourcePass {
     }
 }
 
-/// Inserts `SkillPointerResourcePass` right after `SkillResourcePass`
-/// when `enabled`; otherwise returns `passes` unchanged.
+/// Inserts `SkillPointerResourcePass` right after `SkillResourcePass`.
 pub(super) fn with_skill_pointer_pass(
     mut passes: Vec<Box<dyn ResourceRewritePass>>,
-    enabled: bool,
 ) -> Vec<Box<dyn ResourceRewritePass>> {
-    if enabled {
-        let after_skill_pass = passes.len().min(2);
-        passes.insert(after_skill_pass, Box::new(SkillPointerResourcePass));
-    }
+    let after_skill_pass = passes.len().min(2);
+    passes.insert(after_skill_pass, Box::new(SkillPointerResourcePass));
     passes
 }
 
@@ -834,7 +829,7 @@ mod tests {
     fn pointer_pass_adds_the_glob_once_to_an_agent_with_resources() {
         let dir = scratch_dir("pointer-pass-add");
         let mut value = serde_json::json!({"resources": ["skill://.kiro/skills/ws-*/SKILL.md"]});
-        let passes = with_skill_pointer_pass(Vec::new(), true);
+        let passes = with_skill_pointer_pass(Vec::new());
         let ctx = ctx(&dir, &dir, &dir, &[]);
         for _ in 0..2 {
             apply_all(&passes, &mut value, &ctx, Path::new("/tmp/agent.json")).unwrap();
@@ -881,16 +876,9 @@ mod tests {
     }
 
     #[test]
-    fn pointer_pass_is_present_only_when_enabled_and_follows_the_skill_pass() {
-        assert_eq!(
-            with_skill_pointer_pass(standard_passes(true), false).len(),
-            3
-        );
-        assert_eq!(
-            with_skill_pointer_pass(standard_passes(true), true).len(),
-            4
-        );
-        assert_eq!(with_skill_pointer_pass(standard_passes_v3(), true).len(), 4);
+    fn pointer_pass_follows_the_skill_pass() {
+        assert_eq!(with_skill_pointer_pass(standard_passes(true)).len(), 4);
+        assert_eq!(with_skill_pointer_pass(standard_passes_v3()).len(), 4);
 
         // Running the real pipeline: the glob lands after the rewritten
         // skill entry, and the MCP pass still sees only the real skill.
@@ -899,7 +887,7 @@ mod tests {
         fs::create_dir_all(skills_dir.join("constraints")).unwrap();
         fs::write(skills_dir.join("constraints/SKILL.md"), b"body").unwrap();
         let mut value = serde_json::json!({"resources": ["skill://skills/constraints/SKILL.md"]});
-        let passes = with_skill_pointer_pass(standard_passes(true), true);
+        let passes = with_skill_pointer_pass(standard_passes(true));
         apply_all(
             &passes,
             &mut value,
@@ -923,7 +911,7 @@ mod tests {
         let dir = scratch_dir("pointer-pass-no-mcp");
         let mut value = serde_json::json!({"name": "k-example"});
         let bin_files = [bin_file_entry()];
-        let passes = with_skill_pointer_pass(standard_passes(true), true);
+        let passes = with_skill_pointer_pass(standard_passes(true));
         apply_all(
             &passes,
             &mut value,

@@ -93,8 +93,7 @@ Accepted before or after a subcommand.
 | `install` | `--from <PATH>` | path | No | Install from a local repo root with already-synthed content instead of fetching a release. A maintainer path — the documented workflows all install from a release |
 | `install` | `--target <DIR>` | path | No | Destination. Defaults to `$HOME` |
 | `install` | `--link-bin` | flag | No | Symlink `konductor` into `$HOME/.local/bin` |
-| `install` | `--no-telemetry` | flag | No | Suppress telemetry for this invocation |
-| `install` | `--no-skill-pointers` | flag | No | Kiro harnesses: skip the `ks-<name>` skill pointers in `.kiro/skills/` and remove ones already written. Recorded for the target, so `update` keeps it |
+| `install` | `--no-telemetry` | flag | No | Suppress telemetry for this invocation. Kiro skill pointers then read the skill file directly instead of calling `get_skill` |
 | `install` | `--use-github-token` | flag | No | Authenticate the release fetch with a GitHub token |
 | `update` | `--from <PATH>` | path | No | Source repo root. No default — pass it every time |
 | `update` | `--target <DIR>` | path | No | Which tracked install to update. Conflicts with `--all` |

@@ -332,9 +332,6 @@ pub(super) use skill_pointers::{
     install_kiro_skill_pointers, plan_kiro_skill_pointer_files, SKILL_POINTER_PREFIX,
     SKILL_POINTER_RESOURCE,
 };
-pub(crate) use skill_pointers::{
-    remove_skill_pointers_opt_out, set_skill_pointers_opt_out, skill_pointers_enabled,
-};
 
 #[cfg(test)]
 pub(super) mod test_support {

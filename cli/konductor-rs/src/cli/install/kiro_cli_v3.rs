@@ -56,8 +56,7 @@ use super::kiro_cli::{
     install_kiro_sop_skills, install_skills, install_sops, list_agent_files,
     plan_additive_claude_sop_skill_files, plan_all_files, plan_claude_hooks_file,
     plan_claude_settings_grant, read_skill_scopes_sidecar, read_sop_scopes_sidecar,
-    reject_unsafe_file_name, skill_pointers_enabled, PlannedFile, KIRO_DESTINATION_ROOT,
-    KONDUCTOR_DESTINATION_ROOT,
+    reject_unsafe_file_name, PlannedFile, KIRO_DESTINATION_ROOT, KONDUCTOR_DESTINATION_ROOT,
 };
 use super::manifest::{classify_provenance, ManifestFile, Provenance, Status, StrategyManifest};
 use super::resource_rewrite::{
@@ -320,6 +319,7 @@ impl InstallStrategy for KiroCliV3InstallStrategy {
             &harness_dir,
             target_dir,
             prior_manifest.as_ref(),
+            no_telemetry,
         )?);
         // Additive Claude branch, mirroring `SopInstallPhase::run`'s
         // dual-marker branch: this run is this strategy's own, but the
@@ -572,8 +572,7 @@ fn copy_agent_files_rewriting_resources(
     ctx: &RewriteContext<'_>,
     file_names: Vec<String>,
 ) -> Result<(Vec<ManifestFile>, bool), String> {
-    let pointers_on = ctx.install_root().is_some_and(skill_pointers_enabled);
-    let passes = with_skill_pointer_pass(standard_passes_v3(), pointers_on);
+    let passes = with_skill_pointer_pass(standard_passes_v3());
     let mut files = Vec::with_capacity(file_names.len());
     let mut any_mcp_server_injected = false;
 
@@ -601,8 +600,7 @@ fn copy_agent_files_rewriting_resources(
             .map_err(|e| format!("{} is not valid UTF-8: {e}", src.display()))?;
         // The pointer glob alone does not justify parsing: a file that is
         // not JSON and needs no other rewrite stays a verbatim copy.
-        let needs_pointer_glob =
-            pointers_on && serde_json::from_str::<serde_json::Value>(&contents).is_ok();
+        let needs_pointer_glob = serde_json::from_str::<serde_json::Value>(&contents).is_ok();
         if !needs_pointer_glob
             && !contents.contains(super::kiro_cli::CONTEXT_RESOURCE_PREFIX)
             && !contents.contains(SKILL_RESOURCE_PREFIX)

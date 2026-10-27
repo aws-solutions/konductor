@@ -2,18 +2,17 @@
 //
 // install/kiro_cli/skill_pointers.rs — one small `ks-<name>/SKILL.md`
 // pointer per synthed skill under `.kiro/skills/`, so Kiro lists every
-// skill's name and description natively while the body is still loaded
-// through the `konductor-skills` MCP server.
+// skill's name and description natively. With telemetry on, a pointer
+// sends the agent to the `konductor-skills` MCP server's `get_skill`; with
+// `--no-telemetry`, it names the installed skill file to read directly
+// (`pointer_instructions`).
 //
 // Each Kiro agent also gets a `skill://.kiro/skills/ks-*/SKILL.md`
 // resource (`resource_rewrite::SkillPointerResourcePass`) so the pointers
 // are listed for that agent explicitly rather than by relying on Kiro's
 // directory scan.
-//
-// `install --no-skill-pointers` records a marker file under `.konductor/`;
-// install and update read it, so an opt-out survives `update`.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use super::super::artifact::sha256_hex;
 use super::super::claude::yaml_double_quote;
@@ -44,10 +43,6 @@ const ELLIPSIS: &str = "...";
 
 const SKILL_FILE_NAME: &str = "SKILL.md";
 
-/// Marker file under `.konductor/` that records `install
-/// --no-skill-pointers`.
-const OPT_OUT_MARKER_NAME: &str = "no-skill-pointers";
-
 /// One synthed skill, reduced to what its pointer needs.
 struct SkillPointer {
     skill_name: String,
@@ -75,79 +70,37 @@ struct PointerSet {
     skipped: Vec<(String, String)>,
 }
 
-fn opt_out_marker_path(target_dir: &Path) -> PathBuf {
-    target_dir
-        .join(KONDUCTOR_DESTINATION_ROOT)
-        .join(OPT_OUT_MARKER_NAME)
-}
-
-/// Whether pointers are written for `target_dir`: true unless an
-/// `install --no-skill-pointers` left its marker there.
-pub(crate) fn skill_pointers_enabled(target_dir: &Path) -> bool {
-    !opt_out_marker_path(target_dir).exists()
-}
-
-/// Records (`opt_out`) or clears the `--no-skill-pointers` choice for
-/// `target_dir`. Returns whether the recorded choice changed.
-pub(crate) fn set_skill_pointers_opt_out(target_dir: &Path, opt_out: bool) -> Result<bool, String> {
-    let marker = opt_out_marker_path(target_dir);
-    if opt_out == marker.exists() {
-        return Ok(false);
-    }
-    if opt_out {
-        std::fs::create_dir_all(target_dir.join(KONDUCTOR_DESTINATION_ROOT))
-            .map_err(|e| format!("failed to create {}: {e}", marker.display()))?;
-        write_atomic(
-            &marker,
-            b"install --no-skill-pointers was used here; install and update skip the ks-* pointers.\n",
-        )
-        .map_err(|e| format!("failed to write {}: {e}", marker.display()))?;
-    } else {
-        std::fs::remove_file(&marker)
-            .map_err(|e| format!("failed to remove {}: {e}", marker.display()))?;
-    }
-    Ok(true)
-}
-
-/// Removes the opt-out marker, if any, on a full uninstall.
-pub(crate) fn remove_skill_pointers_opt_out(target_dir: &Path) -> std::io::Result<()> {
-    match std::fs::remove_file(opt_out_marker_path(target_dir)) {
-        Err(err) if err.kind() != std::io::ErrorKind::NotFound => Err(err),
-        _ => Ok(()),
-    }
-}
-
 /// Writes one pointer `SKILL.md` per skill staged under
 /// `<harness_dir>/skills/` into `<target_dir>/.kiro/skills/ks-<name>/`,
 /// and removes the pointers `prior_manifest` tracked that this run no
-/// longer writes (a dropped skill, or `--no-skill-pointers`). Returns an
-/// empty `Vec` when pointers are off or no skills are staged.
+/// longer writes (a dropped skill). Returns an empty `Vec` when no skills
+/// are staged. `no_telemetry` picks the body of every pointer (see
+/// `pointer_instructions`), so a run that changes it rewrites them all.
 pub(in crate::cli::install) fn install_kiro_skill_pointers(
     harness_dir: &Path,
     target_dir: &Path,
     prior_manifest: Option<&StrategyManifest>,
+    no_telemetry: bool,
 ) -> Result<Vec<ManifestFile>, String> {
     let mut files = Vec::new();
-    if skill_pointers_enabled(target_dir) {
-        let set = list_skill_pointers(harness_dir)?;
-        for (skill, reason) in &set.skipped {
-            eprintln!(
-                "konductor install: warning: no skill pointer for '{skill}': {reason}; \
-                 the skill itself is still installed"
-            );
-        }
-        let fallback_dir = fallback_skills_dir(target_dir);
-        for pointer in &set.pointers {
-            let rendered = render_pointer_md(pointer, &fallback_dir);
-            let dst = target_dir.join(pointer.manifest_path());
-            write_pointer(&dst, &rendered)?;
-            files.push(ManifestFile {
-                path: pointer.manifest_path(),
-                sha256: Some(sha256_hex(rendered.as_bytes())),
-                // Overwritten by `attach_provenance`.
-                provenance: Provenance::Created,
-            });
-        }
+    let set = list_skill_pointers(harness_dir)?;
+    for (skill, reason) in &set.skipped {
+        eprintln!(
+            "konductor install: warning: no skill pointer for '{skill}': {reason}; \
+             the skill itself is still installed"
+        );
+    }
+    let skills_dir = installed_skills_dir(target_dir);
+    for pointer in &set.pointers {
+        let rendered = render_pointer_md(pointer, &skills_dir, no_telemetry);
+        let dst = target_dir.join(pointer.manifest_path());
+        write_pointer(&dst, &rendered)?;
+        files.push(ManifestFile {
+            path: pointer.manifest_path(),
+            sha256: Some(sha256_hex(rendered.as_bytes())),
+            // Overwritten by `attach_provenance`.
+            provenance: Provenance::Created,
+        });
     }
     prune_stale_pointers(target_dir, prior_manifest, &files);
     Ok(files)
@@ -160,9 +113,6 @@ pub(in crate::cli::install) fn plan_kiro_skill_pointer_files(
     target_dir: &Path,
     prior_manifest: Option<&StrategyManifest>,
 ) -> Result<Vec<PlannedFile>, String> {
-    if !skill_pointers_enabled(target_dir) {
-        return Ok(Vec::new());
-    }
     Ok(list_skill_pointers(harness_dir)?
         .pointers
         .iter()
@@ -285,9 +235,9 @@ fn truncate_description(text: &str) -> String {
     format!("{}{ELLIPSIS}", cut.trim_end())
 }
 
-/// The absolute path of the installed skill bodies, so the fallback read
+/// The absolute path of the installed skill bodies, so a direct read
 /// works from any working directory without relying on `~` expansion.
-fn fallback_skills_dir(target_dir: &Path) -> String {
+fn installed_skills_dir(target_dir: &Path) -> String {
     std::path::absolute(target_dir)
         .unwrap_or_else(|_| target_dir.to_path_buf())
         .join(KONDUCTOR_DESTINATION_ROOT)
@@ -296,19 +246,34 @@ fn fallback_skills_dir(target_dir: &Path) -> String {
         .to_string()
 }
 
-fn render_pointer_md(pointer: &SkillPointer, fallback_dir: &str) -> String {
-    let name = &pointer.skill_name;
+/// The numbered steps of a pointer body. The one place that turns the
+/// install's telemetry setting into pointer text: with telemetry on the
+/// agent loads the skill through the server's `get_skill` (which also
+/// enforces the agent's scope) and reads `skill_file` only if the server
+/// is absent; with `--no-telemetry` it reads `skill_file` and nothing else.
+fn pointer_instructions(name: &str, skill_file: &str, no_telemetry: bool) -> String {
+    if no_telemetry {
+        return format!("1. Read `{skill_file}`.\n");
+    }
     format!(
-        "---\nname: {}\ndescription: {}\n---\n\n\
-         This file points to the `{name}` skill. The skill's instructions are not in this file.\n\n\
-         1. Call `get_skill` with `name: \"{name}\"` on the `konductor-skills` MCP server. \
+        "1. Call `get_skill` with `name: \"{name}\"` on the `konductor-skills` MCP server. \
          Do this first. If the tool is not loaded yet, load it, then call it.\n\
          2. Only if the `konductor-skills` server is not connected, or it has no `get_skill` tool, \
-         read `{fallback_dir}/{name}/{SKILL_FILE_NAME}`.\n\
+         read `{skill_file}`.\n\
          3. If `get_skill` says the skill is not found, stop. The skill is outside your scope. \
-         Do not read the file.\n",
+         Do not read the file.\n"
+    )
+}
+
+fn render_pointer_md(pointer: &SkillPointer, skills_dir: &str, no_telemetry: bool) -> String {
+    let name = &pointer.skill_name;
+    let skill_file = format!("{skills_dir}/{name}/{SKILL_FILE_NAME}");
+    format!(
+        "---\nname: {}\ndescription: {}\n---\n\n\
+         This file points to the `{name}` skill. The skill's instructions are not in this file.\n\n{}",
         yaml_double_quote(&pointer.dir_name()),
         yaml_double_quote(&pointer.description),
+        pointer_instructions(name, &skill_file, no_telemetry),
     )
 }
 
@@ -413,30 +378,31 @@ mod tests {
         );
     }
 
-    #[test]
-    fn rendered_pointer_is_valid_frontmatter_with_prefixed_name() {
-        let pointer = SkillPointer {
+    fn alpha() -> SkillPointer {
+        SkillPointer {
             skill_name: "alpha".to_string(),
             description: "Say \"hi\": now".to_string(),
-        };
-        let rendered = render_pointer_md(&pointer, "/abs/.konductor/skills");
-        let (frontmatter, body) = split_frontmatter(&rendered, "pointer").unwrap();
-        let value: serde_yaml::Value = serde_yaml::from_str(frontmatter).unwrap();
-        assert_eq!(value["name"].as_str(), Some("ks-alpha"));
-        assert_eq!(value["description"].as_str(), Some("Say \"hi\": now"));
-        assert!(body.contains("/abs/.konductor/skills/alpha/SKILL.md"));
+        }
+    }
+
+    #[test]
+    fn rendered_pointer_is_valid_frontmatter_with_prefixed_name() {
+        for no_telemetry in [false, true] {
+            let rendered = render_pointer_md(&alpha(), "/abs/.konductor/skills", no_telemetry);
+            let (frontmatter, body) = split_frontmatter(&rendered, "pointer").unwrap();
+            let value: serde_yaml::Value = serde_yaml::from_str(frontmatter).unwrap();
+            assert_eq!(value["name"].as_str(), Some("ks-alpha"));
+            assert_eq!(value["description"].as_str(), Some("Say \"hi\": now"));
+            assert!(body.contains("/abs/.konductor/skills/alpha/SKILL.md"));
+        }
     }
 
     /// The scope check lives in the server's `get_skill`, so the body must
     /// send the agent there first, allow the file only when the server is
     /// absent, and forbid it after a not-found answer.
     #[test]
-    fn pointer_body_orders_get_skill_before_the_file_and_stops_on_not_found() {
-        let pointer = SkillPointer {
-            skill_name: "alpha".to_string(),
-            description: "d".to_string(),
-        };
-        let rendered = render_pointer_md(&pointer, "/abs/.konductor/skills");
+    fn telemetry_on_body_orders_get_skill_before_the_file_and_stops_on_not_found() {
+        let rendered = render_pointer_md(&alpha(), "/abs/.konductor/skills", false);
         let (_, body) = split_frontmatter(&rendered, "pointer").unwrap();
         let get_skill = body.find("Call `get_skill`").expect("step 1");
         let file = body
@@ -454,7 +420,21 @@ mod tests {
             "{body}"
         );
         assert!(!body.contains("deferred"), "{body}");
-        assert!(!body.contains('~'), "fallback path is absolute: {body}");
+        assert!(!body.contains('~'), "path is absolute: {body}");
+    }
+
+    #[test]
+    fn telemetry_off_body_reads_the_absolute_file_and_never_mentions_mcp() {
+        let rendered = render_pointer_md(&alpha(), "/abs/.konductor/skills", true);
+        let (_, body) = split_frontmatter(&rendered, "pointer").unwrap();
+        assert!(
+            body.contains("1. Read `/abs/.konductor/skills/alpha/SKILL.md`."),
+            "{body}"
+        );
+        assert!(!body.contains("get_skill"), "{body}");
+        assert!(!body.contains("MCP"), "{body}");
+        assert!(!body.contains("konductor-skills"), "{body}");
+        assert!(!body.contains("2."), "a single step: {body}");
     }
 
     #[test]
@@ -464,7 +444,7 @@ mod tests {
         stage_skill(&harness_dir, "alpha", &skill_md("alpha", "A."));
         stage_skill(&harness_dir, "bare", "no frontmatter\n");
 
-        let files = install_kiro_skill_pointers(&harness_dir, &target_dir, None).unwrap();
+        let files = install_kiro_skill_pointers(&harness_dir, &target_dir, None, false).unwrap();
         let planned = plan_kiro_skill_pointer_files(&harness_dir, &target_dir, None).unwrap();
 
         assert_eq!(paths(&files), [".kiro/skills/ks-alpha/SKILL.md"]);
@@ -482,7 +462,7 @@ mod tests {
         let dir = harness_dir.join(SKILLS_CONTENT_TYPE_DIR).join("alpha");
         std::fs::create_dir_all(dir.join(SKILL_FILE_NAME)).unwrap();
 
-        let err = install_kiro_skill_pointers(&harness_dir, &target_dir, None).unwrap_err();
+        let err = install_kiro_skill_pointers(&harness_dir, &target_dir, None, false).unwrap_err();
         assert!(err.contains("failed to read"), "{err}");
     }
 
@@ -490,9 +470,11 @@ mod tests {
     fn install_returns_nothing_when_no_skills_are_staged() {
         let harness_dir = scratch_dir("empty-harness");
         let target_dir = scratch_dir("empty-target");
-        assert!(install_kiro_skill_pointers(&harness_dir, &target_dir, None)
-            .unwrap()
-            .is_empty());
+        assert!(
+            install_kiro_skill_pointers(&harness_dir, &target_dir, None, false)
+                .unwrap()
+                .is_empty()
+        );
     }
 
     #[test]
@@ -508,13 +490,17 @@ mod tests {
         let target_dir = scratch_dir("prune-target");
         stage_skill(&harness_dir, "alpha", &skill_md("alpha", "A."));
         stage_skill(&harness_dir, "beta", &skill_md("beta", "B."));
-        let first = install_kiro_skill_pointers(&harness_dir, &target_dir, None).unwrap();
+        let first = install_kiro_skill_pointers(&harness_dir, &target_dir, None, false).unwrap();
         assert_eq!(first.len(), 2);
 
         std::fs::remove_dir_all(harness_dir.join(SKILLS_CONTENT_TYPE_DIR).join("beta")).unwrap();
-        let second =
-            install_kiro_skill_pointers(&harness_dir, &target_dir, Some(&manifest_of(&first)))
-                .unwrap();
+        let second = install_kiro_skill_pointers(
+            &harness_dir,
+            &target_dir,
+            Some(&manifest_of(&first)),
+            false,
+        )
+        .unwrap();
 
         assert_eq!(paths(&second), [".kiro/skills/ks-alpha/SKILL.md"]);
         assert!(target_dir.join(".kiro/skills/ks-alpha/SKILL.md").is_file());
@@ -526,7 +512,7 @@ mod tests {
         let harness_dir = scratch_dir("prune-foreign-harness");
         let target_dir = scratch_dir("prune-foreign-target");
         stage_skill(&harness_dir, "alpha", &skill_md("alpha", "A."));
-        let first = install_kiro_skill_pointers(&harness_dir, &target_dir, None).unwrap();
+        let first = install_kiro_skill_pointers(&harness_dir, &target_dir, None, false).unwrap();
         let foreign = target_dir.join(".kiro/skills/ks-alpha/notes.txt");
         std::fs::write(&foreign, "mine").unwrap();
         let other = target_dir.join(".kiro/skills/ks-other/SKILL.md");
@@ -534,7 +520,8 @@ mod tests {
         std::fs::write(&other, "not ours").unwrap();
 
         std::fs::remove_dir_all(harness_dir.join(SKILLS_CONTENT_TYPE_DIR).join("alpha")).unwrap();
-        install_kiro_skill_pointers(&harness_dir, &target_dir, Some(&manifest_of(&first))).unwrap();
+        install_kiro_skill_pointers(&harness_dir, &target_dir, Some(&manifest_of(&first)), false)
+            .unwrap();
 
         assert!(!target_dir.join(".kiro/skills/ks-alpha/SKILL.md").exists());
         assert!(
@@ -545,47 +532,26 @@ mod tests {
     }
 
     #[test]
-    fn opt_out_is_recorded_skips_pointers_and_prunes_the_old_ones() {
-        let harness_dir = scratch_dir("optout-harness");
-        let target_dir = scratch_dir("optout-target");
+    fn changing_the_telemetry_setting_rewrites_every_pointer_in_place() {
+        let harness_dir = scratch_dir("switch-harness");
+        let target_dir = scratch_dir("switch-target");
         stage_skill(&harness_dir, "alpha", &skill_md("alpha", "A."));
-        assert!(skill_pointers_enabled(&target_dir));
-        let first = install_kiro_skill_pointers(&harness_dir, &target_dir, None).unwrap();
-        assert_eq!(first.len(), 1);
+        let pointer = target_dir.join(".kiro/skills/ks-alpha/SKILL.md");
 
-        assert!(set_skill_pointers_opt_out(&target_dir, true).unwrap());
-        assert!(
-            !set_skill_pointers_opt_out(&target_dir, true).unwrap(),
-            "no change"
-        );
-        assert!(!skill_pointers_enabled(&target_dir));
-        let second =
-            install_kiro_skill_pointers(&harness_dir, &target_dir, Some(&manifest_of(&first)))
+        let on = install_kiro_skill_pointers(&harness_dir, &target_dir, None, false).unwrap();
+        let on_text = std::fs::read_to_string(&pointer).unwrap();
+        assert!(on_text.contains("Call `get_skill`"), "{on_text}");
+
+        let off =
+            install_kiro_skill_pointers(&harness_dir, &target_dir, Some(&manifest_of(&on)), true)
                 .unwrap();
-        assert!(second.is_empty());
-        assert!(!target_dir.join(".kiro/skills/ks-alpha").exists());
-        assert!(
-            plan_kiro_skill_pointer_files(&harness_dir, &target_dir, None)
-                .unwrap()
-                .is_empty()
-        );
+        let off_text = std::fs::read_to_string(&pointer).unwrap();
+        assert!(!off_text.contains("get_skill"), "{off_text}");
+        assert_ne!(on[0].sha256, off[0].sha256);
+        assert_eq!(paths(&on), paths(&off));
 
-        assert!(set_skill_pointers_opt_out(&target_dir, false).unwrap());
-        assert!(skill_pointers_enabled(&target_dir));
-        assert_eq!(
-            install_kiro_skill_pointers(&harness_dir, &target_dir, None)
-                .unwrap()
-                .len(),
-            1
-        );
-    }
-
-    #[test]
-    fn removing_the_marker_twice_is_fine() {
-        let target_dir = scratch_dir("marker-remove");
-        set_skill_pointers_opt_out(&target_dir, true).unwrap();
-        remove_skill_pointers_opt_out(&target_dir).unwrap();
-        remove_skill_pointers_opt_out(&target_dir).unwrap();
-        assert!(skill_pointers_enabled(&target_dir));
+        install_kiro_skill_pointers(&harness_dir, &target_dir, Some(&manifest_of(&off)), false)
+            .unwrap();
+        assert_eq!(std::fs::read_to_string(&pointer).unwrap(), on_text);
     }
 }
