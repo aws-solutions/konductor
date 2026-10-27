@@ -180,6 +180,7 @@ fn check_aliases(table: &SeverityTable) -> Result<(), String> {
 
 /// The table's ids and ranks, in order, must equal `Severity::ALL` and
 /// `Severity::rank`.
+#[cfg(test)]
 pub(crate) fn check_parity(table: &SeverityTable) -> Result<(), String> {
     let file_ids: Vec<Severity> = table.entries.iter().map(|e| e.id).collect();
     if file_ids != Severity::ALL {
