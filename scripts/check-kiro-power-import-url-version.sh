@@ -3,7 +3,8 @@
 #
 # check-kiro-power-import-url-version.sh -- fails closed if any concrete
 # github.com/aws-solutions/konductor/tree/<tag>/powers/konductor URL
-# committed in this repo names a tag other than v$(cat VERSION).
+# committed in this repo (outside CHANGELOG.md) names a tag other than
+# v$(cat VERSION).
 #
 # Users import the Kiro Power from a tagged release, not from `main`'s
 # moving HEAD, so every doc that tells a user which URL to visit must
@@ -42,7 +43,8 @@ cd "$REPO_ROOT"
 # build/ directories can contain a stale copy of a doc (or this exact URL
 # baked into a generated artifact) that would otherwise be flagged here
 # for content nobody actually ships or reviews as source.
-MATCHES="$(git ls-files -z | xargs -0 grep -lE "$URL_PATTERN" 2>/dev/null || true)"
+# CHANGELOG.md is skipped: release notes keep the version they describe.
+MATCHES="$(git ls-files -z -- ':!CHANGELOG.md' | xargs -0 grep -lE "$URL_PATTERN" 2>/dev/null || true)"
 
 bad=0
 if [[ -n "$MATCHES" ]]; then

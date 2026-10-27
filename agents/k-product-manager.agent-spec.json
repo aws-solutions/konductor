@@ -28,7 +28,7 @@
       ]
     },
     "context": {
-      "contextNames": []
+      "contextNames": ["k-core-rules.md"]
     },
     "mcpRegistry": {},
     "agentSops": {
