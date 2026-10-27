@@ -85,6 +85,17 @@ describe('withStages', () => {
     );
   });
 
+  it('keeps a comment and a key after the stages of a CRLF file', () => {
+    const text =
+      'name: hello\r\nstages:\r\n  - name: a\r\n    agent: k-tpm\r\n# note\r\nversion: 1\r\n';
+
+    const next = withStages(text, VIEW, [REVIEW]);
+
+    expect(next).toBe(
+      'name: hello\r\nstages:\r\n  - name: review\r\n    agent: k-quality-assurance\r\n# note\r\nversion: 1\r\n',
+    );
+  });
+
   it('adds no stray carriage return to a CRLF file that ends without a line break', () => {
     const text = 'name: hello\r\nstages:\r\n  - name: a\r\n    agent: k-tpm';
 

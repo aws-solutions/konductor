@@ -26,7 +26,8 @@ const STAGES_KEY = /^stages:[ \t]*(?:#.*)?\r?$/;
 // A line that starts the next top-level key or a document marker, which
 // ends the block of stages. A `-` at the start is an item of the block.
 const NEXT_KEY = /^(?:[^\s#-]|---|\.\.\.)/;
-const BLANK_OR_COMMENT = /^(?:\s*|#.*)$/;
+// `.` stops at a `\r`, so a comment of a CRLF file is matched with `[^\n]`.
+const BLANK_OR_COMMENT = /^(?:\s*|#[^\n]*)$/;
 
 // The file's own line ending, so a file kept in CRLF stays in CRLF.
 function endingOf(text: string): string {

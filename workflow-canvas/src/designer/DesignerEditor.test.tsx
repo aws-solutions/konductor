@@ -8,7 +8,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { App } from '../App';
 import { SaveConflict, SaveLost, SaveRefused } from './core';
 import { FakeScheduler } from '../test-support/fake-scheduler';
@@ -27,6 +27,18 @@ import {
   loaded,
 } from '../test-support/fixtures';
 import type { WorkflowDocument } from '../api/types';
+
+// The tests here wrap their updates in `act`, which React only accepts when the
+// environment says so. Testing Library does that on its own only with test
+// globals, and the other files do not wrap theirs, so it is set for this file.
+const actFlag = globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean };
+const actBefore = actFlag.IS_REACT_ACT_ENVIRONMENT;
+beforeAll(() => {
+  actFlag.IS_REACT_ACT_ENVIRONMENT = true;
+});
+afterAll(() => {
+  actFlag.IS_REACT_ACT_ENVIRONMENT = actBefore;
+});
 
 async function openDesigner(
   edits: FakeEdits = acceptingEdits(),
@@ -318,6 +330,7 @@ describe('saving', () => {
       HELLO_TEXT.replace('k-developer', 'k-architect'),
       HELLO_HASH,
     );
+    await waitFor(() => expect(status()).toBe('Saved'));
   });
 
   it('says Saved, turns Save off and keeps focus on it', async () => {
