@@ -19,10 +19,13 @@ export const NODE_IDS = [
 /** The test id of one node. */
 export type NodeId = (typeof NODE_IDS)[number];
 
-/** What a screen reader says for each node, top to bottom. */
+/**
+ * What a screen reader says for each node of the Designer tab, top to bottom.
+ * The first stage is the one that Properties shows when the page opens.
+ */
 export const NODE_NAMES = [
   'Intent: Add a greeting to the README',
-  'Stage draft, agent k-developer, harness kiro-cli',
+  'Stage draft, agent k-developer, harness kiro-cli, selected',
   'Stage review, agent k-quality-assurance, harness kiro-cli',
   'End',
 ] as const;
