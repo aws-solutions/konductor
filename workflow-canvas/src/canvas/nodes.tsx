@@ -9,20 +9,23 @@ import {
   type StageGraphNode,
 } from '../graph';
 import {
-  BORDER_WIDTH,
   CARD_RADIUS,
   FOCUS_GAP,
   FOCUS_WIDTH,
   IN_HANDLE_STYLE,
+  LETTER_Y,
+  NOTCH_RING,
+  NOTCH_TOP,
   OUT_HANDLE_STYLE,
-  PORT_CLEARANCE,
-  PORT_X,
-  borderLines,
-  letterY,
+  PORT_SHAPE,
+  PORT_WIDTH,
+  RIM_WIDTH,
+  RING_WIDTH,
   nodeOutline,
-  pieceShape,
+  portTransform,
+  rimSpreadStroke,
   spreadStroke,
-  type OutlineOptions,
+  tabTop,
 } from './jigsaw';
 
 type FlowNode<N extends { type: string; data: Record<string, unknown> }> = Node<
@@ -31,7 +34,7 @@ type FlowNode<N extends { type: string; data: Record<string, unknown> }> = Node<
 >;
 
 // The port where run order arrives. The handle is only the box that the link
-// measures from; the socket itself is drawn by `NodeShape`.
+// measures from; the notch itself is drawn by `NodeShape`.
 function SequenceIn() {
   return (
     <Handle
@@ -45,7 +48,7 @@ function SequenceIn() {
   );
 }
 
-// The port where run order leaves, with its knob drawn by `NodeShape`.
+// The port where run order leaves, with its tab drawn by `NodeShape`.
 function SequenceOut() {
   return (
     <Handle
@@ -59,38 +62,66 @@ function SequenceOut() {
   );
 }
 
-// The letter of a port, in the head of its knob or socket.
-function PortLetter({ y, kind }: { y: number; kind: 'knob' | 'socket' }) {
+// The letter of a port, in the body of its tab or notch.
+function PortLetter({ kind }: { kind: 'tab' | 'notch' }) {
   return (
-    <text className={`wf-port-letter wf-port-letter-${kind}`} x={PORT_X} y={y}>
+    <text
+      className={`wf-port-letter wf-port-letter-${kind}`}
+      x={PORT_WIDTH / 2}
+      y={LETTER_Y}
+    >
       S
     </text>
   );
 }
 
+// The notch where run order arrives: a dark rim, a white inside and a ring in
+// the colour of the tab that fits it, open at the border.
+function Notch() {
+  return (
+    <g className="wf-port-notch" transform={portTransform(NOTCH_TOP)}>
+      <path className="wf-port-rim" strokeWidth={RIM_WIDTH} d={PORT_SHAPE} />
+      <path className="wf-port-notch-inside" d={PORT_SHAPE} />
+      <path
+        className="wf-port-notch-ring"
+        strokeWidth={RING_WIDTH}
+        d={NOTCH_RING}
+      />
+      <PortLetter kind="notch" />
+    </g>
+  );
+}
+
+// The tab where run order leaves: the same outline as the notch, filled.
+function Tab({ top }: { top: number }) {
+  return (
+    <g className="wf-port-tab" transform={portTransform(top)}>
+      <path className="wf-port-rim" strokeWidth={RIM_WIDTH} d={PORT_SHAPE} />
+      <path className="wf-port-tab-body" d={PORT_SHAPE} />
+      <PortLetter kind="tab" />
+    </g>
+  );
+}
+
 /**
- * The card behind the content of a node: one closed outline, with a socket
- * in the top edge when run order comes in and a knob under the bottom edge
- * when it goes out. A knob fills the socket of the node below it. The focus
- * ring is drawn around the same outline, so it follows the knob.
+ * The card behind the content of a node: one rounded outline, with a notch
+ * just inside the top edge when run order comes in and a tab hanging from the
+ * bottom edge when it goes out. A tab fits the notch of the node below it.
+ * The focus ring is drawn around the card and the tab, so it follows the tab.
  */
 function NodeShape({
   height,
   radius,
-  socket,
-  knob,
-}: { height: number; radius: number } & Pick<
-  OutlineOptions,
-  'socket' | 'knob'
->) {
-  const { top, bottom } = borderLines(height);
-  const outline = nodeOutline({
-    width: NODE_WIDTH,
-    height,
-    radius,
-    socket,
-    knob,
-  });
+  notch,
+  tab,
+}: {
+  height: number;
+  radius: number;
+  notch: boolean;
+  tab: boolean;
+}) {
+  const outline = nodeOutline({ width: NODE_WIDTH, height, radius });
+  const tabAt = tabTop(height);
   return (
     <svg
       className="wf-node-shape"
@@ -104,22 +135,30 @@ function NodeShape({
         strokeWidth={spreadStroke(FOCUS_GAP + FOCUS_WIDTH)}
         d={outline}
       />
+      {tab && (
+        <path
+          className="wf-focus-ring-port"
+          strokeWidth={rimSpreadStroke(FOCUS_GAP + FOCUS_WIDTH)}
+          transform={portTransform(tabAt)}
+          d={PORT_SHAPE}
+        />
+      )}
       <path
         className="wf-focus-gap"
         strokeWidth={spreadStroke(FOCUS_GAP)}
         d={outline}
       />
-      {socket && <path className="wf-socket" d={pieceShape(top)} />}
-      <path className="wf-node-body" strokeWidth={BORDER_WIDTH} d={outline} />
-      {knob && (
+      {tab && (
         <path
-          className="wf-knob"
-          strokeWidth={BORDER_WIDTH}
-          d={pieceShape(bottom, -1)}
+          className="wf-focus-gap"
+          strokeWidth={rimSpreadStroke(FOCUS_GAP)}
+          transform={portTransform(tabAt)}
+          d={PORT_SHAPE}
         />
       )}
-      {socket && <PortLetter kind="socket" y={letterY(top)} />}
-      {knob && <PortLetter kind="knob" y={letterY(bottom)} />}
+      <path className="wf-node-body" d={outline} />
+      {notch && <Notch />}
+      {tab && <Tab top={tabAt} />}
     </svg>
   );
 }
@@ -131,8 +170,8 @@ export function IntentNode({ data }: NodeProps<FlowNode<IntentGraphNode>>) {
       <NodeShape
         height={NODE_HEIGHT.intent}
         radius={CARD_RADIUS}
-        socket={false}
-        knob
+        notch={false}
+        tab
       />
       <div className="wf-node-title">intent</div>
       <div className="wf-node-intent-outcome" title={data.outcome}>
@@ -147,17 +186,12 @@ export function IntentNode({ data }: NodeProps<FlowNode<IntentGraphNode>>) {
 export function StageNode({ data }: NodeProps<FlowNode<StageGraphNode>>) {
   return (
     <div
-      className="wf-node wf-node-stage"
+      className="wf-node wf-node-stage wf-node-notched"
       data-testid={`node-stage-${data.name}`}
     >
-      <NodeShape height={NODE_HEIGHT.stage} radius={CARD_RADIUS} socket knob />
+      <NodeShape height={NODE_HEIGHT.stage} radius={CARD_RADIUS} notch tab />
       <SequenceIn />
-      {/* A long name stops short of the socket. */}
-      <div
-        className="wf-node-title"
-        style={{ paddingRight: PORT_CLEARANCE }}
-        title={data.name}
-      >
+      <div className="wf-node-title" title={data.name}>
         {data.name}
       </div>
       <div className="wf-node-sub" title={`${data.agent} · ${data.harness}`}>
@@ -171,12 +205,12 @@ export function StageNode({ data }: NodeProps<FlowNode<StageGraphNode>>) {
 /** The finish of the workflow, with a run order in. */
 export function EndNode() {
   return (
-    <div className="wf-node wf-node-end" data-testid="node-end">
+    <div className="wf-node wf-node-end wf-node-notched" data-testid="node-end">
       <NodeShape
         height={NODE_HEIGHT.end}
         radius={NODE_HEIGHT.end / 2}
-        socket
-        knob={false}
+        notch
+        tab={false}
       />
       <SequenceIn />
       <div className="wf-node-title">end</div>
