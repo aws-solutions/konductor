@@ -22,6 +22,20 @@ not per individual commit.
   Ultrawork framing, state the parallel rule once, and remove rules already defined in the
   `constraints` skill and the routing rules.
 
+### Fixed
+
+- Routing skills now agree with the orchestrator prompts. `mux-dispatch` peeks at a running
+  pane only on the prompt's polling fallback, and `delegation-protocol` applies rule 5's
+  fix-attempt cap and 2-Strike Circuit Breaker instead of its own cycle count, and limits its
+  retry-once recovery to spawns that error, time out, or return nothing.
+- The SOP Selection Contract no longer rules out single-procedure SOPs such as `k-plan` and
+  `k-verify`. A request matches a SOP row when it asks for what the row's User intent describes,
+  a whole workflow or one named procedure. A single deliverable that no row describes still goes
+  to an agent. Keyword overlap matches no row, and neither does a lookup the orchestrator answers
+  within its read budget. A thorough codebase or documentation search matches
+  `k-comprehensive-search`. The three orchestrator prompts now run the SOP check on every
+  request, not only on multi-phase ones.
+
 ## [1.2.0] - 2026-10-26
 
 ### Added
@@ -67,17 +81,6 @@ not per individual commit.
 - `k-architect` and `k-developer` no longer tell agents to use `aws___call_aws`, a tool the AWS MCP server has removed. Both now point at `aws___run_script`, which runs sandboxed Python with AWS API access.
 - `find-aws-skills`' failure-handling fallback no longer references `aws___suggest_aws_commands`, which the AWS MCP server does not expose. It now offers direct AWS API calls via `aws___run_script` (sandboxed Python).
 - `aws-service-validator` calls `aws___get_regional_availability` with `resource_type` (required), `regions`, and `filters` (required for more than one region), instead of a bare service-and-region call.
-- Routing skills now agree with the orchestrator prompts. `mux-dispatch` peeks at a running
-  pane only on the prompt's polling fallback, and `delegation-protocol` applies rule 5's
-  fix-attempt cap and 2-Strike Circuit Breaker instead of its own cycle count, and limits its
-  retry-once recovery to spawns that error, time out, or return nothing.
-- The SOP Selection Contract no longer rules out single-procedure SOPs such as `k-plan` and
-  `k-verify`. A request matches a SOP row when it asks for what the row's User intent describes,
-  a whole workflow or one named procedure. A single deliverable that no row describes still goes
-  to an agent. Keyword overlap matches no row, and neither does a lookup the orchestrator answers
-  within its read budget. A thorough codebase or documentation search matches
-  `k-comprehensive-search`. The three orchestrator prompts now run the SOP check on every
-  request, not only on multi-phase ones.
 
 ### Security
 
