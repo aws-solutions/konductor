@@ -22,9 +22,11 @@ const appServer: WebServer = {
   timeout: 120_000,
 };
 
+// `--with-dev-server` lets a test open the page again with the same launch
+// code, as `dev:stub` does for a person who reloads the page.
 const stubServer = (target: ApiTarget): WebServer => ({
   name: 'stub-api',
-  command: 'npm run stub',
+  command: 'npm run stub -- --with-dev-server',
   env: {
     STUB_PORT: String(portOf(target.origin)),
     STUB_LAUNCH_CODE,
