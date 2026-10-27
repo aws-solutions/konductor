@@ -45,9 +45,7 @@ export function statusText(state: ExecutionState): string {
     case 'finished':
       return finishedText(state.run);
     case 'error':
-      return state.started
-        ? 'Stopped following the run.'
-        : 'The run did not start.';
+      return 'See the error above.';
   }
 }
 
