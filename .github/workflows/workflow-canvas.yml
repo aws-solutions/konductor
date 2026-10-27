@@ -27,6 +27,13 @@ on:
       - 'workflow-canvas/**'
       - '.prettierrc'
       - '.github/workflows/workflow-canvas.yml'
+  push:
+    branches: [main, 'integration/**']
+    paths:
+      - 'workflow-canvas/**'
+      - '.prettierrc'
+      - '.github/workflows/workflow-canvas.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
