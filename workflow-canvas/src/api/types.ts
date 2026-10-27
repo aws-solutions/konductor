@@ -23,11 +23,21 @@ export interface WorkflowView {
   stages: StageView[];
 }
 
+/** How serious a finding of the check is. */
+export type Severity = 'error' | 'warning' | 'info';
+
 /** A problem the server found in the workflow text. */
 export interface DiagnosticView {
   message: string;
   /** The line in the text, counted from 1; `undefined` when the reply has none. */
   line: number | undefined;
+  /**
+   * The key path of the finding, such as `stages.write.agent` or
+   * `stages[1].name`; the empty string for the whole text.
+   */
+  path: string;
+  /** A severity this page does not know counts as `error`. */
+  severity: Severity;
 }
 
 /** What `GET /api/workflow` returns. */
@@ -35,8 +45,19 @@ export interface WorkflowDocument {
   name: string;
   /** `null` when the file does not exist yet. */
   text: string | null;
+  /** The hash to send back as `base_hash`; `null` when there is no file. */
+  hash: string | null;
+  /** True when the file cannot be saved. */
+  readOnly: boolean;
   /** `null` when there is no text or the text has errors. */
   view: WorkflowView | null;
+  diagnostics: DiagnosticView[];
+}
+
+/** What `PUT /api/workflow` returns: the file as it was written. */
+export interface SaveResult {
+  hash: string;
+  view: WorkflowView;
   diagnostics: DiagnosticView[];
 }
 
