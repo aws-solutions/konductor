@@ -3,16 +3,25 @@ import { describe, expect, it, vi } from 'vitest';
 import { ApiError, type WorkflowApi } from '../api/api';
 import {
   HELLO_DOCUMENT,
+  HELLO_HASH,
   HELLO_SESSION,
+  HELLO_VIEW,
   helloRun,
 } from '../test-support/fixtures';
+import { SaveConflict, SaveLost, SaveRefused } from '../designer/core';
 import { RunAlreadyActive, RunReadRefused } from '../execution/core';
-import { loadWorkflow } from './load-workflow';
+import { loadWorkflow, withDocument } from './load-workflow';
+
+const SAVED = { hash: 'b'.repeat(64), view: HELLO_VIEW, diagnostics: [] };
 
 function fakeApi(overrides: Partial<WorkflowApi> = {}): WorkflowApi {
   return {
     createSession: vi.fn().mockResolvedValue(HELLO_SESSION),
     getWorkflow: vi.fn().mockResolvedValue(HELLO_DOCUMENT),
+    saveWorkflow: vi.fn().mockResolvedValue(SAVED),
+    checkWorkflow: vi
+      .fn()
+      .mockResolvedValue({ view: HELLO_VIEW, diagnostics: [] }),
     startRun: vi.fn().mockResolvedValue('20261024-0412-a7b3c'),
     getRun: vi.fn().mockResolvedValue(helloRun(0)),
     ...overrides,
@@ -32,6 +41,11 @@ describe('loadWorkflow', () => {
       workflow: {
         harness: 'kiro-cli',
         document: HELLO_DOCUMENT,
+        edits: {
+          save: expect.any(Function),
+          check: expect.any(Function),
+          reload: expect.any(Function),
+        },
         runs: { start: expect.any(Function), get: expect.any(Function) },
       },
     });
@@ -47,6 +61,96 @@ describe('loadWorkflow', () => {
 
     expect(api.startRun).toHaveBeenCalledWith('token-1', 'Ship it');
     expect(api.getRun).toHaveBeenCalledWith('token-1', runId);
+  });
+
+  it('ties the edit calls to the session token', async () => {
+    const api = fakeApi();
+    const result = await loadWorkflow(api, 'code-1');
+    if (!result.ok) throw new Error('The load failed.');
+    const { edits } = result.workflow;
+
+    await edits.save('text', HELLO_HASH);
+    await edits.check('text');
+    await edits.reload();
+
+    expect(api.saveWorkflow).toHaveBeenCalledWith(
+      'token-1',
+      'text',
+      HELLO_HASH,
+    );
+    expect(api.checkWorkflow).toHaveBeenCalledWith('token-1', 'text');
+    expect(api.getWorkflow).toHaveBeenCalledTimes(2);
+    expect(api.getWorkflow).toHaveBeenLastCalledWith('token-1');
+  });
+
+  it('turns the 409 of a changed file into a conflict', async () => {
+    const api = fakeApi({
+      saveWorkflow: vi
+        .fn()
+        .mockRejectedValue(
+          new ApiError('The file changed on disk.', 409, 'conflict'),
+        ),
+    });
+    const result = await loadWorkflow(api, 'code-1');
+    if (!result.ok) throw new Error('The load failed.');
+
+    const refused = result.workflow.edits.save('text', HELLO_HASH);
+
+    await expect(refused).rejects.toBeInstanceOf(SaveConflict);
+  });
+
+  it('turns the 422 of a text with errors into a refusal with its findings', async () => {
+    const findings = [
+      { message: 'Unknown key.', line: 3, path: 'owner', severity: 'error' },
+    ] as const;
+    const api = fakeApi({
+      saveWorkflow: vi
+        .fn()
+        .mockRejectedValue(
+          new ApiError(
+            'The workflow has errors.',
+            422,
+            'invalid_workflow',
+            undefined,
+            findings,
+          ),
+        ),
+    });
+    const result = await loadWorkflow(api, 'code-1');
+    if (!result.ok) throw new Error('The load failed.');
+
+    const refused = await result.workflow.edits
+      .save('text', HELLO_HASH)
+      .catch((caught: unknown) => caught);
+
+    expect(refused).toBeInstanceOf(SaveRefused);
+    expect((refused as SaveRefused).diagnostics).toEqual(findings);
+  });
+
+  it.each([
+    ['no answer', 0],
+    ['a server error', 500],
+  ])('turns %s to a save into a lost answer', async (_, status) => {
+    const failure = new ApiError('The server did not answer.', status);
+    const api = fakeApi({ saveWorkflow: vi.fn().mockRejectedValue(failure) });
+    const result = await loadWorkflow(api, 'code-1');
+    if (!result.ok) throw new Error('The load failed.');
+
+    const lost = result.workflow.edits.save('text', HELLO_HASH);
+
+    await expect(lost).rejects.toBeInstanceOf(SaveLost);
+    await expect(lost).rejects.toThrow('The server did not answer.');
+  });
+
+  it('lets any other failure of a save through as it is', async () => {
+    const failure = new ApiError('Not allowed.', 403, 'read_only_workflow');
+    const api = fakeApi({ saveWorkflow: vi.fn().mockRejectedValue(failure) });
+    const result = await loadWorkflow(api, 'code-1');
+    if (!result.ok) throw new Error('The load failed.');
+
+    const refused = result.workflow.edits.save('text', HELLO_HASH);
+
+    await expect(refused).rejects.toBe(failure);
   });
 
   it('turns the 409 of an active run into the run to join, with its id', async () => {
@@ -184,5 +288,28 @@ describe('loadWorkflow', () => {
       ok: false,
       message: 'The workflow did not load.',
     });
+  });
+});
+
+describe('withDocument', () => {
+  const document = { ...HELLO_DOCUMENT, hash: 'd'.repeat(64) };
+
+  it('swaps the document of a loaded workflow and keeps the rest', async () => {
+    const result = await loadWorkflow(fakeApi(), 'code-1');
+    if (!result.ok) throw new Error('The load failed.');
+
+    const swapped = withDocument(result, document);
+
+    expect(swapped).toEqual({
+      ok: true,
+      workflow: { ...result.workflow, document },
+    });
+  });
+
+  it('leaves a failed load and no load as they are', () => {
+    const failed = { ok: false, message: 'No.' } as const;
+
+    expect(withDocument(failed, document)).toBe(failed);
+    expect(withDocument(undefined, document)).toBeUndefined();
   });
 });
