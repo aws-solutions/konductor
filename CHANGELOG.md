@@ -35,18 +35,9 @@ not per individual commit.
   its read budget. A thorough codebase or documentation search matches `k-comprehensive-search`.
   The three orchestrator prompts now run the SOP check on every request, not only on multi-phase
   ones.
-
-## [Unreleased]
-
-### Fixed
-
-- Claude Code agents now run on the model their spec declares. Specs use Kiro's dotted model
-  ID (`claude-sonnet-5.5`), which Claude Code ignores without an error, so agents ran on the
-  session or default subagent model. Synth now writes Claude Code's form
-  (`claude-sonnet-5-5`) for both the plugin and `konductor install --harness claude`, and fails
-  on a model ID it can't convert.
-- The Claude Code plugin now ships `NOTICE.txt`, and its README links point at the release tag
-  instead of files the plugin doesn't ship.
+- Claude Code agents run on the model their spec declares (`claude-sonnet-5-5`, not Kiro's
+  `claude-sonnet-5.5`).
+- The Claude Code plugin ships `NOTICE.txt`, and its README links work.
 
 ## [1.2.0] - 2026-10-26
 
