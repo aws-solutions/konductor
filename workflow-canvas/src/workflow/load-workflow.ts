@@ -54,7 +54,7 @@ function activeRunOf(error: unknown): RunAlreadyActive | undefined {
 // 4xx and a reply the page cannot read will not change.
 function readRefusedOf(error: unknown): RunReadRefused | undefined {
   return error instanceof ApiError && !canRetryStatus(error.status)
-    ? new RunReadRefused(error.message)
+    ? new RunReadRefused(messageOf(error, error.message))
     : undefined;
 }
 
@@ -68,7 +68,9 @@ function saveErrorOf(error: unknown): Error | undefined {
   if (error.code === 'invalid_workflow') {
     return new SaveRefused(error.message, error.diagnostics);
   }
-  return canRetryStatus(error.status) ? new SaveLost(error.message) : undefined;
+  return canRetryStatus(error.status)
+    ? new SaveLost(messageOf(error, error.message))
+    : undefined;
 }
 
 function editPortFor(api: WorkflowApi, token: string): EditPort {
