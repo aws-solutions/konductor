@@ -47,6 +47,8 @@ not per individual commit.
   needs a fixed port. The stub of `npm run dev:stub` and the one that Playwright starts take the
   launch code again and give the same token, so opening the printed address again after a
   reload works; `npm run stub` on its own keeps the contract's one use.
+  The dev proxy sends the target's `Origin` only for a request from the page itself; any other
+  `Origin`, or none, is forwarded unchanged, so the API refuses a page on another origin.
 
 ### Changed
 
