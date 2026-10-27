@@ -150,22 +150,34 @@ function RunPanel({
   );
 }
 
+function UnsavedNote() {
+  return (
+    <Alert type="info" data-testid="unsaved-note">
+      The Designer has changes that are not saved. A run uses the saved
+      workflow, which is the one drawn here.
+    </Alert>
+  );
+}
+
 function ExecutionView({
   workflow,
   goal,
   onGoalChange,
   execution,
+  unsaved,
 }: {
   workflow: DrawableWorkflow;
   goal: string;
   onGoalChange: (goal: string) => void;
   execution: ExecutionController;
+  unsaved: boolean;
 }) {
   const { view, harness } = workflow;
   const run = runOf(execution.state);
   const statuses = useMemo(() => nodeStatuses(run), [run]);
   return (
     <SpaceBetween size="m">
+      {unsaved && <UnsavedNote />}
       <StageDriftNotice view={view} run={run} />
       <div className="wf-execution">
         <WorkflowGraphCard view={view} harness={harness} statuses={statuses} />
@@ -185,17 +197,21 @@ function ExecutionView({
  * the state and `goal` the text of the Goal box, both kept by the caller, so a
  * run goes on and the goal stays while the Designer tab is open. The box is
  * read-only while a run is in flight, so it then shows the goal of that run.
+ * `result` is the workflow as saved, which is what a run uses; `unsaved` says
+ * that the Designer holds changes that it does not have.
  */
 export function Execution({
   result,
   execution,
   goal,
   onGoalChange,
+  unsaved = false,
 }: {
   result: LoadResult | undefined;
   execution: ExecutionController;
   goal: string;
   onGoalChange: (goal: string) => void;
+  unsaved?: boolean;
 }) {
   return (
     <WorkflowGate result={result}>
@@ -205,6 +221,7 @@ export function Execution({
           goal={goal}
           onGoalChange={onGoalChange}
           execution={execution}
+          unsaved={unsaved}
         />
       )}
     </WorkflowGate>
