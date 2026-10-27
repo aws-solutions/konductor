@@ -15,6 +15,7 @@ not per individual commit.
 - HTTP API contract for the workflow canvas (`workflow-canvas/api/openapi.yaml`), checked by `npm run api:lint`.
 - Stub API for the workflow canvas (`npm run stub`, `npm run dev:stub`); `WC_API_TARGET` points the page at a real server.
 - The Designer tab draws the workflow as a read-only graph.
+- The workflow canvas uses the Konductor docs theme, with light and dark modes.
 
 ## [1.2.0] - 2026-10-26
 
