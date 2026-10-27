@@ -4,6 +4,14 @@ import { sameStages, stagesOf } from './draft';
 import { hasErrors, type Problem } from './problems';
 import { withStages } from './stage-text';
 
+/** The words that say why a read-only workflow cannot be changed. */
+export const READ_ONLY_REASON = 'The workflow is read-only.';
+
+/** Whether the stages may be changed: not when the server says read-only. */
+export function canEdit(state: EditState): boolean {
+  return !state.saved.readOnly;
+}
+
 /** Whether the draft differs from the saved workflow. */
 export function isDirty(state: EditState): boolean {
   return !sameStages(stagesOf(state.draft), state.saved.view.stages);
@@ -34,7 +42,7 @@ export function problemsOfDraft(state: EditState): Problem[] {
 
 /** Why the draft cannot be saved now, or `undefined` when it can. */
 export function saveBlocker(state: EditState): string | undefined {
-  if (state.saved.readOnly) return 'The workflow is read-only.';
+  if (!canEdit(state)) return READ_ONLY_REASON;
   switch (state.save.phase) {
     case 'saving':
       return 'The workflow is being saved.';

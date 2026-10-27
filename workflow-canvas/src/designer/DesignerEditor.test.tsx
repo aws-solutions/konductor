@@ -428,6 +428,31 @@ describe('checking while typing', () => {
     expect(screen.getByText('Needs a fix')).toBeTruthy();
   });
 
+  it('shows a warning as a note, not as an error, and leaves Save on', async () => {
+    const edits = acceptingEdits();
+    edits.check.mockResolvedValue({
+      view: null,
+      diagnostics: [
+        {
+          ...finding('stages[0].name', 'The name is long.'),
+          severity: 'warning',
+        },
+      ],
+    });
+    const { scheduler } = await openDesigner(edits);
+
+    type('write');
+    await checkNow(scheduler);
+
+    const notes = await screen.findByTestId('notes');
+    expect(within(notes).getByText('write: The name is long.')).toBeTruthy();
+    expect(screen.queryByTestId('problems')).toBeNull();
+    expect(nameInput().getAttribute('aria-invalid')).not.toBe('true');
+    expect(screen.queryByText('Needs a fix')).toBeNull();
+    expect(screen.getByText('Has a note')).toBeTruthy();
+    expect(isOff(saveButton())).toBe(false);
+  });
+
   it('turns Save off, with the reason, while the check has found an error', async () => {
     const edits = acceptingEdits();
     edits.check.mockResolvedValue({
@@ -713,6 +738,27 @@ describe('the two tabs', () => {
     const panel = screen.getByRole('tabpanel', { name: 'Execution' });
     expect(await within(panel).findByTestId('node-stage-write')).toBeTruthy();
     expect(within(panel).queryByTestId('unsaved-note')).toBeNull();
+  });
+});
+
+describe('a workflow that the server says is read-only', () => {
+  it('turns off every control that would change it', async () => {
+    await openDesigner(acceptingEdits(), {
+      ...HELLO_DOCUMENT,
+      readOnly: true,
+    });
+
+    expect(nameInput().readOnly).toBe(true);
+    expect(
+      agentSelect().findTrigger().getElement().hasAttribute('disabled') ||
+        agentSelect()
+          .findTrigger()
+          .getElement()
+          .getAttribute('aria-disabled') === 'true',
+    ).toBe(true);
+    expect(isOff(addButton())).toBe(true);
+    expect(isOff(deleteButton())).toBe(true);
+    expect(isOff(saveButton())).toBe(true);
   });
 });
 

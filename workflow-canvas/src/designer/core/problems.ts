@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { DiagnosticView } from '../../api/types';
+import type { DiagnosticView, Severity } from '../../api/types';
 import type { Draft, DraftStage } from './draft';
 
 /** A field of a stage that the Designer edits. */
@@ -8,6 +8,8 @@ export type StageField = 'name' | 'agent';
 /** A finding of the check, with the stage and field it is about, if any. */
 export interface Problem {
   message: string;
+  /** How serious it is; only an `error` stops a save. */
+  severity: Severity;
   /** The stage it is about; `undefined` for a finding about the whole text. */
   stageId?: string;
   field?: StageField;
@@ -45,8 +47,9 @@ export function problemsOf(
   diagnostics: readonly DiagnosticView[],
   draft: Draft,
 ): Problem[] {
-  return diagnostics.map(({ message, path }) => ({
+  return diagnostics.map(({ message, path, severity }) => ({
     message,
+    severity,
     ...targetOf(path, draft),
   }));
 }
@@ -68,15 +71,28 @@ export function checkOf(
   return { revision, diagnostics, problems: problemsOf(diagnostics, draft) };
 }
 
-/** The messages about one field of one stage. */
+/** The problems about one field of one stage. */
 export function problemsFor(
   problems: readonly Problem[],
   stageId: string,
   field: StageField,
-): string[] {
-  return problems
-    .filter((p) => p.stageId === stageId && p.field === field)
-    .map((p) => p.message);
+): Problem[] {
+  return problems.filter((p) => p.stageId === stageId && p.field === field);
+}
+
+/** The problems that stop a save: the findings of severity `error`. */
+export function errorsOf(problems: readonly Problem[]): Problem[] {
+  return problems.filter((problem) => problem.severity === 'error');
+}
+
+/** The problems that do not stop a save: warnings and notes. */
+export function notesOf(problems: readonly Problem[]): Problem[] {
+  return problems.filter((problem) => problem.severity !== 'error');
+}
+
+/** The messages of `problems`, joined into one sentence, or `undefined`. */
+export function joinMessages(problems: readonly Problem[]): string | undefined {
+  return problems.map((problem) => problem.message).join(' ') || undefined;
 }
 
 /** Whether any finding stops the workflow from being saved. */

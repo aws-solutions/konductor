@@ -84,6 +84,19 @@ describe('saveBlocker', () => {
     expect(canSave(state)).toBe(true);
   });
 
+  it('does not count a warning or a note as a reason to stop', () => {
+    const state = run(AGENT_CHANGE, {
+      type: 'checked',
+      revision: 1,
+      diagnostics: [
+        { ...error('stages[0].agent'), severity: 'warning' },
+        { ...error('stages[0].name'), severity: 'info' },
+      ],
+    });
+
+    expect(saveBlocker(state)).toBeUndefined();
+  });
+
   it('says the workflow is read-only when the server says so', () => {
     const open = openDocument({ ...HELLO_DOCUMENT, readOnly: true });
     const state = reduce(open, AGENT_CHANGE);
@@ -113,7 +126,7 @@ describe('problemsOfDraft', () => {
     });
 
     expect(problemsOfDraft(state)).toEqual([
-      { message: 'Wrong.', stageId: 's1', field: 'agent' },
+      { message: 'Wrong.', severity: 'error', stageId: 's1', field: 'agent' },
     ]);
   });
 
@@ -124,7 +137,7 @@ describe('problemsOfDraft', () => {
     );
 
     expect(problemsOfDraft(state)).toEqual([
-      { message: 'Wrong.', stageId: 's1', field: 'agent' },
+      { message: 'Wrong.', severity: 'error', stageId: 's1', field: 'agent' },
     ]);
   });
 
@@ -135,7 +148,7 @@ describe('problemsOfDraft', () => {
     );
 
     expect(problemsOfDraft(state)).toEqual([
-      { message: 'Wrong.', stageId: 's2', field: 'name' },
+      { message: 'Wrong.', severity: 'error', stageId: 's2', field: 'name' },
     ]);
   });
 
@@ -149,7 +162,9 @@ describe('problemsOfDraft', () => {
       { type: 'remove', id: 's2' },
     );
 
-    expect(problemsOfDraft(state)).toEqual([{ message: 'Wrong.' }]);
+    expect(problemsOfDraft(state)).toEqual([
+      { message: 'Wrong.', severity: 'error' },
+    ]);
   });
 });
 

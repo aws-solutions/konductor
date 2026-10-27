@@ -11,8 +11,13 @@ import StatusIndicator from '@cloudscape-design/components/status-indicator';
 import type { Ref } from 'react';
 import {
   agentChoices,
+  canEdit,
   canRemoveStage,
+  errorsOf,
+  joinMessages,
+  notesOf,
   problemsFor,
+  READ_ONLY_REASON,
   problemsOfDraft,
   type DraftStage,
   type EditState,
@@ -25,12 +30,15 @@ const AGENT_NOTE = 'A Konductor agent id: the name of an agent spec.';
 
 function StageFields({
   stage,
+  locked,
   problems,
   nameRef,
   onRename,
   onAgent,
 }: {
   stage: DraftStage;
+  /** True when the workflow is read-only, so nothing here changes it. */
+  locked: boolean;
   problems: Problem[];
   nameRef: Ref<InputProps.Ref>;
   onRename: (name: string) => void;
@@ -40,17 +48,21 @@ function StageFields({
   const chosen = choices.find((agent) => agent.id === stage.agent);
   const nameProblems = problemsFor(problems, stage.id, 'name');
   const agentProblems = problemsFor(problems, stage.id, 'agent');
+  const nameErrors = errorsOf(nameProblems);
+  const agentErrors = errorsOf(agentProblems);
   return (
     <SpaceBetween size="m">
       <FormField
         label="name"
         constraintText={NAME_HINT}
-        errorText={nameProblems.join(' ') || undefined}
+        errorText={joinMessages(nameErrors)}
+        warningText={joinMessages(notesOf(nameProblems))}
       >
         <Input
           ref={nameRef}
           value={stage.name}
-          invalid={nameProblems.length > 0}
+          readOnly={locked}
+          invalid={nameErrors.length > 0}
           onChange={({ detail }) => onRename(detail.value)}
         />
       </FormField>
@@ -62,7 +74,8 @@ function StageFields({
             {chosen && <div>{chosen.summary}</div>}
           </>
         }
-        errorText={agentProblems.join(' ') || undefined}
+        errorText={joinMessages(agentErrors)}
+        warningText={joinMessages(notesOf(agentProblems))}
       >
         <Select
           selectedOption={{
@@ -75,7 +88,8 @@ function StageFields({
             label: id,
             description: summary,
           }))}
-          invalid={agentProblems.length > 0}
+          disabled={locked}
+          invalid={agentErrors.length > 0}
           onChange={({ detail }) =>
             onAgent(detail.selectedOption.value ?? stage.agent)
           }
@@ -83,6 +97,17 @@ function StageFields({
       </FormField>
     </SpaceBetween>
   );
+}
+
+// Whether the stage is complete, needs a fix (an error) or has a note.
+function StageStatus({ problems }: { problems: Problem[] }) {
+  if (errorsOf(problems).length > 0) {
+    return <StatusIndicator type="error">Needs a fix</StatusIndicator>;
+  }
+  if (problems.length > 0) {
+    return <StatusIndicator type="warning">Has a note</StatusIndicator>;
+  }
+  return <StatusIndicator type="success">Complete</StatusIndicator>;
 }
 
 /**
@@ -105,7 +130,8 @@ export function PropertiesPane({
 }) {
   const stage = state.draft.stages.find((s) => s.id === state.selectedId);
   const problems = problemsOfDraft(state);
-  const fixable = stage ? problems.some((p) => p.stageId === stage.id) : false;
+  const editable = canEdit(state);
+  const own = problems.filter((p) => p.stageId === stage?.id);
   return (
     <Container header={<Header variant="h2">Properties</Header>}>
       {stage ? (
@@ -114,18 +140,12 @@ export function PropertiesPane({
             Selected: <b>{stage.name || 'a stage with no name'}</b>
           </Box>
           <SpaceBetween size="m">
-            <Header
-              variant="h3"
-              actions={
-                <StatusIndicator type={fixable ? 'error' : 'success'}>
-                  {fixable ? 'Needs a fix' : 'Complete'}
-                </StatusIndicator>
-              }
-            >
+            <Header variant="h3" actions={<StageStatus problems={own} />}>
               Required
             </Header>
             <StageFields
               stage={stage}
+              locked={!editable}
               problems={problems}
               nameRef={nameRef}
               onRename={(name) => onRename(stage.id, name)}
@@ -133,8 +153,12 @@ export function PropertiesPane({
             />
           </SpaceBetween>
           <Button
-            disabled={!canRemoveStage(state.draft)}
-            disabledReason="A workflow needs at least one stage."
+            disabled={!editable || !canRemoveStage(state.draft)}
+            disabledReason={
+              editable
+                ? 'A workflow needs at least one stage.'
+                : READ_ONLY_REASON
+            }
             onClick={() => onRemove(stage.id)}
           >
             Delete stage

@@ -273,12 +273,17 @@ says so before you save.
   check of the new text answers, so the page does not jump at every key. The
   server has the last word: Save is off while the check of the current draft
   has errors, with the reason in a tooltip, and a save that goes out in the
-  pause is checked again by the server. A check that cannot reach the server says nothing; the
-  save checks again and reports it.
+  pause is checked again by the server. A check that cannot reach the server
+  says nothing; the save checks again and reports it. Only an error stops a
+  save: a warning or a note is shown as a note (a warning or info alert, and
+  the text under the field in the warning style) and Save stays on.
 - **A refused save** (422) shows the findings the same way.
 - **A conflict** (409) means the file changed after the page loaded. Nothing
   is written, and an alert says so, with **Load the file again**, which loads
-  the file from the server and drops the draft. Focus then moves to the name.
+  the file from the server and replaces the draft. Focus then moves to the name.
+- **A read-only workflow** (the server says `read_only`) can be looked at, and
+  a stage can be selected, but the name is read-only and Add stage, Delete
+  stage, the agent list and Save are off, with the reason in a tooltip.
 - **A save whose answer is lost** (no answer, or a server error) may still
   have written the file. The page reads the file again: if it holds the text
   that was sent, the save counts as done; if not, the failure is shown in an

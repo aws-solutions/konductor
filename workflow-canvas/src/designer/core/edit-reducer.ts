@@ -15,15 +15,16 @@ import {
   type Draft,
 } from './draft';
 import { openDocument, type EditEvent, type EditState } from './edit-state';
-import { canSave, isDirty } from './edit-view';
+import { canEdit, canSave, isDirty } from './edit-view';
 import { checkOf } from './problems';
 
 const NOT_EDITABLE =
   'The workflow on the server can no longer be edited here. Fix the file and reload the page.';
 
 // A change of the draft: a new revision, and a finished save is old news.
+// A read-only workflow takes no change.
 function edited(state: EditState, draft: Draft, selectedId: string): EditState {
-  if (draft === state.draft) return state;
+  if (draft === state.draft || !canEdit(state)) return state;
   const phase = state.save.phase;
   const settled =
     phase === 'saved' || phase === 'reloaded' || phase === 'failed';

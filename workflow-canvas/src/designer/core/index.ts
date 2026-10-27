@@ -25,9 +25,11 @@ export {
   type SaveState,
 } from './edit-state';
 export {
+  canEdit,
   canSave,
   isDirty,
   problemsOfDraft,
+  READ_ONLY_REASON,
   saveBlocker,
   saveStatus,
   textOf,
@@ -35,6 +37,13 @@ export {
 } from './edit-view';
 export { SaveConflict, SaveLost, SaveRefused, type EditPort } from './ports';
 export { willRewriteWhole } from './stage-text';
-export { problemsFor, type Problem, type StageField } from './problems';
+export {
+  errorsOf,
+  joinMessages,
+  notesOf,
+  problemsFor,
+  type Problem,
+  type StageField,
+} from './problems';
 export { CHECK_DELAY_MS, checkAfterPause } from './run-check';
 export { reloadWorkflow, saveDraft } from './run-save';

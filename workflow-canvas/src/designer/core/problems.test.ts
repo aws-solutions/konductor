@@ -2,7 +2,14 @@
 import { describe, expect, it } from 'vitest';
 import type { DiagnosticView } from '../../api/types';
 import { draftOf } from './draft';
-import { hasErrors, problemsFor, problemsOf } from './problems';
+import {
+  errorsOf,
+  hasErrors,
+  joinMessages,
+  notesOf,
+  problemsFor,
+  problemsOf,
+} from './problems';
 
 const DRAFT = draftOf([
   { name: 'write', agent: 'k-developer' },
@@ -19,6 +26,7 @@ describe('problemsOf', () => {
 
     expect(problem).toEqual({
       message: 'Wrong.',
+      severity: 'error',
       stageId: 's2',
       field: 'name',
     });
@@ -41,7 +49,7 @@ describe('problemsOf', () => {
   ])('leaves a finding about %s without a stage', (_, path) => {
     const [problem] = problemsOf([finding(path)], DRAFT);
 
-    expect(problem).toEqual({ message: 'Wrong.' });
+    expect(problem).toEqual({ message: 'Wrong.', severity: 'error' });
   });
 });
 
@@ -57,8 +65,47 @@ describe('problemsFor', () => {
       DRAFT,
     );
 
-    expect(problemsFor(problems, 's1', 'name')).toEqual(['One.', 'Four.']);
+    expect(problemsFor(problems, 's1', 'name').map((p) => p.message)).toEqual([
+      'One.',
+      'Four.',
+    ]);
     expect(problemsFor(problems, 's2', 'agent')).toEqual([]);
+  });
+});
+
+describe('severity', () => {
+  const warning: DiagnosticView = {
+    ...finding('stages[0].name', 'Careful.'),
+    severity: 'warning',
+  };
+  const note: DiagnosticView = {
+    ...finding('stages[0].agent', 'FYI.'),
+    severity: 'info',
+  };
+  const problems = problemsOf(
+    [finding('stages[0].name'), warning, note],
+    DRAFT,
+  );
+
+  it('stays on the problem of a finding', () => {
+    expect(problems.map((p) => p.severity)).toEqual([
+      'error',
+      'warning',
+      'info',
+    ]);
+  });
+
+  it('splits the errors, which stop a save, from the notes, which do not', () => {
+    expect(errorsOf(problems).map((p) => p.message)).toEqual(['Wrong.']);
+    expect(notesOf(problems).map((p) => p.message)).toEqual([
+      'Careful.',
+      'FYI.',
+    ]);
+  });
+
+  it('joins messages into one sentence, or says there are none', () => {
+    expect(joinMessages(notesOf(problems))).toBe('Careful. FYI.');
+    expect(joinMessages([])).toBeUndefined();
   });
 });
 

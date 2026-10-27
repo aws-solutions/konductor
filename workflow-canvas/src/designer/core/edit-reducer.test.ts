@@ -34,6 +34,29 @@ function savedResult(stages = HELLO_VIEW.stages): SaveResult {
   };
 }
 
+describe('a read-only workflow', () => {
+  const readOnly = (): EditState => {
+    const state = openDocument({ ...HELLO_DOCUMENT, readOnly: true });
+    if (!state) throw new Error('The sample cannot be edited.');
+    return state;
+  };
+
+  it.each([
+    ['add', { type: 'add' }],
+    ['rename', { type: 'rename', id: 's1', name: 'other' }],
+    ['set-agent', { type: 'set-agent', id: 's1', agent: 'k-tpm' }],
+    ['remove', { type: 'remove', id: 's1' }],
+  ] as const)('takes no %s', (_, event) => {
+    const state = readOnly();
+
+    expect(run(state, event)).toBe(state);
+  });
+
+  it('still lets a stage be selected', () => {
+    expect(run(readOnly(), { type: 'select', id: 's2' }).selectedId).toBe('s2');
+  });
+});
+
 describe('open', () => {
   it('starts a draft of the saved stages with the first one selected', () => {
     const state = opened();
@@ -148,7 +171,9 @@ describe('check', () => {
     expect(state.check).toEqual({
       revision: 1,
       diagnostics: [finding('stages[2].name')],
-      problems: [{ message: 'Wrong.', stageId: 's3', field: 'name' }],
+      problems: [
+        { message: 'Wrong.', severity: 'error', stageId: 's3', field: 'name' },
+      ],
     });
   });
 
@@ -336,7 +361,9 @@ describe('save', () => {
     expect(state.check).toEqual({
       revision: 1,
       diagnostics: [finding('stages[0].agent')],
-      problems: [{ message: 'Wrong.', stageId: 's1', field: 'agent' }],
+      problems: [
+        { message: 'Wrong.', severity: 'error', stageId: 's1', field: 'agent' },
+      ],
     });
   });
 

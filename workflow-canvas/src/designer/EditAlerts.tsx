@@ -2,10 +2,10 @@
 import Alert from '@cloudscape-design/components/alert';
 import Button from '@cloudscape-design/components/button';
 import type { Draft, EditState, Problem } from './core';
-import { problemsOfDraft, willRewriteWhole } from './core';
+import { errorsOf, notesOf, problemsOfDraft, willRewriteWhole } from './core';
 
 const CONFLICT_TEXT =
-  'The file was changed after this page loaded, so nothing was saved. Load it again to see it as it is now. The changes you made here are lost.';
+  'The file was changed after this page loaded, so nothing was saved. Load it again to see it as it is now; that replaces the changes you made here.';
 
 function stageName(draft: Draft, id: string | undefined): string | undefined {
   return draft.stages.find((stage) => stage.id === id)?.name;
@@ -42,20 +42,34 @@ function Conflict({
   );
 }
 
-function Problems({ problems, draft }: { problems: Problem[]; draft: Draft }) {
+function ProblemList({
+  problems,
+  draft,
+  type,
+  header,
+  testId,
+}: {
+  problems: Problem[];
+  draft: Draft;
+  type: 'error' | 'warning' | 'info';
+  header: string;
+  testId: string;
+}) {
+  if (problems.length === 0) return null;
   return (
-    <Alert
-      type="error"
-      header="The workflow has problems"
-      data-testid="problems"
-    >
-      <ul aria-label="Problems in the workflow">
+    <Alert type={type} header={header} data-testid={testId}>
+      <ul aria-label={header}>
         {problems.map((problem, index) => (
           <li key={`${index}:${problem.message}`}>{lineOf(problem, draft)}</li>
         ))}
       </ul>
     </Alert>
   );
+}
+
+// A note is a warning when any finding in it is one, and info otherwise.
+function noteType(notes: Problem[]): 'warning' | 'info' {
+  return notes.some((note) => note.severity === 'warning') ? 'warning' : 'info';
 }
 
 /**
@@ -73,6 +87,7 @@ export function EditAlerts({
 }) {
   const { save, draft } = state;
   const problems = problemsOfDraft(state);
+  const notes = notesOf(problems);
   return (
     <div role="alert" className="wf-edit-alerts">
       {(save.phase === 'conflict' || save.phase === 'reloading') && (
@@ -87,7 +102,20 @@ export function EditAlerts({
           {save.message}
         </Alert>
       )}
-      {problems.length > 0 && <Problems problems={problems} draft={draft} />}
+      <ProblemList
+        problems={errorsOf(problems)}
+        draft={draft}
+        type="error"
+        header="The workflow has problems"
+        testId="problems"
+      />
+      <ProblemList
+        problems={notes}
+        draft={draft}
+        type={noteType(notes)}
+        header="Notes on the workflow"
+        testId="notes"
+      />
     </div>
   );
 }

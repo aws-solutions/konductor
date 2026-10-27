@@ -5,7 +5,7 @@ import { useMemo, useRef } from 'react';
 import { WorkflowGraphCard } from '../canvas/WorkflowGraphCard';
 import type { CanvasSelection } from '../canvas/WorkflowCanvas';
 import { stageNodeId } from '../graph';
-import { canAddStage } from './core';
+import { canAddStage, canEdit, MAX_STAGES, READ_ONLY_REASON } from './core';
 import './designer.css';
 import { EditAlerts, RewriteNotice } from './EditAlerts';
 import { PropertiesPane } from './PropertiesPane';
@@ -13,7 +13,7 @@ import { SaveControls } from './SaveControls';
 import { useFocusRequest, useFocusWhenDone } from './use-focus';
 import type { Editor } from './use-editor';
 
-const STAGE_LIMIT = 'A workflow has at most 40 stages.';
+const STAGE_LIMIT = `A workflow has at most ${MAX_STAGES} stages.`;
 
 /**
  * The editable Designer: the graph with Add stage and Save, Properties for the
@@ -61,7 +61,8 @@ export function DesignerEditor({
     [state.selectedId, state.draft.stages, select, focusName],
   );
 
-  const addable = canAddStage(state.draft);
+  const editable = canEdit(state);
+  const addable = editable && canAddStage(state.draft);
   return (
     <div>
       <EditAlerts state={state} onReload={editor.reload} />
@@ -76,7 +77,7 @@ export function DesignerEditor({
             <Button
               iconName="add-plus"
               disabled={!addable}
-              disabledReason={STAGE_LIMIT}
+              disabledReason={editable ? STAGE_LIMIT : READ_ONLY_REASON}
               onClick={() => {
                 editor.add();
                 focusName();
