@@ -61,7 +61,7 @@ not per individual commit.
   logo, the page name and a light/dark toggle sits above a dark header band with the breadcrumb
   `Workflows > hello`, the title and the Designer and Execution tabs. The mode follows the system
   setting on the first visit, and a choice made with the toggle is kept in local storage. Nodes,
-  the `S` run-order ports (a round knob that fits a round socket) and the links are drawn in the
+  the `S` run-order ports (a square tab that fits a square notch) and the links are drawn in the
   same theme in both modes. The whole tab strip is part of the dark band. Text meets WCAG AA in
   both modes, and the edges of the controls, ports and the selected-tab indicator reach 3:1,
   checked by unit tests and by axe in the end-to-end tests. A dark-mode Designer screenshot
