@@ -3,12 +3,17 @@
 # severity-schema.yml — the set of gate severities Konductor gates may
 # report, and their semantics.
 #
-# ── Scope (M1 declarative contract) ────────────────────────────────────────
-# This file is pure DATA, read by the config loader (cli/konductor-rs/
-# src/config.rs, cli/konductor/konductor/config.py) and by future gate
-# authors. It does not execute anything and is not itself validated against
-# a JSON Schema at this milestone — the loader's `severities` field is a
-# simple list of these ids, checked for a non-empty set and known ids only.
+# ── Scope ───────────────────────────────────────────────────────────────────
+# This file is pure DATA. The CLI embeds it at build time and parses the
+# ids, ranks and aliases (cli/konductor-rs/src/cli/gate_config.rs); a
+# parity test in `cargo test` fails when the CLI's own severity ids or
+# ranks differ from this file. The config loader's `severities_source` still
+# names this file, and its severity fields accept gate ids only.
+#
+# `aliases` (optional) lists the words a checker may write for a severity
+# in its report, for example IMPORTANT for HIGH. An alias maps that word
+# to the gate id. A word that is neither an id nor an alias ranks as
+# CRITICAL. An alias appears under one id only and is never itself an id.
 #
 # ── Exit-code note (IMPORTANT — read before wiring this into anything) ────
 # `exit_code_signal: critical_gate` below is a SEMANTIC label only: it
@@ -33,6 +38,7 @@ severities:
     exit_code_signal: critical_gate
   - id: HIGH
     rank: 3
+    aliases: [IMPORTANT, WARNING]
     description: >-
       A finding that should block the pipeline in strict configurations,
       but may be downgraded to a warning by scope/policy overrides.
@@ -45,6 +51,7 @@ severities:
     exit_code_signal: null
   - id: LOW
     rank: 1
+    aliases: [SUGGESTION, MINOR]
     description: >-
       A minor finding, informational for most workflows.
     exit_code_signal: null
