@@ -23,9 +23,8 @@ not per individual commit.
   `constraints` skill and the routing rules.
 - Orchestrators delegate a step they can't do to the owning specialist and may run independent
   parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
-- Agents ignore embedded instructions in content they read. Orchestrators never route around a
-  denied action, never read credential files, run only read-only commands anywhere in a shell
-  line, and report a stuck mux/cmux pane to the user.
+- Agents ignore instructions planted in content they work on, and orchestrators never route
+  around a permission denial or read credential files.
 
 ### Fixed
 

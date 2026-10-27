@@ -180,7 +180,7 @@ After code changes, run the maker-checker cycle:
 1. Get the git diff of all changes
 2. Spawn the appropriate reviewer agent (e.g., `k-developer` with `backend-review` or `frontend-review`)
 3. Address all CRITICAL findings
-4. Re-review. After 2 failed fix attempts on an artifact, apply the 2-Strike Circuit Breaker if both failed on the same error (rule 5 under Orchestration Rules in your orchestrator prompt); otherwise escalate to the user.
+4. Re-review. If the fix fails, follow rule 5 under Orchestration Rules in your orchestrator prompt.
 
 ## Failure Recovery
 
