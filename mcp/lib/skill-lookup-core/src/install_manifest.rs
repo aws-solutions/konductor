@@ -12,10 +12,13 @@
 // cross-workspace dependency just to reuse `cli/konductor-rs`'s
 // `Manifest`/`ManifestFile` types would couple two otherwise-independent
 // binaries. Instead, this module parses only the minimal subset of the
-// manifest's documented JSON shape this crate actually needs --
-// `files[].path` -- treating every other field (`schema_version`,
-// `sha256`, `provenance`, `status`, `source`, `strategy`,
-// `installed_at`, `destination`) as opaque and never modeling it here.
+// manifest's documented JSON shape this crate actually needs: every
+// file path, read from `strategies[].files[].path` (schema v2, what the
+// installer writes today) or from a top-level `files[].path` (schema
+// v1, which can linger on disk until the next install migrates it).
+// Every other field (`schema_version`, `sha256`, `provenance`,
+// `status`, `source`, `strategy`, `installed_at`, `destination`) is
+// treated as opaque and never modeled here.
 // Treat the shape parsed below as a stable, documented wire contract
 // (per `cli/install/manifest.rs`'s own module docstring), not as this
 // crate's to evolve independently.
@@ -36,8 +39,8 @@
 //
 // ── Fail-open, by design ────────────────────────────────────────────────
 // Every failure this module can hit -- the manifest file doesn't exist,
-// can't be read, isn't valid JSON, or doesn't have the expected `files`
-// array shape -- collapses to an empty result (`HashSet::new()`), never
+// can't be read, isn't valid JSON, or matches neither the v2
+// `strategies[].files` shape nor the v1 `files` shape -- collapses to an empty result (`HashSet::new()`), never
 // an error propagated to the caller. A scan must never treat "I couldn't
 // read the manifest" as "therefore nothing here is konductor-installed,
 // so the filter should scope everything" (failing CLOSED) -- that would
@@ -76,18 +79,38 @@ fn manifest_path_for_skills_root(root: &Path) -> Option<PathBuf> {
     Some(root.parent()?.join(MANIFEST_FILE_NAME))
 }
 
-/// Reads `manifest_path` and returns the set of every `files[].path`
-/// string it names, or `None` on any failure: absent, unreadable, not
-/// valid JSON, missing the expected `files` array, or an entry missing
-/// its `path` string. See this module's doc comment for why every
-/// failure collapses to a single `None` rather than a distinguishable
-/// error -- the caller's fail-open default is the same either way. Only
-/// `files[].path` is parsed; every other field in the real manifest is
-/// ignored, deliberately -- see the module doc comment.
+/// Reads `manifest_path` and returns every installed file path it names:
+/// the union of `strategies[].files[].path` for a v2 manifest, or
+/// `files[].path` for a v1 manifest. `None` on any failure: absent,
+/// unreadable, not valid JSON, neither shape, a strategy without a
+/// `files` array, or an entry missing its `path` string. See this
+/// module's doc comment for why every failure collapses to a single
+/// `None` -- the caller's fail-open default is the same either way.
 fn read_installed_paths(manifest_path: &Path) -> Option<HashSet<String>> {
     let contents = std::fs::read_to_string(manifest_path).ok()?;
     let value: serde_json::Value = serde_json::from_str(&contents).ok()?;
-    let files = value.get("files")?.as_array()?;
+    installed_paths_from_manifest(&value)
+}
+
+/// Dispatches on the manifest's shape: `strategies` (v2) wins when
+/// present, otherwise a top-level `files` (v1).
+fn installed_paths_from_manifest(manifest: &serde_json::Value) -> Option<HashSet<String>> {
+    match manifest.get("strategies") {
+        Some(strategies) => {
+            let mut paths = HashSet::new();
+            for strategy in strategies.as_array()? {
+                paths.extend(paths_from_files(strategy)?);
+            }
+            Some(paths)
+        }
+        None => paths_from_files(manifest),
+    }
+}
+
+/// Collects `files[].path` from one JSON object: a v2 strategy slot or
+/// a whole v1 manifest.
+fn paths_from_files(owner: &serde_json::Value) -> Option<HashSet<String>> {
+    let files = owner.get("files")?.as_array()?;
     let mut paths = HashSet::with_capacity(files.len());
     for file in files {
         let path = file.get("path")?.as_str()?;
@@ -111,7 +134,7 @@ pub(crate) fn installed_paths_for_root(root: &Path) -> HashSet<String> {
 /// Renders `skill_md`'s path relative to `target_dir_anchor` (the
 /// install root two directory levels above a `--skills-dir` root -- see
 /// `manifest.rs`'s own module doc comment: "destination is always `.`",
-/// meaning every `files[].path` entry is relative to `target_dir`
+/// meaning every manifest file path is relative to `target_dir`
 /// itself, not to the `--skills-dir` root), joined with `/` regardless
 /// of platform. The real writer (`cli/install/kiro_cli.rs`'s
 /// `content_manifest_path`) builds every manifest path with
@@ -200,7 +223,71 @@ mod tests {
     }
 
     #[test]
-    fn read_installed_paths_extracts_every_file_path() {
+    fn read_installed_paths_extracts_paths_from_v2_strategies_manifest() {
+        let dir = temp_dir("v2");
+        let path = dir.join("manifest");
+        fs::write(
+            &path,
+            br#"{
+  "schema_version": 2,
+  "strategies": [
+    {
+      "strategy": "kiro-cli-v2",
+      "installed_at": "2026-01-15T09:30:00Z",
+      "destination": ".",
+      "source": null,
+      "status": "complete",
+      "files": [
+        {"path": ".kiro/agents/k-example.json", "sha256": null, "provenance": "created"},
+        {"path": ".konductor/skills/code-review/SKILL.md", "sha256": null, "provenance": "created"}
+      ]
+    }
+  ]
+}"#,
+        )
+        .unwrap();
+        let paths = read_installed_paths(&path).unwrap();
+        assert_eq!(paths.len(), 2);
+        assert!(paths.contains(".konductor/skills/code-review/SKILL.md"));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn read_installed_paths_unions_paths_across_two_strategies() {
+        let dir = temp_dir("v2-two-strategies");
+        let path = dir.join("manifest");
+        fs::write(
+            &path,
+            br#"{"schema_version":2,"strategies":[
+                {"strategy":"kiro-cli-v2","installed_at":"2026-01-15T09:30:00Z","destination":".","source":null,"status":"complete",
+                 "files":[{"path":".konductor/skills/code-review/SKILL.md","sha256":null,"provenance":"created"}]},
+                {"strategy":"claude","installed_at":"2026-01-15T09:30:00Z","destination":".","source":null,"status":"complete",
+                 "files":[{"path":".claude/skills/code-review/SKILL.md","sha256":null,"provenance":"created"}]}
+            ]}"#,
+        )
+        .unwrap();
+        let paths = read_installed_paths(&path).unwrap();
+        assert_eq!(paths.len(), 2);
+        assert!(paths.contains(".konductor/skills/code-review/SKILL.md"));
+        assert!(paths.contains(".claude/skills/code-review/SKILL.md"));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn read_installed_paths_none_when_strategies_entry_lacks_files() {
+        let dir = temp_dir("v2-no-files");
+        let path = dir.join("manifest");
+        fs::write(
+            &path,
+            br#"{"schema_version":2,"strategies":[{"strategy":"kiro-cli-v2","status":"complete"}]}"#,
+        )
+        .unwrap();
+        assert_eq!(read_installed_paths(&path), None);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn read_installed_paths_extracts_paths_from_v1_flat_manifest() {
         let dir = temp_dir("valid");
         let path = dir.join("manifest");
         fs::write(
@@ -234,7 +321,7 @@ mod tests {
         fs::create_dir_all(&root).unwrap();
         fs::write(
             konductor_dir.join("manifest"),
-            br#"{"schema_version":1,"files":[{"path":".konductor/skills/code-review/SKILL.md","sha256":null,"provenance":"created"}]}"#,
+            br#"{"schema_version":2,"strategies":[{"strategy":"kiro-cli-v2","installed_at":"2026-01-15T09:30:00Z","destination":".","source":null,"status":"complete","files":[{"path":".konductor/skills/code-review/SKILL.md","sha256":null,"provenance":"created"}]}]}"#,
         )
         .unwrap();
         let paths = installed_paths_for_root(&root);

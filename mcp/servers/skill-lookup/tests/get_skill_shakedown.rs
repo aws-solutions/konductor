@@ -313,11 +313,7 @@ async fn get_skill_exact_name_match_case_insensitive() {
 
         let response =
             call_get_skill(&mut stdin, &mut reader, 2, serde_json::json!({"name": "mytestskill"}))
-                .await;
-        let content = expect_success_body(&response);
-        assert!(
-            content.contains("The case-insensitive body line."),
-            "expected case-insensitive lookup to return the seeded body, got: {content:?}"
+                .await;pected case-insensitive lookup to return the seeded body, got: {content:?}"
         );
 
         drop(stdin);
@@ -580,9 +576,7 @@ async fn get_skill_body_with_special_characters_round_trips_correctly() {
     })
     .await;
 }
-
-#[tokio::test]
-async fn get_skill_empty_name_is_rejected_or_not_found() {
+            &content[content.len().saturating_sub(special_body.len().min(content.len()))..],
     let dir = fresh_skills_dir("empty-name");
     write_skill_file(
         &dir,
@@ -690,4 +684,114 @@ async fn get_skill_file_deleted_after_scan_returns_internal_error() {
         drop(stdin);
     })
     .await;
+}
+
+/// Writes `<base>/.konductor/manifest` in the schema v2 shape the
+/// installer writes, naming each of `installed_names` as a
+/// konductor-installed skill under `<base>/.konductor/skills/`.
+fn write_v2_install_manifest(base: &Path, installed_names: &[&str]) {
+    let files: Vec<serde_json::Value> = installed_names
+        .iter()
+        .map(|name| {
+            serde_json::json!({
+                "path": format!(".konductor/skills/{name}/SKILL.md"),
+                "sha256": null,
+                "provenance": "created"
+            })
+        })
+        .collect();
+    let manifest = serde_json::json!({
+        "schema_version": 2,
+        "strategies": [{
+            "strategy": "kiro-cli-v2",
+            "installed_at": "2026-01-15T09:30:00Z",
+            "destination": ".",
+            "source": null,
+            "status": "complete",
+            "files": files
+        }]
+    });
+    std::fs::write(
+        base.join(".konductor").join("manifest"),
+        serde_json::to_string_pretty(&manifest).expect("serialize manifest"),
+    )
+    .expect("write manifest");
+}
+
+#[tokio::test]
+async fn get_skill_returns_not_found_for_installed_skill_excluded_by_name_filter() {
+    let base = fresh_skills_dir("name-filter-v2-manifest");
+    let guard = TempDirGuard(base.clone());
+    let skills_root = base.join(".konductor").join("skills");
+    write_skill_file(&skills_root, "keep-me", "Installed and in the filter", "keep-me body.\n");
+    write_skill_file(&skills_root, "drop-me", "Installed but outside the filter", "drop-me body.\n");
+    write_skill_file(
+        &skills_root,
+        "hand-authored",
+        "Not in the manifest, so the filter never removes it",
+        "hand-authored body.\n",
+    );
+    write_v2_install_manifest(&base, &["keep-me", "drop-me"]);
+
+    let mut child = Command::new(env!("CARGO_BIN_EXE_skill-lookup-mcp"))
+        .arg("--skills-dir")
+        .arg(&skills_root)
+        .arg("--skill-name-filter")
+        .arg("keep-me")
+        .env_remove("HOME")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .kill_on_drop(true)
+        .spawn()
+        .expect("failed to spawn skill-lookup-mcp");
+    let mut stdin = child.stdin.take().expect("child stdin not piped");
+    let mut reader = BufReader::new(child.stdout.take().expect("child stdout not piped"));
+    complete_handshake(&mut stdin, &mut reader).await;
+
+    write_message(
+        &mut stdin,
+        &serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": 2,
+            "method": "tools/call",
+            "params": {"name": "reload_skills", "arguments": {}}
+        }),
+    )
+    .await;
+    let reload = read_json_line(&mut reader).await;
+    let reload_text = reload["result"]["content"][0]["text"]
+        .as_str()
+        .unwrap_or_else(|| panic!("expected reload_skills to succeed: {reload:?}"));
+    let counts: serde_json::Value =
+        serde_json::from_str(reload_text).expect("reload_skills content was not valid JSON");
+    assert_eq!(counts["indexed"].as_u64(), Some(2), "{counts:?}");
+    assert_eq!(counts["filtered_out"].as_u64(), Some(1), "{counts:?}");
+
+    let dropped =
+        call_get_skill(&mut stdin, &mut reader, 3, serde_json::json!({"name": "drop-me"})).await;
+    let (code, message) = expect_error(&dropped);
+    assert_eq!(code, INVALID_PARAMS, "{message:?}");
+    assert_eq!(message, "skill not found: drop-me");
+
+    let kept =
+        call_get_skill(&mut stdin, &mut reader, 4, serde_json::json!({"name": "keep-me"})).await;
+    assert!(expect_success_body(&kept).contains("keep-me body."));
+
+    let hand_authored = call_get_skill(
+        &mut stdin,
+        &mut reader,
+        5,
+        serde_json::json!({"name": "hand-authored"}),
+    )
+    .await;
+    assert!(expect_success_body(&hand_authored).contains("hand-authored body."));
+
+    drop(stdin);
+    let status = timeout(IO_TIMEOUT, child.wait())
+        .await
+        .expect("timed out waiting for skill-lookup-mcp to exit")
+        .expect("failed to wait on child process");
+    assert!(status.success(), "skill-lookup-mcp did not exit cleanly: {status:?}");
+    drop(guard);
 }
