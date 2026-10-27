@@ -4,7 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { MODE_STORAGE_KEY } from '../src/theme/mode.ts';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-const script = /<script>([\s\S]*?)<\/script>/.exec(html)?.[1] ?? '';
+// HTML tag names are case-insensitive and an end tag may carry whitespace.
+const script = /<script>([\s\S]*?)<\/script[^>]*>/i.exec(html)?.[1] ?? '';
 
 interface FakeRoot {
   style: { colorScheme?: string };
