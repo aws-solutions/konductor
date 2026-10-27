@@ -2,10 +2,13 @@
 import { ApiError, type WorkflowApi } from './api';
 import {
   errorCodeOf,
+  errorDiagnosticsOf,
   errorMessageOf,
   errorRunIdOf,
+  parseCheckResult,
   parseRunStarted,
   parseRunStatus,
+  parseSaveResult,
   parseSession,
   parseWorkflowDocument,
 } from './parse';
@@ -78,11 +81,19 @@ async function send(
     response.status,
     errorCodeOf(body),
     errorRunIdOf(body),
+    errorDiagnosticsOf(body),
   );
 }
 
 function bearer(token: string): Record<string, string> {
   return { Authorization: `Bearer ${token}` };
+}
+
+function jsonHeaders(token?: string): Record<string, string> {
+  return {
+    ...(token === undefined ? {} : bearer(token)),
+    'Content-Type': 'application/json',
+  };
 }
 
 /**
@@ -99,7 +110,7 @@ export function createHttpApi(
     async createSession(code) {
       const body = await call('/api/session', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: jsonHeaders(),
         body: JSON.stringify({ code }),
       });
       return parseSession(body);
@@ -110,10 +121,26 @@ export function createHttpApi(
       });
       return parseWorkflowDocument(body);
     },
+    async saveWorkflow(token, text, baseHash) {
+      const body = await call('/api/workflow', {
+        method: 'PUT',
+        headers: jsonHeaders(token),
+        body: JSON.stringify({ text, base_hash: baseHash }),
+      });
+      return parseSaveResult(body);
+    },
+    async checkWorkflow(token, text) {
+      const body = await call('/api/validate', {
+        method: 'POST',
+        headers: jsonHeaders(token),
+        body: JSON.stringify({ text }),
+      });
+      return parseCheckResult(body);
+    },
     async startRun(token, goal) {
       const body = await call('/api/run', {
         method: 'POST',
-        headers: { ...bearer(token), 'Content-Type': 'application/json' },
+        headers: jsonHeaders(token),
         body: JSON.stringify({ params: { goal } }),
       });
       return parseRunStarted(body);
