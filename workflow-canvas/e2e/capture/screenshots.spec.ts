@@ -81,6 +81,16 @@ test('capture the Designer tab after a save', async ({ designer }) => {
   await designer.rename('write');
   await designer.save.click();
   await designer.expectStatus('Saved');
+  // Focus stays on the Save button, which is now off and gives its reason in a
+  // tooltip that comes up a moment later or not, so take the focus away first.
+  await designer.page.evaluate(() => {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+  });
+  await expect(
+    designer.page.getByText('There are no changes to save.'),
+  ).toHaveCount(0);
 
   await saveFullPageScreenshot(designer.page, 'designer-saved');
 });
