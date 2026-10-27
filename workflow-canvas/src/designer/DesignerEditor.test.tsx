@@ -441,6 +441,35 @@ describe('checking while typing', () => {
     expect(screen.getByText('Needs a fix')).toBeTruthy();
   });
 
+  it('marks the field of the stage being renamed to a name that another stage has, though the server names the later stage', async () => {
+    const edits = acceptingEdits();
+    edits.check.mockResolvedValue({
+      view: null,
+      diagnostics: [
+        finding('stages[1].name', 'The stage name `review` is already used.'),
+      ],
+    });
+    const { scheduler } = await openDesigner(edits);
+    expect(nameInput().value).toBe('draft');
+
+    type('review');
+    await checkNow(scheduler);
+
+    await waitFor(() =>
+      expect(nameInput().getAttribute('aria-invalid')).toBe('true'),
+    );
+    expect(
+      screen.getAllByText('The stage name `review` is already used.'),
+    ).toHaveLength(1);
+    expect(screen.getByText('Needs a fix')).toBeTruthy();
+    const items = within(screen.getByTestId('problems')).getAllByRole(
+      'listitem',
+    );
+    expect(items.map((item) => item.textContent)).toEqual([
+      'review: The stage name `review` is already used.',
+    ]);
+  });
+
   it('shows a warning as a note, not as an error, and leaves Save on', async () => {
     const edits = acceptingEdits();
     edits.check.mockResolvedValue({
