@@ -180,14 +180,14 @@ describe('startAndFollow', () => {
 
   it('emits no reading that arrives after an abort', async () => {
     let arrive: (run: RunView) => void = () => {};
-    const { scheduler, events, abort, done } = setup([]);
-    const runs: RunPort = {
-      start: async () => RUN_ID,
-      get: () => new Promise((resolve) => (arrive = resolve)),
-    };
-    const late = startAndFollow({
-      runs,
-      scheduler,
+    const events: ExecutionEvent[] = [];
+    const abort = new AbortController();
+    const done = startAndFollow({
+      runs: {
+        start: async () => RUN_ID,
+        get: () => new Promise((resolve) => (arrive = resolve)),
+      },
+      scheduler: new FakeScheduler(),
       goal: 'Ship it',
       emit: (event) => events.push(event),
       signal: abort.signal,
@@ -196,9 +196,20 @@ describe('startAndFollow', () => {
 
     abort.abort();
     arrive(helloRun(0));
-    await Promise.all([done, late]);
+    await done;
 
-    expect(events.map((event) => event.type)).not.toContain('snapshot');
+    expect(events).toEqual([{ type: 'started', runId: RUN_ID }]);
+  });
+
+  it('fails when the server answers with a run that is not the one started', async () => {
+    const other: RunView = { ...helloRun(0), runId: 'other' };
+    const { runs, scheduler, events, done } = setup([other]);
+
+    await done;
+
+    expect(runs.get).toHaveBeenCalledTimes(1);
+    expect(scheduler.waits).toEqual([]);
+    expect(events.map((event) => event.type)).toEqual(['started', 'failed']);
   });
 
   it('does not report a failure after it was aborted', async () => {
