@@ -16,6 +16,7 @@ not per individual commit.
 - Stub API for the workflow canvas (`npm run stub`, `npm run dev:stub`); `WC_API_TARGET` points the page at a real server.
 - The Designer tab draws the workflow as a read-only graph.
 - The workflow canvas uses the Konductor docs theme, with light and dark modes.
+- The Execution tab runs the workflow and shows live node states.
 
 ### Changed
 
