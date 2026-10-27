@@ -1017,3 +1017,107 @@ fn real_synth_fails_on_dangling_skill_reference() {
 
     std::fs::remove_dir_all(&repo_root).ok();
 }
+
+fn seed_spawning_agent_spec(agents_dir: &Path, name: &str) {
+    let spec = serde_json::json!({
+        "schemaVersion": "1",
+        "name": name,
+        "config": {
+            "description": "An example agent.",
+            "model": "claude-sonnet-5",
+            "systemPrompt": "You are a helpful agent."
+        },
+        "clientConfig": {
+            "kiroCli": {
+                "tools": ["@builtin", "subagent"],
+                "toolsSettings": {"subagent": {"trustedAgents": ["k-other"]}}
+            },
+            "claudeCli": {"tools": ["Read", "Agent(k-other)"]}
+        }
+    });
+    std::fs::write(
+        agents_dir.join(format!("{name}.agent-spec.json")),
+        serde_json::to_vec_pretty(&spec).unwrap(),
+    )
+    .unwrap();
+}
+
+fn install_harness(repo_root: &Path, target_dir: &Path, harness: &str) {
+    let sink = telemetry_test_sink::TelemetrySink::start();
+    let result = run_konductor(
+        target_dir,
+        &sink,
+        &[
+            CMD_INSTALL,
+            "--from",
+            &repo_root.display().to_string(),
+            "--target",
+            &target_dir.display().to_string(),
+            "--harness",
+            harness,
+            "--no-telemetry",
+        ],
+    );
+    assert!(
+        result.status.success(),
+        "`install --harness {harness}` must succeed: stderr={}",
+        String::from_utf8_lossy(&result.stderr)
+    );
+}
+
+#[test]
+fn installed_specialists_cannot_spawn_but_orchestrator_can() {
+    let sink = telemetry_test_sink::TelemetrySink::start();
+    let repo_root = scratch_dir("repo-specialist-spawn");
+    let agents_dir = repo_root.join("agents");
+    std::fs::create_dir_all(&agents_dir).unwrap();
+    seed_spawning_agent_spec(&agents_dir, "k-example");
+    seed_spawning_agent_spec(&agents_dir, "konductor");
+    seed_skill_source(&repo_root);
+
+    let synth_result = run_konductor(
+        &repo_root,
+        &sink,
+        &[CMD_SYNTH, "--from", &repo_root.display().to_string()],
+    );
+    assert!(
+        synth_result.status.success(),
+        "real `synth --from <repo>` must succeed: stderr={}",
+        String::from_utf8_lossy(&synth_result.stderr)
+    );
+
+    let target_dir = scratch_dir("target-specialist-spawn");
+    std::fs::create_dir_all(target_dir.join(".claude")).unwrap();
+    install_harness(&repo_root, &target_dir, "kiro-v3");
+    install_harness(&repo_root, &target_dir, "claude");
+
+    let read_kiro = |name: &str| -> serde_json::Value {
+        let path = target_dir.join(format!(".kiro/agents/{name}.json"));
+        serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap()
+    };
+    let specialist = read_kiro("k-example");
+    assert_eq!(specialist["tools"], serde_json::json!(["@builtin"]));
+    assert_eq!(
+        specialist["excludedTools"],
+        serde_json::json!(["invoke_sub_agent", "run_workflow"])
+    );
+    assert!(!specialist["permissions"].to_string().contains("subagent"));
+
+    let orchestrator = read_kiro("konductor");
+    assert_eq!(
+        orchestrator["tools"],
+        serde_json::json!(["@builtin", "subagent"])
+    );
+    assert!(orchestrator.get("excludedTools").is_none());
+    assert!(orchestrator["permissions"].to_string().contains("k-other"));
+
+    let read_claude = |name: &str| -> String {
+        let path = target_dir.join(format!(".claude/agents/{name}.md"));
+        std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("read {}: {e}", path.display()))
+    };
+    assert!(!read_claude("k-example").contains("Agent("));
+    assert!(read_claude("konductor").contains("Agent(k-other)"));
+
+    std::fs::remove_dir_all(&repo_root).ok();
+    std::fs::remove_dir_all(&target_dir).ok();
+}

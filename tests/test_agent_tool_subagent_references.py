@@ -52,3 +52,19 @@ def test_agent_tool_entries_splits_comma_separated_names():
 def test_agent_tool_entries_ignores_specs_without_an_agent_grant():
     spec = {"clientConfig": {"claudeCli": {"tools": ["Read", "Write"]}}}
     assert _agent_tool_entries(spec) == []
+
+
+def test_specialists_hold_no_spawn_grant():
+    failures = []
+    for spec_path in sorted(AGENTS_DIR.glob("k-*.agent-spec.json")):
+        spec = json.loads(spec_path.read_text())
+        client = spec.get("clientConfig", {})
+        kiro = client.get("kiroCli", {})
+        if "subagent" in kiro.get("tools", []):
+            failures.append(f"{spec_path.name}: kiroCli.tools has subagent")
+        if "subagent" in kiro.get("toolsSettings", {}):
+            failures.append(f"{spec_path.name}: kiroCli.toolsSettings has subagent")
+        if _agent_tool_entries(spec):
+            failures.append(f"{spec_path.name}: claudeCli.tools has Agent(...)")
+
+    assert not failures, "specialists must not spawn agents:\n" + "\n".join(failures)

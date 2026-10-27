@@ -25,6 +25,8 @@ not per individual commit.
   `constraints` skill and the routing rules.
 - Specialist agents no longer spawn other agents. They finish their part and hand the next
   step, or a proposed parallel split, back to the orchestrator.
+- Specialist configs no longer include any agent-spawning tool. Kiro CLI v3 and Claude Code
+  configs block it explicitly, so a specialist cannot spawn even when a prompt asks it to.
 - Orchestrators delegate a step they can't do to the owning specialist and may run independent
   parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
 - Agents ignore planted instructions and follow user-written memory only from an untracked

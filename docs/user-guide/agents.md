@@ -139,63 +139,52 @@ pre-approves `fs_read` alone, so anything beyond reading stops to ask you.
 
 ## Who can delegate to whom
 
-Delegation is not open. In Kiro CLI it is governed by each agent's
-`toolsSettings.subagent.availableAgents`; in Claude Code by whether the agent has an
-`Agent(...)` tool at all.
+Only the orchestrators delegate. A specialist (any `k-*` agent) never spawns another agent:
+it does its own part and returns to its caller, with a handoff note naming the next role or a
+proposed parallel split. The orchestrator routes that note.
+
+This is enforced in config, not just in the prompt:
+
+- Kiro CLI: no specialist spec grants the `subagent` tool or `toolsSettings.subagent`. For
+  Kiro CLI v3, synth also writes `excludedTools: ["invoke_sub_agent", "run_workflow"]` into every
+  specialist, because `@builtin` carries `run_workflow`, which can start any agent.
+- Claude Code: synth drops `Agent(...)`, `Task` and `Workflow` from every specialist's `tools`
+  list. A specialist with no `tools` list gets them as `disallowedTools` instead.
 
 ```mermaid
 %%{init:{'theme':'base','themeVariables':{'fontSize':'14px','primaryColor':'#eef2f7','primaryTextColor':'#0f172a','primaryBorderColor':'#40556e','lineColor':'#7a8899','textColor':'#0f172a','edgeLabelBackground':'#ffffff','clusterBkg':'#fafbfc','clusterBorder':'#c9d2dc'}}}%%
 flowchart LR
-    Orch["konductor<br/><i>any agent</i>"]:::focus
+    Orch["konductor<br/><i>the 8 specialists</i>"]:::focus
     Arch["k-architect"]
     Dev["k-developer"]
     QA["k-quality-assurance"]
     TPM["k-tpm"]
     Res["k-researcher"]
     PM["k-product-manager"]
-    Br["k-browser<br/><i>no delegation tool</i>"]:::muted
-    MA["k-media-analyzer<br/><i>no delegation tool</i>"]:::muted
+    Br["k-browser"]
+    MA["k-media-analyzer"]
     Mux["konductor-mux-orchestrator<br/>konductor-cmux-orchestrator<br/><i>dispatch via shell, not subagent</i>"]:::muted
-    None["k-product-manager<br/>k-researcher<br/><i>subagent tool, zero targets</i>"]:::gate
 
     Orch --> Arch & Dev & QA & TPM & Res & PM & Br & MA
-    Arch --> Dev
-    Arch --> QA
-    Dev --> QA
-    QA --> Dev
-    QA --> Br
-    TPM --> Dev
-    TPM --> Res
 
     classDef focus fill:#dbe7f5,stroke:#2a5d8f,stroke-width:2px,color:#0f172a;
-    classDef gate fill:#fdf3e0,stroke:#a06800,stroke-width:1.5px,color:#0f172a;
     classDef muted fill:#f4f4f5,stroke:#8a8a8a,stroke-width:1.2px,color:#0f172a,stroke-dasharray:4 3;
 ```
-
-*Kiro CLI delegation graph. Claude Code differs — see the table below.*
 
 | Agent | Kiro CLI can spawn | Claude Code can spawn |
 | --- | --- | --- |
 | `konductor` | the 8 specialists (an explicit allowlist, not "anything") | the same 8, via `Agent(...)`, plus `SendMessage` |
-| `k-architect` | `k-developer`, `k-quality-assurance` | `k-developer`, `k-quality-assurance`, via `Agent(...)` |
-| `k-developer` | `k-quality-assurance` | **nothing** |
-| `k-quality-assurance` | `k-developer`, `k-browser` | `k-developer`, `k-browser`, via `Agent(...)` |
-| `k-tpm` | `k-developer`, `k-researcher` | **nothing** |
-| `k-product-manager` | has the tool, **zero targets** | **nothing** |
-| `k-researcher` | has the tool, **zero targets** | **nothing** |
 | `konductor-mux-orchestrator` | no `subagent` tool — dispatches via shell scripts | dispatches via shell |
 | `konductor-cmux-orchestrator` | no `subagent` tool — dispatches via shell scripts | dispatches via shell |
-| `k-browser` | no delegation | **nothing** |
-| `k-media-analyzer` | no delegation | **nothing** |
+| every `k-*` specialist | **nothing** | **nothing** |
 
 ### Why this matters: a real consequence
 
 `k-code-review-workflow` step 6 says to *"spawn `k-architect` in adversarial mode"*. That SOP
 is declared only by `k-developer` — which **cannot spawn `k-architect` in either runtime**:
 
-- In Kiro CLI, `k-developer`'s targets are `["k-quality-assurance"]`. The architect is not on
-  that list.
-- In Claude Code, `k-developer` has no `Agent(...)` tool at all.
+- Specialists hold no spawn tool in either runtime (see above).
+- The core rules tell a specialist to do such steps itself or return them to its caller.
 
 The SOP anticipates this — *"You MUST skip this step if no adversarial CR-review capability is
 available"* — so it degrades quietly rather than erroring. **In practice step 6 always no-ops,
@@ -374,7 +363,7 @@ images, and diagrams — not a skill library. Point it at a file and ask a quest
 | Difference | Kiro CLI | Claude Code |
 | --- | --- | --- |
 | Agent name | `konductor` | `konductor` |
-| Cross-agent delegation | 7 agents have `subagent`, 5 with real targets | `konductor`, `k-architect`, and `k-quality-assurance` hold `Agent(...)` |
+| Cross-agent delegation | only `konductor` has `subagent`; the mux orchestrators use shell | only `konductor` holds `Agent(...)` |
 | MCP servers | declared and launched from `dependencies.mcpRegistry` | requested via tool globs (`mcp__aws-mcp__*`); you configure the server yourself |
 | Tool naming | `fs_read`, `fs_write`, `shell` | `Read`, `Write`, `Edit`, `Bash` |
 | Permission model | two lists: `tools` grants with a prompt, `allowedTools` pre-approves | one list: `clientConfig.claudeCli.tools` is the ceiling, and your `settings.json` decides what prompts |
@@ -383,9 +372,7 @@ images, and diagrams — not a skill library. Point it at a file and ask a quest
 | Skills resolution | through the bundled `skill-lookup` MCP server. Skills install to `.konductor/skills/`, deliberately outside the `.kiro/skills/` tree Kiro CLI scans, and the agent reaches them through that server | native Claude Code skills: `clientConfig.claudeCli.skills` names the set, and each body installs to `.claude/skills/<name>/SKILL.md` |
 | Extra setup | none | agent-teams env var **and** a permissions allowlist |
 
-The delegation row is the one that changes behaviour most: a workflow that relies on one
-specialist handing off to another may work in Kiro CLI and not in Claude Code — `k-developer`
-and `k-tpm` have Kiro targets but no `Agent(...)` tool at all.
+In both runtimes a specialist hands off by returning to the orchestrator, never by spawning.
 
 ---
 

@@ -133,9 +133,8 @@ references, and a verdict of **READY FOR CR** or **NEEDS FIXES**.
 - **The diff, not just the file list, is the input.** Step 1 captures full hunks; the changed-file
   list is derived from them.
 - **The adversarial step never actually fires.** Step 6 tells the agent to spawn
-  `k-architect`, but its one owning agent cannot: in Kiro CLI `k-developer`'s
-  `subagent.availableAgents` is `["k-quality-assurance"]`, which does not include the architect,
-  and in Claude Code it has no `Agent(...)` tool at all.
+  `k-architect`, but its one owning agent cannot: no specialist holds a spawn tool in either
+  runtime.
   The SOP degrades quietly by design (*"You MUST skip this step if no adversarial CR-review
   capability is available"*), so you get standard review only. Routing through the orchestrator does
   not help — it does not declare this SOP. Run
