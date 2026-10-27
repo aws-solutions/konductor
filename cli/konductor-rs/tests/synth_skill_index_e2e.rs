@@ -2,7 +2,8 @@
 //
 // Runs the real `konductor synth` over a copy of this repo's own agents,
 // skills, SOPs and context, then checks the "Your skills" block synth
-// appends to every agent's prompt. A copy keeps the checkout's own
+// appends to every Kiro agent's prompt and leaves out of every Claude
+// Code agent. A copy keeps the checkout's own
 // `dist/` untouched; `HOME` points at the scratch dir and telemetry at
 // the loopback sink.
 
@@ -69,7 +70,6 @@ fn synth_repo_copy() -> PathBuf {
 
 struct SourceAgent {
     skill_names: Vec<String>,
-    claude_skills: Vec<String>,
 }
 
 fn source_agents(root: &Path) -> BTreeMap<String, SourceAgent> {
@@ -91,7 +91,6 @@ fn source_agents(root: &Path) -> BTreeMap<String, SourceAgent> {
             spec["name"].as_str().unwrap().to_string(),
             SourceAgent {
                 skill_names: strings(&spec["dependencies"]["skills"]["skillNames"]),
-                claude_skills: strings(&spec["clientConfig"]["claudeCli"]["skills"]),
             },
         );
     }
@@ -125,7 +124,7 @@ fn listed_names(block: &str) -> Vec<String> {
 }
 
 #[test]
-fn synth_appends_each_agents_own_skill_index_on_every_harness() {
+fn synth_appends_each_agents_own_skill_index_on_kiro_only() {
     let root = synth_repo_copy();
     let agents = source_agents(&root);
     assert!(agents.contains_key("k-developer") && agents.contains_key("konductor"));
@@ -156,22 +155,15 @@ fn synth_appends_each_agents_own_skill_index_on_every_harness() {
         }
     }
 
-    for (name, source) in &agents {
+    for name in agents.keys() {
         let md =
             std::fs::read_to_string(root.join("dist/claude/agents").join(format!("{name}.md")))
                 .unwrap();
-        let block = block_of(&md);
-        let expected: Vec<String> = source
-            .claude_skills
-            .iter()
-            .map(|s| format!("`{s}`"))
-            .collect();
         assert!(
-            block.ends_with(&format!("Your skills: {}.\n", expected.join(", "))),
-            "claude/{name}: names-only line"
+            !md.contains(SKILLS_HEADING),
+            "claude/{name}: Claude Code agents carry no skill block"
         );
-        assert!(!block.contains("get_skill"));
-        assert!(!block.contains('\u{2014}') && !block.contains('\u{2013}'));
+        assert!(!md.contains(ORCHESTRATOR_MARKER), "claude/{name}");
     }
 
     let _ = std::fs::remove_dir_all(&root);

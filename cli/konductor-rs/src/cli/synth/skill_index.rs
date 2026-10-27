@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // synth/skill_index.rs: builds the "Your skills" block synth appends to
-// each agent's prompt: a rule for when to load one of the agent's own
-// declared skills, how to load it on the target harness, and the list
-// of those skills.
+// each Kiro agent's prompt: a rule for when to load one of the agent's
+// own declared skills, how to load it, and the list of those skills.
+// Claude Code gets no block; it lists and loads skills natively.
 
 use super::model::SkillDef;
 
@@ -18,8 +18,6 @@ Skip this for trivial tasks such as a quick question, a one-line edit, or a look
 
 const KIRO_LOAD: &str = "Load a skill by name with the `get_skill` tool on the \
 `konductor-skills` MCP server. If the tool is deferred, load it with `tool_load` first.";
-
-const CLAUDE_LOAD: &str = "Load a matching skill with the `Skill` tool.";
 
 const ORCHESTRATOR_RULE: &str = "You orchestrate. When a task matches a skill a specialist \
 owns, such as a code review, a threat model, or user stories, route it to that specialist \
@@ -99,8 +97,8 @@ fn is_orchestrator(agent_name: &str) -> bool {
     agent_name.starts_with("konductor")
 }
 
-fn block_preamble(agent_name: &str, load_line: &str) -> String {
-    let mut block = format!("{HEADING}\n\n{USE_RULE}\n\n{load_line}\n\n");
+fn block_preamble(agent_name: &str) -> String {
+    let mut block = format!("{HEADING}\n\n{USE_RULE}\n\n{KIRO_LOAD}\n\n");
     if is_orchestrator(agent_name) {
         block.push_str(ORCHESTRATOR_RULE);
         block.push_str("\n\n");
@@ -128,21 +126,8 @@ pub(crate) fn kiro_skill_block(
     if lines.is_empty() {
         return None;
     }
-    let mut block = block_preamble(agent_name, KIRO_LOAD);
+    let mut block = block_preamble(agent_name);
     block.push_str(&lines.join("\n"));
-    Some(block)
-}
-
-// Claude Code already shows every skill's description natively, so this
-// block carries names only: it ties the rule to the agent's own skills
-// without paying for a second copy of the descriptions.
-pub(crate) fn claude_skill_block(agent_name: &str, skill_names: &[String]) -> Option<String> {
-    if skill_names.is_empty() {
-        return None;
-    }
-    let names: Vec<String> = skill_names.iter().map(|n| format!("`{n}`")).collect();
-    let mut block = block_preamble(agent_name, CLAUDE_LOAD);
-    block.push_str(&format!("Your skills: {}.", names.join(", ")));
     Some(block)
 }
 
@@ -265,7 +250,6 @@ mod tests {
     #[test]
     fn empty_names_give_no_block() {
         assert!(kiro_skill_block("k-developer", &[], &[]).is_none());
-        assert!(claude_skill_block("k-developer", &[]).is_none());
     }
 
     #[test]
@@ -278,21 +262,10 @@ mod tests {
     }
 
     #[test]
-    fn claude_block_has_names_only_and_no_get_skill() {
-        let block = claude_skill_block("k-developer", &["a".into(), "b".into()]).unwrap();
-        assert!(block.ends_with("Your skills: `a`, `b`."));
-        assert!(block.contains("`Skill` tool"));
-        assert!(!block.contains("get_skill"));
-    }
-
-    #[test]
-    fn blocks_contain_no_em_or_en_dashes() {
+    fn block_contains_no_em_or_en_dashes() {
         let skills = vec![skill("a", "Use for a.")];
-        let kiro = kiro_skill_block("konductor", &["a"], &skills).unwrap();
-        let claude = claude_skill_block("konductor", &["a".into()]).unwrap();
-        for block in [kiro, claude] {
-            assert!(!block.contains('\u{2014}') && !block.contains('\u{2013}'));
-        }
+        let block = kiro_skill_block("konductor", &["a"], &skills).unwrap();
+        assert!(!block.contains('\u{2014}') && !block.contains('\u{2013}'));
     }
 
     #[test]
