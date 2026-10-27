@@ -85,9 +85,9 @@ ask in plain language, for example "What is Konductor and what can I ask it?".
 kiro-cli chat --agent konductor
 ```
 
-More detail: [Kiro Power install guide](https://github.com/aws-solutions/konductor/blob/v1.1.0/docs/user-guide/tasks/install-kiro-power.md),
-[agents reference](https://github.com/aws-solutions/konductor/blob/v1.1.0/docs/user-guide/agents.md),
-[`about-konductor`](https://github.com/aws-solutions/konductor/blob/v1.1.0/docs/user-guide/sop-workflows/orchestration.md#about-konductor).
+More detail: [Kiro Power install guide](https://github.com/aws-solutions/konductor/blob/v1.2.0/docs/user-guide/tasks/install-kiro-power.md),
+[agents reference](https://github.com/aws-solutions/konductor/blob/v1.2.0/docs/user-guide/agents.md),
+[`about-konductor`](https://github.com/aws-solutions/konductor/blob/v1.2.0/docs/user-guide/sop-workflows/orchestration.md#about-konductor).
 
 ## GitHub rate limits
 

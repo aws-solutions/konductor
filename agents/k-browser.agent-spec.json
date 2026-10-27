@@ -10,13 +10,14 @@
     "skills": {
       "skillNames": [
         "constraints",
+        "humanize-writing",
         "sdlc-navigator",
         "app-discovery",
         "dom-inspection"
       ]
     },
     "context": {
-      "contextNames": []
+      "contextNames": ["k-core-rules.md"]
     },
     "mcpRegistry": {
       "playwright-mcp": {

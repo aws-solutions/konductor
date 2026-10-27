@@ -46,16 +46,20 @@ A few things stand out and are worth knowing before you pick an agent:
   carry, not by what powers them.
 - **`k-architect` carries by far the most skills** — **38 of the 82** in the library, close
   to half. Design work routed anywhere else comes back thinner.
-- **`konductor`'s skill count is runtime-dependent.** Twelve of its thirteen skills load on
-  both runtimes; `claude-teams-behavior` is declared only in the spec's
-  `clientConfig.claudeCli` block, so Kiro CLI sees 12. Every other agent loads the same
-  set on both.
+- **`konductor`'s skill list is runtime-dependent.** Twelve of its skills are on both
+  runtimes. `claude-teams-behavior` is only in the spec's `clientConfig.claudeCli` block,
+  and `humanize-writing` is only in `dependencies.skills.skillNames`, so each runtime
+  sees 13.
+- **`humanize-writing` loads on demand for seven agents.** The three orchestrators,
+  `k-quality-assurance`, `k-researcher`, `k-browser` and `k-media-analyzer` declare it but do
+  not preload it, so the counts above leave it out for them.
 - **Five agents declare zero SOPs**: `k-product-manager`, `k-tpm`, `k-researcher`,
   `k-browser`, and `k-media-analyzer`. They are skill-driven — you ask for an outcome and
   they apply the relevant skills, rather than following a scripted procedure.
 
-Only the three orchestrators declare a context file
-(`context/k-orchestrator-routing-rules.md`), which is what makes them behave as dispatchers.
+Every agent declares the `context/k-core-rules.md` context file. Only the three orchestrators
+also declare `context/k-orchestrator-routing-rules.md`, which is what makes them behave as
+dispatchers.
 
 ---
 
@@ -227,7 +231,7 @@ The default entry point, and the one to use unless you have a specific reason no
 | --- | --- |
 | **Model** | `claude-sonnet-5.5` |
 | **SOPs** (10) | `kiro-spec-workflow`, `k-delegate`, `k-plan`, `k-context-gathering`, `k-verify`, `k-light-ui-testing`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `about-konductor` |
-| **Skills** (13) | `constraints`, `delegation-protocol`, `agents-md-authoring`, `claude-teams-behavior`, `pre-planning-analysis`, `socratic-elicitation`, `deliberation-panel`, `verification`, `persistent-memory`, `workspace-skills`, `sdlc-navigator`, `sop-state-management`, `about-konductor` — `claude-teams-behavior` is Claude Code only, so Kiro CLI loads 12 |
+| **Skills** (13) | `constraints`, `delegation-protocol`, `agents-md-authoring`, `claude-teams-behavior`, `pre-planning-analysis`, `socratic-elicitation`, `deliberation-panel`, `verification`, `persistent-memory`, `workspace-skills`, `sdlc-navigator`, `sop-state-management`, `about-konductor`. `claude-teams-behavior` is Claude Code only. Kiro CLI has the other 12 plus `humanize-writing`, on demand |
 | **Kiro CLI tools** | `@builtin`, `subagent`; `allowedTools` is `fs_read` **only** |
 | **Claude Code tools** | `Workflow`, `WebFetch`, `WebSearch`, `TodoWrite`, `Agent(...)` over the 8 specialists, `SendMessage`, `Read`, `Glob`, `Grep`, `Bash`, `Write`, `Skill` |
 | **Can mutate?** | In Claude Code, yes — it declares `Bash` and `Write`. In Kiro CLI it can too, but nothing beyond reading is pre-approved: `allowedTools` is `fs_read` alone, so every write or command stops to ask you |
@@ -351,7 +355,7 @@ explicit allowlist — it cannot, for example, upload files or evaluate arbitrar
 | | |
 | --- | --- |
 | **SOPs** | **none** |
-| **Skills** | 1 — `constraints` only |
+| **Skills** | 1, `constraints`. It also declares `humanize-writing`, loaded on demand |
 | **Kiro CLI tools** | `@builtin`; `allowedTools` is `fs_read`, `web_fetch` |
 | **Can mutate?** | Pre-approved for reads only in Kiro CLI, so writes and commands ask first; **write and shell granted in Claude Code** |
 

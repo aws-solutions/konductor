@@ -6,7 +6,7 @@ This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Entries are consolidated per release,
 not per individual commit.
 
-## [Unreleased]
+## [1.2.0] - 2026-10-26
 
 ### Added
 
@@ -95,6 +95,14 @@ not per individual commit.
   is unchanged. The end-to-end tests gain an `editing` project that saves to the stub, and
   `npm run screenshots` gains five Designer captures.
 
+### Changed
+
+- Every agent now loads `context/k-core-rules.md` at session start. It holds the NEVER DO
+  rules, moved from the `constraints` skill, and a writing-habits rule: no em or en dashes,
+  AI vocabulary, or filler in new sentences, even when nearby text has them.
+- Every agent declares `humanize-writing`, and its description now covers writing as well
+  as editing.
+
 ### Fixed
 
 - The Claude Code plugin release candidate could include untracked build output (`cli/`,
@@ -122,6 +130,12 @@ not per individual commit.
 - `k-architect` and `k-developer` no longer tell agents to use `aws___call_aws`, a tool the AWS MCP server has removed. Both now point at `aws___run_script`, which runs sandboxed Python with AWS API access.
 - `find-aws-skills`' failure-handling fallback no longer references `aws___suggest_aws_commands`, which the AWS MCP server does not expose. It now offers direct AWS API calls via `aws___run_script` (sandboxed Python).
 - `aws-service-validator` calls `aws___get_regional_availability` with `resource_type` (required), `regions`, and `filters` (required for more than one region), instead of a bare service-and-region call.
+
+### Security
+
+- `rustls` moves from `0.23.43` to `0.23.45` in the CLI, the skill-lookup MCP server, and the
+  shared telemetry test sink, fixing GHSA-2mjx-qc3c-rqvc (TLS 1.3 handshake messages were
+  accepted across encryption level boundaries).
 
 ## [1.1.0] - 2026-10-14
 
@@ -166,9 +180,6 @@ not per individual commit.
 
 ### Security
 
-- `rustls` moves from `0.23.43` to `0.23.45` in the CLI, the skill-lookup MCP server, and the
-  shared telemetry test sink, fixing GHSA-2mjx-qc3c-rqvc (TLS 1.3 handshake messages were
-  accepted across encryption level boundaries).
 - `aws-mcp` uses `mcp-proxy-for-aws-cli==1.7.0` instead of a moving package version. The managed endpoint still supplies current AWS documentation and skills.
 - The plugin release no longer force-pushes directly to a public branch. `publish-claude-plugin`
   pushes a fresh, collision-resistant candidate branch (release version plus workflow run
