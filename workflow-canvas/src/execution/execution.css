@@ -19,6 +19,7 @@
 
 /* Room under the alert only while it has content, so the empty live region
    leaves no gap. */
-.wf-run-error:not(:empty) {
+.wf-run-error:not(:empty),
+.wf-run-note {
   margin-block-end: 20px;
 }
