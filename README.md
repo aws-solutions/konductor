@@ -173,7 +173,7 @@ See [`cli/README.md`](cli/README.md#getting-started) for prerequisites and a ful
 straight from GitHub. It's a third install path, alongside the install script and a source build.
 
 1. In Kiro, open the Powers panel and choose **Add Custom Power** → **Import power from GitHub**.
-2. Enter `https://github.com/aws-solutions/konductor/tree/v1.1.0/powers/konductor`.
+2. Enter `https://github.com/aws-solutions/konductor/tree/v1.2.0/powers/konductor`.
 3. Choose **Install**. This registers the Power's manifest; onboarding itself runs separately, the first time you invoke it (step 4 below).
 4. Either say "konductor", "install konductor", or "set up konductor" in a chat session, or use the Try-power action in the installed Powers list. Both trigger the same onboarding skill.
 
