@@ -3,6 +3,7 @@ import { ApiError, type WorkflowApi } from './api';
 import {
   errorCodeOf,
   errorMessageOf,
+  errorRunIdOf,
   parseRunStarted,
   parseRunStatus,
   parseSession,
@@ -39,6 +40,7 @@ async function send(
     errorMessageOf(body) ?? `The server answered ${response.status}.`,
     response.status,
     errorCodeOf(body),
+    errorRunIdOf(body),
   );
 }
 
