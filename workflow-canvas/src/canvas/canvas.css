@@ -16,8 +16,13 @@
   --wf-node-border: #7a7490;
   --wf-text: #16131f;
   --wf-text-muted: #56516a;
+  /* The ports are the same in both modes: a dark rim keeps them readable on
+     the canvas and on a card. */
   --wf-port-fill: #5f6b7a;
+  --wf-port-rim: #16191f;
   --wf-port-letter-out: #ffffff;
+  --wf-port-notch-bg: #ffffff;
+  --wf-port-letter-in: #414d5c;
   --wf-controls-bg: #ffffff;
   --wf-controls-bg-hover: #efebff;
   --wf-controls-border: #cfc7ba;
@@ -45,8 +50,6 @@
   --wf-controls-bg: #171331;
   --wf-controls-bg-hover: #1f1a44;
   --wf-controls-border: #3a3168;
-  --wf-port-fill: #a39bc0;
-  --wf-port-letter-out: #0b0a12;
 }
 
 .wf-canvas .react-flow__attribution a {
@@ -55,7 +58,7 @@
 
 /*
  * The ring that shows which node the keyboard is on. It is drawn in the SVG
- * of the node (see nodes.tsx), around the outline, so it follows the knob
+ * of the node (see nodes.tsx), around the outline, so it follows the tab
  * and does not cut across it. The gap is the canvas colour.
  */
 .wf-canvas .react-flow__node:focus-visible {
@@ -63,13 +66,15 @@
 }
 
 .wf-focus-ring,
+.wf-focus-ring-port,
 .wf-focus-gap {
   fill: none;
   stroke-linejoin: round;
   visibility: hidden;
 }
 
-.wf-focus-ring {
+.wf-focus-ring,
+.wf-focus-ring-port {
   stroke: var(--wf-focus);
 }
 
@@ -78,6 +83,7 @@
 }
 
 .react-flow__node:focus-visible .wf-focus-ring,
+.react-flow__node:focus-visible .wf-focus-ring-port,
 .react-flow__node:focus-visible .wf-focus-gap {
   visibility: visible;
 }
@@ -90,6 +96,7 @@
   }
 
   .react-flow__node:focus-visible .wf-focus-ring,
+  .react-flow__node:focus-visible .wf-focus-ring-port,
   .react-flow__node:focus-visible .wf-focus-gap {
     visibility: hidden;
   }
@@ -140,10 +147,11 @@
 }
 
 /*
- * A run order port is a piece of a jigsaw: the S out knob hangs from the
- * bottom edge of a card and the S in socket is cut into the top edge, both at
- * the same place on the right. The card, the knob and the socket are one SVG
- * (see nodes.tsx and jigsaw.ts); this file only gives them colours.
+ * A run order port is a piece of a jigsaw: the S out tab hangs from the
+ * bottom edge of a card and the S in notch sits in the top edge, both in the
+ * middle, so a tab fits the notch of the card under it. The card, the tab and
+ * the notch are one SVG (see nodes.tsx and jigsaw.ts); this file only gives
+ * them colours.
  */
 .wf-node-shape {
   position: absolute;
@@ -158,15 +166,27 @@
   fill: var(--wf-node-bg);
   stroke: var(--wf-node-border);
   stroke-linejoin: round;
+  stroke-width: 2px;
 }
 
-/* The socket shows the canvas through the card. */
-.wf-socket {
-  fill: var(--wf-canvas-bg);
+/* A dark line around the tab and the notch, so they read on any background. */
+.wf-port-rim {
+  fill: var(--wf-port-rim);
+  stroke: var(--wf-port-rim);
+  stroke-linejoin: round;
 }
 
-.wf-knob {
+.wf-port-tab-body {
   fill: var(--wf-port-fill);
+}
+
+/* The notch is white inside, with a ring in the colour of the tab. */
+.wf-port-notch-inside {
+  fill: var(--wf-port-notch-bg);
+}
+
+.wf-port-notch-ring {
+  fill: none;
   stroke: var(--wf-port-fill);
   stroke-linejoin: round;
 }
@@ -175,18 +195,28 @@
   /* The pinned page font, not a system family, so the letter looks the same
      on every machine. */
   font-family: inherit;
-  font-size: 11px;
+  font-size: 9px;
   font-weight: 700;
   text-anchor: middle;
   dominant-baseline: central;
 }
 
-.wf-port-letter-knob {
+.wf-port-letter-tab {
   fill: var(--wf-port-letter-out);
 }
 
-.wf-port-letter-socket {
-  fill: var(--wf-text-muted);
+.wf-port-letter-notch {
+  fill: var(--wf-port-letter-in);
+}
+
+/* The title of a node starts below its notch. */
+.wf-node-notched {
+  padding-top: 22px;
+}
+
+.wf-node-end.wf-node-notched {
+  padding-top: 18px;
+  padding-bottom: 4px;
 }
 
 /* The handle is only the box that a link measures from. */
