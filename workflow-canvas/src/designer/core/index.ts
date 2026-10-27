@@ -40,6 +40,7 @@ export { willRewriteWhole } from './stage-text';
 export {
   errorsOf,
   joinMessages,
+  listedOf,
   notesOf,
   problemsFor,
   type Problem,
