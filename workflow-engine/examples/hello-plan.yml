@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: Apache-2.0
+format: konductor/1
+name: hello-plan
+version: 0.1.0
+intent:
+  outcome: A short plan for the goal is written to PLAN.md, and the first step of it is done.
+  accept:
+    - id: plan-exists
+      file: PLAN.md
+params:
+  goal:
+    description: What the workflow should accomplish.
+    default: Add a README section that explains how to run the tests.
+stages:
+  - name: plan
+    agent: k-architect
+    prompt: >-
+      Write a short plan for the goal to PLAN.md: three to five numbered steps. Do not change any other file.
+  - name: implement
+    agent: k-developer
+    prompt: Read PLAN.md and do its first step only. Do not edit PLAN.md.
