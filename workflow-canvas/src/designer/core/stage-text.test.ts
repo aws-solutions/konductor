@@ -85,6 +85,16 @@ describe('withStages', () => {
     );
   });
 
+  it('adds no stray carriage return to a CRLF file that ends without a line break', () => {
+    const text = 'name: hello\r\nstages:\r\n  - name: a\r\n    agent: k-tpm';
+
+    const next = withStages(text, VIEW, [REVIEW]);
+
+    expect(next).toBe(
+      'name: hello\r\nstages:\r\n  - name: review\r\n    agent: k-quality-assurance',
+    );
+  });
+
   it('writes a name that is not plain text in double quotes', () => {
     const next = withStages(TEXT, VIEW, [
       { name: 'Bad: name #1', agent: 'true' },

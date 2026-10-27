@@ -49,9 +49,13 @@ function replaceStageBlock(
   let end = next < 0 ? lines.length : next;
   // Blank lines and comments after the last stage belong to what follows.
   while (end > key + 1 && BLANK_OR_COMMENT.test(lines[end - 1] ?? '')) end -= 1;
+  const tail = lines.slice(end);
+  // A block that ends the file ends it without a line break, as it was.
   const cr = endingOf(text) === '\r\n' ? '\r' : '';
-  const block = stageLines(stages).map((line) => `${line}${cr}`);
-  return [...lines.slice(0, key + 1), ...block, ...lines.slice(end)].join('\n');
+  const block = stageLines(stages).map((line, index, all) =>
+    tail.length === 0 && index === all.length - 1 ? line : `${line}${cr}`,
+  );
+  return [...lines.slice(0, key + 1), ...block, ...tail].join('\n');
 }
 
 // A whole file written from the view: the layout that nothing else fits.
