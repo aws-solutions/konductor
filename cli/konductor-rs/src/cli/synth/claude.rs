@@ -26,6 +26,7 @@ use super::model::CanonicalModel;
 use super::model::{AuxiliaryFile, ContextDef, SkillDef, SopDef};
 use super::parser::{ClaudeCliConfig, McpServerDef};
 use super::path_safety::reject_unsafe_agent_name;
+use super::skill_index;
 use super::staging::stage_content_type;
 use super::HarnessTransformer;
 
@@ -305,7 +306,7 @@ impl HarnessTransformer for ClaudeTransformer {
                 let Some(claude) = &agent.client_config.claude_cli else {
                     continue;
                 };
-                let rendered = render_agent_md(
+                let mut rendered = render_agent_md(
                     &agent.name,
                     &agent.config,
                     claude,
@@ -314,6 +315,9 @@ impl HarnessTransformer for ClaudeTransformer {
                     &skill_names,
                     &agent.dependencies.mcp_registry,
                 )?;
+                if let Some(block) = skill_index::claude_skill_block(&agent.name, &claude.skills) {
+                    rendered = skill_index::append_block(&rendered, &block);
+                }
                 write_agent_file(staging_dir, &agent.name, &rendered)?;
             }
             write_sop_scopes_sidecar(staging_dir, &model.agents)?;
@@ -1330,6 +1334,48 @@ mod tests {
         let contents = fs::read_to_string(&written).unwrap();
         assert!(contents.starts_with("---\n"));
         assert!(contents.contains("name: k-example"));
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn transform_appends_names_only_skill_line_to_body() {
+        let dir = temp_dir("skill-index");
+        let claude = ClaudeCliConfig {
+            skills: vec!["beta".to_string(), "alpha".to_string()],
+            ..Default::default()
+        };
+        let model = CanonicalModel {
+            agents: vec![agent_with_claude("k-example", claude)],
+            skills: vec![minimal_skill("alpha"), minimal_skill("beta")],
+            ..Default::default()
+        };
+        ClaudeTransformer.transform(&model, &dir).unwrap();
+
+        let contents =
+            fs::read_to_string(dir.join(expected_output_dir()).join("k-example.md")).unwrap();
+        let body = contents.splitn(3, "---\n").nth(2).unwrap();
+        assert!(body.starts_with("\nYou are a test agent.\n\n## Your skills\n"));
+        assert!(body.contains("`Skill` tool"));
+        assert!(!body.contains("get_skill"));
+        assert!(body.ends_with("Your skills: `beta`, `alpha`.\n"));
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn transform_leaves_body_unchanged_for_agent_without_skills() {
+        let dir = temp_dir("skill-index-none");
+        let model = CanonicalModel {
+            agents: vec![agent_with_claude("k-example", ClaudeCliConfig::default())],
+            skills: vec![minimal_skill("alpha")],
+            ..Default::default()
+        };
+        ClaudeTransformer.transform(&model, &dir).unwrap();
+
+        let contents =
+            fs::read_to_string(dir.join(expected_output_dir()).join("k-example.md")).unwrap();
+        assert!(contents.ends_with("---\n\nYou are a test agent."));
 
         let _ = fs::remove_dir_all(&dir);
     }
