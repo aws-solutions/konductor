@@ -278,7 +278,24 @@ describe('createHttpApi', () => {
       message: 'A run is already active.',
       status: 409,
       code: 'already_running',
+      runId: '20261024-0412-a7b3c',
     });
+  });
+
+  it('carries no run id when the error body has none', async () => {
+    const { api } = apiFor(
+      reply(
+        { error: 'kiro-cli is not installed.', code: 'harness_unavailable' },
+        409,
+      ),
+    );
+
+    const error = await api
+      .startRun('t', 'g')
+      .catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(ApiError);
+    expect((error as ApiError).runId).toBeUndefined();
   });
 
   it('gets /api/runs/{id} with the bearer token', async () => {
@@ -377,6 +394,10 @@ describe('createHttpApi', () => {
       run({ stages: { write: { status: 'skipped' }, review: {} } }),
     ],
     ['stages that are not an object', run({ stages: [] })],
+    ['a stage that `order` lists twice', run({ order: ['write', 'write'] })],
+    ['an exit code that is a string', run({ exit_code: '1' })],
+    ['an exit code that is not whole', run({ exit_code: 1.5 })],
+    ['a run with no exit code', run({ exit_code: undefined })],
   ])('fails on %s', async (_, body) => {
     const { api } = apiFor(reply(body));
 
