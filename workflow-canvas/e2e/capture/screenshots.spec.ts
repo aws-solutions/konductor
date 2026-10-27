@@ -2,6 +2,7 @@
 import { expect, test } from '../support/fixtures';
 import { answerRunsWith, runReply } from '../support/run-routes';
 import { saveFullPageScreenshot } from '../support/screenshots';
+import type { WorkflowCanvasPage } from '../support/workflow-canvas-page';
 
 // Run with `npm run screenshots`. These tests assert only what they must to
 // reach the state they save: they regenerate the PNGs that PR descriptions
@@ -20,6 +21,14 @@ test('capture the Designer tab in the dark mode', async ({ canvas }) => {
 
   await saveFullPageScreenshot(canvas.page, 'designer-tab-dark');
 });
+
+// After the click the pointer and the focus are still on Run, which is now off
+// and shows its reason in a tooltip. A capture takes the page without it, so it
+// does not depend on how fast the tooltip appears.
+async function leaveRunButton(canvas: WorkflowCanvasPage): Promise<void> {
+  await canvas.page.mouse.move(0, 0);
+  await canvas.runButton.blur();
+}
 
 // The Execution tab before a run, drawn from the stub.
 test('capture the Execution tab before a run', async ({ canvas }) => {
@@ -43,6 +52,7 @@ test('capture the Execution tab while the first stage runs', async ({
 
   await canvas.runButton.click();
   await canvas.expectBadges(['Done', 'Running', 'Queued', 'Queued']);
+  await leaveRunButton(canvas);
 
   await saveFullPageScreenshot(canvas.page, 'execution-tab-running');
 });
@@ -73,6 +83,7 @@ test('capture the Execution tab in the dark mode during a run', async ({
 
   await canvas.runButton.click();
   await canvas.expectBadges(['Done', 'Running', 'Queued', 'Queued']);
+  await leaveRunButton(canvas);
 
   await saveFullPageScreenshot(canvas.page, 'execution-tab-dark');
 });
