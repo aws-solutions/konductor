@@ -9,7 +9,7 @@ import SpaceBetween from '@cloudscape-design/components/space-between';
 import StatusIndicator, {
   type StatusIndicatorProps,
 } from '@cloudscape-design/components/status-indicator';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { WorkflowGraphCard } from '../canvas/WorkflowGraphCard';
 import type { LoadResult } from '../workflow/load-workflow';
 import { WorkflowGate, type DrawableWorkflow } from '../workflow/WorkflowGate';
@@ -25,7 +25,7 @@ import {
   type StatusKind,
 } from './core';
 import './execution.css';
-import type { Execution as ExecutionController } from './use-execution';
+import type { ExecutionController } from './use-execution';
 
 const INDICATOR: Record<StatusKind, StatusIndicatorProps.Type> = {
   idle: 'pending',
@@ -33,6 +33,8 @@ const INDICATOR: Record<StatusKind, StatusIndicatorProps.Type> = {
   success: 'success',
   error: 'error',
 };
+
+const MAY_STILL_BE_RUNNING = 'The run may still be going on the server.';
 
 // One live region that says where the run is. It is always on the page, so a
 // change of its text is announced.
@@ -46,33 +48,41 @@ function RunStatusLine({ state }: { state: ExecutionState }) {
   );
 }
 
+// The wrapper is always on the page, so the alert that appears in it is
+// announced with the sentence of the server, which the status line leaves out.
 function RunError({ state }: { state: ExecutionState }) {
-  if (state.phase !== 'error') return null;
   return (
-    <Alert
-      type="error"
-      header={
-        state.started
-          ? 'The run could not be followed'
-          : 'The run did not start'
-      }
-      data-testid="run-error"
-    >
-      {state.message}
-    </Alert>
+    <div role="alert" className="wf-run-error">
+      {state.phase === 'error' && (
+        <Alert
+          type="error"
+          header={
+            state.started
+              ? 'The run could not be followed'
+              : 'The run did not start'
+          }
+          data-testid="run-error"
+        >
+          {state.message}
+          {state.started && <div>{MAY_STILL_BE_RUNNING}</div>}
+        </Alert>
+      )}
+    </div>
   );
 }
 
 function RunPanel({
-  defaultGoal,
+  goal,
+  onGoalChange,
   execution,
 }: {
-  defaultGoal: string;
+  goal: string;
+  onGoalChange: (goal: string) => void;
   execution: ExecutionController;
 }) {
-  const [goal, setGoal] = useState(defaultGoal);
   const inFlight = isInFlight(execution.state);
   const problem = goalProblem(goal);
+  const canRun = !inFlight && problem === undefined;
   return (
     <Container header={<Header variant="h2">Run</Header>}>
       <SpaceBetween size="m">
@@ -84,13 +94,16 @@ function RunPanel({
         >
           <Input
             value={goal}
-            disabled={inFlight}
-            onChange={({ detail }) => setGoal(detail.value)}
+            readOnly={inFlight}
+            onChange={({ detail }) => onGoalChange(detail.value)}
+            onKeyDown={({ detail }) => {
+              if (detail.key === 'Enter' && canRun) execution.start(goal);
+            }}
           />
         </FormField>
         <Button
           variant="primary"
-          disabled={inFlight || problem !== undefined}
+          disabled={!canRun}
           disabledReason={inFlight ? 'A run is in progress.' : problem}
           onClick={() => execution.start(goal)}
         >
@@ -104,41 +117,60 @@ function RunPanel({
 
 function ExecutionView({
   workflow,
+  goal,
+  onGoalChange,
   execution,
 }: {
   workflow: DrawableWorkflow;
+  goal: string;
+  onGoalChange: (goal: string) => void;
   execution: ExecutionController;
 }) {
   const { view, harness } = workflow;
   const run = runOf(execution.state);
   const statuses = useMemo(() => nodeStatuses(run), [run]);
   return (
-    <SpaceBetween size="l">
+    <div>
       <RunError state={execution.state} />
       <div className="wf-execution">
         <WorkflowGraphCard view={view} harness={harness} statuses={statuses} />
-        <RunPanel defaultGoal={view.intent.outcome} execution={execution} />
+        <RunPanel
+          goal={goal}
+          onGoalChange={onGoalChange}
+          execution={execution}
+        />
       </div>
-    </SpaceBetween>
+    </div>
   );
 }
 
 /**
  * The Execution tab: the workflow graph, read-only, a goal and a Run button,
  * and the live state of every node while the run goes on. `execution` holds
- * the state, so a run goes on while the Designer tab is open.
+ * the state and `goal` the text of the Goal box, both kept by the caller, so a
+ * run goes on and the goal stays while the Designer tab is open. The box is
+ * read-only while a run is in flight, so it then shows the goal of that run.
  */
 export function Execution({
   result,
   execution,
+  goal,
+  onGoalChange,
 }: {
   result: LoadResult | undefined;
   execution: ExecutionController;
+  goal: string;
+  onGoalChange: (goal: string) => void;
 }) {
   return (
     <WorkflowGate result={result}>
       {(workflow) => (
-        <ExecutionView workflow={workflow} execution={execution} />
+        <ExecutionView
+          workflow={workflow}
+          goal={goal}
+          onGoalChange={onGoalChange}
+          execution={execution}
+        />
       )}
     </WorkflowGate>
   );
