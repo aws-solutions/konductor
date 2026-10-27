@@ -30,6 +30,14 @@ export function runReply(
   };
 }
 
+type RunReply = ReturnType<typeof runReply>;
+
+async function acceptRuns(page: Page): Promise<void> {
+  await page.route('**/api/run', (route) =>
+    route.fulfill({ status: 202, json: { run_id: RUN_ID } }),
+  );
+}
+
 /**
  * Makes the page's calls to start a run and to read it answer with `reply`,
  * without a run on the server. For states the stub never reaches, such as a
@@ -38,12 +46,29 @@ export function runReply(
  */
 export async function answerRunsWith(
   page: Page,
-  reply: ReturnType<typeof runReply>,
+  reply: RunReply,
 ): Promise<void> {
-  await page.route('**/api/run', (route) =>
-    route.fulfill({ status: 202, json: { run_id: RUN_ID } }),
-  );
+  await acceptRuns(page);
   await page.route('**/api/runs/*', (route) => route.fulfill({ json: reply }));
+}
+
+/**
+ * Like `answerRunsWith`, but each read of the run gets the next reply, and
+ * the last one is repeated. `reads()` says how many reads the page has made,
+ * so a test can wait for one without a fixed pause.
+ */
+export async function answerRunsInTurn(
+  page: Page,
+  replies: readonly RunReply[],
+): Promise<{ reads(): number }> {
+  await acceptRuns(page);
+  let reads = 0;
+  await page.route('**/api/runs/*', (route) => {
+    const reply = replies[Math.min(reads, replies.length - 1)];
+    reads += 1;
+    return route.fulfill({ json: reply });
+  });
+  return { reads: () => reads };
 }
 
 /** Makes the page's call to start a run fail with the status and body. */

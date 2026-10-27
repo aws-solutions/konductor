@@ -9,7 +9,7 @@ import SpaceBetween from '@cloudscape-design/components/space-between';
 import StatusIndicator, {
   type StatusIndicatorProps,
 } from '@cloudscape-design/components/status-indicator';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { WorkflowGraphCard } from '../canvas/WorkflowGraphCard';
 import type { LoadResult } from '../workflow/load-workflow';
 import { WorkflowGate, type DrawableWorkflow } from '../workflow/WorkflowGate';
@@ -25,7 +25,7 @@ import {
   type StatusKind,
 } from './core';
 import './execution.css';
-import type { Execution as ExecutionController } from './use-execution';
+import type { ExecutionController } from './use-execution';
 
 const INDICATOR: Record<StatusKind, StatusIndicatorProps.Type> = {
   idle: 'pending',
@@ -33,6 +33,8 @@ const INDICATOR: Record<StatusKind, StatusIndicatorProps.Type> = {
   success: 'success',
   error: 'error',
 };
+
+const MAY_STILL_BE_RUNNING = 'The run may still be going on the server.';
 
 // One live region that says where the run is. It is always on the page, so a
 // change of its text is announced.
@@ -62,6 +64,7 @@ function RunError({ state }: { state: ExecutionState }) {
           data-testid="run-error"
         >
           {state.message}
+          {state.started && <div>{MAY_STILL_BE_RUNNING}</div>}
         </Alert>
       )}
     </div>
@@ -69,13 +72,14 @@ function RunError({ state }: { state: ExecutionState }) {
 }
 
 function RunPanel({
-  defaultGoal,
+  goal,
+  onGoalChange,
   execution,
 }: {
-  defaultGoal: string;
+  goal: string;
+  onGoalChange: (goal: string) => void;
   execution: ExecutionController;
 }) {
-  const [goal, setGoal] = useState(defaultGoal);
   const inFlight = isInFlight(execution.state);
   const problem = goalProblem(goal);
   const canRun = !inFlight && problem === undefined;
@@ -91,7 +95,7 @@ function RunPanel({
           <Input
             value={goal}
             readOnly={inFlight}
-            onChange={({ detail }) => setGoal(detail.value)}
+            onChange={({ detail }) => onGoalChange(detail.value)}
             onKeyDown={({ detail }) => {
               if (detail.key === 'Enter' && canRun) execution.start(goal);
             }}
@@ -124,10 +128,14 @@ function UnsavedNote() {
 
 function ExecutionView({
   workflow,
+  goal,
+  onGoalChange,
   execution,
   unsaved,
 }: {
   workflow: DrawableWorkflow;
+  goal: string;
+  onGoalChange: (goal: string) => void;
   execution: ExecutionController;
   unsaved: boolean;
 }) {
@@ -140,7 +148,11 @@ function ExecutionView({
       <RunError state={execution.state} />
       <div className="wf-execution">
         <WorkflowGraphCard view={view} harness={harness} statuses={statuses} />
-        <RunPanel defaultGoal={view.intent.outcome} execution={execution} />
+        <RunPanel
+          goal={goal}
+          onGoalChange={onGoalChange}
+          execution={execution}
+        />
       </div>
     </div>
   );
@@ -149,17 +161,23 @@ function ExecutionView({
 /**
  * The Execution tab: the workflow graph, read-only, a goal and a Run button,
  * and the live state of every node while the run goes on. `execution` holds
- * the state, so a run goes on while the Designer tab is open. `result` is the
- * workflow as saved, which is what a run uses; `unsaved` says that the
- * Designer holds changes that it does not have.
+ * the state and `goal` the text of the Goal box, both kept by the caller, so a
+ * run goes on and the goal stays while the Designer tab is open. The box is
+ * read-only while a run is in flight, so it then shows the goal of that run.
+ * `result` is the workflow as saved, which is what a run uses; `unsaved` says
+ * that the Designer holds changes that it does not have.
  */
 export function Execution({
   result,
   execution,
+  goal,
+  onGoalChange,
   unsaved = false,
 }: {
   result: LoadResult | undefined;
   execution: ExecutionController;
+  goal: string;
+  onGoalChange: (goal: string) => void;
   unsaved?: boolean;
 }) {
   return (
@@ -167,6 +185,8 @@ export function Execution({
       {(workflow) => (
         <ExecutionView
           workflow={workflow}
+          goal={goal}
+          onGoalChange={onGoalChange}
           execution={execution}
           unsaved={unsaved}
         />

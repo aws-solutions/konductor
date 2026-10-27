@@ -19,7 +19,7 @@ folder.
 - `src/`: the UI. `graph/` turns a workflow into nodes and edges and does no
   IO; `api/` is the typed client of the API; `launch/` and `workflow/` open the
   session and load the workflow; `designer/` edits it and `canvas/` draws it;
-  `execution/` runs it and shows the run.
+  `execution/` runs it and shows the run; `execution/core/` does no IO.
 - `api/`: the HTTP API contract (`openapi.yaml`) and its test.
 - `stub-api/`: a TypeScript stub server for the contract, for local
   development and tests.
@@ -218,13 +218,18 @@ the `S` in port at the top right of the next), placed in one column. It imports
 only its own modules. A test (`test-support/graph-purity.test.ts`) fails if it
 imports anything else, or reads a clock, randomness, the environment or the
 network, and the stub core is held to the same rule by the same scan
-(`test-support/purity.ts`).
+(`test-support/purity.ts`). The run core, `src/execution/core/`, is held to it
+too, by `test-support/execution-purity.test.ts`: it may import only its own
+modules, the graph core and the wire types.
 
 The rest wraps the core, so the rules can be tested without a browser:
 
-- `api/`: `WorkflowApi` is the port with the two calls the page makes;
-  `createHttpApi` is its adapter over `fetch`. It ignores fields it does not
-  know and turns a failed call into an `ApiError` with a message fit to show.
+- `api/`: `WorkflowApi` is the port with the calls the page makes (open a
+  session, load, save and check the workflow, start a run, read a run);
+  `createHttpApi` is its
+  adapter over `fetch`. It ignores fields it does not know, refuses a reply
+  that breaks the contract, and turns a failed call into an `ApiError` with a
+  message fit to show.
   `messageOf` (`api/message-of.ts`) is how every alert words a failure, and it
   adds what to do next: for no answer, or a 5xx that is not the API's (the
   answer of a proxy whose server is down), "If it stopped, start it again and
@@ -356,9 +361,9 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
 
 - **Run** calls `POST /api/run` with the goal, then reads
   `GET /api/runs/{id}` once a second until the run is `passed` or `halted`.
-  Run and the goal box are off from the click until the run ends (the box
-  stays read-only, not disabled, so keyboard focus stays in it). Enter in the
-  goal box runs too.
+  Run is off and the goal box is read-only from the click until the run ends.
+  Read-only, not greyed out, so the box keeps focus and shows the goal of that
+  run. Enter in the box starts a run, like the button.
 - If the server answers 409 `already_running`, as it does when a run from
   another tab is going, the tab follows the run named in that answer instead
   of starting one. The line under the button says so, and the goal typed is not
@@ -383,15 +388,19 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
   change, and each node's name for a screen reader ends with its state.
 - An error from the API, whether the run does not start or a read fails, shows
   in one alert above the graph, with the sentence the server gave. The alert
-  sits in a region with `role="alert"`, so a screen reader reads that sentence.
-  A failed stage is a result, not an error, so it has no alert.
+  is drawn inside an alert region that is always on the page, so a screen
+  reader reads the sentence when it appears; the status line then says only
+  "See the error above." When a read fails, the nodes are cleared and the alert
+  adds that the run may still be going on the server. A failed stage is a
+  result, not an error, so it has no alert.
 - A run stage that is not in the graph is left out of the drawing. The graph is
   the saved workflow, and it is drawn again when the Designer saves, while a
   run works from the file as it was saved when the run started. If the
   Designer saves in the middle of a run, the nodes of stages that were renamed
   or added show no state.
 - A run goes on while the Designer tab is open, and the tab shows it again when
-  you come back. Closing the page stops the reading, not the run.
+  you come back, with the goal box as it was: what you typed, or the goal of
+  the run in flight. Closing the page stops the reading, not the run.
 - The colours of the states are in `src/canvas/canvas.css` and match the theme
   module, checked in both modes by the contrast test.
 
@@ -495,8 +504,9 @@ back before and after each test, and a test that needs the file changed by
 someone else writes it itself (`e2e/support/stub-workflow.ts`). The HTML report is written to `playwright-report/`;
 open it with `npx playwright show-report`. Accessibility is checked with
 axe-core on each tab, on the error state, on the Execution tab with a stage
-running, a failed stage and a passed run, on the Designer tab while editing,
-with problems shown and with a conflict shown, and in both theme modes.
+running, a failed stage, a passed run, the error of the API and a goal that
+cannot be run, on the Designer tab while editing, with problems shown and with
+a conflict shown, and in both theme modes.
 
 The stub runs one run at a time and never fails a stage. So the one test that
 starts a real run on it (`execution.spec.ts`, the first run test) waits for the
@@ -514,7 +524,9 @@ the app.
 ## Screenshots
 
 `npm run screenshots` saves full-page PNGs to `e2e/screenshots/`, drawn from
-the stub, at 1280x800 with animations frozen. The Designer tab is in the light
+the stub, at 1280x800 with animations frozen. The runs in the Execution
+captures answer with fixed replies, so no capture depends on the clock of the
+stub. The Designer tab is in the light
 theme (`designer-tab.png`) and in the dark one (`designer-tab-dark.png`, after
 the theme button is pressed). The Execution tab is saved before a run
 (`execution-tab-idle.png`), while the first stage runs

@@ -43,6 +43,13 @@ function arrayOf(value: unknown): unknown[] {
   return Array.isArray(value) ? value : fail();
 }
 
+// The contract has `exit_code` as an integer or null, and requires the key.
+function exitCodeOf(value: unknown): number | null {
+  return value === null || Number.isInteger(value)
+    ? (value as number | null)
+    : fail();
+}
+
 function parseStage(value: unknown): StageView {
   const stage = objectOf(value);
   return { name: stringOf(stage.name), agent: stringOf(stage.agent) };
@@ -100,11 +107,15 @@ function oneOf<T extends string>(value: unknown, allowed: readonly T[]): T {
   return allowed.find((candidate) => candidate === value) ?? fail();
 }
 
-// The stages in `order`, each with its status from `stages`.
+// The stages in `order`, each with its status from `stages`. The contract
+// lists each stage once, so a name that repeats is a bad reply.
 function parseRunStages(order: unknown, stages: unknown): RunStageView[] {
   const byName = objectOf(stages);
+  const seen = new Set<string>();
   return arrayOf(order).map((entry) => {
     const name = stringOf(entry);
+    if (seen.has(name)) fail();
+    seen.add(name);
     const stage = Object.hasOwn(byName, name) ? byName[name] : fail();
     return {
       name,
@@ -121,11 +132,10 @@ export function parseRunStarted(body: unknown): string {
 /** Reads a `RunStatusResponse`; unknown fields are ignored. */
 export function parseRunStatus(body: unknown): RunView {
   const run = objectOf(objectOf(body).run);
-  const exitCode = run.exit_code;
   return {
     runId: stringOf(run.run_id),
     status: oneOf(run.status, RUN_STATUSES),
-    exitCode: typeof exitCode === 'number' ? exitCode : null,
+    exitCode: exitCodeOf(run.exit_code),
     stages: parseRunStages(run.order, run.stages),
   };
 }

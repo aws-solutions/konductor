@@ -600,6 +600,10 @@ describe('createHttpApi', () => {
       run({ stages: { write: { status: 'skipped' }, review: {} } }),
     ],
     ['stages that are not an object', run({ stages: [] })],
+    ['a stage that `order` lists twice', run({ order: ['write', 'write'] })],
+    ['an exit code that is a string', run({ exit_code: '1' })],
+    ['an exit code that is not whole', run({ exit_code: 1.5 })],
+    ['a run with no exit code', run({ exit_code: undefined })],
   ])('fails on %s', async (_, body) => {
     const { api } = apiFor(reply(body));
 

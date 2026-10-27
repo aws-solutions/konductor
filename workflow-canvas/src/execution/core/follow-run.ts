@@ -22,6 +22,7 @@ const OTHER_RUN = 'The server answered with a run that is not the one started.';
 interface Watch {
   runs: RunPort;
   scheduler: Scheduler;
+  /** Must not throw: a throw would be taken for a failure of the run. */
   emit: (event: ExecutionEvent) => void;
   /** Aborting stops the loop quietly: no further event is emitted. */
   signal: AbortSignal;

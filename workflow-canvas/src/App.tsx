@@ -15,6 +15,7 @@ import type { RunMemory, Scheduler } from './execution/core';
 import { Execution } from './execution/Execution';
 import { timerScheduler } from './execution/timer-scheduler';
 import { useExecution } from './execution/use-execution';
+import { useGoal } from './execution/use-goal';
 import { TAB_STRIP_STYLE } from './theme/tokens';
 import { useThemeMode } from './theme/use-theme-mode';
 import {
@@ -41,12 +42,14 @@ export function App({
 }) {
   // Read here, not in the tab, so switching tabs does not load again.
   const result = useSettled(load);
-  // Kept here too, so a run goes on while the Designer tab is open.
+  // Kept here too, so a run goes on and the goal stays while the Designer tab
+  // is open.
   const execution = useExecution(
     result?.ok ? result.workflow.runs : undefined,
     scheduler,
     runMemory,
   );
+  const [goal, setGoal] = useGoal(result);
   const [mode, toggleMode] = useThemeMode();
   // The Designer edits a draft; the run and the Execution tab use the file
   // as it is saved.
@@ -88,6 +91,8 @@ export function App({
                       <Execution
                         result={saved}
                         execution={execution}
+                        goal={goal}
+                        onGoalChange={setGoal}
                         unsaved={unsaved}
                       />
                     ),

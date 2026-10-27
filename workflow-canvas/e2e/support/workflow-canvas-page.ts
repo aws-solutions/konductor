@@ -55,6 +55,7 @@ export class WorkflowCanvasPage {
   readonly goal: Locator;
   readonly runStatus: Locator;
   readonly runError: Locator;
+  readonly runAlert: Locator;
 
   constructor(readonly page: Page) {
     this.main = page.getByRole('main');
@@ -67,6 +68,7 @@ export class WorkflowCanvasPage {
     this.goal = page.getByLabel('Goal');
     this.runStatus = page.getByTestId('run-status');
     this.runError = page.getByTestId('run-error');
+    this.runAlert = page.locator('.wf-run-error[role="alert"]');
   }
 
   /**

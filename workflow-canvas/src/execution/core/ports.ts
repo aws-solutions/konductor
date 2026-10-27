@@ -39,7 +39,7 @@ export class RunReadRefused extends Error {
 
 /**
  * The only source of time for the core, so a test can move it by hand. The
- * timer adapter is `execution/timer-scheduler.ts`.
+ * timer adapter lives in the layer that draws the tab.
  */
 export interface Scheduler {
   /** Resolves after `ms` milliseconds, or at once when the signal aborts. */

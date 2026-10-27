@@ -15,6 +15,7 @@ import { HELLO_DOCUMENT, helloRun, loaded } from '../test-support/fixtures';
 import { MAX_READ_FAILURES, RunAlreadyActive, type RunPort } from './core';
 
 const RUN_ID = helloRun(0).runId;
+const MAY_STILL_BE_RUNNING = 'The run may still be going on the server.';
 
 // A server that answers with the readings in turn and then repeats the last.
 function serverShowing(...readings: RunView[]): RunPort {
@@ -332,13 +333,42 @@ describe('a run that is already active', () => {
 });
 
 describe('the goal', () => {
+  const goalBox = () => screen.getByLabelText('Goal') as HTMLInputElement;
+  const openTab = (name: string) =>
+    fireEvent.click(screen.getByRole('tab', { name }));
+
+  it('is kept when the person goes to the Designer tab and comes back', async () => {
+    await openExecution(serverShowing(helloRun(0)));
+    fireEvent.change(goalBox(), { target: { value: 'Fix the typo' } });
+
+    openTab('Designer');
+    openTab('Execution');
+
+    expect(goalBox().value).toBe('Fix the typo');
+    expect(isOff(runButton())).toBe(false);
+  });
+
+  it('shows the goal of the run in flight, read-only, when the person comes back', async () => {
+    const runs = serverShowing(helloRun(0));
+    await openExecution(runs);
+    fireEvent.change(goalBox(), { target: { value: 'Fix the typo' } });
+    await press(runButton());
+
+    openTab('Designer');
+    openTab('Execution');
+
+    expect(goalBox().value).toBe('Fix the typo');
+    expect(goalBox().readOnly).toBe(true);
+    expect(isOff(runButton())).toBe(true);
+    expect(runs.start).toHaveBeenCalledWith('Fix the typo');
+  });
+
   it('starts a run when Enter is pressed in the goal box', async () => {
     const runs = serverShowing(helloRun(0));
     await openExecution(runs);
 
-    const goal = screen.getByRole('textbox');
     await act(async () => {
-      fireEvent.keyDown(goal, { key: 'Enter', keyCode: 13 });
+      fireEvent.keyDown(goalBox(), { key: 'Enter', keyCode: 13 });
     });
 
     expect(runs.start).toHaveBeenCalledOnce();
@@ -347,14 +377,25 @@ describe('the goal', () => {
   it('does not start a run on Enter when the goal is empty', async () => {
     const runs = serverShowing(helloRun(0));
     await openExecution(runs);
-    const goal = screen.getByRole('textbox');
-    fireEvent.change(goal, { target: { value: '' } });
+    fireEvent.change(goalBox(), { target: { value: '' } });
 
     await act(async () => {
-      fireEvent.keyDown(goal, { key: 'Enter', keyCode: 13 });
+      fireEvent.keyDown(goalBox(), { key: 'Enter', keyCode: 13 });
     });
 
     expect(runs.start).not.toHaveBeenCalled();
+  });
+
+  it('does not start a run on Enter while a run is in flight', async () => {
+    const runs = serverShowing(helloRun(0));
+    await openExecution(runs);
+    await press(runButton());
+
+    await act(async () => {
+      fireEvent.keyDown(goalBox(), { key: 'Enter', keyCode: 13 });
+    });
+
+    expect(runs.start).toHaveBeenCalledOnce();
   });
 
   it('turns Run off, and says why, when the goal is empty', async () => {
@@ -401,7 +442,8 @@ describe('errors from the API', () => {
     expect(within(alert).getByText('The run did not start')).toBeTruthy();
     expect(within(alert).getByText('A run is already active.')).toBeTruthy();
     expect(screen.getAllByTestId('run-error')).toHaveLength(1);
-    expect(statusLine().textContent).toContain('The run did not start.');
+    expect(within(alert).queryByText(MAY_STILL_BE_RUNNING)).toBeNull();
+    expect(statusLine().textContent).toContain('See the error above.');
     expect(badges()).toEqual([null, null, null, null]);
     expect(isOff(runButton())).toBe(false);
   });
@@ -427,7 +469,9 @@ describe('errors from the API', () => {
       within(alert).getByText('The run could not be followed'),
     ).toBeTruthy();
     expect(within(alert).getByText('The server did not answer.')).toBeTruthy();
+    expect(within(alert).getByText(MAY_STILL_BE_RUNNING)).toBeTruthy();
     expect(screen.getAllByTestId('run-error')).toHaveLength(1);
+    expect(statusLine().textContent).toContain('See the error above.');
     expect(badges()).toEqual([null, null, null, null]);
     expect(isOff(runButton())).toBe(false);
   });
