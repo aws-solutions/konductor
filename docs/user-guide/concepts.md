@@ -172,7 +172,9 @@ specialists can also spawn each other directly (`k-architect` → developer and 
 researcher), and in Claude Code `k-architect` and `k-quality-assurance` carry `Agent(...)` tools
 of their own — see [Who can delegate to whom](agents.md#who-can-delegate-to-whom). In the common
 case, though, every piece of work routes through `konductor`, which decides who owns it, hands it
-over, and checks the result.
+over, and checks the result. The core rules tell specialists not to use those grants: a
+specialist does its own part, then returns a note naming the next role, or a proposed parallel
+split with the files each part touches, and `konductor` routes it.
 
 A **delegation** is not a casual instruction — it is a fixed 7-section format defined by the
 `k-delegate` SOP and the `delegation-protocol` skill:
