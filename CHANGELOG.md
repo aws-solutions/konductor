@@ -29,6 +29,18 @@ not per individual commit.
   fix-attempt cap and 2-Strike Circuit Breaker instead of its own cycle count, and limits its
   retry-once recovery to spawns that error, time out, or return nothing.
 
+## [Unreleased]
+
+### Fixed
+
+- Claude Code agents now run on the model their spec declares. Specs use Kiro's dotted model
+  ID (`claude-sonnet-5.5`), which Claude Code ignores without an error, so agents ran on the
+  session or default subagent model. Synth now writes Claude Code's form
+  (`claude-sonnet-5-5`) for both the plugin and `konductor install --harness claude`, and fails
+  on a model ID it can't convert.
+- The Claude Code plugin now ships `NOTICE.txt`, and its README links point at the release tag
+  instead of files the plugin doesn't ship.
+
 ## [1.2.0] - 2026-10-26
 
 ### Added

@@ -154,3 +154,17 @@ def test_assembled_tree_ships_the_telemetry_hook(assembled):
         assert matcher.search(f"{plugin['name']}:{agent_file.stem}"), agent_file.name
         assert not matcher.search(agent_file.stem), agent_file.name
     assert not matcher.search("Explore")
+
+
+def test_assembled_agents_use_claude_code_model_ids(assembled):
+    for agent in (assembled / "agents").glob("*.md"):
+        model = re.search(r"^model: (.+)$", agent.read_text(encoding="utf-8"), re.M).group(1)
+        assert "." not in model, f"{agent.name}: {model}"
+
+
+def test_assembled_tree_ships_notice_and_absolute_readme_links(assembled):
+    assert (assembled / "NOTICE.txt").is_file()
+    readme = (assembled / "README.md").read_text(encoding="utf-8")
+    assert 'src="docs/assets/' not in readme
+    assert "](docs/" not in readme
+    assert "](LICENSE.txt)" in readme

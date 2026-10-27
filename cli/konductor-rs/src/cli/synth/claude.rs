@@ -336,6 +336,34 @@ impl HarnessTransformer for ClaudeTransformer {
     }
 }
 
+const CLAUDE_MODEL_ALIASES: &[&str] = &["inherit", "sonnet", "opus", "haiku"];
+
+/// Converts an agent spec's model ID to the form Claude Code accepts.
+///
+/// Specs use Kiro's dotted form (`claude-sonnet-5.5`). Claude Code wants
+/// dashes (`claude-sonnet-5-5`) and silently ignores an ID it doesn't
+/// recognize, so an unknown shape fails synth instead of shipping.
+fn claude_model_id(agent: &str, model: &str) -> Result<String, String> {
+    if CLAUDE_MODEL_ALIASES.contains(&model) {
+        return Ok(model.to_string());
+    }
+    let converted = model.replace('.', "-");
+    let well_formed = converted.starts_with("claude-")
+        && !converted.ends_with('-')
+        && !converted.contains("--")
+        && converted
+            .bytes()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-');
+    if well_formed {
+        Ok(converted)
+    } else {
+        Err(format!(
+            "agent '{agent}' declares model '{model}', which is neither a claude-* model ID \
+             nor one of the Claude Code aliases {CLAUDE_MODEL_ALIASES:?}"
+        ))
+    }
+}
+
 /// Renders one agent's YAML frontmatter + system prompt body. The body
 /// starts as the verbatim `system_prompt` text with no inserted heading
 /// (see module docstring), then has each of `context_names`' matching
@@ -382,11 +410,12 @@ fn render_agent_md(
         }
     }
 
+    let model = claude_model_id(name, &config.model)?;
     let merged_mcp_servers = merge_mcp_servers(mcp_registry, &claude.mcp_servers);
     let frontmatter = ClaudeAgentFrontmatter {
         name,
         description: &config.description,
-        model: &config.model,
+        model: &model,
         tools: claude.tools.as_deref(),
         skills: &claude.skills,
         allowed_tools: &claude.allowed_tools,
@@ -1838,5 +1867,67 @@ mod tests {
         );
 
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn claude_model_id_converts_kiro_dotted_form() {
+        assert_eq!(
+            claude_model_id("a", "claude-sonnet-5.5").unwrap(),
+            "claude-sonnet-5-5"
+        );
+        assert_eq!(
+            claude_model_id("a", "claude-haiku-4.5").unwrap(),
+            "claude-haiku-4-5"
+        );
+    }
+
+    #[test]
+    fn claude_model_id_passes_through_claude_code_forms() {
+        for id in [
+            "claude-sonnet-5-5",
+            "claude-sonnet-5",
+            "inherit",
+            "sonnet",
+            "opus",
+            "haiku",
+        ] {
+            assert_eq!(claude_model_id("a", id).unwrap(), id);
+        }
+    }
+
+    #[test]
+    fn claude_model_id_rejects_unknown_shapes() {
+        for id in [
+            "auto",
+            "gpt-5",
+            "Claude-Sonnet-5.5",
+            "claude-sonnet-5.",
+            "claude-sonnet..5",
+            "",
+        ] {
+            let err = claude_model_id("k-example", id).unwrap_err();
+            assert!(err.contains("k-example"), "{err}");
+        }
+    }
+
+    #[test]
+    fn render_agent_md_writes_claude_code_model_id() {
+        let mut agent = agent_with_claude("k-example", ClaudeCliConfig::default());
+        agent.config.model = "claude-sonnet-5.5".to_string();
+        let claude_cfg = agent.client_config.claude_cli.as_ref().unwrap();
+        let rendered = render_agent_md(
+            "k-example",
+            &agent.config,
+            claude_cfg,
+            &[],
+            &[],
+            &HashSet::new(),
+            &BTreeMap::new(),
+        )
+        .unwrap();
+        assert!(
+            rendered.contains("\nmodel: claude-sonnet-5-5\n"),
+            "{rendered}"
+        );
     }
 }

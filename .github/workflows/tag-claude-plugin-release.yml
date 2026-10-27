@@ -19,7 +19,7 @@ name: Tag Claude Code plugin release
 # exists on the PR's BASE branch
 # (https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request).
 # release/plugins is artifact-only -- scripts/assemble-claude-plugin-branch.sh
-# publishes only agents/, skills/, README.md, LICENSE.txt, and the rendered
+# publishes only agents/, skills/, README.md, LICENSE.txt, NOTICE.txt, and the rendered
 # .claude-plugin/plugin.json/.mcp.json there, never .github/, VERSION, or
 # scripts/. A pull_request.closed trigger on this file would therefore
 # never fire for a merge into release/plugins: there is no copy of this
