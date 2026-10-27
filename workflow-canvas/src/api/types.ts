@@ -61,6 +61,13 @@ export interface SaveResult {
   diagnostics: DiagnosticView[];
 }
 
+/** What `POST /api/validate` returns. */
+export interface CheckResult {
+  /** `null` when the text has errors. */
+  view: WorkflowView | null;
+  diagnostics: DiagnosticView[];
+}
+
 /** How far a stage of a run has got. `blocked` failed and stopped the run. */
 export type StageRunStatus = 'pending' | 'running' | 'passed' | 'blocked';
 

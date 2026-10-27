@@ -7,16 +7,19 @@ import type { CanvasSelection } from '../canvas/WorkflowCanvas';
 import { stageNodeId } from '../graph';
 import { canAddStage, canEdit, MAX_STAGES, READ_ONLY_REASON } from './core';
 import './designer.css';
+import { EditAlerts, RewriteNotice } from './EditAlerts';
 import { PropertiesPane } from './PropertiesPane';
-import { useFocusRequest } from './use-focus';
+import { SaveControls } from './SaveControls';
+import { useFocusRequest, useFocusWhenDone } from './use-focus';
 import type { Editor } from './use-editor';
 
 const STAGE_LIMIT = `A workflow has at most ${MAX_STAGES} stages.`;
 
 /**
- * The editable Designer: the graph with Add stage, and Properties for the
- * selected stage. Focus goes to the name of a stage after it is added,
- * selected or deleted, so the keyboard never loses its place.
+ * The editable Designer: the graph with Add stage and Save, Properties for the
+ * selected stage, and the alerts. Focus goes to the name of a stage after it
+ * is added, selected or deleted, and after the file is loaded again, so the
+ * keyboard never loses its place.
  */
 export function DesignerEditor({
   editor,
@@ -28,6 +31,11 @@ export function DesignerEditor({
   const { state } = editor;
   const nameRef = useRef<InputProps.Ref>(null);
   const focusName = useFocusRequest(nameRef);
+  useFocusWhenDone(
+    nameRef,
+    state.save.phase === 'reloading',
+    state.save.phase === 'reloaded',
+  );
 
   const spec = useMemo(
     () => ({
@@ -56,35 +64,40 @@ export function DesignerEditor({
   const editable = canEdit(state);
   const addable = editable && canAddStage(state.draft);
   return (
-    <div className="wf-designer">
-      <WorkflowGraphCard
-        view={spec}
-        harness={harness}
-        selection={selection}
-        toolbar={
-          <Button
-            iconName="add-plus"
-            disabled={!addable}
-            disabledReason={editable ? STAGE_LIMIT : READ_ONLY_REASON}
-            onClick={() => {
-              editor.add();
-              focusName();
-            }}
-          >
-            Add stage
-          </Button>
-        }
-      />
-      <PropertiesPane
-        state={state}
-        nameRef={nameRef}
-        onRename={editor.rename}
-        onAgent={editor.setAgent}
-        onRemove={(id) => {
-          editor.remove(id);
-          focusName();
-        }}
-      />
+    <div>
+      <EditAlerts state={state} onReload={editor.reload} />
+      <RewriteNotice text={state.saved.text} />
+      <div className="wf-designer">
+        <WorkflowGraphCard
+          view={spec}
+          harness={harness}
+          selection={selection}
+          actions={<SaveControls state={state} onSave={editor.save} />}
+          toolbar={
+            <Button
+              iconName="add-plus"
+              disabled={!addable}
+              disabledReason={editable ? STAGE_LIMIT : READ_ONLY_REASON}
+              onClick={() => {
+                editor.add();
+                focusName();
+              }}
+            >
+              Add stage
+            </Button>
+          }
+        />
+        <PropertiesPane
+          state={state}
+          nameRef={nameRef}
+          onRename={editor.rename}
+          onAgent={editor.setAgent}
+          onRemove={(id) => {
+            editor.remove(id);
+            focusName();
+          }}
+        />
+      </div>
     </div>
   );
 }
