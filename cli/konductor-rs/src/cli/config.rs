@@ -40,11 +40,10 @@ use crate::cli::install::index;
 const SUPPORTED_CONFIG_VERSION: u64 = 1;
 
 /// Severity ids valid at this milestone. Mirrors
-/// cli/gate-config/severity-schema.yml's `severities[].id` list. Not
-/// loaded dynamically from that YAML file at runtime (that file is
-/// human/gate-author-facing reference data, not itself parsed by this
-/// loader) -- kept as a small enum here and validated against by name,
-/// since the set is fixed for this milestone.
+/// cli/gate-config/severity-schema.yml's `severities[].id` list and
+/// ranks; the enum is checked against the file by `gate_config`'s parity
+/// test. The config loader validates by name against this enum and does
+/// not read the file.
 ///
 /// `Config`'s own `default_severity`/`fail_on_severity_at_or_above`
 /// fields stay `String` (the on-disk YAML representation, and the
@@ -60,6 +59,28 @@ pub(crate) enum Severity {
     Medium,
     Low,
     Info,
+}
+
+impl Severity {
+    /// Every severity, highest rank first, in severity-schema.yml's order.
+    pub(crate) const ALL: [Severity; 5] = [
+        Severity::Critical,
+        Severity::High,
+        Severity::Medium,
+        Severity::Low,
+        Severity::Info,
+    ];
+
+    /// The severity's rank in severity-schema.yml; higher is more severe.
+    pub(crate) fn rank(self) -> u8 {
+        match self {
+            Severity::Critical => 4,
+            Severity::High => 3,
+            Severity::Medium => 2,
+            Severity::Low => 1,
+            Severity::Info => 0,
+        }
+    }
 }
 
 impl std::str::FromStr for Severity {

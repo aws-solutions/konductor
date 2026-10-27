@@ -14,6 +14,8 @@ not per individual commit.
   `Orchestration: strict (phase-gated SOP)` line.
 - Gated SOPs can list their phases and gate boundaries, and `make sop-orchestration-check`
   checks them against each SOP's phase list.
+- `severity-schema.yml` maps the words checkers write (IMPORTANT, WARNING, SUGGESTION,
+  MINOR) to severity ids.
 
 ### Changed
 
