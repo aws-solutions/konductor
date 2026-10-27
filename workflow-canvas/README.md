@@ -225,7 +225,8 @@ modules, the graph core and the wire types.
 The rest wraps the core, so the rules can be tested without a browser:
 
 - `api/`: `WorkflowApi` is the port with the calls the page makes (open a
-  session, load the workflow, start a run, read a run); `createHttpApi` is its
+  session, load, save and check the workflow, start a run, read a run);
+  `createHttpApi` is its
   adapter over `fetch`. It ignores fields it does not know, refuses a reply
   that breaks the contract, and turns a failed call into an `ApiError` with a
   message fit to show.
