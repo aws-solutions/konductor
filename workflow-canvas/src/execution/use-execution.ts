@@ -10,7 +10,7 @@ import {
 } from './core';
 
 /** The state of the Execution tab and the one way to change it. */
-export interface Execution {
+export interface ExecutionController {
   state: ExecutionState;
   /** Starts a run with the goal; does nothing while a run is in flight. */
   start(goal: string): void;
@@ -24,7 +24,7 @@ export interface Execution {
 export function useExecution(
   runs: RunPort | undefined,
   scheduler: Scheduler,
-): Execution {
+): ExecutionController {
   const [state, dispatch] = useReducer(reduce, IDLE);
   const active = useRef<AbortController>(undefined);
 

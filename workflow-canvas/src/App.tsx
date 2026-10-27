@@ -13,6 +13,7 @@ import type { Scheduler } from './execution/core';
 import { Execution } from './execution/Execution';
 import { timerScheduler } from './execution/timer-scheduler';
 import { useExecution } from './execution/use-execution';
+import { useGoal } from './execution/use-goal';
 import { TAB_STRIP_STYLE } from './theme/tokens';
 import { useThemeMode } from './theme/use-theme-mode';
 import { openWorkflowName, type LoadResult } from './workflow/load-workflow';
@@ -35,11 +36,13 @@ export function App({
 }) {
   // Read here, not in the tab, so switching tabs does not load again.
   const result = useSettled(load);
-  // Kept here too, so a run goes on while the Designer tab is open.
+  // Kept here too, so a run goes on and the goal stays while the Designer tab
+  // is open.
   const execution = useExecution(
     result?.ok ? result.workflow.runs : undefined,
     scheduler,
   );
+  const [goal, setGoal] = useGoal(result);
   const [mode, toggleMode] = useThemeMode();
   return (
     <>
@@ -74,7 +77,12 @@ export function App({
                     id: 'execution',
                     label: 'Execution',
                     content: (
-                      <Execution result={result} execution={execution} />
+                      <Execution
+                        result={result}
+                        execution={execution}
+                        goal={goal}
+                        onGoalChange={setGoal}
+                      />
                     ),
                   },
                 ]}

@@ -105,7 +105,7 @@ function Tab({ top }: { top: number }) {
   );
 }
 
-/** The state of a node in a run, as a word in a coloured pill. */
+// The state of a node in a run, as a word in a coloured pill.
 function StatusBadge({ status }: { status: NodeStatus | undefined }) {
   if (!status) return null;
   return (
