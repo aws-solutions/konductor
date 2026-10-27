@@ -2,6 +2,7 @@
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
 import { DEV_PAGE_PORT, LOOPBACK } from './stub-api/address.ts';
+import { apiProxy } from './stub-api/dev-proxy.ts';
 import { apiTargetOrExit } from './stub-api/target.ts';
 
 /**
@@ -29,17 +30,9 @@ export default defineConfig(({ command, mode }) => {
       host: LOOPBACK,
       port: DEV_PAGE_PORT,
       strictPort: true,
-      // The page and the API share one origin in the browser. The server
-      // accepts only its own `Origin`, so the proxy sends the target's.
-      proxy: apiOrigin
-        ? {
-            '/api': {
-              target: apiOrigin,
-              changeOrigin: true,
-              headers: { Origin: apiOrigin },
-            },
-          }
-        : undefined,
+      // The page and the API share one origin in the browser. The proxy swaps
+      // the page's `Origin` for the API's own and passes any other through.
+      proxy: apiOrigin ? apiProxy(apiOrigin) : undefined,
     },
     test: {
       // The UI runs in jsdom with the browser setup file. The API contract and

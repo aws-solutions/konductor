@@ -138,13 +138,18 @@ Ctrl+C stops both. Or start the stub in one terminal and `npm run dev` in
 another. Then open the address that the stub prints. The dev server forwards
 `/api` to the stub (`vite.config.ts`), so the page and the API share one
 origin. The stub sends no CORS headers and accepts only its own `Origin`, so
-the proxy sends that one. The page reads the launch code from the address
-(`#<launch code>`), removes it from the address bar, trades it for a token with
-`POST /api/session` and loads the workflow with `GET /api/workflow`. The token
-is kept in memory only. To try the calls by hand:
+the proxy swaps the page's `Origin` (`http://127.0.0.1:5173` or
+`http://localhost:5173`) for the stub's. Any other `Origin`, or none, goes
+through unchanged and the stub refuses a POST or PUT with a 403, so a page on
+another origin cannot use the dev server to call the API. The page reads the
+launch code from the address (`#<launch code>`), removes it from the address
+bar, trades it for a token with `POST /api/session` and loads the workflow with
+`GET /api/workflow`. The token is kept in memory only. To try the calls by
+hand, send the `Origin` of the page:
 
 ```bash
 curl -s -X POST http://127.0.0.1:5173/api/session \
+  -H 'Origin: http://127.0.0.1:5173' \
   -H 'Content-Type: application/json' -d '{"code":"<launch code>"}'
 ```
 
@@ -175,11 +180,12 @@ launch code `e2e-launch-code`, and run the tests within 60 seconds of it
 listening. The launch code works once, so restart the server before each run;
 a second run against the same server fails with a 401.
 
-The proxy sends the `Origin` of the target. A real server must pass the same
-Origin check as the stub, and the same `POST /api/session` step from
-`api/openapi.yaml`, where the launch code is traded for the token that the
-other calls send. The e2e and contract tests then show whether the real server
-answers as the stub does.
+The proxy sends the `Origin` of the target in place of the page's own, and
+forwards any other `Origin` unchanged. A real server must pass the same Origin
+check as the stub (refuse a POST or PUT from any other `Origin`), and the same
+`POST /api/session` step from `api/openapi.yaml`, where the launch code is
+traded for the token that the other calls send. The e2e and contract tests then
+show whether the real server answers as the stub does.
 
 ### Code of the stub
 
