@@ -35,12 +35,8 @@ not per individual commit.
   its read budget. A thorough codebase or documentation search matches `k-comprehensive-search`.
   The three orchestrator prompts now run the SOP check on every request, not only on multi-phase
   ones.
-- Setting a key in `.konductor/config.yml` from the CLI rewrote the file from its six known
-  fields, so it dropped every other key and block, including a `telemetry:` block that turns
-  telemetry off for the repo. It now changes only the named key and keeps every other key,
-  block and the key order. A file that is not a YAML mapping is refused with exit 64 and left
-  unchanged. The file is re-serialized, so comments, anchors and the original formatting of
-  values are not kept.
+- `konductor config set` no longer drops other keys and blocks from `.konductor/config.yml`,
+  such as a `telemetry:` opt-out. It now changes only the named key.
 
 ## [1.2.0] - 2026-10-26
 
