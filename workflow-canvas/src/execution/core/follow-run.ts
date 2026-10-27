@@ -6,6 +6,7 @@ import type { RunPort, Scheduler } from './ports';
 export const POLL_INTERVAL_MS = 1000;
 
 const UNKNOWN_FAILURE = 'The run did not go as expected.';
+const OTHER_RUN = 'The server answered with a run that is not the one started.';
 
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : UNKNOWN_FAILURE;
@@ -16,6 +17,7 @@ export interface FollowRequest {
   runs: RunPort;
   scheduler: Scheduler;
   goal: string;
+  /** Must not throw: a throw would be taken for a failure of the run. */
   emit: (event: ExecutionEvent) => void;
   /** Aborting stops the loop quietly: no further event is emitted. */
   signal: AbortSignal;
@@ -35,6 +37,10 @@ export async function startAndFollow(request: FollowRequest): Promise<void> {
     for (;;) {
       const run = await runs.get(runId);
       if (signal.aborted) return;
+      if (run.runId !== runId) {
+        emit({ type: 'failed', message: OTHER_RUN });
+        return;
+      }
       emit({ type: 'snapshot', run });
       if (run.status !== 'running') return;
       await scheduler.wait(POLL_INTERVAL_MS, signal);

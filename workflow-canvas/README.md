@@ -15,7 +15,8 @@ serves it and the tests around both are in this folder.
 
 - `src/`: the UI. `graph/` turns a workflow into nodes and edges and does no
   IO; `api/` is the typed client of the API; `launch/` and `workflow/` open the
-  session and load the workflow; `designer/` and `canvas/` draw it.
+  session and load the workflow; `designer/` and `canvas/` draw it;
+  `execution/core/` starts a run and follows it, and does no IO.
 - `api/`: the HTTP API contract (`openapi.yaml`) and its test.
 - `stub-api/`: a TypeScript stub server for the contract, for local
   development and tests.
@@ -217,13 +218,17 @@ network, and the stub core is held to the same rule by the same scan
 catches an alias such as `const f = fetch`, `XMLHttpRequest`, `WebSocket`,
 `sendBeacon`, storage, `import.meta`, animation frames and dynamic imports,
 and it ignores a word in a comment or a string. It guards against accidents;
-it is not a sandbox.
+it is not a sandbox. The run core, `src/execution/core/`, is held to it too,
+by `test-support/execution-purity.test.ts`: it may import only its own
+modules, the graph core and the wire types.
 
 The rest wraps the core, so the rules can be tested without a browser:
 
-- `api/`: `WorkflowApi` is the port with the two calls the page makes;
-  `createHttpApi` is its adapter over `fetch`. It ignores fields it does not
-  know and turns a failed call into an `ApiError` with a message fit to show.
+- `api/`: `WorkflowApi` is the port with the calls the page makes (open a
+  session, load the workflow, start a run, read a run); `createHttpApi` is its
+  adapter over `fetch`. It ignores fields it does not know, refuses a reply
+  that breaks the contract, and turns a failed call into an `ApiError` with a
+  message fit to show.
 - `launch/launch-code.ts` and `workflow/` take the launch code from the
   address and load the workflow. `loadWorkflow` never rejects: it returns
   `{ ok: true, workflow }` or `{ ok: false, message }`. `createWorkflowSource`
