@@ -6,6 +6,7 @@ import type {
   RunStatus,
   RunView,
   Session,
+  Severity,
   StageRunStatus,
   StageView,
   WorkflowDocument,
@@ -30,6 +31,10 @@ function objectOf(value: unknown): Json {
 
 function stringOf(value: unknown): string {
   return typeof value === 'string' ? value : fail();
+}
+
+function booleanOf(value: unknown): boolean {
+  return typeof value === 'boolean' ? value : fail();
 }
 
 function arrayOf(value: unknown): unknown[] {
@@ -59,12 +64,26 @@ function lineOf(value: unknown): number | undefined {
     : undefined;
 }
 
+const SEVERITIES: readonly Severity[] = ['error', 'warning', 'info'];
+
+// A severity that a later version adds is taken as an error, so a finding of
+// a kind this page cannot judge never reads as harmless.
+function severityOf(value: unknown): Severity {
+  return SEVERITIES.find((candidate) => candidate === value) ?? 'error';
+}
+
 function parseDiagnostic(value: unknown): DiagnosticView {
   const diagnostic = objectOf(value);
   return {
     message: stringOf(diagnostic.message),
     line: lineOf(diagnostic.line),
+    path: typeof diagnostic.path === 'string' ? diagnostic.path : '',
+    severity: severityOf(diagnostic.severity),
   };
+}
+
+function parseDiagnostics(value: unknown): DiagnosticView[] {
+  return arrayOf(value).map(parseDiagnostic);
 }
 
 const RUN_STATUSES: readonly RunStatus[] = ['running', 'passed', 'halted'];
@@ -125,11 +144,14 @@ export function parseSession(body: unknown): Session {
 export function parseWorkflowDocument(body: unknown): WorkflowDocument {
   const document = objectOf(body);
   const text = document.text;
+  const hash = document.hash;
   return {
     name: stringOf(document.name),
     text: text === null ? null : stringOf(text),
+    hash: hash === null ? null : stringOf(hash),
+    readOnly: booleanOf(document.read_only),
     view: parseView(document.view),
-    diagnostics: arrayOf(document.diagnostics).map(parseDiagnostic),
+    diagnostics: parseDiagnostics(document.diagnostics),
   };
 }
 
