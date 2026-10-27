@@ -107,6 +107,14 @@ sets the port (a whole number from 1 to 65535; anything else stops the command
 with a one-line error). `STUB_LAUNCH_CODE` sets the code, for tests only: it can be
 weaker than the contract asks.
 
+The contract has the code work once. That would make a reload of the page a
+dead end when you develop: the reload drops the token and the code from the page,
+and the printed address no longer works. So the stub of `npm run dev:stub` (it
+gets `--with-dev-server`) and the one that Playwright starts take the code
+again, with no time limit, and give the same token. Open the printed address
+again after a reload. `npm run stub` on its own follows the contract: once,
+within 60 seconds.
+
 The data covers the first release: a workflow of an intent and stages, and the
 `kiro-cli` harness. It is a `hello` workflow with a `draft` stage
 (`k-developer`) and a `review` stage (`k-quality-assurance`). A saved change
@@ -179,7 +187,8 @@ compares the error codes, diagnostic codes, limits and patterns of the stub
 with the contract, so a change to one without the other fails.
 
 Playwright starts the stub beside the app (`stub-api/web-servers.ts` holds its
-launch code and the server list), so an end-to-end test can call it. With
+launch code and the server list), with `--with-dev-server` so that a test can
+open the page again with the same code. So an end-to-end test can call it. With
 `WC_API_TARGET` set it does not, and the same tests call that server instead.
 
 ## End-to-end tests
