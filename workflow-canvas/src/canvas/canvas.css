@@ -319,3 +319,13 @@
     color: CanvasText;
   }
 }
+
+/*
+ * The stage that Properties shows. Its outline takes the focus colour and is
+ * thicker, so the choice shows without colour too. The name of the node says
+ * "selected" for a screen reader.
+ */
+.react-flow__node.selected .wf-node-body {
+  stroke: var(--wf-focus);
+  stroke-width: 3px;
+}
