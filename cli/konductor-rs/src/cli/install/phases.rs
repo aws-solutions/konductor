@@ -221,13 +221,14 @@ pub(super) fn run_all_phases(
     Ok(outputs.all_files())
 }
 
-/// The default phase list: all 5 artifact categories
+/// The default phase list: all 6 artifact categories
 /// `install_from_local` handles today, in the order their real
 /// dependencies require (skills, the MCP binary, and context before
 /// agents). `SopInstallPhase` copies every staged `.sop.md` file into
 /// `.konductor/sops/` (and additively converts them into
 /// `.claude/skills/sop-<name>/SKILL.md` when a `.claude` marker
-/// already exists at the target). Adding a sixth phase is a new
+/// already exists at the target). `SkillPointerInstallPhase` writes the
+/// `.kiro/skills/ks-<name>/SKILL.md` pointers. Adding a seventh phase is a new
 /// `struct FooInstallPhase` plus one `Box::new(FooInstallPhase)` line
 /// here.
 pub(super) fn standard_install_phases() -> Vec<Box<dyn InstallPhase>> {
@@ -235,6 +236,7 @@ pub(super) fn standard_install_phases() -> Vec<Box<dyn InstallPhase>> {
         Box::new(SkillInstallPhase),
         Box::new(McpInstallPhase),
         Box::new(SopInstallPhase),
+        Box::new(SkillPointerInstallPhase),
         Box::new(ContextInstallPhase),
         Box::new(AgentInstallPhase),
     ]
@@ -382,10 +384,6 @@ impl InstallPhase for SopInstallPhase {
                 staged_root,
                 target_dir,
             )?);
-            files.extend(super::kiro_cli::install_kiro_skill_pointers(
-                staged_root,
-                target_dir,
-            )?);
 
             // Additive Claude branch: this run is Kiro's own, but the
             // target also has a pre-existing `.claude` marker.
@@ -405,6 +403,36 @@ impl InstallPhase for SopInstallPhase {
         }
 
         Ok(files)
+    }
+}
+
+// ── Phase: skill pointers ───────────────────────────────────────────────
+
+/// Writes the `.kiro/skills/ks-<name>/SKILL.md` pointers (see
+/// `kiro_cli::skill_pointers`) for the Kiro chain and prunes the ones a
+/// prior install tracked that this run no longer writes. Only in the Kiro
+/// chain: Claude installs get no pointers.
+pub(super) struct SkillPointerInstallPhase;
+
+impl InstallPhase for SkillPointerInstallPhase {
+    fn name(&self) -> &'static str {
+        "skill-pointers"
+    }
+
+    fn run(
+        &self,
+        staged_root: &Path,
+        target_dir: &Path,
+        _repo_root: Option<&Path>,
+        prior_manifest: Option<&StrategyManifest>,
+        _phase_outputs: &PhaseOutputs,
+        _no_telemetry: bool,
+    ) -> Result<Vec<ManifestFile>, InstallError> {
+        Ok(super::kiro_cli::install_kiro_skill_pointers(
+            staged_root,
+            target_dir,
+            prior_manifest,
+        )?)
     }
 }
 
@@ -678,10 +706,10 @@ mod tests {
     }
 
     #[test]
-    fn standard_install_phases_returns_five_phases_with_agents_last() {
+    fn standard_install_phases_returns_six_phases_with_agents_last() {
         let phases = standard_install_phases();
         let names: Vec<&str> = phases.iter().map(|p| p.name()).collect();
-        assert_eq!(names.len(), 5);
+        assert_eq!(names.len(), 6);
         assert_eq!(
             names.last().copied(),
             Some("agents"),
@@ -691,6 +719,7 @@ mod tests {
         assert!(names.contains(&"skills"));
         assert!(names.contains(&"mcp"));
         assert!(names.contains(&"sops"));
+        assert!(names.contains(&"skill-pointers"));
         assert!(names.contains(&"context"));
         let agent_index = names.iter().position(|n| *n == "agents").unwrap();
         let skills_index = names.iter().position(|n| *n == "skills").unwrap();

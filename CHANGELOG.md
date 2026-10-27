@@ -10,11 +10,9 @@ not per individual commit.
 
 ### Added
 
-- Kiro installs (`kiro-cli-v2`, `kiro-v3`) write a small `ks-<name>/SKILL.md` pointer per skill
-  into `.kiro/skills/`, so Kiro lists every skill by name and description. The body still loads
-  through the `konductor-skills` MCP server's `get_skill`, so skill-load telemetry is unchanged;
-  if that tool is unavailable the pointer falls back to reading `.konductor/skills/<name>/SKILL.md`.
-  Pointers are tracked in the manifest and removed by `uninstall`. Claude installs are unchanged.
+- Kiro installs write a short `ks-<name>/SKILL.md` pointer per skill into `.kiro/skills/` and list
+  them in every agent, so Kiro shows each skill natively. The pointer loads the body with
+  `get_skill`, reading the file only if the server is not connected. `install --no-skill-pointers` opts out.
 
 ### Changed
 

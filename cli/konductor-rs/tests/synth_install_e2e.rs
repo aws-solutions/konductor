@@ -221,10 +221,17 @@ fn real_synth_then_real_install_agree_on_output_path_and_bytes() {
     let mut installed_value: serde_json::Value = serde_json::from_slice(&installed_bytes).unwrap();
     synth_value.as_object_mut().unwrap().remove("hooks");
     installed_value.as_object_mut().unwrap().remove("hooks");
+    // Install also lists the `ks-*` pointer glob; nothing else in `resources` changes.
+    assert_eq!(
+        installed_value["resources"],
+        serde_json::json!(["skill://.kiro/skills/ks-*/SKILL.md"])
+    );
+    synth_value.as_object_mut().unwrap().remove("resources");
+    installed_value.as_object_mut().unwrap().remove("resources");
     assert_eq!(
         installed_value, synth_value,
-        "every field other than \"hooks\" must still agree between synth's pristine output and \
-         install's rewritten copy"
+        "every field other than \"hooks\" and \"resources\" must still agree between synth's \
+         pristine output and install's rewritten copy"
     );
     let installed_full: serde_json::Value = serde_json::from_slice(&installed_bytes).unwrap();
     assert!(
@@ -756,7 +763,7 @@ fn real_synth_then_real_install_rewrites_context_resource_to_absolute_path() {
     );
     assert_eq!(
         installed_value["resources"],
-        serde_json::json!([expected_absolute]),
+        serde_json::json!([expected_absolute, "skill://.kiro/skills/ks-*/SKILL.md"]),
         "installed agent's context resource must be rewritten to an absolute path"
     );
 
@@ -795,7 +802,7 @@ fn real_synth_then_real_install_rewrites_context_resource_to_absolute_path() {
         serde_json::from_slice(&std::fs::read(&installed_files[0]).unwrap()).unwrap();
     assert_eq!(
         reinstalled_value["resources"],
-        serde_json::json!([expected_absolute]),
+        serde_json::json!([expected_absolute, "skill://.kiro/skills/ks-*/SKILL.md"]),
         "a second install must not duplicate or double-rewrite the context resource entry"
     );
 
@@ -927,13 +934,13 @@ fn real_synth_then_real_install_scopes_skill_resources_to_konductor_skills() {
     );
     assert_eq!(
         value_a["resources"],
-        serde_json::json!([expected_a]),
-        "agent-a must reference only skill-a"
+        serde_json::json!([expected_a, "skill://.kiro/skills/ks-*/SKILL.md"]),
+        "agent-a must reference only skill-a (plus the pointer glob)"
     );
     assert_eq!(
         value_b["resources"],
-        serde_json::json!([expected_b]),
-        "agent-b must reference only skill-b"
+        serde_json::json!([expected_b, "skill://.kiro/skills/ks-*/SKILL.md"]),
+        "agent-b must reference only skill-b (plus the pointer glob)"
     );
 
     assert!(target_dir

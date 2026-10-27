@@ -7,13 +7,17 @@
 //
 // Isolation: every invocation runs with `HOME` set to a scratch dir, and
 // every test holds a `RealInstallsGuard` that fails the test if the
-// runner's real `~/.konductor/installs` changes while it runs.
+// runner's real `~/.konductor/installs` changes while it runs. The guard
+// watches only that index, so it is a tripwire: it also fails if someone
+// runs a real install on the same machine while the tests run.
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
 const POINTER_PREFIX: &str = "ks-";
 const KIRO_HARNESSES: [&str; 2] = ["kiro-cli-v2", "kiro-v3"];
+
+const POINTER_GLOB: &str = "skill://.kiro/skills/ks-*/SKILL.md";
 
 const PLAIN_DESCRIPTION: &str = "Use when: a \"quoted\" thing, with a colon.";
 const FOLDED_DESCRIPTION: &str = "First line second line";
@@ -132,20 +136,83 @@ fn install(
     repo: &Path,
     target: &Path,
     harness: &str,
-) {
+) -> Output {
+    install_with(home, sink, repo, target, harness, &[])
+}
+
+fn install_with(
+    home: &Path,
+    sink: &telemetry_test_sink::TelemetrySink,
+    repo: &Path,
+    target: &Path,
+    harness: &str,
+    extra: &[&str],
+) -> Output {
+    let repo = repo.display().to_string();
+    let target = target.display().to_string();
+    let mut args = vec![
+        "install",
+        "--from",
+        &repo,
+        "--target",
+        &target,
+        "--harness",
+        harness,
+    ];
+    args.extend_from_slice(extra);
+    run_konductor(home, sink, &args)
+}
+
+fn update(home: &Path, sink: &telemetry_test_sink::TelemetrySink, repo: &Path, target: &Path) {
     run_konductor(
         home,
         sink,
         &[
-            "install",
+            "update",
             "--from",
             &repo.display().to_string(),
+            "--target",
+            &target.display().to_string(),
+            "--force",
+        ],
+    );
+}
+
+fn uninstall(home: &Path, sink: &telemetry_test_sink::TelemetrySink, target: &Path, harness: &str) {
+    run_konductor(
+        home,
+        sink,
+        &[
+            "uninstall",
             "--target",
             &target.display().to_string(),
             "--harness",
             harness,
         ],
     );
+}
+
+fn agent_resources(target: &Path) -> Vec<String> {
+    let raw = std::fs::read_to_string(target.join(".kiro/agents/k-example.json")).unwrap();
+    let value: serde_json::Value = serde_json::from_str(&raw).unwrap();
+    value["resources"]
+        .as_array()
+        .map(|r| {
+            r.iter()
+                .filter_map(|e| e.as_str().map(String::from))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn has_pointer_dirs(target: &Path) -> bool {
+    std::fs::read_dir(target.join(".kiro/skills"))
+        .map(|entries| {
+            entries
+                .flatten()
+                .any(|e| e.file_name().to_string_lossy().starts_with(POINTER_PREFIX))
+        })
+        .unwrap_or(false)
 }
 
 fn pointer_path(target: &Path, skill: &str) -> PathBuf {
@@ -210,8 +277,9 @@ fn kiro_install_writes_tracked_pointers_and_uninstall_removes_them() {
             home.join(".konductor/installs").is_file(),
             "{harness}: index went to the scratch HOME"
         );
-        assert_pointer(&home, "alpha", PLAIN_DESCRIPTION, "~/.konductor/skills");
-        assert_pointer(&home, "beta", FOLDED_DESCRIPTION, "~/.konductor/skills");
+        let fallback_dir = home.join(".konductor/skills").display().to_string();
+        assert_pointer(&home, "alpha", PLAIN_DESCRIPTION, &fallback_dir);
+        assert_pointer(&home, "beta", FOLDED_DESCRIPTION, &fallback_dir);
         assert!(
             home.join(".konductor/skills/alpha/SKILL.md").is_file(),
             "{harness}: the fallback file the pointer names exists"
@@ -227,31 +295,10 @@ fn kiro_install_writes_tracked_pointers_and_uninstall_removes_them() {
         );
 
         std::fs::remove_file(pointer_path(&home, "alpha")).unwrap();
-        run_konductor(
-            &home,
-            &sink,
-            &[
-                "update",
-                "--from",
-                &repo.display().to_string(),
-                "--target",
-                &home.display().to_string(),
-                "--force",
-            ],
-        );
-        assert_pointer(&home, "alpha", PLAIN_DESCRIPTION, "~/.konductor/skills");
+        update(&home, &sink, &repo, &home);
+        assert_pointer(&home, "alpha", PLAIN_DESCRIPTION, &fallback_dir);
 
-        run_konductor(
-            &home,
-            &sink,
-            &[
-                "uninstall",
-                "--target",
-                &home.display().to_string(),
-                "--harness",
-                harness,
-            ],
-        );
+        uninstall(&home, &sink, &home, harness);
         assert!(
             !pointer_path(&home, "alpha").exists(),
             "{harness}: pointer removed"
@@ -290,17 +337,154 @@ fn pointer_fallback_path_follows_a_target_that_is_not_home() {
 }
 
 #[test]
+fn every_kiro_agent_lists_the_pointer_glob_and_the_install_count_excludes_pointers() {
+    let _real = RealInstallsGuard::real();
+    let sink = telemetry_test_sink::TelemetrySink::start();
+    for harness in KIRO_HARNESSES {
+        let home = scratch_dir(&format!("home-glob-{harness}"));
+        let repo = synthed_repo(&home, &sink, "kiroCli");
+
+        let output = install(&home, &sink, &repo, &home, harness);
+
+        assert!(
+            agent_resources(&home).contains(&POINTER_GLOB.to_string()),
+            "{harness}: agent lists the glob: {:?}",
+            agent_resources(&home)
+        );
+        let summary = String::from_utf8_lossy(&output.stdout).to_string()
+            + &String::from_utf8_lossy(&output.stderr);
+        assert!(
+            summary.contains("2 skill(s)"),
+            "{harness}: two skills, pointers not counted: {summary}"
+        );
+
+        // `update` keeps the glob.
+        update(&home, &sink, &repo, &home);
+        assert!(agent_resources(&home).contains(&POINTER_GLOB.to_string()));
+
+        std::fs::remove_dir_all(&home).ok();
+        std::fs::remove_dir_all(&repo).ok();
+    }
+}
+
+#[test]
+fn no_skill_pointers_is_recorded_survives_update_and_a_plain_install_turns_it_back_on() {
+    let _real = RealInstallsGuard::real();
+    let sink = telemetry_test_sink::TelemetrySink::start();
+    for harness in KIRO_HARNESSES {
+        let home = scratch_dir(&format!("home-optout-{harness}"));
+        let repo = synthed_repo(&home, &sink, "kiroCli");
+
+        install(&home, &sink, &repo, &home, harness);
+        assert!(has_pointer_dirs(&home), "{harness}: pointers by default");
+
+        // Opting out removes the pointers and the glob.
+        install_with(
+            &home,
+            &sink,
+            &repo,
+            &home,
+            harness,
+            &["--no-skill-pointers"],
+        );
+        assert!(!has_pointer_dirs(&home), "{harness}: pointers removed");
+        assert!(!agent_resources(&home).contains(&POINTER_GLOB.to_string()));
+        assert!(
+            !manifest_text(&home).contains("ks-"),
+            "{harness}: untracked"
+        );
+        assert!(
+            home.join(".konductor/skills/alpha/SKILL.md").is_file(),
+            "{harness}: skill bodies are untouched"
+        );
+
+        // `update` respects the recorded choice.
+        update(&home, &sink, &repo, &home);
+        assert!(
+            !has_pointer_dirs(&home),
+            "{harness}: update kept the opt-out"
+        );
+        assert!(!agent_resources(&home).contains(&POINTER_GLOB.to_string()));
+
+        // A plain install turns pointers back on.
+        install(&home, &sink, &repo, &home, harness);
+        assert!(has_pointer_dirs(&home), "{harness}: pointers back");
+        assert!(agent_resources(&home).contains(&POINTER_GLOB.to_string()));
+
+        // Opt out again, then uninstall clears the marker.
+        install_with(
+            &home,
+            &sink,
+            &repo,
+            &home,
+            harness,
+            &["--no-skill-pointers"],
+        );
+        assert!(home.join(".konductor/no-skill-pointers").is_file());
+        uninstall(&home, &sink, &home, harness);
+        assert!(
+            !home.join(".konductor/no-skill-pointers").exists(),
+            "{harness}: uninstall removes the marker"
+        );
+
+        std::fs::remove_dir_all(&home).ok();
+        std::fs::remove_dir_all(&repo).ok();
+    }
+}
+
+#[test]
+fn update_prunes_the_pointer_of_a_skill_the_source_dropped() {
+    let _real = RealInstallsGuard::real();
+    let sink = telemetry_test_sink::TelemetrySink::start();
+    for harness in KIRO_HARNESSES {
+        let home = scratch_dir(&format!("home-prune-{harness}"));
+        let repo = synthed_repo(&home, &sink, "kiroCli");
+        install(&home, &sink, &repo, &home, harness);
+        assert!(pointer_path(&home, "beta").is_file());
+
+        std::fs::remove_dir_all(repo.join("skills/beta")).unwrap();
+        run_konductor(
+            &home,
+            &sink,
+            &["synth", "--from", &repo.display().to_string()],
+        );
+        update(&home, &sink, &repo, &home);
+
+        assert!(pointer_path(&home, "alpha").is_file(), "{harness}: kept");
+        assert!(
+            !home.join(".kiro/skills/ks-beta").exists(),
+            "{harness}: dropped skill's pointer pruned"
+        );
+        assert!(!manifest_text(&home).contains("ks-beta"));
+
+        std::fs::remove_dir_all(&home).ok();
+        std::fs::remove_dir_all(&repo).ok();
+    }
+}
+
+#[test]
 fn claude_install_writes_no_pointers() {
     let _real = RealInstallsGuard::real();
     let sink = telemetry_test_sink::TelemetrySink::start();
     let home = scratch_dir("home-claude");
     let repo = synthed_repo(&home, &sink, "claudeCli");
 
-    install(&home, &sink, &repo, &home, "claude");
+    install_with(
+        &home,
+        &sink,
+        &repo,
+        &home,
+        "claude",
+        &["--no-skill-pointers"],
+    );
 
     assert!(
         home.join(".claude/skills/alpha/SKILL.md").is_file(),
         "claude keeps its own skills"
+    );
+    assert!(
+        !home.join(".konductor/no-skill-pointers").exists(),
+        "the flag records nothing for a Claude install"
     );
     assert!(
         !home.join(".kiro/skills").exists(),

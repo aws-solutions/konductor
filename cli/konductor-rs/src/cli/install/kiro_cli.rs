@@ -328,7 +328,13 @@ pub(super) use plan::{
     plan_claude_hooks_file, plan_claude_settings_grant, plan_skill_dir_recursive,
     read_skill_scopes_sidecar, read_sop_scopes_sidecar, PlannedFile,
 };
-pub(super) use skill_pointers::{install_kiro_skill_pointers, plan_kiro_skill_pointer_files};
+pub(super) use skill_pointers::{
+    install_kiro_skill_pointers, plan_kiro_skill_pointer_files, SKILL_POINTER_PREFIX,
+    SKILL_POINTER_RESOURCE,
+};
+pub(crate) use skill_pointers::{
+    remove_skill_pointers_opt_out, set_skill_pointers_opt_out, skill_pointers_enabled,
+};
 
 #[cfg(test)]
 pub(super) mod test_support {
@@ -1588,7 +1594,10 @@ mod tests {
             "file://{}",
             target_dir.join(".kiro/context/routing-rules.md").display()
         );
-        assert_eq!(value["resources"], serde_json::json!([expected]));
+        assert_eq!(
+            value["resources"],
+            serde_json::json!([expected, "skill://.kiro/skills/ks-*/SKILL.md"])
+        );
 
         fs::remove_dir_all(&target_dir).ok();
         fs::remove_dir_all(&repo_root).ok();
@@ -1631,14 +1640,17 @@ mod tests {
             "file://{}",
             target_dir.join(".kiro/context/routing-rules.md").display()
         );
-        assert_eq!(value["resources"], serde_json::json!([expected]));
+        assert_eq!(
+            value["resources"],
+            serde_json::json!([expected, "skill://.kiro/skills/ks-*/SKILL.md"])
+        );
 
         fs::remove_dir_all(&target_dir).ok();
         fs::remove_dir_all(&repo_root).ok();
     }
 
     #[test]
-    fn install_from_local_agent_with_no_context_names_is_unchanged() {
+    fn install_from_local_agent_with_no_context_names_only_gains_the_pointer_glob() {
         let target_dir = scratch_dir("no-context-target");
         let repo_root = scratch_dir("no-context-repo");
         seed_synthed_agent(
@@ -1659,7 +1671,10 @@ mod tests {
         let installed_agent = target_dir.join(".kiro/agents/k-example.json");
         let value: serde_json::Value =
             serde_json::from_str(&fs::read_to_string(&installed_agent).unwrap()).unwrap();
-        assert_eq!(value["resources"], serde_json::json!(["file://AGENTS.md"]));
+        assert_eq!(
+            value["resources"],
+            serde_json::json!(["file://AGENTS.md", "skill://.kiro/skills/ks-*/SKILL.md"])
+        );
 
         fs::remove_dir_all(&target_dir).ok();
         fs::remove_dir_all(&repo_root).ok();
@@ -1813,9 +1828,13 @@ mod tests {
         );
         assert_eq!(
             value["resources"],
-            serde_json::json!(["file:///etc/hand-authored.md", expected_context]),
+            serde_json::json!([
+                "file:///etc/hand-authored.md",
+                expected_context,
+                "skill://.kiro/skills/ks-*/SKILL.md"
+            ]),
             "hand-authored absolute entry must pass through untouched, in its original position, \
-             with the rewritten context entry deterministically after it"
+             with the rewritten context entry deterministically after it, then the pointer glob"
         );
 
         fs::remove_dir_all(&target_dir).ok();
@@ -1867,8 +1886,14 @@ mod tests {
             "file://{}",
             target_b.join(".kiro/context/routing-rules.md").display()
         );
-        assert_eq!(value_a["resources"], serde_json::json!([expected_a]));
-        assert_eq!(value_b["resources"], serde_json::json!([expected_b]));
+        assert_eq!(
+            value_a["resources"],
+            serde_json::json!([expected_a, "skill://.kiro/skills/ks-*/SKILL.md"])
+        );
+        assert_eq!(
+            value_b["resources"],
+            serde_json::json!([expected_b, "skill://.kiro/skills/ks-*/SKILL.md"])
+        );
         assert_ne!(
             value_a["resources"], value_b["resources"],
             "each root's installed agent must carry its own absolute path"
@@ -2135,7 +2160,10 @@ mod tests {
                 .join(".konductor/skills/constraints/SKILL.md")
                 .display()
         );
-        assert_eq!(value["resources"], serde_json::json!([expected]));
+        assert_eq!(
+            value["resources"],
+            serde_json::json!([expected, "skill://.kiro/skills/ks-*/SKILL.md"])
+        );
 
         fs::remove_dir_all(&target_dir).ok();
         fs::remove_dir_all(&repo_root).ok();
@@ -2253,7 +2281,10 @@ mod tests {
             serde_json::from_str(&fs::read_to_string(&installed_agent).unwrap()).unwrap();
         assert_eq!(
             value["resources"],
-            serde_json::json!(["skill://.kiro/skills/ws-*/SKILL.md"])
+            serde_json::json!([
+                "skill://.kiro/skills/ws-*/SKILL.md",
+                "skill://.kiro/skills/ks-*/SKILL.md"
+            ])
         );
 
         fs::remove_dir_all(&target_dir).ok();
@@ -2426,8 +2457,14 @@ mod tests {
                 .join(".konductor/skills/constraints/SKILL.md")
                 .display()
         );
-        assert_eq!(value_a["resources"], serde_json::json!([expected_a]));
-        assert_eq!(value_b["resources"], serde_json::json!([expected_b]));
+        assert_eq!(
+            value_a["resources"],
+            serde_json::json!([expected_a, "skill://.kiro/skills/ks-*/SKILL.md"])
+        );
+        assert_eq!(
+            value_b["resources"],
+            serde_json::json!([expected_b, "skill://.kiro/skills/ks-*/SKILL.md"])
+        );
         assert_ne!(value_a["resources"], value_b["resources"]);
 
         fs::remove_dir_all(&repo_root).ok();

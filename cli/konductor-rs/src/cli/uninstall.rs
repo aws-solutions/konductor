@@ -1256,6 +1256,14 @@ fn uninstall_one_impl(
                 );
             }
         }
+        if let Err(err) = crate::cli::install::kiro_cli::remove_skill_pointers_opt_out(target_path)
+        {
+            eprintln!(
+                "konductor uninstall: warning: could not remove the --no-skill-pointers marker \
+                 under {}: {err}",
+                target_path.display()
+            );
+        }
         let identity_path = crate::cli::telemetry::identity_path(target_path);
         if let Err(err) = std::fs::remove_file(&identity_path) {
             if err.kind() != std::io::ErrorKind::NotFound {

@@ -67,7 +67,8 @@ list `konductor synth` reads for either harness, and the Claude Code skill list:
 There is no per-skill entry under `clientConfig.kiroCli.resources`. Kiro CLI reaches installed
 skills through the bundled `skill-lookup` MCP server, not through its own `.kiro/skills/` scan —
 see [Runtime differences that matter](../agents.md#runtime-differences-that-matter). The one
-`skill://` resource each spec does carry is the `ws-*` glob for workspace skills.
+`skill://` resource each spec does carry is the `ws-*` glob for workspace skills. `install` adds
+one more, the `ks-*` glob that lists the skill pointers; don't add it to a spec.
 
 Append to the existing arrays rather than replacing them. A skill directory that exists under
 `skills/` but is declared by no agent cannot be loaded by anything — see

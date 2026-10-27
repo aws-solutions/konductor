@@ -28,6 +28,7 @@
 
 use std::path::Path;
 
+use super::kiro_cli::SKILL_POINTER_RESOURCE;
 use super::manifest::ManifestFile;
 
 mod claude_settings;
@@ -372,6 +373,64 @@ impl ResourceRewritePass for SkillResourcePass {
         }
         Ok(())
     }
+}
+
+// ── Pass 2b: skill pointer resource ─────────────────────────────────────
+
+/// Adds `skill://.kiro/skills/ks-*/SKILL.md` to an agent's `resources`
+/// so Kiro lists the `ks-<name>` pointers for that agent explicitly. Only
+/// in the pipeline when the target writes pointers (see
+/// `with_skill_pointer_pass`). The glob contains `*`, so
+/// `agent_needs_mcp_server` ignores it, like the `ws-*` glob.
+pub(super) struct SkillPointerResourcePass;
+
+impl ResourceRewritePass for SkillPointerResourcePass {
+    fn matches(&self, value: &serde_json::Value, _ctx: &RewriteContext<'_>) -> bool {
+        value.is_object()
+            && value
+                .get("resources")
+                .is_none_or(serde_json::Value::is_array)
+    }
+
+    fn rewrite(&self, value: &mut serde_json::Value, _ctx: &RewriteContext<'_>) {
+        push_unique_str(value, "resources", SKILL_POINTER_RESOURCE);
+    }
+
+    fn verify(
+        &self,
+        value: &serde_json::Value,
+        _ctx: &RewriteContext<'_>,
+        agent_file: &Path,
+    ) -> Result<(), String> {
+        let listed = value
+            .get("resources")
+            .and_then(|r| r.as_array())
+            .is_some_and(|resources| {
+                resources
+                    .iter()
+                    .any(|entry| entry.as_str() == Some(SKILL_POINTER_RESOURCE))
+            });
+        if listed {
+            return Ok(());
+        }
+        Err(format!(
+            "agent '{}' is missing the '{SKILL_POINTER_RESOURCE}' resource",
+            agent_file.display()
+        ))
+    }
+}
+
+/// Inserts `SkillPointerResourcePass` right after `SkillResourcePass`
+/// when `enabled`; otherwise returns `passes` unchanged.
+pub(super) fn with_skill_pointer_pass(
+    mut passes: Vec<Box<dyn ResourceRewritePass>>,
+    enabled: bool,
+) -> Vec<Box<dyn ResourceRewritePass>> {
+    if enabled {
+        let after_skill_pass = passes.len().min(2);
+        passes.insert(after_skill_pass, Box::new(SkillPointerResourcePass));
+    }
+    passes
 }
 
 /// The V3 (KAS) ordered pipeline: reuses `ContextResourcePass` and
@@ -766,6 +825,113 @@ mod tests {
             "the V3 per-agent pipeline must never write a \"hooks\" key on the agent's own \
              JSON -- telemetry for V3 is a standalone file now, got: {value:?}"
         );
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    // ── SkillPointerResourcePass ────────────────────────────────────
+
+    #[test]
+    fn pointer_pass_adds_the_glob_once_to_an_agent_with_resources() {
+        let dir = scratch_dir("pointer-pass-add");
+        let mut value = serde_json::json!({"resources": ["skill://.kiro/skills/ws-*/SKILL.md"]});
+        let passes = with_skill_pointer_pass(Vec::new(), true);
+        let ctx = ctx(&dir, &dir, &dir, &[]);
+        for _ in 0..2 {
+            apply_all(&passes, &mut value, &ctx, Path::new("/tmp/agent.json")).unwrap();
+        }
+        assert_eq!(
+            value["resources"],
+            serde_json::json!([
+                "skill://.kiro/skills/ws-*/SKILL.md",
+                "skill://.kiro/skills/ks-*/SKILL.md"
+            ])
+        );
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn pointer_pass_creates_resources_when_absent_and_skips_non_array_resources() {
+        let dir = scratch_dir("pointer-pass-create");
+        let ctx = ctx(&dir, &dir, &dir, &[]);
+        let mut bare = serde_json::json!({"name": "k-example"});
+        assert!(SkillPointerResourcePass.matches(&bare, &ctx));
+        SkillPointerResourcePass.rewrite(&mut bare, &ctx);
+        assert_eq!(
+            bare["resources"],
+            serde_json::json!(["skill://.kiro/skills/ks-*/SKILL.md"])
+        );
+
+        let odd = serde_json::json!({"resources": "not-an-array"});
+        assert!(!SkillPointerResourcePass.matches(&odd, &ctx));
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn pointer_pass_verify_fails_when_the_glob_is_missing() {
+        let dir = scratch_dir("pointer-pass-verify");
+        let err = SkillPointerResourcePass
+            .verify(
+                &serde_json::json!({"resources": []}),
+                &ctx(&dir, &dir, &dir, &[]),
+                Path::new("/tmp/agent.json"),
+            )
+            .unwrap_err();
+        assert!(err.contains("ks-*"), "{err}");
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn pointer_pass_is_present_only_when_enabled_and_follows_the_skill_pass() {
+        assert_eq!(
+            with_skill_pointer_pass(standard_passes(true), false).len(),
+            3
+        );
+        assert_eq!(
+            with_skill_pointer_pass(standard_passes(true), true).len(),
+            4
+        );
+        assert_eq!(with_skill_pointer_pass(standard_passes_v3(), true).len(), 4);
+
+        // Running the real pipeline: the glob lands after the rewritten
+        // skill entry, and the MCP pass still sees only the real skill.
+        let dir = scratch_dir("pointer-pass-order");
+        let skills_dir = dir.join("skills");
+        fs::create_dir_all(skills_dir.join("constraints")).unwrap();
+        fs::write(skills_dir.join("constraints/SKILL.md"), b"body").unwrap();
+        let mut value = serde_json::json!({"resources": ["skill://skills/constraints/SKILL.md"]});
+        let passes = with_skill_pointer_pass(standard_passes(true), true);
+        apply_all(
+            &passes,
+            &mut value,
+            &ctx(&dir.join("context"), &skills_dir, &dir.join("bin"), &[]),
+            Path::new("/tmp/agent.json"),
+        )
+        .unwrap();
+        let resources = value["resources"].as_array().unwrap();
+        assert_eq!(resources.len(), 2);
+        assert_eq!(
+            resources[1].as_str(),
+            Some("skill://.kiro/skills/ks-*/SKILL.md")
+        );
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    /// A pointer glob alone gives an agent no `konductor-skills` MCP
+    /// server: only a real skill resource or scoping does.
+    #[test]
+    fn pointer_glob_alone_does_not_trigger_the_mcp_server_grant() {
+        let dir = scratch_dir("pointer-pass-no-mcp");
+        let mut value = serde_json::json!({"name": "k-example"});
+        let bin_files = [bin_file_entry()];
+        let passes = with_skill_pointer_pass(standard_passes(true), true);
+        apply_all(
+            &passes,
+            &mut value,
+            &ctx(&dir, &dir, &dir, &bin_files),
+            Path::new("/tmp/agent.json"),
+        )
+        .unwrap();
+        assert!(value.get("mcpServers").is_none(), "{value:?}");
         fs::remove_dir_all(&dir).ok();
     }
 }

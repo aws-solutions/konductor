@@ -12,6 +12,7 @@ use super::super::artifact::sha256_hex;
 use super::super::manifest::{ManifestFile, Provenance, StrategyManifest};
 use super::fs_util::{is_executable, reject_unsafe_file_name, set_executable};
 use super::plan::{content_manifest_path, read_skill_scopes_sidecar, read_sop_scopes_sidecar};
+use super::skill_pointers::skill_pointers_enabled;
 use super::{KIRO_DESTINATION_ROOT, KONDUCTOR_DESTINATION_ROOT};
 use crate::cli::synth::kiro_cli_v2::{
     AGENTS_CONTENT_TYPE_DIR, CONTEXT_CONTENT_TYPE_DIR, SKILLS_CONTENT_TYPE_DIR,
@@ -496,7 +497,11 @@ fn copy_agent_files_rewriting_resources(
     file_names: Vec<String>,
     no_telemetry: bool,
 ) -> Result<(Vec<ManifestFile>, bool), String> {
-    let passes = super::super::resource_rewrite::standard_passes(no_telemetry);
+    let pointers_on = ctx.install_root().is_some_and(skill_pointers_enabled);
+    let passes = super::super::resource_rewrite::with_skill_pointer_pass(
+        super::super::resource_rewrite::standard_passes(no_telemetry),
+        pointers_on,
+    );
 
     let mut files = Vec::with_capacity(file_names.len());
     let mut any_mcp_server_injected = false;
@@ -535,7 +540,12 @@ fn copy_agent_files_rewriting_resources(
         // injection for exactly the agents that most need it.
         let contents = String::from_utf8(original_bytes.clone())
             .map_err(|e| format!("{} is not valid UTF-8: {e}", src.display()))?;
+        // The pointer glob alone does not justify parsing: a file that is
+        // not JSON and needs no other rewrite stays a verbatim copy.
+        let needs_pointer_glob =
+            pointers_on && serde_json::from_str::<serde_json::Value>(&contents).is_ok();
         if no_telemetry
+            && !needs_pointer_glob
             && !contents.contains(CONTEXT_RESOURCE_PREFIX)
             && !contents.contains(super::super::resource_rewrite::SKILL_RESOURCE_PREFIX)
             && !agent_has_sop_names

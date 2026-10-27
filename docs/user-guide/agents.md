@@ -375,7 +375,7 @@ images, and diagrams — not a skill library. Point it at a file and ask a quest
 | Permission model | two lists: `tools` grants with a prompt, `allowedTools` pre-approves | one list: `clientConfig.claudeCli.tools` is the ceiling, and your `settings.json` decides what prompts |
 | `k-browser` / `k-media-analyzer` | reads pre-approved; writes and shell ask first | write and shell granted |
 | `k-product-manager` / `k-tpm` | shell asks first | shell granted |
-| Skills resolution | through the bundled `skill-lookup` MCP server. Skills install to `.konductor/skills/`, deliberately outside the `.kiro/skills/` tree Kiro CLI scans, and the agent reaches them through that server | native Claude Code skills: `clientConfig.claudeCli.skills` names the set, and each body installs to `.claude/skills/<name>/SKILL.md` |
+| Skills resolution | through the bundled `skill-lookup` MCP server. Skills install to `.konductor/skills/`, deliberately outside the `.kiro/skills/` tree Kiro CLI scans, and the agent reaches them through that server. A small `ks-<name>` pointer per skill in `.kiro/skills/` makes each one listed natively | native Claude Code skills: `clientConfig.claudeCli.skills` names the set, and each body installs to `.claude/skills/<name>/SKILL.md` |
 | Extra setup | none | agent-teams env var **and** a permissions allowlist |
 
 The delegation row is the one that changes behaviour most: a workflow that relies on one

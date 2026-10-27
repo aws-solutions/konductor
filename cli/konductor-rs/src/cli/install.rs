@@ -698,6 +698,67 @@ pub fn dispatch_install_with(
     )
 }
 
+/// Harness names whose installs write `ks-<name>` skill pointers.
+fn harness_writes_skill_pointers(harness: &str) -> bool {
+    matches!(harness, "kiro-cli-v2" | "kiro-v3")
+}
+
+/// `dispatch_install_with` after recording this run's `--no-skill-pointers`
+/// choice for a Kiro target. The strategy reads the recorded choice
+/// during the install, and `update` reads it too, so the opt-out
+/// outlasts this run. A changed choice also bypasses the
+/// already-at-version skip, since that skip would otherwise ignore it.
+#[allow(clippy::too_many_arguments)]
+pub fn dispatch_install_with_skill_pointer_choice(
+    from: Option<String>,
+    target: Option<String>,
+    harness: String,
+    link_bin: bool,
+    no_telemetry: bool,
+    no_skill_pointers: bool,
+    use_github_token: bool,
+    release_version: Option<String>,
+    force: bool,
+    verbose: bool,
+    json: bool,
+    color: ColorMode,
+) -> u8 {
+    let mut force = force;
+    if harness_writes_skill_pointers(&harness) {
+        if let Ok(destination) = resolve_destination(target.as_deref()) {
+            match kiro_cli::set_skill_pointers_opt_out(&destination, no_skill_pointers) {
+                Ok(changed) => force |= changed,
+                Err(message) => {
+                    super::report::report_error(
+                        "install",
+                        "install.skill_pointer_choice_failed",
+                        &destination,
+                        no_telemetry,
+                        &format!("could not record --no-skill-pointers: {message}"),
+                        Vec::new(),
+                        json,
+                        color,
+                    );
+                    return EXIT_USAGE_ERROR;
+                }
+            }
+        }
+    }
+    dispatch_install_with(
+        from,
+        target,
+        harness,
+        link_bin,
+        no_telemetry,
+        use_github_token,
+        release_version,
+        force,
+        verbose,
+        json,
+        color,
+    )
+}
+
 /// The full `dispatch_install_with` implementation, parameterized by
 /// `remote_installer` -- the no-`--from` remote-install attempt. In
 /// production, `dispatch_install_with` passes a closure that reaches
@@ -1558,7 +1619,12 @@ impl InstallCounts {
                     skill_dirs.insert((".konductor/skills/", name));
                 }
             } else if let Some(rest) = file.path.strip_prefix(".kiro/skills/") {
-                if let Some(name) = rest.split('/').next().filter(|s| !s.is_empty()) {
+                // `ks-` pointers stand for skills already counted above.
+                if let Some(name) = rest
+                    .split('/')
+                    .next()
+                    .filter(|s| !s.is_empty() && !s.starts_with(kiro_cli::SKILL_POINTER_PREFIX))
+                {
                     skill_dirs.insert((".kiro/skills/", name));
                 }
             } else if let Some(rest) = file.path.strip_prefix(claude_skills_prefix.as_str()) {

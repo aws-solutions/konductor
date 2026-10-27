@@ -56,13 +56,14 @@ use super::kiro_cli::{
     install_kiro_sop_skills, install_skills, install_sops, list_agent_files,
     plan_additive_claude_sop_skill_files, plan_all_files, plan_claude_hooks_file,
     plan_claude_settings_grant, read_skill_scopes_sidecar, read_sop_scopes_sidecar,
-    reject_unsafe_file_name, PlannedFile, KIRO_DESTINATION_ROOT, KONDUCTOR_DESTINATION_ROOT,
+    reject_unsafe_file_name, skill_pointers_enabled, PlannedFile, KIRO_DESTINATION_ROOT,
+    KONDUCTOR_DESTINATION_ROOT,
 };
 use super::manifest::{classify_provenance, ManifestFile, Provenance, Status, StrategyManifest};
 use super::resource_rewrite::{
     apply_all, apply_claude_settings_grant_and_hooks, apply_v3_standalone_telemetry_hook,
-    remove_v3_standalone_telemetry_hook, standard_passes_v3, RewriteContext, MCP_SERVER_NAME,
-    SKILL_RESOURCE_PREFIX, V3_STANDALONE_HOOKS_RELATIVE_PATH,
+    remove_v3_standalone_telemetry_hook, standard_passes_v3, with_skill_pointer_pass,
+    RewriteContext, MCP_SERVER_NAME, SKILL_RESOURCE_PREFIX, V3_STANDALONE_HOOKS_RELATIVE_PATH,
 };
 use super::runtime::{detect_runtimes, Runtime};
 use super::InstallError;
@@ -315,7 +316,11 @@ impl InstallStrategy for KiroCliV3InstallStrategy {
         // Kiro-discoverable conversion, alongside the raw copy above --
         // see `install_kiro_sop_skills`'s own doc comment.
         raw_files.extend(install_kiro_sop_skills(&harness_dir, target_dir)?);
-        raw_files.extend(install_kiro_skill_pointers(&harness_dir, target_dir)?);
+        raw_files.extend(install_kiro_skill_pointers(
+            &harness_dir,
+            target_dir,
+            prior_manifest.as_ref(),
+        )?);
         // Additive Claude branch, mirroring `SopInstallPhase::run`'s
         // dual-marker branch: this run is this strategy's own, but the
         // target also has a pre-existing `.claude` marker. Always
@@ -567,7 +572,8 @@ fn copy_agent_files_rewriting_resources(
     ctx: &RewriteContext<'_>,
     file_names: Vec<String>,
 ) -> Result<(Vec<ManifestFile>, bool), String> {
-    let passes = standard_passes_v3();
+    let pointers_on = ctx.install_root().is_some_and(skill_pointers_enabled);
+    let passes = with_skill_pointer_pass(standard_passes_v3(), pointers_on);
     let mut files = Vec::with_capacity(file_names.len());
     let mut any_mcp_server_injected = false;
 
@@ -593,7 +599,12 @@ fn copy_agent_files_rewriting_resources(
 
         let contents = String::from_utf8(original_bytes.clone())
             .map_err(|e| format!("{} is not valid UTF-8: {e}", src.display()))?;
-        if !contents.contains(super::kiro_cli::CONTEXT_RESOURCE_PREFIX)
+        // The pointer glob alone does not justify parsing: a file that is
+        // not JSON and needs no other rewrite stays a verbatim copy.
+        let needs_pointer_glob =
+            pointers_on && serde_json::from_str::<serde_json::Value>(&contents).is_ok();
+        if !needs_pointer_glob
+            && !contents.contains(super::kiro_cli::CONTEXT_RESOURCE_PREFIX)
             && !contents.contains(SKILL_RESOURCE_PREFIX)
             && !agent_has_sop_names
             && !agent_has_skill_names
@@ -878,7 +889,10 @@ mod tests {
             serde_json::from_slice(&fs::read(&installed).unwrap()).unwrap();
         assert_eq!(
             installed_json["resources"],
-            serde_json::json!([format!("file://{}", expected_context_path.display())])
+            serde_json::json!([
+                format!("file://{}", expected_context_path.display()),
+                "skill://.kiro/skills/ks-*/SKILL.md"
+            ])
         );
 
         let manifest = super::super::manifest::read_manifest(&target_dir)

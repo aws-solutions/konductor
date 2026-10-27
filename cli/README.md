@@ -276,16 +276,34 @@ below.
 
 Skills land under `.konductor/skills/`, deliberately outside `.kiro/skills/`: Kiro CLI's
 own skill discovery scans `.kiro/skills/` unconditionally and makes every skill visible
-to every agent regardless of what it declares, which defeats per-agent scoping. Only a
-small `ks-<name>/SKILL.md` pointer per skill is written there, carrying the skill's name
-and description plus instructions to load the body with the `konductor-skills` MCP
-server's `get_skill` tool (falling back to reading `.konductor/skills/<name>/SKILL.md`);
-the `ks-` prefix keeps pointers apart from same-named skills other tools install. The
-pointers are tracked in the manifest, so `update` and `uninstall` handle them; Claude
-installs get none. Skill
+to every agent regardless of what it declares, which defeats per-agent scoping. Skill
 install merges into `<target>/.konductor/skills/`: a skill directory this install did
 not emit (e.g. hand-authored) is left untouched, but a skill directory it does own is
 fully replaced so a file removed from the source doesn't linger in the destination.
+
+#### Skill pointers (Kiro harnesses)
+
+Only a small pointer per skill goes into `.kiro/skills/ks-<name>/SKILL.md`. It carries the
+skill's name and a description cut to 200 characters, so Kiro lists every skill natively.
+The pointer tells the agent to call `get_skill` on the `konductor-skills` MCP server first,
+and to read `<target>/.konductor/skills/<name>/SKILL.md` only if that server is not
+connected. If `get_skill` says the skill is not found, the agent is told to stop.
+
+- Each Kiro agent also gets a `skill://.kiro/skills/ks-*/SKILL.md` resource, so the
+  pointers are listed for it explicitly.
+- The `ks-` prefix stays: pointers would otherwise clash with same-named skills other
+  tools install in `.kiro/skills/`, and the pointer text names the real skill.
+- Pointers add every skill's name and description to every agent's prompt, and a
+  home-directory install puts them in `~/.kiro/skills/`, where other Kiro agents see them
+  too. `install --no-skill-pointers` skips the pointers and the agent resource, removes
+  ones an earlier install wrote, and is recorded in `.konductor/no-skill-pointers`, so
+  `update` keeps it. A later `install` without the flag turns pointers back on.
+- Because the fallback path is absolute, a project install writes your local path into
+  `.kiro/skills/ks-*/SKILL.md`. Don't commit that directory.
+- Pointers are tracked in the manifest. `update` removes the pointer of a skill the source
+  dropped, and `uninstall` removes them all. Claude installs get none.
+- A read of the fallback file does not go through `get_skill`, so it is not counted in
+  skill-load telemetry.
 
 ### Installing without `--from`: the GitHub-release / main-branch-`dist/` fallback chain
 
