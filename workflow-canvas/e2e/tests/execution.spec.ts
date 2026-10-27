@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { STUB_LAUNCH_CODE } from '../../playwright.shared';
 import { expect, test } from '../support/fixtures';
 import {
   answerRunsInTurn,
@@ -249,4 +250,43 @@ test('starts the run when Enter is pressed in the goal box, and keeps focus ther
 
   await expect(canvas.runStatus).toContainText('Running draft.');
   await expect(canvas.goal).toBeFocused();
+});
+
+test('shows the run that is still going when the page is opened again', async ({
+  canvas,
+}) => {
+  await answerRunsWith(
+    canvas.page,
+    runReply('running', ['running', 'pending']),
+  );
+  await canvas.runButton.click();
+  await expect(canvas.runStatus).toContainText('Running draft.');
+
+  // A reload drops the page and its token, so the launch address is opened
+  // again in the same tab, as a person does after pressing F5.
+  await canvas.page.goto('about:blank');
+  await canvas.open(STUB_LAUNCH_CODE);
+  await canvas.selectTab('Execution');
+
+  await canvas.expectBadges(['Done', 'Running', 'Queued', 'Queued']);
+  await expect(canvas.runStatus).toContainText(
+    'Following the run that was already in progress. Running draft.',
+  );
+  await expect(canvas.runButton).toBeDisabled();
+});
+
+test('shows Ready when the page is opened again after the run has ended', async ({
+  canvas,
+}) => {
+  await answerRunsWith(canvas.page, runReply('passed', ['passed', 'passed']));
+  await canvas.runButton.click();
+  await canvas.expectBadges(['Done', 'Done', 'Done', 'Passed']);
+
+  await canvas.page.goto('about:blank');
+  await canvas.open(STUB_LAUNCH_CODE);
+  await canvas.selectTab('Execution');
+
+  await expect(canvas.runStatus).toContainText('Ready. Press Run to start.');
+  await canvas.expectBadges([null, null, null, null]);
+  await expect(canvas.runButton).toBeEnabled();
 });
