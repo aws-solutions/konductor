@@ -17,19 +17,22 @@ const EDIT_NOTE =
 /**
  * The card both tabs draw the workflow in: its name, then the graph. The
  * graph is read-only unless `selection` is given, and `statuses` puts a live
- * state on the nodes it names, by node id. `toolbar` sits above the graph.
+ * state on the nodes it names, by node id. `actions` sit at the right of the
+ * header, and `toolbar` above the graph.
  */
 export function WorkflowGraphCard({
   view,
   harness,
   statuses = NO_STATUSES,
   selection,
+  actions,
   toolbar,
 }: {
   view: WorkflowSpec;
   harness: string;
   statuses?: ReadonlyMap<string, NodeStatus>;
   selection?: CanvasSelection;
+  actions?: ReactNode;
   toolbar?: ReactNode;
 }) {
   const graph = useMemo(
@@ -42,6 +45,7 @@ export function WorkflowGraphCard({
         <Header
           variant="h2"
           description={selection ? EDIT_NOTE : READ_ONLY_NOTE}
+          actions={actions}
         >
           Workflow: {view.name}
         </Header>
