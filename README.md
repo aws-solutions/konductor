@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/assets/konductor-logo.svg" alt="Konductor logo" width="120" />
+<img src="https://raw.githubusercontent.com/aws-solutions/konductor/v1.2.0/docs/assets/konductor-logo.svg" alt="Konductor logo" width="120" />
 
 # Konductor
 
@@ -79,7 +79,7 @@ at the end. Piping a script to `bash` runs code you haven't read; to check it fi
 [what the install script does](#what-the-install-script-does) below.
 Using the Claude Code plugin marketplace instead? Run `/plugin marketplace add aws-solutions/konductor`,
 then `/plugin install konductor@konductor`
-([details](docs/user-guide/tasks/install-claude-plugin-marketplace.md)).
+([details](https://github.com/aws-solutions/konductor/blob/v1.2.0/docs/user-guide/tasks/install-claude-plugin-marketplace.md)).
 Using Kiro IDE? [Install via a Kiro Power](#install-via-kiro-power).
 
 **2. Start the orchestrator:**
@@ -103,8 +103,8 @@ test plan to `k-quality-assurance`, and verifies each handoff before moving on.
 
 <br/>
 
-[`scripts/konductor-bootstrap.sh`](scripts/konductor-bootstrap.sh) downloads the real installer,
-[`scripts/konductor-install.sh`](scripts/konductor-install.sh), checks it against the checksum
+[`scripts/konductor-bootstrap.sh`](https://github.com/aws-solutions/konductor/blob/v1.2.0/scripts/konductor-bootstrap.sh) downloads the real installer,
+[`scripts/konductor-install.sh`](https://github.com/aws-solutions/konductor/blob/v1.2.0/scripts/konductor-install.sh), checks it against the checksum
 GitHub's Contents API reports for that file, and runs it. It needs `jq` to read that checksum.
 Piping a script into `bash` runs code you haven't read, so read both scripts first if you want to
 audit them.
@@ -133,7 +133,7 @@ It then runs `konductor install` against `$HOME`, which fetches the agents, skil
 
 Use this for a pinned commit, a platform without a published binary, or to audit the code before
 installing. The CLI builds with plain `cargo` and a public Rust toolchain.
-[`scripts/konductor-clone-install.sh`](scripts/konductor-clone-install.sh) does all of this in one
+[`scripts/konductor-clone-install.sh`](https://github.com/aws-solutions/konductor/blob/v1.2.0/scripts/konductor-clone-install.sh) does all of this in one
 command and keeps a checkout under `~/.konductor/git/konductor` up to date on re-runs. It honors the
 same `KONDUCTOR_HARNESS` variable.
 
@@ -160,7 +160,7 @@ konductor install --from . --harness claude --target <dir-with-.claude-marker>
 claude --agent konductor
 ```
 
-See [`cli/README.md`](cli/README.md#getting-started) for prerequisites and a full walkthrough.
+See [`cli/README.md`](https://github.com/aws-solutions/konductor/blob/v1.2.0/cli/README.md#getting-started) for prerequisites and a full walkthrough.
 
 </details>
 
@@ -169,7 +169,7 @@ See [`cli/README.md`](cli/README.md#getting-started) for prerequisites and a ful
 
 <br/>
 
-[`powers/konductor/`](powers/konductor/) is a Kiro [Power](https://kiro.dev/docs/powers/), imported
+[`powers/konductor/`](https://github.com/aws-solutions/konductor/blob/v1.2.0/powers/konductor/) is a Kiro [Power](https://kiro.dev/docs/powers/), imported
 straight from GitHub. It's a third install path, alongside the install script and a source build.
 
 1. In Kiro, open the Powers panel and choose **Add Custom Power** → **Import power from GitHub**.
@@ -183,7 +183,7 @@ macOS; on Windows, use WSL), and runs `konductor install --harness kiro-v3`. It 
 project you invoked it from, never `$HOME`, and shows you the plan and asks once before it starts.
 A second skill, `konductor-help`, answers questions about the install afterward.
 
-See [Install via Kiro Power](docs/user-guide/tasks/install-kiro-power.md) for supported platforms,
+See [Install via Kiro Power](https://github.com/aws-solutions/konductor/blob/v1.2.0/docs/user-guide/tasks/install-kiro-power.md) for supported platforms,
 updating, uninstalling, MCP server setup and troubleshooting.
 
 </details>
@@ -213,7 +213,7 @@ replaces it (with a warning). `claude` installs alongside either one in the same
 Without `--from`, `install` fetches a published GitHub release, including the platform's
 `skill-lookup-mcp` binary. On a platform with no published binary, install still succeeds and only
 skill lookups are unavailable. See
-[`cli/README.md`](cli/README.md#installing-without---from-the-github-release--main-branch-dist-fallback-chain)
+[`cli/README.md`](https://github.com/aws-solutions/konductor/blob/v1.2.0/cli/README.md#installing-without---from-the-github-release--main-branch-dist-fallback-chain)
 for the full fallback chain.
 
 | Command               | Purpose                                                                              |
@@ -249,7 +249,7 @@ when a quality gate fails (up to two fix cycles).
 | `k-media-analyzer` | PDFs, images and diagrams that need more than text extraction |
 
 Every agent runs `claude-sonnet-5.5`. Full details, including each agent's tools, are in the
-[agents reference](docs/user-guide/agents.md).
+[agents reference](https://github.com/aws-solutions/konductor/blob/v1.2.0/docs/user-guide/agents.md).
 
 ---
 
@@ -303,10 +303,10 @@ doesn't work, and `/prompts` lists what's available.
 
 </details>
 
-More walkthroughs: [understand a codebase](docs/user-guide/use-cases/understand-a-codebase.md),
-[design a system](docs/user-guide/use-cases/design-a-system.md),
-[plan and verify work](docs/user-guide/use-cases/plan-and-verify-work.md) and
-[review code and tests](docs/user-guide/use-cases/review-code-and-tests.md).
+More walkthroughs: [understand a codebase](https://github.com/aws-solutions/konductor/blob/v1.2.0/docs/user-guide/use-cases/understand-a-codebase.md),
+[design a system](https://github.com/aws-solutions/konductor/blob/v1.2.0/docs/user-guide/use-cases/design-a-system.md),
+[plan and verify work](https://github.com/aws-solutions/konductor/blob/v1.2.0/docs/user-guide/use-cases/plan-and-verify-work.md) and
+[review code and tests](https://github.com/aws-solutions/konductor/blob/v1.2.0/docs/user-guide/use-cases/review-code-and-tests.md).
 
 ---
 
@@ -316,7 +316,7 @@ More walkthroughs: [understand a codebase](docs/user-guide/use-cases/understand-
 
 Skills are packaged expertise the agents load when they need it. For Claude Code, every skill in an
 agent's `skills:` frontmatter is injected in full at session start; other skills load on demand
-([how loading works](docs/guides/getting-started-claude.md#skills-how-they-load-and-who-can-invoke-them)).
+([how loading works](https://github.com/aws-solutions/konductor/blob/v1.2.0/docs/guides/getting-started-claude.md#skills-how-they-load-and-who-can-invoke-them)).
 
 | Area | Count | Examples |
 | --- | ---: | --- |
@@ -329,7 +329,7 @@ agent's `skills:` frontmatter is injected in full at session start; other skills
 | Research & security | 4 | `external-research`, `security-remediation`, `find-aws-skills`, `about-konductor` |
 | Kiro spec generation | 3 | `kiro-requirements-generation`, `kiro-design-generation`, `kiro-task-generation` |
 
-Browse them all in the [skills catalog](docs/user-guide/skills.md).
+Browse them all in the [skills catalog](https://github.com/aws-solutions/konductor/blob/v1.2.0/docs/user-guide/skills.md).
 
 ### 📜 19 SOPs
 
@@ -345,7 +345,7 @@ SOPs are repeatable, multi-step workflows. Run them as `/agent-sop:<name>` in Ki
 | `k-full-sdlc` | | `k-codebase-analysis` | |
 
 Plus `about-konductor` for onboarding and `k-delegate`, which the orchestrator uses internally.
-Each one is explained, with a flowchart, in [SOP workflows](docs/user-guide/sop-workflows/README.md).
+Each one is explained, with a flowchart, in [SOP workflows](https://github.com/aws-solutions/konductor/blob/v1.2.0/docs/user-guide/sop-workflows/README.md).
 
 ### 💾 Persistent memory
 
@@ -371,8 +371,8 @@ AWS MCP comes pre-wired for `k-architect` and `k-developer` on Claude Code, laun
 including AWS API tools, so scope agent-initiated calls with the `aws:ViaAWSMCPService` and
 `aws:CalledViaAWSMCP` IAM condition keys. Kiro CLI users add `aws-mcp` to their own MCP config,
 where knowledge tools are auto-approved and API tools ask first. See
-[Install for Claude Code](docs/user-guide/tasks/install-claude-code.md#optional-integrations) or
-[Install for Kiro CLI](docs/user-guide/tasks/install-kiro-cli.md).
+[Install for Claude Code](https://github.com/aws-solutions/konductor/blob/v1.2.0/docs/user-guide/tasks/install-claude-code.md#optional-integrations) or
+[Install for Kiro CLI](https://github.com/aws-solutions/konductor/blob/v1.2.0/docs/user-guide/tasks/install-kiro-cli.md).
 The [AWS Agent Toolkit](https://github.com/aws/agent-toolkit-for-aws) also offers an OAuth
 connection, an AWS-managed plugin and standalone skills.
 
@@ -380,8 +380,8 @@ Everything else is bring-your-own:
 
 - **Browser automation:** `k-browser` uses a [`@playwright/mcp`](https://github.com/microsoft/playwright-mcp)
   server. Install Chromium after configuring it.
-- **Slack search:** `k-researcher` with a Slack MCP server ([guide](docs/guides/slack-integration.md)).
-- **Asana:** `k-product-manager` with an Asana MCP server ([guide](docs/guides/asana-integration.md)).
+- **Slack search:** `k-researcher` with a Slack MCP server ([guide](https://github.com/aws-solutions/konductor/blob/v1.2.0/docs/guides/slack-integration.md)).
+- **Asana:** `k-product-manager` with an Asana MCP server ([guide](https://github.com/aws-solutions/konductor/blob/v1.2.0/docs/guides/asana-integration.md)).
 
 ---
 
@@ -403,13 +403,13 @@ konductor/
 
 ## Contributing
 
-Bug reports, ideas and pull requests are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md),
-and see the [Code of Conduct](CODE_OF_CONDUCT.md). To change agent behavior or build the CLI from
-source, read [contributing and customizing](docs/user-guide/appendix/contributing.md).
+Bug reports, ideas and pull requests are welcome. Start with [CONTRIBUTING.md](https://github.com/aws-solutions/konductor/blob/v1.2.0/CONTRIBUTING.md),
+and see the [Code of Conduct](https://github.com/aws-solutions/konductor/blob/v1.2.0/CODE_OF_CONDUCT.md). To change agent behavior or build the CLI from
+source, read [contributing and customizing](https://github.com/aws-solutions/konductor/blob/v1.2.0/docs/user-guide/appendix/contributing.md).
 
 ## Security
 
-See [SECURITY.md](SECURITY.md) to report a vulnerability. Please don't open a public issue.
+See [SECURITY.md](https://github.com/aws-solutions/konductor/blob/v1.2.0/SECURITY.md) to report a vulnerability. Please don't open a public issue.
 
 ## License
 
@@ -435,7 +435,7 @@ that stays the same across all projects on your machine.
   the raw value is never sent and the same session hashes differently on another install.
 
 **What's never sent:** project paths, directory names or file contents. The exact schema is in
-[`docs/telemetry-schema.json`](docs/telemetry-schema.json).
+[`docs/telemetry-schema.json`](https://github.com/aws-solutions/konductor/blob/v1.2.0/docs/telemetry-schema.json).
 
 **The machine identifier.** The first time an event is reported on a machine, Konductor creates a
 UUID and stores it in `$HOME/.konductor/telemetry.json`. Every project on that machine sends the same
@@ -444,7 +444,7 @@ UUID, so events from different projects can be linked to one machine, though not
 **Claude Code plugin.** The marketplace plugin sends `agent_invocation` and
 `subagent_invocation` the same way, through a plugin hook, with `claude-plugin` as the runtime. It
 shares the machine identifier in `$HOME/.konductor/telemetry.json` with the CLI. See
-[Install via the Claude Code plugin marketplace](docs/user-guide/tasks/install-claude-plugin-marketplace.md#telemetry).
+[Install via the Claude Code plugin marketplace](https://github.com/aws-solutions/konductor/blob/v1.2.0/docs/user-guide/tasks/install-claude-plugin-marketplace.md#telemetry).
 
 **Opting out**
 
