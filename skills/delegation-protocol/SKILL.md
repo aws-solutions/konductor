@@ -173,15 +173,15 @@ After code changes, run the maker-checker cycle:
 1. Get the git diff of all changes
 2. Spawn the appropriate reviewer agent (e.g., `k-developer` with `backend-review` or `frontend-review`)
 3. Address all CRITICAL findings
-4. Re-review — max 2 review cycles total
-5. If CRITICAL findings persist after 2 cycles, escalate to the user
+4. Re-review, with at most 2 fix attempts per artifact (rule 5 under Orchestration Rules in your orchestrator prompt). If both failed on the same error, apply the 2-Strike Circuit Breaker. Otherwise escalate to the user.
 
 ## Failure Recovery
 
-- If a subagent fails, retry once with additional CONTEXT explaining the failure
+This section covers failed spawns: the spawn errors, times out, or the subagent returns nothing. For output that fails verification, follow rule 5 under Orchestration Rules instead.
+
+- If a spawn fails, retry once with additional CONTEXT explaining the failure
 - If the retry fails, escalate to the user with: what was attempted, what failed, and the root cause
-- Never retry more than once — 2-strike circuit breaker applies
-- If a subagent times out, check `.konductor/handoff/` for partial output before retrying
+- If a subagent times out, check `.konductor/handoff/` for partial output. Verify any partial output under rule 5; retry the spawn only if there is none.
 
 ## Quality Gate
 

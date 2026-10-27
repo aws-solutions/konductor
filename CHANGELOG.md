@@ -22,6 +22,13 @@ not per individual commit.
   Ultrawork framing, state the parallel rule once, and remove rules already defined in the
   `constraints` skill and the routing rules.
 
+### Fixed
+
+- Routing skills now agree with the orchestrator prompts. `mux-dispatch` peeks at a running
+  pane only on the prompt's polling fallback, and `delegation-protocol` applies rule 5's
+  fix-attempt cap and 2-Strike Circuit Breaker instead of its own cycle count, and limits its
+  retry-once recovery to spawns that error, time out, or return nothing.
+
 ## [1.2.0] - 2026-10-26
 
 ### Added
