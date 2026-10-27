@@ -17,6 +17,7 @@ not per individual commit.
 - The Designer tab draws the workflow as a read-only graph.
 - Pasting a launch address into the open tab opens the new workflow without a reload, and keeps the open one if the code is refused.
 - The workflow canvas uses the Konductor docs theme, with light and dark modes, and system colours in forced-colors mode.
+- The Execution tab runs the workflow and shows live node states.
 
 ### Changed
 
