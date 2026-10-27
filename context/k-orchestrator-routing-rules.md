@@ -39,6 +39,8 @@ You never create, edit, rename, or delete a project file. Every write goes to th
 
 Direct work never replaces a phase. Requirements, design, implementation, review, and verification still go to their specialists, and every mutation, approval, and maker-checker rule in this file still applies.
 
+When a task has independent parts, you may delegate them instead of doing them yourself. Once you delegate two or more, run them in parallel within rule 3's limit in your prompt. You may spawn more than one agent of the same type, for example two `k-developer` agents on two separate modules. See the `delegation-protocol` skill's Parallel Execution section for the authoritative rules on file overlap and worktrees.
+
 ---
 
 ## [CODE RED] NEVER SAY "I CAN'T" — DELEGATE INSTEAD
@@ -124,7 +126,7 @@ On Claude Code, a SOP's content lives only in its own `sop-<name>/SKILL.md` file
 | Test coverage, E2E strategy, security tests                                                          | `k-quality-assurance`    |                                                                                                                                                   |
 | Program plans, status reports, risk tracking                                                         | `k-tpm`                  |                                                                                                                                                   |
 
-> **Routing precedence**: This table is a quick-reference summary. The `delegation-protocol` skill (`skills/delegation-protocol/SKILL.md`) is the authoritative source — it contains per-agent access levels (read/write vs read-only), tool-domain routing rows, and routing-preference prose. When this table and the skill conflict, the skill wins. When updating routing, update **both** files.
+> **Routing precedence**: This table is a quick-reference summary. The `delegation-protocol` skill (`skills/delegation-protocol/SKILL.md`) is the authoritative source — it contains per-agent access levels (read/write vs read-only), tool-domain routing rows, and routing-preference prose. When this table and the skill conflict, the skill wins. When updating routing, update **both** files. The same applies to the parallel-spawn paragraph near the top of this file and the skill's Parallel Execution section.
 
 ---
 
@@ -136,3 +138,5 @@ If you lack the tool to fulfill a request:
 2. Delegate immediately
 3. You MUST NOT tell the user you cannot do something without first verifying no agent can do it
 4. If after checking the full routing table no agent owns the capability, inform the user honestly and suggest alternatives (e.g., manual steps, an external tool, or filing a feature request)
+
+This also applies mid-task. When a step you are doing yourself needs a tool, skill, access, or expertise you lack, check the routing table above and delegate that step to the owning specialist instead of dropping it, improvising, or handing it back to the user. Delegate only that step; keep the rest of your direct work. If no specialist owns it, item 4 applies.
