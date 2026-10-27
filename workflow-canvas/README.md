@@ -285,7 +285,9 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
 
 - **Run** calls `POST /api/run` with the goal, then reads
   `GET /api/runs/{id}` once a second until the run is `passed` or `halted`.
-  Run and the goal box are off from the click until the run ends.
+  Run is off and the goal box is read-only from the click until the run ends.
+  Read-only, not greyed out, so the box keeps focus and shows the goal of that
+  run. Enter in the box starts a run, like the button.
 - Each node shows a badge with a word and a colour: **Queued** (dashed
   outline), **Running**, **Done** and **Failed**. The intent is Done once the run
   has it. After a halt, the stages behind the failed one say **Not run**. The end
@@ -294,10 +296,15 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
   done."). It is a polite live region, so a screen reader announces each
   change, and each node's name for a screen reader ends with its state.
 - An error from the API, whether the run does not start or a read fails, shows
-  in one alert above the graph, with the sentence the server gave. A failed
-  stage is a result, not an error, so it has no alert.
+  in one alert above the graph, with the sentence the server gave. The alert
+  is drawn inside an alert region that is always on the page, so a screen
+  reader reads the sentence when it appears; the status line then says only
+  "See the error above." When a read fails, the nodes are cleared and the alert
+  adds that the run may still be going on the server. A failed stage is a
+  result, not an error, so it has no alert.
 - A run goes on while the Designer tab is open, and the tab shows it again when
-  you come back. Closing the page stops the reading, not the run.
+  you come back, with the goal box as it was: what you typed, or the goal of
+  the run in flight. Closing the page stops the reading, not the run.
 - The colours of the states are in `src/canvas/canvas.css` and match the theme
   module, checked in both modes by the contrast test.
 
@@ -393,7 +400,8 @@ npx playwright install chromium
 Then `npm run test:e2e`. The HTML report is written to `playwright-report/`;
 open it with `npx playwright show-report`. Accessibility is checked with
 axe-core on each tab, on the error state, on the Execution tab with a stage
-running, a failed stage and a passed run, and in both theme modes.
+running, a failed stage, a passed run, the error of the API and a goal that
+cannot be run, and in both theme modes.
 
 The stub runs one run at a time and never fails a stage. So the one test that
 starts a real run on it (`execution.spec.ts`, the first run test) waits for the
@@ -409,7 +417,9 @@ the app.
 ## Screenshots
 
 `npm run screenshots` saves full-page PNGs to `e2e/screenshots/`, drawn from
-the stub, at 1280x800 with animations frozen. The Designer tab is in the light
+the stub, at 1280x800 with animations frozen. The runs in the Execution
+captures answer with fixed replies, so no capture depends on the clock of the
+stub. The Designer tab is in the light
 theme (`designer-tab.png`) and in the dark one (`designer-tab-dark.png`, after
 the theme button is pressed). The Execution tab is saved before a run
 (`execution-tab-idle.png`), while the first stage runs
