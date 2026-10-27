@@ -310,7 +310,10 @@ listed, so there is no other field and no way to link or reorder them yet.
   saved file, and says so when the Designer holds changes that are not saved.
 
 The page does not write the file in this version: the draft is only kept in the
-page.
+page. So while the draft differs from the file, closing or reloading the page
+makes the browser ask whether to leave (`useLeaveGuard`, a `beforeunload`
+handler that is on only then). A change that is put back, so the draft equals
+the file again, does not ask.
 
 The code follows the split of the Execution tab:
 
@@ -321,7 +324,8 @@ The code follows the split of the Execution tab:
   core imports anything but its own modules and the wire types, or reads a
   clock, randomness, the environment or the network.
 - `useEditor` keeps the state in `App`; `DesignerEditor` and `PropertiesPane`
-  draw it. A stage keeps an id of its own while it is renamed, and the node is
+  draw it. `useLeaveGuard` asks the browser to confirm leaving while the draft
+  has changes. A stage keeps an id of its own while it is renamed, and the node is
   named from that id, so two stages with one name for a moment still have two
   nodes.
 
