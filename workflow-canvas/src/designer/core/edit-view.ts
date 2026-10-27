@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { EditState } from './edit-state';
 import { sameStages, stagesOf } from './draft';
-import { hasErrors, type Problem } from './problems';
+import { hasErrors, withEchoes, type Problem } from './problems';
 import { withStages } from './stage-text';
 
 /** The words that say why a read-only workflow cannot be changed. */
@@ -31,13 +31,15 @@ function currentFindings(state: EditState) {
 /**
  * The problems to show: those of the latest check, which stay on show while
  * the check of the new draft is still to come, so the page does not flicker
- * at every key. A problem of a stage that was deleted is dropped.
+ * at every key. A problem of a stage that was deleted is dropped, and a
+ * repeated name is marked on the earlier stage as well (see `withEchoes`).
  */
 export function problemsOfDraft(state: EditState): Problem[] {
   const ids = new Set(state.draft.stages.map((stage) => stage.id));
-  return state.check.problems.filter(
+  const present = state.check.problems.filter(
     (problem) => problem.stageId === undefined || ids.has(problem.stageId),
   );
+  return withEchoes(present, state.draft);
 }
 
 /** Why the draft cannot be saved now, or `undefined` when it can. */

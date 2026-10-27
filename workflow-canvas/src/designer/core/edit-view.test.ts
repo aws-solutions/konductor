@@ -4,6 +4,7 @@ import type { DiagnosticView } from '../../api/types';
 import { HELLO_DOCUMENT, HELLO_TEXT } from '../../test-support/fixtures';
 import { reduce } from './edit-reducer';
 import { openDocument, type EditEvent, type EditState } from './edit-state';
+import { listedOf, problemsFor } from './problems';
 import {
   canSave,
   isDirty,
@@ -150,6 +151,37 @@ describe('problemsOfDraft', () => {
     expect(problemsOfDraft(state)).toEqual([
       { message: 'Wrong.', severity: 'error', stageId: 's2', field: 'name' },
     ]);
+  });
+
+  it('marks the field of the earlier stage when a name is repeated, as the server names the later one', () => {
+    const state = run(
+      { type: 'rename', id: 's1', name: 'review' },
+      {
+        type: 'checked',
+        revision: 1,
+        diagnostics: [error('stages[1].name')],
+      },
+    );
+
+    const problems = problemsOfDraft(state);
+
+    expect(problemsFor(problems, 's1', 'name')).toHaveLength(1);
+    expect(problemsFor(problems, 's2', 'name')).toHaveLength(1);
+    expect(listedOf(problems)).toHaveLength(1);
+  });
+
+  it('stops marking the earlier stage as soon as its name is changed again', () => {
+    const state = run(
+      { type: 'rename', id: 's1', name: 'review' },
+      {
+        type: 'checked',
+        revision: 1,
+        diagnostics: [error('stages[1].name')],
+      },
+      { type: 'rename', id: 's1', name: 'draft' },
+    );
+
+    expect(problemsFor(problemsOfDraft(state), 's1', 'name')).toEqual([]);
   });
 
   it('drops a problem of a stage that was deleted, and keeps one of the whole text', () => {

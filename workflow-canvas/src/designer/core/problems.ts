@@ -49,44 +49,16 @@ function targetOf(
   );
 }
 
-// The copies of the name problems of a stage for the earlier stages that have
-// the same name and no name problem of their own.
-function echoesOf(problems: readonly Problem[], draft: Draft): Problem[] {
-  const named = problems.filter((problem) => problem.field === 'name');
-  const marked = new Set(named.map((problem) => problem.stageId));
-  return named.flatMap((problem) => {
-    const at = draft.stages.findIndex(({ id }) => id === problem.stageId);
-    const name = draft.stages[at]?.name;
-    const earlier = draft.stages
-      .slice(0, Math.max(at, 0))
-      .find((stage) => stage.name === name && !marked.has(stage.id));
-    return earlier
-      ? [{ ...problem, stageId: earlier.id, echo: true as const }]
-      : [];
-  });
-}
-
-/**
- * Turns the findings of a check into problems of the stages of the draft. A
- * name problem is copied to the stages that share the name (see `Problem.echo`).
- */
+/** Turns the findings of a check into problems of the stages of the draft. */
 export function problemsOf(
   diagnostics: readonly DiagnosticView[],
   draft: Draft,
 ): Problem[] {
-  const problems: Problem[] = diagnostics.map(
-    ({ message, path, severity }) => ({
-      message,
-      severity,
-      ...targetOf(path, draft),
-    }),
-  );
-  return [...problems, ...echoesOf(problems, draft)];
-}
-
-/** The problems without the copies, for a list that says each problem once. */
-export function listedOf(problems: readonly Problem[]): Problem[] {
-  return problems.filter((problem) => !problem.echo);
+  return diagnostics.map(({ message, path, severity }) => ({
+    message,
+    severity,
+    ...targetOf(path, draft),
+  }));
 }
 
 /** The latest check: the revision it spoke for, and what it found. */
@@ -104,6 +76,35 @@ export function checkOf(
   draft: Draft,
 ): Check {
   return { revision, diagnostics, problems: problemsOf(diagnostics, draft) };
+}
+
+/**
+ * `problems` and, for each name problem of a stage, a copy for the earlier
+ * stages of the draft that have the same name and no name problem of their
+ * own (see `Problem.echo`).
+ */
+export function withEchoes(
+  problems: readonly Problem[],
+  draft: Draft,
+): Problem[] {
+  const named = problems.filter((problem) => problem.field === 'name');
+  const marked = new Set(named.map((problem) => problem.stageId));
+  const echoes = named.flatMap((problem) => {
+    const at = draft.stages.findIndex(({ id }) => id === problem.stageId);
+    const name = draft.stages[at]?.name;
+    const earlier = draft.stages
+      .slice(0, Math.max(at, 0))
+      .find((stage) => stage.name === name && !marked.has(stage.id));
+    return earlier
+      ? [{ ...problem, stageId: earlier.id, echo: true as const }]
+      : [];
+  });
+  return [...problems, ...echoes];
+}
+
+/** The problems without the copies, for a list that says each problem once. */
+export function listedOf(problems: readonly Problem[]): Problem[] {
+  return problems.filter((problem) => !problem.echo);
 }
 
 /** The problems about one field of one stage. */
