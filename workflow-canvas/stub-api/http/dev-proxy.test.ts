@@ -97,13 +97,51 @@ describe('the Vite dev server', () => {
     });
     const devOrigin = await startDev();
 
-    const reply = await fetch(`${devOrigin}/api/workflow?probe=1`);
+    const reply = await fetch(`${devOrigin}/api/workflow?probe=1`, {
+      headers: { Origin: devOrigin },
+    });
 
     expect(reply.status).toBe(204);
     expect(target.seen).toHaveLength(1);
     expect(target.seen[0]?.url).toBe('/api/workflow?probe=1');
     expect(target.seen[0]?.headers.origin).toBe(target.origin);
     expect(target.origin).not.toBe(stub.stub.origin);
+  });
+
+  it('leaves a foreign or missing Origin as it is, so the target can refuse it', async () => {
+    const target = await openRecorder();
+    cleanups.push(target.close);
+    useEnv({ WC_API_TARGET: target.origin });
+    const devOrigin = await startDev();
+
+    await fetch(`${devOrigin}/api/run`, {
+      method: 'POST',
+      headers: { Origin: 'http://127.0.0.1:9' },
+    });
+    await fetch(`${devOrigin}/api/run`, { method: 'POST' });
+
+    expect(target.seen.map((r) => r.headers.origin)).toEqual([
+      'http://127.0.0.1:9',
+      undefined,
+    ]);
+  });
+
+  it.each([
+    ['a foreign Origin', { Origin: 'http://127.0.0.1:9' }],
+    ['no Origin', {}],
+  ])('refuses a POST with %s through the proxy', async (_name, extra) => {
+    const running = await openStub();
+    cleanups.push(running.stub.close);
+    useEnv({ STUB_PORT: String(running.stub.port) });
+    const devOrigin = await startDev();
+
+    const reply = await fetch(`${devOrigin}/api/session`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...extra },
+      body: JSON.stringify({ code: LAUNCH_CODE }),
+    });
+
+    expect(reply.status).toBe(403);
   });
 
   it('moves with the target: a second target gets its own origin', async () => {
@@ -113,12 +151,14 @@ describe('the Vite dev server', () => {
 
     useEnv({ WC_API_TARGET: first.origin });
     const firstDev = await startDev();
-    await fetch(`${firstDev}/api/workflow`);
+    await fetch(`${firstDev}/api/workflow`, { headers: { Origin: firstDev } });
     await dev?.close();
 
     useEnv({ WC_API_TARGET: second.origin });
     const secondDev = await startDev();
-    await fetch(`${secondDev}/api/workflow`);
+    await fetch(`${secondDev}/api/workflow`, {
+      headers: { Origin: secondDev },
+    });
 
     expect(first.seen.map((r) => r.headers.origin)).toEqual([first.origin]);
     expect(second.seen.map((r) => r.headers.origin)).toEqual([second.origin]);
