@@ -2,19 +2,29 @@
 import Alert from '@cloudscape-design/components/alert';
 import Button from '@cloudscape-design/components/button';
 import type { Draft, EditState, Problem } from './core';
-import { errorsOf, notesOf, problemsOfDraft, willRewriteWhole } from './core';
+import {
+  errorsOf,
+  listedOf,
+  notesOf,
+  problemsOfDraft,
+  willRewriteWhole,
+} from './core';
 
 const CONFLICT_TEXT =
   'The file was changed after this page loaded, so nothing was saved. Load it again to see it as it is now; that replaces the changes you made here.';
 
-function stageName(draft: Draft, id: string | undefined): string | undefined {
-  return draft.stages.find((stage) => stage.id === id)?.name;
+// What to call the stage of a problem: its name, or its place in the list when
+// it has none, so that a line never starts with an empty word.
+function stageLabel(draft: Draft, id: string | undefined): string | undefined {
+  const index = draft.stages.findIndex((stage) => stage.id === id);
+  if (index < 0) return undefined;
+  return draft.stages[index]?.name || `Stage ${index + 1}`;
 }
 
 // A problem in words, led by the stage it is about when it is about one.
 function lineOf(problem: Problem, draft: Draft): string {
-  const name = stageName(draft, problem.stageId);
-  return name === undefined ? problem.message : `${name}: ${problem.message}`;
+  const label = stageLabel(draft, problem.stageId);
+  return label === undefined ? problem.message : `${label}: ${problem.message}`;
 }
 
 function Conflict({
@@ -86,7 +96,8 @@ export function EditAlerts({
   onReload: () => void;
 }) {
   const { save, draft } = state;
-  const problems = problemsOfDraft(state);
+  // Each problem is listed once, though a field may show it for two stages.
+  const problems = listedOf(problemsOfDraft(state));
   const notes = notesOf(problems);
   return (
     <div role="alert" className="wf-edit-alerts">

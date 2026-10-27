@@ -44,7 +44,9 @@ not per individual commit.
   `npm run dev:stub` starts the stub and the dev server together. A bad `WC_API_TARGET` or
   `STUB_PORT` stops only the commands that need it (not `build` or `npm test`), with a one-line
   error that hides credentials. `STUB_PORT` must be 1-65535, so `STUB_PORT=0` is rejected: the stub
-  needs a fixed port.
+  needs a fixed port. The stub of `npm run dev:stub` and the one that Playwright starts take the
+  launch code again and give the same token, so opening the printed address again after a
+  reload works; `npm run stub` on its own keeps the contract's one use.
 - The Designer tab of the workflow canvas draws the workflow from the API, read-only: the intent,
   each stage in list order with its agent and harness, and the end, joined by run-order edges,
   using React Flow. The page opens a session with the launch code in its address, loads
@@ -68,8 +70,9 @@ not per individual commit.
   named by `WC_API_TARGET`. Each node shows its live state as a word and a colour from the theme
   (queued, running, done, failed), the end shows the result, and the tab says where the run is in
   a live region for screen readers. An error from the API shows in one alert that a screen reader
-  reads out. A failed read is tried again, and a 409 `already_running` (for example after a page
-  reload) makes the tab follow the run that is already going. A call that gets no answer ends
+  reads out. A failed read is tried again, and a 409 `already_running` makes the tab follow the run that
+  is already going. After a reload, when the launch address is opened again, the tab follows a
+  run that is still going, from the id it keeps in `sessionStorage`. A call that gets no answer ends
   after 15 seconds. The run logic is an IO-free core with a clock port, tested without waiting,
   and the end-to-end tests and screenshots cover a run on the stub.
 - The Designer tab of the workflow canvas can edit a workflow, in `workflow-canvas/`: pick the

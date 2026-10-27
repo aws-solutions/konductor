@@ -116,6 +116,14 @@ sets the port (a whole number from 1 to 65535; anything else stops the command
 with a one-line error). `STUB_LAUNCH_CODE` sets the code, for tests only: it can be
 weaker than the contract asks.
 
+The contract has the code work once. That would make a reload of the page a
+dead end when you develop: the reload drops the token and the code from the page,
+and the printed address no longer works. So the stub of `npm run dev:stub` (it
+gets `--with-dev-server`) and the one that Playwright starts take the code
+again, with no time limit, and give the same token. Open the printed address
+again after a reload. `npm run stub` on its own follows the contract: once,
+within 60 seconds.
+
 The data covers the first release: a workflow of an intent and stages, and the
 `kiro-cli` harness. It is a `hello` workflow with a `draft` stage
 (`k-developer`) and a `review` stage (`k-quality-assurance`). A saved change
@@ -191,7 +199,8 @@ compares the error codes, diagnostic codes, limits and patterns of the stub
 with the contract, so a change to one without the other fails.
 
 Playwright starts the stub beside the app (`stub-api/web-servers.ts` holds its
-launch code and the server list), so an end-to-end test can call it. With
+launch code and the server list), with `--with-dev-server` so that a test can
+open the page again with the same code. So an end-to-end test can call it. With
 `WC_API_TARGET` set it does not, and the same tests call that server instead.
 
 ## The canvas
@@ -210,6 +219,12 @@ The rest wraps the core, so the rules can be tested without a browser:
 - `api/`: `WorkflowApi` is the port with the two calls the page makes;
   `createHttpApi` is its adapter over `fetch`. It ignores fields it does not
   know and turns a failed call into an `ApiError` with a message fit to show.
+  `messageOf` (`api/message-of.ts`) is how every alert words a failure, and it
+  adds what to do next: for no answer, or a 5xx that is not the API's (the
+  answer of a proxy whose server is down), "If it stopped, start it again and
+  open the launch address that it printed."; for the API's 401 (the session is
+  gone, as after the server started again), "Open the launch address that the
+  server printed."
 - `launch/launch-code.ts` and `workflow/load-workflow.ts` take the launch code
   from the address and load the workflow. `loadWorkflow` never rejects: it
   returns `{ ok: true, workflow }` or `{ ok: false, message }`. It is started
@@ -299,6 +314,12 @@ says so before you save.
   tabs. The Execution tab draws the saved workflow, because a run uses the
   saved file, and says so when the Designer holds changes that are not saved.
 
+While the draft differs from the saved file, closing or reloading the page
+makes the browser ask whether to leave (`useLeaveGuard`, a `beforeunload`
+handler that is on only then), because the draft lives in the page. A change
+that is put back, so the draft equals the file again, does not ask, and nor
+does a draft that has been saved.
+
 The code follows the split of the Execution tab:
 
 - `src/designer/core/` is the core and does no IO: the draft of the stages, the
@@ -314,7 +335,8 @@ The code follows the split of the Execution tab:
   them to the session token as the `EditPort`, and turns a 409 `conflict` and
   a 422 `invalid_workflow` (with its `diagnostics`) into the core's own errors.
 - `useEditor` keeps the state in `App`; `DesignerEditor`, `PropertiesPane`,
-  `SaveControls` and `EditAlerts` draw it. A stage keeps an id of its own
+  `SaveControls` and `EditAlerts` draw it. `useLeaveGuard` asks the browser to
+  confirm leaving while the draft has changes. A stage keeps an id of its own
   while it is renamed, and the node is named from that id, so two stages with
   one name for a moment still have two nodes.
 - The API contract is unchanged. `test-support/editing-contract.test.ts`
@@ -331,10 +353,17 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
   Run and the goal box are off from the click until the run ends (the box
   stays read-only, not disabled, so keyboard focus stays in it). Enter in the
   goal box runs too.
-- If the server answers 409 `already_running`, as it does after a page reload
-  in the middle of a run, the tab follows the run named in that answer instead
+- If the server answers 409 `already_running`, as it does when a run from
+  another tab is going, the tab follows the run named in that answer instead
   of starting one. The line under the button says so, and the goal typed is not
   used for that run.
+- After a reload the page has no token, so the person opens the launch address
+  again. The tab keeps the id of the latest run in the storage of the browser
+  tab (`sessionStorage`; the id is no secret, the token is not kept), and when
+  the page opens again it reads that run once. If it is still running, the tab
+  follows it as if the person had joined it, without a click on Run. A run that
+  has ended, one that cannot be read (for instance after the server started
+  again) or a browser that blocks storage leaves the tab ready for a new run.
 - A read of the run that fails is tried again after a second; the tab gives up
   after three failures in a row. Only a missing answer or a 5xx is tried again:
   any 4xx or a reply the page cannot read shows the alert at once. A call that
@@ -370,7 +399,8 @@ The code follows the ports-and-adapters split of the graph:
   fails if the core imports anything but its own modules, the graph core and the
   wire types, or reads a clock, randomness, the environment or the network.
 - The adapters are `createHttpApi` (`startRun`, `getRun`), which `loadWorkflow`
-  ties to the session token, and `timerScheduler`. The token is held only by
+  ties to the session token, `timerScheduler`, and `sessionRunMemory`, which
+  keeps the id of the latest run for `resumeRun`. The token is held only by
   those run calls. `createHttpApi` ends a call after a timeout, and
   `loadWorkflow` turns the 409 `already_running`, which carries the `run_id`,
   into the core's `RunAlreadyActive` so the core can follow that run.

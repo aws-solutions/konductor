@@ -6,6 +6,7 @@ import {
   errorsOf,
   hasErrors,
   joinMessages,
+  listedOf,
   notesOf,
   problemsFor,
   problemsOf,
@@ -50,6 +51,69 @@ describe('problemsOf', () => {
     const [problem] = problemsOf([finding(path)], DRAFT);
 
     expect(problem).toEqual({ message: 'Wrong.', severity: 'error' });
+  });
+});
+
+describe('a stage name that two stages share', () => {
+  const draft = draftOf([
+    { name: 'review', agent: 'k-developer' },
+    { name: 'review', agent: 'k-tpm' },
+  ]);
+  const duplicate = finding(
+    'stages[1].name',
+    'The stage name `review` is already used.',
+  );
+
+  it('marks the name field of the earlier stage too, not only that of the later one the server names', () => {
+    const problems = problemsOf([duplicate], draft);
+
+    expect(problemsFor(problems, 's2', 'name')).toHaveLength(1);
+    expect(problemsFor(problems, 's1', 'name').map((p) => p.message)).toEqual([
+      duplicate.message,
+    ]);
+  });
+
+  it('is still one problem in a list, so the list says it once', () => {
+    const problems = problemsOf([duplicate], draft);
+
+    expect(listedOf(problems).map((p) => p.stageId)).toEqual(['s2']);
+  });
+
+  it('marks no other field of the earlier stage', () => {
+    expect(problemsFor(problemsOf([duplicate], draft), 's1', 'agent')).toEqual(
+      [],
+    );
+  });
+
+  it('does not repeat a message on a stage that has a finding of its own', () => {
+    const both = [
+      finding('stages[0].name', 'Wrong.'),
+      finding('stages[1].name', 'Wrong.'),
+    ];
+
+    const problems = problemsOf(both, draft);
+
+    expect(problemsFor(problems, 's1', 'name')).toHaveLength(1);
+    expect(problemsFor(problems, 's2', 'name')).toHaveLength(1);
+  });
+
+  it('joins the same message once when several stages repeat a name', () => {
+    const three = draftOf([
+      { name: 'review', agent: 'k-developer' },
+      { name: 'review', agent: 'k-developer' },
+      { name: 'review', agent: 'k-developer' },
+    ]);
+    const problems = problemsOf(
+      [
+        duplicate,
+        finding('stages[2].name', 'The stage name `review` is already used.'),
+      ],
+      three,
+    );
+
+    expect(joinMessages(problemsFor(problems, 's1', 'name'))).toBe(
+      duplicate.message,
+    );
   });
 });
 

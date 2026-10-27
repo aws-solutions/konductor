@@ -9,8 +9,9 @@ import { TOP_BAR_ID, TopBar } from './chrome/TopBar';
 import { Designer } from './designer/Designer';
 import { isDirty } from './designer/core';
 import { useEditor } from './designer/use-editor';
+import { useLeaveGuard } from './designer/use-leave-guard';
 import { useSettled } from './designer/use-settled';
-import type { Scheduler } from './execution/core';
+import type { RunMemory, Scheduler } from './execution/core';
 import { Execution } from './execution/Execution';
 import { timerScheduler } from './execution/timer-scheduler';
 import { useExecution } from './execution/use-execution';
@@ -31,9 +32,12 @@ import {
 export function App({
   load,
   scheduler = timerScheduler,
+  runMemory,
 }: {
   load: Promise<LoadResult>;
   scheduler?: Scheduler;
+  /** Keeps the latest run across a reload; a page without it starts afresh. */
+  runMemory?: RunMemory;
 }) {
   // Read here, not in the tab, so switching tabs does not load again.
   const result = useSettled(load);
@@ -41,11 +45,15 @@ export function App({
   const execution = useExecution(
     result?.ok ? result.workflow.runs : undefined,
     scheduler,
+    runMemory,
   );
   const [mode, toggleMode] = useThemeMode();
   // The Designer edits a draft; the run and the Execution tab use the file
   // as it is saved.
   const editor = useEditor(result?.ok ? result.workflow : undefined, scheduler);
+  const unsaved = editor ? isDirty(editor.state) : false;
+  // The draft lives in the page, so leaving the page loses the changes.
+  useLeaveGuard(unsaved, window);
   const saved = editor ? withDocument(result, editor.state.saved) : result;
   return (
     <>
@@ -80,7 +88,7 @@ export function App({
                       <Execution
                         result={saved}
                         execution={execution}
-                        unsaved={editor ? isDirty(editor.state) : false}
+                        unsaved={unsaved}
                       />
                     ),
                   },

@@ -441,6 +441,56 @@ describe('checking while typing', () => {
     expect(screen.getByText('Needs a fix')).toBeTruthy();
   });
 
+  it('marks the field of the stage being renamed to a name that another stage has, though the server names the later stage', async () => {
+    const edits = acceptingEdits();
+    edits.check.mockResolvedValue({
+      view: null,
+      diagnostics: [
+        finding('stages[1].name', 'The stage name `review` is already used.'),
+      ],
+    });
+    const { scheduler } = await openDesigner(edits);
+    expect(nameInput().value).toBe('draft');
+
+    type('review');
+    await checkNow(scheduler);
+
+    await waitFor(() =>
+      expect(nameInput().getAttribute('aria-invalid')).toBe('true'),
+    );
+    expect(
+      screen.getAllByText('The stage name `review` is already used.'),
+    ).toHaveLength(1);
+    expect(screen.getByText('Needs a fix')).toBeTruthy();
+    const items = within(screen.getByTestId('problems')).getAllByRole(
+      'listitem',
+    );
+    expect(items.map((item) => item.textContent)).toEqual([
+      'review: The stage name `review` is already used.',
+    ]);
+  });
+
+  it('names a stage with no name by its place in the list, not by an empty word', async () => {
+    const edits = acceptingEdits();
+    const message =
+      '`name` must be lower-case letters, digits and hyphens, start with a letter or digit, and have at most 64 characters.';
+    edits.check.mockResolvedValue({
+      view: null,
+      diagnostics: [finding('stages[0].name', message)],
+    });
+    const { scheduler } = await openDesigner(edits);
+
+    type('');
+    await checkNow(scheduler);
+
+    const items = await within(
+      await screen.findByTestId('problems'),
+    ).findAllByRole('listitem');
+    expect(items.map((item) => item.textContent)).toEqual([
+      `Stage 1: ${message}`,
+    ]);
+  });
+
   it('shows a warning as a note, not as an error, and leaves Save on', async () => {
     const edits = acceptingEdits();
     edits.check.mockResolvedValue({
