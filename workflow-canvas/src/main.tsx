@@ -4,6 +4,7 @@ import './theme/fonts';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import { sessionRunMemory } from './execution/run-memory';
 import { createHttpApi } from './api/http-api';
 import { LaunchNotice } from './launch/LaunchNotice';
 import { takeLaunchCode, watchLaunchCode } from './launch/launch-code';
@@ -19,11 +20,14 @@ installTheme(document.body);
 const source = createWorkflowSource(createHttpApi(), takeLaunchCode(window));
 watchLaunchCode(window, (code) => void source.offer(code));
 
+const runMemory = sessionRunMemory(window);
+
 function Root() {
   return (
     <App
       load={useWorkflowSource(source)}
       notice={<LaunchNotice source={source} />}
+      runMemory={runMemory}
     />
   );
 }
