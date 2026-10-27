@@ -2,6 +2,8 @@
 /** Reads the real replies of the stub with the parsers of the page. */
 import { describe, expect, it } from 'vitest';
 import { parseSession, parseWorkflowDocument } from '../../src/api/parse.ts';
+import { sha256Hex } from '../core/hash.ts';
+import { SAMPLE_FILES } from '../core/sample.ts';
 import { LAUNCH_CODE, useStub } from '../test-support/harness.ts';
 import { oneStageWorkflow } from '../test-support/workflows.ts';
 
@@ -31,6 +33,8 @@ describe('the wire types of the page read GET /api/workflow', () => {
     expect(parseWorkflowDocument(reply.body)).toEqual({
       name: 'hello',
       text: expect.stringContaining('name: hello'),
+      hash: sha256Hex(SAMPLE_FILES.hello ?? ''),
+      readOnly: false,
       view: {
         name: 'hello',
         intent: { outcome: 'Add a greeting to the README' },
