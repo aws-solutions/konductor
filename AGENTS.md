@@ -18,11 +18,12 @@ Konductor is an open-source multi-agent orchestration framework that provides a 
 ## Project Structure
 
 ```
-agents/        # Agent definitions (.agent-spec.json, one per agent)
-skills/        # Skill definitions (SKILL.md + optional scripts)
-agent-sops/    # Standard operating procedures (user-invoked workflows)
-context/       # Context files loaded at agent startup (system prompts, routing rules)
-cli/           # Konductor CLI; see cli/README.md
+agents/          # Agent definitions (.agent-spec.json, one per agent)
+skills/          # Skill definitions (SKILL.md + optional scripts)
+agent-sops/      # Standard operating procedures (user-invoked workflows)
+context/         # Context files loaded at agent startup (system prompts, routing rules)
+cli/             # Konductor CLI; see cli/README.md
+workflow-canvas/ # Browser UI for workflows (Vite, React, Cloudscape); see its README
 ```
 
 ## Setup & Commands
@@ -78,6 +79,7 @@ instructions.
   - Python: `# SPDX-License-Identifier: Apache-2.0`
   - JS/TS, Go: `// SPDX-License-Identifier: Apache-2.0`
   - Shell, YAML: `# SPDX-License-Identifier: Apache-2.0`
+  - HTML: `<!-- SPDX-License-Identifier: Apache-2.0 -->`, placed before `<!doctype html>`.
 
   Formats that have no comment syntax at all (JSON and similar) cannot carry a header and are exempt -- do not add one and do not treat its absence as a violation.
 
