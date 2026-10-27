@@ -76,6 +76,11 @@ jobs:
         # and agent-sops/ disagree. Needs python3 and PyYAML (installed above).
         run: make sop-orchestration-check
 
+      - name: Check gate facts in phase-gated SOP text (make sop-gate-facts-check)
+        # Fails when a gated SOP's text and its gate boundaries in
+        # cli/gate-config/sop-orchestration.yml disagree. Needs PyYAML.
+        run: make sop-gate-facts-check
+
       - name: Require a CHANGELOG.md entry alongside any VERSION bump
         # CHANGELOG.md's own convention (entries consolidated per release,
         # not per commit) is otherwise unenforced -- a PR could bump VERSION
