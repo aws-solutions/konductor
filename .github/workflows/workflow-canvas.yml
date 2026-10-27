@@ -72,6 +72,9 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: API contract (also part of Test, run alone for a clear label)
+        run: npm run api:lint
+
       - name: Build
         run: npm run build
 

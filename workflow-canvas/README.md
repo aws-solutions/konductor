@@ -10,6 +10,7 @@ follow-up changes.
 ## Layout
 
 - `src/`: the UI.
+- `api/`: the HTTP API contract (`openapi.yaml`) and its test.
 - `e2e/`: Playwright tests (`tests/`), the screenshot capture (`capture/`),
   shared page objects and helpers (`support/`) and the committed PNGs
   (`screenshots/`).
@@ -18,7 +19,6 @@ Directories added in later PRs:
 
 - `stub-api/`: a TypeScript stub server for local development and end-to-end
   tests, started by the same Playwright `webServer` config.
-- `api/`: the API contract shared with the backend.
 
 A single `package.json` serves all of the above.
 
@@ -31,11 +31,57 @@ npm ci
 npm run dev        # Vite dev server on http://127.0.0.1:5173
 npm run lint       # ESLint and Prettier check
 npm run typecheck
-npm test           # Vitest
+npm test           # Vitest, including the API contract test
+npm run api:lint   # Only the API contract test
 npm run build
 npm run test:e2e    # Playwright, headless Chromium
 npm run screenshots # regenerate e2e/screenshots/*.png
 ```
+
+## API contract
+
+`api/openapi.yaml` is the OpenAPI 3.1 description of the HTTP API that the
+canvas calls. It covers six operations:
+
+| Method and path      | `operationId`   | What it does                            |
+| -------------------- | --------------- | --------------------------------------- |
+| `POST /api/session`  | `createSession` | Exchange the launch code for a token    |
+| `GET /api/workflow`  | `getWorkflow`   | Load a workflow                         |
+| `PUT /api/workflow`  | `saveWorkflow`  | Save a workflow                         |
+| `POST /api/validate` | `checkWorkflow` | Check workflow text and report problems |
+| `POST /api/run`      | `startRun`      | Start a run                             |
+| `GET /api/runs/{id}` | `getRun`        | Get the status of a run                 |
+
+A workflow in this version has a `name`, an `intent` and `stages`, and each
+stage is a `name` and an `agent`. The only harness is `kiro-cli`. The file also
+holds what a backend needs to implement the calls: the accepted workflow text,
+the checks that make a text invalid, the list of diagnostic codes, how a file
+that is not a plain file is handled, and what a run does stage by stage. A
+client follows a run by polling `GET /api/runs/{id}`.
+
+The contract is the one source of truth for the API. Every server of the API
+follows it, so a change to the API starts as a change to this file. Responses
+may gain fields without a new version, so clients ignore fields they do not
+know, and requests with a field the contract does not name are refused.
+
+`npm run api:lint` checks the file. The test in `api/openapi.test.ts`:
+
+- parses the file and validates it against the OpenAPI 3.1 specification,
+  including that every `$ref` resolves;
+- checks that the operations are exactly the six above, that each has an
+  `operationId` and a `summary`, that every request and response body has an
+  example, and that every response declares the `X-Konductor-Api` header;
+- checks that every error response uses the one `Error` schema, that each error
+  example has a code that fits its status, and that the diagnostic codes in the
+  schema and in the description are the same;
+- checks that request schemas refuse unknown fields and response schemas do not;
+- validates every example, including the ones inside schemas, against its schema;
+- checks that the examples agree with the rules in the contract: a hash is the
+  SHA-256 of its text, a view lists what its own text says, a diagnostic points at
+  the name in its message, the counts of a check add up, and a run's stages
+  follow its status.
+
+CI runs it on each pull request, and `npm test` includes it.
 
 ## End-to-end tests
 

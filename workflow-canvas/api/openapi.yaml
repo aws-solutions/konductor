@@ -1,0 +1,1616 @@
+# SPDX-License-Identifier: Apache-2.0
+openapi: 3.1.0
+info:
+  title: Workflow canvas API
+  version: 1.0.0
+  license:
+    name: Apache-2.0
+    identifier: Apache-2.0
+  description: |
+    The HTTP API that the workflow canvas calls to open a session, load, save
+    and check a workflow file, and start and follow a run. The local stub
+    server and the real backend will both implement this document.
+
+    This version covers the first release only. A workflow has a `name`, an
+    `intent` and a list of `stages`, and each stage is a `name` and an `agent`.
+    Every run uses the `kiro-cli` harness. Anything not described here is not
+    part of the contract yet.
+
+    **How this version changes.** A later version only adds: response fields,
+    operations, error codes and diagnostic codes. One later change is not an
+    addition. This version starts every run without asking anyone to trust the
+    workflow. A later version refuses a run with 409 `trust_required` until
+    trust is recorded, so a client shows a 409 with a code it does not know as
+    a failure and does not crash.
+
+    **Conventions**
+
+    - Bodies are UTF-8 JSON with `Content-Type: application/json`. Field names
+      are `snake_case`. A time is a UTC string that ends in `Z`, to the whole
+      second, such as `2026-10-24T04:12:05Z`. A hash is the SHA-256 of a
+      file's bytes, as 64 lower-case hex digits.
+    - A response may gain fields in a later release, and an enum in a response
+      may gain values. A client ignores a field it does not know and treats a
+      value it does not know like any other failure with the same status. A
+      request body with a field this document does not name is refused with
+      400 `bad_request`.
+    - Every call but `POST /api/session` carries `Authorization: Bearer <token>`.
+      A missing or wrong token is 401 `unauthorized`. A client keeps the token
+      in memory only.
+    - The `Host` must be `127.0.0.1:<port>` or `localhost:<port>`, with the
+      port the server listens on, or the call is 403 `forbidden_host`. The
+      server's own `Origin` is `http://` and that `Host`. A `PUT` or `POST`
+      must carry it, or it is 403 `forbidden_origin`. A `GET` is held to a
+      weaker rule: an `Origin` that is present must be the server's own, and
+      a `Sec-Fetch-Site` that is present must be `same-origin` or `none`, or it
+      is 403 `forbidden_origin`.
+    - A request with a body must have a `Content-Type` whose media type is
+      `application/json`, with no parameter or with `charset=utf-8`, or it is
+      400 `bad_request`. A method this document does not list for a path is
+      405 `method_not_allowed` with an `Allow` header. An unknown path is 404
+      `not_found`. The server sends no CORS headers and sets no cookies.
+    - Every response carries `X-Konductor-Api: 1` and `Cache-Control: no-store`.
+    - A request body is at most 1 MiB. The `text` of a workflow is at most
+      262144 bytes (256 KiB) of UTF-8, and a `goal` is at most 2048
+      characters. A larger body or text is 413 `too_large`. A longer `goal` is
+      422 `bad_params`. Here and below, a length in characters counts Unicode
+      code points, not bytes or UTF-16 units, as `maxLength` does in JSON
+      Schema.
+    - A failure of the server's own storage is 500 `io_error` with a fixed
+      message. It never contains a path.
+    - An `error`, `message` or `suggestion` never quotes a value that looks
+      like a secret.
+    - A malformed run id in a path is 404 `not_found`, so a client cannot tell
+      a bad id from a missing run.
+    - A `name` that is not a valid workflow name is 400 `bad_name`, whether it
+      is in the query of a `GET` or in the body of a `PUT` or `POST`. A `name`
+      that is left out is the root. A `name` given more than once in a query is
+      400 `bad_name`, and a query parameter other than `name` is ignored.
+
+    **Order of checks.** A call is refused by the first check below that it
+    fails: `Host`, the path (404 `not_found`), the method (405
+    `method_not_allowed`), `Origin` (and `Sec-Fetch-Site`), the bearer token (all but
+    `POST /api/session`), `Content-Type`, body size, the body's shape (JSON,
+    fields, types), `name` format, `name` is the root, `base_hash` format, the
+    workflow text (413 over the limit, then 422 for errors), and last the state
+    of the file or of the run (404, 409). The body's shape includes the `goal`
+    of a run, so a bad `goal` is 422 `bad_params` before anything about the
+    run is looked at. `POST /api/run` has no text in its body: it reads the
+    saved file, so after the body its order is 404 for the file, then 422
+    `invalid_workflow`, then 409 `already_running`, then 409
+    `harness_unavailable`. These orders are normative, so that two servers
+    answer one bad call with one status.
+
+    **Session.** The server is started with a one-time launch code, which
+    whoever started it gives to the client. The server prints a launch address
+    `http://127.0.0.1:<port>/#<code>`, so the code is in the fragment, which
+    the browser never sends to a server. The page reads it from there and
+    removes it from the address bar. The client posts it to `POST /api/session`
+    within 60 seconds of the moment the server prints the launch address, and
+    gets the session token. A code works once, so another session needs a new
+    code. The launch code and the token are each at least
+    128 bits from a secure random source, and the server compares them in
+    constant time. A token is valid until the server stops.
+
+    **Which workflow.** A server is started on one workflow, the `root`
+    that `POST /api/session` returns. Only the root can be loaded, saved,
+    checked and run. `GET /api/workflow` with another `name` is 404
+    `not_found`, and `PUT /api/workflow` or `POST /api/validate` with another
+    `name` is 403 `read_only_workflow`. The root may not have a file yet: a
+    file is created by the first save with a `base_hash` of `null`.
+
+    **The file.** The file is `<name>.yml` in the server's workflow folder. It
+    is opened by that name only. A path that is a link, a directory or any
+    other file that is not a regular file is treated as not there for a
+    reader and as in the way for a writer, in both cases with 404 `not_found`
+    and nothing read or written. So is a file of more than 262144 bytes or one
+    that is not valid UTF-8, which someone may have put there outside the
+    canvas. The server never follows a link, because a repository can hold a
+    link with the name of a workflow. The server writes `text` exactly as it
+    was sent, with no change to its bytes: no byte order mark, no line-ending
+    change, no newline added at the end. The server reads a file the same way:
+    `text` is the file's bytes decoded as UTF-8 with no change, so a line
+    ending stays as it is and a byte order mark stays as the character U+FEFF.
+    This is what lets a `hash` be the hash of the `text` that was sent or
+    loaded.
+
+    **Optimistic concurrency.** `GET /api/workflow` returns the `hash` of the
+    file. `PUT /api/workflow` sends it back as `base_hash`. If the file changed
+    in between, the save is refused with 409 `conflict` and the `current_hash`.
+    A `base_hash` of `null` means the file must not exist yet. If it does, the
+    save is refused with 409 `conflict` and the `current_hash`. Checking
+    `base_hash` and writing are one step with respect to any other save: of two
+    saves with the same `base_hash`, one succeeds and the other is 409
+    `conflict`. With a `base_hash` of `null` the server creates the file
+    exclusively, so it fails if the file exists, even when it was created
+    after the server last looked. A `base_hash`
+    that is a hash, for a file that does not exist (it was deleted outside the
+    canvas), is also 409 `conflict`, with no `current_hash` because there is no
+    file to hash.
+
+    If the answer to a save is lost, the client sends `GET /api/workflow`
+    again. Its own save went through when the `hash` equals the SHA-256 of the
+    text it sent. A `PUT` of text equal to the file's text, with the current
+    hash as `base_hash`, is a 200 and changes nothing. A save is allowed while
+    a run is active, because a run works from a copy of the file taken when it
+    started.
+
+    **How a run goes.** A run is of the root workflow, as saved when
+    `POST /api/run` was called. The stages run one at a time, in the order of
+    the file. Each stage is a fresh `kiro-cli` session for the stage's agent,
+    given the `outcome` of the intent and the `goal` of the run. Stages share
+    the working folder and nothing else: a stage does not see another stage's
+    session. A stage is `passed` when its session ends with exit status 0.
+    Any other end is `blocked`: a non-zero exit status, a session that cannot
+    be started, or an agent id that no agent has, which is not looked up at
+    check time. A blocked stage ends the run as `halted`, with `exit_code` 1
+    in this version. The stages after it stay `pending`. When every stage has
+    passed, the run is `passed` with `exit_code` 0. If the server stops while
+    a run is `running`, the run reads as `halted` after the server starts
+    again: the stage that was running (or the next `pending` one if none was)
+    is `blocked`, `exit_code` is 1, and `finished_at` is the time the server
+    found it. If every stage had `passed`, there is none to block, and the run
+    reads as `passed` with `exit_code` 0. A `running` run is never left
+    behind.
+
+    **Following a run.** Poll `GET /api/runs/{id}` about once a second until
+    `status` is `passed` or `halted`. A finished run stays readable. A client
+    that does not know the `run_id`, such as a second tab, gets it from the
+    409 `already_running` that `POST /api/run` answers while a run is active.
+
+    **Workflow text.** A workflow is one YAML file, `<name>.yml`. The text is
+    YAML 1.2 read with the core schema. So only `true` and `false` (in the
+    forms `true`, `True` and `TRUE`, and the same for `false`) are booleans,
+    `on`, `off`, `yes` and `no` are plain strings, and a plain value that looks
+    like a number is a number. The YAML is a plain subset: one document, no
+    anchors, aliases, merge keys or tags, and only scalar keys. A key that
+    appears twice in one mapping is an error, not a case of the last one
+    winning. The text is a mapping with these keys and no others:
+
+    | Key       | Required | Value                                                                                                  |
+    | --------- | -------- | ------------------------------------------------------------------------------------------------------ |
+    | `version` | no       | The string `'1.1'`, quoted.                                                                             |
+    | `name`    | no       | The workflow name. It defaults to the file name, and when present it must equal it.                    |
+    | `intent`  | yes      | One line of 1 to 300 characters. It may also be a mapping with the one key `outcome` that holds it.    |
+    | `stages`  | yes      | A list of 1 to 40 mappings, in run order. Each has the keys `name` and `agent`, and no others.         |
+
+    A workflow name, a stage name and an agent id match
+    `^[a-z0-9][a-z0-9-]{0,63}$`. A stage name is also not `start`, `end`,
+    `run` or `halt`, and is unique in the workflow. This version does not look
+    up whether an agent exists. The `view` in a response is the parsed text:
+    `intent` is always the mapping form, and `version` is not in it.
+
+    **Check.** A check reads the text and reports every problem it finds, each
+    as a `Diagnostic`. The text has a problem when a diagnostic has severity
+    `error`. This version reports errors only. `errors`, `warnings` and
+    `infos` count the diagnostics of each severity, `summary.valid` is true
+    exactly when `errors` is 0, and `view` is `null` exactly when `errors` is
+    above 0.
+
+    A diagnostic `path` is the key path from the top, joined by dots, with the
+    empty string for the whole text. A stage is addressed by its name, as in
+    `stages.write.agent`, or by its place in the list, as in `stages[1].name`,
+    when its name is missing, malformed or already used. `line` and `column`
+    count from 1. A line ends at `\n`, `\r\n` or a lone `\r`, and a last line
+    with no line break at its end is still a line. A column counts code points,
+    and a tab counts as one. The end position is the first place after the key
+    or value, so it is after the start, except for the two cases in the table
+    that have no width. The position is the key for `UNKNOWN_KEY` and
+    `DUPLICATE_KEY`, the enclosing mapping for `MISSING_KEY` and the value for
+    the other codes. The `file` is `<name>.yml`.
+
+    | Code               | Path                         | Reported when                                                                |
+    | ------------------ | ---------------------------- | ---------------------------------------------------------------------------- |
+    | `YAML_SYNTAX`      | the whole text               | The text is not valid YAML. The position is where the parser found the problem, and the end is the same place. |
+    | `YAML_UNSUPPORTED` | the node                     | The text has an anchor, alias, merge key, tag, a second document or a key that is not a scalar, such as `? [a]`. For a second document, the position is its `---` line and the end is the end of its content. |
+    | `NOT_A_MAPPING`    | the whole text, or the stage | The text, or a stage, is not a mapping. Text that is empty or only blank lines or comments is not a mapping, and its position is line 1, column 1, with the same end. |
+    | `UNKNOWN_KEY`      | the key                      | A mapping has a key that this version does not list. `suggestion` is the listed key with the smallest edit distance (insertions, deletions and substitutions of code points), the first in the table above (for a stage, `name` before `agent`) if two tie, and only when that distance is at most 2. Otherwise it is left out. |
+    | `DUPLICATE_KEY`    | the later key                | A key appears again in a mapping. Two keys are one key when their text is the same: the characters of the key after quotes and escapes are resolved, and before they are read as a number, boolean or null. So `1` and `'1'` are one key, but `true` and `True`, `1`, `1.0` and `0x1`, and `null` and `~` are each different keys. The first is used and the check goes on as if each later one were not there. It is reported once for each later one. An unknown key that is repeated has `UNKNOWN_KEY` at the first and `DUPLICATE_KEY` at each later one. |
+    | `MISSING_KEY`      | the mapping                  | `intent`, `stages`, `outcome`, or a stage's `name` or `agent` is absent.     |
+    | `WRONG_TYPE`       | the value                    | A value is the wrong kind, such as `stages` that is not a list, or a `name`, `agent`, `version` or `intent` that is not a string. A number or a boolean is not a string, so `version: 1.1`, `name: 123` and `name: true` are all this code. |
+    | `INVALID_NAME`     | the value                    | A name or agent id that is a string does not match the pattern above.        |
+    | `RESERVED_NAME`    | the stage's `name`           | A stage is named `start`, `end`, `run` or `halt`.                            |
+    | `DUPLICATE_STAGE`  | the later stage's `name`     | A stage name is already used by an earlier stage.                            |
+    | `NAME_MISMATCH`    | `name`                       | `name` is not the name of the file.                                          |
+    | `INVALID_VALUE`    | the value                    | `version` is a string other than `'1.1'`, `intent` is empty, has a line break or is over 300 characters, or `stages` has no entry or more than 40. |
+servers:
+  - url: http://127.0.0.1:{port}
+    description: |
+      The server binds to the loopback address on a port it chooses and prints
+      when it starts. The port below is a default for tools that need one,
+      and the stub server uses it.
+    variables:
+      port:
+        default: '5174'
+security:
+  - bearerAuth: []
+tags:
+  - name: Session
+    description: Get the token that the other calls need.
+  - name: Workflow
+    description: Load, save and check the workflow file.
+  - name: Run
+    description: Start a run and read its status.
+paths:
+  /api/session:
+    post:
+      operationId: createSession
+      summary: Start a session
+      description: |
+        Exchanges the launch code for the session token that every other call
+        needs. This call needs no token. A code works once, and for 60 seconds from
+        the moment the server prints the launch address.
+      tags: [Session]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionRequest'
+            example:
+              code: EXAMPLE-LAUNCH-CODE
+      responses:
+        '200':
+          headers:
+            X-Konductor-Api:
+              $ref: '#/components/headers/XKonductorApi'
+          description: The session.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+              example:
+                token: EXAMPLE-SESSION-TOKEN
+                root: hello
+                harness: kiro-cli
+                api_version: 1
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          headers:
+            X-Konductor-Api:
+              $ref: '#/components/headers/XKonductorApi'
+          description: The code is wrong, was used already, or has expired.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: The launch code is not valid.
+                code: invalid_code
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowedPost'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+  /api/workflow:
+    get:
+      operationId: getWorkflow
+      summary: Load a workflow
+      description: |
+        Returns the text of a workflow file, its hash and a parsed view for
+        drawing it. The root workflow may not have a file yet, and then `text`,
+        `hash` and `view` are `null`. A `name` other than the root is 404, even
+        when a file of that name exists. So is a root file that is a link, a
+        directory, over 262144 bytes or not valid UTF-8 (see **The file**).
+      tags: [Workflow]
+      parameters:
+        - name: name
+          in: query
+          required: false
+          description: The workflow to open. It defaults to the root.
+          schema:
+            $ref: '#/components/schemas/Name'
+          example: hello
+      responses:
+        '200':
+          headers:
+            X-Konductor-Api:
+              $ref: '#/components/headers/XKonductorApi'
+          description: The workflow.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowDocument'
+              examples:
+                existing:
+                  summary: A saved workflow
+                  value:
+                    name: hello
+                    text: "name: hello\nintent: Add a greeting to the README\nstages:\n  - name: write\n    agent: k-developer\n  - name: review\n    agent: k-quality-assurance\n"
+                    hash: 71683aa25e747b95c805b93ec90f4b18490eef07dd4066e36943d58ba7c5dc8b
+                    read_only: false
+                    view:
+                      name: hello
+                      intent:
+                        outcome: Add a greeting to the README
+                      stages:
+                        - name: write
+                          agent: k-developer
+                        - name: review
+                          agent: k-quality-assurance
+                    diagnostics: []
+                new:
+                  summary: The root, which has no file yet
+                  value:
+                    name: hello
+                    text: null
+                    hash: null
+                    read_only: false
+                    view: null
+                    diagnostics: []
+        '400':
+          headers:
+            X-Konductor-Api:
+              $ref: '#/components/headers/XKonductorApi'
+          description: The `name` is not a valid workflow name.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                badName:
+                  $ref: '#/components/examples/BadNameError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          headers:
+            X-Konductor-Api:
+              $ref: '#/components/headers/XKonductorApi'
+          description: |
+            The `name` is not the root, or the root file is not a plain
+            readable file of at most 262144 bytes of UTF-8.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: There is no workflow with this name.
+                code: not_found
+        '405':
+          $ref: '#/components/responses/MethodNotAllowedGetPut'
+        '500':
+          $ref: '#/components/responses/StorageFailure'
+    put:
+      operationId: saveWorkflow
+      summary: Save a workflow
+      description: |
+        Writes the text of the workflow exactly as sent. The text must pass the
+        same check as `POST /api/validate` with no errors, or nothing is
+        written. The check of `base_hash` and the write are one step (see
+        **Optimistic concurrency**), and the write is atomic. It is refused if
+        the file changed since `base_hash`. If the file is a link, a directory or another file
+        that is not a regular file, or one that `GET /api/workflow` would
+        refuse, the save is 404 `not_found` and nothing is written, so a
+        client cannot overwrite what it could not load.
+      tags: [Workflow]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveRequest'
+            examples:
+              update:
+                summary: Replace the saved text
+                value:
+                  name: hello
+                  text: "name: hello\nintent: Add a greeting to the README and a changelog line\nstages:\n  - name: write\n    agent: k-developer\n  - name: review\n    agent: k-quality-assurance\n"
+                  base_hash: 71683aa25e747b95c805b93ec90f4b18490eef07dd4066e36943d58ba7c5dc8b
+              create:
+                summary: Create the root, which has no file yet
+                value:
+                  name: hello
+                  text: "name: hello\nintent: Add a greeting to the README\nstages:\n  - name: write\n    agent: k-developer\n"
+                  base_hash: null
+              unknownKey:
+                summary: A key this version does not list
+                value:
+                  name: hello
+                  text: "name: hello\nintent: Add a greeting to the README\nowner: me\nstages:\n  - name: write\n    agent: k-developer\n"
+                  base_hash: 71683aa25e747b95c805b93ec90f4b18490eef07dd4066e36943d58ba7c5dc8b
+      responses:
+        '200':
+          headers:
+            X-Konductor-Api:
+              $ref: '#/components/headers/XKonductorApi'
+          description: The workflow was written.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaveResponse'
+              example:
+                hash: 8b078f12e495ee77e017b0e1aade09ba493cc00b3d27b54dd4935e9a6f5cc67e
+                view:
+                  name: hello
+                  intent:
+                    outcome: Add a greeting to the README and a changelog line
+                  stages:
+                    - name: write
+                      agent: k-developer
+                    - name: review
+                      agent: k-quality-assurance
+                diagnostics: []
+        '400':
+          headers:
+            X-Konductor-Api:
+              $ref: '#/components/headers/XKonductorApi'
+          description: |
+            The body is malformed (`bad_request`), `name` is not a valid name
+            (`bad_name`), or `base_hash` is not a hash or `null` (`bad_hash`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                malformed:
+                  $ref: '#/components/examples/BadRequestError'
+                badName:
+                  $ref: '#/components/examples/BadNameError'
+                badHash:
+                  value:
+                    error: base_hash must be 64 hex digits or null.
+                    code: bad_hash
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          headers:
+            X-Konductor-Api:
+              $ref: '#/components/headers/XKonductorApi'
+          description: |
+            The `name` is not the root, so the workflow cannot be written
+            (`read_only_workflow`), or the `Host` or `Origin` is refused.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                readOnly:
+                  $ref: '#/components/examples/ReadOnlyError'
+                foreignOrigin:
+                  value:
+                    error: The Origin header does not match this server.
+                    code: forbidden_origin
+        '404':
+          $ref: '#/components/responses/NotRegularFile'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowedGetPut'
+        '409':
+          headers:
+            X-Konductor-Api:
+              $ref: '#/components/headers/XKonductorApi'
+          description: |
+            The file changed since `base_hash`, or `base_hash` is `null` and
+            the file exists, or `base_hash` is a hash and the file does not
+            exist. `current_hash` is the hash of the file now, and is left out
+            when there is no file.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                changed:
+                  summary: The file changed since base_hash
+                  value:
+                    error: The file changed on disk.
+                    code: conflict
+                    current_hash: 8b078f12e495ee77e017b0e1aade09ba493cc00b3d27b54dd4935e9a6f5cc67e
+                exists:
+                  summary: The file exists, though base_hash is null
+                  value:
+                    error: The file already exists.
+                    code: conflict
+                    current_hash: 8b078f12e495ee77e017b0e1aade09ba493cc00b3d27b54dd4935e9a6f5cc67e
+                deleted:
+                  summary: The file is gone, so there is no current_hash
+                  value:
+                    error: The file no longer exists.
+                    code: conflict
+        '413':
+          $ref: '#/components/responses/TooLarge'
+        '422':
+          $ref: '#/components/responses/InvalidWorkflow'
+        '500':
+          $ref: '#/components/responses/StorageFailure'
+  /api/validate:
+    post:
+      operationId: checkWorkflow
+      summary: Check a workflow
+      description: |
+        Checks workflow text that the caller holds, saved or not, and returns
+        what a person needs to fix. Writes nothing. A text with problems is a
+        normal 200 answer: read `errors` and `diagnostics`.
+      tags: [Workflow]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckRequest'
+            examples:
+              valid:
+                summary: A text with no problems
+                value:
+                  name: hello
+                  text: "name: hello\nintent: Add a greeting to the README\nstages:\n  - name: write\n    agent: k-developer\n"
+              duplicateStage:
+                summary: Two stages with one name
+                value:
+                  name: hello
+                  text: "name: hello\nintent: Add a greeting to the README\nstages:\n  - name: write\n    agent: k-developer\n  - name: write\n    agent: k-quality-assurance\n"
+              duplicateKey:
+                summary: One key twice in a mapping
+                value:
+                  name: hello
+                  text: "name: hello\nintent: Add a greeting to the README\nintent: Add a changelog line\nstages:\n  - name: write\n    agent: k-developer\n"
+              unknownKeyTwice:
+                summary: An unknown key that is repeated
+                value:
+                  name: hello
+                  text: "name: hello\nowner: me\nintent: Add a greeting to the README\nowner: you\nstages:\n  - name: write\n    agent: k-developer\n"
+              distinctKeys:
+                summary: Keys with different text are different keys
+                value:
+                  name: hello
+                  text: "name: hello\nintent: Add a greeting to the README\nTrue: a\ntrue: b\n1.0: c\n1: d\nstages:\n  - name: write\n    agent: k-developer\n"
+      responses:
+        '200':
+          headers:
+            X-Konductor-Api:
+              $ref: '#/components/headers/XKonductorApi'
+          description: The result of the check.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckResponse'
+              examples:
+                valid:
+                  summary: A text with no problems
+                  value:
+                    errors: 0
+                    warnings: 0
+                    infos: 0
+                    view:
+                      name: hello
+                      intent:
+                        outcome: Add a greeting to the README
+                      stages:
+                        - name: write
+                          agent: k-developer
+                    diagnostics: []
+                    summary:
+                      valid: true
+                      counts:
+                        stages: 1
+                duplicateStage:
+                  summary: Two stages with one name
+                  value:
+                    errors: 1
+                    warnings: 0
+                    infos: 0
+                    view: null
+                    diagnostics:
+                      - code: DUPLICATE_STAGE
+                        severity: error
+                        file: hello.yml
+                        path: stages[1].name
+                        line: 6
+                        column: 11
+                        end_line: 6
+                        end_column: 16
+                        message: The stage name `write` is already used.
+                    summary:
+                      valid: false
+                      counts:
+                        stages: 0
+                duplicateKey:
+                  summary: One key twice in a mapping
+                  value:
+                    errors: 1
+                    warnings: 0
+                    infos: 0
+                    view: null
+                    diagnostics:
+                      - code: DUPLICATE_KEY
+                        severity: error
+                        file: hello.yml
+                        path: intent
+                        line: 3
+                        column: 1
+                        end_line: 3
+                        end_column: 7
+                        message: The key `intent` is already used.
+                    summary:
+                      valid: false
+                      counts:
+                        stages: 0
+                unknownKeyTwice:
+                  summary: An unknown key that is repeated
+                  value:
+                    errors: 2
+                    warnings: 0
+                    infos: 0
+                    view: null
+                    diagnostics:
+                      - code: UNKNOWN_KEY
+                        severity: error
+                        file: hello.yml
+                        path: owner
+                        line: 2
+                        column: 1
+                        end_line: 2
+                        end_column: 6
+                        message: Unknown key `owner`.
+                      - code: DUPLICATE_KEY
+                        severity: error
+                        file: hello.yml
+                        path: owner
+                        line: 4
+                        column: 1
+                        end_line: 4
+                        end_column: 6
+                        message: The key `owner` is already used.
+                    summary:
+                      valid: false
+                      counts:
+                        stages: 0
+                distinctKeys:
+                  summary: Keys with different text are different keys
+                  value:
+                    errors: 4
+                    warnings: 0
+                    infos: 0
+                    view: null
+                    diagnostics:
+                      - code: UNKNOWN_KEY
+                        severity: error
+                        file: hello.yml
+                        path: 'True'
+                        line: 3
+                        column: 1
+                        end_line: 3
+                        end_column: 5
+                        message: Unknown key `True`.
+                      - code: UNKNOWN_KEY
+                        severity: error
+                        file: hello.yml
+                        path: 'true'
+                        line: 4
+                        column: 1
+                        end_line: 4
+                        end_column: 5
+                        message: Unknown key `true`.
+                      - code: UNKNOWN_KEY
+                        severity: error
+                        file: hello.yml
+                        path: '1.0'
+                        line: 5
+                        column: 1
+                        end_line: 5
+                        end_column: 4
+                        message: Unknown key `1.0`.
+                      - code: UNKNOWN_KEY
+                        severity: error
+                        file: hello.yml
+                        path: '1'
+                        line: 6
+                        column: 1
+                        end_line: 6
+                        end_column: 2
+                        message: Unknown key `1`.
+                    summary:
+                      valid: false
+                      counts:
+                        stages: 0
+        '400':
+          headers:
+            X-Konductor-Api:
+              $ref: '#/components/headers/XKonductorApi'
+          description: |
+            The body is malformed (`bad_request`), or `name` is not a valid
+            name (`bad_name`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                malformed:
+                  $ref: '#/components/examples/BadRequestError'
+                badName:
+                  $ref: '#/components/examples/BadNameError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          headers:
+            X-Konductor-Api:
+              $ref: '#/components/headers/XKonductorApi'
+          description: |
+            The `name` is not the root (`read_only_workflow`), or the `Host` or
+            `Origin` is refused.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                readOnly:
+                  $ref: '#/components/examples/ReadOnlyError'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowedPost'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+        '500':
+          $ref: '#/components/responses/StorageFailure'
+  /api/run:
+    post:
+      operationId: startRun
+      summary: Start a run
+      description: |
+        Starts a run of the root workflow and returns at once with its id.
+        The run works from the file as last saved, so a client saves first. A
+        save after this call does not change the run. Follow the run with
+        `GET /api/runs/{id}`. Only one run can be active at a time. See **How
+        a run goes** for what the run does.
+      tags: [Run]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RunRequest'
+            example:
+              params:
+                goal: Add a greeting to the README
+      responses:
+        '202':
+          headers:
+            X-Konductor-Api:
+              $ref: '#/components/headers/XKonductorApi'
+          description: The run was accepted and has started.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunStarted'
+              example:
+                run_id: 20261024-0412-a7b3c
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          headers:
+            X-Konductor-Api:
+              $ref: '#/components/headers/XKonductorApi'
+          description: |
+            The root workflow has not been saved yet, so there is nothing to
+            run, or its file is not a plain readable file of at most 262144
+            bytes of UTF-8 (see **The file**).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: The workflow has not been saved yet.
+                code: not_found
+        '405':
+          $ref: '#/components/responses/MethodNotAllowedPost'
+        '409':
+          headers:
+            X-Konductor-Api:
+              $ref: '#/components/headers/XKonductorApi'
+          description: |
+            Another run is active (`already_running`, with the `run_id` of
+            that run), or a stage needs a harness that is not installed or not
+            signed in (`harness_unavailable`, with `fix` saying what to do).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                busy:
+                  value:
+                    error: A run is already active.
+                    code: already_running
+                    run_id: 20261024-0412-a7b3c
+                missingHarness:
+                  value:
+                    error: kiro-cli is not installed.
+                    code: harness_unavailable
+                    fix: Install kiro-cli and sign in, then try again.
+        '413':
+          $ref: '#/components/responses/TooLarge'
+        '422':
+          headers:
+            X-Konductor-Api:
+              $ref: '#/components/headers/XKonductorApi'
+          description: |
+            The saved workflow has errors (`invalid_workflow`, with
+            `diagnostics`), or `params` is missing a `goal`, has another key,
+            or has a `goal` over 2048 characters (`bad_params`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                invalid:
+                  $ref: '#/components/examples/InvalidWorkflowError'
+                missingGoal:
+                  value:
+                    error: The run needs a goal.
+                    code: bad_params
+                goalTooLong:
+                  value:
+                    error: The goal is longer than 2048 characters.
+                    code: bad_params
+        '500':
+          $ref: '#/components/responses/StorageFailure'
+  /api/runs/{id}:
+    get:
+      operationId: getRun
+      summary: Get the status of a run
+      description: |
+        Returns the state of a run, live or finished. Poll this about once a
+        second until the run `status` is `passed` or `halted`.
+      tags: [Run]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The `run_id` that `POST /api/run` returned.
+          schema:
+            $ref: '#/components/schemas/RunId'
+          example: 20261024-0412-a7b3c
+      responses:
+        '200':
+          headers:
+            X-Konductor-Api:
+              $ref: '#/components/headers/XKonductorApi'
+          description: The run.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunStatusResponse'
+              examples:
+                running:
+                  summary: The second stage is running
+                  value:
+                    run:
+                      run_id: 20261024-0412-a7b3c
+                      workflow: hello
+                      harness: kiro-cli
+                      status: running
+                      started_at: '2026-10-24T04:12:05Z'
+                      finished_at: null
+                      exit_code: null
+                      order: [write, review]
+                      stages:
+                        write:
+                          status: passed
+                        review:
+                          status: running
+                passed:
+                  summary: Every stage passed
+                  value:
+                    run:
+                      run_id: 20261024-0412-a7b3c
+                      workflow: hello
+                      harness: kiro-cli
+                      status: passed
+                      started_at: '2026-10-24T04:12:05Z'
+                      finished_at: '2026-10-24T04:13:41Z'
+                      exit_code: 0
+                      order: [write, review]
+                      stages:
+                        write:
+                          status: passed
+                        review:
+                          status: passed
+                halted:
+                  summary: A stage failed, so the run stopped
+                  value:
+                    run:
+                      run_id: 20261024-0412-a7b3c
+                      workflow: hello
+                      harness: kiro-cli
+                      status: halted
+                      started_at: '2026-10-24T04:12:05Z'
+                      finished_at: '2026-10-24T04:12:49Z'
+                      exit_code: 1
+                      order: [write, review]
+                      stages:
+                        write:
+                          status: blocked
+                        review:
+                          status: pending
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          headers:
+            X-Konductor-Api:
+              $ref: '#/components/headers/XKonductorApi'
+          description: There is no run with this id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: There is no run with this id.
+                code: not_found
+        '405':
+          $ref: '#/components/responses/MethodNotAllowedGet'
+        '500':
+          $ref: '#/components/responses/StorageFailure'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: The session token that `POST /api/session` returned.
+  headers:
+    XKonductorApi:
+      description: The major version of this contract that the server implements.
+      schema:
+        type: string
+        const: '1'
+    AllowGet:
+      description: The methods the path accepts, separated by commas.
+      schema:
+        type: string
+      example: GET
+    AllowPost:
+      description: The methods the path accepts, separated by commas.
+      schema:
+        type: string
+      example: POST
+    AllowGetPut:
+      description: The methods the path accepts, separated by commas.
+      schema:
+        type: string
+      example: GET, PUT
+  responses:
+    MethodNotAllowedGet:
+      headers:
+        X-Konductor-Api:
+          $ref: '#/components/headers/XKonductorApi'
+        Allow:
+          $ref: '#/components/headers/AllowGet'
+      description: The path exists, but not for this method. `Allow` lists the methods it does accept.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            methodNotAllowed:
+              $ref: '#/components/examples/MethodNotAllowedError'
+    MethodNotAllowedPost:
+      headers:
+        X-Konductor-Api:
+          $ref: '#/components/headers/XKonductorApi'
+        Allow:
+          $ref: '#/components/headers/AllowPost'
+      description: The path exists, but not for this method. `Allow` lists the methods it does accept.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            methodNotAllowed:
+              $ref: '#/components/examples/MethodNotAllowedError'
+    MethodNotAllowedGetPut:
+      headers:
+        X-Konductor-Api:
+          $ref: '#/components/headers/XKonductorApi'
+        Allow:
+          $ref: '#/components/headers/AllowGetPut'
+      description: The path exists, but not for this method. `Allow` lists the methods it does accept.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            methodNotAllowed:
+              $ref: '#/components/examples/MethodNotAllowedError'
+    Unauthorized:
+      headers:
+        X-Konductor-Api:
+          $ref: '#/components/headers/XKonductorApi'
+      description: The bearer token is missing or wrong.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: The session token is missing or wrong.
+            code: unauthorized
+    Forbidden:
+      headers:
+        X-Konductor-Api:
+          $ref: '#/components/headers/XKonductorApi'
+      description: The `Host` or `Origin` header is refused.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: The Host header does not match this server.
+            code: forbidden_host
+    TooLarge:
+      headers:
+        X-Konductor-Api:
+          $ref: '#/components/headers/XKonductorApi'
+      description: The body, or the workflow text, is over the size limit.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: The request body is too large.
+            code: too_large
+    InvalidWorkflow:
+      headers:
+        X-Konductor-Api:
+          $ref: '#/components/headers/XKonductorApi'
+      description: The text has errors, so nothing was written.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            invalid:
+              $ref: '#/components/examples/InvalidWorkflowError'
+    BadRequest:
+      headers:
+        X-Konductor-Api:
+          $ref: '#/components/headers/XKonductorApi'
+      description: The body is malformed.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            malformed:
+              $ref: '#/components/examples/BadRequestError'
+    StorageFailure:
+      headers:
+        X-Konductor-Api:
+          $ref: '#/components/headers/XKonductorApi'
+      description: The server could not read or write its files.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: The server could not read or write its files.
+            code: io_error
+    NotRegularFile:
+      headers:
+        X-Konductor-Api:
+          $ref: '#/components/headers/XKonductorApi'
+      description: |
+        The root file is a link, a directory, over 262144 bytes or not valid
+        UTF-8, so nothing was written (see **The file**).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: The workflow file cannot be used.
+            code: not_found
+  examples:
+    MethodNotAllowedError:
+      summary: The path does not accept the method
+      value:
+        error: This path does not accept that method.
+        code: method_not_allowed
+    BadNameError:
+      summary: The name is not a valid workflow name
+      value:
+        error: The workflow name is not valid.
+        code: bad_name
+    BadRequestError:
+      summary: The body is not valid JSON, has an unknown field, or has the wrong content type
+      value:
+        error: The request body is not valid.
+        code: bad_request
+    ReadOnlyError:
+      summary: The workflow is not the root
+      value:
+        error: This workflow is read-only.
+        code: read_only_workflow
+    InvalidWorkflowError:
+      summary: The text has an error
+      value:
+        error: The workflow has errors.
+        code: invalid_workflow
+        diagnostics:
+          - code: UNKNOWN_KEY
+            severity: error
+            file: hello.yml
+            path: owner
+            line: 3
+            column: 1
+            end_line: 3
+            end_column: 6
+            message: Unknown key `owner`.
+  schemas:
+    Name:
+      type: string
+      pattern: '^[a-z0-9][a-z0-9-]{0,63}$'
+      description: A workflow name or an agent id.
+      examples: [hello, k-developer]
+    StageName:
+      description: |
+        Unique within the workflow. `start`, `end`, `run` and `halt` are
+        reserved.
+      allOf:
+        - $ref: '#/components/schemas/Name'
+        - not:
+            enum: [start, end, run, halt]
+      examples: [write]
+    Hash:
+      type: string
+      pattern: '^[0-9a-f]{64}$'
+      description: The SHA-256 of a file's bytes.
+    RunId:
+      type: string
+      pattern: '^[0-9]{8}-[0-9]{4}-[a-z0-9]{5}$'
+      description: |
+        Made by the server and unique. A client treats it as opaque and does
+        not read meaning into its parts. The pattern holds in this version, so
+        that a malformed id in a path can be told from a missing run, and only
+        a new major version changes it.
+      examples: [20261024-0412-a7b3c]
+    Stage:
+      type: object
+      required: [name, agent]
+      description: One unit of work, done by one agent in a fresh session.
+      properties:
+        name:
+          $ref: '#/components/schemas/StageName'
+        agent:
+          $ref: '#/components/schemas/Name'
+    Intent:
+      type: object
+      required: [outcome]
+      description: What the run is for.
+      properties:
+        outcome:
+          type: string
+          minLength: 1
+          maxLength: 300
+          pattern: '^[^\r\n]*$'
+          description: One line saying what must be true when the run is done.
+    WorkflowView:
+      type: object
+      required: [name, intent, stages]
+      description: |
+        The parsed workflow, ready to draw. In the file the `intent` may be
+        written as a plain string, which means `{ outcome: <string> }`. The view
+        always has the object form.
+      properties:
+        name:
+          $ref: '#/components/schemas/Name'
+        intent:
+          $ref: '#/components/schemas/Intent'
+        stages:
+          type: array
+          minItems: 1
+          maxItems: 40
+          description: The stages, in run order.
+          items:
+            $ref: '#/components/schemas/Stage'
+    Severity:
+      type: string
+      enum: [error, warning, info]
+    DiagnosticCode:
+      type: string
+      description: |
+        A stable code. The table in the description of this API says when each
+        is reported. A later release may add codes, so a client treats an
+        unknown code as a problem of the severity given.
+      enum:
+        - YAML_SYNTAX
+        - YAML_UNSUPPORTED
+        - NOT_A_MAPPING
+        - UNKNOWN_KEY
+        - DUPLICATE_KEY
+        - MISSING_KEY
+        - WRONG_TYPE
+        - INVALID_NAME
+        - RESERVED_NAME
+        - DUPLICATE_STAGE
+        - NAME_MISMATCH
+        - INVALID_VALUE
+    Diagnostic:
+      type: object
+      required:
+        [
+          code,
+          severity,
+          file,
+          path,
+          line,
+          column,
+          end_line,
+          end_column,
+          message,
+        ]
+      description: One finding of the check, with its place in the text.
+      properties:
+        code:
+          $ref: '#/components/schemas/DiagnosticCode'
+        severity:
+          $ref: '#/components/schemas/Severity'
+        file:
+          type: string
+          description: The file name, such as `hello.yml`.
+        path:
+          type: string
+          description: |
+            The key path, such as `stages.write.agent`. It is the empty string
+            for the whole text.
+        line:
+          type: integer
+          minimum: 1
+          description: Line where the key or value starts, counted from 1.
+        column:
+          type: integer
+          minimum: 1
+          description: Column where the key or value starts, counted from 1.
+        end_line:
+          type: integer
+          minimum: 1
+          description: Line of the first place after the key or value.
+        end_column:
+          type: integer
+          minimum: 1
+          description: Column of the first place after the key or value.
+        message:
+          type: string
+          description: A sentence for a person.
+        suggestion:
+          type: string
+          description: A replacement for the text at the position.
+    CheckSummary:
+      type: object
+      required: [valid, counts]
+      description: The result of a check in a form the page can show at once.
+      properties:
+        valid:
+          type: boolean
+          description: True exactly when `errors` is 0.
+        counts:
+          type: object
+          required: [stages]
+          properties:
+            stages:
+              type: integer
+              minimum: 0
+              description: The number of stages in `view`, or 0 when `view` is `null`.
+    WorkflowDocument:
+      type: object
+      required: [name, text, hash, read_only, view, diagnostics]
+      description: A workflow file as stored.
+      properties:
+        name:
+          $ref: '#/components/schemas/Name'
+        text:
+          type: [string, 'null']
+          description: The file text exactly as stored, or `null` if the file does not exist yet.
+        hash:
+          oneOf:
+            - $ref: '#/components/schemas/Hash'
+            - type: 'null'
+          description: Send this back as `base_hash` when saving. `null` if the file does not exist yet.
+        read_only:
+          type: boolean
+          description: True when the file cannot be saved. This version loads only the root, so it is always `false`.
+        view:
+          oneOf:
+            - $ref: '#/components/schemas/WorkflowView'
+            - type: 'null'
+          description: '`null` if there is no text or the check of the text reports an error.'
+        diagnostics:
+          type: array
+          description: The result of checking the stored text. It is empty if there is no text.
+          items:
+            $ref: '#/components/schemas/Diagnostic'
+    SessionRequest:
+      type: object
+      additionalProperties: false
+      required: [code]
+      properties:
+        code:
+          type: string
+          minLength: 1
+          maxLength: 256
+          description: The launch code.
+    SessionResponse:
+      type: object
+      required: [token, root, harness, api_version]
+      properties:
+        token:
+          type: string
+          minLength: 1
+          description: Send this as the bearer token on every other call.
+        root:
+          $ref: '#/components/schemas/Name'
+        harness:
+          $ref: '#/components/schemas/Harness'
+        api_version:
+          type: integer
+          minimum: 1
+          description: The major version of this contract. It is `1`, as in `X-Konductor-Api`.
+    SaveRequest:
+      type: object
+      additionalProperties: false
+      required: [text, base_hash]
+      properties:
+        name:
+          $ref: '#/components/schemas/Name'
+          description: The workflow to save. It defaults to the root.
+        text:
+          type: string
+          description: The whole file text, at most 262144 bytes.
+        base_hash:
+          oneOf:
+            - $ref: '#/components/schemas/Hash'
+            - type: 'null'
+          description: The `hash` from `GET /api/workflow`, or `null` to create the file.
+    SaveResponse:
+      type: object
+      required: [hash, view, diagnostics]
+      properties:
+        hash:
+          $ref: '#/components/schemas/Hash'
+          description: The hash of the text that was written.
+        view:
+          $ref: '#/components/schemas/WorkflowView'
+        diagnostics:
+          type: array
+          description: Warnings and infos. A saved text has no errors.
+          items:
+            $ref: '#/components/schemas/Diagnostic'
+    CheckRequest:
+      type: object
+      additionalProperties: false
+      required: [text]
+      properties:
+        name:
+          $ref: '#/components/schemas/Name'
+          description: |
+            The workflow the text is for. It defaults to the root. The check
+            compares it with the `name` key of the text.
+        text:
+          type: string
+          description: The whole file text, at most 262144 bytes.
+    CheckResponse:
+      type: object
+      required: [errors, warnings, infos, view, diagnostics, summary]
+      properties:
+        errors:
+          type: integer
+          minimum: 0
+          description: The number of diagnostics with severity `error`.
+        warnings:
+          type: integer
+          minimum: 0
+          description: The number of diagnostics with severity `warning`.
+        infos:
+          type: integer
+          minimum: 0
+          description: The number of diagnostics with severity `info`.
+        view:
+          oneOf:
+            - $ref: '#/components/schemas/WorkflowView'
+            - type: 'null'
+          description: '`null` when `errors` is above 0.'
+        diagnostics:
+          type: array
+          description: Every finding, in the order of the text.
+          items:
+            $ref: '#/components/schemas/Diagnostic'
+        summary:
+          $ref: '#/components/schemas/CheckSummary'
+    RunRequest:
+      type: object
+      additionalProperties: false
+      required: [params]
+      properties:
+        params:
+          type: object
+          additionalProperties: false
+          required: [goal]
+          description: The inputs of the run.
+          properties:
+            goal:
+              type: string
+              minLength: 1
+              maxLength: 2048
+              description: What the run should achieve, at most 2048 characters. Every stage is given it.
+    RunStarted:
+      type: object
+      required: [run_id]
+      properties:
+        run_id:
+          $ref: '#/components/schemas/RunId'
+    Harness:
+      type: string
+      enum: [kiro-cli]
+      description: The tool that runs each stage's agent.
+    StageStatus:
+      type: string
+      enum: [pending, running, passed, blocked]
+      description: |
+        `pending` has not started. `running` is in progress. `passed` finished
+        well. `blocked` failed and stopped the run.
+    RunStage:
+      type: object
+      required: [status]
+      properties:
+        status:
+          $ref: '#/components/schemas/StageStatus'
+    Timestamp:
+      type: string
+      format: date-time
+      pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$'
+      description: A UTC time to the whole second, ending in `Z`.
+      examples: ['2026-10-24T04:12:05Z']
+    RunStatus:
+      type: string
+      enum: [running, passed, halted]
+      description: '`halted` means a stage failed and the run stopped.'
+    Run:
+      type: object
+      required:
+        [
+          run_id,
+          workflow,
+          harness,
+          status,
+          started_at,
+          finished_at,
+          exit_code,
+          order,
+          stages,
+        ]
+      description: |
+        The state of a run. These hold in every response:
+
+        - `order` holds the keys of `stages`, each once.
+        - The stages run in `order`. A stage is `passed` before the one that is
+          `running` or `blocked`, and `pending` after it. At most one stage is
+          `running`.
+        - A `running` run has no `finished_at` or `exit_code`.
+        - A `passed` run has every stage `passed` and `exit_code` 0.
+        - A `halted` run has exactly one stage `blocked` and `exit_code` above 0.
+      properties:
+        run_id:
+          $ref: '#/components/schemas/RunId'
+        workflow:
+          $ref: '#/components/schemas/Name'
+        harness:
+          $ref: '#/components/schemas/Harness'
+        status:
+          $ref: '#/components/schemas/RunStatus'
+        started_at:
+          $ref: '#/components/schemas/Timestamp'
+        finished_at:
+          oneOf:
+            - $ref: '#/components/schemas/Timestamp'
+            - type: 'null'
+          description: '`null` while the run is `running`.'
+        exit_code:
+          type: [integer, 'null']
+          description: |
+            `0` when the run passed, and `null` while it is `running`. When it
+            halted it is `1` in this version: a stage was blocked. A later
+            version may use other values above 0, so a client treats any value
+            above 0 as a halt.
+        order:
+          type: array
+          items:
+            $ref: '#/components/schemas/StageName'
+          description: The stage names, in run order.
+        stages:
+          type: object
+          propertyNames:
+            $ref: '#/components/schemas/StageName'
+          additionalProperties:
+            $ref: '#/components/schemas/RunStage'
+          description: The state of each stage, by stage name.
+      allOf:
+        - if:
+            properties:
+              status:
+                const: running
+          then:
+            properties:
+              finished_at:
+                type: 'null'
+              exit_code:
+                type: 'null'
+        - if:
+            properties:
+              status:
+                const: passed
+          then:
+            properties:
+              finished_at:
+                type: string
+              exit_code:
+                const: 0
+        - if:
+            properties:
+              status:
+                const: halted
+          then:
+            properties:
+              finished_at:
+                type: string
+              exit_code:
+                type: integer
+                minimum: 1
+    RunStatusResponse:
+      type: object
+      required: [run]
+      properties:
+        run:
+          $ref: '#/components/schemas/Run'
+    ErrorCode:
+      type: string
+      description: |
+        A stable code to branch on. A later release may add codes, so a client
+        treats an unknown code like any other failure with the same status.
+      enum:
+        - bad_request
+        - bad_name
+        - bad_hash
+        - unauthorized
+        - invalid_code
+        - forbidden_host
+        - forbidden_origin
+        - read_only_workflow
+        - not_found
+        - method_not_allowed
+        - conflict
+        - already_running
+        - harness_unavailable
+        - too_large
+        - invalid_workflow
+        - bad_params
+        - io_error
+    Error:
+      type: object
+      required: [error, code]
+      description: |
+        The body of every error response. A client reads `code` and shows
+        `error` to a person. The extra fields depend on the code and are named
+        where the code is described.
+      properties:
+        error:
+          type: string
+          description: A sentence for a person.
+        code:
+          $ref: '#/components/schemas/ErrorCode'
+        current_hash:
+          $ref: '#/components/schemas/Hash'
+          description: With `conflict`, when the file exists. The hash of the file now.
+        run_id:
+          $ref: '#/components/schemas/RunId'
+          description: With `already_running`. The run that is active.
+        diagnostics:
+          type: array
+          description: With `invalid_workflow`.
+          items:
+            $ref: '#/components/schemas/Diagnostic'
+        fix:
+          type: string
+          description: With `harness_unavailable`. What to do about it.
