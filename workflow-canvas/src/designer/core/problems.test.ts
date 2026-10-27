@@ -6,9 +6,11 @@ import {
   errorsOf,
   hasErrors,
   joinMessages,
+  listedOf,
   notesOf,
   problemsFor,
   problemsOf,
+  withEchoes,
 } from './problems';
 
 const DRAFT = draftOf([
@@ -50,6 +52,71 @@ describe('problemsOf', () => {
     const [problem] = problemsOf([finding(path)], DRAFT);
 
     expect(problem).toEqual({ message: 'Wrong.', severity: 'error' });
+  });
+});
+
+describe('a stage name that two stages share', () => {
+  const draft = draftOf([
+    { name: 'review', agent: 'k-developer' },
+    { name: 'review', agent: 'k-tpm' },
+  ]);
+  const duplicate = finding(
+    'stages[1].name',
+    'The stage name `review` is already used.',
+  );
+  const echoed = (diagnostics: DiagnosticView[], of = draft) =>
+    withEchoes(problemsOf(diagnostics, of), of);
+
+  it('marks the name field of the earlier stage too, not only that of the later one the server names', () => {
+    const problems = echoed([duplicate]);
+
+    expect(problemsFor(problems, 's2', 'name')).toHaveLength(1);
+    expect(problemsFor(problems, 's1', 'name').map((p) => p.message)).toEqual([
+      duplicate.message,
+    ]);
+  });
+
+  it('marks no other field of the earlier stage', () => {
+    expect(problemsFor(echoed([duplicate]), 's1', 'agent')).toEqual([]);
+  });
+
+  it('is still one problem in a list, so the list says it once', () => {
+    expect(listedOf(echoed([duplicate])).map((p) => p.stageId)).toEqual(['s2']);
+  });
+
+  it('copies nothing to a later stage that has the name', () => {
+    expect(
+      withEchoes(problemsOf([finding('stages[0].name')], draft), draft),
+    ).toHaveLength(1);
+  });
+
+  it('does not repeat a message on a stage that has a finding of its own', () => {
+    const problems = echoed([
+      finding('stages[0].name', 'Wrong.'),
+      finding('stages[1].name', 'Wrong.'),
+    ]);
+
+    expect(problemsFor(problems, 's1', 'name')).toHaveLength(1);
+    expect(problemsFor(problems, 's2', 'name')).toHaveLength(1);
+  });
+
+  it('joins the same message once when several stages repeat a name', () => {
+    const three = draftOf([
+      { name: 'review', agent: 'k-developer' },
+      { name: 'review', agent: 'k-developer' },
+      { name: 'review', agent: 'k-developer' },
+    ]);
+    const problems = echoed(
+      [
+        duplicate,
+        finding('stages[2].name', 'The stage name `review` is already used.'),
+      ],
+      three,
+    );
+
+    expect(joinMessages(problemsFor(problems, 's1', 'name'))).toBe(
+      duplicate.message,
+    );
   });
 });
 
