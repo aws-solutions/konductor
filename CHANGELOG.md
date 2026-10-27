@@ -72,8 +72,9 @@ not per individual commit.
   named by `WC_API_TARGET`. Each node shows its live state as a word and a colour from the theme
   (queued, running, done, failed), the end shows the result, and the tab says where the run is in
   a live region for screen readers. An error from the API shows in one alert that a screen reader
-  reads out. A failed read is tried again, and a 409 `already_running` (for example after a page
-  reload) makes the tab follow the run that is already going. A call that gets no answer ends
+  reads out. A failed read is tried again, and a 409 `already_running` makes the tab follow the run that
+  is already going. After a reload, when the launch address is opened again, the tab follows a
+  run that is still going, from the id it keeps in `sessionStorage`. A call that gets no answer ends
   after 15 seconds. The run logic is an IO-free core with a clock port, tested without waiting,
   and the end-to-end tests and screenshots cover a run on the stub.
 
