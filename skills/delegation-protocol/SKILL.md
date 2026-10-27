@@ -139,13 +139,20 @@ agents, from the same task or different tasks, to collide in the same tree.
 The write agent itself provisions or reuses the named target using its own
 shell/file tools — not the orchestrator — on either runtime.
 
+Parallel write agents MUST own disjoint files. Before spawning two or
+more write agents at once, list the files each one will edit. If a
+file appears in more than one list (a shared router, an `index.ts`, a
+registry), give that file to one agent, or run the parts that touch it
+in sequence. Separate worktrees do not prevent this: both edits
+conflict at merge, or one is lost.
+
 For dispatch into a separate, visible pane or surface rather than an
 in-session subagent call, see `claude-teams-behavior` (Claude Code Agent
 Teams), `mux-dispatch` (tmux/zellij), or `cmux-dispatch` (cmux) for the
 dispatch-method-specific steps. `mux-dispatch` and `cmux-dispatch` each
 detect and drive Kiro CLI the same as Claude Code, so Kiro CLI is already
 covered there; for a plain in-session `subagent`/`Agent()` call with no
-multiplexer, the two paragraphs above are the complete procedure on either
+multiplexer, the three paragraphs above are the complete procedure on either
 runtime and no separate skill is needed.
 
 Examples of parallelizable work:
@@ -173,15 +180,15 @@ After code changes, run the maker-checker cycle:
 1. Get the git diff of all changes
 2. Spawn the appropriate reviewer agent (e.g., `k-developer` with `backend-review` or `frontend-review`)
 3. Address all CRITICAL findings
-4. Re-review — max 2 review cycles total
-5. If CRITICAL findings persist after 2 cycles, escalate to the user
+4. Re-review, with at most 2 fix attempts per artifact (rule 5 under Orchestration Rules in your orchestrator prompt). If both failed on the same error, apply the 2-Strike Circuit Breaker. Otherwise escalate to the user.
 
 ## Failure Recovery
 
-- If a subagent fails, retry once with additional CONTEXT explaining the failure
+This section covers failed spawns: the spawn errors, times out, or the subagent returns nothing. For output that fails verification, follow rule 5 under Orchestration Rules instead.
+
+- If a spawn fails, retry once with additional CONTEXT explaining the failure
 - If the retry fails, escalate to the user with: what was attempted, what failed, and the root cause
-- Never retry more than once — 2-strike circuit breaker applies
-- If a subagent times out, check `.konductor/handoff/` for partial output before retrying
+- If a subagent times out, check `.konductor/handoff/` for partial output. Verify any partial output under rule 5; retry the spawn only if there is none.
 
 ## Quality Gate
 

@@ -267,7 +267,7 @@ pub(crate) fn skill_names_from_dependencies(
 /// but not preloaded as a resource is a normal, intentional shape).
 ///
 /// Scope: this check governs `cli/konductor-rs`'s OWN build/install
-/// pipeline for `ASDLCCoreAICapabilities`'s external-customer CLI
+/// pipeline for this repository's external-customer CLI
 /// installs. It is unrelated to, and does not supersede, any downstream
 /// internal package's own separate AIM-based install pipeline, where
 /// `dependencies.skills.skillNames` may already be load-bearing via a
