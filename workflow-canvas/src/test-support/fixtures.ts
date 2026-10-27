@@ -5,6 +5,7 @@ import type {
   WorkflowDocument,
   WorkflowView,
 } from '../api/types';
+import type { EditPort } from '../designer/core';
 import type { RunPort } from '../execution/core';
 import type { LoadResult } from '../workflow/load-workflow';
 
@@ -49,12 +50,23 @@ export const NO_RUNS: RunPort = {
   get: () => Promise.reject(new Error('This test reads no run.')),
 };
 
+/** Edit calls that are never used, for a test that edits nothing. */
+export const NO_EDITS: EditPort = {
+  save: () => Promise.reject(new Error('This test saves nothing.')),
+  check: () => Promise.reject(new Error('This test checks nothing.')),
+  reload: () => Promise.reject(new Error('This test loads nothing again.')),
+};
+
 /** A load that succeeded with the document. */
 export function loaded(
   document: WorkflowDocument,
   runs: RunPort = NO_RUNS,
+  edits: EditPort = NO_EDITS,
 ): LoadResult {
-  return { ok: true, workflow: { harness: 'kiro-cli', document, runs } };
+  return {
+    ok: true,
+    workflow: { harness: 'kiro-cli', document, edits, runs },
+  };
 }
 
 const HELLO_STAGES = HELLO_VIEW.stages.map((stage) => stage.name);
