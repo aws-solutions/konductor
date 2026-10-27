@@ -35,10 +35,7 @@ not per individual commit.
   its read budget. A thorough codebase or documentation search matches `k-comprehensive-search`.
   The three orchestrator prompts now run the SOP check on every request, not only on multi-phase
   ones.
-- `NOTICE.txt` now lists the third-party crates the CLI and MCP server ship. It had not been
-  regenerated since 1.0.0, so it was missing 8 crates added by the MCP server's dependency
-  upgrades, still listed `paste`, and gave `rmcp`'s old license. `make notice-check`, run on
-  every PR, now fails when `NOTICE.txt` is out of date.
+- `NOTICE.txt` lists every shipped crate, and `make notice-check` keeps it current.
 
 ## [1.2.0] - 2026-10-26
 
