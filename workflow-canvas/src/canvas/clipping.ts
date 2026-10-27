@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { WorkflowView } from '../api/types';
+import type { StageSpec, WorkflowSpec } from '../graph';
 
 /**
  * How much text one line of a node holds, in `textWidth` units. The intent
@@ -30,7 +30,10 @@ export function textWidth(text: string): number {
 }
 
 /** The stages of `view` whose name or agent line a node cuts short. */
-export function clippedStages(view: WorkflowView, harness: string) {
+export function clippedStages(
+  view: WorkflowSpec,
+  harness: string,
+): StageSpec[] {
   return view.stages.filter(
     ({ name, agent }) =>
       textWidth(name) > NAME_FITS_IN_NODE ||

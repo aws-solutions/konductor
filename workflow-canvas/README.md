@@ -5,18 +5,20 @@ independent npm project (Vite, React, TypeScript, Cloudscape) and is not part
 of the agent package or the CLI.
 
 The page has Designer and Execution tabs. The Designer tab loads the workflow
-from the API and draws it, read-only: the intent, each stage in list order
-(name, agent and harness) and the end, joined by run-order edges. It shows a
+from the API and draws it: the intent, each stage in list order (name, agent
+and harness) and the end, joined by run-order edges. You can pick the agent of
+a stage, rename it, add a stage and delete one. It shows a
 loading message, an error message or an empty message when there is nothing to
-draw. The Execution tab draws the same graph and runs it: a Run button starts
-a run, and each node shows its live state until the run ends. The contract, the
-stub that serves it and the tests around both are in this folder.
+draw. The Execution tab draws the saved workflow and runs it: a Run button
+starts a run, and each node shows its live state until the run ends. The
+contract, the stub that serves it and the tests around both are in this
+folder.
 
 ## Layout
 
 - `src/`: the UI. `graph/` turns a workflow into nodes and edges and does no
   IO; `api/` is the typed client of the API; `launch/` and `workflow/` open the
-  session and load the workflow; `designer/` and `canvas/` draw it;
+  session and load the workflow; `designer/` edits it and `canvas/` draws it;
   `execution/` runs it and shows the run; `execution/core/` does no IO and reads a run
   once a second. A read that fails with no answer, a server error, 408 or 429 is tried
   again, up to three in a row; any other failure ends the following. A start
@@ -249,15 +251,70 @@ The rest wraps the core, so the rules can be tested without a browser:
   offered as a code and refused. When several codes are in flight, the latest
   one that works wins.
 - `designer/` shows the result: loading, error, empty (no file yet, or a file
-  with errors, with their messages), or the canvas.
+  with errors, with their messages), or the canvas with its editing (next
+  section).
 - `canvas/` draws the graph with [React Flow](https://reactflow.dev)
-  (`@xyflow/react`). Nodes cannot be moved, selected or connected; the view
-  can be panned, and zoomed with the controls. Each node can be reached with
-  the Tab key and has a name for screen readers. The view starts zoomed out
+  (`@xyflow/react`). Nodes cannot be moved or connected; the view can be
+  panned, and zoomed with the controls. On the Designer tab a stage can be
+  selected, with a click or with Enter or Space on the node; the Execution tab
+  is read-only. Each node can be reached with the Tab key and has a name for
+  screen readers, which ends with "selected" for the selected stage. The view
+  fits the graph again when a stage is added or deleted. The view starts zoomed out
   far enough to show the longest workflow the API allows (40 stages), where the
   text is small; use the zoom controls to read it. A node cuts a long name or
   outcome short, and keeps the whole text in its `title`; an outcome too long
   for the node is also written out in full under the graph.
+
+## The Designer tab
+
+The tab has the graph on the left, with **Add stage** above it, and
+**Properties** on the right. Properties shows the selected stage (the first
+one when the page opens): its `name` and its `agent`, and **Delete stage**. A
+stage is only a `name` and an `agent`, and the stages run in the order they are
+listed, so there is no other field and no way to link or reorder them yet.
+
+- **Add stage** adds a stage at the end, named `agent-1` (the first free
+  `agent-N`) with the agent `k-developer`, selects it and moves focus to its
+  name. It is off at 40 stages, the most the API allows.
+- Typing in **name** renames the stage, and the node changes at once. The name
+  is taken as typed; the API is what says whether it is a good name.
+- **agent** is a list of the agents that Konductor ships, each with a line on
+  what it is for. The API does not look an agent up in this version, so the
+  list is part of the page (`designer/core/agents.ts`); a file that names an
+  agent not on the list keeps it, shown first. There is no field to type any
+  other id yet.
+- **Delete stage** removes the stage, selects the one before it (or the next,
+  for the first) and moves focus to its name. A workflow keeps at least one
+  stage, so it is off for the last.
+- Choosing a stage by its node (click, or Enter or Space) selects it and moves
+  focus to its name. Choosing the stage that is already selected changes
+  nothing, and focus stays where it is.
+- **A read-only workflow** (the server says `read_only`) can be looked at, and
+  a stage can be selected, but the name is read-only and Add stage, Delete
+  stage and the agent list are off, with the reason in a tooltip.
+- **Focus and keys.** Everything above works with the keyboard: Tab to **Add
+  stage** and press Enter; the new stage's name has focus. A button that is off
+  (Add stage, Delete stage) stays focusable and gives the reason in a tooltip,
+  so focus stays on the button that was pressed.
+- **The two tabs.** The draft lives in `App`, so it is kept when you switch
+  tabs. The Execution tab draws the saved workflow, because a run uses the
+  saved file, and says so when the Designer holds changes that are not saved.
+
+The page does not write the file in this version: the draft is only kept in the
+page.
+
+The code follows the split of the Execution tab:
+
+- `src/designer/core/` is the core and does no IO: the draft of the stages
+  (`draft.ts`), the text a save would write (`stage-text.ts`), the findings put
+  on the stage and field they are about (`problems.ts`), and the state of the
+  editor with its reducer. `test-support/designer-purity.test.ts` fails if the
+  core imports anything but its own modules and the wire types, or reads a
+  clock, randomness, the environment or the network.
+- `useEditor` keeps the state in `App`; `DesignerEditor` and `PropertiesPane`
+  draw it. A stage keeps an id of its own while it is renamed, and the node is
+  named from that id, so two stages with one name for a moment still have two
+  nodes.
 
 ## The Execution tab
 
@@ -456,7 +513,9 @@ the theme button is pressed). The Execution tab is saved before a run
 (`execution-tab-idle.png`), while the first stage runs
 (`execution-tab-running.png`) and after the run passed
 (`execution-tab-finished.png`), all in the light theme, and while the first
-stage runs in the dark theme (`execution-tab-dark.png`). Pull request
+stage runs in the dark theme (`execution-tab-dark.png`). The Designer tab is
+also saved with edits in the draft (`designer-editing.png`, and
+`designer-editing-dark.png` in the dark theme). Pull request
 descriptions embed these files, so regenerate and commit them when the UI
 changes.
 
