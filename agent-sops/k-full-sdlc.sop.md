@@ -1,5 +1,7 @@
 # Full SDLC
 
+Orchestration: strict (phase-gated SOP)
+
 ## Overview
 
 This SOP takes a project or feature through the full lifecycle: codebase analysis, requirements, design, principal engineer review, feature splitting, per-feature specs, implementation, code review, test coverage, and documentation. Each phase delegates to an existing SOP where one covers the work, or spawns a specialist agent where none does. Every phase is skippable and gated.

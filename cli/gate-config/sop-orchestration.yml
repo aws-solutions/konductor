@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# sop-orchestration.yml classifies every agent-sops/*.sop.md as gated or
+# not_gated. scripts/check-sop-orchestration.py (make sop-orchestration-check)
+# fails when this file, the marker lines and agent-sops/ disagree.
+#
+# A SOP is gated when its steps form ordered phases, a later phase uses an
+# earlier one's output, and a MUST-level rule stops the next phase until that
+# output passes one of these gates:
+#   approval         the user approves or confirms the artifact
+#   check-threshold  a check or review result on the artifact meets a stated
+#                    threshold (severity count, score)
+#   loop-exit        a review loop on the artifact reaches its exit condition
+#                    or round cap
+# A gate judges the content of an artifact. A confirmation that authorizes
+# effort on discovered or generated scope, one a caller flag such as
+# scope_confirmed can pre-authorize, is not a gate. Also not gates: parameter
+# or path preconditions, build/test/lint prerequisites, a self-check of the
+# SOP's own output, joining parallel passes, and a final verdict.
+#
+# Each gated SOP has the marker line below as its own paragraph right after
+# its title, above ## Overview, so installed skill descriptions are
+# unchanged. No not_gated SOP contains it.
+#
+# Update a gated SOP's basis when that SOP's steps change.
+version: 1
+marker: 'Orchestration: strict (phase-gated SOP)'
+gated:
+  k-full-sdlc:
+    gates: [check-threshold, approval]
+    basis: Step 4 stops on CRITICAL design-review findings until resolved or overridden; Step 5 feature split needs approval before Step 6; Step 6 specs need approval for every feature; Step 8 consolidated review verdicts need confirmation before Step 9; Step 9 stops on CRITICAL test gaps until the engineer picks a resolution.
+  k-design-doc-creation:
+    gates: [approval, check-threshold, loop-exit]
+    basis: Phase 1 summary confirmed before Phase 2; Phase 2 needs zero CRITICAL before Phase 3; Phase 4 loop exits or hits its 5-round cap.
+  k-principal-engineer-design-review:
+    gates: [check-threshold, loop-exit]
+    basis: Step 1 quality score of 3 or more before Step 2; Step 3 adversarial loop, max 5 rounds.
+  kiro-spec-workflow:
+    gates: [approval]
+    basis: requirements.md and design.md approved before the next step; tasks.md presented for approval.
+not_gated:
+  about-konductor: Four orientation steps, no stop rule.
+  k-adversarial-pull-request-review: Parallel passes, a join, a checker filter and a final verdict; no stop on a produced artifact.
+  k-code-cleanup: No stop rule between steps.
+  k-code-review-workflow: Review pipeline ending in a report; no approval or threshold between steps.
+  k-codebase-analysis: Path precondition only.
+  k-comprehensive-search: Search and synthesis; waiting for delegates is a join.
+  k-context-gathering: Open questions and pending escalation block Step 5; that is a self-check, not approval of a deliverable.
+  k-delegate: Delegation template; re-delegation cap only.
+  k-e2e-test-generation: Step 3 confirms the discovered page scope; the compile check is a prerequisite.
+  k-existing-design-review: Step 2 confirms the review scope before evaluation.
+  k-light-ui-testing: Steps 3 and 5 confirm the scope and the prompt list to run.
+  k-plan: Self-checked success criteria; no stop between steps.
+  k-pre-cr-critique: Read-only critique, no stop rule.
+  k-test-coverage-review: Step 3 confirms whether to plan E2E tests for the found gaps.
+  k-verify: Build, test and lint exits are prerequisites.

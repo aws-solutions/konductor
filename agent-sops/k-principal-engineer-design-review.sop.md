@@ -1,5 +1,7 @@
 # Principal Engineer Design Review
 
+Orchestration: strict (phase-gated SOP)
+
 ## Overview
 
 This SOP runs a pre-submission quality gate on a design document before it goes to a Principal Engineer for review. It combines slop detection, architecture principles evaluation, and an adversarial review loop to eliminate the most common review comments before the human reviewer sees the document.

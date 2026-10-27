@@ -2024,6 +2024,18 @@ mod tests {
         assert_eq!(extract_overview_description("# Title\n\nBody.\n"), None);
     }
 
+    /// Gated SOPs carry their orchestration marker between the title and
+    /// `## Overview`; it must not leak into the skill description.
+    #[test]
+    fn render_sop_skill_md_ignores_a_marker_line_above_the_overview() {
+        let body = "# Full SDLC\n\nOrchestration: strict (phase-gated SOP)\n\n## Overview\n\nTakes a feature end to end.\n";
+        let rendered = render_sop_skill_md("k-full-sdlc", body);
+        assert!(
+            rendered.contains("description: \"Takes a feature end to end.\"\n"),
+            "got: {rendered}"
+        );
+    }
+
     /// `render_sop_skill_md`'s end-to-end output must never end mid-word
     /// or mid-clause, verified against the real `about-konductor.sop.md`
     /// wrapping shape.

@@ -8,6 +8,11 @@ not per individual commit.
 
 ## [Unreleased]
 
+### Added
+
+- The four phase-gated SOPs, such as `k-full-sdlc`, now carry an
+  `Orchestration: strict (phase-gated SOP)` line.
+
 ### Changed
 
 - Orchestrators now read files, search the codebase and answer lookups themselves instead of
