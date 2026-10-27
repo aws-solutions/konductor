@@ -47,3 +47,20 @@ export interface Scheduler {
   /** Resolves after `ms` milliseconds, or at once when the signal aborts. */
   wait(ms: number, signal: AbortSignal): Promise<void>;
 }
+
+/**
+ * What survives a reload of the page: the id of the latest run, so that the
+ * page can find a run that is still going. The adapter is
+ * `execution/run-memory.ts`.
+ */
+export interface RunMemory {
+  /** The id of the latest run that was remembered, if any. */
+  recall(): string | undefined;
+  remember(runId: string): void;
+}
+
+/** A memory that keeps nothing, for a page that does not survive a reload. */
+export const NO_RUN_MEMORY: RunMemory = {
+  recall: () => undefined,
+  remember: () => undefined,
+};

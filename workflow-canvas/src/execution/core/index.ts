@@ -16,14 +16,17 @@ export {
 export {
   MAX_READ_FAILURES,
   POLL_INTERVAL_MS,
+  resumeRun,
   startAndFollow,
   type FollowRequest,
 } from './follow-run';
 export { GOAL_MAX_LENGTH, goalProblem } from './goal';
 export { nodeStatuses } from './node-statuses';
 export {
+  NO_RUN_MEMORY,
   RunAlreadyActive,
   RunReadRefused,
+  type RunMemory,
   type RunPort,
   type Scheduler,
 } from './ports';
