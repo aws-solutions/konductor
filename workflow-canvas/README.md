@@ -243,10 +243,17 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
   Run and the goal box are off from the click until the run ends (the box
   stays read-only, not disabled, so keyboard focus stays in it). Enter in the
   goal box runs too.
-- If the server answers 409 `already_running`, as it does after a page reload
-  in the middle of a run, the tab follows the run named in that answer instead
+- If the server answers 409 `already_running`, as it does when a run from
+  another tab is going, the tab follows the run named in that answer instead
   of starting one. The line under the button says so, and the goal typed is not
   used for that run.
+- After a reload the page has no token, so the person opens the launch address
+  again. The tab keeps the id of the latest run in the storage of the browser
+  tab (`sessionStorage`; the id is no secret, the token is not kept), and when
+  the page opens again it reads that run once. If it is still running, the tab
+  follows it as if the person had joined it, without a click on Run. A run that
+  has ended, one that cannot be read (for instance after the server started
+  again) or a browser that blocks storage leaves the tab ready for a new run.
 - A read of the run that fails is tried again after a second; the tab gives up
   after three failures in a row. Only a missing answer or a 5xx is tried again:
   any 4xx or a reply the page cannot read shows the alert at once. A call that
@@ -279,7 +286,8 @@ The code follows the ports-and-adapters split of the graph:
   fails if the core imports anything but its own modules, the graph core and the
   wire types, or reads a clock, randomness, the environment or the network.
 - The adapters are `createHttpApi` (`startRun`, `getRun`), which `loadWorkflow`
-  ties to the session token, and `timerScheduler`. The token is held only by
+  ties to the session token, `timerScheduler`, and `sessionRunMemory`, which
+  keeps the id of the latest run for `resumeRun`. The token is held only by
   those run calls. `createHttpApi` ends a call after a timeout, and
   `loadWorkflow` turns the 409 `already_running`, which carries the `run_id`,
   into the core's `RunAlreadyActive` so the core can follow that run.
