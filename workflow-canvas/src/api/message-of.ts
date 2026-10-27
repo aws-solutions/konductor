@@ -1,6 +1,30 @@
 // SPDX-License-Identifier: Apache-2.0
+import { ApiError, canRetryStatus } from './api';
 
-/** The message of an `Error`, or `fallback` for anything else that was thrown. */
+const IF_STOPPED =
+  'If it stopped, start it again and open the launch address that it printed.';
+const NEW_SESSION = 'Open the launch address that the server printed.';
+
+// What a person can do about a failure that they can fix, or `undefined`.
+// No answer, or a server error with no body of the API (the answer of a proxy
+// whose server is down), means the server may have stopped. The API's own
+// 401 means the session is gone, as after the server started again.
+function nextStepOf(error: ApiError): string | undefined {
+  if (error.code === 'unauthorized' || error.code === 'invalid_code') {
+    return NEW_SESSION;
+  }
+  return error.code === undefined && canRetryStatus(error.status)
+    ? IF_STOPPED
+    : undefined;
+}
+
+/**
+ * The message to show for a failure: that of the `Error`, with what to do
+ * next when the failure is the server not answering or the session being
+ * gone. `fallback` is for anything that is not an `Error`.
+ */
 export function messageOf(error: unknown, fallback: string): string {
-  return error instanceof Error ? error.message : fallback;
+  if (!(error instanceof Error)) return fallback;
+  const next = error instanceof ApiError ? nextStepOf(error) : undefined;
+  return next === undefined ? error.message : `${error.message} ${next}`;
 }

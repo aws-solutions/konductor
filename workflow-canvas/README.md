@@ -225,6 +225,12 @@ The rest wraps the core, so the rules can be tested without a browser:
 - `api/`: `WorkflowApi` is the port with the two calls the page makes;
   `createHttpApi` is its adapter over `fetch`. It ignores fields it does not
   know and turns a failed call into an `ApiError` with a message fit to show.
+  `messageOf` (`api/message-of.ts`) is how every alert words a failure, and it
+  adds what to do next: for no answer, or a 5xx that is not the API's (the
+  answer of a proxy whose server is down), "If it stopped, start it again and
+  open the launch address that it printed."; for the API's 401 (the session is
+  gone, as after the server started again), "Open the launch address that the
+  server printed."
 - `launch/launch-code.ts` and `workflow/load-workflow.ts` take the launch code
   from the address and load the workflow. `loadWorkflow` never rejects: it
   returns `{ ok: true, workflow }` or `{ ok: false, message }`. It is started
