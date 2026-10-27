@@ -10,17 +10,8 @@ not per individual commit.
 
 ### Changed
 
-- The orchestrators (`konductor`, `konductor-mux-orchestrator`, `konductor-cmux-orchestrator`)
-  may now read files, search the codebase, run read-only shell commands, and answer lookup
-  questions themselves instead of spawning a specialist for each. One table in
-  `context/k-orchestrator-routing-rules.md` defines what is allowed, including the
-  `k-light-ui-testing` SOP-step exception, and `claude-teams-behavior`, `mux-dispatch`, and
-  `cmux-dispatch` point at it. The 10-file read budget covers requests the orchestrator answers
-  itself; for a request it will delegate, it reads only what routing and the brief need and
-  passes file paths. Writes, state-changing git, builds, tests, and whole phases still go to
-  specialists. The three orchestrator prompts also drop the
-  Ultrawork framing, state the parallel rule once, and remove rules already defined in the
-  `constraints` skill and the routing rules.
+- Orchestrators now read files, search the codebase and answer lookups themselves instead of
+  spawning a specialist. Writes, builds, tests and whole phases still go to specialists.
 - Orchestrators delegate a step they can't do to the owning specialist and may run independent
   parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
 
@@ -37,6 +28,8 @@ not per individual commit.
   its read budget. A thorough codebase or documentation search matches `k-comprehensive-search`.
   The three orchestrator prompts now run the SOP check on every request, not only on multi-phase
   ones.
+- `konductor config set` no longer drops other keys and blocks from `.konductor/config.yml`,
+  such as a `telemetry:` opt-out. It now changes only the named key.
 
 ## [1.2.0] - 2026-10-26
 

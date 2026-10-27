@@ -829,6 +829,40 @@ mod tests {
     }
 
     #[test]
+    fn dispatch_config_set_non_mapping_config_is_usage_error_and_untouched() {
+        let _lock = lock_home();
+        let target = scratch_cwd("config-set-non-mapping");
+
+        assert_eq!(
+            dispatch_init(&target, None, false, ColorMode::disabled()),
+            0
+        );
+        let config_path = target
+            .join(config::KONDUCTOR_DIR_NAME)
+            .join(config::CONFIG_FILE_NAME);
+        fs::write(&config_path, "- a\n- b\n").unwrap();
+        let before = fs::read(&config_path).unwrap();
+
+        let code = dispatch_config(
+            &target,
+            ConfigAction::Set {
+                key: "tier".to_string(),
+                value: "major".to_string(),
+            },
+            ColorMode::disabled(),
+        );
+        assert_eq!(code, EXIT_USAGE_ERROR);
+        assert_ne!(code, 2, "must never emit the reserved CRITICAL-gate code");
+        assert_eq!(
+            fs::read(&config_path).unwrap(),
+            before,
+            "config.yml must be byte-identical after a refused set"
+        );
+
+        fs::remove_dir_all(&target).ok();
+    }
+
+    #[test]
     fn dispatch_config_set_leaves_no_leftover_tmp_file() {
         // After a successful set, no .tmp- suffixed file should remain
         // in .konductor/ -- proves atomic_write's guarantee holds
