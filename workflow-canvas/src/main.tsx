@@ -4,6 +4,7 @@ import './theme/fonts';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import { sessionRunMemory } from './execution/run-memory';
 import { createHttpApi } from './api/http-api';
 import { reloadOnLaunchCode, takeLaunchCode } from './launch/launch-code';
 import { installTheme } from './theme/install';
@@ -21,6 +22,6 @@ reloadOnLaunchCode(window);
 
 createRoot(root).render(
   <StrictMode>
-    <App load={load} />
+    <App load={load} runMemory={sessionRunMemory(window)} />
   </StrictMode>,
 );
