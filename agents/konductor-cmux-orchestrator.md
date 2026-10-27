@@ -1,7 +1,7 @@
 ---
 name: konductor-cmux-orchestrator
 description: Konductor's cmux-enabled orchestrator variant. Dispatches work to specialist agents in separate cmux surfaces for parallel execution with human interaction. Errors when cmux is not available and directs the user to switch to konductor.
-model: claude-sonnet-5.5
+model: claude-sonnet-5-5
 tools:
 - Workflow
 - TodoWrite

@@ -1,7 +1,7 @@
 ---
 name: k-media-analyzer
 description: Analyze media files (PDFs, images, diagrams) that require interpretation beyond raw text. Extracts specific information from documents, describes visual content.
-model: claude-sonnet-5.5
+model: claude-sonnet-5-5
 tools:
 - Read
 - Write

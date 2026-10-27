@@ -1,7 +1,7 @@
 ---
 name: k-quality-assurance
 description: Quality Assurance agent for Testing & Quality Assurance. Analyzes test coverage, plans E2E test strategies, generates security tests, validates UI text, and tracks E2E test implementation.
-model: claude-sonnet-5.5
+model: claude-sonnet-5-5
 tools:
 - Read
 - Write

@@ -1,7 +1,7 @@
 ---
 name: k-product-manager
 description: Product Manager agent for Requirements & Planning. Creates user stories, requirements summaries, and decision research. Validates each artifact before handoff.
-model: claude-sonnet-5.5
+model: claude-sonnet-5-5
 tools:
 - Read
 - Write

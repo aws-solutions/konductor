@@ -1,7 +1,7 @@
 ---
 name: konductor
 description: Konductor, the parent orchestrator. Delegates all work to specialist SDLC agents, tracks progress, enforces verification, and coordinates multi-agent workflows.
-model: claude-sonnet-5.5
+model: claude-sonnet-5-5
 tools:
 - Workflow
 - WebFetch

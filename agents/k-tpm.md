@@ -1,7 +1,7 @@
 ---
 name: k-tpm
 description: Technical Program Manager agent for cross-project coordination, timeline management, status reporting, risk tracking, and program-level decision documents.
-model: claude-sonnet-5.5
+model: claude-sonnet-5-5
 tools:
 - Read
 - Write

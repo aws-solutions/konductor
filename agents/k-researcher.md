@@ -1,7 +1,7 @@
 ---
 name: k-researcher
 description: Research agent for information gathering. Searches external documentation, web resources, and AWS docs; optional Slack search via the user-configured official Slack MCP.
-model: claude-sonnet-5.5
+model: claude-sonnet-5-5
 tools:
 - WebFetch
 - WebSearch

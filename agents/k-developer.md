@@ -1,7 +1,7 @@
 ---
 name: k-developer
 description: Software Development Engineer agent for Implementation & Development. Breaks features into tasks, implements backend and frontend code, reviews changes, validates infrastructure, and tracks progress.
-model: claude-sonnet-5.5
+model: claude-sonnet-5-5
 tools:
 - Read
 - Write

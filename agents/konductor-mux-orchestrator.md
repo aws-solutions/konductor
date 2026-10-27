@@ -1,7 +1,7 @@
 ---
 name: konductor-mux-orchestrator
 description: Konductor's tmux/zellij-enabled orchestrator variant. Auto-detects the active multiplexer ($TMUX or $ZELLIJ) and dispatches work to specialist agents in separate panes for parallel execution with human interaction. Errors when no multiplexer is detected and directs the user to switch to konductor.
-model: claude-sonnet-5.5
+model: claude-sonnet-5-5
 tools:
 - Workflow
 - TodoWrite

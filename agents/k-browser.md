@@ -1,7 +1,7 @@
 ---
 name: k-browser
 description: Browser automation agent using Playwright. Navigates websites, fills forms, takes screenshots, and performs E2E testing.
-model: claude-sonnet-5.5
+model: claude-sonnet-5-5
 tools:
 - Read
 - Write

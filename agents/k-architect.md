@@ -1,7 +1,7 @@
 ---
 name: k-architect
 description: Solutions Architect agent for Design & Architecture. Creates system designs, API specs, data models, and threat models. Validates each artifact before handoff to implementation.
-model: claude-sonnet-5.5
+model: claude-sonnet-5-5
 tools:
 - Read
 - Write
