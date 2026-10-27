@@ -2,7 +2,13 @@
 import Alert from '@cloudscape-design/components/alert';
 import Button from '@cloudscape-design/components/button';
 import type { Draft, EditState, Problem } from './core';
-import { errorsOf, notesOf, problemsOfDraft, willRewriteWhole } from './core';
+import {
+  errorsOf,
+  listedOf,
+  notesOf,
+  problemsOfDraft,
+  willRewriteWhole,
+} from './core';
 
 const CONFLICT_TEXT =
   'The file was changed after this page loaded, so nothing was saved. Load it again to see it as it is now; that replaces the changes you made here.';
@@ -86,7 +92,8 @@ export function EditAlerts({
   onReload: () => void;
 }) {
   const { save, draft } = state;
-  const problems = problemsOfDraft(state);
+  // Each problem is listed once, though a field may show it for two stages.
+  const problems = listedOf(problemsOfDraft(state));
   const notes = notesOf(problems);
   return (
     <div role="alert" className="wf-edit-alerts">
