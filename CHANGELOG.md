@@ -86,9 +86,12 @@ not per individual commit.
   notes show as notes. A read-only workflow turns the editing controls off. A file whose stages
   are not a block is written whole on save, and a note says so. Add, rename, delete and save work
   with the keyboard and keep focus. The draft is kept when the tabs are switched, and the
-  Execution tab draws the saved workflow. The API contract is unchanged. The end-to-end tests gain
-  an `editing` project that saves to the stub, and `npm run screenshots` gains five Designer
-  captures.
+  Execution tab draws the saved workflow. While the draft has changes that are not saved, closing
+  or reloading the page makes the browser ask first. A stage name that two stages share is marked
+  at the field of both, and a stage with no name is called by its place in the list of problems.
+  A message about a stopped server or a lost session ends with what to do next. The API contract
+  is unchanged. The end-to-end tests gain an `editing` project that saves to the stub, and
+  `npm run screenshots` gains five Designer captures.
 
 ### Fixed
 
