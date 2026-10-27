@@ -56,13 +56,13 @@ describe.each(MODES)('canvas.css colours in %s', (mode, v) => {
     expect(
       ratio('--wf-port-letter-out', '--wf-port-fill'),
     ).toBeGreaterThanOrEqual(AA_TEXT);
-    // The socket shows the canvas, and its letter is the muted text colour.
-    expect(ratio('--wf-text-muted', '--wf-canvas-bg')).toBeGreaterThanOrEqual(
-      AA_TEXT,
-    );
+    // The notch is white inside, and its letter is a dark gray.
+    expect(
+      ratio('--wf-port-letter-in', '--wf-port-notch-bg'),
+    ).toBeGreaterThanOrEqual(AA_TEXT);
   });
 
-  it('keeps the knob visible on the canvas and on the node', () => {
+  it('keeps the tab visible on the canvas and on the node', () => {
     expect(ratio('--wf-port-fill', '--wf-canvas-bg')).toBeGreaterThanOrEqual(
       AA_GRAPHIC,
     );
@@ -71,7 +71,7 @@ describe.each(MODES)('canvas.css colours in %s', (mode, v) => {
     );
   });
 
-  it('keeps the socket outline visible on the canvas it shows and on the node', () => {
+  it('keeps the card outline visible on the canvas and on the node', () => {
     expect(ratio('--wf-node-border', '--wf-canvas-bg')).toBeGreaterThanOrEqual(
       AA_GRAPHIC,
     );
