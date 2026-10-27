@@ -470,6 +470,27 @@ describe('checking while typing', () => {
     ]);
   });
 
+  it('names a stage with no name by its place in the list, not by an empty word', async () => {
+    const edits = acceptingEdits();
+    const message =
+      '`name` must be lower-case letters, digits and hyphens, start with a letter or digit, and have at most 64 characters.';
+    edits.check.mockResolvedValue({
+      view: null,
+      diagnostics: [finding('stages[0].name', message)],
+    });
+    const { scheduler } = await openDesigner(edits);
+
+    type('');
+    await checkNow(scheduler);
+
+    const items = await within(
+      await screen.findByTestId('problems'),
+    ).findAllByRole('listitem');
+    expect(items.map((item) => item.textContent)).toEqual([
+      `Stage 1: ${message}`,
+    ]);
+  });
+
   it('shows a warning as a note, not as an error, and leaves Save on', async () => {
     const edits = acceptingEdits();
     edits.check.mockResolvedValue({
