@@ -3,7 +3,7 @@
 /** Every node is as wide as this, so the order edges run straight down. */
 export const NODE_WIDTH = 280;
 /** The height of each kind of node, as the node components draw them. */
-export const NODE_HEIGHT = { intent: 96, stage: 76, end: 44 } as const;
+export const NODE_HEIGHT = { intent: 96, stage: 84, end: 48 } as const;
 /** The empty space between one node and the next. */
 export const NODE_GAP = 56;
 
