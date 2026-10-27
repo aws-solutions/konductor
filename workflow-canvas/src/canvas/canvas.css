@@ -211,11 +211,11 @@
 
 /* The title of a node starts below its notch. */
 .wf-node-notched {
-  padding-top: 22px;
+  padding-top: 18px;
 }
 
 .wf-node-end.wf-node-notched {
-  padding-top: 18px;
+  padding-top: 20px;
   padding-bottom: 4px;
 }
 
