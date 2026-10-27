@@ -8,7 +8,7 @@ import type { Scheduler } from '../execution/core';
 export class FakeScheduler implements Scheduler {
   /** The `ms` of each wait asked for, in order. */
   readonly waits: number[] = [];
-  private pending = new Set<() => void>();
+  private readonly pending = new Set<() => void>();
 
   wait(ms: number, signal: AbortSignal): Promise<void> {
     this.waits.push(ms);
@@ -18,10 +18,14 @@ export class FakeScheduler implements Scheduler {
         return;
       }
       this.pending.add(resolve);
-      signal.addEventListener('abort', () => {
-        this.pending.delete(resolve);
-        resolve();
-      });
+      signal.addEventListener(
+        'abort',
+        () => {
+          this.pending.delete(resolve);
+          resolve();
+        },
+        { once: true },
+      );
     });
   }
 
