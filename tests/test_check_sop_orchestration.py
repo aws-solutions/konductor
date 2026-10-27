@@ -44,6 +44,12 @@ def test_valid_fixture_passes_silently():
         ("gated-marker-not-own-paragraph", "missing-marker: gated 'alpha-gated'"),
         ("not-gated-with-marker", "unexpected-marker: not_gated 'beta-plain'"),
         ("bad-entry", "bad-entry: gated 'alpha-gated' needs a non-empty 'gates' list"),
+        ("phase-list-mismatch", "phase-list-mismatch: gated 'alpha-gated' phases ['one', 'two'] differ"),
+        ("phase-list-missing-bullet", "phase-list-mismatch: gated 'alpha-gated' has phases but"),
+        ("unknown-boundary-phase", "unknown-boundary-phase: gated 'alpha-gated' boundary 'zero'"),
+        ("unknown-boundary-kind", "unknown-boundary-kind: gated 'alpha-gated' boundary 'one' kind 'loop-exit'"),
+        ("bad-boundary-shape", "bad-entry: gated 'alpha-gated' 'boundaries' must be a list"),
+        ("boundaries-without-phases", "bad-entry: gated 'alpha-gated' has 'boundaries' without 'phases'"),
     ],
 )
 def test_failure_fixture_reports_its_code(case, expected):
