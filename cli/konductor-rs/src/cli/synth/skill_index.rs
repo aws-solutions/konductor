@@ -24,6 +24,8 @@ Workspace skills named `ws-*` also count; read them from `.kiro/skills/<name>/SK
 // claims every task, which contradicts the one-or-two rule above, so it is
 // left out of the index. A "MUST USE for <task>" skill (git-merge) stays.
 const EVERY_TASK_MARKER: &str = "MUST USE for every ";
+/// The one every-task skill synth expects; any other match gets a warning.
+const EXPECTED_EVERY_TASK_SKILL: &str = "constraints";
 
 const ORCHESTRATOR_RULE: &str = "You orchestrate. When a task matches a skill a specialist \
 owns, such as a code review, a threat model, or user stories, route it to that specialist \
@@ -91,7 +93,8 @@ fn split_sentences(text: &str) -> Vec<&str> {
 }
 
 // The "Use ..." sentence is what a task gets matched against, so it is kept
-// whole and the summary sentence gets whatever room is left, if enough.
+// whole when it fits in the line and the summary sentence gets whatever room
+// is left, if enough. A longer one is cut like any other text.
 fn with_summary(summary: &str, chosen: &str, chosen_at: usize) -> String {
     let chosen_chars = chosen.chars().count();
     if chosen_at == 0 || chosen_chars + 1 >= TRIGGER_MAX_CHARS {
@@ -174,7 +177,7 @@ pub(crate) fn kiro_skill_block(
 pub(crate) fn every_task_skill_warnings(skills: &[SkillDef]) -> Vec<String> {
     skills
         .iter()
-        .filter(|skill| skill.name != "constraints")
+        .filter(|skill| skill.name != EXPECTED_EVERY_TASK_SKILL)
         .filter(|skill| skill_trigger(&skill.raw_frontmatter).is_some_and(|t| t.every_task))
         .map(|skill| {
             format!(
