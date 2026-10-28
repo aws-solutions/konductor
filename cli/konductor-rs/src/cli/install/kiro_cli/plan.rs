@@ -337,7 +337,7 @@ pub(in crate::cli::install) fn plan_claude_settings_grant(
             agent_skill_names: &agent_skill_names,
             // Only `matches` reads this context, and it ignores the telemetry fields.
             no_telemetry: false,
-            install_info_path: target_dir,
+            install_info_path: Path::new(""),
             server_supports_install_info: false,
         };
         if super::super::resource_rewrite::ResourceRewritePass::matches(
