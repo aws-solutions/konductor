@@ -9,6 +9,7 @@ Exit 0 and print nothing when they agree. Exit 1 and print one
 `<code>: <detail>` line per violation to stderr when they do not.
 Exit 64 on a bad invocation.
 """
+import re
 import sys
 from pathlib import Path
 
@@ -17,6 +18,10 @@ SOP_DIR = Path("agent-sops")
 SOP_SUFFIX = ".sop.md"
 GATE_KINDS = {"approval", "check-threshold", "loop-exit"}
 TOP_LEVEL_KEYS = {"version", "marker", "gated", "not_gated"}
+BOUNDARY_KEYS = {"phase", "kind", "scope"}
+BOUNDARY_SCOPES = {"run", "feature"}
+PHASE_LIST_BULLET = "- **Phase list.**"
+PHASE_LIST_END = "the same ids as"
 EX_USAGE = 64
 
 
@@ -71,9 +76,100 @@ def check_map_shape(data):
             )
         if not (isinstance(basis, str) and basis.strip()):
             errors.append(f"bad-entry: gated '{name}' needs a non-empty 'basis'")
+        if isinstance(entry, dict):
+            errors += check_phase_shape(name, entry)
     for name, basis in (data.get("not_gated") or {}).items():
         if not (isinstance(basis, str) and basis.strip()):
             errors.append(f"bad-entry: not_gated '{name}' needs a non-empty basis string")
+    return errors
+
+
+def check_phase_shape(name, entry):
+    errors = []
+    if "phases" in entry and not phases_are_valid(entry["phases"]):
+        errors.append(f"bad-entry: gated '{name}' 'phases' must be a non-empty list of unique ids")
+    if "boundaries" in entry:
+        if not boundaries_are_valid(entry["boundaries"]):
+            errors.append(f"bad-entry: gated '{name}' 'boundaries' must be a list of {{phase, kind, scope}}")
+        if "phases" not in entry:
+            errors.append(f"bad-entry: gated '{name}' has 'boundaries' without 'phases'")
+    return errors
+
+
+def phases_are_valid(phases):
+    return (
+        isinstance(phases, list)
+        and phases
+        and all(isinstance(p, str) and p.strip() for p in phases)
+        and len(set(phases)) == len(phases)
+    )
+
+
+def boundaries_are_valid(boundaries):
+    if not isinstance(boundaries, list):
+        return False
+    for boundary in boundaries:
+        if not (isinstance(boundary, dict) and boundary.keys() == BOUNDARY_KEYS):
+            return False
+        if not all(isinstance(boundary[key], str) for key in ("phase", "kind")):
+            return False
+        if boundary["scope"] not in BOUNDARY_SCOPES:
+            return False
+    seen = [boundary["phase"] for boundary in boundaries]
+    return len(set(seen)) == len(seen)
+
+
+def sop_phase_list(text):
+    """Return the backticked ids of the `- **Phase list.**` bullet in order,
+    or None when the SOP has no such bullet. The bullet goes on to name other
+    backticked tokens, so only the ids before "the same ids as" (or before the
+    first sentence end when that phrase is absent) count."""
+    for line in text.splitlines():
+        if line.startswith(PHASE_LIST_BULLET):
+            listed = line[len(PHASE_LIST_BULLET):]
+            if PHASE_LIST_END in listed:
+                listed = listed.split(PHASE_LIST_END, 1)[0]
+            else:
+                listed = re.split(r"\.\s", listed, maxsplit=1)[0]
+            return re.findall(r"`([^`]+)`", listed)
+    return None
+
+
+def check_boundaries(root, gated):
+    """Check that `phases` matches the SOP's Phase list bullet, and every boundary
+    names a phase in `phases` and a kind in `gates`. Entries whose shape is
+    already reported as bad-entry are skipped."""
+    errors = []
+    for name in sorted(gated):
+        entry = gated[name]
+        if not (isinstance(entry, dict) and phases_are_valid(entry.get("phases"))):
+            continue
+        phases = entry["phases"]
+        sop = SOP_DIR / (name + SOP_SUFFIX)
+        try:
+            text = (root / sop).read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            text = None  # check_agreement already reports a missing or unreadable SOP
+        if text is not None:
+            listed = sop_phase_list(text)
+            if listed is None:
+                errors.append(f"phase-list-mismatch: gated '{name}' has phases but {sop} has no Phase list bullet")
+            elif listed != phases:
+                errors.append(
+                    f"phase-list-mismatch: gated '{name}' phases {phases} differ from {sop} Phase list {listed}"
+                )
+        boundaries = entry.get("boundaries", [])
+        if not boundaries_are_valid(boundaries):
+            continue
+        gates = entry.get("gates") if isinstance(entry.get("gates"), list) else []
+        for boundary in boundaries:
+            if boundary["phase"] not in phases:
+                errors.append(f"unknown-boundary-phase: gated '{name}' boundary '{boundary['phase']}' is not in phases")
+            if boundary["kind"] not in gates:
+                errors.append(
+                    f"unknown-boundary-kind: gated '{name}' boundary '{boundary['phase']}' "
+                    f"kind '{boundary['kind']}' is not in gates"
+                )
     return errors
 
 
@@ -137,6 +233,7 @@ def check(root):
     marker = data.get("marker")
     if isinstance(marker, str) and marker.strip():
         errors += check_agreement(root, gated, not_gated, marker.strip())
+    errors += check_boundaries(root, gated)
     return errors
 
 

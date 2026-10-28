@@ -12,6 +12,8 @@ not per individual commit.
 
 - The four phase-gated SOPs, such as `k-full-sdlc`, now carry an
   `Orchestration: strict (phase-gated SOP)` line.
+- Gated SOPs can list their phases and gate boundaries, and `make sop-orchestration-check`
+  checks them against each SOP's phase list.
 
 ### Changed
 

@@ -23,12 +23,27 @@
 # unchanged. No not_gated SOP contains it.
 #
 # Update a gated SOP's basis when that SOP's steps change.
+#
+# A gated entry may also list, both optional:
+#   phases      the SOP's phase ids in order. It must equal the ids in the
+#               SOP's Progress Tracking "Phase list" bullet.
+#   boundaries  the phases where a gate applies, each {phase, kind, scope}.
+#               phase is one of phases, kind is one of the entry's gates,
+#               and scope is run (one gate per run) or feature (one gate per
+#               feature). boundaries needs phases.
 version: 1
 marker: 'Orchestration: strict (phase-gated SOP)'
 gated:
   k-full-sdlc:
     gates: [check-threshold, approval]
     basis: Step 4 stops on CRITICAL design-review findings until resolved or overridden; Step 5 feature split needs approval before Step 6; Step 6 specs need approval for every feature; Step 8 consolidated review verdicts need confirmation before Step 9; Step 9 stops on CRITICAL test gaps until the engineer picks a resolution.
+    phases: [elicitation, codebase-analysis, requirements, design, design-review, feature-splitting, specs, implementation, code-review, testing, documentation, final-summary]
+    boundaries:
+      - {phase: design-review, kind: check-threshold, scope: run}
+      - {phase: feature-splitting, kind: approval, scope: run}
+      - {phase: specs, kind: approval, scope: feature}
+      - {phase: code-review, kind: approval, scope: feature}
+      - {phase: testing, kind: check-threshold, scope: feature}
   k-design-doc-creation:
     gates: [approval, check-threshold, loop-exit]
     basis: Phase 1 summary confirmed before Phase 2; Phase 2 needs zero CRITICAL before Phase 3; Phase 4 loop exits or hits its 5-round cap.
