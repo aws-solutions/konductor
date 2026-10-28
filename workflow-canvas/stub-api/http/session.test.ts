@@ -3,7 +3,7 @@
 import { networkInterfaces } from 'node:os';
 import { describe, expect, it } from 'vitest';
 import { LOOPBACK, originOf } from '../address.ts';
-import { canConnect } from '../test-support/can-connect.ts';
+import { probeUntilAnswered } from '../test-support/probe-port.ts';
 import { expectContract, expectError } from '../test-support/contract.ts';
 import { LAUNCH_CODE, openStub, useStub } from '../test-support/harness.ts';
 import { FakeClock } from '../test-support/fake-clock.ts';
@@ -167,10 +167,23 @@ describe('the stub', () => {
       expect(stub.host).toBe(LOOPBACK);
       expect(stub.origin).toBe(originOf(stub.port));
       expect((await client.get('/api/workflow')).status).toBe(401);
-      const reachable = await Promise.all(
-        otherAddresses().map((address) => canConnect(address, stub.port)),
+    } finally {
+      await stub.close();
+    }
+  });
+
+  it("refuses connections on this host's other addresses", async ({ skip }) => {
+    const addresses = otherAddresses();
+    if (addresses.length === 0)
+      skip('this host has no non-internal IPv4 address to probe');
+    const { stub } = await openStub();
+    try {
+      const answers = await Promise.all(
+        addresses.map((address) => probeUntilAnswered(address, stub.port)),
       );
-      expect(reachable).not.toContain(true);
+      expect(answers).not.toContain('connected');
+      if (!answers.includes('refused'))
+        skip('every other address dropped the probe, so no refusal was seen');
     } finally {
       await stub.close();
     }
