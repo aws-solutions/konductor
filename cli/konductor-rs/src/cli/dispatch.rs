@@ -134,6 +134,20 @@ pub fn dispatch(command: Commands, verbose: bool, json: bool, color: ColorMode) 
             no_version_check,
             color,
         ),
+        Commands::VerifyRun {
+            session,
+            allow_running,
+        } => {
+            // Not `resolve_cwd*`: those send a telemetry event on failure, and
+            // this read-only check sends nothing.
+            crate::cli::verify_run::run(
+                std::env::current_dir(),
+                &session,
+                allow_running,
+                json,
+                color,
+            )
+        }
         Commands::Config { action } => {
             if !config_dispatch_allowed() {
                 print_not_currently_available("config");

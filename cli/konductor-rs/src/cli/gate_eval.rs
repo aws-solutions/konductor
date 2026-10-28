@@ -204,6 +204,7 @@ pub(crate) struct EvalContext<'a> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ReasonCode {
     SessionInvalid,
+    ConfigInvalid,
     RecordIntegrity,
     PhaseOrder,
     PhaseIncomplete,
@@ -222,6 +223,7 @@ impl ReasonCode {
     pub(crate) fn code(self) -> &'static str {
         match self {
             Self::SessionInvalid => "SESSION_INVALID",
+            Self::ConfigInvalid => "CONFIG_INVALID",
             Self::RecordIntegrity => "RECORD_INTEGRITY",
             Self::PhaseOrder => "PHASE_ORDER",
             Self::PhaseIncomplete => "PHASE_INCOMPLETE",

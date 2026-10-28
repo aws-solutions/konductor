@@ -28,11 +28,7 @@ pub(crate) mod config;
 pub(crate) mod config_lock;
 mod dispatch;
 pub(crate) mod doctor;
-// Only tests and the gate evaluator call it until verify-run lands.
-#[allow(dead_code)]
 pub(crate) mod gate_config;
-// Only tests call it until verify-run lands.
-#[allow(dead_code)]
 pub(crate) mod gate_eval;
 pub(crate) mod harness_select;
 pub(crate) mod init;
@@ -48,6 +44,7 @@ mod time;
 mod trace;
 mod uninstall;
 mod update;
+mod verify_run;
 
 /// Test-only shared lock for every test in this crate that mutates the
 /// process-global `HOME` env var, since `std::env::set_var` has no
@@ -71,8 +68,9 @@ pub(crate) mod test_home_lock {
     }
 }
 
-/// Exit code the workflow contract reserves for "unresolved CRITICAL gate".
-/// Never emit this for a CLI usage error.
+/// Exit code the workflow contract reserves for an unresolved gating
+/// finding (`verify-run`'s FINDING_UNRESOLVED). Never emit this for a CLI
+/// usage error.
 const EXIT_CRITICAL_GATE: u8 = 2;
 
 /// Remapped exit code for CLI usage errors (bad flag, unknown subcommand,
@@ -398,6 +396,21 @@ pub enum Commands {
         no_version_check: bool,
     },
 
+    /// Check a SOP session file against its gates and report one exit
+    /// code. Reads the session file and the project config; writes nothing.
+    #[command(name = "verify-run")]
+    VerifyRun {
+        /// The session file to check, relative to the current directory or
+        /// absolute. It must be a regular file inside the current directory.
+        #[arg(long)]
+        session: std::path::PathBuf,
+
+        /// Accept a session whose run is still in progress (exit 0 when
+        /// nothing else fired) instead of failing it with exit 65.
+        #[arg(long = "allow-running", action = ArgAction::SetTrue)]
+        allow_running: bool,
+    },
+
     /// Read or write Konductor configuration.
     ///
     /// Temporarily hidden from normal --help and dispatch while the
@@ -483,6 +496,7 @@ impl Commands {
             Commands::Synth { .. } => Self::SYNTH,
             Commands::Init { .. } => Self::INIT,
             Commands::Doctor { .. } => Self::DOCTOR,
+            Commands::VerifyRun { .. } => Self::VERIFY_RUN,
             Commands::Config { .. } => Self::CONFIG,
             Commands::Metrics { .. } => Self::METRICS,
             Commands::DumpSchema => "__dump_schema",
@@ -501,6 +515,7 @@ impl Commands {
     pub(crate) const SYNTH: &'static str = "synth";
     pub(crate) const INIT: &'static str = "init";
     pub(crate) const DOCTOR: &'static str = "doctor";
+    pub(crate) const VERIFY_RUN: &'static str = "verify-run";
     pub(crate) const CONFIG: &'static str = "config";
     #[allow(dead_code)]
     pub(crate) const METRICS: &'static str = "metrics";
@@ -601,15 +616,6 @@ fn run_inner(cli: Cli) -> u8 {
     };
 
     dispatch::dispatch(command, cli.verbose, cli.json, color)
-}
-
-/// `EXIT_CRITICAL_GATE` (2) is reserved for a future CRITICAL-gate feature
-/// and isn't returned by any handler yet; `EXIT_HALTED` (1) is returned
-/// today by `doctor`'s own local constant of the same value. This keeps
-/// both referenced so neither is flagged dead code.
-#[allow(dead_code)]
-fn _contract_constants_reference() -> (u8, u8) {
-    (EXIT_HALTED, EXIT_CRITICAL_GATE)
 }
 
 #[cfg(test)]

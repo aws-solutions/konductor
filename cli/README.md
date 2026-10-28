@@ -7,16 +7,16 @@ a Konductor-managed repository. It handles installation, configuration, and diag
 for the agent, skill and SOP content that Konductor manages — it does not itself run
 SDLC workflows (that's the Konductor Kiro agent's job).
 
-> **Status:** `init`, `install`, `update`, `uninstall`, `synth`, and `doctor` now
-> perform real work (see [Current state](#current-state)). The remaining command
+> **Status:** `init`, `install`, `update`, `uninstall`, `synth`, `doctor`, and
+> `verify-run` now perform real work (see [Current state](#current-state)). The remaining command
 > (`metrics`) is still a **stub** — it parses arguments and validates input correctly,
 > but does not yet perform real work.
 
 ---
 
-## The 7 commands
+## The 8 commands
 
-`install`, `update`, `uninstall`, `synth`, `init`, `doctor`, `metrics`.
+`install`, `update`, `uninstall`, `synth`, `init`, `doctor`, `verify-run`, `metrics`.
 
 Global options: `--verbose`/`-v`,
 `--json`, `--version`, `--no-color`.
@@ -60,6 +60,8 @@ of failing.
 
 Running an SDLC _workflow_ is **not** a CLI subcommand — that is driven by the Konductor
 Kiro agent. The CLI utility handles setup, content build, lifecycle, and diagnostics only.
+`verify-run` does not run a workflow either: it only checks the session file of a
+finished or running one.
 
 ---
 
@@ -834,6 +836,76 @@ stdout instead:
 
 ---
 
+## `verify-run`
+
+```bash
+konductor verify-run --session .konductor/sessions/k-full-sdlc-<timestamp>-<suffix>.yml
+konductor verify-run --session <path> --allow-running   # accept a run still in progress
+konductor verify-run --session <path> --json            # one JSON object on stdout
+```
+
+Checks one SOP session file, the file the `sop-state-management` skill writes for a
+phase-gated SOP, and reports one exit code. Today only `k-full-sdlc` lists its phases
+and gate boundaries in `cli/gate-config/sop-orchestration.yml`, so only its sessions can
+pass. The SOP name comes from the file name (`<sop>-<digit>...`).
+
+It reads the session file, the evidence files the session names, and the effective
+config (preset, then `~/.konductor/config.yml`, then `.konductor/config.yml`) for
+`fail_on_severity_at_or_above`. It writes nothing under the project and sends no
+telemetry. Like every command, it appends one line to the invocation log under
+`~/.konductor/logs/`.
+
+The session path is resolved against the current directory, which is the project
+root. The file must be a regular file inside that root and must not be a symlink.
+Evidence paths in the session are relative to the root and must name a regular file
+inside it.
+
+The YAML is read as plain data: a local tag such as `!custom` or a non-string mapping
+key rejects the file. A `!!` tag such as `!!python/object` is resolved to its untagged
+value, so no object is ever constructed.
+
+The first row that fires sets the exit; every firing reason prints.
+
+| Row | Condition | Reason | Exit |
+| --- | --- | --- | --- |
+| V1 | The file is missing, unreadable, not UTF-8, a symlink, outside the project root, or rejected by the YAML loader. A bad argument. A `config.yml` that is present but invalid | `SESSION_INVALID`, `CONFIG_INVALID` | 64 |
+| V2 | `schema_version` is not 1, a status outside the skill's enums, a SOP name not in the gated list or with no `phases`, or session phases that differ from that list | `RECORD_INTEGRITY` | 65 |
+| V3 | A phase `COMPLETED` after an earlier `PENDING` or `IN_PROGRESS` one, `run_status: completed` with a phase not `COMPLETED` or `SKIPPED`, or a `SKIPPED` phase with no `skip_reason` | `PHASE_ORDER`, `PHASE_INCOMPLETE`, `SKIP_UNEXPLAINED` | 65 |
+| V4 | A gate phase is `COMPLETED` (per registered feature for a feature gate) with no `gate_<phase>_result`, an approval result other than `approved`, or no `gate_<phase>_evidence` naming a file in the project | `GATE_MISSING`, `APPROVAL_MISSING`, `EVIDENCE_MISSING` | 65 |
+| V5 | A phase is `BLOCKED`, or a per-feature phase stays `IN_PROGRESS` after a later phase completed | `HALTED` | 1 |
+| V6 | A feature's `fix_cycles_used` is above the cap: `run.data.max_fix_cycles` when it is 2 or less, otherwise 2 | `BUDGET_EXCEEDED` | 3 |
+| V7 | A check-threshold or loop-exit `gate_<phase>_result` ranks at or above the effective threshold. A word in no severity list ranks as CRITICAL | `FINDING_UNRESOLVED` | 2 |
+| V8 | `run_status: completed` and nothing above fired | `PASSED` | 0, or 6 when a gate phase was skipped |
+| V9 | `run_status: in_progress` and nothing above fired | `RUNNING` | 0 with `--allow-running`, otherwise 65 |
+
+Info lines never change the exit: `SAME_TYPE_CHECKER`, `SEVERITY_UNKNOWN`,
+`FINDING_BELOW_GATE`, `FIX_CAP_CLAMPED` (the recorded `max_fix_cycles` is above 2, so
+the cap is 2), and `PHASE_SKIPPED`.
+
+**Strict floor.** The effective threshold is the configured
+`fail_on_severity_at_or_above` or `HIGH`, whichever is lower. With the preset
+`CRITICAL`, an open `IMPORTANT` or `WARNING` finding (both rank `HIGH`, see
+`cli/gate-config/severity-schema.yml`) at a gate exits 2. That is the intended report,
+"a HIGH-or-above finding was left open at a gate", not a broken run.
+
+Plain output prints a summary line, `konductor verify-run: <first reason> (exit <n>)`,
+then one `<CODE>: <detail>` line per reason and per info note, on stdout. A V1 failure
+prints `konductor verify-run: <CODE>: <detail>` on stderr instead. `--json` prints one
+object on stdout in every case:
+
+```json
+{
+  "exit": 2,
+  "reasons": [{ "code": "FINDING_UNRESOLVED", "detail": "..." }],
+  "info": []
+}
+```
+
+It detects omission and inconsistency in the recorded session, not forgery: a session
+that records false facts consistently passes.
+
+---
+
 ## Using the orchestrator
 
 Agents installed with `--target <dir>` are discovered by a **cwd-relative scan** — they
@@ -856,7 +928,8 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
 
 - **Unified error prefix.** Every error line the CLI prints in plain-text mode sits
   under one greppable prefix family: `konductor <command>: <message>` for a
-  per-command error (`install`, `uninstall`, `update`, `doctor`, `synth`, `init`), or
+  per-command error (`install`, `uninstall`, `update`, `doctor`, `synth`, `init`,
+  `verify-run`), or
   `konductor: <message>` for the handful of command-agnostic paths (no
   subcommand resolved yet, or the shared working-directory resolution run before
   dispatch). This matters when output from multiple `konductor` invocations is
@@ -866,19 +939,19 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
   reserved by the exit-code contract for "unresolved CRITICAL gate" (the CI-failing
   signal), so a malformed invocation is never mistaken for a gate failure.
 - **Exit-code contract** (the conductor that emits these for its own paused-verdict
-  workflow is post-launch — but one code is already reused, for its own distinct
-  local meaning, by a real command ahead of that conductor existing):
+  workflow is post-launch. `doctor`, `uninstall` and `verify-run` already emit some
+  of them, as each row says):
   | Code | Meaning |
   |------|---------|
   | 0 | All passed |
-  | 1 | Halted (timeout / runtime error / parse error) — reused by `doctor` for "at least one check failed/stale" |
-  | 2 | Unresolved CRITICAL gate — CI-failing signal (**never** used for usage errors) |
-  | 3 | Budget / turn limit exceeded |
+  | 1 | Halted (timeout / runtime error / parse error). Reused by `doctor` for "at least one check failed/stale", and by `verify-run` for a blocked phase |
+  | 2 | Unresolved gating finding: an open finding at or above the effective threshold (CRITICAL by preset; HIGH under the strict floor for phase-gated SOPs). CI-failing signal (**never** used for usage errors). Emitted by `verify-run` |
+  | 3 | Budget / turn limit exceeded. Emitted by `verify-run` when fix cycles exceed the cap |
   | 4 | User aborted a paused verdict |
   | 5 | Reserved, not yet emitted by any command. |
-  | 6 | Success with warnings — emitted by `uninstall` when an otherwise-successful run could not remove a tracked `--link-bin` symlink |
+  | 6 | Success with warnings. Emitted by `uninstall` when an otherwise-successful run could not remove a tracked `--link-bin` symlink, and by `verify-run` when a run passed with a skipped gate phase |
   | 64 | CLI usage error (`EX_USAGE`) — never the reserved code `2` |
-  | 65 | Unsupported manifest/index `schema_version` (state/verification failure, distinct from a `64` usage error) |
+  | 65 | Unsupported manifest/index `schema_version` (state/verification failure, distinct from a `64` usage error); for `verify-run`, a missing gate fact or an inconsistent session record |
 - **Unknown-command suggestions.** An unknown command suggests a close match from the
   real command set.
 
@@ -899,10 +972,11 @@ approval the first time an agent reads a skill, and a `--no-interactive` run nee
   - `doctor` inspecting a source tree/install destination via `synth`/`install`/`config`'s
     own logic and reporting per-check ok/info/failed/stale status with remediation
     guidance
+  - `verify-run` checking a SOP session file against its gate boundaries and
+    reporting one exit code, including exit code 2 for an unresolved gating finding
 - **Stubs:** `metrics` still prints "not yet implemented."
 - **Not yet started:** the run-engine/conductor (which will read/write
-  `.konductor/run-state.json`-shaped documents and is responsible for exit code 2's
-  "unresolved CRITICAL gate" signal), and `.konductor/runs/` storage.
+  `.konductor/run-state.json`-shaped documents), and `.konductor/runs/` storage.
 
 ## Current limitations
 

@@ -18,6 +18,8 @@ not per individual commit.
   MINOR) to severity ids.
 - The CLI can judge a SOP session file against its gates. Phase-gated SOPs treat an open
   HIGH finding as unresolved, even when the threshold is CRITICAL.
+- New `konductor verify-run --session <path>` checks a SOP session file and exits through the
+  existing exit-code contract. It writes nothing.
 
 ### Changed
 
