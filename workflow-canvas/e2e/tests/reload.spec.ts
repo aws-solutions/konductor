@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import { expect } from '@playwright/test';
-import { API_TARGET, STUB_LAUNCH_CODE } from '../../playwright.shared';
+import { STUB_LAUNCH_CODE } from '../../playwright.shared';
 import { test } from '../support/fixtures';
 import { sharedSession } from '../support/session';
-import { WorkflowCanvasPage } from '../support/workflow-canvas-page';
 
 // A reload would ask the server for the page again. A request made after the
 // anchor was set is answered after any reload request, so once it is answered
@@ -74,25 +73,86 @@ test('shows the workflow of a pasted launch code once its session is open', asyn
   );
 });
 
-// A reload drops the token and the launch code from the page, so the person
-// opens the printed address again. The stub takes the code again for that; a
-// server that follows the contract to the letter does not, so these tests run
-// against the stub only. The page makes its own `POST /api/session` here.
-if (API_TARGET.isStub) {
-  test('opens the workflow again when the launch address is opened after a reload', async ({
-    page,
-  }) => {
-    const canvas = new WorkflowCanvasPage(page);
-    await canvas.open(STUB_LAUNCH_CODE);
-    await canvas.expectWorkflowDrawn();
-
-    await page.reload();
-    await expect(page.getByText(/no launch code in the address/)).toBeVisible();
-
-    // Pasting the printed address into the same tab only changes the fragment.
-    await canvas.open(STUB_LAUNCH_CODE);
-
-    await expect(page.getByText('The workflow did not load')).toHaveCount(0);
-    await canvas.expectWorkflowDrawn();
+// The launch code works once and the page removes it from the address. A
+// reload still works, as the page kept the session in the storage of its tab.
+test('draws the workflow again after a reload, with no launch code', async ({
+  canvas,
+  page,
+}) => {
+  await canvas.expectWorkflowDrawn();
+  const sessions: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().endsWith('/api/session')) sessions.push(request.url());
   });
-}
+
+  await page.reload();
+
+  await canvas.expectWorkflowDrawn();
+  await expect(page.getByText(/no launch code in the address/)).toHaveCount(0);
+  expect(sessions).toEqual([]);
+});
+
+test('never writes the launch code to the storage of the page', async ({
+  canvas,
+  page,
+}) => {
+  await canvas.expectWorkflowDrawn();
+
+  const stored = await page.evaluate(() =>
+    JSON.stringify([
+      Object.entries(window.sessionStorage),
+      Object.entries(window.localStorage),
+    ]),
+  );
+
+  expect(stored).toContain(sharedSession().token);
+  expect(stored).not.toContain(STUB_LAUNCH_CODE);
+});
+
+test('asks for a fresh launch address when the server no longer knows the session', async ({
+  canvas,
+  page,
+}) => {
+  await canvas.expectWorkflowDrawn();
+  await page.route('**/api/workflow', (route) =>
+    route.fulfill({
+      status: 401,
+      json: {
+        error: 'The session token is missing or wrong.',
+        code: 'unauthorized',
+      },
+    }),
+  );
+
+  await page.reload();
+
+  await expect(
+    page.getByText(/server no longer knows this session/),
+  ).toBeVisible();
+  expect(await page.evaluate(() => window.sessionStorage.length)).toBe(0);
+
+  await page.unroute('**/api/workflow');
+  await page.evaluate((code) => (window.location.hash = code), NEW_CODE);
+
+  await canvas.expectWorkflowDrawn();
+  expect(await page.evaluate(() => window.sessionStorage.length)).toBe(1);
+});
+
+test('keeps the old session for a reload when a pasted launch code is refused', async ({
+  canvas,
+  page,
+}) => {
+  await canvas.expectWorkflowDrawn();
+  await page.route('**/api/session', (route) =>
+    route.fulfill({
+      status: 401,
+      json: { error: 'The launch code is not valid.' },
+    }),
+  );
+  await page.evaluate((code) => (window.location.hash = code), NEW_CODE);
+  await expect(page.getByTestId('launch-notice')).toBeVisible();
+
+  await page.reload();
+
+  await canvas.expectWorkflowDrawn();
+});

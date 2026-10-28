@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { Page, Route } from '@playwright/test';
-import { STUB_LAUNCH_CODE } from '../../playwright.shared';
 import { expectNoAccessibilityViolations } from '../support/accessibility';
 import { expect, test } from '../support/editing-fixtures';
 import {
@@ -42,13 +41,8 @@ test('changes the agent of a stage, saves it, and shows it after a reload', asyn
 
   const saved = await currentWorkflow(request);
   expect(saved.text).toBe(SAMPLE_TEXT.replace('k-developer', 'k-architect'));
-  // A reload has no launch code, as the code works once. The person opens the
-  // launch address again, and the fixture answers for the session.
   await canvas.page.reload();
-  await expect(
-    canvas.page.getByText(/no launch code in the address/),
-  ).toBeVisible();
-  await canvas.open(STUB_LAUNCH_CODE);
+  await canvas.title.waitFor();
   await expect(canvas.node('node-stage-draft')).toContainText('k-architect');
 });
 

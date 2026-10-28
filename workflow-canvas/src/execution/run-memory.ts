@@ -10,8 +10,9 @@ export interface RunMemoryEnvironment {
 
 /**
  * Remembers the id of the latest run in the storage of the browser tab, so
- * that a reload of the page can find it again. The id is no secret; the token
- * is not kept. A browser that blocks storage leaves it with no memory.
+ * that a reload of the page can find it again. The id is no secret; the
+ * session is kept apart, by `launch/session-memory.ts`. A browser that blocks
+ * storage leaves it with no memory.
  */
 export function sessionRunMemory(env: RunMemoryEnvironment): RunMemory {
   return {

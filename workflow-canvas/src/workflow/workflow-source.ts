@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { WorkflowApi } from '../api/api';
+import type { SessionMemory } from '../launch/session-memory';
 import { loadWorkflow, type LoadResult } from './load-workflow';
 
 /** The workflow the page shows, and the way to offer it another launch code. */
@@ -23,13 +24,16 @@ export interface WorkflowSource {
 
 /**
  * Starts the first load at once, outside React: the launch code works only
- * once, and strict mode runs effects twice.
+ * once, and strict mode runs effects twice. With no code, the first load uses
+ * the session that `memory` kept. The session of the workflow on the page is
+ * the one that `memory` keeps.
  */
 export function createWorkflowSource(
   api: WorkflowApi,
   firstCode: string | undefined,
+  memory: SessionMemory,
 ): WorkflowSource {
-  let current = loadWorkflow(api, firstCode);
+  let current = loadWorkflow(api, firstCode, memory);
   let lastOffer = 0;
   let shownOffer = 0;
   let shownWorkflowOffer = 0;
@@ -46,7 +50,10 @@ export function createWorkflowSource(
     if (next.ok) shownWorkflowOffer = offer;
     current = Promise.resolve(next);
     listeners.forEach((listener) => listener());
-    if (next.ok) setNotice(undefined);
+    if (next.ok) {
+      next.remember();
+      setNotice(undefined);
+    }
   };
   // A workflow is shown unless a newer one is. An error is shown only while
   // no workflow is, and never over a newer answer. With a workflow on the
@@ -62,6 +69,9 @@ export function createWorkflowSource(
     }
     if (shownWorkflowOffer === 0 && offer > shownOffer) show(offer, next);
   };
+  void current.then((first) => {
+    if (first.ok && shownWorkflowOffer === 0) first.remember();
+  });
   return {
     current: () => current,
     subscribe(listener) {
@@ -76,7 +86,7 @@ export function createWorkflowSource(
     dismissNotice: () => setNotice(undefined),
     async offer(code) {
       const offer = ++lastOffer;
-      await offerLoaded(offer, await loadWorkflow(api, code));
+      await offerLoaded(offer, await loadWorkflow(api, code, memory));
     },
   };
 }

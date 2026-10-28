@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
 import type { WorkflowApi } from '../api/api';
 import { HELLO_DOCUMENT, HELLO_SESSION } from '../test-support/fixtures';
+import { freshMemory } from '../test-support/memory-storage';
 import { useWorkflowSource } from './use-workflow-source';
 import { createWorkflowSource } from './workflow-source';
 
@@ -18,7 +19,7 @@ describe('the page, under strict mode', () => {
       startRun: vi.fn(),
       getRun: vi.fn(),
     };
-    const source = createWorkflowSource(api, 'code-1');
+    const source = createWorkflowSource(api, 'code-1', freshMemory());
     function Root() {
       return <App load={useWorkflowSource(source)} />;
     }

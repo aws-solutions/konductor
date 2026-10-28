@@ -24,6 +24,11 @@ describe('the Playwright web servers', () => {
     });
   });
 
+  it('start the stub as the contract has it, with a launch code that works once', () => {
+    const [, stub] = webServersFor(apiTarget({}));
+    expect(stub?.command).not.toContain('--with-dev-server');
+  });
+
   it('serve the app on 4173 unless told another port', () => {
     const [app] = webServersFor(apiTarget({}));
     expect(app?.url).toBe(originOf(4173));

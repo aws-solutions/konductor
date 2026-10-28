@@ -20,11 +20,11 @@ const appServer = (port: number): WebServer => ({
   timeout: 120_000,
 });
 
-// `--with-dev-server` lets a test open the page again with the same launch
-// code, as `dev:stub` does for a person who reloads the page.
+// The stub follows the contract here: its launch code works once, so a reload
+// that works has resumed from the stored session.
 const stubServer = (target: ApiTarget): WebServer => ({
   name: 'stub-api',
-  command: 'npm run stub -- --with-dev-server',
+  command: 'npm run stub',
   env: {
     STUB_PORT: String(portOf(target.origin)),
     STUB_LAUNCH_CODE,
