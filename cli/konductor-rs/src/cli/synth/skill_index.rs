@@ -15,7 +15,8 @@ const HEADING: &str = "## Your skills";
 
 const USE_RULE: &str = "Before a non-trivial task, check whether one of the skills listed below \
 covers it. If one matches, load at most one or two and follow their steps and output format. \
-Skip this for trivial tasks such as a quick question, a one-line edit, or a lookup.";
+Skip this for trivial tasks such as a quick question, a one-line edit, or a lookup. \
+Workspace skills named `ws-*` also count; read them from `.kiro/skills/<name>/SKILL.md`.";
 
 // A skill whose trigger starts with this marker (constraints) claims every
 // task, which contradicts the one-or-two rule above, so it is left out of
@@ -269,6 +270,10 @@ mod tests {
         assert!(block.contains(&format!("`{GET_SKILL_TOOL}`")), "{block}");
         assert!(block.contains(&format!("`{MCP_SERVER_NAME}`")), "{block}");
         assert!(block.contains("`tool_load`"));
+        assert!(
+            block.contains("`ws-*` also count; read them from `.kiro/skills/<name>/SKILL.md`"),
+            "{block}"
+        );
     }
 
     #[test]
