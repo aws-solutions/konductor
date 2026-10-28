@@ -71,8 +71,8 @@ test('announces the status in a polite live region and names the state of each n
 
   await canvas.runButton.click();
 
-  await expect(canvas.runStatus).toHaveAttribute('role', 'status');
-  await expect(canvas.runStatus).toHaveAttribute('aria-live', 'polite');
+  await expect(canvas.runLiveStatus).toHaveAttribute('role', 'status');
+  await expect(canvas.runLiveStatus).toContainText('Running draft.');
   await expect(canvas.runStatus).toContainText('Running draft.');
   await expect(
     canvas.nodeNamed(
@@ -113,7 +113,7 @@ test('shows the error of the API in one alert when the run does not start', asyn
   await expect(canvas.runError).toHaveCount(1);
   await expect(canvas.runError).toContainText('The run did not start');
   await expect(canvas.runError).toContainText('kiro-cli is not installed.');
-  await expect(canvas.runStatus).toContainText('See the error above.');
+  await expect(canvas.runStatus).toContainText('See the error below.');
   await expect(canvas.runAlert).toContainText('kiro-cli is not installed.');
   await canvas.expectBadges([null, null, null, null]);
   await expect(canvas.runButton).toBeEnabled();
@@ -138,8 +138,30 @@ test('says the run may still be going when it can no longer be followed', async 
   await expect(canvas.runError).toContainText('The run could not be followed');
   await expect(canvas.runAlert).toContainText('There is no run with this id.');
   await expect(canvas.runAlert).toContainText(
-    'The run may still be going on the server.',
+    'The run may still be going on the server (run 20261024-0412-a7b3c).',
   );
+});
+
+test('announces a failure to follow the run while the Designer tab is open', async ({
+  canvas,
+}) => {
+  await answerRunsWith(
+    canvas.page,
+    runReply('running', ['running', 'pending']),
+  );
+  await canvas.runButton.click();
+  await expect(canvas.runStatus).toContainText('Running draft.');
+  await canvas.selectTab('Designer');
+  await canvas.page.route('**/api/runs/*', (route) =>
+    route.fulfill({
+      status: 404,
+      json: { error: 'There is no run with this id.', code: 'not_found' },
+    }),
+  );
+
+  await expect(canvas.runAlert).toContainText('The run could not be followed');
+  await expect(canvas.runAlert).toContainText('There is no run with this id.');
+  await expect(canvas.runError).toHaveCount(0);
 });
 
 test('keeps following the run while the Designer tab is open', async ({

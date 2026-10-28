@@ -63,13 +63,13 @@ describe('statusText and statusKind', () => {
     [
       'an error before the run started',
       { phase: 'error', message: 'x', started: false },
-      'See the error above.',
+      'See the error below.',
       'error',
     ],
     [
       'an error after the run started',
       { phase: 'error', message: 'x', started: true },
-      'See the error above.',
+      'See the error below.',
       'error',
     ],
   ])('says %s', (_, state, text, kind) => {
