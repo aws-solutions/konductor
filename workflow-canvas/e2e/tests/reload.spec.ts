@@ -18,8 +18,7 @@ if (API_TARGET.isStub) {
     await page.reload();
     await expect(page.getByText(/no launch code in the address/)).toBeVisible();
 
-    // The same address, opened in a fresh page, as pasting it from the terminal.
-    await page.goto('about:blank');
+    // Pasting the printed address into the same tab only changes the fragment.
     await canvas.open(STUB_LAUNCH_CODE);
 
     await expect(page.getByText('The workflow did not load')).toHaveCount(0);

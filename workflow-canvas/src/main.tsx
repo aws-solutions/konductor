@@ -4,7 +4,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { createHttpApi } from './api/http-api';
-import { takeLaunchCode } from './launch/launch-code';
+import { reloadOnLaunchCode, takeLaunchCode } from './launch/launch-code';
 import { loadWorkflow } from './workflow/load-workflow';
 
 const root = document.getElementById('root');
@@ -13,6 +13,7 @@ if (!root) throw new Error('Missing #root element');
 // Started once, outside React: the launch code works only once, and strict mode
 // runs effects twice.
 const load = loadWorkflow(createHttpApi(), takeLaunchCode(window));
+reloadOnLaunchCode(window);
 
 createRoot(root).render(
   <StrictMode>

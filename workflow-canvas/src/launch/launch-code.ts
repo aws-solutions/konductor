@@ -19,6 +19,23 @@ export function takeLaunchCode(env: LaunchEnvironment): string | undefined {
   return code === '' ? undefined : code;
 }
 
+/** The parts of `window` that watching for a pasted launch address needs. */
+export interface LaunchWatchEnvironment {
+  location: Pick<Location, 'hash' | 'reload'>;
+  addEventListener(type: 'hashchange', listener: () => void): void;
+}
+
+/**
+ * Reloads the page when a launch code is put into the address of the open
+ * page. Pasting the printed address into the same tab only changes the
+ * fragment, which does not reload the page.
+ */
+export function reloadOnLaunchCode(env: LaunchWatchEnvironment): void {
+  env.addEventListener('hashchange', () => {
+    if (decodeFragment(env.location.hash) !== '') env.location.reload();
+  });
+}
+
 function decodeFragment(hash: string): string {
   const raw = hash.replace(/^#/, '');
   try {
