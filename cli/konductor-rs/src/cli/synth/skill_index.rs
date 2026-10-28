@@ -18,19 +18,26 @@ covers it. If one matches, load at most one or two and follow their steps and ou
 Skip this for trivial tasks such as a quick question, a one-line edit, or a lookup. \
 Workspace skills named `ws-*` also count; read them from `.kiro/skills/<name>/SKILL.md`.";
 
-// A skill whose trigger starts with this marker (constraints) claims every
-// task, which contradicts the one-or-two rule above, so it is left out of
-// the index. A "MUST USE for <task>" trigger (git-merge) stays listed.
+// A skill whose "MUST USE" sentence starts with this marker (constraints)
+// claims every task, which contradicts the one-or-two rule above, so it is
+// left out of the index. A "MUST USE for <task>" skill (git-merge) stays.
 const EVERY_TASK_MARKER: &str = "MUST USE for every ";
 
 const ORCHESTRATOR_RULE: &str = "You orchestrate. When a task matches a skill a specialist \
 owns, such as a code review, a threat model, or user stories, route it to that specialist \
 instead of doing it yourself. Load a skill from this list only for your own orchestration work.";
 
+struct Trigger {
+    text: String,
+    every_task: bool,
+}
+
 /// One short trigger for a skill, taken from its frontmatter
-/// `description`. `None` when the description is missing, not a string,
+/// `description`: the first "Use ..." or "MUST USE" sentence, led by the
+/// first sentence when that is a different one so the line still says what
+/// the skill does. `None` when the description is missing, not a string,
 /// or blank.
-fn skill_trigger(raw_frontmatter: &str) -> Option<String> {
+fn skill_trigger(raw_frontmatter: &str) -> Option<Trigger> {
     let value: serde_yaml::Value = serde_yaml::from_str(raw_frontmatter).ok()?;
     let description = value.get("description")?.as_str()?;
     // Many descriptions use em or en dashes; the index is prompt text we
@@ -43,11 +50,20 @@ fn skill_trigger(raw_frontmatter: &str) -> Option<String> {
         return None;
     }
     let sentences = split_sentences(&collapsed);
-    let chosen = sentences
+    let chosen_at = sentences
         .iter()
-        .find(|s| s.starts_with("Use ") || s.starts_with("MUST USE"))
-        .or_else(|| sentences.first())?;
-    Some(cap_on_word_boundary(chosen))
+        .position(|s| s.starts_with("Use ") || s.starts_with("MUST USE"))
+        .unwrap_or(0);
+    let chosen = sentences[chosen_at];
+    let text = if chosen_at == 0 {
+        chosen.to_string()
+    } else {
+        format!("{} {chosen}", sentences[0])
+    };
+    Some(Trigger {
+        text: cap_on_word_boundary(&text),
+        every_task: chosen.starts_with(EVERY_TASK_MARKER),
+    })
 }
 
 // A sentence ends at `.`, `!` or `?` only when whitespace and then an
@@ -114,8 +130,8 @@ fn block_preamble(agent_name: &str) -> String {
 }
 
 /// The Kiro block: one `- <name>: <trigger>` line per declared skill, in
-/// declared order, leaving out any skill whose trigger starts with
-/// `MUST USE for every `. Names with no matching `SkillDef` are skipped
+/// declared order, leaving out any skill whose "MUST USE" sentence starts
+/// with `MUST USE for every `. Names with no matching `SkillDef` are skipped
 /// (synth's parse step already rejects dangling names). `None` when
 /// nothing would be listed.
 pub(crate) fn kiro_skill_block(
@@ -129,8 +145,8 @@ pub(crate) fn kiro_skill_block(
         .filter_map(|name| skills.iter().find(|s| s.name == *name))
     {
         match skill_trigger(&skill.raw_frontmatter) {
-            Some(trigger) if trigger.starts_with(EVERY_TASK_MARKER) => {}
-            Some(trigger) => lines.push(format!("- {}: {trigger}", skill.name)),
+            Some(trigger) if trigger.every_task => {}
+            Some(trigger) => lines.push(format!("- {}: {}", skill.name, trigger.text)),
             None => lines.push(format!("- {}", skill.name)),
         }
     }
@@ -160,13 +176,22 @@ mod tests {
     }
 
     fn trigger(description_yaml: &str) -> Option<String> {
-        skill_trigger(&format!("name: x\ndescription: {description_yaml}"))
+        skill_trigger(&format!("name: x\ndescription: {description_yaml}")).map(|t| t.text)
     }
 
     #[test]
-    fn trigger_prefers_use_sentence_over_leading_summary() {
+    fn trigger_leads_use_sentence_with_first_sentence() {
         assert_eq!(
-            trigger("Reviews code for defects. Use when a diff needs review.").as_deref(),
+            trigger("Reviews code for defects. Covers style. Use when a diff needs review.")
+                .as_deref(),
+            Some("Reviews code for defects. Use when a diff needs review.")
+        );
+    }
+
+    #[test]
+    fn trigger_is_just_the_use_sentence_when_it_comes_first() {
+        assert_eq!(
+            trigger("Use when a diff needs review. Covers style.").as_deref(),
             Some("Use when a diff needs review.")
         );
     }
@@ -174,9 +199,26 @@ mod tests {
     #[test]
     fn trigger_accepts_must_use_sentence() {
         assert_eq!(
-            trigger("Core rules. MUST USE for every interaction.").as_deref(),
-            Some("MUST USE for every interaction.")
+            trigger("Core rules. MUST USE for merging. More.").as_deref(),
+            Some("Core rules. MUST USE for merging.")
         );
+    }
+
+    #[test]
+    fn trigger_keeps_what_backend_review_does() {
+        // Copied from skills/backend-review/SKILL.md.
+        let description = "Reviews backend code changes for architectural pattern compliance, \
+                           type safety, DynamoDB correctness, and test quality. Use after \
+                           implementing backend changes to catch issues before code review. \
+                           Produces CRITICAL/IMPORTANT/SUGGESTION findings.";
+        let got = trigger(description).unwrap();
+        assert!(
+            got.starts_with("Reviews backend code changes for architectural pattern compliance"),
+            "{got}"
+        );
+        assert!(got.contains(". Use after implementing"), "{got}");
+        assert!(got.chars().count() <= TRIGGER_MAX_CHARS, "{got}");
+        assert!(got.ends_with("..."), "{got}");
     }
 
     #[test]
@@ -225,8 +267,8 @@ mod tests {
     fn trigger_reads_folded_yaml_description() {
         let fm = "name: x\ndescription: >\n  Summary line.\n  Use when the\n  thing happens.\n";
         assert_eq!(
-            skill_trigger(fm).as_deref(),
-            Some("Use when the thing happens.")
+            skill_trigger(fm).map(|t| t.text).as_deref(),
+            Some("Summary line. Use when the thing happens.")
         );
     }
 
@@ -299,6 +341,16 @@ mod tests {
         );
         assert!(!block.contains("constraints"), "{block}");
         assert!(!block.contains("Always-apply"), "{block}");
+    }
+
+    #[test]
+    fn every_task_skill_is_left_out_after_a_leading_summary() {
+        let skills = vec![
+            skill("rules", "Core rules. MUST USE for every interaction."),
+            skill("a", "Use for a."),
+        ];
+        let block = kiro_skill_block("k-developer", &["rules", "a"], &skills).unwrap();
+        assert!(!block.contains("- rules"), "{block}");
     }
 
     #[test]
