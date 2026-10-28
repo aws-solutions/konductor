@@ -20,7 +20,7 @@ import {
   type EditState,
   type SaveState,
 } from './edit-state';
-import { canEdit, canSave, isDirty } from './edit-view';
+import { canSave, changeBlocker, isDirty, textOf } from './edit-view';
 import { checkOf } from './problems';
 
 const NOT_EDITABLE =
@@ -29,7 +29,7 @@ const NOT_EDITABLE =
 // A change of the draft: a new revision, and a finished save is old news.
 // A read-only workflow takes no change.
 function edited(state: EditState, draft: Draft, selectedId: string): EditState {
-  if (draft === state.draft || !canEdit(state)) return state;
+  if (draft === state.draft || changeBlocker(state) !== undefined) return state;
   const phase = state.save.phase;
   const settled =
     phase === 'saved' || phase === 'reloaded' || phase === 'failed';
@@ -125,8 +125,16 @@ function refused(
 
 function reloaded(state: EditState, document: WorkflowDocument): EditState {
   const next = openDocument(document, state.revision + 1);
+  // The reload replaces the draft; its text is kept so it can be recovered.
+  const discarded = isDirty(state) ? textOf(state) : undefined;
   return next
-    ? { ...next, save: { phase: 'reloaded' } }
+    ? {
+        ...next,
+        save:
+          discarded === undefined
+            ? { phase: 'reloaded' }
+            : { phase: 'reloaded', discarded },
+      }
     : { ...state, save: { phase: 'conflict', problem: NOT_EDITABLE } };
 }
 

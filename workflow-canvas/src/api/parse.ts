@@ -244,6 +244,15 @@ export function errorRunIdOf(body: unknown): string | undefined {
     : undefined;
 }
 
+/** The `current_hash` of a 409 `Error` body, or `undefined` when it has none. */
+export function errorCurrentHashOf(body: unknown): string | undefined {
+  return isObject(body) &&
+    typeof body.current_hash === 'string' &&
+    body.current_hash !== ''
+    ? body.current_hash
+    : undefined;
+}
+
 /** The `code` of an `Error` body, or `undefined` when it has none. */
 export function errorCodeOf(body: unknown): string | undefined {
   return isObject(body) && typeof body.code === 'string'

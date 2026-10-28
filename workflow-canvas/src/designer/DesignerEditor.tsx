@@ -6,7 +6,13 @@ import { useMemo, useRef, useState } from 'react';
 import { WorkflowGraphCard } from '../canvas/WorkflowGraphCard';
 import type { CanvasSelection } from '../canvas/WorkflowCanvas';
 import { stageNodeId } from '../graph';
-import { canAddStage, canEdit, MAX_STAGES, READ_ONLY_REASON } from './core';
+import {
+  canAddStage,
+  canEdit,
+  changeBlocker,
+  MAX_STAGES,
+  READ_ONLY_REASON,
+} from './core';
 import '../execution/announcements.css';
 import './designer.css';
 import { EditAlerts, RewriteNotice } from './EditAlerts';
@@ -66,7 +72,8 @@ export function DesignerEditor({
   );
 
   const editable = canEdit(state);
-  const addable = editable && canAddStage(state.draft);
+  const blocker = changeBlocker(state);
+  const addable = blocker === undefined && canAddStage(state.draft);
   return (
     <div>
       <div
@@ -95,7 +102,7 @@ export function DesignerEditor({
             <Button
               iconName="add-plus"
               disabled={!addable}
-              disabledReason={editable ? STAGE_LIMIT : READ_ONLY_REASON}
+              disabledReason={blocker ?? STAGE_LIMIT}
               onClick={() => {
                 editor.add();
                 focusName();

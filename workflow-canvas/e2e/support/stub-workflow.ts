@@ -34,10 +34,15 @@ export async function overwriteWorkflow(
   text: string,
 ): Promise<void> {
   const { hash } = await currentWorkflow(request);
-  await request.put(`${API_URL}/api/workflow`, {
+  const reply = await request.put(`${API_URL}/api/workflow`, {
     headers: headers({ 'Content-Type': 'application/json' }),
     data: { text, base_hash: hash },
   });
+  if (!reply.ok()) {
+    throw new Error(
+      `The stub refused to write the workflow (${reply.status()}).`,
+    );
+  }
 }
 
 /**

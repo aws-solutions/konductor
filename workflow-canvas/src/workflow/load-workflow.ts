@@ -68,17 +68,31 @@ function startUnsureOf(error: unknown): RunStartUnsure | undefined {
     : undefined;
 }
 
+// A new session is a new page, which has no draft.
+const CHANGES_ARE_LOST =
+  'The changes you made on this page are lost when you do; copy them first.';
+
+// A 2xx whose body the page cannot read: the server did the write.
+function isUnreadableSuccess(error: ApiError): boolean {
+  return error.status >= 200 && error.status < 300;
+}
+
 // A 409 `conflict` is the file changing under the page; a 422
 // `invalid_workflow` carries the findings of the check; no answer or a server
 // error leaves it unknown whether the file was written. The core is told each
 // as its own error.
 function saveErrorOf(error: unknown): Error | undefined {
   if (!(error instanceof ApiError)) return undefined;
-  if (error.code === 'conflict') return new SaveConflict(error.message);
+  if (error.code === 'conflict') {
+    return new SaveConflict(error.message, error.currentHash);
+  }
   if (error.code === 'invalid_workflow') {
     return new SaveRefused(error.message, error.diagnostics);
   }
-  return canRetryStatus(error.status)
+  if (error.code === 'unauthorized' || error.code === 'invalid_code') {
+    return new Error(`${messageOf(error, error.message)} ${CHANGES_ARE_LOST}`);
+  }
+  return canRetryStatus(error.status) || isUnreadableSuccess(error)
     ? new SaveLost(messageOf(error, error.message))
     : undefined;
 }

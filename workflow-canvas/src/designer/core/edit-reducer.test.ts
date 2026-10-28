@@ -420,7 +420,7 @@ describe('reload', () => {
     expect(stagesOf(next.draft)).toEqual([{ name: 'only', agent: 'k-tpm' }]);
     expect(next.saved.hash).toBe(NEW_DOCUMENT.hash);
     expect(next.revision).toBeGreaterThan(state.revision);
-    expect(next.save).toEqual({ phase: 'reloaded' });
+    expect(next.save.phase).toBe('reloaded');
   });
 
   it('stays in the conflict, with a reason, when the file can no longer be edited', () => {
@@ -556,5 +556,64 @@ describe('removing a stage that is not in the draft', () => {
     const state = opened();
 
     expect(reduce(state, { type: 'remove', id: 'nope' })).toBe(state);
+  });
+});
+
+describe('a reload', () => {
+  const NEWER = {
+    ...HELLO_DOCUMENT,
+    hash: 'e'.repeat(64),
+    view: { ...HELLO_VIEW, stages: [{ name: 'only', agent: 'k-tpm' }] },
+  };
+
+  function reloading(): EditState {
+    return run(
+      opened(),
+      { type: 'rename', id: 's1', name: 'mine' },
+      { type: 'save' },
+      { type: 'conflict' },
+      { type: 'reload' },
+    );
+  }
+
+  it.each([
+    ['add', { type: 'add' }],
+    ['rename', { type: 'rename', id: 's1', name: 'other' }],
+    ['set-agent', { type: 'set-agent', id: 's1', agent: 'k-tpm' }],
+    ['remove', { type: 'remove', id: 's2' }],
+  ] as const)('takes no %s while the file loads', (_, event) => {
+    const state = reloading();
+
+    expect(reduce(state, event)).toBe(state);
+  });
+
+  it('keeps the text of the draft that it replaces', () => {
+    const next = run(reloading(), { type: 'reloaded', document: NEWER });
+
+    expect(next.save.phase).toBe('reloaded');
+    expect(
+      next.save.phase === 'reloaded' ? next.save.discarded : undefined,
+    ).toContain('- name: mine');
+  });
+
+  it('keeps no text when the draft had no changes', () => {
+    const state = run(
+      opened(),
+      { type: 'rename', id: 's1', name: 'mine' },
+      { type: 'rename', id: 's1', name: 'draft' },
+      { type: 'save' },
+      { type: 'conflict' },
+      { type: 'reload' },
+    );
+
+    expect(run(state, { type: 'reloaded', document: NEWER }).save).toEqual({
+      phase: 'reloaded',
+    });
+  });
+
+  it('keeps the draft when the file cannot be loaded', () => {
+    const next = run(reloading(), { type: 'reload-failed', message: 'No.' });
+
+    expect(stagesOf(next.draft)[0]?.name).toBe('mine');
   });
 });

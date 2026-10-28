@@ -425,6 +425,37 @@ describe('createHttpApi', () => {
     });
   });
 
+  it('carries the hash of the file in a conflict', async () => {
+    const { api } = apiFor(
+      reply(
+        {
+          error: 'The file changed on disk.',
+          code: 'conflict',
+          current_hash: 'c'.repeat(64),
+        },
+        409,
+      ),
+    );
+
+    const error = await api
+      .saveWorkflow('t', 'x', 'b'.repeat(64))
+      .catch((caught: unknown) => caught);
+
+    expect((error as ApiError).currentHash).toBe('c'.repeat(64));
+  });
+
+  it('carries no hash in a conflict about a file that is gone', async () => {
+    const { api } = apiFor(
+      reply({ error: 'The file is gone.', code: 'conflict' }, 409),
+    );
+
+    const error = await api
+      .saveWorkflow('t', 'x', 'b'.repeat(64))
+      .catch((caught: unknown) => caught);
+
+    expect((error as ApiError).currentHash).toBeUndefined();
+  });
+
   it('carries the findings of a refused save', async () => {
     const { api } = apiFor(
       reply(

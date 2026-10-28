@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 import Alert from '@cloudscape-design/components/alert';
 import Button from '@cloudscape-design/components/button';
+import Textarea from '@cloudscape-design/components/textarea';
+import { useState } from 'react';
 import type { Draft, EditState, Problem } from './core';
 import {
   errorsOf,
   listedOf,
   notesOf,
   problemsOfDraft,
+  textOf,
   willRewriteWhole,
 } from './core';
 
@@ -27,13 +30,44 @@ function lineOf(problem: Problem, draft: Draft): string {
   return label === undefined ? problem.message : `${label}: ${problem.message}`;
 }
 
+// Puts the text on the clipboard. A page that may not, or has none, shows the
+// text instead, so the changes can always be taken away.
+function CopyVersion({ text }: { text: string }) {
+  const [shown, setShown] = useState<'idle' | 'copied' | 'text'>('idle');
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setShown('copied');
+    } catch {
+      setShown('text');
+    }
+  };
+  return (
+    <>
+      <Button onClick={() => void copy()}>Copy my version</Button>
+      {shown === 'copied' && <div role="status">Copied.</div>}
+      {shown === 'text' && (
+        <Textarea
+          readOnly
+          value={text}
+          rows={8}
+          ariaLabel="My version of the workflow file"
+        />
+      )}
+    </>
+  );
+}
+
 function Conflict({
   problem,
   reloading,
+  mine,
   onReload,
 }: {
   problem: string | undefined;
   reloading: boolean;
+  /** The text of the draft, which a reload replaces. */
+  mine: string;
   onReload: () => void;
 }) {
   return (
@@ -48,6 +82,7 @@ function Conflict({
       }
     >
       {problem ?? CONFLICT_TEXT}
+      <CopyVersion text={mine} />
     </Alert>
   );
 }
@@ -105,11 +140,29 @@ export function EditAlerts({
         <Conflict
           problem={save.phase === 'conflict' ? save.problem : undefined}
           reloading={save.phase === 'reloading'}
+          mine={textOf(state)}
           onReload={onReload}
         />
       )}
+      {save.phase === 'reloaded' && save.discarded !== undefined && (
+        <Alert
+          type="info"
+          header="The file was loaded again"
+          data-testid="discarded"
+        >
+          Your changes were replaced by the file as it is now.
+          <CopyVersion text={save.discarded} />
+        </Alert>
+      )}
       {save.phase === 'failed' && (
-        <Alert type="error" header="The workflow was not saved">
+        <Alert
+          type="error"
+          header={
+            save.uncertain
+              ? 'The save did not finish'
+              : 'The workflow was not saved'
+          }
+        >
           {save.message}
         </Alert>
       )}

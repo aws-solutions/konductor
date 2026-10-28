@@ -21,7 +21,11 @@ export type SaveState =
   | { phase: 'saving' }
   | { phase: 'saved' }
   | { phase: 'reloading' }
-  | { phase: 'reloaded' }
+  | {
+      phase: 'reloaded';
+      /** The text of the draft that the reload replaced, when it had changes. */
+      discarded?: string;
+    }
   | { phase: 'conflict'; problem?: string }
   | {
       phase: 'failed';

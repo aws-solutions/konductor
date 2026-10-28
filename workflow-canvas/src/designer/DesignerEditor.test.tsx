@@ -691,7 +691,9 @@ describe('a save that finds the file changed', () => {
     const alert = screen.getByTestId('conflict');
     expect(alert.textContent).toContain('The file changed on disk');
     expect(alert.textContent).toContain('nothing was saved');
-    expect(within(alert).getByRole('button')).toBeTruthy();
+    expect(
+      within(alert).getByRole('button', { name: 'Load the file again' }),
+    ).toBeTruthy();
     expect(isOff(saveButton())).toBe(true);
   });
 
@@ -711,7 +713,9 @@ describe('a save that finds the file changed', () => {
       hash: 'e'.repeat(64),
       view: { ...HELLO_VIEW, stages: [{ name: 'only', agent: 'k-tpm' }] },
     });
-    const reload = within(screen.getByTestId('conflict')).getByRole('button');
+    const reload = within(screen.getByTestId('conflict')).getByRole('button', {
+      name: 'Load the file again',
+    });
     reload.focus();
 
     fireEvent.click(reload);
@@ -723,11 +727,66 @@ describe('a save that finds the file changed', () => {
     await waitFor(() => expect(document.activeElement).toBe(nameInput()));
   });
 
+  it('lets the person take the draft away before it is replaced', async () => {
+    await conflict();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy my version' }));
+
+    const mine = (await screen.findByRole('textbox', {
+      name: 'My version of the workflow file',
+    })) as HTMLTextAreaElement;
+    expect(mine.value).toContain('- name: write');
+  });
+
+  it('keeps the text of the draft in view after the file was loaded again', async () => {
+    const { edits } = await conflict();
+    edits.reload.mockResolvedValue({
+      ...HELLO_DOCUMENT,
+      hash: 'e'.repeat(64),
+      view: { ...HELLO_VIEW, stages: [{ name: 'only', agent: 'k-tpm' }] },
+    });
+
+    fireEvent.click(
+      within(screen.getByTestId('conflict')).getByRole('button', {
+        name: 'Load the file again',
+      }),
+    );
+
+    const note = await screen.findByTestId('discarded');
+    expect(note.textContent).toContain('Your changes were replaced');
+    fireEvent.click(
+      within(note).getByRole('button', { name: 'Copy my version' }),
+    );
+    const mine = (await screen.findByRole('textbox', {
+      name: 'My version of the workflow file',
+    })) as HTMLTextAreaElement;
+    expect(mine.value).toContain('- name: write');
+  });
+
+  it('does not let the stages change while the file loads', async () => {
+    const { edits } = await conflict();
+    edits.reload.mockReturnValue(new Promise(() => {}));
+
+    fireEvent.click(
+      within(screen.getByTestId('conflict')).getByRole('button', {
+        name: 'Load the file again',
+      }),
+    );
+
+    await waitFor(() => expect(nameInput().readOnly).toBe(true));
+    expect(isOff(addButton())).toBe(true);
+    expect(isOff(deleteButton())).toBe(true);
+  });
+
   it('keeps the conflict, with the sentence, when the load fails', async () => {
     const { edits } = await conflict();
     edits.reload.mockRejectedValue(new Error('The server did not answer.'));
 
-    fireEvent.click(within(screen.getByTestId('conflict')).getByRole('button'));
+    fireEvent.click(
+      within(screen.getByTestId('conflict')).getByRole('button', {
+        name: 'Load the file again',
+      }),
+    );
 
     await waitFor(() =>
       expect(screen.getByTestId('conflict').textContent).toContain(
@@ -791,6 +850,40 @@ describe('a save whose answer is lost', () => {
 
     expect(await screen.findByText('The server did not answer.')).toBeTruthy();
     expect(status()).toBe('Unsaved changes');
+  });
+});
+
+describe('a save whose answer is lost and whose file cannot be read', () => {
+  it('says it is not known whether the file was written', async () => {
+    const edits = acceptingEdits();
+    edits.save.mockRejectedValueOnce(
+      new SaveLost('The server did not answer.'),
+    );
+    edits.reload.mockRejectedValueOnce(new Error('Still down.'));
+    await openDesigner(edits);
+    type('write');
+
+    fireEvent.click(saveButton());
+
+    expect(await screen.findByText('The save did not finish')).toBeTruthy();
+    expect(screen.getByText(/may or may not have gone through/)).toBeTruthy();
+    expect(screen.queryByText('The workflow was not saved')).toBeNull();
+  });
+});
+
+describe('a save that is refused with nothing to fix', () => {
+  it('shows the sentence of the server', async () => {
+    const edits = acceptingEdits();
+    edits.save.mockRejectedValueOnce(
+      new SaveRefused('The workflow has errors.', []),
+    );
+    await openDesigner(edits);
+    type('write');
+
+    fireEvent.click(saveButton());
+
+    expect(await screen.findByText('The workflow has errors.')).toBeTruthy();
+    expect(screen.getByText('The workflow was not saved')).toBeTruthy();
   });
 });
 

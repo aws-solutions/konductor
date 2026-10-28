@@ -2,6 +2,7 @@
 import { ApiError, type WorkflowApi } from './api';
 import {
   errorCodeOf,
+  errorCurrentHashOf,
   errorDiagnosticsOf,
   errorMessageOf,
   errorRunIdOf,
@@ -93,6 +94,7 @@ async function send(
     errorCodeOf(body),
     errorRunIdOf(body),
     errorDiagnosticsOf(body),
+    errorCurrentHashOf(body),
   );
 }
 

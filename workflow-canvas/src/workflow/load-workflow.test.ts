@@ -142,6 +142,54 @@ describe('loadWorkflow', () => {
     await expect(lost).rejects.toThrow('The server did not answer.');
   });
 
+  it('turns a 200 whose body cannot be read, for a save, into a lost answer', async () => {
+    const failure = new ApiError('Bad reply.', 200);
+    const api = fakeApi({ saveWorkflow: vi.fn().mockRejectedValue(failure) });
+    const result = await loadWorkflow(api, 'code-1');
+    if (!result.ok) throw new Error('The load failed.');
+
+    const lost = result.workflow.edits.save('text', HELLO_HASH);
+
+    await expect(lost).rejects.toBeInstanceOf(SaveLost);
+  });
+
+  it('warns that the draft is lost when the session is gone at a save', async () => {
+    const failure = new ApiError(
+      'The session is not valid.',
+      401,
+      'unauthorized',
+    );
+    const api = fakeApi({ saveWorkflow: vi.fn().mockRejectedValue(failure) });
+    const result = await loadWorkflow(api, 'code-1');
+    if (!result.ok) throw new Error('The load failed.');
+
+    const refused = result.workflow.edits.save('text', HELLO_HASH);
+
+    await expect(refused).rejects.toThrow(
+      'The session is not valid. Open the launch address that the server printed. The changes you made on this page are lost when you do; copy them first.',
+    );
+  });
+
+  it('gives the hash of the file in the conflict', async () => {
+    const failure = new ApiError(
+      'The file changed on disk.',
+      409,
+      'conflict',
+      undefined,
+      [],
+      'c'.repeat(64),
+    );
+    const api = fakeApi({ saveWorkflow: vi.fn().mockRejectedValue(failure) });
+    const result = await loadWorkflow(api, 'code-1');
+    if (!result.ok) throw new Error('The load failed.');
+
+    const conflict = await result.workflow.edits
+      .save('text', HELLO_HASH)
+      .catch((caught: unknown) => caught);
+
+    expect((conflict as SaveConflict).currentHash).toBe('c'.repeat(64));
+  });
+
   it('tells a person what to do next in the message of a lost save', async () => {
     const failure = new ApiError('The server answered 502.', 502);
     const api = fakeApi({ saveWorkflow: vi.fn().mockRejectedValue(failure) });

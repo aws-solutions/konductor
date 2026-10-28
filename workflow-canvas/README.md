@@ -323,20 +323,31 @@ says so before you save.
   says nothing; the save checks again and reports it. Only an error stops a
   save: a warning or a note is shown as a note (a warning or info alert, and
   the text under the field in the warning style) and Save stays on.
-- **A refused save** (422) shows the findings the same way.
+- **A refused save** (422) shows the findings the same way. A refusal with no
+  error among its findings shows the sentence of the server as a failure, so
+  it is never silent.
 - **A conflict** (409) means the file changed after the page loaded. Nothing
-  is written, and an alert says so, with **Load the file again**, which loads
-  the file from the server and replaces the draft. Focus then moves to the name.
+  is written, and an alert says so. If the file already holds the text that was
+  sent (the 409 names its hash, and the page reads the file), the earlier write
+  landed and the save counts as done. Otherwise the alert offers **Copy my
+  version**, which puts the draft text on the clipboard (or shows it in a box,
+  if the page may not), and **Load the file again**, which loads the file from
+  the server and replaces the draft. The stages cannot be changed while the file
+  loads. After the load, a note keeps **Copy my version** for the text that was
+  replaced, so the draft is never lost without a way back to it.
 - **A read-only workflow** (the server says `read_only`) can be looked at, and
   a stage can be selected, but the name is read-only and Add stage, Delete
   stage, the agent list and Save are off. A note above the graph says why, and
   the buttons carry the reason in a tooltip.
-- **A save whose answer is lost** (no answer, or a server error) may still
-  have written the file. The page reads the file again: if it holds the text
-  that was sent, the save counts as done; if not, the failure is shown in an
-  alert, and Save can be tried again.
+- **A save whose answer is lost** (no answer, a server error, or a 200 that the
+  page cannot read) may still have written the file. The page reads the file
+  again: if it holds the text that was sent, the save counts as done. If it
+  does not, the failure is shown in an alert, and Save can be tried again. If
+  the file cannot be read either, the alert says "The save did not finish" and
+  that it is not known whether the file was written.
 - **Any other failure** of a save shows its sentence in an alert, and Save can
-  be tried again.
+  be tried again. When the session is gone, the sentence adds that the changes
+  on the page are lost when the launch address is opened again.
 - **Focus and keys.** Everything above works with the keyboard: Tab to **Add
   stage** and press Enter; the new stage's name has focus. A button that is off
   (Save, Add stage, Delete stage) stays focusable and gives the reason in a
