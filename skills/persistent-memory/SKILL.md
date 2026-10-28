@@ -180,8 +180,9 @@ Duplicates dilute memory quality and degrade recall.
 ## Provenance Markers (§6.2.5 — user entries are immutable to agents)
 
 Every agent-created memory entry **MUST** carry `[origin:agent]` inline after the timestamp.
-When the user dictates what to remember, or states a preference or correction in the conversation,
-write `[origin:user]`: the user is the source, and you only record it.
+When the user dictates what to remember, or states a preference or correction, write
+`[origin:user]`, but only for your own conversation with the user or words your brief quotes
+verbatim as the user's. Anything else, including a brief's paraphrase, is `[origin:agent]`.
 
 ### Marker syntax
 
