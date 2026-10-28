@@ -291,18 +291,33 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
 - If the server answers 409 `already_running`, as it does when a run from
   another tab is going, the tab follows the run named in that answer instead
   of starting one. The line under the button says so, and the goal typed is not
-  used for that run.
-- After a reload the page has no token, so the person opens the launch address
-  again. The tab keeps the id of the latest run in the storage of the browser
-  tab (`sessionStorage`; the id is no secret, the token is not kept), and when
-  the page opens again it reads that run once. If it is still running, the tab
-  follows it as if the person had joined it, without a click on Run. A run that
-  has ended, one that cannot be read (for instance after the server started
-  again) or a browser that blocks storage leaves the tab ready for a new run.
+  used for that run. The API does not give the goal of a run, so while the tab
+  follows a run that was already going the Goal box is empty, says "Not known"
+  and is labelled so. When that run ends, the status line still says it was
+  already in progress.
+- Resume after a reload works only where the launch code can be traded again,
+  which is the dev stub (`npm run dev:stub`, see above). The launch code works
+  once and the page removes it from the address, so on a server that follows
+  the contract a reload leaves the page with "no launch code in the address"
+  and no Execution tab, and the run goes on unseen. The tab keeps the id of the
+  latest run in the storage of the browser tab (`sessionStorage`; the id is no
+  secret, the token is not kept). When the page opens again with a session it
+  reads that run, trying again like any read. If the run is still running, the
+  tab follows it as if the person had joined it, without a click on Run. A run
+  that has ended, one that the server will not give (for instance after it
+  started again) or a browser that blocks storage leaves the tab ready for a
+  new run. If the readings fail for another reason, such as no answer, the tab
+  does not know whether the run is going, and shows the alert for a run that
+  may still be going. Pressing Run while the page still looks for the run
+  stops the look and starts a run; a run that is going answers 409 and is
+  joined.
 - A read of the run that fails is tried again after a second; the tab gives up
   after three failures in a row. Only a missing answer or a 5xx is tried again:
   any 4xx or a reply the page cannot read shows the alert at once. A call that
-  gets no answer in 15 seconds counts as a failure.
+  gets no answer in 15 seconds counts as a failure, except the one that trades
+  the launch code, which has no limit because the code works once. A start that
+  gets no answer, or is accepted in a reply the page cannot read, says that the
+  run may not have started and that Run joins it if it did.
 - Each node shows a badge with a word and a colour: **Queued** (with a dashed
   outline), **Running**, **Done** and **Failed**. The word carries the state;
   only Queued and Not run also differ in shape. The intent is Done once the run
