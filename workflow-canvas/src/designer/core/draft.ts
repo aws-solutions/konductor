@@ -62,8 +62,8 @@ export function canRemoveStage(draft: Draft): boolean {
   return draft.stages.length > 1;
 }
 
-// The first `agent-N` that no stage has, counting from 1.
-function freeName(draft: Draft): string {
+/** The first `agent-N` that no stage has, counting from 1: the next new stage's name. */
+export function nextStageName(draft: Draft): string {
   const taken = new Set(draft.stages.map((stage) => stage.name));
   let number = 1;
   while (taken.has(`agent-${number}`)) number += 1;
@@ -75,7 +75,7 @@ export function addStage(draft: Draft): Draft {
   if (!canAddStage(draft)) return draft;
   const stage = {
     id: idOf(draft.nextId),
-    name: freeName(draft),
+    name: nextStageName(draft),
     agent: DEFAULT_AGENT,
   };
   return { stages: [...draft.stages, stage], nextId: draft.nextId + 1 };
