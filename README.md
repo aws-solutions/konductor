@@ -251,6 +251,14 @@ when a quality gate fails (up to two fix cycles).
 Every agent runs `claude-sonnet-5.5`. Full details, including each agent's tools, are in the
 [agents reference](docs/user-guide/agents.md).
 
+`konductor-mux-orchestrator` and `konductor-cmux-orchestrator` start each specialist with permission
+checks off (`--dangerously-skip-permissions` on Claude Code, `--trust-all-tools` on Kiro CLI), so a
+dispatched agent runs shell commands and MCP tools, AWS API calls included, without asking. Use them
+only in a workspace and with AWS credentials you are willing to let an agent act on. With
+`konductor`, Claude Code specialists follow your `~/.claude/settings.json`; on Kiro CLI,
+`k-developer`, `k-architect` and `k-quality-assurance` already run shell commands without asking.
+See [What each agent can do to your machine](docs/user-guide/agents.md#what-each-agent-can-do-to-your-machine).
+
 ---
 
 ## See it in action
@@ -361,7 +369,8 @@ Tune the size limits and an allowlist of external domains with an optional confi
 rejects any write that breaks the rules and tells you why; nothing is dropped silently.
 
 ```bash
-mkdir -p .konductor && cp skills/persistent-memory/memory-config.json.template .konductor/memory-config.json
+mkdir -p .konductor && curl -fsSL https://raw.githubusercontent.com/aws-solutions/konductor/main/skills/persistent-memory/memory-config.json.template \
+  -o .konductor/memory-config.json
 ```
 
 ### 🔌 Integrations
@@ -376,6 +385,11 @@ where knowledge tools are auto-approved and API tools ask first. See
 The [AWS Agent Toolkit](https://github.com/aws/agent-toolkit-for-aws) also offers an OAuth
 connection, an AWS-managed plugin and standalone skills.
 
+In the Claude Code plugin, `aws-mcp` is declared plugin-wide in `.mcp.json`, so while the plugin is
+enabled its tools, AWS API tools included, are available in every Claude Code session, not only
+to those two agents. The IAM condition keys above apply to all of them. Without `uvx` the server
+shows as failed in `/mcp`. Disable it there (`plugin:konductor:aws-mcp`) when you don't need it.
+
 Everything else is bring-your-own:
 
 - **Browser automation:** `k-browser` uses a [`@playwright/mcp`](https://github.com/microsoft/playwright-mcp)
@@ -386,6 +400,10 @@ Everything else is bring-your-own:
 ---
 
 ## Project layout
+
+The [source repository](https://github.com/aws-solutions/konductor) has the layout below. The Claude
+Code plugin ships only `agents/`, `skills/`, `hooks/`, `docs/`, its manifests, the README,
+`LICENSE.txt` and `NOTICE.txt`.
 
 ```text
 konductor/

@@ -69,7 +69,7 @@ Alongside the skill catalog, this server can also serve agent SOPs
 in precedence order) points the server at one or more SOP directories;
 unlike `--skills-dir` there is no default — if the flag is omitted, the
 server serves no prompts at all. An optional `--agent-sop-filter`
-narrows the set the same way `--skill-name-filter` does for skills,
+narrows the set with the same glob matching `--skill-name-filter` uses,
 matching case-insensitively against each SOP's name (its filename with
 the `.sop.md` suffix stripped).
 
@@ -86,9 +86,9 @@ passed, `prompts/list` simply returns an empty list and every
 | Flag | Repeatable | Default | Purpose |
 | --- | --- | --- | --- |
 | `--skills-dir <DIR>` | yes | installed root (`~/.konductor/skills/`) + `<cwd>/.konductor/skills/` | Directory to scan for skills. First occurrence wins on a name collision. |
-| `--skill-name-filter <GLOB>` | no | none | Comma-separated glob(s), matched case-insensitively against each skill's frontmatter `name`; skills matching none are excluded from the index. |
+| `--skill-name-filter <GLOB>` | no | none | Comma-separated glob(s), matched case-insensitively against each skill's frontmatter `name`. Only skills the sibling `.konductor/manifest` lists as konductor-installed (v2 `strategies[].files[].path`, or v1 `files[].path`) and matching none are excluded; other skills under that root always pass. A manifest that exists but can't be read or parsed turns the filter off for that root and logs a `skill-lookup-mcp: WARN`. |
 | `--agent-sop-paths <DIR>` | yes | none | Directory to scan for agent SOPs (`<name>.sop.md` files), served as MCP prompts. No default — omitting the flag means no prompts are served. |
-| `--agent-sop-filter <GLOB>` | no | none | Comma-separated glob(s), matched case-insensitively against each SOP's name; mirrors `--skill-name-filter`'s semantics for prompts. |
+| `--agent-sop-filter <GLOB>` | no | none | Comma-separated glob(s), matched case-insensitively against each SOP's name; SOPs matching none are excluded. Unlike `--skill-name-filter`, it does not consult the install manifest. |
 | `--telemetry {on\|off}` | no | `on` | Enables or disables this server process's own usage-analytics telemetry. When `off`, the periodic flush task is never started. |
 | `--install-info <PATH>` | no | none | Path to an install target's `.konductor/install-info.json`. Unless the file holds a valid record at startup, telemetry is off, as with `--telemetry off`. `konductor install`/`update` pass this for every Kiro CLI agent whose installed server lists the flag in `--help`; older servers get `--telemetry off` when the target is opted out. |
 

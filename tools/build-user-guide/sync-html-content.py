@@ -80,8 +80,8 @@ EDITS = [
      'search/read, region list, and regional availability.'),
     # ---- every agent loads context/k-core-rules.md ---------------------------
     ("concepts context file paragraph",
-     "There is one today: <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">context/k-orchestrator-routing-rules.md</span>, loaded by all three orchestrators. It contains",
-     "There are two today. <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">context/k-core-rules.md</span> holds the NEVER DO rules and the writing-habits rule, and all 11 agents load it. <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">context/k-orchestrator-routing-rules.md</span> is loaded by all three orchestrators. The routing rules file contains"),
+     "There are two today. <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">context/k-core-rules.md</span> holds the NEVER DO rules and the writing-habits rule, and all 11 agents load it. <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">context/k-orchestrator-routing-rules.md</span> is loaded by all three orchestrators. The routing rules file contains",
+     "There are two today. <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">context/k-core-rules.md</span> holds the NEVER DO rules, the writing-habits rule, and the engineering practices, and all 11 agents load it. <span style=\"font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx)\">context/k-orchestrator-routing-rules.md</span> is loaded by all three orchestrators. The routing rules file contains"),
     ("concepts context files row",
      '{ k: "Context files — 1", v: "The orchestrator routing rules, always active" }',
      '{ k: "Context files — 2", v: "The core rules for every agent and the orchestrator routing rules, always active" }'),
@@ -100,14 +100,14 @@ EDITS = [
     ("troubleshooting context count", "it should report 1 registered.", "it should report 2 registered."),
     ("contributing: five files", "Four files control four different things.", "Five files control five different things."),
     ("contributing: core rules row",
-     'h1: "EDIT", h2: "EFFECT", rows: [\n          { k: "context/k-orchestrator-routing-rules.md", v: "Which specialist',
-     'h1: "EDIT", h2: "EFFECT", rows: [\n          { k: "context/k-core-rules.md", v: "Rules every agent must follow, NEVER DO rules and writing habits, loaded at session start for every agent" },\n          { k: "context/k-orchestrator-routing-rules.md", v: "Which specialist'),
+     '{ k: "context/k-core-rules.md", v: "Rules every agent must follow, NEVER DO rules and writing habits, loaded at session start for every agent" }',
+     '{ k: "context/k-core-rules.md", v: "Rules every agent must follow, NEVER DO rules, writing habits, and engineering practices, loaded at session start for every agent" }'),
     ("faq: core rules row",
-     'rows: [\n          { k: "context/k-orchestrator-routing-rules.md", v: "Change routing',
-     'rows: [\n          { k: "context/k-core-rules.md", v: "Change the core rules, the NEVER DO rules and writing habits loaded at session start for every agent" },\n          { k: "context/k-orchestrator-routing-rules.md", v: "Change routing'),
+     '{ k: "context/k-core-rules.md", v: "Change the core rules, the NEVER DO rules and writing habits loaded at session start for every agent" }',
+     '{ k: "context/k-core-rules.md", v: "Change the core rules, the NEVER DO rules, writing habits, and engineering practices loaded at session start for every agent" }'),
     ("skills catalog: constraints row",
-     "every agent \u2014 what they must never and always do, across code quality, security, and verification.",
-     "every agent: what they must always do, across code quality, security, and verification. The NEVER DO rules live in context/k-core-rules.md."),
+     "Hard behavioural rules for every agent: what they must always do, across code quality, security, and verification. The NEVER DO rules live in context/k-core-rules.md.",
+     "Workflow rules for every agent: maker-checker validation, severity ordering, the 2-strike circuit breaker, and the quality gate. The NEVER DO rules, writing habits, and engineering practices live in context/k-core-rules.md."),
     ("skills catalog: constraints reach",
      "REACH FOR IT: Always on. You never invoke it; it is the floor every agent stands on.",
      "REACH FOR IT: You never invoke it. Claude Code preloads it only into subagents; otherwise it loads on demand."),
@@ -198,7 +198,12 @@ EDITS = [
      'carries fs_write and shell, so no agent is incapable of either — the difference is whether '
      'it asks first.", "Claude Code has one list. clientConfig.claudeCli.tools is the ceiling: a '
      'tool absent from it cannot be used at all. Whether a granted tool prompts is decided by '
-     'your own ~/.claude/settings.json, which sorts calls into allow, ask, and deny."]'),
+     'your own ~/.claude/settings.json, which sorts calls into allow, ask, and deny.", "These '
+     'rows describe agents started by konductor. konductor-mux-orchestrator and '
+     'konductor-cmux-orchestrator start each specialist with permission checks off '
+     '(--dangerously-skip-permissions on Claude Code, --trust-all-tools on Kiro CLI), so under '
+     'them every granted tool runs without asking, MCP tools included, and your settings.json '
+     'does not apply."]'),
     ("ag-access rows",
      '          { k: "konductor", v: "no / no · YES / YES" },\n'
      '          { k: "konductor-mux-orchestrator", v: "no / YES · YES / YES" },\n'

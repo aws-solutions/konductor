@@ -101,6 +101,11 @@ in `allowedTools`, so Kiro CLI prompts you each time. "pre-approved" means `allo
 names `fs_write` or `shell`. Claude Code values come from `clientConfig.claudeCli.tools`
 (`Write`/`Edit`, `Bash`) — the ceiling, not the prompting behaviour.
 
+These rows describe agents started by `konductor`. `konductor-mux-orchestrator` and
+`konductor-cmux-orchestrator` start each specialist with permission checks off
+(`--dangerously-skip-permissions` on Claude Code, `--trust-all-tools` on Kiro CLI), so under them
+every granted tool runs without asking, MCP tools included, and your `settings.json` does not apply.
+
 Three observations that are not obvious and do affect what you should trust:
 
 1. **No orchestrator is locked down in Claude Code, and none is incapable in Kiro CLI
