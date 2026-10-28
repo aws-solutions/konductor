@@ -16,6 +16,7 @@ import {
   MAX_READ_FAILURES,
   RunAlreadyActive,
   RunReadRefused,
+  RunStartUnsure,
   type RunPort,
 } from './core';
 
@@ -506,6 +507,30 @@ describe('errors from the API', () => {
     expect(within(alert).queryByText(MAY_STILL_BE_RUNNING)).toBeNull();
     expect(statusLine().textContent).toContain('See the error below.');
     expect(badges()).toEqual([null, null, null, null]);
+    expect(isOff(runButton())).toBe(false);
+  });
+
+  it('says the run may have started when the server did not answer the start', async () => {
+    const runs: RunPort = {
+      start: vi
+        .fn()
+        .mockRejectedValue(new RunStartUnsure('The server did not answer.')),
+      get: vi.fn(),
+    };
+    await openExecution(runs);
+
+    await press(runButton());
+
+    const alert = screen.getByTestId('run-error');
+    expect(
+      within(alert).getByText('The run may not have started'),
+    ).toBeTruthy();
+    expect(within(alert).getByText('The server did not answer.')).toBeTruthy();
+    expect(
+      within(alert).getByText(
+        'The run may be going on the server. Press Run to join it.',
+      ),
+    ).toBeTruthy();
     expect(isOff(runButton())).toBe(false);
   });
 
