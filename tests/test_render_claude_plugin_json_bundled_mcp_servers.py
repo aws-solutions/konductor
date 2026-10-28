@@ -247,7 +247,7 @@ def _render_with_template(tmp_path: Path, extra: dict) -> subprocess.CompletedPr
     version_file = tmp_path / "VERSION"
     version_file.write_text("9.9.9\n", encoding="utf-8")
     out = tmp_path / "plugin.json"
-    result = subprocess.run(
+    return subprocess.run(
         [
             sys.executable,
             str(SCRIPT),
@@ -263,8 +263,6 @@ def _render_with_template(tmp_path: Path, extra: dict) -> subprocess.CompletedPr
         capture_output=True,
         text=True,
     )
-    return result
-
 
 
 def test_template_with_agents_or_skills_is_rejected(tmp_path):
