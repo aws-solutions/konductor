@@ -4,6 +4,7 @@ import type { WorkflowDocument } from '../api/types';
 import {
   RunAlreadyActive,
   RunReadRefused,
+  RunStartUnsure,
   type RunPort,
 } from '../execution/core';
 import type { SessionMemory, SessionRecord } from '../launch/session-memory';
@@ -61,6 +62,15 @@ function readRefusedOf(error: unknown): RunReadRefused | undefined {
     : undefined;
 }
 
+// No answer, or an accepted run in a reply the page cannot read: the run may
+// have started.
+function startUnsureOf(error: unknown): RunStartUnsure | undefined {
+  return error instanceof ApiError &&
+    (error.status === 0 || error.status === 202)
+    ? new RunStartUnsure(error.message)
+    : undefined;
+}
+
 function failure(message: string): LoadResult {
   return { ok: false, message };
 }
@@ -93,7 +103,7 @@ function runPortFor(api: WorkflowApi, token: string): RunPort {
       try {
         return await api.startRun(token, goal, signal);
       } catch (error) {
-        throw activeRunOf(error) ?? error;
+        throw activeRunOf(error) ?? startUnsureOf(error) ?? error;
       }
     },
     get: async (runId, signal) => {
