@@ -10,6 +10,8 @@ not per individual commit.
 
 ### Changed
 
+- The always-loaded core rules now carry the engineering practices from the `constraints` skill,
+  so agents get them without loading the skill.
 - The orchestrators (`konductor`, `konductor-mux-orchestrator`, `konductor-cmux-orchestrator`)
   may now read files, search the codebase, run read-only shell commands, and answer lookup
   questions themselves instead of spawning a specialist for each. One table in
@@ -39,6 +41,10 @@ not per individual commit.
   its read budget. A thorough codebase or documentation search matches `k-comprehensive-search`.
   The three orchestrator prompts now run the SOP check on every request, not only on multi-phase
   ones.
+- The Claude Code plugin tag workflow checks the published tree out into its own directory, so
+  it can still run the release scripts and create the tag.
+- The README says the mux and cmux orchestrators skip permission checks and that the plugin's AWS
+  MCP server is session-wide; the plugin release PR says to tag by hand.
 
 ## [1.2.0] - 2026-10-26
 

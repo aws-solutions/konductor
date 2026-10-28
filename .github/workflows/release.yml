@@ -22,10 +22,11 @@ name: Release
 # It never writes to `release/plugins` directly -- the `plugins` branch
 # ruleset blocks creation/update/deletion/non-fast-forward there with no
 # bypass actors, and the org-wide ruleset requires two PR approvals before
-# merge. A separate workflow (tag-claude-plugin-release.yml) creates the
-# immutable `claude-plugin-vX.Y.Z` tag only after that PR is merged by a
-# human reviewer. `main` itself never carries generated plugin output (see
-# .gitignore and generated/claude-plugin/README.md).
+# merge. A separate, manually dispatched workflow
+# (tag-claude-plugin-release.yml) creates the immutable
+# `claude-plugin-vX.Y.Z` tag after a human reviewer merges that PR. `main`
+# itself never carries generated plugin output (see .gitignore and
+# generated/claude-plugin/README.md).
 
 on:
   push:
@@ -709,8 +710,9 @@ jobs:
         # The merge, and therefore the write to release/plugins itself, is
         # left to a human: the plugins ruleset blocks this token from
         # writing there directly, and the org-wide ruleset requires two
-        # approvals before any merge regardless. tag-claude-plugin-release.yml
-        # creates the immutable release tag only after that PR merges.
+        # approvals before any merge regardless. The immutable release tag
+        # comes from tag-claude-plugin-release.yml, dispatched by hand after
+        # that PR merges.
         if: steps.candidate_commit.outputs.committed == 'true'
         env:
           CANDIDATE_BRANCH: ${{ steps.candidate.outputs.candidate_branch }}
@@ -724,7 +726,7 @@ jobs:
           - Source: $CANDIDATE_BRANCH (built from $RELEASE_VERSION, run $RUN_ID/$RUN_ATTEMPT)
           - Validated with \`claude plugin validate --strict\` before this branch was pushed.
           - Merging this PR into \`release/plugins\` is what makes the release public; merging is a manual, reviewed action under the \`plugins\` and org-wide branch rulesets.
-          - On merge, tag-claude-plugin-release.yml creates the immutable tag \`$CANDIDATE_TAG\`."
+          - Merging does not create the tag. After merge, run \`gh workflow run tag-claude-plugin-release.yml --repo ${{ github.repository }} --ref main -f pr_number=<this PR's number>\` to create the immutable tag \`$CANDIDATE_TAG\`."
           PR_URL="$(gh pr create \
             --repo "${{ github.repository }}" \
             --base "$BASE_BRANCH" \
