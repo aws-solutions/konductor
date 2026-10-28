@@ -202,8 +202,9 @@ EDITS = [
      'rows describe agents started by konductor. konductor-mux-orchestrator and '
      'konductor-cmux-orchestrator start each specialist with permission checks off '
      '(--dangerously-skip-permissions on Claude Code, --trust-all-tools on Kiro CLI), so under '
-     'them every granted tool runs without asking, MCP tools included, and your settings.json '
-     'does not apply."]'),
+     'them every granted tool runs without asking, MCP tools included. On Claude Code, deny and '
+     'ask rules in your settings.json still apply, so add deny rules for anything a dispatched '
+     'agent must never do."]'),
     ("ag-access rows",
      '          { k: "konductor", v: "no / no · YES / YES" },\n'
      '          { k: "konductor-mux-orchestrator", v: "no / YES · YES / YES" },\n'

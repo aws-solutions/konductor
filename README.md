@@ -78,8 +78,8 @@ That installs for Kiro CLI. For Claude Code, run the same command with `| KONDUC
 at the end. Piping a script to `bash` runs code you haven't read; to check it first, see
 [what the install script does](#what-the-install-script-does) below.
 Using the Claude Code plugin marketplace instead? Run `/plugin marketplace add aws-solutions/konductor`,
-then `/plugin install konductor@konductor`
-([details](docs/user-guide/tasks/install-claude-plugin-marketplace.md)).
+then `/plugin install konductor@konductor`. Plugin agents and SOPs use the `konductor:` prefix, and
+need agent-teams mode ([details](docs/user-guide/tasks/install-claude-plugin-marketplace.md)).
 Using Kiro IDE? [Install via a Kiro Power](#install-via-kiro-power).
 
 **2. Start the orchestrator:**
@@ -87,6 +87,7 @@ Using Kiro IDE? [Install via a Kiro Power](#install-via-kiro-power).
 ```bash
 kiro-cli chat --agent konductor     # Kiro CLI
 claude --agent konductor            # Claude Code
+claude --agent konductor:konductor  # Claude Code plugin
 ```
 
 **3. Ask for something real:**
@@ -341,8 +342,8 @@ Browse them all in the [skills catalog](docs/user-guide/skills.md).
 
 ### 📜 19 SOPs
 
-SOPs are repeatable, multi-step workflows. Run them as `/agent-sop:<name>` in Kiro CLI or
-`/sop-<name>` in Claude Code.
+SOPs are repeatable, multi-step workflows. Run them as `/agent-sop:<name>` in Kiro CLI,
+`/sop-<name>` in Claude Code, or `/konductor:sop-<name>` from the Claude Code plugin.
 
 | Plan & verify | Design | Build & review | Test |
 | --- | --- | --- | --- |
@@ -402,8 +403,8 @@ Everything else is bring-your-own:
 ## Project layout
 
 The [source repository](https://github.com/aws-solutions/konductor) has the layout below. The Claude
-Code plugin ships only `agents/`, `skills/`, `hooks/`, `docs/`, its manifests, the README,
-`LICENSE.txt` and `NOTICE.txt`.
+Code plugin ships only `agents/`, `skills/`, `hooks/`, `docs/telemetry-schema.json`, its manifests,
+the README, `LICENSE.txt` and `NOTICE.txt`.
 
 ```text
 konductor/
