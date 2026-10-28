@@ -18,11 +18,11 @@ stub that serves it and the tests around both are in this folder.
   IO; `api/` is the typed client of the API; `launch/` and `workflow/` open the
   session and load the workflow; `designer/` and `canvas/` draw it;
   `execution/` runs it and shows the run; `execution/core/` does no IO and reads a run
-  once a second. A read that fails with no answer or a server error is tried
+  once a second. A read that fails with no answer, a server error, 408 or 429 is tried
   again, up to three in a row; any other failure ends the following. A start
   that finds a run already active follows that run. Every run call takes a
-  signal, and every call ends on its own after 15 seconds, so a server that
-  never answers cannot hold the tab. A failure counts only for the run it belongs to.
+  signal, and every call but the launch code trade ends on its own after 15
+  seconds, so a server that never answers cannot hold the tab. A failure counts only for the run it belongs to.
 - `api/`: the HTTP API contract (`openapi.yaml`) and its test.
 - `stub-api/`: a TypeScript stub server for the contract, for local
   development and tests.
@@ -302,13 +302,14 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
   follows a run that was already going the Goal box is empty, says "Not known"
   and is labelled so. When that run ends, the status line still says it was
   already in progress.
-- Resume after a reload works only where the launch code can be traded again,
-  which is the dev stub (`npm run dev:stub`, see above). The launch code works
-  once and the page removes it from the address, so on a server that follows
-  the contract a reload leaves the page with "no launch code in the address"
+- Resume works when the page is opened again with a launch code that the
+  server accepts a second time, which is the dev stub (`npm run dev:stub`, see
+  above). A plain reload never resumes: the page has already removed the
+  launch code from the address, so it shows "no launch code in the address"
   and no Execution tab, and the run goes on unseen. The tab keeps the id of the
   latest run in the storage of the browser tab (`sessionStorage`; the id is no
-  secret, the token is not kept). When the page opens again with a session it
+  secret, the token is not kept) and drops it once the run has ended or turns
+  out to be gone. When the page opens again with a session it
   reads that run, trying again like any read. If the run is still running, the
   tab follows it as if the person had joined it, without a click on Run. A run
   that has ended, one that the server will not give (for instance after it
@@ -319,7 +320,7 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
   stops the look and starts a run; a run that is going answers 409 and is
   joined.
 - A read of the run that fails is tried again after a second; the tab gives up
-  after three failures in a row. Only a missing answer or a 5xx is tried again:
+  after three failures in a row. Only a missing answer, a 5xx, 408 or 429 is tried again:
   any 4xx or a reply the page cannot read shows the alert at once. A call that
   gets no answer in 15 seconds counts as a failure, except the one that trades
   the launch code, which has no limit because the code works once. A start that
@@ -366,7 +367,8 @@ The code follows the ports-and-adapters split of the graph:
 - The adapters are `createHttpApi` (`startRun`, `getRun`), which `loadWorkflow`
   ties to the session token, `timerScheduler`, and `sessionRunMemory`, which
   keeps the id of the latest run for `resumeRun`. The token is held only by
-  those run calls. `createHttpApi` ends a call after a timeout, and
+  those run calls. `createHttpApi` ends a call after a timeout, except the launch code call,
+  which works once and so is never cut short, and
   `loadWorkflow` turns the 409 `already_running`, which carries the `run_id`,
   into the core's `RunAlreadyActive` so the core can follow that run.
 - `useExecution` keeps the state in `App`, and `Execution` draws it. The
