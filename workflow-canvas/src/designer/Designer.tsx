@@ -9,6 +9,7 @@ import type { WorkflowView } from '../api/types';
 import type { LoadedWorkflow, LoadResult } from '../workflow/load-workflow';
 import { INTENT_FITS_IN_NODE, clippedStages, textWidth } from './clipping';
 import { EmptyState, ErrorState, LoadingState } from './states';
+import { useChangeCount } from './use-change-count';
 
 /** The text that the nodes cut short, in full, under the graph. */
 function FullText({ view, harness }: { view: WorkflowView; harness: string }) {
@@ -76,7 +77,9 @@ function DrawnWorkflow({ workflow }: { workflow: LoadedWorkflow }) {
  * nothing to draw.
  */
 export function Designer({ result }: { result: LoadResult | undefined }) {
+  // A new workflow gets a new canvas, which is fitted to it when it mounts.
+  const swaps = useChangeCount(result);
   if (!result) return <LoadingState />;
   if (!result.ok) return <ErrorState message={result.message} />;
-  return <DrawnWorkflow workflow={result.workflow} />;
+  return <DrawnWorkflow key={swaps} workflow={result.workflow} />;
 }

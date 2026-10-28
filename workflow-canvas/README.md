@@ -230,9 +230,12 @@ The rest wraps the core, so the rules can be tested without a browser:
   starts the first load once, before React renders, because a launch code
   works once and strict mode runs effects twice. Pasting a launch address into
   the open tab does not reload the page: when the fragment is shaped like a
-  launch code (22 to 256 URL-safe characters) the page opens a session with it
-  and changes to the new workflow only if that works. A refused code leaves
-  the workflow on the page. An anchor such as `#top` changes nothing.
+  launch code (16 to 256 characters, no whitespace; the API sets no alphabet)
+  the page opens a session with it and changes to the new workflow only if
+  that works, and fits the graph to it. A refused code leaves the workflow on
+  the page. A short anchor such as `#top` changes nothing; a longer one is
+  offered as a code and refused. When several codes are in flight, the latest
+  one that works wins.
 - `designer/` shows the result: loading, error, empty (no file yet, or a file
   with errors, with their messages), or the canvas.
 - `canvas/` draws the graph with [React Flow](https://reactflow.dev)

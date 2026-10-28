@@ -26,11 +26,13 @@ export interface LaunchWatchEnvironment extends LaunchEnvironment {
 }
 
 /**
- * The shape of a launch code: at least 128 bits as URL-safe characters (22 or
- * more), and at most the 256 that the API accepts. A short fragment such as
- * `#top` is an anchor, not a code.
+ * The shape of a launch code. The API puts no limit on the characters of a
+ * code, only 256 at most and at least 128 bits, which is 16 characters or
+ * more. A shorter fragment such as `#top` is an anchor, not a code. A longer
+ * anchor is offered as a code too; the server refuses it, and a refused code
+ * leaves the page as it was.
  */
-const LAUNCH_CODE = /^[A-Za-z0-9_-]{22,256}$/;
+const LAUNCH_CODE = /^\S{16,256}$/u;
 
 /** Whether `fragment` has the shape of a launch code. */
 export function isLaunchCode(fragment: string): boolean {
