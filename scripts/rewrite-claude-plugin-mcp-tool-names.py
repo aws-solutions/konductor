@@ -4,7 +4,9 @@
 
 Plugin MCP tools include the plugin name in their identifiers. This script
 rewrites only YAML frontmatter for bundled servers and leaves bring-your-own
-server grants and prompt bodies unchanged.
+server grants and prompt bodies unchanged. It also drops each agent's
+`mcpServers:` block, which Claude Code ignores for plugin agents; the plugin's
+.mcp.json declares the servers instead.
 """
 
 import argparse
@@ -32,6 +34,21 @@ def _split_frontmatter(text: str) -> tuple[str, str, bool]:
         if lines[index].rstrip() == FRONTMATTER_FENCE:
             return "\n".join(lines[: index + 1]), "\n".join(lines[index + 1 :]), True
     return "", text, False
+
+
+def drop_mcp_servers_block(frontmatter: str) -> str:
+    """Remove a top-level `mcpServers:` key and its indented value from frontmatter."""
+    kept: list[str] = []
+    in_block = False
+    for line in frontmatter.split("\n"):
+        if line.startswith("mcpServers:"):
+            in_block = True
+            continue
+        if in_block and (line.startswith((" ", "- ")) or not line.strip()):
+            continue
+        in_block = False
+        kept.append(line)
+    return "\n".join(kept)
 
 
 def rewrite_frontmatter(frontmatter: str, plugin_name: str, bundled_servers: list[str]) -> tuple[str, int]:
@@ -77,9 +94,6 @@ def main() -> int:
         return 1
 
     bundled_servers = [server.strip() for server in args.bundled_mcp_servers.split(",") if server.strip()]
-    if not bundled_servers:
-        print("notice: no bundled MCP servers configured; nothing to rewrite")
-        return 0
 
     try:
         plugin_name = _plugin_name(args.plugin_json)
@@ -93,8 +107,9 @@ def main() -> int:
         frontmatter, body, has_frontmatter = _split_frontmatter(md_path.read_text(encoding="utf-8"))
         if not has_frontmatter:
             continue
-        rewritten, count = rewrite_frontmatter(frontmatter, plugin_name, bundled_servers)
-        if count == 0:
+        stripped = drop_mcp_servers_block(frontmatter)
+        rewritten, count = rewrite_frontmatter(stripped, plugin_name, bundled_servers)
+        if rewritten == frontmatter:
             continue
         md_path.write_text(rewritten + "\n" + body, encoding="utf-8")
         files_changed += 1

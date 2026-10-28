@@ -37,6 +37,8 @@ not per individual commit.
   its read budget. A thorough codebase or documentation search matches `k-comprehensive-search`.
   The three orchestrator prompts now run the SOP check on every request, not only on multi-phase
   ones.
+- The Claude Code plugin's agents show up in `claude plugin details` and `/plugin`, and plugin
+  agents no longer carry an `mcpServers` block that Claude Code ignores.
 
 ## [1.2.0] - 2026-10-26
 

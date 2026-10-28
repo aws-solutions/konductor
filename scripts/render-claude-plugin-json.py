@@ -8,9 +8,10 @@ scripts/claude-plugin.template.json, overriding only two fields:
   scripts/validate-version-semver.sh and .github/workflows/release.yml's
   check-version job; the CLI's own Cargo.toml version is required to
   match VERSION before a release, never the other way around).
-- `agents`: the sorted list of *.md files under
-  generated/claude-plugin/agents/, so the manifest always reflects exactly
-  what synth produced, never hand-maintained.
+- `agents` and `skills` are never written: the plugin tree keeps both in
+  their default directories, and an explicit `agents` list would hide the
+  agents from `claude plugin details`. The agents directory must still hold
+  at least one *.md file.
 
 Also strips two keys from `metadata`, if present, defensively: the
 committed template never carries either key, but a hand-edit could
@@ -25,10 +26,10 @@ reintroduce one, and neither belongs in the rendered output:
   source content actually changed.
 
 Every other field (name, displayName, description, author, homepage,
-repository, license, keywords, defaultEnabled, skills, and the remaining
+repository, license, keywords, defaultEnabled, and the remaining
 metadata fields) is carried through from the template unchanged, in its
 original key order. This script does not know or need to know what those
-fields mean; it only knows how to compute `version` and `agents`, and (with
+fields mean; it only knows how to compute `version`, and (with
 --path-prefix) rewrite path-shaped fields.
 
 --path-prefix rewrites generated/claude-plugin/-relative template strings to
@@ -41,9 +42,8 @@ sit at the tree root instead of under `generated/claude-plugin/`. Any
 template string that starts with the default prefix
 (`./generated/claude-plugin/`) has that leading segment replaced with
 --path-prefix's value; every other string is left untouched. This is a
-generic, field-name-agnostic string rewrite (it also catches the template's
-static `skills` entry, not just the freshly computed `agents` list) rather
-than a special case tied to one specific field.
+generic, field-name-agnostic string rewrite rather than a special case tied
+to one specific field.
 
 --agent-specs-dir and --mcp-output (both optional, required together) also
 render a SECOND file: .mcp.json, the plugin-level MCP server declaration
@@ -244,7 +244,10 @@ def main() -> int:
     if not agent_files:
         print(f"error: no agent .md files found under {args.agents_dir}", file=sys.stderr)
         return 1
-    plugin["agents"] = [f"{DEFAULT_PREFIX}agents/{name}" for name in agent_files]
+    # The default agents/ and skills/ scans cover the plugin tree, and an
+    # explicit `agents` list hides the agents from `claude plugin details`.
+    plugin.pop("agents", None)
+    plugin.pop("skills", None)
 
     metadata = plugin.get("metadata")
     if isinstance(metadata, dict):
