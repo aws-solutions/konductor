@@ -619,6 +619,39 @@ describe('the alert, when another run is started', () => {
   });
 });
 
+describe('a run whose stages are not the stages of the graph', () => {
+  const OTHER_STAGES: RunView = {
+    ...helloRun(0),
+    stages: [
+      { name: 'write', status: 'running' },
+      { name: 'review', status: 'pending' },
+    ],
+  };
+  const notice = () => screen.queryByTestId('stage-drift');
+
+  it('says so, naming the stages that differ, once the run is read', async () => {
+    const scheduler = await openExecution(serverShowing(OTHER_STAGES));
+    expect(notice()).toBeNull();
+
+    await press(runButton());
+    await tick(scheduler);
+
+    expect(notice()?.textContent).toContain('not the stages in the graph');
+    expect(notice()?.textContent).toContain('Not drawn: write.');
+    expect(notice()?.textContent).toContain('Not in the run: draft.');
+  });
+
+  it('says nothing for a run of the stages that are drawn', async () => {
+    const scheduler = await openExecution(serverShowing(helloRun(0)));
+
+    await press(runButton());
+    await tick(scheduler);
+
+    expect(statusLine().textContent).toContain('Running draft');
+    expect(notice()).toBeNull();
+  });
+});
+
 describe('when there is no workflow to run', () => {
   it('shows the message of the failed load, with no Run button', async () => {
     render(

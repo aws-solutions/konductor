@@ -98,6 +98,26 @@ test('shows a failed stage with its words, the stages that will not run, and the
   await expect(canvas.runError).toHaveCount(0);
 });
 
+test('says so when the stages of the run are not the stages in the graph', async ({
+  canvas,
+}) => {
+  const reply = runReply('running', ['running', 'pending']);
+  const run = reply.run;
+  await answerRunsWith(canvas.page, {
+    run: {
+      ...run,
+      order: ['write', 'review'],
+      stages: { write: { status: 'running' }, review: { status: 'pending' } },
+    },
+  } as unknown as typeof reply);
+
+  await canvas.runButton.click();
+
+  const notice = canvas.page.getByTestId('stage-drift');
+  await expect(notice).toContainText('Not drawn: write.');
+  await expect(notice).toContainText('Not in the run: draft.');
+});
+
 test('shows the error of the API in one alert when the run does not start', async ({
   canvas,
 }) => {

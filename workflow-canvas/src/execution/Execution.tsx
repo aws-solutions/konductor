@@ -10,6 +10,7 @@ import StatusIndicator, {
   type StatusIndicatorProps,
 } from '@cloudscape-design/components/status-indicator';
 import { useMemo } from 'react';
+import type { RunView, WorkflowView } from '../api/types';
 import { WorkflowGraphCard } from '../canvas/WorkflowGraphCard';
 import type { LoadResult } from '../workflow/load-workflow';
 import { WorkflowGate, type DrawableWorkflow } from '../workflow/WorkflowGate';
@@ -19,6 +20,7 @@ import {
   isInFlight,
   nodeStatuses,
   runOf,
+  stageDrift,
   statusKind,
   statusText,
   type ExecutionState,
@@ -56,6 +58,28 @@ function RunError({ state }: { state: ExecutionState }) {
     <Alert type="error" header={error.header} data-testid="run-error">
       {error.message}
       {error.note && <div>{error.note}</div>}
+    </Alert>
+  );
+}
+
+// A run reads the saved file, which can change while it goes on, so its stages
+// can differ from the graph, and then some nodes show no state.
+function StageDriftNotice({
+  view,
+  run,
+}: {
+  view: WorkflowView;
+  run: RunView | undefined;
+}) {
+  const drift = stageDrift(view, run);
+  if (!drift) return null;
+  const { notInGraph, notInRun } = drift;
+  return (
+    <Alert type="warning" data-testid="stage-drift">
+      The stages of this run are not the stages in the graph, so some nodes show
+      no state. The workflow file changed after the run started.
+      {notInGraph.length > 0 && ` Not drawn: ${notInGraph.join(', ')}.`}
+      {notInRun.length > 0 && ` Not in the run: ${notInRun.join(', ')}.`}
     </Alert>
   );
 }
@@ -122,7 +146,8 @@ function ExecutionView({
   const run = runOf(execution.state);
   const statuses = useMemo(() => nodeStatuses(run), [run]);
   return (
-    <div>
+    <SpaceBetween size="m">
+      <StageDriftNotice view={view} run={run} />
       <div className="wf-execution">
         <WorkflowGraphCard view={view} harness={harness} statuses={statuses} />
         <RunPanel
@@ -131,7 +156,7 @@ function ExecutionView({
           execution={execution}
         />
       </div>
-    </div>
+    </SpaceBetween>
   );
 }
 
