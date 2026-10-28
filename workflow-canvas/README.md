@@ -297,7 +297,7 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
   run. Enter in the box starts a run, like the button.
 - Each node shows a badge with a word and a colour: **Queued** (with a dashed
   outline), **Running**, **Done** and **Failed**. The word carries the state;
-  only Queued also differs in shape. The intent is Done once the run
+  only Queued and Not run also differ in shape. The intent is Done once the run
   has it. After a halt, the stages behind the failed one say **Not run**. The end
   shows the result: **Passed** or **Halted**.
 - A line under the button says where the run is ("Running draft. 0 of 2 stages
@@ -308,7 +308,7 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
   in one alert under the Run button, with the sentence the server gave. A
   screen reader hears it from an alert region that `App` keeps outside the
   tabs, so it is read when it appears even if the Designer tab is open; the
-  status line then says only "See the error below." When a read fails, the
+  status line on the tab says only "See the error below.", which the live status region leaves out. When a read fails, the
   nodes are cleared and the alert adds that the run (with its id) may still be
   going on the server. A failed stage is a result, not an error, so it has no
   alert. The goal is one line: line breaks in the outcome of the intent become

@@ -14,7 +14,13 @@ export interface RunErrorText {
 export function runErrorOf(state: ExecutionState): RunErrorText | undefined {
   if (state.phase !== 'error') return undefined;
   if (!state.started) {
-    return { header: 'The run did not start', message: state.message };
+    return state.maybeStarted
+      ? {
+          header: 'The run may not have started',
+          message: state.message,
+          note: 'The run may be going on the server. Press Run to join it.',
+        }
+      : { header: 'The run did not start', message: state.message };
   }
   const which = state.runId === undefined ? '' : ` (run ${state.runId})`;
   return {

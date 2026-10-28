@@ -5,7 +5,8 @@ import './announcements.css';
 
 /**
  * The two live regions of the run, for a screen reader: where the run is, and
- * why it failed. The page keeps them mounted outside the tabs, so a change is
+ * why it failed. The status stays empty on an error, as the alert says it all
+ * and the visible line's "See the error below." points at nothing here. The page keeps them mounted outside the tabs, so a change is
  * announced while the Designer tab is open too, when the Execution tab and its
  * visible copy of these sentences are not on the page.
  */
@@ -17,7 +18,7 @@ export function RunAnnouncements({ state }: { state: ExecutionState }) {
         className="wf-visually-hidden"
         data-testid="run-live-status"
       >
-        {statusText(state)}
+        {state.phase === 'error' ? '' : statusText(state)}
       </div>
       <div
         role="alert"
