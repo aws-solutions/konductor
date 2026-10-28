@@ -38,13 +38,31 @@ function intentNode(spec: WorkflowSpec): Unplaced<IntentGraphNode> {
   };
 }
 
+// Two stages with one name read alike, so each says its place in the list.
+function stageLabel(
+  stage: StageSpec,
+  harness: string,
+  place: { at: number; of: number } | undefined,
+): string {
+  const where = place ? ` (${place.at} of ${place.of})` : '';
+  return `Stage ${stage.name}${where}, agent ${stage.agent}, harness ${harness}`;
+}
+
+// The place of the stage, only when another stage has its name.
+function placeOf(stages: readonly StageSpec[], index: number) {
+  const name = stages[index]?.name;
+  const shared = stages.filter((stage) => stage.name === name).length > 1;
+  return shared ? { at: index + 1, of: stages.length } : undefined;
+}
+
 function stageNode(
   stage: StageSpec,
   harness: string,
+  place: { at: number; of: number } | undefined,
 ): Unplaced<StageGraphNode> {
   return {
     id: stageNodeId(stage.id ?? stage.name),
-    ariaLabel: `Stage ${stage.name}, agent ${stage.agent}, harness ${harness}`,
+    ariaLabel: stageLabel(stage, harness, place),
     type: 'stage',
     height: NODE_HEIGHT.stage,
     data: { name: stage.name, agent: stage.agent, harness },
@@ -95,7 +113,9 @@ function chain(nodes: readonly GraphNode[]): GraphEdge[] {
 export function buildGraph(spec: WorkflowSpec, harness: string): CanvasGraph {
   const nodes = stackDown<UnplacedNode>([
     intentNode(spec),
-    ...spec.stages.map((stage) => stageNode(stage, harness)),
+    ...spec.stages.map((stage, index) =>
+      stageNode(stage, harness, placeOf(spec.stages, index)),
+    ),
     endNode(),
   ]);
   return { nodes, edges: chain(nodes) };

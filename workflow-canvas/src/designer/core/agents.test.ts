@@ -19,4 +19,22 @@ describe('agentChoices', () => {
       expect(id).toMatch(/^[a-z0-9][a-z0-9-]{0,63}$/);
     }
   });
+
+  it('keeps an agent that the saved file names once another is chosen', () => {
+    const choices = agentChoices('k-developer', ['my-agent']);
+
+    expect(choices.map((agent) => agent.id)).toEqual([
+      'my-agent',
+      ...KNOWN_AGENTS.map((agent) => agent.id),
+    ]);
+  });
+
+  it('lists the current agent and the saved ones once each', () => {
+    const choices = agentChoices('my-agent', ['my-agent', 'other']);
+
+    expect(choices.slice(0, 2).map((agent) => agent.id)).toEqual([
+      'my-agent',
+      'other',
+    ]);
+  });
 });
