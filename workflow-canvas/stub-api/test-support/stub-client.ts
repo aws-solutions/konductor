@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import {
   request,
+  type Agent,
   type ClientRequest,
   type IncomingHttpHeaders,
 } from 'node:http';
@@ -28,9 +29,12 @@ export interface CallOptions {
 export class StubClient {
   token: string | undefined;
   private readonly port: number;
+  private readonly agent: Agent | undefined;
 
-  constructor(port: number) {
+  /** `agent` lets a test see the client's sockets; the default is Node's. */
+  constructor(port: number, agent?: Agent) {
     this.port = port;
+    this.agent = agent;
   }
 
   get(path: string, options?: CallOptions): Promise<Reply> {
@@ -67,6 +71,7 @@ export class StubClient {
           port: this.port,
           method,
           path,
+          agent: this.agent,
           headers: Object.fromEntries(defined),
         },
         (res) => {

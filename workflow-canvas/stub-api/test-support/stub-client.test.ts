@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { Agent } from 'node:http';
 import { createServer, type Server, type Socket } from 'node:net';
 import { afterEach, describe, expect, it } from 'vitest';
 import { LOOPBACK } from '../address.ts';
@@ -15,14 +16,19 @@ describe('the stub client', () => {
   });
 
   /** A server that runs `onFirstBytes` once the request starts to arrive. */
-  function serve(onFirstBytes: (socket: Socket) => void): Promise<StubClient> {
+  function serve(
+    onFirstBytes: (socket: Socket) => void,
+    agent?: Agent,
+  ): Promise<StubClient> {
     return new Promise((resolve) => {
       server = createServer((socket) => {
         socket.once('data', () => onFirstBytes(socket));
         socket.on('error', () => {});
       });
       server.listen(0, LOOPBACK, () =>
-        resolve(new StubClient((server!.address() as { port: number }).port)),
+        resolve(
+          new StubClient((server!.address() as { port: number }).port, agent),
+        ),
       );
     });
   }
@@ -61,6 +67,62 @@ describe('the stub client', () => {
       code: expect.stringMatching(/ECONNRESET|EPIPE/),
     });
   });
+});
+
+describe('the late-error listener on a real socket', () => {
+  const failure = (code: string) =>
+    Object.assign(new Error(code), { code }) as NodeJS.ErrnoException;
+
+  /** Makes one complete exchange and returns the socket the client kept. */
+  async function socketAfterCompleteReply(): Promise<Socket> {
+    const agent = new Agent({ keepAlive: true });
+    const client = await serveOnce(agent);
+    await client.post('/x', undefined, { rawBody: '{}' });
+    await new Promise((resolve) => setImmediate(resolve));
+    const kept = [
+      ...Object.values(agent.freeSockets),
+      ...Object.values(agent.sockets),
+    ].flat();
+    expect(kept).toHaveLength(1);
+    return kept[0] as Socket;
+  }
+
+  let server: Server | undefined;
+  afterEach(() => {
+    server?.close();
+    server = undefined;
+  });
+
+  function serveOnce(agent: Agent): Promise<StubClient> {
+    return new Promise((resolve) => {
+      server = createServer((socket) => {
+        socket.once('data', () => socket.write(REPLY));
+        socket.on('error', () => {});
+      });
+      server.listen(0, LOOPBACK, () =>
+        resolve(
+          new StubClient((server!.address() as { port: number }).port, agent),
+        ),
+      );
+    });
+  }
+
+  it('rethrows an error that is not a late write after a complete reply', async () => {
+    const socket = await socketAfterCompleteReply();
+
+    expect(() => socket.emit('error', failure('EACCES'))).toThrow('EACCES');
+    socket.destroy();
+  });
+
+  it.each(['EPIPE', 'ECONNRESET'])(
+    'ignores %s after a complete reply',
+    async (code) => {
+      const socket = await socketAfterCompleteReply();
+
+      expect(() => socket.emit('error', failure(code))).not.toThrow();
+      socket.destroy();
+    },
+  );
 });
 
 describe('lateWriteErrorListener', () => {
