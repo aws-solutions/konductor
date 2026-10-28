@@ -4,12 +4,39 @@ import type { RunView } from '../../api/types';
 /**
  * The calls of the API that a run needs, already tied to a session. The
  * page depends on this port; `workflow/load-workflow.ts` builds the adapter.
+ * A call rejects when its signal aborts, and gives up on its own when the
+ * server does not answer, so the caller never waits for ever.
  */
 export interface RunPort {
-  /** Starts a run with the goal and resolves to its id. */
-  start(goal: string): Promise<string>;
-  /** Reads the state of the run with the id. */
-  get(runId: string): Promise<RunView>;
+  /**
+   * Starts a run with the goal and resolves to its id. When a run is already
+   * active it rejects with `RunAlreadyActive`, so the caller can follow that run.
+   */
+  start(goal: string, signal: AbortSignal): Promise<string>;
+  /**
+   * Reads the state of the run with the id. It rejects with `RunReadRefused`
+   * when the server will not give the run, so the caller does not try again.
+   */
+  get(runId: string, signal: AbortSignal): Promise<RunView>;
+}
+
+/** A run was asked for while another is active; `runId` is the active one. */
+export class RunAlreadyActive extends Error {
+  readonly runId: string;
+
+  constructor(message: string, runId: string) {
+    super(message);
+    this.name = 'RunAlreadyActive';
+    this.runId = runId;
+  }
+}
+
+/** A read that failed in a way that reading again cannot fix. */
+export class RunReadRefused extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'RunReadRefused';
+  }
 }
 
 /**

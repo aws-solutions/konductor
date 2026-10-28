@@ -5,6 +5,8 @@ import type { ExecutionState } from './execution-state';
 /** How the status line is drawn: at rest, at work, passed or not working. */
 export type StatusKind = 'idle' | 'busy' | 'success' | 'error';
 
+const JOINED = 'Following the run that was already in progress.';
+
 function stagesDone(run: RunView): string {
   const done = run.stages.filter((stage) => stage.status === 'passed').length;
   return `${done} of ${run.stages.length} stages done.`;
@@ -37,7 +39,9 @@ export function statusText(state: ExecutionState): string {
     case 'starting':
       return 'Starting the run.';
     case 'following':
-      return followingText(state.run);
+      return state.joined
+        ? `${JOINED} ${followingText(state.run)}`
+        : followingText(state.run);
     case 'finished':
       return finishedText(state.run);
     case 'error':
