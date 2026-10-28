@@ -24,8 +24,12 @@ A single `package.json` serves all of the above.
 
 ## Commands
 
-From the repo root, `make canvas` runs install, lint, typecheck, unit and
-end-to-end tests in order (`make help` lists the individual `canvas-*` targets).
+From the repo root, `make canvas` runs install, lint, typecheck, unit tests,
+build and end-to-end tests in order (`make help` lists the individual
+`canvas-*` targets). It skips two CI checks: the Node 26 leg and the
+committed-screenshots check (`npm run screenshots`, which is OS and font
+sensitive). The e2e server uses port 4173, so only one run fits on a host at a
+time.
 
 Run from this folder with Node 24.15 or later (`.nvmrc` selects 24):
 

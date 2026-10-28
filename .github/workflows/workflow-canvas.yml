@@ -1,9 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 #
-# Lint, typecheck, test, build and end-to-end tests for workflow-canvas/. Runs
-# only when that folder (or this workflow) changes. The integration/** and wc/** targets
-# cover stacked PRs, where a PR's base is another feature branch rather than
-# main.
+# Lint, typecheck, test, build and end-to-end tests for workflow-canvas/. Pull
+# requests and pushes run only when that folder (or this workflow) changes. The
+# integration/** and wc/** PR targets cover stacked PRs, where a PR's base is
+# another feature branch rather than main. Pushes to main and integration/**
+# give a post-merge signal. workflow_dispatch re-runs manually and ignores the
+# path filter.
 #
 # The root .prettierrc is a trigger because `prettier --check` resolves it.
 # Install scripts are skipped: no dependency needs one to lint, test or build.
@@ -39,8 +41,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   workflow-canvas:

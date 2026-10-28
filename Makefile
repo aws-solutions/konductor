@@ -59,14 +59,18 @@
 #   clean             Remove build artifacts in cli/, mcp/, and shared/
 #   help              Show this usage summary
 #
-#   canvas-install    npm ci in workflow-canvas/
+#   canvas-install    npm ci --ignore-scripts in workflow-canvas/
 #   canvas-lint       workflow-canvas/ lint (ESLint + Prettier) and typecheck
 #   canvas-test       workflow-canvas/ unit tests (Vitest)
+#   canvas-build      workflow-canvas/ production build (Vite)
 #   canvas-e2e        workflow-canvas/ Playwright tests (headless Chromium)
-#   canvas            canvas-install, canvas-lint, canvas-test, canvas-e2e in
-#                     order. Needs Node (see workflow-canvas/.nvmrc). Kept out
-#                     of `build` and `test` so Rust and Python contributors
-#                     do not need Node.
+#   canvas            canvas-install, canvas-lint, canvas-test, canvas-build,
+#                     canvas-e2e in order: the CI checks except the Node 26
+#                     leg and the committed-screenshots check (screenshots
+#                     are OS and font sensitive; run `npm run screenshots` on
+#                     Linux). Needs Node (see workflow-canvas/.nvmrc). Kept
+#                     out of `build` and `test` so Rust and Python
+#                     contributors do not need Node.
 #
 #   kiro-power-check  Check VERSION/plugin.json for drift and that every
 #                     committed import URL names the matching release tag,
@@ -84,7 +88,7 @@
 .PHONY: all build fmt lint install link synth claude-plugin claude-plugin-check \
         test test-rust test-schema-dump test-py test-skills-sh clean help \
         guide guide-check guide-sync guide-html guide-record kiro-power-check \
-        canvas canvas-install canvas-lint canvas-test canvas-e2e
+        canvas canvas-install canvas-lint canvas-test canvas-build canvas-e2e
 
 all: build
 
@@ -115,11 +119,12 @@ help:
 	@echo "                          suite) -- no commits, no push"
 	@echo ""
 	@echo "  Workflow canvas (workflow-canvas/, needs Node; not part of build/test)"
-	@echo "  make canvas-install     npm ci"
+	@echo "  make canvas-install     npm ci --ignore-scripts"
 	@echo "  make canvas-lint        ESLint, Prettier check, typecheck"
 	@echo "  make canvas-test        Vitest unit tests"
+	@echo "  make canvas-build       Vite production build"
 	@echo "  make canvas-e2e         Playwright tests in headless Chromium"
-	@echo "  make canvas             install, lint, test, e2e in order"
+	@echo "  make canvas             install, lint, test, build, e2e in order"
 	@echo ""
 	@echo "  User guide (docs/user-guide/ + docs/site/, docs/index.html)"
 	@echo "  make guide-check        Report drift between the guide and the source tree"
@@ -355,13 +360,16 @@ kiro-power-check:
 CANVAS_PLAYWRIGHT_FLAGS ?=
 
 canvas-install:
-	cd workflow-canvas && npm ci
+	cd workflow-canvas && npm ci --ignore-scripts
 
 canvas-lint:
 	cd workflow-canvas && npm run lint && npm run typecheck
 
 canvas-test:
 	cd workflow-canvas && npm test
+
+canvas-build:
+	cd workflow-canvas && npm run build
 
 canvas-e2e:
 	cd workflow-canvas && npx playwright install $(CANVAS_PLAYWRIGHT_FLAGS) chromium && npm run test:e2e
@@ -372,6 +380,7 @@ canvas:
 	$(MAKE) canvas-install
 	$(MAKE) canvas-lint
 	$(MAKE) canvas-test
+	$(MAKE) canvas-build
 	$(MAKE) canvas-e2e
 
 # ── user guide ────────────────────────────────────────────────────────────────
