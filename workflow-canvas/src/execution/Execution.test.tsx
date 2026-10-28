@@ -335,7 +335,7 @@ describe('a run that is already active', () => {
 
     await press(runButton());
 
-    expect(runs.get).toHaveBeenCalledWith(RUN_ID);
+    expect(runs.get).toHaveBeenCalledWith(RUN_ID, expect.any(AbortSignal));
     expect(screen.queryByTestId('run-error')).toBeNull();
     expect(statusLine().textContent).toBe(
       'Following the run that was already in progress. Running review. 1 of 2 stages done.',
