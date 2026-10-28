@@ -255,8 +255,10 @@ Full details, including each agent's tools, are in the
 `konductor-mux-orchestrator` and `konductor-cmux-orchestrator` start each specialist with permission
 checks off (`--dangerously-skip-permissions` on Claude Code, `--trust-all-tools` on Kiro CLI), so a
 dispatched agent runs shell commands and MCP tools, AWS API calls included, without asking. Use them
-only in a workspace and with AWS credentials you are willing to let an agent act on. `konductor`
-keeps your normal permission prompts.
+only in a workspace and with AWS credentials you are willing to let an agent act on. With
+`konductor`, Claude Code specialists follow your `~/.claude/settings.json`; on Kiro CLI,
+`k-developer`, `k-architect` and `k-quality-assurance` already run shell commands without asking.
+See [What each agent can do to your machine](https://github.com/aws-solutions/konductor/blob/v1.2.0/docs/user-guide/agents.md#what-each-agent-can-do-to-your-machine).
 
 ---
 
@@ -400,8 +402,9 @@ Everything else is bring-your-own:
 
 ## Project layout
 
-This is the [source repository](https://github.com/aws-solutions/konductor/tree/v1.2.0). The
-Claude Code plugin ships only `agents/`, `skills/`, `hooks/`, `docs/` and its manifests.
+The [source repository](https://github.com/aws-solutions/konductor/tree/v1.2.0) has the layout
+below. The Claude Code plugin ships only `agents/`, `skills/`, `hooks/`, `docs/`, its manifests,
+the README, `LICENSE.txt` and `NOTICE.txt`.
 
 ```text
 konductor/
