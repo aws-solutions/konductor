@@ -28,6 +28,9 @@ pub(crate) mod config;
 pub(crate) mod config_lock;
 mod dispatch;
 pub(crate) mod doctor;
+// Only tests call it until the gate evaluator lands.
+#[allow(dead_code)]
+pub(crate) mod gate_config;
 pub(crate) mod harness_select;
 pub(crate) mod init;
 pub(crate) mod install;
