@@ -69,10 +69,13 @@ export interface RunMemory {
   /** The id of the latest run that was remembered, if any. */
   recall(): string | undefined;
   remember(runId: string): void;
+  /** Drops the run that was remembered, once it has ended or is gone. */
+  forget(): void;
 }
 
 /** A memory that keeps nothing, for a page that does not survive a reload. */
 export const NO_RUN_MEMORY: RunMemory = {
   recall: () => undefined,
   remember: () => undefined,
+  forget: () => undefined,
 };
