@@ -2,6 +2,7 @@
 /** Checks line and column lookups, and that a long line costs no more per lookup. */
 import { describe, expect, it, vi } from 'vitest';
 import { countingText } from '../test-support/counting-text.ts';
+import { withCountedUint32Arrays } from '../test-support/counting-tables.ts';
 import { SourceMap } from './source-map.ts';
 import { checkWorkflowText } from './validator.ts';
 
@@ -31,6 +32,8 @@ describe('SourceMap', () => {
     expect(new SourceMap('ab\n').position(3)).toEqual({ line: 2, column: 1 });
   });
 });
+
+const CONTRACT_LIMIT_BYTES = 262_144;
 
 describe('the check of a very long line', () => {
   // One flow mapping of unknown keys on one line. The contract allows 262144
@@ -89,6 +92,29 @@ describe('the check of a very long line', () => {
     expect(large.errors / small.errors).toBeCloseTo(4, 0);
     expect(large.lookups / small.lookups).toBeCloseTo(4, 0);
   });
+
+  // The text is never read here, so only the tables are counted. A lookup that
+  // walks them grows with the offset and fails at the contract's size limit.
+  function tableReads(length: number) {
+    const lookups = 20;
+    return withCountedUint32Arrays((counter) => {
+      const map = new SourceMap('a'.repeat(length));
+      const build = counter.reads;
+      for (let i = 0; i < lookups; i++)
+        map.position(Math.floor((i * length) / lookups));
+      return { build, perLookup: (counter.reads - build) / lookups };
+    });
+  }
+
+  it.each([65_536, CONTRACT_LIMIT_BYTES])(
+    'reads a fixed number of table entries per lookup, on %i characters',
+    (length) => {
+      const { build, perLookup } = tableReads(length);
+
+      expect(build).toBeLessThanOrEqual(2 * length);
+      expect(perLookup).toBeLessThanOrEqual(4);
+    },
+  );
 
   // Smaller than the contract's limit: the counts above show the cost is
   // linear, and the full 250 KB takes longer than a loaded machine allows.
