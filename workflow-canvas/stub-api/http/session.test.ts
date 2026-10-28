@@ -175,7 +175,10 @@ describe('the stub', () => {
   it("refuses connections on this host's other addresses", async ({ skip }) => {
     const addresses = otherAddresses();
     if (addresses.length === 0)
-      skip('this host has no non-internal IPv4 address to probe');
+      skipWithReason(
+        skip,
+        'this host has no non-internal IPv4 address to probe',
+      );
     const { stub } = await openStub();
     try {
       const answers = await Promise.all(
@@ -183,12 +186,21 @@ describe('the stub', () => {
       );
       expect(answers).not.toContain('connected');
       if (!answers.includes('refused'))
-        skip('every other address dropped the probe, so no refusal was seen');
+        skipWithReason(
+          skip,
+          'every other address dropped the probe, so no refusal was seen',
+        );
     } finally {
       await stub.close();
     }
   });
 });
+
+/** The default reporter shows only a count of skips, so the reason is logged. */
+function skipWithReason(skip: (note?: string) => never, reason: string): never {
+  console.warn(`SKIPPED loopback probe: ${reason}`);
+  return skip(reason);
+}
 
 // The IPv4 addresses of this machine that are not loopback; there may be none.
 function otherAddresses(): string[] {
