@@ -90,7 +90,7 @@ describe('useExecution after a reload', () => {
     );
     await act(async () => {});
 
-    expect(runs.get).toHaveBeenCalledWith(RUN_ID);
+    expect(runs.get).toHaveBeenCalledWith(RUN_ID, expect.any(AbortSignal));
     expect(result.current.state).toEqual({ phase: 'idle' });
   });
 
@@ -112,5 +112,103 @@ describe('useExecution after a reload', () => {
     await act(async () => result.current.start('Ship it'));
 
     expect(memory.remember).toHaveBeenCalledWith(RUN_ID);
+  });
+});
+
+describe('useExecution while a run of the memory is being looked for', () => {
+  const memoryOf = (runId?: string): RunMemory => ({
+    recall: vi.fn(() => runId),
+    remember: vi.fn(),
+  });
+
+  /** A server whose first read of the remembered run never answers. */
+  function slowToAnswer() {
+    const runs: RunPort = {
+      start: vi.fn().mockResolvedValue(RUN_ID),
+      get: vi.fn(
+        (_id: string, signal: AbortSignal) =>
+          new Promise<never>((_resolve, reject) =>
+            signal.addEventListener('abort', () =>
+              reject(new Error('aborted')),
+            ),
+          ),
+      ),
+    };
+    return runs;
+  }
+
+  it('starts the run when Run is pressed, instead of ignoring the click', async () => {
+    const runs = slowToAnswer();
+    const { result } = renderHook(() =>
+      useExecution(runs, new FakeScheduler(), memoryOf(RUN_ID)),
+    );
+    await act(async () => {});
+    expect(runs.get).toHaveBeenCalledOnce();
+
+    await act(async () => result.current.start('Ship it'));
+
+    expect(runs.start).toHaveBeenCalledWith('Ship it', expect.any(AbortSignal));
+    expect(result.current.state.phase).not.toBe('idle');
+  });
+
+  it('stops looking for the earlier run when Run is pressed', async () => {
+    const runs = slowToAnswer();
+    const { result } = renderHook(() =>
+      useExecution(runs, new FakeScheduler(), memoryOf(RUN_ID)),
+    );
+    await act(async () => {});
+    const lookup = (runs.get as ReturnType<typeof vi.fn>).mock
+      .calls[0]![1] as AbortSignal;
+
+    await act(async () => result.current.start('Ship it'));
+
+    expect(lookup.aborted).toBe(true);
+  });
+
+  it('ignores a second click once the run is under way', async () => {
+    const runs = slowToAnswer();
+    const { result } = renderHook(() =>
+      useExecution(runs, new FakeScheduler(), memoryOf(RUN_ID)),
+    );
+    await act(async () => {});
+
+    await act(async () => {
+      result.current.start('Ship it');
+      result.current.start('Ship it');
+    });
+
+    expect(runs.start).toHaveBeenCalledOnce();
+  });
+
+  it('ignores Run once the earlier run has been found and is being followed', async () => {
+    const runs: RunPort = {
+      start: vi.fn(),
+      get: vi.fn().mockResolvedValue(helloRun(1)),
+    };
+    const scheduler = new FakeScheduler();
+    const memory = memoryOf(RUN_ID);
+    const { result } = renderHook(() => useExecution(runs, scheduler, memory));
+    await waitFor(() => expect(result.current.state.phase).toBe('following'));
+
+    await act(async () => result.current.start('Ship it'));
+
+    expect(runs.start).not.toHaveBeenCalled();
+  });
+});
+
+describe('useExecution and the memory', () => {
+  it('remembers no run when the run does not start', async () => {
+    const memory: RunMemory = { recall: () => undefined, remember: vi.fn() };
+    const runs: RunPort = {
+      start: vi.fn().mockRejectedValue(new Error('kiro-cli is not installed.')),
+      get: vi.fn(),
+    };
+    const { result } = renderHook(() =>
+      useExecution(runs, new FakeScheduler(), memory),
+    );
+
+    await act(async () => result.current.start('Ship it'));
+
+    expect(memory.remember).not.toHaveBeenCalled();
   });
 });

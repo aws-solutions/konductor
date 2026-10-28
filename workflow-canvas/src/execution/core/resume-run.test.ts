@@ -5,7 +5,7 @@ import { FakeScheduler } from '../../test-support/fake-scheduler';
 import { helloRun } from '../../test-support/fixtures';
 import type { ExecutionEvent } from './execution-state';
 import { POLL_INTERVAL_MS, resumeRun } from './follow-run';
-import type { RunPort } from './ports';
+import { RunReadRefused, type RunPort } from './ports';
 
 const RUN_ID = helloRun(0).runId;
 
@@ -65,13 +65,48 @@ describe('resumeRun', () => {
     expect(events).toEqual([]);
   });
 
-  it('says nothing when the run cannot be read, as after the server started again', async () => {
-    const { runs, events, done } = setup([new Error('Gone.')]);
+  it('says nothing when the server refuses to give the run, as after it started again', async () => {
+    const { runs, events, done } = setup([new RunReadRefused('Gone.')]);
 
     await done;
 
     expect(events).toEqual([]);
     expect(runs.get).toHaveBeenCalledTimes(1);
+  });
+
+  it('reads again after a reading that fails once, and joins the run', async () => {
+    const { runs, scheduler, events, done } = setup([
+      new Error('The server did not answer.'),
+      helloRun(1),
+      helloRun(2),
+    ]);
+
+    await settle();
+    expect(events).toEqual([]);
+    scheduler.tick();
+    await settle();
+    expect(events.slice(0, 2)).toEqual([
+      { type: 'start' },
+      { type: 'started', runId: RUN_ID, joined: true },
+    ]);
+    scheduler.tick();
+    await done;
+
+    expect(runs.get).toHaveBeenCalledTimes(3);
+  });
+
+  it('says nothing when every reading fails', async () => {
+    const down = () => new Error('The server did not answer.');
+    const { runs, scheduler, events, done } = setup([down(), down(), down()]);
+
+    for (let turn = 0; turn < 3; turn += 1) {
+      await settle();
+      scheduler.tick();
+    }
+    await done;
+
+    expect(events).toEqual([]);
+    expect(runs.get).toHaveBeenCalledTimes(3);
   });
 
   it('says nothing when the server answers with another run', async () => {
@@ -107,6 +142,10 @@ describe('resumeRun', () => {
     }
     await done;
 
-    expect(events.at(-1)).toEqual({ type: 'failed', message: 'Down.' });
+    expect(events.at(-1)).toEqual({
+      type: 'failed',
+      message: 'Down.',
+      runId: RUN_ID,
+    });
   });
 });
