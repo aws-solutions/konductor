@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 /** Checks line and column lookups, and that a long line costs no more per lookup. */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { SourceMap } from './source-map.ts';
 import { checkWorkflowText } from './validator.ts';
-
-// CPU time, not wall time: a busy machine slows the clock but not the work.
-const FLOW_CPU_LIMIT_MS = 2000;
 
 describe('SourceMap', () => {
   it('counts lines from 1 at LF, CRLF and a lone CR', () => {
@@ -37,6 +34,7 @@ describe('SourceMap', () => {
 describe('the check of a very long line', () => {
   // One flow mapping of unknown keys on one line. The contract allows 262144
   // bytes, and the quadratic version of the lookup needed over a minute here.
+  // The cost is counted in operations, never in time, so load cannot fail it.
   function flowMapping(count: number, prefix: string): string {
     const entries = Array.from(
       { length: count },
@@ -45,17 +43,72 @@ describe('the check of a very long line', () => {
     return `{${entries.join(', ')}}\n`;
   }
 
+  /** A string that counts the characters read from it. */
+  function countingText(text: string) {
+    const counted = { reads: 0 };
+    const wrapped = new String(text) as unknown as string;
+    Object.defineProperty(wrapped, 'charCodeAt', {
+      value: (index: number) => {
+        counted.reads++;
+        return text.charCodeAt(index);
+      },
+    });
+    return { counted, wrapped };
+  }
+
+  function lookupsOf(text: string): { lookups: number; errors: number } {
+    const position = vi.spyOn(SourceMap.prototype, 'position');
+    try {
+      const { errors } = checkWorkflowText(text, 'hello');
+      return { lookups: position.mock.calls.length, errors };
+    } finally {
+      position.mockRestore();
+    }
+  }
+
+  it.each([
+    ['ASCII', ''],
+    ['surrogate pairs', '😀'],
+  ])('reads each character a fixed number of times, for %s', (_, prefix) => {
+    const small = countingText(flowMapping(1000, prefix));
+    const large = countingText(flowMapping(4000, prefix));
+
+    new SourceMap(small.wrapped);
+    new SourceMap(large.wrapped);
+
+    const lengthRatio = large.wrapped.length / small.wrapped.length;
+    expect(large.counted.reads / small.counted.reads).toBeCloseTo(
+      lengthRatio,
+      1,
+    );
+  });
+
+  it('reads no character of the text to find a position on a long line', () => {
+    const { counted, wrapped } = countingText(flowMapping(24_000, ''));
+    const map = new SourceMap(wrapped);
+    const readsToBuild = counted.reads;
+
+    for (let at = 0; at < wrapped.length; at += 997) map.position(at);
+
+    expect(counted.reads).toBe(readsToBuild);
+  });
+
+  it('looks up a number of positions that grows in step with the text', () => {
+    const small = lookupsOf(flowMapping(1000, ''));
+    const large = lookupsOf(flowMapping(4000, ''));
+
+    expect(small.errors).toBeGreaterThan(900);
+    expect(large.errors / small.errors).toBeCloseTo(4, 0);
+    expect(large.lookups / small.lookups).toBeCloseTo(4, 0);
+  });
+
   it.each([
     ['250 KB of ASCII', flowMapping(24_000, ''), 245_000],
     ['text with surrogate pairs', flowMapping(8000, '😀'), 100_000],
-  ])('finishes well within the time limit for %s', (_, text, minBytes) => {
+  ])('checks %s within the size the contract allows', (_, text, minBytes) => {
     const bytes = Buffer.byteLength(text);
     expect(bytes).toBeGreaterThan(minBytes);
     expect(bytes).toBeLessThanOrEqual(262_144);
-    const started = process.cpuUsage();
-    const result = checkWorkflowText(text, 'hello');
-    const { user, system } = process.cpuUsage(started);
-    expect(result.errors).toBeGreaterThan(7000);
-    expect((user + system) / 1000).toBeLessThan(FLOW_CPU_LIMIT_MS);
+    expect(checkWorkflowText(text, 'hello').errors).toBeGreaterThan(7000);
   });
 });

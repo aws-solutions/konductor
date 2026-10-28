@@ -53,6 +53,7 @@ describe('POST /api/validate', () => {
     const before = await client.get('/api/workflow');
     await client.post(PATH, { text: oneStageWorkflow() });
     const after = await client.get('/api/workflow');
+    expect(after.status).toBe(before.status);
     expect(after.body).toEqual(before.body);
   });
 
