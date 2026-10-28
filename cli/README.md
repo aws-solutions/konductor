@@ -508,9 +508,9 @@ Both flags are scoped to the **whole target directory**, not to `--harness`.
 so there is no per-harness telemetry setting. Opting out (or back in) via one harness's
 `update`, for example `update --harness kiro-cli-v2 --no-telemetry`, changes the record
 for every harness at that target. Only the named harness's agent files are rewritten in
-that run; another Kiro CLI harness's `konductor-skills` MCP args pick up `--telemetry off`
-on its own next `update`. An `install` without `--no-telemetry` at the target opts every
-harness there back in.
+that run, and another Kiro CLI harness's `konductor-skills` MCP server args change only on that
+harness's own next `update`. Until then that harness's skill-lookup server keeps its previous
+setting: still reporting after an opt-out, or still `--telemetry off` after an opt-in.
 
 ### `--dry-run`
 

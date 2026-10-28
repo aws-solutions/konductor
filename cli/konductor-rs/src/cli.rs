@@ -321,7 +321,7 @@ pub enum Commands {
         #[arg(
             long,
             action = ArgAction::SetTrue,
-            conflicts_with_all = ["from", "target", "all", "harness", "dry_run"]
+            conflicts_with_all = ["from", "target", "all", "harness", "dry_run", "enable_telemetry"]
         )]
         cli: bool,
 
@@ -1069,6 +1069,14 @@ mod tests {
             "/tmp/repo",
         ]);
         let err = result.expect_err("--cli and --from together must be a usage error");
+        assert_eq!(err.kind(), clap::error::ErrorKind::ArgumentConflict);
+    }
+
+    #[test]
+    fn update_cli_conflicts_with_enable_telemetry() {
+        let result =
+            Cli::try_parse_from(["konductor", Commands::UPDATE, "--cli", "--enable-telemetry"]);
+        let err = result.expect_err("--cli and --enable-telemetry together must be a usage error");
         assert_eq!(err.kind(), clap::error::ErrorKind::ArgumentConflict);
     }
 

@@ -1723,9 +1723,9 @@ fn run_update_one_target_with_remote_installer(
     // (`current.strategy`) -- never the CLI-level `harness` filter,
     // since by this point in the function a single slot has already
     // been resolved via `harness_select::select_harness` above. `force`
-    // and an explicit `--no-telemetry` bypass the skip, same as
-    // `install.rs`, so an opt-out always rewrites the telemetry hooks
-    // and MCP args even if the record removal above failed. Only runs
+    // and either explicit telemetry flag bypass the skip, so an opt-out
+    // or opt-in always rewrites the telemetry hooks and MCP args, even
+    // when the record already says otherwise. Only runs
     // on the no-`--from` branch: `--version`/`--from` are mutually
     // exclusive at the clap
     // level (same `conflicts_with` as `install`'s own `--version`), and
@@ -1776,7 +1776,7 @@ fn run_update_one_target_with_remote_installer(
                 );
                 super::install::content_version::should_skip_write(
                     &comparison,
-                    force || explicit_no_telemetry,
+                    force || explicit_no_telemetry || enable_telemetry,
                 )
                 .then(|| comparison.matched_version().unwrap_or("").to_string())
             })
@@ -6128,6 +6128,61 @@ mod tests {
         fs::remove_dir_all(&target).ok();
     }
 
+    #[test]
+    fn enable_telemetry_bypasses_the_version_match_skip() {
+        let _home = HomeGuard::new("enable-telemetry-skip-home");
+        let target = scratch_dir("enable-telemetry-skip-target");
+        let manifest = StrategyManifest::new(
+            "kiro-cli-v2",
+            "2026-01-01T00:00:00Z",
+            ".",
+            None,
+            Status::Complete,
+            vec![],
+        );
+        manifest::upsert_strategy(&target, manifest).unwrap();
+        seed_agent_version_for_harness(&target, "kiro-cli-v2", "1.5.0");
+        let canonical = index::canonicalize_target_dir(&target).unwrap();
+        index::write_index(IndexEntry {
+            target_dir: canonical,
+            strategies: vec!["kiro-cli-v2".to_string()],
+            installed_at: "2026-01-01T00:00:00Z".to_string(),
+            status: IndexEntryStatus::Complete,
+        })
+        .unwrap();
+
+        let installer_ran_with_telemetry_off = std::cell::Cell::new(None);
+        let outcome = run_update_one_target_with_remote_installer(
+            &target,
+            None,          /* from */
+            None,          /* harness */
+            false,         /* use_github_token */
+            Some("1.5.0"), /* release_version: matches the recorded version */
+            false,         /* force */
+            false,         /* uncached_identity */
+            false,         /* json */
+            false,         /* no_telemetry */
+            true,          /* enable_telemetry: --enable-telemetry */
+            None,          /* latest_release_tag_cache */
+            |_strategy, _destination, _installed_at, no_telemetry| {
+                installer_ran_with_telemetry_off.set(Some(no_telemetry));
+                Ok((
+                    remote_orchestrate::RemoteInstallSource::GithubRelease,
+                    crate::cli::install::remote::RemoteInstallOutcome::default(),
+                ))
+            },
+        );
+
+        assert!(
+            matches!(outcome, Ok(UpdateOutcome::Success { .. })),
+            "--enable-telemetry on an up-to-date target must succeed, not return AlreadyAtVersion"
+        );
+        assert_eq!(
+            installer_ran_with_telemetry_off.get(),
+            Some(false),
+            "--enable-telemetry must bypass the version-match skip and rewrite with telemetry on"
+        );
+    }
     #[test]
     fn dispatch_update_ambiguity_still_returns_usage_error() {
         let _guard = lock_home();
