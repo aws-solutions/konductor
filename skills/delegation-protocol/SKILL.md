@@ -139,13 +139,20 @@ agents, from the same task or different tasks, to collide in the same tree.
 The write agent itself provisions or reuses the named target using its own
 shell/file tools — not the orchestrator — on either runtime.
 
+Parallel write agents MUST own disjoint files. Before spawning two or
+more write agents at once, list the files each one will edit. If a
+file appears in more than one list (a shared router, an `index.ts`, a
+registry), give that file to one agent, or run the parts that touch it
+in sequence. Separate worktrees do not prevent this: both edits
+conflict at merge, or one is lost.
+
 For dispatch into a separate, visible pane or surface rather than an
 in-session subagent call, see `claude-teams-behavior` (Claude Code Agent
 Teams), `mux-dispatch` (tmux/zellij), or `cmux-dispatch` (cmux) for the
 dispatch-method-specific steps. `mux-dispatch` and `cmux-dispatch` each
 detect and drive Kiro CLI the same as Claude Code, so Kiro CLI is already
 covered there; for a plain in-session `subagent`/`Agent()` call with no
-multiplexer, the two paragraphs above are the complete procedure on either
+multiplexer, the three paragraphs above are the complete procedure on either
 runtime and no separate skill is needed.
 
 Examples of parallelizable work:
