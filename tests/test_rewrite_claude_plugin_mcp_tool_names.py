@@ -306,13 +306,13 @@ def test_mcp_servers_block_is_dropped_and_later_keys_are_kept(tmp_path, block):
     assert text == "---\nname: k-architect\n" + KEYS_AFTER + "---\n\nPrompt body.\n"
 
 
-def test_mcp_servers_block_is_dropped_with_crlf_line_endings(tmp_path):
+def test_crlf_agent_file_is_stripped_and_written_back_with_lf(tmp_path):
+    # read_text/write_text translate newlines, so a CRLF file comes back LF.
     result, text = _strip_one(
         tmp_path, "name: k-architect\nmcpServers:\n- aws-mcp:\n    command: uvx\n" + KEYS_AFTER, newline="\r\n"
     )
     assert result.returncode == 0, result.stderr
-    assert "mcpServers" not in text
-    assert "tools:" in text and "skills:" in text and "- example-skill" in text
+    assert text == "---\nname: k-architect\n" + KEYS_AFTER + "---\n\nPrompt body.\n"
 
 
 def test_mcp_servers_in_the_prompt_body_is_left_alone(tmp_path):
