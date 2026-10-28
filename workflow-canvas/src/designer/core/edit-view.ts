@@ -23,7 +23,9 @@ export function textOf(state: EditState): string {
   return withStages(text, view, stagesOf(state.draft));
 }
 
-// The findings that speak for the draft as it is now.
+// The findings that speak for the draft as it is now. After a change they are
+// gone until the check of the new draft answers; a check that failed has no
+// event, so Save is open again then and the server checks the text on save.
 function currentFindings(state: EditState) {
   return state.check.revision === state.revision ? state.check.diagnostics : [];
 }
