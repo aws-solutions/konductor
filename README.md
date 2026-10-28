@@ -381,7 +381,8 @@ This plugin declares AWS MCP plugin-wide in `.mcp.json`, launched through
 are available in every Claude Code session, not only to `k-architect` and `k-developer`. You need
 `uvx` and AWS credentials; without `uvx` the server shows as failed in `/mcp`. Scope
 agent-initiated calls with the `aws:ViaAWSMCPService` and `aws:CalledViaAWSMCP` IAM condition keys,
-and disable the server in `/mcp` (`plugin:konductor:aws-mcp`) when you don't need it. Kiro CLI users add `aws-mcp` to their own MCP config,
+and disable the server in `/mcp` (`plugin:konductor:aws-mcp`) when you don't need it.
+Kiro CLI users add `aws-mcp` to their own MCP config,
 where knowledge tools are auto-approved and API tools ask first. See
 [Install for Claude Code](https://github.com/aws-solutions/konductor/blob/v1.2.0/docs/user-guide/tasks/install-claude-code.md#optional-integrations) or
 [Install for Kiro CLI](https://github.com/aws-solutions/konductor/blob/v1.2.0/docs/user-guide/tasks/install-kiro-cli.md).
