@@ -132,17 +132,21 @@ describe('isLaunchCode', () => {
   it.each([
     ['a base64url code of 32 bytes', 'Zm9vYmFyYmF6cXV4MTIzNDU2Nzg5MDEyMzQ1Ng'],
     ['a hex code of 16 bytes', '0123456789abcdef0123456789abcdef'],
-    ['the shortest code of 22 characters', 'a'.repeat(22)],
+    ['the shortest code of 16 characters', 'a'.repeat(16)],
     ['the longest code of 256 characters', 'a'.repeat(256)],
+    ['the code of the API example', 'EXAMPLE-LAUNCH-CODE'],
+    ['standard base64 with + / =', 'ab+cd/ef12GH34ij56kl78=='],
+    ['a code with dots and tildes', 'abc.def~ghi.jkl~mno.pqr'],
   ])('accepts %s', (_, code) => {
     expect(isLaunchCode(code)).toBe(true);
   });
 
   it.each([
     ['empty', ''],
-    ['21 characters', 'a'.repeat(21)],
+    ['15 characters', 'a'.repeat(15)],
+    ['257 characters', 'a'.repeat(257)],
     ['a word with a space', 'some anchor with a space inside'],
-    ['a path', 'section/sub-section/more-more'],
+    ['a tab inside', `${'a'.repeat(10)}\t${'b'.repeat(10)}`],
   ])('rejects %s', (_, code) => {
     expect(isLaunchCode(code)).toBe(false);
   });

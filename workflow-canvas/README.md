@@ -20,11 +20,11 @@ folder.
   IO; `api/` is the typed client of the API; `launch/` and `workflow/` open the
   session and load the workflow; `designer/` edits it and `canvas/` draws it;
   `execution/` runs it and shows the run; `execution/core/` does no IO and reads a run
-  once a second. A read that fails with no answer or a server error is tried
+  once a second. A read that fails with no answer, a server error, 408 or 429 is tried
   again, up to three in a row; any other failure ends the following. A start
-  that finds a run already active follows that run. Every call takes a signal
-  and ends on its own after 15 seconds, so a server that never answers cannot
-  hold the tab. A failure counts only for the run it belongs to.
+  that finds a run already active follows that run. Every run call takes a
+  signal, and every call but the launch code trade ends on its own after 15
+  seconds, so a server that never answers cannot hold the tab. A failure counts only for the run it belongs to.
 - `api/`: the HTTP API contract (`openapi.yaml`) and its test.
 - `stub-api/`: a TypeScript stub server for the contract, for local
   development and tests.
@@ -251,9 +251,12 @@ The rest wraps the core, so the rules can be tested without a browser:
   starts the first load once, before React renders, because a launch code
   works once and strict mode runs effects twice. Pasting a launch address into
   the open tab does not reload the page: when the fragment is shaped like a
-  launch code (22 to 256 URL-safe characters) the page opens a session with it
-  and changes to the new workflow only if that works. A refused code leaves
-  the workflow on the page. An anchor such as `#top` changes nothing.
+  launch code (16 to 256 characters, no whitespace; the API sets no alphabet)
+  the page opens a session with it and changes to the new workflow only if
+  that works, and fits the graph to it. A refused code leaves the workflow on
+  the page. A short anchor such as `#top` changes nothing; a longer one is
+  offered as a code and refused. When several codes are in flight, the latest
+  one that works wins.
 - `designer/` shows the result: loading, error, empty (no file yet, or a file
   with errors, with their messages), or the canvas with its editing (next
   section).
@@ -334,7 +337,8 @@ says so before you save.
   if the page may not), and **Load the file again**, which loads the file from
   the server and replaces the draft. The stages cannot be changed while the file
   loads. After the load, a note keeps **Copy my version** for the text that was
-  replaced, so the draft is never lost without a way back to it.
+  replaced. It stays while the person goes on to edit, until the file is loaded
+  again or a save works, so the draft is never lost without a way back to it.
 - **A read-only workflow** (the server says `read_only`) can be looked at, and
   a stage can be selected, but the name is read-only and Add stage, Delete
   stage, the agent list and Save are off. A note above the graph says why, and
@@ -346,8 +350,10 @@ says so before you save.
   the file cannot be read either, the alert says "The save did not finish" and
   that it is not known whether the file was written.
 - **Any other failure** of a save shows its sentence in an alert, and Save can
-  be tried again. When the session is gone, the sentence adds that the changes
-  on the page are lost when the launch address is opened again.
+  be tried again. When the session is gone (the API's 401, or a 401 from a
+  proxy), the sentence adds that the changes on the page are lost when the
+  launch address is opened again. A check that meets a lost session says so at
+  once, under "The session is lost", as no save can work then.
 - **Focus and keys.** Everything above works with the keyboard: Tab to **Add
   stage** and press Enter; the new stage's name has focus. A button that is off
   (Save, Add stage, Delete stage) stays focusable and gives the reason in a
@@ -403,13 +409,14 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
   follows a run that was already going the Goal box is empty, says "Not known"
   and is labelled so. When that run ends, the status line still says it was
   already in progress.
-- Resume after a reload works only where the launch code can be traded again,
-  which is the dev stub (`npm run dev:stub`, see above). The launch code works
-  once and the page removes it from the address, so on a server that follows
-  the contract a reload leaves the page with "no launch code in the address"
+- Resume works when the page is opened again with a launch code that the
+  server accepts a second time, which is the dev stub (`npm run dev:stub`, see
+  above). A plain reload never resumes: the page has already removed the
+  launch code from the address, so it shows "no launch code in the address"
   and no Execution tab, and the run goes on unseen. The tab keeps the id of the
   latest run in the storage of the browser tab (`sessionStorage`; the id is no
-  secret, the token is not kept). When the page opens again with a session it
+  secret, the token is not kept) and drops it once the run has ended or turns
+  out to be gone. When the page opens again with a session it
   reads that run, trying again like any read. If the run is still running, the
   tab follows it as if the person had joined it, without a click on Run. A run
   that has ended, one that the server will not give (for instance after it
@@ -420,7 +427,7 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
   stops the look and starts a run; a run that is going answers 409 and is
   joined.
 - A read of the run that fails is tried again after a second; the tab gives up
-  after three failures in a row. Only a missing answer or a 5xx is tried again:
+  after three failures in a row. Only a missing answer, a 5xx, 408 or 429 is tried again:
   any 4xx or a reply the page cannot read shows the alert at once. A call that
   gets no answer in 15 seconds counts as a failure, except the one that trades
   the launch code, which has no limit because the code works once. A start that
@@ -428,7 +435,7 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
   run may not have started and that Run joins it if it did.
 - Each node shows a badge with a word and a colour: **Queued** (with a dashed
   outline), **Running**, **Done** and **Failed**. The word carries the state;
-  only Queued also differs in shape. The intent is Done once the run
+  only Queued and Not run also differ in shape. The intent is Done once the run
   has it. After a halt, the stages behind the failed one say **Not run**. The end
   shows the result: **Passed** or **Halted**.
 - A line under the button says where the run is ("Running draft. 0 of 2 stages
@@ -439,7 +446,7 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
   in one alert under the Run button, with the sentence the server gave. A
   screen reader hears it from an alert region that `App` keeps outside the
   tabs, so it is read when it appears even if the Designer tab is open; the
-  status line then says only "See the error below." When a read fails, the
+  status line on the tab says only "See the error below.", which the live status region leaves out. When a read fails, the
   nodes are cleared and the alert adds that the run (with its id) may still be
   going on the server. A failed stage is a result, not an error, so it has no
   alert. The goal is one line: line breaks in the outcome of the intent become
@@ -468,7 +475,8 @@ The code follows the ports-and-adapters split of the graph:
 - The adapters are `createHttpApi` (`startRun`, `getRun`), which `loadWorkflow`
   ties to the session token, `timerScheduler`, and `sessionRunMemory`, which
   keeps the id of the latest run for `resumeRun`. The token is held only by
-  those run calls. `createHttpApi` ends a call after a timeout, and
+  those run calls. `createHttpApi` ends a call after a timeout, except the launch code call,
+  which works once and so is never cut short, and
   `loadWorkflow` turns the 409 `already_running`, which carries the `run_id`,
   into the core's `RunAlreadyActive` so the core can follow that run.
 - `useExecution` keeps the state in `App`, and `Execution` draws it. The
@@ -552,17 +560,20 @@ Then `npm run test:e2e`. It has two Playwright projects. `functional`
 (`e2e/tests/`) does not save to the stub. `editing` (`e2e/editing/`) does, so it
 runs after `functional` has finished; one red functional test makes the editing
 tests report "did not run". The editing tests run one after the other in one
-worker (`mode: 'serial'`), and the `sample` fixture of
+worker (`fullyParallel: false`), and the `sample` fixture of
 `e2e/support/editing-fixtures.ts` fails a test that finds itself in another
 worker, because the stub keeps one workflow for all of them. So `--repeat-each`,
-or a second spec file in `e2e/editing/`, needs `--workers=1`. The stub keeps what
+or a second spec file in `e2e/editing/`, needs `--workers=1`. To run only the
+editing tests, add `--no-deps`, or `functional` runs first as its dependency. The stub keeps what
 is saved until it stops, so the fixture puts the sample workflow back before
 and after each test, and a test that needs the file changed by someone else
 writes it itself (`e2e/support/stub-workflow.ts`, which fails on a refused
 call). The editing tests also cover saves that go wrong: a refusal with
 findings and one with none, a lost session, an answer that is lost or cannot be
 read (the file holds the text, or does not), and a conflict whose draft can be
-copied. The HTML report is written to `playwright-report/`; open it with
+copied, and a graph that grows by added stages and is fitted again. A
+test that says a save "writes nothing" counts the `PUT` requests that the
+page sent; the file is checked only where a request reaches the stub. The HTML report is written to `playwright-report/`; open it with
 `npx playwright show-report`. Accessibility is checked with axe-core on each
 tab, on the error state, on the Execution tab with a stage running, a failed
 stage, a passed run, the error of the API and a goal that cannot be run, on the

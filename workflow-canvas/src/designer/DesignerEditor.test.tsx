@@ -10,7 +10,7 @@ import {
 } from '@testing-library/react';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { App } from '../App';
-import { SaveConflict, SaveLost, SaveRefused } from './core';
+import { SaveConflict, SaveLost, SaveRefused, SessionLost } from './core';
 import { FakeScheduler } from '../test-support/fake-scheduler';
 import {
   acceptingEdits,
@@ -763,6 +763,32 @@ describe('a save that finds the file changed', () => {
     expect(mine.value).toContain('- name: write');
   });
 
+  it('keeps the draft in view, with Copy my version, when the person types after the reload', async () => {
+    const { edits } = await conflict();
+    edits.reload.mockResolvedValue({
+      ...HELLO_DOCUMENT,
+      hash: 'e'.repeat(64),
+      view: { ...HELLO_VIEW, stages: [{ name: 'only', agent: 'k-tpm' }] },
+    });
+    fireEvent.click(
+      within(screen.getByTestId('conflict')).getByRole('button', {
+        name: 'Load the file again',
+      }),
+    );
+    await screen.findByTestId('discarded');
+
+    type('typed');
+
+    const note = screen.getByTestId('discarded');
+    fireEvent.click(
+      within(note).getByRole('button', { name: 'Copy my version' }),
+    );
+    const mine = (await screen.findByRole('textbox', {
+      name: 'My version of the workflow file',
+    })) as HTMLTextAreaElement;
+    expect(mine.value).toContain('- name: write');
+  });
+
   it('does not let the stages change while the file loads', async () => {
     const { edits } = await conflict();
     edits.reload.mockReturnValue(new Promise(() => {}));
@@ -794,6 +820,25 @@ describe('a save that finds the file changed', () => {
       ),
     );
     expect(nameInput().value).toBe('write');
+  });
+});
+
+describe('a check that the server refuses for a lost session', () => {
+  it('says so, and that the changes are lost with the page', async () => {
+    const edits = acceptingEdits();
+    edits.check.mockRejectedValue(
+      new SessionLost(
+        'The session is not valid. Open the launch address that the server printed. The changes you made on this page are lost when you do; copy them first.',
+      ),
+    );
+    const { scheduler } = await openDesigner(edits);
+    type('write');
+
+    await checkNow(scheduler);
+
+    expect(await screen.findByText('The session is lost')).toBeTruthy();
+    expect(screen.getByText(/copy them first/)).toBeTruthy();
+    expect(screen.queryByText('The workflow was not saved')).toBeNull();
   });
 });
 
@@ -907,6 +952,13 @@ describe('a file whose stages are not a block', () => {
 
     expect(screen.queryByTestId('rewrite-notice')).toBeNull();
   });
+
+  it('says nothing when the workflow is read-only, as nothing will be saved', async () => {
+    await openDesigner(acceptingEdits(), { ...FLOW, readOnly: true });
+
+    expect(screen.getByTestId('read-only-note')).toBeTruthy();
+    expect(screen.queryByTestId('rewrite-notice')).toBeNull();
+  });
 });
 
 describe('the two tabs', () => {
@@ -969,6 +1021,14 @@ describe('a workflow that the server says is read-only', () => {
     expect(isOff(saveButton())).toBe(true);
   });
 
+  it('keeps the note out of the grid of the graph and Properties', async () => {
+    await openDesigner(undefined, { ...HELLO_DOCUMENT, readOnly: true });
+
+    expect(
+      screen.getByTestId('read-only-note').closest('.wf-designer'),
+    ).toBeNull();
+  });
+
   it('says in a note that it is read-only', async () => {
     await openDesigner(undefined, { ...HELLO_DOCUMENT, readOnly: true });
 
@@ -1003,9 +1063,35 @@ describe('what a screen reader is told', () => {
 
     fireEvent.click(addButton());
 
-    expect(live()).toBe('Stage added and selected.');
+    expect(live()).toBe('Stage agent-1 added and selected.');
   });
 
+  it('says a second stage was added in different words', async () => {
+    await openDesigner();
+
+    fireEvent.click(addButton());
+    const first = live();
+    fireEvent.click(addButton());
+
+    expect(live()).toBe('Stage agent-2 added and selected.');
+    expect(live()).not.toBe(first);
+  });
+
+  it('says again that the same stage is selected, in a new element', async () => {
+    await openDesigner();
+    const region = () => screen.getByTestId('designer-live');
+    const selectedNode = () =>
+      screen.getByRole('group', { name: /^Stage review, .*, selected$/ });
+    fireEvent.click(screen.getByTestId('node-stage-review'));
+    await waitFor(() => expect(live()).toBe('Stage review selected.'));
+    const first = region().firstElementChild;
+
+    selectedNode().focus();
+    fireEvent.keyDown(selectedNode(), { key: 'Enter' });
+
+    await waitFor(() => expect(region().firstElementChild).not.toBe(first));
+    expect(live()).toBe('Stage review selected.');
+  });
   it('says which stage was deleted', async () => {
     await openDesigner();
     fireEvent.click(screen.getByTestId('node-stage-review'));

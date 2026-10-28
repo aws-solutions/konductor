@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { Page } from '@playwright/test';
+import type { Page, Route } from '@playwright/test';
 import { STUB_LAUNCH_CODE } from '../../playwright.shared';
 import { expectNoAccessibilityViolations } from '../support/accessibility';
 import { expect, test } from '../support/editing-fixtures';
@@ -13,7 +13,6 @@ import {
 // they run one after the other in one worker. The `sample` fixture fails a
 // test that finds itself in another worker, so `--repeat-each` or a second
 // spec file needs `--workers=1`.
-test.describe.configure({ mode: 'serial' });
 
 test('shows the first stage in Properties and says it is selected', async ({
   designer,
@@ -187,7 +186,7 @@ test("shows a name that is not a name, with the server's words, and keeps Save o
 }) => {
   await designer.rename('Not A Name');
 
-  await expect(designer.problems).toContainText('Not A Name');
+  await expect(designer.problems).toContainText('must be lower-case letters');
   await expect(designer.name).toHaveAttribute('aria-invalid', 'true');
   await expect(designer.page.getByText('Needs a fix')).toBeVisible();
   await designer.expectSaveEnabled(false);
@@ -312,39 +311,60 @@ test('Designer tab has no axe violations in the dark mode while editing', async 
   await expectNoAccessibilityViolations(designer.page);
 });
 
-// The server is told to answer a save in a way it never does by itself.
-async function answerSaveWith(
-  designer: { page: Page },
-  reply: { status: number; body: string; contentType?: string },
-): Promise<void> {
-  await designer.page.route('**/api/workflow', async (route) => {
+/**
+ * Takes over the saves of the page: `answer` decides what each one gets.
+ * Returns how many saves the page sent, so a test can say that a save was
+ * sent once, and not again.
+ */
+async function interceptSaves(
+  page: Page,
+  answer: (route: Route) => Promise<void>,
+): Promise<{ sent: () => number }> {
+  let sent = 0;
+  await page.route('**/api/workflow', async (route) => {
     if (route.request().method() !== 'PUT') return route.fallback();
-    await route.fulfill({
+    sent += 1;
+    await answer(route);
+  });
+  return { sent: () => sent };
+}
+
+/** The server answers a save in a way it never does by itself. */
+function answerSaveWith(
+  page: Page,
+  reply: { status: number; body: string; contentType?: string },
+) {
+  return interceptSaves(page, (route) =>
+    route.fulfill({
       status: reply.status,
       contentType: reply.contentType ?? 'application/json',
       body: reply.body,
-    });
-  });
+    }),
+  );
 }
 
-test('shows the findings of a save the server refuses, and writes nothing', async ({
+// A finding as the contract has it: every field of `Diagnostic` is there.
+const DUPLICATE_STAGE = {
+  code: 'DUPLICATE_STAGE',
+  severity: 'error',
+  file: 'hello.yml',
+  path: 'stages[0].name',
+  line: 4,
+  column: 11,
+  end_line: 4,
+  end_column: 16,
+  message: 'The stage name `write` is already used.',
+};
+
+test('shows the findings of a save the server refuses, and sends the save once', async ({
   designer,
-  request,
 }) => {
-  await answerSaveWith(designer, {
+  const saves = await answerSaveWith(designer.page, {
     status: 422,
     body: JSON.stringify({
       error: 'The workflow has errors.',
       code: 'invalid_workflow',
-      diagnostics: [
-        {
-          code: 'DUPLICATE_STAGE',
-          severity: 'error',
-          path: 'stages[0].name',
-          line: 4,
-          message: 'The stage name `write` is already used.',
-        },
-      ],
+      diagnostics: [DUPLICATE_STAGE],
     }),
   });
   await designer.rename('write');
@@ -353,14 +373,13 @@ test('shows the findings of a save the server refuses, and writes nothing', asyn
 
   await expect(designer.problems).toContainText('is already used');
   await designer.expectStatus('Unsaved changes');
-  expect((await currentWorkflow(request)).text).toBe(SAMPLE_TEXT);
+  expect(saves.sent()).toBe(1);
 });
 
 test('says so when a save is refused and the server shows nothing to fix', async ({
   designer,
-  request,
 }) => {
-  await answerSaveWith(designer, {
+  const saves = await answerSaveWith(designer.page, {
     status: 422,
     body: JSON.stringify({
       error: 'The workflow has errors.',
@@ -374,13 +393,13 @@ test('says so when a save is refused and the server shows nothing to fix', async
   const alert = designer.alerts;
   await expect(alert).toContainText('The workflow was not saved');
   await expect(alert).toContainText('The workflow has errors.');
-  expect((await currentWorkflow(request)).text).toBe(SAMPLE_TEXT);
+  expect(saves.sent()).toBe(1);
 });
 
 test('warns that the draft is lost when the session is gone at a save', async ({
   designer,
 }) => {
-  await answerSaveWith(designer, {
+  const saves = await answerSaveWith(designer.page, {
     status: 401,
     body: JSON.stringify({
       error: 'The session is not valid.',
@@ -395,16 +414,15 @@ test('warns that the draft is lost when the session is gone at a save', async ({
   await expect(alert).toContainText('The session is not valid.');
   await expect(alert).toContainText('lost when you do');
   await expect(designer.name).toHaveValue('write');
+  expect(saves.sent()).toBe(1);
 });
 
 test('counts a save as done when the answer is lost but the file holds the text', async ({
   designer,
   request,
 }) => {
-  const page = designer.page;
-  await page.route('**/api/workflow', async (route) => {
-    if (route.request().method() !== 'PUT') return route.fallback();
-    // The write lands, then the answer is lost.
+  // The write lands, then the answer is lost.
+  const saves = await interceptSaves(designer.page, async (route) => {
     await route.fetch();
     await route.abort('connectionreset');
   });
@@ -413,6 +431,7 @@ test('counts a save as done when the answer is lost but the file holds the text'
   await designer.save.click();
 
   await designer.expectStatus('Saved');
+  expect(saves.sent()).toBe(1);
   expect((await currentWorkflow(request)).text).toBe(
     SAMPLE_TEXT.replace('name: draft', 'name: write'),
   );
@@ -422,8 +441,7 @@ test('counts a save as done when the 200 cannot be read but the file holds the t
   designer,
   request,
 }) => {
-  await designer.page.route('**/api/workflow', async (route) => {
-    if (route.request().method() !== 'PUT') return route.fallback();
+  const saves = await interceptSaves(designer.page, async (route) => {
     await route.fetch();
     await route.fulfill({ status: 200, contentType: 'text/plain', body: 'ok' });
   });
@@ -432,6 +450,7 @@ test('counts a save as done when the 200 cannot be read but the file holds the t
   await designer.save.click();
 
   await designer.expectStatus('Saved');
+  expect(saves.sent()).toBe(1);
   expect((await currentWorkflow(request)).text).toBe(
     SAMPLE_TEXT.replace('name: draft', 'name: write'),
   );
@@ -439,12 +458,12 @@ test('counts a save as done when the 200 cannot be read but the file holds the t
 
 test('says the save failed, and may be tried again, when the answer is lost and nothing was written', async ({
   designer,
-  request,
 }) => {
-  await designer.page.route('**/api/workflow', async (route) => {
-    if (route.request().method() !== 'PUT') return route.fallback();
-    await route.abort('connectionreset');
-  });
+  // The request is dropped before it reaches the stub, so the file cannot
+  // have changed; what can go wrong is a send that is repeated.
+  const saves = await interceptSaves(designer.page, (route) =>
+    route.abort('connectionreset'),
+  );
   await designer.rename('write');
 
   await designer.save.click();
@@ -452,5 +471,23 @@ test('says the save failed, and may be tried again, when the answer is lost and 
   await expect(designer.alerts).toContainText('The workflow was not saved');
   await designer.expectStatus('Unsaved changes');
   await designer.expectSaveEnabled(true);
-  expect((await currentWorkflow(request)).text).toBe(SAMPLE_TEXT);
+  expect(saves.sent()).toBe(1);
+});
+
+test('fits every stage in the graph after stages are added to it', async ({
+  designer,
+}) => {
+  const added = 12;
+  for (let n = 0; n < added; n += 1) await designer.add.click();
+
+  const last = designer.stage(`agent-${added}`);
+  await expect(last).toBeVisible();
+  const area = await designer.graph.boundingBox();
+  for (const node of [last, designer.stage('draft')]) {
+    const box = await node.boundingBox();
+    expect(box?.y).toBeGreaterThanOrEqual(area?.y ?? 0);
+    expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(
+      (area?.y ?? 0) + (area?.height ?? 0),
+    );
+  }
 });

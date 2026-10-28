@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { Scheduler } from '../../execution/core';
 import type { EditEvent } from './edit-state';
-import type { EditPort } from './ports';
+import { SessionLost, type EditPort } from './ports';
 
 /**
  * How long the text must stay unchanged before it is checked, so a name being
@@ -23,8 +23,9 @@ export interface CheckRequest {
 
 /**
  * Waits for `CHECK_DELAY_MS`, then checks the text and tells `emit` what the
- * check found. It never rejects. A check that fails to run says nothing: the
- * save checks the text again and reports that.
+ * check found. It never rejects. A check that fails to run says nothing, as
+ * the save checks the text again and reports that; except that a lost session
+ * is told at once, because no save can work then.
  */
 export async function checkAfterPause(request: CheckRequest): Promise<void> {
   const { edits, scheduler, text, revision, emit, signal } = request;
@@ -33,7 +34,9 @@ export async function checkAfterPause(request: CheckRequest): Promise<void> {
   try {
     const { diagnostics } = await edits.check(text);
     if (!signal.aborted) emit({ type: 'checked', revision, diagnostics });
-  } catch {
-    // Left to the save, as the doc comment says.
+  } catch (error) {
+    if (error instanceof SessionLost && !signal.aborted) {
+      emit({ type: 'session-lost', message: error.message });
+    }
   }
 }

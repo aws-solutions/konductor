@@ -33,10 +33,10 @@ export type ExecutionEvent =
   | { type: 'start' }
   | { type: 'started'; runId: string; joined?: boolean }
   | { type: 'snapshot'; run: RunView }
-  /** `runId` is the run the failure belongs to, once the loop has one. */
   | {
       type: 'failed';
       message: string;
+      /** The run the failure belongs to, once the loop has one. */
       runId?: string;
       /** The start got no clear answer, so the run may have started. */
       maybeStarted?: true;
@@ -92,6 +92,8 @@ function snapshotOf(state: ExecutionState, run: RunView): ExecutionState {
 // A failure counts only for the run it belongs to: one that names no run is
 // for a start that has not got an id yet, and one that names a run is for the
 // run being followed. A loop that lost to another cannot end the winner's run.
+// A failure with no run id cannot be told from the start of another loop, so
+// the caller runs one loop at a time.
 function failedOf(
   state: ExecutionState,
   { message, runId, maybeStarted }: Extract<ExecutionEvent, { type: 'failed' }>,

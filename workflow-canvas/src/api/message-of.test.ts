@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it } from 'vitest';
 import { ApiError } from './api';
-import { messageOf } from './message-of';
+import { isSessionLost, lostSessionMessage, messageOf } from './message-of';
 
 describe('messageOf', () => {
   it('gives the message of an Error', () => {
@@ -30,6 +30,29 @@ describe('messageOf', () => {
       expect(messageOf(error, 'Fallback.')).toBe(
         'The session is gone. Open the launch address that the server printed.',
       );
+    },
+  );
+
+  it('takes a 401 with no body of the API for a lost session', () => {
+    const error = new ApiError('The server answered 401.', 401);
+
+    expect(isSessionLost(error)).toBe(true);
+    expect(lostSessionMessage(error)).toBe(
+      'The server answered 401. Open the launch address that the server printed.',
+    );
+  });
+
+  it.each([
+    ['its own 401', new ApiError('Gone.', 401, 'unauthorized')],
+    ['a bad launch code', new ApiError('Bad.', 400, 'invalid_code')],
+  ])('takes %s for a lost session', (_, error) => {
+    expect(isSessionLost(error)).toBe(true);
+  });
+
+  it.each([403, 404, 500])(
+    'does not take a %i for a lost session',
+    (status) => {
+      expect(isSessionLost(new ApiError('No.', status))).toBe(false);
     },
   );
 

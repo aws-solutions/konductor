@@ -2,7 +2,7 @@
 import Button from '@cloudscape-design/components/button';
 import type { InputProps } from '@cloudscape-design/components/input';
 import Alert from '@cloudscape-design/components/alert';
-import { useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { WorkflowGraphCard } from '../canvas/WorkflowGraphCard';
 import type { CanvasSelection } from '../canvas/WorkflowCanvas';
 import { stageNodeId } from '../graph';
@@ -11,6 +11,7 @@ import {
   canEdit,
   changeBlocker,
   MAX_STAGES,
+  nextStageName,
   READ_ONLY_REASON,
 } from './core';
 import '../execution/announcements.css';
@@ -22,6 +23,20 @@ import { useFocusRequest, useFocusWhenDone } from './use-focus';
 import type { Editor } from './use-editor';
 
 const STAGE_LIMIT = `A workflow has at most ${MAX_STAGES} stages.`;
+
+// The words for a screen reader. Each call gets a new element, so a repeated
+// sentence, such as selecting the same stage twice, is read again.
+function useAnnouncer(): [
+  { text: string; count: number },
+  (text: string) => void,
+] {
+  const [announcement, set] = useState({ text: '', count: 0 });
+  const announce = useCallback(
+    (text: string) => set((last) => ({ text, count: last.count + 1 })),
+    [],
+  );
+  return [announcement, announce];
+}
 
 /**
  * The editable Designer: the graph with Add stage and Save, Properties for the
@@ -53,7 +68,7 @@ export function DesignerEditor({
     }),
     [state.saved.view, state.draft.stages],
   );
-  const [announcement, announce] = useState('');
+  const [announcement, announce] = useAnnouncer();
   const { select } = editor;
   const selection = useMemo<CanvasSelection>(
     () => ({
@@ -68,7 +83,7 @@ export function DesignerEditor({
         announce(`Stage ${stage.name || 'with no name'} selected.`);
       },
     }),
-    [state.selectedId, state.draft.stages, select, focusName],
+    [state.selectedId, state.draft.stages, select, focusName, announce],
   );
 
   const editable = canEdit(state);
@@ -81,7 +96,7 @@ export function DesignerEditor({
         role="status"
         data-testid="designer-live"
       >
-        {announcement}
+        <span key={announcement.count}>{announcement.text}</span>
       </div>
       <EditAlerts state={state} onReload={editor.reload} />
       {editable && <RewriteNotice text={state.saved.text} />}
@@ -104,9 +119,10 @@ export function DesignerEditor({
               disabled={!addable}
               disabledReason={blocker ?? STAGE_LIMIT}
               onClick={() => {
+                const name = nextStageName(state.draft);
                 editor.add();
                 focusName();
-                announce('Stage added and selected.');
+                announce(`Stage ${name} added and selected.`);
               }}
             >
               Add stage

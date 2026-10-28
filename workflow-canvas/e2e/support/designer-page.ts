@@ -22,6 +22,8 @@ export class DesignerPage {
   /** The alert region of the Designer: conflicts, failed saves, problems. */
   readonly alerts: Locator;
   readonly selected: Locator;
+  /** The canvas that draws the stages. */
+  readonly graph: Locator;
 
   constructor(readonly page: Page) {
     this.name = page.getByRole('textbox', { name: 'name', exact: true });
@@ -36,6 +38,7 @@ export class DesignerPage {
       .getByRole('tabpanel', { name: 'Designer' })
       .getByRole('alert');
     this.selected = page.getByText('Selected:');
+    this.graph = page.getByRole('region', { name: 'Workflow graph' });
   }
 
   /** The node of the stage with the name. */

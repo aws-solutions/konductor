@@ -356,6 +356,22 @@ describe('createHttpApi', () => {
     });
   });
 
+  it('carries no run id when the error body has one that is not a run id', async () => {
+    const { api } = apiFor(
+      reply(
+        { error: 'Busy.', code: 'already_running', run_id: '../etc/passwd' },
+        409,
+      ),
+    );
+
+    const error = await api
+      .startRun('t', 'g')
+      .catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(ApiError);
+    expect((error as ApiError).runId).toBeUndefined();
+  });
+
   it('carries no run id when the error body has none', async () => {
     const { api } = apiFor(
       reply(
@@ -871,17 +887,22 @@ describe('createHttpApi, when a call does not go through', () => {
     it('gives the launch code no timeout, as it works once', async () => {
       vi.useFakeTimers();
       let answer: (response: Response) => void = () => {};
+      let aborted = false;
       const fetchFn = vi.fn(
-        () => new Promise<Response>((resolve) => (answer = resolve)),
+        (_path: string, init?: RequestInit) =>
+          new Promise<Response>((resolve, reject) => {
+            answer = resolve;
+            init?.signal?.addEventListener('abort', () => {
+              aborted = true;
+              reject(new Error('aborted'));
+            });
+          }),
       );
       const api = createHttpApi(fetchFn as unknown as typeof fetch, 5000);
-      let settled = false;
 
-      const session = api.createSession('code-1').finally(() => {
-        settled = true;
-      });
+      const session = api.createSession('code-1');
       await vi.advanceTimersByTimeAsync(60_000);
-      expect(settled).toBe(false);
+      expect(aborted).toBe(false);
       answer(reply(SESSION_BODY));
 
       await expect(session).resolves.toMatchObject({ token: 't-1' });

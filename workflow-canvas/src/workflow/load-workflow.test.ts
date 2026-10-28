@@ -170,6 +170,49 @@ describe('loadWorkflow', () => {
     );
   });
 
+  it('warns that the draft is lost for a 401 with no body of the API', async () => {
+    const failure = new ApiError('The server answered 401.', 401);
+    const api = fakeApi({ saveWorkflow: vi.fn().mockRejectedValue(failure) });
+    const result = await loadWorkflow(api, 'code-1');
+    if (!result.ok) throw new Error('The load failed.');
+
+    const refused = result.workflow.edits.save('text', HELLO_HASH);
+
+    await expect(refused).rejects.toThrow(
+      'The server answered 401. Open the launch address that the server printed. The changes you made on this page are lost when you do; copy them first.',
+    );
+  });
+
+  it.each([
+    ['the API', new ApiError('The session is not valid.', 401, 'unauthorized')],
+    ['a proxy', new ApiError('The server answered 401.', 401)],
+  ])(
+    'tells the core that the session is lost at a check, as seen by %s',
+    async (_, failure) => {
+      const api = fakeApi({
+        checkWorkflow: vi.fn().mockRejectedValue(failure),
+      });
+      const result = await loadWorkflow(api, 'code-1');
+      if (!result.ok) throw new Error('The load failed.');
+
+      const checked = result.workflow.edits.check('text');
+
+      await expect(checked).rejects.toMatchObject({
+        name: 'SessionLost',
+        message: `${failure.message} Open the launch address that the server printed. The changes you made on this page are lost when you do; copy them first.`,
+      });
+    },
+  );
+
+  it('leaves another failure of a check as it is', async () => {
+    const failure = new ApiError('Down.', 502);
+    const api = fakeApi({ checkWorkflow: vi.fn().mockRejectedValue(failure) });
+    const result = await loadWorkflow(api, 'code-1');
+    if (!result.ok) throw new Error('The load failed.');
+
+    await expect(result.workflow.edits.check('text')).rejects.toBe(failure);
+  });
+
   it('gives the hash of the file in the conflict', async () => {
     const failure = new ApiError(
       'The file changed on disk.',
@@ -257,8 +300,8 @@ describe('loadWorkflow', () => {
 
     it.each([
       ['no answer', new ApiError('No answer.', 0)],
-      ['a 202 whose reply cannot be read', new ApiError('Unreadable.', 202)],
-    ])('say the run may have started after %s', async (_, error) => {
+      ['an accepted run in an unreadable reply', new ApiError('Odd.', 202)],
+    ])('tell that the run may have started after %s', async (_, error) => {
       const runs = await portFor(
         fakeApi({ startRun: vi.fn().mockRejectedValue(error) }),
       );
@@ -287,6 +330,7 @@ describe('loadWorkflow', () => {
     it.each([
       ['no answer', new ApiError('No answer.', 0)],
       ['a 502', new ApiError('Bad gateway.', 502)],
+      ['a 429', new ApiError('Slow down.', 429)],
       ['an error that is not an ApiError', new Error('Odd.')],
     ])('leave %s open to another try', async (_, error) => {
       const runs = await portFor(

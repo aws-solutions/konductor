@@ -18,7 +18,10 @@ export interface EditPort {
    * server error, so the file may or may not have been written.
    */
   save(text: string, baseHash: string): Promise<SaveResult>;
-  /** Checks text without writing it. */
+  /**
+   * Checks text without writing it. It rejects with `SessionLost` when the
+   * server no longer knows the session.
+   */
   check(text: string): Promise<CheckResult>;
   /** Loads the workflow again from the server. */
   reload(): Promise<WorkflowDocument>;
@@ -46,6 +49,14 @@ export class SaveRefused extends Error {
     super(message);
     this.name = 'SaveRefused';
     this.diagnostics = diagnostics;
+  }
+}
+
+/** The server no longer knows the session, so no call will work. */
+export class SessionLost extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SessionLost';
   }
 }
 

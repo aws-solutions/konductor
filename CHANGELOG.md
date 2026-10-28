@@ -15,7 +15,7 @@ not per individual commit.
 - HTTP API contract for the workflow canvas (`workflow-canvas/api/openapi.yaml`), checked by `npm run api:lint`.
 - Stub API for the workflow canvas (`npm run stub`, `npm run dev:stub`); `WC_API_TARGET` points the page at a real server.
 - The Designer tab draws the workflow as a read-only graph.
-- Pasting a launch address into the open tab opens the new workflow without a reload, and keeps the open one if the code is refused.
+- Pasting a launch address into the open tab opens the new workflow without a reload, fitted to the canvas, and keeps the open one if the code is refused.
 - The workflow canvas uses the Konductor docs theme, with light and dark modes, and system colours in forced-colors mode.
 - The Execution tab runs the workflow and shows live node states.
 - The Designer tab edits stages (agent, rename, add, delete) and saves with checks while typing.

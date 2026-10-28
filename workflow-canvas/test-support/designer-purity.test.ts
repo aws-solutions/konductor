@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 /**
  * Checks that the core of the Designer's editing does no IO and imports no
- * UI: it may import its own modules, the wire types and the scheduler port of
- * the run core, and nothing else. Time and the calls of the API come in
+ * UI: it may import its own modules, the wire types, the message helper of
+ * the API client and the scheduler port of the run core, and nothing else. Time and the calls of the API come in
  * through its ports.
  */
 import { fileURLToPath } from 'node:url';
@@ -29,7 +29,7 @@ describe('the editing core', () => {
     expect(sourcesUnder(RULES.dir).length).toBeGreaterThanOrEqual(8);
   });
 
-  it('imports only its own modules, the wire types and the scheduler port, and reads no clock, randomness, environment or network', () => {
+  it('imports only its own modules, the wire types, the message helper and the scheduler port, and reads no clock, randomness, environment or network', () => {
     expect(problemsUnder(RULES)).toEqual([]);
   });
 

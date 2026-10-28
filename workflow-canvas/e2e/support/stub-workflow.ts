@@ -23,9 +23,7 @@ export async function currentWorkflow(
     headers: headers(),
   });
   if (!reply.ok()) {
-    throw new Error(
-      `The stub refused to give the workflow (${reply.status()}).`,
-    );
+    throw new Error(`The stub did not give the workflow (${reply.status()}).`);
   }
   return (await reply.json()) as { text: string; hash: string };
 }

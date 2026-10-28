@@ -117,6 +117,13 @@ function noteType(notes: Problem[]): 'warning' | 'info' {
   return notes.some((note) => note.severity === 'warning') ? 'warning' : 'info';
 }
 
+function failureHeader(save: { uncertain?: true; sessionLost?: true }): string {
+  if (save.sessionLost) return 'The session is lost';
+  return save.uncertain
+    ? 'The save did not finish'
+    : 'The workflow was not saved';
+}
+
 /**
  * What went wrong with the draft, in one region that is always on the page, so
  * that the alert which appears in it is read out: a file that changed (with
@@ -144,25 +151,18 @@ export function EditAlerts({
           onReload={onReload}
         />
       )}
-      {save.phase === 'reloaded' && save.discarded !== undefined && (
+      {state.discarded !== undefined && (
         <Alert
           type="info"
           header="The file was loaded again"
           data-testid="discarded"
         >
           Your changes were replaced by the file as it is now.
-          <CopyVersion text={save.discarded} />
+          <CopyVersion text={state.discarded} />
         </Alert>
       )}
       {save.phase === 'failed' && (
-        <Alert
-          type="error"
-          header={
-            save.uncertain
-              ? 'The save did not finish'
-              : 'The workflow was not saved'
-          }
-        >
+        <Alert type="error" header={failureHeader(save)}>
           {save.message}
         </Alert>
       )}
