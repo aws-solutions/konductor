@@ -277,3 +277,8 @@ def test_template_agents_and_default_skills_entries_are_dropped(tmp_path):
 def test_template_extra_skills_directory_is_kept(tmp_path):
     plugin = _render_with_template(tmp_path, {"skills": ["./skills/", "./extra-skills/"]})
     assert plugin["skills"] == ["./extra-skills/"]
+
+
+def test_default_skills_directory_is_recognized_in_any_spelling(tmp_path):
+    plugin = _render_with_template(tmp_path, {"skills": ["./skills", "skills/", "skills", "./skills-extra/"]})
+    assert plugin["skills"] == ["./skills-extra/"]

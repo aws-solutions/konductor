@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
 """Render .claude-plugin/plugin.json deterministically from
-scripts/claude-plugin.template.json. It sets one field and removes two:
+scripts/claude-plugin.template.json. It sets `version` and drops `agents`
+and the default `skills` entry:
 
 - `version`: read from the repo's root VERSION file, which is this repo's
   single source of truth for the released version (see
@@ -79,7 +80,9 @@ import json
 import sys
 from pathlib import Path
 
-DEFAULT_SKILLS_DIR = "./skills/"
+def is_default_skills_dir(entry):
+    """`./skills/`, `./skills`, `skills/` and `skills` all name the default scan."""
+    return isinstance(entry, str) and entry.strip("/").removeprefix("./").rstrip("/") == "skills"
 
 
 def _load_mcp_registry_union(agent_specs_dir: Path):
@@ -213,7 +216,7 @@ def main() -> int:
     plugin.pop("agents", None)
     skills = plugin.pop("skills", None)
     if skills is not None:
-        extra = [d for d in ([skills] if isinstance(skills, str) else skills) if d != DEFAULT_SKILLS_DIR]
+        extra = [d for d in ([skills] if isinstance(skills, str) else skills) if not is_default_skills_dir(d)]
         if extra:
             plugin["skills"] = extra
 
