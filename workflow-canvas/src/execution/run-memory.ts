@@ -5,7 +5,7 @@ const RUN_KEY = 'konductor-workflow-canvas-run';
 
 /** The part of `window` that the memory of a run needs. */
 export interface RunMemoryEnvironment {
-  sessionStorage?: Pick<Storage, 'getItem' | 'setItem'>;
+  sessionStorage?: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 }
 
 /**
@@ -27,6 +27,13 @@ export function sessionRunMemory(env: RunMemoryEnvironment): RunMemory {
         env.sessionStorage?.setItem(RUN_KEY, runId);
       } catch {
         // Without storage there is nothing to remember.
+      }
+    },
+    forget() {
+      try {
+        env.sessionStorage?.removeItem(RUN_KEY);
+      } catch {
+        // Without storage there is nothing to forget.
       }
     },
   };
