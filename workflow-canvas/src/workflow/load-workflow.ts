@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
-import { ApiError, type WorkflowApi } from '../api/api';
+import { ApiError, canRetryStatus, type WorkflowApi } from '../api/api';
 import type { WorkflowDocument } from '../api/types';
-import type { RunPort } from '../execution/core';
+import {
+  RunAlreadyActive,
+  RunReadRefused,
+  type RunPort,
+} from '../execution/core';
 import type { SessionMemory, SessionRecord } from '../launch/session-memory';
 
 /**
@@ -40,6 +44,23 @@ function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : 'The workflow did not load.';
 }
 
+// The API names the active run in its 409; the core is told as its own error.
+function activeRunOf(error: unknown): RunAlreadyActive | undefined {
+  return error instanceof ApiError &&
+    error.code === 'already_running' &&
+    error.runId !== undefined
+    ? new RunAlreadyActive(error.message, error.runId)
+    : undefined;
+}
+
+// Only a missing answer or a server error can be gone on the next try; any
+// 4xx and a reply the page cannot read will not change.
+function readRefusedOf(error: unknown): RunReadRefused | undefined {
+  return error instanceof ApiError && !canRetryStatus(error.status)
+    ? new RunReadRefused(error.message)
+    : undefined;
+}
+
 function failure(message: string): LoadResult {
   return { ok: false, message };
 }
@@ -68,8 +89,20 @@ function guardSession(
 
 function runPortFor(api: WorkflowApi, token: string): RunPort {
   return {
-    start: (goal) => api.startRun(token, goal),
-    get: (runId) => api.getRun(token, runId),
+    start: async (goal, signal) => {
+      try {
+        return await api.startRun(token, goal, signal);
+      } catch (error) {
+        throw activeRunOf(error) ?? error;
+      }
+    },
+    get: async (runId, signal) => {
+      try {
+        return await api.getRun(token, runId, signal);
+      } catch (error) {
+        throw readRefusedOf(error) ?? error;
+      }
+    },
   };
 }
 
