@@ -681,7 +681,7 @@ describe('a run whose stages are not the stages of the graph', () => {
     expect(notice()?.textContent).toContain('Not in the run: draft.');
   });
 
-  it('says the file changed after the page loaded or after the run started, and tells the person to paste a fresh launch address, not to reload', async () => {
+  it('says the file changed after the page loaded or after the run started, and tells the person to reload the page', async () => {
     const scheduler = await openExecution(serverShowing(OTHER_STAGES));
 
     await press(runButton());
@@ -689,10 +689,8 @@ describe('a run whose stages are not the stages of the graph', () => {
 
     expect(notice()?.textContent).toContain('after this page loaded');
     expect(notice()?.textContent).toContain('after the run started');
-    expect(notice()?.textContent).toContain(
-      'Paste a fresh launch address from the server to draw it.',
-    );
-    expect(notice()?.textContent).not.toMatch(/reload/i);
+    expect(notice()?.textContent).toContain('Reload the page to draw it.');
+    expect(notice()?.textContent).not.toMatch(/launch address/i);
   });
 
   it('says nothing for a run of the stages that are drawn', async () => {
