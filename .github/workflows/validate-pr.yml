@@ -218,7 +218,8 @@ jobs:
       - name: Lint the Rust crates (clippy -D warnings and rustfmt)
         # Lint runs on a pinned toolchain so a new Rust release can't add clippy
         # lints that fail every PR under -D warnings. Builds and tests stay on
-        # stable, like release.yml. Bump the pin deliberately in its own PR.
+        # stable, like release.yml. Bump the pin deliberately in its own PR, and
+        # update docs/user-guide/appendix/contributing.md with it.
         env:
           RUST_LINT_TOOLCHAIN: 1.98.1
         run: |
