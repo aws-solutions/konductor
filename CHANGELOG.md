@@ -37,8 +37,9 @@ not per individual commit.
   its read budget. A thorough codebase or documentation search matches `k-comprehensive-search`.
   The three orchestrator prompts now run the SOP check on every request, not only on multi-phase
   ones.
-- The README says the mux and cmux orchestrators run specialists with permission checks off, and
-  the plugin release PR says the tag needs a manual workflow run after merge.
+- The README says the mux and cmux orchestrators run specialists with permission checks off and
+  that the plugin's AWS MCP server is available in every session; the plugin release PR says the
+  tag needs a manual workflow run after merge.
 
 ## [1.2.0] - 2026-10-26
 
