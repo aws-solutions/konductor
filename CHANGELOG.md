@@ -37,9 +37,8 @@ not per individual commit.
   its read budget. A thorough codebase or documentation search matches `k-comprehensive-search`.
   The three orchestrator prompts now run the SOP check on every request, not only on multi-phase
   ones.
-- Claude Code agents and the Claude Code benchmark run on the model their spec declares
-  (`claude-sonnet-5-5`, not Kiro's `claude-sonnet-5.5`).
-- The Claude Code plugin ships `NOTICE.txt`, and its README links work.
+- Claude Code agents and benchmarks use the Claude Code model ID (`claude-sonnet-5-5`), and the
+  plugin ships `NOTICE.txt` with README links pinned to its release.
 
 ## [1.2.0] - 2026-10-26
 

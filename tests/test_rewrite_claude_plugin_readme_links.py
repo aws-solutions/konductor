@@ -73,3 +73,17 @@ def test_single_quoted_attributes_and_srcset_are_rewritten():
 def test_angle_bracket_target_is_rewritten():
     out = module.rewrite("[x](<docs/a b.md>)", "v1.2.0")
     assert out == "[x](<https://github.com/aws-solutions/konductor/blob/v1.2.0/docs/a b.md>)"
+
+
+def test_absolute_main_urls_are_pinned_to_the_tag():
+    text = (
+        "[Docs](https://github.com/aws-solutions/konductor/blob/main/docs/a.md) "
+        "[Tree](https://github.com/aws-solutions/konductor/tree/main/skills)\n"
+        "```bash\ncurl -fsSL https://raw.githubusercontent.com/aws-solutions/konductor/main/x.json\n```\n"
+        "[Other](https://github.com/aws-solutions/other/blob/main/a.md)"
+    )
+    out = module.rewrite(text, "v1.2.0")
+    assert "konductor/blob/v1.2.0/docs/a.md" in out
+    assert "konductor/tree/v1.2.0/skills" in out
+    assert "raw.githubusercontent.com/aws-solutions/konductor/v1.2.0/x.json" in out
+    assert "aws-solutions/other/blob/main/a.md" in out

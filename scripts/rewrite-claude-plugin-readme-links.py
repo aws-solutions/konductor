@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
-"""Rewrite the plugin README's repo-relative links to absolute URLs at the
-release tag, since the plugin tree ships only a few of the files they point to.
+"""Rewrite the plugin README's repo-relative links, and absolute links to this
+repo's main branch, to URLs at the release tag, since the plugin tree ships only
+a few of the files they point to.
 
 Links to files the plugin ships (LICENSE.txt, NOTICE.txt) stay relative.
 
@@ -43,6 +44,13 @@ def rewrite_srcset(value, tag):
     return ", ".join(candidates)
 
 
+# Absolute links to this repo's main branch, anywhere in the README (code
+# blocks included), so a release's README points at that release's files.
+MAIN_URL = re.compile(
+    rf"(https://github\.com/{re.escape(REPO)}/(?:blob|tree)/|https://raw\.githubusercontent\.com/{re.escape(REPO)}/)main/"
+)
+
+
 def rewrite(text, tag):
     def replace_md(match):
         groups = [g for g in match.groups() if g is not None]
@@ -54,6 +62,7 @@ def rewrite(text, tag):
         value = rewrite_srcset(value, tag) if name.startswith("srcset") else absolute_url(value, tag)
         return f"{name}{quote}{value}{quote}"
 
+    text = MAIN_URL.sub(lambda m: f"{m.group(1)}{tag}/", text)
     return HTML_ATTR.sub(replace_attr, MD_LINK.sub(replace_md, text))
 
 
