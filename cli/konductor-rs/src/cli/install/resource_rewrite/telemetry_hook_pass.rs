@@ -435,6 +435,7 @@ mod tests {
             agent_skill_names: empty_map(),
             no_telemetry: false,
             install_info_path: Path::new(""),
+            server_supports_install_info: false,
         }
     }
 

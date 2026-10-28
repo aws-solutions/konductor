@@ -202,6 +202,8 @@ pub(in crate::cli::install) fn install_agents(
         .join(KONDUCTOR_DESTINATION_ROOT)
         .join(super::super::mcp_server::BIN_CONTENT_TYPE_DIR);
     let install_info_path = super::super::resource_rewrite::absolute_install_info_path(target_dir);
+    let server_supports_install_info =
+        super::super::resource_rewrite::installed_server_supports_install_info(&bin_dir, bin_files);
 
     // Read once, before the per-agent install loop below, so every
     // agent this run installs sees the same scoping snapshot.
@@ -219,6 +221,7 @@ pub(in crate::cli::install) fn install_agents(
         agent_skill_names: &agent_skill_names,
         no_telemetry,
         install_info_path: &install_info_path,
+        server_supports_install_info,
     };
     let (mut files, any_mcp_server_injected) =
         copy_agent_files_rewriting_resources(&source_dir, &destination, &ctx, entries)?;

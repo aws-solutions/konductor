@@ -102,7 +102,7 @@ async fn main() -> std::process::ExitCode {
 
     // Telemetry: resolve the cached identity once,
     // before the flush task is spawned -- never per flush. Structural
-    // opt-out: `--telemetry off`, a missing `--install-info` record, OR the
+    // opt-out: `--telemetry off`, no valid `--install-info` record, OR the
     // fleet-wide `KONDUCTOR_TELEMETRY=off` env var means
     // `tool_call_counters` stays `None` and the flush task is never
     // started at all -- checked alongside the CLI flag here, not only inside

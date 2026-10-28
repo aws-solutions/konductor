@@ -896,8 +896,8 @@ fn dispatch_install_with_remote_installer(
         // network call the skip decision depends on, so a match there
         // only avoids the larger download/re-copy that follows. `force`
         // bypasses the skip either way. An explicit `--no-telemetry` also
-        // bypasses it, so the opt-out removal and hook cleanup always
-        // run. `use_github_token` authenticates
+        // bypasses it, so the opt-out removal, hook cleanup and any
+        // `--telemetry off` MCP arg always run. `use_github_token` authenticates
         // this pre-fetch exactly like the real install below it.
         //
         // `install-info.json` holds exactly one `agent_version` +

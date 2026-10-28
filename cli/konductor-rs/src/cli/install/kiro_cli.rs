@@ -3047,9 +3047,14 @@ mod tests {
             .collect()
     }
 
-    #[test]
-    fn install_from_local_mcp_server_points_at_install_info_whether_or_not_opted_out() {
-        let repo_root = scratch_dir("mcp-telemetry-arg-repo");
+    /// Installs one opted-in and one opted-out target from a repo whose
+    /// MCP binary is `binary`, and returns each target with its injected
+    /// `konductor-skills` args.
+    fn install_opted_in_and_out_with_mcp_binary(
+        binary: &[u8],
+        label: &str,
+    ) -> [(std::path::PathBuf, Vec<String>); 2] {
+        let repo_root = scratch_dir(&format!("{label}-repo"));
         seed_synthed_agent_with_skill_resource(&repo_root, "k-example", "constraints");
         seed_synthed_skill(
             &repo_root,
@@ -3057,7 +3062,7 @@ mod tests {
             b"---\nname: constraints\n---\nBody\n",
             &[],
         );
-        seed_mcp_binary(&repo_root, "skill-lookup-mcp", b"binary bytes\n");
+        seed_mcp_binary(&repo_root, "skill-lookup-mcp", binary);
         let install = |target_dir: &Path, no_telemetry: bool| {
             KiroCliInstallStrategy
                 .install_from_local(
@@ -3068,17 +3073,31 @@ mod tests {
                 )
                 .expect("install must succeed");
         };
-        let opted_in = scratch_dir("mcp-telemetry-arg-opted-in");
-        let opted_out = scratch_dir("mcp-telemetry-arg-opted-out");
+        let opted_in = scratch_dir(&format!("{label}-opted-in"));
+        let opted_out = scratch_dir(&format!("{label}-opted-out"));
 
         install(&opted_in, false);
         install(&opted_out, true);
         install(&opted_out, true);
 
-        for target_dir in [&opted_in, &opted_out] {
-            let record = crate::cli::telemetry::install_info_path(target_dir);
+        fs::remove_dir_all(&repo_root).ok();
+        [opted_in, opted_out].map(|target_dir| {
+            let args = installed_konductor_skills_args(&target_dir);
+            (target_dir, args)
+        })
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn install_from_local_points_a_current_mcp_server_at_install_info_whether_or_not_opted_out() {
+        let targets = install_opted_in_and_out_with_mcp_binary(
+            crate::cli::install::resource_rewrite::FAKE_SERVER_WITH_INSTALL_INFO.as_bytes(),
+            "mcp-telemetry-arg-current",
+        );
+        for (target_dir, args) in targets {
+            let record = crate::cli::telemetry::install_info_path(&target_dir);
             assert_eq!(
-                installed_konductor_skills_args(target_dir),
+                args,
                 [
                     "--skills-dir",
                     "~/.konductor/skills",
@@ -3088,11 +3107,38 @@ mod tests {
                     &record.display().to_string()
                 ]
             );
+            fs::remove_dir_all(&target_dir).ok();
         }
+    }
 
+    /// A binary whose `--help` does not list `--install-info` (here, one
+    /// that cannot run at all) keeps the per-harness `--telemetry off`.
+    #[test]
+    fn install_from_local_mcp_server_telemetry_arg_follows_no_telemetry_for_an_older_server() {
+        let [(opted_in, opted_in_args), (opted_out, opted_out_args)] =
+            install_opted_in_and_out_with_mcp_binary(b"binary bytes\n", "mcp-telemetry-arg-older");
+        assert_eq!(
+            opted_in_args,
+            [
+                "--skills-dir",
+                "~/.konductor/skills",
+                "--skills-dir",
+                ".konductor/skills"
+            ]
+        );
+        assert_eq!(
+            opted_out_args,
+            [
+                "--skills-dir",
+                "~/.konductor/skills",
+                "--skills-dir",
+                ".konductor/skills",
+                "--telemetry",
+                "off"
+            ]
+        );
         fs::remove_dir_all(&opted_in).ok();
         fs::remove_dir_all(&opted_out).ok();
-        fs::remove_dir_all(&repo_root).ok();
     }
 
     /// Reachability proof for the Claude/V3 `permissions.allow` grant
@@ -3828,16 +3874,10 @@ mod tests {
             .as_array()
             .expect("args must be an array");
         let args: Vec<&str> = args.iter().map(|v| v.as_str().unwrap()).collect();
-        let record = crate::cli::telemetry::install_info_path(&target_dir)
-            .display()
-            .to_string();
-        let args = args
-            .strip_suffix(&["--install-info", record.as_str()])
-            .unwrap_or_else(|| panic!("expected a trailing --install-info pair, got: {args:?}"));
         assert_eq!(
             args.last().copied(),
             Some("ticket-sync,code-review"),
-            "expected the --agent-sop-filter value right before --install-info, got: {args:?}"
+            "expected the --agent-sop-filter value as the last arg, got: {args:?}"
         );
         assert_eq!(
             args[args.len() - 2],
@@ -4257,16 +4297,10 @@ mod tests {
             .as_array()
             .expect("args must be an array");
         let args: Vec<&str> = args.iter().map(|v| v.as_str().unwrap()).collect();
-        let record = crate::cli::telemetry::install_info_path(&target_dir)
-            .display()
-            .to_string();
-        let args = args
-            .strip_suffix(&["--install-info", record.as_str()])
-            .unwrap_or_else(|| panic!("expected a trailing --install-info pair, got: {args:?}"));
         assert_eq!(
             args.last().copied(),
             Some("constraints,sdlc-navigator"),
-            "expected the --skill-name-filter value right before --install-info, got: {args:?}"
+            "expected the --skill-name-filter value as the last arg, got: {args:?}"
         );
         assert_eq!(
             args[args.len() - 2],
@@ -4399,16 +4433,10 @@ mod tests {
             .as_array()
             .expect("args must be an array");
         let args: Vec<&str> = args.iter().map(|v| v.as_str().unwrap()).collect();
-        let record = crate::cli::telemetry::install_info_path(&target_dir)
-            .display()
-            .to_string();
-        let args = args
-            .strip_suffix(&["--install-info", record.as_str()])
-            .unwrap_or_else(|| panic!("expected a trailing --install-info pair, got: {args:?}"));
         assert_eq!(
             args.last().copied(),
             Some("constraints"),
-            "expected the --skill-name-filter value right before --install-info, got: {args:?}"
+            "expected the --skill-name-filter value as the last arg, got: {args:?}"
         );
         assert_eq!(
             args[args.len() - 2],

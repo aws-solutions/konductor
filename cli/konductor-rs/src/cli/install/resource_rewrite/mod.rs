@@ -40,7 +40,9 @@ pub(crate) use claude_settings::CLAUDE_SETTINGS_RELATIVE_PATH;
 pub(crate) use claude_settings::{
     claude_hooks_settings_relative_path, is_claude_settings_path, remove_claude_telemetry_hooks,
 };
-pub(super) use mcp_server::{McpServerPass, MCP_SERVER_BINARY_NAME, MCP_SERVER_NAME};
+pub(super) use mcp_server::{
+    installed_server_supports_install_info, McpServerPass, MCP_SERVER_BINARY_NAME, MCP_SERVER_NAME,
+};
 
 use mcp_server::McpServerPassV3;
 use telemetry_hook_pass::TelemetryHookPass;
@@ -100,13 +102,23 @@ pub(super) struct RewriteContext<'a> {
     /// `--skill-name-filter` at all".
     pub(super) agent_skill_names: &'a std::collections::HashMap<String, Vec<String>>,
     /// Whether this run is opted out of telemetry. Gates
-    /// `TelemetryHookPass` in `standard_passes`.
+    /// `TelemetryHookPass` in `standard_passes`, and makes the MCP passes
+    /// add `--telemetry off` for a server without `--install-info`.
     pub(super) no_telemetry: bool,
     /// Absolute path of the target's `install-info.json`, passed to
     /// `skill-lookup-mcp` as `--install-info` so its telemetry follows
     /// the target-wide record rather than this one harness's run.
     pub(super) install_info_path: &'a Path,
+    /// Whether the installed `skill-lookup-mcp` accepts `--install-info`,
+    /// from `installed_server_supports_install_info`.
+    pub(super) server_supports_install_info: bool,
 }
+
+/// A stand-in `skill-lookup-mcp` whose `--help` lists `--install-info`,
+/// for tests that need the supported path. Unix only.
+#[cfg(test)]
+pub(crate) const FAKE_SERVER_WITH_INSTALL_INFO: &str =
+    "#!/bin/sh\necho '      --install-info <PATH>'\n";
 
 /// `target_dir`'s `install-info.json`, made absolute so the injected
 /// `--install-info` arg does not depend on the agent's launch directory.
@@ -451,6 +463,7 @@ mod tests {
             agent_skill_names: empty_agent_skill_names(),
             no_telemetry: false,
             install_info_path: Path::new(""),
+            server_supports_install_info: false,
         }
     }
 
@@ -466,6 +479,7 @@ mod tests {
             agent_skill_names: empty_agent_skill_names(),
             no_telemetry: false,
             install_info_path: Path::new(""),
+            server_supports_install_info: false,
         }
     }
 

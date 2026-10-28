@@ -82,9 +82,11 @@ pub(crate) struct Cli {
     pub(crate) telemetry: TelemetryMode,
 
     /// Path to the install target's `install-info.json` telemetry record.
-    /// When given and the file is missing, telemetry is off, as with
-    /// `--telemetry off`. The record is target-wide, so every agent that
-    /// points here follows the same opt-out.
+    /// When given, telemetry is on only if the file holds a valid record,
+    /// the same rule the Konductor CLI applies. Missing, unreadable,
+    /// malformed or wrong-schema means off, as with `--telemetry off`.
+    /// The record is target-wide, so every agent that points here follows
+    /// the same opt-out.
     #[arg(long = "install-info", value_name = "PATH")]
     pub(crate) install_info: Option<PathBuf>,
 }
@@ -94,7 +96,9 @@ impl Cli {
     /// `KONDUCTOR_TELEMETRY`; `main` checks that separately.
     pub(crate) fn effective_telemetry(&self) -> TelemetryMode {
         match &self.install_info {
-            Some(path) if !path.exists() => TelemetryMode::Off,
+            Some(path) if !skill_lookup_core::telemetry::install_info_record_is_valid(path) => {
+                TelemetryMode::Off
+            }
             _ => self.telemetry,
         }
     }
@@ -990,13 +994,41 @@ mod tests {
         assert_eq!(cli.effective_telemetry(), TelemetryMode::Off);
     }
 
+    const VALID_RECORD: &str = r#"{"schema_version":1,"agent_version":"1.2.0","harness":"kiro-cli-v2","installed_at":"2026-01-01T00:00:00Z"}"#;
+
+    fn telemetry_with_record(label: &str, contents: &str) -> TelemetryMode {
+        let dir = temp_dir(label);
+        let record = dir.join("install-info.json");
+        fs::write(&record, contents).unwrap();
+        parse(&["--install-info", record.to_str().unwrap()]).effective_telemetry()
+    }
+
     #[test]
     fn present_install_info_leaves_telemetry_on() {
-        let dir = temp_dir("install-info-present");
-        let record = dir.join("install-info.json");
-        fs::write(&record, "{}").unwrap();
-        let cli = parse(&["--install-info", record.to_str().unwrap()]);
-        assert_eq!(cli.effective_telemetry(), TelemetryMode::On);
+        assert_eq!(
+            telemetry_with_record("install-info-present", VALID_RECORD),
+            TelemetryMode::On
+        );
+    }
+
+    #[test]
+    fn malformed_install_info_turns_telemetry_off() {
+        for contents in ["not json", "{}"] {
+            assert_eq!(
+                telemetry_with_record("install-info-malformed", contents),
+                TelemetryMode::Off,
+                "contents: {contents}"
+            );
+        }
+    }
+
+    #[test]
+    fn wrong_schema_install_info_turns_telemetry_off() {
+        let wrong_schema = VALID_RECORD.replace(r#""schema_version":1"#, r#""schema_version":2"#);
+        assert_eq!(
+            telemetry_with_record("install-info-wrong-schema", &wrong_schema),
+            TelemetryMode::Off
+        );
     }
 
     #[test]
@@ -1012,7 +1044,7 @@ mod tests {
     fn telemetry_off_wins_over_a_present_install_info() {
         let dir = temp_dir("install-info-present-but-off");
         let record = dir.join("install-info.json");
-        fs::write(&record, "{}").unwrap();
+        fs::write(&record, VALID_RECORD).unwrap();
         let cli = parse(&[
             "--telemetry",
             "off",
