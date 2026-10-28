@@ -47,7 +47,9 @@ export function IntentNode({ data }: NodeProps<FlowNode<IntentGraphNode>>) {
   return (
     <div className="wf-node wf-node-intent" data-testid="node-intent">
       <div className="wf-node-title">intent</div>
-      <div className="wf-node-intent-outcome">{data.outcome}</div>
+      <div className="wf-node-intent-outcome" title={data.outcome}>
+        {data.outcome}
+      </div>
       <SequenceOut />
     </div>
   );
@@ -58,8 +60,10 @@ export function StageNode({ data }: NodeProps<FlowNode<StageGraphNode>>) {
   return (
     <div className="wf-node" data-testid={`node-stage-${data.name}`}>
       <SequenceIn />
-      <div className="wf-node-title">{data.name}</div>
-      <div className="wf-node-sub">
+      <div className="wf-node-title" title={data.name}>
+        {data.name}
+      </div>
+      <div className="wf-node-sub" title={`${data.agent} · ${data.harness}`}>
         {data.agent} · {data.harness}
       </div>
       <SequenceOut />

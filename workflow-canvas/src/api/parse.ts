@@ -37,13 +37,20 @@ function parseStage(value: unknown): StageView {
   return { name: stringOf(stage.name), agent: stringOf(stage.agent) };
 }
 
+// The contract forbids two stages with one name, and the graph names its
+// nodes by stage name, so a repeat would silently hide a stage.
+function uniqueByName(stages: StageView[]): StageView[] {
+  const names = new Set(stages.map((stage) => stage.name));
+  return names.size === stages.length ? stages : fail();
+}
+
 function parseView(value: unknown): WorkflowView | null {
   if (value === null) return null;
   const view = objectOf(value);
   return {
     name: stringOf(view.name),
     intent: { outcome: stringOf(objectOf(view.intent).outcome) },
-    stages: arrayOf(view.stages).map(parseStage),
+    stages: uniqueByName(arrayOf(view.stages).map(parseStage)),
   };
 }
 

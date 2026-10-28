@@ -2,7 +2,8 @@
 /**
  * The scan behind the "no IO" tests of an IO-free core. A core may import its
  * own modules and the packages and names that its rules allow, and may not
- * read a clock, randomness, the environment or the network.
+ * read a clock, randomness, the environment, the page, storage or the network.
+ * Comments are not scanned.
  */
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -28,7 +29,19 @@ const IMPURE = [
   /\b(?:setTimeout|setInterval|setImmediate)\b/,
   /\bfetch\s*\(/,
   /\brequire\s*\(/,
+  /\b(?:window|document|navigator|globalThis)\s*[.[]\s*\w/,
+  /\b(?:localStorage|sessionStorage|XMLHttpRequest|WebSocket|EventSource)\b/,
+  /\bnavigator\.sendBeacon\b/,
+  /\bimport\.meta\.env\b/,
+  /\bqueueMicrotask\b/,
 ];
+
+/** The source without its comments, so a word in a comment is not a call. */
+export function withoutComments(source: string): string {
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|\s)\/\/.*$/gm, '$1');
+}
 
 /** The module names that a source file imports, statically or dynamically. */
 export function importedModules(source: string): string[] {
@@ -95,7 +108,8 @@ export function problemsIn(
   const imports = importedModules(source)
     .filter((module) => !isAllowedImport(module, file, source, rules))
     .map((module) => `${file} imports ${module}`);
-  const calls = IMPURE.filter((pattern) => pattern.test(source)).map(
+  const code = withoutComments(source);
+  const calls = IMPURE.filter((pattern) => pattern.test(code)).map(
     (pattern) => `${file} matches ${pattern}`,
   );
   return [...imports, ...calls];

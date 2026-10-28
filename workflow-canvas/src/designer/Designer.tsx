@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import Box from '@cloudscape-design/components/box';
 import Container from '@cloudscape-design/components/container';
 import Header from '@cloudscape-design/components/header';
 import { useMemo } from 'react';
@@ -7,6 +8,19 @@ import { buildGraph } from '../graph';
 import type { WorkflowView } from '../api/types';
 import type { LoadedWorkflow, LoadResult } from '../workflow/load-workflow';
 import { EmptyState, ErrorState, LoadingState } from './states';
+
+/** An outcome longer than this is cut short in the intent node. */
+export const INTENT_FITS_IN_NODE = 90;
+
+/** The whole outcome, when the intent node can show only part of it. */
+function FullIntent({ outcome }: { outcome: string }) {
+  if (outcome.length <= INTENT_FITS_IN_NODE) return null;
+  return (
+    <Box variant="p" data-testid="full-intent">
+      <strong>Intent:</strong> {outcome}
+    </Box>
+  );
+}
 
 function DrawnGraph({
   view,
@@ -28,6 +42,7 @@ function DrawnGraph({
       }
     >
       <WorkflowCanvas graph={graph} />
+      <FullIntent outcome={view.intent.outcome} />
     </Container>
   );
 }

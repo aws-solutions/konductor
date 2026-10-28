@@ -56,8 +56,38 @@ describe('the scan, on code that breaks the rules', () => {
     ['process.env', 'const v = process.env.HOME;'],
     ['setTimeout()', 'setTimeout(() => {}, 1);'],
     ['fetch()', "await fetch('http://x');"],
+    ['localStorage', "const v = localStorage.getItem('k');"],
+    ['sessionStorage', "sessionStorage.setItem('k', 'v');"],
+    ['window.location', 'const u = window.location.href;'],
+    ['document.title', 'const t = document.title;'],
+    ['XMLHttpRequest', 'const x = new XMLHttpRequest();'],
+    ['WebSocket', "const w = new WebSocket('ws://x');"],
+    ['EventSource', "const e = new EventSource('/x');"],
+    ['navigator.sendBeacon', "navigator.sendBeacon('/x');"],
+    ['import.meta.env', 'const m = import.meta.env.MODE;'],
+    ['queueMicrotask()', 'queueMicrotask(() => {});'],
   ])('rejects %s', (_, line) => {
     expect(problemsIn('x.ts', `${HASH}${line}\n`)).not.toEqual([]);
+  });
+
+  it.each([
+    ['a line comment', '// the Date and the process are not read here'],
+    ['a block comment', '/* process, Date, fetch( and window.x */'],
+    ['a doc comment', '/**\n * Never calls Math.random.\n */'],
+  ])('does not flag a word in %s', (_, comment) => {
+    expect(problemsIn('x.ts', `${comment}\nexport const a = 1;\n`)).toEqual([]);
+  });
+
+  it('still flags code that follows a comment on the same line', () => {
+    expect(problemsIn('x.ts', 'const a = 1; // fine\nDate.now();')).not.toEqual(
+      [],
+    );
+  });
+
+  it('does not take a URL in a string for a comment', () => {
+    expect(
+      problemsIn('x.ts', "const u = 'http://x'; const t = Date.now();"),
+    ).not.toEqual([]);
   });
 
   it('walks sub-directories', () => {

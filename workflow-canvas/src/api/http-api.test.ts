@@ -195,6 +195,19 @@ describe('createHttpApi', () => {
         view: { ...DOCUMENT_BODY.view, stages: [{ name: 'd' }] },
       },
     ],
+    [
+      'two stages with one name',
+      {
+        ...DOCUMENT_BODY,
+        view: {
+          ...DOCUMENT_BODY.view,
+          stages: [
+            { name: 'd', agent: 'k-developer' },
+            { name: 'd', agent: 'k-quality-assurance' },
+          ],
+        },
+      },
+    ],
   ])('fails on a workflow with %s', async (_, body) => {
     const { api } = apiFor(reply(body));
 

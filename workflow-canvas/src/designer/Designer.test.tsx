@@ -123,4 +123,58 @@ describe('Designer', () => {
       expect(within(graph).getByRole('group', { name })).toBeTruthy();
     }
   });
+
+  describe('text longer than a node can show', () => {
+    const LONG_NAME = 'n'.repeat(64);
+    const LONG_AGENT = 'a'.repeat(64);
+    const LONG_OUTCOME = 'Write the outcome in full. '.repeat(11).trim();
+    const long = {
+      ...HELLO_DOCUMENT,
+      view: {
+        name: 'hello',
+        intent: { outcome: LONG_OUTCOME },
+        stages: [{ name: LONG_NAME, agent: LONG_AGENT }],
+      },
+    };
+
+    it('keeps the whole name, agent and harness in a title on the node', () => {
+      render(<Designer result={loaded(long)} />);
+
+      const node = screen.getByTestId(`node-stage-${LONG_NAME}`);
+      expect(within(node).getByTitle(LONG_NAME)).toBeTruthy();
+      expect(within(node).getByTitle(`${LONG_AGENT} · kiro-cli`)).toBeTruthy();
+    });
+
+    it('keeps the whole outcome in a title on the intent node', () => {
+      render(<Designer result={loaded(long)} />);
+
+      const intent = screen.getByTestId('node-intent');
+      expect(within(intent).getByTitle(LONG_OUTCOME)).toBeTruthy();
+    });
+
+    it('shows the whole outcome under the graph', () => {
+      render(<Designer result={loaded(long)} />);
+
+      expect(screen.getByTestId('full-intent').textContent).toBe(
+        `Intent: ${LONG_OUTCOME}`,
+      );
+    });
+
+    it('shows no second copy of an outcome that fits the node', () => {
+      render(<Designer result={loaded(HELLO_DOCUMENT)} />);
+
+      expect(screen.queryByTestId('full-intent')).toBeNull();
+    });
+  });
+
+  it('announces the loading state and the load error', () => {
+    const { rerender } = render(<Designer result={undefined} />);
+    expect(screen.getByRole('status').textContent).toContain('Loading');
+
+    rerender(<Designer result={failed('The launch code is not valid.')} />);
+
+    expect(screen.getByRole('alert').textContent).toContain(
+      'The launch code is not valid.',
+    );
+  });
 });

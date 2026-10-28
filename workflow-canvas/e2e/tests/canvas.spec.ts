@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { Locator } from '@playwright/test';
+import { STUB_LAUNCH_CODE } from '../../playwright.shared';
 import { expect, test } from '../support/fixtures';
+import { sharedSession } from '../support/session';
 import {
   NODE_NAMES,
   WorkflowCanvasPage,
@@ -55,6 +57,47 @@ test('stacks the nodes in the order of the stages', async ({ canvas }) => {
 
   expect(tops).toEqual([...tops].sort((a, b) => a - b));
   expect(new Set(tops).size).toBe(tops.length);
+});
+
+test('fits every node of a workflow of 40 stages in the canvas', async ({
+  page,
+}) => {
+  const stages = Array.from({ length: 40 }, (_, i) => ({
+    name: `s${i + 1}`,
+    agent: 'k-developer',
+  }));
+  await page.route('**/api/session', (route) =>
+    route.fulfill({ json: sharedSession() }),
+  );
+  await page.route('**/api/workflow', (route) =>
+    route.fulfill({
+      json: {
+        name: 'big',
+        text: 'name: big\n',
+        hash: 'a'.repeat(64),
+        read_only: false,
+        view: { name: 'big', intent: { outcome: 'Run it' }, stages },
+        diagnostics: [],
+      },
+    }),
+  );
+  const canvas = new WorkflowCanvasPage(page);
+  await canvas.open(STUB_LAUNCH_CODE);
+
+  const area = await canvas.graph.boundingBox();
+  const nodes = canvas.graph.locator('.react-flow__node');
+  await expect(nodes).toHaveCount(42);
+  for (const node of await nodes.all()) {
+    const box = await node.boundingBox();
+    expect(box?.x).toBeGreaterThanOrEqual(area?.x ?? 0);
+    expect(box?.y).toBeGreaterThanOrEqual(area?.y ?? 0);
+    expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(
+      (area?.x ?? 0) + (area?.width ?? 0),
+    );
+    expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(
+      (area?.y ?? 0) + (area?.height ?? 0),
+    );
+  }
 });
 
 test('removes the launch code from the address', async ({ canvas }) => {

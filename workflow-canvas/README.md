@@ -171,8 +171,8 @@ that reads it.
 
 `dev:stub` ignores `WC_API_TARGET`, since it starts the stub. For real e2e,
 Playwright does not start the stub, so start the real server first with the
-launch code `e2e-launch-code`, and run the tests within 60 seconds of it
-listening. The launch code works once, so restart the server before each run;
+launch code `e2e-launch-code-0123456789`, and run the tests within 60 seconds
+of it listening. The launch code works once, so restart the server before each run;
 a second run against the same server fails with a 401.
 
 The proxy sends the `Origin` of the target in place of the page's own, and
@@ -224,7 +224,9 @@ The rest wraps the core, so the rules can be tested without a browser:
   from the address and load the workflow. `loadWorkflow` never rejects: it
   returns `{ ok: true, workflow }` or `{ ok: false, message }`. It is started
   once, before React renders, because a launch code works once and strict mode
-  runs effects twice.
+  runs effects twice. Pasting a launch address into the open tab reloads the
+  page, but only for a fragment shaped like a launch code (22 to 256 URL-safe
+  characters); an anchor such as `#top` changes nothing.
 - `designer/` shows the result: loading, error, empty (no file yet, or a file
   with errors, with their messages), or the canvas.
 - `canvas/` draws the graph with [React Flow](https://reactflow.dev)
@@ -232,8 +234,9 @@ The rest wraps the core, so the rules can be tested without a browser:
   can be panned, and zoomed with the controls. Each node can be reached with
   the Tab key and has a name for screen readers. The view starts zoomed out
   far enough to show the longest workflow the API allows (40 stages), where the
-  text is small; zoom in with the controls, or Tab to a node to bring it into
-  view.
+  text is small; use the zoom controls to read it. A node cuts a long name or
+  outcome short, and keeps the whole text in its `title`; an outcome too long
+  for the node is also written out in full under the graph.
 
 ## End-to-end tests
 
@@ -248,8 +251,9 @@ own `POST /api/session` with that session. Every other call, such as
 `GET /api/workflow`, reaches the API. A test that needs the error state opens
 the page with a wrong code or none.
 
-Port 4173 must be free. The config never reuses a server, so a `vite preview`
-you left running there makes the run fail at startup; stop it first.
+Port 4173 must be free, or set `WC_APP_PORT` to another port (`WC_APP_PORT=4300
+npm run test:e2e`). The config never reuses a server, so a `vite preview` you
+left running on that port makes the run fail at startup; stop it first.
 
 Install the browser once (on Linux add `--with-deps` to also install system
 libraries):
