@@ -89,15 +89,17 @@ export function withEchoes(
 ): Problem[] {
   const named = problems.filter((problem) => problem.field === 'name');
   const marked = new Set(named.map((problem) => problem.stageId));
+  const echoed = new Set<string>();
   const echoes = named.flatMap((problem) => {
     const at = draft.stages.findIndex(({ id }) => id === problem.stageId);
+    if (at < 0) return [];
     const name = draft.stages[at]?.name;
     const earlier = draft.stages
-      .slice(0, Math.max(at, 0))
+      .slice(0, at)
       .find((stage) => stage.name === name && !marked.has(stage.id));
-    return earlier
-      ? [{ ...problem, stageId: earlier.id, echo: true as const }]
-      : [];
+    if (!earlier || echoed.has(earlier.id)) return [];
+    echoed.add(earlier.id);
+    return [{ ...problem, stageId: earlier.id, echo: true as const }];
   });
   return [...problems, ...echoes];
 }
