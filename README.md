@@ -368,7 +368,8 @@ Tune the size limits and an allowlist of external domains with an optional confi
 rejects any write that breaks the rules and tells you why; nothing is dropped silently.
 
 ```bash
-mkdir -p .konductor && cp skills/persistent-memory/memory-config.json.template .konductor/memory-config.json
+mkdir -p .konductor && curl -fsSL https://raw.githubusercontent.com/aws-solutions/konductor/v1.2.0/skills/persistent-memory/memory-config.json.template \
+  -o .konductor/memory-config.json
 ```
 
 ### 🔌 Integrations
@@ -383,6 +384,11 @@ where knowledge tools are auto-approved and API tools ask first. See
 The [AWS Agent Toolkit](https://github.com/aws/agent-toolkit-for-aws) also offers an OAuth
 connection, an AWS-managed plugin and standalone skills.
 
+In the Claude Code plugin, `aws-mcp` is declared plugin-wide in `.mcp.json`, so while the plugin is
+enabled its tools, AWS API tools included, are available in every Claude Code session, not only
+to those two agents. The IAM condition keys above apply to all of them. Disable the server in
+`/mcp` (`plugin:konductor:aws-mcp`) when you don't need it.
+
 Everything else is bring-your-own:
 
 - **Browser automation:** `k-browser` uses a [`@playwright/mcp`](https://github.com/microsoft/playwright-mcp)
@@ -393,6 +399,9 @@ Everything else is bring-your-own:
 ---
 
 ## Project layout
+
+This is the [source repository](https://github.com/aws-solutions/konductor/tree/v1.2.0). The
+Claude Code plugin ships only `agents/`, `skills/`, `hooks/`, `docs/` and its manifests.
 
 ```text
 konductor/
