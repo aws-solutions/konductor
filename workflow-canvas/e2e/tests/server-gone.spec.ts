@@ -60,9 +60,12 @@ test('says what to do when the server forgot the session as a run starts', async
   await canvas.runButton.click();
 
   await expect(canvas.runError).toContainText(
-    'The session token is missing or wrong.',
+    'The server no longer knows this session.',
   );
   await expect(canvas.runError).toContainText(NEXT_AFTER_RESTART);
+  expect(await canvas.page.evaluate(() => window.sessionStorage.length)).toBe(
+    0,
+  );
 });
 
 test('says what to do when the server is down as the changes are saved', async ({
