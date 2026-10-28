@@ -11,6 +11,7 @@ import { Designer } from './designer/Designer';
 import { useSettled } from './designer/use-settled';
 import type { Scheduler } from './execution/core';
 import { Execution } from './execution/Execution';
+import { RunAnnouncements } from './execution/RunAnnouncements';
 import { timerScheduler } from './execution/timer-scheduler';
 import { useExecution } from './execution/use-execution';
 import { useGoal } from './execution/use-goal';
@@ -63,6 +64,7 @@ export function App({
             header={<Header variant="h1">Workflow canvas</Header>}
           >
             {notice}
+            <RunAnnouncements state={execution.state} />
             <div className="wf-tab-strip">
               <Tabs
                 ariaLabel="Workflow canvas views"
