@@ -26,6 +26,7 @@ export {
   NO_RUN_MEMORY,
   RunAlreadyActive,
   RunReadRefused,
+  RunStartUnsure,
   type RunMemory,
   type RunPort,
   type Scheduler,

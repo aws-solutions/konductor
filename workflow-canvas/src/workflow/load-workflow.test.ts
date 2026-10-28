@@ -91,6 +91,20 @@ describe('loadWorkflow', () => {
     });
 
     it.each([
+      ['no answer', new ApiError('No answer.', 0)],
+      ['a 202 whose reply cannot be read', new ApiError('Unreadable.', 202)],
+    ])('say the run may have started after %s', async (_, error) => {
+      const runs = await portFor(
+        fakeApi({ startRun: vi.fn().mockRejectedValue(error) }),
+      );
+
+      await expect(runs.start('g', signal)).rejects.toMatchObject({
+        name: 'RunStartUnsure',
+        message: error.message,
+      });
+    });
+
+    it.each([
       ['a 401', new ApiError('No session.', 401)],
       ['a 404', new ApiError('No such run.', 404)],
       ['a reply the page cannot read', new ApiError('Bad reply.', 200)],

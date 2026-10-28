@@ -82,6 +82,20 @@ describe('reduce', () => {
     expect(reduce(failed, { type: 'start' })).toEqual({ phase: 'starting' });
   });
 
+  it('keeps that a start got no clear answer', () => {
+    expect(
+      after(
+        { type: 'start' },
+        { type: 'failed', message: 'No.', maybeStarted: true },
+      ),
+    ).toEqual({
+      phase: 'error',
+      message: 'No.',
+      started: false,
+      maybeStarted: true,
+    });
+  });
+
   it('fails before the run started, or after, and says which', () => {
     expect(
       after({ type: 'start' }, { type: 'failed', message: 'No.' }),

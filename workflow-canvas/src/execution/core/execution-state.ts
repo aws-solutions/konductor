@@ -17,6 +17,8 @@ export type ExecutionState =
       phase: 'error';
       message: string;
       started: boolean;
+      /** Set when the start got no clear answer, so the run may be going. */
+      maybeStarted?: true;
       /** The run that was being followed, when the failure came after it began. */
       runId?: string;
     };
@@ -27,7 +29,13 @@ export type ExecutionEvent =
   | { type: 'started'; runId: string; joined?: boolean }
   | { type: 'snapshot'; run: RunView }
   /** `runId` is the run the failure belongs to, once the loop has one. */
-  | { type: 'failed'; message: string; runId?: string };
+  | {
+      type: 'failed';
+      message: string;
+      runId?: string;
+      /** The start got no clear answer, so the run may have started. */
+      maybeStarted?: true;
+    };
 
 /** The state before any run has been started. */
 export const IDLE: ExecutionState = { phase: 'idle' };
@@ -72,11 +80,12 @@ function snapshotOf(state: ExecutionState, run: RunView): ExecutionState {
 // run being followed. A loop that lost to another cannot end the winner's run.
 function failedOf(
   state: ExecutionState,
-  message: string,
-  runId: string | undefined,
+  { message, runId, maybeStarted }: Extract<ExecutionEvent, { type: 'failed' }>,
 ): ExecutionState {
   if (state.phase === 'starting' && runId === undefined) {
-    return { phase: 'error', message, started: false };
+    return maybeStarted
+      ? { phase: 'error', message, started: false, maybeStarted: true }
+      : { phase: 'error', message, started: false };
   }
   if (state.phase === 'following' && runId === state.runId) {
     return { phase: 'error', message, started: true, runId: state.runId };
@@ -101,6 +110,6 @@ export function reduce(
     case 'snapshot':
       return snapshotOf(state, event.run);
     case 'failed':
-      return failedOf(state, event.message, event.runId);
+      return failedOf(state, event);
   }
 }

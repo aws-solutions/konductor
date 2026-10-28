@@ -4,6 +4,7 @@ import type { ExecutionEvent } from './execution-state';
 import {
   RunAlreadyActive,
   RunReadRefused,
+  RunStartUnsure,
   type RunPort,
   type Scheduler,
 } from './ports';
@@ -29,6 +30,17 @@ interface Watch {
   emit: (event: ExecutionEvent) => void;
   /** Aborting stops the loop quietly: no further event is emitted. */
   signal: AbortSignal;
+}
+
+// The failure event of a loop. A start that got no clear answer says so.
+function failure(
+  error: unknown,
+  runId: string | undefined,
+): Extract<ExecutionEvent, { type: 'failed' }> {
+  const failed = { type: 'failed', message: messageOf(error), runId } as const;
+  return error instanceof RunStartUnsure
+    ? { ...failed, maybeStarted: true }
+    : failed;
 }
 
 /** What `startAndFollow` needs: the ports, the goal and where events go. */
@@ -117,9 +129,7 @@ export async function startAndFollow(request: FollowRequest): Promise<void> {
     );
     await follow(request, runId);
   } catch (error) {
-    if (!signal.aborted) {
-      emit({ type: 'failed', message: messageOf(error), runId });
-    }
+    if (!signal.aborted) emit(failure(error, runId));
   }
 }
 
@@ -128,15 +138,37 @@ export interface ResumeRequest extends Watch {
   runId: string;
 }
 
+// The look at the remembered run could not finish, so nobody knows whether it
+// is going. Say so under the run, which the alert names.
+function reportUnknownRun(
+  { runId, emit }: ResumeRequest,
+  error: unknown,
+): void {
+  emit({ type: 'start' });
+  emit({ type: 'started', runId, joined: true });
+  emit({ type: 'failed', message: messageOf(error), runId });
+}
+
 /**
  * Joins the run `runId` if it is still running, as a page that was reloaded
  * does, and follows it like `startAndFollow`. The first reading is tried
- * again like any other. A run that has ended, one that cannot be read, or
- * another run says nothing: there is nothing to resume. It never rejects.
+ * again like any other. A run that has ended, another run, or one that the
+ * server will not give (it started again) says nothing: there is nothing to
+ * resume. When the readings fail for any other reason, whether the run is
+ * going is not known, and the failure is reported like a lost run. It never
+ * rejects.
  */
 export async function resumeRun(request: ResumeRequest): Promise<void> {
   const { runId, emit, signal } = request;
-  const run = await read(request, runId).catch(() => undefined);
+  let run: RunView | undefined;
+  try {
+    run = await read(request, runId);
+  } catch (error) {
+    if (!signal.aborted && !(error instanceof RunReadRefused)) {
+      reportUnknownRun(request, error);
+    }
+    return;
+  }
   if (signal.aborted || run?.runId !== runId || run.status !== 'running') {
     return;
   }
