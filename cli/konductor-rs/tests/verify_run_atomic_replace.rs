@@ -2,11 +2,12 @@
 //
 // verify_run_atomic_replace.rs: a writer thread replaces a k-full-sdlc session
 // file by temp-file-and-rename while the real binary's `verify-run` reads it
-// in a loop. Every read must see one whole file: a passing session (exit 0)
-// or one missing a gate fact (exit 65), never a torn file (exit 64).
+// in a loop. Every read must match, exit code and stdout, the verdict for one
+// of the two whole files. A torn read shows up as any other output, usually
+// exit 65 RECORD_INTEGRITY.
 
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output};
+use std::process::Command;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::thread;
@@ -41,7 +42,8 @@ const EVIDENCE: [&str; 5] = [
 ];
 
 /// Session text that passes, or with `gate_code-review_result` left out so
-/// it fails with GATE_MISSING.
+/// it fails with GATE_MISSING. A result word is checked strictly, so
+/// `gate_testing_result` goes last: a cut inside it changes the verdict.
 fn session_text(with_code_review_result: bool) -> String {
     let phases: String = PHASES
         .iter()
@@ -78,9 +80,9 @@ phases:
       gate_specs_checker: user
 {code_review_result}      gate_code-review_evidence: {}
       gate_code-review_checker: user
-      gate_testing_result: none
-      gate_testing_evidence: {}
       gate_testing_checker: k-quality-assurance
+      gate_testing_evidence: {}
+      gate_testing_result: none
 ",
         EVIDENCE[0], EVIDENCE[1], EVIDENCE[2], EVIDENCE[3], EVIDENCE[4]
     )
@@ -121,21 +123,24 @@ fn replace_atomically(root: &Path, text: &str) {
     std::fs::rename(&temp, root.join(SESSION)).unwrap();
 }
 
-#[derive(Debug, PartialEq)]
-enum Read {
-    Passing,
-    GateMissing,
-    Other,
-}
+/// Exit code and stdout of one `verify-run` on the session file.
+type Verdict = (Option<i32>, String);
 
-fn classify(output: &Output) -> Read {
-    let out = String::from_utf8_lossy(&output.stdout);
-    let has = |code: &str| out.lines().any(|l| l.starts_with(&format!("{code}: ")));
-    match output.status.code() {
-        Some(0) if has("PASSED") => Read::Passing,
-        Some(65) if has("GATE_MISSING") => Read::GateMissing,
-        _ => Read::Other,
+fn verify_run(root: &Path, home: &Path, sink: &telemetry_test_sink::TelemetrySink) -> Verdict {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_konductor"));
+    command
+        .args(["verify-run", "--session", SESSION])
+        .current_dir(root)
+        .env("HOME", home)
+        .env_remove("KONDUCTOR_LOG");
+    for var in sink.env_vars() {
+        command.env(var.name, &var.value);
     }
+    let output = command.output().expect("failed to spawn konductor");
+    (
+        output.status.code(),
+        String::from_utf8_lossy(&output.stdout).into_owned(),
+    )
 }
 
 #[test]
@@ -144,7 +149,16 @@ fn verify_run_never_sees_a_partial_session_during_atomic_replace() {
     let sink = telemetry_test_sink::TelemetrySink::start();
     let passing = session_text(true);
     let gate_missing = session_text(false);
+    replace_atomically(&root, &gate_missing);
+    let gate_missing_verdict = verify_run(&root, &home, &sink);
     replace_atomically(&root, &passing);
+    let passing_verdict = verify_run(&root, &home, &sink);
+    assert_eq!(passing_verdict.0, Some(0), "{passing_verdict:?}");
+    assert_eq!(gate_missing_verdict.0, Some(65), "{gate_missing_verdict:?}");
+    assert!(
+        gate_missing_verdict.1.contains("GATE_MISSING: "),
+        "{gate_missing_verdict:?}"
+    );
 
     let stop = Arc::new(AtomicBool::new(false));
     let writes = Arc::new(AtomicU64::new(0));
@@ -169,25 +183,13 @@ fn verify_run_never_sees_a_partial_session_during_atomic_replace() {
     let started = Instant::now();
     let mut reads = 0usize;
     while reads < MAX_READS && started.elapsed() < MAX_WALL {
-        let mut command = Command::new(env!("CARGO_BIN_EXE_konductor"));
-        command
-            .args(["verify-run", "--session", SESSION])
-            .current_dir(&root)
-            .env("HOME", &home)
-            .env_remove("KONDUCTOR_LOG");
-        for var in sink.env_vars() {
-            command.env(var.name, &var.value);
-        }
-        let output = command.output().expect("failed to spawn konductor");
-        match classify(&output) {
-            Read::Passing => passed += 1,
-            Read::GateMissing => gate_missing_seen += 1,
-            Read::Other => other.push(format!(
-                "exit {:?}\nstdout: {}\nstderr: {}",
-                output.status.code(),
-                String::from_utf8_lossy(&output.stdout),
-                String::from_utf8_lossy(&output.stderr)
-            )),
+        let verdict = verify_run(&root, &home, &sink);
+        if verdict == passing_verdict {
+            passed += 1;
+        } else if verdict == gate_missing_verdict {
+            gate_missing_seen += 1;
+        } else {
+            other.push(verdict);
         }
         reads += 1;
     }
@@ -208,5 +210,39 @@ fn verify_run_never_sees_a_partial_session_during_atomic_replace() {
     assert!(
         gate_missing_seen > 0,
         "no read saw the GATE_MISSING session"
+    );
+}
+
+/// Checks the oracle above: a file cut at any byte, except just before the
+/// trailing newline, must not reproduce either whole-file verdict.
+#[test]
+fn every_truncated_session_differs_from_both_whole_file_verdicts() {
+    let (base, root, home) = scratch_project();
+    let sink = telemetry_test_sink::TelemetrySink::start();
+    let texts = [session_text(true), session_text(false)];
+    let mut baselines = Vec::new();
+    for text in &texts {
+        replace_atomically(&root, text);
+        baselines.push(verify_run(&root, &home, &sink));
+    }
+    let mut matches = Vec::new();
+    for (index, text) in texts.iter().enumerate() {
+        for len in 0..text.len() {
+            replace_atomically(&root, &text[..len]);
+            if baselines.contains(&verify_run(&root, &home, &sink)) {
+                matches.push((index, len));
+            }
+        }
+    }
+    let _ = std::fs::remove_dir_all(&base);
+
+    let expected: Vec<(usize, usize)> = texts
+        .iter()
+        .enumerate()
+        .map(|(index, text)| (index, text.len() - 1))
+        .collect();
+    assert_eq!(
+        matches, expected,
+        "prefixes (text, bytes) that match a baseline"
     );
 }
