@@ -8,6 +8,7 @@ function memoryStorage(initial: Record<string, string> = {}) {
     data,
     getItem: (key: string) => data.get(key) ?? null,
     setItem: (key: string, value: string) => void data.set(key, value),
+    removeItem: (key: string) => void data.delete(key),
   };
 }
 
@@ -20,7 +21,9 @@ const blockedAtAccess = {
     return denied();
   },
 };
-const blockedAtUse = { sessionStorage: { getItem: denied, setItem: denied } };
+const blockedAtUse = {
+  sessionStorage: { getItem: denied, setItem: denied, removeItem: denied },
+};
 
 describe('sessionRunMemory', () => {
   it('recalls nothing before a run is remembered', () => {
@@ -44,6 +47,15 @@ describe('sessionRunMemory', () => {
     expect(memory.recall()).toBe('run-2');
   });
 
+  it('recalls nothing once the run is forgotten', () => {
+    const memory = sessionRunMemory({ sessionStorage: memoryStorage() });
+    memory.remember('run-1');
+
+    memory.forget();
+
+    expect(memory.recall()).toBeUndefined();
+  });
+
   it('treats an empty value as nothing', () => {
     const storage = memoryStorage();
     storage.setItem('konductor-workflow-canvas-run', '');
@@ -57,6 +69,7 @@ describe('sessionRunMemory', () => {
     for (const env of [{}, blockedAtAccess, blockedAtUse]) {
       const memory = sessionRunMemory(env);
       expect(() => memory.remember('run-1')).not.toThrow();
+      expect(() => memory.forget()).not.toThrow();
       expect(memory.recall()).toBeUndefined();
     }
   });

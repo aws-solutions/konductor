@@ -43,6 +43,9 @@ export function useExecution(
   const emit = useCallback(
     (event: ExecutionEvent) => {
       if (event.type === 'started') memory.remember(event.runId);
+      if (event.type === 'snapshot' && event.run.status !== 'running') {
+        memory.forget();
+      }
       if (event.type === 'start' && active.current) {
         active.current.resuming = false;
       }
@@ -70,10 +73,15 @@ export function useExecution(
   useEffect(() => {
     const runId = runs ? memory.recall() : undefined;
     if (!runs || runId === undefined || active.current) return;
-    const loop = track(true, (signal) =>
-      resumeRun({ runs, scheduler, runId, emit, signal }),
-    );
+    const loop: Loop = track(true, async (signal) => {
+      await resumeRun({ runs, scheduler, runId, emit, signal });
+      // Nothing was joined: the run has ended, or the server will not give it.
+      if (loop.resuming && !signal.aborted) memory.forget();
+    });
     return () => {
+      // A look that has not found a run is stopped; a run that was joined goes
+      // on, like one that a click started.
+      if (!loop.resuming) return;
       loop.controller.abort();
       if (active.current === loop) active.current = undefined;
     };
