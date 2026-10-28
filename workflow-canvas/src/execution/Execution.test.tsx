@@ -348,6 +348,41 @@ describe('a run that is already active', () => {
     expect(badges()).toEqual(['Done', 'Done', 'Done', 'Passed']);
     expect(isOff(runButton())).toBe(false);
   });
+
+  it('keeps saying it was already going once it has ended', async () => {
+    const runs = serverBusyWith(helloRun(1), helloRun(2));
+    const scheduler = await openExecution(runs);
+    await press(runButton());
+
+    await tick(scheduler);
+
+    expect(statusLine().textContent).toBe(
+      'The run that was already in progress passed. 2 of 2 stages done. Exit code 0.',
+    );
+  });
+
+  it('does not show a goal of its own, which the API does not give', async () => {
+    const runs = serverBusyWith(helloRun(1), helloRun(2));
+    const scheduler = await openExecution(runs);
+    const goalBox = () => screen.getByLabelText('Goal') as HTMLInputElement;
+    fireEvent.change(goalBox(), { target: { value: 'Fix the typo' } });
+
+    await press(runButton());
+
+    expect(goalBox().value).toBe('');
+    expect(goalBox().placeholder).toBe('Not known');
+    expect(goalBox().readOnly).toBe(true);
+    expect(
+      screen.getByText(
+        'This run was already going, so its goal is not known here.',
+      ),
+    ).toBeTruthy();
+
+    await tick(scheduler);
+
+    expect(goalBox().value).toBe('Fix the typo');
+    expect(goalBox().readOnly).toBe(false);
+  });
 });
 
 describe('the goal', () => {

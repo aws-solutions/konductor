@@ -8,6 +8,7 @@
 export {
   IDLE,
   isInFlight,
+  isJoinedRun,
   reduce,
   runOf,
   type ExecutionEvent,
