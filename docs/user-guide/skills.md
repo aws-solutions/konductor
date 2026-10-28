@@ -42,7 +42,7 @@ Loaded to shape *how* an agent works rather than what it produces. Several are o
 
 | Skill | What it does | Reach for it when | Declared by |
 | --- | --- | --- | --- |
-| `constraints` | Hard behavioural rules for every agent — what they must never and always do, across code quality, security, and verification. | Always on. You never invoke it; it is the floor every agent stands on. | all 11 |
+| `constraints` | Hard behavioural rules for every agent: what they must always do, across code quality, security, and verification. The NEVER DO rules live in `context/k-core-rules.md`. | You never invoke it. Claude Code preloads it only into subagents; otherwise it loads on demand. | all 11 |
 | `about-konductor` | Gets a new user from nothing to a working session: the real `konductor` CLI command surface, example orchestrator prompts, and the agent/skill/SOP model. | Someone asks what this is, how to install it, or what they can ask for. Backs the SOP of the same name. | all 3 orchestrators |
 | `sop-state-management` | Session and checklist mechanics for long-running SOPs: minting or resuming a session by project identity, per-phase status, and serialized fix-cycle counters. | You are running or resuming `k-full-sdlc`. It owns the state file schema and the resume-discovery walk. | all 3 orchestrators |
 | `delegation-protocol` | The authoritative delegation format: the 8-field prompt (target agent + 7 sections), the agent registry, parallel-execution rules, and handoff patterns. | Read it to understand what the orchestrator sends a specialist. Edit it to change routing — it outranks the routing-rules context file. | all 3 orchestrators |
@@ -126,7 +126,7 @@ Checking a design before anyone builds it.
 | `doc-accuracy-analyzer` | Six-step verification of a technical document against primary sources: extracts claims, investigates each, classifies, reports. | You need to know which claims in a document are actually true. | `k-architect` |
 | `aws-service-validator` | Validates AWS service and feature claims against live AWS documentation. Catches hallucinated AWS assertions. | Any design that names AWS services. This is the anti-hallucination gate. | `k-architect` |
 | `adversarial-design-review` | Reviews design sections from an adversarial stance, classifying CRITICAL / IMPORTANT / MINOR. Path B fallback when no devil's-advocate subagent is installed. | You want the design attacked and have no separate adversarial agent available. | `k-architect` |
-| `humanize-writing` | Rewrites text to remove AI-writing tells across 34 categories while preserving meaning and voice. | A draft is accurate but obviously machine-written. | `k-architect`, `k-developer`, `k-product-manager`, `k-tpm` |
+| `humanize-writing` | Rewrites text to remove AI-writing tells across 34 categories while preserving meaning and voice. | Writing or editing prose, or a draft reads machine-written. | all 11. On Claude Code, `k-architect`, `k-developer`, `k-product-manager` and `k-tpm` preload it when they run as subagents. Otherwise, and on Kiro CLI, it loads on demand |
 
 ---
 
@@ -246,7 +246,7 @@ it. Contributors adding a skill should see
 
 Useful when deciding which agent to talk to directly.
 
-| Agent | Skills declared |
+| Agent | Skills preloaded (Claude Code) |
 | --- | --- |
 | `k-architect` | 38 |
 | `k-developer` | 27 |
@@ -261,8 +261,14 @@ Useful when deciding which agent to talk to directly.
 | `k-media-analyzer` | 1 |
 
 `k-architect` carries by far the most, which is why design work routed anywhere else tends to
-come back thinner. `k-media-analyzer` carries only `constraints` — its capability is the
-model's ability to interpret PDFs and images, not a skill library.
+come back thinner. `k-media-analyzer` carries `constraints` and `humanize-writing`, and preloads
+only `constraints`. Its capability is the model's ability to interpret PDFs and images, not a
+skill library.
+
+The counts are `clientConfig.claudeCli.skills`, the list Claude Code preloads when the agent runs as a subagent. Seven agents,
+the three orchestrators plus `k-quality-assurance`, `k-researcher`, `k-browser` and
+`k-media-analyzer`, also declare `humanize-writing` and load it on demand, so it is not counted
+for them.
 
 ---
 

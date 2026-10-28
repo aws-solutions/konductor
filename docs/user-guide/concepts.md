@@ -153,8 +153,9 @@ A **context file** is Markdown loaded into an agent's memory *at session start* 
 active for the whole session — unlike a skill, which loads on demand. Context files are for
 rules that must never be missed.
 
-There is one today: `context/k-orchestrator-routing-rules.md`, loaded by all three
-orchestrators. It contains the capability-to-agent routing table and three `[CODE RED]`
+There are two today. `context/k-core-rules.md` holds the NEVER DO rules and the writing-habits
+rule, and all 11 agents load it. `context/k-orchestrator-routing-rules.md` is loaded by all three
+orchestrators. The routing rules file contains the capability-to-agent routing table and three `[CODE RED]`
 rules, including this one:
 
 > **NEVER MUTATE DIRECTLY — DELEGATE INSTEAD.** You are a read-only orchestrator. You NEVER

@@ -8,6 +8,38 @@ not per individual commit.
 
 ## [Unreleased]
 
+### Changed
+
+- The orchestrators (`konductor`, `konductor-mux-orchestrator`, `konductor-cmux-orchestrator`)
+  may now read files, search the codebase, run read-only shell commands, and answer lookup
+  questions themselves instead of spawning a specialist for each. One table in
+  `context/k-orchestrator-routing-rules.md` defines what is allowed, including the
+  `k-light-ui-testing` SOP-step exception, and `claude-teams-behavior`, `mux-dispatch`, and
+  `cmux-dispatch` point at it. The 10-file read budget covers requests the orchestrator answers
+  itself; for a request it will delegate, it reads only what routing and the brief need and
+  passes file paths. Writes, state-changing git, builds, tests, and whole phases still go to
+  specialists. The three orchestrator prompts also drop the
+  Ultrawork framing, state the parallel rule once, and remove rules already defined in the
+  `constraints` skill and the routing rules.
+- Orchestrators delegate a step they can't do to the owning specialist and may run independent
+  parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
+
+### Fixed
+
+- Routing skills now agree with the orchestrator prompts. `mux-dispatch` peeks at a running
+  pane only on the prompt's polling fallback, and `delegation-protocol` applies rule 5's
+  fix-attempt cap and 2-Strike Circuit Breaker instead of its own cycle count, and limits its
+  retry-once recovery to spawns that error, time out, or return nothing.
+- The SOP Selection Contract no longer rules out single-procedure SOPs such as `k-plan`. A
+  request matches a SOP row when it asks for what the row's User intent describes, a whole
+  workflow or one named procedure. A single deliverable that no row describes still goes to an
+  agent. Keyword overlap matches no row, and neither does a lookup the orchestrator answers within
+  its read budget. A thorough codebase or documentation search matches `k-comprehensive-search`.
+  The three orchestrator prompts now run the SOP check on every request, not only on multi-phase
+  ones.
+
+## [1.2.0] - 2026-10-26
+
 ### Added
 
 - Claude Code plugin telemetry. A plugin hook sends `agent_invocation` and
@@ -15,6 +47,14 @@ not per individual commit.
   `claude-plugin` as the harness. It is on by default and shares the machine ID in
   `~/.konductor/telemetry.json` with the CLI. Turn it off with the plugin's
   `telemetry_enabled` option or any existing opt-out.
+
+### Changed
+
+- Every agent now loads `context/k-core-rules.md` at session start. It holds the NEVER DO
+  rules, moved from the `constraints` skill, and a writing-habits rule: no em or en dashes,
+  AI vocabulary, or filler in new sentences, even when nearby text has them.
+- Every agent declares `humanize-writing`, and its description now covers writing as well
+  as editing.
 
 ### Fixed
 
@@ -64,6 +104,12 @@ not per individual commit.
   Only the harness the command runs against is rewritten. Another Kiro CLI harness at the same
   project keeps its current MCP args until its own next `update`.
 
+### Security
+
+- `rustls` moves from `0.23.43` to `0.23.45` in the CLI, the skill-lookup MCP server, and the
+  shared telemetry test sink, fixing GHSA-2mjx-qc3c-rqvc (TLS 1.3 handshake messages were
+  accepted across encryption level boundaries).
+
 ## [1.1.0] - 2026-10-14
 
 ### Added
@@ -107,9 +153,6 @@ not per individual commit.
 
 ### Security
 
-- `rustls` moves from `0.23.43` to `0.23.45` in the CLI, the skill-lookup MCP server, and the
-  shared telemetry test sink, fixing GHSA-2mjx-qc3c-rqvc (TLS 1.3 handshake messages were
-  accepted across encryption level boundaries).
 - `aws-mcp` uses `mcp-proxy-for-aws-cli==1.7.0` instead of a moving package version. The managed endpoint still supplies current AWS documentation and skills.
 - The plugin release no longer force-pushes directly to a public branch. `publish-claude-plugin`
   pushes a fresh, collision-resistant candidate branch (release version plus workflow run

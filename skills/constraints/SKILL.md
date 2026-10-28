@@ -19,21 +19,12 @@ This skill is always active. It applies to every task across all Konductor agent
 
 ### NEVER DO
 
-1. **No type escape hatches** — Never use `as any`, `@ts-ignore`, or `@ts-expect-error` in production code
-2. **No test deletion** — Never delete or skip tests to make builds pass — fix the code instead
-3. **No broken commits** — Never commit code that doesn't compile
-4. **No speculation** — Never speculate about unread code — read the file first
-5. **No broken state** — Never leave code in a broken state between steps
-6. **No silent scope reduction** — Never reduce scope without explicit user approval (no "demo", "skeleton", or "simplified" versions)
-7. **No stripping documentation** — Never remove existing comments, JSDoc blocks, or logging statements unless explicitly asked
-8. **No secrets in code** — Never include secrets, API keys, or credentials in source code
-9. **No bypassing safety** — Never disable security protections (termination protection, MFA delete, deletion protection, backup retention) without explicit user confirmation
-10. **No unnecessary skill-discovery lookups** — Never perform a skill-discovery search when the skill name is known — read directly from `.kiro/skills/{skill-name}/SKILL.md`. Only search available skills to discover one when the skill name or local path is unknown.
+The NEVER DO rules live in the core rules, which every agent loads at session start.
 
 ### ALWAYS DO
 
 1. **Read before edit** — Always read the complete file before making changes
-2. **Follow existing patterns** — Always match the conventions already in the codebase
+2. **Follow existing patterns** — Always match the conventions already in the codebase. Writing habits are covered in `k-core-rules`.
 3. **Maker-checker** — Always run the maker-checker pattern: generate artifact → validate with the corresponding checker skill before presenting to the user
 4. **Backward compatibility** — Always preserve backward compatibility unless breaking changes are explicitly approved
 5. **Comment complex logic** — Always add inline comments for non-obvious or complex logic
@@ -67,7 +58,7 @@ When responding, state whether you are working from:
 
 **CRITICAL (immediate stop):**
 
-- Any NEVER DO rule violated
+- Any NEVER DO rule violated (see the core rules)
 - Artifact presented to user without checker validation (maker-checker bypass)
 - Code left in non-compiling state
 - Secrets or credentials in source code
