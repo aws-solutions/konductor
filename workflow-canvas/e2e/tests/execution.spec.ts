@@ -304,8 +304,9 @@ test('shows the run that is still going when the page is opened again', async ({
   await canvas.runButton.click();
   await expect(canvas.runStatus).toContainText('Running draft.');
 
-  // A reload drops the page and its token, so the launch address is opened
-  // again in the same tab, as a person does after pressing F5.
+  // The launch address is opened again in the tab. Only a server that takes
+  // the launch code again allows this; a reload alone leaves the page without
+  // the code (see the test below).
   await canvas.page.goto('about:blank');
   await canvas.open(STUB_LAUNCH_CODE);
   await canvas.selectTab('Execution');
@@ -315,6 +316,8 @@ test('shows the run that is still going when the page is opened again', async ({
     'Following the run that was already in progress. Running draft.',
   );
   await expect(canvas.runButton).toBeDisabled();
+  await expect(canvas.goal).toHaveValue('');
+  await expect(canvas.goal).toHaveAttribute('placeholder', 'Not known');
 });
 
 test('shows Ready when the page is opened again after the run has ended', async ({
@@ -331,4 +334,19 @@ test('shows Ready when the page is opened again after the run has ended', async 
   await expect(canvas.runStatus).toContainText('Ready. Press Run to start.');
   await canvas.expectBadges([null, null, null, null]);
   await expect(canvas.runButton).toBeEnabled();
+});
+
+test('has no launch code and no Execution tab after a reload, as the code works once', async ({
+  canvas,
+}) => {
+  await canvas.expectWorkflowDrawn();
+
+  await canvas.page.reload();
+  await canvas.title.waitFor();
+
+  await expect(
+    canvas.page.getByText(/no launch code in the address/),
+  ).toBeVisible();
+  await canvas.selectTab('Execution');
+  await expect(canvas.runButton).toHaveCount(0);
 });

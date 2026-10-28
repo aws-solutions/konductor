@@ -12,7 +12,12 @@ export type ExecutionState =
       /** Set when the tab joined a run that was already active. */
       joined?: true;
     }
-  | { phase: 'finished'; run: RunView }
+  | {
+      phase: 'finished';
+      run: RunView;
+      /** Set when the tab joined a run that was already active. */
+      joined?: true;
+    }
   | {
       phase: 'error';
       message: string;
@@ -45,6 +50,11 @@ export function isInFlight(state: ExecutionState): boolean {
   return state.phase === 'starting' || state.phase === 'following';
 }
 
+/** Whether the run in flight is one that was already going when joined. */
+export function isJoinedRun(state: ExecutionState): boolean {
+  return state.phase === 'following' && state.joined === true;
+}
+
 /** The run that the tab shows, if it has heard of one. */
 export function runOf(state: ExecutionState): RunView | undefined {
   return state.phase === 'following' || state.phase === 'finished'
@@ -69,7 +79,11 @@ function startedOf(
 
 function snapshotOf(state: ExecutionState, run: RunView): ExecutionState {
   if (state.phase !== 'following' || state.runId !== run.runId) return state;
-  if (run.status !== 'running') return { phase: 'finished', run };
+  if (run.status !== 'running') {
+    return state.joined
+      ? { phase: 'finished', run, joined: true }
+      : { phase: 'finished', run };
+  }
   return state.joined
     ? { phase: 'following', runId: run.runId, run, joined: true }
     : { phase: 'following', runId: run.runId, run };
