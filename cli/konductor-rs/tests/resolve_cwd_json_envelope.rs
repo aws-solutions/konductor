@@ -20,20 +20,32 @@
 
 use std::path::PathBuf;
 use std::process::{Command, Output};
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+const EXIT_USAGE_ERROR: i32 = 64;
 
 fn bin() -> &'static str {
     env!("CARGO_BIN_EXE_konductor")
 }
 
+/// The pid and per-process counter make the path unique by construction:
+/// parallel test threads can read the same clock value, and a shared
+/// directory lets one test's `rmdir` break another's `cd`. `create_dir`
+/// (not `create_dir_all`) turns any remaining collision into a setup
+/// failure instead of a misleading assertion failure.
 fn scratch_dir(name: &str) -> PathBuf {
+    static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
     let dir = std::env::temp_dir().join(format!(
-        "konductor-resolve-cwd-json-{name}-{}",
+        "konductor-resolve-cwd-json-{name}-{}-{}-{}",
+        std::process::id(),
+        NEXT_ID.fetch_add(1, Ordering::Relaxed),
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_nanos()
     ));
-    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::create_dir(&dir)
+        .unwrap_or_else(|err| panic!("failed to create scratch dir {}: {err}", dir.display()));
     dir
 }
 
@@ -78,10 +90,11 @@ fn doctor_json_resolve_cwd_failure_emits_json_envelope_not_plain_text() {
     let sink = telemetry_test_sink::TelemetrySink::start();
     let output = run_konductor_with_deleted_cwd(&sink, &["doctor", "--json"]);
 
-    assert_ne!(
+    assert_eq!(
         output.status.code(),
-        Some(0),
-        "expected a failing invocation with an unresolvable cwd"
+        Some(EXIT_USAGE_ERROR),
+        "expected konductor's usage-error exit with an unresolvable cwd; stderr: {:?}",
+        String::from_utf8_lossy(&output.stderr)
     );
 
     let stdout = String::from_utf8(output.stdout).expect("stdout must be valid UTF-8");
@@ -114,10 +127,11 @@ fn synth_json_resolve_cwd_failure_emits_json_envelope_not_plain_text() {
     let sink = telemetry_test_sink::TelemetrySink::start();
     let output = run_konductor_with_deleted_cwd(&sink, &["synth", "--json"]);
 
-    assert_ne!(
+    assert_eq!(
         output.status.code(),
-        Some(0),
-        "expected a failing invocation with an unresolvable cwd"
+        Some(EXIT_USAGE_ERROR),
+        "expected konductor's usage-error exit with an unresolvable cwd; stderr: {:?}",
+        String::from_utf8_lossy(&output.stderr)
     );
 
     let stdout = String::from_utf8(output.stdout).expect("stdout must be valid UTF-8");
@@ -153,10 +167,11 @@ fn doctor_without_json_resolve_cwd_failure_stays_plain_text() {
     let sink = telemetry_test_sink::TelemetrySink::start();
     let output = run_konductor_with_deleted_cwd(&sink, &["doctor"]);
 
-    assert_ne!(
+    assert_eq!(
         output.status.code(),
-        Some(0),
-        "expected a failing invocation with an unresolvable cwd"
+        Some(EXIT_USAGE_ERROR),
+        "expected konductor's usage-error exit with an unresolvable cwd; stderr: {:?}",
+        String::from_utf8_lossy(&output.stderr)
     );
 
     let stdout = String::from_utf8(output.stdout).expect("stdout must be valid UTF-8");
