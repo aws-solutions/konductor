@@ -5,7 +5,7 @@
 // own declared skills, how to load it, and the list of those skills.
 // Claude Code gets no block; it lists and loads skills natively.
 
-use super::model::SkillDef;
+use super::model::{is_orchestrator, SkillDef};
 use crate::cli::skills_server::{GET_SKILL_TOOL, MCP_SERVER_NAME};
 
 const TRIGGER_MAX_CHARS: usize = 160;
@@ -94,10 +94,6 @@ fn cap_on_word_boundary(text: &str) -> String {
         "{}{ELLIPSIS}",
         at_word.trim_end_matches([',', ';', ':', ' '])
     )
-}
-
-fn is_orchestrator(agent_name: &str) -> bool {
-    agent_name.starts_with("konductor")
 }
 
 fn kiro_load_rule() -> String {
