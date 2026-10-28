@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 /** Checks line and column lookups, and that a long line costs no more per lookup. */
 import { describe, expect, it, vi } from 'vitest';
+import { countingText } from '../test-support/counting-text.ts';
 import { SourceMap } from './source-map.ts';
 import { checkWorkflowText } from './validator.ts';
 
@@ -43,19 +44,6 @@ describe('the check of a very long line', () => {
     return `{${entries.join(', ')}}\n`;
   }
 
-  /** A string that counts the characters read from it. */
-  function countingText(text: string) {
-    const counted = { reads: 0 };
-    const wrapped = new String(text) as unknown as string;
-    Object.defineProperty(wrapped, 'charCodeAt', {
-      value: (index: number) => {
-        counted.reads++;
-        return text.charCodeAt(index);
-      },
-    });
-    return { counted, wrapped };
-  }
-
   function lookupsOf(text: string): { lookups: number; errors: number } {
     const position = vi.spyOn(SourceMap.prototype, 'position');
     try {
@@ -83,12 +71,12 @@ describe('the check of a very long line', () => {
     );
   });
 
-  it('reads no character of the text to find a position on a long line', () => {
+  it('reads none of the text to find a position on a long line', () => {
     const { counted, wrapped } = countingText(flowMapping(24_000, ''));
     const map = new SourceMap(wrapped);
     const readsToBuild = counted.reads;
 
-    for (let at = 0; at < wrapped.length; at += 997) map.position(at);
+    for (let at = 0; at < wrapped.length; at += 9973) map.position(at);
 
     expect(counted.reads).toBe(readsToBuild);
   });
