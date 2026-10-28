@@ -12,10 +12,16 @@ import { App } from '../App';
 import type { RunView } from '../api/types';
 import { FakeScheduler } from '../test-support/fake-scheduler';
 import { HELLO_DOCUMENT, helloRun, loaded } from '../test-support/fixtures';
-import { MAX_READ_FAILURES, RunAlreadyActive, type RunPort } from './core';
+import {
+  MAX_READ_FAILURES,
+  RunAlreadyActive,
+  RunReadRefused,
+  RunStartUnsure,
+  type RunPort,
+} from './core';
 
 const RUN_ID = helloRun(0).runId;
-const MAY_STILL_BE_RUNNING = 'The run may still be going on the server.';
+const MAY_STILL_BE_RUNNING = `The run may still be going on the server (run ${RUN_ID}).`;
 
 // A server that answers with the readings in turn and then repeats the last.
 function serverShowing(...readings: RunView[]): RunPort {
@@ -108,9 +114,16 @@ describe('the Execution tab before a run', () => {
   it('announces the status in a polite live region that is always there', async () => {
     await openExecution(serverShowing(helloRun(0)));
 
-    const live = statusLine();
+    const live = screen.getByTestId('run-live-status');
     expect(live.getAttribute('role')).toBe('status');
-    expect(live.getAttribute('aria-live')).toBe('polite');
+    expect(live.textContent).toBe('Ready. Press Run to start.');
+  });
+
+  it('keeps the visible status line out of the live regions, so nothing is said twice', async () => {
+    await openExecution(serverShowing(helloRun(0)));
+
+    expect(statusLine().closest('[role="status"], [role="alert"]')).toBeNull();
+    expect(screen.getAllByRole('status')).toHaveLength(1);
   });
 });
 
@@ -125,7 +138,10 @@ describe('a run', () => {
     await press(runButton());
 
     expect(runs.start).toHaveBeenCalledOnce();
-    expect(runs.start).toHaveBeenCalledWith('Fix the typo');
+    expect(runs.start).toHaveBeenCalledWith(
+      'Fix the typo',
+      expect.any(AbortSignal),
+    );
   });
 
   it('shows each node going from queued to running to done, in order', async () => {
@@ -181,7 +197,7 @@ describe('a run', () => {
 
     expect(runs.get).toHaveBeenCalledTimes(3);
     expect(scheduler.waits).toEqual([1000, 1000]);
-    expect(runs.get).toHaveBeenCalledWith(RUN_ID);
+    expect(runs.get).toHaveBeenCalledWith(RUN_ID, expect.any(AbortSignal));
   });
 
   it('cannot be started again while it is in flight, and can after it ends', async () => {
@@ -317,7 +333,7 @@ describe('a run that is already active', () => {
 
     await press(runButton());
 
-    expect(runs.get).toHaveBeenCalledWith(RUN_ID);
+    expect(runs.get).toHaveBeenCalledWith(RUN_ID, expect.any(AbortSignal));
     expect(screen.queryByTestId('run-error')).toBeNull();
     expect(statusLine().textContent).toBe(
       'Following the run that was already in progress. Running review. 1 of 2 stages done.',
@@ -329,6 +345,41 @@ describe('a run that is already active', () => {
 
     expect(badges()).toEqual(['Done', 'Done', 'Done', 'Passed']);
     expect(isOff(runButton())).toBe(false);
+  });
+
+  it('keeps saying it was already going once it has ended', async () => {
+    const runs = serverBusyWith(helloRun(1), helloRun(2));
+    const scheduler = await openExecution(runs);
+    await press(runButton());
+
+    await tick(scheduler);
+
+    expect(statusLine().textContent).toBe(
+      'The run that was already in progress passed. 2 of 2 stages done. Exit code 0.',
+    );
+  });
+
+  it('does not show a goal of its own, which the API does not give', async () => {
+    const runs = serverBusyWith(helloRun(1), helloRun(2));
+    const scheduler = await openExecution(runs);
+    const goalBox = () => screen.getByLabelText('Goal') as HTMLInputElement;
+    fireEvent.change(goalBox(), { target: { value: 'Fix the typo' } });
+
+    await press(runButton());
+
+    expect(goalBox().value).toBe('');
+    expect(goalBox().placeholder).toBe('Not known');
+    expect(goalBox().readOnly).toBe(true);
+    expect(
+      screen.getByText(
+        'This run was already going, so its goal is not known here.',
+      ),
+    ).toBeTruthy();
+
+    await tick(scheduler);
+
+    expect(goalBox().value).toBe('Fix the typo');
+    expect(goalBox().readOnly).toBe(false);
   });
 });
 
@@ -360,7 +411,53 @@ describe('the goal', () => {
     expect(goalBox().value).toBe('Fix the typo');
     expect(goalBox().readOnly).toBe(true);
     expect(isOff(runButton())).toBe(true);
-    expect(runs.start).toHaveBeenCalledWith('Fix the typo');
+    expect(runs.start).toHaveBeenCalledWith(
+      'Fix the typo',
+      expect.any(AbortSignal),
+    );
+  });
+
+  it('does not start a run when Enter ends the composition of a character', async () => {
+    const runs = serverShowing(helloRun(0));
+    await openExecution(runs);
+
+    await act(async () => {
+      fireEvent.keyDown(goalBox(), {
+        key: 'Enter',
+        keyCode: 13,
+        isComposing: true,
+      });
+    });
+
+    expect(runs.start).not.toHaveBeenCalled();
+  });
+
+  it('offers a goal of one line when the outcome of the intent has line breaks', async () => {
+    const many = {
+      ...HELLO_DOCUMENT,
+      view: {
+        ...HELLO_DOCUMENT.view!,
+        intent: { outcome: 'Fix the typo\n  and add a test\r\nthen ship' },
+      },
+    };
+    const runs = serverShowing(helloRun(0));
+    render(
+      <App
+        load={Promise.resolve(loaded(many, runs))}
+        scheduler={new FakeScheduler()}
+      />,
+    );
+    await screen.findByTestId('node-end');
+    openTab('Execution');
+    await screen.findByRole('button', { name: 'Run' });
+
+    expect(goalBox().value).toBe('Fix the typo and add a test then ship');
+    await press(runButton());
+
+    expect(runs.start).toHaveBeenCalledWith(
+      'Fix the typo and add a test then ship',
+      expect.any(AbortSignal),
+    );
   });
 
   it('starts a run when Enter is pressed in the goal box', async () => {
@@ -443,8 +540,32 @@ describe('errors from the API', () => {
     expect(within(alert).getByText('A run is already active.')).toBeTruthy();
     expect(screen.getAllByTestId('run-error')).toHaveLength(1);
     expect(within(alert).queryByText(MAY_STILL_BE_RUNNING)).toBeNull();
-    expect(statusLine().textContent).toContain('See the error above.');
+    expect(statusLine().textContent).toContain('See the error below.');
     expect(badges()).toEqual([null, null, null, null]);
+    expect(isOff(runButton())).toBe(false);
+  });
+
+  it('says the run may have started when the server did not answer the start', async () => {
+    const runs: RunPort = {
+      start: vi
+        .fn()
+        .mockRejectedValue(new RunStartUnsure('The server did not answer.')),
+      get: vi.fn(),
+    };
+    await openExecution(runs);
+
+    await press(runButton());
+
+    const alert = screen.getByTestId('run-error');
+    expect(
+      within(alert).getByText('The run may not have started'),
+    ).toBeTruthy();
+    expect(within(alert).getByText('The server did not answer.')).toBeTruthy();
+    expect(
+      within(alert).getByText(
+        'The run may be going on the server. Press Run to join it.',
+      ),
+    ).toBeTruthy();
     expect(isOff(runButton())).toBe(false);
   });
 
@@ -471,7 +592,7 @@ describe('errors from the API', () => {
     expect(within(alert).getByText('The server did not answer.')).toBeTruthy();
     expect(within(alert).getByText(MAY_STILL_BE_RUNNING)).toBeTruthy();
     expect(screen.getAllByTestId('run-error')).toHaveLength(1);
-    expect(statusLine().textContent).toContain('See the error above.');
+    expect(statusLine().textContent).toContain('See the error below.');
     expect(badges()).toEqual([null, null, null, null]);
     expect(isOff(runButton())).toBe(false);
   });
@@ -497,22 +618,106 @@ describe('errors from the API', () => {
     expect(screen.queryByTestId('run-error')).toBeNull();
   });
 
-  it('puts the alert inside an alert region that is always on the page, so the sentence is announced', async () => {
+  it('puts the alert under the Run button', async () => {
     const runs: RunPort = {
       start: vi.fn().mockRejectedValue(new Error('A run is already active.')),
       get: vi.fn(),
     };
     await openExecution(runs);
-    const region = document.querySelector('[role="alert"].wf-run-error');
-    expect(region).not.toBeNull();
-    expect(region?.textContent).toBe('');
 
     await press(runButton());
 
-    expect(region?.contains(screen.getByTestId('run-error'))).toBe(true);
-    expect(region?.textContent).toContain('A run is already active.');
+    expect(
+      runButton().compareDocumentPosition(screen.getByTestId('run-error')) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
+  it('names the run in the alert when the following failed', async () => {
+    const runs: RunPort = {
+      start: vi.fn().mockResolvedValue(RUN_ID),
+      get: vi
+        .fn()
+        .mockResolvedValueOnce(helloRun(0))
+        .mockRejectedValue(new RunReadRefused('There is no run with this id.')),
+    };
+    const scheduler = await openExecution(runs);
+    await press(runButton());
+
+    await tick(scheduler);
+
+    expect(
+      within(screen.getByTestId('run-error')).getByText(
+        `The run may still be going on the server (run ${RUN_ID}).`,
+      ),
+    ).toBeTruthy();
+  });
+});
+
+describe('the live regions', () => {
+  const alertLive = () => screen.getByTestId('run-live-alert');
+  const statusLive = () => screen.getByTestId('run-live-status');
+
+  it('are on the page before any run, and the alert one is empty', async () => {
+    await openExecution(serverShowing(helloRun(0)));
+
+    expect(alertLive().getAttribute('role')).toBe('alert');
+    expect(alertLive().textContent).toBe('');
+    expect(statusLive().getAttribute('role')).toBe('status');
+  });
+
+  it('say why a run did not start', async () => {
+    const runs: RunPort = {
+      start: vi.fn().mockRejectedValue(new Error('A run is already active.')),
+      get: vi.fn(),
+    };
+    await openExecution(runs);
+
+    await press(runButton());
+
+    expect(alertLive().textContent).toBe(
+      'The run did not start. A run is already active.',
+    );
+    expect(statusLive().textContent).toBe('See the error below.');
+  });
+
+  it('say that the run ended, while the Designer tab is open', async () => {
+    const runs = serverShowing(helloRun(0), helloRun(1), helloRun(2));
+    const scheduler = await openExecution(runs);
+    await press(runButton());
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Designer' }));
+    expect(screen.queryByTestId('run-status')).toBeNull();
+    await tick(scheduler);
+    await tick(scheduler);
+
+    expect(statusLive().textContent).toBe(
+      'Run passed. 2 of 2 stages done. Exit code 0.',
+    );
+  });
+
+  it('say that the run could not be followed, while the Designer tab is open', async () => {
+    const runs: RunPort = {
+      start: vi.fn().mockResolvedValue(RUN_ID),
+      get: vi
+        .fn()
+        .mockResolvedValueOnce(helloRun(0))
+        .mockRejectedValue(new RunReadRefused('There is no run with this id.')),
+    };
+    const scheduler = await openExecution(runs);
+    await press(runButton());
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Designer' }));
+    expect(screen.queryByTestId('run-error')).toBeNull();
+    await tick(scheduler);
+
+    expect(alertLive().textContent).toBe(
+      `The run could not be followed. There is no run with this id. The run may still be going on the server (run ${RUN_ID}).`,
+    );
+  });
+});
+
+describe('the alert, when another run is started', () => {
   it('takes the alert away when a new run starts', async () => {
     const runs: RunPort = {
       start: vi
@@ -529,6 +734,39 @@ describe('errors from the API', () => {
 
     await waitFor(() => expect(screen.queryByTestId('run-error')).toBeNull());
     expect(badges()).toEqual(['Done', 'Running', 'Queued', 'Queued']);
+  });
+});
+
+describe('a run whose stages are not the stages of the graph', () => {
+  const OTHER_STAGES: RunView = {
+    ...helloRun(0),
+    stages: [
+      { name: 'write', status: 'running' },
+      { name: 'review', status: 'pending' },
+    ],
+  };
+  const notice = () => screen.queryByTestId('stage-drift');
+
+  it('says so, naming the stages that differ, once the run is read', async () => {
+    const scheduler = await openExecution(serverShowing(OTHER_STAGES));
+    expect(notice()).toBeNull();
+
+    await press(runButton());
+    await tick(scheduler);
+
+    expect(notice()?.textContent).toContain('not the stages in the graph');
+    expect(notice()?.textContent).toContain('Not drawn: write.');
+    expect(notice()?.textContent).toContain('Not in the run: draft.');
+  });
+
+  it('says nothing for a run of the stages that are drawn', async () => {
+    const scheduler = await openExecution(serverShowing(helloRun(0)));
+
+    await press(runButton());
+    await tick(scheduler);
+
+    expect(statusLine().textContent).toContain('Running draft');
+    expect(notice()).toBeNull();
   });
 });
 

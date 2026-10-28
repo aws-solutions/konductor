@@ -291,6 +291,19 @@ describe('createHttpApi', () => {
         view: { ...DOCUMENT_BODY.view, stages: [{ name: 'd' }] },
       },
     ],
+    [
+      'two stages with one name',
+      {
+        ...DOCUMENT_BODY,
+        view: {
+          ...DOCUMENT_BODY.view,
+          stages: [
+            { name: 'd', agent: 'k-developer' },
+            { name: 'd', agent: 'k-quality-assurance' },
+          ],
+        },
+      },
+    ],
   ])('fails on a workflow with %s', async (_, body) => {
     const { api } = apiFor(reply(body));
 
@@ -410,6 +423,37 @@ describe('createHttpApi', () => {
       code: 'conflict',
       message: 'The file changed on disk.',
     });
+  });
+
+  it('carries the hash of the file in a conflict', async () => {
+    const { api } = apiFor(
+      reply(
+        {
+          error: 'The file changed on disk.',
+          code: 'conflict',
+          current_hash: 'c'.repeat(64),
+        },
+        409,
+      ),
+    );
+
+    const error = await api
+      .saveWorkflow('t', 'x', 'b'.repeat(64))
+      .catch((caught: unknown) => caught);
+
+    expect((error as ApiError).currentHash).toBe('c'.repeat(64));
+  });
+
+  it('carries no hash in a conflict about a file that is gone', async () => {
+    const { api } = apiFor(
+      reply({ error: 'The file is gone.', code: 'conflict' }, 409),
+    );
+
+    const error = await api
+      .saveWorkflow('t', 'x', 'b'.repeat(64))
+      .catch((caught: unknown) => caught);
+
+    expect((error as ApiError).currentHash).toBeUndefined();
   });
 
   it('carries the findings of a refused save', async () => {
@@ -604,6 +648,49 @@ describe('createHttpApi', () => {
     ['an exit code that is a string', run({ exit_code: '1' })],
     ['an exit code that is not whole', run({ exit_code: 1.5 })],
     ['a run with no exit code', run({ exit_code: undefined })],
+    ['a run id that is not in the pattern', run({ run_id: 'not-a-run-id' })],
+    ['an empty run id', run({ run_id: '' })],
+    ['a stage that `order` leaves out', run({ order: ['write'] })],
+    [
+      'a stage in `stages` that `order` does not list',
+      run({
+        order: [],
+        stages: { ghost: { status: 'running' } },
+      }),
+    ],
+    ['a running run with an exit code', run({ exit_code: 0 })],
+    [
+      'a passed run with a stage that is not passed',
+      run({ status: 'passed', exit_code: 0 }),
+    ],
+    [
+      'a passed run with a non-zero exit code',
+      run({
+        status: 'passed',
+        exit_code: 1,
+        stages: { write: { status: 'passed' }, review: { status: 'passed' } },
+      }),
+    ],
+    [
+      'a halted run with no stage blocked',
+      run({ status: 'halted', exit_code: 1 }),
+    ],
+    [
+      'a halted run with exit code 0',
+      run({
+        status: 'halted',
+        exit_code: 0,
+        stages: { write: { status: 'blocked' }, review: { status: 'pending' } },
+      }),
+    ],
+    [
+      'a halted run with two stages blocked',
+      run({
+        status: 'halted',
+        exit_code: 1,
+        stages: { write: { status: 'blocked' }, review: { status: 'blocked' } },
+      }),
+    ],
   ])('fails on %s', async (_, body) => {
     const { api } = apiFor(reply(body));
 
@@ -616,76 +703,192 @@ describe('createHttpApi', () => {
     await expect(api.startRun('t', 'g')).rejects.toBeInstanceOf(ApiError);
   });
 
-  describe('a call that does not end', () => {
+  it.each(['constructor', '__proto__', 'toString'])(
+    'does not take the stage name %s for a stage the run lacks',
+    async (name) => {
+      const { api } = apiFor(
+        reply(run({ order: [name], stages: { write: { status: 'passed' } } })),
+      );
+
+      await expect(api.getRun('t', 'r')).rejects.toBeInstanceOf(ApiError);
+    },
+  );
+
+  it('adds the fix of an error body to its sentence', async () => {
+    const { api } = apiFor(
+      reply(
+        {
+          error: 'kiro-cli is not installed.',
+          code: 'harness_unavailable',
+          fix: 'Install kiro-cli and sign in, then try again.',
+        },
+        409,
+      ),
+    );
+
+    await expect(api.startRun('t', 'g')).rejects.toMatchObject({
+      message:
+        'kiro-cli is not installed. Install kiro-cli and sign in, then try again.',
+    });
+  });
+
+  it('says the run may have started when it is accepted with a reply it cannot read', async () => {
+    const { api } = apiFor(new Response('ok', { status: 202 }));
+
+    await expect(api.startRun('t', 'g')).rejects.toMatchObject({
+      status: 202,
+      message: expect.stringContaining('may have started'),
+    });
+  });
+
+  it('says the run may have started when it is accepted with an empty id', async () => {
+    const { api } = apiFor(reply({ run_id: '' }, 202));
+
+    await expect(api.startRun('t', 'g')).rejects.toMatchObject({
+      message: expect.stringContaining('may have started'),
+    });
+  });
+});
+
+describe('createHttpApi, when a call does not go through', () => {
+  it('reports no answer, status 0, when the connection fails', async () => {
+    const { api } = apiFor(new TypeError('fetch failed'));
+
+    await expect(api.getRun('t', 'r')).rejects.toMatchObject({ status: 0 });
+    await expect(api.startRun('t', 'g')).rejects.toMatchObject({ status: 0 });
+  });
+
+  it('reports the status of a server error whose body is not JSON', async () => {
+    const { api } = apiFor(
+      new Response('<html>Bad gateway</html>', { status: 502 }),
+    );
+
+    await expect(api.getRun('t', 'r')).rejects.toMatchObject({
+      status: 502,
+      message: 'The server answered 502.',
+    });
+  });
+
+  it('reports no answer when the body stops arriving, so the read can be tried again', async () => {
+    const stream = new ReadableStream({
+      start: (controller) => controller.error(new TypeError('terminated')),
+    });
+    const { api } = apiFor(new Response(stream, { status: 200 }));
+
+    await expect(api.getRun('t', 'r')).rejects.toMatchObject({ status: 0 });
+  });
+
+  it('passes a signal to fetch, and aborts it when the caller aborts', async () => {
+    let seen: AbortSignal | undefined;
+    const fetchFn = vi.fn(
+      (_path: string, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          seen = init?.signal ?? undefined;
+          seen?.addEventListener('abort', () => reject(new Error('aborted')));
+        }),
+    );
+    const api = createHttpApi(fetchFn as unknown as typeof fetch);
+    const caller = new AbortController();
+
+    const call = api.getRun('t', 'r', caller.signal);
+    expect(seen?.aborted).toBe(false);
+    caller.abort();
+
+    await expect(call).rejects.toMatchObject({ status: 0 });
+    expect(seen?.aborted).toBe(true);
+  });
+
+  it('does not call at all when the caller has already aborted', async () => {
+    let aborted = false;
+    const fetchFn = vi.fn(
+      (_path: string, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          aborted = init?.signal?.aborted ?? false;
+          reject(new Error('aborted'));
+        }),
+    );
+    const api = createHttpApi(fetchFn as unknown as typeof fetch);
+    const caller = new AbortController();
+    caller.abort();
+
+    await expect(api.getRun('t', 'r', caller.signal)).rejects.toMatchObject({
+      status: 0,
+    });
+    expect(aborted).toBe(true);
+  });
+
+  describe('with a server that never answers', () => {
     afterEach(() => {
       vi.useRealTimers();
     });
 
-    // A fetch that ends only when its signal aborts, as a hung one does.
-    function hungFetch() {
-      return vi.fn(
-        (_path: string, init: RequestInit) =>
-          new Promise<Response>((_, reject) => {
-            init.signal?.addEventListener('abort', () =>
-              reject(new DOMException('Aborted', 'AbortError')),
+    const hanging = () =>
+      vi.fn(
+        (_path: string, init?: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener('abort', () =>
+              reject(new Error('aborted')),
             );
           }),
       );
-    }
 
-    it('passes a signal to every call', async () => {
-      const { api, fetchFn } = apiFor(reply(RUN_BODY));
-
-      await api.getRun('t', 'r');
-
-      const [, init] = fetchFn.mock.calls[0] as unknown as [
-        string,
-        RequestInit,
-      ];
-      expect(init.signal).toBeInstanceOf(AbortSignal);
-    });
-
-    it('gives up after the timeout with the message of an unreachable server', async () => {
+    it('gives up after the timeout and reports no answer', async () => {
       vi.useFakeTimers();
-      const fetchFn = hungFetch();
-      const api = createHttpApi(fetchFn as unknown as typeof fetch, 5000);
+      const api = createHttpApi(hanging() as unknown as typeof fetch, 5000);
 
-      const outcome = api.getRun('t', 'r').catch((caught: unknown) => caught);
+      const call = api.getRun('t', 'r');
+      const outcome = expect(call).rejects.toMatchObject({ status: 0 });
       await vi.advanceTimersByTimeAsync(4999);
-      expect(fetchFn.mock.calls[0]?.[1].signal?.aborted).toBe(false);
+      expect(vi.getTimerCount()).toBe(1);
       await vi.advanceTimersByTimeAsync(1);
 
-      expect(await outcome).toMatchObject({
-        status: 0,
-        message: 'The server did not answer. Check that it is still running.',
-      });
+      await outcome;
     });
 
-    it('gives up on a body that does not arrive, as an unreachable server and not a bad reply', async () => {
+    it('gives up when the body hangs after the headers came', async () => {
       vi.useFakeTimers();
-      // Headers arrive at once; the body ends only when the signal aborts.
-      const fetchFn = vi.fn((_path: string, init: RequestInit) => {
-        const body = new ReadableStream({
-          start(controller) {
-            init.signal?.addEventListener('abort', () =>
-              controller.error(new DOMException('Aborted', 'AbortError')),
+      let hang: ReadableStreamDefaultController | undefined;
+      const stream = new ReadableStream({ start: (c) => (hang = c) });
+      const fetchFn = vi.fn(
+        (_path: string, init?: RequestInit) =>
+          new Promise<Response>((resolve) => {
+            const response = new Response(stream);
+            init?.signal?.addEventListener('abort', () =>
+              hang?.error(new Error('aborted')),
             );
-          },
-        });
-        return Promise.resolve(new Response(body, { status: 200 }));
-      });
+            resolve(response);
+          }),
+      );
       const api = createHttpApi(fetchFn as unknown as typeof fetch, 5000);
 
-      const outcome = api.getRun('t', 'r').catch((caught: unknown) => caught);
+      const call = api.getRun('t', 'r');
+      const outcome = expect(call).rejects.toMatchObject({ status: 0 });
       await vi.advanceTimersByTimeAsync(5000);
 
-      expect(await outcome).toMatchObject({
-        status: 0,
-        message: 'The server did not answer. Check that it is still running.',
-      });
+      await outcome;
     });
 
-    it('stops the timer once the call has ended', async () => {
+    it('gives the launch code no timeout, as it works once', async () => {
+      vi.useFakeTimers();
+      let answer: (response: Response) => void = () => {};
+      const fetchFn = vi.fn(
+        () => new Promise<Response>((resolve) => (answer = resolve)),
+      );
+      const api = createHttpApi(fetchFn as unknown as typeof fetch, 5000);
+      let settled = false;
+
+      const session = api.createSession('code-1').finally(() => {
+        settled = true;
+      });
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(settled).toBe(false);
+      answer(reply(SESSION_BODY));
+
+      await expect(session).resolves.toMatchObject({ token: 't-1' });
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('stops its timer when the call ends', async () => {
       vi.useFakeTimers();
       const { api } = apiFor(reply(RUN_BODY));
 

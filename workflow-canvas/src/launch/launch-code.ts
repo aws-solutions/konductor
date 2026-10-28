@@ -20,20 +20,40 @@ export function takeLaunchCode(env: LaunchEnvironment): string | undefined {
 }
 
 /** The parts of `window` that watching for a pasted launch address needs. */
-export interface LaunchWatchEnvironment {
-  location: Pick<Location, 'hash' | 'reload'>;
+export interface LaunchWatchEnvironment extends LaunchEnvironment {
   addEventListener(type: 'hashchange', listener: () => void): void;
+  removeEventListener(type: 'hashchange', listener: () => void): void;
 }
 
 /**
- * Reloads the page when a launch code is put into the address of the open
- * page. Pasting the printed address into the same tab only changes the
- * fragment, which does not reload the page.
+ * The shape of a launch code: at least 128 bits as URL-safe characters (22 or
+ * more), and at most the 256 that the API accepts. A short fragment such as
+ * `#top` is an anchor, not a code.
  */
-export function reloadOnLaunchCode(env: LaunchWatchEnvironment): void {
-  env.addEventListener('hashchange', () => {
-    if (decodeFragment(env.location.hash) !== '') env.location.reload();
-  });
+const LAUNCH_CODE = /^[A-Za-z0-9_-]{22,256}$/;
+
+/** Whether `fragment` has the shape of a launch code. */
+export function isLaunchCode(fragment: string): boolean {
+  return LAUNCH_CODE.test(fragment);
+}
+
+/**
+ * Hands `onCode` the launch code that is put into the address of the open
+ * page, and removes it from the address. Pasting the printed address into the
+ * same tab only changes the fragment. Any other fragment is left alone, so an
+ * in-page anchor does nothing. Returns the function that stops watching.
+ */
+export function watchLaunchCode(
+  env: LaunchWatchEnvironment,
+  onCode: (code: string) => void,
+): () => void {
+  const onChange = () => {
+    if (!isLaunchCode(decodeFragment(env.location.hash))) return;
+    const code = takeLaunchCode(env);
+    if (code !== undefined) onCode(code);
+  };
+  env.addEventListener('hashchange', onChange);
+  return () => env.removeEventListener('hashchange', onChange);
 }
 
 function decodeFragment(hash: string): string {

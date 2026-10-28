@@ -29,10 +29,13 @@ export interface WorkflowApi {
   ): Promise<SaveResult>;
   /** Checks workflow text without writing it. */
   checkWorkflow(token: string, text: string): Promise<CheckResult>;
-  /** Starts a run of the root workflow with the goal; resolves to its id. */
-  startRun(token: string, goal: string): Promise<string>;
+  /**
+   * Starts a run of the root workflow with the goal; resolves to its id.
+   * Aborting the signal ends the call.
+   */
+  startRun(token: string, goal: string, signal?: AbortSignal): Promise<string>;
   /** Reads the state of a run, live or finished. */
-  getRun(token: string, runId: string): Promise<RunView>;
+  getRun(token: string, runId: string, signal?: AbortSignal): Promise<RunView>;
 }
 
 /** A call that failed, with a message that is fit to show to a person. */
@@ -45,6 +48,8 @@ export class ApiError extends Error {
   readonly runId?: string;
   /** The `diagnostics` of the error body; empty when there were none. */
   readonly diagnostics: readonly DiagnosticView[];
+  /** The `current_hash` of a 409 body: the hash of the file as it is now. */
+  readonly currentHash?: string;
 
   constructor(
     message: string,
@@ -52,6 +57,7 @@ export class ApiError extends Error {
     code?: string,
     runId?: string,
     diagnostics: readonly DiagnosticView[] = [],
+    currentHash?: string,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -59,6 +65,7 @@ export class ApiError extends Error {
     this.code = code;
     this.runId = runId;
     this.diagnostics = diagnostics;
+    this.currentHash = currentHash;
   }
 }
 

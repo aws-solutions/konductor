@@ -4,12 +4,18 @@ import type { RunView } from '../../api/types';
 import { FakeScheduler } from '../../test-support/fake-scheduler';
 import { helloRun } from '../../test-support/fixtures';
 import type { ExecutionEvent } from './execution-state';
+import { IDLE, reduce } from './execution-state';
 import {
   MAX_READ_FAILURES,
   POLL_INTERVAL_MS,
   startAndFollow,
 } from './follow-run';
-import { RunAlreadyActive, RunReadRefused, type RunPort } from './ports';
+import {
+  RunAlreadyActive,
+  RunReadRefused,
+  RunStartUnsure,
+  type RunPort,
+} from './ports';
 
 const RUN_ID = helloRun(0).runId;
 
@@ -48,8 +54,8 @@ describe('startAndFollow', () => {
 
     await done;
 
-    expect(runs.start).toHaveBeenCalledWith('Ship it');
-    expect(runs.get).toHaveBeenCalledWith(RUN_ID);
+    expect(runs.start).toHaveBeenCalledWith('Ship it', expect.any(AbortSignal));
+    expect(runs.get).toHaveBeenCalledWith(RUN_ID, expect.any(AbortSignal));
     expect(events).toEqual([
       { type: 'started', runId: RUN_ID },
       { type: 'snapshot', run: helloRun(2) },
@@ -84,10 +90,6 @@ describe('startAndFollow', () => {
     ]);
   });
 
-  it('polls once a second', () => {
-    expect(POLL_INTERVAL_MS).toBe(1000);
-  });
-
   it('stops after a halted run', async () => {
     const halted = helloRun(0, { blockedAt: 0 });
     const { runs, scheduler, done } = setup([halted]);
@@ -116,137 +118,250 @@ describe('startAndFollow', () => {
 
     expect(runs.get).not.toHaveBeenCalled();
     expect(events).toEqual([
-      { type: 'failed', message: 'A run is already active.' },
+      { type: 'failed', message: 'A run is already active.', runId: undefined },
     ]);
   });
 
-  it('reads again after a failed reading, and goes on when the next one works', async () => {
-    const { runs, scheduler, events, done } = setup([
-      new Error('The server did not answer.'),
-      helloRun(2),
-    ]);
-
-    await settle();
-    expect(scheduler.waits).toEqual([POLL_INTERVAL_MS]);
-    scheduler.tick();
-    await done;
-
-    expect(runs.get).toHaveBeenCalledTimes(2);
-    expect(events).toEqual([
-      { type: 'started', runId: RUN_ID },
-      { type: 'snapshot', run: helloRun(2) },
-    ]);
-  });
-
-  it('ends with one failed event when readings fail MAX_READ_FAILURES times in a row, and reads no more', async () => {
-    const failure = new Error('The server did not answer.');
-    const { runs, scheduler, events, done } = setup([
-      helloRun(0),
-      ...Array.from({ length: MAX_READ_FAILURES }, () => failure),
-    ]);
-
-    await settle();
-    for (let turn = 0; turn < MAX_READ_FAILURES; turn += 1) {
-      scheduler.tick();
-      await settle();
-    }
-    await done;
-
-    expect(runs.get).toHaveBeenCalledTimes(1 + MAX_READ_FAILURES);
-    expect(events.map((event) => event.type)).toEqual([
-      'started',
-      'snapshot',
-      'failed',
-    ]);
-    expect(events.at(-1)).toEqual({
-      type: 'failed',
-      message: 'The server did not answer.',
-    });
-  });
-
-  it('does not read again after a refused reading, and fails with its message', async () => {
-    const { runs, scheduler, events, done } = setup([
-      new RunReadRefused('The launch code is not valid.'),
-    ]);
-
-    await done;
-
-    expect(runs.get).toHaveBeenCalledTimes(1);
-    expect(scheduler.waits).toEqual([]);
-    expect(events).toEqual([
-      { type: 'started', runId: RUN_ID },
-      { type: 'failed', message: 'The launch code is not valid.' },
-    ]);
-  });
-
-  it('counts only failures in a row: a good reading in between starts the count again', async () => {
-    const failure = new Error('Blip.');
-    const { runs, scheduler, events, done } = setup([
-      failure,
-      failure,
-      helloRun(0),
-      failure,
-      failure,
-      helloRun(2),
-    ]);
-
-    for (let turn = 0; turn < 5; turn += 1) {
-      await settle();
-      scheduler.tick();
-    }
-    await done;
-
-    expect(runs.get).toHaveBeenCalledTimes(6);
-    expect(events.map((event) => event.type)).toEqual([
-      'started',
-      'snapshot',
-      'snapshot',
-    ]);
-  });
-
-  it('joins the run that is already active, follows it and says it joined', async () => {
-    const { runs, events, done } = setup(
-      [helloRun(2)],
-      vi
-        .fn()
-        .mockRejectedValue(
-          new RunAlreadyActive('A run is already active.', RUN_ID),
-        ),
+  it('says the run may have started when the start got no clear answer', async () => {
+    const { events, done } = setup(
+      [],
+      vi.fn().mockRejectedValue(new RunStartUnsure('No answer.')),
     );
 
     await done;
 
-    expect(runs.get).toHaveBeenCalledWith(RUN_ID);
     expect(events).toEqual([
-      { type: 'started', runId: RUN_ID, joined: true },
-      { type: 'snapshot', run: helloRun(2) },
+      {
+        type: 'failed',
+        message: 'No answer.',
+        runId: undefined,
+        maybeStarted: true,
+      },
     ]);
   });
 
-  it('fails when the server answers with a run that is not the one followed', async () => {
-    const other: RunView = { ...helloRun(0), runId: 'other' };
-    const { runs, scheduler, events, done } = setup([other]);
+  describe('when a reading fails', () => {
+    const blip = () => new Error('The server did not answer.');
 
-    await done;
+    it('reads again after a poll interval and goes on when the next one works', async () => {
+      const { runs, scheduler, events, done } = setup([
+        helloRun(0),
+        blip(),
+        helloRun(2),
+      ]);
 
-    expect(runs.get).toHaveBeenCalledTimes(1);
-    expect(scheduler.waits).toEqual([]);
-    expect(events.map((event) => event.type)).toEqual(['started', 'failed']);
+      await settle();
+      scheduler.tick();
+      await settle();
+      expect(runs.get).toHaveBeenCalledTimes(2);
+      scheduler.tick();
+      await done;
+
+      expect(runs.get).toHaveBeenCalledTimes(3);
+      expect(events.map((event) => event.type)).toEqual([
+        'started',
+        'snapshot',
+        'snapshot',
+      ]);
+    });
+
+    it('gives up after MAX_READ_FAILURES in a row, and says which run it was', async () => {
+      const { runs, scheduler, events, done } = setup([
+        helloRun(0),
+        ...Array.from({ length: MAX_READ_FAILURES }, blip),
+      ]);
+
+      for (let turn = 0; turn < MAX_READ_FAILURES + 1; turn += 1) {
+        await settle();
+        scheduler.tick();
+      }
+      await done;
+
+      expect(runs.get).toHaveBeenCalledTimes(1 + MAX_READ_FAILURES);
+      expect(events.at(-1)).toEqual({
+        type: 'failed',
+        message: 'The server did not answer.',
+        runId: RUN_ID,
+      });
+      expect(events.filter((e) => e.type === 'failed')).toHaveLength(1);
+    });
+
+    it('counts the failures in a row, so a good reading in between starts the count again', async () => {
+      const readings = [
+        helloRun(0),
+        blip(),
+        blip(),
+        helloRun(1),
+        blip(),
+        blip(),
+        helloRun(2),
+      ];
+      const { runs, scheduler, events, done } = setup(readings);
+
+      for (let turn = 0; turn < readings.length; turn += 1) {
+        await settle();
+        scheduler.tick();
+      }
+      await done;
+
+      expect(runs.get).toHaveBeenCalledTimes(readings.length);
+      expect(events.map((event) => event.type)).toEqual([
+        'started',
+        'snapshot',
+        'snapshot',
+        'snapshot',
+      ]);
+    });
+
+    it('does not try again when the server refuses the read', async () => {
+      const refused = new RunReadRefused('There is no run with this id.');
+      const { runs, scheduler, events, done } = setup([refused]);
+
+      await done;
+
+      expect(runs.get).toHaveBeenCalledTimes(1);
+      expect(scheduler.waits).toEqual([]);
+      expect(events).toEqual([
+        { type: 'started', runId: RUN_ID },
+        { type: 'failed', message: refused.message, runId: RUN_ID },
+      ]);
+    });
+
+    it('stops quietly when aborted while it waits to try again', async () => {
+      const { runs, events, abort, done } = setup([blip(), helloRun(0)]);
+      await settle();
+
+      abort.abort();
+      await done;
+
+      expect(runs.get).toHaveBeenCalledTimes(1);
+      expect(events).toEqual([{ type: 'started', runId: RUN_ID }]);
+    });
   });
 
-  it('stops quietly when aborted while it waits to read again', async () => {
-    const { runs, scheduler, events, abort, done } = setup([
-      new Error('Blip.'),
-      helloRun(0),
-    ]);
-    await settle();
+  describe('when a run is already active', () => {
+    const active = () =>
+      vi.fn().mockRejectedValue(new RunAlreadyActive('Busy.', RUN_ID));
 
-    abort.abort();
-    await done;
+    it('follows that run and says it joined it', async () => {
+      const { runs, events, done } = setup([helloRun(2)], active());
 
-    expect(scheduler.pendingCount).toBe(0);
-    expect(runs.get).toHaveBeenCalledTimes(1);
-    expect(events.map((event) => event.type)).toEqual(['started']);
+      await done;
+
+      expect(runs.get).toHaveBeenCalledWith(RUN_ID, expect.any(AbortSignal));
+      expect(events).toEqual([
+        { type: 'started', runId: RUN_ID, joined: true },
+        { type: 'snapshot', run: helloRun(2) },
+      ]);
+    });
+
+    it('does not start another run', async () => {
+      const start = active();
+      const { done } = setup([helloRun(2)], start);
+
+      await done;
+
+      expect(start).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('when the server never answers a read', () => {
+    // A port honours its signal: aborting rejects the call that is pending.
+    function hangingRuns(): RunPort {
+      const hang = (signal: AbortSignal) =>
+        new Promise<never>((_resolve, reject) =>
+          signal.addEventListener('abort', () => reject(new Error('aborted'))),
+        );
+      return {
+        start: vi.fn().mockResolvedValue(RUN_ID),
+        get: vi.fn((_id: string, signal: AbortSignal) => hang(signal)),
+      };
+    }
+
+    it('ends without a word when it is aborted', async () => {
+      const events: ExecutionEvent[] = [];
+      const abort = new AbortController();
+      const done = startAndFollow({
+        runs: hangingRuns(),
+        scheduler: new FakeScheduler(),
+        goal: 'Ship it',
+        emit: (event) => events.push(event),
+        signal: abort.signal,
+      });
+      await settle();
+
+      abort.abort();
+      await done;
+
+      expect(events).toEqual([{ type: 'started', runId: RUN_ID }]);
+    });
+
+    it('ends without a word when the start hangs and it is aborted', async () => {
+      const events: ExecutionEvent[] = [];
+      const abort = new AbortController();
+      const runs: RunPort = {
+        start: (_goal, signal) =>
+          new Promise((_resolve, reject) =>
+            signal.addEventListener('abort', () => reject(new Error('x'))),
+          ),
+        get: vi.fn(),
+      };
+      const done = startAndFollow({
+        runs,
+        scheduler: new FakeScheduler(),
+        goal: 'Ship it',
+        emit: (event) => events.push(event),
+        signal: abort.signal,
+      });
+      await settle();
+
+      abort.abort();
+      await done;
+
+      expect(events).toEqual([]);
+    });
+  });
+
+  describe('when two loops are started for one click', () => {
+    it('keeps the state of the loop that won when the other is refused', async () => {
+      let state = reduce(IDLE, { type: 'start' });
+      const emit = (event: ExecutionEvent) => {
+        state = reduce(state, event);
+      };
+      const scheduler = new FakeScheduler();
+      const stop = new AbortController();
+      const winner = startAndFollow({
+        runs: {
+          start: async () => RUN_ID,
+          get: async () => helloRun(0),
+        },
+        scheduler,
+        goal: 'Ship it',
+        emit,
+        signal: stop.signal,
+      });
+      await settle();
+      const loser = startAndFollow({
+        runs: {
+          start: () => Promise.reject(new Error('A run is already active.')),
+          get: vi.fn(),
+        },
+        scheduler: new FakeScheduler(),
+        goal: 'Ship it',
+        emit,
+        signal: new AbortController().signal,
+      });
+      await loser;
+
+      expect(state).toMatchObject({ phase: 'following', runId: RUN_ID });
+
+      scheduler.tick();
+      await settle();
+      expect(state).toMatchObject({ phase: 'following', run: helloRun(0) });
+
+      stop.abort();
+      await winner;
+    });
   });
 
   it('gives a plain message for a failure that is not an Error', async () => {

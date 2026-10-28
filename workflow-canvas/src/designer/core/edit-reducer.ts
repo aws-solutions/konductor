@@ -14,8 +14,13 @@ import {
   setAgent,
   type Draft,
 } from './draft';
-import { openDocument, type EditEvent, type EditState } from './edit-state';
-import { canEdit, canSave, isDirty } from './edit-view';
+import {
+  openDocument,
+  type EditEvent,
+  type EditState,
+  type SaveState,
+} from './edit-state';
+import { canSave, changeBlocker, isDirty, textOf } from './edit-view';
 import { checkOf } from './problems';
 
 const NOT_EDITABLE =
@@ -24,7 +29,7 @@ const NOT_EDITABLE =
 // A change of the draft: a new revision, and a finished save is old news.
 // A read-only workflow takes no change.
 function edited(state: EditState, draft: Draft, selectedId: string): EditState {
-  if (draft === state.draft || !canEdit(state)) return state;
+  if (draft === state.draft || changeBlocker(state) !== undefined) return state;
   const phase = state.save.phase;
   const settled =
     phase === 'saved' || phase === 'reloaded' || phase === 'failed';
@@ -119,10 +124,34 @@ function refused(
 }
 
 function reloaded(state: EditState, document: WorkflowDocument): EditState {
-  const next = openDocument(document);
+  const next = openDocument(document, state.revision + 1);
+  // The reload replaces the draft; its text is kept so it can be recovered.
+  const discarded = isDirty(state) ? textOf(state) : undefined;
   return next
-    ? { ...next, save: { phase: 'reloaded' } }
+    ? {
+        ...next,
+        save:
+          discarded === undefined
+            ? { phase: 'reloaded' }
+            : { phase: 'reloaded', discarded },
+      }
     : { ...state, save: { phase: 'conflict', problem: NOT_EDITABLE } };
+}
+
+// The answer to a save counts only while that save is going on; a late answer
+// to an earlier one, such as one that comes after a reload, changes nothing.
+function whileSaving(state: EditState, apply: () => EditState): EditState {
+  return state.save.phase === 'saving' ? apply() : state;
+}
+
+function whileReloading(state: EditState, apply: () => EditState): EditState {
+  return state.save.phase === 'reloading' ? apply() : state;
+}
+
+function failure(message: string, uncertain: true | undefined): SaveState {
+  return uncertain
+    ? { phase: 'failed', message, uncertain }
+    : { phase: 'failed', message };
 }
 
 /**
@@ -134,7 +163,9 @@ export function reduce(
   state: EditState | undefined,
   event: EditEvent,
 ): EditState | undefined {
-  if (event.type === 'open') return openDocument(event.document);
+  if (event.type === 'open') {
+    return openDocument(event.document, state ? state.revision + 1 : 0);
+  }
   if (!state) return undefined;
   switch (event.type) {
     case 'select':
@@ -152,18 +183,29 @@ export function reduce(
     case 'save':
       return canSave(state) ? { ...state, save: { phase: 'saving' } } : state;
     case 'saved':
-      return savedAs(state, event.text, event.result);
+      return whileSaving(state, () => savedAs(state, event.text, event.result));
     case 'conflict':
-      return { ...state, save: { phase: 'conflict' } };
+      return whileSaving(state, () => ({
+        ...state,
+        save: { phase: 'conflict' },
+      }));
     case 'refused':
-      return refused(state, event.revision, event.diagnostics);
+      return whileSaving(state, () =>
+        refused(state, event.revision, event.diagnostics),
+      );
     case 'failed':
-      return { ...state, save: { phase: 'failed', message: event.message } };
+      return whileSaving(state, () => ({
+        ...state,
+        save: failure(event.message, event.uncertain),
+      }));
     case 'reload':
       return { ...state, save: { phase: 'reloading' } };
     case 'reloaded':
-      return reloaded(state, event.document);
+      return whileReloading(state, () => reloaded(state, event.document));
     case 'reload-failed':
-      return { ...state, save: { phase: 'conflict', problem: event.message } };
+      return whileReloading(state, () => ({
+        ...state,
+        save: { phase: 'conflict', problem: event.message },
+      }));
   }
 }

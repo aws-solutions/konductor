@@ -2,7 +2,12 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { AA_GRAPHIC, AA_TEXT, contrastRatio } from '../src/theme/contrast.ts';
-import { colorsOf, RADIUS, type ThemeMode } from '../src/theme/tokens.ts';
+import {
+  CANVAS,
+  colorsOf,
+  RADIUS,
+  type ThemeMode,
+} from '../src/theme/tokens.ts';
 
 const css = readFileSync(
   new URL('../src/canvas/canvas.css', import.meta.url),
@@ -92,26 +97,37 @@ describe.each(MODES)('canvas.css colours in %s', (mode, v) => {
     },
   );
 
-  it('uses the colours of the theme module', () => {
+  it('uses the colours of the theme module, and names every one it uses', () => {
     const c = colorsOf(mode);
+    const k = CANVAS[mode];
+    const expected: Record<string, string> = {
+      '--wf-canvas-bg': c.bg,
+      '--wf-node-bg': c.surface,
+      '--wf-node-border': c.control,
+      '--wf-text': c.text,
+      '--wf-text-muted': c.textMuted,
+      '--wf-focus': c.link,
+      '--wf-controls-bg': c.surface,
+      '--wf-controls-border': c.borderStrong,
+      '--wf-controls-bg-hover': c.infoBg,
+      '--wf-canvas-dots': k.dots,
+      '--wf-edge': k.edge,
+      '--wf-port-fill': k.portFill,
+      '--wf-port-rim': k.portRim,
+      '--wf-port-letter-out': k.portLetterOut,
+      '--wf-port-letter-in': k.portLetterIn,
+      '--wf-port-notch-bg': k.portNotchBg,
+      '--wf-state-queued': c.textMuted,
+      '--wf-state-queued-bg': c.surfaceAlt,
+      '--wf-state-running': c.link,
+      '--wf-state-running-bg': c.infoBg,
+      '--wf-state-done': c.success,
+      '--wf-state-done-bg': c.successBg,
+      '--wf-state-failed': c.error,
+      '--wf-state-failed-bg': c.errorBg,
+    };
 
-    expect(v['--wf-canvas-bg']).toBe(c.bg);
-    expect(v['--wf-node-bg']).toBe(c.surface);
-    expect(v['--wf-node-border']).toBe(c.control);
-    expect(v['--wf-text']).toBe(c.text);
-    expect(v['--wf-text-muted']).toBe(c.textMuted);
-    expect(v['--wf-focus']).toBe(c.link);
-    expect(v['--wf-controls-bg']).toBe(c.surface);
-    expect(v['--wf-controls-border']).toBe(c.borderStrong);
-    expect(v['--wf-controls-bg-hover']).toBe(c.infoBg);
-    expect(v['--wf-state-queued']).toBe(c.textMuted);
-    expect(v['--wf-state-queued-bg']).toBe(c.surfaceAlt);
-    expect(v['--wf-state-running']).toBe(c.link);
-    expect(v['--wf-state-running-bg']).toBe(c.infoBg);
-    expect(v['--wf-state-done']).toBe(c.success);
-    expect(v['--wf-state-done-bg']).toBe(c.successBg);
-    expect(v['--wf-state-failed']).toBe(c.error);
-    expect(v['--wf-state-failed-bg']).toBe(c.errorBg);
+    expect(v).toEqual(expected);
   });
 });
 

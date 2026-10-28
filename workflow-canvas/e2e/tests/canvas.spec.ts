@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { Locator } from '@playwright/test';
+import { STUB_LAUNCH_CODE } from '../../playwright.shared';
 import { expect, test } from '../support/fixtures';
+import { sharedSession } from '../support/session';
 import {
   NODE_IDS,
   NODE_NAMES,
@@ -115,6 +117,80 @@ test('starts each link at the tip of a tab and ends it at the top of a notch', a
     expect(Math.abs((link?.y ?? 0) - bottom(tab))).toBeLessThan(REACH);
     expect(Math.abs(bottom(link) - (notch?.y ?? 0))).toBeLessThan(REACH + 4);
   }
+});
+
+test('fits every node of a workflow of 40 stages in the canvas', async ({
+  page,
+}) => {
+  const stages = Array.from({ length: 40 }, (_, i) => ({
+    name: `s${i + 1}`,
+    agent: 'k-developer',
+  }));
+  await page.route('**/api/session', (route) =>
+    route.fulfill({ json: sharedSession() }),
+  );
+  await page.route('**/api/workflow', (route) =>
+    route.fulfill({
+      json: {
+        name: 'big',
+        text: 'name: big\n',
+        hash: 'a'.repeat(64),
+        read_only: false,
+        view: { name: 'big', intent: { outcome: 'Run it' }, stages },
+        diagnostics: [],
+      },
+    }),
+  );
+  const canvas = new WorkflowCanvasPage(page);
+  await canvas.open(STUB_LAUNCH_CODE);
+
+  const area = await canvas.graph.boundingBox();
+  const nodes = canvas.graph.locator('.react-flow__node');
+  await expect(nodes).toHaveCount(42);
+  for (const node of await nodes.all()) {
+    const box = await node.boundingBox();
+    expect(box?.x).toBeGreaterThanOrEqual(area?.x ?? 0);
+    expect(box?.y).toBeGreaterThanOrEqual(area?.y ?? 0);
+    expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(
+      (area?.x ?? 0) + (area?.width ?? 0),
+    );
+    expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(
+      (area?.y ?? 0) + (area?.height ?? 0),
+    );
+  }
+});
+
+test('shows in full the Japanese text that a node cuts short', async ({
+  page,
+}) => {
+  const outcome = '作'.repeat(60);
+  const name = '日本語の長いステージ名です';
+  await page.route('**/api/session', (route) =>
+    route.fulfill({ json: sharedSession() }),
+  );
+  await page.route('**/api/workflow', (route) =>
+    route.fulfill({
+      json: {
+        name: 'jp',
+        text: 'name: jp\n',
+        hash: 'a'.repeat(64),
+        read_only: false,
+        view: {
+          name: 'jp',
+          intent: { outcome },
+          stages: [{ name, agent: 'a' }],
+        },
+        diagnostics: [],
+      },
+    }),
+  );
+  const canvas = new WorkflowCanvasPage(page);
+  await canvas.open(STUB_LAUNCH_CODE);
+
+  await expect(page.getByTestId('full-intent')).toHaveText(
+    `Intent: ${outcome}`,
+  );
+  await expect(page.getByTestId(`full-stage-${name}`)).toBeVisible();
 });
 
 test('removes the launch code from the address', async ({ canvas }) => {

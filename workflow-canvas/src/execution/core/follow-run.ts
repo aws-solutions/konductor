@@ -5,6 +5,7 @@ import type { ExecutionEvent } from './execution-state';
 import {
   RunAlreadyActive,
   RunReadRefused,
+  RunStartUnsure,
   type RunPort,
   type Scheduler,
 } from './ports';
@@ -28,18 +29,34 @@ interface Watch {
   signal: AbortSignal;
 }
 
+// The failure event of a loop. A start that got no clear answer says so.
+function failure(
+  error: unknown,
+  runId: string | undefined,
+): Extract<ExecutionEvent, { type: 'failed' }> {
+  const failed = {
+    type: 'failed',
+    message: messageOf(error, UNKNOWN_FAILURE),
+    runId,
+  } as const;
+  return error instanceof RunStartUnsure
+    ? { ...failed, maybeStarted: true }
+    : failed;
+}
+
 /** What `startAndFollow` needs: the ports, the goal and where events go. */
 export interface FollowRequest extends Watch {
   goal: string;
 }
 
 // Starts a run, or names the run that is already active in its place.
-async function begin(
-  runs: RunPort,
-  goal: string,
-): Promise<{ runId: string; joined: boolean }> {
+async function begin({
+  runs,
+  goal,
+  signal,
+}: FollowRequest): Promise<{ runId: string; joined: boolean }> {
   try {
-    return { runId: await runs.start(goal), joined: false };
+    return { runId: await runs.start(goal, signal), joined: false };
   } catch (error) {
     if (error instanceof RunAlreadyActive) {
       return { runId: error.runId, joined: true };
@@ -57,7 +74,7 @@ async function read(
 ): Promise<RunView | undefined> {
   for (let failures = 1; ; failures += 1) {
     try {
-      return await runs.get(runId);
+      return await runs.get(runId, signal);
     } catch (error) {
       if (
         signal.aborted ||
@@ -84,7 +101,7 @@ async function follow(
     const run = known ?? (await read(request, runId));
     if (signal.aborted || run === undefined) return;
     if (run.runId !== runId) {
-      emit({ type: 'failed', message: OTHER_RUN });
+      emit({ type: 'failed', message: OTHER_RUN, runId });
       return;
     }
     emit({ type: 'snapshot', run });
@@ -100,17 +117,20 @@ async function follow(
  * It never rejects: a failure ends the loop with one `failed` event.
  */
 export async function startAndFollow(request: FollowRequest): Promise<void> {
-  const { runs, goal, emit, signal } = request;
+  const { emit, signal } = request;
+  let runId: string | undefined;
   try {
-    const { runId, joined } = await begin(runs, goal);
+    const begun = await begin(request);
+    runId = begun.runId;
     if (signal.aborted) return;
     emit(
-      joined ? { type: 'started', runId, joined } : { type: 'started', runId },
+      begun.joined
+        ? { type: 'started', runId, joined: true }
+        : { type: 'started', runId },
     );
     await follow(request, runId);
   } catch (error) {
-    if (!signal.aborted)
-      emit({ type: 'failed', message: messageOf(error, UNKNOWN_FAILURE) });
+    if (!signal.aborted) emit(failure(error, runId));
   }
 }
 
@@ -119,15 +139,37 @@ export interface ResumeRequest extends Watch {
   runId: string;
 }
 
+// The look at the remembered run could not finish, so nobody knows whether it
+// is going. Say so under the run, which the alert names.
+function reportUnknownRun(
+  { runId, emit }: ResumeRequest,
+  error: unknown,
+): void {
+  emit({ type: 'start' });
+  emit({ type: 'started', runId, joined: true });
+  emit({ type: 'failed', message: messageOf(error, UNKNOWN_FAILURE), runId });
+}
+
 /**
  * Joins the run `runId` if it is still running, as a page that was reloaded
- * does, and follows it like `startAndFollow`. A run that has ended, one that
- * cannot be read, or another run says nothing: there is nothing to resume.
- * It never rejects.
+ * does, and follows it like `startAndFollow`. The first reading is tried
+ * again like any other. A run that has ended, another run, or one that the
+ * server will not give (it started again) says nothing: there is nothing to
+ * resume. When the readings fail for any other reason, whether the run is
+ * going is not known, and the failure is reported like a lost run. It never
+ * rejects.
  */
 export async function resumeRun(request: ResumeRequest): Promise<void> {
-  const { runs, runId, emit, signal } = request;
-  const run = await runs.get(runId).catch(() => undefined);
+  const { runId, emit, signal } = request;
+  let run: RunView | undefined;
+  try {
+    run = await read(request, runId);
+  } catch (error) {
+    if (!signal.aborted && !(error instanceof RunReadRefused)) {
+      reportUnknownRun(request, error);
+    }
+    return;
+  }
   if (signal.aborted || run?.runId !== runId || run.status !== 'running') {
     return;
   }
@@ -136,7 +178,12 @@ export async function resumeRun(request: ResumeRequest): Promise<void> {
   try {
     await follow(request, runId, run);
   } catch (error) {
-    if (!signal.aborted)
-      emit({ type: 'failed', message: messageOf(error, UNKNOWN_FAILURE) });
+    if (!signal.aborted) {
+      emit({
+        type: 'failed',
+        message: messageOf(error, UNKNOWN_FAILURE),
+        runId,
+      });
+    }
   }
 }

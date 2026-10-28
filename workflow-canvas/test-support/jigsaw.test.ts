@@ -54,7 +54,9 @@ describe('the shape of a port', () => {
   });
 
   it('puts a tab and a notch in line, whatever the height of the node', () => {
-    expect(portTransform(tabTop(76))).toBe(`translate(${PORT_X - 13} 74)`);
+    expect(portTransform(tabTop(NODE_HEIGHT.stage))).toBe(
+      `translate(${PORT_X - 13} ${NODE_HEIGHT.stage - 2})`,
+    );
     expect(portTransform(NOTCH_TOP)).toBe(`translate(${PORT_X - 13} 2)`);
   });
 });

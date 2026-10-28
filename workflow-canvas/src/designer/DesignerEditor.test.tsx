@@ -59,6 +59,14 @@ const wrapper = () => createWrapper(document.body);
 const nameInput = () =>
   screen.getByRole('textbox', { name: 'name' }) as HTMLInputElement;
 const agentSelect = () => wrapper().findSelect()!;
+// The reason of a button that is off, which the button carries after its label.
+function reasonOf(label: string): string | undefined {
+  const text = wrapper()
+    .findAllButtons()
+    .map((button) => button.getElement().textContent ?? '')
+    .find((content) => content.startsWith(label));
+  return text?.slice(label.length) || undefined;
+}
 const saveButton = () => screen.getByRole('button', { name: 'Save' });
 const addButton = () => screen.getByRole('button', { name: 'Add stage' });
 const deleteButton = () => screen.getByRole('button', { name: 'Delete stage' });
@@ -135,6 +143,44 @@ describe('the Properties of the selected stage', () => {
 
     await waitFor(() => expect(nameInput().value).toBe('review'));
     expect(document.activeElement).toBe(nameInput());
+  });
+
+  it('moves focus to the name when Enter is pressed on the stage that is already selected', async () => {
+    await openDesigner();
+    const node = screen.getByRole('group', {
+      name: 'Stage draft, agent k-developer, harness kiro-cli, selected',
+    });
+
+    node.focus();
+    fireEvent.keyDown(node, { key: 'Enter' });
+
+    await waitFor(() => expect(document.activeElement).toBe(nameInput()));
+  });
+
+  it('moves focus to the name when Space is pressed on the stage that is already selected', async () => {
+    await openDesigner();
+    const node = screen.getByRole('group', {
+      name: 'Stage draft, agent k-developer, harness kiro-cli, selected',
+    });
+
+    node.focus();
+    fireEvent.keyDown(node, { key: ' ' });
+
+    await waitFor(() => expect(document.activeElement).toBe(nameInput()));
+  });
+
+  it('keeps focus on a node when Escape is pressed on it', async () => {
+    await openDesigner();
+    const node = screen.getByRole('group', {
+      name: 'Stage draft, agent k-developer, harness kiro-cli, selected',
+    });
+    node.focus();
+
+    fireEvent.keyDown(node, { key: 'Escape' });
+    await new Promise((done) => requestAnimationFrame(() => done(undefined)));
+    await new Promise((done) => requestAnimationFrame(() => done(undefined)));
+
+    expect(document.activeElement).toBe(node);
   });
 
   it('does not select the intent or the end', async () => {
@@ -269,7 +315,7 @@ describe('adding a stage', () => {
     expect(screen.getByTestId('node-stage-agent-2')).toBeTruthy();
   });
 
-  it('is off, with the reason, at the most stages the API allows', async () => {
+  it('is off, and says why, at the most stages the API allows', async () => {
     const stages = Array.from({ length: 40 }, (_, index) => ({
       name: `stage-${index}`,
       agent: 'k-developer',
@@ -280,6 +326,7 @@ describe('adding a stage', () => {
     });
 
     expect(isOff(addButton())).toBe(true);
+    expect(reasonOf('Add stage')).toBe('A workflow has at most 40 stages.');
     fireEvent.click(addButton());
 
     expect(stageLabels()).toHaveLength(40);
@@ -300,11 +347,14 @@ describe('deleting a stage', () => {
     expect(status()).toBe('Unsaved changes');
   });
 
-  it('is off, with the reason, for the last stage', async () => {
+  it('is off, and says why, for the last stage', async () => {
     await openDesigner();
     fireEvent.click(deleteButton());
 
     expect(isOff(deleteButton())).toBe(true);
+    expect(reasonOf('Delete stage')).toBe(
+      'A workflow needs at least one stage.',
+    );
     fireEvent.click(deleteButton());
 
     expect(stageLabels()).toHaveLength(1);
@@ -641,7 +691,9 @@ describe('a save that finds the file changed', () => {
     const alert = screen.getByTestId('conflict');
     expect(alert.textContent).toContain('The file changed on disk');
     expect(alert.textContent).toContain('nothing was saved');
-    expect(within(alert).getByRole('button')).toBeTruthy();
+    expect(
+      within(alert).getByRole('button', { name: 'Load the file again' }),
+    ).toBeTruthy();
     expect(isOff(saveButton())).toBe(true);
   });
 
@@ -661,7 +713,9 @@ describe('a save that finds the file changed', () => {
       hash: 'e'.repeat(64),
       view: { ...HELLO_VIEW, stages: [{ name: 'only', agent: 'k-tpm' }] },
     });
-    const reload = within(screen.getByTestId('conflict')).getByRole('button');
+    const reload = within(screen.getByTestId('conflict')).getByRole('button', {
+      name: 'Load the file again',
+    });
     reload.focus();
 
     fireEvent.click(reload);
@@ -673,11 +727,66 @@ describe('a save that finds the file changed', () => {
     await waitFor(() => expect(document.activeElement).toBe(nameInput()));
   });
 
+  it('lets the person take the draft away before it is replaced', async () => {
+    await conflict();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy my version' }));
+
+    const mine = (await screen.findByRole('textbox', {
+      name: 'My version of the workflow file',
+    })) as HTMLTextAreaElement;
+    expect(mine.value).toContain('- name: write');
+  });
+
+  it('keeps the text of the draft in view after the file was loaded again', async () => {
+    const { edits } = await conflict();
+    edits.reload.mockResolvedValue({
+      ...HELLO_DOCUMENT,
+      hash: 'e'.repeat(64),
+      view: { ...HELLO_VIEW, stages: [{ name: 'only', agent: 'k-tpm' }] },
+    });
+
+    fireEvent.click(
+      within(screen.getByTestId('conflict')).getByRole('button', {
+        name: 'Load the file again',
+      }),
+    );
+
+    const note = await screen.findByTestId('discarded');
+    expect(note.textContent).toContain('Your changes were replaced');
+    fireEvent.click(
+      within(note).getByRole('button', { name: 'Copy my version' }),
+    );
+    const mine = (await screen.findByRole('textbox', {
+      name: 'My version of the workflow file',
+    })) as HTMLTextAreaElement;
+    expect(mine.value).toContain('- name: write');
+  });
+
+  it('does not let the stages change while the file loads', async () => {
+    const { edits } = await conflict();
+    edits.reload.mockReturnValue(new Promise(() => {}));
+
+    fireEvent.click(
+      within(screen.getByTestId('conflict')).getByRole('button', {
+        name: 'Load the file again',
+      }),
+    );
+
+    await waitFor(() => expect(nameInput().readOnly).toBe(true));
+    expect(isOff(addButton())).toBe(true);
+    expect(isOff(deleteButton())).toBe(true);
+  });
+
   it('keeps the conflict, with the sentence, when the load fails', async () => {
     const { edits } = await conflict();
     edits.reload.mockRejectedValue(new Error('The server did not answer.'));
 
-    fireEvent.click(within(screen.getByTestId('conflict')).getByRole('button'));
+    fireEvent.click(
+      within(screen.getByTestId('conflict')).getByRole('button', {
+        name: 'Load the file again',
+      }),
+    );
 
     await waitFor(() =>
       expect(screen.getByTestId('conflict').textContent).toContain(
@@ -741,6 +850,40 @@ describe('a save whose answer is lost', () => {
 
     expect(await screen.findByText('The server did not answer.')).toBeTruthy();
     expect(status()).toBe('Unsaved changes');
+  });
+});
+
+describe('a save whose answer is lost and whose file cannot be read', () => {
+  it('says it is not known whether the file was written', async () => {
+    const edits = acceptingEdits();
+    edits.save.mockRejectedValueOnce(
+      new SaveLost('The server did not answer.'),
+    );
+    edits.reload.mockRejectedValueOnce(new Error('Still down.'));
+    await openDesigner(edits);
+    type('write');
+
+    fireEvent.click(saveButton());
+
+    expect(await screen.findByText('The save did not finish')).toBeTruthy();
+    expect(screen.getByText(/may or may not have gone through/)).toBeTruthy();
+    expect(screen.queryByText('The workflow was not saved')).toBeNull();
+  });
+});
+
+describe('a save that is refused with nothing to fix', () => {
+  it('shows the sentence of the server', async () => {
+    const edits = acceptingEdits();
+    edits.save.mockRejectedValueOnce(
+      new SaveRefused('The workflow has errors.', []),
+    );
+    await openDesigner(edits);
+    type('write');
+
+    fireEvent.click(saveButton());
+
+    expect(await screen.findByText('The workflow has errors.')).toBeTruthy();
+    expect(screen.getByText('The workflow was not saved')).toBeTruthy();
   });
 });
 
@@ -821,7 +964,18 @@ describe('a workflow that the server says is read-only', () => {
     ).toBe(true);
     expect(isOff(addButton())).toBe(true);
     expect(isOff(deleteButton())).toBe(true);
+    expect(reasonOf('Add stage')).toBe('The workflow is read-only.');
+    expect(reasonOf('Delete stage')).toBe('The workflow is read-only.');
     expect(isOff(saveButton())).toBe(true);
+  });
+
+  it('says in a note that it is read-only', async () => {
+    await openDesigner(undefined, { ...HELLO_DOCUMENT, readOnly: true });
+
+    expect(screen.getByTestId('read-only-note').textContent).toContain(
+      'The workflow is read-only.',
+    );
+    expect(screen.queryByText(/Select a stage to edit it\./)).toBeNull();
   });
 });
 
@@ -838,5 +992,47 @@ describe('a workflow that cannot be edited', () => {
 
     expect(await screen.findByText('Nothing to draw')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
+  });
+});
+
+describe('what a screen reader is told', () => {
+  const live = () => screen.getByTestId('designer-live').textContent;
+
+  it('says a stage was added', async () => {
+    await openDesigner();
+
+    fireEvent.click(addButton());
+
+    expect(live()).toBe('Stage added and selected.');
+  });
+
+  it('says which stage was deleted', async () => {
+    await openDesigner();
+    fireEvent.click(screen.getByTestId('node-stage-review'));
+    await waitFor(() => expect(nameInput().value).toBe('review'));
+
+    fireEvent.click(deleteButton());
+
+    expect(live()).toBe('Stage review deleted.');
+  });
+
+  it('says which stage was selected', async () => {
+    await openDesigner();
+
+    fireEvent.click(screen.getByTestId('node-stage-review'));
+
+    await waitFor(() => expect(live()).toBe('Stage review selected.'));
+  });
+});
+
+describe('the verdict on a stage', () => {
+  it('is not given for a draft that no check has spoken for', async () => {
+    await openDesigner();
+    expect(screen.getByText('Complete')).toBeTruthy();
+
+    type('BAD NAME!!');
+
+    expect(screen.queryByText('Complete')).toBeNull();
+    expect(screen.queryByText('Needs a fix')).toBeNull();
   });
 });

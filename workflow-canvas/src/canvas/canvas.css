@@ -18,8 +18,8 @@
   --wf-node-border: #7a7490;
   --wf-text: #16131f;
   --wf-text-muted: #56516a;
-  /* The ports are the same in both modes: a dark rim keeps them readable on
-     the canvas and on a card. */
+  /* The ports are the same in both modes. The fill and the letters carry the
+     contrast; the rim only outlines them. */
   --wf-port-fill: #5f6b7a;
   --wf-port-rim: #16191f;
   --wf-port-letter-out: #ffffff;
@@ -167,7 +167,7 @@
 /*
  * A run order port is a piece of a jigsaw: the S out tab hangs from the
  * bottom edge of a card and the S in notch sits in the top edge, both in the
- * middle, so a tab fits the notch of the card under it. The card, the tab and
+ * middle, so a tab lines up with the notch of the card under it. The card, the tab and
  * the notch are one SVG (see nodes.tsx and jigsaw.ts); this file only gives
  * them colours.
  */
@@ -303,6 +303,21 @@
 
 .wf-node[data-state='queued'] .wf-badge {
   border-style: dashed;
+}
+
+/*
+ * In forced-colors mode the card takes the system colours, so its text does
+ * not sit on a patch of the dark fill. After the rules above, to win over them.
+ */
+@media (forced-colors: active) {
+  .wf-node-body {
+    fill: Canvas;
+    stroke: CanvasText;
+  }
+
+  .wf-node {
+    color: CanvasText;
+  }
 }
 
 /*

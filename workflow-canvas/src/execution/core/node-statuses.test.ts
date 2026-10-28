@@ -69,4 +69,12 @@ describe('nodeStatuses', () => {
 
     expect(nodeStatuses(run).get('stage-a-b')?.state).toBe('running');
   });
+
+  it('gives a status to the stages of the run only, by name, when the workflow was edited during the run', () => {
+    // A save is allowed during a run, so the graph may name other stages.
+    const statuses = nodeStatuses(helloRun(1));
+
+    expect(statuses.has('stage-draft')).toBe(true);
+    expect(statuses.has('stage-renamed-after-the-run-began')).toBe(false);
+  });
 });

@@ -9,7 +9,6 @@ import {
   helloRun,
 } from '../test-support/fixtures';
 import { SaveConflict, SaveLost, SaveRefused } from '../designer/core';
-import { RunAlreadyActive, RunReadRefused } from '../execution/core';
 import { loadWorkflow, withDocument } from './load-workflow';
 
 const SAVED = { hash: 'b'.repeat(64), view: HELLO_VIEW, diagnostics: [] };
@@ -56,11 +55,12 @@ describe('loadWorkflow', () => {
     const result = await loadWorkflow(api, 'code-1');
     if (!result.ok) throw new Error('The load failed.');
 
-    const runId = await result.workflow.runs.start('Ship it');
-    await result.workflow.runs.get(runId);
+    const { signal } = new AbortController();
+    const runId = await result.workflow.runs.start('Ship it', signal);
+    await result.workflow.runs.get(runId, signal);
 
-    expect(api.startRun).toHaveBeenCalledWith('token-1', 'Ship it');
-    expect(api.getRun).toHaveBeenCalledWith('token-1', runId);
+    expect(api.startRun).toHaveBeenCalledWith('token-1', 'Ship it', signal);
+    expect(api.getRun).toHaveBeenCalledWith('token-1', runId, signal);
   });
 
   it('ties the edit calls to the session token', async () => {
@@ -142,6 +142,54 @@ describe('loadWorkflow', () => {
     await expect(lost).rejects.toThrow('The server did not answer.');
   });
 
+  it('turns a 200 whose body cannot be read, for a save, into a lost answer', async () => {
+    const failure = new ApiError('Bad reply.', 200);
+    const api = fakeApi({ saveWorkflow: vi.fn().mockRejectedValue(failure) });
+    const result = await loadWorkflow(api, 'code-1');
+    if (!result.ok) throw new Error('The load failed.');
+
+    const lost = result.workflow.edits.save('text', HELLO_HASH);
+
+    await expect(lost).rejects.toBeInstanceOf(SaveLost);
+  });
+
+  it('warns that the draft is lost when the session is gone at a save', async () => {
+    const failure = new ApiError(
+      'The session is not valid.',
+      401,
+      'unauthorized',
+    );
+    const api = fakeApi({ saveWorkflow: vi.fn().mockRejectedValue(failure) });
+    const result = await loadWorkflow(api, 'code-1');
+    if (!result.ok) throw new Error('The load failed.');
+
+    const refused = result.workflow.edits.save('text', HELLO_HASH);
+
+    await expect(refused).rejects.toThrow(
+      'The session is not valid. Open the launch address that the server printed. The changes you made on this page are lost when you do; copy them first.',
+    );
+  });
+
+  it('gives the hash of the file in the conflict', async () => {
+    const failure = new ApiError(
+      'The file changed on disk.',
+      409,
+      'conflict',
+      undefined,
+      [],
+      'c'.repeat(64),
+    );
+    const api = fakeApi({ saveWorkflow: vi.fn().mockRejectedValue(failure) });
+    const result = await loadWorkflow(api, 'code-1');
+    if (!result.ok) throw new Error('The load failed.');
+
+    const conflict = await result.workflow.edits
+      .save('text', HELLO_HASH)
+      .catch((caught: unknown) => caught);
+
+    expect((conflict as SaveConflict).currentHash).toBe('c'.repeat(64));
+  });
+
   it('tells a person what to do next in the message of a lost save', async () => {
     const failure = new ApiError('The server answered 502.', 502);
     const api = fakeApi({ saveWorkflow: vi.fn().mockRejectedValue(failure) });
@@ -166,79 +214,88 @@ describe('loadWorkflow', () => {
     await expect(refused).rejects.toBe(failure);
   });
 
-  it('turns the 409 of an active run into the run to join, with its id', async () => {
-    const api = fakeApi({
-      startRun: vi
-        .fn()
-        .mockRejectedValue(
-          new ApiError(
-            'A run is already active.',
-            409,
-            'already_running',
-            'active-1',
-          ),
-        ),
-    });
-    const result = await loadWorkflow(api, 'code-1');
-    if (!result.ok) throw new Error('The load failed.');
-
-    const refused = result.workflow.runs.start('Ship it');
-
-    await expect(refused).rejects.toBeInstanceOf(RunAlreadyActive);
-    await expect(refused).rejects.toMatchObject({
-      message: 'A run is already active.',
-      runId: 'active-1',
-    });
-  });
-
-  it.each([
-    [
-      'a 409 that is not an active run',
-      new ApiError('kiro-cli is not installed.', 409, 'harness_unavailable'),
-    ],
-    [
-      'an active run with no id',
-      new ApiError('A run is already active.', 409, 'already_running'),
-    ],
-  ])('passes %s on as it is', async (_, error) => {
-    const api = fakeApi({ startRun: vi.fn().mockRejectedValue(error) });
-    const result = await loadWorkflow(api, 'code-1');
-    if (!result.ok) throw new Error('The load failed.');
-
-    await expect(result.workflow.runs.start('Ship it')).rejects.toBe(error);
-  });
-
-  it.each([
-    ['a 401', new ApiError('The session is not valid.', 401)],
-    ['a 404', new ApiError('There is no such run.', 404)],
-    ['a reply the page cannot read', new ApiError('Bad reply.', 200)],
-  ])(
-    'refuses a read that failed with %s, as reading again cannot help',
-    async (_, error) => {
-      const api = fakeApi({ getRun: vi.fn().mockRejectedValue(error) });
+  describe('the run calls', () => {
+    const { signal } = new AbortController();
+    const portFor = async (api: WorkflowApi) => {
       const result = await loadWorkflow(api, 'code-1');
       if (!result.ok) throw new Error('The load failed.');
+      return result.workflow.runs;
+    };
 
-      const read = result.workflow.runs.get('r-1');
+    it('name the active run when the server answers 409 already_running with its id', async () => {
+      const busy = new ApiError(
+        'A run is already active.',
+        409,
+        'already_running',
+        '20261024-0412-a7b3c',
+      );
+      const runs = await portFor(
+        fakeApi({ startRun: vi.fn().mockRejectedValue(busy) }),
+      );
 
-      await expect(read).rejects.toBeInstanceOf(RunReadRefused);
-      await expect(read).rejects.toMatchObject({ message: error.message });
-    },
-  );
+      await expect(runs.start('g', signal)).rejects.toMatchObject({
+        name: 'RunAlreadyActive',
+        runId: '20261024-0412-a7b3c',
+        message: 'A run is already active.',
+      });
+    });
 
-  it.each([
-    ['no answer', new ApiError('The server did not answer.', 0)],
-    ['a 503', new ApiError('The server answered 503.', 503)],
-  ])(
-    'passes a read that failed with %s on as it is, so it is tried again',
-    async (_, error) => {
-      const api = fakeApi({ getRun: vi.fn().mockRejectedValue(error) });
-      const result = await loadWorkflow(api, 'code-1');
-      if (!result.ok) throw new Error('The load failed.');
+    it.each([
+      [
+        'a 409 with another code',
+        new ApiError('Busy.', 409, 'harness_unavailable', 'r1'),
+      ],
+      ['a 409 with no run id', new ApiError('Busy.', 409, 'already_running')],
+      ['a 500', new ApiError('Broken.', 500)],
+    ])('leave %s as the error it is', async (_, error) => {
+      const runs = await portFor(
+        fakeApi({ startRun: vi.fn().mockRejectedValue(error) }),
+      );
 
-      await expect(result.workflow.runs.get('r-1')).rejects.toBe(error);
-    },
-  );
+      await expect(runs.start('g', signal)).rejects.toBe(error);
+    });
+
+    it.each([
+      ['no answer', new ApiError('No answer.', 0)],
+      ['a 202 whose reply cannot be read', new ApiError('Unreadable.', 202)],
+    ])('say the run may have started after %s', async (_, error) => {
+      const runs = await portFor(
+        fakeApi({ startRun: vi.fn().mockRejectedValue(error) }),
+      );
+
+      await expect(runs.start('g', signal)).rejects.toMatchObject({
+        name: 'RunStartUnsure',
+        message: error.message,
+      });
+    });
+
+    it.each([
+      ['a 401', new ApiError('No session.', 401)],
+      ['a 404', new ApiError('No such run.', 404)],
+      ['a reply the page cannot read', new ApiError('Bad reply.', 200)],
+    ])('refuse to read again after %s', async (_, error) => {
+      const runs = await portFor(
+        fakeApi({ getRun: vi.fn().mockRejectedValue(error) }),
+      );
+
+      await expect(runs.get('r', signal)).rejects.toMatchObject({
+        name: 'RunReadRefused',
+        message: error.message,
+      });
+    });
+
+    it.each([
+      ['no answer', new ApiError('No answer.', 0)],
+      ['a 502', new ApiError('Bad gateway.', 502)],
+      ['an error that is not an ApiError', new Error('Odd.')],
+    ])('leave %s open to another try', async (_, error) => {
+      const runs = await portFor(
+        fakeApi({ getRun: vi.fn().mockRejectedValue(error) }),
+      );
+
+      await expect(runs.get('r', signal)).rejects.toBe(error);
+    });
+  });
 
   it('fails without calling the API when there is no launch code', async () => {
     const api = fakeApi();

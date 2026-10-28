@@ -24,11 +24,17 @@ export interface EditPort {
   reload(): Promise<WorkflowDocument>;
 }
 
-/** The file changed since it was loaded, so nothing was written. */
+/**
+ * The file changed since it was loaded, so nothing was written. `currentHash`
+ * is the hash of the file as it is now, and is missing when it was deleted.
+ */
 export class SaveConflict extends Error {
-  constructor(message: string) {
+  readonly currentHash?: string;
+
+  constructor(message: string, currentHash?: string) {
     super(message);
     this.name = 'SaveConflict';
+    this.currentHash = currentHash;
   }
 }
 

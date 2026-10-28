@@ -4,6 +4,7 @@ import { helloRun } from '../../test-support/fixtures';
 import {
   IDLE,
   isInFlight,
+  isJoinedRun,
   reduce,
   runOf,
   type ExecutionEvent,
@@ -82,6 +83,20 @@ describe('reduce', () => {
     expect(reduce(failed, { type: 'start' })).toEqual({ phase: 'starting' });
   });
 
+  it('keeps that a start got no clear answer', () => {
+    expect(
+      after(
+        { type: 'start' },
+        { type: 'failed', message: 'No.', maybeStarted: true },
+      ),
+    ).toEqual({
+      phase: 'error',
+      message: 'No.',
+      started: false,
+      maybeStarted: true,
+    });
+  });
+
   it('fails before the run started, or after, and says which', () => {
     expect(
       after({ type: 'start' }, { type: 'failed', message: 'No.' }),
@@ -90,29 +105,53 @@ describe('reduce', () => {
       message: 'No.',
       started: false,
     });
-    expect(after(...STARTED, { type: 'failed', message: 'Lost.' })).toEqual({
+    expect(
+      after(...STARTED, { type: 'failed', message: 'Lost.', runId: RUN_ID }),
+    ).toEqual({
       phase: 'error',
       message: 'Lost.',
       started: true,
+      runId: RUN_ID,
     });
   });
 
-  it('shows no run in an error', () => {
-    const state = after(
-      ...STARTED,
-      { type: 'snapshot', run: helloRun(0) },
-      { type: 'failed', message: 'Lost.' },
-    );
+  it('ignores a failure of a loop that has no run once the tab follows one', () => {
+    // Two loops were started; one was refused, and it never had a run.
+    const following = after(...STARTED);
 
-    expect(runOf(state)).toBeUndefined();
+    expect(
+      reduce(following, {
+        type: 'failed',
+        message: 'A run is already active.',
+      }),
+    ).toBe(following);
   });
 
-  it('remembers that it joined a run that was already active, through every reading', () => {
+  it('ignores a failure that names another run', () => {
+    const following = after(...STARTED);
+
+    expect(
+      reduce(following, {
+        type: 'failed',
+        message: 'Lost.',
+        runId: '20261024-0412-zzzzz',
+      }),
+    ).toBe(following);
+  });
+
+  it('ignores a failure that names a run while the start has no run yet', () => {
+    const starting = after({ type: 'start' });
+
+    expect(
+      reduce(starting, { type: 'failed', message: 'x', runId: RUN_ID }),
+    ).toBe(starting);
+  });
+
+  it('follows a run that was already active, and keeps saying so', () => {
     const joined = after(
       { type: 'start' },
       { type: 'started', runId: RUN_ID, joined: true },
     );
-    const reading = reduce(joined, { type: 'snapshot', run: helloRun(1) });
 
     expect(joined).toEqual({
       phase: 'following',
@@ -120,11 +159,37 @@ describe('reduce', () => {
       run: undefined,
       joined: true,
     });
-    expect(reading).toMatchObject({ phase: 'following', joined: true });
-    expect(reduce(reading, { type: 'snapshot', run: helloRun(2) })).toEqual({
+    expect(reduce(joined, { type: 'snapshot', run: helloRun(0) })).toEqual({
+      phase: 'following',
+      runId: RUN_ID,
+      run: helloRun(0),
+      joined: true,
+    });
+    expect(reduce(joined, { type: 'snapshot', run: helloRun(2) })).toEqual({
+      phase: 'finished',
+      run: helloRun(2),
+      joined: true,
+    });
+  });
+
+  it('says a run that it started itself was not joined', () => {
+    const own = after(...STARTED);
+
+    expect(isJoinedRun(own)).toBe(false);
+    expect(reduce(own, { type: 'snapshot', run: helloRun(2) })).toEqual({
       phase: 'finished',
       run: helloRun(2),
     });
+  });
+
+  it('shows no run in an error', () => {
+    const state = after(
+      ...STARTED,
+      { type: 'snapshot', run: helloRun(0) },
+      { type: 'failed', message: 'Lost.', runId: RUN_ID },
+    );
+
+    expect(runOf(state)).toBeUndefined();
   });
 
   it('ignores a reading of another run', () => {
@@ -137,7 +202,11 @@ describe('reduce', () => {
   it.each<[string, ExecutionState, ExecutionEvent]>([
     ['a reading when idle', IDLE, { type: 'snapshot', run: helloRun(0) }],
     ['an id when idle', IDLE, { type: 'started', runId: RUN_ID }],
-    ['a failure when idle', IDLE, { type: 'failed', message: 'x' }],
+    [
+      'a failure when idle',
+      IDLE,
+      { type: 'failed', message: 'x', runId: RUN_ID },
+    ],
     [
       'an id when following',
       after(...STARTED),
@@ -153,6 +222,8 @@ describe('reduce', () => {
       run: helloRun(2),
     });
 
-    expect(reduce(finished, { type: 'failed', message: 'x' })).toBe(finished);
+    expect(
+      reduce(finished, { type: 'failed', message: 'x', runId: RUN_ID }),
+    ).toBe(finished);
   });
 });

@@ -90,14 +90,19 @@ describe('saveDraft', () => {
       ]);
     });
 
-    it('reports the failure when the file cannot be read either', async () => {
+    it('says the save may or may not have gone through when the file cannot be read either', async () => {
       const port = edits({
         save: lost(),
         reload: vi.fn().mockRejectedValue(new Error('Still down.')),
       });
 
       expect(await save(port)).toEqual([
-        { type: 'failed', message: 'No answer.' },
+        {
+          type: 'failed',
+          message:
+            'No answer. The save may or may not have gone through. Load the file again to see what it holds.',
+          uncertain: true,
+        },
       ]);
     });
 
@@ -112,6 +117,74 @@ describe('saveDraft', () => {
         { type: 'failed', message: 'No answer.' },
       ]);
     });
+  });
+
+  describe('when the file changed to the text that was sent', () => {
+    const conflict = (hash?: string) =>
+      vi.fn().mockRejectedValue(new SaveConflict('The file changed.', hash));
+    const written = { ...HELLO_DOCUMENT, text: 'text', hash: 'c'.repeat(64) };
+
+    it('counts the save as done, as the write landed earlier', async () => {
+      const port = edits({
+        save: conflict('c'.repeat(64)),
+        reload: vi.fn().mockResolvedValue(written),
+      });
+
+      expect(await save(port)).toEqual([
+        {
+          type: 'saved',
+          text: 'text',
+          result: { hash: 'c'.repeat(64), view: HELLO_VIEW, diagnostics: [] },
+        },
+      ]);
+    });
+
+    it('stays a conflict when the file holds other text', async () => {
+      const port = edits({ save: conflict('c'.repeat(64)) });
+
+      expect(await save(port)).toEqual([{ type: 'conflict' }]);
+    });
+
+    it('stays a conflict, without reading the file, when the file is gone', async () => {
+      const port = edits({ save: conflict(undefined) });
+
+      expect(await save(port)).toEqual([{ type: 'conflict' }]);
+      expect(port.reload).not.toHaveBeenCalled();
+    });
+
+    it('stays a conflict when the file cannot be read', async () => {
+      const port = edits({
+        save: conflict('c'.repeat(64)),
+        reload: vi.fn().mockRejectedValue(new Error('Still down.')),
+      });
+
+      expect(await save(port)).toEqual([{ type: 'conflict' }]);
+    });
+  });
+
+  describe('when the server refuses the text and shows nothing to fix', () => {
+    it.each([
+      ['no findings', []],
+      [
+        'only a warning',
+        [{ message: 'Odd.', path: 'intent', line: 1, severity: 'warning' }],
+      ],
+    ] as const)(
+      'says it with the sentence of the server for %s',
+      async (_, findings) => {
+        const port = edits({
+          save: vi
+            .fn()
+            .mockRejectedValue(
+              new SaveRefused('The workflow has errors.', findings),
+            ),
+        });
+
+        expect(await save(port)).toEqual([
+          { type: 'failed', message: 'The workflow has errors.' },
+        ]);
+      },
+    );
   });
 
   it('gives the sentence of any other failure', async () => {

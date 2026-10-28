@@ -12,6 +12,15 @@ export function canEdit(state: EditState): boolean {
   return !state.saved.readOnly;
 }
 
+/** The words that say why the stages cannot be changed while a file loads. */
+export const RELOADING_REASON = 'The workflow is being loaded again.';
+
+/** Why the stages cannot be changed now, or `undefined` when they can. */
+export function changeBlocker(state: EditState): string | undefined {
+  if (!canEdit(state)) return READ_ONLY_REASON;
+  return state.save.phase === 'reloading' ? RELOADING_REASON : undefined;
+}
+
 /** Whether the draft differs from the saved workflow. */
 export function isDirty(state: EditState): boolean {
   return !sameStages(stagesOf(state.draft), state.saved.view.stages);
@@ -49,7 +58,7 @@ export function saveBlocker(state: EditState): string | undefined {
     case 'saving':
       return 'The workflow is being saved.';
     case 'reloading':
-      return 'The workflow is being loaded again.';
+      return RELOADING_REASON;
     case 'conflict':
       return 'The file changed on disk. Reload it first.';
     default:

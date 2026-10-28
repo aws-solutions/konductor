@@ -26,6 +26,7 @@ export {
 } from './edit-state';
 export {
   canEdit,
+  changeBlocker,
   canSave,
   isDirty,
   problemsOfDraft,
