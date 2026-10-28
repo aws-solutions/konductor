@@ -192,3 +192,26 @@ describe('buildGraph', () => {
     expect(new Set(edgeIds).size).toBe(edgeIds.length);
   });
 });
+
+describe('buildGraph, for stages that share a name', () => {
+  const stages = [
+    { id: 's1', name: 'review', agent: 'k-developer' },
+    { id: 's2', name: 'review', agent: 'k-developer' },
+    { id: 's3', name: 'ship', agent: 'k-developer' },
+  ];
+
+  it('names each of them with its place in the list', () => {
+    const graph = buildGraph(
+      { name: 'wf', intent: { outcome: 'x' }, stages },
+      'kiro-cli',
+    );
+
+    expect(graph.nodes.map((node) => node.ariaLabel)).toEqual([
+      'Intent: x',
+      'Stage review (1 of 3), agent k-developer, harness kiro-cli',
+      'Stage review (2 of 3), agent k-developer, harness kiro-cli',
+      'Stage ship, agent k-developer, harness kiro-cli',
+      'End',
+    ]);
+  });
+});
