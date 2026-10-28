@@ -4,6 +4,7 @@ import { helloRun } from '../../test-support/fixtures';
 import {
   IDLE,
   isInFlight,
+  isJoinedRun,
   reduce,
   runOf,
   type ExecutionEvent,
@@ -165,6 +166,17 @@ describe('reduce', () => {
       joined: true,
     });
     expect(reduce(joined, { type: 'snapshot', run: helloRun(2) })).toEqual({
+      phase: 'finished',
+      run: helloRun(2),
+      joined: true,
+    });
+  });
+
+  it('says a run that it started itself was not joined', () => {
+    const own = after(...STARTED);
+
+    expect(isJoinedRun(own)).toBe(false);
+    expect(reduce(own, { type: 'snapshot', run: helloRun(2) })).toEqual({
       phase: 'finished',
       run: helloRun(2),
     });
