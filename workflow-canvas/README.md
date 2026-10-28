@@ -210,8 +210,8 @@ does not start it, and the same tests call that server instead.
 
 `src/graph/` is the core of the canvas. `buildGraph(workflow, harness)` turns
 the workflow view into nodes (the intent, one per stage, the end) and edges
-(one from each node to the next, from its `S` out port at the bottom right to
-the `S` in port at the top right of the next), placed in one column. It imports
+(one from each node to the next, from the tab under a node to the notch in the
+top edge of the next), placed in one column. It imports
 only its own modules. A test (`test-support/graph-purity.test.ts`) fails if it
 imports anything else, or reads a clock, randomness, the environment or the
 network, and the stub core is held to the same rule by the same scan

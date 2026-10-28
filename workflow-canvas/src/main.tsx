@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import '@cloudscape-design/global-styles/index.css';
+import '@cloudscape-design/global-styles/index-base.css';
 import './theme/fonts';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
