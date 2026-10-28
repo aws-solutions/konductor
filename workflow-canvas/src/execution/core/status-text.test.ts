@@ -10,6 +10,22 @@ function following(run?: ReturnType<typeof helloRun>): ExecutionState {
   return { phase: 'following', runId: helloRun(0).runId, run };
 }
 
+describe('statusText for a run that was already active', () => {
+  it('says that the tab follows it', () => {
+    const state: ExecutionState = {
+      phase: 'following',
+      runId: helloRun(0).runId,
+      run: helloRun(1),
+      joined: true,
+    };
+
+    expect(statusText(state)).toBe(
+      'Following the run that was already in progress. Running review. 1 of 2 stages done.',
+    );
+    expect(statusKind(state)).toBe('busy');
+  });
+});
+
 describe('statusText and statusKind', () => {
   it.each<[string, ExecutionState, string, string]>([
     ['idle', IDLE, 'Ready. Press Run to start.', 'idle'],
