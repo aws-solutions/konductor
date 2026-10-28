@@ -274,21 +274,27 @@ listed, so there is no other field and no way to link or reorder them yet.
   `agent-N`) with the agent `k-developer`, selects it and moves focus to its
   name. It is off at 40 stages, the most the API allows.
 - Typing in **name** renames the stage, and the node changes at once. The name
-  is taken as typed; the API is what says whether it is a good name.
+  is taken as typed; the API is what says whether it is a good name. The
+  **Complete** or **Needs a fix** mark of a stage shows only for a draft that a
+  check has answered for, so it never says a draft is complete before it was
+  checked.
 - **agent** is a list of the agents that Konductor ships, each with a line on
   what it is for. The API does not look an agent up in this version, so the
   list is part of the page (`designer/core/agents.ts`); a file that names an
-  agent not on the list keeps it, shown first. There is no field to type any
-  other id yet.
+  agent not on the list keeps it, shown first, and keeps it on offer when
+  another agent is chosen. There is no field to type any other id yet.
 - **Delete stage** removes the stage, selects the one before it (or the next,
   for the first) and moves focus to its name. A workflow keeps at least one
   stage, so it is off for the last.
 - Choosing a stage by its node (click, or Enter or Space) selects it and moves
-  focus to its name. Choosing the stage that is already selected changes
-  nothing, and focus stays where it is.
+  focus to its name. Enter or Space on the stage that is already selected also
+  moves focus to its name; a click on it changes nothing. Escape on a node
+  leaves focus on it. A polite live region says what was added, deleted or
+  selected.
 - **A read-only workflow** (the server says `read_only`) can be looked at, and
   a stage can be selected, but the name is read-only and Add stage, Delete
-  stage and the agent list are off, with the reason in a tooltip.
+  stage and the agent list are off. A note above the graph says why, and the
+  buttons carry the reason in a tooltip.
 - **Focus and keys.** Everything above works with the keyboard: Tab to **Add
   stage** and press Enter; the new stage's name has focus. A button that is off
   (Add stage, Delete stage) stays focusable and gives the reason in a tooltip,

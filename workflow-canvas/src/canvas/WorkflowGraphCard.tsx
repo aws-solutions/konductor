@@ -51,12 +51,15 @@ export function WorkflowGraphCard({
   harness,
   statuses = NO_STATUSES,
   selection,
+  readOnly = false,
   toolbar,
 }: {
   view: WorkflowSpec;
   harness: string;
   statuses?: ReadonlyMap<string, NodeStatus>;
   selection?: CanvasSelection;
+  /** The workflow cannot be changed, so the note says it is read-only. */
+  readOnly?: boolean;
   toolbar?: ReactNode;
 }) {
   const graph = useMemo(
@@ -68,7 +71,7 @@ export function WorkflowGraphCard({
       header={
         <Header
           variant="h2"
-          description={selection ? EDIT_NOTE : READ_ONLY_NOTE}
+          description={selection && !readOnly ? EDIT_NOTE : READ_ONLY_NOTE}
         >
           Workflow: {view.name}
         </Header>
