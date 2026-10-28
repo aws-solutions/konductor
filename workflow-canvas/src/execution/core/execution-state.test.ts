@@ -82,6 +82,28 @@ describe('reduce', () => {
     expect(reduce(failed, { type: 'start' })).toEqual({ phase: 'starting' });
   });
 
+  it('keeps that a start got no clear answer', () => {
+    expect(
+      after(
+        { type: 'start' },
+        { type: 'failed', message: 'No.', maybeStarted: true },
+      ),
+    ).toEqual({
+      phase: 'error',
+      message: 'No.',
+      started: false,
+      maybeStarted: true,
+    });
+  });
+
+  it('takes a failure that names no run for the start in progress', () => {
+    // Why the caller runs one loop at a time: a second loop's failure with no
+    // run id cannot be told from the failure of the start.
+    expect(
+      after({ type: 'start' }, { type: 'failed', message: 'Other loop.' }),
+    ).toMatchObject({ phase: 'error', started: false });
+  });
+
   it('fails before the run started, or after, and says which', () => {
     expect(
       after({ type: 'start' }, { type: 'failed', message: 'No.' }),

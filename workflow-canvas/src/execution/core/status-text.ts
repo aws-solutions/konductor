@@ -31,6 +31,13 @@ function finishedText(run: RunView): string {
   return `${lead} ${stagesDone(run)}${exit}`;
 }
 
+function errorText(state: Extract<ExecutionState, { phase: 'error' }>): string {
+  if (state.started) return 'Stopped following the run.';
+  return state.maybeStarted
+    ? 'The run may not have started.'
+    : 'The run did not start.';
+}
+
 /** The sentence that says where the run is. A screen reader announces it. */
 export function statusText(state: ExecutionState): string {
   switch (state.phase) {
@@ -45,9 +52,7 @@ export function statusText(state: ExecutionState): string {
     case 'finished':
       return finishedText(state.run);
     case 'error':
-      return state.started
-        ? 'Stopped following the run.'
-        : 'The run did not start.';
+      return errorText(state);
   }
 }
 

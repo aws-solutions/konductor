@@ -10,7 +10,12 @@ import {
   POLL_INTERVAL_MS,
   startAndFollow,
 } from './follow-run';
-import { RunAlreadyActive, RunReadRefused, type RunPort } from './ports';
+import {
+  RunAlreadyActive,
+  RunReadRefused,
+  RunStartUnsure,
+  type RunPort,
+} from './ports';
 
 const RUN_ID = helloRun(0).runId;
 
@@ -114,6 +119,24 @@ describe('startAndFollow', () => {
     expect(runs.get).not.toHaveBeenCalled();
     expect(events).toEqual([
       { type: 'failed', message: 'A run is already active.', runId: undefined },
+    ]);
+  });
+
+  it('says the run may have started when the start got no clear answer', async () => {
+    const { events, done } = setup(
+      [],
+      vi.fn().mockRejectedValue(new RunStartUnsure('No answer.')),
+    );
+
+    await done;
+
+    expect(events).toEqual([
+      {
+        type: 'failed',
+        message: 'No answer.',
+        runId: undefined,
+        maybeStarted: true,
+      },
     ]);
   });
 

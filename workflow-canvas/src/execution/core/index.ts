@@ -24,6 +24,7 @@ export { nodeStatuses } from './node-statuses';
 export {
   RunAlreadyActive,
   RunReadRefused,
+  RunStartUnsure,
   type RunPort,
   type Scheduler,
 } from './ports';
