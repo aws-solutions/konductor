@@ -106,7 +106,7 @@ EDITS = [
      '{ k: "context/k-core-rules.md", v: "Change the core rules, the NEVER DO rules and writing habits loaded at session start for every agent" }',
      '{ k: "context/k-core-rules.md", v: "Change the core rules, the NEVER DO rules, writing habits, and engineering practices loaded at session start for every agent" }'),
     ("skills catalog: constraints row",
-     "Workflow rules for every agent: read before edit, maker-checker validation, severity ordering, the 2-strike circuit breaker, and the quality gate. The NEVER DO rules, writing habits, and engineering practices live in context/k-core-rules.md.",
+     "Hard behavioural rules for every agent: what they must always do, across code quality, security, and verification. The NEVER DO rules live in context/k-core-rules.md.",
      "Workflow rules for every agent: maker-checker validation, severity ordering, the 2-strike circuit breaker, and the quality gate. The NEVER DO rules, writing habits, and engineering practices live in context/k-core-rules.md."),
     ("skills catalog: constraints reach",
      "REACH FOR IT: Always on. You never invoke it; it is the floor every agent stands on.",
@@ -198,7 +198,12 @@ EDITS = [
      'carries fs_write and shell, so no agent is incapable of either — the difference is whether '
      'it asks first.", "Claude Code has one list. clientConfig.claudeCli.tools is the ceiling: a '
      'tool absent from it cannot be used at all. Whether a granted tool prompts is decided by '
-     'your own ~/.claude/settings.json, which sorts calls into allow, ask, and deny."]'),
+     'your own ~/.claude/settings.json, which sorts calls into allow, ask, and deny.", "These '
+     'rows describe agents started by konductor. konductor-mux-orchestrator and '
+     'konductor-cmux-orchestrator start each specialist with permission checks off '
+     '(--dangerously-skip-permissions on Claude Code, --trust-all-tools on Kiro CLI), so under '
+     'them every granted tool runs without asking, MCP tools included, and your settings.json '
+     'does not apply."]'),
     ("ag-access rows",
      '          { k: "konductor", v: "no / no · YES / YES" },\n'
      '          { k: "konductor-mux-orchestrator", v: "no / YES · YES / YES" },\n'
