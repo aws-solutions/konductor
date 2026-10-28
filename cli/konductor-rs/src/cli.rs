@@ -303,9 +303,10 @@ pub enum Commands {
         /// per target. Mutually exclusive with `--no-telemetry`.
         ///
         /// Scoped to the whole target directory, NOT to `--harness`, for
-        /// the same reason `--no-telemetry` is: `--harness <name>
-        /// --enable-telemetry` opts the ENTIRE target back in, not just
-        /// the named harness.
+        /// the same reason `--no-telemetry` is: it recreates the
+        /// target-wide record. Skill-lookup servers launched with
+        /// `--install-info` follow it at once; another harness's telemetry
+        /// hooks return on that harness's next `update`.
         #[arg(long = "enable-telemetry", action = ArgAction::SetTrue, conflicts_with = "no_telemetry")]
         enable_telemetry: bool,
 

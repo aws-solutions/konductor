@@ -514,7 +514,10 @@ for every harness at that target. Only the named harness's agent files are rewri
 that run, but every Kiro CLI harness whose skill-lookup server was launched with
 `--install-info` reads the same record each time it starts, so all of them follow the new
 setting. A harness without that arg (installed before it existed, or with an older server
-binary) keeps its previous setting until its own next `update`.
+binary) keeps its previous setting until its own next `update`. Telemetry hooks stop for
+every harness as soon as the record is gone, but `--enable-telemetry` only writes hooks
+into the named harness's agent files: another harness's hooks return on its own next
+`update`.
 
 `install` follows the same target-wide rule. A plain `install` (no `--no-telemetry`) of a
 harness at a target whose manifest already tracks another harness, and that has no
