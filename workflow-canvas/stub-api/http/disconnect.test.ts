@@ -9,12 +9,21 @@ const MIB = 1024 * 1024;
 describe('a client that drops its connection', () => {
   const stub = useStub();
 
-  /** Sends part of a request, then resets the connection. */
-  function dropMidRequest(port: number, bodyBytes: number): Promise<void> {
+  /**
+   * Declares a body of `declared` bytes, sends only `sent` of them, then resets
+   * the connection. With `sent` below `declared` the stub is still waiting for
+   * the body when the reset arrives.
+   */
+  function dropMidRequest(
+    port: number,
+    token: string,
+    declared: number,
+    sent: number,
+  ): Promise<void> {
     return new Promise((resolve) => {
       const socket = connect({ host: '127.0.0.1', port }, () => {
-        const head = `POST /api/validate HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\nContent-Type: application/json\r\nContent-Length: ${2 * bodyBytes}\r\n\r\n`;
-        socket.write(head + 'x'.repeat(bodyBytes), () => {
+        const head = `POST /api/validate HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\nOrigin: http://127.0.0.1:${port}\r\nAuthorization: Bearer ${token}\r\nContent-Type: application/json\r\nContent-Length: ${declared}\r\n\r\n`;
+        socket.write(head + 'x'.repeat(sent), () => {
           socket.resetAndDestroy();
           resolve();
         });
@@ -24,11 +33,11 @@ describe('a client that drops its connection', () => {
   }
 
   it.each([
-    ['in the middle of a body', MIB],
-    ['before any body arrives', 0],
-  ])('leaves the stub serving, %s', async (_, bodyBytes) => {
+    ['in the middle of a body', 2 * MIB, MIB],
+    ['before any body arrives', MIB, 0],
+  ])('leaves the stub serving, %s', async (_, declared, sent) => {
     const { stub: running, client } = stub();
-    await dropMidRequest(running.port, bodyBytes);
+    await dropMidRequest(running.port, client.token!, declared, sent);
     expect((await client.get('/api/workflow')).status).toBe(200);
   });
 });
