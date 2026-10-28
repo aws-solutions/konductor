@@ -219,6 +219,8 @@ jobs:
         # Lint runs on a pinned toolchain so a new Rust release can't add clippy
         # lints that fail every PR under -D warnings. Builds and tests stay on
         # stable, like release.yml. Bump the pin deliberately in its own PR.
+        env:
+          RUST_LINT_TOOLCHAIN: 1.98.1
         run: |
-          rustup toolchain install 1.98.1 --profile minimal -c clippy -c rustfmt
-          make lint CARGO="cargo +1.98.1"
+          rustup toolchain install "$RUST_LINT_TOOLCHAIN" --profile minimal -c clippy -c rustfmt
+          make lint CARGO="cargo +$RUST_LINT_TOOLCHAIN"
