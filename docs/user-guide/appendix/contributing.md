@@ -36,10 +36,9 @@ Five files control five different things. Pick the smallest one that achieves wh
 | How an agent reasons about one topic | `skills/<name>/SKILL.md` | Guidance that agent loads on demand |
 | An agent's prompt, model, tools, or dependencies | `agents/<name>.agent-spec.json` | That agent, in both runtimes |
 
-Write an agent's `config.model` as a Claude model ID in the Kiro CLI form (`claude-sonnet-5.5`), the
-Claude Code form (`claude-sonnet-5-5`), or a Claude Code alias (`sonnet`, `opus`, `haiku`, `inherit`). For an
-agent with `claudeCli` config, `konductor synth` converts the ID for Claude Code and fails on any
-other value.
+Write an agent's `config.model` as a Kiro CLI model ID in its dotted form (`claude-sonnet-5.5`), or
+`auto`. `konductor synth` converts it for Claude Code (`claude-sonnet-5-5`, or `inherit` for `auto`)
+and fails on anything else.
 
 ### Routing lives in two places
 
