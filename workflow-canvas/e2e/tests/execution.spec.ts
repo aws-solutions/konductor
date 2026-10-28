@@ -74,8 +74,8 @@ test('announces the status in a polite live region and names the state of each n
 
   await canvas.runButton.click();
 
-  await expect(canvas.runStatus).toHaveAttribute('role', 'status');
-  await expect(canvas.runStatus).toHaveAttribute('aria-live', 'polite');
+  await expect(canvas.runLiveStatus).toHaveAttribute('role', 'status');
+  await expect(canvas.runLiveStatus).toContainText('Running draft.');
   await expect(canvas.runStatus).toContainText('Running draft.');
   await expect(
     canvas.nodeNamed(
@@ -101,6 +101,26 @@ test('shows a failed stage with its words, the stages that will not run, and the
   await expect(canvas.runError).toHaveCount(0);
 });
 
+test('says so when the stages of the run are not the stages in the graph', async ({
+  canvas,
+}) => {
+  const reply = runReply('running', ['running', 'pending']);
+  const run = reply.run;
+  await answerRunsWith(canvas.page, {
+    run: {
+      ...run,
+      order: ['write', 'review'],
+      stages: { write: { status: 'running' }, review: { status: 'pending' } },
+    },
+  } as unknown as typeof reply);
+
+  await canvas.runButton.click();
+
+  const notice = canvas.page.getByTestId('stage-drift');
+  await expect(notice).toContainText('Not drawn: write.');
+  await expect(notice).toContainText('Not in the run: draft.');
+});
+
 test('shows the error of the API in one alert when the run does not start', async ({
   canvas,
 }) => {
@@ -116,7 +136,7 @@ test('shows the error of the API in one alert when the run does not start', asyn
   await expect(canvas.runError).toHaveCount(1);
   await expect(canvas.runError).toContainText('The run did not start');
   await expect(canvas.runError).toContainText('kiro-cli is not installed.');
-  await expect(canvas.runStatus).toContainText('See the error above.');
+  await expect(canvas.runStatus).toContainText('See the error below.');
   await expect(canvas.runAlert).toContainText('kiro-cli is not installed.');
   await canvas.expectBadges([null, null, null, null]);
   await expect(canvas.runButton).toBeEnabled();
@@ -177,8 +197,30 @@ test('says the run may still be going when it can no longer be followed', async 
   await expect(canvas.runError).toContainText('The run could not be followed');
   await expect(canvas.runAlert).toContainText('There is no run with this id.');
   await expect(canvas.runAlert).toContainText(
-    'The run may still be going on the server.',
+    'The run may still be going on the server (run 20261024-0412-a7b3c).',
   );
+});
+
+test('announces a failure to follow the run while the Designer tab is open', async ({
+  canvas,
+}) => {
+  await answerRunsWith(
+    canvas.page,
+    runReply('running', ['running', 'pending']),
+  );
+  await canvas.runButton.click();
+  await expect(canvas.runStatus).toContainText('Running draft.');
+  await canvas.selectTab('Designer');
+  await canvas.page.route('**/api/runs/*', (route) =>
+    route.fulfill({
+      status: 404,
+      json: { error: 'There is no run with this id.', code: 'not_found' },
+    }),
+  );
+
+  await expect(canvas.runAlert).toContainText('The run could not be followed');
+  await expect(canvas.runAlert).toContainText('There is no run with this id.');
+  await expect(canvas.runError).toHaveCount(0);
 });
 
 test('keeps following the run while the Designer tab is open', async ({
@@ -262,8 +304,9 @@ test('shows the run that is still going when the page is opened again', async ({
   await canvas.runButton.click();
   await expect(canvas.runStatus).toContainText('Running draft.');
 
-  // A reload drops the page and its token, so the launch address is opened
-  // again in the same tab, as a person does after pressing F5.
+  // The launch address is opened again in the tab. Only a server that takes
+  // the launch code again allows this; a reload alone leaves the page without
+  // the code (see the test below).
   await canvas.page.goto('about:blank');
   await canvas.open(STUB_LAUNCH_CODE);
   await canvas.selectTab('Execution');
@@ -273,6 +316,8 @@ test('shows the run that is still going when the page is opened again', async ({
     'Following the run that was already in progress. Running draft.',
   );
   await expect(canvas.runButton).toBeDisabled();
+  await expect(canvas.goal).toHaveValue('');
+  await expect(canvas.goal).toHaveAttribute('placeholder', 'Not known');
 });
 
 test('shows Ready when the page is opened again after the run has ended', async ({
@@ -289,4 +334,19 @@ test('shows Ready when the page is opened again after the run has ended', async 
   await expect(canvas.runStatus).toContainText('Ready. Press Run to start.');
   await canvas.expectBadges([null, null, null, null]);
   await expect(canvas.runButton).toBeEnabled();
+});
+
+test('has no launch code and no Execution tab after a reload, as the code works once', async ({
+  canvas,
+}) => {
+  await canvas.expectWorkflowDrawn();
+
+  await canvas.page.reload();
+  await canvas.title.waitFor();
+
+  await expect(
+    canvas.page.getByText(/no launch code in the address/),
+  ).toBeVisible();
+  await canvas.selectTab('Execution');
+  await expect(canvas.runButton).toHaveCount(0);
 });

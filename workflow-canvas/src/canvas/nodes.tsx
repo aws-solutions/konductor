@@ -190,7 +190,9 @@ export function IntentNode({ data }: NodeProps<FlowNode<IntentGraphNode>>) {
         tab
       />
       <div className="wf-node-title">intent</div>
-      <div className="wf-node-intent-outcome">{data.outcome}</div>
+      <div className="wf-node-intent-outcome" title={data.outcome}>
+        {data.outcome}
+      </div>
       <StatusBadge status={data.status} />
       <SequenceOut />
     </div>
@@ -207,8 +209,10 @@ export function StageNode({ data }: NodeProps<FlowNode<StageGraphNode>>) {
     >
       <NodeShape height={NODE_HEIGHT.stage} radius={CARD_RADIUS} notch tab />
       <SequenceIn />
-      <div className="wf-node-title">{data.name}</div>
-      <div className="wf-node-sub">
+      <div className="wf-node-title" title={data.name}>
+        {data.name}
+      </div>
+      <div className="wf-node-sub" title={`${data.agent} · ${data.harness}`}>
         {data.agent} · {data.harness}
       </div>
       <StatusBadge status={data.status} />

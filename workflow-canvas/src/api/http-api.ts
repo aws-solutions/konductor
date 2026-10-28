@@ -18,35 +18,45 @@ type Fetch = typeof fetch;
 const UNREACHABLE =
   'The server did not answer. Check that it is still running.';
 
+const ACCEPTED_STATUS = 202;
+const RUN_ACCEPTED_UNREADABLE =
+  'The server accepted the run, but its reply could not be read. The run may have started.';
+
 /** How long a call may take before the page gives up on it. */
 export const REQUEST_TIMEOUT_MS = 15_000;
 
-// A body that cannot be read as JSON is `undefined`; a read that the timeout
-// aborted is an error, so a hung body is not taken for a bad reply.
-async function bodyOf(
-  response: Response,
-  signal: AbortSignal,
-): Promise<unknown> {
+// A body that is not JSON is `undefined`. Any other failure to read it, such
+// as a connection that dropped or a timeout, is thrown.
+async function bodyOf(response: Response): Promise<unknown> {
   try {
     return await response.json();
   } catch (error) {
-    if (signal.aborted) throw error;
-    return undefined;
+    // Text that is not JSON is a bad reply. A body that stopped arriving is
+    // not a reply at all, so it counts as no answer.
+    if (error instanceof SyntaxError) return undefined;
+    throw error;
   }
 }
 
-// Gives the call a signal that aborts after the timeout; the reading of the
-// body is covered too, and the timer never outlives the call.
+// Gives the call a signal that aborts after the timeout or when `outer`
+// aborts. The body is read inside the call, so a hung body is covered, and the
+// timer and the listener never outlive the call.
 async function withTimeout<T>(
-  timeoutMs: number,
+  timeoutMs: number | undefined,
+  outer: AbortSignal | undefined,
   call: (signal: AbortSignal) => Promise<T>,
 ): Promise<T> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const abort = () => controller.abort();
+  const timer =
+    timeoutMs === undefined ? undefined : setTimeout(abort, timeoutMs);
+  if (outer?.aborted) abort();
+  outer?.addEventListener('abort', abort, { once: true });
   try {
     return await call(controller.signal);
   } finally {
-    clearTimeout(timer);
+    if (timer !== undefined) clearTimeout(timer);
+    outer?.removeEventListener('abort', abort);
   }
 }
 
@@ -57,18 +67,19 @@ async function exchange(
   signal: AbortSignal,
 ): Promise<{ response: Response; body: unknown }> {
   const response = await fetchFn(path, { ...init, signal });
-  return { response, body: await bodyOf(response, signal) };
+  return { response, body: await bodyOf(response) };
 }
 
 async function send(
   fetchFn: Fetch,
-  timeoutMs: number,
+  timeoutMs: number | undefined,
   path: string,
   init: RequestInit,
+  outer?: AbortSignal,
 ): Promise<unknown> {
   let reply: { response: Response; body: unknown };
   try {
-    reply = await withTimeout(timeoutMs, (signal) =>
+    reply = await withTimeout(timeoutMs, outer, (signal) =>
       exchange(fetchFn, path, init, signal),
     );
   } catch {
@@ -83,6 +94,16 @@ async function send(
     errorRunIdOf(body),
     errorDiagnosticsOf(body),
   );
+}
+
+// The server accepted the run, so a reply that cannot be read does not mean
+// that the run did not start.
+function acceptedRunId(body: unknown): string {
+  try {
+    return parseRunStarted(body);
+  } catch {
+    throw new ApiError(RUN_ACCEPTED_UNREADABLE, ACCEPTED_STATUS);
+  }
 }
 
 function bearer(token: string): Record<string, string> {
@@ -104,11 +125,13 @@ export function createHttpApi(
   fetchFn: Fetch = fetch,
   timeoutMs = REQUEST_TIMEOUT_MS,
 ): WorkflowApi {
-  const call = (path: string, init: RequestInit) =>
-    send(fetchFn, timeoutMs, path, init);
+  const call = (path: string, init: RequestInit, signal?: AbortSignal) =>
+    send(fetchFn, timeoutMs, path, init, signal);
   return {
     async createSession(code) {
-      const body = await call('/api/session', {
+      // No timeout: the launch code works once, so giving up on a slow answer
+      // after the server has traded it would leave the page with no way in.
+      const body = await send(fetchFn, undefined, '/api/session', {
         method: 'POST',
         headers: jsonHeaders(),
         body: JSON.stringify({ code }),
@@ -137,18 +160,24 @@ export function createHttpApi(
       });
       return parseCheckResult(body);
     },
-    async startRun(token, goal) {
-      const body = await call('/api/run', {
-        method: 'POST',
-        headers: jsonHeaders(token),
-        body: JSON.stringify({ params: { goal } }),
-      });
-      return parseRunStarted(body);
+    async startRun(token, goal, signal) {
+      const body = await call(
+        '/api/run',
+        {
+          method: 'POST',
+          headers: { ...bearer(token), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ params: { goal } }),
+        },
+        signal,
+      );
+      return acceptedRunId(body);
     },
-    async getRun(token, runId) {
-      const body = await call(`/api/runs/${encodeURIComponent(runId)}`, {
-        headers: bearer(token),
-      });
+    async getRun(token, runId, signal) {
+      const body = await call(
+        `/api/runs/${encodeURIComponent(runId)}`,
+        { headers: bearer(token) },
+        signal,
+      );
       return parseRunStatus(body);
     },
   };

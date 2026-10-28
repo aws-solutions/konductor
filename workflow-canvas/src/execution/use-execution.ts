@@ -13,6 +13,12 @@ import {
   type Scheduler,
 } from './core';
 
+// A loop that follows a run. `resuming` holds until it has found a run to join.
+interface Loop {
+  controller: AbortController;
+  resuming: boolean;
+}
+
 /** The state of the Execution tab and the one way to change it. */
 export interface ExecutionController {
   state: ExecutionState;
@@ -32,56 +38,60 @@ export function useExecution(
   memory: RunMemory = NO_RUN_MEMORY,
 ): ExecutionController {
   const [state, dispatch] = useReducer(reduce, IDLE);
-  const active = useRef<AbortController>(undefined);
+  const active = useRef<Loop>(undefined);
 
   const emit = useCallback(
     (event: ExecutionEvent) => {
       if (event.type === 'started') memory.remember(event.runId);
+      if (event.type === 'start' && active.current) {
+        active.current.resuming = false;
+      }
       dispatch(event);
     },
     [memory],
   );
 
-  useEffect(() => () => active.current?.abort(), []);
+  // Claims the one place for a loop, runs it, and gives the place back when it
+  // ends. Returns the loop, whose controller stops it.
+  const track = useCallback(
+    (resuming: boolean, run: (signal: AbortSignal) => Promise<void>): Loop => {
+      const loop: Loop = { controller: new AbortController(), resuming };
+      active.current = loop;
+      void run(loop.controller.signal).finally(() => {
+        if (active.current === loop) active.current = undefined;
+      });
+      return loop;
+    },
+    [],
+  );
+
+  useEffect(() => () => active.current?.controller.abort(), []);
 
   useEffect(() => {
     const runId = runs ? memory.recall() : undefined;
     if (!runs || runId === undefined || active.current) return;
-    const controller = new AbortController();
-    active.current = controller;
-    const release = () => {
-      if (active.current === controller) active.current = undefined;
-    };
-    void resumeRun({
-      runs,
-      scheduler,
-      runId,
-      emit,
-      signal: controller.signal,
-    }).finally(release);
+    const loop = track(true, (signal) =>
+      resumeRun({ runs, scheduler, runId, emit, signal }),
+    );
     return () => {
-      controller.abort();
-      release();
+      loop.controller.abort();
+      if (active.current === loop) active.current = undefined;
     };
-  }, [runs, scheduler, memory, emit]);
+  }, [runs, scheduler, memory, emit, track]);
 
   const start = useCallback(
     (goal: string) => {
-      if (!runs || active.current) return;
-      const controller = new AbortController();
-      active.current = controller;
+      if (!runs) return;
+      // A page that is only looking for a run to join gives way to a click on
+      // Run: a run that is still going answers 409 and is joined anyway.
+      if (active.current?.resuming) active.current.controller.abort();
+      else if (active.current) return;
       dispatch({ type: 'start' });
-      void startAndFollow({
-        runs,
-        scheduler,
-        goal,
-        emit,
-        signal: controller.signal,
-      }).finally(() => {
-        if (active.current === controller) active.current = undefined;
-      });
+      track(false, (signal) =>
+        startAndFollow({ runs, scheduler, goal, emit, signal }),
+      );
     },
-    [runs, scheduler, emit],
+    [runs, scheduler, emit, track],
   );
 
   return { state, start };

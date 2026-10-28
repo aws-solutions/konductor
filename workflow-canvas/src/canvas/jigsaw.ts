@@ -82,7 +82,7 @@ export function rimSpreadStroke(spread: number): number {
 }
 
 /** The y of the border line along the top edge, and of the one along the bottom. */
-export function borderLines(height: number) {
+function borderLines(height: number) {
   return { top: BORDER_WIDTH / 2, bottom: height - BORDER_WIDTH / 2 };
 }
 

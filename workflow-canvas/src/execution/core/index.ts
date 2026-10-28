@@ -8,6 +8,7 @@
 export {
   IDLE,
   isInFlight,
+  isJoinedRun,
   reduce,
   runOf,
   type ExecutionEvent,
@@ -18,6 +19,7 @@ export {
   POLL_INTERVAL_MS,
   resumeRun,
   startAndFollow,
+  type FollowRequest,
 } from './follow-run';
 export { GOAL_MAX_LENGTH, goalProblem } from './goal';
 export { nodeStatuses } from './node-statuses';
@@ -25,8 +27,10 @@ export {
   NO_RUN_MEMORY,
   RunAlreadyActive,
   RunReadRefused,
+  RunStartUnsure,
   type RunMemory,
   type RunPort,
   type Scheduler,
 } from './ports';
+export { stageDrift, type StageDrift } from './stage-drift';
 export { statusKind, statusText, type StatusKind } from './status-text';

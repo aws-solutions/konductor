@@ -19,7 +19,12 @@ folder.
 - `src/`: the UI. `graph/` turns a workflow into nodes and edges and does no
   IO; `api/` is the typed client of the API; `launch/` and `workflow/` open the
   session and load the workflow; `designer/` edits it and `canvas/` draws it;
-  `execution/` runs it and shows the run; `execution/core/` does no IO.
+  `execution/` runs it and shows the run; `execution/core/` does no IO and reads a run
+  once a second. A read that fails with no answer or a server error is tried
+  again, up to three in a row; any other failure ends the following. A start
+  that finds a run already active follows that run. Every call takes a signal
+  and ends on its own after 15 seconds, so a server that never answers cannot
+  hold the tab. A failure counts only for the run it belongs to.
 - `api/`: the HTTP API contract (`openapi.yaml`) and its test.
 - `stub-api/`: a TypeScript stub server for the contract, for local
   development and tests.
@@ -176,8 +181,8 @@ that reads it.
 
 `dev:stub` ignores `WC_API_TARGET`, since it starts the stub. For real e2e,
 Playwright does not start the stub, so start the real server first with the
-launch code `e2e-launch-code`, and run the tests within 60 seconds of it
-listening. The launch code works once, so restart the server before each run;
+launch code `e2e-launch-code-0123456789`, and run the tests within 60 seconds
+of it listening. The launch code works once, so restart the server before each run;
 a second run against the same server fails with a 401.
 
 The proxy sends the `Origin` of the target in place of the page's own, and
@@ -213,13 +218,17 @@ open the page again with the same code. So an end-to-end test can call it. With
 
 `src/graph/` is the core of the canvas. `buildGraph(workflow, harness)` turns
 the workflow view into nodes (the intent, one per stage, the end) and edges
-(one from each node to the next, from its `S` out port at the bottom right to
-the `S` in port at the top right of the next), placed in one column. It imports
+(one from each node to the next, from the tab under a node to the notch in the
+top edge of the next), placed in one column. It imports
 only its own modules. A test (`test-support/graph-purity.test.ts`) fails if it
 imports anything else, or reads a clock, randomness, the environment or the
 network, and the stub core is held to the same rule by the same scan
-(`test-support/purity.ts`). The run core, `src/execution/core/`, is held to it
-too, by `test-support/execution-purity.test.ts`: it may import only its own
+(`test-support/purity.ts`). The scan parses each file as TypeScript, so it
+catches an alias such as `const f = fetch`, `XMLHttpRequest`, `WebSocket`,
+`sendBeacon`, storage, `import.meta`, animation frames and dynamic imports,
+and it ignores a word in a comment or a string. It guards against accidents;
+it is not a sandbox. The run core, `src/execution/core/`, is held to it too,
+by `test-support/execution-purity.test.ts`: it may import only its own
 modules, the graph core and the wire types.
 
 The rest wraps the core, so the rules can be tested without a browser:
@@ -236,11 +245,15 @@ The rest wraps the core, so the rules can be tested without a browser:
   open the launch address that it printed."; for the API's 401 (the session is
   gone, as after the server started again), "Open the launch address that the
   server printed."
-- `launch/launch-code.ts` and `workflow/load-workflow.ts` take the launch code
-  from the address and load the workflow. `loadWorkflow` never rejects: it
-  returns `{ ok: true, workflow }` or `{ ok: false, message }`. It is started
-  once, before React renders, because a launch code works once and strict mode
-  runs effects twice.
+- `launch/launch-code.ts` and `workflow/` take the launch code from the
+  address and load the workflow. `loadWorkflow` never rejects: it returns
+  `{ ok: true, workflow }` or `{ ok: false, message }`. `createWorkflowSource`
+  starts the first load once, before React renders, because a launch code
+  works once and strict mode runs effects twice. Pasting a launch address into
+  the open tab does not reload the page: when the fragment is shaped like a
+  launch code (22 to 256 URL-safe characters) the page opens a session with it
+  and changes to the new workflow only if that works. A refused code leaves
+  the workflow on the page. An anchor such as `#top` changes nothing.
 - `designer/` shows the result: loading, error, empty (no file yet, or a file
   with errors, with their messages), or the canvas with its editing (next
   section).
@@ -252,8 +265,9 @@ The rest wraps the core, so the rules can be tested without a browser:
   screen readers, which ends with "selected" for the selected stage. The view
   fits the graph again when a stage is added or deleted. The view starts zoomed out
   far enough to show the longest workflow the API allows (40 stages), where the
-  text is small; zoom in with the controls, or Tab to a node to bring it into
-  view.
+  text is small; use the zoom controls to read it. A node cuts a long name or
+  outcome short, and keeps the whole text in its `title`; an outcome too long
+  for the node is also written out in full under the graph.
 
 ## The Designer tab
 
@@ -268,26 +282,32 @@ way to link or reorder them yet.
   `agent-N`) with the agent `k-developer`, selects it and moves focus to its
   name. It is off at 40 stages, the most the API allows.
 - Typing in **name** renames the stage, and the node changes at once. The name
-  is taken as typed; the API is what says whether it is a good name.
+  is taken as typed; the API is what says whether it is a good name. The
+  **Complete** or **Needs a fix** mark of a stage shows only for a draft that a
+  check has answered for, so it never says a draft is complete before it was
+  checked.
 - **agent** is a list of the agents that Konductor ships, each with a line on
   what it is for. The API does not look an agent up in this version, so the
   list is part of the page (`designer/core/agents.ts`); a file that names an
-  agent not on the list keeps it, shown first. There is no field to type any
-  other id yet.
+  agent not on the list keeps it, shown first, and keeps it on offer when
+  another agent is chosen. There is no field to type any other id yet.
 - **Delete stage** removes the stage, selects the one before it (or the next,
   for the first) and moves focus to its name. A workflow keeps at least one
   stage, so it is off for the last.
 - Choosing a stage by its node (click, or Enter or Space) selects it and moves
-  focus to its name. Choosing the stage that is already selected changes
-  nothing, and focus stays where it is.
+  focus to its name. Enter or Space on the stage that is already selected also
+  moves focus to its name; a click on it changes nothing. Escape on a node
+  leaves focus on it. A polite live region says what was added, deleted or
+  selected.
 
 Nothing is written until **Save**. The line beside it says **No changes**,
 **Unsaved changes**, **Saving** or **Saved** in a polite live region. Save
 sends the whole text with `PUT /api/workflow` and the `hash` of the file as it
 was loaded (`base_hash`), and takes the hash of the answer for the next save.
 Only the block of stages changes: the `name`, `intent`, `version` and the
-comments outside the block stay as they were. Comments inside the block go with
-its old stages. If the stages are not a block at the top level of the file (for
+comments outside the block stay as they were. A stage that is unchanged keeps
+its own lines and the comments in front of it; the comments written inside a
+stage that is changed or deleted go with it. If the stages are not a block at the top level of the file (for
 example `stages: [...]`), the whole file is written from the view, in the plain
 layout, which drops its comments and `version`; an info note above the graph
 says so before you save.
@@ -309,7 +329,8 @@ says so before you save.
   the file from the server and replaces the draft. Focus then moves to the name.
 - **A read-only workflow** (the server says `read_only`) can be looked at, and
   a stage can be selected, but the name is read-only and Add stage, Delete
-  stage, the agent list and Save are off, with the reason in a tooltip.
+  stage, the agent list and Save are off. A note above the graph says why, and
+  the buttons carry the reason in a tooltip.
 - **A save whose answer is lost** (no answer, or a server error) may still
   have written the file. The page reads the file again: if it holds the text
   that was sent, the save counts as done; if not, the failure is shown in an
@@ -367,37 +388,57 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
 - If the server answers 409 `already_running`, as it does when a run from
   another tab is going, the tab follows the run named in that answer instead
   of starting one. The line under the button says so, and the goal typed is not
-  used for that run.
-- After a reload the page has no token, so the person opens the launch address
-  again. The tab keeps the id of the latest run in the storage of the browser
-  tab (`sessionStorage`; the id is no secret, the token is not kept), and when
-  the page opens again it reads that run once. If it is still running, the tab
-  follows it as if the person had joined it, without a click on Run. A run that
-  has ended, one that cannot be read (for instance after the server started
-  again) or a browser that blocks storage leaves the tab ready for a new run.
+  used for that run. The API does not give the goal of a run, so while the tab
+  follows a run that was already going the Goal box is empty, says "Not known"
+  and is labelled so. When that run ends, the status line still says it was
+  already in progress.
+- Resume after a reload works only where the launch code can be traded again,
+  which is the dev stub (`npm run dev:stub`, see above). The launch code works
+  once and the page removes it from the address, so on a server that follows
+  the contract a reload leaves the page with "no launch code in the address"
+  and no Execution tab, and the run goes on unseen. The tab keeps the id of the
+  latest run in the storage of the browser tab (`sessionStorage`; the id is no
+  secret, the token is not kept). When the page opens again with a session it
+  reads that run, trying again like any read. If the run is still running, the
+  tab follows it as if the person had joined it, without a click on Run. A run
+  that has ended, one that the server will not give (for instance after it
+  started again) or a browser that blocks storage leaves the tab ready for a
+  new run. If the readings fail for another reason, such as no answer, the tab
+  does not know whether the run is going, and shows the alert for a run that
+  may still be going. Pressing Run while the page still looks for the run
+  stops the look and starts a run; a run that is going answers 409 and is
+  joined.
 - A read of the run that fails is tried again after a second; the tab gives up
   after three failures in a row. Only a missing answer or a 5xx is tried again:
   any 4xx or a reply the page cannot read shows the alert at once. A call that
-  gets no answer in 15 seconds counts as a failure.
-- Each node shows a badge with a word and a colour: **Queued** (dashed
-  outline), **Running**, **Done** and **Failed**. The intent is Done once the run
+  gets no answer in 15 seconds counts as a failure, except the one that trades
+  the launch code, which has no limit because the code works once. A start that
+  gets no answer, or is accepted in a reply the page cannot read, says that the
+  run may not have started and that Run joins it if it did.
+- Each node shows a badge with a word and a colour: **Queued** (with a dashed
+  outline), **Running**, **Done** and **Failed**. The word carries the state;
+  only Queued also differs in shape. The intent is Done once the run
   has it. After a halt, the stages behind the failed one say **Not run**. The end
   shows the result: **Passed** or **Halted**.
 - A line under the button says where the run is ("Running draft. 0 of 2 stages
-  done."). It is a polite live region, so a screen reader announces each
-  change, and each node's name for a screen reader ends with its state.
+  done."). A screen reader hears each change from a polite live region that
+  `App` keeps outside the tabs, so it is announced while the Designer tab is
+  open too. Each node's name for a screen reader ends with its state.
 - An error from the API, whether the run does not start or a read fails, shows
-  in one alert above the graph, with the sentence the server gave. The alert
-  is drawn inside an alert region that is always on the page, so a screen
-  reader reads the sentence when it appears; the status line then says only
-  "See the error above." When a read fails, the nodes are cleared and the alert
-  adds that the run may still be going on the server. A failed stage is a
-  result, not an error, so it has no alert.
-- A run stage that is not in the graph is left out of the drawing. The graph is
-  the saved workflow, and it is drawn again when the Designer saves, while a
-  run works from the file as it was saved when the run started. If the
-  Designer saves in the middle of a run, the nodes of stages that were renamed
-  or added show no state.
+  in one alert under the Run button, with the sentence the server gave. A
+  screen reader hears it from an alert region that `App` keeps outside the
+  tabs, so it is read when it appears even if the Designer tab is open; the
+  status line then says only "See the error below." When a read fails, the
+  nodes are cleared and the alert adds that the run (with its id) may still be
+  going on the server. A failed stage is a result, not an error, so it has no
+  alert. The goal is one line: line breaks in the outcome of the intent become
+  spaces, and Enter that ends an input method composition starts no run.
+- A workflow can be saved while a run goes on, so the run may have other stages
+  than the graph. The graph is the saved workflow, and it is drawn again when
+  the Designer saves, while a run works from the file as it was saved when the
+  run started. Node states attach by stage name, so a warning
+  above the graph names the stages that are not drawn and those that are not in
+  the run.
 - A run goes on while the Designer tab is open, and the tab shows it again when
   you come back, with the goal box as it was: what you typed, or the goal of
   the run in flight. Closing the page stops the reading, not the run.
@@ -485,8 +526,9 @@ own `POST /api/session` with that session. Every other call, such as
 `GET /api/workflow`, reaches the API. A test that needs the error state opens
 the page with a wrong code or none.
 
-Port 4173 must be free. The config never reuses a server, so a `vite preview`
-you left running there makes the run fail at startup; stop it first.
+Port 4173 must be free, or set `WC_APP_PORT` to another port (`WC_APP_PORT=4300
+npm run test:e2e`). The config never reuses a server, so a `vite preview` you
+left running on that port makes the run fail at startup; stop it first.
 
 Install the browser once (on Linux add `--with-deps` to also install system
 libraries):

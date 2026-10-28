@@ -6,15 +6,21 @@ import type { DiagnosticView } from '../api/types';
 
 /** Shown while the session opens and the workflow loads. */
 export function LoadingState() {
-  return <StatusIndicator type="loading">Loading the workflow</StatusIndicator>;
+  return (
+    <div role="status">
+      <StatusIndicator type="loading">Loading the workflow</StatusIndicator>
+    </div>
+  );
 }
 
 /** Shown when the workflow could not be loaded. */
 export function ErrorState({ message }: { message: string }) {
   return (
-    <Alert type="error" header="The workflow did not load">
-      {message}
-    </Alert>
+    <div role="alert">
+      <Alert type="error" header="The workflow did not load">
+        {message}
+      </Alert>
+    </div>
   );
 }
 

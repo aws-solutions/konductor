@@ -11,6 +11,7 @@ import {
 import {
   RunAlreadyActive,
   RunReadRefused,
+  RunStartUnsure,
   type RunPort,
 } from '../execution/core';
 
@@ -58,6 +59,15 @@ function readRefusedOf(error: unknown): RunReadRefused | undefined {
     : undefined;
 }
 
+// No answer, or an accepted run in a reply the page cannot read: the run may
+// have started.
+function startUnsureOf(error: unknown): RunStartUnsure | undefined {
+  return error instanceof ApiError &&
+    (error.status === 0 || error.status === 202)
+    ? new RunStartUnsure(error.message)
+    : undefined;
+}
+
 // A 409 `conflict` is the file changing under the page; a 422
 // `invalid_workflow` carries the findings of the check; no answer or a server
 // error leaves it unknown whether the file was written. The core is told each
@@ -89,16 +99,16 @@ function editPortFor(api: WorkflowApi, token: string): EditPort {
 
 function runPortFor(api: WorkflowApi, token: string): RunPort {
   return {
-    start: async (goal) => {
+    start: async (goal, signal) => {
       try {
-        return await api.startRun(token, goal);
+        return await api.startRun(token, goal, signal);
       } catch (error) {
-        throw activeRunOf(error) ?? error;
+        throw activeRunOf(error) ?? startUnsureOf(error) ?? error;
       }
     },
-    get: async (runId) => {
+    get: async (runId, signal) => {
       try {
-        return await api.getRun(token, runId);
+        return await api.getRun(token, runId, signal);
       } catch (error) {
         throw readRefusedOf(error) ?? error;
       }

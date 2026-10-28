@@ -55,13 +55,20 @@ function parseStage(value: unknown): StageView {
   return { name: stringOf(stage.name), agent: stringOf(stage.agent) };
 }
 
+// The contract forbids two stages with one name, and the graph names its
+// nodes by stage name, so a repeat would silently hide a stage.
+function uniqueByName(stages: StageView[]): StageView[] {
+  const names = new Set(stages.map((stage) => stage.name));
+  return names.size === stages.length ? stages : fail();
+}
+
 function parseView(value: unknown): WorkflowView | null {
   if (value === null) return null;
   const view = objectOf(value);
   return {
     name: stringOf(view.name),
     intent: { outcome: stringOf(objectOf(view.intent).outcome) },
-    stages: arrayOf(view.stages).map(parseStage),
+    stages: uniqueByName(arrayOf(view.stages).map(parseStage)),
   };
 }
 
@@ -112,7 +119,7 @@ function oneOf<T extends string>(value: unknown, allowed: readonly T[]): T {
 function parseRunStages(order: unknown, stages: unknown): RunStageView[] {
   const byName = objectOf(stages);
   const seen = new Set<string>();
-  return arrayOf(order).map((entry) => {
+  const listed = arrayOf(order).map((entry) => {
     const name = stringOf(entry);
     if (seen.has(name)) fail();
     seen.add(name);
@@ -122,22 +129,55 @@ function parseRunStages(order: unknown, stages: unknown): RunStageView[] {
       status: oneOf(objectOf(stage).status, STAGE_STATUSES),
     };
   });
+  // `order` holds the keys of `stages`: a stage that is not listed is a bad reply.
+  return Object.keys(byName).length === listed.length ? listed : fail();
+}
+
+// The pattern of `RunId` in the contract, which holds in this version.
+const RUN_ID_PATTERN = /^[0-9]{8}-[0-9]{4}-[a-z0-9]{5}$/;
+
+function runIdOf(value: unknown): string {
+  const id = stringOf(value);
+  return RUN_ID_PATTERN.test(id) ? id : fail();
+}
+
+// The contract says what a run in each status looks like: a running run has
+// no exit code, a passed run has every stage passed and exit code 0, and a
+// halted run has exactly one stage blocked and an exit code above 0.
+function isCoherent(
+  status: RunStatus,
+  exitCode: number | null,
+  stages: readonly RunStageView[],
+): boolean {
+  switch (status) {
+    case 'running':
+      return exitCode === null;
+    case 'passed':
+      return exitCode === 0 && stages.every((s) => s.status === 'passed');
+    case 'halted':
+      return (
+        exitCode !== null &&
+        exitCode > 0 &&
+        stages.filter((s) => s.status === 'blocked').length === 1
+      );
+  }
 }
 
 /** Reads a `RunStarted`: the id of the run that was accepted. */
 export function parseRunStarted(body: unknown): string {
-  return stringOf(objectOf(body).run_id);
+  return runIdOf(objectOf(body).run_id);
 }
 
 /** Reads a `RunStatusResponse`; unknown fields are ignored. */
 export function parseRunStatus(body: unknown): RunView {
   const run = objectOf(objectOf(body).run);
-  return {
-    runId: stringOf(run.run_id),
+  const view: RunView = {
+    runId: runIdOf(run.run_id),
     status: oneOf(run.status, RUN_STATUSES),
     exitCode: exitCodeOf(run.exit_code),
     stages: parseRunStages(run.order, run.stages),
   };
+  return isCoherent(view.status, view.exitCode, view.stages) ? view : fail();
 }
 
 /** Reads a `SessionResponse`; unknown fields are ignored. */
@@ -187,11 +227,14 @@ export function parseCheckResult(body: unknown): CheckResult {
   };
 }
 
-/** The sentence of an `Error` body, or `undefined` when it has none. */
+/**
+ * The sentence of an `Error` body, followed by its `fix` (what to do about it),
+ * or `undefined` when it has no sentence.
+ */
 export function errorMessageOf(body: unknown): string | undefined {
-  return isObject(body) && typeof body.error === 'string'
-    ? body.error
-    : undefined;
+  if (!isObject(body) || typeof body.error !== 'string') return undefined;
+  const fix = typeof body.fix === 'string' ? body.fix : '';
+  return fix === '' ? body.error : `${body.error} ${fix}`;
 }
 
 /** The `run_id` of an `Error` body, or `undefined` when it has none. */

@@ -13,6 +13,7 @@ import { useLeaveGuard } from './designer/use-leave-guard';
 import { useSettled } from './designer/use-settled';
 import type { RunMemory, Scheduler } from './execution/core';
 import { Execution } from './execution/Execution';
+import { RunAnnouncements } from './execution/RunAnnouncements';
 import { timerScheduler } from './execution/timer-scheduler';
 import { useExecution } from './execution/use-execution';
 import { useGoal } from './execution/use-goal';
@@ -74,6 +75,7 @@ export function App({
             breadcrumbs={<Breadcrumbs workflowName={openWorkflowName(saved)} />}
             header={<Header variant="h1">Workflow canvas</Header>}
           >
+            <RunAnnouncements state={execution.state} />
             <div className="wf-tab-strip">
               <Tabs
                 ariaLabel="Workflow canvas views"

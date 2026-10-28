@@ -10,6 +10,41 @@ function following(run?: ReturnType<typeof helloRun>): ExecutionState {
   return { phase: 'following', runId: helloRun(0).runId, run };
 }
 
+describe('statusText for a run that was already active', () => {
+  it('says that the tab follows it', () => {
+    const state: ExecutionState = {
+      phase: 'following',
+      runId: helloRun(0).runId,
+      run: helloRun(1),
+      joined: true,
+    };
+
+    expect(statusText(state)).toBe(
+      'Following the run that was already in progress. Running review. 1 of 2 stages done.',
+    );
+    expect(statusKind(state)).toBe('busy');
+  });
+});
+
+describe('statusText for a joined run that has ended', () => {
+  it('says it was already in progress', () => {
+    expect(
+      statusText({ phase: 'finished', run: helloRun(2), joined: true }),
+    ).toBe(
+      'The run that was already in progress passed. 2 of 2 stages done. Exit code 0.',
+    );
+    expect(
+      statusText({
+        phase: 'finished',
+        run: helloRun(0, { blockedAt: 1 }),
+        joined: true,
+      }),
+    ).toBe(
+      'The run that was already in progress halted at review. 1 of 2 stages done. Exit code 1.',
+    );
+  });
+});
+
 describe('statusText and statusKind', () => {
   it.each<[string, ExecutionState, string, string]>([
     ['idle', IDLE, 'Ready. Press Run to start.', 'idle'],
@@ -47,13 +82,13 @@ describe('statusText and statusKind', () => {
     [
       'an error before the run started',
       { phase: 'error', message: 'x', started: false },
-      'See the error above.',
+      'See the error below.',
       'error',
     ],
     [
       'an error after the run started',
       { phase: 'error', message: 'x', started: true },
-      'See the error above.',
+      'See the error below.',
       'error',
     ],
   ])('says %s', (_, state, text, kind) => {
@@ -89,20 +124,6 @@ describe('statusText and statusKind', () => {
     expect(statusText({ phase: 'finished', run })).toBe(
       'Run halted. 0 of 0 stages done. Exit code 1.',
     );
-  });
-
-  it('says that it joined a run that was already in progress', () => {
-    const joined: ExecutionState = {
-      phase: 'following',
-      runId: helloRun(0).runId,
-      run: helloRun(0),
-      joined: true,
-    };
-
-    expect(statusText(joined)).toBe(
-      'Following the run that was already in progress. Running draft. 0 of 2 stages done.',
-    );
-    expect(statusKind(joined)).toBe('busy');
   });
 
   it('follows a whole run from the first click to the end', () => {

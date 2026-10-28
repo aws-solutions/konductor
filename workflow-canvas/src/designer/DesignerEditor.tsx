@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 import Button from '@cloudscape-design/components/button';
 import type { InputProps } from '@cloudscape-design/components/input';
-import { useMemo, useRef } from 'react';
+import Alert from '@cloudscape-design/components/alert';
+import { useMemo, useRef, useState } from 'react';
 import { WorkflowGraphCard } from '../canvas/WorkflowGraphCard';
 import type { CanvasSelection } from '../canvas/WorkflowCanvas';
 import { stageNodeId } from '../graph';
 import { canAddStage, canEdit, MAX_STAGES, READ_ONLY_REASON } from './core';
+import '../execution/announcements.css';
 import './designer.css';
 import { EditAlerts, RewriteNotice } from './EditAlerts';
 import { PropertiesPane } from './PropertiesPane';
@@ -45,6 +47,7 @@ export function DesignerEditor({
     }),
     [state.saved.view, state.draft.stages],
   );
+  const [announcement, announce] = useState('');
   const { select } = editor;
   const selection = useMemo<CanvasSelection>(
     () => ({
@@ -56,6 +59,7 @@ export function DesignerEditor({
         if (!stage) return;
         select(stage.id);
         focusName();
+        announce(`Stage ${stage.name || 'with no name'} selected.`);
       },
     }),
     [state.selectedId, state.draft.stages, select, focusName],
@@ -65,13 +69,27 @@ export function DesignerEditor({
   const addable = editable && canAddStage(state.draft);
   return (
     <div>
+      <div
+        className="wf-visually-hidden"
+        role="status"
+        data-testid="designer-live"
+      >
+        {announcement}
+      </div>
       <EditAlerts state={state} onReload={editor.reload} />
-      <RewriteNotice text={state.saved.text} />
+      {editable && <RewriteNotice text={state.saved.text} />}
+      {!editable && (
+        <Alert type="info" data-testid="read-only-note">
+          {READ_ONLY_REASON} You can look at the stages and select one, but not
+          change them.
+        </Alert>
+      )}
       <div className="wf-designer">
         <WorkflowGraphCard
           view={spec}
           harness={harness}
           selection={selection}
+          readOnly={!editable}
           actions={<SaveControls state={state} onSave={editor.save} />}
           toolbar={
             <Button
@@ -81,6 +99,7 @@ export function DesignerEditor({
               onClick={() => {
                 editor.add();
                 focusName();
+                announce('Stage added and selected.');
               }}
             >
               Add stage
@@ -93,8 +112,10 @@ export function DesignerEditor({
           onRename={editor.rename}
           onAgent={editor.setAgent}
           onRemove={(id) => {
+            const stage = state.draft.stages.find((s) => s.id === id);
             editor.remove(id);
             focusName();
+            announce(`Stage ${stage?.name || 'with no name'} deleted.`);
           }}
         />
       </div>

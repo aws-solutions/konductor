@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it, vi } from 'vitest';
 import {
-  reloadOnLaunchCode,
+  isLaunchCode,
+  watchLaunchCode,
   takeLaunchCode,
   type LaunchEnvironment,
 } from './launch-code';
@@ -53,32 +54,96 @@ describe('takeLaunchCode', () => {
   });
 });
 
-describe('reloadOnLaunchCode', () => {
+describe('watchLaunchCode', () => {
+  const CODE = 'q3x7vJ2kLmN9pRs4TuVw5Y_-ab12';
+
   function watched(hash: string) {
-    const listeners: Array<() => void> = [];
+    const listeners = new Set<() => void>();
     const env = {
-      location: { hash, reload: vi.fn() },
+      ...environment(hash),
       addEventListener: (_type: 'hashchange', listener: () => void) => {
-        listeners.push(listener);
+        listeners.add(listener);
+      },
+      removeEventListener: (_type: 'hashchange', listener: () => void) => {
+        listeners.delete(listener);
       },
     };
-    reloadOnLaunchCode(env);
-    return { env, changeHash: () => listeners.forEach((l) => l()) };
+    const onCode = vi.fn();
+    const stop = watchLaunchCode(env, onCode);
+    return {
+      env,
+      onCode,
+      stop,
+      listeners,
+      changeHash: () => listeners.forEach((l) => l()),
+    };
   }
 
-  it('reloads the page when a launch code is put into the address', () => {
-    const { env, changeHash } = watched('#abc-123');
+  it('hands over a launch code that is put into the address, and clears it', () => {
+    const { env, onCode, changeHash } = watched(`#${CODE}`);
 
     changeHash();
 
-    expect(env.location.reload).toHaveBeenCalledOnce();
+    expect(onCode).toHaveBeenCalledExactlyOnceWith(CODE);
+    expect(env.history.replaceState).toHaveBeenCalledOnce();
   });
 
-  it('does not reload when the fragment is empty', () => {
-    const { env, changeHash } = watched('#');
+  it('does nothing when the fragment is empty', () => {
+    const { env, onCode, changeHash } = watched('#');
 
     changeHash();
 
-    expect(env.location.reload).not.toHaveBeenCalled();
+    expect(onCode).not.toHaveBeenCalled();
+    expect(env.history.replaceState).not.toHaveBeenCalled();
+  });
+
+  it.each(['#some-anchor', '#top', '#section-2', '#abc-123'])(
+    'leaves %s alone, which is not a launch code',
+    (hash) => {
+      const { env, onCode, changeHash } = watched(hash);
+
+      changeHash();
+
+      expect(onCode).not.toHaveBeenCalled();
+      expect(env.history.replaceState).not.toHaveBeenCalled();
+    },
+  );
+
+  it('leaves a fragment that is too long to be a code alone', () => {
+    const { onCode, changeHash } = watched(`#${'a'.repeat(257)}`);
+
+    changeHash();
+
+    expect(onCode).not.toHaveBeenCalled();
+  });
+
+  it('stops watching when the returned function is called', () => {
+    const { onCode, stop, listeners, changeHash } = watched(`#${CODE}`);
+
+    stop();
+    changeHash();
+
+    expect(listeners.size).toBe(0);
+    expect(onCode).not.toHaveBeenCalled();
+  });
+});
+
+describe('isLaunchCode', () => {
+  it.each([
+    ['a base64url code of 32 bytes', 'Zm9vYmFyYmF6cXV4MTIzNDU2Nzg5MDEyMzQ1Ng'],
+    ['a hex code of 16 bytes', '0123456789abcdef0123456789abcdef'],
+    ['the shortest code of 22 characters', 'a'.repeat(22)],
+    ['the longest code of 256 characters', 'a'.repeat(256)],
+  ])('accepts %s', (_, code) => {
+    expect(isLaunchCode(code)).toBe(true);
+  });
+
+  it.each([
+    ['empty', ''],
+    ['21 characters', 'a'.repeat(21)],
+    ['a word with a space', 'some anchor with a space inside'],
+    ['a path', 'section/sub-section/more-more'],
+  ])('rejects %s', (_, code) => {
+    expect(isLaunchCode(code)).toBe(false);
   });
 });

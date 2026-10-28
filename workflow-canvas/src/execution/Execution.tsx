@@ -10,6 +10,7 @@ import StatusIndicator, {
   type StatusIndicatorProps,
 } from '@cloudscape-design/components/status-indicator';
 import { useMemo } from 'react';
+import type { RunView, WorkflowView } from '../api/types';
 import { WorkflowGraphCard } from '../canvas/WorkflowGraphCard';
 import type { LoadResult } from '../workflow/load-workflow';
 import { WorkflowGate, type DrawableWorkflow } from '../workflow/WorkflowGate';
@@ -17,14 +18,17 @@ import {
   GOAL_MAX_LENGTH,
   goalProblem,
   isInFlight,
+  isJoinedRun,
   nodeStatuses,
   runOf,
+  stageDrift,
   statusKind,
   statusText,
   type ExecutionState,
   type StatusKind,
 } from './core';
 import './execution.css';
+import { runErrorOf } from './run-error';
 import type { ExecutionController } from './use-execution';
 
 const INDICATOR: Record<StatusKind, StatusIndicatorProps.Type> = {
@@ -34,13 +38,11 @@ const INDICATOR: Record<StatusKind, StatusIndicatorProps.Type> = {
   error: 'error',
 };
 
-const MAY_STILL_BE_RUNNING = 'The run may still be going on the server.';
-
-// One live region that says where the run is. It is always on the page, so a
-// change of its text is announced.
+// The sentence that says where the run is. A screen reader hears the same
+// words from the live region that `RunAnnouncements` keeps outside the tabs.
 function RunStatusLine({ state }: { state: ExecutionState }) {
   return (
-    <div role="status" aria-live="polite" data-testid="run-status">
+    <div data-testid="run-status">
       <StatusIndicator type={INDICATOR[statusKind(state)]}>
         {statusText(state)}
       </StatusIndicator>
@@ -48,28 +50,45 @@ function RunStatusLine({ state }: { state: ExecutionState }) {
   );
 }
 
-// The wrapper is always on the page, so the alert that appears in it is
-// announced with the sentence of the server, which the status line leaves out.
+// The alert sits under the Run button, so it is next to the control that was
+// pressed on a narrow screen too.
 function RunError({ state }: { state: ExecutionState }) {
+  const error = runErrorOf(state);
+  if (!error) return null;
   return (
-    <div role="alert" className="wf-run-error">
-      {state.phase === 'error' && (
-        <Alert
-          type="error"
-          header={
-            state.started
-              ? 'The run could not be followed'
-              : 'The run did not start'
-          }
-          data-testid="run-error"
-        >
-          {state.message}
-          {state.started && <div>{MAY_STILL_BE_RUNNING}</div>}
-        </Alert>
-      )}
-    </div>
+    <Alert type="error" header={error.header} data-testid="run-error">
+      {error.message}
+      {error.note && <div>{error.note}</div>}
+    </Alert>
   );
 }
+
+// A run reads the saved file, which can change while it goes on, so its stages
+// can differ from the graph, and then some nodes show no state.
+function StageDriftNotice({
+  view,
+  run,
+}: {
+  view: WorkflowView;
+  run: RunView | undefined;
+}) {
+  const drift = stageDrift(view, run);
+  if (!drift) return null;
+  const { notInGraph, notInRun } = drift;
+  return (
+    <Alert type="warning" data-testid="stage-drift">
+      The stages of this run are not the stages in the graph, so some nodes show
+      no state. The workflow file changed after the run started.
+      {notInGraph.length > 0 && ` Not drawn: ${notInGraph.join(', ')}.`}
+      {notInRun.length > 0 && ` Not in the run: ${notInRun.join(', ')}.`}
+    </Alert>
+  );
+}
+
+// A run that was already going has a goal that the API does not give, and the
+// box must not show another goal in its place.
+const NO_GOAL_OF_JOINED_RUN =
+  'This run was already going, so its goal is not known here.';
 
 function RunPanel({
   goal,
@@ -81,6 +100,7 @@ function RunPanel({
   execution: ExecutionController;
 }) {
   const inFlight = isInFlight(execution.state);
+  const joined = isJoinedRun(execution.state);
   const problem = goalProblem(goal);
   const canRun = !inFlight && problem === undefined;
   return (
@@ -88,16 +108,23 @@ function RunPanel({
       <SpaceBetween size="m">
         <FormField
           label="Goal"
-          description="What the run should achieve. Every stage is given it."
+          description={
+            joined
+              ? NO_GOAL_OF_JOINED_RUN
+              : 'What the run should achieve. Every stage is given it.'
+          }
           constraintText={`At most ${GOAL_MAX_LENGTH} characters.`}
           errorText={problem}
         >
           <Input
-            value={goal}
+            value={joined ? '' : goal}
+            placeholder={joined ? 'Not known' : undefined}
             readOnly={inFlight}
             onChange={({ detail }) => onGoalChange(detail.value)}
             onKeyDown={({ detail }) => {
-              if (detail.key === 'Enter' && canRun) execution.start(goal);
+              if (detail.key === 'Enter' && !detail.isComposing && canRun) {
+                execution.start(goal);
+              }
             }}
           />
         </FormField>
@@ -110,6 +137,7 @@ function RunPanel({
           Run
         </Button>
         <RunStatusLine state={execution.state} />
+        <RunError state={execution.state} />
       </SpaceBetween>
     </Container>
   );
@@ -117,12 +145,10 @@ function RunPanel({
 
 function UnsavedNote() {
   return (
-    <div className="wf-run-note">
-      <Alert type="info" data-testid="unsaved-note">
-        The Designer has changes that are not saved. A run uses the saved
-        workflow, which is the one drawn here.
-      </Alert>
-    </div>
+    <Alert type="info" data-testid="unsaved-note">
+      The Designer has changes that are not saved. A run uses the saved
+      workflow, which is the one drawn here.
+    </Alert>
   );
 }
 
@@ -143,9 +169,9 @@ function ExecutionView({
   const run = runOf(execution.state);
   const statuses = useMemo(() => nodeStatuses(run), [run]);
   return (
-    <div>
+    <SpaceBetween size="m">
       {unsaved && <UnsavedNote />}
-      <RunError state={execution.state} />
+      <StageDriftNotice view={view} run={run} />
       <div className="wf-execution">
         <WorkflowGraphCard view={view} harness={harness} statuses={statuses} />
         <RunPanel
@@ -154,7 +180,7 @@ function ExecutionView({
           execution={execution}
         />
       </div>
-    </div>
+    </SpaceBetween>
   );
 }
 

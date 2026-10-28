@@ -7,7 +7,7 @@ describe('canRetryStatus', () => {
     expect(canRetryStatus(status)).toBe(true);
   });
 
-  it.each([401, 404, 499])('does not retry status %i', (status) => {
+  it.each([200, 202, 401, 404, 499])('does not retry status %i', (status) => {
     expect(canRetryStatus(status)).toBe(false);
   });
 });
