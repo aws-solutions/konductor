@@ -634,6 +634,26 @@ describe('createHttpApi, when a call does not go through', () => {
       await outcome;
     });
 
+    it('gives the launch code no timeout, as it works once', async () => {
+      vi.useFakeTimers();
+      let answer: (response: Response) => void = () => {};
+      const fetchFn = vi.fn(
+        () => new Promise<Response>((resolve) => (answer = resolve)),
+      );
+      const api = createHttpApi(fetchFn as unknown as typeof fetch, 5000);
+      let settled = false;
+
+      const session = api.createSession('code-1').finally(() => {
+        settled = true;
+      });
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(settled).toBe(false);
+      answer(reply(SESSION_BODY));
+
+      await expect(session).resolves.toMatchObject({ token: 't-1' });
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
     it('stops its timer when the call ends', async () => {
       vi.useFakeTimers();
       const { api } = apiFor(reply(RUN_BODY));
