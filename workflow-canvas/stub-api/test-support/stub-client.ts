@@ -1,5 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
-import { request, type IncomingHttpHeaders } from 'node:http';
+import {
+  request,
+  type ClientRequest,
+  type IncomingHttpHeaders,
+} from 'node:http';
+import type { Socket } from 'node:net';
 
 export interface Reply {
   status: number;
@@ -79,6 +84,7 @@ export class StubClient {
         },
       );
       req.on('error', reject);
+      keepSocketErrorsHandled(req);
       req.end(payload);
     });
   }
@@ -91,4 +97,20 @@ export class StubClient {
       authorization: this.token ? `Bearer ${this.token}` : undefined,
     };
   }
+}
+
+const guarded = new WeakSet<Socket>();
+
+/**
+ * Node removes its socket error handler once a reply is complete, even while
+ * the body is still being sent. A stub that answers early and then closes
+ * would crash the process with EPIPE, so each socket keeps a handler of its
+ * own. A failure before the reply still rejects the call.
+ */
+function keepSocketErrorsHandled(req: ClientRequest): void {
+  req.once('socket', (socket) => {
+    if (guarded.has(socket)) return;
+    guarded.add(socket);
+    socket.on('error', () => {});
+  });
 }
