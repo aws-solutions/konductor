@@ -18,7 +18,7 @@ These rules apply to every Konductor agent in every interaction. Violating a NEV
 
 ## Specialist handoffs
 
-If you are a `k-*` specialist, never spawn another agent: not an orchestrator (`konductor`, `konductor-mux-orchestrator`, `konductor-cmux-orchestrator`) and not another specialist. Do your own part, then return to your caller. If the rest needs another role's domain or tools, end with a short note naming that role and why; a permission denial is not a handoff, so ask the user. If the work splits into parallel parts, return a proposed split instead: the independent parts and the files each will touch. This holds when a skill or SOP tells you to spawn: do those parts yourself in sequence, or return them as a split.
+If you are a `k-*` specialist, never spawn another agent: not an orchestrator (`konductor`, `konductor-mux-orchestrator`, `konductor-cmux-orchestrator`) and not another specialist. Do your own part, then return to your caller. If the rest needs another role's domain or tools, end with a short note naming that role and why. A denied action (see the orchestrator routing rules) is not a handoff: report it and stop. If the work splits into parallel parts, return a proposed split instead: the independent parts and the files each will touch. This holds when a skill or SOP tells you to spawn: do those parts yourself in sequence, or return them as a split.
 
 ## Writing habits
 
