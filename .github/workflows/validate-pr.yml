@@ -104,7 +104,7 @@ jobs:
       - name: Set up Rust toolchain
         # Pinned so a new Rust release can't add clippy lints that fail every PR
         # under -D warnings. Bump it deliberately in its own PR.
-        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
         with:
           toolchain: 1.98.1
           components: clippy, rustfmt
@@ -139,9 +139,6 @@ jobs:
             --skip cli::update::tests::update_finalize_index_reflects_a_concurrently_installed_other_strategy)
           make -C mcp test-rust
           make -C shared test-rust
-
-      - name: Lint the Rust crates (clippy -D warnings and rustfmt)
-        run: make lint
 
       - name: Install claude CLI for validation
         # Pinned to the same version release.yml's publish-claude-plugin job
@@ -222,3 +219,6 @@ jobs:
             echo "FATAL: packaged tarball's version segment ($TARBALL_VERSION, from Cargo.toml) does not match the root VERSION file ($EXPECTED_TARBALL_VERSION). This will fail release.yml's build job after merge. Bump Cargo.toml's version to match VERSION before merging. Failing closed." >&2
             exit 1
           fi
+
+      - name: Lint the Rust crates (clippy -D warnings and rustfmt)
+        run: make lint
