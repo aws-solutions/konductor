@@ -54,6 +54,30 @@ describe('PropertiesPane', () => {
     ).toBe('true');
   });
 
+  it('shows the name in an error as code, without backticks', () => {
+    show(
+      stateAfter(
+        { type: 'rename', id: 's1', name: 'review' },
+        {
+          type: 'checked',
+          revision: 1,
+          diagnostics: [
+            {
+              message: 'The stage name `review` is already used.',
+              path: 'stages[0].name',
+              line: 4,
+              severity: 'error',
+            },
+          ],
+        },
+      ),
+    );
+
+    const field = screen.getByText(/is already used\./).closest('div');
+    expect(field?.textContent).toBe('The stage name review is already used.');
+    expect(field?.querySelector('code')?.textContent).toBe('review');
+  });
+
   it('says a stage is complete once a check has found nothing', () => {
     show(
       stateAfter(
