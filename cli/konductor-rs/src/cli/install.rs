@@ -789,6 +789,10 @@ fn dispatch_install_with_remote_installer(
         ),
     );
 
+    let opt_out_carried_forward =
+        !no_telemetry && target_opted_out_with_other_harness(&destination, strategy.name());
+    let no_telemetry = no_telemetry || opt_out_carried_forward;
+
     // A hand-edited or otherwise corrupted index can carry the same
     // target_dir more than once; write_index's upsert only fixes a
     // duplicate matching THIS install's own canonical_target_dir, and
@@ -1194,6 +1198,11 @@ fn dispatch_install_with_remote_installer(
             } else {
                 None
             };
+            let telemetry_note = opt_out_carried_forward
+                .then(|| carried_forward_opt_out_note(&destination))
+                .into_iter()
+                .chain(telemetry_removal_warning)
+                .reduce(|note, warning| format!("{note}; {warning}"));
             // Computed before `canonical_target_dir` is moved into the
             // index-finalize write below -- reuses the same
             // canonicalized target_dir string and the same
@@ -1249,7 +1258,7 @@ fn dispatch_install_with_remote_installer(
                 link_bin_result,
                 remote_source,
                 remote_outcome,
-                telemetry_removal_warning.as_deref(),
+                telemetry_note.as_deref(),
                 color,
             );
             0
@@ -1269,6 +1278,36 @@ fn dispatch_install_with_remote_installer(
             install_error_exit_code(&err)
         }
     }
+}
+
+/// Whether a plain install should keep `destination` opted out: the
+/// manifest already tracks a harness other than `strategy_name` and the
+/// target-wide install record is absent, so an earlier run opted it out.
+/// A first install, a reinstall of the only tracked harness, or a broken
+/// record keeps the default of writing the record.
+fn target_opted_out_with_other_harness(destination: &Path, strategy_name: &str) -> bool {
+    let tracks_other_harness = manifest::read_manifest(destination)
+        .ok()
+        .flatten()
+        .is_some_and(|manifest| {
+            manifest
+                .strategy_names()
+                .iter()
+                .any(|name| *name != strategy_name)
+        });
+    tracks_other_harness
+        && matches!(
+            crate::cli::telemetry::read_install_info_detailed(destination),
+            Err(crate::cli::telemetry::InstallInfoAbsence::NotFound)
+        )
+}
+
+fn carried_forward_opt_out_note(destination: &Path) -> String {
+    format!(
+        "telemetry stays off: {dir} is opted out. Run `konductor update --target {dir} \
+         --enable-telemetry` to opt it back in",
+        dir = destination.display()
+    )
 }
 
 /// Removes an existing `install-info.json` for `install --no-telemetry`.
@@ -1303,7 +1342,8 @@ fn remove_telemetry_record_for_no_telemetry_install(destination: &Path) -> Optio
 /// `"warning"` field, mirroring `update.rs`'s own
 /// `report_update_success`'s `warning` parameter. Covers an explicit
 /// `--no-telemetry`'s install-info removal failing after the install
-/// itself already succeeded -- never a hard failure on its own, only a
+/// itself already succeeded, and the note that a carried-forward opt-out
+/// kept telemetry off -- never a hard failure on its own, only a
 /// non-fatal note.
 #[allow(clippy::too_many_arguments)]
 fn report_install_success(
@@ -1843,6 +1883,93 @@ mod tests {
         assert!(
             !crate::cli::telemetry::install_info_exists(&target),
             "install --no-telemetry must remove the earlier opt-in record"
+        );
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    fn install_harness(repo_root: &Path, target: &Path, harness: &str, no_telemetry: bool) -> u8 {
+        dispatch_install_with(
+            Some(repo_root.display().to_string()),
+            Some(target.display().to_string()),
+            harness.to_string(),
+            false,
+            no_telemetry,
+            false,
+            None,
+            false,
+            false,
+            false,
+            ColorMode::disabled(),
+        )
+    }
+
+    fn kiro_agent_has_telemetry_hook(target: &Path) -> bool {
+        fs::read_to_string(target.join(".kiro/agents/k-example.json"))
+            .unwrap()
+            .contains("__telemetry-hook")
+    }
+
+    /// A plain install of a second harness on an opted-out target keeps
+    /// the opt-out: no record, and no telemetry hooks for the new harness.
+    #[test]
+    fn plain_install_of_another_harness_keeps_an_opted_out_target_opted_out() {
+        let _home = HomeGuard::new("second-harness-keeps-opt-out-home");
+        let target = scratch_dir("second-harness-keeps-opt-out-target");
+        let repo_root = scratch_dir("second-harness-keeps-opt-out-repo");
+        seed_synthed_claude_agent(&repo_root, "k-example");
+        seed_synthed_agent(&repo_root, "k-example");
+
+        assert_eq!(install_harness(&repo_root, &target, "claude", true), 0);
+        assert!(!crate::cli::telemetry::install_info_exists(&target));
+        assert!(target_opted_out_with_other_harness(&target, "kiro-cli-v2"));
+
+        assert_eq!(
+            install_harness(&repo_root, &target, "kiro-cli-v2", false),
+            0
+        );
+        assert!(
+            !crate::cli::telemetry::install_info_exists(&target),
+            "a plain install of another harness must not opt the target back in"
+        );
+        assert!(!kiro_agent_has_telemetry_hook(&target));
+        let note = carried_forward_opt_out_note(&target);
+        assert!(note.contains("konductor update --target"), "got: {note}");
+        assert!(note.contains("--enable-telemetry"), "got: {note}");
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// With no other harness tracked, a plain install writes the record as
+    /// before: on a fresh target, and when reinstalling the only harness
+    /// of an opted-out target.
+    #[test]
+    fn plain_install_without_another_tracked_harness_writes_the_record() {
+        let _home = HomeGuard::new("first-harness-writes-record-home");
+        let target = scratch_dir("first-harness-writes-record-target");
+        let repo_root = scratch_dir("first-harness-writes-record-repo");
+        seed_synthed_agent(&repo_root, "k-example");
+
+        assert!(!target_opted_out_with_other_harness(&target, "kiro-cli-v2"));
+        assert_eq!(
+            install_harness(&repo_root, &target, "kiro-cli-v2", false),
+            0
+        );
+        assert!(crate::cli::telemetry::read_install_info(&target).is_some());
+        assert!(kiro_agent_has_telemetry_hook(&target));
+
+        assert_eq!(install_harness(&repo_root, &target, "kiro-cli-v2", true), 0);
+        assert!(!crate::cli::telemetry::install_info_exists(&target));
+        assert!(!target_opted_out_with_other_harness(&target, "kiro-cli-v2"));
+        assert_eq!(
+            install_harness(&repo_root, &target, "kiro-cli-v2", false),
+            0
+        );
+        assert!(
+            crate::cli::telemetry::read_install_info(&target).is_some(),
+            "reinstalling the only tracked harness keeps today's default"
         );
 
         fs::remove_dir_all(&target).ok();

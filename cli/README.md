@@ -406,13 +406,13 @@ identical requests to a build with no token support at all, regardless of whethe
 
 On success, `install`'s summary (plain-text and `--json`) reports the installed
 content's own version alongside its usual counts - read back from
-`.konductor/install-info.json`'s `agent_version` field, which every install run without
-`--no-telemetry` writes from the synthed source's own `dist/VERSION` file. This is the
+`.konductor/install-info.json`'s `agent_version` field, which every install that leaves
+telemetry on writes from the synthed source's own `dist/VERSION` file. This is the
 same field for both install paths: a `--from <repo-root>` install reads it from that repo
 root's own `dist/`, and a no-`--from` install reads it from the fetched release's own
 `dist/`, so either path's summary names the actual version installed. It's
 `null`/omitted from the plain-text line when no `VERSION` file was found under the
-source's `dist/`, or when `--no-telemetry` left no `install-info.json` to read.
+source's `dist/`, or when an opted-out target left no `install-info.json` to read.
 
 Verify a `--target <dir>` install:
 
@@ -515,6 +515,13 @@ that run, but every Kiro CLI harness whose skill-lookup server was launched with
 `--install-info` reads the same record each time it starts, so all of them follow the new
 setting. A harness without that arg (installed before it existed, or with an older server
 binary) keeps its previous setting until its own next `update`.
+
+`install` follows the same target-wide rule. A plain `install` (no `--no-telemetry`) of a
+harness at a target whose manifest already tracks another harness, and that has no
+`install-info.json`, keeps the target opted out: it writes no record and no telemetry
+hooks, and prints a note that `konductor update --enable-telemetry` opts the target back
+in. A first install at a target, or a reinstall of the only tracked harness, writes the
+record as usual.
 
 ### `--dry-run`
 

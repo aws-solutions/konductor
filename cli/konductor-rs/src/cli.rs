@@ -199,6 +199,12 @@ pub enum Commands {
         /// Only the named harness's agent files are rewritten: another Kiro
         /// CLI harness whose skill-lookup server lacks `--install-info`
         /// keeps its previous setting until its own next `update`.
+        ///
+        /// Without this flag, installing a harness at a target that already
+        /// tracks another harness and has no record keeps the target opted
+        /// out: no record is written, and a note points at `konductor update
+        /// --enable-telemetry` to opt back in. A first install, or a
+        /// reinstall of the only tracked harness, writes the record.
         #[arg(long, display_order = 4)]
         no_telemetry: bool,
 
