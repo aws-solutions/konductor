@@ -1973,6 +1973,9 @@ mod tests {
         // sibling manifest exists but is not valid JSON. Must fail open
         // exactly like the missing-manifest case above, never fail
         // closed (which would wrongly filter every skill in the root).
+        // The guard keeps the WARN this logs out of the real HOME and
+        // other tests' logs.
+        let _home = crate::test_home_lock::HomeGuard::new("manifest-scope-malformed-fails-open");
         let (base, skills_root) = manifest_scope_fixture("manifest-scope-malformed-fails-open");
         write_skill(
             &skills_root,

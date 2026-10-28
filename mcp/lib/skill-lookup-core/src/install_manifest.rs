@@ -236,8 +236,8 @@ mod tests {
 
     /// Runs `f` with `HOME` pointed at a scratch dir and returns everything
     /// logged there. Other tests in the crate log through the real `HOME`
-    /// without taking the HOME lock, so assert on manifest messages only,
-    /// never on the log as a whole.
+    /// without taking the HOME lock, so assert only on this manifest's
+    /// messages, never on the log as a whole.
     fn logged_while(label: &str, f: impl FnOnce()) -> String {
         let home = crate::test_home_lock::HomeGuard::new(label);
         f();
@@ -275,20 +275,23 @@ mod tests {
         (paths.unwrap(), manifest_path, logged)
     }
 
+    /// Start of every WARN about `manifest_path`, whatever the problem.
+    fn warning_for(manifest_path: &Path) -> String {
+        format!("{MANIFEST_WARNING_PREFIX} {} ", manifest_path.display())
+    }
+
     fn assert_one_manifest_warning(logged: &str, manifest_path: &Path, problem: &str) {
-        let expected = format!(
-            "{MANIFEST_WARNING_PREFIX} {} {problem}",
-            manifest_path.display()
-        );
+        let this_manifest = warning_for(manifest_path);
+        let expected = format!("{this_manifest}{problem}");
         assert_eq!(
             logged.matches(&expected).count(),
             1,
             "expected exactly one {expected:?}, got: {logged}"
         );
         assert_eq!(
-            logged.matches(MANIFEST_WARNING_PREFIX).count(),
+            logged.matches(&this_manifest).count(),
             1,
-            "expected no other manifest warning, got: {logged}"
+            "expected no other warning for this manifest, got: {logged}"
         );
         assert!(
             logged.contains("--skill-name-filter will not apply"),
@@ -489,7 +492,7 @@ mod tests {
 
         assert_eq!(paths, Some(HashSet::new()));
         assert!(
-            !logged.contains(MANIFEST_WARNING_PREFIX),
+            !logged.contains(&warning_for(&base.join(".konductor").join("manifest"))),
             "a missing manifest must not log, got: {logged}"
         );
         let _ = fs::remove_dir_all(&base);
