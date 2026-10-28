@@ -10,7 +10,7 @@ import {
   type NodeTypes,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, type KeyboardEvent } from 'react';
 import type { CanvasGraph } from '../graph';
 import './canvas.css';
 import { READ_ONLY_ARIA_LABELS, SELECTABLE_ARIA_LABELS } from './aria-labels';
@@ -40,7 +40,10 @@ const EDGE_OPTIONS: DefaultEdgeOptions = {
 export interface CanvasSelection {
   /** The id of the selected node. */
   selectedId: string | undefined;
-  /** Called with the id of the stage node that was clicked or activated. */
+  /**
+   * Called with the id of the stage node that was clicked, or chosen with
+   * Enter or Space, also when it is the selected one already.
+   */
   onSelect(nodeId: string): void;
 }
 
@@ -64,6 +67,31 @@ export function WorkflowCanvas({
     () => (onSelect ? markSelectable(graph.nodes, selectedId) : graph.nodes),
     [graph.nodes, onSelect, selectedId],
   );
+  // React Flow selects a node only when it is not selected yet, and Escape
+  // makes it drop focus. Both are taken here, before it sees them: Enter or
+  // Space always chooses the stage, and Escape leaves focus where it is.
+  const onKeyDownCapture = useCallback(
+    (event: KeyboardEvent<HTMLDivElement>) => {
+      const node = event.target;
+      if (!(node instanceof HTMLElement)) return;
+      if (!node.classList.contains('react-flow__node')) return;
+      if (event.key === 'Escape') {
+        event.stopPropagation();
+        return;
+      }
+      const choose = event.key === 'Enter' || event.key === ' ';
+      if (
+        choose &&
+        onSelect &&
+        node.classList.contains('react-flow__node-stage')
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+        onSelect(node.dataset.id ?? '');
+      }
+    },
+    [onSelect],
+  );
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
       for (const change of changes) {
@@ -78,6 +106,7 @@ export function WorkflowCanvas({
       role="region"
       aria-label="Workflow graph"
       style={{ height: CANVAS_HEIGHT }}
+      onKeyDownCapture={onKeyDownCapture}
     >
       <ReactFlow
         nodes={nodes}
