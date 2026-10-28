@@ -193,7 +193,6 @@ test('shows in full the Japanese text that a node cuts short', async ({
   await expect(page.getByTestId(`full-stage-${name}`)).toBeVisible();
 });
 
-
 test('removes the launch code from the address', async ({ canvas }) => {
   await canvas.expectWorkflowDrawn();
 
