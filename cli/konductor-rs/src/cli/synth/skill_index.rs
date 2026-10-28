@@ -19,8 +19,9 @@ their steps and output format. Skip this for trivial tasks such as a quick quest
 edit, or a lookup.";
 
 // A skill whose trigger starts with this marker applies to every task, so
-// it is listed apart from the task skills and outside their budget.
-const ALWAYS_APPLY_MARKER: &str = "MUST USE";
+// it is listed apart from the task skills and outside their budget. A
+// plain "MUST USE for <task>" trigger (git-merge) stays a task skill.
+const ALWAYS_APPLY_MARKER: &str = "MUST USE for every ";
 
 const ALWAYS_APPLY_RULE: &str = "Follow these on every task. Load each at most once per \
 session, not before every task. They do not count toward the one or two above.";
@@ -130,7 +131,7 @@ fn always_apply_line(names: &[&str]) -> String {
 
 /// The Kiro block: one `- <name>: <trigger>` line per declared task skill,
 /// in declared order, after one always-apply line naming any skill whose
-/// trigger starts with `MUST USE`. Names with no matching `SkillDef` are
+/// trigger starts with `MUST USE for every `. Names with no matching `SkillDef` are
 /// skipped (synth's parse step already rejects dangling names). `None`
 /// when nothing would be listed.
 pub(crate) fn kiro_skill_block(
@@ -323,10 +324,24 @@ mod tests {
 
     #[test]
     fn always_apply_line_joins_several_names_in_declared_order() {
-        let skills = vec![skill("x", "MUST USE always."), skill("y", "MUST USE too.")];
+        let skills = vec![
+            skill("x", "MUST USE for every task."),
+            skill("y", "MUST USE for every reply."),
+        ];
         let block = kiro_skill_block("k-developer", &["y", "x"], &skills).unwrap();
         assert!(block.contains("Always-apply: `y`, `x`. "), "{block}");
         assert!(!block.lines().any(|l| l.starts_with("- ")), "{block}");
+    }
+
+    #[test]
+    fn must_use_for_a_specific_task_stays_in_task_list() {
+        let skills = vec![skill("git-merge", "MUST USE for merging branches. More.")];
+        let block = kiro_skill_block("konductor", &["git-merge"], &skills).unwrap();
+        assert!(
+            block.ends_with("\n- git-merge: MUST USE for merging branches."),
+            "{block}"
+        );
+        assert!(!block.contains("Always-apply:"), "{block}");
     }
 
     #[test]

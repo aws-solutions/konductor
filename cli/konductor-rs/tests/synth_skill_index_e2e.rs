@@ -173,6 +173,10 @@ fn synth_appends_each_agents_own_skill_index_on_kiro_only() {
                     "{harness}/{name}: constraints must be always-apply"
                 );
             }
+            assert!(
+                !always.iter().any(|s| s == "git-merge"),
+                "{harness}/{name}: git-merge is a task skill, never always-apply"
+            );
             let mut all_listed = always.clone();
             all_listed.extend(task_skills);
             all_listed.sort();
