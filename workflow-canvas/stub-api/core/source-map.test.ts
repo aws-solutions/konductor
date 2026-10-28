@@ -4,7 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { SourceMap } from './source-map.ts';
 import { checkWorkflowText } from './validator.ts';
 
-const FLOW_TIME_LIMIT_MS = 2000;
+// CPU time, not wall time: a busy machine slows the clock but not the work.
+const FLOW_CPU_LIMIT_MS = 2000;
 
 describe('SourceMap', () => {
   it('counts lines from 1 at LF, CRLF and a lone CR', () => {
@@ -51,10 +52,10 @@ describe('the check of a very long line', () => {
     const bytes = Buffer.byteLength(text);
     expect(bytes).toBeGreaterThan(minBytes);
     expect(bytes).toBeLessThanOrEqual(262_144);
-    const started = performance.now();
+    const started = process.cpuUsage();
     const result = checkWorkflowText(text, 'hello');
-    const elapsed = performance.now() - started;
+    const { user, system } = process.cpuUsage(started);
     expect(result.errors).toBeGreaterThan(7000);
-    expect(elapsed).toBeLessThan(FLOW_TIME_LIMIT_MS);
+    expect((user + system) / 1000).toBeLessThan(FLOW_CPU_LIMIT_MS);
   });
 });
