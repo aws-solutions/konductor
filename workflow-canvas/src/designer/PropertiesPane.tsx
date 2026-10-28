@@ -8,7 +8,7 @@ import Input, { type InputProps } from '@cloudscape-design/components/input';
 import Select from '@cloudscape-design/components/select';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import StatusIndicator from '@cloudscape-design/components/status-indicator';
-import type { Ref } from 'react';
+import type { ReactNode, Ref } from 'react';
 import {
   agentChoices,
   canEdit,
@@ -23,9 +23,16 @@ import {
   type EditState,
   type Problem,
 } from './core';
+import { MessageText } from '../workflow/MessageText';
 
 const NAME_HINT =
   'Lower-case letters, digits and hyphens. Each stage has its own name.';
+// The text of a field's problems, with the names in it shown as code.
+function messageNode(problems: Problem[]): ReactNode {
+  const text = joinMessages(problems);
+  return text === undefined ? undefined : <MessageText text={text} />;
+}
+
 const AGENT_NOTE = 'A Konductor agent id: the name of an agent spec.';
 
 function StageFields({
@@ -58,8 +65,8 @@ function StageFields({
       <FormField
         label="name"
         constraintText={NAME_HINT}
-        errorText={joinMessages(nameErrors)}
-        warningText={joinMessages(notesOf(nameProblems))}
+        errorText={messageNode(nameErrors)}
+        warningText={messageNode(notesOf(nameProblems))}
       >
         <Input
           ref={nameRef}
@@ -79,8 +86,8 @@ function StageFields({
             {chosen && <div>{chosen.summary}</div>}
           </>
         }
-        errorText={joinMessages(agentErrors)}
-        warningText={joinMessages(notesOf(agentProblems))}
+        errorText={messageNode(agentErrors)}
+        warningText={messageNode(notesOf(agentProblems))}
       >
         <Select
           selectedOption={{
