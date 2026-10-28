@@ -158,6 +158,24 @@ pub(crate) fn kiro_skill_block(
     Some(block)
 }
 
+/// One warning per skill other than `constraints` that the Kiro index
+/// leaves out as an every-task skill, so a new one is not dropped silently.
+pub(crate) fn every_task_skill_warnings(skills: &[SkillDef]) -> Vec<String> {
+    skills
+        .iter()
+        .filter(|skill| skill.name != "constraints")
+        .filter(|skill| skill_trigger(&skill.raw_frontmatter).is_some_and(|t| t.every_task))
+        .map(|skill| {
+            format!(
+                "skill '{}' is left out of every Kiro agent's skills index because its \
+                 description says \"{}\"",
+                skill.name,
+                EVERY_TASK_MARKER.trim_end()
+            )
+        })
+        .collect()
+}
+
 pub(crate) fn append_block(prompt: &str, block: &str) -> String {
     format!("{}\n\n{block}\n", prompt.trim_end())
 }
@@ -374,6 +392,18 @@ mod tests {
         let skills = vec![skill("a", "Use for a.")];
         let block = kiro_skill_block("konductor", &["a"], &skills).unwrap();
         assert!(!block.contains('\u{2014}') && !block.contains('\u{2013}'));
+    }
+
+    #[test]
+    fn every_task_warning_names_new_skills_but_not_constraints() {
+        let skills = vec![
+            skill("constraints", "MUST USE for every interaction."),
+            skill("always", "MUST USE for every task."),
+            skill("git-merge", "MUST USE for merging branches."),
+        ];
+        let warnings = every_task_skill_warnings(&skills);
+        assert_eq!(warnings.len(), 1, "{warnings:?}");
+        assert!(warnings[0].starts_with("skill 'always' "), "{warnings:?}");
     }
 
     #[test]

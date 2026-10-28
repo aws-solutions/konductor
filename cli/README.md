@@ -181,8 +181,8 @@ dist/
 
 Each Kiro CLI v2 and v3 agent's `prompt` ends with a generated `## Your skills`
 block listing the agent's declared skills with a rule for when to load one.
-It leaves out `constraints`, which claims every task. Claude Code agents get no
-block.
+Skills whose description starts "MUST USE for every" (today only `constraints`)
+are left out, since they claim every task. Claude Code agents get no block.
 
 The filename carries no architecture or OS: the packaged content (agent/skill/SOP
 markdown and JSON config, no compiled code) is architecture- and OS-independent within
