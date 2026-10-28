@@ -201,7 +201,7 @@ pub(in crate::cli::install) fn install_agents(
     let bin_dir = target_dir
         .join(KONDUCTOR_DESTINATION_ROOT)
         .join(super::super::mcp_server::BIN_CONTENT_TYPE_DIR);
-    let install_info_path = super::super::resource_rewrite::absolute_install_info_path(target_dir);
+    let install_info_path = super::super::resource_rewrite::install_info_arg(target_dir);
     let server_supports_install_info =
         super::super::resource_rewrite::installed_server_supports_install_info(
             &bin_dir,

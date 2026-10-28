@@ -3095,8 +3095,6 @@ mod tests {
             "mcp-telemetry-arg-current",
         );
         for (target_dir, args) in targets {
-            let record =
-                crate::cli::telemetry::install_info_path(&fs::canonicalize(&target_dir).unwrap());
             assert_eq!(
                 args,
                 [
@@ -3105,7 +3103,7 @@ mod tests {
                     "--skills-dir",
                     ".konductor/skills",
                     "--install-info",
-                    &record.display().to_string()
+                    ".konductor/install-info.json"
                 ]
             );
             fs::remove_dir_all(&target_dir).ok();

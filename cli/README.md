@@ -494,8 +494,10 @@ re-enabling telemetry the moment the flag is omitted. Without the flag, `update`
 forward the target's earlier choice the same way: a missing `install-info.json` already
 means opted out, with nothing left to carry forward differently. When the installed
 `skill-lookup-mcp` lists `--install-info` in its `--help`, Kiro CLI agents launch the
-`konductor-skills` MCP server with `--install-info <target>/.konductor/install-info.json`,
-and the server sends no telemetry unless that file holds a valid record at startup. An older
+`konductor-skills` MCP server with `--install-info .konductor/install-info.json` (or
+`~/.konductor/install-info.json` for a global install into `$HOME`), and the server sends no
+telemetry unless that file holds a valid record at startup. The server resolves the path the
+same way as `--skills-dir`, so project agent files carry no machine-specific path. An older
 server binary (v1.2.0 or earlier, from `--version` or a stale `--from` build) would reject that
 flag, so it gets the per-harness `--telemetry off` instead when the target is opted out.
 

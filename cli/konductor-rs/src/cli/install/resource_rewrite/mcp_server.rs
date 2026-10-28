@@ -770,7 +770,7 @@ mod tests {
     use crate::cli::install::manifest::ManifestFile;
     use std::fs;
 
-    const TEST_INSTALL_INFO_PATH: &str = "/target/.konductor/install-info.json";
+    const TEST_INSTALL_INFO_PATH: &str = ".konductor/install-info.json";
 
     /// `prefix` followed by the trailing `--install-info` pair every
     /// injected entry ends with.
@@ -1700,7 +1700,7 @@ mod tests {
     #[test]
     fn v2_and_v3_slots_at_one_target_share_the_install_info_path() {
         let target = scratch_dir("mcp-args-shared-install-info");
-        let record = super::super::absolute_install_info_path(&target);
+        let record = super::super::install_info_arg(&target);
         let bin_dir = target.join(".konductor").join("bin");
         let bin_files = [bin_file_entry()];
         let rewrite = |pass: &dyn ResourceRewritePass, no_telemetry: bool| {
@@ -1727,8 +1727,7 @@ mod tests {
         };
         let v2 = rewrite(&McpServerPass, true);
         let v3 = rewrite(&McpServerPassV3, false);
-        let expected = ["--install-info", &record.display().to_string()].map(str::to_string);
-        assert!(record.is_absolute());
+        let expected = ["--install-info", ".konductor/install-info.json"].map(str::to_string);
         for value in [&v2, &v3] {
             let args = injected_args(value);
             assert!(

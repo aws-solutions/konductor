@@ -2987,9 +2987,10 @@ mod tests {
         when: &str,
     ) {
         let args = konductor_skills_args(target_dir);
-        let record =
-            crate::cli::telemetry::install_info_path(&fs::canonicalize(target_dir).unwrap());
-        let install_info = ["--install-info".to_string(), record.display().to_string()];
+        let install_info = [
+            "--install-info".to_string(),
+            ".konductor/install-info.json".to_string(),
+        ];
         let telemetry_off = ["--telemetry".to_string(), "off".to_string()];
         let telemetry_flags = args.iter().filter(|a| *a == "--telemetry").count();
         if current_server {
@@ -3098,11 +3099,12 @@ mod tests {
         );
     }
 
-    /// Install and update agree on `--install-info` for a target reached
-    /// through a symlink, as macOS temp dirs are (`/var` to `/private/var`).
+    /// Install, plain update and `--enable-telemetry` write the same
+    /// `--install-info` arg, whether the target is reached through a
+    /// symlink or its real path.
     #[cfg(unix)]
     #[test]
-    fn update_through_a_symlinked_target_leaves_the_install_info_arg_unchanged() {
+    fn install_info_arg_is_byte_identical_across_install_and_update() {
         let _home = HomeGuard::new("update-mcp-telemetry-symlink-home");
         let (target_dir, repo_root) =
             seed_mcp_telemetry_fixture("update-mcp-telemetry-symlink", true);
@@ -3128,9 +3130,39 @@ mod tests {
             installed,
             "after update via real path"
         );
+        update_from(&repo_root, &link, false, true);
+        assert_eq!(
+            konductor_skills_args(&link),
+            installed,
+            "after update --enable-telemetry"
+        );
 
         fs::remove_file(&link).ok();
         fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// A global install points the server at the home-relative record.
+    #[cfg(unix)]
+    #[test]
+    fn global_install_writes_a_home_relative_install_info_arg() {
+        let home = HomeGuard::new("update-mcp-telemetry-global-home");
+        fs::create_dir_all(home.scratch.join(".kiro")).unwrap();
+        fs::create_dir_all(home.scratch.join(".claude")).unwrap();
+        let (unused_target, repo_root) =
+            seed_mcp_telemetry_fixture("update-mcp-telemetry-global", true);
+
+        install_v2(&repo_root, &home.scratch, false);
+        assert!(
+            konductor_skills_args(&home.scratch).ends_with(&[
+                "--install-info".to_string(),
+                "~/.konductor/install-info.json".to_string()
+            ]),
+            "got: {:?}",
+            konductor_skills_args(&home.scratch)
+        );
+
+        fs::remove_dir_all(&unused_target).ok();
         fs::remove_dir_all(&repo_root).ok();
     }
 

@@ -521,7 +521,7 @@ fn install_agents(
     let bin_dir = target_dir
         .join(KONDUCTOR_DESTINATION_ROOT)
         .join(super::mcp_server::BIN_CONTENT_TYPE_DIR);
-    let install_info_path = super::resource_rewrite::absolute_install_info_path(target_dir);
+    let install_info_path = super::resource_rewrite::install_info_arg(target_dir);
     let server_supports_install_info =
         super::resource_rewrite::installed_server_supports_install_info(
             &bin_dir,
@@ -1024,11 +1024,8 @@ mod tests {
                     ".konductor/skills".to_string(),
                 ];
                 if supported {
-                    let record = crate::cli::telemetry::install_info_path(
-                        &fs::canonicalize(target_dir).unwrap(),
-                    );
                     expected.push("--install-info".to_string());
-                    expected.push(record.display().to_string());
+                    expected.push(".konductor/install-info.json".to_string());
                 } else if no_telemetry {
                     expected.push("--telemetry".to_string());
                     expected.push("off".to_string());
@@ -1105,9 +1102,7 @@ mod tests {
             .expect("kiro-v3 install must succeed");
         let v3_arg = install_info_arg();
 
-        let record =
-            crate::cli::telemetry::install_info_path(&fs::canonicalize(&target_dir).unwrap());
-        let expected = serde_json::json!(["--install-info", record.display().to_string()]);
+        let expected = serde_json::json!(["--install-info", ".konductor/install-info.json"]);
         assert_eq!(v2_arg, expected);
         assert_eq!(v3_arg, expected);
 

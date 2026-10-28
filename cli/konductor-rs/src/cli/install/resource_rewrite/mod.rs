@@ -105,9 +105,10 @@ pub(super) struct RewriteContext<'a> {
     /// `TelemetryHookPass` in `standard_passes`, and makes the MCP passes
     /// add `--telemetry off` for a server without `--install-info`.
     pub(super) no_telemetry: bool,
-    /// Absolute path of the target's `install-info.json`, passed to
-    /// `skill-lookup-mcp` as `--install-info` so its telemetry follows
-    /// the target-wide record rather than this one harness's run.
+    /// The target's `install-info.json` in portable form, from
+    /// `install_info_arg`, passed to `skill-lookup-mcp` as
+    /// `--install-info` so its telemetry follows the target-wide record
+    /// rather than this one harness's run.
     pub(super) install_info_path: &'a Path,
     /// Whether the installed `skill-lookup-mcp` accepts `--install-info`,
     /// from `installed_server_supports_install_info`.
@@ -120,19 +121,28 @@ pub(super) struct RewriteContext<'a> {
 pub(crate) const FAKE_SERVER_WITH_INSTALL_INFO: &str =
     "#!/bin/sh\necho '      --install-info <PATH>'\n";
 
-/// `target_dir`'s `install-info.json`, made absolute so the injected
-/// `--install-info` arg does not depend on the agent's launch directory.
-/// The directory is canonicalized, not the record, because the record may
-/// not exist yet; this keeps install and update writing the same string
-/// when the target is reached through a symlink (macOS `/var`).
-pub(super) fn absolute_install_info_path(target_dir: &Path) -> std::path::PathBuf {
-    match std::fs::canonicalize(target_dir) {
-        Ok(canonical) => crate::cli::telemetry::install_info_path(&canonical),
-        Err(_) => {
-            let path = crate::cli::telemetry::install_info_path(target_dir);
-            std::path::absolute(&path).unwrap_or(path)
-        }
-    }
+/// The `--install-info` value for `target_dir`, spelled like the
+/// `--skills-dir` pair so agent files stay portable:
+/// `~/.konductor/install-info.json` for a `$HOME` install, otherwise
+/// `.konductor/install-info.json`, which the server resolves from the
+/// project root it is launched in.
+pub(super) fn install_info_arg(target_dir: &Path) -> std::path::PathBuf {
+    let root = if target_dir_is_home(target_dir) {
+        Path::new("~")
+    } else {
+        Path::new("")
+    };
+    crate::cli::telemetry::install_info_path(root)
+}
+
+/// Whether `target_dir` is `$HOME`, the global install target.
+/// Canonicalized so a symlinked spelling of either still matches.
+pub(super) fn target_dir_is_home(target_dir: &Path) -> bool {
+    let canonical =
+        |path: &Path| std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+    std::env::var_os("HOME")
+        .filter(|home| !home.is_empty())
+        .is_some_and(|home| canonical(Path::new(&home)) == canonical(target_dir))
 }
 
 impl RewriteContext<'_> {
@@ -440,38 +450,49 @@ mod tests {
         dir
     }
 
+    #[test]
+    fn install_info_arg_is_home_relative_for_home_and_project_relative_otherwise() {
+        let _lock = crate::cli::test_home_lock::lock_home();
+        let home = scratch_dir("install-info-arg-home");
+        let project = home.join("project");
+        fs::create_dir_all(&project).unwrap();
+        let original_home = std::env::var_os("HOME");
+        std::env::set_var("HOME", &home);
+
+        let for_home = install_info_arg(&home);
+        let for_project = install_info_arg(&project);
+
+        match original_home {
+            Some(value) => std::env::set_var("HOME", value),
+            None => std::env::remove_var("HOME"),
+        }
+        assert_eq!(for_home, Path::new("~/.konductor/install-info.json"));
+        assert_eq!(for_project, Path::new(".konductor/install-info.json"));
+        fs::remove_dir_all(&home).ok();
+    }
+
     #[cfg(unix)]
     #[test]
-    fn install_info_path_through_a_symlink_matches_the_real_path() {
-        let real = scratch_dir("install-info-real");
-        let link = real.with_file_name(format!(
+    fn install_info_arg_treats_a_symlink_to_home_as_home() {
+        let _lock = crate::cli::test_home_lock::lock_home();
+        let home = scratch_dir("install-info-arg-home-link");
+        let link = home.with_file_name(format!(
             "{}-link",
-            real.file_name().unwrap().to_str().unwrap()
+            home.file_name().unwrap().to_str().unwrap()
         ));
-        std::os::unix::fs::symlink(&real, &link).unwrap();
-        let via_link = absolute_install_info_path(&link);
-        assert_eq!(via_link, absolute_install_info_path(&real));
-        assert_eq!(
-            via_link,
-            crate::cli::telemetry::install_info_path(&fs::canonicalize(&real).unwrap())
-        );
+        std::os::unix::fs::symlink(&home, &link).unwrap();
+        let original_home = std::env::var_os("HOME");
+        std::env::set_var("HOME", &home);
+
+        let via_link = install_info_arg(&link);
+
+        match original_home {
+            Some(value) => std::env::set_var("HOME", value),
+            None => std::env::remove_var("HOME"),
+        }
+        assert_eq!(via_link, Path::new("~/.konductor/install-info.json"));
         fs::remove_file(&link).ok();
-        fs::remove_dir_all(&real).ok();
-    }
-
-    #[test]
-    fn install_info_path_for_a_relative_target_is_absolute() {
-        let expected = crate::cli::telemetry::install_info_path(&fs::canonicalize(".").unwrap());
-        assert_eq!(absolute_install_info_path(Path::new(".")), expected);
-    }
-
-    #[test]
-    fn install_info_path_for_a_missing_target_falls_back_to_absolute() {
-        let missing = scratch_dir("install-info-missing").join("absent");
-        let path = absolute_install_info_path(&missing);
-        assert_eq!(path, crate::cli::telemetry::install_info_path(&missing));
-        assert!(path.is_absolute());
-        fs::remove_dir_all(missing.parent().unwrap()).ok();
+        fs::remove_dir_all(&home).ok();
     }
 
     /// Exercises the default "no agent opted in" backward-compatibility
