@@ -13,7 +13,13 @@ export type ExecutionState =
       joined?: true;
     }
   | { phase: 'finished'; run: RunView }
-  | { phase: 'error'; message: string; started: boolean };
+  | {
+      phase: 'error';
+      message: string;
+      started: boolean;
+      /** The run that was being followed, when the failure came after it began. */
+      runId?: string;
+    };
 
 /** Something that happened to the run, in the order it can. */
 export type ExecutionEvent =
@@ -73,7 +79,7 @@ function failedOf(
     return { phase: 'error', message, started: false };
   }
   if (state.phase === 'following' && runId === state.runId) {
-    return { phase: 'error', message, started: true };
+    return { phase: 'error', message, started: true, runId: state.runId };
   }
   return state;
 }

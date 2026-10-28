@@ -96,6 +96,7 @@ describe('reduce', () => {
       phase: 'error',
       message: 'Lost.',
       started: true,
+      runId: RUN_ID,
     });
   });
 
