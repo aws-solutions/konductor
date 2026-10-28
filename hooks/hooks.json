@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|clear",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/konductor-telemetry.js\" agent-invocation",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "matcher": "^konductor:(k-architect|k-browser|k-developer|k-media-analyzer|k-product-manager|k-quality-assurance|k-researcher|k-tpm|konductor|konductor-cmux-orchestrator|konductor-mux-orchestrator)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/konductor-telemetry.js\" subagent-invocation",
+            "async": true
+          }
+        ]
+      }
+    ]
+  }
+}
