@@ -4,7 +4,7 @@ import Button from '@cloudscape-design/components/button';
 import Container from '@cloudscape-design/components/container';
 import FormField from '@cloudscape-design/components/form-field';
 import Header from '@cloudscape-design/components/header';
-import Input from '@cloudscape-design/components/input';
+import Input, { type InputProps } from '@cloudscape-design/components/input';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import StatusIndicator, {
   type StatusIndicatorProps,
@@ -29,6 +29,12 @@ import {
 import './execution.css';
 import { runErrorOf } from './run-error';
 import type { ExecutionController } from './use-execution';
+
+// Safari reports the Enter that commits a composition after it has ended, with
+// `isComposing` false and the key code 229, so both are checked.
+function isPlainEnter(key: InputProps.KeyDetail): boolean {
+  return key.key === 'Enter' && !key.isComposing && key.keyCode !== 229;
+}
 
 const INDICATOR: Record<StatusKind, StatusIndicatorProps.Type> = {
   idle: 'pending',
@@ -77,7 +83,8 @@ function StageDriftNotice({
   return (
     <Alert type="warning" data-testid="stage-drift">
       The stages of this run are not the stages in the graph, so some nodes show
-      no state. The workflow file changed after the run started.
+      no state. The workflow file changed after this page loaded or after the
+      run started. Reload the page to draw it.
       {notInGraph.length > 0 && ` Not drawn: ${notInGraph.join(', ')}.`}
       {notInRun.length > 0 && ` Not in the run: ${notInRun.join(', ')}.`}
     </Alert>
@@ -110,7 +117,7 @@ function RunPanel({
             readOnly={inFlight}
             onChange={({ detail }) => onGoalChange(detail.value)}
             onKeyDown={({ detail }) => {
-              if (detail.key === 'Enter' && !detail.isComposing && canRun) {
+              if (isPlainEnter(detail) && canRun) {
                 execution.start(goal);
               }
             }}
