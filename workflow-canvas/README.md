@@ -299,15 +299,13 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
   follows a run that was already going the Goal box is empty, says "Not known"
   and is labelled so. When that run ends, the status line still says it was
   already in progress.
-- Resume works when the page is opened again with a launch code that the
-  server accepts a second time, which is the dev stub (`npm run dev:stub`, see
-  above). A plain reload never resumes: the page has already removed the
-  launch code from the address, so it shows "no launch code in the address"
-  and no Execution tab, and the run goes on unseen. The tab keeps the id of the
-  latest run in the storage of the browser tab (`sessionStorage`; the id is no
-  secret, the token is not kept) and drops it once the run has ended or turns
-  out to be gone. When the page opens again with a session it
-  reads that run, trying again like any read. If the run is still running, the
+- Resume works after a reload, though the launch code works once: the page
+  resumes from the session it kept (see above). If the server was started
+  again, the kept token is refused and the page asks for a fresh launch
+  address; the run goes on unseen. The tab keeps the id of the latest run in
+  the storage of the browser tab (`sessionStorage`; the id is no secret) and
+  drops it once the run has ended or turns out to be gone. When the page
+  opens again with a session it reads that run, trying again like any read. If the run is still running, the
   tab follows it as if the person had joined it, without a click on Run. A run
   that has ended, one that the server will not give (for instance after it
   started again) or a browser that blocks storage leaves the tab ready for a
