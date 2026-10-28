@@ -21,7 +21,9 @@
 // treated as opaque and never modeled here.
 // Treat the shape parsed below as a stable, documented wire contract
 // (per `cli/install/manifest.rs`'s own module docstring), not as this
-// crate's to evolve independently.
+// crate's to evolve independently. `testdata/install-manifest.v2.json`
+// pins it from both sides: the installer's tests assert they serialize
+// exactly that file, and this module's tests assert they parse it.
 //
 // ── Why this exists ─────────────────────────────────────────────────────
 // `scanner::apply_name_filter` narrows `--skill-name-filter` to only ever
@@ -327,6 +329,25 @@ mod tests {
         let paths = installed_paths_for_root(&root);
         assert!(paths.contains(".konductor/skills/code-review/SKILL.md"));
         let _ = fs::remove_dir_all(&base);
+    }
+
+    /// Consumer side of the contract fixture that `cli/konductor-rs`'s
+    /// manifest writer test asserts its serialized output equals.
+    #[test]
+    fn read_installed_paths_parses_installer_contract_fixture() {
+        let fixture =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/install-manifest.v2.json");
+        let paths = read_installed_paths(&fixture).unwrap();
+        let expected: HashSet<String> = [
+            ".claude/skills/code-review/SKILL.md",
+            ".kiro/agents/k-example.json",
+            ".konductor/skills/code-review/SKILL.md",
+            ".konductor/skills/code-review/references/checklist.md",
+        ]
+        .into_iter()
+        .map(String::from)
+        .collect();
+        assert_eq!(paths, expected);
     }
 
     #[test]
