@@ -687,43 +687,6 @@ mod tests {
         dir
     }
 
-    /// RAII guard: points the real `HOME` at a fresh scratch dir for its
-    /// lifetime (holding the crate-wide `crate::test_home_lock::HOME_ENV_LOCK`
-    /// throughout -- shared with `telemetry.rs`'s own `HOME`-mutating tests
-    /// so the two modules never observe each other's `HOME` value mid-test;
-    /// see `crate::test_home_lock`'s own doc comment for the cross-module
-    /// race this closes), restoring the original value and removing the
-    /// scratch dir on drop.
-    struct HomeGuard {
-        _lock: std::sync::MutexGuard<'static, ()>,
-        scratch: PathBuf,
-        original_home: Option<std::ffi::OsString>,
-    }
-
-    impl HomeGuard {
-        fn new(label: &str) -> Self {
-            let lock = crate::test_home_lock::lock_home();
-            let scratch = temp_dir(label);
-            let original_home = std::env::var_os("HOME");
-            std::env::set_var("HOME", &scratch);
-            Self {
-                _lock: lock,
-                scratch,
-                original_home,
-            }
-        }
-    }
-
-    impl Drop for HomeGuard {
-        fn drop(&mut self) {
-            match &self.original_home {
-                Some(home) => std::env::set_var("HOME", home),
-                None => std::env::remove_var("HOME"),
-            }
-            let _ = fs::remove_dir_all(&self.scratch);
-        }
-    }
-
     /// Exercises the actual public API (`log_dir`, `init`,
     /// `log_file_only`, `log_file_only_lines`) against a real `HOME` —
     /// every other test in this module calls the `_with_home`/`_at`
@@ -733,7 +696,7 @@ mod tests {
     /// real environment.
     #[test]
     fn public_api_writes_to_the_real_home_relative_log_path() {
-        let home = HomeGuard::new("public-api");
+        let home = crate::test_home_lock::HomeGuard::new("public-api");
 
         init();
         log_file_only(Level::Info, "solo message");

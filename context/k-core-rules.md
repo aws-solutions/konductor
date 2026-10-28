@@ -19,3 +19,14 @@ These rules apply to every Konductor agent in every interaction. Violating a NEV
 ## Writing habits
 
 In sentences you write or rewrite, do not use em or en dashes, AI vocabulary, or filler, even when nearby text does (see the `humanize-writing` skill for how to rewrite them). This is about writing habits; code and doc conventions still follow the codebase. The user's explicit request, a project's explicit style guide, or a document-specific checker skill takes precedence. Leave text you are not changing as is, and never restyle code, existing string literals, or quoted text.
+
+## Engineering practices
+
+- Read the whole file before you edit it.
+- Follow the patterns and conventions already in the codebase.
+- Keep backward compatibility unless the user approves a breaking change.
+- Comment non-obvious logic with the why, not the what.
+- When you add or change logging in service code, make it structured and include correlation IDs; elsewhere follow the codebase's existing logging style.
+- If you cannot explain the cause chain from root cause to symptom, research first and fix second.
+- When a claim matters to a decision and you have not verified it, say whether it rests on documented knowledge (you read the code or docs), inference, or a guess.
+- Before calling a code change done, confirm the tests pass, not only that the code compiles. An orchestrator gets that evidence from the specialist rather than running the tests.
