@@ -4,6 +4,7 @@ import type { ExecutionEvent } from './execution-state';
 import {
   RunAlreadyActive,
   RunReadRefused,
+  RunStartUnsure,
   type RunPort,
   type Scheduler,
 } from './ports';
@@ -21,7 +22,11 @@ function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : UNKNOWN_FAILURE;
 }
 
-/** What `startAndFollow` needs: the ports, the goal and where events go. */
+/**
+ * What `startAndFollow` needs: the ports, the goal and where events go. The
+ * caller runs one loop at a time: a failure with no run id is taken for the
+ * failure of the start in progress.
+ */
 export interface FollowRequest {
   runs: RunPort;
   scheduler: Scheduler;
@@ -30,6 +35,17 @@ export interface FollowRequest {
   emit: (event: ExecutionEvent) => void;
   /** Aborting stops the loop quietly: no further event is emitted. */
   signal: AbortSignal;
+}
+
+// The failure event of a loop. A start that got no clear answer says so.
+function failure(
+  error: unknown,
+  runId: string | undefined,
+): Extract<ExecutionEvent, { type: 'failed' }> {
+  const failed = { type: 'failed', message: messageOf(error), runId } as const;
+  return error instanceof RunStartUnsure
+    ? { ...failed, maybeStarted: true }
+    : failed;
 }
 
 // Starts a run, or names the run that is already active in its place.
@@ -93,8 +109,9 @@ async function follow(request: FollowRequest, runId: string): Promise<void> {
 /**
  * Starts a run, or joins the one that is already active, then reads it every
  * `POLL_INTERVAL_MS` until it is no longer running, telling `emit` each step.
- * It never rejects: a failure ends the loop with one `failed` event, which
- * names the run once there is one, so it cannot be taken for another's.
+ * It does not reject unless `emit` throws, which `FollowRequest` forbids. A
+ * failure ends the loop with one `failed` event, which names the run once
+ * there is one, so it cannot be taken for another's.
  */
 export async function startAndFollow(request: FollowRequest): Promise<void> {
   const { emit, signal } = request;
@@ -110,8 +127,6 @@ export async function startAndFollow(request: FollowRequest): Promise<void> {
     );
     await follow(request, runId);
   } catch (error) {
-    if (!signal.aborted) {
-      emit({ type: 'failed', message: messageOf(error), runId });
-    }
+    if (!signal.aborted) emit(failure(error, runId));
   }
 }

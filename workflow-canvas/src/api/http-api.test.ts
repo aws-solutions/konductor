@@ -282,6 +282,22 @@ describe('createHttpApi', () => {
     });
   });
 
+  it('carries no run id when the error body has one that is not a run id', async () => {
+    const { api } = apiFor(
+      reply(
+        { error: 'Busy.', code: 'already_running', run_id: '../etc/passwd' },
+        409,
+      ),
+    );
+
+    const error = await api
+      .startRun('t', 'g')
+      .catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(ApiError);
+    expect((error as ApiError).runId).toBeUndefined();
+  });
+
   it('carries no run id when the error body has none', async () => {
     const { api } = apiFor(
       reply(
