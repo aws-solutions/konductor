@@ -42,8 +42,8 @@ registry entries.
 
 A few things stand out and are worth knowing before you pick an agent:
 
-- **Every agent runs the same model** (`claude-sonnet-5.5`). Agents differ by what they
-  carry, not by what powers them.
+- **Every agent runs the same model**: `claude-sonnet-5.5` on Kiro CLI, `claude-sonnet-5-5` on
+  Claude Code. Agents differ by what they carry, not by what powers them.
 - **`k-architect` carries by far the most skills** — **38 of the 82** in the library, close
   to half. Design work routed anywhere else comes back thinner.
 - **`konductor`'s skill list is runtime-dependent.** Twelve of its skills are on both
@@ -229,7 +229,7 @@ The default entry point, and the one to use unless you have a specific reason no
 
 | | |
 | --- | --- |
-| **Model** | `claude-sonnet-5.5` |
+| **Model** | `claude-sonnet-5.5` (`claude-sonnet-5-5` on Claude Code) |
 | **SOPs** (10) | `kiro-spec-workflow`, `k-delegate`, `k-plan`, `k-context-gathering`, `k-verify`, `k-light-ui-testing`, `k-comprehensive-search`, `k-full-sdlc`, `k-e2e-test-generation`, `about-konductor` |
 | **Skills** (13) | `constraints`, `delegation-protocol`, `agents-md-authoring`, `claude-teams-behavior`, `pre-planning-analysis`, `socratic-elicitation`, `deliberation-panel`, `verification`, `persistent-memory`, `workspace-skills`, `sdlc-navigator`, `sop-state-management`, `about-konductor`. `claude-teams-behavior` is Claude Code only. Kiro CLI has the other 12 plus `humanize-writing`, on demand |
 | **Kiro CLI tools** | `@builtin`, `subagent`; `allowedTools` is `fs_read` **only** |
@@ -264,7 +264,7 @@ The most capable agent in the package, on the strongest model.
 
 | | |
 | --- | --- |
-| **Model** | `claude-sonnet-5.5` — the same model every agent runs |
+| **Model** | `claude-sonnet-5.5` (`claude-sonnet-5-5` on Claude Code), the same model every agent runs |
 | **SOPs** (4) | `k-design-doc-creation`, `k-existing-design-review`, `k-principal-engineer-design-review`, `k-adversarial-pull-request-review` |
 | **Skills** | **38** — the largest share of any agent. See [Architecture and design](skills.md#architecture-and-design), [Design quality gates](skills.md#design-quality-gates), [API and data modelling](skills.md#api-and-data-modelling) |
 | **MCP** | `aws-mcp`, launched via `uvx mcp-proxy-for-aws-cli==1.7.0`. Kiro CLI's `allowedTools` grants five tools (documentation search, documentation read, skill retrieval, region list, regional availability); Claude Code grants the whole server via `mcp__aws-mcp__*` (8 tools, including the three AWS-API-acting ones: `aws___run_script`, `aws___get_presigned_url`, `aws___get_tasks`) |

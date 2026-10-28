@@ -56,3 +56,20 @@ def test_html_href_and_reference_definitions_are_rewritten():
     assert f'href="{BLOB}CONTRIBUTING.md"' in out
     assert f"[guide]: {BLOB}docs/user-guide/agents.md" in out
     assert "[home]: https://example.com" in out
+
+
+def test_single_quoted_attributes_and_srcset_are_rewritten():
+    text = (
+        "<picture><source srcset='docs/assets/logo-dark.svg 1x, docs/assets/logo-dark@2x.png 2x'>"
+        "<img src='docs/assets/logo.svg'></picture> <a href='docs/a.md'>a</a>"
+    )
+    out = module.rewrite(text, "v1.2.0")
+    raw = "https://raw.githubusercontent.com/aws-solutions/konductor/v1.2.0/docs/assets/"
+    assert f"srcset='{raw}logo-dark.svg 1x, {raw}logo-dark@2x.png 2x'" in out
+    assert f"src='{raw}logo.svg'" in out
+    assert "href='https://github.com/aws-solutions/konductor/blob/v1.2.0/docs/a.md'" in out
+
+
+def test_angle_bracket_target_is_rewritten():
+    out = module.rewrite("[x](<docs/a b.md>)", "v1.2.0")
+    assert out == "[x](<https://github.com/aws-solutions/konductor/blob/v1.2.0/docs/a b.md>)"

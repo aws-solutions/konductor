@@ -14,26 +14,47 @@ from pathlib import Path
 
 REPO = "aws-solutions/konductor"
 SHIPPED = {"LICENSE.txt", "NOTICE.txt"}
-# `](target)` for markdown links and images, `src="..."`/`href="..."` for inline
-# HTML, and `[label]: target` reference definitions.
-LINK = re.compile(r'(\]\(|src="|href="|^\[[^\]\n]+\]:[ \t]*)([^)"\s]+)', re.M)
+# `](target)` and `](<target>)` for markdown links and images, and `[label]: target`
+# reference definitions.
+MD_LINK = re.compile(r"(\]\(<)([^>\n]+)(?=>)|(\]\()([^)<\s]+)|^(\[[^\]\n]+\]:[ \t]*)(\S+)", re.M)
+# src, href and srcset attributes of inline HTML, in either quote style.
+HTML_ATTR = re.compile(r"""(\b(?:src|href|srcset)=)(["'])(.*?)\2""", re.S)
 ABSOLUTE = re.compile(r"^(?:[a-z][a-z0-9+.-]*:|#|/)", re.I)
 IMAGE_EXT = (".svg", ".png", ".jpg", ".jpeg", ".gif", ".webp")
 
 
-def rewrite(text, tag):
-    def replace(match):
-        prefix, target = match.groups()
-        path = target.split("#", 1)[0]
-        if ABSOLUTE.match(target) or path in SHIPPED:
-            return match.group(0)
-        if path.lower().endswith(IMAGE_EXT):
-            url = f"https://raw.githubusercontent.com/{REPO}/{tag}/{target}"
-        else:
-            url = f"https://github.com/{REPO}/blob/{tag}/{target}"
-        return prefix + url
+def absolute_url(target, tag):
+    path = target.split("#", 1)[0]
+    if not target or ABSOLUTE.match(target) or path in SHIPPED:
+        return target
+    if path.lower().endswith(IMAGE_EXT):
+        return f"https://raw.githubusercontent.com/{REPO}/{tag}/{target}"
+    return f"https://github.com/{REPO}/blob/{tag}/{target}"
 
-    return LINK.sub(replace, text)
+
+def rewrite_srcset(value, tag):
+    # Each candidate is "URL [descriptor]", comma-separated.
+    candidates = []
+    for candidate in value.split(","):
+        if not candidate.strip():
+            continue
+        url, *descriptor = candidate.split()
+        candidates.append(" ".join([absolute_url(url, tag), *descriptor]))
+    return ", ".join(candidates)
+
+
+def rewrite(text, tag):
+    def replace_md(match):
+        groups = [g for g in match.groups() if g is not None]
+        prefix, target = groups
+        return prefix + absolute_url(target, tag)
+
+    def replace_attr(match):
+        name, quote, value = match.groups()
+        value = rewrite_srcset(value, tag) if name.startswith("srcset") else absolute_url(value, tag)
+        return f"{name}{quote}{value}{quote}"
+
+    return HTML_ATTR.sub(replace_attr, MD_LINK.sub(replace_md, text))
 
 
 def main():

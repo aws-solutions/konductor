@@ -28,6 +28,7 @@ import json
 import os
 import re
 import subprocess
+from html.parser import HTMLParser
 from pathlib import Path
 
 import pytest
@@ -164,10 +165,40 @@ def test_assembled_agents_use_claude_code_model_ids(assembled):
         ), f"{agent.name}: {model}"
 
 
+class _LinkAttrs(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.targets = []
+
+    def handle_starttag(self, tag, attrs):
+        for name, value in attrs:
+            if name in ("src", "href") and value is not None:
+                self.targets.append(value)
+            elif name == "srcset" and value:
+                self.targets += [c.split()[0] for c in value.split(",") if c.strip()]
+
+
+def _readme_link_targets(readme):
+    # Found independently of the rewriter's regex, so a link form the rewriter
+    # misses still fails here.
+    prose = re.sub(r"^(```|~~~).*?^\1[ \t]*$", "", readme, flags=re.M | re.S)
+    attrs = _LinkAttrs()
+    attrs.feed(prose)
+    targets = list(attrs.targets)
+    for match in re.finditer(r"\]\(", prose):
+        rest = prose[match.end():]
+        if rest.startswith("<"):
+            targets.append(rest[1:rest.index(">")])
+        else:
+            targets.append(re.match(r"[^)\s]*", rest).group(0))
+    targets += re.findall(r"^ {0,3}\[[^\]\n]+\]:[ \t]*<?([^>\s]+)", prose, re.M)
+    return targets
+
+
 def test_assembled_tree_ships_notice_and_absolute_readme_links(assembled):
     assert (assembled / "NOTICE.txt").is_file()
     readme = (assembled / "README.md").read_text(encoding="utf-8")
-    targets = re.findall(r'(?:\]\(|src="|href="|^\[[^\]\n]+\]:[ \t]*)([^)"\s]+)', readme, re.M)
+    targets = _readme_link_targets(readme)
     shipped = {"LICENSE.txt", "NOTICE.txt"}
     relative = [
         t for t in targets
