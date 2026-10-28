@@ -109,7 +109,7 @@ export function DesignerEditor({
             onClick={() => {
               const name = nextStageName(state.draft);
               editor.add();
-              focusName();
+              focusName({ select: true });
               announce(`Stage ${name} added and selected.`);
             }}
           >

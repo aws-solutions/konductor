@@ -274,6 +274,27 @@ describe('adding a stage', () => {
     expect(stageLabels()).toHaveLength(3);
   });
 
+  it('selects the generated name, so typing replaces it', async () => {
+    await openDesigner();
+
+    fireEvent.click(addButton());
+
+    await waitFor(() => expect(document.activeElement).toBe(nameInput()));
+    expect([nameInput().selectionStart, nameInput().selectionEnd]).toEqual([
+      0,
+      'agent-1'.length,
+    ]);
+  });
+
+  it('does not select the name of a stage that is only clicked', async () => {
+    await openDesigner();
+
+    fireEvent.click(screen.getByTestId('node-stage-review'));
+
+    await waitFor(() => expect(document.activeElement).toBe(nameInput()));
+    expect(nameInput().selectionStart).toBe(nameInput().selectionEnd);
+  });
+
   it('names the next stage agent-2', async () => {
     await openDesigner();
 
