@@ -43,8 +43,9 @@
 // Every failure this module can hit -- the manifest file doesn't exist,
 // can't be read, isn't valid JSON, or matches neither the v2
 // `strategies[].files` shape nor the v1 `files` shape -- collapses to an empty result (`HashSet::new()`), never
-// an error propagated to the caller. A scan must never treat "I couldn't
-// read the manifest" as "therefore nothing here is konductor-installed,
+// an error propagated to the caller. Only the last case is logged (one
+// WARN naming the manifest), since it signals schema drift. A scan must
+// never treat "I couldn't read the manifest" as "therefore nothing here is konductor-installed,
 // so the filter should scope everything" (failing CLOSED) -- that would
 // silently hide every skill under a root whose manifest happens to be
 // temporarily unreadable, exactly the false-positive scoping this module
@@ -81,17 +82,28 @@ fn manifest_path_for_skills_root(root: &Path) -> Option<PathBuf> {
     Some(root.parent()?.join(MANIFEST_FILE_NAME))
 }
 
+/// Why `read_installed_paths` found no installed paths. The caller fails
+/// open on all three; only `UnrecognizedShape` is logged (see
+/// `installed_paths_for_root`).
+#[derive(Debug, PartialEq, Eq)]
+enum ManifestReadError {
+    /// Absent or unreadable.
+    Unreadable,
+    InvalidJson,
+    /// Valid JSON matching neither shape: no `strategies` or `files`, a
+    /// strategy without a `files` array, or an entry missing its `path`.
+    UnrecognizedShape,
+}
+
 /// Reads `manifest_path` and returns every installed file path it names:
 /// the union of `strategies[].files[].path` for a v2 manifest, or
-/// `files[].path` for a v1 manifest. `None` on any failure: absent,
-/// unreadable, not valid JSON, neither shape, a strategy without a
-/// `files` array, or an entry missing its `path` string. See this
-/// module's doc comment for why every failure collapses to a single
-/// `None` -- the caller's fail-open default is the same either way.
-fn read_installed_paths(manifest_path: &Path) -> Option<HashSet<String>> {
-    let contents = std::fs::read_to_string(manifest_path).ok()?;
-    let value: serde_json::Value = serde_json::from_str(&contents).ok()?;
-    installed_paths_from_manifest(&value)
+/// `files[].path` for a v1 manifest.
+fn read_installed_paths(manifest_path: &Path) -> Result<HashSet<String>, ManifestReadError> {
+    let contents =
+        std::fs::read_to_string(manifest_path).map_err(|_| ManifestReadError::Unreadable)?;
+    let value: serde_json::Value =
+        serde_json::from_str(&contents).map_err(|_| ManifestReadError::InvalidJson)?;
+    installed_paths_from_manifest(&value).ok_or(ManifestReadError::UnrecognizedShape)
 }
 
 /// Dispatches on the manifest's shape: `strategies` (v2) wins when
@@ -127,10 +139,34 @@ fn paths_from_files(owner: &serde_json::Value) -> Option<HashSet<String>> {
 /// default this module's doc comment describes. Called once per
 /// `--skills-dir` root, by `scanner::mark_konductor_installed`, after
 /// that root has already been scanned.
+///
+/// A manifest that parses but matches no known shape gets one WARN, since
+/// it means schema drift turned the name filter off for this root. A
+/// missing manifest is the normal hand-authored case and stays silent.
 pub(crate) fn installed_paths_for_root(root: &Path) -> HashSet<String> {
-    manifest_path_for_skills_root(root)
-        .and_then(|path| read_installed_paths(&path))
-        .unwrap_or_default()
+    let Some(manifest_path) = manifest_path_for_skills_root(root) else {
+        return HashSet::new();
+    };
+    match read_installed_paths(&manifest_path) {
+        Ok(paths) => paths,
+        Err(ManifestReadError::UnrecognizedShape) => {
+            crate::logging::log(
+                crate::logging::Level::Warn,
+                &unrecognized_manifest_message(&manifest_path, root),
+            );
+            HashSet::new()
+        }
+        Err(ManifestReadError::Unreadable | ManifestReadError::InvalidJson) => HashSet::new(),
+    }
+}
+
+fn unrecognized_manifest_message(manifest_path: &Path, root: &Path) -> String {
+    format!(
+        "install manifest at {} has no recognized shape; --skill-name-filter will not apply \
+         to skills under {}",
+        manifest_path.display(),
+        root.display()
+    )
 }
 
 /// Renders `skill_md`'s path relative to `target_dir_anchor` (the
@@ -187,6 +223,33 @@ mod tests {
         dir
     }
 
+    /// A v2 manifest whose only strategy has no `files` array.
+    const STRATEGY_WITHOUT_FILES: &[u8] =
+        br#"{"schema_version":2,"strategies":[{"strategy":"kiro-cli-v2","status":"complete"}]}"#;
+
+    /// Points `HOME` at a scratch dir (under the crate-wide HOME lock) so
+    /// `crate::logging::log` writes there, runs `f`, and returns
+    /// everything logged to that scratch log dir.
+    fn logged_while(label: &str, f: impl FnOnce()) -> String {
+        let _lock = crate::test_home_lock::lock_home();
+        let scratch = temp_dir(label);
+        let original_home = std::env::var_os("HOME");
+        std::env::set_var("HOME", &scratch);
+        f();
+        let mut logged = String::new();
+        if let Ok(entries) = fs::read_dir(scratch.join(".konductor/mcp/logs")) {
+            for entry in entries.flatten() {
+                logged.push_str(&fs::read_to_string(entry.path()).unwrap_or_default());
+            }
+        }
+        match original_home {
+            Some(home) => std::env::set_var("HOME", home),
+            None => std::env::remove_var("HOME"),
+        }
+        let _ = fs::remove_dir_all(&scratch);
+        logged
+    }
+
     #[test]
     fn manifest_path_for_skills_root_is_one_level_up() {
         let root = PathBuf::from("/home/user/.konductor/skills");
@@ -200,27 +263,36 @@ mod tests {
     }
 
     #[test]
-    fn read_installed_paths_none_when_file_absent() {
+    fn read_installed_paths_unreadable_when_file_absent() {
         let dir = temp_dir("absent");
-        assert_eq!(read_installed_paths(&dir.join("manifest")), None);
+        assert_eq!(
+            read_installed_paths(&dir.join("manifest")),
+            Err(ManifestReadError::Unreadable)
+        );
         let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
-    fn read_installed_paths_none_when_malformed_json() {
+    fn read_installed_paths_invalid_json_when_malformed_json() {
         let dir = temp_dir("malformed");
         let path = dir.join("manifest");
         fs::write(&path, b"not json").unwrap();
-        assert_eq!(read_installed_paths(&path), None);
+        assert_eq!(
+            read_installed_paths(&path),
+            Err(ManifestReadError::InvalidJson)
+        );
         let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
-    fn read_installed_paths_none_when_files_field_missing() {
+    fn read_installed_paths_unrecognized_when_files_field_missing() {
         let dir = temp_dir("no-files-field");
         let path = dir.join("manifest");
         fs::write(&path, br#"{"schema_version":1}"#).unwrap();
-        assert_eq!(read_installed_paths(&path), None);
+        assert_eq!(
+            read_installed_paths(&path),
+            Err(ManifestReadError::UnrecognizedShape)
+        );
         let _ = fs::remove_dir_all(&dir);
     }
 
@@ -276,15 +348,14 @@ mod tests {
     }
 
     #[test]
-    fn read_installed_paths_none_when_strategies_entry_lacks_files() {
+    fn read_installed_paths_unrecognized_when_strategies_entry_lacks_files() {
         let dir = temp_dir("v2-no-files");
         let path = dir.join("manifest");
-        fs::write(
-            &path,
-            br#"{"schema_version":2,"strategies":[{"strategy":"kiro-cli-v2","status":"complete"}]}"#,
-        )
-        .unwrap();
-        assert_eq!(read_installed_paths(&path), None);
+        fs::write(&path, STRATEGY_WITHOUT_FILES).unwrap();
+        assert_eq!(
+            read_installed_paths(&path),
+            Err(ManifestReadError::UnrecognizedShape)
+        );
         let _ = fs::remove_dir_all(&dir);
     }
 
@@ -328,6 +399,56 @@ mod tests {
         .unwrap();
         let paths = installed_paths_for_root(&root);
         assert!(paths.contains(".konductor/skills/code-review/SKILL.md"));
+        let _ = fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn installed_paths_for_root_warns_when_manifest_shape_is_unrecognized() {
+        let base = temp_dir("unrecognized-shape-warns");
+        let konductor_dir = base.join(".konductor");
+        let root = konductor_dir.join("skills");
+        fs::create_dir_all(&root).unwrap();
+        let manifest_path = konductor_dir.join("manifest");
+        fs::write(&manifest_path, STRATEGY_WITHOUT_FILES).unwrap();
+
+        let mut paths = None;
+        let logged = logged_while("unrecognized-shape-warns-home", || {
+            paths = Some(installed_paths_for_root(&root));
+        });
+
+        assert_eq!(paths, Some(HashSet::new()), "must still fail open");
+        assert_eq!(
+            logged.matches(" WARN ").count(),
+            1,
+            "expected exactly one WARN, got: {logged}"
+        );
+        assert!(
+            logged.contains(&format!("install manifest at {}", manifest_path.display())),
+            "WARN must name the manifest path, got: {logged}"
+        );
+        assert!(
+            logged.contains("--skill-name-filter will not apply"),
+            "got: {logged}"
+        );
+        let _ = fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn installed_paths_for_root_is_silent_when_no_sibling_manifest() {
+        let base = temp_dir("no-manifest-silent");
+        let root = base.join(".konductor").join("skills");
+        fs::create_dir_all(&root).unwrap();
+
+        let mut paths = None;
+        let logged = logged_while("no-manifest-silent-home", || {
+            paths = Some(installed_paths_for_root(&root));
+        });
+
+        assert_eq!(paths, Some(HashSet::new()));
+        assert!(
+            logged.is_empty(),
+            "a missing manifest must not log, got: {logged}"
+        );
         let _ = fs::remove_dir_all(&base);
     }
 
