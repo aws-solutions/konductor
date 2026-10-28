@@ -845,7 +845,7 @@ describe('a check that the server refuses for a lost session', () => {
     const edits = acceptingEdits();
     edits.check.mockRejectedValue(
       new SessionLost(
-        'The session is not valid. Open the launch address that the server printed. The changes you made on this page are lost when you do; copy them first.',
+        'The session is not valid. Get a fresh launch address from the server. The changes you made on this page are lost when you do; copy them first.',
       ),
     );
     const { scheduler } = await openDesigner(edits);

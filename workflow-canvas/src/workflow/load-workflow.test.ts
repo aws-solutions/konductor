@@ -11,7 +11,8 @@ import {
 } from '../test-support/fixtures';
 import { freshMemory, memoryStorage } from '../test-support/memory-storage';
 import { SaveConflict, SaveLost, SaveRefused } from '../designer/core';
-import { loadWorkflow, withDocument } from './load-workflow';
+import type { RunPort } from '../execution/core';
+import { loadOnOpen, loadWorkflow, withDocument } from './load-workflow';
 
 const SAVED = { hash: 'b'.repeat(64), view: HELLO_VIEW, diagnostics: [] };
 
@@ -156,56 +157,64 @@ describe('loadWorkflow', () => {
     await expect(lost).rejects.toBeInstanceOf(SaveLost);
   });
 
-  it('warns that the draft is lost when the session is gone at a save', async () => {
-    const failure = new ApiError(
-      'The session is not valid.',
-      401,
-      'unauthorized',
-    );
-    const api = fakeApi({ saveWorkflow: vi.fn().mockRejectedValue(failure) });
-    const result = await loadWorkflow(api, 'code-1', freshMemory());
-    if (!result.ok) throw new Error('The load failed.');
-
-    const refused = result.workflow.edits.save('text', HELLO_HASH);
-
-    await expect(refused).rejects.toThrow(
-      'The session is not valid. Open the launch address that the server printed. The changes you made on this page are lost when you do; copy them first.',
-    );
-  });
-
-  it('warns that the draft is lost for a 401 with no body of the API', async () => {
-    const failure = new ApiError('The server answered 401.', 401);
-    const api = fakeApi({ saveWorkflow: vi.fn().mockRejectedValue(failure) });
-    const result = await loadWorkflow(api, 'code-1', freshMemory());
-    if (!result.ok) throw new Error('The load failed.');
-
-    const refused = result.workflow.edits.save('text', HELLO_HASH);
-
-    await expect(refused).rejects.toThrow(
-      'The server answered 401. Open the launch address that the server printed. The changes you made on this page are lost when you do; copy them first.',
-    );
-  });
+  const LOST_SESSION =
+    'The server no longer knows this session. It may have been started again. Get a fresh launch address from the server.';
+  const CHANGES_LOST =
+    'The changes you made on this page are lost when you do; copy them first.';
 
   it.each([
     ['the API', new ApiError('The session is not valid.', 401, 'unauthorized')],
     ['a proxy', new ApiError('The server answered 401.', 401)],
   ])(
-    'tells the core that the session is lost at a check, as seen by %s',
+    'forgets the session and warns that the draft is lost when a save is refused by %s',
     async (_, failure) => {
+      const { memory } = memoryWith(STORED);
+      const api = fakeApi({
+        saveWorkflow: vi.fn().mockRejectedValue(failure),
+      });
+      const result = await loadWorkflow(api, undefined, memory);
+      if (!result.ok) throw new Error('The load failed.');
+
+      const refused = result.workflow.edits.save('text', HELLO_HASH);
+
+      await expect(refused).rejects.toThrow(`${LOST_SESSION} ${CHANGES_LOST}`);
+      expect(memory.recall()).toBeUndefined();
+    },
+  );
+
+  it.each([
+    ['the API', new ApiError('The session is not valid.', 401, 'unauthorized')],
+    ['a proxy', new ApiError('The server answered 401.', 401)],
+  ])(
+    'forgets the session and tells the core it is lost when a check is refused by %s',
+    async (_, failure) => {
+      const { memory } = memoryWith(STORED);
       const api = fakeApi({
         checkWorkflow: vi.fn().mockRejectedValue(failure),
       });
-      const result = await loadWorkflow(api, 'code-1', freshMemory());
+      const result = await loadWorkflow(api, undefined, memory);
       if (!result.ok) throw new Error('The load failed.');
 
       const checked = result.workflow.edits.check('text');
 
       await expect(checked).rejects.toMatchObject({
         name: 'SessionLost',
-        message: `${failure.message} Open the launch address that the server printed. The changes you made on this page are lost when you do; copy them first.`,
+        message: `${LOST_SESSION} ${CHANGES_LOST}`,
       });
+      expect(memory.recall()).toBeUndefined();
     },
   );
+
+  it('forgets the session when the reload of the workflow is refused', async () => {
+    const { memory } = memoryWith(STORED);
+    const api = fakeApi();
+    const result = await loadWorkflow(api, undefined, memory);
+    if (!result.ok) throw new Error('The load failed.');
+    api.getWorkflow = vi.fn().mockRejectedValue(new ApiError('No.', 401));
+
+    await expect(result.workflow.edits.reload()).rejects.toThrow(LOST_SESSION);
+    expect(memory.recall()).toBeUndefined();
+  });
 
   it('leaves another failure of a check as it is', async () => {
     const failure = new ApiError('Down.', 502);
@@ -245,7 +254,7 @@ describe('loadWorkflow', () => {
     const lost = result.workflow.edits.save('text', HELLO_HASH);
 
     await expect(lost).rejects.toThrow(
-      'The server answered 502. If it stopped, start it again and open the launch address that it printed.',
+      'The server answered 502. If it stopped, start it again and get a fresh launch address from the server.',
     );
   });
 
@@ -316,7 +325,6 @@ describe('loadWorkflow', () => {
     });
 
     it.each([
-      ['a 401', new ApiError('No session.', 401)],
       ['a 404', new ApiError('No such run.', 404)],
       ['a reply the page cannot read', new ApiError('Bad reply.', 200)],
     ])('refuse to read again after %s', async (_, error) => {
@@ -418,12 +426,66 @@ function memoryWith(record?: typeof STORED) {
 }
 
 describe('loadWorkflow with a launch code', () => {
-  it('keeps nothing until the page shows the workflow', async () => {
-    const { memory } = memoryWith();
+  it('keeps the earlier session until the page shows the workflow', async () => {
+    const { memory } = memoryWith(STORED);
 
     await loadWorkflow(fakeApi(), 'code-1', memory);
 
+    expect(memory.recall()).toEqual(STORED);
+  });
+
+  it('keeps the session at once when none is kept, so a failed load does not lose it', async () => {
+    const api = fakeApi({
+      getWorkflow: vi
+        .fn()
+        .mockRejectedValue(new ApiError('Server error.', 500)),
+    });
+    const { memory } = memoryWith();
+
+    const result = await loadWorkflow(api, 'code-1', memory);
+
+    expect(result).toMatchObject({ ok: false });
+    expect(memory.recall()).toEqual({ token: 'token-1', harness: 'kiro-cli' });
+  });
+
+  it('does not replace the kept session when the load of a new code fails', async () => {
+    const api = fakeApi({
+      getWorkflow: vi
+        .fn()
+        .mockRejectedValue(new ApiError('Server error.', 500)),
+    });
+    const { memory } = memoryWith(STORED);
+
+    await loadWorkflow(api, 'code-1', memory);
+
+    expect(memory.recall()).toEqual(STORED);
+  });
+
+  it('keeps nothing when the server speaks another API version', async () => {
+    const api = fakeApi({
+      createSession: vi
+        .fn()
+        .mockResolvedValue({ ...HELLO_SESSION, apiVersion: 2 }),
+    });
+    const { memory } = memoryWith();
+
+    await loadWorkflow(api, 'code-1', memory);
+
     expect(memory.recall()).toBeUndefined();
+  });
+
+  it('forgets the session when the load that follows the code answers 401', async () => {
+    const api = fakeApi({
+      getWorkflow: vi.fn().mockRejectedValue(new ApiError('Wrong.', 401)),
+    });
+    const { memory } = memoryWith();
+
+    const result = await loadWorkflow(api, 'code-1', memory);
+
+    expect(memory.recall()).toBeUndefined();
+    expect(result.ok === false && result.message).toMatch(
+      /server no longer knows this session/,
+    );
   });
 
   it('keeps the token and the harness of the session once told to', async () => {
@@ -522,7 +584,7 @@ describe('loadWorkflow with a kept session', () => {
     expect(result).toEqual({
       ok: false,
       message:
-        'Not reached. If it stopped, start it again and open the launch address that it printed.',
+        'Not reached. If it stopped, start it again and get a fresh launch address from the server.',
     });
   });
 
@@ -571,5 +633,124 @@ describe('withDocument', () => {
 
     expect(withDocument(failed, document)).toBe(failed);
     expect(withDocument(undefined, document)).toBeUndefined();
+  });
+});
+
+describe('loadOnOpen', () => {
+  const refusedCode = () =>
+    vi
+      .fn()
+      .mockRejectedValue(new ApiError('The launch code is not valid.', 401));
+
+  it('resumes the kept session when the code in the address is spent', async () => {
+    const api = fakeApi({ createSession: refusedCode() });
+    const { memory } = memoryWith(STORED);
+
+    const result = await loadOnOpen(api, 'spent', memory);
+
+    expect(result).toMatchObject({
+      ok: true,
+      workflow: { harness: 'stored-harness' },
+    });
+    expect(api.getWorkflow).toHaveBeenCalledWith('stored-token');
+    expect(memory.recall()).toEqual(STORED);
+  });
+
+  it('shows the error of the code when the kept session fails too', async () => {
+    const api = fakeApi({
+      createSession: refusedCode(),
+      getWorkflow: vi.fn().mockRejectedValue(new ApiError('Wrong.', 401)),
+    });
+    const { memory } = memoryWith(STORED);
+
+    const result = await loadOnOpen(api, 'spent', memory);
+
+    expect(result).toEqual({
+      ok: false,
+      message: 'The launch code is not valid.',
+    });
+    expect(memory.recall()).toBeUndefined();
+  });
+
+  it('shows the error of the code when no session is kept', async () => {
+    const result = await loadOnOpen(
+      fakeApi({ createSession: refusedCode() }),
+      'spent',
+      memoryWith().memory,
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      message: 'The launch code is not valid.',
+    });
+  });
+
+  it('does not touch the kept session when the code works', async () => {
+    const api = fakeApi();
+    const { memory } = memoryWith(STORED);
+
+    await loadOnOpen(api, 'code-1', memory);
+
+    expect(api.getWorkflow).toHaveBeenCalledExactlyOnceWith('token-1');
+  });
+
+  it('resumes the kept session when there is no code', async () => {
+    const api = fakeApi();
+
+    await loadOnOpen(api, undefined, memoryWith(STORED).memory);
+
+    expect(api.getWorkflow).toHaveBeenCalledWith('stored-token');
+  });
+});
+
+describe('a 401 on a call after the load', () => {
+  const lost = () =>
+    vi
+      .fn()
+      .mockRejectedValue(
+        new ApiError('The session token is missing or wrong.', 401),
+      );
+  const { signal } = new AbortController();
+
+  async function runsOf(api: WorkflowApi, memory = memoryWith(STORED).memory) {
+    const result = await loadWorkflow(api, undefined, memory);
+    if (!result.ok) throw new Error('The load failed.');
+    return { runs: result.workflow.runs, memory };
+  }
+
+  it.each([
+    ['a run start', (runs: RunPort) => runs.start('g', signal)],
+    ['a run read', (runs: RunPort) => runs.get('r-1', signal)],
+  ])(
+    'on %s forgets the session and says the server lost it',
+    async (_, call) => {
+      const { runs, memory } = await runsOf(
+        fakeApi({ startRun: lost(), getRun: lost() }),
+      );
+
+      await expect(call(runs)).rejects.toThrow(
+        /server no longer knows this session.*fresh launch address/s,
+      );
+      expect(memory.recall()).toBeUndefined();
+    },
+  );
+
+  it('keeps the session on a failure that is not a 401', async () => {
+    const { runs, memory } = await runsOf(
+      fakeApi({
+        startRun: vi.fn().mockRejectedValue(new ApiError('Not reached.', 0)),
+      }),
+    );
+
+    await expect(runs.start('g', signal)).rejects.toThrow('Not reached.');
+    expect(memory.recall()).toEqual(STORED);
+  });
+
+  it('does not forget a newer session', async () => {
+    const { runs, memory } = await runsOf(fakeApi({ startRun: lost() }));
+    memory.remember({ token: 'newer-token', harness: 'kiro-cli' });
+
+    await expect(runs.start('g', signal)).rejects.toThrow();
+    expect(memory.recall()?.token).toBe('newer-token');
   });
 });

@@ -10,8 +10,8 @@ import { WorkflowCanvasPage } from '../support/workflow-canvas-page';
 // started again (a 401 `unauthorized`). Each message must say what to do next.
 
 const NEXT_AFTER_STOP =
-  'If it stopped, start it again and open the launch address that it printed.';
-const NEXT_AFTER_RESTART = 'Open the launch address that the server printed.';
+  'If it stopped, start it again and get a fresh launch address from the server.';
+const NEXT_AFTER_RESTART = 'Get a fresh launch address from the server.';
 
 const badGateway = {
   status: 502,
