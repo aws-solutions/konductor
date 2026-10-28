@@ -19,17 +19,24 @@ function block(selector: string): string {
   return css.split(`${selector} {`)[1]?.split('}')[0] ?? '';
 }
 
-function variables(selector: string): Record<string, string> {
+// Every `--wf-*` declaration of the rule, whatever its value.
+function declarations(selector: string): Record<string, string> {
   return Object.fromEntries(
-    [...block(selector).matchAll(/(--[\w-]+):\s*(#[0-9a-f]{6})/g)].map((m) => [
+    [...block(selector).matchAll(/(--wf-[\w-]+):\s*([^;]+);/g)].map((m) => [
       m[1],
-      m[2],
+      m[2]!.trim(),
     ]),
   );
 }
 
-const light = variables('.wf-canvas');
-const dark = { ...light, ...variables(":root[data-theme='dark'] .wf-canvas") };
+const VARIABLE_BLOCKS = ['.wf-canvas', ":root[data-theme='dark'] .wf-canvas"];
+const HEX_COLOUR = /^#[0-9a-f]{6}$/;
+
+const light = declarations('.wf-canvas');
+const dark = {
+  ...light,
+  ...declarations(":root[data-theme='dark'] .wf-canvas"),
+};
 const MODES: [ThemeMode, Record<string, string>][] = [
   ['light', light],
   ['dark', dark],
@@ -114,5 +121,26 @@ describe.each(MODES)('canvas.css colours in %s', (mode, v) => {
 describe('canvas.css shapes', () => {
   it('uses the radius of the theme module for the canvas', () => {
     expect(block('.wf-canvas')).toContain(`border-radius: ${RADIUS.card}`);
+  });
+});
+
+// A colour must be a 6-digit hex variable that the theme module is checked
+// against, so that a hand-copied value cannot drift from the palette.
+describe('canvas.css colours come only from the checked variables', () => {
+  const COLOUR_LITERAL =
+    /#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color|color-mix)\(/i;
+
+  it.each(VARIABLE_BLOCKS)('declares %s colours as 6-digit hex', (selector) => {
+    for (const [name, value] of Object.entries(declarations(selector))) {
+      expect(value, name).toMatch(HEX_COLOUR);
+    }
+  });
+
+  it('writes no colour outside the two variable blocks', () => {
+    const outside = css
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\.wf-canvas \{[^}]*\}/g, '');
+
+    expect(outside).not.toMatch(COLOUR_LITERAL);
   });
 });
