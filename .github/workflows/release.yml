@@ -22,9 +22,9 @@ name: Release
 # It never writes to `release/plugins` directly -- the `plugins` branch
 # ruleset blocks creation/update/deletion/non-fast-forward there with no
 # bypass actors, and the org-wide ruleset requires two PR approvals before
-# merge. A separate workflow (tag-claude-plugin-release.yml) creates the
-# immutable `claude-plugin-vX.Y.Z` tag only after that PR is merged by a
-# human reviewer. `main` itself never carries generated plugin output (see
+# merge. A separate, manually dispatched workflow
+# (tag-claude-plugin-release.yml) creates the immutable
+# `claude-plugin-vX.Y.Z` tag after a human reviewer merges that PR. `main` itself never carries generated plugin output (see
 # .gitignore and generated/claude-plugin/README.md).
 
 on:
