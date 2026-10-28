@@ -30,7 +30,11 @@ export const HELLO_DOCUMENT: WorkflowDocument = {
 
 /** A load that succeeded with the document. */
 export function loaded(document: WorkflowDocument): LoadResult {
-  return { ok: true, workflow: { harness: 'kiro-cli', document } };
+  return {
+    ok: true,
+    workflow: { harness: 'kiro-cli', document },
+    remember: () => undefined,
+  };
 }
 
 /** A load that failed with the message. */
