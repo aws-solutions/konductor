@@ -3,7 +3,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { FakeScheduler } from '../test-support/fake-scheduler';
 import { helloRun } from '../test-support/fixtures';
-import type { RunMemory, RunPort } from './core';
+import { RunReadRefused, type RunMemory, type RunPort } from './core';
 import { useExecution } from './use-execution';
 
 const RUN_ID = helloRun(0).runId;
@@ -112,6 +112,48 @@ describe('useExecution after a reload', () => {
     await act(async () => result.current.start('Ship it'));
 
     expect(memory.remember).toHaveBeenCalledWith(RUN_ID);
+  });
+});
+
+describe('useExecution when the remembered run cannot be looked up', () => {
+  const memoryOf = (runId: string): RunMemory => ({
+    recall: () => runId,
+    remember: vi.fn(),
+  });
+
+  it('stays at rest when the server will not give the run', async () => {
+    const runs: RunPort = {
+      start: vi.fn(),
+      get: vi.fn().mockRejectedValue(new RunReadRefused('Gone.')),
+    };
+    const { result } = renderHook(() =>
+      useExecution(runs, new FakeScheduler(), memoryOf(RUN_ID)),
+    );
+    await act(async () => {});
+
+    expect(result.current.state).toEqual({ phase: 'idle' });
+  });
+
+  it('says the run may be going when the server does not answer', async () => {
+    const runs: RunPort = {
+      start: vi.fn(),
+      get: vi.fn().mockRejectedValue(new Error('The server did not answer.')),
+    };
+    const scheduler = new FakeScheduler();
+    const { result } = renderHook(() =>
+      useExecution(runs, scheduler, memoryOf(RUN_ID)),
+    );
+
+    for (let turn = 0; turn < 3; turn += 1) {
+      await act(async () => scheduler.tick());
+    }
+
+    expect(result.current.state).toEqual({
+      phase: 'error',
+      message: 'The server did not answer.',
+      started: true,
+      runId: RUN_ID,
+    });
   });
 });
 

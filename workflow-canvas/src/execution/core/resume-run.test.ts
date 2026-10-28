@@ -95,7 +95,7 @@ describe('resumeRun', () => {
     expect(runs.get).toHaveBeenCalledTimes(3);
   });
 
-  it('says nothing when every reading fails', async () => {
+  it('reports a run that may be going when every reading fails', async () => {
     const down = () => new Error('The server did not answer.');
     const { runs, scheduler, events, done } = setup([down(), down(), down()]);
 
@@ -105,8 +105,23 @@ describe('resumeRun', () => {
     }
     await done;
 
-    expect(events).toEqual([]);
     expect(runs.get).toHaveBeenCalledTimes(3);
+    expect(events).toEqual([
+      { type: 'start' },
+      { type: 'started', runId: RUN_ID, joined: true },
+      { type: 'failed', message: 'The server did not answer.', runId: RUN_ID },
+    ]);
+  });
+
+  it('says nothing when it is stopped while the readings fail', async () => {
+    const { events, abort, done } = setup([
+      new Error('The server did not answer.'),
+    ]);
+
+    abort.abort();
+    await done;
+
+    expect(events).toEqual([]);
   });
 
   it('says nothing when the server answers with another run', async () => {
