@@ -8,6 +8,33 @@ const VIEW = {
   stages: [{ name: 'draft', agent: 'k-developer' }],
 };
 
+const COMMENTED = [
+  '# about the workflow',
+  'name: wf',
+  'intent: Say hi',
+  'stages:',
+  '  # the first one',
+  '  - {name: a, agent: x} # flow style',
+  '',
+  '  # the second one',
+  '  - agent: y',
+  "    name: 'b'",
+  '  - name: c',
+  '    agent: z',
+  '  # about the end',
+  '# footer',
+  '',
+].join('\n');
+const COMMENTED_VIEW = {
+  name: 'wf',
+  intent: { outcome: 'Say hi' },
+  stages: [
+    { name: 'a', agent: 'x' },
+    { name: 'b', agent: 'y' },
+    { name: 'c', agent: 'z' },
+  ],
+};
+
 const TEXT =
   'name: hello\nintent: Add a greeting to the README\nstages:\n  - name: draft\n    agent: k-developer\n  - name: review\n    agent: k-quality-assurance\n';
 
@@ -39,7 +66,7 @@ describe('withStages', () => {
     ]);
 
     expect(next).toBe(
-      "# Greets\nversion: '1.1'\nname: hello\nintent: Say hi\n\nstages: # in order\n  - name: a\n    agent: k-developer\n  - name: b\n    agent: k-tpm\n\n# the end\n",
+      "# Greets\nversion: '1.1'\nname: hello\nintent: Say hi\n\nstages: # in order\n  # first\n  - name: a\n    agent: k-developer\n  - name: b\n    agent: k-tpm\n\n# the end\n",
     );
   });
 
@@ -161,12 +188,152 @@ describe('willRewriteWhole', () => {
 
   it('agrees with what withStages does', () => {
     const text =
-      'name: hello\n# kept\nstages:\n  # dropped\n  - name: a\n    agent: k-tpm\n';
+      'name: hello\n# kept\nstages:\n  - name: a\n    agent: k-tpm\n';
 
-    const next = withStages(text, VIEW, [{ name: 'a', agent: 'k-tpm' }]);
+    const next = withStages(text, VIEW, [{ name: 'b', agent: 'k-tpm' }]);
 
     expect(willRewriteWhole(text)).toBe(false);
     expect(next).toContain('# kept');
-    expect(next).not.toContain('# dropped');
   });
+
+  it.each([
+    [
+      'a lone CR as the line break',
+      'name: a\rstages:\r  - name: a\r    agent: x\r',
+    ],
+    ['a BOM before stages', '\uFEFFstages:\n  - name: a\n    agent: x\n'],
+    ['a double-quoted key', 'name: a\n"stages":\n  - name: a\n    agent: x\n'],
+    ['a single-quoted key', "name: a\n'stages':\n  - name: a\n    agent: x\n"],
+  ])('does not rewrite the whole file for %s', (_, text) => {
+    expect(willRewriteWhole(text)).toBe(false);
+  });
+});
+
+describe('withStages, on a file with comments in the block', () => {
+  const [A, B, C] = COMMENTED_VIEW.stages;
+
+  it('keeps the lines and comments of the stages that are unchanged', () => {
+    const next = withStages(COMMENTED, COMMENTED_VIEW, [
+      A!,
+      B!,
+      { name: 'c', agent: 'w' },
+    ]);
+
+    expect(next).toBe(
+      COMMENTED.replace(
+        '  - name: c\n    agent: z\n',
+        '  - name: c\n    agent: w\n',
+      ),
+    );
+  });
+
+  it('takes the comments in front of a deleted stage along with it', () => {
+    const next = withStages(COMMENTED, COMMENTED_VIEW, [A!, C!]);
+
+    expect(next).not.toContain('the second one');
+    expect(next).toContain('the first one');
+    expect(next).toContain('flow style');
+    expect(next).toContain('  # about the end\n# footer\n');
+  });
+
+  it('keeps every comment and blank line after the last stage, indented or not', () => {
+    const next = withStages(COMMENTED, COMMENTED_VIEW, [A!]);
+
+    expect(next.endsWith('  # about the end\n# footer\n')).toBe(true);
+  });
+
+  it('moves the lines of a stage that moved, with its comments', () => {
+    const next = withStages(COMMENTED, COMMENTED_VIEW, [B!, A!, C!]);
+
+    expect(next.indexOf('the second one')).toBeLessThan(
+      next.indexOf("name: 'b'"),
+    );
+    expect(next.indexOf("name: 'b'")).toBeLessThan(next.indexOf('flow style'));
+  });
+
+  it('writes a new stage in the plain layout after the others', () => {
+    const next = withStages(COMMENTED, COMMENTED_VIEW, [
+      A!,
+      B!,
+      C!,
+      { name: 'd', agent: 'v' },
+    ]);
+
+    expect(next).toContain(
+      '  - name: c\n    agent: z\n  - name: d\n    agent: v\n',
+    );
+  });
+
+  it('writes every stage afresh when the items do not match the view', () => {
+    const next = withStages(COMMENTED, { ...COMMENTED_VIEW, stages: [A!] }, [
+      A!,
+      B!,
+    ]);
+
+    expect(next).toContain(
+      '  - name: a\n    agent: x\n  - name: b\n    agent: "y"\n',
+    );
+  });
+});
+
+describe('withStages, on line endings', () => {
+  const ONE = {
+    name: 'wf',
+    intent: { outcome: 'x' },
+    stages: [{ name: 'a', agent: 'x' }],
+  };
+
+  it('uses the line ending of the stages line in a file with mixed endings', () => {
+    const text =
+      'name: wf\nintent: x\n# c\r\nstages:\n  - name: a\n    agent: x\n';
+
+    const next = withStages(text, ONE, [
+      { name: 'a', agent: 'x' },
+      { name: 'b', agent: 'k-tpm' },
+    ]);
+
+    expect(next).toBe(`${text}  - name: b\n    agent: k-tpm\n`);
+  });
+
+  it('keeps a file of lone CR as it is, and writes new lines with CR', () => {
+    const text = 'name: wf\rintent: x\rstages:\r  - name: a\r    agent: x\r';
+
+    const next = withStages(text, ONE, [
+      { name: 'a', agent: 'x' },
+      { name: 'b', agent: 'k-tpm' },
+    ]);
+
+    expect(next).toBe(`${text}  - name: b\r    agent: k-tpm\r`);
+  });
+
+  it('keeps a BOM in front of the stages key', () => {
+    const text = '\uFEFFstages:\n  - name: a\n    agent: x\n';
+
+    const next = withStages(text, ONE, [{ name: 'a', agent: 'k-tpm' }]);
+
+    expect(next).toBe('\uFEFFstages:\n  - name: a\n    agent: k-tpm\n');
+  });
+
+  it('writes into a block under a quoted key', () => {
+    const text = 'name: wf\n"stages":\n  - name: a\n    agent: x\n';
+
+    const next = withStages(text, ONE, [{ name: 'a', agent: 'k-tpm' }]);
+
+    expect(next).toBe('name: wf\n"stages":\n  - name: a\n    agent: k-tpm\n');
+  });
+});
+
+describe('withStages, on words that YAML 1.1 reads as booleans', () => {
+  it.each(['y', 'n', 'yes', 'no', 'on', 'off', 'Yes', 'OFF'])(
+    'quotes the name %s',
+    (name) => {
+      const next = withStages(
+        'name: wf\nstages:\n  - name: a\n    agent: x\n',
+        VIEW,
+        [{ name, agent: 'x' }],
+      );
+
+      expect(next).toContain(`- name: "${name}"`);
+    },
+  );
 });

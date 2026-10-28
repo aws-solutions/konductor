@@ -23,7 +23,12 @@ export type SaveState =
   | { phase: 'reloading' }
   | { phase: 'reloaded' }
   | { phase: 'conflict'; problem?: string }
-  | { phase: 'failed'; message: string };
+  | {
+      phase: 'failed';
+      message: string;
+      /** The save may or may not have been written: the answer was lost. */
+      uncertain?: true;
+    };
 
 /** What the Designer edits: the saved workflow, and the draft beside it. */
 export interface EditState {
@@ -31,7 +36,11 @@ export interface EditState {
   saved: EditableDocument;
   draft: Draft;
   selectedId: string;
-  /** Counts the changes of the draft; a check answers for one revision. */
+  /**
+   * Counts the changes of the draft; a check answers for one revision. It
+   * only grows, also across `open` and `reloaded`, so an answer meant for an
+   * earlier document never fits a later one.
+   */
   revision: number;
   /**
    * The latest check. It stays on show while the draft changes, until the
@@ -58,7 +67,7 @@ export type EditEvent =
       revision: number;
       diagnostics: readonly DiagnosticView[];
     }
-  | { type: 'failed'; message: string }
+  | { type: 'failed'; message: string; uncertain?: true }
   | { type: 'reload' }
   | { type: 'reloaded'; document: WorkflowDocument }
   | { type: 'reload-failed'; message: string };
@@ -72,9 +81,13 @@ export function isEditable(
   );
 }
 
-/** The state for a document just loaded, or `undefined` if it has no file. */
+/**
+ * The state for a document just loaded, or `undefined` if it has no file. It
+ * starts at `revision`, which must be above any revision used before.
+ */
 export function openDocument(
   document: WorkflowDocument,
+  revision = 0,
 ): EditState | undefined {
   if (!isEditable(document)) return undefined;
   const draft = draftOf(document.view.stages);
@@ -82,8 +95,8 @@ export function openDocument(
     saved: document,
     draft,
     selectedId: draft.stages[0]?.id ?? '',
-    revision: 0,
-    check: checkOf(0, document.diagnostics, draft),
+    revision,
+    check: checkOf(revision, document.diagnostics, draft),
     save: { phase: 'idle' },
   };
 }

@@ -104,15 +104,16 @@ export function setAgent(draft: Draft, id: string, agent: string): Draft {
   return change(draft, id, { agent });
 }
 
-/** Deletes the stage; the last one stays. */
+/** Deletes the stage; the last one stays, and an unknown id changes nothing. */
 export function removeStage(draft: Draft, id: string): Draft {
   if (!canRemoveStage(draft)) return draft;
-  return { ...draft, stages: draft.stages.filter((stage) => stage.id !== id) };
+  const stages = draft.stages.filter((stage) => stage.id !== id);
+  return stages.length === draft.stages.length ? draft : { ...draft, stages };
 }
 
 /**
- * The stage to select once `id` is gone: the one before it, or the first
- * when it was the first. `undefined` when the draft has no such stage.
+ * The stage to select once `id` is gone: the one before it, or the one after
+ * it when it was the first. `undefined` when the draft has no such stage.
  */
 export function neighbourOf(draft: Draft, id: string): string | undefined {
   const index = draft.stages.findIndex((stage) => stage.id === id);
