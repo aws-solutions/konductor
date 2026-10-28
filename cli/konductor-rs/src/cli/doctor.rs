@@ -1536,11 +1536,13 @@ fn check_telemetry_state(destination: &Path, home_dir: Option<&Path>) -> CheckRe
                     destination.display(),
                     destination.display()
                 ),
-                "if this was opted out, run `konductor update --enable-telemetry` to opt back \
-                 in (or re-run `konductor install` without --no-telemetry); if it was never \
-                 installed, run `konductor install` to install it -- see the index check's own \
-                 result to tell which"
-                    .to_string(),
+                format!(
+                    "if this was opted out, run `konductor update --target {} \
+                     --enable-telemetry` to opt back in; if it was never installed, run \
+                     `konductor install` to install it -- see the index check's own result to \
+                     tell which",
+                    destination.display()
+                ),
             );
         }
         Err(InstallInfoAbsence::Broken) => {
@@ -4534,6 +4536,18 @@ mod tests {
             "remediation must stay conditional on which cause applies rather than assuming \
              one, got: {:?}",
             result.remediation
+        );
+        let remediation = result.remediation.as_deref().unwrap_or_default();
+        assert!(
+            remediation.contains(&format!(
+                "run `konductor update --target {} --enable-telemetry` to opt back in",
+                destination.display()
+            )),
+            "remediation must name the destination in the opt-in command, got: {remediation}"
+        );
+        assert!(
+            !remediation.contains("without --no-telemetry"),
+            "a plain install keeps the opt-out, so it must not be offered, got: {remediation}"
         );
 
         fs::remove_dir_all(&destination).ok();
