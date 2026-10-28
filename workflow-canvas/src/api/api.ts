@@ -70,9 +70,10 @@ export class ApiError extends Error {
 }
 
 /**
- * Whether a failed call can succeed on the next try: no answer (status 0) or a
- * server error (5xx). Any 4xx will not change.
+ * Whether a failed call can succeed on the next try: no answer (status 0), a
+ * server error (5xx), or a request timeout or rate limit (408, 429) from a
+ * proxy. Any other 4xx will not change.
  */
 export function canRetryStatus(status: number): boolean {
-  return status === 0 || status >= 500;
+  return status === 0 || status >= 500 || status === 408 || status === 429;
 }

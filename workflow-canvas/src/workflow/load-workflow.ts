@@ -1,11 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 import { ApiError, canRetryStatus, type WorkflowApi } from '../api/api';
-import { messageOf } from '../api/message-of';
+import {
+  isSessionLost,
+  lostSessionMessage,
+  messageOf,
+} from '../api/message-of';
 import type { WorkflowDocument } from '../api/types';
 import {
   SaveConflict,
   SaveLost,
   SaveRefused,
+  SessionLost,
   type EditPort,
 } from '../designer/core';
 import {
@@ -72,6 +77,17 @@ function startUnsureOf(error: unknown): RunStartUnsure | undefined {
 const CHANGES_ARE_LOST =
   'The changes you made on this page are lost when you do; copy them first.';
 
+function lostSessionSentence(error: ApiError): string {
+  return `${lostSessionMessage(error)} ${CHANGES_ARE_LOST}`;
+}
+
+// A 401 on a check: the core is told as its own error.
+function checkErrorOf(error: unknown): SessionLost | undefined {
+  return error instanceof ApiError && isSessionLost(error)
+    ? new SessionLost(lostSessionSentence(error))
+    : undefined;
+}
+
 // A 2xx whose body the page cannot read: the server did the write.
 function isUnreadableSuccess(error: ApiError): boolean {
   return error.status >= 200 && error.status < 300;
@@ -89,8 +105,8 @@ function saveErrorOf(error: unknown): Error | undefined {
   if (error.code === 'invalid_workflow') {
     return new SaveRefused(error.message, error.diagnostics);
   }
-  if (error.code === 'unauthorized' || error.code === 'invalid_code') {
-    return new Error(`${messageOf(error, error.message)} ${CHANGES_ARE_LOST}`);
+  if (isSessionLost(error)) {
+    return new Error(lostSessionSentence(error));
   }
   return canRetryStatus(error.status) || isUnreadableSuccess(error)
     ? new SaveLost(messageOf(error, error.message))
@@ -106,7 +122,13 @@ function editPortFor(api: WorkflowApi, token: string): EditPort {
         throw saveErrorOf(error) ?? error;
       }
     },
-    check: (text) => api.checkWorkflow(token, text),
+    check: async (text) => {
+      try {
+        return await api.checkWorkflow(token, text);
+      } catch (error) {
+        throw checkErrorOf(error) ?? error;
+      }
+    },
     reload: () => api.getWorkflow(token),
   };
 }

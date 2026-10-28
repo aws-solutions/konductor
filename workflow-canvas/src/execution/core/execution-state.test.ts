@@ -97,6 +97,14 @@ describe('reduce', () => {
     });
   });
 
+  it('takes a failure that names no run for the start in progress', () => {
+    // Why the caller runs one loop at a time: a second loop's failure with no
+    // run id cannot be told from the failure of the start.
+    expect(
+      after({ type: 'start' }, { type: 'failed', message: 'Other loop.' }),
+    ).toMatchObject({ phase: 'error', started: false });
+  });
+
   it('fails before the run started, or after, and says which', () => {
     expect(
       after({ type: 'start' }, { type: 'failed', message: 'No.' }),

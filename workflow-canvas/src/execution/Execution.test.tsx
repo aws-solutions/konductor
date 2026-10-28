@@ -9,10 +9,12 @@ import {
 } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
+import { Execution } from './Execution';
 import type { RunView } from '../api/types';
 import { FakeScheduler } from '../test-support/fake-scheduler';
 import { HELLO_DOCUMENT, helloRun, loaded } from '../test-support/fixtures';
 import {
+  IDLE,
   MAX_READ_FAILURES,
   RunAlreadyActive,
   RunReadRefused,
@@ -383,6 +385,24 @@ describe('a run that is already active', () => {
   });
 });
 
+describe('the canvas of the Execution tab', () => {
+  it('stays the same canvas while the page draws again, as when the goal is typed', async () => {
+    await openExecution(serverShowing(helloRun(0)));
+    const canvas = () =>
+      within(screen.getByRole('tabpanel', { name: 'Execution' })).getByRole(
+        'region',
+        { name: 'Workflow graph' },
+      );
+    const before = canvas();
+
+    fireEvent.change(screen.getByLabelText('Goal'), {
+      target: { value: 'Another goal' },
+    });
+
+    expect(canvas()).toBe(before);
+  });
+});
+
 describe('the goal', () => {
   const goalBox = () => screen.getByLabelText('Goal') as HTMLInputElement;
   const openTab = (name: string) =>
@@ -426,6 +446,21 @@ describe('the goal', () => {
         key: 'Enter',
         keyCode: 13,
         isComposing: true,
+      });
+    });
+
+    expect(runs.start).not.toHaveBeenCalled();
+  });
+
+  it('does not start a run when Enter ends a composition that Safari reports late', async () => {
+    const runs = serverShowing(helloRun(0));
+    await openExecution(runs);
+
+    await act(async () => {
+      fireEvent.keyDown(goalBox(), {
+        key: 'Enter',
+        keyCode: 229,
+        isComposing: false,
       });
     });
 
@@ -652,6 +687,23 @@ describe('errors from the API', () => {
       ),
     ).toBeTruthy();
   });
+
+  it('says the run may not have started when the start got no clear answer', async () => {
+    const runs: RunPort = {
+      start: vi.fn().mockRejectedValue(new RunStartUnsure('No answer.')),
+      get: vi.fn(),
+    };
+    await openExecution(runs);
+
+    await press(runButton());
+
+    const error = screen.getByTestId('run-error');
+    expect(error.textContent).toContain('The run may not have started');
+    expect(error.textContent).toContain('Press Run to join it.');
+    expect(screen.getByTestId('run-live-alert').textContent).toBe(
+      'The run may not have started. No answer. The run may be going on the server. Press Run to join it.',
+    );
+  });
 });
 
 describe('the live regions', () => {
@@ -678,7 +730,7 @@ describe('the live regions', () => {
     expect(alertLive().textContent).toBe(
       'The run did not start. A run is already active.',
     );
-    expect(statusLive().textContent).toBe('See the error below.');
+    expect(statusLive().textContent).toBe('');
   });
 
   it('say that the run ended, while the Designer tab is open', async () => {
@@ -714,6 +766,7 @@ describe('the live regions', () => {
     expect(alertLive().textContent).toBe(
       `The run could not be followed. There is no run with this id. The run may still be going on the server (run ${RUN_ID}).`,
     );
+    expect(statusLive().textContent).toBe('');
   });
 });
 
@@ -759,6 +812,17 @@ describe('a run whose stages are not the stages of the graph', () => {
     expect(notice()?.textContent).toContain('Not in the run: draft.');
   });
 
+  it('says the file changed after the page loaded or after the run started, and tells the person to reload', async () => {
+    const scheduler = await openExecution(serverShowing(OTHER_STAGES));
+
+    await press(runButton());
+    await tick(scheduler);
+
+    expect(notice()?.textContent).toContain('after this page loaded');
+    expect(notice()?.textContent).toContain('after the run started');
+    expect(notice()?.textContent).toContain('Reload the page to draw it.');
+  });
+
   it('says nothing for a run of the stages that are drawn', async () => {
     const scheduler = await openExecution(serverShowing(helloRun(0)));
 
@@ -799,5 +863,27 @@ describe('when there is no workflow to run', () => {
       0,
     );
     expect(screen.queryByRole('button', { name: 'Run' })).toBeNull();
+  });
+});
+
+describe('when the workflow is replaced', () => {
+  it('draws a new canvas, so it is fitted to the new workflow', () => {
+    const controller = { state: IDLE, start: vi.fn() };
+    const draw = () => (
+      <Execution
+        result={loaded(HELLO_DOCUMENT, serverShowing(helloRun(0)))}
+        execution={controller}
+        goal="g"
+        onGoalChange={vi.fn()}
+      />
+    );
+    const { rerender } = render(draw());
+    const before = screen.getByRole('region', { name: 'Workflow graph' });
+
+    rerender(draw());
+
+    expect(screen.getByRole('region', { name: 'Workflow graph' })).not.toBe(
+      before,
+    );
   });
 });

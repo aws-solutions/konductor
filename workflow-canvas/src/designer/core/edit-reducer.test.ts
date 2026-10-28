@@ -591,9 +591,29 @@ describe('a reload', () => {
     const next = run(reloading(), { type: 'reloaded', document: NEWER });
 
     expect(next.save.phase).toBe('reloaded');
-    expect(
-      next.save.phase === 'reloaded' ? next.save.discarded : undefined,
-    ).toContain('- name: mine');
+    expect(next.discarded).toContain('- name: mine');
+  });
+
+  it('keeps that text when the person goes on to edit', () => {
+    const reloaded = run(reloading(), { type: 'reloaded', document: NEWER });
+
+    const next = run(reloaded, { type: 'rename', id: 's1', name: 'again' });
+
+    expect(next.save.phase).toBe('idle');
+    expect(next.discarded).toBe(reloaded.discarded);
+  });
+
+  it('drops that text when the file is loaded again, or after a save', () => {
+    const reloaded = run(reloading(), { type: 'reloaded', document: NEWER });
+    const saved = run(
+      reloaded,
+      { type: 'rename', id: 's1', name: 'again' },
+      { type: 'save' },
+      { type: 'saved', text: 'text', result: savedResult() },
+    );
+
+    expect(run(reloaded, { type: 'reload' }).discarded).toBeUndefined();
+    expect(saved.discarded).toBeUndefined();
   });
 
   it('keeps no text when the draft had no changes', () => {
@@ -606,14 +626,46 @@ describe('a reload', () => {
       { type: 'reload' },
     );
 
-    expect(run(state, { type: 'reloaded', document: NEWER }).save).toEqual({
-      phase: 'reloaded',
-    });
+    const next = run(state, { type: 'reloaded', document: NEWER });
+    expect(next.save).toEqual({ phase: 'reloaded' });
+    expect(next.discarded).toBeUndefined();
   });
 
   it('keeps the draft when the file cannot be loaded', () => {
     const next = run(reloading(), { type: 'reload-failed', message: 'No.' });
 
     expect(stagesOf(next.draft)[0]?.name).toBe('mine');
+  });
+});
+
+describe('reduce, when the session is lost', () => {
+  const lost: EditEvent = { type: 'session-lost', message: 'Gone.' };
+
+  it('shows the failure, as a lost session, and not as a save that failed', () => {
+    const next = run(opened(), lost);
+
+    expect(next.save).toEqual({
+      phase: 'failed',
+      message: 'Gone.',
+      sessionLost: true,
+    });
+  });
+
+  it('leaves a save or a load that is going on to its own answer', () => {
+    const saving = run(
+      opened(),
+      { type: 'rename', id: 's1', name: 'x' },
+      { type: 'save' },
+    );
+    const reloading = run(opened(), { type: 'reload' });
+
+    expect(reduce(saving, lost)).toBe(saving);
+    expect(reduce(reloading, lost)).toBe(reloading);
+  });
+
+  it('is cleared by the next change, as a failed save is', () => {
+    const next = run(opened(), lost, { type: 'rename', id: 's1', name: 'x' });
+
+    expect(next.save).toEqual({ phase: 'idle' });
   });
 });

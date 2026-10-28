@@ -12,6 +12,7 @@ export {
   canRemoveStage,
   DEFAULT_AGENT,
   MAX_STAGES,
+  nextStageName,
   type Draft,
   type DraftStage,
 } from './draft';
@@ -36,7 +37,13 @@ export {
   textOf,
   type SaveStatusKind,
 } from './edit-view';
-export { SaveConflict, SaveLost, SaveRefused, type EditPort } from './ports';
+export {
+  SaveConflict,
+  SaveLost,
+  SaveRefused,
+  SessionLost,
+  type EditPort,
+} from './ports';
 export { willRewriteWhole } from './stage-text';
 export {
   errorsOf,

@@ -44,7 +44,11 @@ function failure(
     : failed;
 }
 
-/** What `startAndFollow` needs: the ports, the goal and where events go. */
+/**
+ * What `startAndFollow` needs: the ports, the goal and where events go. The
+ * caller runs one loop at a time: a failure with no run id is taken for the
+ * failure of the start in progress.
+ */
 export interface FollowRequest extends Watch {
   goal: string;
 }
@@ -114,7 +118,9 @@ async function follow(
 /**
  * Starts a run, or joins the one that is already active, then reads it every
  * `POLL_INTERVAL_MS` until it is no longer running, telling `emit` each step.
- * It never rejects: a failure ends the loop with one `failed` event.
+ * It does not reject unless `emit` throws, which `FollowRequest` forbids. A
+ * failure ends the loop with one `failed` event, which names the run once
+ * there is one, so it cannot be taken for another's.
  */
 export async function startAndFollow(request: FollowRequest): Promise<void> {
   const { emit, signal } = request;

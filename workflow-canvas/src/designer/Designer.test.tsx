@@ -236,4 +236,25 @@ describe('Designer', () => {
       'The launch code is not valid.',
     );
   });
+
+  it('draws a new canvas when the workflow is replaced, so it is fitted again', () => {
+    const { rerender } = render(<Designer result={loaded(HELLO_DOCUMENT)} />);
+    const before = screen.getByRole('region', { name: 'Workflow graph' });
+
+    rerender(<Designer result={loaded(HELLO_DOCUMENT)} />);
+
+    expect(screen.getByRole('region', { name: 'Workflow graph' })).not.toBe(
+      before,
+    );
+  });
+
+  it('keeps the canvas while the same result is drawn again', () => {
+    const result = loaded(HELLO_DOCUMENT);
+    const { rerender } = render(<Designer result={result} />);
+    const before = screen.getByRole('region', { name: 'Workflow graph' });
+
+    rerender(<Designer result={result} />);
+
+    expect(screen.getByRole('region', { name: 'Workflow graph' })).toBe(before);
+  });
 });

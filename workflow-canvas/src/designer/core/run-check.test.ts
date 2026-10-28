@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { FakeScheduler } from '../../test-support/fake-scheduler';
 import { HELLO_VIEW } from '../../test-support/fixtures';
 import type { EditEvent } from './edit-state';
-import type { EditPort } from './ports';
+import { SessionLost, type EditPort } from './ports';
 import { CHECK_DELAY_MS, checkAfterPause } from './run-check';
 
 const FINDINGS = [
@@ -82,6 +82,26 @@ describe('checkAfterPause', () => {
 
     controller.abort();
     answer({ view: HELLO_VIEW, diagnostics: [] });
+    await done;
+
+    expect(events).toEqual([]);
+  });
+
+  it('says that the session is lost when the check is refused for it', async () => {
+    const check = vi.fn().mockRejectedValue(new SessionLost('Gone.'));
+    const { events, scheduler, done } = request(edits(check));
+
+    scheduler.tick();
+    await done;
+
+    expect(events).toEqual([{ type: 'session-lost', message: 'Gone.' }]);
+  });
+
+  it('says nothing about a lost session when it was aborted', async () => {
+    const check = vi.fn().mockRejectedValue(new SessionLost('Gone.'));
+    const { events, controller, scheduler, done } = request(edits(check));
+    scheduler.tick();
+    controller.abort();
     await done;
 
     expect(events).toEqual([]);

@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import type { WorkflowView } from '../api/types';
 import type { LoadResult } from './load-workflow';
 import { EmptyState, ErrorState, LoadingState } from './states';
+import { useChangeCount } from './use-change-count';
 
 /** A workflow that can be drawn, with the harness that runs its stages. */
 export interface DrawableWorkflow {
@@ -22,6 +23,8 @@ export function WorkflowGate({
   result: LoadResult | undefined;
   children: (workflow: DrawableWorkflow) => ReactNode;
 }) {
+  // A new workflow gets a new canvas, which is fitted to it when it mounts.
+  const swaps = useChangeCount(result);
   if (!result) return <LoadingState />;
   if (!result.ok) return <ErrorState message={result.message} />;
   const { document, harness } = result.workflow;
@@ -33,5 +36,9 @@ export function WorkflowGate({
       />
     );
   }
-  return <>{children({ view: document.view, harness })}</>;
+  return (
+    <Fragment key={swaps}>
+      {children({ view: document.view, harness })}
+    </Fragment>
+  );
 }

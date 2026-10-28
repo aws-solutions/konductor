@@ -21,17 +21,15 @@ export type SaveState =
   | { phase: 'saving' }
   | { phase: 'saved' }
   | { phase: 'reloading' }
-  | {
-      phase: 'reloaded';
-      /** The text of the draft that the reload replaced, when it had changes. */
-      discarded?: string;
-    }
+  | { phase: 'reloaded' }
   | { phase: 'conflict'; problem?: string }
   | {
       phase: 'failed';
       message: string;
       /** The save may or may not have been written: the answer was lost. */
       uncertain?: true;
+      /** The server no longer knows the session; the failure is no save's. */
+      sessionLost?: true;
     };
 
 /** What the Designer edits: the saved workflow, and the draft beside it. */
@@ -52,6 +50,12 @@ export interface EditState {
    */
   check: Check;
   save: SaveState;
+  /**
+   * The text of the draft that the last reload replaced, if it had changes. It
+   * stays, so the person can take it away, until the file is loaded again or
+   * a save succeeds.
+   */
+  discarded?: string;
 }
 
 /** Something that happened to the editor. */
@@ -72,6 +76,8 @@ export type EditEvent =
       diagnostics: readonly DiagnosticView[];
     }
   | { type: 'failed'; message: string; uncertain?: true }
+  /** A check was refused because the server no longer knows the session. */
+  | { type: 'session-lost'; message: string }
   | { type: 'reload' }
   | { type: 'reloaded'; document: WorkflowDocument }
   | { type: 'reload-failed'; message: string };

@@ -119,35 +119,26 @@ test('starts each link at the tip of a tab and ends it at the top of a notch', a
   }
 });
 
-test('fits every node of a workflow of 40 stages in the canvas', async ({
-  page,
-}) => {
-  const stages = Array.from({ length: 40 }, (_, i) => ({
+/** A view of a workflow with `count` stages, as `GET /api/workflow` returns it. */
+function workflowOf(count: number) {
+  const stages = Array.from({ length: count }, (_, i) => ({
     name: `s${i + 1}`,
     agent: 'k-developer',
   }));
-  await page.route('**/api/session', (route) =>
-    route.fulfill({ json: sharedSession() }),
-  );
-  await page.route('**/api/workflow', (route) =>
-    route.fulfill({
-      json: {
-        name: 'big',
-        text: 'name: big\n',
-        hash: 'a'.repeat(64),
-        read_only: false,
-        view: { name: 'big', intent: { outcome: 'Run it' }, stages },
-        diagnostics: [],
-      },
-    }),
-  );
-  const canvas = new WorkflowCanvasPage(page);
-  await canvas.open(STUB_LAUNCH_CODE);
+  return {
+    name: 'big',
+    text: 'name: big\n',
+    hash: 'a'.repeat(64),
+    read_only: false,
+    view: { name: 'big', intent: { outcome: 'Run it' }, stages },
+    diagnostics: [],
+  };
+}
 
+/** Asserts that every node of the graph lies inside the canvas. */
+async function expectEveryNodeInCanvas(canvas: WorkflowCanvasPage) {
   const area = await canvas.graph.boundingBox();
-  const nodes = canvas.graph.locator('.react-flow__node');
-  await expect(nodes).toHaveCount(42);
-  for (const node of await nodes.all()) {
+  for (const node of await canvas.graph.locator('.react-flow__node').all()) {
     const box = await node.boundingBox();
     expect(box?.x).toBeGreaterThanOrEqual(area?.x ?? 0);
     expect(box?.y).toBeGreaterThanOrEqual(area?.y ?? 0);
@@ -158,6 +149,40 @@ test('fits every node of a workflow of 40 stages in the canvas', async ({
       (area?.y ?? 0) + (area?.height ?? 0),
     );
   }
+}
+
+test('fits every node of a workflow of 40 stages in the canvas', async ({
+  page,
+}) => {
+  await page.route('**/api/session', (route) =>
+    route.fulfill({ json: sharedSession() }),
+  );
+  await page.route('**/api/workflow', (route) =>
+    route.fulfill({ json: workflowOf(40) }),
+  );
+  const canvas = new WorkflowCanvasPage(page);
+  await canvas.open(STUB_LAUNCH_CODE);
+
+  await expect(canvas.graph.locator('.react-flow__node')).toHaveCount(42);
+  await expectEveryNodeInCanvas(canvas);
+});
+
+test('fits the nodes of a bigger workflow that replaces the one on the page', async ({
+  canvas,
+  page,
+}) => {
+  await canvas.expectWorkflowDrawn();
+  await page.route('**/api/workflow', (route) =>
+    route.fulfill({ json: workflowOf(40) }),
+  );
+
+  await page.evaluate(
+    (code) => (window.location.hash = code),
+    'q3x7vJ2kLmN9pRs4TuVw5Y_-ab12',
+  );
+
+  await expect(canvas.graph.locator('.react-flow__node')).toHaveCount(42);
+  await expectEveryNodeInCanvas(canvas);
 });
 
 test('shows in full the Japanese text that a node cuts short', async ({

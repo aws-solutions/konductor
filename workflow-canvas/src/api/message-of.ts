@@ -5,6 +5,15 @@ const IF_STOPPED =
   'If it stopped, start it again and open the launch address that it printed.';
 const NEW_SESSION = 'Open the launch address that the server printed.';
 
+/** Whether the server no longer knows the session: its own 401, or a proxy's. */
+export function isSessionLost(error: ApiError): boolean {
+  return (
+    error.status === 401 ||
+    error.code === 'unauthorized' ||
+    error.code === 'invalid_code'
+  );
+}
+
 // What a person can do about a failure that they can fix, or `undefined`.
 // No answer, or a server error with no body of the API (the answer of a proxy
 // whose server is down), means the server may have stopped. The API's own
@@ -16,6 +25,13 @@ function nextStepOf(error: ApiError): string | undefined {
   return error.code === undefined && canRetryStatus(error.status)
     ? IF_STOPPED
     : undefined;
+}
+
+/** The message of a lost session, with the way to get a new one. */
+export function lostSessionMessage(error: ApiError): string {
+  return error.message.includes(NEW_SESSION)
+    ? error.message
+    : `${error.message} ${NEW_SESSION}`;
 }
 
 /**

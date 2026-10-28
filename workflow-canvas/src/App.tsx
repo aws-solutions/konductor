@@ -3,6 +3,7 @@ import AppLayout from '@cloudscape-design/components/app-layout';
 import ContentLayout from '@cloudscape-design/components/content-layout';
 import Header from '@cloudscape-design/components/header';
 import Tabs from '@cloudscape-design/components/tabs';
+import { useMemo } from 'react';
 import { Breadcrumbs } from './chrome/Breadcrumbs';
 import './chrome/chrome.css';
 import { TOP_BAR_ID, TopBar } from './chrome/TopBar';
@@ -58,7 +59,13 @@ export function App({
   const unsaved = editor ? isDirty(editor.state) : false;
   // The draft lives in the page, so leaving the page loses the changes.
   useLeaveGuard(unsaved, window);
-  const saved = editor ? withDocument(result, editor.state.saved) : result;
+  // One object until the saved file changes, as the tab draws a new canvas
+  // for each new result.
+  const document = editor?.state.saved;
+  const saved = useMemo(
+    () => (document ? withDocument(result, document) : result),
+    [result, document],
+  );
   return (
     <>
       <TopBar mode={mode} onToggle={toggleMode} />
