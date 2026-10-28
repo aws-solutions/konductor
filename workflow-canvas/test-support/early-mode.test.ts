@@ -2,10 +2,10 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { MODE_STORAGE_KEY } from '../src/theme/mode.ts';
+import { inlineScriptOf } from './inline-script.ts';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-// HTML tag names are case-insensitive and an end tag may carry whitespace.
-const script = /<script>([\s\S]*?)<\/script[^>]*>/i.exec(html)?.[1] ?? '';
+const script = inlineScriptOf(html);
 
 interface FakeRoot {
   style: { colorScheme?: string };
