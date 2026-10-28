@@ -11,7 +11,7 @@ not per individual commit.
 ### Added
 
 - PR CI runs `make lint` (clippy with `-D warnings` and `cargo fmt --check`) on a pinned Rust
-  toolchain.
+  toolchain; builds and tests stay on stable.
 
 ### Changed
 
