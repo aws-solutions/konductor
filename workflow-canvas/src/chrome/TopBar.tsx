@@ -21,6 +21,8 @@ export function TopBar({
   return (
     <div id={TOP_BAR_ID}>
       <TopNavigation
+        // The identity needs an href. The page has no other place to go, and a
+        // reload would drop the session, so following it does nothing.
         identity={{
           href: '#',
           onFollow: (event) => event.preventDefault(),

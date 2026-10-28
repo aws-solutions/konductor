@@ -24,3 +24,21 @@ export function contrastRatio(a: string, b: string): number {
 export const AA_TEXT = 4.5;
 /** The least ratio for the edge of a control or an icon (WCAG 2 AA). */
 export const AA_GRAPHIC = 3;
+
+/** The `#rrggbb` colour of a translucent `rgba(r, g, b, a)` laid over `backing`. */
+export function blend(rgba: string, backing: string): string {
+  const match = /^rgba\((\d+), (\d+), (\d+), ([\d.]+)\)$/.exec(rgba);
+  if (!match) throw new Error(`Not an rgba colour: ${rgba}`);
+  const alpha = Number(match[4]);
+  const digits = backing.replace('#', '');
+  return (
+    '#' +
+    [1, 2, 3]
+      .map((group, index) => {
+        const below = parseInt(digits.slice(index * 2, index * 2 + 2), 16);
+        const mixed = Number(match[group]) * alpha + below * (1 - alpha);
+        return Math.round(mixed).toString(16).padStart(2, '0');
+      })
+      .join('')
+  );
+}
