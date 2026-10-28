@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 /** Calls POST /api/session over HTTP and checks it against the contract. */
-import { connect } from 'node:net';
 import { networkInterfaces } from 'node:os';
 import { describe, expect, it } from 'vitest';
 import { LOOPBACK, originOf } from '../address.ts';
+import { canConnect } from '../test-support/can-connect.ts';
 import { expectContract, expectError } from '../test-support/contract.ts';
 import { LAUNCH_CODE, openStub, useStub } from '../test-support/harness.ts';
 import { FakeClock } from '../test-support/fake-clock.ts';
@@ -167,11 +167,10 @@ describe('the stub', () => {
       expect(stub.host).toBe(LOOPBACK);
       expect(stub.origin).toBe(originOf(stub.port));
       expect((await client.get('/api/workflow')).status).toBe(401);
-      for (const address of otherAddresses()) {
-        await expect(connectTo(address, stub.port)).rejects.toMatchObject({
-          code: 'ECONNREFUSED',
-        });
-      }
+      const reachable = await Promise.all(
+        otherAddresses().map((address) => canConnect(address, stub.port)),
+      );
+      expect(reachable).not.toContain(true);
     } finally {
       await stub.close();
     }
@@ -184,14 +183,4 @@ function otherAddresses(): string[] {
     .flatMap((list) => list ?? [])
     .filter((entry) => entry.family === 'IPv4' && !entry.internal)
     .map((entry) => entry.address);
-}
-
-function connectTo(host: string, port: number): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const socket = connect({ host, port }, () => {
-      socket.destroy();
-      resolve();
-    });
-    socket.once('error', reject);
-  });
 }
