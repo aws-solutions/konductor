@@ -285,6 +285,9 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
   going on the server. A failed stage is a result, not an error, so it has no
   alert. The goal is one line: line breaks in the outcome of the intent become
   spaces, and Enter that ends an input method composition starts no run.
+- A workflow can be saved while a run goes on, so the run may have other stages
+  than the graph. Node states attach by stage name, so a warning above the
+  graph names the stages that are not drawn and those that are not in the run.
 - A run goes on while the Designer tab is open, and the tab shows it again when
   you come back, with the goal box as it was: what you typed, or the goal of
   the run in flight. Closing the page stops the reading, not the run.

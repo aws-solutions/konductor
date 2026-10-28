@@ -27,4 +27,5 @@ export {
   type RunPort,
   type Scheduler,
 } from './ports';
+export { stageDrift, type StageDrift } from './stage-drift';
 export { statusKind, statusText, type StatusKind } from './status-text';
