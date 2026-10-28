@@ -77,7 +77,7 @@ describe('withStages', () => {
     const next = withStages(text, VIEW, [{ name: 'b', agent: 'k-tpm' }]);
 
     expect(next).toBe(
-      'name: hello\nstages:\n  - name: b\n    agent: k-tpm\nintent: Say hi\n',
+      'name: hello\nstages:\n- name: b\n  agent: k-tpm\nintent: Say hi\n',
     );
   });
 
@@ -293,6 +293,26 @@ describe('withStages, on line endings', () => {
     ]);
 
     expect(next).toBe(`${text}  - name: b\n    agent: k-tpm\n`);
+  });
+
+  it('keeps the line ending of a kept last stage in a file with mixed endings', () => {
+    const text =
+      'name: wf\nintent: x\r\nstages:\n  - name: a\n    agent: x\n  - name: b\r\n    agent: y\r\n# end\n';
+    const view = {
+      ...ONE,
+      stages: [
+        { name: 'a', agent: 'x' },
+        { name: 'b', agent: 'y' },
+      ],
+    };
+
+    const next = withStages(text, view, [
+      { name: 'a', agent: 'z' },
+      { name: 'b', agent: 'y' },
+    ]);
+
+    expect(next).toBe(text.replace('agent: x', 'agent: z'));
+    expect(withStages(text, view, view.stages)).toBe(text);
   });
 
   it('keeps a file of lone CR as it is, and writes new lines with CR', () => {
