@@ -11,6 +11,7 @@ export {
   canRemoveStage,
   DEFAULT_AGENT,
   MAX_STAGES,
+  nextStageName,
   type Draft,
   type DraftStage,
 } from './draft';
