@@ -374,6 +374,16 @@ describe('a workflow that the server says is read-only', () => {
     expect(reasonOf('Delete stage')).toBe('The workflow is read-only.');
   });
 
+  it('puts the note in a block that takes the whole row of the layout', async () => {
+    await openDesigner({ ...HELLO_DOCUMENT, readOnly: true });
+
+    const block = screen
+      .getByTestId('read-only-note')
+      .closest('.wf-designer-note');
+
+    expect(block?.parentElement?.classList.contains('wf-designer')).toBe(true);
+  });
+
   it('says in a note that it is read-only', async () => {
     await openDesigner({ ...HELLO_DOCUMENT, readOnly: true });
 
@@ -392,9 +402,35 @@ describe('what a screen reader is told', () => {
 
     fireEvent.click(addButton());
 
-    expect(live()).toBe('Stage added and selected.');
+    expect(live()).toBe('Stage agent-1 added and selected.');
   });
 
+  it('says a second stage was added in different words', async () => {
+    await openDesigner();
+
+    fireEvent.click(addButton());
+    const first = live();
+    fireEvent.click(addButton());
+
+    expect(live()).toBe('Stage agent-2 added and selected.');
+    expect(live()).not.toBe(first);
+  });
+
+  it('says again that the same stage is selected, in a new element', async () => {
+    await openDesigner();
+    const region = () => screen.getByTestId('designer-live');
+    const selectedNode = () =>
+      screen.getByRole('group', { name: /^Stage review, .*, selected$/ });
+    fireEvent.click(screen.getByTestId('node-stage-review'));
+    await waitFor(() => expect(live()).toBe('Stage review selected.'));
+    const first = region().firstElementChild;
+
+    selectedNode().focus();
+    fireEvent.keyDown(selectedNode(), { key: 'Enter' });
+
+    await waitFor(() => expect(region().firstElementChild).not.toBe(first));
+    expect(live()).toBe('Stage review selected.');
+  });
   it('says which stage was deleted', async () => {
     await openDesigner();
     fireEvent.click(screen.getByTestId('node-stage-review'));

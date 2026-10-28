@@ -69,14 +69,15 @@ export function WorkflowCanvas({
   );
   // React Flow selects a node only when it is not selected yet, and Escape
   // makes it drop focus. Both are taken here, before it sees them: Enter or
-  // Space always chooses the stage, and Escape leaves focus where it is.
+  // Space always chooses the stage, and Escape leaves focus where it is. A
+  // canvas that cannot select keeps the default of both.
   const onKeyDownCapture = useCallback(
     (event: KeyboardEvent<HTMLDivElement>) => {
       const node = event.target;
       if (!(node instanceof HTMLElement)) return;
       if (!node.classList.contains('react-flow__node')) return;
       if (event.key === 'Escape') {
-        event.stopPropagation();
+        if (onSelect) event.stopPropagation();
         return;
       }
       const choose = event.key === 'Enter' || event.key === ' ';
