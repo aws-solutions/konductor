@@ -197,12 +197,12 @@ jobs:
         # scripts/assemble-claude-plugin-branch.sh produces, not an empty or
         # unexpectedly-shaped commit -- the exact files that tree's own
         # script guarantees are present (see that script's own checks for
-        # README.md/LICENSE.txt and its explicit mkdir/cp list for
+        # README.md/LICENSE.txt/NOTICE.txt and its explicit mkdir/cp list for
         # everything else).
         run: |
           set -e
           MISSING=""
-          for f in ".claude-plugin/plugin.json" ".mcp.json" "README.md" "LICENSE.txt"; do
+          for f in ".claude-plugin/plugin.json" ".mcp.json" "README.md" "LICENSE.txt" "NOTICE.txt"; do
             if [ ! -f "$f" ]; then
               MISSING="$MISSING $f"
             fi
