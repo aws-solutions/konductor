@@ -10,6 +10,8 @@ not per individual commit.
 
 ### Changed
 
+- The always-loaded core rules now carry the engineering practices from the `constraints` skill,
+  so agents get them without loading the skill.
 - The orchestrators (`konductor`, `konductor-mux-orchestrator`, `konductor-cmux-orchestrator`)
   may now read files, search the codebase, run read-only shell commands, and answer lookup
   questions themselves instead of spawning a specialist for each. One table in
