@@ -3,6 +3,7 @@ import Alert from '@cloudscape-design/components/alert';
 import Box from '@cloudscape-design/components/box';
 import StatusIndicator from '@cloudscape-design/components/status-indicator';
 import type { DiagnosticView } from '../api/types';
+import { MessageText } from '../workflow/MessageText';
 
 /** Shown while the session opens and the workflow loads. */
 export function LoadingState() {
@@ -18,7 +19,7 @@ export function ErrorState({ message }: { message: string }) {
   return (
     <div role="alert">
       <Alert type="error" header="The workflow did not load">
-        {message}
+        <MessageText text={message} />
       </Alert>
     </div>
   );
@@ -46,7 +47,8 @@ export function EmptyState({
               is part of the key. The list never reorders. */}
           {diagnostics.map(({ line, message }, index) => (
             <li key={`${index}:${line ?? ''}:${message}`}>
-              {line === undefined ? message : `Line ${line}: ${message}`}
+              {line !== undefined && `Line ${line}: `}
+              <MessageText text={message} />
             </li>
           ))}
         </ul>

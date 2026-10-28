@@ -35,6 +35,18 @@ editing(
 );
 
 editing(
+  'replaces the generated name of a new stage when the person types',
+  async ({ designer }) => {
+    await designer.add.click();
+    await expect(designer.name).toBeFocused();
+
+    await designer.page.keyboard.type('kb-stage');
+
+    await expect(designer.name).toHaveValue('kb-stage');
+  },
+);
+
+editing(
   'keeps focus on a stage when Escape is pressed on it',
   async ({ designer }) => {
     const node = designer.page.getByRole('group', { name: SELECTED_DRAFT });

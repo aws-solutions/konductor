@@ -426,6 +426,9 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
   may still be going. Pressing Run while the page still looks for the run
   stops the look and starts a run; a run that is going answers 409 and is
   joined.
+- Pasting another launch address into the open tab lets go of the run: the
+  tab stops following it, shows no run status and forgets its id. The run goes
+  on at its server. The Goal box and Run belong to the workflow that is open.
 - A read of the run that fails is tried again after a second; the tab gives up
   after three failures in a row. Only a missing answer, a 5xx, 408 or 429 is tried again:
   any 4xx or a reply the page cannot read shows the alert at once. A call that

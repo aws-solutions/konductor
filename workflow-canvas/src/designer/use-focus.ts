@@ -4,24 +4,34 @@ import { useCallback, useEffect, useRef, type RefObject } from 'react';
 /** Something that can take keyboard focus, such as a Cloudscape input. */
 export interface Focusable {
   focus(): void;
+  /** Selects all the text, as an input does. */
+  select?(): void;
+}
+
+/** What a focus request asks for besides focus. */
+export interface FocusOptions {
+  /** Select the text too, so that typing replaces it. */
+  select?: boolean;
 }
 
 /**
- * Returns a function that asks for `target` to take focus. The focus moves
- * after the next render, when the control is on the page and shows the change
- * that the request goes with.
+ * Returns a function that asks for `target` to take focus, and with `select`
+ * to select its text. The focus moves after the next render, when the control
+ * is on the page and shows the change that the request goes with.
  */
 export function useFocusRequest(
   target: RefObject<Focusable | null>,
-): () => void {
-  const requested = useRef(false);
+): (options?: FocusOptions) => void {
+  const requested = useRef<FocusOptions>(undefined);
   useEffect(() => {
-    if (!requested.current) return;
-    requested.current = false;
+    const request = requested.current;
+    if (!request) return;
+    requested.current = undefined;
     target.current?.focus();
+    if (request.select) target.current?.select?.();
   });
-  return useCallback(() => {
-    requested.current = true;
+  return useCallback((options: FocusOptions = {}) => {
+    requested.current = options;
   }, []);
 }
 
