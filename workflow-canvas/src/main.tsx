@@ -6,7 +6,7 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { sessionRunMemory } from './execution/run-memory';
 import { createHttpApi } from './api/http-api';
-import { takeLaunchCode } from './launch/launch-code';
+import { reloadOnLaunchCode, takeLaunchCode } from './launch/launch-code';
 import { installTheme } from './theme/install';
 import { loadWorkflow } from './workflow/load-workflow';
 
@@ -18,6 +18,7 @@ installTheme(document.body);
 // Started once, outside React: the launch code works only once, and strict mode
 // runs effects twice.
 const load = loadWorkflow(createHttpApi(), takeLaunchCode(window));
+reloadOnLaunchCode(window);
 
 createRoot(root).render(
   <StrictMode>

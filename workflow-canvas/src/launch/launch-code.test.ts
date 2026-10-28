@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it, vi } from 'vitest';
-import { takeLaunchCode, type LaunchEnvironment } from './launch-code';
+import {
+  reloadOnLaunchCode,
+  takeLaunchCode,
+  type LaunchEnvironment,
+} from './launch-code';
 
 function environment(hash: string, search = ''): LaunchEnvironment {
   return {
@@ -46,5 +50,35 @@ describe('takeLaunchCode', () => {
 
   it('keeps a code that is not valid percent-encoding as it is', () => {
     expect(takeLaunchCode(environment('#100%'))).toBe('100%');
+  });
+});
+
+describe('reloadOnLaunchCode', () => {
+  function watched(hash: string) {
+    const listeners: Array<() => void> = [];
+    const env = {
+      location: { hash, reload: vi.fn() },
+      addEventListener: (_type: 'hashchange', listener: () => void) => {
+        listeners.push(listener);
+      },
+    };
+    reloadOnLaunchCode(env);
+    return { env, changeHash: () => listeners.forEach((l) => l()) };
+  }
+
+  it('reloads the page when a launch code is put into the address', () => {
+    const { env, changeHash } = watched('#abc-123');
+
+    changeHash();
+
+    expect(env.location.reload).toHaveBeenCalledOnce();
+  });
+
+  it('does not reload when the fragment is empty', () => {
+    const { env, changeHash } = watched('#');
+
+    changeHash();
+
+    expect(env.location.reload).not.toHaveBeenCalled();
   });
 });
