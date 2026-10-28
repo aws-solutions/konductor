@@ -16,7 +16,7 @@ import {
 } from './core';
 import '../execution/announcements.css';
 import './designer.css';
-import { EditAlerts, RewriteNotice } from './EditAlerts';
+import { EditAlerts, ProblemAlerts, RewriteNotice } from './EditAlerts';
 import { PropertiesPane } from './PropertiesPane';
 import { SaveControls } from './SaveControls';
 import { useFocusRequest, useFocusWhenDone } from './use-focus';
@@ -129,18 +129,21 @@ export function DesignerEditor({
             </Button>
           }
         />
-        <PropertiesPane
-          state={state}
-          nameRef={nameRef}
-          onRename={editor.rename}
-          onAgent={editor.setAgent}
-          onRemove={(id) => {
-            const stage = state.draft.stages.find((s) => s.id === id);
-            editor.remove(id);
-            focusName();
-            announce(`Stage ${stage?.name || 'with no name'} deleted.`);
-          }}
-        />
+        <div className="wf-side">
+          <PropertiesPane
+            state={state}
+            nameRef={nameRef}
+            onRename={editor.rename}
+            onAgent={editor.setAgent}
+            onRemove={(id) => {
+              const stage = state.draft.stages.find((s) => s.id === id);
+              editor.remove(id);
+              focusName();
+              announce(`Stage ${stage?.name || 'with no name'} deleted.`);
+            }}
+          />
+          <ProblemAlerts state={state} />
+        </div>
       </div>
     </div>
   );

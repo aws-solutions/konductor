@@ -2,7 +2,7 @@
 import Alert from '@cloudscape-design/components/alert';
 import Button from '@cloudscape-design/components/button';
 import Textarea from '@cloudscape-design/components/textarea';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { Draft, EditState, Problem } from './core';
 import {
   errorsOf,
@@ -12,6 +12,7 @@ import {
   textOf,
   willRewriteWhole,
 } from './core';
+import { MessageText } from '../workflow/MessageText';
 
 const CONFLICT_TEXT =
   'The file was changed after this page loaded, so nothing was saved. Load it again to see it as it is now; that replaces the changes you made here.';
@@ -25,9 +26,16 @@ function stageLabel(draft: Draft, id: string | undefined): string | undefined {
 }
 
 // A problem in words, led by the stage it is about when it is about one.
-function lineOf(problem: Problem, draft: Draft): string {
+function lineOf(problem: Problem, draft: Draft): ReactNode {
   const label = stageLabel(draft, problem.stageId);
-  return label === undefined ? problem.message : `${label}: ${problem.message}`;
+  const message = <MessageText text={problem.message} />;
+  return label === undefined ? (
+    message
+  ) : (
+    <>
+      {label}: {message}
+    </>
+  );
 }
 
 // Puts the text on the clipboard. A page that may not, or has none, shows the
@@ -125,10 +133,10 @@ function failureHeader(save: { uncertain?: true; sessionLost?: true }): string {
 }
 
 /**
- * What went wrong with the draft, in one region that is always on the page, so
- * that the alert which appears in it is read out: a file that changed (with
- * the button to load it again), a save that failed, and the problems that the
- * check found.
+ * What went wrong with the file and the save, in one region that is always on
+ * the page, so that the alert which appears in it is read out: a file that
+ * changed (with the button to load it again), the file loaded again, and a
+ * save that failed.
  */
 export function EditAlerts({
   state,
@@ -137,10 +145,7 @@ export function EditAlerts({
   state: EditState;
   onReload: () => void;
 }) {
-  const { save, draft } = state;
-  // Each problem is listed once, though a field may show it for two stages.
-  const problems = listedOf(problemsOfDraft(state));
-  const notes = notesOf(problems);
+  const { save } = state;
   return (
     <div role="alert" className="wf-edit-alerts">
       {(save.phase === 'conflict' || save.phase === 'reloading') && (
@@ -166,6 +171,22 @@ export function EditAlerts({
           {save.message}
         </Alert>
       )}
+    </div>
+  );
+}
+
+/**
+ * The problems that the check found, in a region that is always on the page.
+ * It sits under Properties, so that an alert which appears while the person
+ * types does not move the field they are typing in.
+ */
+export function ProblemAlerts({ state }: { state: EditState }) {
+  const { draft } = state;
+  // Each problem is listed once, though a field may show it for two stages.
+  const problems = listedOf(problemsOfDraft(state));
+  const notes = notesOf(problems);
+  return (
+    <div role="alert" className="wf-problem-alerts">
       <ProblemList
         problems={errorsOf(problems)}
         draft={draft}

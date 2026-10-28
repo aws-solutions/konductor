@@ -58,6 +58,25 @@ editing(
   },
 );
 
+// A problem appears while the person types. It must not push the field they
+// type in, or the graph, down the page. Layout is not drawn in jsdom, so this
+// needs a browser.
+editing(
+  'keeps the name field and the graph where they are when a problem appears',
+  async ({ designer }) => {
+    const graph = designer.page.getByRole('region', { name: 'Workflow graph' });
+    const top = async () => (await designer.name.boundingBox())?.y;
+    const before = { name: await top(), graph: await graph.boundingBox() };
+
+    await designer.rename('Bad');
+    await expect(designer.page.getByTestId('problems')).toBeVisible();
+
+    expect({ name: await top(), graph: await graph.boundingBox() }).toEqual(
+      before,
+    );
+  },
+);
+
 // The Designer is a grid of the graph and Properties; a note above them takes
 // the whole row, so the graph keeps the wide column. Layout is not drawn in
 // jsdom, so this needs a browser.
