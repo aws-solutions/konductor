@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   isLaunchCode,
-  reloadOnLaunchCode,
+  watchLaunchCode,
   takeLaunchCode,
   type LaunchEnvironment,
 } from './launch-code';
@@ -54,54 +54,77 @@ describe('takeLaunchCode', () => {
   });
 });
 
-describe('reloadOnLaunchCode', () => {
-  function watched(hash: string) {
-    const listeners: Array<() => void> = [];
-    const env = {
-      location: { hash, reload: vi.fn() },
-      addEventListener: (_type: 'hashchange', listener: () => void) => {
-        listeners.push(listener);
-      },
-    };
-    reloadOnLaunchCode(env);
-    return { env, changeHash: () => listeners.forEach((l) => l()) };
-  }
-
+describe('watchLaunchCode', () => {
   const CODE = 'q3x7vJ2kLmN9pRs4TuVw5Y_-ab12';
 
-  it('reloads the page when a launch code is put into the address', () => {
-    const { env, changeHash } = watched(`#${CODE}`);
+  function watched(hash: string) {
+    const listeners = new Set<() => void>();
+    const env = {
+      ...environment(hash),
+      addEventListener: (_type: 'hashchange', listener: () => void) => {
+        listeners.add(listener);
+      },
+      removeEventListener: (_type: 'hashchange', listener: () => void) => {
+        listeners.delete(listener);
+      },
+    };
+    const onCode = vi.fn();
+    const stop = watchLaunchCode(env, onCode);
+    return {
+      env,
+      onCode,
+      stop,
+      listeners,
+      changeHash: () => listeners.forEach((l) => l()),
+    };
+  }
+
+  it('hands over a launch code that is put into the address, and clears it', () => {
+    const { env, onCode, changeHash } = watched(`#${CODE}`);
 
     changeHash();
 
-    expect(env.location.reload).toHaveBeenCalledOnce();
+    expect(onCode).toHaveBeenCalledExactlyOnceWith(CODE);
+    expect(env.history.replaceState).toHaveBeenCalledOnce();
   });
 
-  it('does not reload when the fragment is empty', () => {
-    const { env, changeHash } = watched('#');
+  it('does nothing when the fragment is empty', () => {
+    const { env, onCode, changeHash } = watched('#');
 
     changeHash();
 
-    expect(env.location.reload).not.toHaveBeenCalled();
+    expect(onCode).not.toHaveBeenCalled();
+    expect(env.history.replaceState).not.toHaveBeenCalled();
   });
 
   it.each(['#some-anchor', '#top', '#section-2', '#abc-123'])(
-    'does not reload for %s, which is not a launch code',
+    'leaves %s alone, which is not a launch code',
     (hash) => {
-      const { env, changeHash } = watched(hash);
+      const { env, onCode, changeHash } = watched(hash);
 
       changeHash();
 
-      expect(env.location.reload).not.toHaveBeenCalled();
+      expect(onCode).not.toHaveBeenCalled();
+      expect(env.history.replaceState).not.toHaveBeenCalled();
     },
   );
 
-  it('does not reload for a fragment that is too long to be a code', () => {
-    const { env, changeHash } = watched(`#${'a'.repeat(257)}`);
+  it('leaves a fragment that is too long to be a code alone', () => {
+    const { onCode, changeHash } = watched(`#${'a'.repeat(257)}`);
 
     changeHash();
 
-    expect(env.location.reload).not.toHaveBeenCalled();
+    expect(onCode).not.toHaveBeenCalled();
+  });
+
+  it('stops watching when the returned function is called', () => {
+    const { onCode, stop, listeners, changeHash } = watched(`#${CODE}`);
+
+    stop();
+    changeHash();
+
+    expect(listeners.size).toBe(0);
+    expect(onCode).not.toHaveBeenCalled();
   });
 });
 

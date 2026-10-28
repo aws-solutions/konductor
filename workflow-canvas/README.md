@@ -213,20 +213,26 @@ the `S` in port at the top right of the next), placed in one column. It imports
 only its own modules. A test (`test-support/graph-purity.test.ts`) fails if it
 imports anything else, or reads a clock, randomness, the environment or the
 network, and the stub core is held to the same rule by the same scan
-(`test-support/purity.ts`).
+(`test-support/purity.ts`). The scan parses each file as TypeScript, so it
+catches an alias such as `const f = fetch`, `XMLHttpRequest`, `WebSocket`,
+`sendBeacon`, storage, `import.meta`, animation frames and dynamic imports,
+and it ignores a word in a comment or a string. It guards against accidents;
+it is not a sandbox.
 
 The rest wraps the core, so the rules can be tested without a browser:
 
 - `api/`: `WorkflowApi` is the port with the two calls the page makes;
   `createHttpApi` is its adapter over `fetch`. It ignores fields it does not
   know and turns a failed call into an `ApiError` with a message fit to show.
-- `launch/launch-code.ts` and `workflow/load-workflow.ts` take the launch code
-  from the address and load the workflow. `loadWorkflow` never rejects: it
-  returns `{ ok: true, workflow }` or `{ ok: false, message }`. It is started
-  once, before React renders, because a launch code works once and strict mode
-  runs effects twice. Pasting a launch address into the open tab reloads the
-  page, but only for a fragment shaped like a launch code (22 to 256 URL-safe
-  characters); an anchor such as `#top` changes nothing.
+- `launch/launch-code.ts` and `workflow/` take the launch code from the
+  address and load the workflow. `loadWorkflow` never rejects: it returns
+  `{ ok: true, workflow }` or `{ ok: false, message }`. `createWorkflowSource`
+  starts the first load once, before React renders, because a launch code
+  works once and strict mode runs effects twice. Pasting a launch address into
+  the open tab does not reload the page: when the fragment is shaped like a
+  launch code (22 to 256 URL-safe characters) the page opens a session with it
+  and changes to the new workflow only if that works. A refused code leaves
+  the workflow on the page. An anchor such as `#top` changes nothing.
 - `designer/` shows the result: loading, error, empty (no file yet, or a file
   with errors, with their messages), or the canvas.
 - `canvas/` draws the graph with [React Flow](https://reactflow.dev)

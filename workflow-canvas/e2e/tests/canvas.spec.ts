@@ -100,6 +100,39 @@ test('fits every node of a workflow of 40 stages in the canvas', async ({
   }
 });
 
+test('shows in full the Japanese text that a node cuts short', async ({
+  page,
+}) => {
+  const outcome = '作'.repeat(60);
+  const name = '日本語の長いステージ名です';
+  await page.route('**/api/session', (route) =>
+    route.fulfill({ json: sharedSession() }),
+  );
+  await page.route('**/api/workflow', (route) =>
+    route.fulfill({
+      json: {
+        name: 'jp',
+        text: 'name: jp\n',
+        hash: 'a'.repeat(64),
+        read_only: false,
+        view: {
+          name: 'jp',
+          intent: { outcome },
+          stages: [{ name, agent: 'a' }],
+        },
+        diagnostics: [],
+      },
+    }),
+  );
+  const canvas = new WorkflowCanvasPage(page);
+  await canvas.open(STUB_LAUNCH_CODE);
+
+  await expect(page.getByTestId('full-intent')).toHaveText(
+    `Intent: ${outcome}`,
+  );
+  await expect(page.getByTestId(`full-stage-${name}`)).toBeVisible();
+});
+
 test('removes the launch code from the address', async ({ canvas }) => {
   await canvas.expectWorkflowDrawn();
 

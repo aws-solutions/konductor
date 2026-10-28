@@ -20,9 +20,9 @@ export function takeLaunchCode(env: LaunchEnvironment): string | undefined {
 }
 
 /** The parts of `window` that watching for a pasted launch address needs. */
-export interface LaunchWatchEnvironment {
-  location: Pick<Location, 'hash' | 'reload'>;
+export interface LaunchWatchEnvironment extends LaunchEnvironment {
   addEventListener(type: 'hashchange', listener: () => void): void;
+  removeEventListener(type: 'hashchange', listener: () => void): void;
 }
 
 /**
@@ -38,15 +38,22 @@ export function isLaunchCode(fragment: string): boolean {
 }
 
 /**
- * Reloads the page when a launch code is put into the address of the open
- * page. Pasting the printed address into the same tab only changes the
- * fragment, which does not reload the page. Any other fragment is left alone,
- * so an in-page anchor cannot throw the session away.
+ * Hands `onCode` the launch code that is put into the address of the open
+ * page, and removes it from the address. Pasting the printed address into the
+ * same tab only changes the fragment. Any other fragment is left alone, so an
+ * in-page anchor does nothing. Returns the function that stops watching.
  */
-export function reloadOnLaunchCode(env: LaunchWatchEnvironment): void {
-  env.addEventListener('hashchange', () => {
-    if (isLaunchCode(decodeFragment(env.location.hash))) env.location.reload();
-  });
+export function watchLaunchCode(
+  env: LaunchWatchEnvironment,
+  onCode: (code: string) => void,
+): () => void {
+  const onChange = () => {
+    if (!isLaunchCode(decodeFragment(env.location.hash))) return;
+    const code = takeLaunchCode(env);
+    if (code !== undefined) onCode(code);
+  };
+  env.addEventListener('hashchange', onChange);
+  return () => env.removeEventListener('hashchange', onChange);
 }
 
 function decodeFragment(hash: string): string {

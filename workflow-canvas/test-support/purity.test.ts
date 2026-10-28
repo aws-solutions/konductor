@@ -4,7 +4,6 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
-  importedModules,
   problemsIn as scan,
   sourcesUnder,
   type PurityRules,
@@ -104,8 +103,118 @@ describe('the scan, on code that breaks the rules', () => {
       rmSync(dir, { recursive: true });
     }
   });
+});
 
-  it('finds static, side-effect, re-export and dynamic imports', () => {
+describe('the scan, on code that gets round a word match', () => {
+  it.each([
+    ['an alias of fetch', 'const f = fetch; f("/x");'],
+    ['fetch passed on', 'run(fetch);'],
+    ['fetch in a destructuring', 'const { fetch: f } = globalThis;'],
+    ['a computed key of globalThis', "globalThis['fet' + 'ch']('/x');"],
+    ['an alias of window', 'const w = window; w.x();'],
+    ['an alias of Date', 'const D = Date; new D();'],
+    ['a class that extends Date', 'class A extends Date {}'],
+    ['Math.random through an alias', 'const m = Math; m.random();'],
+    ['a destructured Math.random', 'const { random } = Math;'],
+    ["Math['random']", "Math['random']();"],
+    ['a computed member of Math', 'Math[name]();'],
+    ['AbortSignal.timeout', 'AbortSignal.timeout(10);'],
+    ['requestAnimationFrame', 'requestAnimationFrame(() => {});'],
+    ['cancelAnimationFrame', 'cancelAnimationFrame(1);'],
+    ['indexedDB', "indexedDB.open('x');"],
+    ['Intl', 'new Intl.DateTimeFormat().format();'],
+    ['eval', 'eval("1");'],
+    ['import.meta', 'const e = import.meta.env.MODE;'],
+    ['import.meta without env', 'const u = import.meta.url;'],
+    ['a shorthand property', 'const o = { fetch };'],
+    ['a JSX use', 'const a = <div onClick={fetch} />;'],
+  ])('rejects %s', (_, code) => {
+    expect(problemsIn('x.tsx', code)).not.toEqual([]);
+  });
+
+  it.each([
+    ['an import by a computed name', 'await import(name);'],
+    ['require', "const x = require('./a.ts');"],
+    ['an import type of a module above', "type T = import('../up.ts').T;"],
+    ['a side-effect import', "import 'node:http';"],
+    ['a re-export', "export { c } from 'node:net';"],
+    ['export *', "export * from 'node:net';"],
+    ['an import = require', "import fs = require('node:fs');"],
+  ])('rejects %s', (_, code) => {
+    expect(problemsIn('x.ts', code)).not.toEqual([]);
+  });
+
+  it.each([
+    ['a // inside a string', "const u = 'http://x'; const t = Date.now();"],
+    ['a // inside a template', 'const u = `a // b`; fetch(u);'],
+    ['a /* inside a string', "const u = '/*'; const t = Date.now(); // */"],
+    ['a regular expression with //', 'const r = /a\\//; fetch("/x");'],
+  ])('still reads the code after %s', (_, code) => {
+    expect(problemsIn('x.ts', code)).not.toEqual([]);
+  });
+
+  it('names the file and line of a problem', () => {
+    expect(problemsIn('x.ts', 'const a = 1;\nconst t = Date.now();')).toEqual([
+      'x.ts:2 uses Date',
+    ]);
+  });
+});
+
+describe('the scan, on code that only looks like IO', () => {
+  it.each([
+    [
+      'a parameter called document',
+      'export const f = (document: string) => document.length;',
+    ],
+    [
+      'a local called window',
+      'const window = [1, 2]; export const w = window.length;',
+    ],
+    [
+      'a variable called history',
+      'const history: string[] = []; history.push("a");',
+    ],
+    [
+      'a property called fetch',
+      'const o = { fetch: 1 }; export const n = o.fetch;',
+    ],
+    [
+      'a method called Date',
+      'const o = { Date() { return 1; } }; export const n = o.Date();',
+    ],
+    ['a destructured property name', 'const { process: step } = job; step();'],
+    ['a type called Date', 'export interface A { at: Date }'],
+    ['typeof fetch in a type', 'export type F = typeof fetch;'],
+    [
+      'an import binding called fetch',
+      "import { fetch } from './net.ts'; fetch();",
+    ],
+    ['Math.floor', 'export const n = Math.floor(1.5);'],
+    [
+      'an enum member called Date',
+      'enum K { Date, Time }; export const k = K.Date;',
+    ],
+    [
+      'an object key called window',
+      "export const o = { window: 1, 'document': 2 };",
+    ],
+    ['a string that names fetch', 'export const s = "fetch(" + "Date.now()";'],
+    ['a template that names fetch', 'export const s = `window.${1} Date`;'],
+    [
+      'a comment',
+      '// Date, process and fetch( in a comment\nexport const a = 1;',
+    ],
+    [
+      'a block comment',
+      '/** Never calls Math.random or window.x. */\nexport const a = 1;',
+    ],
+  ])('accepts %s', (_, code) => {
+    expect(problemsIn('x.ts', code)).toEqual([]);
+  });
+});
+
+describe('the scan, on imports', () => {
+  it('reads static, side-effect, re-export and dynamic imports', () => {
     const source = [
       "import { a } from 'node:fs';",
       'import type { B } from "./b.ts";',
@@ -113,12 +222,25 @@ describe('the scan, on code that breaks the rules', () => {
       "export { c } from 'node:net';",
       "const d = await import('node:child_process');",
     ].join('\n');
-    expect(importedModules(source)).toEqual([
-      'node:fs',
-      './b.ts',
-      'node:http',
-      'node:net',
-      'node:child_process',
+
+    expect(problemsIn('x.ts', source)).toEqual([
+      'x.ts:1 imports node:fs',
+      'x.ts:3 imports node:http',
+      'x.ts:4 imports node:net',
+      'x.ts:5 imports node:child_process',
     ]);
+  });
+
+  it('allows a package of the rules and a name of the rules', () => {
+    const source =
+      "import { parse } from 'yaml';\nimport { createHash } from 'node:crypto';";
+
+    expect(problemsIn('x.ts', source)).toEqual([]);
+  });
+
+  it('rejects a name that the rules do not give, even with an allowed one', () => {
+    const source = "import { createHash, randomBytes } from 'node:crypto';";
+
+    expect(problemsIn('x.ts', source)).toEqual(['x.ts:1 imports node:crypto']);
   });
 });

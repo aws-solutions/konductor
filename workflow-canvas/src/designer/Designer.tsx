@@ -7,17 +7,26 @@ import { WorkflowCanvas } from '../canvas/WorkflowCanvas';
 import { buildGraph } from '../graph';
 import type { WorkflowView } from '../api/types';
 import type { LoadedWorkflow, LoadResult } from '../workflow/load-workflow';
+import { INTENT_FITS_IN_NODE, clippedStages, textWidth } from './clipping';
 import { EmptyState, ErrorState, LoadingState } from './states';
 
-/** An outcome longer than this is cut short in the intent node. */
-export const INTENT_FITS_IN_NODE = 90;
-
-/** The whole outcome, when the intent node can show only part of it. */
-function FullIntent({ outcome }: { outcome: string }) {
-  if (outcome.length <= INTENT_FITS_IN_NODE) return null;
+/** The text that the nodes cut short, in full, under the graph. */
+function FullText({ view, harness }: { view: WorkflowView; harness: string }) {
+  const stages = clippedStages(view, harness);
+  const showIntent = textWidth(view.intent.outcome) > INTENT_FITS_IN_NODE;
+  if (!showIntent && stages.length === 0) return null;
   return (
-    <Box variant="p" data-testid="full-intent">
-      <strong>Intent:</strong> {outcome}
+    <Box variant="div" data-testid="full-text">
+      {showIntent && (
+        <Box variant="p" data-testid="full-intent">
+          <strong>Intent:</strong> {view.intent.outcome}
+        </Box>
+      )}
+      {stages.map(({ name, agent }) => (
+        <Box variant="p" key={name} data-testid={`full-stage-${name}`}>
+          <strong>Stage {name}:</strong> {agent} · {harness}
+        </Box>
+      ))}
     </Box>
   );
 }
@@ -42,7 +51,7 @@ function DrawnGraph({
       }
     >
       <WorkflowCanvas graph={graph} />
-      <FullIntent outcome={view.intent.outcome} />
+      <FullText view={view} harness={harness} />
     </Container>
   );
 }

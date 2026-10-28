@@ -2,6 +2,7 @@
 import { expect } from '@playwright/test';
 import { API_TARGET, STUB_LAUNCH_CODE } from '../../playwright.shared';
 import { test } from '../support/fixtures';
+import { sharedSession } from '../support/session';
 import { WorkflowCanvasPage } from '../support/workflow-canvas-page';
 
 // A reload would ask the server for the page again. A request made after the
@@ -25,6 +26,49 @@ test('keeps the workflow on the page when the address gets an anchor', async ({
   expect(pageRequests).toEqual([]);
   await canvas.expectWorkflowDrawn();
   await expect(page.getByText('The workflow did not load')).toHaveCount(0);
+});
+
+const NEW_CODE = 'nQ3x7vJ2kLmN9pRs4TuVw5Y_-ab12';
+
+// The page is not reloaded for a pasted code: it opens a session with it and
+// changes only if that works.
+test('keeps the workflow when a pasted launch code is refused', async ({
+  canvas,
+  page,
+}) => {
+  await canvas.expectWorkflowDrawn();
+  const sessions: string[] = [];
+  await page.route('**/api/session', (route) => {
+    sessions.push(route.request().postData() ?? '');
+    return route.fulfill({
+      status: 401,
+      json: { error: 'The launch code is not valid.' },
+    });
+  });
+
+  await page.evaluate((code) => (window.location.hash = code), NEW_CODE);
+
+  await expect.poll(() => sessions.length).toBe(1);
+  expect(sessions[0]).toContain(NEW_CODE);
+  await canvas.expectWorkflowDrawn();
+  await expect(page.getByText('The workflow did not load')).toHaveCount(0);
+  expect(new URL(page.url()).hash).toBe('');
+});
+
+test('shows the workflow of a pasted launch code once its session is open', async ({
+  canvas,
+  page,
+}) => {
+  await canvas.expectWorkflowDrawn();
+  await page.route('**/api/session', (route) =>
+    route.fulfill({ json: { ...sharedSession(), harness: 'other-harness' } }),
+  );
+
+  await page.evaluate((code) => (window.location.hash = code), NEW_CODE);
+
+  await expect(page.getByTestId('node-stage-draft')).toContainText(
+    'other-harness',
+  );
 });
 
 // A reload drops the token and the launch code from the page, so the person

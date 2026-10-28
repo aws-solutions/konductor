@@ -22,7 +22,7 @@ describe('useSettled', () => {
     await waitFor(() => expect(result.current).toBe('done'));
   });
 
-  it('goes back to undefined while a new promise is pending', async () => {
+  it('keeps the earlier value while a new promise is pending', async () => {
     const first = Promise.resolve('first');
     const next = deferred<string>();
     const { result, rerender } = renderHook(
@@ -32,7 +32,7 @@ describe('useSettled', () => {
     await waitFor(() => expect(result.current).toBe('first'));
 
     rerender({ promise: next.promise });
-    expect(result.current).toBeUndefined();
+    expect(result.current).toBe('first');
     next.resolve('second');
 
     await waitFor(() => expect(result.current).toBe('second'));
