@@ -198,7 +198,12 @@ EDITS = [
      'carries fs_write and shell, so no agent is incapable of either — the difference is whether '
      'it asks first.", "Claude Code has one list. clientConfig.claudeCli.tools is the ceiling: a '
      'tool absent from it cannot be used at all. Whether a granted tool prompts is decided by '
-     'your own ~/.claude/settings.json, which sorts calls into allow, ask, and deny."]'),
+     'your own ~/.claude/settings.json, which sorts calls into allow, ask, and deny.", "These '
+     'rows describe agents started by konductor. konductor-mux-orchestrator and '
+     'konductor-cmux-orchestrator start each specialist with permission checks off '
+     '(--dangerously-skip-permissions on Claude Code, --trust-all-tools on Kiro CLI), so under '
+     'them every granted tool runs without asking, MCP tools included, and your settings.json '
+     'does not apply."]'),
     ("ag-access rows",
      '          { k: "konductor", v: "no / no · YES / YES" },\n'
      '          { k: "konductor-mux-orchestrator", v: "no / YES · YES / YES" },\n'
