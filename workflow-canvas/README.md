@@ -19,9 +19,9 @@ serves it and the tests around both are in this folder.
   `execution/core/` starts a run and follows it, and does no IO. It reads a run
   once a second. A read that fails with no answer or a server error is tried
   again, up to three in a row; any other failure ends the following. A start
-  that finds a run already active follows that run. Every call takes a signal
-  and ends on its own after 15 seconds, so a server that never answers cannot
-  hold the tab. A failure counts only for the run it belongs to.
+  that finds a run already active follows that run. Every run call takes a
+  signal, and every call ends on its own after 15 seconds, so a server that
+  never answers cannot hold the tab. A failure counts only for the run it belongs to.
 - `api/`: the HTTP API contract (`openapi.yaml`) and its test.
 - `stub-api/`: a TypeScript stub server for the contract, for local
   development and tests.
