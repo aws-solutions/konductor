@@ -3,7 +3,12 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { FakeScheduler } from '../test-support/fake-scheduler';
 import { helloRun } from '../test-support/fixtures';
-import { RunReadRefused, type RunMemory, type RunPort } from './core';
+import {
+  RunReadRefused,
+  type RunMemory,
+  type RunPort,
+  type Scheduler,
+} from './core';
 import { useExecution } from './use-execution';
 
 const RUN_ID = helloRun(0).runId;
@@ -269,8 +274,9 @@ describe('useExecution and the memory', () => {
 
   it('forgets the run once it has ended', async () => {
     const memory = { ...emptyMemory(), forget: vi.fn() };
+    const runs = runsThatEnd();
     const { result } = renderHook(() =>
-      useExecution(runsThatEnd(), new FakeScheduler(), memory),
+      useExecution(runs, new FakeScheduler(), memory),
     );
 
     await act(async () => result.current.start('Ship it'));
@@ -350,7 +356,7 @@ describe('useExecution and the memory', () => {
   });
 });
 
-describe('useExecution when the runs change', () => {
+describe('useExecution when the page renders again', () => {
   it('goes on following a run that it joined', async () => {
     const memory = emptyMemory(RUN_ID);
     const scheduler = new FakeScheduler();
@@ -362,19 +368,58 @@ describe('useExecution when the runs change', () => {
         .mockResolvedValue(helloRun(2)),
     };
     const { result, rerender } = renderHook(
-      ({ runs }) => useExecution(runs, scheduler, memory),
-      { initialProps: { runs: joined } },
+      ({ tick }) => useExecution(joined, tick, memory),
+      { initialProps: { tick: scheduler as Scheduler } },
     );
     await waitFor(() => expect(result.current.state.phase).toBe('following'));
-    const other: RunPort = {
-      start: vi.fn(),
-      get: vi.fn().mockResolvedValue(helloRun(2)),
-    };
 
-    rerender({ runs: other });
+    rerender({ tick: scheduler });
     await act(async () => scheduler.tick());
 
     expect(joined.get).toHaveBeenCalledTimes(2);
     expect(result.current.state.phase).toBe('finished');
+  });
+});
+
+describe('useExecution when another workflow opens', () => {
+  async function joinThenOpenOther(memory: RunMemory) {
+    const scheduler = new FakeScheduler();
+    const joined: RunPort = {
+      start: vi.fn(),
+      get: vi.fn().mockResolvedValue(helloRun(1)),
+    };
+    const other: RunPort = {
+      start: vi.fn(),
+      get: vi.fn().mockResolvedValue(helloRun(2)),
+    };
+    const hook = renderHook(
+      ({ runs }) => useExecution(runs, scheduler, memory),
+      { initialProps: { runs: joined } },
+    );
+    await waitFor(() =>
+      expect(hook.result.current.state.phase).toBe('following'),
+    );
+    hook.rerender({ runs: other });
+    return { ...hook, scheduler, joined };
+  }
+
+  it('lets go of a run that it joined and shows no run', async () => {
+    const { result, scheduler, joined } = await joinThenOpenOther(
+      emptyMemory(RUN_ID),
+    );
+    const reads = vi.mocked(joined.get).mock.calls.length;
+
+    await act(async () => scheduler.tick());
+
+    expect(result.current.state.phase).toBe('idle');
+    expect(vi.mocked(joined.get).mock.calls).toHaveLength(reads);
+  });
+
+  it('forgets the run, so a reload does not look for it on another server', async () => {
+    const memory = emptyMemory(RUN_ID);
+
+    await joinThenOpenOther(memory);
+
+    expect(memory.forget).toHaveBeenCalledOnce();
   });
 });
