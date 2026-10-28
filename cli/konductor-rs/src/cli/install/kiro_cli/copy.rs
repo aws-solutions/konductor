@@ -203,7 +203,11 @@ pub(in crate::cli::install) fn install_agents(
         .join(super::super::mcp_server::BIN_CONTENT_TYPE_DIR);
     let install_info_path = super::super::resource_rewrite::absolute_install_info_path(target_dir);
     let server_supports_install_info =
-        super::super::resource_rewrite::installed_server_supports_install_info(&bin_dir, bin_files);
+        super::super::resource_rewrite::installed_server_supports_install_info(
+            &bin_dir,
+            bin_files,
+            no_telemetry,
+        );
 
     // Read once, before the per-agent install loop below, so every
     // agent this run installs sees the same scoping snapshot.

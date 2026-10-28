@@ -185,21 +185,44 @@ const HELP_PROBE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5
 /// flag and exit at startup, and the binary comes from the content being
 /// installed (an older `--version`, or a stale `--from` build), so its
 /// `--help` is checked rather than assumed. Called once per
-/// `install_agents` run. A binary this run did not copy, or one that
-/// fails to run, counts as unsupported.
+/// `install_agents` run. A binary this run did not copy counts as
+/// unsupported. One that was copied but could not be probed counts as
+/// unsupported too, with a warning naming the fallback args, since
+/// `no_telemetry` decides what those are.
 pub(in crate::cli::install) fn installed_server_supports_install_info(
     bin_dir: &Path,
     bin_files: &[super::super::manifest::ManifestFile],
+    no_telemetry: bool,
 ) -> bool {
-    binary_in_bin_files(bin_files)
-        && help_lists_install_info(&bin_dir.join(MCP_SERVER_BINARY_NAME), HELP_PROBE_TIMEOUT)
+    if !binary_in_bin_files(bin_files) {
+        return false;
+    }
+    let binary = bin_dir.join(MCP_SERVER_BINARY_NAME);
+    match probe_install_info(&binary, HELP_PROBE_TIMEOUT) {
+        InstallInfoProbe::Supported => true,
+        InstallInfoProbe::Unsupported => false,
+        InstallInfoProbe::Failed => {
+            eprintln!("{}", probe_failed_warning(&binary, no_telemetry));
+            false
+        }
+    }
 }
 
-fn help_lists_install_info(binary: &Path, timeout: std::time::Duration) -> bool {
+/// What `--help` said about `--install-info`. `Failed` covers a binary
+/// that could not be spawned, timed out, or produced no output, so it is
+/// never mistaken for an older binary that lacks the flag.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum InstallInfoProbe {
+    Supported,
+    Unsupported,
+    Failed,
+}
+
+fn probe_install_info(binary: &Path, timeout: std::time::Duration) -> InstallInfoProbe {
     use std::io::Read;
 
     let Ok(mut child) = spawn_help(binary) else {
-        return false;
+        return InstallInfoProbe::Failed;
     };
     let mut stdout = child.stdout.take().expect("stdout is piped");
     let (sender, receiver) = std::sync::mpsc::channel();
@@ -207,13 +230,38 @@ fn help_lists_install_info(binary: &Path, timeout: std::time::Duration) -> bool 
     // past `timeout`.
     std::thread::spawn(move || {
         let mut output = Vec::new();
-        let _ = stdout.read_to_end(&mut output);
-        let _ = sender.send(output);
+        let _ = sender.send(stdout.read_to_end(&mut output).map(|_| output));
     });
     let output = receiver.recv_timeout(timeout);
     let _ = child.kill();
     let _ = child.wait();
-    output.is_ok_and(|output| String::from_utf8_lossy(&output).contains("--install-info"))
+    match output {
+        Ok(Ok(output)) if !output.is_empty() => {
+            if String::from_utf8_lossy(&output).contains("--install-info") {
+                InstallInfoProbe::Supported
+            } else {
+                InstallInfoProbe::Unsupported
+            }
+        }
+        _ => InstallInfoProbe::Failed,
+    }
+}
+
+/// Split out from `installed_server_supports_install_info` so a test can
+/// assert on the text, for the same reason as
+/// `mcp_server_binary_missing_warning`.
+fn probe_failed_warning(binary: &Path, no_telemetry: bool) -> String {
+    let fallback = if no_telemetry {
+        "`--telemetry off`"
+    } else {
+        "no telemetry args, so it reports by default"
+    };
+    format!(
+        "warning: could not run `{} --help` to check for --install-info support. \
+         mcpServers.{MCP_SERVER_NAME} falls back to {fallback}, and will not follow \
+         later opt-out changes until the next `konductor update`.",
+        binary.display()
+    )
 }
 
 fn spawn_help(binary: &Path) -> std::io::Result<std::process::Child> {
@@ -2285,34 +2333,75 @@ mod tests {
     fn probe_reports_support_only_when_help_lists_install_info() {
         let dir = scratch_dir("probe-help");
         let current = write_script(&dir, super::super::FAKE_SERVER_WITH_INSTALL_INFO);
-        assert!(help_lists_install_info(&current, HELP_PROBE_TIMEOUT));
+        assert_eq!(
+            probe_install_info(&current, HELP_PROBE_TIMEOUT),
+            InstallInfoProbe::Supported
+        );
         let older = write_script(&dir, "#!/bin/sh\necho '      --telemetry <TELEMETRY>'\n");
-        assert!(!help_lists_install_info(&older, HELP_PROBE_TIMEOUT));
+        assert_eq!(
+            probe_install_info(&older, HELP_PROBE_TIMEOUT),
+            InstallInfoProbe::Unsupported
+        );
         fs::remove_dir_all(&dir).ok();
     }
 
     #[cfg(unix)]
     #[test]
-    fn probe_failure_counts_as_unsupported() {
+    fn probe_that_cannot_run_reports_failed_not_unsupported() {
         let dir = scratch_dir("probe-failure");
-        assert!(!help_lists_install_info(
-            &dir.join("missing"),
-            HELP_PROBE_TIMEOUT
-        ));
+        assert_eq!(
+            probe_install_info(&dir.join("missing"), HELP_PROBE_TIMEOUT),
+            InstallInfoProbe::Failed
+        );
         let not_executable = dir.join("not-executable");
         fs::write(&not_executable, b"fake binary").unwrap();
-        assert!(!help_lists_install_info(
-            &not_executable,
-            HELP_PROBE_TIMEOUT
-        ));
+        assert_eq!(
+            probe_install_info(&not_executable, HELP_PROBE_TIMEOUT),
+            InstallInfoProbe::Failed
+        );
+        let silent = dir.join("silent");
+        fs::write(&silent, b"#!/bin/sh\nexit 0\n").unwrap();
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&silent, fs::Permissions::from_mode(0o755)).unwrap();
+        }
+        assert_eq!(
+            probe_install_info(&silent, HELP_PROBE_TIMEOUT),
+            InstallInfoProbe::Failed
+        );
         let hangs = write_script(&dir, "#!/bin/sh\nexec sleep 30\n");
         let started = std::time::Instant::now();
-        assert!(!help_lists_install_info(
-            &hangs,
-            std::time::Duration::from_millis(200)
-        ));
+        assert_eq!(
+            probe_install_info(&hangs, std::time::Duration::from_millis(200)),
+            InstallInfoProbe::Failed
+        );
         assert!(started.elapsed() < std::time::Duration::from_secs(10));
         fs::remove_dir_all(&dir).ok();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_failed_probe_of_an_installed_binary_falls_back_to_unsupported() {
+        let dir = scratch_dir("probe-installed-but-broken");
+        fs::write(dir.join(MCP_SERVER_BINARY_NAME), b"fake binary").unwrap();
+        assert!(!installed_server_supports_install_info(
+            &dir,
+            &[bin_file_entry()],
+            true
+        ));
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn probe_failed_warning_names_the_binary_and_the_fallback_args() {
+        let binary = Path::new("/target/.konductor/bin/skill-lookup-mcp");
+        let opted_out = probe_failed_warning(binary, true);
+        assert!(opted_out.starts_with("warning: "), "got: {opted_out}");
+        assert!(opted_out.contains("/target/.konductor/bin/skill-lookup-mcp"));
+        assert!(opted_out.contains("`--telemetry off`"), "got: {opted_out}");
+        let opted_in = probe_failed_warning(binary, false);
+        assert!(opted_in.contains("no telemetry args"), "got: {opted_in}");
+        assert!(!opted_in.contains("--telemetry off"), "got: {opted_in}");
     }
 
     #[cfg(unix)]
@@ -2322,9 +2411,10 @@ mod tests {
         write_script(&dir, super::super::FAKE_SERVER_WITH_INSTALL_INFO);
         assert!(installed_server_supports_install_info(
             &dir,
-            &[bin_file_entry()]
+            &[bin_file_entry()],
+            false
         ));
-        assert!(!installed_server_supports_install_info(&dir, &[]));
+        assert!(!installed_server_supports_install_info(&dir, &[], false));
         fs::remove_dir_all(&dir).ok();
     }
 }

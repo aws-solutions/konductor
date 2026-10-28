@@ -523,7 +523,11 @@ fn install_agents(
         .join(super::mcp_server::BIN_CONTENT_TYPE_DIR);
     let install_info_path = super::resource_rewrite::absolute_install_info_path(target_dir);
     let server_supports_install_info =
-        super::resource_rewrite::installed_server_supports_install_info(&bin_dir, bin_files);
+        super::resource_rewrite::installed_server_supports_install_info(
+            &bin_dir,
+            bin_files,
+            no_telemetry,
+        );
 
     // V3 synth writes the same `_sop_scopes.json`/`_skill_scopes.json`
     // sidecars V2 writes, so this scopes the `konductor-skills` MCP
