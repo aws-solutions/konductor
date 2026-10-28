@@ -90,7 +90,7 @@ passed, `prompts/list` simply returns an empty list and every
 | `--agent-sop-paths <DIR>` | yes | none | Directory to scan for agent SOPs (`<name>.sop.md` files), served as MCP prompts. No default — omitting the flag means no prompts are served. |
 | `--agent-sop-filter <GLOB>` | no | none | Comma-separated glob(s), matched case-insensitively against each SOP's name; mirrors `--skill-name-filter`'s semantics for prompts. |
 | `--telemetry {on\|off}` | no | `on` | Enables or disables this server process's own usage-analytics telemetry. When `off`, the periodic flush task is never started. |
-| `--install-info <PATH>` | no | none | Path to an install target's `.konductor/install-info.json`. If the file does not exist at startup, telemetry is off, as with `--telemetry off`. `konductor install`/`update` pass this for every Kiro CLI agent. |
+| `--install-info <PATH>` | no | none | Path to an install target's `.konductor/install-info.json`. Unless the file holds a valid record at startup, telemetry is off, as with `--telemetry off`. `konductor install`/`update` pass this for every Kiro CLI agent whose installed server lists the flag in `--help`; older servers get `--telemetry off` when the target is opted out. |
 
 ## Telemetry
 
@@ -99,10 +99,15 @@ periodic flush cycle (see `lib/skill-lookup-core/src/telemetry.rs`).
 Three independent opt-outs are available, any of which is sufficient:
 
 - `--telemetry off` disables it for this server process only.
-- `--install-info <PATH>` disables it when that file is missing at
-  startup. The CLI points every Kiro CLI agent at its target's record,
+- `--install-info <PATH>` disables it unless that file holds a valid
+  record at startup. Missing, unreadable, malformed, or a
+  `schema_version` this server does not know all count as opted out,
+  the same rule the CLI applies. The CLI points every Kiro CLI agent
+  at its target's record when the installed server supports the flag,
   so `konductor update --no-telemetry` and `--enable-telemetry` reach
-  every harness installed there.
+  every such harness installed there. Server binaries from v1.2.0 and
+  earlier reject the flag, so for those the CLI keeps passing
+  `--telemetry off` per harness.
 - `KONDUCTOR_TELEMETRY=off` disables it fleet-wide — the same
   environment variable and value `cli/konductor-rs` recognizes for its
   own opt-out — and takes effect regardless of the `--telemetry` flag's

@@ -492,9 +492,12 @@ above) - read `GITHUB_TOKEN` from the environment and send it on the same
 it, so the opt-out carries forward to a later plain `update` too, instead of silently
 re-enabling telemetry the moment the flag is omitted. Without the flag, `update` carries
 forward the target's earlier choice the same way: a missing `install-info.json` already
-means opted out, with nothing left to carry forward differently. Kiro CLI agents launch the
+means opted out, with nothing left to carry forward differently. When the installed
+`skill-lookup-mcp` lists `--install-info` in its `--help`, Kiro CLI agents launch the
 `konductor-skills` MCP server with `--install-info <target>/.konductor/install-info.json`,
-and `skill-lookup-mcp` sends no telemetry when that file is missing at startup.
+and the server sends no telemetry unless that file holds a valid record at startup. An older
+server binary (v1.2.0 or earlier, from `--version` or a stale `--from` build) would reject that
+flag, so it gets the per-harness `--telemetry off` instead when the target is opted out.
 
 `--enable-telemetry` is the reverse: it forces telemetry on for this run regardless of any
 carried-forward opt-out, and durably re-creates `install-info.json`, the same way a fresh
@@ -508,10 +511,10 @@ Both flags are scoped to the **whole target directory**, not to `--harness`.
 so there is no per-harness telemetry setting. Opting out (or back in) via one harness's
 `update`, for example `update --harness kiro-cli-v2 --no-telemetry`, changes the record
 for every harness at that target. Only the named harness's agent files are rewritten in
-that run, but every Kiro CLI harness's skill-lookup server reads the same record each time it
-starts, so all of them follow the new setting. A harness installed before `--install-info`
-existed picks up the new arg on its own next `update`; until then its skill-lookup server
-keeps its previous setting.
+that run, but every Kiro CLI harness whose skill-lookup server was launched with
+`--install-info` reads the same record each time it starts, so all of them follow the new
+setting. A harness without that arg (installed before it existed, or with an older server
+binary) keeps its previous setting until its own next `update`.
 
 ### `--dry-run`
 

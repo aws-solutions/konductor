@@ -457,6 +457,8 @@ shares the machine identifier in `$HOME/.konductor/telemetry.json` with the CLI.
 
 - `--no-telemetry` also removes an opt-in record left by an earlier install, and stops a global
   install's hooks from reporting in that project.
+- To opt a project back in, run `konductor update --enable-telemetry`. Like `--no-telemetry`, it
+  applies to every harness installed in that project.
 - `telemetry.json` exists only after the first event is reported; a `--no-telemetry` install never
   creates it. Konductor never resets a consent value you set.
 - Reporting needs both the project and the machine setting to allow it. `konductor doctor` shows
