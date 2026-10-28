@@ -464,7 +464,7 @@ describe('createWorkflowSource session memory', () => {
   it('forgets a kept session that the server no longer knows', async () => {
     const memory = memoryWith(KEPT);
     const api = {
-      createSession: vi.fn(),
+      ...apiWith(vi.fn()),
       getWorkflow: vi.fn().mockRejectedValue(new ApiError('Wrong.', 401)),
     };
     const source = createWorkflowSource(api, undefined, memory);
