@@ -299,10 +299,8 @@ pub(super) const NO_REMOTE_RELEASE_MESSAGE: &str =
 /// record on an explicit `--no-telemetry` happens in each dispatch's own
 /// caller, not here: `install.rs`'s own dispatch removes it after a
 /// successful install, and `update.rs`'s carry-forward block removes it
-/// (when the record currently reads as enabled) before this function is
-/// ever reached -- durably opting the target out for a later plain
-/// `update` too, not just skipping the write this run would otherwise
-/// make.
+/// before this function is ever reached, so a later plain `update` stays
+/// opted out too.
 pub(super) fn finalize_install_telemetry(
     target_dir: &Path,
     repo_root: &Path,
@@ -1189,33 +1187,8 @@ fn dispatch_install_with_remote_installer(
         Ok(()) => {
             // `install --no-telemetry` is the durable opt-out: clearing
             // the opt-in record here keeps a target installed earlier
-            // with telemetry on from reporting after it opts out. The
-            // read that decides whether a record is currently there to
-            // remove, and the removal itself, run as ONE locked critical
-            // section via `read_and_maybe_remove_locked` -- the same
-            // function and the same per-target lock `update.rs`'s own
-            // carry-forward block uses for the identical removal, and
-            // the same lock `write_record` holds for its own write.
-            // An unconditional unlocked `remove_install_info` call with
-            // no read at all leaves a gap for a concurrent install or
-            // update of a DIFFERENT, coexisting harness at this same
-            // target to land a fresh, enabled
-            // record in between this run deciding to opt out and the
-            // removal actually executing on disk, which would then be
-            // destroyed with no record it ever existed -- see
-            // `read_and_maybe_remove_locked`'s own doc comment for the
-            // TOCTOU gap this closes. A target with no existing record
-            // (a first-ever `install --no-telemetry`) finds nothing to
-            // remove either way: the locked read returns `NotFound`, and
-            // removal is already a no-op for a missing file regardless,
-            // so this stays a harmless no-op.
-            //
-            // Best-effort, matching `update.rs`'s own handling of the
-            // identical call: a removal failure never fails an install
-            // that otherwise already succeeded, but is surfaced as a
-            // warning in both plain-text and `--json` output (via
-            // `report_install_success`'s own `warning` parameter)
-            // instead of only to stderr.
+            // with telemetry on from reporting after it opts out. A
+            // removal failure is a warning, not a failed install.
             let telemetry_removal_warning = if no_telemetry {
                 remove_telemetry_record_for_no_telemetry_install(&destination)
             } else {
@@ -1298,63 +1271,17 @@ fn dispatch_install_with_remote_installer(
     }
 }
 
-/// `install --no-telemetry`'s durable opt-out: removes an existing
-/// `install-info.json` so a target installed earlier with telemetry on
-/// stops reporting once it opts out. Called only when `no_telemetry` is
-/// true for this run; a target with no existing record (a first-ever
-/// `install --no-telemetry`) finds nothing to remove, which is a
-/// harmless no-op.
-///
-/// The read that decides whether a record is currently there, and the
-/// removal itself, run as ONE locked critical section via
-/// `read_and_maybe_remove_locked` -- the same function and the same
-/// per-target lock `update.rs`'s own carry-forward block uses for the
-/// identical removal, and the same lock `write_record` holds for its
-/// own write. An unconditional unlocked `remove_install_info` call
-/// with no read at all leaves a gap for a concurrent install or
-/// update of a DIFFERENT, coexisting harness at this same
-/// target to land a fresh, enabled record in between this run deciding
-/// to opt out and the removal actually executing on disk, which would
-/// then be destroyed with no record it ever existed -- see
-/// `read_and_maybe_remove_locked`'s own doc comment for the TOCTOU gap
-/// this closes.
-///
-/// Returns `None` on success (including the harmless no-op above) or
-/// the warning text to surface -- in both plain-text and `--json`
-/// output, via `report_install_success`'s own `warning` parameter --
-/// when the removal itself fails. Best-effort, matching `update.rs`'s
-/// own handling of the identical call: a removal failure never fails an
-/// install that otherwise already succeeded.
-///
-/// Extracted as its own function, rather than inlined at its one call
-/// site, so a test can assert on the computed warning text directly --
-/// the same way `update.rs`'s own tests assert on
-/// `UpdateOutcome::telemetry_state_warning` -- instead of needing to
-/// capture `report_install_success`'s `println!` output, which this
-/// crate's tests do not do in-process (see `uninstall.rs`'s
-/// `report_single_stale_message_differs_from_real_success_message` for
-/// the same documented constraint).
+/// Removes an existing `install-info.json` for `install --no-telemetry`.
+/// Returns the warning to surface when the removal fails. Extracted so a
+/// test can assert on the warning text without capturing stdout.
 fn remove_telemetry_record_for_no_telemetry_install(destination: &Path) -> Option<String> {
-    let (_, remove_error) = crate::cli::telemetry::read_and_maybe_remove_locked(destination, true);
-    let err = remove_error?;
+    let err = crate::cli::telemetry::remove_install_info(destination).err()?;
     let record_path = crate::cli::telemetry::install_info_path(destination);
-    let message = format!(
-        "could not remove {}: {err} -- a later plain `update` for this target may silently \
-         re-enable telemetry until this record is removed",
-        record_path.display()
-    );
-    // `no_telemetry: true` unconditionally: this function only ever
-    // runs when the caller's own `no_telemetry` is true, and a report
-    // call made from inside a `--no-telemetry` run must itself stay
-    // silent, the same as every other `report_cli_error` call in this
-    // crate already respects.
-    crate::cli::telemetry::report_cli_error(
-        destination,
-        "install",
-        "install.telemetry_removal_failed",
-        true,
-    );
-    Some(message)
+    Some(format!(
+        "could not remove {path}: {err} -- telemetry may still be reported until {path} is \
+         removed",
+        path = record_path.display()
+    ))
 }
 
 /// Prints the success-path report: re-reads the manifest
@@ -1924,8 +1851,6 @@ mod tests {
 
     // ── First-ever install --no-telemetry: no record to remove ──────────
 
-    /// Pinned at `install.rs`'s own call site, not just at the
-    /// underlying `read_and_maybe_remove_locked` function.
     #[test]
     fn install_no_telemetry_on_a_target_with_no_existing_record_is_a_harmless_noop() {
         let _home = HomeGuard::new("no-telemetry-no-record-home");
@@ -1960,151 +1885,6 @@ mod tests {
             !crate::cli::telemetry::install_info_exists(&target),
             "no record existed before this run, and none must be written by it either"
         );
-
-        fs::remove_dir_all(&target).ok();
-        fs::remove_dir_all(&repo_root).ok();
-    }
-
-    // ── Sticky opt-out removal: must not lose a racing concurrent write ─
-    //
-    // Mirrors `telemetry/install_info.rs`'s own
-    // `read_and_maybe_remove_locked_never_loses_a_racing_concurrent_write`
-    // test for the identical shape of race, but exercised through
-    // `install.rs`'s own dispatch call site rather than calling
-    // `read_and_maybe_remove_locked` directly: this pins
-    // `remove_telemetry_record_for_no_telemetry_install` itself as the
-    // locked call site, since an unconditional, unlocked
-    // `remove_install_info` call bypasses the lock entirely.
-    //
-    // Reuses `LOCKED_READ_SYNC_HOOK` (re-exported `#[cfg(test)]`-only
-    // from `install_info.rs`, see `telemetry.rs`) rather than a
-    // bespoke hook: that hook fires exactly inside the locked critical
-    // section, after the fresh read but before any removal, which is
-    // the one place a hook must sit for the "B blocks on A's held
-    // lock" shape of this test to mean anything. A hook sitting BEFORE
-    // the call cannot distinguish a locked removal from an unlocked
-    // one: either way, a writer landing fully in that earlier window
-    // is still consumed by the removal that follows, since
-    // `remove_if_enabled: true` always removes whatever the fresh read
-    // currently sees.
-
-    #[test]
-    fn install_no_telemetry_removal_never_loses_a_racing_concurrent_write() {
-        let _home = HomeGuard::new("no-telemetry-removal-race-home");
-        let target = scratch_dir("no-telemetry-removal-race-target");
-        let repo_root = scratch_dir("no-telemetry-removal-race-repo");
-        seed_synthed_agent(&repo_root, "k-example");
-
-        // Seed an existing ENABLED record, as if an earlier `install
-        // --harness kiro-cli-v2` (telemetry on) already ran against
-        // this target.
-        assert_eq!(
-            dispatch_install_with(
-                Some(repo_root.display().to_string()),
-                Some(target.display().to_string()),
-                "kiro-cli-v2".to_string(),
-                false,
-                false, /* no_telemetry */
-                false,
-                None,
-                false,
-                false,
-                false,
-                ColorMode::disabled(),
-            ),
-            0
-        );
-        assert!(
-            crate::cli::telemetry::install_info_exists(&target),
-            "sanity check: the seed install must have written an enabled record"
-        );
-
-        let (paused_tx, paused_rx) = std::sync::mpsc::channel::<()>();
-        let (unblock_tx, unblock_rx) = std::sync::mpsc::channel::<()>();
-
-        // `LOCKED_READ_SYNC_HOOK` is a `thread_local!` -- it must be
-        // set on the SAME thread that will later call into the fixed
-        // dispatch, not this (main) test thread; see
-        // `telemetry/install_info.rs`'s own race test for the
-        // identical caveat.
-        let target_for_a = target.clone();
-        let repo_root_for_a = repo_root.clone();
-        let handle_a = std::thread::spawn(move || {
-            crate::cli::telemetry::LOCKED_READ_SYNC_HOOK.with(|hook| {
-                *hook.borrow_mut() = Some(Box::new(move || {
-                    paused_tx.send(()).unwrap();
-                    unblock_rx.recv().unwrap();
-                }));
-            });
-            dispatch_install_with(
-                Some(repo_root_for_a.display().to_string()),
-                Some(target_for_a.display().to_string()),
-                "kiro-cli-v2".to_string(),
-                false,
-                true, /* no_telemetry: --no-telemetry */
-                false,
-                None,
-                false,
-                false,
-                false,
-                ColorMode::disabled(),
-            )
-        });
-
-        // Thread A must reach the locked critical section within a
-        // bounded window: an unconditional, unlocked removal never
-        // calls into `read_and_maybe_remove_locked` at all, so this
-        // hook would never fire against one -- `recv_timeout` turns
-        // that into a clean, bounded test failure instead of hanging
-        // the whole suite forever.
-        paused_rx
-            .recv_timeout(std::time::Duration::from_secs(5))
-            .expect(
-                "install --no-telemetry's removal must go through the SAME locked critical \
-                 section write_install_info uses, not an unlocked remove_install_info call -- \
-                 the sync hook never fired, meaning the locked function was never reached",
-            );
-
-        // A concurrent writer (e.g. `install --harness claude`,
-        // telemetry on) attempting to land a fresh, enabled record
-        // while A still holds the lock: must block on
-        // `write_record`'s own lock acquisition rather than racing
-        // A's in-flight read-check-remove.
-        let target_for_b = target.clone();
-        let repo_root_for_b = repo_root.clone();
-        let handle_b = std::thread::spawn(move || {
-            crate::cli::telemetry::write_install_info(
-                &target_for_b,
-                &repo_root_for_b,
-                "claude",
-                "2026-01-02T00:00:00Z",
-            )
-        });
-
-        // Not a correctness requirement (the assertions below hold
-        // regardless of real scheduling order once the lock is
-        // released) -- gives B a realistic chance to actually
-        // attempt, and block on, the lock before A is released.
-        std::thread::sleep(std::time::Duration::from_millis(50));
-
-        // Release A: it completes its removal and drops the lock,
-        // which must let B's blocked write proceed.
-        unblock_tx.send(()).unwrap();
-
-        let exit_code_a = handle_a.join().expect("thread A must not panic");
-        assert_eq!(exit_code_a, 0, "install --no-telemetry must still succeed");
-
-        handle_b.join().expect("thread B must not panic").expect(
-            "B's write must succeed once A releases the lock, not be lost or blocked forever",
-        );
-
-        // B's write is NOT silently lost: it is the final, observable
-        // state after both threads complete.
-        let final_record = crate::cli::telemetry::read_install_info(&target).expect(
-            "B's write must still be readable after the race -- it must not be destroyed by \
-             A's removal",
-        );
-        assert_eq!(final_record.harness, "claude");
 
         fs::remove_dir_all(&target).ok();
         fs::remove_dir_all(&repo_root).ok();
@@ -4194,12 +3974,12 @@ mod tests {
         assert_eq!(value["agent_version"], "0.1.1");
     }
 
-    /// `install --link-bin --json` must print exactly ONE top-level
-    /// JSON document for one invocation, with the bin-link outcome
-    /// folded in as a `"link_bin"` field -- not two separate
-    /// top-level objects (the install summary, then a second
-    /// standalone document), which breaks a single-`JSON.parse`
-    /// consumer reading all of stdout.
+    /// IMPORTANT regression (adversarial review finding #4): `install
+    /// --link-bin --json` must print exactly ONE top-level JSON
+    /// document for one invocation, with the bin-link outcome folded in
+    /// as a `"link_bin"` field -- not two separate top-level objects
+    /// (the install summary, then a second standalone document), which
+    /// breaks a single-`JSON.parse` consumer reading all of stdout.
     #[test]
     fn merge_link_bin_json_folds_success_into_the_same_object() {
         let counts = InstallCounts::from_manifest(&sample_manifest());

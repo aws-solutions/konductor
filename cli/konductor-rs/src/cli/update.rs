@@ -1639,7 +1639,7 @@ fn run_update_one_target_with_remote_installer(
     //     is worth telling the user about, so it is surfaced as a
     //     warning (`telemetry_state_warning` below) naming the file,
     //     matching `check_telemetry_state`'s own wording for the same
-    //     condition.
+    //     condition, unless this run removes or replaces the file.
     //
     // Resolved via THIS target_dir specifically, so an `--all` batch
     // resolves the signal independently per target, the same way each
@@ -1650,67 +1650,45 @@ fn run_update_one_target_with_remote_installer(
     // what keeps this run from wiring telemetry hooks on any harness,
     // and makes it strip the hooks a prior run wired.
     //
-    // The read and the sticky-opt-out removal just below it run as ONE
-    // locked critical section via `read_and_maybe_remove_locked`, not
-    // two separately unlocked steps -- composing an unlocked read with a
-    // later, separately unlocked removal would leave a gap for a
-    // concurrent `write_install_info` (a different harness's install or
-    // update, telemetry on) to land a fresh record in between the two,
-    // and the removal would then act on a decision made before that
-    // record ever existed; see `read_and_maybe_remove_locked`'s own doc
-    // comment for the TOCTOU gap this closes. An EXPLICIT
-    // `--no-telemetry` against a target whose record currently reads as
-    // enabled does not just suppress wiring for this one run -- it
-    // removes the record, the same effect `install --no-telemetry`
-    // already has over an opted-in target (see that call site's own doc
-    // comment). Without this, a target opted out via `update
-    // --no-telemetry` would have its record read as `Ok` again on the
-    // very next PLAIN `update` (no flag re-passed), silently re-enabling
-    // telemetry. The read itself runs unconditionally -- `no_telemetry`
-    // only gates whether a removal is REQUESTED, never whether the read
-    // happens -- so a broken record is always surfaced via
-    // `telemetry_state_warning` even on a run where `--no-telemetry` was
-    // passed explicitly. Requesting removal for a target that was
-    // ALREADY opted out is harmless: there is no record to remove, and
-    // removal is already a no-op for a missing file regardless.
-    // Best-effort, matching `install.rs`'s own handling of the identical
-    // call: a removal failure is folded into `telemetry_state_warning`
-    // below rather than failing the update outright -- an update that
-    // otherwise succeeded must not be reported as a hard failure just
-    // because this record survived.
+    // An explicit `--no-telemetry` removes any existing record, broken
+    // or not, so a later plain `update` stays opted out. The read runs
+    // unconditionally so a broken record is still reported. A removal
+    // failure is folded into `telemetry_state_warning` rather than
+    // failing an otherwise successful update.
+    let explicit_no_telemetry = no_telemetry;
+    let install_info_read = crate::cli::telemetry::read_install_info_detailed(target_dir);
+    let remove_error = if explicit_no_telemetry {
+        crate::cli::telemetry::remove_install_info(target_dir).err()
+    } else {
+        None
+    };
     let mut telemetry_state_warning: Option<String> = None;
-    let (install_info_read, remove_error) =
-        crate::cli::telemetry::read_and_maybe_remove_locked(target_dir, no_telemetry);
     let carried_forward_opt_out = match install_info_read {
         Ok(_) => false,
         Err(crate::cli::telemetry::InstallInfoAbsence::NotFound) => true,
         Err(crate::cli::telemetry::InstallInfoAbsence::Broken) => {
             let record_path = crate::cli::telemetry::install_info_path(target_dir);
-            telemetry_state_warning = Some(format!(
-                "telemetry reporting is off for {}: {} is present but could not be read \
-                 (unreadable or an unrecognized schema) -- re-run `konductor install` to \
-                 rewrite it, or inspect it directly to see why it failed to parse",
-                target_dir.display(),
-                record_path.display()
-            ));
+            telemetry_state_warning = Some(if enable_telemetry {
+                format!("replaced unreadable {}", record_path.display())
+            } else if explicit_no_telemetry && remove_error.is_none() {
+                format!("removed unreadable {}", record_path.display())
+            } else {
+                format!(
+                    "telemetry reporting is off for {}: {} is present but could not be read \
+                     (unreadable or an unrecognized schema) -- re-run `konductor install` to \
+                     rewrite it, or inspect it directly to see why it failed to parse",
+                    target_dir.display(),
+                    record_path.display()
+                )
+            });
             true
         }
     };
-    // A failed removal leaves this target's record exactly as it was
-    // read above -- still `Ok`, still enabled -- so a later plain
-    // `update` (no `--no-telemetry` re-passed) will carry telemetry
-    // forward as on, exactly the bug this whole opt-out removal exists
-    // to close, just reached via a failure path instead of a missing
-    // one. Folded into `telemetry_state_warning` with the same `"; "`
-    // join `finalize_index_warning` uses below, rather than overwriting
-    // a `Broken`-record warning that may already be set: the two
-    // conditions are independent and either can fire alone.
     if let Some(err) = remove_error {
-        let record_path = crate::cli::telemetry::install_info_path(target_dir);
         let message = format!(
-            "could not remove {}: {err} -- a later plain `update` for this target may \
-             silently re-enable telemetry until this record is removed",
-            record_path.display()
+            "could not remove {path}: {err} -- telemetry may still be reported until {path} is \
+             removed",
+            path = crate::cli::telemetry::install_info_path(target_dir).display()
         );
         telemetry_state_warning = Some(match telemetry_state_warning {
             Some(existing) => format!("{existing}; {message}"),
@@ -1745,9 +1723,11 @@ fn run_update_one_target_with_remote_installer(
     // (`current.strategy`) -- never the CLI-level `harness` filter,
     // since by this point in the function a single slot has already
     // been resolved via `harness_select::select_harness` above. `force`
-    // bypasses the skip, same rule `content_version::should_skip_write`
-    // already enforces for `install.rs`. Only runs on the no-`--from`
-    // branch: `--version`/`--from` are mutually exclusive at the clap
+    // and an explicit `--no-telemetry` bypass the skip, same as
+    // `install.rs`, so an opt-out always rewrites the telemetry hooks
+    // and MCP args even if the record removal above failed. Only runs
+    // on the no-`--from` branch: `--version`/`--from` are mutually
+    // exclusive at the clap
     // level (same `conflicts_with` as `install`'s own `--version`), and
     // `--from`'s content-version comparison is permanently skipped
     // regardless (see `content_version::compare_incoming_version`'s own
@@ -1794,8 +1774,11 @@ fn run_update_one_target_with_remote_installer(
                     incoming_version,
                     &recorded,
                 );
-                super::install::content_version::should_skip_write(&comparison, force)
-                    .then(|| comparison.matched_version().unwrap_or("").to_string())
+                super::install::content_version::should_skip_write(
+                    &comparison,
+                    force || explicit_no_telemetry,
+                )
+                .then(|| comparison.matched_version().unwrap_or("").to_string())
             })
         })
     } else {
@@ -2285,11 +2268,15 @@ mod tests {
 
     // ── Harness selection ─────────────────────────────────────────────────
 
-    /// Also pins that the OTHER already-tracked strategy's name survives
-    /// in the index entry's `strategies` list -- naively writing
-    /// `strategies: vec![current.strategy.clone()]` back to the index
-    /// would silently drop it even though its manifest slot survives on
-    /// disk.
+    /// `update --harness <name>` at a target tracking 2+ strategies
+    /// refreshes only the SELECTED strategy's own slot, and both (a)
+    /// leaves the OTHER already-tracked strategy's own manifest slot
+    /// untouched, and (b) keeps that other strategy's own name in the
+    /// INDEX entry's `strategies` list -- the exact bug this
+    /// implementation's own `tracked_strategy_names` fix closes: naively
+    /// writing `strategies: vec![current.strategy.clone()]` back to the
+    /// index would otherwise silently drop the untouched strategy's name
+    /// from the index even though its manifest slot survives on disk.
     #[test]
     fn update_one_target_with_harness_refreshes_only_selected_strategy() {
         let _home = HomeGuard::new("harness-select-update-home");
@@ -2388,6 +2375,13 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
+    /// Races a real concurrent `claude` install against
+    /// `update_one_target` refreshing the already-tracked
+    /// `kiro-cli-v2` slot, proving the finalize index write re-reads
+    /// the manifest fresh instead of reusing a pre-install snapshot --
+    /// so the index agrees with the correct post-race manifest state
+    /// rather than a stale snapshot.
+    ///
     /// Ordering between the installer thread's write and this
     /// function's own finalize fresh-read is enforced via
     /// `MID_UPDATE_SYNC_HOOK` (a real synchronization primitive)
@@ -2501,6 +2495,8 @@ mod tests {
         }
     }
 
+    /// A non-matching `--harness` value at a 2+-strategy target is a
+    /// usage error, and never touches either strategy's slot.
     #[test]
     fn update_one_target_with_unmatched_harness_is_usage_error_and_touches_nothing() {
         let _home = HomeGuard::new("harness-select-update-unmatched-home");
@@ -2549,6 +2545,10 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
+    /// With `--harness <name>` given to an `update --all` batch, a
+    /// target that does not track that harness is SKIPPED, not failed
+    /// -- the batch still succeeds (exit 0), while a target that does
+    /// track the requested harness is genuinely updated.
     #[test]
     fn dispatch_update_with_all_flag_skips_targets_that_do_not_track_the_requested_harness() {
         let _home = HomeGuard::new("update-all-skip-harness-not-tracked-home");
@@ -2646,6 +2646,10 @@ mod tests {
         fs::remove_dir_all(&mismatched_target).ok();
     }
 
+    /// `report_update_batch` itself, in isolation: a `skipped` entry
+    /// lands in its own bucket, distinct from `succeeded`/`failed`, in
+    /// both plain-text and `--json` mode -- guards against a future
+    /// change silently dropping the skip bucket or panicking on it.
     /// Mirrors `uninstall.rs`'s
     /// `report_batch_does_not_panic_with_a_skipped_entry_present`.
     #[test]
@@ -2663,6 +2667,13 @@ mod tests {
 
     // ── Regression: `update` honors a target's persisted opt-out ────────
 
+    /// (1) A target originally installed with `konductor install
+    /// --no-telemetry` (no install-info record, no telemetry-hook
+    /// wiring) must have that wiring stay suppressed on a later PLAIN
+    /// `konductor update`, with no `--no-telemetry` re-passed. The
+    /// target's own missing `.konductor/install-info.json` is read as
+    /// the durable "opted out at install time" signal.
+    ///
     /// Exercises the real dispatch path end to end rather than calling
     /// `InstallStrategy::install_from_local` directly, so a regression
     /// in `update.rs`'s own carry-forward computation would be caught
@@ -2746,6 +2757,14 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
+    /// (2) `update --all` resolves the carry-forward signal
+    /// independently per target -- one target's missing install-info
+    /// record must never leak into another target's decision. Two
+    /// targets share one tracked index: one originally installed with
+    /// `--no-telemetry` (no install-info record), one without. A
+    /// single `update --all` run that itself passes no `--no-telemetry`
+    /// must still keep the first target's hooks suppressed while
+    /// wiring the second target's.
     #[test]
     fn update_all_resolves_the_carry_forward_signal_independently_per_target() {
         let _home = HomeGuard::new("update-all-mixed-home");
@@ -3005,9 +3024,12 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// The identity file is no longer written by any install path, so
-    /// it is seeded directly to reconstruct a developer machine that
-    /// predates this file's retirement.
+    /// (2.1) The reverse case: the legacy identity file present but
+    /// `install-info.json` absent must read as opted out -- no
+    /// fallback to the legacy file. The identity file is no longer
+    /// written by any install path, so it is seeded directly to
+    /// reconstruct a developer machine that predates this file's
+    /// retirement.
     #[test]
     fn update_carry_forward_does_not_fall_back_to_identity_file_when_install_info_absent() {
         let _home = HomeGuard::new("update-carry-forward-no-fallback-home");
@@ -3063,9 +3085,8 @@ mod tests {
             Some(target.to_str().unwrap().to_string()),
             false,
             None,
-            false,
+            false, // no explicit --no-telemetry: relies on the carry-forward signal alone
             false, /* enable_telemetry */
-            // no explicit --no-telemetry: relies on the carry-forward signal alone
             false,
             false,
             false, /* cli */
@@ -3496,6 +3517,10 @@ mod tests {
 
     // ── Core behavior change: unconditional overwrite ──────────────────
 
+    /// `update` on a hand-edited file UNCONDITIONALLY OVERWRITES it with
+    /// fresh content, regardless of local edits -- there is no
+    /// preserve-on-divergence behavior and no `--force` flag; this is
+    /// `update`'s only mode.
     #[test]
     fn update_one_target_unconditionally_overwrites_hand_edited_file() {
         let _home = HomeGuard::new("overwrite-hand-edit-home");
@@ -3562,6 +3587,9 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
+    /// A missing file (deleted pre-update) is also unconditionally
+    /// re-created with fresh content -- same single code path as a
+    /// hand-edit, no distinct "missing" handling.
     #[test]
     fn update_one_target_recreates_missing_file_with_fresh_content() {
         let _home = HomeGuard::new("recreate-missing-home");
@@ -3603,9 +3631,14 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// Drives it through `update_one_target` (the real `konductor
-    /// update` entry point) rather than calling `install_from_local` a
-    /// second time by hand.
+    /// `update` shares `install_from_local` with `install`, so the
+    /// Kiro-discoverable `sop-<name>/SKILL.md` conversion is refreshed
+    /// by `update` the same way every other content type already is --
+    /// but it needs its own regression test: a stale body left over
+    /// from a prior install must not survive a re-run. Drives it
+    /// through `update_one_target` (the real `konductor update` entry
+    /// point) rather than calling `install_from_local` a second time
+    /// by hand.
     #[test]
     fn update_one_target_refreshes_stale_kiro_sop_skill_body() {
         let _home = HomeGuard::new("refresh-kiro-sop-skill-home");
@@ -3690,10 +3723,14 @@ mod tests {
 
     // ── update's manifest matches a fresh install's manifest exactly ───
 
-    /// `provenance` legitimately differs (`ReplacedOurs` for update's
-    /// target, which already had a Konductor-managed file at that path,
-    /// vs `Created` for the fresh target), as does `installed_at` (each
-    /// call captures its own timestamp). Everything else must match.
+    /// After a run, `update`'s manifest for a target names the same
+    /// files with the same hashes that a fresh `install` to an
+    /// equivalent, previously-empty target would produce for the same
+    /// source. `provenance` legitimately differs (`ReplacedOurs` for
+    /// update's target, which already had a Konductor-managed file at
+    /// that path, vs `Created` for the fresh target). Only
+    /// `installed_at` also legitimately differs (each call captures
+    /// its own timestamp).
     #[test]
     fn update_manifest_matches_fresh_install_manifest_for_same_source() {
         let _home = HomeGuard::new("manifest-parity-home");
@@ -3799,9 +3836,13 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// `run_update_one_target` must compute `updated_at` once and reuse
-    /// that same string for both the index's `Complete` write and the
-    /// manifest, not call `utc_now_iso()` a second time independently.
+    /// `run_update_one_target` computes its own `updated_at` once (for
+    /// the `InProgress` index write) and must reuse that SAME string
+    /// for the `Complete` index write AND thread it into
+    /// `install_from_local` for the manifest, not a second independent
+    /// `utc_now_iso()` call. Runs a real `update_one_target`, then
+    /// reads both the index entry and the manifest back and asserts
+    /// the two `installed_at` strings are byte-identical.
     #[test]
     fn update_one_target_index_entry_and_manifest_installed_at_are_byte_identical() {
         let _home = HomeGuard::new("update-installed-at-identical-home");
@@ -4117,8 +4158,14 @@ mod tests {
         fs::remove_dir_all(&dir).ok();
     }
 
-    /// Pins that the strategy-registration check runs BEFORE the
-    /// `write_index(InProgress)` write-ahead.
+    /// The strategy-registration check must run BEFORE the
+    /// `write_index(InProgress)` write-ahead, so a target whose manifest
+    /// records an unregistered strategy is rejected WITHOUT ever
+    /// mutating its index entry. Seeds a `Complete` index entry (as a
+    /// prior successful install/update would have left behind), then
+    /// asserts the entry's status is still `Complete` -- never flipped
+    /// to `InProgress` -- after the failed run, in addition to the
+    /// existing exit-code assertion above.
     #[test]
     fn update_one_target_unregistered_strategy_does_not_mutate_index_status() {
         let _home = HomeGuard::new("unregistered-strategy-index-home");
@@ -4181,9 +4228,15 @@ mod tests {
         fs::remove_dir_all(&dir).ok();
     }
 
-    /// The other no-op class `update_one_target` must catch before its
-    /// write-ahead: `--from` was given, so `would_fail_as_noop` runs and
-    /// catches it before any index write.
+    /// The other class of no-op failure `update_one_target` must catch
+    /// before its own write-ahead: a HEALTHY target (registered
+    /// strategy, `Complete` index entry) given a `--from` pointing at a
+    /// source with nothing to install. Must return the usual usage
+    /// error, but must never flip that target's index status from
+    /// `Complete` to `InProgress` for a run that never touched the
+    /// filesystem. Still a synchronous no-op case: `--from` was given,
+    /// so `would_fail_as_noop` runs and catches it before any index
+    /// write.
     #[test]
     fn update_one_target_from_with_nothing_to_install_does_not_mutate_healthy_index_status() {
         let _home = HomeGuard::new("empty-from-index-home");
@@ -4361,9 +4414,12 @@ mod tests {
         fs::remove_dir_all(&source_root).ok();
     }
 
-    /// `remote_installer` panics if called, so this also proves the
-    /// comparison is made against the explicitly requested version, not
-    /// "latest".
+    /// `--version <v>` composing with the skip-if-unchanged check: a
+    /// target already recorded at EXACTLY the requested tag must skip
+    /// the fetch entirely -- `remote_installer` must never be called at
+    /// all (it panics if it is), proving the comparison is made against
+    /// the explicitly requested version, not "latest" (which this test
+    /// never fetches, since no network call happens either way).
     #[test]
     fn update_one_target_version_matching_recorded_version_skips_the_remote_fetch() {
         let _home = HomeGuard::new("update-version-skip-match-home");
@@ -4419,9 +4475,12 @@ mod tests {
         fs::remove_dir_all(&dir).ok();
     }
 
-    /// `remote_installer` here returns `Ok` with a fixed fake outcome
-    /// (never called on the skip path, but must be reachable here) so
-    /// the run can complete and be observed as a real fetch attempt.
+    /// `--version <v>` composing with `--force`: an EXACT version match
+    /// must still proceed to the real fetch when `force` is `true`,
+    /// bypassing the skip -- `remote_installer` here returns `Ok` with a
+    /// fixed fake outcome (never called on the skip path, but must be
+    /// reachable here) so the run can complete and be observed as a
+    /// real fetch attempt, not a skip.
     #[test]
     fn update_one_target_version_matching_recorded_version_with_force_still_fetches() {
         let _home = HomeGuard::new("update-version-force-bypass-home");
@@ -4483,8 +4542,11 @@ mod tests {
         fs::remove_dir_all(&dir).ok();
     }
 
-    /// Confirms the comparison only skips on an exact match, same rule
-    /// `content_version::should_skip_write` already enforces.
+    /// `--version <v>` for a tag that does not name a recorded version
+    /// yet (a mismatch, or no recorded version at all) must proceed to
+    /// the real fetch, never skip -- confirms the comparison only skips
+    /// on an exact match, same rule `content_version::should_skip_write`
+    /// already enforces.
     #[test]
     fn update_one_target_version_mismatched_recorded_version_still_fetches() {
         let _home = HomeGuard::new("update-version-mismatch-fetches-home");
@@ -4543,10 +4605,14 @@ mod tests {
         fs::remove_dir_all(&dir).ok();
     }
 
-    /// Must never silently fall back to some other version. Exercised
-    /// through `run_update_one_target_with_remote_installer`'s real
-    /// error mapping, with a fake `remote_installer` standing in for
-    /// the GitHub fetch that would return this exact error.
+    /// A requested tag that GitHub reports as not found
+    /// (`GithubFetchError::TagNotFound`) must surface a clear, distinct
+    /// failure through `update`'s own error-mapping path -- never the
+    /// old generic "not yet supported" message, and never silently
+    /// falling back to some other version. Exercised through
+    /// `run_update_one_target_with_remote_installer`'s real error
+    /// mapping, with a fake `remote_installer` standing in for the
+    /// real GitHub fetch that would return this exact error.
     #[test]
     fn update_one_target_tag_not_found_surfaces_a_clear_distinct_error() {
         let _home = HomeGuard::new("update-tag-not-found-home");
@@ -4619,7 +4685,10 @@ mod tests {
         fs::remove_dir_all(&dir).ok();
     }
 
-    /// Also confirms the version-updated telemetry event never fires
+    /// A content-version match on `update`'s content path must render
+    /// through the DISTINCT `report_update_already_at_version` path --
+    /// exit code `0`, never the ordinary "N file(s) re-copied" success
+    /// wording, and never firing the version-updated telemetry event
     /// for a run that changed nothing. Exercised through the full
     /// `update_one_target` entry point, so the reporting layer itself
     /// is proven correct.
@@ -4776,14 +4845,12 @@ mod tests {
         fs::remove_dir_all(&dir).ok();
     }
 
-    /// An explicit `--no-telemetry` must not skip the detailed read
-    /// entirely. Before the fix, a short-circuit meant a run with the
-    /// flag passed never learned whether its own broken record existed
-    /// at all -- consent is unaffected either way (opted out was
-    /// already true), but the warning must still surface now that the
-    /// read always runs.
+    /// An explicit `--no-telemetry` removes a broken record too, since a
+    /// newer binary that can parse it could otherwise turn telemetry back
+    /// on. The run reports the removal instead of the "could not be read"
+    /// warning, which no longer applies once the file is gone.
     #[test]
-    fn run_update_one_target_surfaces_broken_telemetry_record_with_explicit_no_telemetry() {
+    fn run_update_one_target_removes_broken_telemetry_record_with_explicit_no_telemetry() {
         // See the sibling test just above for why `HomeGuard` (not
         // `write_index_at_home` alone) is required here.
         let _home = HomeGuard::new("broken-record-explicit-no-telemetry-home");
@@ -4807,7 +4874,8 @@ mod tests {
         .unwrap();
 
         fs::create_dir_all(dir.join(".konductor")).unwrap();
-        fs::write(crate::cli::telemetry::install_info_path(&dir), b"not json").unwrap();
+        let record_path = crate::cli::telemetry::install_info_path(&dir);
+        fs::write(&record_path, b"not json").unwrap();
 
         let outcome = run_update_one_target_with_remote_installer(
             &dir,
@@ -4841,14 +4909,13 @@ mod tests {
                 finalize_index_warning,
                 ..
             }) => {
-                let warning = finalize_index_warning.expect(
-                    "an explicit --no-telemetry run must still surface the broken-record \
-                     warning -- the read must not be skipped by the || short-circuit",
-                );
+                let warning =
+                    finalize_index_warning.expect("removing a broken record must be reported");
                 assert!(
-                    warning.contains("could not be read"),
-                    "warning must name the broken-record condition, got: {warning}"
+                    warning.contains(&format!("removed unreadable {}", record_path.display())),
+                    "got: {warning}"
                 );
+                assert!(!warning.contains("could not be read"), "got: {warning}");
             }
             Ok(UpdateOutcome::Failure { .. }) | Ok(UpdateOutcome::AlreadyAtVersion { .. }) => {
                 panic!(
@@ -4858,6 +4925,10 @@ mod tests {
             }
             Err(_) => panic!("expected a Success outcome from the fake remote-fallback success"),
         }
+        assert!(
+            !record_path.exists(),
+            "an explicit opt-out must remove an unreadable record"
+        );
 
         fs::remove_dir_all(&dir).ok();
     }
@@ -4900,8 +4971,12 @@ mod tests {
         fs::remove_dir_all(&home).ok();
     }
 
-    /// Same `read_index`/`IndexError::UnresolvableHome` behavior
-    /// `uninstall` relies on.
+    /// `dispatch_update_with` with `HOME` genuinely unresolvable (unset)
+    /// must exit non-zero -- the same `read_index`/
+    /// `IndexError::UnresolvableHome` behavior `uninstall` relies on.
+    /// Silently exiting 0 here would be indistinguishable from "nothing
+    /// was ever installed," when in fact whether anything is tracked
+    /// cannot be determined at all.
     #[test]
     fn dispatch_update_with_home_unset_exits_nonzero_not_silently_zero() {
         let _guard = lock_home();
@@ -4941,10 +5016,14 @@ mod tests {
         assert_eq!(code, EXIT_USAGE_ERROR);
     }
 
-    /// The exact JSON shape is pinned once, structurally, by
+    /// `dispatch_update_with` with zero tracked installs and
+    /// `json=true` must return 0 via the shared
+    /// `report::report_no_tracked_installs` helper rather than an
+    /// unconditional plain-text `println!`. The exact JSON shape is
+    /// pinned once, structurally, by
     /// `report::tests::report_no_tracked_installs_json_has_command_and_tracked_installs_fields`
-    /// -- this test only needs to confirm `update` actually reaches that
-    /// branch and its exit code.
+    /// -- this test only needs to confirm `update` actually reaches
+    /// that branch and its exit code.
     #[test]
     fn dispatch_update_with_zero_tracked_installs_json_true_returns_zero() {
         let _guard = lock_home();
@@ -5095,10 +5174,15 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// Captures real process stdout (via a spawned `konductor` binary)
-    /// rather than calling `dispatch_update_with` in-process, since the
-    /// whole point is what actually lands on stdout for an external
-    /// `--json` consumer.
+    /// `update --all --json` against 2+ tracked targets (one healthy
+    /// target that succeeds, one stale target with no manifest that
+    /// fails) must emit stdout that parses as exactly ONE JSON document
+    /// -- never N concatenated top-level documents -- with the expected
+    /// `succeeded`/`failed` breakdown. Captures real process stdout
+    /// (via a spawned `konductor` binary) rather than calling
+    /// `dispatch_update_with` in-process, since the whole point being
+    /// tested is what actually lands on stdout for an external `--json`
+    /// consumer.
     #[test]
     fn dispatch_update_all_json_emits_single_document_with_mixed_outcomes() {
         let _guard = lock_home();
@@ -5238,9 +5322,12 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    /// Confirmed structurally by checking the rendered JSON contains no
-    /// embedded newline, which is what `println!` on a single
-    /// `serde_json::json!` object always produces.
+    /// `report_update_batch`, given a real mixed succeeded/failed
+    /// batch, must print exactly one line to stdout (one JSON
+    /// document) -- structurally confirmed here by rendering the same
+    /// JSON it constructs and checking it contains no embedded
+    /// newline, which is what `println!` on a single `serde_json::json!`
+    /// object always produces.
     #[test]
     fn report_update_batch_renders_as_single_line_json() {
         let succeeded = vec![(
@@ -5539,7 +5626,12 @@ mod tests {
         );
     }
 
-    /// Behavioral counterpart to the source-scanning guard above.
+    /// Behavioral counterpart to the source-scanning guard above:
+    /// confirms `report_update_batch` folds a `finalize_index_warning`
+    /// into the succeeded entry's own JSON object (a `warning` field)
+    /// rather than requiring a second, separate stderr line. Confirms
+    /// stdout is still exactly ONE JSON document carrying the folded-in
+    /// warning.
     #[test]
     fn report_update_batch_folds_finalize_index_warning_into_single_json_document() {
         let succeeded = vec![(
@@ -5598,9 +5690,11 @@ mod tests {
         );
     }
 
-    /// Confirms the fold-in above is additive or absent, never
-    /// present-but-empty/null, which would otherwise force every
-    /// `--json` consumer to handle a phantom key.
+    /// Sanity companion: on the ordinary path (no finalize-index
+    /// failure), `report_update_batch`'s succeeded entry must NOT carry
+    /// a `warning` key at all -- confirms the fold-in above is additive
+    /// or absent, never present-but-empty/null, which would otherwise
+    /// force every `--json` consumer to handle a phantom key.
     #[test]
     fn report_update_batch_omits_warning_key_when_finalize_index_succeeded() {
         let succeeded = vec![(
@@ -5721,10 +5815,9 @@ mod tests {
             false, // force
             false, // uncached_identity
             false, // json
-            false,
+            false, // no --no-telemetry on this update call,
             false, /* enable_telemetry */
-            // no --no-telemetry on this update call,
-            None, /* latest_release_tag_cache */
+            None,  /* latest_release_tag_cache */
         );
         let Ok(UpdateOutcome::Success {
             finalize_index_warning,
@@ -5762,10 +5855,9 @@ mod tests {
             false, // force
             false, // uncached_identity
             false, // json
-            false,
+            false, // no --no-telemetry on this update call,
             false, /* enable_telemetry */
-            // no --no-telemetry on this update call,
-            None, /* latest_release_tag_cache */
+            None,  /* latest_release_tag_cache */
         );
         let Ok(UpdateOutcome::Success {
             finalize_index_warning,
@@ -5818,10 +5910,9 @@ mod tests {
             false, // force
             false, // uncached_identity
             false, // json
-            false,
+            false, // no --no-telemetry on this update call,
             false, /* enable_telemetry */
-            // no --no-telemetry on this update call,
-            None, /* latest_release_tag_cache */
+            None,  /* latest_release_tag_cache */
         );
         let Ok(UpdateOutcome::Success {
             finalize_index_warning,
@@ -5846,6 +5937,53 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
+    /// `--enable-telemetry` rewrites a broken record, so the run reports
+    /// the replacement rather than warning that telemetry is off.
+    #[test]
+    fn enable_telemetry_replaces_broken_install_info_and_says_so() {
+        let _home = HomeGuard::new("carry-forward-broken-enable-home");
+        let target = scratch_dir("carry-forward-broken-enable-target");
+        let repo_root = scratch_dir("carry-forward-broken-enable-repo");
+        install_fixture(&target, &repo_root);
+        let record_path = crate::cli::telemetry::install_info_path(&target);
+        fs::write(&record_path, b"not json").unwrap();
+
+        let outcome = run_update_one_target(
+            &target,
+            Some(repo_root.to_str().unwrap()),
+            None,
+            false, // use_github_token
+            None,  // release_version
+            false, // force
+            false, // uncached_identity
+            false, // json
+            false, // no --no-telemetry
+            true,  // --enable-telemetry
+            None,  /* latest_release_tag_cache */
+        );
+        let Ok(UpdateOutcome::Success {
+            finalize_index_warning,
+            ..
+        }) = outcome
+        else {
+            panic!("update --enable-telemetry over a broken record must succeed");
+        };
+
+        let warning = finalize_index_warning.expect("replacing a broken record must be reported");
+        assert!(
+            warning.contains(&format!("replaced unreadable {}", record_path.display())),
+            "got: {warning}"
+        );
+        assert!(!warning.contains("could not be read"), "got: {warning}");
+        assert!(
+            crate::cli::telemetry::read_install_info(&target).is_some(),
+            "--enable-telemetry must leave a readable record behind"
+        );
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
     // ── Sticky opt-out: a removal failure must warn, not be swallowed ───
 
     /// `update --no-telemetry` against an enabled target whose
@@ -5858,13 +5996,11 @@ mod tests {
     /// with exit code 0 while the stale, still-enabled record silently
     /// survives.
     ///
-    /// Drives this through the content-version skip-if-unchanged path
-    /// (a matching `--version`) rather than the ordinary re-copy path:
-    /// the skip path never calls `install_from_local`, so it never
-    /// needs to write this target's own manifest -- the only other
-    /// write under this read-only `.konductor/` directory this run
-    /// would otherwise attempt, which would fail for an unrelated
-    /// reason and mask the one failure this test targets.
+    /// The target is already at the requested `--version`, so this also
+    /// pins that `--no-telemetry` bypasses the content-version skip and
+    /// still rewrites the target with telemetry off. The fake remote
+    /// installer stands in for that rewrite, so no manifest write under
+    /// the read-only `.konductor/` directory masks the removal failure.
     #[test]
     fn removal_failure_on_explicit_opt_out_warns_without_failing_the_run() {
         use std::os::unix::fs::PermissionsExt;
@@ -5915,6 +6051,7 @@ mod tests {
         perms.set_mode(0o555);
         fs::set_permissions(&konductor_dir, perms).unwrap();
 
+        let rewrite_ran_with_telemetry_off = std::cell::Cell::new(None);
         let outcome = run_update_one_target_with_remote_installer(
             &target,
             None,          /* from */
@@ -5927,11 +6064,12 @@ mod tests {
             true,          /* no_telemetry: --no-telemetry */
             false,         /* enable_telemetry */
             None,          /* latest_release_tag_cache */
-            |_strategy, _destination, _installed_at, _no_telemetry| {
-                panic!(
-                    "remote_installer must never be called when the target is already at \
-                     exactly the requested --version"
-                )
+            |_strategy, _destination, _installed_at, no_telemetry| {
+                rewrite_ran_with_telemetry_off.set(Some(no_telemetry));
+                Ok((
+                    remote_orchestrate::RemoteInstallSource::GithubRelease,
+                    crate::cli::install::remote::RemoteInstallOutcome::default(),
+                ))
             },
         );
 
@@ -5942,17 +6080,21 @@ mod tests {
         let restored = std::fs::Permissions::from_mode(0o755);
         let _ = fs::set_permissions(&konductor_dir, restored);
 
-        let Ok(UpdateOutcome::AlreadyAtVersion {
-            version,
+        let Ok(UpdateOutcome::Success {
             finalize_index_warning,
+            ..
         }) = outcome
         else {
             panic!(
-                "update --no-telemetry must still succeed via AlreadyAtVersion even when the \
-                 removal fails -- a removal failure must stay non-fatal to the overall update"
+                "update --no-telemetry must still succeed when the removal fails -- a removal \
+                 failure must stay non-fatal to the overall update"
             );
         };
-        assert_eq!(version, "1.5.0");
+        assert_eq!(
+            rewrite_ran_with_telemetry_off.get(),
+            Some(true),
+            "--no-telemetry must bypass the version-match skip and rewrite with telemetry off"
+        );
 
         let warning = finalize_index_warning.expect(
             "a removal failure must produce a warning via telemetry_state_warning, not be \
@@ -5963,6 +6105,10 @@ mod tests {
             "the warning must name the file that could not be removed; got: {warning}"
         );
         assert!(warning.contains("could not remove"), "got: {warning}");
+        assert!(
+            warning.contains("telemetry may still be reported until"),
+            "got: {warning}"
+        );
 
         // Detectable: the removal genuinely failed, so the stale record
         // is still present and still reads as enabled -- exactly the
