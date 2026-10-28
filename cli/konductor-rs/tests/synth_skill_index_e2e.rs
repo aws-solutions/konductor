@@ -13,7 +13,9 @@ use std::process::Command;
 
 const SKILLS_HEADING: &str = "## Your skills";
 const ORCHESTRATOR_MARKER: &str = "You orchestrate.";
-const ALWAYS_APPLY_PREFIX: &str = "Always-apply: ";
+// Skills whose description starts "MUST USE for every "; synth leaves
+// them out of the index.
+const EVERY_TASK_SKILLS: &[&str] = &["constraints"];
 const TRIGGER_SLACK_CHARS: usize = 165;
 
 fn repo_root() -> PathBuf {
@@ -124,20 +126,6 @@ fn listed_names(block: &str) -> Vec<String> {
         .collect()
 }
 
-fn always_apply_names(block: &str) -> Vec<String> {
-    block
-        .lines()
-        .find_map(|l| l.strip_prefix(ALWAYS_APPLY_PREFIX))
-        .map(|rest| {
-            rest.split('`')
-                .skip(1)
-                .step_by(2)
-                .map(str::to_string)
-                .collect()
-        })
-        .unwrap_or_default()
-}
-
 #[test]
 fn synth_appends_each_agents_own_skill_index_on_kiro_only() {
     let root = synth_repo_copy();
@@ -155,37 +143,24 @@ fn synth_appends_each_agents_own_skill_index_on_kiro_only() {
                 continue;
             }
             let block = block_of(&prompt);
-            let always = always_apply_names(block);
-            let task_skills: Vec<String> = source
+            let expected: Vec<String> = source
                 .skill_names
                 .iter()
-                .filter(|s| !always.contains(s))
+                .filter(|s| !EVERY_TASK_SKILLS.contains(&s.as_str()))
                 .cloned()
                 .collect();
             assert_eq!(
                 listed_names(block),
-                task_skills,
-                "{harness}/{name}: task list must keep the declared order"
+                expected,
+                "{harness}/{name}: index must list the declared skillNames in order, \
+                 minus every-task skills"
             );
-            if source.skill_names.iter().any(|s| s == "constraints") {
+            for skill in EVERY_TASK_SKILLS {
                 assert!(
-                    always.iter().any(|s| s == "constraints"),
-                    "{harness}/{name}: constraints must be always-apply"
+                    !block.contains(&format!("`{skill}`")),
+                    "{harness}/{name}: {skill} must not be named in the block"
                 );
             }
-            assert!(
-                !always.iter().any(|s| s == "git-merge"),
-                "{harness}/{name}: git-merge is a task skill, never always-apply"
-            );
-            let mut all_listed = always.clone();
-            all_listed.extend(task_skills);
-            all_listed.sort();
-            let mut declared = source.skill_names.clone();
-            declared.sort();
-            assert_eq!(
-                all_listed, declared,
-                "{harness}/{name}: index must list exactly the declared skillNames"
-            );
             assert!(block.contains("`get_skill`") && block.contains("`tool_load`"));
             assert_eq!(
                 block.contains(ORCHESTRATOR_MARKER),

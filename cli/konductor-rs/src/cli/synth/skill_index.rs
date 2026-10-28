@@ -14,17 +14,13 @@ const ELLIPSIS: &str = "...";
 const HEADING: &str = "## Your skills";
 
 const USE_RULE: &str = "Before a non-trivial task, check whether one of the skills listed below \
-covers it. In addition to any skill marked always-apply, load at most one or two and follow \
-their steps and output format. Skip this for trivial tasks such as a quick question, a one-line \
-edit, or a lookup.";
+covers it. If one matches, load at most one or two and follow their steps and output format. \
+Skip this for trivial tasks such as a quick question, a one-line edit, or a lookup.";
 
-// A skill whose trigger starts with this marker applies to every task, so
-// it is listed apart from the task skills and outside their budget. A
-// plain "MUST USE for <task>" trigger (git-merge) stays a task skill.
-const ALWAYS_APPLY_MARKER: &str = "MUST USE for every ";
-
-const ALWAYS_APPLY_RULE: &str = "Follow these on every task. Load each at most once per \
-session, not before every task. They do not count toward the one or two above.";
+// A skill whose trigger starts with this marker (constraints) claims every
+// task, which contradicts the one-or-two rule above, so it is left out of
+// the index. A "MUST USE for <task>" trigger (git-merge) stays listed.
+const EVERY_TASK_MARKER: &str = "MUST USE for every ";
 
 const ORCHESTRATOR_RULE: &str = "You orchestrate. When a task matches a skill a specialist \
 owns, such as a code review, a threat model, or user stories, route it to that specialist \
@@ -120,51 +116,32 @@ fn block_preamble(agent_name: &str) -> String {
     block
 }
 
-fn always_apply_line(names: &[&str]) -> String {
-    let listed = names
-        .iter()
-        .map(|name| format!("`{name}`"))
-        .collect::<Vec<_>>()
-        .join(", ");
-    format!("Always-apply: {listed}. {ALWAYS_APPLY_RULE}")
-}
-
-/// The Kiro block: one `- <name>: <trigger>` line per declared task skill,
-/// in declared order, after one always-apply line naming any skill whose
-/// trigger starts with `MUST USE for every `. Names with no matching `SkillDef` are
-/// skipped (synth's parse step already rejects dangling names). `None`
-/// when nothing would be listed.
+/// The Kiro block: one `- <name>: <trigger>` line per declared skill, in
+/// declared order, leaving out any skill whose trigger starts with
+/// `MUST USE for every `. Names with no matching `SkillDef` are skipped
+/// (synth's parse step already rejects dangling names). `None` when
+/// nothing would be listed.
 pub(crate) fn kiro_skill_block(
     agent_name: &str,
     skill_names: &[&str],
     skills: &[SkillDef],
 ) -> Option<String> {
-    let mut always_apply = Vec::new();
-    let mut task_lines = Vec::new();
+    let mut lines = Vec::new();
     for skill in skill_names
         .iter()
         .filter_map(|name| skills.iter().find(|s| s.name == *name))
     {
         match skill_trigger(&skill.raw_frontmatter) {
-            Some(trigger) if trigger.starts_with(ALWAYS_APPLY_MARKER) => {
-                always_apply.push(skill.name.as_str());
-            }
-            Some(trigger) => task_lines.push(format!("- {}: {trigger}", skill.name)),
-            None => task_lines.push(format!("- {}", skill.name)),
+            Some(trigger) if trigger.starts_with(EVERY_TASK_MARKER) => {}
+            Some(trigger) => lines.push(format!("- {}: {trigger}", skill.name)),
+            None => lines.push(format!("- {}", skill.name)),
         }
     }
-    let mut sections = Vec::new();
-    if !always_apply.is_empty() {
-        sections.push(always_apply_line(&always_apply));
-    }
-    if !task_lines.is_empty() {
-        sections.push(task_lines.join("\n"));
-    }
-    if sections.is_empty() {
+    if lines.is_empty() {
         return None;
     }
     let mut block = block_preamble(agent_name);
-    block.push_str(&sections.join("\n\n"));
+    block.push_str(&lines.join("\n"));
     Some(block)
 }
 
@@ -299,38 +276,34 @@ mod tests {
     }
 
     #[test]
-    fn use_rule_budget_excludes_always_apply_skills() {
+    fn use_rule_keeps_one_or_two_budget() {
         let skills = vec![skill("a", "Use for a.")];
         let block = kiro_skill_block("k-developer", &["a"], &skills).unwrap();
         assert!(
-            block.contains("In addition to any skill marked always-apply, load at most one or two"),
+            block.contains("If one matches, load at most one or two and follow"),
             "{block}"
         );
     }
 
     #[test]
-    fn must_use_skill_moves_to_always_apply_line_before_task_list() {
+    fn every_task_skill_is_left_out_of_the_index() {
         let skills = vec![
             skill("constraints", "MUST USE for every interaction. Core rules."),
             skill("a", "Use for a."),
         ];
         let block = kiro_skill_block("k-developer", &["constraints", "a"], &skills).unwrap();
-        let expected = "Always-apply: `constraints`. Follow these on every task. Load each \
-                        at most once per session, not before every task. They do not count \
-                        toward the one or two above.\n\n- a: Use for a.";
-        assert!(block.ends_with(expected), "{block}");
-        assert!(!block.contains("- constraints"), "{block}");
+        assert!(
+            block.ends_with(&format!("{}\n\n- a: Use for a.", kiro_load_rule())),
+            "{block}"
+        );
+        assert!(!block.contains("constraints"), "{block}");
+        assert!(!block.contains("Always-apply"), "{block}");
     }
 
     #[test]
-    fn always_apply_line_joins_several_names_in_declared_order() {
-        let skills = vec![
-            skill("x", "MUST USE for every task."),
-            skill("y", "MUST USE for every reply."),
-        ];
-        let block = kiro_skill_block("k-developer", &["y", "x"], &skills).unwrap();
-        assert!(block.contains("Always-apply: `y`, `x`. "), "{block}");
-        assert!(!block.lines().any(|l| l.starts_with("- ")), "{block}");
+    fn only_every_task_skills_give_no_block() {
+        let skills = vec![skill("constraints", "MUST USE for every interaction.")];
+        assert!(kiro_skill_block("k-developer", &["constraints"], &skills).is_none());
     }
 
     #[test]
@@ -341,14 +314,6 @@ mod tests {
             block.ends_with("\n- git-merge: MUST USE for merging branches."),
             "{block}"
         );
-        assert!(!block.contains("Always-apply:"), "{block}");
-    }
-
-    #[test]
-    fn no_always_apply_line_without_must_use_skills() {
-        let skills = vec![skill("a", "Use for a.")];
-        let block = kiro_skill_block("k-developer", &["a"], &skills).unwrap();
-        assert!(!block.contains("Always-apply:"), "{block}");
     }
 
     #[test]
