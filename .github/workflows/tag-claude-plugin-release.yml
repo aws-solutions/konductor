@@ -187,10 +187,13 @@ jobs:
           fi
 
       - name: Check out the merge commit on release/plugins
+        # Into its own directory, so main's checkout (and its scripts/)
+        # stays in place for the steps below.
         uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
         with:
           ref: ${{ steps.pr.outputs.merge_sha }}
           fetch-depth: 0
+          path: plugin-tree
 
       - name: Validate artifact presence at the merge commit
         # Confirms this checkout really is the published flat plugin tree
@@ -199,6 +202,7 @@ jobs:
         # script guarantees are present (see that script's own checks for
         # README.md/LICENSE.txt/NOTICE.txt and its explicit mkdir/cp list for
         # everything else).
+        working-directory: plugin-tree
         run: |
           set -e
           MISSING=""
@@ -231,7 +235,7 @@ jobs:
         # path's source changes later.
         run: |
           set -e
-          RAW_VERSION="$(jq -r '.version // empty' .claude-plugin/plugin.json)"
+          RAW_VERSION="$(jq -r '.version // empty' plugin-tree/.claude-plugin/plugin.json)"
           if [ -z "$RAW_VERSION" ]; then
             echo "FATAL: .claude-plugin/plugin.json has no 'version' field. Failing closed." >&2
             exit 1
@@ -323,6 +327,7 @@ jobs:
         # contents: write. A manually built AUTHORIZATION header here was
         # simply ignored in favor of that persisted credential -- the same
         # pattern release.yml's candidate-branch push documents and avoids.
+        working-directory: plugin-tree
         run: |
           set -e
           git config user.name "github-actions[bot]"

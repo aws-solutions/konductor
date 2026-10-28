@@ -30,7 +30,7 @@ Five files control five different things. Pick the smallest one that achieves wh
 
 | Change | Edit | Effect |
 | --- | --- | --- |
-| Rules every agent must follow | `context/k-core-rules.md` | NEVER DO rules and writing habits, loaded at session start for every agent |
+| Rules every agent must follow | `context/k-core-rules.md` | NEVER DO rules, writing habits, and engineering practices, loaded at session start for every agent |
 | Which specialist handles which kind of request | `context/k-orchestrator-routing-rules.md` | Routing, loaded at session start for all three orchestrators |
 | The steps of one workflow | `agent-sops/<name>.sop.md` | That SOP's steps, constraints, and quality gates |
 | How an agent reasons about one topic | `skills/<name>/SKILL.md` | Guidance that agent loads on demand |
