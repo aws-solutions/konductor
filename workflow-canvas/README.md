@@ -106,9 +106,10 @@ npm run stub
 ```
 
 The launch code is new each time and works once, within 60 seconds of the
-moment the stub starts listening. `POST /api/session` trades it for the token
-that the other calls send as `Authorization: Bearer <token>`. `STUB_PORT`
-sets the port (a whole number from 1 to 65535; anything else stops the command
+moment the stub starts listening. A used address is dead: get a fresh launch
+address from the server (the stub prints one each time it starts).
+`POST /api/session` trades the code for the token that the other calls send as
+`Authorization: Bearer <token>`. `STUB_PORT` sets the port (a whole number from 1 to 65535; anything else stops the command
 with a one-line error). `STUB_LAUNCH_CODE` sets the code, for tests only: it can be
 weaker than the contract asks.
 
@@ -240,11 +241,17 @@ The rest wraps the core, so the rules can be tested without a browser:
 - `launch/session-memory.ts` is the port through which the page keeps its
   session (the token and the harness, never the launch code) in the session
   storage of its tab, under one key. A load with no code in the address uses it,
-  so a reload resumes the open workflow although the code is spent. A 401 on the
-  kept token (the server was started again) clears it and asks for a fresh
-  launch address. A pasted code replaces it only once the workflow of that code
-  is on the page. Script on the page can read the token; it lasts for the tab
-  and is gone when the tab closes.
+  so a reload resumes the open workflow although the code is spent. A code in
+  the address that fails (a spent one) falls back to the kept session, and its
+  error is shown only if that fails too. The session is kept as soon as a code
+  opens it, so a first load that fails can be retried by a reload. A 401 on the
+  kept token, on any call (the server was started again), clears it and asks
+  for a fresh launch address. A pasted code replaces it only once the workflow
+  of that code is on the page. The token lasts for the life of the tab, including copies
+  made by Duplicate tab or `window.open`, and a browser may restore it with
+  the tab. Script on the page can read it, so `index.html` carries a
+  Content-Security-Policy that lets the page run only its own files; a server
+  that sends the page should send the same policy as a header.
 - `designer/` shows the result: loading, error, empty (no file yet, or a file
   with errors, with their messages), or the canvas.
 - `canvas/` draws the graph with [React Flow](https://reactflow.dev)

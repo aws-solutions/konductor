@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { WorkflowApi } from '../api/api';
 import type { SessionMemory } from '../launch/session-memory';
-import { loadWorkflow, type LoadResult } from './load-workflow';
+import { loadOnOpen, loadWorkflow, type LoadResult } from './load-workflow';
 
 /** The workflow the page shows, and the way to offer it another launch code. */
 export interface WorkflowSource {
@@ -33,7 +33,7 @@ export function createWorkflowSource(
   firstCode: string | undefined,
   memory: SessionMemory,
 ): WorkflowSource {
-  let current = loadWorkflow(api, firstCode, memory);
+  let current = loadOnOpen(api, firstCode, memory);
   let lastOffer = 0;
   let shownOffer = 0;
   let shownWorkflowOffer = 0;

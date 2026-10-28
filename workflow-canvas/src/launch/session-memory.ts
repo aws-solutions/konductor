@@ -43,9 +43,10 @@ function parse(text: string | null | undefined): SessionRecord | undefined {
 }
 
 /**
- * Keeps the session in the storage of the browser tab: it is gone when the
- * tab closes. Script on the page can read it. A browser that blocks storage
- * leaves the page with no memory.
+ * Keeps the session in the `sessionStorage` of the tab. It survives a reload,
+ * is copied into a tab made by Duplicate or `window.open`, and a browser may
+ * restore it with the tab. Script on the page can read it. A browser that
+ * blocks storage leaves the page with no memory.
  */
 export function sessionStorageMemory(
   env: SessionMemoryEnvironment,

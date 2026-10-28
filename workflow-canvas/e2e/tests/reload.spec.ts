@@ -3,6 +3,7 @@ import { expect } from '@playwright/test';
 import { STUB_LAUNCH_CODE } from '../../playwright.shared';
 import { test } from '../support/fixtures';
 import { sharedSession } from '../support/session';
+import { WorkflowCanvasPage } from '../support/workflow-canvas-page';
 
 // A reload would ask the server for the page again. A request made after the
 // anchor was set is answered after any reload request, so once it is answered
@@ -155,4 +156,43 @@ test('keeps the old session for a reload when a pasted launch code is refused', 
   await page.reload();
 
   await canvas.expectWorkflowDrawn();
+});
+
+// The code is spent once the session opens. If the first load of the workflow
+// fails after that, the session must still be there for a reload.
+test('resumes after a reload when the first load failed after the code worked', async ({
+  page,
+}) => {
+  const canvas = new WorkflowCanvasPage(page);
+  await page.route('**/api/session', (route) =>
+    route.fulfill({ json: sharedSession() }),
+  );
+  await page.route('**/api/workflow', (route) =>
+    route.fulfill({ status: 500, json: { error: 'Server error.' } }),
+  );
+  await page.goto(`/#${STUB_LAUNCH_CODE}`);
+  await expect(page.getByText('The workflow did not load')).toBeVisible();
+  await page.unroute('**/api/workflow');
+
+  await page.reload();
+
+  await canvas.expectWorkflowDrawn();
+});
+
+test('opens the kept session when the code in the address is spent', async ({
+  canvas,
+  page,
+}) => {
+  await canvas.expectWorkflowDrawn();
+  await page.route('**/api/session', (route) =>
+    route.fulfill({
+      status: 401,
+      json: { error: 'The launch code is not valid.' },
+    }),
+  );
+
+  await page.goto(`/?again#${NEW_CODE}`);
+
+  await canvas.expectWorkflowDrawn();
+  await expect(page.getByText('The launch code is not valid')).toHaveCount(0);
 });

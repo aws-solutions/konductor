@@ -19,10 +19,10 @@ export type LoadResult =
   | { ok: false; message: string };
 
 const NO_LAUNCH_CODE =
-  'There is no launch code in the address. Open the launch address that the server printed; it ends in #<launch code>.';
+  'There is no launch code in the address. Get a fresh launch address from the server; it ends in #<launch code>.';
 
 const SESSION_UNKNOWN =
-  'The server no longer knows this session. It may have been started again. Open the launch address that it printed; it ends in #<launch code>.';
+  'The server no longer knows this session. It may have been started again. Get a fresh launch address from the server.';
 
 /** The major version of the API that this page reads. */
 export const SUPPORTED_API_VERSION = 1;
@@ -38,12 +38,35 @@ function failure(message: string): LoadResult {
   return { ok: false, message };
 }
 
+// Forgets the token only if no newer session was kept while this one loaded.
+function forgetIfStill(memory: SessionMemory, session: SessionRecord): void {
+  if (memory.recall()?.token === session.token) memory.forget();
+}
+
+// A 401 on a call that carries the token means the server no longer knows the
+// session: the token is dropped and the call fails with one message.
+function guardSession(
+  memory: SessionMemory,
+  session: SessionRecord,
+): <T>(call: Promise<T>) => Promise<T> {
+  return async (call) => {
+    try {
+      return await call;
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.status !== 401) throw error;
+      forgetIfStill(memory, session);
+      throw new ApiError(SESSION_UNKNOWN, 401);
+    }
+  };
+}
+
 async function loadWith(
   api: WorkflowApi,
   session: SessionRecord,
   memory: SessionMemory,
 ): Promise<LoadResult> {
-  const document = await api.getWorkflow(session.token);
+  const guard = guardSession(memory, session);
+  const document = await guard(api.getWorkflow(session.token));
   return {
     ok: true,
     workflow: { harness: session.harness, document },
@@ -51,6 +74,8 @@ async function loadWith(
   };
 }
 
+// A new session is kept as soon as it exists, when none is kept: a load that
+// fails then (a timeout, a 5xx) does not lose the code that was just spent.
 async function openWithCode(
   api: WorkflowApi,
   launchCode: string,
@@ -59,15 +84,12 @@ async function openWithCode(
   try {
     const { token, harness, apiVersion } = await api.createSession(launchCode);
     if (apiVersion !== SUPPORTED_API_VERSION) return failure(UNSUPPORTED_API);
-    return await loadWith(api, { token, harness }, memory);
+    const session = { token, harness };
+    if (memory.recall() === undefined) memory.remember(session);
+    return await loadWith(api, session, memory);
   } catch (error) {
     return failure(messageOf(error));
   }
-}
-
-// Forgets the token only if no newer session was kept while this one loaded.
-function forgetIfStill(memory: SessionMemory, session: SessionRecord): void {
-  if (memory.recall()?.token === session.token) memory.forget();
 }
 
 async function resume(
@@ -78,10 +100,6 @@ async function resume(
   try {
     return await loadWith(api, session, memory);
   } catch (error) {
-    if (error instanceof ApiError && error.status === 401) {
-      forgetIfStill(memory, session);
-      return failure(SESSION_UNKNOWN);
-    }
     return failure(messageOf(error));
   }
 }
@@ -101,4 +119,23 @@ export async function loadWorkflow(
   return kept === undefined
     ? failure(NO_LAUNCH_CODE)
     : resume(api, kept, memory);
+}
+
+/**
+ * The load when the page opens. It is `loadWorkflow`, except that a code in
+ * the address that fails (as a spent one does) falls back to a session kept
+ * before it. The error of the code is shown only if that fails too.
+ */
+export async function loadOnOpen(
+  api: WorkflowApi,
+  launchCode: string | undefined,
+  memory: SessionMemory,
+): Promise<LoadResult> {
+  const kept = memory.recall();
+  const result = await loadWorkflow(api, launchCode, memory);
+  if (result.ok || launchCode === undefined || kept === undefined) {
+    return result;
+  }
+  const resumed = await resume(api, kept, memory);
+  return resumed.ok ? resumed : result;
 }
