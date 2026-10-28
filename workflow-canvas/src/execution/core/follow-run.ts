@@ -144,15 +144,37 @@ export interface ResumeRequest extends Watch {
   runId: string;
 }
 
+// The look at the remembered run could not finish, so nobody knows whether it
+// is going. Say so under the run, which the alert names.
+function reportUnknownRun(
+  { runId, emit }: ResumeRequest,
+  error: unknown,
+): void {
+  emit({ type: 'start' });
+  emit({ type: 'started', runId, joined: true });
+  emit({ type: 'failed', message: messageOf(error), runId });
+}
+
 /**
  * Joins the run `runId` if it is still running, as a page that was reloaded
  * does, and follows it like `startAndFollow`. The first reading is tried
- * again like any other. A run that has ended, one that cannot be read, or
- * another run says nothing: there is nothing to resume. It never rejects.
+ * again like any other. A run that has ended, another run, or one that the
+ * server will not give (it started again) says nothing: there is nothing to
+ * resume. When the readings fail for any other reason, whether the run is
+ * going is not known, and the failure is reported like a lost run. It never
+ * rejects.
  */
 export async function resumeRun(request: ResumeRequest): Promise<void> {
   const { runId, emit, signal } = request;
-  const run = await read(request, runId).catch(() => undefined);
+  let run: RunView | undefined;
+  try {
+    run = await read(request, runId);
+  } catch (error) {
+    if (!signal.aborted && !(error instanceof RunReadRefused)) {
+      reportUnknownRun(request, error);
+    }
+    return;
+  }
   if (signal.aborted || run?.runId !== runId || run.status !== 'running') {
     return;
   }

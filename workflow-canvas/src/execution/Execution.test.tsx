@@ -527,6 +527,30 @@ describe('errors from the API', () => {
     expect(isOff(runButton())).toBe(false);
   });
 
+  it('says the run may have started when the server did not answer the start', async () => {
+    const runs: RunPort = {
+      start: vi
+        .fn()
+        .mockRejectedValue(new RunStartUnsure('The server did not answer.')),
+      get: vi.fn(),
+    };
+    await openExecution(runs);
+
+    await press(runButton());
+
+    const alert = screen.getByTestId('run-error');
+    expect(
+      within(alert).getByText('The run may not have started'),
+    ).toBeTruthy();
+    expect(within(alert).getByText('The server did not answer.')).toBeTruthy();
+    expect(
+      within(alert).getByText(
+        'The run may be going on the server. Press Run to join it.',
+      ),
+    ).toBeTruthy();
+    expect(isOff(runButton())).toBe(false);
+  });
+
   it('shows one alert, and clears the states, when a reading fails', async () => {
     const runs: RunPort = {
       start: vi.fn().mockResolvedValue(RUN_ID),
