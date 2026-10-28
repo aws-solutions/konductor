@@ -13,8 +13,18 @@ export {
   type ExecutionEvent,
   type ExecutionState,
 } from './execution-state';
-export { POLL_INTERVAL_MS, startAndFollow } from './follow-run';
+export {
+  MAX_READ_FAILURES,
+  POLL_INTERVAL_MS,
+  startAndFollow,
+  type FollowRequest,
+} from './follow-run';
 export { GOAL_MAX_LENGTH, goalProblem } from './goal';
 export { nodeStatuses } from './node-statuses';
-export type { RunPort, Scheduler } from './ports';
+export {
+  RunAlreadyActive,
+  RunReadRefused,
+  type RunPort,
+  type Scheduler,
+} from './ports';
 export { statusKind, statusText, type StatusKind } from './status-text';
