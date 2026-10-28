@@ -22,15 +22,25 @@ export const KNOWN_AGENTS: readonly KnownAgent[] = [
   { id: 'k-tpm', summary: 'Program plans and status reports' },
 ];
 
+const NOT_SHIPPED = 'Not one of the agents that Konductor ships';
+
 /**
  * The agents to offer for a stage whose agent is `current`: the known ones,
- * and `current` first if it is not among them, so it is never lost.
+ * then those of `kept` that are not among them (the agents the saved file
+ * names), with `current` first, so no id of the file is lost by choosing
+ * another.
  */
-export function agentChoices(current: string): readonly KnownAgent[] {
-  return KNOWN_AGENTS.some((agent) => agent.id === current)
-    ? KNOWN_AGENTS
-    : [
-        { id: current, summary: 'Not one of the agents that Konductor ships' },
-        ...KNOWN_AGENTS,
-      ];
+export function agentChoices(
+  current: string,
+  kept: readonly string[] = [],
+): readonly KnownAgent[] {
+  const known = new Set(KNOWN_AGENTS.map((agent) => agent.id));
+  const others = [...new Set([current, ...kept])].filter(
+    (id) => !known.has(id),
+  );
+  if (others.length === 0) return KNOWN_AGENTS;
+  return [
+    ...others.map((id) => ({ id, summary: NOT_SHIPPED })),
+    ...KNOWN_AGENTS,
+  ];
 }
