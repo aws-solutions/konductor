@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it } from 'vitest';
-import { AA_GRAPHIC, AA_TEXT, contrastRatio } from './contrast';
+import { AA_GRAPHIC, AA_TEXT, blend, contrastRatio } from './contrast';
 import {
   APP_THEME,
   BAND,
@@ -37,6 +37,26 @@ describe.each(MODES)('the %s palette', (mode) => {
       AA_TEXT,
     );
   });
+
+  describe.each(['tint', 'tintStrong'] as const)(
+    'text on the %s wash',
+    (wash) => {
+      it.each([
+        ['text', c.text],
+        ['muted text', c.textMuted],
+        ['links', c.link],
+      ])(
+        'has AA contrast for %s on every area it can lie on',
+        (_name, text) => {
+          for (const area of [c.bg, c.surface, c.surfaceAlt]) {
+            expect(
+              contrastRatio(text, blend(c[wash], area)),
+            ).toBeGreaterThanOrEqual(AA_TEXT);
+          }
+        },
+      );
+    },
+  );
 
   it('draws control edges that reach 3:1 on the surface and the field', () => {
     expect(contrastRatio(c.control, c.surface)).toBeGreaterThanOrEqual(
