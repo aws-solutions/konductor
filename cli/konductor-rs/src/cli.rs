@@ -28,9 +28,12 @@ pub(crate) mod config;
 pub(crate) mod config_lock;
 mod dispatch;
 pub(crate) mod doctor;
-// Only tests call it until the gate evaluator lands.
+// Only tests and the gate evaluator call it until verify-run lands.
 #[allow(dead_code)]
 pub(crate) mod gate_config;
+// Only tests call it until verify-run lands.
+#[allow(dead_code)]
+pub(crate) mod gate_eval;
 pub(crate) mod harness_select;
 pub(crate) mod init;
 pub(crate) mod install;
@@ -92,6 +95,9 @@ const EXIT_VERIFY_FAILED: u8 = 65;
 pub(crate) const EXIT_SUCCESS_WITH_WARNINGS: u8 = 6;
 
 const EXIT_HALTED: u8 = 1;
+
+/// A recorded fix-cycle count went above the cap.
+const EXIT_BUDGET_EXCEEDED: u8 = 3;
 
 /// `--help` text styling (clap's own `Command::styles()`). Independent of
 /// `--no-color`/`NO_COLOR`: clap does its own TTY detection for `--help`

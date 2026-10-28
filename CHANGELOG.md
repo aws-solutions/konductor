@@ -16,6 +16,8 @@ not per individual commit.
   checks them against each SOP's phase list.
 - `severity-schema.yml` maps the words checkers write (IMPORTANT, WARNING, SUGGESTION,
   MINOR) to severity ids.
+- The CLI can judge a SOP session file against its gates. Phase-gated SOPs treat an open
+  HIGH finding as unresolved, even when the threshold is CRITICAL.
 
 ### Changed
 
