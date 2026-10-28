@@ -15,6 +15,12 @@ function runsThatEnd(): RunPort {
   };
 }
 
+const emptyMemory = (runId?: string): RunMemory => ({
+  recall: () => runId,
+  remember: vi.fn(),
+  forget: vi.fn(),
+});
+
 describe('useExecution', () => {
   it('starts one run when start is called twice before anything renders', async () => {
     const runs = runsThatEnd();
@@ -57,6 +63,7 @@ describe('useExecution after a reload', () => {
   const memoryOf = (runId?: string): RunMemory => ({
     recall: vi.fn(() => runId),
     remember: vi.fn(),
+    forget: vi.fn(),
   });
 
   it('joins the run that the memory names when that run is still going', async () => {
@@ -119,6 +126,7 @@ describe('useExecution when the remembered run cannot be looked up', () => {
   const memoryOf = (runId: string): RunMemory => ({
     recall: () => runId,
     remember: vi.fn(),
+    forget: vi.fn(),
   });
 
   it('stays at rest when the server will not give the run', async () => {
@@ -161,6 +169,7 @@ describe('useExecution while a run of the memory is being looked for', () => {
   const memoryOf = (runId?: string): RunMemory => ({
     recall: vi.fn(() => runId),
     remember: vi.fn(),
+    forget: vi.fn(),
   });
 
   /** A server whose first read of the remembered run never answers. */
@@ -240,7 +249,11 @@ describe('useExecution while a run of the memory is being looked for', () => {
 
 describe('useExecution and the memory', () => {
   it('remembers no run when the run does not start', async () => {
-    const memory: RunMemory = { recall: () => undefined, remember: vi.fn() };
+    const memory: RunMemory = {
+      recall: () => undefined,
+      remember: vi.fn(),
+      forget: vi.fn(),
+    };
     const runs: RunPort = {
       start: vi.fn().mockRejectedValue(new Error('kiro-cli is not installed.')),
       get: vi.fn(),
@@ -252,5 +265,116 @@ describe('useExecution and the memory', () => {
     await act(async () => result.current.start('Ship it'));
 
     expect(memory.remember).not.toHaveBeenCalled();
+  });
+
+  it('forgets the run once it has ended', async () => {
+    const memory = { ...emptyMemory(), forget: vi.fn() };
+    const { result } = renderHook(() =>
+      useExecution(runsThatEnd(), new FakeScheduler(), memory),
+    );
+
+    await act(async () => result.current.start('Ship it'));
+
+    expect(memory.forget).toHaveBeenCalledOnce();
+  });
+
+  it('keeps the run in the memory while it goes on', async () => {
+    const memory = { ...emptyMemory(), forget: vi.fn() };
+    const runs: RunPort = {
+      start: vi.fn().mockResolvedValue(RUN_ID),
+      get: vi.fn().mockResolvedValue(helloRun(1)),
+    };
+    const { result } = renderHook(() =>
+      useExecution(runs, new FakeScheduler(), memory),
+    );
+
+    await act(async () => result.current.start('Ship it'));
+
+    expect(memory.forget).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['has ended', () => Promise.resolve(helloRun(2))],
+    ['is gone', () => Promise.reject(new RunReadRefused('Gone.'))],
+  ])(
+    'forgets a remembered run that %s when the page is opened again',
+    async (_, get) => {
+      const memory = { ...emptyMemory(RUN_ID), forget: vi.fn() };
+      const runs: RunPort = { start: vi.fn(), get: vi.fn(get) };
+
+      renderHook(() => useExecution(runs, new FakeScheduler(), memory));
+      await act(async () => {});
+
+      expect(memory.forget).toHaveBeenCalledOnce();
+    },
+  );
+
+  it('keeps a remembered run that could not be looked up', async () => {
+    const memory = { ...emptyMemory(RUN_ID), forget: vi.fn() };
+    const runs: RunPort = {
+      start: vi.fn(),
+      get: vi.fn().mockRejectedValue(new Error('The server did not answer.')),
+    };
+    const scheduler = new FakeScheduler();
+
+    renderHook(() => useExecution(runs, scheduler, memory));
+    for (let turn = 0; turn < 3; turn += 1) {
+      await act(async () => scheduler.tick());
+    }
+
+    expect(memory.forget).not.toHaveBeenCalled();
+  });
+
+  it('keeps a remembered run when the look for it is stopped', async () => {
+    const memory = { ...emptyMemory(RUN_ID), forget: vi.fn() };
+    const runs: RunPort = {
+      start: vi.fn(),
+      get: vi.fn(
+        (_id: string, signal: AbortSignal) =>
+          new Promise<never>((_resolve, reject) =>
+            signal.addEventListener('abort', () =>
+              reject(new Error('stopped')),
+            ),
+          ),
+      ),
+    };
+
+    const { unmount } = renderHook(() =>
+      useExecution(runs, new FakeScheduler(), memory),
+    );
+    await act(async () => {});
+    unmount();
+    await act(async () => {});
+
+    expect(memory.forget).not.toHaveBeenCalled();
+  });
+});
+
+describe('useExecution when the runs change', () => {
+  it('goes on following a run that it joined', async () => {
+    const memory = emptyMemory(RUN_ID);
+    const scheduler = new FakeScheduler();
+    const joined: RunPort = {
+      start: vi.fn(),
+      get: vi
+        .fn()
+        .mockResolvedValueOnce(helloRun(1))
+        .mockResolvedValue(helloRun(2)),
+    };
+    const { result, rerender } = renderHook(
+      ({ runs }) => useExecution(runs, scheduler, memory),
+      { initialProps: { runs: joined } },
+    );
+    await waitFor(() => expect(result.current.state.phase).toBe('following'));
+    const other: RunPort = {
+      start: vi.fn(),
+      get: vi.fn().mockResolvedValue(helloRun(2)),
+    };
+
+    rerender({ runs: other });
+    await act(async () => scheduler.tick());
+
+    expect(joined.get).toHaveBeenCalledTimes(2);
+    expect(result.current.state.phase).toBe('finished');
   });
 });
