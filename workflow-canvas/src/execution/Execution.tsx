@@ -18,6 +18,7 @@ import {
   GOAL_MAX_LENGTH,
   goalProblem,
   isInFlight,
+  isJoinedRun,
   nodeStatuses,
   runOf,
   stageDrift,
@@ -84,6 +85,11 @@ function StageDriftNotice({
   );
 }
 
+// A run that was already going has a goal that the API does not give, and the
+// box must not show another goal in its place.
+const NO_GOAL_OF_JOINED_RUN =
+  'This run was already going, so its goal is not known here.';
+
 function RunPanel({
   goal,
   onGoalChange,
@@ -94,6 +100,7 @@ function RunPanel({
   execution: ExecutionController;
 }) {
   const inFlight = isInFlight(execution.state);
+  const joined = isJoinedRun(execution.state);
   const problem = goalProblem(goal);
   const canRun = !inFlight && problem === undefined;
   return (
@@ -101,12 +108,17 @@ function RunPanel({
       <SpaceBetween size="m">
         <FormField
           label="Goal"
-          description="What the run should achieve. Every stage is given it."
+          description={
+            joined
+              ? NO_GOAL_OF_JOINED_RUN
+              : 'What the run should achieve. Every stage is given it.'
+          }
           constraintText={`At most ${GOAL_MAX_LENGTH} characters.`}
           errorText={problem}
         >
           <Input
-            value={goal}
+            value={joined ? '' : goal}
+            placeholder={joined ? 'Not known' : undefined}
             readOnly={inFlight}
             onChange={({ detail }) => onGoalChange(detail.value)}
             onKeyDown={({ detail }) => {

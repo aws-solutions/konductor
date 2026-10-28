@@ -21,13 +21,14 @@ function followingText(run: RunView | undefined): string {
   return `${lead} ${stagesDone(run)}`;
 }
 
-function finishedText(run: RunView): string {
+function finishedText(run: RunView, joined: boolean | undefined): string {
   const exit = run.exitCode === null ? '' : ` Exit code ${run.exitCode}.`;
   const blocked = run.stages.find((stage) => stage.status === 'blocked');
+  const subject = joined ? 'The run that was already in progress' : 'Run';
   const lead =
     run.status === 'passed'
-      ? 'Run passed.'
-      : `Run halted${blocked ? ` at ${blocked.name}` : ''}.`;
+      ? `${subject} passed.`
+      : `${subject} halted${blocked ? ` at ${blocked.name}` : ''}.`;
   return `${lead} ${stagesDone(run)}${exit}`;
 }
 
@@ -43,7 +44,7 @@ export function statusText(state: ExecutionState): string {
         ? `${JOINED} ${followingText(state.run)}`
         : followingText(state.run);
     case 'finished':
-      return finishedText(state.run);
+      return finishedText(state.run, state.joined);
     case 'error':
       return 'See the error below.';
   }
