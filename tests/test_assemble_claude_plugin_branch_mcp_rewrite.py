@@ -161,7 +161,7 @@ def test_assembled_agents_use_claude_code_model_ids(assembled):
     for agent in (assembled / "agents").glob("*.md"):
         model = re.search(r"^model: (.+)$", agent.read_text(encoding="utf-8"), re.M).group(1)
         assert re.fullmatch(
-            r"claude-(?:opus|sonnet|haiku|fable)-\d{1,2}(?:-\d{1,2})?(?:-\d{8})?|inherit|sonnet|opus|haiku", model
+            r"claude-(?:opus|sonnet|haiku|fable)-\d{1,2}(?:-\d{1,2})?(?:-\d{8})?|inherit", model
         ), f"{agent.name}: {model}"
 
 
