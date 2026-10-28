@@ -406,10 +406,13 @@ test('warns that the draft is lost when the session is gone at a save', async ({
   await designer.save.click();
 
   const alert = designer.alerts;
-  await expect(alert).toContainText('The session is not valid.');
+  await expect(alert).toContainText('The server no longer knows this session.');
   await expect(alert).toContainText('lost when you do');
   await expect(designer.name).toHaveValue('write');
   expect(saves.sent()).toBe(1);
+  expect(await designer.page.evaluate(() => window.sessionStorage.length)).toBe(
+    0,
+  );
 });
 
 test('counts a save as done when the answer is lost but the file holds the text', async ({
