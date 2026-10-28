@@ -73,6 +73,7 @@ export class StubClient {
           const chunks: Buffer[] = [];
           res.on('data', (chunk: Buffer) => chunks.push(chunk));
           res.on('end', () => {
+            markReplied(req);
             const text = Buffer.concat(chunks).toString('utf8');
             const body = text === '' ? undefined : JSON.parse(text);
             resolve({
@@ -84,7 +85,7 @@ export class StubClient {
         },
       );
       req.on('error', reject);
-      keepSocketErrorsHandled(req);
+      guardLateSocketErrors(req);
       req.end(payload);
     });
   }
@@ -99,18 +100,49 @@ export class StubClient {
   }
 }
 
-const guarded = new WeakSet<Socket>();
+const LATE_WRITE_ERRORS = new Set(['EPIPE', 'ECONNRESET']);
+
+/** Whether the reply on a socket's current request is complete. */
+interface ReplyState {
+  complete: boolean;
+}
+
+const replyStates = new WeakMap<Socket, ReplyState>();
+
+/**
+ * Builds the listener that ignores a failed write to a stub that has already
+ * answered in full, which is how an early answer and close shows up. Any other
+ * error is rethrown. Before the reply is complete Node reports the error to the
+ * request itself, so the listener leaves it alone.
+ */
+export function lateWriteErrorListener(
+  state: ReplyState,
+): (error: NodeJS.ErrnoException) => void {
+  return (error) => {
+    if (!state.complete) return;
+    if (!LATE_WRITE_ERRORS.has(error.code ?? '')) throw error;
+  };
+}
 
 /**
  * Node removes its socket error handler once a reply is complete, even while
- * the body is still being sent. A stub that answers early and then closes
- * would crash the process with EPIPE, so each socket keeps a handler of its
- * own. A failure before the reply still rejects the call.
+ * the body is still being sent, so a late EPIPE or ECONNRESET would crash the
+ * process. Each socket keeps a listener for its whole life; a failure before the
+ * reply still rejects the call.
  */
-function keepSocketErrorsHandled(req: ClientRequest): void {
+function guardLateSocketErrors(req: ClientRequest): void {
   req.once('socket', (socket) => {
-    if (guarded.has(socket)) return;
-    guarded.add(socket);
-    socket.on('error', () => {});
+    let state = replyStates.get(socket);
+    if (!state) {
+      state = { complete: false };
+      replyStates.set(socket, state);
+      socket.on('error', lateWriteErrorListener(state));
+    }
+    state.complete = false;
   });
+}
+
+function markReplied(req: ClientRequest): void {
+  const state = req.socket && replyStates.get(req.socket);
+  if (state) state.complete = true;
 }
