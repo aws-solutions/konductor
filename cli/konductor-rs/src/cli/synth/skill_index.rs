@@ -9,6 +9,8 @@ use super::model::{is_orchestrator, SkillDef};
 use crate::cli::skills_server::{GET_SKILL_TOOL, MCP_SERVER_NAME};
 
 const TRIGGER_MAX_CHARS: usize = 160;
+/// Below this, a cut-down summary says too little to be worth the space.
+const MIN_SUMMARY_CHARS: usize = 40;
 const ELLIPSIS: &str = "...";
 
 const HEADING: &str = "## Your skills";
@@ -55,13 +57,8 @@ fn skill_trigger(raw_frontmatter: &str) -> Option<Trigger> {
         .position(|s| s.starts_with("Use ") || s.starts_with("MUST USE"))
         .unwrap_or(0);
     let chosen = sentences[chosen_at];
-    let text = if chosen_at == 0 {
-        chosen.to_string()
-    } else {
-        format!("{} {chosen}", sentences[0])
-    };
     Some(Trigger {
-        text: cap_on_word_boundary(&text),
+        text: with_summary(sentences[0], chosen, chosen_at),
         every_task: chosen.starts_with(EVERY_TASK_MARKER),
     })
 }
@@ -93,11 +90,25 @@ fn split_sentences(text: &str) -> Vec<&str> {
     sentences
 }
 
-fn cap_on_word_boundary(text: &str) -> String {
-    if text.chars().count() <= TRIGGER_MAX_CHARS {
+// The "Use ..." sentence is what a task gets matched against, so it is kept
+// whole and the summary sentence gets whatever room is left, if enough.
+fn with_summary(summary: &str, chosen: &str, chosen_at: usize) -> String {
+    let chosen_chars = chosen.chars().count();
+    if chosen_at == 0 || chosen_chars + 1 >= TRIGGER_MAX_CHARS {
+        return cap_on_word_boundary(chosen, TRIGGER_MAX_CHARS);
+    }
+    let room = TRIGGER_MAX_CHARS - chosen_chars - 1;
+    if room < MIN_SUMMARY_CHARS {
+        return chosen.to_string();
+    }
+    format!("{} {chosen}", cap_on_word_boundary(summary, room))
+}
+
+fn cap_on_word_boundary(text: &str, max_chars: usize) -> String {
+    if text.chars().count() <= max_chars {
         return text.to_string();
     }
-    let keep = TRIGGER_MAX_CHARS - ELLIPSIS.len();
+    let keep = max_chars - ELLIPSIS.len();
     let cut = text
         .char_indices()
         .nth(keep)
@@ -229,14 +240,28 @@ mod tests {
                            type safety, DynamoDB correctness, and test quality. Use after \
                            implementing backend changes to catch issues before code review. \
                            Produces CRITICAL/IMPORTANT/SUGGESTION findings.";
-        let got = trigger(description).unwrap();
-        assert!(
-            got.starts_with("Reviews backend code changes for architectural pattern compliance"),
-            "{got}"
+        assert_eq!(
+            trigger(description).as_deref(),
+            Some(
+                "Reviews backend code changes for architectural pattern compliance, type \
+                 safety... Use after implementing backend changes to catch issues before code \
+                 review."
+            )
         );
-        assert!(got.contains(". Use after implementing"), "{got}");
+    }
+
+    #[test]
+    fn long_summary_never_cuts_into_the_use_sentence() {
+        let summary = "Does a thing ".repeat(20);
+        let use_sentence = "Use when the user asks for a thing to be done carefully and well \
+                            before anything else happens in the session.";
+        let got = trigger(&format!("{}. {use_sentence}", summary.trim())).unwrap();
+        assert!(got.ends_with(use_sentence), "{got}");
         assert!(got.chars().count() <= TRIGGER_MAX_CHARS, "{got}");
-        assert!(got.ends_with("..."), "{got}");
+
+        let long_use = format!("Use when {}.", "the user asks ".repeat(12).trim());
+        let got = trigger(&format!("Summary here. {long_use}")).unwrap();
+        assert!(got.starts_with("Use when"), "{got}");
     }
 
     #[test]
