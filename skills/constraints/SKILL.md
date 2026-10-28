@@ -23,13 +23,13 @@ The NEVER DO rules live in the core rules, which every agent loads at session st
 
 ### ALWAYS DO
 
-1. **Read before edit** — Always read the complete file before making changes
+1. **Read before edit**: see Engineering practices in the core rules
 2. **Follow existing patterns**: see Engineering practices and Writing habits in the core rules
 3. **Maker-checker** — Always run the maker-checker pattern: generate artifact → validate with the corresponding checker skill before presenting to the user
 4. **Backward compatibility**: see Engineering practices in the core rules
 5. **Comment complex logic**: see Engineering practices in the core rules
 6. **Structured logging**: see Engineering practices in the core rules
-7. **Verify before done**: see NEVER DO 3 and 5 and Engineering practices in the core rules
+7. **Verify before done**: see "No broken commits" and "No broken state" under NEVER DO, and Engineering practices, in the core rules
 8. **Severity ordering** — Always present findings as CRITICAL → IMPORTANT → SUGGESTION
 
 ## Failure Recovery
@@ -48,7 +48,7 @@ See Engineering practices in the core rules: research first, fix second.
 
 ### Acknowledge Uncertainty
 
-See Engineering practices in the core rules: say whether you are working from documented knowledge, inference, or a guess.
+See Engineering practices in the core rules: for an unverified claim that matters, say whether it rests on documented knowledge, inference, or a guess.
 
 ## Quality Gate
 
