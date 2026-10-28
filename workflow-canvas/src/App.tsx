@@ -4,6 +4,7 @@ import Box from '@cloudscape-design/components/box';
 import ContentLayout from '@cloudscape-design/components/content-layout';
 import Header from '@cloudscape-design/components/header';
 import Tabs from '@cloudscape-design/components/tabs';
+import type { ReactNode } from 'react';
 import { Designer } from './designer/Designer';
 import { useSettled } from './designer/use-settled';
 import type { LoadResult } from './workflow/load-workflow';
@@ -15,7 +16,14 @@ const placeholder = <Box color="text-status-inactive">Nothing here yet.</Box>;
  * Designer draws the workflow that `load` settles with; the Execution tab
  * shows a placeholder until its content is built.
  */
-export function App({ load }: { load: Promise<LoadResult> }) {
+export function App({
+  load,
+  notice,
+}: {
+  load: Promise<LoadResult>;
+  /** Shown above the tabs, such as the refusal of a pasted launch address. */
+  notice?: ReactNode;
+}) {
   // Read here, not in the tab, so switching tabs does not load again.
   const result = useSettled(load);
   return (
@@ -24,6 +32,7 @@ export function App({ load }: { load: Promise<LoadResult> }) {
       toolsHide
       content={
         <ContentLayout header={<Header variant="h1">Workflow canvas</Header>}>
+          {notice}
           <Tabs
             ariaLabel="Workflow canvas views"
             tabs={[

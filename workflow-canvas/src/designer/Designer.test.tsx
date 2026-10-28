@@ -78,6 +78,32 @@ describe('Designer', () => {
     ).toBeTruthy();
   });
 
+  it('shows the names in a problem as code, without backticks', () => {
+    const broken = {
+      ...HELLO_DOCUMENT,
+      view: null,
+      diagnostics: [
+        { message: 'The mapping needs the key `intent`.', line: 2 },
+      ],
+    };
+
+    render(<Designer result={loaded(broken)} />);
+
+    const list = screen.getByRole('list', {
+      name: 'Problems in the workflow file',
+    });
+    expect(list.textContent).toBe('Line 2: The mapping needs the key intent.');
+    expect(list.querySelector('code')?.textContent).toBe('intent');
+  });
+
+  it('shows the names in the reason a load failed as code, without backticks', () => {
+    render(<Designer result={failed('The key `stages` is missing.')} />);
+
+    expect(screen.getByRole('alert').textContent).toContain(
+      'The key stages is missing.',
+    );
+  });
+
   it('shows a problem that has no line without a line number', () => {
     const broken = {
       ...HELLO_DOCUMENT,

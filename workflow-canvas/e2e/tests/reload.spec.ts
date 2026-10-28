@@ -53,6 +53,9 @@ test('keeps the workflow when a pasted launch code is refused', async ({
   await canvas.expectWorkflowDrawn();
   await expect(page.getByText('The workflow did not load')).toHaveCount(0);
   expect(new URL(page.url()).hash).toBe('');
+  await expect(page.getByTestId('launch-notice')).toContainText(
+    'The launch code is not valid. The open workflow is unchanged.',
+  );
 });
 
 test('shows the workflow of a pasted launch code once its session is open', async ({

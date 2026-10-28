@@ -13,6 +13,12 @@ export interface WorkflowSource {
    * that works; a workflow on the page is never replaced by an error.
    */
   offer(code: string): Promise<void>;
+  /** Why the newest pasted code was refused while a workflow is on the page. */
+  notice(): string | undefined;
+  /** Calls `listener` when `notice` changes; returns the way to stop. */
+  subscribeNotice(listener: () => void): () => void;
+  /** Drops the notice. */
+  dismissNotice(): void;
 }
 
 /**
@@ -27,21 +33,33 @@ export function createWorkflowSource(
   let lastOffer = 0;
   let shownOffer = 0;
   let shownWorkflowOffer = 0;
+  let notice: string | undefined;
   const listeners = new Set<() => void>();
+  const noticeListeners = new Set<() => void>();
+  const setNotice = (next: string | undefined) => {
+    if (next === notice) return;
+    notice = next;
+    noticeListeners.forEach((listener) => listener());
+  };
   const show = (offer: number, next: LoadResult) => {
     shownOffer = offer;
     if (next.ok) shownWorkflowOffer = offer;
     current = Promise.resolve(next);
     listeners.forEach((listener) => listener());
+    if (next.ok) setNotice(undefined);
   };
   // A workflow is shown unless a newer one is. An error is shown only while
-  // no workflow is, and never over a newer answer.
+  // no workflow is, and never over a newer answer. With a workflow on the
+  // page, the refusal of the newest code is told in a notice instead.
   const offerLoaded = async (offer: number, next: LoadResult) => {
     if (next.ok) {
       if (offer > shownWorkflowOffer) show(offer, next);
       return;
     }
-    if ((await current).ok) return;
+    if ((await current).ok) {
+      if (offer === lastOffer) setNotice(next.message);
+      return;
+    }
     if (shownWorkflowOffer === 0 && offer > shownOffer) show(offer, next);
   };
   return {
@@ -50,6 +68,12 @@ export function createWorkflowSource(
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
+    notice: () => notice,
+    subscribeNotice(listener) {
+      noticeListeners.add(listener);
+      return () => noticeListeners.delete(listener);
+    },
+    dismissNotice: () => setNotice(undefined),
     async offer(code) {
       const offer = ++lastOffer;
       await offerLoaded(offer, await loadWorkflow(api, code));

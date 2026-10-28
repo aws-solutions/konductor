@@ -178,3 +178,84 @@ describe('createWorkflowSource', () => {
     expect(await source.current()).toMatchObject({ ok: true });
   });
 });
+
+describe('createWorkflowSource notice', () => {
+  const second = () =>
+    vi
+      .fn()
+      .mockResolvedValueOnce(HELLO_SESSION)
+      .mockImplementationOnce(refused);
+
+  it('says why a refused code left the workflow on the page as it was', async () => {
+    const source = createWorkflowSource(apiWith(second()), 'first');
+    const listener = vi.fn();
+    source.subscribeNotice(listener);
+
+    await source.offer('second');
+
+    expect(source.notice()).toBe('The launch code is not valid.');
+    expect(listener).toHaveBeenCalledOnce();
+  });
+
+  it('has no notice before a code is refused', async () => {
+    const source = createWorkflowSource(apiWith(second()), 'first');
+    await source.current();
+
+    expect(source.notice()).toBeUndefined();
+  });
+
+  it('clears the notice when it is dismissed', async () => {
+    const source = createWorkflowSource(apiWith(second()), 'first');
+    await source.offer('second');
+
+    source.dismissNotice();
+
+    expect(source.notice()).toBeUndefined();
+  });
+
+  it('clears the notice when a later code opens a workflow', async () => {
+    const createSession = vi
+      .fn()
+      .mockResolvedValueOnce(HELLO_SESSION)
+      .mockImplementationOnce(refused)
+      .mockResolvedValueOnce(HELLO_SESSION);
+    const source = createWorkflowSource(apiWith(createSession), 'first');
+    await source.offer('second');
+
+    await source.offer('third');
+
+    expect(source.notice()).toBeUndefined();
+  });
+
+  it('keeps quiet about a refusal when no workflow is on the page, as the page says it', async () => {
+    const createSession = vi.fn().mockImplementation(refused);
+    const source = createWorkflowSource(apiWith(createSession), 'first');
+
+    await source.offer('second');
+
+    expect(source.notice()).toBeUndefined();
+  });
+
+  it('keeps quiet about a refusal that a newer code has overtaken', async () => {
+    let refuseOlder!: () => void;
+    const createSession = vi
+      .fn()
+      .mockResolvedValueOnce(HELLO_SESSION)
+      .mockImplementationOnce(
+        () =>
+          new Promise((_, reject) => {
+            refuseOlder = () =>
+              reject(new ApiError('The launch code is not valid.', 401));
+          }),
+      )
+      .mockResolvedValueOnce(HELLO_SESSION);
+    const source = createWorkflowSource(apiWith(createSession), 'first');
+    const older = source.offer('second');
+    await source.offer('third');
+
+    refuseOlder();
+    await older;
+
+    expect(source.notice()).toBeUndefined();
+  });
+});
