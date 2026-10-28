@@ -39,7 +39,6 @@ export interface Colors {
   errorBg: string;
   warningBg: string;
   infoBg: string;
-  overlay: string;
 }
 
 /** White: light-mode surfaces, text on filled buttons, hovered links on the band. */
@@ -70,7 +69,6 @@ export const LIGHT: Colors = {
   errorBg: '#fdecec',
   warningBg: '#fff4db',
   infoBg: '#efebff',
-  overlay: 'rgba(22, 19, 31, 0.45)',
 };
 
 /** Dark mode: the night tones of the konductor docs theme. */
@@ -98,7 +96,35 @@ export const DARK: Colors = {
   errorBg: '#2b1722',
   warningBg: '#2b2314',
   infoBg: '#1f1a44',
-  overlay: 'rgba(11, 10, 18, 0.72)',
+};
+
+/** The colours that only the canvas uses, for one mode. */
+export interface CanvasColors {
+  dots: string;
+  edge: string;
+  portFill: string;
+  portRim: string;
+  portLetterOut: string;
+  portLetterIn: string;
+  portNotchBg: string;
+}
+
+const PORTS = {
+  portFill: '#5f6b7a',
+  portRim: '#16191f',
+  portLetterOut: WHITE,
+  portLetterIn: '#414d5c',
+  portNotchBg: WHITE,
+} as const;
+
+/**
+ * The canvas colours that are not in the palette. `canvas.css` repeats them,
+ * and a test fails when it holds a colour that is not named here or in the
+ * palette. The ports look the same in both modes.
+ */
+export const CANVAS: Record<ThemeMode, CanvasColors> = {
+  light: { dots: '#c9c1b3', edge: '#5f6b7a', ...PORTS },
+  dark: { dots: '#3a3168', edge: '#a39bc0', ...PORTS },
 };
 
 /** The colours of a mode. */
@@ -138,7 +164,7 @@ export const LOGO_DATA_URI = `data:image/svg+xml;utf8,${encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30">' +
     '<rect width="30" height="30" rx="9" fill="#7c5cff"/>' +
     '<path d="M10 7v16M10 15.5 19 7M13.5 13l6.5 10" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>' +
-    '<rect x="22" y="20" width="6" height="8" rx="2" fill="#3ddc97"/>' +
+    `<rect x="22" y="20" width="6" height="8" rx="2" fill="${DARK.success}"/>` +
     '</svg>',
 )}`;
 
