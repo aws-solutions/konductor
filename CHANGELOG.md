@@ -28,6 +28,8 @@ not per individual commit.
 
 ### Fixed
 
+- `--skill-name-filter` now limits each Kiro agent's skill server to that agent's declared
+  skills; it used to serve every installed skill.
 - Routing skills now agree with the orchestrator prompts. `mux-dispatch` peeks at a running
   pane only on the prompt's polling fallback, and `delegation-protocol` applies rule 5's
   fix-attempt cap and 2-Strike Circuit Breaker instead of its own cycle count, and limits its
