@@ -147,7 +147,7 @@ export function EditAlerts({
 }) {
   const { save } = state;
   return (
-    <div role="alert" className="wf-edit-alerts">
+    <div role="alert" className="wf-edit-alerts" data-testid="edit-alerts">
       {(save.phase === 'conflict' || save.phase === 'reloading') && (
         <Conflict
           problem={save.phase === 'conflict' ? save.problem : undefined}
