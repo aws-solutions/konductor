@@ -196,3 +196,33 @@ test('sets the saved mode before the app script runs', async ({ canvas }) => {
   await expect(root).toHaveCSS('color-scheme', 'dark');
   await expect(canvas.themeButton).toHaveCount(0);
 });
+
+test.describe('forced colors', () => {
+  test.use({ colorScheme: 'dark', forcedColors: 'active' });
+
+  test('draws the card in the system colours, so no text sits on a dark patch', async ({
+    canvas,
+  }) => {
+    const colours = await canvas.page.evaluate(() => {
+      const probe = document.createElement('div');
+      probe.style.cssText = 'background: Canvas; color: CanvasText';
+      document.body.append(probe);
+      const system = getComputedStyle(probe);
+      const body = document.querySelector('.wf-node-body');
+      const title = document.querySelector('.wf-node-title');
+      const result = {
+        canvas: system.backgroundColor,
+        canvasText: system.color,
+        fill: body ? getComputedStyle(body).fill : '',
+        stroke: body ? getComputedStyle(body).stroke : '',
+        text: title ? getComputedStyle(title).color : '',
+      };
+      probe.remove();
+      return result;
+    });
+
+    expect(colours.fill).toBe(colours.canvas);
+    expect(colours.stroke).toBe(colours.canvasText);
+    expect(colours.text).toBe(colours.canvasText);
+  });
+});

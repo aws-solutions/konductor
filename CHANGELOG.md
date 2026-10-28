@@ -19,7 +19,7 @@ not per individual commit.
 - Pasting a launch address into the open tab opens the new workflow without a reload, fitted to the canvas, and keeps the open one if the code is refused.
 - Reloading the canvas page resumes the open workflow from a session kept for the tab; a restarted server asks for a fresh launch address.
 - A spent launch address in the tab falls back to the kept session and says so, and a first load that failed, of an opened or a pasted address, can be retried with a reload.
-- The workflow canvas uses the Konductor docs theme, with light and dark modes.
+- The workflow canvas uses the Konductor docs theme, with light and dark modes, and system colours in forced-colors mode.
 
 ### Changed
 
