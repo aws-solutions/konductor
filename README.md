@@ -401,8 +401,9 @@ Everything else is bring-your-own:
 
 ## Project layout
 
-This is the source repository. The Claude Code plugin ships only `agents/`, `skills/`, `hooks/`, `docs/`
-and its manifests.
+The [source repository](https://github.com/aws-solutions/konductor) has the layout below. The Claude
+Code plugin ships only `agents/`, `skills/`, `hooks/`, `docs/`, its manifests, the README,
+`LICENSE.txt` and `NOTICE.txt`.
 
 ```text
 konductor/
