@@ -4,10 +4,22 @@ import {
   type PlaywrightTestConfig,
   type Project,
 } from '@playwright/test';
+import { apiTargetOrExit } from './stub-api/target';
+import {
+  APP_URL,
+  STUB_LAUNCH_CODE,
+  webServersFor,
+} from './stub-api/web-servers';
 
-const HOST = '127.0.0.1';
-const APP_PORT = 4173;
-const APP_URL = `http://${HOST}:${APP_PORT}`;
+export { STUB_LAUNCH_CODE };
+
+/**
+ * Where the API listens during a run: the stub, or the server named by
+ * `WC_API_TARGET`. This is the only place that reads the variable for
+ * Playwright; the server definitions are in `stub-api/web-servers.ts`.
+ */
+export const API_TARGET = apiTargetOrExit();
+export const API_URL = API_TARGET.origin;
 
 /**
  * One viewport and render mode for every project. With the pinned font and the
@@ -34,17 +46,5 @@ export const sharedConfig: PlaywrightTestConfig = {
   // A flaky test must fail the run, not pass on a retry.
   retries: 0,
   use: { baseURL: APP_URL, trace: 'retain-on-failure' },
-  // Servers the tests depend on, started before and stopped after the run.
-  // The app is served from a production build, as users get it. A backing
-  // service the app calls gets its own entry here, so one command starts
-  // everything.
-  webServer: [
-    {
-      name: 'app',
-      command: `npm run build && npx vite preview --host ${HOST} --port ${APP_PORT} --strictPort`,
-      url: APP_URL,
-      reuseExistingServer: false,
-      timeout: 120_000,
-    },
-  ],
+  webServer: webServersFor(API_TARGET),
 };
