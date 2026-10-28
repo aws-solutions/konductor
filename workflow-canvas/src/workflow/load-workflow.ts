@@ -88,12 +88,14 @@ function forgetIfStill(memory: SessionMemory, session: SessionRecord): void {
   if (memory.recallPending()?.token === session.token) memory.dropPending();
 }
 
+type SessionGuard = <T>(call: Promise<T>) => Promise<T>;
+
 // A 401 on a call that carries the token means the server no longer knows the
 // session: the token is dropped and the call fails with one message.
 function guardSession(
   memory: SessionMemory,
   session: SessionRecord,
-): <T>(call: Promise<T>) => Promise<T> {
+): SessionGuard {
   return async (call) => {
     try {
       return await call;
@@ -105,18 +107,22 @@ function guardSession(
   };
 }
 
-function runPortFor(api: WorkflowApi, token: string): RunPort {
+function runPortFor(
+  api: WorkflowApi,
+  token: string,
+  guard: SessionGuard,
+): RunPort {
   return {
     start: async (goal, signal) => {
       try {
-        return await api.startRun(token, goal, signal);
+        return await guard(api.startRun(token, goal, signal));
       } catch (error) {
         throw activeRunOf(error) ?? startUnsureOf(error) ?? error;
       }
     },
     get: async (runId, signal) => {
       try {
-        return await api.getRun(token, runId, signal);
+        return await guard(api.getRun(token, runId, signal));
       } catch (error) {
         throw readRefusedOf(error) ?? error;
       }
@@ -136,7 +142,7 @@ async function loadWith(
     workflow: {
       harness: session.harness,
       document,
-      runs: runPortFor(api, session.token),
+      runs: runPortFor(api, session.token, guard),
     },
     remember: () => memory.remember(session),
   };
