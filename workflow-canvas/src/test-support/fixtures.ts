@@ -66,6 +66,7 @@ export function loaded(
   return {
     ok: true,
     workflow: { harness: 'kiro-cli', document, edits, runs },
+    remember: () => undefined,
   };
 }
 

@@ -121,13 +121,14 @@ sets the port (a whole number from 1 to 65535; anything else stops the command
 with a one-line error). `STUB_LAUNCH_CODE` sets the code, for tests only: it can be
 weaker than the contract asks.
 
-The contract has the code work once. That would make a reload of the page a
-dead end when you develop: the reload drops the token and the code from the page,
-and the printed address no longer works. So the stub of `npm run dev:stub` (it
-gets `--with-dev-server`) and the one that Playwright starts take the code
-again, with no time limit, and give the same token. Open the printed address
-again after a reload. `npm run stub` on its own follows the contract: once,
-within 60 seconds.
+The contract has the code work once, and the page copes: it keeps the session in
+the storage of its tab, so a reload resumes without the code (see
+[The canvas](#the-canvas)). The stub of `npm run dev:stub` (it gets
+`--with-dev-server`) still takes the code again, with no time limit, and gives
+the same token, so opening the printed address twice is not a dead end. Set
+`STUB_STRICT=1` (for example `STUB_STRICT=1 npm run dev:stub`) to make it follow
+the contract: the code works once, within 60 seconds. `npm run stub` on its own
+and the stub that Playwright starts always follow the contract.
 
 The data covers the first release: a workflow of an intent and stages, and the
 `kiro-cli` harness. It is a `hello` workflow with a `draft` stage
@@ -149,8 +150,8 @@ through unchanged and the stub refuses a POST or PUT with a 403, so a page on
 another origin cannot use the dev server to call the API. The page reads the
 launch code from the address (`#<launch code>`), removes it from the address
 bar, trades it for a token with `POST /api/session` and loads the workflow with
-`GET /api/workflow`. The token is kept in memory only. To try the calls by
-hand, send the `Origin` of the page:
+`GET /api/workflow`. The token is kept in the session storage of the tab, so a
+reload resumes; see [The canvas](#the-canvas). To try the calls by hand, send the `Origin` of the page:
 
 ```bash
 curl -s -X POST http://127.0.0.1:5173/api/session \
@@ -210,9 +211,9 @@ compares the error codes, diagnostic codes, limits and patterns of the stub
 with the contract, so a change to one without the other fails.
 
 Playwright starts the stub beside the app (`stub-api/web-servers.ts` holds its
-launch code and the server list), with `--with-dev-server` so that a test can
-open the page again with the same code. So an end-to-end test can call it. With
-`WC_API_TARGET` set it does not, and the same tests call that server instead.
+launch code and the server list), so an end-to-end test can call it. Its launch
+code works once, as the contract has it. With `WC_API_TARGET` set Playwright
+does not start it, and the same tests call that server instead.
 
 ## The canvas
 
@@ -257,6 +258,14 @@ The rest wraps the core, so the rules can be tested without a browser:
   the page. A short anchor such as `#top` changes nothing; a longer one is
   offered as a code and refused. When several codes are in flight, the latest
   one that works wins.
+- `launch/session-memory.ts` is the port through which the page keeps its
+  session (the token and the harness, never the launch code) in the session
+  storage of its tab, under one key. A load with no code in the address uses it,
+  so a reload resumes the open workflow although the code is spent. A 401 on the
+  kept token (the server was started again) clears it and asks for a fresh
+  launch address. A pasted code replaces it only once the workflow of that code
+  is on the page. Script on the page can read the token; it lasts for the tab
+  and is gone when the tab closes.
 - `designer/` shows the result: loading, error, empty (no file yet, or a file
   with errors, with their messages), or the canvas with its editing (next
   section).
@@ -409,15 +418,13 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
   follows a run that was already going the Goal box is empty, says "Not known"
   and is labelled so. When that run ends, the status line still says it was
   already in progress.
-- Resume works when the page is opened again with a launch code that the
-  server accepts a second time, which is the dev stub (`npm run dev:stub`, see
-  above). A plain reload never resumes: the page has already removed the
-  launch code from the address, so it shows "no launch code in the address"
-  and no Execution tab, and the run goes on unseen. The tab keeps the id of the
-  latest run in the storage of the browser tab (`sessionStorage`; the id is no
-  secret, the token is not kept) and drops it once the run has ended or turns
-  out to be gone. When the page opens again with a session it
-  reads that run, trying again like any read. If the run is still running, the
+- Resume works after a reload, though the launch code works once: the page
+  resumes from the session it kept (see above). If the server was started
+  again, the kept token is refused and the page asks for a fresh launch
+  address; the run goes on unseen. The tab keeps the id of the latest run in
+  the storage of the browser tab (`sessionStorage`; the id is no secret) and
+  drops it once the run has ended or turns out to be gone. When the page
+  opens again with a session it reads that run, trying again like any read. If the run is still running, the
   tab follows it as if the person had joined it, without a click on Run. A run
   that has ended, one that the server will not give (for instance after it
   started again) or a browser that blocks storage leaves the tab ready for a

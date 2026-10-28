@@ -8,6 +8,7 @@ import { sessionRunMemory } from './execution/run-memory';
 import { createHttpApi } from './api/http-api';
 import { LaunchNotice } from './launch/LaunchNotice';
 import { takeLaunchCode, watchLaunchCode } from './launch/launch-code';
+import { sessionStorageMemory } from './launch/session-memory';
 import { createSwapRisk, guardOffers } from './launch/swap-guard';
 import { installTheme } from './theme/install';
 import { useWorkflowSource } from './workflow/use-workflow-source';
@@ -18,7 +19,11 @@ if (!root) throw new Error('Missing #root element');
 
 installTheme(document.body);
 
-const source = createWorkflowSource(createHttpApi(), takeLaunchCode(window));
+const source = createWorkflowSource(
+  createHttpApi(),
+  takeLaunchCode(window),
+  sessionStorageMemory(window),
+);
 const swapRisk = createSwapRisk();
 watchLaunchCode(
   window,

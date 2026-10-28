@@ -2,6 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ApiError, type WorkflowApi } from '../api/api';
 import { HELLO_DOCUMENT, HELLO_SESSION } from '../test-support/fixtures';
+import { freshMemory } from '../test-support/memory-storage';
 import { createWorkflowSource } from './workflow-source';
 
 function apiWith(createSession: WorkflowApi['createSession']): WorkflowApi {
@@ -26,7 +27,11 @@ const refused = () =>
 describe('createWorkflowSource', () => {
   it('starts the first load once, whoever reads it', async () => {
     const createSession = vi.fn().mockResolvedValue(HELLO_SESSION);
-    const source = createWorkflowSource(apiWith(createSession), 'first');
+    const source = createWorkflowSource(
+      apiWith(createSession),
+      'first',
+      freshMemory(),
+    );
 
     await source.current();
     await source.current();
@@ -36,7 +41,11 @@ describe('createWorkflowSource', () => {
 
   it('changes to the workflow of a new code once its session is open', async () => {
     const createSession = vi.fn().mockResolvedValue(HELLO_SESSION);
-    const source = createWorkflowSource(apiWith(createSession), 'first');
+    const source = createWorkflowSource(
+      apiWith(createSession),
+      'first',
+      freshMemory(),
+    );
     const before = source.current();
     const listener = vi.fn();
     source.subscribe(listener);
@@ -54,7 +63,11 @@ describe('createWorkflowSource', () => {
       .fn()
       .mockResolvedValueOnce(HELLO_SESSION)
       .mockImplementationOnce(refused);
-    const source = createWorkflowSource(apiWith(createSession), 'first');
+    const source = createWorkflowSource(
+      apiWith(createSession),
+      'first',
+      freshMemory(),
+    );
     const before = source.current();
     const listener = vi.fn();
     source.subscribe(listener);
@@ -70,7 +83,11 @@ describe('createWorkflowSource', () => {
       .fn()
       .mockImplementationOnce(refused)
       .mockImplementationOnce(refused);
-    const source = createWorkflowSource(apiWith(createSession), 'first');
+    const source = createWorkflowSource(
+      apiWith(createSession),
+      'first',
+      freshMemory(),
+    );
 
     await source.offer('second');
 
@@ -85,7 +102,11 @@ describe('createWorkflowSource', () => {
       .fn()
       .mockImplementationOnce(refused)
       .mockResolvedValueOnce(HELLO_SESSION);
-    const source = createWorkflowSource(apiWith(createSession), 'first');
+    const source = createWorkflowSource(
+      apiWith(createSession),
+      'first',
+      freshMemory(),
+    );
 
     await source.offer('second');
 
@@ -100,7 +121,11 @@ describe('createWorkflowSource', () => {
       .mockImplementation(
         () => new Promise((resolve) => answers.push(resolve)),
       );
-    const source = createWorkflowSource(apiWith(createSession), 'first');
+    const source = createWorkflowSource(
+      apiWith(createSession),
+      'first',
+      freshMemory(),
+    );
     const older = source.offer('second');
     const newer = source.offer('third');
     const listener = vi.fn();
@@ -126,7 +151,11 @@ describe('createWorkflowSource', () => {
         () => new Promise((resolve) => answers.push(resolve)),
       )
       .mockImplementationOnce(refused);
-    const source = createWorkflowSource(apiWith(createSession), 'first');
+    const source = createWorkflowSource(
+      apiWith(createSession),
+      'first',
+      freshMemory(),
+    );
     await source.current();
     const older = source.offer('second');
     const newer = source.offer('third');
@@ -149,7 +178,11 @@ describe('createWorkflowSource', () => {
         () => new Promise((resolve) => answers.push(resolve)),
       )
       .mockImplementationOnce(refused);
-    const source = createWorkflowSource(apiWith(createSession), 'first');
+    const source = createWorkflowSource(
+      apiWith(createSession),
+      'first',
+      freshMemory(),
+    );
     const older = source.offer('second');
     await source.offer('third');
 
@@ -171,7 +204,11 @@ describe('createWorkflowSource', () => {
       )
       .mockImplementationOnce(refused)
       .mockResolvedValueOnce(HELLO_SESSION);
-    const source = createWorkflowSource(apiWith(createSession), 'first');
+    const source = createWorkflowSource(
+      apiWith(createSession),
+      'first',
+      freshMemory(),
+    );
     const refusedOffer = source.offer('second');
     await settleMicrotasks();
     await source.offer('third');
@@ -191,7 +228,11 @@ describe('createWorkflowSource notice', () => {
       .mockImplementationOnce(refused);
 
   it('says why a refused code left the workflow on the page as it was', async () => {
-    const source = createWorkflowSource(apiWith(second()), 'first');
+    const source = createWorkflowSource(
+      apiWith(second()),
+      'first',
+      freshMemory(),
+    );
     const listener = vi.fn();
     source.subscribeNotice(listener);
 
@@ -202,14 +243,22 @@ describe('createWorkflowSource notice', () => {
   });
 
   it('has no notice before a code is refused', async () => {
-    const source = createWorkflowSource(apiWith(second()), 'first');
+    const source = createWorkflowSource(
+      apiWith(second()),
+      'first',
+      freshMemory(),
+    );
     await source.current();
 
     expect(source.notice()).toBeUndefined();
   });
 
   it('clears the notice when it is dismissed', async () => {
-    const source = createWorkflowSource(apiWith(second()), 'first');
+    const source = createWorkflowSource(
+      apiWith(second()),
+      'first',
+      freshMemory(),
+    );
     await source.offer('second');
 
     source.dismissNotice();
@@ -223,7 +272,11 @@ describe('createWorkflowSource notice', () => {
       .mockResolvedValueOnce(HELLO_SESSION)
       .mockImplementationOnce(refused)
       .mockResolvedValueOnce(HELLO_SESSION);
-    const source = createWorkflowSource(apiWith(createSession), 'first');
+    const source = createWorkflowSource(
+      apiWith(createSession),
+      'first',
+      freshMemory(),
+    );
     await source.offer('second');
 
     await source.offer('third');
@@ -233,7 +286,11 @@ describe('createWorkflowSource notice', () => {
 
   it('keeps quiet about a refusal when no workflow is on the page, as the page says it', async () => {
     const createSession = vi.fn().mockImplementation(refused);
-    const source = createWorkflowSource(apiWith(createSession), 'first');
+    const source = createWorkflowSource(
+      apiWith(createSession),
+      'first',
+      freshMemory(),
+    );
 
     await source.offer('second');
 
@@ -253,7 +310,11 @@ describe('createWorkflowSource notice', () => {
           }),
       )
       .mockResolvedValueOnce(HELLO_SESSION);
-    const source = createWorkflowSource(apiWith(createSession), 'first');
+    const source = createWorkflowSource(
+      apiWith(createSession),
+      'first',
+      freshMemory(),
+    );
     const older = source.offer('second');
     await source.offer('third');
 
@@ -261,5 +322,156 @@ describe('createWorkflowSource notice', () => {
     await older;
 
     expect(source.notice()).toBeUndefined();
+  });
+});
+
+describe('createWorkflowSource session memory', () => {
+  const KEPT = { token: 'token-1', harness: 'kiro-cli' };
+
+  function memoryWith(record?: typeof KEPT) {
+    const memory = freshMemory();
+    if (record) memory.remember(record);
+    return memory;
+  }
+
+  it('keeps the session of the first workflow once it is shown', async () => {
+    const memory = memoryWith();
+    const createSession = vi.fn().mockResolvedValue(HELLO_SESSION);
+    const source = createWorkflowSource(
+      apiWith(createSession),
+      'first',
+      memory,
+    );
+
+    await source.current();
+
+    expect(memory.recall()).toEqual(KEPT);
+  });
+
+  it('keeps nothing when the first load fails', async () => {
+    const memory = memoryWith();
+    const source = createWorkflowSource(
+      apiWith(vi.fn().mockImplementation(refused)),
+      'first',
+      memory,
+    );
+
+    await source.current();
+
+    expect(memory.recall()).toBeUndefined();
+  });
+
+  it('opens the kept session after a reload, with no code', async () => {
+    const createSession = vi.fn();
+    const api = apiWith(createSession);
+    const source = createWorkflowSource(
+      api,
+      undefined,
+      memoryWith({ token: 'kept-token', harness: 'kept-harness' }),
+    );
+
+    expect(await source.current()).toMatchObject({
+      ok: true,
+      workflow: { harness: 'kept-harness' },
+    });
+    expect(createSession).not.toHaveBeenCalled();
+    expect(api.getWorkflow).toHaveBeenCalledWith('kept-token');
+  });
+
+  it('replaces the kept session with the one of a pasted code that works', async () => {
+    const memory = memoryWith({ token: 'old-token', harness: 'old' });
+    const createSession = vi
+      .fn()
+      .mockResolvedValue({ ...HELLO_SESSION, token: 'new-token' });
+    const source = createWorkflowSource(
+      apiWith(createSession),
+      undefined,
+      memory,
+    );
+    await source.current();
+
+    await source.offer('second');
+
+    expect(memory.recall()).toEqual({
+      token: 'new-token',
+      harness: 'kiro-cli',
+    });
+  });
+
+  it('keeps the old session when a pasted code is refused', async () => {
+    const memory = memoryWith();
+    const createSession = vi
+      .fn()
+      .mockResolvedValueOnce(HELLO_SESSION)
+      .mockImplementationOnce(refused);
+    const source = createWorkflowSource(
+      apiWith(createSession),
+      'first',
+      memory,
+    );
+    await source.current();
+
+    await source.offer('second');
+
+    expect(memory.recall()).toEqual(KEPT);
+  });
+
+  it('keeps the session of the newest code when an older one arrives late', async () => {
+    const memory = memoryWith();
+    const answers: Array<(session: typeof HELLO_SESSION) => void> = [];
+    const createSession = vi
+      .fn()
+      .mockResolvedValueOnce(HELLO_SESSION)
+      .mockImplementation(
+        () => new Promise((resolve) => answers.push(resolve)),
+      );
+    const source = createWorkflowSource(
+      apiWith(createSession),
+      'first',
+      memory,
+    );
+    const older = source.offer('second');
+    const newer = source.offer('third');
+
+    answers[1]!({ ...HELLO_SESSION, token: 'newer-token' });
+    await newer;
+    answers[0]!({ ...HELLO_SESSION, token: 'older-token' });
+    await older;
+
+    expect(memory.recall()?.token).toBe('newer-token');
+  });
+
+  it('keeps the session of a pasted code when the first load answers after it', async () => {
+    const memory = memoryWith();
+    let answerFirst!: (session: typeof HELLO_SESSION) => void;
+    const createSession = vi
+      .fn()
+      .mockImplementationOnce(
+        () => new Promise((resolve) => (answerFirst = resolve)),
+      )
+      .mockResolvedValueOnce({ ...HELLO_SESSION, token: 'pasted-token' });
+    const source = createWorkflowSource(
+      apiWith(createSession),
+      'first',
+      memory,
+    );
+
+    await source.offer('second');
+    answerFirst({ ...HELLO_SESSION, token: 'first-token' });
+    await settleMicrotasks();
+
+    expect(memory.recall()?.token).toBe('pasted-token');
+  });
+
+  it('forgets a kept session that the server no longer knows', async () => {
+    const memory = memoryWith(KEPT);
+    const api = {
+      ...apiWith(vi.fn()),
+      getWorkflow: vi.fn().mockRejectedValue(new ApiError('Wrong.', 401)),
+    };
+    const source = createWorkflowSource(api, undefined, memory);
+
+    expect(await source.current()).toMatchObject({ ok: false });
+    expect(memory.recall()).toBeUndefined();
   });
 });

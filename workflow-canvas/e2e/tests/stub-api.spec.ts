@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { expect, test } from '@playwright/test';
-import { API_TARGET, API_URL, STUB_LAUNCH_CODE } from '../../playwright.shared';
+import { API_URL, STUB_LAUNCH_CODE } from '../../playwright.shared';
 import { sharedSession } from '../support/session';
 
 // Shows that a test can reach the API: the stub that the Playwright config
@@ -14,23 +14,17 @@ test('the API gave a session for the launch code of the config', () => {
   });
 });
 
-// A reload drops the token and the launch code from the page, so the person
-// opens the printed address again. The stub of `dev:stub` and of these tests
-// takes the code again. A server that follows the contract to the letter does
-// not, so this test is for the stub only.
-if (API_TARGET.isStub) {
-  test('the stub takes the launch code again and gives the same session', async ({
-    request,
-  }) => {
-    const again = await request.post(`${API_URL}/api/session`, {
-      data: { code: STUB_LAUNCH_CODE },
-      headers: { Origin: API_URL },
-    });
-
-    expect(again.status()).toBe(200);
-    expect(await again.json()).toEqual(sharedSession());
+// The launch code works once, so a reload cannot rely on it: the page keeps
+// the session in the storage of its tab instead.
+test('the API refuses the launch code a second time', async ({ request }) => {
+  const again = await request.post(`${API_URL}/api/session`, {
+    data: { code: STUB_LAUNCH_CODE },
+    headers: { Origin: API_URL },
   });
-}
+
+  expect(again.status()).toBe(401);
+  expect(await again.json()).toMatchObject({ code: 'invalid_code' });
+});
 
 test('the token of that session loads the root workflow', async ({
   request,
