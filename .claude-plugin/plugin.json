@@ -24,22 +24,6 @@
     "end to end development"
   ],
   "defaultEnabled": true,
-  "agents": [
-    "./agents/k-architect.md",
-    "./agents/k-browser.md",
-    "./agents/k-developer.md",
-    "./agents/k-media-analyzer.md",
-    "./agents/k-product-manager.md",
-    "./agents/k-quality-assurance.md",
-    "./agents/k-researcher.md",
-    "./agents/k-tpm.md",
-    "./agents/konductor-cmux-orchestrator.md",
-    "./agents/konductor-mux-orchestrator.md",
-    "./agents/konductor.md"
-  ],
-  "skills": [
-    "./skills/"
-  ],
   "userConfig": {
     "telemetry_enabled": {
       "type": "boolean",

@@ -54,14 +54,6 @@ skills:
 - adversarial-code-review-pass-schema
 - historical-issues-registry
 - verification
-mcpServers:
-- aws-mcp:
-    command: uvx
-    args:
-    - mcp-proxy-for-aws-cli==1.7.0
-    - https://aws-mcp.us-east-1.api.aws/mcp
-    - --metadata
-    - AWS_REGION=us-east-1
 ---
 
 # Solutions Architect Agent
