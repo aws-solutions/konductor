@@ -301,6 +301,22 @@ def test_merge_commit_checkout_uses_the_pr_output_ref():
     assert checkout_step["with"]["fetch-depth"] == 0
 
 
+def test_plugin_tree_checkout_does_not_replace_mains_scripts():
+    """The release/plugins tree has no scripts/, so it must not land on top
+    of main's checkout, which supplies the scripts every later step calls."""
+    job = _load_job()
+    steps = _steps_by_name(job)
+    path = steps["Check out the merge commit on release/plugins"]["with"].get("path")
+    assert path, "the merge-commit checkout needs its own path"
+    for step in job["steps"]:
+        run_body = step.get("run", "")
+        if "scripts/" in run_body:
+            assert step.get("working-directory") is None, step["name"]
+    assert steps["Validate artifact presence at the merge commit"]["working-directory"] == path
+    assert f"{path}/.claude-plugin/plugin.json" in steps["Parse and validate the version from .claude-plugin/plugin.json"]["run"]
+    assert steps["Create and push the immutable release tag"]["working-directory"] == path
+
+
 def test_merged_base_head_and_merge_sha_guards_fail_closed():
     job = _load_job()
     steps = _steps_by_name(job)
