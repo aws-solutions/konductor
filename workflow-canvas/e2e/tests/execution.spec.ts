@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: Apache-2.0
-import { STUB_LAUNCH_CODE } from '../../playwright.shared';
 import { expect, test } from '../support/fixtures';
 import {
   answerRunsInTurn,
@@ -62,6 +61,33 @@ test('runs the workflow on the stub: each stage goes from queued to running to d
   );
   await expect(canvas.runButton).toBeEnabled();
   await expect(canvas.runError).toHaveCount(0);
+});
+
+test('resumes the run that is going when the page is reloaded, though the launch code works once', async ({
+  canvas,
+}) => {
+  const sessionCalls: string[] = [];
+  await canvas.runButton.click();
+  await expect(canvas.badge('node-stage-draft')).toHaveText('Running', {
+    timeout: STEP_TIMEOUT_MS,
+  });
+  canvas.page.on('request', (request) => {
+    if (request.url().endsWith('/api/session'))
+      sessionCalls.push(request.url());
+  });
+
+  await canvas.page.reload();
+  await canvas.title.waitFor();
+  await canvas.selectTab('Execution');
+
+  await expect(canvas.runStatus).toContainText(
+    'Following the run that was already in progress.',
+  );
+  await expect(canvas.runButton).toBeDisabled();
+  await expect(canvas.badge('node-end')).toHaveText('Passed', {
+    timeout: STEP_TIMEOUT_MS * 2,
+  });
+  expect(sessionCalls).toEqual([]);
 });
 
 test('announces the status in a polite live region and names the state of each node', async ({
@@ -304,11 +330,8 @@ test('shows the run that is still going when the page is opened again', async ({
   await canvas.runButton.click();
   await expect(canvas.runStatus).toContainText('Running draft.');
 
-  // The launch address is opened again in the tab. Only a server that takes
-  // the launch code again allows this; a reload alone leaves the page without
-  // the code (see the test below).
-  await canvas.page.goto('about:blank');
-  await canvas.open(STUB_LAUNCH_CODE);
+  await canvas.page.reload();
+  await canvas.title.waitFor();
   await canvas.selectTab('Execution');
 
   await canvas.expectBadges(['Done', 'Running', 'Queued', 'Queued']);
@@ -327,8 +350,8 @@ test('shows Ready when the page is opened again after the run has ended', async 
   await canvas.runButton.click();
   await canvas.expectBadges(['Done', 'Done', 'Done', 'Passed']);
 
-  await canvas.page.goto('about:blank');
-  await canvas.open(STUB_LAUNCH_CODE);
+  await canvas.page.reload();
+  await canvas.title.waitFor();
   await canvas.selectTab('Execution');
 
   await expect(canvas.runStatus).toContainText('Ready. Press Run to start.');
@@ -336,16 +359,25 @@ test('shows Ready when the page is opened again after the run has ended', async 
   await expect(canvas.runButton).toBeEnabled();
 });
 
-test('has no launch code and no Execution tab after a reload, as the code works once', async ({
+test('has no Execution tab after a reload when the server no longer knows the session', async ({
   canvas,
 }) => {
   await canvas.expectWorkflowDrawn();
+  await canvas.page.route('**/api/workflow', (route) =>
+    route.fulfill({
+      status: 401,
+      json: {
+        error: 'The session token is missing or wrong.',
+        code: 'unauthorized',
+      },
+    }),
+  );
 
   await canvas.page.reload();
   await canvas.title.waitFor();
 
   await expect(
-    canvas.page.getByText(/no launch code in the address/),
+    canvas.page.getByText(/server no longer knows this session/),
   ).toBeVisible();
   await canvas.selectTab('Execution');
   await expect(canvas.runButton).toHaveCount(0);
