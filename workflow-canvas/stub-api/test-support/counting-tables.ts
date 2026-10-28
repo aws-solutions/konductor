@@ -31,3 +31,32 @@ export function withCountedUint32Arrays<T>(
     globalThis.Uint32Array = Real;
   }
 }
+
+const isTable = (value: unknown): value is object =>
+  Array.isArray(value) || ArrayBuffer.isView(value);
+
+/**
+ * Replaces every array and typed array held by `owner` with a view that counts
+ * its index reads, and returns the counter. A method call on a table is charged
+ * its whole length. It works whatever the tables are called or made of, so a
+ * lookup that walks any of them is seen. Use it after the owner is built.
+ */
+export function countTableReads(owner: object): { reads: number } {
+  const counter = { reads: 0 };
+  for (const [name, value] of Object.entries(owner)) {
+    if (!isTable(value)) continue;
+    const length = () => (value as ArrayLike<unknown>).length;
+    (owner as Record<string, unknown>)[name] = new Proxy(value, {
+      get(target, key) {
+        if (typeof key === 'string' && /^\d+$/.test(key)) counter.reads++;
+        const found: unknown = Reflect.get(target, key);
+        if (typeof found !== 'function') return found;
+        return (...args: unknown[]) => {
+          counter.reads += length();
+          return found.apply(target, args);
+        };
+      },
+    });
+  }
+  return counter;
+}

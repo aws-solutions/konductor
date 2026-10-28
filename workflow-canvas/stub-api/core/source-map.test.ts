@@ -2,7 +2,10 @@
 /** Checks line and column lookups, and that a long line costs no more per lookup. */
 import { describe, expect, it, vi } from 'vitest';
 import { countingText } from '../test-support/counting-text.ts';
-import { withCountedUint32Arrays } from '../test-support/counting-tables.ts';
+import {
+  countTableReads,
+  withCountedUint32Arrays,
+} from '../test-support/counting-tables.ts';
 import { SourceMap } from './source-map.ts';
 import { checkWorkflowText } from './validator.ts';
 
@@ -93,28 +96,49 @@ describe('the check of a very long line', () => {
     expect(large.lookups / small.lookups).toBeCloseTo(4, 0);
   });
 
-  // The text is never read here, so only the tables are counted. A lookup that
-  // walks them grows with the offset and fails at the contract's size limit.
-  function tableReads(length: number) {
-    const lookups = 20;
-    return withCountedUint32Arrays((counter) => {
-      const map = new SourceMap('a'.repeat(length));
-      const build = counter.reads;
-      for (let i = 0; i < lookups; i++)
-        map.position(Math.floor((i * length) / lookups));
-      return { build, perLookup: (counter.reads - build) / lookups };
-    });
+  // The text is never read here, so only the tables are counted: the offset
+  // table and the line starts, whatever they are made of. A lookup that walks
+  // either grows with the text and fails at the contract's size limit.
+  const LOOKUPS = 20;
+
+  function offsetsOf(length: number): number[] {
+    return Array.from({ length: LOOKUPS }, (_, i) =>
+      Math.floor((i * length) / LOOKUPS),
+    );
+  }
+
+  function readsPerLookup(text: string): number {
+    const map = new SourceMap(text);
+    const counter = countTableReads(map);
+    for (const at of offsetsOf(text.length)) map.position(at);
+    return counter.reads / LOOKUPS;
   }
 
   it.each([65_536, CONTRACT_LIMIT_BYTES])(
-    'reads a fixed number of table entries per lookup, on %i characters',
+    'reads a fixed number of table entries per lookup on one line of %i characters',
     (length) => {
-      const { build, perLookup } = tableReads(length);
-
-      expect(build).toBeLessThanOrEqual(2 * length);
-      expect(perLookup).toBeLessThanOrEqual(4);
+      expect(readsPerLookup('a'.repeat(length))).toBeLessThanOrEqual(4);
     },
   );
+
+  it('reads a number of entries that grows with the log of the lines, on the most lines the contract allows', () => {
+    const lines = CONTRACT_LIMIT_BYTES / 2;
+    const perLookup = readsPerLookup('a\n'.repeat(lines));
+
+    expect(perLookup).toBeLessThanOrEqual(2 * Math.ceil(Math.log2(lines)) + 4);
+  });
+
+  it('builds its tables in a number of reads that grows in step with the text', () => {
+    const reads = (length: number) =>
+      withCountedUint32Arrays((counter) => {
+        new SourceMap('a'.repeat(length));
+        return counter.reads;
+      });
+
+    expect(reads(CONTRACT_LIMIT_BYTES)).toBeLessThanOrEqual(
+      2 * CONTRACT_LIMIT_BYTES,
+    );
+  });
 
   // Smaller than the contract's limit: the counts above show the cost is
   // linear, and the full 250 KB takes longer than a loaded machine allows.
