@@ -1,20 +1,19 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
 """Render .claude-plugin/plugin.json deterministically from
-scripts/claude-plugin.template.json. It sets `version` and drops `agents`
-and the default `skills` entry:
+scripts/claude-plugin.template.json. It sets `version` and refuses a
+template that sets `agents` or `skills`:
 
 - `version`: read from the repo's root VERSION file, which is this repo's
   single source of truth for the released version (see
   scripts/validate-version-semver.sh and .github/workflows/release.yml's
   check-version job; the CLI's own Cargo.toml version is required to
   match VERSION before a release, never the other way around).
-- `agents` is never written, and a `skills` entry for the default
-  `./skills/` directory is dropped: the plugin tree keeps both in their
-  default directories, and an explicit `agents` list would hide the agents
-  from `claude plugin details`. Any other `skills` directory in the template
-  is kept, since `skills` adds to the default scan. The agents directory must
-  still hold at least one *.md file.
+- `agents` and `skills`: the plugin tree keeps both in their default
+  directories. An explicit `agents` list replaces the agents/ scan and hides
+  the agents from `claude plugin details`, and nothing ships a second skills
+  directory, so either key in the template is an error. The agents directory
+  must still hold at least one *.md file.
 
 Also strips two keys from `metadata`, if present, defensively: the
 committed template never carries either key, but a hand-edit could
@@ -72,18 +71,14 @@ agent specs' own dependencies.mcpRegistry entry (k-architect and
 k-developer declare the same pinned `aws-mcp` command directly), with no
 separate override file in between.
 
-Called by scripts/generate-claude-plugin.sh and
-scripts/assemble-claude-plugin-branch.sh. Not meant to be run directly.
+Called by scripts/assemble-claude-plugin-branch.sh (from release.yml's
+publish-claude-plugin job and `make claude-plugin-check`). Not meant to be
+run directly.
 """
 import argparse
 import json
 import sys
 from pathlib import Path
-
-
-def is_default_skills_dir(entry):
-    """`./skills/`, `./skills`, `skills/` and `skills` all name the default scan."""
-    return isinstance(entry, str) and entry.strip("/").removeprefix("./").rstrip("/") == "skills"
 
 
 def _load_mcp_registry_union(agent_specs_dir: Path):
@@ -212,14 +207,10 @@ def main() -> int:
     if not agent_files:
         print(f"error: no agent .md files found under {args.agents_dir}", file=sys.stderr)
         return 1
-    # An explicit `agents` list replaces the agents/ scan and hides the agents
-    # from `claude plugin details`; `./skills/` repeats the default scan.
-    plugin.pop("agents", None)
-    skills = plugin.pop("skills", None)
-    if skills is not None:
-        extra = [d for d in ([skills] if isinstance(skills, str) else skills) if not is_default_skills_dir(d)]
-        if extra:
-            plugin["skills"] = extra
+    for key in ("agents", "skills"):
+        if key in plugin:
+            print(f"error: {args.template} sets `{key}`; leave it to the default scan", file=sys.stderr)
+            return 1
 
     metadata = plugin.get("metadata")
     if isinstance(metadata, dict):
