@@ -251,6 +251,12 @@ when a quality gate fails (up to two fix cycles).
 Every agent runs `claude-sonnet-5.5`. Full details, including each agent's tools, are in the
 [agents reference](docs/user-guide/agents.md).
 
+`konductor-mux-orchestrator` and `konductor-cmux-orchestrator` start each specialist with permission
+checks off (`--dangerously-skip-permissions` on Claude Code, `--trust-all-tools` on Kiro CLI), so a
+dispatched agent runs shell commands and MCP tools, AWS API calls included, without asking. Use them
+only in a workspace and with AWS credentials you are willing to let an agent act on. `konductor`
+keeps your normal permission prompts.
+
 ---
 
 ## See it in action
