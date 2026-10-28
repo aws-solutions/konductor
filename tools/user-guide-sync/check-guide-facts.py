@@ -993,6 +993,26 @@ def main() -> int:
         for version, where in sorted(seen.items()):
             fail(f"version {version} appears in {sorted(set(where))}")
 
+    section("the pre-PR lint toolchain matches validate-pr.yml")
+    workflow = root / ".github" / "workflows" / "validate-pr.yml"
+    pin = re.search(r"RUST_LINT_TOOLCHAIN:\s*([0-9][0-9.]*)", read(workflow)) if workflow.is_file() else None
+    if pin is None:
+        ok("validate-pr.yml pins no lint toolchain - nothing to compare")
+    else:
+        lint_re = re.compile(r"(?:toolchain install|cargo \+|TOOLCHAIN=)\s*\"?([0-9]+\.[0-9]+\.[0-9]+)")
+        sources = [(str(md.relative_to(guide)), read(md)) for md in sorted(guide.rglob("*.md"))]
+        for page in html_pages_for_flags(root):
+            try:
+                sources.append((str(page.relative_to(root)), load_template(page)))
+            except (ValueError, json.JSONDecodeError):
+                continue
+        stale = sorted({where for where, text in sources
+                        for m in lint_re.finditer(text) if m.group(1) != pin.group(1)})
+        if stale:
+            fail(f"lint toolchain differs from RUST_LINT_TOOLCHAIN={pin.group(1)} in {stale}")
+        else:
+            ok(f"every lint toolchain mention says {pin.group(1)}")
+
     # ---- 16. The toolchain's own prompts use shipped names --------------------
     # The rename sweep and every check above cover docs/user-guide/. The two
     # prompt files that DRIVE a regeneration were covered by neither, and one of
