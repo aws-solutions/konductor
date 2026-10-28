@@ -11,6 +11,11 @@
   align-items: start;
 }
 
+/* A note above the graph and Properties takes the whole row. */
+.wf-designer-note {
+  grid-column: 1 / -1;
+}
+
 @media (max-width: 900px) {
   .wf-designer {
     grid-template-columns: minmax(0, 1fr);
