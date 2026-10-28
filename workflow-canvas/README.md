@@ -16,7 +16,12 @@ serves it and the tests around both are in this folder.
 - `src/`: the UI. `graph/` turns a workflow into nodes and edges and does no
   IO; `api/` is the typed client of the API; `launch/` and `workflow/` open the
   session and load the workflow; `designer/` and `canvas/` draw it;
-  `execution/core/` starts a run and follows it, and does no IO.
+  `execution/core/` starts a run and follows it, and does no IO. It reads a run
+  once a second. A read that fails with no answer or a server error is tried
+  again, up to three in a row; any other failure ends the following. A start
+  that finds a run already active follows that run. Every call takes a signal
+  and ends on its own after 15 seconds, so a server that never answers cannot
+  hold the tab. A failure counts only for the run it belongs to.
 - `api/`: the HTTP API contract (`openapi.yaml`) and its test.
 - `stub-api/`: a TypeScript stub server for the contract, for local
   development and tests.
