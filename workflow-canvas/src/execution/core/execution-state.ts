@@ -5,16 +5,23 @@ import type { RunView } from '../../api/types';
 export type ExecutionState =
   | { phase: 'idle' }
   | { phase: 'starting' }
-  | { phase: 'following'; runId: string; run: RunView | undefined }
+  | {
+      phase: 'following';
+      runId: string;
+      run: RunView | undefined;
+      /** Set when the tab joined a run that was already active. */
+      joined?: true;
+    }
   | { phase: 'finished'; run: RunView }
   | { phase: 'error'; message: string; started: boolean };
 
 /** Something that happened to the run, in the order it can. */
 export type ExecutionEvent =
   | { type: 'start' }
-  | { type: 'started'; runId: string }
+  | { type: 'started'; runId: string; joined?: boolean }
   | { type: 'snapshot'; run: RunView }
-  | { type: 'failed'; message: string };
+  /** `runId` is the run the failure belongs to, once the loop has one. */
+  | { type: 'failed'; message: string; runId?: string };
 
 /** The state before any run has been started. */
 export const IDLE: ExecutionState = { phase: 'idle' };
@@ -35,29 +42,46 @@ function startOf(state: ExecutionState): ExecutionState {
   return isInFlight(state) ? state : { phase: 'starting' };
 }
 
-function startedOf(state: ExecutionState, runId: string): ExecutionState {
-  return state.phase === 'starting'
-    ? { phase: 'following', runId, run: undefined }
-    : state;
+function startedOf(
+  state: ExecutionState,
+  runId: string,
+  joined: boolean | undefined,
+): ExecutionState {
+  if (state.phase !== 'starting') return state;
+  return joined
+    ? { phase: 'following', runId, run: undefined, joined: true }
+    : { phase: 'following', runId, run: undefined };
 }
 
 function snapshotOf(state: ExecutionState, run: RunView): ExecutionState {
   if (state.phase !== 'following' || state.runId !== run.runId) return state;
-  return run.status === 'running'
-    ? { phase: 'following', runId: run.runId, run }
-    : { phase: 'finished', run };
+  if (run.status !== 'running') return { phase: 'finished', run };
+  return state.joined
+    ? { phase: 'following', runId: run.runId, run, joined: true }
+    : { phase: 'following', runId: run.runId, run };
 }
 
-function failedOf(state: ExecutionState, message: string): ExecutionState {
-  return isInFlight(state)
-    ? { phase: 'error', message, started: state.phase === 'following' }
-    : state;
+// A failure counts only for the run it belongs to: one that names no run is
+// for a start that has not got an id yet, and one that names a run is for the
+// run being followed. A loop that lost to another cannot end the winner's run.
+function failedOf(
+  state: ExecutionState,
+  message: string,
+  runId: string | undefined,
+): ExecutionState {
+  if (state.phase === 'starting' && runId === undefined) {
+    return { phase: 'error', message, started: false };
+  }
+  if (state.phase === 'following' && runId === state.runId) {
+    return { phase: 'error', message, started: true };
+  }
+  return state;
 }
 
 /**
  * The next state after an event. An event that does not fit the state, such as
- * a start while a run is in flight or a reply for an earlier run, changes
- * nothing.
+ * a start while a run is in flight or a reading or failure of another run,
+ * changes nothing.
  */
 export function reduce(
   state: ExecutionState,
@@ -67,10 +91,10 @@ export function reduce(
     case 'start':
       return startOf(state);
     case 'started':
-      return startedOf(state, event.runId);
+      return startedOf(state, event.runId, event.joined);
     case 'snapshot':
       return snapshotOf(state, event.run);
     case 'failed':
-      return failedOf(state, event.message);
+      return failedOf(state, event.message, event.runId);
   }
 }

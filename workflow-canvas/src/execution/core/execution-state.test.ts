@@ -90,10 +90,68 @@ describe('reduce', () => {
       message: 'No.',
       started: false,
     });
-    expect(after(...STARTED, { type: 'failed', message: 'Lost.' })).toEqual({
+    expect(
+      after(...STARTED, { type: 'failed', message: 'Lost.', runId: RUN_ID }),
+    ).toEqual({
       phase: 'error',
       message: 'Lost.',
       started: true,
+    });
+  });
+
+  it('ignores a failure of a loop that has no run once the tab follows one', () => {
+    // Two loops were started; one was refused, and it never had a run.
+    const following = after(...STARTED);
+
+    expect(
+      reduce(following, {
+        type: 'failed',
+        message: 'A run is already active.',
+      }),
+    ).toBe(following);
+  });
+
+  it('ignores a failure that names another run', () => {
+    const following = after(...STARTED);
+
+    expect(
+      reduce(following, {
+        type: 'failed',
+        message: 'Lost.',
+        runId: '20261024-0412-zzzzz',
+      }),
+    ).toBe(following);
+  });
+
+  it('ignores a failure that names a run while the start has no run yet', () => {
+    const starting = after({ type: 'start' });
+
+    expect(
+      reduce(starting, { type: 'failed', message: 'x', runId: RUN_ID }),
+    ).toBe(starting);
+  });
+
+  it('follows a run that was already active, and keeps saying so', () => {
+    const joined = after(
+      { type: 'start' },
+      { type: 'started', runId: RUN_ID, joined: true },
+    );
+
+    expect(joined).toEqual({
+      phase: 'following',
+      runId: RUN_ID,
+      run: undefined,
+      joined: true,
+    });
+    expect(reduce(joined, { type: 'snapshot', run: helloRun(0) })).toEqual({
+      phase: 'following',
+      runId: RUN_ID,
+      run: helloRun(0),
+      joined: true,
+    });
+    expect(reduce(joined, { type: 'snapshot', run: helloRun(2) })).toEqual({
+      phase: 'finished',
+      run: helloRun(2),
     });
   });
 
@@ -101,7 +159,7 @@ describe('reduce', () => {
     const state = after(
       ...STARTED,
       { type: 'snapshot', run: helloRun(0) },
-      { type: 'failed', message: 'Lost.' },
+      { type: 'failed', message: 'Lost.', runId: RUN_ID },
     );
 
     expect(runOf(state)).toBeUndefined();
@@ -117,7 +175,11 @@ describe('reduce', () => {
   it.each<[string, ExecutionState, ExecutionEvent]>([
     ['a reading when idle', IDLE, { type: 'snapshot', run: helloRun(0) }],
     ['an id when idle', IDLE, { type: 'started', runId: RUN_ID }],
-    ['a failure when idle', IDLE, { type: 'failed', message: 'x' }],
+    [
+      'a failure when idle',
+      IDLE,
+      { type: 'failed', message: 'x', runId: RUN_ID },
+    ],
     [
       'an id when following',
       after(...STARTED),
@@ -133,6 +195,8 @@ describe('reduce', () => {
       run: helloRun(2),
     });
 
-    expect(reduce(finished, { type: 'failed', message: 'x' })).toBe(finished);
+    expect(
+      reduce(finished, { type: 'failed', message: 'x', runId: RUN_ID }),
+    ).toBe(finished);
   });
 });
