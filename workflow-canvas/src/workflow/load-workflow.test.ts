@@ -41,7 +41,7 @@ describe('loadWorkflow', () => {
 
   it('ties the run calls to the session token', async () => {
     const api = fakeApi();
-    const result = await loadWorkflow(api, 'code-1');
+    const result = await loadWorkflow(api, 'code-1', freshMemory());
     if (!result.ok) throw new Error('The load failed.');
 
     const { signal } = new AbortController();
@@ -55,7 +55,7 @@ describe('loadWorkflow', () => {
   describe('the run calls', () => {
     const { signal } = new AbortController();
     const portFor = async (api: WorkflowApi) => {
-      const result = await loadWorkflow(api, 'code-1');
+      const result = await loadWorkflow(api, 'code-1', freshMemory());
       if (!result.ok) throw new Error('The load failed.');
       return result.workflow.runs;
     };
