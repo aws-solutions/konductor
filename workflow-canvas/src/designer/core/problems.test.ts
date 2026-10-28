@@ -11,6 +11,7 @@ import {
   problemsFor,
   problemsOf,
   withEchoes,
+  type Problem,
 } from './problems';
 
 const DRAFT = draftOf([
@@ -183,5 +184,28 @@ describe('hasErrors', () => {
     expect(hasErrors([warning])).toBe(false);
     expect(hasErrors([warning, finding('x')])).toBe(true);
     expect(hasErrors([])).toBe(false);
+  });
+});
+
+describe('withEchoes, for three stages of one name', () => {
+  it('marks the first stage once, though two repeats are reported', () => {
+    const draft = draftOf([
+      { name: 'a', agent: 'k' },
+      { name: 'a', agent: 'k' },
+      { name: 'a', agent: 'k' },
+    ]);
+    const repeat = (stageId: string): Problem => ({
+      message: 'Duplicate stage name: a',
+      severity: 'error',
+      stageId,
+      field: 'name',
+    });
+
+    const result = withEchoes([repeat('s2'), repeat('s3')], draft);
+
+    expect(result.filter((problem) => problem.echo)).toHaveLength(1);
+    expect(result.filter((problem) => problem.stageId === 's1')).toHaveLength(
+      1,
+    );
   });
 });
