@@ -90,7 +90,12 @@ describe('Designer', () => {
       ...HELLO_DOCUMENT,
       view: null,
       diagnostics: [
-        { message: 'The mapping needs the key `intent`.', line: 2 },
+        {
+          message: 'The mapping needs the key `intent`.',
+          line: 2,
+          path: '',
+          severity: 'error' as const,
+        },
       ],
     };
 
