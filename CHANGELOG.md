@@ -27,6 +27,8 @@ not per individual commit.
   spawning a specialist. Writes, builds, tests and whole phases still go to specialists.
 - Orchestrators delegate a step they can't do to the owning specialist and may run independent
   parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
+- `k-full-sdlc` records gate facts in its session file and reports a `konductor verify-run`
+  check in `sdlc-summary.md`.
 
 ### Fixed
 
