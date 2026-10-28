@@ -31,6 +31,7 @@ const AGENT_NOTE = 'A Konductor agent id: the name of an agent spec.';
 function StageFields({
   stage,
   locked,
+  extraAgents,
   problems,
   nameRef,
   onRename,
@@ -39,12 +40,14 @@ function StageFields({
   stage: DraftStage;
   /** True when the workflow is read-only, so nothing here changes it. */
   locked: boolean;
+  /** Agents the saved file names, which stay on offer once another is chosen. */
+  extraAgents: readonly string[];
   problems: Problem[];
   nameRef: Ref<InputProps.Ref>;
   onRename: (name: string) => void;
   onAgent: (agent: string) => void;
 }) {
-  const choices = agentChoices(stage.agent);
+  const choices = agentChoices(stage.agent, extraAgents);
   const chosen = choices.find((agent) => agent.id === stage.agent);
   const nameProblems = problemsFor(problems, stage.id, 'name');
   const agentProblems = problemsFor(problems, stage.id, 'agent');
@@ -61,6 +64,8 @@ function StageFields({
         <Input
           ref={nameRef}
           value={stage.name}
+          spellcheck={false}
+          autoComplete={false}
           readOnly={locked}
           invalid={nameErrors.length > 0}
           onChange={({ detail }) => onRename(detail.value)}
@@ -132,20 +137,27 @@ export function PropertiesPane({
   const problems = problemsOfDraft(state);
   const editable = canEdit(state);
   const own = problems.filter((p) => p.stageId === stage?.id);
+  // No verdict until a check has answered for the draft as it is now.
+  const checked = state.check.revision === state.revision;
   return (
     <Container header={<Header variant="h2">Properties</Header>}>
       {stage ? (
         <SpaceBetween size="l">
           <Box color="text-body-secondary" fontSize="body-s">
-            Selected: <b>{stage.name || 'a stage with no name'}</b>
+            Selected:{' '}
+            <Box variant="strong">{stage.name || 'a stage with no name'}</Box>
           </Box>
           <SpaceBetween size="m">
-            <Header variant="h3" actions={<StageStatus problems={own} />}>
+            <Header
+              variant="h3"
+              actions={checked ? <StageStatus problems={own} /> : undefined}
+            >
               Required
             </Header>
             <StageFields
               stage={stage}
               locked={!editable}
+              extraAgents={state.saved.view.stages.map((s) => s.agent)}
               problems={problems}
               nameRef={nameRef}
               onRename={(name) => onRename(stage.id, name)}
