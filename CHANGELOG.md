@@ -38,8 +38,7 @@ not per individual commit.
   The three orchestrator prompts now run the SOP check on every request, not only on multi-phase
   ones.
 - `update --no-telemetry` now keeps a project opted out on later updates, and the new
-  `--enable-telemetry` opts it back in. Opted-out Kiro CLI projects run skill-lookup with
-  `--telemetry off`.
+  `--enable-telemetry` opts it back in. The skill-lookup MCP server follows the same setting.
 
 ## [1.2.0] - 2026-10-26
 

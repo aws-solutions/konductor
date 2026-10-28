@@ -80,6 +80,24 @@ pub(crate) struct Cli {
     /// task is never started at all.
     #[arg(long = "telemetry", value_enum, default_value = "on")]
     pub(crate) telemetry: TelemetryMode,
+
+    /// Path to the install target's `install-info.json` telemetry record.
+    /// When given and the file is missing, telemetry is off, as with
+    /// `--telemetry off`. The record is target-wide, so every agent that
+    /// points here follows the same opt-out.
+    #[arg(long = "install-info", value_name = "PATH")]
+    pub(crate) install_info: Option<PathBuf>,
+}
+
+impl Cli {
+    /// `--telemetry` after applying `--install-info`. Does not consult
+    /// `KONDUCTOR_TELEMETRY`; `main` checks that separately.
+    pub(crate) fn effective_telemetry(&self) -> TelemetryMode {
+        match &self.install_info {
+            Some(path) if !path.exists() => TelemetryMode::Off,
+            _ => self.telemetry,
+        }
+    }
 }
 
 /// `--telemetry`'s accepted values.
@@ -958,5 +976,49 @@ mod tests {
         assert_eq!(resolved.valid, vec![dir.clone()]);
         assert!(!resolved.messages.is_empty());
         let _ = fs::remove_dir_all(&dir);
+    }
+    fn parse(args: &[&str]) -> Cli {
+        Cli::try_parse_from(std::iter::once("skill-lookup-mcp").chain(args.iter().copied()))
+            .unwrap()
+    }
+
+    #[test]
+    fn missing_install_info_turns_telemetry_off() {
+        let dir = temp_dir("install-info-missing");
+        let record = dir.join("install-info.json");
+        let cli = parse(&["--install-info", record.to_str().unwrap()]);
+        assert_eq!(cli.effective_telemetry(), TelemetryMode::Off);
+    }
+
+    #[test]
+    fn present_install_info_leaves_telemetry_on() {
+        let dir = temp_dir("install-info-present");
+        let record = dir.join("install-info.json");
+        fs::write(&record, "{}").unwrap();
+        let cli = parse(&["--install-info", record.to_str().unwrap()]);
+        assert_eq!(cli.effective_telemetry(), TelemetryMode::On);
+    }
+
+    #[test]
+    fn no_install_info_flag_keeps_the_telemetry_flag() {
+        assert_eq!(parse(&[]).effective_telemetry(), TelemetryMode::On);
+        assert_eq!(
+            parse(&["--telemetry", "off"]).effective_telemetry(),
+            TelemetryMode::Off
+        );
+    }
+
+    #[test]
+    fn telemetry_off_wins_over_a_present_install_info() {
+        let dir = temp_dir("install-info-present-but-off");
+        let record = dir.join("install-info.json");
+        fs::write(&record, "{}").unwrap();
+        let cli = parse(&[
+            "--telemetry",
+            "off",
+            "--install-info",
+            record.to_str().unwrap(),
+        ]);
+        assert_eq!(cli.effective_telemetry(), TelemetryMode::Off);
     }
 }

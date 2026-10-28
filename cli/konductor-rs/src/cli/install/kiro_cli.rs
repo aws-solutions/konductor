@@ -3048,7 +3048,7 @@ mod tests {
     }
 
     #[test]
-    fn install_from_local_mcp_server_telemetry_arg_follows_no_telemetry() {
+    fn install_from_local_mcp_server_points_at_install_info_whether_or_not_opted_out() {
         let repo_root = scratch_dir("mcp-telemetry-arg-repo");
         seed_synthed_agent_with_skill_resource(&repo_root, "k-example", "constraints");
         seed_synthed_skill(
@@ -3075,26 +3075,20 @@ mod tests {
         install(&opted_out, true);
         install(&opted_out, true);
 
-        assert_eq!(
-            installed_konductor_skills_args(&opted_in),
-            [
-                "--skills-dir",
-                "~/.konductor/skills",
-                "--skills-dir",
-                ".konductor/skills"
-            ]
-        );
-        assert_eq!(
-            installed_konductor_skills_args(&opted_out),
-            [
-                "--skills-dir",
-                "~/.konductor/skills",
-                "--skills-dir",
-                ".konductor/skills",
-                "--telemetry",
-                "off"
-            ]
-        );
+        for target_dir in [&opted_in, &opted_out] {
+            let record = crate::cli::telemetry::install_info_path(target_dir);
+            assert_eq!(
+                installed_konductor_skills_args(target_dir),
+                [
+                    "--skills-dir",
+                    "~/.konductor/skills",
+                    "--skills-dir",
+                    ".konductor/skills",
+                    "--install-info",
+                    &record.display().to_string()
+                ]
+            );
+        }
 
         fs::remove_dir_all(&opted_in).ok();
         fs::remove_dir_all(&opted_out).ok();
@@ -3834,10 +3828,16 @@ mod tests {
             .as_array()
             .expect("args must be an array");
         let args: Vec<&str> = args.iter().map(|v| v.as_str().unwrap()).collect();
+        let record = crate::cli::telemetry::install_info_path(&target_dir)
+            .display()
+            .to_string();
+        let args = args
+            .strip_suffix(&["--install-info", record.as_str()])
+            .unwrap_or_else(|| panic!("expected a trailing --install-info pair, got: {args:?}"));
         assert_eq!(
             args.last().copied(),
             Some("ticket-sync,code-review"),
-            "expected the --agent-sop-filter value as the last arg, got: {args:?}"
+            "expected the --agent-sop-filter value right before --install-info, got: {args:?}"
         );
         assert_eq!(
             args[args.len() - 2],
@@ -4257,10 +4257,16 @@ mod tests {
             .as_array()
             .expect("args must be an array");
         let args: Vec<&str> = args.iter().map(|v| v.as_str().unwrap()).collect();
+        let record = crate::cli::telemetry::install_info_path(&target_dir)
+            .display()
+            .to_string();
+        let args = args
+            .strip_suffix(&["--install-info", record.as_str()])
+            .unwrap_or_else(|| panic!("expected a trailing --install-info pair, got: {args:?}"));
         assert_eq!(
             args.last().copied(),
             Some("constraints,sdlc-navigator"),
-            "expected the --skill-name-filter value as the last arg, got: {args:?}"
+            "expected the --skill-name-filter value right before --install-info, got: {args:?}"
         );
         assert_eq!(
             args[args.len() - 2],
@@ -4393,10 +4399,16 @@ mod tests {
             .as_array()
             .expect("args must be an array");
         let args: Vec<&str> = args.iter().map(|v| v.as_str().unwrap()).collect();
+        let record = crate::cli::telemetry::install_info_path(&target_dir)
+            .display()
+            .to_string();
+        let args = args
+            .strip_suffix(&["--install-info", record.as_str()])
+            .unwrap_or_else(|| panic!("expected a trailing --install-info pair, got: {args:?}"));
         assert_eq!(
             args.last().copied(),
             Some("constraints"),
-            "expected the --skill-name-filter value as the last arg, got: {args:?}"
+            "expected the --skill-name-filter value right before --install-info, got: {args:?}"
         );
         assert_eq!(
             args[args.len() - 2],

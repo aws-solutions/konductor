@@ -219,7 +219,7 @@ fn mcp_server_command_path(ctx: &RewriteContext<'_>) -> String {
 /// conditional `--agent-sop-paths`/`--agent-sop-filter` pair, and the
 /// same conditional `--skill-name-filter` flag, gated on the exact same
 /// per-agent lookups (`agent_has_sop_names`/`agent_has_skill_names`),
-/// and a trailing `--telemetry off` when `ctx.no_telemetry`.
+/// and a trailing `--install-info <path>`.
 fn build_mcp_server_args(
     value: &serde_json::Value,
     ctx: &RewriteContext<'_>,
@@ -269,12 +269,13 @@ fn build_mcp_server_args(
         args.push(serde_json::Value::String("--skill-name-filter".to_string()));
         args.push(serde_json::Value::String(agent_skill_names.join(",")));
     }
-    // Appended last and only when opted out, so an opted-in agent's args
-    // stay byte-identical. `skill-lookup-mcp` defaults to `--telemetry on`.
-    if ctx.no_telemetry {
-        args.push(serde_json::Value::String("--telemetry".to_string()));
-        args.push(serde_json::Value::String("off".to_string()));
-    }
+    // Always passed, never `--telemetry off`: the server checks the
+    // record at startup, so every harness at this target follows one
+    // opt-out without rewriting the others' hash-tracked agent files.
+    args.push(serde_json::Value::String("--install-info".to_string()));
+    args.push(serde_json::Value::String(
+        ctx.install_info_path.display().to_string(),
+    ));
     args
 }
 
@@ -645,6 +646,19 @@ mod tests {
     use crate::cli::install::manifest::ManifestFile;
     use std::fs;
 
+    const TEST_INSTALL_INFO_PATH: &str = "/target/.konductor/install-info.json";
+
+    /// `prefix` followed by the trailing `--install-info` pair every
+    /// injected entry ends with.
+    fn with_install_info(prefix: &[&str]) -> Vec<String> {
+        prefix
+            .iter()
+            .copied()
+            .chain(["--install-info", TEST_INSTALL_INFO_PATH])
+            .map(str::to_string)
+            .collect()
+    }
+
     fn scratch_dir(name: &str) -> std::path::PathBuf {
         let dir = std::env::temp_dir().join(format!(
             "konductor-resource-rewrite-test-{name}-{}",
@@ -698,6 +712,7 @@ mod tests {
             agent_sop_names: empty_agent_sop_names(),
             agent_skill_names: empty_agent_skill_names(),
             no_telemetry: false,
+            install_info_path: Path::new(TEST_INSTALL_INFO_PATH),
         }
     }
 
@@ -713,6 +728,7 @@ mod tests {
             agent_sop_names: empty_agent_sop_names(),
             agent_skill_names: empty_agent_skill_names(),
             no_telemetry: false,
+            install_info_path: Path::new(TEST_INSTALL_INFO_PATH),
         }
     }
 
@@ -799,7 +815,7 @@ mod tests {
         );
         assert_eq!(
             value["mcpServers"]["konductor-skills"]["args"],
-            serde_json::json!(MCP_SERVER_ARGS)
+            serde_json::json!(with_install_info(MCP_SERVER_ARGS))
         );
         fs::remove_dir_all(&dir).ok();
     }
@@ -844,7 +860,7 @@ mod tests {
         );
         assert_eq!(
             value["mcpServers"]["konductor-skills"]["args"],
-            serde_json::json!(MCP_SERVER_ARGS),
+            serde_json::json!(with_install_info(MCP_SERVER_ARGS)),
             "the stale args must be replaced, not merged with the new entry"
         );
         assert_eq!(
@@ -1066,6 +1082,7 @@ mod tests {
             agent_sop_names: &agent_sop_names,
             agent_skill_names: empty_agent_skill_names(),
             no_telemetry: false,
+            install_info_path: Path::new(TEST_INSTALL_INFO_PATH),
         };
         assert!(
             McpServerPass.matches(&sop_only, &ctx),
@@ -1103,6 +1120,7 @@ mod tests {
                 agent_sop_names: &agent_sop_names,
                 agent_skill_names: empty_agent_skill_names(),
                 no_telemetry: false,
+                install_info_path: Path::new(TEST_INSTALL_INFO_PATH),
             },
         );
         let mut expected_args: Vec<String> =
@@ -1113,6 +1131,8 @@ mod tests {
         expected_args.push(".konductor/sops".to_string());
         expected_args.push("--agent-sop-filter".to_string());
         expected_args.push("ticket-sync,code-review".to_string());
+        expected_args.push("--install-info".to_string());
+        expected_args.push(TEST_INSTALL_INFO_PATH.to_string());
         assert_eq!(
             value["mcpServers"]["konductor-skills"]["args"],
             serde_json::json!(expected_args),
@@ -1151,6 +1171,7 @@ mod tests {
                 agent_sop_names: &agent_sop_names,
                 agent_skill_names: empty_agent_skill_names(),
                 no_telemetry: false,
+                install_info_path: Path::new(TEST_INSTALL_INFO_PATH),
             },
         );
         let args = value["mcpServers"]["konductor-skills"]["args"]
@@ -1195,11 +1216,12 @@ mod tests {
                 agent_sop_names: &agent_sop_names,
                 agent_skill_names: empty_agent_skill_names(),
                 no_telemetry: false,
+                install_info_path: Path::new(TEST_INSTALL_INFO_PATH),
             },
         );
         assert_eq!(
             value["mcpServers"]["konductor-skills"]["args"],
-            serde_json::json!(MCP_SERVER_ARGS),
+            serde_json::json!(with_install_info(MCP_SERVER_ARGS)),
             "an empty agent_sop_names entry must be treated the same as an absent one"
         );
         fs::remove_dir_all(&dir).ok();
@@ -1224,6 +1246,7 @@ mod tests {
             agent_sop_names: empty_agent_sop_names(),
             agent_skill_names: &agent_skill_names,
             no_telemetry: false,
+            install_info_path: Path::new(TEST_INSTALL_INFO_PATH),
         };
         assert!(
             McpServerPass.matches(&skill_names_only, &ctx),
@@ -1264,12 +1287,15 @@ mod tests {
                 agent_sop_names: empty_agent_sop_names(),
                 agent_skill_names: &agent_skill_names,
                 no_telemetry: false,
+                install_info_path: Path::new(TEST_INSTALL_INFO_PATH),
             },
         );
         let mut expected_args: Vec<String> =
             MCP_SERVER_ARGS.iter().map(|a| a.to_string()).collect();
         expected_args.push("--skill-name-filter".to_string());
         expected_args.push("constraints,sdlc-navigator".to_string());
+        expected_args.push("--install-info".to_string());
+        expected_args.push(TEST_INSTALL_INFO_PATH.to_string());
         assert_eq!(
             value["mcpServers"]["konductor-skills"]["args"],
             serde_json::json!(expected_args),
@@ -1312,11 +1338,12 @@ mod tests {
                 agent_sop_names: empty_agent_sop_names(),
                 agent_skill_names: &agent_skill_names,
                 no_telemetry: false,
+                install_info_path: Path::new(TEST_INSTALL_INFO_PATH),
             },
         );
         assert_eq!(
             value["mcpServers"]["konductor-skills"]["args"],
-            serde_json::json!(MCP_SERVER_ARGS),
+            serde_json::json!(with_install_info(MCP_SERVER_ARGS)),
             "an agent with no agent_skill_names entry must see the exact pre-existing args, \
              with no --skill-name-filter appended"
         );
@@ -1349,11 +1376,12 @@ mod tests {
                 agent_sop_names: empty_agent_sop_names(),
                 agent_skill_names: &agent_skill_names,
                 no_telemetry: false,
+                install_info_path: Path::new(TEST_INSTALL_INFO_PATH),
             },
         );
         assert_eq!(
             value["mcpServers"]["konductor-skills"]["args"],
-            serde_json::json!(MCP_SERVER_ARGS),
+            serde_json::json!(with_install_info(MCP_SERVER_ARGS)),
             "an empty agent_skill_names entry must be treated the same as an absent one"
         );
         fs::remove_dir_all(&dir).ok();
@@ -1385,6 +1413,7 @@ mod tests {
                 agent_sop_names: &agent_sop_names,
                 agent_skill_names: &agent_skill_names,
                 no_telemetry: false,
+                install_info_path: Path::new(TEST_INSTALL_INFO_PATH),
             },
         );
         let args = value["mcpServers"]["konductor-skills"]["args"]
@@ -1399,11 +1428,10 @@ mod tests {
             args.contains(&"--skill-name-filter"),
             "expected --skill-name-filter present, got: {args:?}"
         );
-        assert_eq!(
-            args.last().copied(),
-            Some("constraints"),
-            "expected the --skill-name-filter value as the last arg (skill block runs after \
-             the SOP block), got: {args:?}"
+        assert!(
+            args.ends_with(&["constraints", "--install-info", TEST_INSTALL_INFO_PATH]),
+            "expected the --skill-name-filter value right before the trailing --install-info \
+             pair (skill block runs after the SOP block), got: {args:?}"
         );
         fs::remove_dir_all(&dir).ok();
     }
@@ -1418,11 +1446,13 @@ mod tests {
     }
 
     /// Runs `pass.rewrite` on a skill-bearing agent with SOP and skill-name
-    /// scoping, so the `--telemetry` arg is checked against the longest
-    /// arg list the pass builds.
+    /// scoping, so the trailing args are checked against the longest arg
+    /// list the pass builds. `prior_args` seeds an entry a previous install
+    /// injected.
     fn rewrite_scoped_agent(
         pass: &dyn ResourceRewritePass,
         no_telemetry: bool,
+        prior_args: Option<&[&str]>,
         label: &str,
     ) -> serde_json::Value {
         let dir = scratch_dir(label);
@@ -1434,6 +1464,11 @@ mod tests {
             "resources": ["skill://skills/constraints/SKILL.md"],
             "permissions": {"rules": []}
         });
+        if let Some(prior_args) = prior_args {
+            value["mcpServers"] = serde_json::json!({
+                "konductor-skills": {"command": "skill-lookup-mcp", "args": prior_args}
+            });
+        }
         let bin_files = [bin_file_entry()];
         let mut agent_sop_names = std::collections::HashMap::new();
         agent_sop_names.insert("k-example".to_string(), vec!["ticket-sync".to_string()]);
@@ -1449,6 +1484,7 @@ mod tests {
                 agent_sop_names: &agent_sop_names,
                 agent_skill_names: &agent_skill_names,
                 no_telemetry,
+                install_info_path: Path::new(TEST_INSTALL_INFO_PATH),
             },
         );
         fs::remove_dir_all(&dir).ok();
@@ -1471,33 +1507,86 @@ mod tests {
     ];
 
     #[test]
-    fn mcp_pass_rewrite_args_unchanged_when_telemetry_enabled() {
-        let value = rewrite_scoped_agent(&McpServerPass, false, "mcp-args-telemetry-on");
-        assert_eq!(injected_args(&value), SCOPED_AGENT_ARGS);
+    fn mcp_pass_rewrite_ends_with_install_info_whether_or_not_opted_out() {
+        for no_telemetry in [false, true] {
+            let value = rewrite_scoped_agent(
+                &McpServerPass,
+                no_telemetry,
+                None,
+                &format!("mcp-args-install-info-{no_telemetry}"),
+            );
+            assert_eq!(injected_args(&value), with_install_info(SCOPED_AGENT_ARGS));
+        }
     }
 
     #[test]
-    fn mcp_pass_rewrite_appends_telemetry_off_when_no_telemetry() {
-        let value = rewrite_scoped_agent(&McpServerPass, true, "mcp-args-telemetry-off");
-        assert_eq!(
-            injected_args(&value),
-            [SCOPED_AGENT_ARGS, &["--telemetry", "off"]].concat()
-        );
+    fn mcp_pass_v3_rewrite_ends_with_install_info_whether_or_not_opted_out() {
+        for no_telemetry in [false, true] {
+            let value = rewrite_scoped_agent(
+                &McpServerPassV3,
+                no_telemetry,
+                None,
+                &format!("mcp-v3-args-install-info-{no_telemetry}"),
+            );
+            assert_eq!(injected_args(&value), with_install_info(SCOPED_AGENT_ARGS));
+        }
     }
 
     #[test]
-    fn mcp_pass_v3_rewrite_args_unchanged_when_telemetry_enabled() {
-        let value = rewrite_scoped_agent(&McpServerPassV3, false, "mcp-v3-args-telemetry-on");
-        assert_eq!(injected_args(&value), SCOPED_AGENT_ARGS);
+    fn mcp_pass_rewrite_replaces_an_older_install_s_telemetry_off_without_duplicating() {
+        let older_install = [SCOPED_AGENT_ARGS, &["--telemetry", "off"]].concat();
+        let already_current = with_install_info(SCOPED_AGENT_ARGS);
+        let already_current: Vec<&str> = already_current.iter().map(String::as_str).collect();
+        for pass in [&McpServerPass as &dyn ResourceRewritePass, &McpServerPassV3] {
+            for prior in [&older_install, &already_current] {
+                let value = rewrite_scoped_agent(pass, true, Some(prior), "mcp-args-prior-entry");
+                assert_eq!(injected_args(&value), with_install_info(SCOPED_AGENT_ARGS));
+            }
+        }
     }
 
+    /// Both Kiro CLI harnesses at one target must read the same record,
+    /// so an opt-out through either one reaches the other.
     #[test]
-    fn mcp_pass_v3_rewrite_appends_telemetry_off_when_no_telemetry() {
-        let value = rewrite_scoped_agent(&McpServerPassV3, true, "mcp-v3-args-telemetry-off");
-        assert_eq!(
-            injected_args(&value),
-            [SCOPED_AGENT_ARGS, &["--telemetry", "off"]].concat()
-        );
+    fn v2_and_v3_slots_at_one_target_share_the_install_info_path() {
+        let target = scratch_dir("mcp-args-shared-install-info");
+        let record = super::super::absolute_install_info_path(&target);
+        let bin_dir = target.join(".konductor").join("bin");
+        let bin_files = [bin_file_entry()];
+        let rewrite = |pass: &dyn ResourceRewritePass, no_telemetry: bool| {
+            let mut value = serde_json::json!({
+                "name": "k-example",
+                "resources": ["skill://skills/constraints/SKILL.md"],
+                "permissions": {"rules": []}
+            });
+            pass.rewrite(
+                &mut value,
+                &RewriteContext {
+                    context_dir: &target.join(".kiro").join("context"),
+                    skills_dir: &target.join(".konductor").join("skills"),
+                    bin_dir: &bin_dir,
+                    bin_files: &bin_files,
+                    agent_sop_names: empty_agent_sop_names(),
+                    agent_skill_names: empty_agent_skill_names(),
+                    no_telemetry,
+                    install_info_path: &record,
+                },
+            );
+            value
+        };
+        let v2 = rewrite(&McpServerPass, true);
+        let v3 = rewrite(&McpServerPassV3, false);
+        let expected = ["--install-info", &record.display().to_string()].map(str::to_string);
+        assert!(record.is_absolute());
+        for value in [&v2, &v3] {
+            let args = injected_args(value);
+            assert!(
+                args.ends_with(&expected.each_ref().map(String::as_str)),
+                "got: {args:?}"
+            );
+            assert!(!args.contains(&"--telemetry"), "got: {args:?}");
+        }
+        fs::remove_dir_all(&target).ok();
     }
 
     #[test]
@@ -1610,6 +1699,7 @@ mod tests {
             agent_sop_names: &agent_sop_names,
             agent_skill_names: empty_agent_skill_names(),
             no_telemetry: false,
+            install_info_path: Path::new(TEST_INSTALL_INFO_PATH),
         };
         let mut sop_only_named = sop_only.clone();
         sop_only_named["name"] = serde_json::json!("k-example");
@@ -1638,7 +1728,7 @@ mod tests {
         );
         assert_eq!(
             value["mcpServers"]["konductor-skills"]["args"],
-            serde_json::json!(MCP_SERVER_ARGS)
+            serde_json::json!(with_install_info(MCP_SERVER_ARGS))
         );
         fs::remove_dir_all(&dir).ok();
     }

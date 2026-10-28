@@ -521,6 +521,7 @@ fn install_agents(
     let bin_dir = target_dir
         .join(KONDUCTOR_DESTINATION_ROOT)
         .join(super::mcp_server::BIN_CONTENT_TYPE_DIR);
+    let install_info_path = super::resource_rewrite::absolute_install_info_path(target_dir);
 
     // V3 synth writes the same `_sop_scopes.json`/`_skill_scopes.json`
     // sidecars V2 writes, so this scopes the `konductor-skills` MCP
@@ -537,6 +538,7 @@ fn install_agents(
         agent_sop_names: &agent_sop_names,
         agent_skill_names: &agent_skill_names,
         no_telemetry,
+        install_info_path: &install_info_path,
     };
 
     let (mut files, any_mcp_server_injected) =
@@ -964,7 +966,7 @@ mod tests {
     }
 
     #[test]
-    fn install_from_local_mcp_server_telemetry_arg_follows_no_telemetry() {
+    fn install_from_local_mcp_server_points_at_install_info_whether_or_not_opted_out() {
         let repo_root = scratch_dir("install-mcp-telemetry-arg-repo");
         let contents = br#"{
             "name": "k-example",
@@ -998,29 +1000,86 @@ mod tests {
         install(&opted_out, true);
         install(&opted_out, true);
 
-        assert_eq!(
-            args(&opted_in),
-            serde_json::json!([
-                "--skills-dir",
-                "~/.konductor/skills",
-                "--skills-dir",
-                ".konductor/skills"
-            ])
-        );
-        assert_eq!(
-            args(&opted_out),
-            serde_json::json!([
-                "--skills-dir",
-                "~/.konductor/skills",
-                "--skills-dir",
-                ".konductor/skills",
-                "--telemetry",
-                "off"
-            ])
-        );
+        for target_dir in [&opted_in, &opted_out] {
+            let record = crate::cli::telemetry::install_info_path(target_dir);
+            assert_eq!(
+                args(target_dir),
+                serde_json::json!([
+                    "--skills-dir",
+                    "~/.konductor/skills",
+                    "--skills-dir",
+                    ".konductor/skills",
+                    "--install-info",
+                    record.display().to_string()
+                ])
+            );
+        }
 
         fs::remove_dir_all(&opted_in).ok();
         fs::remove_dir_all(&opted_out).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// A V2 install and a V3 install at one target, with opposite
+    /// telemetry choices, both point skill-lookup at the same record.
+    #[test]
+    fn kiro_v2_and_v3_installs_at_one_target_share_the_install_info_arg() {
+        let target_dir = scratch_dir("install-mcp-shared-install-info-target");
+        let repo_root = scratch_dir("install-mcp-shared-install-info-repo");
+        let agent = br#"{
+            "name": "k-example",
+            "resources": ["skill://skills/constraints/SKILL.md"],
+            "permissions": {"rules": []}
+        }"#;
+        seed_synthed_agent(&repo_root, "k-example", agent);
+        seed_synthed_skill(&repo_root, "constraints", b"body\n", &[]);
+        let v2_dist = repo_root.join("dist/kiro-cli-v2");
+        fs::create_dir_all(v2_dist.join("agents")).unwrap();
+        fs::write(v2_dist.join("agents/k-example.json"), agent).unwrap();
+        fs::create_dir_all(v2_dist.join("skills/constraints")).unwrap();
+        fs::write(v2_dist.join("skills/constraints/SKILL.md"), b"body\n").unwrap();
+        seed_mcp_binary(&repo_root, "skill-lookup-mcp", b"fake binary");
+        let install_info_arg = || -> serde_json::Value {
+            let installed: serde_json::Value = serde_json::from_slice(
+                &fs::read(target_dir.join(".kiro/agents/k-example.json")).unwrap(),
+            )
+            .unwrap();
+            let args = installed["mcpServers"]["konductor-skills"]["args"]
+                .as_array()
+                .unwrap()
+                .clone();
+            assert!(
+                !args.contains(&serde_json::json!("--telemetry")),
+                "got: {args:?}"
+            );
+            serde_json::json!(args[args.len() - 2..])
+        };
+
+        super::super::kiro_cli::KiroCliInstallStrategy
+            .install_from_local(
+                &target_dir,
+                Some(repo_root.to_str().unwrap()),
+                "2026-01-01T00:00:00Z",
+                true,
+            )
+            .expect("kiro-cli-v2 install must succeed");
+        let v2_arg = install_info_arg();
+        KiroCliV3InstallStrategy
+            .install_from_local(
+                &target_dir,
+                Some(repo_root.to_str().unwrap()),
+                "2026-01-01T00:00:00Z",
+                false,
+            )
+            .expect("kiro-v3 install must succeed");
+        let v3_arg = install_info_arg();
+
+        let record = crate::cli::telemetry::install_info_path(&target_dir);
+        let expected = serde_json::json!(["--install-info", record.display().to_string()]);
+        assert_eq!(v2_arg, expected);
+        assert_eq!(v3_arg, expected);
+
+        fs::remove_dir_all(&target_dir).ok();
         fs::remove_dir_all(&repo_root).ok();
     }
 

@@ -492,9 +492,9 @@ above) - read `GITHUB_TOKEN` from the environment and send it on the same
 it, so the opt-out carries forward to a later plain `update` too, instead of silently
 re-enabling telemetry the moment the flag is omitted. Without the flag, `update` carries
 forward the target's earlier choice the same way: a missing `install-info.json` already
-means opted out, with nothing left to carry forward differently. An opted-out Kiro CLI
-install or update also adds `--telemetry off` to the `konductor-skills` MCP server's args,
-so `skill-lookup-mcp` sends no telemetry either.
+means opted out, with nothing left to carry forward differently. Kiro CLI agents launch the
+`konductor-skills` MCP server with `--install-info <target>/.konductor/install-info.json`,
+and `skill-lookup-mcp` sends no telemetry when that file is missing at startup.
 
 `--enable-telemetry` is the reverse: it forces telemetry on for this run regardless of any
 carried-forward opt-out, and durably re-creates `install-info.json`, the same way a fresh
@@ -508,9 +508,10 @@ Both flags are scoped to the **whole target directory**, not to `--harness`.
 so there is no per-harness telemetry setting. Opting out (or back in) via one harness's
 `update`, for example `update --harness kiro-cli-v2 --no-telemetry`, changes the record
 for every harness at that target. Only the named harness's agent files are rewritten in
-that run, and another Kiro CLI harness's `konductor-skills` MCP server args change only on that
-harness's own next `update`. Until then that harness's skill-lookup server keeps its previous
-setting: still reporting after an opt-out, or still `--telemetry off` after an opt-in.
+that run, but every Kiro CLI harness's skill-lookup server reads the same record each time it
+starts, so all of them follow the new setting. A harness installed before `--install-info`
+existed picks up the new arg on its own next `update`; until then its skill-lookup server
+keeps its previous setting.
 
 ### `--dry-run`
 

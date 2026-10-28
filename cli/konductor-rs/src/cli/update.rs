@@ -1724,7 +1724,7 @@ fn run_update_one_target_with_remote_installer(
     // since by this point in the function a single slot has already
     // been resolved via `harness_select::select_harness` above. `force`
     // and either explicit telemetry flag bypass the skip, so an opt-out
-    // or opt-in always rewrites the telemetry hooks and MCP args, even
+    // or opt-in always rewrites the telemetry record and hooks, even
     // when the record already says otherwise. Only runs
     // on the no-`--from` branch: `--version`/`--from` are mutually
     // exclusive at the clap
@@ -2864,7 +2864,7 @@ mod tests {
         fs::remove_dir_all(&repo_root).ok();
     }
 
-    // ── `update` rewrites the MCP server's `--telemetry` arg ──────────
+    // ── `update` and the MCP server's `--install-info` record ─────────
 
     /// Seeds a V2 repo with one skill-bearing agent and the MCP binary,
     /// plus a dual-marker target, so every install/update below injects
@@ -2939,65 +2939,67 @@ mod tests {
             .collect()
     }
 
-    fn has_telemetry_off(args: &[String]) -> bool {
-        args.ends_with(&["--telemetry".to_string(), "off".to_string()])
-            && args.iter().filter(|a| *a == "--telemetry").count() == 1
+    /// Whether the injected args end with this target's `--install-info`
+    /// pair and carry no `--telemetry` flag at all.
+    fn points_at_install_info(target_dir: &Path, args: &[String]) -> bool {
+        let record = crate::cli::telemetry::install_info_path(target_dir);
+        args.ends_with(&["--install-info".to_string(), record.display().to_string()])
+            && !args.contains(&"--telemetry".to_string())
+    }
+
+    fn assert_mcp_server_follows_record(target_dir: &Path, record_expected: bool, when: &str) {
+        let args = konductor_skills_args(target_dir);
+        assert!(
+            points_at_install_info(target_dir, &args),
+            "{when}, got: {args:?}"
+        );
+        assert_eq!(
+            crate::cli::telemetry::install_info_exists(target_dir),
+            record_expected,
+            "{when}: install-info.json presence"
+        );
     }
 
     #[test]
-    fn update_no_telemetry_adds_mcp_server_telemetry_off() {
+    fn update_no_telemetry_removes_the_record_the_mcp_server_reads() {
         let _home = HomeGuard::new("update-mcp-telemetry-no-telemetry-home");
         let (target_dir, repo_root) =
             seed_mcp_telemetry_fixture("update-mcp-telemetry-no-telemetry");
         install_v2(&repo_root, &target_dir, false);
-        assert!(!konductor_skills_args(&target_dir).contains(&"--telemetry".to_string()));
+        assert_mcp_server_follows_record(&target_dir, true, "after install");
 
         update_from(&repo_root, &target_dir, true, false);
 
-        let args = konductor_skills_args(&target_dir);
-        assert!(has_telemetry_off(&args), "got: {args:?}");
+        assert_mcp_server_follows_record(&target_dir, false, "after update --no-telemetry");
         fs::remove_dir_all(&target_dir).ok();
         fs::remove_dir_all(&repo_root).ok();
     }
 
     #[test]
-    fn plain_update_on_opted_out_target_keeps_mcp_server_telemetry_off() {
+    fn plain_update_on_opted_out_target_keeps_the_mcp_server_record_absent() {
         let _home = HomeGuard::new("update-mcp-telemetry-carry-forward-home");
         let (target_dir, repo_root) =
             seed_mcp_telemetry_fixture("update-mcp-telemetry-carry-forward");
         install_v2(&repo_root, &target_dir, true);
-        let args = konductor_skills_args(&target_dir);
-        assert!(
-            has_telemetry_off(&args),
-            "after install --no-telemetry, got: {args:?}"
-        );
+        assert_mcp_server_follows_record(&target_dir, false, "after install --no-telemetry");
 
         update_from(&repo_root, &target_dir, false, false);
 
-        let args = konductor_skills_args(&target_dir);
-        assert!(
-            has_telemetry_off(&args),
-            "after plain update, got: {args:?}"
-        );
+        assert_mcp_server_follows_record(&target_dir, false, "after plain update");
         fs::remove_dir_all(&target_dir).ok();
         fs::remove_dir_all(&repo_root).ok();
     }
 
     #[test]
-    fn update_enable_telemetry_removes_mcp_server_telemetry_off() {
+    fn update_enable_telemetry_recreates_the_record_the_mcp_server_reads() {
         let _home = HomeGuard::new("update-mcp-telemetry-enable-home");
         let (target_dir, repo_root) = seed_mcp_telemetry_fixture("update-mcp-telemetry-enable");
         install_v2(&repo_root, &target_dir, true);
-        let args = konductor_skills_args(&target_dir);
-        assert!(
-            has_telemetry_off(&args),
-            "after install --no-telemetry, got: {args:?}"
-        );
+        assert_mcp_server_follows_record(&target_dir, false, "after install --no-telemetry");
 
         update_from(&repo_root, &target_dir, false, true);
 
-        let args = konductor_skills_args(&target_dir);
-        assert!(!args.contains(&"--telemetry".to_string()), "got: {args:?}");
+        assert_mcp_server_follows_record(&target_dir, true, "after update --enable-telemetry");
         fs::remove_dir_all(&target_dir).ok();
         fs::remove_dir_all(&repo_root).ok();
     }
@@ -3005,21 +3007,15 @@ mod tests {
     /// Opts out, back in with `--enable-telemetry`, then runs a plain
     /// `update` on the now opted-in target.
     #[test]
-    fn plain_update_on_opted_in_target_leaves_mcp_server_telemetry_arg_out() {
+    fn plain_update_on_opted_in_target_keeps_the_mcp_server_record() {
         let _home = HomeGuard::new("update-mcp-telemetry-opted-in-home");
         let (target_dir, repo_root) = seed_mcp_telemetry_fixture("update-mcp-telemetry-opted-in");
         install_v2(&repo_root, &target_dir, true);
-        let args = konductor_skills_args(&target_dir);
-        assert!(
-            has_telemetry_off(&args),
-            "after install --no-telemetry, got: {args:?}"
-        );
         update_from(&repo_root, &target_dir, false, true);
 
         update_from(&repo_root, &target_dir, false, false);
 
-        let args = konductor_skills_args(&target_dir);
-        assert!(!args.contains(&"--telemetry".to_string()), "got: {args:?}");
+        assert_mcp_server_follows_record(&target_dir, true, "after plain update");
         fs::remove_dir_all(&target_dir).ok();
         fs::remove_dir_all(&repo_root).ok();
     }

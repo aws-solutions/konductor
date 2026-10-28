@@ -90,14 +90,19 @@ passed, `prompts/list` simply returns an empty list and every
 | `--agent-sop-paths <DIR>` | yes | none | Directory to scan for agent SOPs (`<name>.sop.md` files), served as MCP prompts. No default — omitting the flag means no prompts are served. |
 | `--agent-sop-filter <GLOB>` | no | none | Comma-separated glob(s), matched case-insensitively against each SOP's name; mirrors `--skill-name-filter`'s semantics for prompts. |
 | `--telemetry {on\|off}` | no | `on` | Enables or disables this server process's own usage-analytics telemetry. When `off`, the periodic flush task is never started. |
+| `--install-info <PATH>` | no | none | Path to an install target's `.konductor/install-info.json`. If the file does not exist at startup, telemetry is off, as with `--telemetry off`. `konductor install`/`update` pass this for every Kiro CLI agent. |
 
 ## Telemetry
 
 This server reports anonymous, aggregated MCP tool-call counts on a
 periodic flush cycle (see `lib/skill-lookup-core/src/telemetry.rs`).
-Two independent opt-outs are available, either of which is sufficient:
+Three independent opt-outs are available, any of which is sufficient:
 
 - `--telemetry off` disables it for this server process only.
+- `--install-info <PATH>` disables it when that file is missing at
+  startup. The CLI points every Kiro CLI agent at its target's record,
+  so `konductor update --no-telemetry` and `--enable-telemetry` reach
+  every harness installed there.
 - `KONDUCTOR_TELEMETRY=off` disables it fleet-wide — the same
   environment variable and value `cli/konductor-rs` recognizes for its
   own opt-out — and takes effect regardless of the `--telemetry` flag's

@@ -100,9 +100,19 @@ pub(super) struct RewriteContext<'a> {
     /// `--skill-name-filter` at all".
     pub(super) agent_skill_names: &'a std::collections::HashMap<String, Vec<String>>,
     /// Whether this run is opted out of telemetry. Gates
-    /// `TelemetryHookPass` in `standard_passes` and makes the MCP passes
-    /// launch `skill-lookup-mcp` with `--telemetry off`.
+    /// `TelemetryHookPass` in `standard_passes`.
     pub(super) no_telemetry: bool,
+    /// Absolute path of the target's `install-info.json`, passed to
+    /// `skill-lookup-mcp` as `--install-info` so its telemetry follows
+    /// the target-wide record rather than this one harness's run.
+    pub(super) install_info_path: &'a Path,
+}
+
+/// `target_dir`'s `install-info.json`, made absolute so the injected
+/// `--install-info` arg does not depend on the agent's launch directory.
+pub(super) fn absolute_install_info_path(target_dir: &Path) -> std::path::PathBuf {
+    let path = crate::cli::telemetry::install_info_path(target_dir);
+    std::path::absolute(&path).unwrap_or(path)
 }
 
 impl RewriteContext<'_> {
@@ -440,6 +450,7 @@ mod tests {
             agent_sop_names: empty_agent_sop_names(),
             agent_skill_names: empty_agent_skill_names(),
             no_telemetry: false,
+            install_info_path: Path::new(""),
         }
     }
 
@@ -454,6 +465,7 @@ mod tests {
             agent_sop_names: empty_agent_sop_names(),
             agent_skill_names: empty_agent_skill_names(),
             no_telemetry: false,
+            install_info_path: Path::new(""),
         }
     }
 

@@ -184,18 +184,17 @@ pub enum Commands {
         link_bin: bool,
 
         /// Opt out of usage-analytics telemetry for this install. No
-        /// install record or telemetry hook is written, any record a
-        /// prior install at this target wrote is removed, and the
-        /// skill-lookup MCP server is launched with `--telemetry off`.
+        /// install record or telemetry hook is written, and any record a
+        /// prior install at this target wrote is removed. The skill-lookup
+        /// MCP server reads that record at startup, so it stops reporting too.
         ///
         /// Scoped to the whole target directory, NOT to `--harness`:
         /// `install-info.json` is one file per target, shared by every
         /// harness installed there, so `--harness <name> --no-telemetry`
-        /// still removes the ENTIRE target's record, so telemetry hooks for every
-        /// harness at that target stop reporting. Only the named harness's agent
-        /// files are rewritten by this run: another Kiro CLI harness at the same
-        /// target keeps launching skill-lookup without `--telemetry off` until its
-        /// own next `update`.
+        /// still removes the ENTIRE target's record, so telemetry hooks and the
+        /// skill-lookup MCP server for every harness at that target stop
+        /// reporting. A Kiro CLI harness installed before skill-lookup took
+        /// `--install-info` keeps its previous setting until its own next `update`.
         #[arg(long, display_order = 4)]
         no_telemetry: bool,
 
@@ -264,8 +263,8 @@ pub enum Commands {
         /// carries forward the target's earlier choice the same way: the
         /// absence of `.konductor/install-info.json` on an existing
         /// install means it is opted out, with nothing left to carry
-        /// forward differently. An opted-out update also launches the
-        /// skill-lookup MCP server with `--telemetry off`. Pass
+        /// forward differently. The skill-lookup MCP server follows the same
+        /// record at startup. Pass
         /// `--enable-telemetry` to reverse an opt-out. An `--all` batch
         /// resolves this independently per target. Mutually exclusive
         /// with `--enable-telemetry`.
@@ -273,11 +272,10 @@ pub enum Commands {
         /// Scoped to the whole target directory, NOT to `--harness`:
         /// `install-info.json` is one file per target, shared by every
         /// harness installed there, so `--harness <name> --no-telemetry`
-        /// still removes the ENTIRE target's record, so telemetry hooks for every
-        /// harness at that target stop reporting. Only the named harness's agent
-        /// files are rewritten by this run: another Kiro CLI harness at the same
-        /// target keeps launching skill-lookup without `--telemetry off` until its
-        /// own next `update`.
+        /// still removes the ENTIRE target's record, so telemetry hooks and the
+        /// skill-lookup MCP server for every harness at that target stop
+        /// reporting. A Kiro CLI harness installed before skill-lookup took
+        /// `--install-info` keeps its previous setting until its own next `update`.
         #[arg(long, conflicts_with = "enable_telemetry")]
         no_telemetry: bool,
 
