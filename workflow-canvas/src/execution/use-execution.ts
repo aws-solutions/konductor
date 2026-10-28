@@ -41,7 +41,8 @@ export interface ExecutionController {
  * run, so that a page which is opened again joins a run that is still going.
  * When `runs` is replaced by those of another workflow, the run in hand is let
  * go: it stays on its server, but this page no longer follows it or shows its
- * status.
+ * status, and `memory` forgets it. `runs` is the same object for as long as the
+ * session lasts.
  */
 export function useExecution(
   runs: RunPort | undefined,
@@ -88,8 +89,9 @@ export function useExecution(
     if (left === undefined || runs === undefined || left === runs) return;
     active.current?.controller.abort();
     active.current = undefined;
+    memory.forget();
     dispatch({ type: 'reset' });
-  }, [runs]);
+  }, [runs, memory]);
 
   useEffect(() => {
     const runId = runs ? memory.recall() : undefined;
