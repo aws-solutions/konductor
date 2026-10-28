@@ -67,6 +67,12 @@ describe('statusText and statusKind', () => {
       'error',
     ],
     [
+      'an error before an unsure start knew if the run started',
+      { phase: 'error', message: 'x', started: false, maybeStarted: true },
+      'The run may not have started.',
+      'error',
+    ],
+    [
       'an error after the run started',
       { phase: 'error', message: 'x', started: true },
       'Stopped following the run.',

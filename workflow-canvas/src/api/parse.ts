@@ -193,9 +193,11 @@ export function errorMessageOf(body: unknown): string | undefined {
   return fix === '' ? body.error : `${body.error} ${fix}`;
 }
 
-/** The `run_id` of an `Error` body, or `undefined` when it has none. */
+/** The `run_id` of an `Error` body, or `undefined` when it has none or it is not a run id. */
 export function errorRunIdOf(body: unknown): string | undefined {
-  return isObject(body) && typeof body.run_id === 'string' && body.run_id !== ''
+  return isObject(body) &&
+    typeof body.run_id === 'string' &&
+    RUN_ID_PATTERN.test(body.run_id)
     ? body.run_id
     : undefined;
 }
