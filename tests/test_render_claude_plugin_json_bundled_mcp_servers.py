@@ -236,3 +236,44 @@ def test_shipped_bundled_aws_proxy_is_exactly_pinned():
     assert (
         spec["dependencies"]["mcpRegistry"]["aws-mcp"]["args"][0] == "mcp-proxy-for-aws-cli==1.7.0"
     )
+
+
+def _render_with_template(tmp_path: Path, extra: dict) -> dict:
+    agents_dir = tmp_path / "agents"
+    agents_dir.mkdir()
+    (agents_dir / "k-example.md").write_text("---\nname: k-example\n---\n", encoding="utf-8")
+    template = tmp_path / "template.json"
+    template.write_text(json.dumps({**json.loads(TEMPLATE.read_text(encoding="utf-8")), **extra}), encoding="utf-8")
+    version_file = tmp_path / "VERSION"
+    version_file.write_text("9.9.9\n", encoding="utf-8")
+    out = tmp_path / "plugin.json"
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--template",
+            str(template),
+            "--version-file",
+            str(version_file),
+            "--agents-dir",
+            str(agents_dir),
+            "--output",
+            str(out),
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    return json.loads(out.read_text(encoding="utf-8"))
+
+
+def test_template_agents_and_default_skills_entries_are_dropped(tmp_path):
+    plugin = _render_with_template(tmp_path, {"agents": ["./agents/k-example.md"], "skills": ["./skills/"]})
+    assert "agents" not in plugin
+    assert "skills" not in plugin
+    assert plugin["version"] == "9.9.9"
+
+
+def test_template_extra_skills_directory_is_kept(tmp_path):
+    plugin = _render_with_template(tmp_path, {"skills": ["./skills/", "./extra-skills/"]})
+    assert plugin["skills"] == ["./extra-skills/"]

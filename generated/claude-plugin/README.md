@@ -16,8 +16,9 @@ generated/claude-plugin/
 ```
 
 `agents/` comes from `konductor synth`. `skills/` contains only converted
-SOPs. Native skills stay under the repository's `skills/` directory and are
-included separately by the plugin manifest.
+SOPs. Native skills stay under the repository's `skills/` directory; assembly
+copies both sets into the release tree's `skills/`, which Claude Code scans by
+default.
 
 ## Generate and validate
 
@@ -157,7 +158,8 @@ tools once the server is configured; API tools still prompt for confirmation.
   `.mcp.json` at the flat tree's own root.
 - `scripts/render-claude-plugin-json.py` renders plugin and MCP metadata.
 - `scripts/rewrite-claude-plugin-mcp-tool-names.py` rewrites bundled tool
-  grants for plugin namespacing.
+  grants for plugin namespacing and drops each agent's `mcpServers` block,
+  which plugin agents ignore.
 - `.github/workflows/release.yml` publishes the release tree.
 - `.github/workflows/tag-claude-plugin-release.yml` is a manually dispatched
   workflow that creates the immutable `claude-plugin-vX.Y.Z` tag after a

@@ -60,7 +60,6 @@ python3 "$REPO_ROOT/scripts/render-claude-plugin-json.py" \
   --template "$REPO_ROOT/scripts/claude-plugin.template.json" \
   --version-file "$REPO_ROOT/VERSION" \
   --agents-dir "$OUT/agents" \
-  --path-prefix "./" \
   --agent-specs-dir "$REPO_ROOT/agents" \
   --mcp-output "$OUT/.mcp.json" \
   --bundled-mcp-servers "$BUNDLED_MCP_SERVERS" \
