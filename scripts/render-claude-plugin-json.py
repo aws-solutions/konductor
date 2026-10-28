@@ -80,6 +80,7 @@ import json
 import sys
 from pathlib import Path
 
+
 def is_default_skills_dir(entry):
     """`./skills/`, `./skills`, `skills/` and `skills` all name the default scan."""
     return isinstance(entry, str) and entry.strip("/").removeprefix("./").rstrip("/") == "skills"
