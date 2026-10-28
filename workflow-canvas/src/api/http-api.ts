@@ -39,19 +39,20 @@ async function bodyOf(response: Response): Promise<unknown> {
 // aborts. The body is read inside the call, so a hung body is covered, and the
 // timer and the listener never outlive the call.
 async function withTimeout<T>(
-  timeoutMs: number,
+  timeoutMs: number | undefined,
   outer: AbortSignal | undefined,
   call: (signal: AbortSignal) => Promise<T>,
 ): Promise<T> {
   const controller = new AbortController();
   const abort = () => controller.abort();
-  const timer = setTimeout(abort, timeoutMs);
+  const timer =
+    timeoutMs === undefined ? undefined : setTimeout(abort, timeoutMs);
   if (outer?.aborted) abort();
   outer?.addEventListener('abort', abort, { once: true });
   try {
     return await call(controller.signal);
   } finally {
-    clearTimeout(timer);
+    if (timer !== undefined) clearTimeout(timer);
     outer?.removeEventListener('abort', abort);
   }
 }
@@ -68,7 +69,7 @@ async function exchange(
 
 async function send(
   fetchFn: Fetch,
-  timeoutMs: number,
+  timeoutMs: number | undefined,
   path: string,
   init: RequestInit,
   outer?: AbortSignal,
@@ -117,7 +118,9 @@ export function createHttpApi(
     send(fetchFn, timeoutMs, path, init, signal);
   return {
     async createSession(code) {
-      const body = await call('/api/session', {
+      // No timeout: the launch code works once, so giving up on a slow answer
+      // after the server has traded it would leave the page with no way in.
+      const body = await send(fetchFn, undefined, '/api/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code }),

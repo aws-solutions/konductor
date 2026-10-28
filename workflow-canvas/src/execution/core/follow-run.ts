@@ -146,13 +146,13 @@ export interface ResumeRequest extends Watch {
 
 /**
  * Joins the run `runId` if it is still running, as a page that was reloaded
- * does, and follows it like `startAndFollow`. A run that has ended, one that
- * cannot be read, or another run says nothing: there is nothing to resume.
- * It never rejects.
+ * does, and follows it like `startAndFollow`. The first reading is tried
+ * again like any other. A run that has ended, one that cannot be read, or
+ * another run says nothing: there is nothing to resume. It never rejects.
  */
 export async function resumeRun(request: ResumeRequest): Promise<void> {
-  const { runs, runId, emit, signal } = request;
-  const run = await runs.get(runId, signal).catch(() => undefined);
+  const { runId, emit, signal } = request;
+  const run = await read(request, runId).catch(() => undefined);
   if (signal.aborted || run?.runId !== runId || run.status !== 'running') {
     return;
   }
