@@ -168,8 +168,9 @@ test('shows a name the server refuses under the field, and keeps Save off', asyn
   await designer.rename('draft');
 
   await expect(designer.problems).toContainText(
-    'The stage name `draft` is already used.',
+    'The stage name draft is already used.',
   );
+  await expect(designer.problems).not.toContainText('`');
   await expect(designer.name).toHaveAttribute('aria-invalid', 'true');
   await expect(designer.page.getByText('Needs a fix')).toBeVisible();
   await designer.expectSaveEnabled(false);

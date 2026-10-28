@@ -19,7 +19,7 @@ export class DesignerPage {
   readonly saveStatus: Locator;
   readonly conflict: Locator;
   readonly problems: Locator;
-  /** The alert region of the Designer: conflicts, failed saves, problems. */
+  /** The alert region of the Designer: conflicts, a file loaded again, failed saves. */
   readonly alerts: Locator;
   readonly selected: Locator;
   /** The canvas that draws the stages. */
@@ -34,9 +34,7 @@ export class DesignerPage {
     this.saveStatus = page.getByTestId('save-status');
     this.conflict = page.getByTestId('conflict');
     this.problems = page.getByTestId('problems');
-    this.alerts = page
-      .getByRole('tabpanel', { name: 'Designer' })
-      .getByRole('alert');
+    this.alerts = page.getByTestId('edit-alerts');
     this.selected = page.getByText('Selected:');
     this.graph = page.getByRole('region', { name: 'Workflow graph' });
   }
