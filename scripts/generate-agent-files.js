@@ -22,7 +22,7 @@
  * straight into the agent's own `.md` file fixes this: the content travels
  * with the agent file itself, independent of spawn mode.
  *
- * ASDLCCoreAICapabilities is a single package with no `includes` chain --
+ * This repository is a single package with no `includes` chain --
  * every agent's declared skill list already equals its own
  * `clientConfig.claudeCli.skills` array in full, so there is no
  * own-vs-inherited reordering to do and no second skills root to search.

@@ -31,12 +31,14 @@ drift checks, [`tools/build-user-guide/`](../../tools/build-user-guide/README.md
 
 ### `konductor`'s skill count is runtime-dependent
 
-`konductor` declares 12 skills in `dependencies.skills.skillNames` and 13 in
-`clientConfig.claudeCli.skills`; the extra one is `claude-teams-behavior`. Kiro CLI therefore
-sees 12 and Claude Code sees 13. Every other agent's two lists agree.
+`konductor` lists 13 skills in `dependencies.skills.skillNames` and 13 in
+`clientConfig.claudeCli.skills`. Twelve are shared. `claude-teams-behavior` is only in the
+`claudeCli` list, and `humanize-writing` is only in `skillNames`. Six more agents (the mux and
+cmux orchestrators, `k-quality-assurance`, `k-researcher`, `k-browser`, `k-media-analyzer`)
+list `humanize-writing` in `skillNames` only. The other four agents' two lists agree.
 
 The roster tables state **13** (the `claudeCli` basis, which `check-guide-facts.py` asserts
-against) and footnote the Kiro CLI number. If the two lists are ever reconciled in the specs,
+against) and footnote the difference. If the two lists are ever reconciled in the specs,
 drop the footnote.
 
 ### `metrics` is a stub
