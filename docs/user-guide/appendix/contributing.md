@@ -198,15 +198,13 @@ test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 ### Checks before you open a pull request
 
 ```bash
-cargo fmt --check
+make lint CARGO="cargo +1.98.1"
 ```
 
-```bash
-cargo clippy -- -D warnings
-```
-
-Clippy is configured to treat every warning as an error, so a clean run is required rather than
-advisory.
+This runs `cargo clippy -- -D warnings` and `cargo fmt --check` on the `cli`, `mcp` and `shared`
+crates with the Rust version PR CI lints on (`RUST_LINT_TOOLCHAIN` in
+`.github/workflows/validate-pr.yml`). Clippy treats every warning as an error, so a clean run is
+required rather than advisory.
 
 ---
 
