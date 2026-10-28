@@ -35,6 +35,7 @@ mod logging;
 pub(crate) mod output;
 pub(crate) mod report;
 pub(crate) mod schema;
+pub(crate) mod skills_server;
 pub(crate) mod synth;
 mod telemetry;
 mod telemetry_hook;

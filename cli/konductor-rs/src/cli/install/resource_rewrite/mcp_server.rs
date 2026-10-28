@@ -23,7 +23,9 @@ use super::{push_unique_str, ResourceRewritePass, RewriteContext};
 /// key in an agent's mutated JSON to decide whether the V2 grant
 /// actually landed for that agent this run (see the "V3/Claude Code
 /// permission grant" section below for why that decision matters).
-pub(in crate::cli::install) const MCP_SERVER_NAME: &str = "konductor-skills";
+/// Defined in `cli::skills_server` so synth's prompt text names the same
+/// server.
+pub(in crate::cli::install) use crate::cli::skills_server::MCP_SERVER_NAME;
 /// `pub(in crate::cli::install)`, not `pub(super)`, for the same
 /// re-export-visibility reason as `MCP_SERVER_NAME` above. Also read
 /// by `kiro_cli.rs`'s `plan_claude_settings_grant` to predict, at plan
@@ -648,6 +650,20 @@ mod tests {
         ));
         fs::create_dir_all(&dir).unwrap();
         dir
+    }
+
+    #[test]
+    fn grants_are_built_from_the_shared_server_and_tool_names() {
+        use crate::cli::skills_server::GET_SKILL_TOOL;
+        assert_eq!(MCP_SERVER_TOOLS_GRANT, format!("@{MCP_SERVER_NAME}"));
+        for grant in MCP_SERVER_ALLOWED_TOOLS_GRANTS {
+            assert!(
+                grant.starts_with(&format!("{MCP_SERVER_TOOLS_GRANT}/")),
+                "{grant}"
+            );
+        }
+        assert!(MCP_SERVER_ALLOWED_TOOLS_GRANTS
+            .contains(&format!("{MCP_SERVER_TOOLS_GRANT}/{GET_SKILL_TOOL}").as_str()));
     }
 
     /// Empty by construction (a `'static` empty map, so every `ctx()`

@@ -6,6 +6,7 @@
 // Claude Code gets no block; it lists and loads skills natively.
 
 use super::model::SkillDef;
+use crate::cli::skills_server::{GET_SKILL_TOOL, MCP_SERVER_NAME};
 
 const TRIGGER_MAX_CHARS: usize = 160;
 const ELLIPSIS: &str = "...";
@@ -13,11 +14,16 @@ const ELLIPSIS: &str = "...";
 const HEADING: &str = "## Your skills";
 
 const USE_RULE: &str = "Before a non-trivial task, check whether one of the skills listed below \
-covers it. If one matches, load at most one or two and follow their steps and output format. \
-Skip this for trivial tasks such as a quick question, a one-line edit, or a lookup.";
+covers it. In addition to any skill marked always-apply, load at most one or two and follow \
+their steps and output format. Skip this for trivial tasks such as a quick question, a one-line \
+edit, or a lookup.";
 
-const KIRO_LOAD: &str = "Load a skill by name with the `get_skill` tool on the \
-`konductor-skills` MCP server. If the tool is deferred, load it with `tool_load` first.";
+// A skill whose trigger starts with this marker applies to every task, so
+// it is listed apart from the task skills and outside their budget.
+const ALWAYS_APPLY_MARKER: &str = "MUST USE";
+
+const ALWAYS_APPLY_RULE: &str = "Follow these on every task. Load each at most once per \
+session, not before every task. They do not count toward the one or two above.";
 
 const ORCHESTRATOR_RULE: &str = "You orchestrate. When a task matches a skill a specialist \
 owns, such as a code review, a threat model, or user stories, route it to that specialist \
@@ -97,8 +103,15 @@ fn is_orchestrator(agent_name: &str) -> bool {
     agent_name.starts_with("konductor")
 }
 
+fn kiro_load_rule() -> String {
+    format!(
+        "Load a skill by name with the `{GET_SKILL_TOOL}` tool on the `{MCP_SERVER_NAME}` MCP \
+         server. If the tool is deferred, load it with `tool_load` first."
+    )
+}
+
 fn block_preamble(agent_name: &str) -> String {
-    let mut block = format!("{HEADING}\n\n{USE_RULE}\n\n{KIRO_LOAD}\n\n");
+    let mut block = format!("{HEADING}\n\n{USE_RULE}\n\n{}\n\n", kiro_load_rule());
     if is_orchestrator(agent_name) {
         block.push_str(ORCHESTRATOR_RULE);
         block.push_str("\n\n");
@@ -106,28 +119,51 @@ fn block_preamble(agent_name: &str) -> String {
     block
 }
 
-/// The Kiro block: one `- <name>: <trigger>` line per declared skill, in
-/// declared order. Names with no matching `SkillDef` are skipped (synth's
-/// parse step already rejects dangling names). `None` when nothing would
-/// be listed.
+fn always_apply_line(names: &[&str]) -> String {
+    let listed = names
+        .iter()
+        .map(|name| format!("`{name}`"))
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!("Always-apply: {listed}. {ALWAYS_APPLY_RULE}")
+}
+
+/// The Kiro block: one `- <name>: <trigger>` line per declared task skill,
+/// in declared order, after one always-apply line naming any skill whose
+/// trigger starts with `MUST USE`. Names with no matching `SkillDef` are
+/// skipped (synth's parse step already rejects dangling names). `None`
+/// when nothing would be listed.
 pub(crate) fn kiro_skill_block(
     agent_name: &str,
     skill_names: &[&str],
     skills: &[SkillDef],
 ) -> Option<String> {
-    let lines: Vec<String> = skill_names
+    let mut always_apply = Vec::new();
+    let mut task_lines = Vec::new();
+    for skill in skill_names
         .iter()
         .filter_map(|name| skills.iter().find(|s| s.name == *name))
-        .map(|skill| match skill_trigger(&skill.raw_frontmatter) {
-            Some(trigger) => format!("- {}: {trigger}", skill.name),
-            None => format!("- {}", skill.name),
-        })
-        .collect();
-    if lines.is_empty() {
+    {
+        match skill_trigger(&skill.raw_frontmatter) {
+            Some(trigger) if trigger.starts_with(ALWAYS_APPLY_MARKER) => {
+                always_apply.push(skill.name.as_str());
+            }
+            Some(trigger) => task_lines.push(format!("- {}: {trigger}", skill.name)),
+            None => task_lines.push(format!("- {}", skill.name)),
+        }
+    }
+    let mut sections = Vec::new();
+    if !always_apply.is_empty() {
+        sections.push(always_apply_line(&always_apply));
+    }
+    if !task_lines.is_empty() {
+        sections.push(task_lines.join("\n"));
+    }
+    if sections.is_empty() {
         return None;
     }
     let mut block = block_preamble(agent_name);
-    block.push_str(&lines.join("\n"));
+    block.push_str(&sections.join("\n\n"));
     Some(block)
 }
 
@@ -253,12 +289,51 @@ mod tests {
     }
 
     #[test]
-    fn kiro_block_names_get_skill_and_tool_load() {
+    fn kiro_block_names_the_installed_server_and_tool() {
         let skills = vec![skill("a", "Use for a.")];
         let block = kiro_skill_block("k-developer", &["a"], &skills).unwrap();
-        assert!(block.contains("`get_skill`"));
-        assert!(block.contains("`konductor-skills`"));
+        assert!(block.contains(&format!("`{GET_SKILL_TOOL}`")), "{block}");
+        assert!(block.contains(&format!("`{MCP_SERVER_NAME}`")), "{block}");
         assert!(block.contains("`tool_load`"));
+    }
+
+    #[test]
+    fn use_rule_budget_excludes_always_apply_skills() {
+        let skills = vec![skill("a", "Use for a.")];
+        let block = kiro_skill_block("k-developer", &["a"], &skills).unwrap();
+        assert!(
+            block.contains("In addition to any skill marked always-apply, load at most one or two"),
+            "{block}"
+        );
+    }
+
+    #[test]
+    fn must_use_skill_moves_to_always_apply_line_before_task_list() {
+        let skills = vec![
+            skill("constraints", "MUST USE for every interaction. Core rules."),
+            skill("a", "Use for a."),
+        ];
+        let block = kiro_skill_block("k-developer", &["constraints", "a"], &skills).unwrap();
+        let expected = "Always-apply: `constraints`. Follow these on every task. Load each \
+                        at most once per session, not before every task. They do not count \
+                        toward the one or two above.\n\n- a: Use for a.";
+        assert!(block.ends_with(expected), "{block}");
+        assert!(!block.contains("- constraints"), "{block}");
+    }
+
+    #[test]
+    fn always_apply_line_joins_several_names_in_declared_order() {
+        let skills = vec![skill("x", "MUST USE always."), skill("y", "MUST USE too.")];
+        let block = kiro_skill_block("k-developer", &["y", "x"], &skills).unwrap();
+        assert!(block.contains("Always-apply: `y`, `x`. "), "{block}");
+        assert!(!block.lines().any(|l| l.starts_with("- ")), "{block}");
+    }
+
+    #[test]
+    fn no_always_apply_line_without_must_use_skills() {
+        let skills = vec![skill("a", "Use for a.")];
+        let block = kiro_skill_block("k-developer", &["a"], &skills).unwrap();
+        assert!(!block.contains("Always-apply:"), "{block}");
     }
 
     #[test]
