@@ -387,8 +387,8 @@ connection, an AWS-managed plugin and standalone skills.
 
 In the Claude Code plugin, `aws-mcp` is declared plugin-wide in `.mcp.json`, so while the plugin is
 enabled its tools, AWS API tools included, are available in every Claude Code session, not only
-to those two agents. The IAM condition keys above apply to all of them. Disable the server in
-`/mcp` (`plugin:konductor:aws-mcp`) when you don't need it.
+to those two agents. The IAM condition keys above apply to all of them. Without `uvx` the server
+shows as failed in `/mcp`. Disable it there (`plugin:konductor:aws-mcp`) when you don't need it.
 
 Everything else is bring-your-own:
 
