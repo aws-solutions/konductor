@@ -111,16 +111,17 @@ fn mark_konductor_installed(root: &Path, records: &mut [SkillRecord]) {
         return;
     }
 
-    // The manifest's `files[].path` entries are relative to `target_dir`
-    // (the install root two directory levels above a `--skills-dir`
-    // root -- see `install_manifest::manifest_relative_path`'s doc
-    // comment), so the anchor to strip from each record's absolute path
-    // is `root`'s own canonical grandparent, not `root` itself. Computed
-    // from `canonical_root(root)` (the same canonicalization
-    // `scan_directory` already uses for its own containment checks),
-    // not from `root` directly, so a relative or symlinked-ancestor
-    // `--skills-dir` argument (see `scan_directory`'s doc comment for
-    // why that matters) doesn't wrongly fail every lookup under it.
+    // Every manifest file path (v2 strategies[].files[].path or v1
+    // files[].path) is relative to target_dir (the install root two
+    // directory levels above a `--skills-dir` root -- see
+    // `install_manifest::manifest_relative_path`'s doc comment), so the
+    // anchor to strip from each record's absolute path is `root`'s own
+    // canonical grandparent, not `root` itself. Computed from
+    // `canonical_root(root)` (the same canonicalization `scan_directory`
+    // already uses for its own containment checks), not from `root`
+    // directly, so a relative or symlinked-ancestor `--skills-dir`
+    // argument (see `scan_directory`'s doc comment for why that matters)
+    // doesn't wrongly fail every lookup under it.
     let canonical = canonical_root(root);
     let target_dir_anchor: Option<PathBuf> = canonical
         .as_deref()
