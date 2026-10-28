@@ -159,12 +159,20 @@ def test_assembled_tree_ships_the_telemetry_hook(assembled):
 def test_assembled_agents_use_claude_code_model_ids(assembled):
     for agent in (assembled / "agents").glob("*.md"):
         model = re.search(r"^model: (.+)$", agent.read_text(encoding="utf-8"), re.M).group(1)
-        assert "." not in model, f"{agent.name}: {model}"
+        assert re.fullmatch(
+            r"claude-(?:opus|sonnet|haiku|fable)-\d{1,2}(?:-\d{1,2})?(?:-\d{8})?|inherit|sonnet|opus|haiku", model
+        ), f"{agent.name}: {model}"
 
 
 def test_assembled_tree_ships_notice_and_absolute_readme_links(assembled):
     assert (assembled / "NOTICE.txt").is_file()
     readme = (assembled / "README.md").read_text(encoding="utf-8")
-    assert 'src="docs/assets/' not in readme
-    assert "](docs/" not in readme
+    targets = re.findall(r'(?:\]\(|src="|href="|^\[[^\]\n]+\]:[ \t]*)([^)"\s]+)', readme, re.M)
+    shipped = {"LICENSE.txt", "NOTICE.txt"}
+    relative = [
+        t for t in targets
+        if not re.match(r"^(?:[a-z][a-z0-9+.-]*:|#|/)", t, re.I) and t.split("#", 1)[0] not in shipped
+    ]
+    assert targets, "expected links in the assembled README"
+    assert not relative, f"README links that point at files the plugin does not ship: {relative}"
     assert "](LICENSE.txt)" in readme

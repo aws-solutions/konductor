@@ -337,31 +337,57 @@ impl HarnessTransformer for ClaudeTransformer {
 }
 
 const CLAUDE_MODEL_ALIASES: &[&str] = &["inherit", "sonnet", "opus", "haiku"];
+const CLAUDE_MODEL_FAMILIES: &[&str] = &["opus", "sonnet", "haiku", "fable"];
 
 /// Converts an agent spec's model ID to the form Claude Code accepts.
 ///
 /// Specs use Kiro's dotted form (`claude-sonnet-5.5`). Claude Code wants
 /// dashes (`claude-sonnet-5-5`) and silently ignores an ID it doesn't
-/// recognize, so an unknown shape fails synth instead of shipping.
+/// recognize, so synth fails on any ID outside the current naming scheme,
+/// `claude-<family>-<major>[-<minor>][-<yyyymmdd>]`. It can't tell whether a
+/// well-formed ID names a model that exists.
 fn claude_model_id(agent: &str, model: &str) -> Result<String, String> {
     if CLAUDE_MODEL_ALIASES.contains(&model) {
         return Ok(model.to_string());
     }
     let converted = model.replace('.', "-");
-    let well_formed = converted.starts_with("claude-")
-        && !converted.ends_with('-')
-        && !converted.contains("--")
-        && converted
-            .bytes()
-            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-');
-    if well_formed {
+    if follows_claude_naming_scheme(&converted) {
         Ok(converted)
     } else {
         Err(format!(
-            "agent '{agent}' declares model '{model}', which is neither a claude-* model ID \
-             nor one of the Claude Code aliases {CLAUDE_MODEL_ALIASES:?}"
+            "agent '{agent}' declares model '{model}', which is neither a Claude model ID of \
+             the form claude-<family>-<major>[-<minor>][-<yyyymmdd>] (family one of \
+             {CLAUDE_MODEL_FAMILIES:?}) nor one of the Claude Code aliases {CLAUDE_MODEL_ALIASES:?}"
         ))
     }
+}
+
+fn follows_claude_naming_scheme(id: &str) -> bool {
+    let parts: Vec<&str> = id.split('-').collect();
+    let [claude, family, version @ ..] = parts.as_slice() else {
+        return false;
+    };
+    if *claude != "claude" || !CLAUDE_MODEL_FAMILIES.contains(family) {
+        return false;
+    }
+    match version {
+        [major] => is_version_number(major),
+        [major, minor_or_date] => {
+            is_version_number(major) && (is_version_number(minor_or_date) || is_date(minor_or_date))
+        }
+        [major, minor, date] => {
+            is_version_number(major) && is_version_number(minor) && is_date(date)
+        }
+        _ => false,
+    }
+}
+
+fn is_version_number(part: &str) -> bool {
+    (1..=2).contains(&part.len()) && part.bytes().all(|b| b.is_ascii_digit())
+}
+
+fn is_date(part: &str) -> bool {
+    part.len() == 8 && part.bytes().all(|b| b.is_ascii_digit())
 }
 
 /// Renders one agent's YAML frontmatter + system prompt body. The body
@@ -1879,6 +1905,10 @@ mod tests {
             claude_model_id("a", "claude-haiku-4.5").unwrap(),
             "claude-haiku-4-5"
         );
+        assert_eq!(
+            claude_model_id("a", "claude-fable-5.1").unwrap(),
+            "claude-fable-5-1"
+        );
     }
 
     #[test]
@@ -1886,6 +1916,8 @@ mod tests {
         for id in [
             "claude-sonnet-5-5",
             "claude-sonnet-5",
+            "claude-sonnet-4-5-20250929",
+            "claude-opus-4-20250514",
             "inherit",
             "sonnet",
             "opus",
@@ -1904,6 +1936,11 @@ mod tests {
             "claude-sonnet-5.",
             "claude-sonnet..5",
             "",
+            "claude-sonet-5.5",
+            "claude-sonnet-555",
+            "claude-x",
+            "claude-3.7-sonnet",
+            "claude-sonnet-5-5-2026",
         ] {
             let err = claude_model_id("k-example", id).unwrap_err();
             assert!(err.contains("k-example"), "{err}");

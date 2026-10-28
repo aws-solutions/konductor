@@ -48,3 +48,11 @@ def test_cli_rewrites_file_in_place(tmp_path):
         check=True,
     )
     assert readme.read_text(encoding="utf-8") == f"[Contributing]({BLOB}CONTRIBUTING.md)\n"
+
+
+def test_html_href_and_reference_definitions_are_rewritten():
+    text = '<a href="CONTRIBUTING.md">c</a>\n[guide]: docs/user-guide/agents.md\n[home]: https://example.com\n'
+    out = module.rewrite(text, "v1.2.0")
+    assert f'href="{BLOB}CONTRIBUTING.md"' in out
+    assert f"[guide]: {BLOB}docs/user-guide/agents.md" in out
+    assert "[home]: https://example.com" in out

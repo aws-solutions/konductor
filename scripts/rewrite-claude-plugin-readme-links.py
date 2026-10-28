@@ -14,8 +14,9 @@ from pathlib import Path
 
 REPO = "aws-solutions/konductor"
 SHIPPED = {"LICENSE.txt", "NOTICE.txt"}
-# `](target)` for markdown links and images, `src="target"` for inline HTML images.
-LINK = re.compile(r'(\]\(|src=")([^)"\s]+)')
+# `](target)` for markdown links and images, `src="..."`/`href="..."` for inline
+# HTML, and `[label]: target` reference definitions.
+LINK = re.compile(r'(\]\(|src="|href="|^\[[^\]\n]+\]:[ \t]*)([^)"\s]+)', re.M)
 ABSOLUTE = re.compile(r"^(?:[a-z][a-z0-9+.-]*:|#|/)", re.I)
 IMAGE_EXT = (".svg", ".png", ".jpg", ".jpeg", ".gif", ".webp")
 
