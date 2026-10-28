@@ -524,7 +524,7 @@ into the named harness's agent files: another harness's hooks return on its own 
 `install` follows the same target-wide rule. A plain `install` (no `--no-telemetry`) of a
 harness at a target whose manifest already tracks another harness, and that has no
 `install-info.json`, keeps the target opted out: it writes no record and no telemetry
-hooks, and prints a note that `konductor update --enable-telemetry` opts the target back
+hooks, and prints a note that `konductor update --target <dir> --enable-telemetry` opts the target back
 in. A first install at a target, or a reinstall of the only tracked harness, writes the
 record as usual. When that reinstall turns telemetry back on for an opted-out target, it
 prints a note saying so and that `--no-telemetry` keeps it off.
