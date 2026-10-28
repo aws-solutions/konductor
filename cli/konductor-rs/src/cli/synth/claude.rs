@@ -305,6 +305,9 @@ impl HarnessTransformer for ClaudeTransformer {
                 let Some(claude) = &agent.client_config.claude_cli else {
                     continue;
                 };
+                if agent.client_config.kiro_cli.is_some() {
+                    check_model_shared_with_kiro(&agent.name, &agent.config.model)?;
+                }
                 let rendered = render_agent_md(
                     &agent.name,
                     &agent.config,
@@ -339,19 +342,28 @@ impl HarnessTransformer for ClaudeTransformer {
 const CLAUDE_MODEL_FAMILIES: &[&str] = &["opus", "sonnet", "haiku", "fable"];
 const CLAUDE_CODE_MODEL_ALIASES: &[&str] = &["inherit", "sonnet", "opus", "haiku"];
 
-/// Converts an agent spec's model ID to the form Claude Code accepts.
-///
-/// Kiro CLI writes `config.model` verbatim, so a spec may only use values both
-/// runtimes understand: a Kiro dotted ID, `claude-<family>-<major>[.<minor>][-<yyyymmdd>]`,
-/// or `auto`. Claude Code wants dashes (`claude-sonnet-5-5`) and `inherit` for
-/// `auto`, and silently ignores an ID it doesn't recognize, so synth fails on
-/// anything else. It can't tell whether a well-formed ID names a model that exists.
-fn claude_model_id(agent: &str, model: &str) -> Result<String, String> {
+/// Converts an agent spec's model ID to the form Claude Code accepts: a Kiro
+/// dotted ID becomes the dashed form (`claude-sonnet-5.5` to `claude-sonnet-5-5`)
+/// and `auto` becomes `inherit`. Anything else passes through, so a Claude-only
+/// agent can use Claude Code's own IDs and aliases.
+fn claude_model_id(model: &str) -> String {
     if model == "auto" {
-        return Ok("inherit".to_string());
+        "inherit".to_string()
+    } else if is_kiro_model_id(model) {
+        model.replace('.', "-")
+    } else {
+        model.to_string()
     }
-    if is_kiro_model_id(model) {
-        return Ok(model.replace('.', "-"));
+}
+
+/// An agent with both kiroCli and claudeCli config shares one `config.model`,
+/// which Kiro CLI writes verbatim and Claude Code silently ignores if it doesn't
+/// recognize it. So it must be a value both understand: a Kiro dotted ID,
+/// `claude-<family>-<major>[.<minor>][-<yyyymmdd>]`, or `auto`. This can't tell
+/// whether a well-formed ID names a model that exists.
+fn check_model_shared_with_kiro(agent: &str, model: &str) -> Result<(), String> {
+    if model == "auto" || is_kiro_model_id(model) {
+        return Ok(());
     }
     let reason = if CLAUDE_CODE_MODEL_ALIASES.contains(&model) {
         "that is a Claude Code alias, which Kiro CLI does not recognize; use 'auto' to let the \
@@ -369,7 +381,7 @@ fn claude_model_id(agent: &str, model: &str) -> Result<String, String> {
         )
     };
     Err(format!(
-        "agent '{agent}' declares model '{model}': {reason}"
+        "agent '{agent}' declares model '{model}' for both Kiro CLI and Claude Code: {reason}"
     ))
 }
 
@@ -467,7 +479,7 @@ fn render_agent_md(
         }
     }
 
-    let model = claude_model_id(name, &config.model)?;
+    let model = claude_model_id(&config.model);
     let merged_mcp_servers = merge_mcp_servers(mcp_registry, &claude.mcp_servers);
     let frontmatter = ClaudeAgentFrontmatter {
         name,
@@ -1936,22 +1948,74 @@ mod tests {
             ("claude-sonnet-4.5-20250929", "claude-sonnet-4-5-20250929"),
             ("claude-opus-4-20250514", "claude-opus-4-20250514"),
         ] {
-            assert_eq!(claude_model_id("a", kiro).unwrap(), claude);
+            assert_eq!(claude_model_id(kiro), claude);
         }
     }
 
     #[test]
-    fn claude_model_id_maps_auto_to_inherit() {
-        assert_eq!(claude_model_id("a", "auto").unwrap(), "inherit");
+    fn claude_model_id_passes_claude_code_ids_and_aliases_through() {
+        for id in [
+            "sonnet",
+            "inherit",
+            "opus",
+            "claude-opus-4-1",
+            "claude-sonnet-5-5",
+        ] {
+            assert_eq!(claude_model_id(id), id);
+        }
     }
 
     #[test]
-    fn claude_model_id_rejects_dashed_form_with_dotted_hint() {
+    fn shared_model_accepts_kiro_ids_and_auto() {
+        for id in ["claude-sonnet-5.5", "claude-sonnet-5", "auto"] {
+            assert!(
+                check_model_shared_with_kiro("k-example", id).is_ok(),
+                "{id}"
+            );
+        }
+    }
+
+    #[test]
+    fn claude_only_agent_keeps_a_claude_code_alias_and_shared_agent_rejects_it() {
+        let claude_only = |model: &str| ParsedAgentSpec {
+            config: AgentConfig {
+                model: model.to_string(),
+                ..agent_with_claude("k-claude-only", ClaudeCliConfig::default()).config
+            },
+            ..agent_with_claude("k-claude-only", ClaudeCliConfig::default())
+        };
+        let mut shared = claude_only("sonnet");
+        shared.client_config.kiro_cli = Some(Default::default());
+        let model = |agents: Vec<ParsedAgentSpec>| CanonicalModel {
+            agents,
+            ..Default::default()
+        };
+
+        let out = temp_dir("claude-only-alias");
+        ClaudeTransformer
+            .transform(&model(vec![claude_only("sonnet")]), &out)
+            .unwrap();
+        let rendered = fs::read_to_string(out.join("claude/agents/k-claude-only.md")).unwrap();
+        assert!(rendered.contains("\nmodel: sonnet\n"), "{rendered}");
+
+        let err = ClaudeTransformer
+            .transform(&model(vec![shared]), &temp_dir("shared-alias"))
+            .unwrap_err();
+        assert!(err.contains("Claude Code alias"), "{err}");
+    }
+
+    #[test]
+    fn claude_model_id_maps_auto_to_inherit() {
+        assert_eq!(claude_model_id("auto"), "inherit");
+    }
+
+    #[test]
+    fn shared_model_rejects_dashed_form_with_dotted_hint() {
         for (dashed, dotted) in [
             ("claude-sonnet-5-5", "claude-sonnet-5.5"),
             ("claude-sonnet-4-5-20250929", "claude-sonnet-4.5-20250929"),
         ] {
-            let err = claude_model_id("k-example", dashed).unwrap_err();
+            let err = check_model_shared_with_kiro("k-example", dashed).unwrap_err();
             assert!(err.contains("k-example"), "{err}");
             assert!(err.contains("Kiro CLI does not recognize"), "{err}");
             assert!(err.contains(&format!("use '{dotted}'")), "{err}");
@@ -1959,9 +2023,9 @@ mod tests {
     }
 
     #[test]
-    fn claude_model_id_rejects_claude_code_aliases() {
+    fn shared_model_rejects_claude_code_aliases() {
         for alias in ["inherit", "sonnet", "opus", "haiku"] {
-            let err = claude_model_id("k-example", alias).unwrap_err();
+            let err = check_model_shared_with_kiro("k-example", alias).unwrap_err();
             assert!(err.contains("k-example"), "{err}");
             assert!(err.contains("Claude Code alias"), "{err}");
             assert!(err.contains("'auto'"), "{err}");
@@ -1969,7 +2033,7 @@ mod tests {
     }
 
     #[test]
-    fn claude_model_id_rejects_unknown_shapes() {
+    fn shared_model_rejects_unknown_shapes() {
         for id in [
             "gpt-5",
             "Auto",
@@ -1985,7 +2049,7 @@ mod tests {
             "claude-sonnet-5.5-2026",
             "claude-sonnet-5-5-2026",
         ] {
-            let err = claude_model_id("k-example", id).unwrap_err();
+            let err = check_model_shared_with_kiro("k-example", id).unwrap_err();
             assert!(err.contains("k-example"), "{err}");
             assert!(err.contains("expected a Kiro CLI model ID"), "{err}");
         }
