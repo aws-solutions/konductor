@@ -59,6 +59,8 @@ const wrapper = () => createWrapper(document.body);
 const nameInput = () =>
   screen.getByRole('textbox', { name: 'name' }) as HTMLInputElement;
 const agentSelect = () => wrapper().findSelect()!;
+const nameError = () =>
+  wrapper().findFormField()?.findError()?.getElement().textContent;
 // The reason of a button that is off, which the button carries after its label.
 function reasonOf(label: string): string | undefined {
   const text = wrapper()
@@ -306,6 +308,27 @@ describe('adding a stage', () => {
     expect(stageLabels()).toHaveLength(3);
   });
 
+  it('selects the generated name, so typing replaces it', async () => {
+    await openDesigner();
+
+    fireEvent.click(addButton());
+
+    await waitFor(() => expect(document.activeElement).toBe(nameInput()));
+    expect([nameInput().selectionStart, nameInput().selectionEnd]).toEqual([
+      0,
+      'agent-1'.length,
+    ]);
+  });
+
+  it('does not select the name of a stage that is only clicked', async () => {
+    await openDesigner();
+
+    fireEvent.click(screen.getByTestId('node-stage-review'));
+
+    await waitFor(() => expect(document.activeElement).toBe(nameInput()));
+    expect(nameInput().selectionStart).toBe(nameInput().selectionEnd);
+  });
+
   it('names the next stage agent-2', async () => {
     await openDesigner();
 
@@ -479,15 +502,11 @@ describe('checking while typing', () => {
     await checkNow(scheduler);
 
     const problems = await screen.findByTestId('problems');
-    expect(
-      within(problems).getByText(
-        'draft: The stage name `draft` is already used.',
-      ),
-    ).toBeTruthy();
+    expect(problems.textContent).toContain(
+      'draft: The stage name draft is already used.',
+    );
     expect(nameInput().getAttribute('aria-invalid')).toBe('true');
-    expect(
-      screen.getAllByText('The stage name `draft` is already used.'),
-    ).toHaveLength(1);
+    expect(nameError()).toBe('The stage name draft is already used.');
     expect(screen.getByText('Needs a fix')).toBeTruthy();
   });
 
@@ -508,15 +527,13 @@ describe('checking while typing', () => {
     await waitFor(() =>
       expect(nameInput().getAttribute('aria-invalid')).toBe('true'),
     );
-    expect(
-      screen.getAllByText('The stage name `review` is already used.'),
-    ).toHaveLength(1);
+    expect(nameError()).toBe('The stage name review is already used.');
     expect(screen.getByText('Needs a fix')).toBeTruthy();
     const items = within(screen.getByTestId('problems')).getAllByRole(
       'listitem',
     );
     expect(items.map((item) => item.textContent)).toEqual([
-      'review: The stage name `review` is already used.',
+      'review: The stage name review is already used.',
     ]);
   });
 
@@ -537,7 +554,7 @@ describe('checking while typing', () => {
       await screen.findByTestId('problems'),
     ).findAllByRole('listitem');
     expect(items.map((item) => item.textContent)).toEqual([
-      `Stage 1: ${message}`,
+      `Stage 1: ${message.replaceAll('`', '')}`,
     ]);
   });
 

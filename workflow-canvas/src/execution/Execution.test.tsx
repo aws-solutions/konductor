@@ -812,7 +812,7 @@ describe('a run whose stages are not the stages of the graph', () => {
     expect(notice()?.textContent).toContain('Not in the run: draft.');
   });
 
-  it('says the file changed after the page loaded or after the run started, and tells the person to reload', async () => {
+  it('says the file changed after the page loaded or after the run started, and tells the person to paste a fresh launch address, not to reload', async () => {
     const scheduler = await openExecution(serverShowing(OTHER_STAGES));
 
     await press(runButton());
@@ -820,7 +820,10 @@ describe('a run whose stages are not the stages of the graph', () => {
 
     expect(notice()?.textContent).toContain('after this page loaded');
     expect(notice()?.textContent).toContain('after the run started');
-    expect(notice()?.textContent).toContain('Reload the page to draw it.');
+    expect(notice()?.textContent).toContain(
+      'Paste a fresh launch address from the server to draw it.',
+    );
+    expect(notice()?.textContent).not.toMatch(/reload/i);
   });
 
   it('says nothing for a run of the stages that are drawn', async () => {
@@ -885,5 +888,56 @@ describe('when the workflow is replaced', () => {
     expect(screen.getByRole('region', { name: 'Workflow graph' })).not.toBe(
       before,
     );
+  });
+});
+
+describe('when another workflow is opened during a run', () => {
+  async function openSecondWorkflowMidRun() {
+    const scheduler = new FakeScheduler();
+    const first = serverShowing(helloRun(0));
+    const second = serverShowing(helloRun(0));
+    const view = (runs: RunPort) => (
+      <App
+        load={Promise.resolve(loaded(HELLO_DOCUMENT, runs))}
+        scheduler={scheduler}
+      />
+    );
+    const { rerender } = render(view(first));
+    await screen.findByTestId('node-end');
+    fireEvent.click(screen.getByRole('tab', { name: 'Execution' }));
+    await press(await screen.findByRole('button', { name: 'Run' }));
+    await tick(scheduler);
+    expect(statusLine().textContent).toContain('Running draft');
+
+    rerender(view(second));
+    await waitFor(() =>
+      expect(statusLine().textContent).toContain('Ready. Press Run to start.'),
+    );
+    return { scheduler, first, second };
+  }
+
+  it('lets go of the run and clears its status', async () => {
+    await openSecondWorkflowMidRun();
+
+    expect(badges()).toEqual([null, null, null, null]);
+    expect(isOff(runButton())).toBe(false);
+  });
+
+  it('stops reading the run of the workflow that was left', async () => {
+    const { scheduler, first } = await openSecondWorkflowMidRun();
+    const reads = vi.mocked(first.get).mock.calls.length;
+
+    await tick(scheduler);
+
+    expect(vi.mocked(first.get).mock.calls).toHaveLength(reads);
+  });
+
+  it('starts the next run on the workflow that is open', async () => {
+    const { first, second } = await openSecondWorkflowMidRun();
+
+    await press(runButton());
+
+    expect(second.start).toHaveBeenCalledOnce();
+    expect(vi.mocked(first.start)).toHaveBeenCalledTimes(1);
   });
 });

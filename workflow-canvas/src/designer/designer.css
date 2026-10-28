@@ -17,10 +17,19 @@
   }
 }
 
-/* Room under the alerts only while there are some, so the empty live region
-   leaves no gap. */
+/* Room around the alerts only while there are some, so the empty live regions
+   leave no gap. The problems sit under Properties, so one that appears while
+   the person types moves nothing above it. */
 .wf-edit-alerts:not(:empty) {
   margin-block-end: 20px;
+}
+
+.wf-side {
+  min-width: 0;
+}
+
+.wf-problem-alerts:not(:empty) {
+  margin-block-start: 20px;
 }
 
 .wf-edit-notice {

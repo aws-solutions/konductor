@@ -3,7 +3,7 @@ import AppLayout from '@cloudscape-design/components/app-layout';
 import ContentLayout from '@cloudscape-design/components/content-layout';
 import Header from '@cloudscape-design/components/header';
 import Tabs from '@cloudscape-design/components/tabs';
-import { useMemo } from 'react';
+import { useEffect, useMemo, type ReactNode } from 'react';
 import { Breadcrumbs } from './chrome/Breadcrumbs';
 import './chrome/chrome.css';
 import { TOP_BAR_ID, TopBar } from './chrome/TopBar';
@@ -12,12 +12,13 @@ import { isDirty } from './designer/core';
 import { useEditor } from './designer/use-editor';
 import { useLeaveGuard } from './designer/use-leave-guard';
 import { useSettled } from './designer/use-settled';
-import type { RunMemory, Scheduler } from './execution/core';
+import { isInFlight, type RunMemory, type Scheduler } from './execution/core';
 import { Execution } from './execution/Execution';
 import { RunAnnouncements } from './execution/RunAnnouncements';
 import { timerScheduler } from './execution/timer-scheduler';
 import { useExecution } from './execution/use-execution';
 import { useGoal } from './execution/use-goal';
+import type { SwapRisk } from './launch/swap-guard';
 import { TAB_STRIP_STYLE } from './theme/tokens';
 import { useThemeMode } from './theme/use-theme-mode';
 import {
@@ -34,13 +35,19 @@ import {
  */
 export function App({
   load,
+  notice,
   scheduler = timerScheduler,
   runMemory,
+  swapRisk,
 }: {
   load: Promise<LoadResult>;
+  /** Shown above the tabs, such as the refusal of a pasted launch address. */
+  notice?: ReactNode;
   scheduler?: Scheduler;
   /** Keeps the latest run across a reload; a page without it starts afresh. */
   runMemory?: RunMemory;
+  /** Told what another workflow would take from the page. */
+  swapRisk?: SwapRisk;
 }) {
   // Read here, not in the tab, so switching tabs does not load again.
   const result = useSettled(load);
@@ -66,6 +73,11 @@ export function App({
     () => (document ? withDocument(result, document) : result),
     [result, document],
   );
+  const running = isInFlight(execution.state);
+  useEffect(
+    () => swapRisk?.set({ draft: unsaved, run: running }),
+    [swapRisk, unsaved, running],
+  );
   return (
     <>
       <TopBar mode={mode} onToggle={toggleMode} />
@@ -82,6 +94,7 @@ export function App({
             breadcrumbs={<Breadcrumbs workflowName={openWorkflowName(saved)} />}
             header={<Header variant="h1">Workflow canvas</Header>}
           >
+            {notice}
             <RunAnnouncements state={execution.state} />
             <div className="wf-tab-strip">
               <Tabs

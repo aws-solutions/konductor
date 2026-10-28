@@ -35,6 +35,18 @@ editing(
 );
 
 editing(
+  'replaces the generated name of a new stage when the person types',
+  async ({ designer }) => {
+    await designer.add.click();
+    await expect(designer.name).toBeFocused();
+
+    await designer.page.keyboard.type('kb-stage');
+
+    await expect(designer.name).toHaveValue('kb-stage');
+  },
+);
+
+editing(
   'keeps focus on a stage when Escape is pressed on it',
   async ({ designer }) => {
     const node = designer.page.getByRole('group', { name: SELECTED_DRAFT });
@@ -43,6 +55,25 @@ editing(
     await designer.page.keyboard.press('Escape');
 
     await expect(node).toBeFocused();
+  },
+);
+
+// A problem appears while the person types. It must not push the field they
+// type in, or the graph, down the page. Layout is not drawn in jsdom, so this
+// needs a browser.
+editing(
+  'keeps the name field and the graph where they are when a problem appears',
+  async ({ designer }) => {
+    const graph = designer.page.getByRole('region', { name: 'Workflow graph' });
+    const top = async () => (await designer.name.boundingBox())?.y;
+    const before = { name: await top(), graph: await graph.boundingBox() };
+
+    await designer.rename('Bad');
+    await expect(designer.page.getByTestId('problems')).toBeVisible();
+
+    expect({ name: await top(), graph: await graph.boundingBox() }).toEqual(
+      before,
+    );
   },
 );
 
