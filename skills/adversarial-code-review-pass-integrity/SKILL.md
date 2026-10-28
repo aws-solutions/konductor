@@ -1,6 +1,6 @@
 ---
 name: adversarial-code-review-pass-integrity
-description: 'Reviews a diff through the lens of data integrity — multi-item mutations, atomicity, ordering, idempotency. One pass of the parallelized adversarial review; the coordinator spawns this alongside security and schema passes.'
+description: 'Reviews a diff through the lens of data integrity — multi-item mutations, atomicity, ordering, idempotency. Use only when the adversarial-code-review coordinator spawns it, alongside the security and schema passes.'
 version: 1.0.0
 tags: [skill, data-integrity, code-review, adversarial, pass]
 ---

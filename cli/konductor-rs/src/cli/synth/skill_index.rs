@@ -254,6 +254,35 @@ mod tests {
     }
 
     #[test]
+    fn trigger_keeps_what_progress_tracking_is_for() {
+        // Copied from skills/progress-tracking/SKILL.md.
+        let description = "Validates feature plans, tracks implementation progress, and verifies \
+                           code-level requirements traceability. Use when validating a feature \
+                           plan, tracking its progress, or checking requirements against code.";
+        let got = trigger(description).unwrap();
+        assert!(got.starts_with("Validates feature plans"), "{got}");
+        assert!(
+            got.ends_with("checking requirements against code."),
+            "{got}"
+        );
+    }
+
+    #[test]
+    fn trigger_keeps_the_coordinator_only_qualifier() {
+        // Copied from skills/adversarial-code-review-pass-security/SKILL.md.
+        let description =
+            "Reviews a diff through the lens of security concerns \u{2014} information \
+                           disclosure, authorization, injection, secrets. Use only when the \
+                           adversarial-code-review coordinator spawns it, alongside the integrity \
+                           and schema passes.";
+        let got = trigger(description).unwrap();
+        assert!(
+            got.contains("Use only when the adversarial-code-review coordinator spawns it"),
+            "{got}"
+        );
+    }
+
+    #[test]
     fn long_summary_never_cuts_into_the_use_sentence() {
         let summary = "Does a thing ".repeat(20);
         let use_sentence = "Use when the user asks for a thing to be done carefully and well \
