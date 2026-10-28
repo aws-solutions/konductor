@@ -8,6 +8,7 @@ import {
   helloRun,
 } from '../test-support/fixtures';
 import { freshMemory, memoryStorage } from '../test-support/memory-storage';
+import type { RunPort } from '../execution/core';
 import { loadOnOpen, loadWorkflow } from './load-workflow';
 
 function fakeApi(overrides: Partial<WorkflowApi> = {}): WorkflowApi {
@@ -108,7 +109,6 @@ describe('loadWorkflow', () => {
     });
 
     it.each([
-      ['a 401', new ApiError('No session.', 401)],
       ['a 404', new ApiError('No such run.', 404)],
       ['a reply the page cannot read', new ApiError('Bad reply.', 200)],
     ])('refuse to read again after %s', async (_, error) => {
@@ -900,5 +900,57 @@ describe('a session that answers after a newer one was kept', () => {
 
     expect(memory.recall()).toEqual(STORED);
     expect(memory.recallPending()).toEqual(PASTED);
+  });
+});
+
+describe('a 401 on a call after the load', () => {
+  const lost = () =>
+    vi
+      .fn()
+      .mockRejectedValue(
+        new ApiError('The session token is missing or wrong.', 401),
+      );
+  const { signal } = new AbortController();
+
+  async function runsOf(api: WorkflowApi, memory = memoryWith(STORED).memory) {
+    const result = await loadWorkflow(api, undefined, memory);
+    if (!result.ok) throw new Error('The load failed.');
+    return { runs: result.workflow.runs, memory };
+  }
+
+  it.each([
+    ['a run start', (runs: RunPort) => runs.start('g', signal)],
+    ['a run read', (runs: RunPort) => runs.get('r-1', signal)],
+  ])(
+    'on %s forgets the session and says the server lost it',
+    async (_, call) => {
+      const { runs, memory } = await runsOf(
+        fakeApi({ startRun: lost(), getRun: lost() }),
+      );
+
+      await expect(call(runs)).rejects.toThrow(
+        /server no longer knows this session.*fresh launch address/s,
+      );
+      expect(memory.recall()).toBeUndefined();
+    },
+  );
+
+  it('keeps the session on a failure that is not a 401', async () => {
+    const { runs, memory } = await runsOf(
+      fakeApi({
+        startRun: vi.fn().mockRejectedValue(new ApiError('Not reached.', 0)),
+      }),
+    );
+
+    await expect(runs.start('g', signal)).rejects.toThrow('Not reached.');
+    expect(memory.recall()).toEqual(STORED);
+  });
+
+  it('does not forget a newer session', async () => {
+    const { runs, memory } = await runsOf(fakeApi({ startRun: lost() }));
+    memory.remember({ token: 'newer-token', harness: 'kiro-cli' });
+
+    await expect(runs.start('g', signal)).rejects.toThrow();
+    expect(memory.recall()?.token).toBe('newer-token');
   });
 });
