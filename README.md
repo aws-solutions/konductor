@@ -376,20 +376,17 @@ mkdir -p .konductor && curl -fsSL https://raw.githubusercontent.com/aws-solution
 
 ### 🔌 Integrations
 
-AWS MCP comes pre-wired for `k-architect` and `k-developer` on Claude Code, launched through
-`mcp-proxy-for-aws-cli==1.7.0`. You need `uvx` and AWS credentials. Both agents get the full server,
-including AWS API tools, so scope agent-initiated calls with the `aws:ViaAWSMCPService` and
-`aws:CalledViaAWSMCP` IAM condition keys. Kiro CLI users add `aws-mcp` to their own MCP config,
+This plugin declares AWS MCP plugin-wide in `.mcp.json`, launched through
+`mcp-proxy-for-aws-cli==1.7.0`, so while the plugin is enabled its tools, AWS API tools included,
+are available in every Claude Code session, not only to `k-architect` and `k-developer`. You need
+`uvx` and AWS credentials; without `uvx` the server shows as failed in `/mcp`. Scope
+agent-initiated calls with the `aws:ViaAWSMCPService` and `aws:CalledViaAWSMCP` IAM condition keys,
+and disable the server in `/mcp` (`plugin:konductor:aws-mcp`) when you don't need it. Kiro CLI users add `aws-mcp` to their own MCP config,
 where knowledge tools are auto-approved and API tools ask first. See
 [Install for Claude Code](https://github.com/aws-solutions/konductor/blob/v1.2.0/docs/user-guide/tasks/install-claude-code.md#optional-integrations) or
 [Install for Kiro CLI](https://github.com/aws-solutions/konductor/blob/v1.2.0/docs/user-guide/tasks/install-kiro-cli.md).
 The [AWS Agent Toolkit](https://github.com/aws/agent-toolkit-for-aws) also offers an OAuth
 connection, an AWS-managed plugin and standalone skills.
-
-In the Claude Code plugin, `aws-mcp` is declared plugin-wide in `.mcp.json`, so while the plugin is
-enabled its tools, AWS API tools included, are available in every Claude Code session, not only
-to those two agents. The IAM condition keys above apply to all of them. Disable the server in
-`/mcp` (`plugin:konductor:aws-mcp`) when you don't need it.
 
 Everything else is bring-your-own:
 
