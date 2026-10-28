@@ -9,6 +9,8 @@ function apiWith(createSession: WorkflowApi['createSession']): WorkflowApi {
   return {
     createSession,
     getWorkflow: vi.fn().mockResolvedValue(HELLO_DOCUMENT),
+    startRun: vi.fn(),
+    getRun: vi.fn(),
   };
 }
 
