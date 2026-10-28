@@ -13,6 +13,8 @@ describe('the page, under strict mode', () => {
     const api: WorkflowApi = {
       createSession: vi.fn().mockResolvedValue(HELLO_SESSION),
       getWorkflow: vi.fn().mockResolvedValue(HELLO_DOCUMENT),
+      startRun: vi.fn(),
+      getRun: vi.fn(),
     };
     const source = createWorkflowSource(api, 'code-1');
     function Root() {
