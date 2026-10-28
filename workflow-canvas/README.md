@@ -279,20 +279,24 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
   Run is off and the goal box is read-only from the click until the run ends.
   Read-only, not greyed out, so the box keeps focus and shows the goal of that
   run. Enter in the box starts a run, like the button.
-- Each node shows a badge with a word and a colour: **Queued** (dashed
-  outline), **Running**, **Done** and **Failed**. The intent is Done once the run
+- Each node shows a badge with a word and a colour: **Queued** (with a dashed
+  outline), **Running**, **Done** and **Failed**. The word carries the state;
+  only Queued also differs in shape. The intent is Done once the run
   has it. After a halt, the stages behind the failed one say **Not run**. The end
   shows the result: **Passed** or **Halted**.
 - A line under the button says where the run is ("Running draft. 0 of 2 stages
-  done."). It is a polite live region, so a screen reader announces each
-  change, and each node's name for a screen reader ends with its state.
+  done."). A screen reader hears each change from a polite live region that
+  `App` keeps outside the tabs, so it is announced while the Designer tab is
+  open too. Each node's name for a screen reader ends with its state.
 - An error from the API, whether the run does not start or a read fails, shows
-  in one alert above the graph, with the sentence the server gave. The alert
-  is drawn inside an alert region that is always on the page, so a screen
-  reader reads the sentence when it appears; the status line then says only
-  "See the error above." When a read fails, the nodes are cleared and the alert
-  adds that the run may still be going on the server. A failed stage is a
-  result, not an error, so it has no alert.
+  in one alert under the Run button, with the sentence the server gave. A
+  screen reader hears it from an alert region that `App` keeps outside the
+  tabs, so it is read when it appears even if the Designer tab is open; the
+  status line then says only "See the error below." When a read fails, the
+  nodes are cleared and the alert adds that the run (with its id) may still be
+  going on the server. A failed stage is a result, not an error, so it has no
+  alert. The goal is one line: line breaks in the outcome of the intent become
+  spaces, and Enter that ends an input method composition starts no run.
 - A run goes on while the Designer tab is open, and the tab shows it again when
   you come back, with the goal box as it was: what you typed, or the goal of
   the run in flight. Closing the page stops the reading, not the run.
