@@ -2,8 +2,8 @@
 import { ApiError, canRetryStatus } from './api';
 
 const IF_STOPPED =
-  'If it stopped, start it again and open the launch address that it printed.';
-const NEW_SESSION = 'Open the launch address that the server printed.';
+  'If it stopped, start it again and get a fresh launch address from the server.';
+const NEW_SESSION = 'Get a fresh launch address from the server.';
 
 /** Whether the server no longer knows the session: its own 401, or a proxy's. */
 export function isSessionLost(error: ApiError): boolean {

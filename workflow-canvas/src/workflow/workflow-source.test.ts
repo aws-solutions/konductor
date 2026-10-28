@@ -5,10 +5,15 @@ import { HELLO_DOCUMENT, HELLO_SESSION } from '../test-support/fixtures';
 import { freshMemory } from '../test-support/memory-storage';
 import { createWorkflowSource } from './workflow-source';
 
-function apiWith(createSession: WorkflowApi['createSession']): WorkflowApi {
+function apiWith(
+  createSession: WorkflowApi['createSession'],
+  getWorkflow: WorkflowApi['getWorkflow'] = vi
+    .fn()
+    .mockResolvedValue(HELLO_DOCUMENT),
+): WorkflowApi {
   return {
     createSession,
-    getWorkflow: vi.fn().mockResolvedValue(HELLO_DOCUMENT),
+    getWorkflow,
     saveWorkflow: vi.fn(),
     checkWorkflow: vi.fn(),
     startRun: vi.fn(),
@@ -348,7 +353,7 @@ describe('createWorkflowSource session memory', () => {
     expect(memory.recall()).toEqual(KEPT);
   });
 
-  it('keeps nothing when the first load fails', async () => {
+  it('keeps nothing when the first code is refused', async () => {
     const memory = memoryWith();
     const source = createWorkflowSource(
       apiWith(vi.fn().mockImplementation(refused)),
@@ -359,6 +364,68 @@ describe('createWorkflowSource session memory', () => {
     await source.current();
 
     expect(memory.recall()).toBeUndefined();
+  });
+
+  it('keeps the session when the first load fails after the code worked, so a reload resumes', async () => {
+    const memory = memoryWith();
+    const api = apiWith(
+      vi.fn().mockResolvedValue(HELLO_SESSION),
+      vi
+        .fn()
+        .mockRejectedValueOnce(new ApiError('Server error.', 500))
+        .mockResolvedValue(HELLO_DOCUMENT),
+    );
+
+    expect(
+      await createWorkflowSource(api, 'first', memory).current(),
+    ).toMatchObject({ ok: false });
+    const reloaded = createWorkflowSource(api, undefined, memory);
+
+    expect(await reloaded.current()).toMatchObject({ ok: true });
+    expect(api.createSession).toHaveBeenCalledOnce();
+  });
+
+  it('keeps the old session when the load of a pasted code fails', async () => {
+    const memory = memoryWith(KEPT);
+    const api = apiWith(
+      vi.fn().mockResolvedValue({ ...HELLO_SESSION, token: 'pasted-token' }),
+      vi
+        .fn()
+        .mockResolvedValueOnce(HELLO_DOCUMENT)
+        .mockRejectedValueOnce(new ApiError('Server error.', 500)),
+    );
+    const source = createWorkflowSource(api, undefined, memory);
+    await source.current();
+
+    await source.offer('second');
+
+    expect(memory.recall()).toEqual(KEPT);
+  });
+
+  it('opens the kept session when the code in the address is spent', async () => {
+    const api = apiWith(
+      vi.fn().mockImplementation(refused),
+      vi.fn().mockResolvedValue(HELLO_DOCUMENT),
+    );
+    const source = createWorkflowSource(api, 'spent', memoryWith(KEPT));
+
+    expect(await source.current()).toMatchObject({ ok: true });
+  });
+
+  it('does not open the kept session in place of a refused pasted code', async () => {
+    const api = apiWith(
+      vi.fn().mockImplementation(refused),
+      vi.fn().mockResolvedValue(HELLO_DOCUMENT),
+    );
+    const source = createWorkflowSource(api, undefined, memoryWith(KEPT));
+    const before = source.current();
+    await before;
+
+    await source.offer('spent');
+
+    expect(source.current()).toBe(before);
+    expect(source.notice()).toBeDefined();
+    expect(api.getWorkflow).toHaveBeenCalledOnce();
   });
 
   it('opens the kept session after a reload, with no code', async () => {

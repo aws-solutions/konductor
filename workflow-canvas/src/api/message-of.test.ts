@@ -18,17 +18,17 @@ describe('messageOf', () => {
     ['a 504 from a proxy', new ApiError('The server answered 504.', 504)],
   ])('tells what to do when the server may have stopped: %s', (_, error) => {
     expect(messageOf(error, 'Fallback.')).toBe(
-      `${error.message} If it stopped, start it again and open the launch address that it printed.`,
+      `${error.message} If it stopped, start it again and get a fresh launch address from the server.`,
     );
   });
 
   it.each(['unauthorized', 'invalid_code'])(
-    'tells to open the launch address again for the code %s',
+    'tells to get a fresh launch address for the code %s',
     (code) => {
       const error = new ApiError('The session is gone.', 401, code);
 
       expect(messageOf(error, 'Fallback.')).toBe(
-        'The session is gone. Open the launch address that the server printed.',
+        'The session is gone. Get a fresh launch address from the server.',
       );
     },
   );
@@ -38,7 +38,7 @@ describe('messageOf', () => {
 
     expect(isSessionLost(error)).toBe(true);
     expect(lostSessionMessage(error)).toBe(
-      'The server answered 401. Open the launch address that the server printed.',
+      'The server answered 401. Get a fresh launch address from the server.',
     );
   });
 
