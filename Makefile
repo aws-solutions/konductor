@@ -72,7 +72,7 @@
 #                     powers/konductor/skills/konductor-setup/scripts, so no
 #                     override is needed here). No commits, no push.
 
-.PHONY: all build fmt lint install link synth claude-plugin claude-plugin-check \
+.PHONY: all build fmt lint install link synth claude-plugin claude-plugin-check version-check \
         test test-rust test-schema-dump test-py test-skills-sh clean help \
         guide guide-check guide-sync guide-html guide-record kiro-power-check
 
@@ -96,6 +96,7 @@ help:
 	@echo "  make test-rust          Run Rust unit tests, cli/mcp/shared (no internet required)"
 	@echo "  make test-schema-dump   Smoke-check __dump_schema (cli only)"
 	@echo "  make test-py            Run the pytest suite under tests/"
+	@echo "  make version-check      Check crates, lockfiles and CHANGELOG.md match VERSION"
 	@echo "  make test-skills-sh     Run every tests/skills/*/*.sh regression test"
 	@echo "  make clean              Remove build artifacts in cli/, mcp/, and shared/"
 	@echo ""
@@ -236,6 +237,11 @@ test-rust:
 # cli/ only -- mcp/ and shared/ have no equivalent target.
 test-schema-dump:
 	$(MAKE) -C cli test-schema-dump
+
+# ── version-check ─────────────────────────────────────────────────────────────
+
+version-check:
+	python3 scripts/check-version-consistency.py
 
 # ── test-py ───────────────────────────────────────────────────────────────────
 # A few tests skip unless build/cli/konductor exists, so run `make synth` or

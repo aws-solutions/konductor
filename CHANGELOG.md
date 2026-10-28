@@ -8,6 +8,11 @@ not per individual commit.
 
 ## [Unreleased]
 
+### Added
+
+- `make version-check` fails a PR or release when a crate, lockfile or the CHANGELOG heading
+  disagrees with `VERSION`.
+
 ### Changed
 
 - The orchestrators (`konductor`, `konductor-mux-orchestrator`, `konductor-cmux-orchestrator`)
