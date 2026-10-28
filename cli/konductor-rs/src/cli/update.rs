@@ -2968,7 +2968,8 @@ mod tests {
         when: &str,
     ) {
         let args = konductor_skills_args(target_dir);
-        let record = crate::cli::telemetry::install_info_path(target_dir);
+        let record =
+            crate::cli::telemetry::install_info_path(&fs::canonicalize(target_dir).unwrap());
         let install_info = ["--install-info".to_string(), record.display().to_string()];
         let telemetry_off = ["--telemetry".to_string(), "off".to_string()];
         let telemetry_flags = args.iter().filter(|a| *a == "--telemetry").count();
@@ -3076,6 +3077,42 @@ mod tests {
                 assert_mcp_server_telemetry(target_dir, current, true, "after plain update");
             },
         );
+    }
+
+    /// Install and update agree on `--install-info` for a target reached
+    /// through a symlink, as macOS temp dirs are (`/var` to `/private/var`).
+    #[cfg(unix)]
+    #[test]
+    fn update_through_a_symlinked_target_leaves_the_install_info_arg_unchanged() {
+        let _home = HomeGuard::new("update-mcp-telemetry-symlink-home");
+        let (target_dir, repo_root) =
+            seed_mcp_telemetry_fixture("update-mcp-telemetry-symlink", true);
+        let link = target_dir.with_file_name(format!(
+            "{}-link",
+            target_dir.file_name().unwrap().to_str().unwrap()
+        ));
+        std::os::unix::fs::symlink(&target_dir, &link).unwrap();
+
+        install_v2(&repo_root, &link, false);
+        assert_mcp_server_telemetry(&link, true, true, "after install via symlink");
+        let installed = konductor_skills_args(&link);
+
+        update_from(&repo_root, &link, false, false);
+        assert_eq!(
+            konductor_skills_args(&link),
+            installed,
+            "after update via symlink"
+        );
+        update_from(&repo_root, &target_dir, false, false);
+        assert_eq!(
+            konductor_skills_args(&link),
+            installed,
+            "after update via real path"
+        );
+
+        fs::remove_file(&link).ok();
+        fs::remove_dir_all(&target_dir).ok();
+        fs::remove_dir_all(&repo_root).ok();
     }
 
     /// (2.1) The reverse case: the legacy identity file present but

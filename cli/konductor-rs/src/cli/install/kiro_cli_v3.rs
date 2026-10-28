@@ -1020,7 +1020,9 @@ mod tests {
                     ".konductor/skills".to_string(),
                 ];
                 if supported {
-                    let record = crate::cli::telemetry::install_info_path(target_dir);
+                    let record = crate::cli::telemetry::install_info_path(
+                        &fs::canonicalize(target_dir).unwrap(),
+                    );
                     expected.push("--install-info".to_string());
                     expected.push(record.display().to_string());
                 } else if no_telemetry {
@@ -1099,7 +1101,8 @@ mod tests {
             .expect("kiro-v3 install must succeed");
         let v3_arg = install_info_arg();
 
-        let record = crate::cli::telemetry::install_info_path(&target_dir);
+        let record =
+            crate::cli::telemetry::install_info_path(&fs::canonicalize(&target_dir).unwrap());
         let expected = serde_json::json!(["--install-info", record.display().to_string()]);
         assert_eq!(v2_arg, expected);
         assert_eq!(v3_arg, expected);

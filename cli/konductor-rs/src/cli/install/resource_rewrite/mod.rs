@@ -122,9 +122,17 @@ pub(crate) const FAKE_SERVER_WITH_INSTALL_INFO: &str =
 
 /// `target_dir`'s `install-info.json`, made absolute so the injected
 /// `--install-info` arg does not depend on the agent's launch directory.
+/// The directory is canonicalized, not the record, because the record may
+/// not exist yet; this keeps install and update writing the same string
+/// when the target is reached through a symlink (macOS `/var`).
 pub(super) fn absolute_install_info_path(target_dir: &Path) -> std::path::PathBuf {
-    let path = crate::cli::telemetry::install_info_path(target_dir);
-    std::path::absolute(&path).unwrap_or(path)
+    match std::fs::canonicalize(target_dir) {
+        Ok(canonical) => crate::cli::telemetry::install_info_path(&canonical),
+        Err(_) => {
+            let path = crate::cli::telemetry::install_info_path(target_dir);
+            std::path::absolute(&path).unwrap_or(path)
+        }
+    }
 }
 
 impl RewriteContext<'_> {
@@ -430,6 +438,40 @@ mod tests {
         ));
         fs::create_dir_all(&dir).unwrap();
         dir
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn install_info_path_through_a_symlink_matches_the_real_path() {
+        let real = scratch_dir("install-info-real");
+        let link = real.with_file_name(format!(
+            "{}-link",
+            real.file_name().unwrap().to_str().unwrap()
+        ));
+        std::os::unix::fs::symlink(&real, &link).unwrap();
+        let via_link = absolute_install_info_path(&link);
+        assert_eq!(via_link, absolute_install_info_path(&real));
+        assert_eq!(
+            via_link,
+            crate::cli::telemetry::install_info_path(&fs::canonicalize(&real).unwrap())
+        );
+        fs::remove_file(&link).ok();
+        fs::remove_dir_all(&real).ok();
+    }
+
+    #[test]
+    fn install_info_path_for_a_relative_target_is_absolute() {
+        let expected = crate::cli::telemetry::install_info_path(&fs::canonicalize(".").unwrap());
+        assert_eq!(absolute_install_info_path(Path::new(".")), expected);
+    }
+
+    #[test]
+    fn install_info_path_for_a_missing_target_falls_back_to_absolute() {
+        let missing = scratch_dir("install-info-missing").join("absent");
+        let path = absolute_install_info_path(&missing);
+        assert_eq!(path, crate::cli::telemetry::install_info_path(&missing));
+        assert!(path.is_absolute());
+        fs::remove_dir_all(missing.parent().unwrap()).ok();
     }
 
     /// Exercises the default "no agent opted in" backward-compatibility
