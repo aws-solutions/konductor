@@ -382,3 +382,22 @@ test('has no Execution tab after a reload when the server no longer knows the se
   await canvas.selectTab('Execution');
   await expect(canvas.runButton).toHaveCount(0);
 });
+
+test('drops the session when the run start is answered 401, so a reload does not reuse it', async ({
+  canvas,
+}) => {
+  await refuseRunsWith(canvas.page, 401, {
+    error: 'The session token is missing or wrong.',
+    code: 'unauthorized',
+  });
+
+  await canvas.runButton.click();
+
+  await expect(canvas.runError).toContainText(
+    'The server no longer knows this session',
+  );
+  await expect(canvas.runError).toContainText('fresh launch address');
+  expect(await canvas.page.evaluate(() => window.sessionStorage.length)).toBe(
+    0,
+  );
+});
