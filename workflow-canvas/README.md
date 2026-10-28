@@ -549,17 +549,25 @@ npx playwright install chromium
 ```
 
 Then `npm run test:e2e`. It has two Playwright projects. `functional`
-(`e2e/tests/`) only reads the stub. `editing` (`e2e/editing/`) saves to it, so
-it runs after `functional` has finished, in one spec file, which Playwright runs
-in one worker, in order. The stub keeps what is saved until it stops, so the
-`sample` fixture of `e2e/support/editing-fixtures.ts` puts the sample workflow
-back before and after each test, and a test that needs the file changed by
-someone else writes it itself (`e2e/support/stub-workflow.ts`). The HTML report is written to `playwright-report/`;
-open it with `npx playwright show-report`. Accessibility is checked with
-axe-core on each tab, on the error state, on the Execution tab with a stage
-running, a failed stage, a passed run, the error of the API and a goal that
-cannot be run, on the Designer tab while editing, with problems shown and with
-a conflict shown, and in both theme modes.
+(`e2e/tests/`) does not save to the stub. `editing` (`e2e/editing/`) does, so it
+runs after `functional` has finished; one red functional test makes the editing
+tests report "did not run". The editing tests run one after the other in one
+worker (`mode: 'serial'`), and the `sample` fixture of
+`e2e/support/editing-fixtures.ts` fails a test that finds itself in another
+worker, because the stub keeps one workflow for all of them. So `--repeat-each`,
+or a second spec file in `e2e/editing/`, needs `--workers=1`. The stub keeps what
+is saved until it stops, so the fixture puts the sample workflow back before
+and after each test, and a test that needs the file changed by someone else
+writes it itself (`e2e/support/stub-workflow.ts`, which fails on a refused
+call). The editing tests also cover saves that go wrong: a refusal with
+findings and one with none, a lost session, an answer that is lost or cannot be
+read (the file holds the text, or does not), and a conflict whose draft can be
+copied. The HTML report is written to `playwright-report/`; open it with
+`npx playwright show-report`. Accessibility is checked with axe-core on each
+tab, on the error state, on the Execution tab with a stage running, a failed
+stage, a passed run, the error of the API and a goal that cannot be run, on the
+Designer tab while editing, with problems shown and with a conflict shown, and
+in both theme modes.
 
 The stub runs one run at a time and never fails a stage. So the one test that
 starts a real run on it (`execution.spec.ts`, the first run test) waits for the

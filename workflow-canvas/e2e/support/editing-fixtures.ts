@@ -12,7 +12,15 @@ export { expect } from './fixtures';
  */
 export const test = base.extend<{ sample: void; designer: DesignerPage }>({
   sample: [
-    async ({ request }, use) => {
+    async ({ request }, use, testInfo) => {
+      // The stub holds one workflow, so a second worker saving to it would
+      // overwrite the first one's. Fail with the way out, not with a test
+      // that flakes. The functional specs that use this fixture never save.
+      if (testInfo.project.name === 'editing' && testInfo.parallelIndex !== 0) {
+        throw new Error(
+          'The editing tests share one stub, so they need one worker. Run them with --workers=1.',
+        );
+      }
       await restoreSample(request);
       await use();
       await restoreSample(request);

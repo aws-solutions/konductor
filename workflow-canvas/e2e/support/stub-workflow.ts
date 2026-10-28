@@ -22,6 +22,11 @@ export async function currentWorkflow(
   const reply = await request.get(`${API_URL}/api/workflow`, {
     headers: headers(),
   });
+  if (!reply.ok()) {
+    throw new Error(
+      `The stub refused to give the workflow (${reply.status()}).`,
+    );
+  }
   return (await reply.json()) as { text: string; hash: string };
 }
 

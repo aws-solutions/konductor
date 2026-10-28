@@ -19,6 +19,8 @@ export class DesignerPage {
   readonly saveStatus: Locator;
   readonly conflict: Locator;
   readonly problems: Locator;
+  /** The alert region of the Designer: conflicts, failed saves, problems. */
+  readonly alerts: Locator;
   readonly selected: Locator;
 
   constructor(readonly page: Page) {
@@ -30,6 +32,9 @@ export class DesignerPage {
     this.saveStatus = page.getByTestId('save-status');
     this.conflict = page.getByTestId('conflict');
     this.problems = page.getByTestId('problems');
+    this.alerts = page
+      .getByRole('tabpanel', { name: 'Designer' })
+      .getByRole('alert');
     this.selected = page.getByText('Selected:');
   }
 

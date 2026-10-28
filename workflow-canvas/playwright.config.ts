@@ -16,6 +16,7 @@ export default defineConfig({
       name: 'editing',
       testDir: 'e2e/editing',
       use: stableRendering,
+      fullyParallel: false,
       dependencies: ['functional'],
     },
   ],
