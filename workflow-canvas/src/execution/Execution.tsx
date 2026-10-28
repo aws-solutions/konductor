@@ -84,7 +84,7 @@ function StageDriftNotice({
     <Alert type="warning" data-testid="stage-drift">
       The stages of this run are not the stages in the graph, so some nodes show
       no state. The workflow file changed after this page loaded or after the
-      run started. Paste a fresh launch address from the server to draw it.
+      run started. Reload the page to draw it.
       {notInGraph.length > 0 && ` Not drawn: ${notInGraph.join(', ')}.`}
       {notInRun.length > 0 && ` Not in the run: ${notInRun.join(', ')}.`}
     </Alert>
