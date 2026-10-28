@@ -108,7 +108,7 @@ describe('saveBlocker', () => {
     ['saving', [{ type: 'save' }], 'The workflow is being saved.'],
     [
       'a conflict',
-      [{ type: 'conflict' }],
+      [{ type: 'save' }, { type: 'conflict' }],
       'The file changed on disk. Reload it first.',
     ],
     ['reloading', [{ type: 'reload' }], 'The workflow is being loaded again.'],
