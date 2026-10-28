@@ -186,7 +186,7 @@ After code changes, run the maker-checker cycle:
 
 This section covers failed spawns: the spawn errors, times out, or the subagent returns nothing. For output that fails verification, follow rule 5 under Orchestration Rules instead.
 
-- If a spawn fails, retry once with additional CONTEXT explaining the failure. If it failed because a permission was denied, do not retry or re-route it; ask the user.
+- If a spawn fails, retry once with additional CONTEXT explaining the failure. If it failed because a permission was denied (a declined prompt, a permission rule or hook, or a sandbox or OS refusal such as EPERM, EACCES or a read-only filesystem), do not retry or re-route it; ask the user.
 - If the retry fails, escalate to the user with: what was attempted, what failed, and the root cause
 - If a subagent times out, check `.konductor/handoff/` for partial output. Verify any partial output under rule 5; retry the spawn only if there is none.
 
