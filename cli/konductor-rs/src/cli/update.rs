@@ -1639,7 +1639,9 @@ fn run_update_one_target_with_remote_installer(
     //     is worth telling the user about, so it is surfaced as a
     //     warning (`telemetry_state_warning` below) naming the file,
     //     matching `check_telemetry_state`'s own wording for the same
-    //     condition, unless this run removes or replaces the file.
+    //     condition, unless this run removes or replaces the file. A
+    //     replacement is only claimed once the install step has
+    //     succeeded and the record reads back valid.
     //
     // Resolved via THIS target_dir specifically, so an `--all` batch
     // resolves the signal independently per target, the same way each
@@ -1663,23 +1665,17 @@ fn run_update_one_target_with_remote_installer(
         None
     };
     let mut telemetry_state_warning: Option<String> = None;
+    let mut replacing_broken_record = false;
     let carried_forward_opt_out = match install_info_read {
         Ok(_) => false,
         Err(crate::cli::telemetry::InstallInfoAbsence::NotFound) => true,
         Err(crate::cli::telemetry::InstallInfoAbsence::Broken) => {
             let record_path = crate::cli::telemetry::install_info_path(target_dir);
-            telemetry_state_warning = Some(if enable_telemetry {
-                format!("replaced unreadable {}", record_path.display())
-            } else if explicit_no_telemetry && remove_error.is_none() {
+            telemetry_state_warning = Some(if explicit_no_telemetry && remove_error.is_none() {
                 format!("removed unreadable {}", record_path.display())
             } else {
-                format!(
-                    "telemetry reporting is off for {}: {} is present but could not be read \
-                     (unreadable or an unrecognized schema) -- re-run `konductor install` to \
-                     rewrite it, or inspect it directly to see why it failed to parse",
-                    target_dir.display(),
-                    record_path.display()
-                )
+                replacing_broken_record = enable_telemetry;
+                unreadable_install_info_warning(target_dir)
             });
             true
         }
@@ -1877,6 +1873,17 @@ fn run_update_one_target_with_remote_installer(
         hook();
     }
 
+    // The install step writes the record but only logs a write failure,
+    // so check that the broken file was really replaced.
+    if replacing_broken_record
+        && crate::cli::telemetry::read_install_info_detailed(target_dir).is_ok()
+    {
+        telemetry_state_warning = Some(format!(
+            "replaced unreadable {}",
+            crate::cli::telemetry::install_info_path(target_dir).display()
+        ));
+    }
+
     // Index complete: the manifest install_from_local just wrote IS the
     // final manifest for this run, verbatim -- no reconciliation. A
     // failure here is carried back to the caller as
@@ -1993,6 +2000,18 @@ fn run_update_one_target_with_remote_installer(
             strategy_name: current.strategy.clone(),
         }),
     }
+}
+
+/// The warning for a present but unreadable `install-info.json`, worded
+/// like `doctor`'s `check_telemetry_state` for the same condition.
+fn unreadable_install_info_warning(target_dir: &Path) -> String {
+    format!(
+        "telemetry reporting is off for {}: {} is present but could not be read (unreadable or \
+         an unrecognized schema) -- re-run `konductor install` to rewrite it, or inspect it \
+         directly to see why it failed to parse",
+        target_dir.display(),
+        crate::cli::telemetry::install_info_path(target_dir).display()
+    )
 }
 
 /// Prints the update summary: mirrors `install.rs`'s
@@ -6073,6 +6092,118 @@ mod tests {
 
         fs::remove_dir_all(&target).ok();
         fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// When `--enable-telemetry` cannot write over a broken record (here
+    /// a directory sits at the record path), the run keeps the "could
+    /// not be read" warning instead of claiming a replacement.
+    #[test]
+    fn enable_telemetry_keeps_unreadable_warning_when_the_record_write_fails() {
+        let _home = HomeGuard::new("carry-forward-broken-enable-write-fails-home");
+        let target = scratch_dir("carry-forward-broken-enable-write-fails-target");
+        let repo_root = scratch_dir("carry-forward-broken-enable-write-fails-repo");
+        install_fixture(&target, &repo_root);
+        let record_path = crate::cli::telemetry::install_info_path(&target);
+        fs::remove_file(&record_path).unwrap();
+        fs::create_dir_all(record_path.join("blocker")).unwrap();
+
+        let outcome = run_update_one_target(
+            &target,
+            Some(repo_root.to_str().unwrap()),
+            None,
+            false, // use_github_token
+            None,  // release_version
+            false, // force
+            false, // uncached_identity
+            false, // json
+            false, // no --no-telemetry
+            true,  // --enable-telemetry
+            None,  /* latest_release_tag_cache */
+        );
+        let Ok(UpdateOutcome::Success {
+            finalize_index_warning,
+            ..
+        }) = outcome
+        else {
+            panic!("a failed record write must not fail the update itself");
+        };
+
+        let warning = finalize_index_warning.expect("the broken record must still be reported");
+        assert!(warning.contains("could not be read"), "got: {warning}");
+        assert!(!warning.contains("replaced unreadable"), "got: {warning}");
+        assert!(
+            record_path.is_dir(),
+            "the blocking directory must still be there"
+        );
+
+        fs::remove_dir_all(&target).ok();
+        fs::remove_dir_all(&repo_root).ok();
+    }
+
+    /// When the install step itself fails, `--enable-telemetry` never got
+    /// to rewrite the broken record, so the failure carries the "could not
+    /// be read" warning rather than a replacement claim.
+    #[test]
+    fn enable_telemetry_keeps_unreadable_warning_when_the_install_fails() {
+        let _home = HomeGuard::new("broken-record-enable-install-failure-home");
+        let dir = scratch_dir("broken-record-enable-install-failure-target");
+        let manifest = StrategyManifest::new(
+            "kiro-cli-v2",
+            "2026-01-01T00:00:00Z",
+            ".",
+            None,
+            Status::Complete,
+            vec![],
+        );
+        manifest::upsert_strategy(&dir, manifest).unwrap();
+        let canonical = index::canonicalize_target_dir(&dir).unwrap();
+        index::write_index(IndexEntry {
+            target_dir: canonical,
+            strategies: vec!["kiro-cli-v2".to_string()],
+            installed_at: "2026-01-01T00:00:00Z".to_string(),
+            status: IndexEntryStatus::Complete,
+        })
+        .unwrap();
+        fs::create_dir_all(dir.join(".konductor")).unwrap();
+        fs::write(crate::cli::telemetry::install_info_path(&dir), b"not json").unwrap();
+
+        let outcome = run_update_one_target_with_remote_installer(
+            &dir,
+            None,
+            None,
+            false,
+            None,
+            false,
+            false,
+            false,
+            false, // no --no-telemetry
+            true,  // --enable-telemetry
+            None,  /* latest_release_tag_cache */
+            |_strategy, _destination, _installed_at, _no_telemetry| {
+                Err(remote_orchestrate::FallbackChainError::ReleaseOnly(
+                    remote_orchestrate::RemoteOrchestrationError::Fetch(
+                        github::GithubFetchError::Network(
+                            "fake network error injected by a test".to_string(),
+                        ),
+                    ),
+                ))
+            },
+        );
+
+        let Err(UpdateOutcome::Failure {
+            message,
+            telemetry_state_warning,
+            ..
+        }) = outcome
+        else {
+            panic!("expected a Failure outcome from the fake remote-fallback error");
+        };
+        let warning = telemetry_state_warning.expect("the broken record must still be reported");
+        assert!(warning.contains("could not be read"), "got: {warning}");
+        assert!(!warning.contains("replaced"), "got: {warning}");
+        assert!(!message.contains("replaced"), "got: {message}");
+
+        fs::remove_dir_all(&dir).ok();
     }
 
     // ── Sticky opt-out: a removal failure must warn, not be swallowed ───
