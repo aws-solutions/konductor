@@ -524,7 +524,8 @@ harness at a target whose manifest already tracks another harness, and that has 
 `install-info.json`, keeps the target opted out: it writes no record and no telemetry
 hooks, and prints a note that `konductor update --enable-telemetry` opts the target back
 in. A first install at a target, or a reinstall of the only tracked harness, writes the
-record as usual.
+record as usual. When that reinstall turns telemetry back on for an opted-out target, it
+prints a note saying so and that `--no-telemetry` keeps it off.
 
 ### `--dry-run`
 

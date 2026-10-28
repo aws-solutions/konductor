@@ -3095,7 +3095,8 @@ mod tests {
             "mcp-telemetry-arg-current",
         );
         for (target_dir, args) in targets {
-            let record = crate::cli::telemetry::install_info_path(&target_dir);
+            let record =
+                crate::cli::telemetry::install_info_path(&fs::canonicalize(&target_dir).unwrap());
             assert_eq!(
                 args,
                 [

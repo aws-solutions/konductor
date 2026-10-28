@@ -791,6 +791,9 @@ fn dispatch_install_with_remote_installer(
 
     let opt_out_carried_forward =
         !no_telemetry && target_opted_out_with_other_harness(&destination, strategy.name());
+    let opt_out_reversed = !no_telemetry
+        && !opt_out_carried_forward
+        && target_opted_out_with_only_this_harness(&destination, strategy.name());
     let no_telemetry = no_telemetry || opt_out_carried_forward;
 
     // A hand-edited or otherwise corrupted index can carry the same
@@ -1200,6 +1203,7 @@ fn dispatch_install_with_remote_installer(
             };
             let telemetry_note = opt_out_carried_forward
                 .then(|| carried_forward_opt_out_note(&destination))
+                .or_else(|| opt_out_reversed.then(|| reversed_opt_out_note(&destination)))
                 .into_iter()
                 .chain(telemetry_removal_warning)
                 .reduce(|note, warning| format!("{note}; {warning}"));
@@ -1300,6 +1304,30 @@ fn target_opted_out_with_other_harness(destination: &Path, strategy_name: &str) 
             crate::cli::telemetry::read_install_info_detailed(destination),
             Err(crate::cli::telemetry::InstallInfoAbsence::NotFound)
         )
+}
+
+/// True when the target was opted out and the manifest tracks only this
+/// harness, so a plain reinstall of it opts the target back in.
+fn target_opted_out_with_only_this_harness(destination: &Path, strategy_name: &str) -> bool {
+    let tracks_only_this_harness = manifest::read_manifest(destination)
+        .ok()
+        .flatten()
+        .is_some_and(|manifest| {
+            let names = manifest.strategy_names();
+            !names.is_empty() && names.iter().all(|name| *name == strategy_name)
+        });
+    tracks_only_this_harness
+        && matches!(
+            crate::cli::telemetry::read_install_info_detailed(destination),
+            Err(crate::cli::telemetry::InstallInfoAbsence::NotFound)
+        )
+}
+
+fn reversed_opt_out_note(destination: &Path) -> String {
+    format!(
+        "telemetry is on again: {dir} was opted out. Pass --no-telemetry to keep it off",
+        dir = destination.display()
+    )
 }
 
 fn carried_forward_opt_out_note(destination: &Path) -> String {
@@ -1963,6 +1991,11 @@ mod tests {
         assert_eq!(install_harness(&repo_root, &target, "kiro-cli-v2", true), 0);
         assert!(!crate::cli::telemetry::install_info_exists(&target));
         assert!(!target_opted_out_with_other_harness(&target, "kiro-cli-v2"));
+        assert!(target_opted_out_with_only_this_harness(
+            &target,
+            "kiro-cli-v2"
+        ));
+        assert!(reversed_opt_out_note(&target).contains("--no-telemetry"));
         assert_eq!(
             install_harness(&repo_root, &target, "kiro-cli-v2", false),
             0
