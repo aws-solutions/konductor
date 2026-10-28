@@ -25,6 +25,7 @@ import {
   type StatusKind,
 } from './core';
 import './execution.css';
+import { runErrorOf } from './run-error';
 import type { ExecutionController } from './use-execution';
 
 const INDICATOR: Record<StatusKind, StatusIndicatorProps.Type> = {
@@ -34,13 +35,11 @@ const INDICATOR: Record<StatusKind, StatusIndicatorProps.Type> = {
   error: 'error',
 };
 
-const MAY_STILL_BE_RUNNING = 'The run may still be going on the server.';
-
-// One live region that says where the run is. It is always on the page, so a
-// change of its text is announced.
+// The sentence that says where the run is. A screen reader hears the same
+// words from the live region that `RunAnnouncements` keeps outside the tabs.
 function RunStatusLine({ state }: { state: ExecutionState }) {
   return (
-    <div role="status" aria-live="polite" data-testid="run-status">
+    <div data-testid="run-status">
       <StatusIndicator type={INDICATOR[statusKind(state)]}>
         {statusText(state)}
       </StatusIndicator>
@@ -48,26 +47,16 @@ function RunStatusLine({ state }: { state: ExecutionState }) {
   );
 }
 
-// The wrapper is always on the page, so the alert that appears in it is
-// announced with the sentence of the server, which the status line leaves out.
+// The alert sits under the Run button, so it is next to the control that was
+// pressed on a narrow screen too.
 function RunError({ state }: { state: ExecutionState }) {
+  const error = runErrorOf(state);
+  if (!error) return null;
   return (
-    <div role="alert" className="wf-run-error">
-      {state.phase === 'error' && (
-        <Alert
-          type="error"
-          header={
-            state.started
-              ? 'The run could not be followed'
-              : 'The run did not start'
-          }
-          data-testid="run-error"
-        >
-          {state.message}
-          {state.started && <div>{MAY_STILL_BE_RUNNING}</div>}
-        </Alert>
-      )}
-    </div>
+    <Alert type="error" header={error.header} data-testid="run-error">
+      {error.message}
+      {error.note && <div>{error.note}</div>}
+    </Alert>
   );
 }
 
@@ -97,7 +86,9 @@ function RunPanel({
             readOnly={inFlight}
             onChange={({ detail }) => onGoalChange(detail.value)}
             onKeyDown={({ detail }) => {
-              if (detail.key === 'Enter' && canRun) execution.start(goal);
+              if (detail.key === 'Enter' && !detail.isComposing && canRun) {
+                execution.start(goal);
+              }
             }}
           />
         </FormField>
@@ -110,6 +101,7 @@ function RunPanel({
           Run
         </Button>
         <RunStatusLine state={execution.state} />
+        <RunError state={execution.state} />
       </SpaceBetween>
     </Container>
   );
@@ -131,7 +123,6 @@ function ExecutionView({
   const statuses = useMemo(() => nodeStatuses(run), [run]);
   return (
     <div>
-      <RunError state={execution.state} />
       <div className="wf-execution">
         <WorkflowGraphCard view={view} harness={harness} statuses={statuses} />
         <RunPanel

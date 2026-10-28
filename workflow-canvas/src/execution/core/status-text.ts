@@ -45,7 +45,7 @@ export function statusText(state: ExecutionState): string {
     case 'finished':
       return finishedText(state.run);
     case 'error':
-      return 'See the error above.';
+      return 'See the error below.';
   }
 }
 
