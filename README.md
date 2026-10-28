@@ -254,8 +254,10 @@ Every agent runs `claude-sonnet-5.5`. Full details, including each agent's tools
 `konductor-mux-orchestrator` and `konductor-cmux-orchestrator` start each specialist with permission
 checks off (`--dangerously-skip-permissions` on Claude Code, `--trust-all-tools` on Kiro CLI), so a
 dispatched agent runs shell commands and MCP tools, AWS API calls included, without asking. Use them
-only in a workspace and with AWS credentials you are willing to let an agent act on. `konductor`
-keeps your normal permission prompts.
+only in a workspace and with AWS credentials you are willing to let an agent act on. With
+`konductor`, Claude Code specialists follow your `~/.claude/settings.json`; on Kiro CLI,
+`k-developer`, `k-architect` and `k-quality-assurance` already run shell commands without asking.
+See [What each agent can do to your machine](docs/user-guide/agents.md#what-each-agent-can-do-to-your-machine).
 
 ---
 
