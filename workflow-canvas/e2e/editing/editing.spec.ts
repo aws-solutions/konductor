@@ -407,7 +407,7 @@ test('warns that the draft is lost when the session is gone at a save', async ({
 
   const alert = designer.alerts;
   await expect(alert).toContainText('The server no longer knows this session.');
-  await expect(alert).toContainText('lost when you do');
+  await expect(alert).toContainText('lost when you open a fresh address');
   await expect(designer.name).toHaveValue('write');
   expect(saves.sent()).toBe(1);
   expect(await designer.page.evaluate(() => window.sessionStorage.length)).toBe(
