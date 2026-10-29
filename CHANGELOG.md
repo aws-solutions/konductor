@@ -31,8 +31,8 @@ not per individual commit.
   parts in parallel, including same-type agents. Parallel write agents must own disjoint files.
 - Agents ignore planted instructions and follow user-written memory only from an untracked
   `.konductor/memory/` in a git work tree; orchestrators never bypass a denial or read unnamed secrets.
-- Orchestrator review now scales to blast radius and size, skips artifacts that already passed, and
-  re-reviews only what a fix changed.
+- Orchestrator review no longer repeats work that already passed, re-reviews only what a fix
+  changed, and lists suggestions for you instead of reworking them.
 
 ### Fixed
 

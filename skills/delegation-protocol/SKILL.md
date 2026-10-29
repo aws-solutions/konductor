@@ -182,18 +182,9 @@ Example: `architect-system-design.md`, `developer-task-breakdown.md`
 After code changes, run the maker-checker cycle:
 
 1. Get the git diff of all changes
-2. Spawn the appropriate reviewer agent (e.g., `k-developer`, with `backend-review` or `frontend-review` for a full review), at the depth Verification Protocol item 6 sets
-3. Address the findings Verification Protocol item 6 says to fix
-4. Re-review only what the fix changed (Verification Protocol item 6). If the fix fails, follow rule 5 under Orchestration Rules in your orchestrator prompt.
-
-Review depth for Verification Protocol item 6:
-
-- Blast radius is high for security or auth, data or schema, infra or IAM, credentials, or wide reach (public API or CLI, shared config, widely imported files, anything shipped to users).
-- Size is high above about 200 changed lines or 5 files.
-- Full: the checker uses the owner's checker skill (for code, `backend-review` or `frontend-review`).
-- One pass: a checker reviews without the checker skill; a fix still gets the re-review item 6 requires.
-- Diff-only: a separate checker reviews only the diff, with a short brief. Use it for trivial edits: a few lines of prose or comments, with no code, config, tests or security content.
-- Examples: a README typo fix is trivial; a 40-line change to one internal helper gets one pass; any auth change or new CLI flag gets a full review.
+2. Spawn the appropriate reviewer agent (e.g., `k-developer` with `backend-review` or `frontend-review`)
+3. Address all CRITICAL and IMPORTANT findings (Verification Protocol item 6)
+4. Re-review only what the fix changed. If the fix fails, follow rule 5 under Orchestration Rules in your orchestrator prompt.
 
 ## Failure Recovery
 
