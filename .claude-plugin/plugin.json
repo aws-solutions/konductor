@@ -35,6 +35,6 @@
   "metadata": {
     "sourceRepo": "https://github.com/aws-solutions/konductor",
     "generatedFrom": "agents/*.agent-spec.json, skills/*/SKILL.md, agent-sops/*.sop.md",
-    "generatedBy": "konductor synth --from . (agents) and konductor install --harness claude (SOP-to-skill conversion), plus hand patches (model IDs, manifest default scans, NOTICE, README) matching https://github.com/aws-solutions/konductor/pull/105, https://github.com/aws-solutions/konductor/pull/122 and https://github.com/aws-solutions/konductor/pull/126; see https://github.com/aws-solutions/konductor/pull/104"
+    "generatedBy": "konductor synth --from . (agents) and konductor install --harness claude (SOP-to-skill conversion), plus hand patches: model IDs and NOTICE matching https://github.com/aws-solutions/konductor/pull/105 at 53e0c1c, manifest default scans matching https://github.com/aws-solutions/konductor/pull/122 at 9564a4c, README wording from https://github.com/aws-solutions/konductor/pull/126, and the plugin agent and SOP names from https://github.com/aws-solutions/konductor/pull/132; see https://github.com/aws-solutions/konductor/pull/104 and https://github.com/aws-solutions/konductor/pull/132"
   }
 }
