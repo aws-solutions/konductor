@@ -1,5 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { RunView, Session, WorkflowDocument } from './types';
+import type {
+  CheckResult,
+  DiagnosticView,
+  RunView,
+  SaveResult,
+  Session,
+  WorkflowDocument,
+} from './types';
 
 /**
  * The calls of the workflow API that the page makes. The page depends on
@@ -10,6 +17,18 @@ export interface WorkflowApi {
   createSession(code: string): Promise<Session>;
   /** Loads the root workflow of the session. */
   getWorkflow(token: string): Promise<WorkflowDocument>;
+  /**
+   * Writes the text of the root workflow if the file still has `baseHash`.
+   * A file that changed fails with code `conflict`; a text with errors fails
+   * with code `invalid_workflow` and its `diagnostics`.
+   */
+  saveWorkflow(
+    token: string,
+    text: string,
+    baseHash: string | null,
+  ): Promise<SaveResult>;
+  /** Checks workflow text without writing it. */
+  checkWorkflow(token: string, text: string): Promise<CheckResult>;
   /**
    * Starts a run of the root workflow with the goal; resolves to its id.
    * Aborting the signal ends the call.
@@ -27,13 +46,26 @@ export class ApiError extends Error {
   readonly code?: string;
   /** The `run_id` of the error body, when there was one. */
   readonly runId?: string;
+  /** The `diagnostics` of the error body; empty when there were none. */
+  readonly diagnostics: readonly DiagnosticView[];
+  /** The `current_hash` of a 409 body: the hash of the file as it is now. */
+  readonly currentHash?: string;
 
-  constructor(message: string, status: number, code?: string, runId?: string) {
+  constructor(
+    message: string,
+    status: number,
+    code?: string,
+    runId?: string,
+    diagnostics: readonly DiagnosticView[] = [],
+    currentHash?: string,
+  ) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.code = code;
     this.runId = runId;
+    this.diagnostics = diagnostics;
+    this.currentHash = currentHash;
   }
 }
 

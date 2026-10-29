@@ -1,6 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 import { ApiError, canRetryStatus, type WorkflowApi } from '../api/api';
+import {
+  isSessionLost,
+  lostSessionMessage,
+  messageOf,
+} from '../api/message-of';
 import type { WorkflowDocument } from '../api/types';
+import {
+  SaveConflict,
+  SaveLost,
+  SaveRefused,
+  SessionLost,
+  type EditPort,
+} from '../designer/core';
 import {
   RunAlreadyActive,
   RunReadRefused,
@@ -11,12 +23,13 @@ import type { SessionMemory, SessionRecord } from '../launch/session-memory';
 
 /**
  * A workflow loaded from the server, with the harness that runs its stages
- * and the calls that run it. The calls hold the session token, so no other
- * part of the page does.
+ * and the calls that edit and run it. The calls hold the session token, so no
+ * other part of the page does.
  */
 export interface LoadedWorkflow {
   harness: string;
   document: WorkflowDocument;
+  edits: EditPort;
   runs: RunPort;
 }
 
@@ -48,9 +61,7 @@ export const SUPPORTED_API_VERSION = 1;
 const UNSUPPORTED_API =
   'The server speaks a version of the API that this page does not understand.';
 
-function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : 'The workflow did not load.';
-}
+const LOAD_FAILED = 'The workflow did not load.';
 
 // The API names the active run in its 409; the core is told as its own error.
 function activeRunOf(error: unknown): RunAlreadyActive | undefined {
@@ -65,7 +76,7 @@ function activeRunOf(error: unknown): RunAlreadyActive | undefined {
 // 4xx and a reply the page cannot read will not change.
 function readRefusedOf(error: unknown): RunReadRefused | undefined {
   return error instanceof ApiError && !canRetryStatus(error.status)
-    ? new RunReadRefused(error.message)
+    ? new RunReadRefused(messageOf(error, error.message))
     : undefined;
 }
 
@@ -78,8 +89,68 @@ function startUnsureOf(error: unknown): RunStartUnsure | undefined {
     : undefined;
 }
 
-function failure(message: string): LoadResult {
-  return { ok: false, message };
+// A new session is a new page, which has no draft.
+const CHANGES_ARE_LOST =
+  'The changes you made on this page are lost when you open a fresh address; copy them first.';
+
+function lostSessionSentence(error: ApiError): string {
+  return `${lostSessionMessage(error)} ${CHANGES_ARE_LOST}`;
+}
+
+// A 401 on a check: the core is told as its own error.
+function checkErrorOf(error: unknown): SessionLost | undefined {
+  return error instanceof ApiError && isSessionLost(error)
+    ? new SessionLost(lostSessionSentence(error))
+    : undefined;
+}
+
+// A 2xx whose body the page cannot read: the server did the write.
+function isUnreadableSuccess(error: ApiError): boolean {
+  return error.status >= 200 && error.status < 300;
+}
+
+// A 409 `conflict` is the file changing under the page; a 422
+// `invalid_workflow` carries the findings of the check; no answer or a server
+// error leaves it unknown whether the file was written. The core is told each
+// as its own error.
+function saveErrorOf(error: unknown): Error | undefined {
+  if (!(error instanceof ApiError)) return undefined;
+  if (error.code === 'conflict') {
+    return new SaveConflict(error.message, error.currentHash);
+  }
+  if (error.code === 'invalid_workflow') {
+    return new SaveRefused(error.message, error.diagnostics);
+  }
+  if (isSessionLost(error)) {
+    return new Error(lostSessionSentence(error));
+  }
+  return canRetryStatus(error.status) || isUnreadableSuccess(error)
+    ? new SaveLost(messageOf(error, error.message))
+    : undefined;
+}
+
+function editPortFor(
+  api: WorkflowApi,
+  token: string,
+  guard: SessionGuard,
+): EditPort {
+  return {
+    save: async (text, baseHash) => {
+      try {
+        return await guard(api.saveWorkflow(token, text, baseHash));
+      } catch (error) {
+        throw saveErrorOf(error) ?? error;
+      }
+    },
+    check: async (text) => {
+      try {
+        return await guard(api.checkWorkflow(token, text));
+      } catch (error) {
+        throw checkErrorOf(error) ?? error;
+      }
+    },
+    reload: () => guard(api.getWorkflow(token)),
+  };
 }
 
 // Forgets the token only if no newer session was kept while this one loaded.
@@ -130,6 +201,10 @@ function runPortFor(
   };
 }
 
+function failure(message: string): LoadResult {
+  return { ok: false, message };
+}
+
 async function loadWith(
   api: WorkflowApi,
   session: SessionRecord,
@@ -142,6 +217,7 @@ async function loadWith(
     workflow: {
       harness: session.harness,
       document,
+      edits: editPortFor(api, session.token, guard),
       runs: runPortFor(api, session.token, guard),
     },
     remember: () => memory.remember(session),
@@ -183,7 +259,7 @@ async function openWithCode(
     keepEarly(memory, session, startKept, pasted && startKept !== undefined);
     return await loadWith(api, session, memory);
   } catch (error) {
-    return failure(messageOf(error));
+    return failure(messageOf(error, LOAD_FAILED));
   }
 }
 
@@ -195,7 +271,7 @@ async function resume(
   try {
     return await loadWith(api, session, memory);
   } catch (error) {
-    return failure(messageOf(error));
+    return failure(messageOf(error, LOAD_FAILED));
   }
 }
 
@@ -264,4 +340,17 @@ export function openWorkflowName(
   result: LoadResult | undefined,
 ): string | undefined {
   return result?.ok ? result.workflow.document.view?.name : undefined;
+}
+
+/**
+ * The same result with another document, such as the one that was saved. A
+ * failed load, or no result yet, stays as it is.
+ */
+export function withDocument(
+  result: LoadResult | undefined,
+  document: WorkflowDocument,
+): LoadResult | undefined {
+  return result?.ok
+    ? { ...result, workflow: { ...result.workflow, document } }
+    : result;
 }

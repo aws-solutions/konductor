@@ -34,3 +34,20 @@ export function useFocusRequest(
     requested.current = options;
   }, []);
 }
+
+/**
+ * Moves focus to `target` when `busy` goes from true to false and `done` is
+ * true: for a control that disappears when its work ends, such as the button
+ * of an alert that the work clears.
+ */
+export function useFocusWhenDone(
+  target: RefObject<Focusable | null>,
+  busy: boolean,
+  done: boolean,
+): void {
+  const wasBusy = useRef(false);
+  useEffect(() => {
+    if (wasBusy.current && !busy && done) target.current?.focus();
+    wasBusy.current = busy;
+  }, [target, busy, done]);
+}

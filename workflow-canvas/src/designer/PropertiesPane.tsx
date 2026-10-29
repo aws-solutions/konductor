@@ -11,13 +11,12 @@ import StatusIndicator from '@cloudscape-design/components/status-indicator';
 import type { ReactNode, Ref } from 'react';
 import {
   agentChoices,
-  canEdit,
+  changeBlocker,
   canRemoveStage,
   errorsOf,
   joinMessages,
   notesOf,
   problemsFor,
-  READ_ONLY_REASON,
   problemsOfDraft,
   type DraftStage,
   type EditState,
@@ -142,7 +141,8 @@ export function PropertiesPane({
 }) {
   const stage = state.draft.stages.find((s) => s.id === state.selectedId);
   const problems = problemsOfDraft(state);
-  const editable = canEdit(state);
+  const blocker = changeBlocker(state);
+  const editable = blocker === undefined;
   const own = problems.filter((p) => p.stageId === stage?.id);
   // No verdict until a check has answered for the draft as it is now.
   const checked = state.check.revision === state.revision;
@@ -173,11 +173,7 @@ export function PropertiesPane({
           </SpaceBetween>
           <Button
             disabled={!editable || !canRemoveStage(state.draft)}
-            disabledReason={
-              editable
-                ? 'A workflow needs at least one stage.'
-                : READ_ONLY_REASON
-            }
+            disabledReason={blocker ?? 'A workflow needs at least one stage.'}
             onClick={() => onRemove(stage.id)}
           >
             Delete stage

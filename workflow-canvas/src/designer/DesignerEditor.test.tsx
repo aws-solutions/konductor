@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import createWrapper from '@cloudscape-design/components/test-utils/dom';
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -9,13 +10,27 @@ import {
 } from '@testing-library/react';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { App } from '../App';
+import { SaveConflict, SaveLost, SaveRefused, SessionLost } from './core';
 import { FakeScheduler } from '../test-support/fake-scheduler';
-import { HELLO_DOCUMENT, HELLO_VIEW, loaded } from '../test-support/fixtures';
+import {
+  acceptingEdits,
+  finding,
+  SAVED_HASH,
+  viewOfText,
+  type FakeEdits,
+} from '../test-support/fake-edits';
+import {
+  HELLO_DOCUMENT,
+  HELLO_HASH,
+  HELLO_TEXT,
+  HELLO_VIEW,
+  loaded,
+} from '../test-support/fixtures';
 import type { WorkflowDocument } from '../api/types';
 
-// The Cloudscape test utils wrap their updates in `act`, which React only
-// accepts when the environment says so. Testing Library does that on its own
-// only with test globals, so it is set for this file.
+// The tests here wrap their updates in `act`, which React only accepts when the
+// environment says so. Testing Library does that on its own only with test
+// globals, and the other files do not wrap theirs, so it is set for this file.
 const actFlag = globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean };
 const actBefore = actFlag.IS_REACT_ACT_ENVIRONMENT;
 beforeAll(() => {
@@ -25,20 +40,27 @@ afterAll(() => {
   actFlag.IS_REACT_ACT_ENVIRONMENT = actBefore;
 });
 
-async function openDesigner(document: WorkflowDocument = HELLO_DOCUMENT) {
+async function openDesigner(
+  edits: FakeEdits = acceptingEdits(),
+  document: WorkflowDocument = HELLO_DOCUMENT,
+) {
+  const scheduler = new FakeScheduler();
   render(
     <App
-      load={Promise.resolve(loaded(document))}
-      scheduler={new FakeScheduler()}
+      load={Promise.resolve(loaded(document, undefined, edits))}
+      scheduler={scheduler}
     />,
   );
   await screen.findByTestId('node-end');
+  return { edits, scheduler };
 }
 
 const wrapper = () => createWrapper(document.body);
 const nameInput = () =>
   screen.getByRole('textbox', { name: 'name' }) as HTMLInputElement;
 const agentSelect = () => wrapper().findSelect()!;
+const nameError = () =>
+  wrapper().findFormField()?.findError()?.getElement().textContent;
 // The reason of a button that is off, which the button carries after its label.
 function reasonOf(label: string): string | undefined {
   const text = wrapper()
@@ -47,8 +69,10 @@ function reasonOf(label: string): string | undefined {
     .find((content) => content.startsWith(label));
   return text?.slice(label.length) || undefined;
 }
+const saveButton = () => screen.getByRole('button', { name: 'Save' });
 const addButton = () => screen.getByRole('button', { name: 'Add stage' });
 const deleteButton = () => screen.getByRole('button', { name: 'Delete stage' });
+const status = () => screen.getByTestId('save-status').textContent;
 const isOff = (button: HTMLElement) =>
   button.hasAttribute('disabled') ||
   button.getAttribute('aria-disabled') === 'true';
@@ -64,6 +88,13 @@ function chooseAgent(id: string) {
     .findIndex((option) => option.getElement().textContent?.startsWith(id));
   if (index < 0) throw new Error(`The agent ${id} is not offered.`);
   select.selectOption(index + 1);
+}
+
+// Runs the pause of the check and lets its answer reach the page.
+async function checkNow(scheduler: FakeScheduler) {
+  await act(async () => {
+    scheduler.tick();
+  });
 }
 
 const stageLabels = () =>
@@ -174,7 +205,7 @@ describe('the Properties of the selected stage', () => {
 });
 
 describe('renaming a stage', () => {
-  it('shows the new name on the node at once', async () => {
+  it('shows the new name on the node at once, and marks the draft unsaved', async () => {
     await openDesigner();
 
     type('write');
@@ -182,6 +213,8 @@ describe('renaming a stage', () => {
     expect(screen.getByTestId('node-stage-write').textContent).toContain(
       'write',
     );
+    expect(status()).toBe('Unsaved changes');
+    expect(isOff(saveButton())).toBe(false);
   });
 
   it('keeps focus in the field while it is typed in', async () => {
@@ -203,14 +236,13 @@ describe('renaming a stage', () => {
     expect(screen.getAllByTestId('node-stage-review')).toHaveLength(2);
   });
 
-  it('draws the old name again when the name is put back', async () => {
+  it('is unsaved no more when the name is put back', async () => {
     await openDesigner();
 
     type('write');
     type('draft');
 
-    expect(screen.queryByTestId('node-stage-write')).toBeNull();
-    expect(screen.getByTestId('node-stage-draft')).toBeTruthy();
+    expect(status()).toBe('No changes');
   });
 });
 
@@ -229,7 +261,7 @@ describe('picking the agent of a stage', () => {
     expect(options[2]).toContain('Backend and frontend code');
   });
 
-  it('shows the chosen agent on the node', async () => {
+  it('shows the chosen agent on the node and marks the draft unsaved', async () => {
     await openDesigner();
 
     chooseAgent('k-architect');
@@ -237,6 +269,7 @@ describe('picking the agent of a stage', () => {
     expect(screen.getByTestId('node-stage-draft').textContent).toContain(
       'k-architect · kiro-cli',
     );
+    expect(status()).toBe('Unsaved changes');
   });
 
   it('keeps an agent that Konductor does not ship, and offers it first', async () => {
@@ -247,7 +280,7 @@ describe('picking the agent of a stage', () => {
         stages: [{ name: 'draft', agent: 'my-agent' }],
       },
     };
-    await openDesigner(odd);
+    await openDesigner(acceptingEdits(), odd);
 
     expect(agentSelect().findTrigger().getElement().textContent).toContain(
       'my-agent',
@@ -271,6 +304,7 @@ describe('adding a stage', () => {
     );
     expect(nameInput().value).toBe('agent-1');
     await waitFor(() => expect(document.activeElement).toBe(nameInput()));
+    expect(status()).toBe('Unsaved changes');
     expect(stageLabels()).toHaveLength(3);
   });
 
@@ -309,7 +343,7 @@ describe('adding a stage', () => {
       name: `stage-${index}`,
       agent: 'k-developer',
     }));
-    await openDesigner({
+    await openDesigner(acceptingEdits(), {
       ...HELLO_DOCUMENT,
       view: { ...HELLO_VIEW, stages },
     });
@@ -333,6 +367,7 @@ describe('deleting a stage', () => {
     expect(screen.queryByTestId('node-stage-review')).toBeNull();
     expect(nameInput().value).toBe('draft');
     await waitFor(() => expect(document.activeElement).toBe(nameInput()));
+    expect(status()).toBe('Unsaved changes');
   });
 
   it('is off, and says why, for the last stage', async () => {
@@ -346,6 +381,600 @@ describe('deleting a stage', () => {
     fireEvent.click(deleteButton());
 
     expect(stageLabels()).toHaveLength(1);
+  });
+});
+
+describe('saving', () => {
+  it('has nothing to save at first, and says why', async () => {
+    await openDesigner();
+
+    expect(isOff(saveButton())).toBe(true);
+    expect(status()).toBe('No changes');
+  });
+
+  it('writes the saved text with the new stages on the hash it loaded', async () => {
+    const { edits } = await openDesigner();
+    chooseAgent('k-architect');
+
+    fireEvent.click(saveButton());
+
+    expect(edits.save).toHaveBeenCalledOnce();
+    expect(edits.save).toHaveBeenCalledWith(
+      HELLO_TEXT.replace('k-developer', 'k-architect'),
+      HELLO_HASH,
+    );
+    await waitFor(() => expect(status()).toBe('Saved'));
+  });
+
+  it('says Saved, turns Save off and keeps focus on it', async () => {
+    await openDesigner();
+    chooseAgent('k-architect');
+    saveButton().focus();
+
+    fireEvent.click(saveButton());
+
+    await waitFor(() => expect(status()).toBe('Saved'));
+    expect(isOff(saveButton())).toBe(true);
+    expect(document.activeElement).toBe(saveButton());
+  });
+
+  it('writes the next save on the hash of the last one', async () => {
+    const { edits } = await openDesigner();
+    type('write');
+    fireEvent.click(saveButton());
+    await waitFor(() => expect(status()).toBe('Saved'));
+
+    type('write-it');
+    fireEvent.click(saveButton());
+
+    await waitFor(() => expect(edits.save).toHaveBeenCalledTimes(2));
+    expect(edits.save.mock.calls[1]?.[1]).toBe(SAVED_HASH);
+  });
+
+  it('does not save twice when Save is pressed twice at once', async () => {
+    const { edits } = await openDesigner();
+    type('write');
+
+    fireEvent.click(saveButton());
+    fireEvent.click(saveButton());
+
+    await waitFor(() => expect(status()).toBe('Saved'));
+    expect(edits.save).toHaveBeenCalledOnce();
+  });
+
+  it('says Saving while the call is under way', async () => {
+    const edits = acceptingEdits();
+    let finish: () => void = () => {};
+    edits.save.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = () =>
+            resolve({ hash: SAVED_HASH, view: HELLO_VIEW, diagnostics: [] });
+        }),
+    );
+    await openDesigner(edits);
+    type('write');
+
+    fireEvent.click(saveButton());
+
+    expect(status()).toBe('Saving');
+    await act(async () => finish());
+  });
+});
+
+describe('checking while typing', () => {
+  it('does not ask the server until the text has been still for the pause', async () => {
+    const { edits, scheduler } = await openDesigner();
+
+    type('write');
+
+    expect(scheduler.pendingCount).toBe(1);
+    expect(edits.check).not.toHaveBeenCalled();
+  });
+
+  it('asks once for a name typed in several keys', async () => {
+    const { edits, scheduler } = await openDesigner();
+
+    type('w');
+    type('wr');
+    type('write');
+    await checkNow(scheduler);
+
+    expect(edits.check).toHaveBeenCalledOnce();
+    expect(edits.check).toHaveBeenCalledWith(
+      HELLO_TEXT.replace('name: draft', 'name: write'),
+    );
+  });
+
+  it('shows what the server found under the field and in the list of problems', async () => {
+    const edits = acceptingEdits();
+    edits.check.mockResolvedValue({
+      view: null,
+      diagnostics: [
+        finding('stages[1].name', 'The stage name `draft` is already used.'),
+      ],
+    });
+    const { scheduler } = await openDesigner(edits);
+    fireEvent.click(screen.getByTestId('node-stage-review'));
+    await waitFor(() => expect(nameInput().value).toBe('review'));
+
+    type('draft');
+    await checkNow(scheduler);
+
+    const problems = await screen.findByTestId('problems');
+    expect(problems.textContent).toContain(
+      'draft: The stage name draft is already used.',
+    );
+    expect(nameInput().getAttribute('aria-invalid')).toBe('true');
+    expect(nameError()).toBe('The stage name draft is already used.');
+    expect(screen.getByText('Needs a fix')).toBeTruthy();
+  });
+
+  it('marks the field of the stage being renamed to a name that another stage has, though the server names the later stage', async () => {
+    const edits = acceptingEdits();
+    edits.check.mockResolvedValue({
+      view: null,
+      diagnostics: [
+        finding('stages[1].name', 'The stage name `review` is already used.'),
+      ],
+    });
+    const { scheduler } = await openDesigner(edits);
+    expect(nameInput().value).toBe('draft');
+
+    type('review');
+    await checkNow(scheduler);
+
+    await waitFor(() =>
+      expect(nameInput().getAttribute('aria-invalid')).toBe('true'),
+    );
+    expect(nameError()).toBe('The stage name review is already used.');
+    expect(screen.getByText('Needs a fix')).toBeTruthy();
+    const items = within(screen.getByTestId('problems')).getAllByRole(
+      'listitem',
+    );
+    expect(items.map((item) => item.textContent)).toEqual([
+      'review: The stage name review is already used.',
+    ]);
+  });
+
+  it('names a stage with no name by its place in the list, not by an empty word', async () => {
+    const edits = acceptingEdits();
+    const message =
+      '`name` must be lower-case letters, digits and hyphens, start with a letter or digit, and have at most 64 characters.';
+    edits.check.mockResolvedValue({
+      view: null,
+      diagnostics: [finding('stages[0].name', message)],
+    });
+    const { scheduler } = await openDesigner(edits);
+
+    type('');
+    await checkNow(scheduler);
+
+    const items = await within(
+      await screen.findByTestId('problems'),
+    ).findAllByRole('listitem');
+    expect(items.map((item) => item.textContent)).toEqual([
+      `Stage 1: ${message.replaceAll('`', '')}`,
+    ]);
+  });
+
+  it('shows a warning as a note, not as an error, and leaves Save on', async () => {
+    const edits = acceptingEdits();
+    edits.check.mockResolvedValue({
+      view: null,
+      diagnostics: [
+        {
+          ...finding('stages[0].name', 'The name is long.'),
+          severity: 'warning',
+        },
+      ],
+    });
+    const { scheduler } = await openDesigner(edits);
+
+    type('write');
+    await checkNow(scheduler);
+
+    const notes = await screen.findByTestId('notes');
+    expect(within(notes).getByText('write: The name is long.')).toBeTruthy();
+    expect(screen.queryByTestId('problems')).toBeNull();
+    expect(nameInput().getAttribute('aria-invalid')).not.toBe('true');
+    expect(screen.queryByText('Needs a fix')).toBeNull();
+    expect(screen.getByText('Has a note')).toBeTruthy();
+    expect(isOff(saveButton())).toBe(false);
+  });
+
+  it('turns Save off, with the reason, while the check has found an error', async () => {
+    const edits = acceptingEdits();
+    edits.check.mockResolvedValue({
+      view: null,
+      diagnostics: [finding('stages[0].name', 'Not a name.')],
+    });
+    const { scheduler } = await openDesigner(edits);
+    saveButton();
+
+    type('Not A Name');
+    await checkNow(scheduler);
+
+    await screen.findByTestId('problems');
+    expect(isOff(saveButton())).toBe(true);
+    fireEvent.click(saveButton());
+    expect(edits.save).not.toHaveBeenCalled();
+  });
+
+  it('keeps the problems on show while the next check is still to come', async () => {
+    const edits = acceptingEdits();
+    edits.check.mockResolvedValueOnce({
+      view: null,
+      diagnostics: [finding('stages[0].name', 'Not a name.')],
+    });
+    const { scheduler } = await openDesigner(edits);
+    type('Bad');
+    await checkNow(scheduler);
+    const problems = await screen.findByTestId('problems');
+
+    type('Bad2');
+
+    expect(screen.getByTestId('problems')).toBe(problems);
+    expect(screen.getByText('Not a name.')).toBeTruthy();
+    await checkNow(scheduler);
+    await waitFor(() => expect(screen.queryByTestId('problems')).toBeNull());
+  });
+
+  it('clears the problems when the next check finds none', async () => {
+    const edits = acceptingEdits();
+    edits.check.mockResolvedValueOnce({
+      view: null,
+      diagnostics: [finding('stages[0].name', 'Not a name.')],
+    });
+    const { scheduler } = await openDesigner(edits);
+    type('Bad');
+    await checkNow(scheduler);
+    await screen.findByTestId('problems');
+
+    type('good');
+    await checkNow(scheduler);
+
+    await waitFor(() => expect(screen.queryByTestId('problems')).toBeNull());
+    expect(isOff(saveButton())).toBe(false);
+  });
+
+  it('shows a finding about the whole text without a stage in front of it', async () => {
+    const edits = acceptingEdits();
+    edits.check.mockResolvedValue({
+      view: null,
+      diagnostics: [finding('stages', 'A workflow needs a stage.')],
+    });
+    const { scheduler } = await openDesigner(edits);
+
+    type('write');
+    await checkNow(scheduler);
+
+    expect(
+      within(await screen.findByTestId('problems')).getByText(
+        'A workflow needs a stage.',
+      ),
+    ).toBeTruthy();
+  });
+
+  it('says nothing when the check cannot reach the server', async () => {
+    const edits = acceptingEdits();
+    edits.check.mockRejectedValue(new Error('No answer.'));
+    const { scheduler } = await openDesigner(edits);
+
+    type('write');
+    await checkNow(scheduler);
+
+    expect(screen.queryByTestId('problems')).toBeNull();
+    expect(isOff(saveButton())).toBe(false);
+  });
+});
+
+describe('a save that is refused', () => {
+  it('shows the findings of the server under the field', async () => {
+    const edits = acceptingEdits();
+    edits.save.mockRejectedValue(
+      new SaveRefused('The workflow has errors.', [
+        finding('stages.write.agent', 'The agent id is not valid.'),
+      ]),
+    );
+    await openDesigner(edits);
+    type('write');
+
+    fireEvent.click(saveButton());
+
+    const problems = await screen.findByTestId('problems');
+    expect(
+      within(problems).getByText('write: The agent id is not valid.'),
+    ).toBeTruthy();
+    expect(status()).toBe('Unsaved changes');
+  });
+});
+
+describe('a save that finds the file changed', () => {
+  async function conflict() {
+    const edits = acceptingEdits();
+    edits.save.mockRejectedValue(new SaveConflict('The file changed.'));
+    const opened = await openDesigner(edits);
+    type('write');
+    saveButton().focus();
+    fireEvent.click(saveButton());
+    await screen.findByTestId('conflict');
+    return opened;
+  }
+
+  it('says so, and offers to load the file again', async () => {
+    await conflict();
+
+    const alert = screen.getByTestId('conflict');
+    expect(alert.textContent).toContain('The file changed on disk');
+    expect(alert.textContent).toContain('nothing was saved');
+    expect(
+      within(alert).getByRole('button', { name: 'Load the file again' }),
+    ).toBeTruthy();
+    expect(isOff(saveButton())).toBe(true);
+  });
+
+  it('is announced, and leaves focus where it was', async () => {
+    await conflict();
+
+    expect(
+      screen.getByTestId('conflict').closest('[role="alert"]'),
+    ).toBeTruthy();
+    expect(document.activeElement).toBe(saveButton());
+  });
+
+  it('loads the file again, drops the draft and moves focus to the name', async () => {
+    const { edits } = await conflict();
+    edits.reload.mockResolvedValue({
+      ...HELLO_DOCUMENT,
+      hash: 'e'.repeat(64),
+      view: { ...HELLO_VIEW, stages: [{ name: 'only', agent: 'k-tpm' }] },
+    });
+    const reload = within(screen.getByTestId('conflict')).getByRole('button', {
+      name: 'Load the file again',
+    });
+    reload.focus();
+
+    fireEvent.click(reload);
+
+    await waitFor(() => expect(screen.queryByTestId('conflict')).toBeNull());
+    expect(nameInput().value).toBe('only');
+    expect(stageLabels()).toHaveLength(1);
+    expect(status()).toBe('Loaded again from the server');
+    await waitFor(() => expect(document.activeElement).toBe(nameInput()));
+  });
+
+  it('lets the person take the draft away before it is replaced', async () => {
+    await conflict();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy my version' }));
+
+    const mine = (await screen.findByRole('textbox', {
+      name: 'My version of the workflow file',
+    })) as HTMLTextAreaElement;
+    expect(mine.value).toContain('- name: write');
+  });
+
+  it('keeps the text of the draft in view after the file was loaded again', async () => {
+    const { edits } = await conflict();
+    edits.reload.mockResolvedValue({
+      ...HELLO_DOCUMENT,
+      hash: 'e'.repeat(64),
+      view: { ...HELLO_VIEW, stages: [{ name: 'only', agent: 'k-tpm' }] },
+    });
+
+    fireEvent.click(
+      within(screen.getByTestId('conflict')).getByRole('button', {
+        name: 'Load the file again',
+      }),
+    );
+
+    const note = await screen.findByTestId('discarded');
+    expect(note.textContent).toContain('Your changes were replaced');
+    fireEvent.click(
+      within(note).getByRole('button', { name: 'Copy my version' }),
+    );
+    const mine = (await screen.findByRole('textbox', {
+      name: 'My version of the workflow file',
+    })) as HTMLTextAreaElement;
+    expect(mine.value).toContain('- name: write');
+  });
+
+  it('keeps the draft in view, with Copy my version, when the person types after the reload', async () => {
+    const { edits } = await conflict();
+    edits.reload.mockResolvedValue({
+      ...HELLO_DOCUMENT,
+      hash: 'e'.repeat(64),
+      view: { ...HELLO_VIEW, stages: [{ name: 'only', agent: 'k-tpm' }] },
+    });
+    fireEvent.click(
+      within(screen.getByTestId('conflict')).getByRole('button', {
+        name: 'Load the file again',
+      }),
+    );
+    await screen.findByTestId('discarded');
+
+    type('typed');
+
+    const note = screen.getByTestId('discarded');
+    fireEvent.click(
+      within(note).getByRole('button', { name: 'Copy my version' }),
+    );
+    const mine = (await screen.findByRole('textbox', {
+      name: 'My version of the workflow file',
+    })) as HTMLTextAreaElement;
+    expect(mine.value).toContain('- name: write');
+  });
+
+  it('does not let the stages change while the file loads', async () => {
+    const { edits } = await conflict();
+    edits.reload.mockReturnValue(new Promise(() => {}));
+
+    fireEvent.click(
+      within(screen.getByTestId('conflict')).getByRole('button', {
+        name: 'Load the file again',
+      }),
+    );
+
+    await waitFor(() => expect(nameInput().readOnly).toBe(true));
+    expect(isOff(addButton())).toBe(true);
+    expect(isOff(deleteButton())).toBe(true);
+  });
+
+  it('keeps the conflict, with the sentence, when the load fails', async () => {
+    const { edits } = await conflict();
+    edits.reload.mockRejectedValue(new Error('The server did not answer.'));
+
+    fireEvent.click(
+      within(screen.getByTestId('conflict')).getByRole('button', {
+        name: 'Load the file again',
+      }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('conflict').textContent).toContain(
+        'The server did not answer.',
+      ),
+    );
+    expect(nameInput().value).toBe('write');
+  });
+});
+
+describe('a check that the server refuses for a lost session', () => {
+  it('says so, and that the changes are lost with the page', async () => {
+    const edits = acceptingEdits();
+    edits.check.mockRejectedValue(
+      new SessionLost(
+        'The session is not valid. Get a fresh launch address from the server. The changes you made on this page are lost when you do; copy them first.',
+      ),
+    );
+    const { scheduler } = await openDesigner(edits);
+    type('write');
+
+    await checkNow(scheduler);
+
+    expect(await screen.findByText('The session is lost')).toBeTruthy();
+    expect(screen.getByText(/copy them first/)).toBeTruthy();
+    expect(screen.queryByText('The workflow was not saved')).toBeNull();
+  });
+});
+
+describe('a save that fails', () => {
+  it('shows the sentence of the failure and lets the save be tried again', async () => {
+    const edits = acceptingEdits();
+    edits.save.mockRejectedValueOnce(new Error('The server did not answer.'));
+    await openDesigner(edits);
+    type('write');
+
+    fireEvent.click(saveButton());
+
+    expect(await screen.findByText('The server did not answer.')).toBeTruthy();
+    expect(status()).toBe('Unsaved changes');
+    fireEvent.click(saveButton());
+    await waitFor(() => expect(status()).toBe('Saved'));
+    expect(screen.queryByText('The server did not answer.')).toBeNull();
+  });
+});
+
+describe('a save whose answer is lost', () => {
+  it('counts the save as done when the file holds the text that was sent', async () => {
+    const edits = acceptingEdits();
+    let sent = '';
+    edits.save.mockImplementationOnce(async (text) => {
+      sent = text;
+      throw new SaveLost('The server did not answer.');
+    });
+    edits.reload.mockImplementationOnce(async () => ({
+      ...HELLO_DOCUMENT,
+      text: sent,
+      hash: SAVED_HASH,
+      view: viewOfText(sent),
+    }));
+    await openDesigner(edits);
+    type('write');
+
+    fireEvent.click(saveButton());
+
+    await waitFor(() => expect(status()).toBe('Saved'));
+    expect(screen.queryByText('The server did not answer.')).toBeNull();
+    expect(nameInput().value).toBe('write');
+  });
+
+  it('shows the failure when the file does not hold the text', async () => {
+    const edits = acceptingEdits();
+    edits.save.mockRejectedValueOnce(
+      new SaveLost('The server did not answer.'),
+    );
+    await openDesigner(edits);
+    type('write');
+
+    fireEvent.click(saveButton());
+
+    expect(await screen.findByText('The server did not answer.')).toBeTruthy();
+    expect(status()).toBe('Unsaved changes');
+  });
+});
+
+describe('a save whose answer is lost and whose file cannot be read', () => {
+  it('says it is not known whether the file was written', async () => {
+    const edits = acceptingEdits();
+    edits.save.mockRejectedValueOnce(
+      new SaveLost('The server did not answer.'),
+    );
+    edits.reload.mockRejectedValueOnce(new Error('Still down.'));
+    await openDesigner(edits);
+    type('write');
+
+    fireEvent.click(saveButton());
+
+    expect(await screen.findByText('The save did not finish')).toBeTruthy();
+    expect(screen.getByText(/may or may not have gone through/)).toBeTruthy();
+    expect(screen.queryByText('The workflow was not saved')).toBeNull();
+  });
+});
+
+describe('a save that is refused with nothing to fix', () => {
+  it('shows the sentence of the server', async () => {
+    const edits = acceptingEdits();
+    edits.save.mockRejectedValueOnce(
+      new SaveRefused('The workflow has errors.', []),
+    );
+    await openDesigner(edits);
+    type('write');
+
+    fireEvent.click(saveButton());
+
+    expect(await screen.findByText('The workflow has errors.')).toBeTruthy();
+    expect(screen.getByText('The workflow was not saved')).toBeTruthy();
+  });
+});
+
+describe('a file whose stages are not a block', () => {
+  const FLOW = {
+    ...HELLO_DOCUMENT,
+    text: 'name: hello\nintent: Add a greeting to the README\nstages: [{name: draft, agent: k-developer}]\n',
+  };
+
+  it('says before a save that the file is written whole', async () => {
+    await openDesigner(acceptingEdits(), FLOW);
+
+    const note = screen.getByTestId('rewrite-notice');
+
+    expect(note.textContent).toContain('Saving rewrites this file');
+    expect(note.textContent).toContain('comments');
+  });
+
+  it('says nothing for a file with a block of stages', async () => {
+    await openDesigner();
+
+    expect(screen.queryByTestId('rewrite-notice')).toBeNull();
+  });
+
+  it('says nothing when the workflow is read-only, as nothing will be saved', async () => {
+    await openDesigner(acceptingEdits(), { ...FLOW, readOnly: true });
+
+    expect(screen.getByTestId('read-only-note')).toBeTruthy();
+    expect(screen.queryByTestId('rewrite-notice')).toBeNull();
   });
 });
 
@@ -372,11 +1001,24 @@ describe('the two tabs', () => {
     expect(within(panel).queryByTestId('node-stage-write')).toBeNull();
     expect(within(panel).getByTestId('unsaved-note')).toBeTruthy();
   });
+
+  it('draws what was saved on Execution, with no note', async () => {
+    await openDesigner();
+    type('write');
+    fireEvent.click(saveButton());
+    await waitFor(() => expect(status()).toBe('Saved'));
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Execution' }));
+
+    const panel = screen.getByRole('tabpanel', { name: 'Execution' });
+    expect(await within(panel).findByTestId('node-stage-write')).toBeTruthy();
+    expect(within(panel).queryByTestId('unsaved-note')).toBeNull();
+  });
 });
 
 describe('a workflow that the server says is read-only', () => {
   it('turns off every control that would change it', async () => {
-    await openDesigner({
+    await openDesigner(acceptingEdits(), {
       ...HELLO_DOCUMENT,
       readOnly: true,
     });
@@ -393,25 +1035,40 @@ describe('a workflow that the server says is read-only', () => {
     expect(isOff(deleteButton())).toBe(true);
     expect(reasonOf('Add stage')).toBe('The workflow is read-only.');
     expect(reasonOf('Delete stage')).toBe('The workflow is read-only.');
+    expect(isOff(saveButton())).toBe(true);
   });
 
-  it('puts the note in a block that takes the whole row of the layout', async () => {
-    await openDesigner({ ...HELLO_DOCUMENT, readOnly: true });
+  it('keeps the note out of the grid of the graph and Properties', async () => {
+    await openDesigner(undefined, { ...HELLO_DOCUMENT, readOnly: true });
 
-    const block = screen
-      .getByTestId('read-only-note')
-      .closest('.wf-designer-note');
-
-    expect(block?.parentElement?.classList.contains('wf-designer')).toBe(true);
+    expect(
+      screen.getByTestId('read-only-note').closest('.wf-designer'),
+    ).toBeNull();
   });
 
   it('says in a note that it is read-only', async () => {
-    await openDesigner({ ...HELLO_DOCUMENT, readOnly: true });
+    await openDesigner(undefined, { ...HELLO_DOCUMENT, readOnly: true });
 
     expect(screen.getByTestId('read-only-note').textContent).toContain(
       'The workflow is read-only.',
     );
     expect(screen.queryByText(/Select a stage to edit it\./)).toBeNull();
+  });
+});
+
+describe('a workflow that cannot be edited', () => {
+  it('is only drawn when it has no file', async () => {
+    render(
+      <App
+        load={Promise.resolve(
+          loaded({ ...HELLO_DOCUMENT, text: null, hash: null, view: null }),
+        )}
+        scheduler={new FakeScheduler()}
+      />,
+    );
+
+    expect(await screen.findByText('Nothing to draw')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
   });
 });
 

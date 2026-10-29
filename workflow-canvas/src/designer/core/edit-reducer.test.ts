@@ -420,7 +420,7 @@ describe('reload', () => {
     expect(stagesOf(next.draft)).toEqual([{ name: 'only', agent: 'k-tpm' }]);
     expect(next.saved.hash).toBe(NEW_DOCUMENT.hash);
     expect(next.revision).toBeGreaterThan(state.revision);
-    expect(next.save).toEqual({ phase: 'reloaded' });
+    expect(next.save.phase).toBe('reloaded');
   });
 
   it('stays in the conflict, with a reason, when the file can no longer be edited', () => {
@@ -556,5 +556,116 @@ describe('removing a stage that is not in the draft', () => {
     const state = opened();
 
     expect(reduce(state, { type: 'remove', id: 'nope' })).toBe(state);
+  });
+});
+
+describe('a reload', () => {
+  const NEWER = {
+    ...HELLO_DOCUMENT,
+    hash: 'e'.repeat(64),
+    view: { ...HELLO_VIEW, stages: [{ name: 'only', agent: 'k-tpm' }] },
+  };
+
+  function reloading(): EditState {
+    return run(
+      opened(),
+      { type: 'rename', id: 's1', name: 'mine' },
+      { type: 'save' },
+      { type: 'conflict' },
+      { type: 'reload' },
+    );
+  }
+
+  it.each([
+    ['add', { type: 'add' }],
+    ['rename', { type: 'rename', id: 's1', name: 'other' }],
+    ['set-agent', { type: 'set-agent', id: 's1', agent: 'k-tpm' }],
+    ['remove', { type: 'remove', id: 's2' }],
+  ] as const)('takes no %s while the file loads', (_, event) => {
+    const state = reloading();
+
+    expect(reduce(state, event)).toBe(state);
+  });
+
+  it('keeps the text of the draft that it replaces', () => {
+    const next = run(reloading(), { type: 'reloaded', document: NEWER });
+
+    expect(next.save.phase).toBe('reloaded');
+    expect(next.discarded).toContain('- name: mine');
+  });
+
+  it('keeps that text when the person goes on to edit', () => {
+    const reloaded = run(reloading(), { type: 'reloaded', document: NEWER });
+
+    const next = run(reloaded, { type: 'rename', id: 's1', name: 'again' });
+
+    expect(next.save.phase).toBe('idle');
+    expect(next.discarded).toBe(reloaded.discarded);
+  });
+
+  it('drops that text when the file is loaded again, or after a save', () => {
+    const reloaded = run(reloading(), { type: 'reloaded', document: NEWER });
+    const saved = run(
+      reloaded,
+      { type: 'rename', id: 's1', name: 'again' },
+      { type: 'save' },
+      { type: 'saved', text: 'text', result: savedResult() },
+    );
+
+    expect(run(reloaded, { type: 'reload' }).discarded).toBeUndefined();
+    expect(saved.discarded).toBeUndefined();
+  });
+
+  it('keeps no text when the draft had no changes', () => {
+    const state = run(
+      opened(),
+      { type: 'rename', id: 's1', name: 'mine' },
+      { type: 'rename', id: 's1', name: 'draft' },
+      { type: 'save' },
+      { type: 'conflict' },
+      { type: 'reload' },
+    );
+
+    const next = run(state, { type: 'reloaded', document: NEWER });
+    expect(next.save).toEqual({ phase: 'reloaded' });
+    expect(next.discarded).toBeUndefined();
+  });
+
+  it('keeps the draft when the file cannot be loaded', () => {
+    const next = run(reloading(), { type: 'reload-failed', message: 'No.' });
+
+    expect(stagesOf(next.draft)[0]?.name).toBe('mine');
+  });
+});
+
+describe('reduce, when the session is lost', () => {
+  const lost: EditEvent = { type: 'session-lost', message: 'Gone.' };
+
+  it('shows the failure, as a lost session, and not as a save that failed', () => {
+    const next = run(opened(), lost);
+
+    expect(next.save).toEqual({
+      phase: 'failed',
+      message: 'Gone.',
+      sessionLost: true,
+    });
+  });
+
+  it('leaves a save or a load that is going on to its own answer', () => {
+    const saving = run(
+      opened(),
+      { type: 'rename', id: 's1', name: 'x' },
+      { type: 'save' },
+    );
+    const reloading = run(opened(), { type: 'reload' });
+
+    expect(reduce(saving, lost)).toBe(saving);
+    expect(reduce(reloading, lost)).toBe(reloading);
+  });
+
+  it('is cleared by the next change, as a failed save is', () => {
+    const next = run(opened(), lost, { type: 'rename', id: 's1', name: 'x' });
+
+    expect(next.save).toEqual({ phase: 'idle' });
   });
 });

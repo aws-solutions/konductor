@@ -20,7 +20,7 @@ import {
   type EditState,
   type SaveState,
 } from './edit-state';
-import { canEdit, canSave, isDirty } from './edit-view';
+import { canSave, changeBlocker, isDirty, textOf } from './edit-view';
 import { checkOf } from './problems';
 
 const NOT_EDITABLE =
@@ -29,7 +29,7 @@ const NOT_EDITABLE =
 // A change of the draft: a new revision, and a finished save is old news.
 // A read-only workflow takes no change.
 function edited(state: EditState, draft: Draft, selectedId: string): EditState {
-  if (draft === state.draft || !canEdit(state)) return state;
+  if (draft === state.draft || changeBlocker(state) !== undefined) return state;
   const phase = state.save.phase;
   const settled =
     phase === 'saved' || phase === 'reloaded' || phase === 'failed';
@@ -102,10 +102,11 @@ function savedAs(
   };
   // What was saved is what the findings of the save are about; if the draft
   // changed meanwhile, the check of its new revision will speak.
-  return isDirty(next)
-    ? next
+  const settled = withoutDiscarded(next);
+  return isDirty(settled)
+    ? settled
     : {
-        ...next,
+        ...settled,
         check: checkOf(state.revision, result.diagnostics, state.draft),
       };
 }
@@ -123,10 +124,20 @@ function refused(
     : next;
 }
 
+function withoutDiscarded(state: EditState): EditState {
+  return { ...state, discarded: undefined };
+}
+
 function reloaded(state: EditState, document: WorkflowDocument): EditState {
   const next = openDocument(document, state.revision + 1);
+  // The reload replaces the draft; its text is kept so it can be recovered.
+  const discarded = isDirty(state) ? textOf(state) : undefined;
   return next
-    ? { ...next, save: { phase: 'reloaded' } }
+    ? {
+        ...next,
+        save: { phase: 'reloaded' },
+        ...(discarded === undefined ? {} : { discarded }),
+      }
     : { ...state, save: { phase: 'conflict', problem: NOT_EDITABLE } };
 }
 
@@ -138,6 +149,15 @@ function whileSaving(state: EditState, apply: () => EditState): EditState {
 
 function whileReloading(state: EditState, apply: () => EditState): EditState {
   return state.save.phase === 'reloading' ? apply() : state;
+}
+
+// A lost session is shown at once, unless a save or a load is going on: its
+// own answer will say so.
+function sessionLost(state: EditState, message: string): EditState {
+  const { phase } = state.save;
+  return phase === 'saving' || phase === 'reloading'
+    ? state
+    : { ...state, save: { phase: 'failed', message, sessionLost: true } };
 }
 
 function failure(message: string, uncertain: true | undefined): SaveState {
@@ -190,8 +210,10 @@ export function reduce(
         ...state,
         save: failure(event.message, event.uncertain),
       }));
+    case 'session-lost':
+      return sessionLost(state, event.message);
     case 'reload':
-      return { ...state, save: { phase: 'reloading' } };
+      return { ...withoutDiscarded(state), save: { phase: 'reloading' } };
     case 'reloaded':
       return whileReloading(state, () => reloaded(state, event.document));
     case 'reload-failed':

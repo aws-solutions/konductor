@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 /**
  * Checks that the run core does no IO and imports no UI: it may import its
- * own modules, the graph core and the wire types, and nothing else. Time and
+ * own modules, the graph core, the wire types and the message helper of the
+ * API client, and nothing else. Time and
  * the calls of the API come in through its ports.
  */
 import { fileURLToPath } from 'node:url';
@@ -15,7 +16,11 @@ import {
 
 const RULES: PurityRules = {
   dir: fileURLToPath(new URL('../src/execution/core/', import.meta.url)),
-  allowedPackages: new Set(['../../graph', '../../api/types']),
+  allowedPackages: new Set([
+    '../../graph',
+    '../../api/types',
+    '../../api/message-of',
+  ]),
   allowedNames: {},
 };
 
@@ -24,7 +29,7 @@ describe('the run core', () => {
     expect(sourcesUnder(RULES.dir).length).toBeGreaterThanOrEqual(6);
   });
 
-  it('imports only its own modules, the graph core and the wire types, and reads no clock, randomness, environment or network', () => {
+  it('imports only its own modules, the graph core, the wire types and the message helper, and reads no clock, randomness, environment or network', () => {
     expect(problemsUnder(RULES)).toEqual([]);
   });
 

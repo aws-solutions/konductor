@@ -9,14 +9,17 @@ import { stageNodeId } from '../graph';
 import {
   canAddStage,
   canEdit,
+  changeBlocker,
   MAX_STAGES,
   nextStageName,
   READ_ONLY_REASON,
 } from './core';
 import '../execution/announcements.css';
 import './designer.css';
+import { EditAlerts, ProblemAlerts, RewriteNotice } from './EditAlerts';
 import { PropertiesPane } from './PropertiesPane';
-import { useFocusRequest } from './use-focus';
+import { SaveControls } from './SaveControls';
+import { useFocusRequest, useFocusWhenDone } from './use-focus';
 import type { Editor } from './use-editor';
 
 const STAGE_LIMIT = `A workflow has at most ${MAX_STAGES} stages.`;
@@ -36,9 +39,10 @@ function useAnnouncer(): [
 }
 
 /**
- * The editable Designer: the graph with Add stage, and Properties for the
- * selected stage. Focus goes to the name of a stage after it is added,
- * selected or deleted, so the keyboard never loses its place.
+ * The editable Designer: the graph with Add stage and Save, Properties for the
+ * selected stage, and the alerts. Focus goes to the name of a stage after it
+ * is added, selected or deleted, and after the file is loaded again, so the
+ * keyboard never loses its place.
  */
 export function DesignerEditor({
   editor,
@@ -50,6 +54,11 @@ export function DesignerEditor({
   const { state } = editor;
   const nameRef = useRef<InputProps.Ref>(null);
   const focusName = useFocusRequest(nameRef);
+  useFocusWhenDone(
+    nameRef,
+    state.save.phase === 'reloading',
+    state.save.phase === 'reloaded',
+  );
 
   const spec = useMemo(
     () => ({
@@ -78,9 +87,10 @@ export function DesignerEditor({
   );
 
   const editable = canEdit(state);
-  const addable = editable && canAddStage(state.draft);
+  const blocker = changeBlocker(state);
+  const addable = blocker === undefined && canAddStage(state.draft);
   return (
-    <div className="wf-designer">
+    <div>
       <div
         className="wf-visually-hidden"
         role="status"
@@ -88,47 +98,53 @@ export function DesignerEditor({
       >
         <span key={announcement.count}>{announcement.text}</span>
       </div>
+      <EditAlerts state={state} onReload={editor.reload} />
+      {editable && <RewriteNotice text={state.saved.text} />}
       {!editable && (
-        <div className="wf-designer-note">
-          <Alert type="info" data-testid="read-only-note">
-            {READ_ONLY_REASON} You can look at the stages and select one, but
-            not change them.
-          </Alert>
-        </div>
+        <Alert type="info" data-testid="read-only-note">
+          {READ_ONLY_REASON} You can look at the stages and select one, but not
+          change them.
+        </Alert>
       )}
-      <WorkflowGraphCard
-        view={spec}
-        harness={harness}
-        selection={selection}
-        readOnly={!editable}
-        toolbar={
-          <Button
-            iconName="add-plus"
-            disabled={!addable}
-            disabledReason={editable ? STAGE_LIMIT : READ_ONLY_REASON}
-            onClick={() => {
-              const name = nextStageName(state.draft);
-              editor.add();
-              focusName({ select: true });
-              announce(`Stage ${name} added and selected.`);
+      <div className="wf-designer">
+        <WorkflowGraphCard
+          view={spec}
+          harness={harness}
+          selection={selection}
+          readOnly={!editable}
+          actions={<SaveControls state={state} onSave={editor.save} />}
+          toolbar={
+            <Button
+              iconName="add-plus"
+              disabled={!addable}
+              disabledReason={blocker ?? STAGE_LIMIT}
+              onClick={() => {
+                const name = nextStageName(state.draft);
+                editor.add();
+                focusName({ select: true });
+                announce(`Stage ${name} added and selected.`);
+              }}
+            >
+              Add stage
+            </Button>
+          }
+        />
+        <div className="wf-side">
+          <PropertiesPane
+            state={state}
+            nameRef={nameRef}
+            onRename={editor.rename}
+            onAgent={editor.setAgent}
+            onRemove={(id) => {
+              const stage = state.draft.stages.find((s) => s.id === id);
+              editor.remove(id);
+              focusName();
+              announce(`Stage ${stage?.name || 'with no name'} deleted.`);
             }}
-          >
-            Add stage
-          </Button>
-        }
-      />
-      <PropertiesPane
-        state={state}
-        nameRef={nameRef}
-        onRename={editor.rename}
-        onAgent={editor.setAgent}
-        onRemove={(id) => {
-          const stage = state.draft.stages.find((s) => s.id === id);
-          editor.remove(id);
-          focusName();
-          announce(`Stage ${stage?.name || 'with no name'} deleted.`);
-        }}
-      />
+          />
+          <ProblemAlerts state={state} />
+        </div>
+      </div>
     </div>
   );
 }

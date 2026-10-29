@@ -385,6 +385,24 @@ describe('a run that is already active', () => {
   });
 });
 
+describe('the canvas of the Execution tab', () => {
+  it('stays the same canvas while the page draws again, as when the goal is typed', async () => {
+    await openExecution(serverShowing(helloRun(0)));
+    const canvas = () =>
+      within(screen.getByRole('tabpanel', { name: 'Execution' })).getByRole(
+        'region',
+        { name: 'Workflow graph' },
+      );
+    const before = canvas();
+
+    fireEvent.change(screen.getByLabelText('Goal'), {
+      target: { value: 'Another goal' },
+    });
+
+    expect(canvas()).toBe(before);
+  });
+});
+
 describe('the goal', () => {
   const goalBox = () => screen.getByLabelText('Goal') as HTMLInputElement;
   const openTab = (name: string) =>
