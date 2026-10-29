@@ -192,3 +192,10 @@ export async function loadOnOpen(
   const result = await openWithCode(api, launchCode, memory, false);
   return result.ok ? result : resumeAny(api, before, memory, result.message);
 }
+
+/** The name of the workflow that a load drew, or `undefined` if none is open. */
+export function openWorkflowName(
+  result: LoadResult | undefined,
+): string | undefined {
+  return result?.ok ? result.workflow.document.view?.name : undefined;
+}

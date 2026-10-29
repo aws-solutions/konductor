@@ -210,8 +210,8 @@ does not start it, and the same tests call that server instead.
 
 `src/graph/` is the core of the canvas. `buildGraph(workflow, harness)` turns
 the workflow view into nodes (the intent, one per stage, the end) and edges
-(one from each node to the next, from its `S` out port at the bottom right to
-the `S` in port at the top right of the next), placed in one column. It imports
+(one from each node to the next, from the tab under a node to the notch in the
+top edge of the next), placed in one column. It imports
 only its own modules. A test (`test-support/graph-purity.test.ts`) fails if it
 imports anything else, or reads a clock, randomness, the environment or the
 network, and the stub core is held to the same rule by the same scan
@@ -272,6 +272,55 @@ The rest wraps the core, so the rules can be tested without a browser:
   outcome short, and keeps the whole text in its `title`; an outcome too long
   for the node is also written out in full under the graph.
 
+## Theme
+
+The page has the look of the Konductor docs theme: its colours, fonts and
+corner radii, in a light and a dark mode.
+
+- `src/theme/tokens.ts` holds every colour, font and radius of the theme, as
+  two palettes and the Cloudscape token map built from them. Nothing else
+  names a colour of Cloudscape. The colours of the canvas itself are in
+  `src/canvas/canvas.css`, with their dark values under
+  `:root[data-theme='dark']`. A test checks that they match the palettes.
+- `src/theme/install.ts` applies the token map with `applyTheme` from
+  `@cloudscape-design/components/theming` (colours, fonts and radii only,
+  with a value for each mode) and switches the mode with `applyMode` from
+  `@cloudscape-design/global-styles`. The header band and the top bar are dark
+  in both modes, so their text colours are set for the band in `tokens.ts`.
+  The root element gets `data-theme` (`light` or `dark`) and `color-scheme`; a
+  small script in `index.html` sets both before the first paint, so a dark page
+  does not flash white.
+- `src/theme/fonts.ts` loads Outfit and JetBrains Mono from the pinned
+  `@fontsource/outfit` and `@fontsource/jetbrains-mono` packages (SIL Open
+  Font License 1.1). The Latin files are bundled, so the page makes no request
+  to a font site.
+- The top bar (`src/chrome/TopBar.tsx`) has the K logo, the page name and the
+  **Theme: light** / **Theme: dark** button. The first visit follows the
+  system setting (`prefers-color-scheme`). Pressing the button saves the mode
+  in local storage (`src/theme/mode.ts`), and the saved mode wins from then
+  on. A page that was never switched keeps following the system, but only as it
+  was at load: a later change of the system setting, or of the choice in
+  another tab, shows after a reload.
+- The page header is a dark band with the breadcrumb `Workflows > <workflow>`
+  (the page has no list of workflows yet, so no crumb is a link), the title
+  and the Designer and Execution tabs. The whole tab strip, with its rule and
+  the selected-tab indicator, is part of the band.
+- Nodes are cards with the corner radius of the theme. The `S` run-order
+  ports are pieces of a jigsaw, 26 by 16 pixels, with a dark rim and a letter
+  `S`: the out port is a square tab that hangs from the bottom edge, the in
+  port a notch of the same outline in the top edge (white inside, with a ring
+  in the colour of the tab), both in the middle of the card, so a tab fits the
+  notch of the card under it (`src/canvas/jigsaw.ts` defines the shape once).
+  A link runs from the tip of the tab to the top of the notch. The keyboard
+  focus ring follows the outline of the card and of the tab.
+
+Text meets WCAG 2 AA (4.5:1) in both modes, and the edges of controls, nodes,
+ports and the selected-tab indicator reach 3:1. `src/theme/tokens.test.ts`
+and `test-support/canvas-contrast.test.ts` check each of these colour pairs
+for the palettes, the band and the canvas in both modes, and the end-to-end
+tests run axe (which checks text contrast) in both modes and read the colour
+of the tab strip.
+
 ## End-to-end tests
 
 The tests in `e2e/tests/` drive the production build in headless Chromium.
@@ -298,7 +347,7 @@ npx playwright install chromium
 
 Then `npm run test:e2e`. The HTML report is written to `playwright-report/`;
 open it with `npx playwright show-report`. Accessibility is checked with
-axe-core on each tab and on the error state.
+axe-core on each tab, on the error state and in both theme modes.
 
 Shared page objects and helpers live in `e2e/support/`. New tests should
 extend them rather than repeat selectors: import `test` and `expect` from
@@ -308,19 +357,21 @@ the app.
 ## Screenshots
 
 `npm run screenshots` saves a full-page PNG of each tab to
-`e2e/screenshots/`, with the Designer tab drawn from the stub, in the light
-theme at 1280x800 with animations frozen. Pull request descriptions embed these
+`e2e/screenshots/`, with the Designer tab drawn from the stub, at 1280x800 with
+animations frozen. The tabs are in the light theme (`designer-tab.png`,
+`execution-tab.png`), and `designer-tab-dark.png` is the Designer tab after
+the theme button is pressed. Pull request descriptions embed these
 files, so regenerate and commit them when the UI changes.
 
 Only that script writes the PNGs. It uses its own config,
 `playwright.screenshots.config.ts`, so `npm run test:e2e`, a bare
 `npx playwright test` and editor integrations never touch committed files.
 
-The capture loads the Open Sans font from the `@fontsource-variable/open-sans`
-dev dependency (Cloudscape names Open Sans first but does not ship it) and
-turns off text hinting and LCD smoothing, so the PNGs come out byte-identical
-on different machines and in CI. CI regenerates them, uploads that set as the
-`screenshots` artifact, and fails when it differs from the committed files.
+The capture waits until the bundled Outfit and JetBrains Mono faces are loaded
+and turns off text hinting and LCD smoothing, so the PNGs come out
+byte-identical on different machines and in CI. CI regenerates them, uploads
+that set as the `screenshots` artifact, and fails when it differs from the
+committed files.
 
 The comparison is byte-exact, so CI fails if a committed screenshot differs by
 even one byte. After a toolchain bump (Playwright, Chromium, fonts or Node), run
