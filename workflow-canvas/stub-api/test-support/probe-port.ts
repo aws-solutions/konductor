@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { connect } from 'node:net';
+import { connect, type Socket } from 'node:net';
 
 /** How long a probe waits; an address that drops packets never answers. */
 export const PROBE_TIMEOUT_MS = 500;
@@ -10,6 +10,13 @@ export const PROBE_TIMEOUT_MS = 500;
  */
 export type Probe = 'connected' | 'refused' | 'silent';
 
+/** The part of `net.connect` a probe uses, so a test can stand in for it. */
+export type Connect = (options: {
+  host: string;
+  port: number;
+  timeout: number;
+}) => Pick<Socket, 'once' | 'destroy'>;
+
 /**
  * Tries a TCP connection to `host:port`. A timeout is judged one loop turn
  * late, so an event loop that stalled past `timeoutMs` still delivers a
@@ -19,9 +26,10 @@ export function probePort(
   host: string,
   port: number,
   timeoutMs = PROBE_TIMEOUT_MS,
+  open: Connect = connect,
 ): Promise<Probe> {
   return new Promise((resolve) => {
-    const socket = connect({ host, port, timeout: timeoutMs });
+    const socket = open({ host, port, timeout: timeoutMs });
     const settle = (result: Probe) => {
       socket.destroy();
       resolve(result);
@@ -41,10 +49,11 @@ export async function probeUntilAnswered(
   port: number,
   attempts = 3,
   timeoutMs = PROBE_TIMEOUT_MS,
+  open: Connect = connect,
 ): Promise<Probe> {
   let result: Probe = 'silent';
   for (let i = 0; i < attempts && result === 'silent'; i++) {
-    result = await probePort(host, port, timeoutMs);
+    result = await probePort(host, port, timeoutMs, open);
   }
   return result;
 }
