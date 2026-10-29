@@ -48,7 +48,7 @@ function realDirs(paths) {
 
 function realHomes(home = os.homedir()) {
   const user = os.userInfo().username;
-  return realDirs([home, `/home/${user}`, `/local/home/${user}`]);
+  return realDirs([home, os.userInfo().homedir, `/home/${user}`]);
 }
 
 const statOrNull = (p) => { try { return fs.statSync(p); } catch { return null; } };

@@ -8,7 +8,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const net = require('node:net');
-const { makeIsolation, probeUnshare, resolveIsolation, writableTrees, runtimeSockets } = require('../lib/isolate.js');
+const { makeIsolation, probeUnshare, resolveIsolation, writableTrees, runtimeSockets, realHomes } = require('../lib/isolate.js');
 const { createTripwire, tripwireFlags, REPO_EXCLUDES } = require('../lib/tripwire.js');
 const { makeScratchRoot } = require('../lib/sandbox.js');
 
@@ -247,4 +247,13 @@ test('tripwire hits are flags without the namespace and informational inside it'
   assert.deepEqual(tripwireFlags(hit, 'none'), ['homeTripwire', 'homeTripwireTruncated']);
   assert.deepEqual(tripwireFlags(hit, 'unshare'), []);
   assert.deepEqual(tripwireFlags({ hits: [], total: 0, truncated: false }, 'none'), []);
+});
+
+test('realHomes finds the account home from the password database even when HOME points at a scratch directory', () => {
+  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'rh-'));
+  try {
+    const homes = realHomes(scratch);
+    assert.ok(homes.includes(fs.realpathSync(scratch)));
+    assert.ok(homes.includes(fs.realpathSync(os.userInfo().homedir)));
+  } finally { fs.rmSync(scratch, { recursive: true, force: true }); }
 });
