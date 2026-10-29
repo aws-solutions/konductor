@@ -4,10 +4,14 @@
 // tag may carry whitespace.
 const SCRIPT = /<script\b[^>]*>([\s\S]*?)<\/script\b[^>]*>/gi;
 
-/** The body of the first `<script>` of the page that has one (an inline script). */
+/** The bodies of the `<script>` tags of the page that have one (inline scripts). */
+export function inlineScriptsOf(html: string): string[] {
+  return [...html.matchAll(SCRIPT)]
+    .map((match) => match[1] ?? '')
+    .filter((body) => body.trim() !== '');
+}
+
+/** The body of the first inline script of the page, or '' if there is none. */
 export function inlineScriptOf(html: string): string {
-  for (const match of html.matchAll(SCRIPT)) {
-    if ((match[1] ?? '').trim() !== '') return match[1] ?? '';
-  }
-  return '';
+  return inlineScriptsOf(html)[0] ?? '';
 }
