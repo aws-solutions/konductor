@@ -156,6 +156,7 @@ function editPortFor(
 // Forgets the token only if no newer session was kept while this one loaded.
 function forgetIfStill(memory: SessionMemory, session: SessionRecord): void {
   if (memory.recall()?.token === session.token) memory.forget();
+  if (memory.recallPending()?.token === session.token) memory.dropPending();
 }
 
 type SessionGuard = <T>(call: Promise<T>) => Promise<T>;
@@ -232,9 +233,19 @@ function isKept(
 
 // A new session is kept as soon as it exists: a load that fails then (a
 // timeout, a 5xx) does not lose the code that was just spent. It replaces
-// only `replaces`, the session that was kept when the load began (none, for
-// a pasted code, as the page still shows the kept one), so it never
-// overwrites a session that was kept meanwhile.
+// only `replaces`, the session that was kept when the load began, so it never
+// overwrites a session that was kept meanwhile. A pasted code has no
+// `replaces` as the page still shows the kept session: its session waits as
+// the pending one until its workflow is shown.
+function keepEarly(
+  memory: SessionMemory,
+  session: SessionRecord,
+  replaces: SessionRecord | undefined,
+): void {
+  if (isKept(memory, replaces)) memory.remember(session);
+  else if (replaces === undefined) memory.holdPending(session);
+}
+
 async function openWithCode(
   api: WorkflowApi,
   launchCode: string,
@@ -245,7 +256,7 @@ async function openWithCode(
     const { token, harness, apiVersion } = await api.createSession(launchCode);
     if (apiVersion !== SUPPORTED_API_VERSION) return failure(UNSUPPORTED_API);
     const session = { token, harness };
-    if (isKept(memory, replaces)) memory.remember(session);
+    keepEarly(memory, session, replaces);
     return await loadWith(api, session, memory);
   } catch (error) {
     return failure(messageOf(error, LOAD_FAILED));
@@ -264,6 +275,35 @@ async function resume(
   }
 }
 
+// The sessions a reload tries, in order: the pending one, then the kept one.
+function resumable(memory: SessionMemory): SessionRecord[] {
+  return [memory.recallPending(), memory.recall()].filter(
+    (session) => session !== undefined,
+  );
+}
+
+// Opens the first of `sessions` that loads. The error shown is that of the
+// first attempt (`refused` when the caller already failed), and `refused`
+// tells the page why a later session was opened in its place.
+async function resumeAny(
+  api: WorkflowApi,
+  sessions: SessionRecord[],
+  memory: SessionMemory,
+  refused?: string,
+): Promise<LoadResult> {
+  let firstFailure = refused;
+  for (const session of sessions) {
+    const result = await resume(api, session, memory);
+    if (result.ok) {
+      return firstFailure === undefined
+        ? result
+        : { ...result, refused: firstFailure };
+    }
+    firstFailure ??= result.message;
+  }
+  return failure(firstFailure ?? NO_LAUNCH_CODE);
+}
+
 /**
  * Opens a session with the launch code and loads the workflow of the session.
  * With no code, it loads with the session that `memory` kept, as after a
@@ -274,20 +314,16 @@ export async function loadWorkflow(
   launchCode: string | undefined,
   memory: SessionMemory,
 ): Promise<LoadResult> {
-  if (launchCode !== undefined) {
-    return openWithCode(api, launchCode, memory, undefined);
-  }
-  const kept = memory.recall();
-  return kept === undefined
-    ? failure(NO_LAUNCH_CODE)
-    : resume(api, kept, memory);
+  return launchCode === undefined
+    ? resumeAny(api, resumable(memory), memory)
+    : openWithCode(api, launchCode, memory, undefined);
 }
 
 /**
  * The load when the page opens. It is `loadWorkflow`, except that the session
  * of the code replaces the kept one at once, as no workflow is on the page
- * yet, and a code that fails (as a spent one does) falls back to the session kept
- * before it. The error of the code is shown only if that fails too.
+ * yet, and a code that fails (as a spent one does) falls back to the sessions
+ * kept before it. The error of the code is shown only if those fail too.
  */
 export async function loadOnOpen(
   api: WorkflowApi,
@@ -295,11 +331,9 @@ export async function loadOnOpen(
   memory: SessionMemory,
 ): Promise<LoadResult> {
   if (launchCode === undefined) return loadWorkflow(api, undefined, memory);
-  const kept = memory.recall();
-  const result = await openWithCode(api, launchCode, memory, kept);
-  if (result.ok || kept === undefined) return result;
-  const resumed = await resume(api, kept, memory);
-  return resumed.ok ? { ...resumed, refused: result.message } : result;
+  const before = resumable(memory);
+  const result = await openWithCode(api, launchCode, memory, memory.recall());
+  return result.ok ? result : resumeAny(api, before, memory, result.message);
 }
 
 /** The name of the workflow that a load drew, or `undefined` if none is open. */
