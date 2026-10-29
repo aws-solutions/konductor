@@ -15,7 +15,10 @@ const SUITE_DEFAULTS = {
   hard: { arms: ['vanilla', 'v1.2.0', 'main'], replicates: 3, parallel: 1 },
   real: { arms: ['vanilla', 'v1.2.0', 'main'], replicates: 1, parallel: 1 },
   autonomy: { arms: ['vanilla', 'v1.2.0', 'main'], replicates: 3, parallel: 1 },
+  // Tasks borrowed from the other suites; each keeps its own tier and gains "pilot".
+  pilot: { arms: ['vanilla', 'v1.2.0', 'main'], replicates: 1, parallel: 1 },
 };
+const SUITE_NAMES = Object.keys(SUITE_DEFAULTS);
 
 function loadTasks(benchDir = BENCH_DIR) {
   const dir = path.join(benchDir, 'tasks');
@@ -52,7 +55,7 @@ function benchMask(benchDir = BENCH_DIR) {
 }
 
 function loadSuite(name, tasks, benchDir = BENCH_DIR) {
-  if (!SUITE_DEFAULTS[name]) throw new Error(`unknown suite "${name}" (expected lite, full, hard or real, or autonomy)`);
+  if (!SUITE_DEFAULTS[name]) throw new Error(`unknown suite "${name}" (expected lite, full, hard or real, or autonomy or pilot)`);
   const file = path.join(benchDir, 'suites', `${name}.json`);
   const fromFile = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {};
   const taskIds = fromFile.tasks
@@ -67,4 +70,4 @@ function loadSuite(name, tasks, benchDir = BENCH_DIR) {
   };
 }
 
-module.exports = { loadTasks, loadSuite, benchMask, SUITE_DEFAULTS, BENCH_DIR };
+module.exports = { loadTasks, loadSuite, benchMask, SUITE_DEFAULTS, SUITE_NAMES, BENCH_DIR };

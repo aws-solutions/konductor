@@ -1,0 +1,24 @@
+{
+  "tasks": [
+    "orch-input-validation",
+    "review-inventory-security",
+    "design-hold-service",
+    "real-click-3473-argument-help",
+    "real-rich-3934-empty-live",
+    "autonomy-gateway-throttle",
+    "autonomy-merge-customers",
+    "autonomy-format-bytes"
+  ],
+  "arms": [
+    "vanilla",
+    "v1.2.0",
+    "main"
+  ],
+  "replicates": 1,
+  "judges": [
+    "gpt-5.6-luna",
+    "deepseek-3.2",
+    "glm-5"
+  ],
+  "parallel": 1
+}

@@ -8,7 +8,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { parseArmSpec } = require('./arms.js');
 const { resolveRef } = require('./arm-source.js');
-const { loadTasks, loadSuite, BENCH_DIR } = require('./tasks.js');
+const { loadTasks, loadSuite, SUITE_NAMES, BENCH_DIR } = require('./tasks.js');
 
 // Credits per arm for one pass over the suite, as measured: claude-sonnet-5.5, one replicate, one run per cell.
 // `lowerBound` arms had runs that ended before their final metering event.
@@ -88,7 +88,7 @@ function estimateFor({ suite, arms, newId, replicates, taskCount }) {
 function planPr({
   ref, base = DEFAULT_BASE, suite = 'lite', replicates, noVanilla = false, budgetCredits = null, seed, benchDir = BENCH_DIR, repoRoot = null, now = new Date(), tmpRoot = os.tmpdir(),
 }) {
-  if (!['lite', 'full', 'hard', 'real', 'autonomy'].includes(suite)) throw new Error('--suite lite|full|hard|real|autonomy');
+  if (!SUITE_NAMES.includes(suite)) throw new Error(`--suite ${SUITE_NAMES.join('|')}`);
   const added = parseNewArm(ref);
   const baseParsed = parseArmSpec(base);
   if (baseParsed.kind === 'dir' || (baseParsed.kind === 'git' && !baseParsed.bare)) throw new Error(`--base takes vanilla, main or a release tag such as ${DEFAULT_BASE}`);

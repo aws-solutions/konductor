@@ -32,7 +32,7 @@ function shapeProblems(t, { hiddenRoot }) {
     bad('an autonomy task needs an autonomy block');
     return out;
   }
-  if (!Array.isArray(t.tiers) || t.tiers.length !== 1 || t.tiers[0] !== 'autonomy') bad('tiers must be ["autonomy"] only');
+  if (!Array.isArray(t.tiers) || !t.tiers.includes('autonomy') || t.tiers.some((x) => x !== 'autonomy' && x !== 'pilot')) bad('tiers must be ["autonomy"] (and optionally "pilot")');
   if (!(isInt(t.timeoutSec) && t.timeoutSec >= MIN_TIMEOUT && t.timeoutSec <= MAX_TIMEOUT)) bad(`timeoutSec must be from ${MIN_TIMEOUT} to ${MAX_TIMEOUT}`);
   if (typeof t.prompt === 'string') {
     if (t.prompt.includes(NO_QUESTIONS)) bad('the prompt must not contain the no-questions sentence');

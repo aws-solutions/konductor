@@ -68,7 +68,8 @@
     }
   ],
   "tiers": [
-    "autonomy"
+    "autonomy",
+    "pilot"
   ],
   "autonomy": {
     "clarifications": [

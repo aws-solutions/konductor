@@ -3,11 +3,11 @@
 /**
  * bench.js - benchmark runner for Konductor on kiro-cli or opencode (run, judge, recheck, report, compare, calibrate).
  *
- *   node bench/runner/bench.js run --suite lite|full|hard|real|autonomy [--arms a,b] [--tasks id,id]
+ *   node bench/runner/bench.js run --suite lite|full|hard|real|autonomy|pilot [--arms a,b] [--tasks id,id]
  *        [--replicates N] [--parallel N] [--budget-credits X] [--out DIR]
  *   node bench/runner/bench.js list-arms [--arms a,b] [--repo-root DIR]
  *   node bench/runner/bench.js contrast --run DIR [--base ARM] [--head a,b]
- *   node bench/runner/bench.js pr-plan --ref name=ref|name=dir:path [--base v1.2.0] [--suite lite|real|hard]
+ *   node bench/runner/bench.js pr-plan --ref name=ref|name=dir:path [--base v1.2.0] [--suite lite|real|hard|autonomy|pilot]
  *
  * Every run executes in a scratch HOME and a fresh cwd with an allowlisted
  * environment, optionally inside a read-only mount namespace. See bench/README.md.
@@ -21,7 +21,7 @@ const evalCommands = require('./eval-commands.js');
 const { BOOLEAN_FLAGS, COMMANDS: COMMAND_NAMES, checkArgs } = require('./lib/cli-flags.js');
 
 const USAGE = `Usage:
-  node bench/runner/bench.js run --suite lite|full|hard|real|autonomy [--arms a,b,c] [--tasks id,id]
+  node bench/runner/bench.js run --suite lite|full|hard|real|autonomy|pilot [--arms a,b,c] [--tasks id,id]
        [--replicates N] [--parallel N] [--budget-credits X] [--out DIR]
        [--model ID] [--effort LEVEL] [--cache DIR] [--cargo-target DIR] [--cargo-online]
        [--seed N] [--isolate unshare|none|auto] [--allow-partial] [--censored-floor X] [--hide DIR,DIR]
@@ -39,7 +39,7 @@ const USAGE = `Usage:
   node bench/runner/bench.js contrast --run DIR [--base ARM] [--head ARM,ARM] [--min-rel 0.15] [--rule both|any] [--bench-dir DIR]
        (each head arm against the base arm, overall and per task class; writes contrast.md and contrast.json
        in DIR. Default base: v1.2.0 if present, else vanilla, else the first arm. Default head: all other arms)
-  node bench/runner/bench.js pr-plan --ref name=<git ref>|name=dir:<path> [--base v1.2.0] [--suite lite|real|hard]
+  node bench/runner/bench.js pr-plan --ref name=<git ref>|name=dir:<path> [--base v1.2.0] [--suite lite|real|hard|autonomy|pilot]
        [--replicates N] [--no-vanilla] [--budget-credits X] [--seed N] [--repo-root DIR] [--bench-dir DIR]
        (prints the run, contrast, judge and report commands for one ref against a release; runs nothing)
   node bench/runner/bench.js recheck --run DIR [--bench-dir DIR] [--dry-run]

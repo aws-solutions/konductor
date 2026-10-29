@@ -21,7 +21,7 @@ Run flags: `--arms a,b`, `--tasks id,id`, `--replicates N`, `--parallel N`, `--b
 `--isolate unshare|none|auto`, `--allow-partial`, `--censored-floor X`, `--env-keep NAME,..`,
 `--hide PATH,..`, `--tripwire-exclude PATH,..`, `--tripwire-depth N`, `--tripwire-dir DIR,..`,
 `--kiro-bin PATH`, `--cache DIR`, `--cargo-target DIR`, `--cargo-online`, `--bench-dir DIR`, `--real-cache DIR`, `--prepare-only`.
-`--suite lite|full|hard|real|autonomy`.
+`--suite lite|full|hard|real|autonomy|pilot`.
 More than 10 planned runs need `--budget-credits`; `run` prints the worst-case wall clock and the cap first.
 An unknown or mistyped flag is an error (exit 2) that lists the known flags, and nothing runs. `--help` and `-h` print the usage.
 
@@ -243,6 +243,30 @@ The six `autonomy-*` tasks leave a decision open, and a scripted user (no model)
   questions on the no-question task and unmatched questions (shown apart), cap hits, intended and invariant tests,
   completed-without-help rate, interjections per successful run, cost and wall clock for all turns. `contrast` and
   `compare` gain `interjections`, `unmatchedQuestions`, `intendedFraction`, `invariantFraction`, `completedWithoutHelp`.
+
+## Piloting orchestration options
+Make an option an arm, run it against a release, and read quality, autonomy and cost together.
+- Arm: a branch or tag as `opt-a=<ref>` (built from `git archive`), or a worktree as `opt-a=dir:<path>` (edits count, recorded dirty).
+- Plan, runs nothing: `pr-plan --ref opt-a=<ref> --suite pilot --budget-credits 150` (also `--base v1.2.0`, `--base main`). The
+  `pilot` suite is 8 tasks borrowed from lite (3), real (2) and autonomy (3, one needs no question); 1 replicate. There are no
+  observed figures for autonomy tasks, so `pr-plan` refuses to guess a cap and wants `--budget-credits`.
+- Sequence: `run --suite pilot --arms vanilla,v1.2.0,main,opt-a=<ref>`, then `contrast --run $OUT --base v1.2.0` (no credits),
+  `judge --run $OUT --baseline v1.2.0`, `report --run $OUT --baseline v1.2.0`.
+- Read three things together. Quality: hidden and regression tests, checks, rubric. Autonomy: `interjections`,
+  `unmatchedQuestions`, `completedWithoutHelp` (fewer is better, but asking on the no-question task is over-asking). Cost:
+  credits and wall clock with failed and timed-out runs included. Cheaper with lower quality or more help is not an improvement.
+- Caveats: n=1 per cell is anecdotal; rerun the tasks that show signal with `--replicates 3`. Vanilla is at ceiling on small
+  tasks, so look at cost, autonomy and the real and autonomy tiers. Wall-clock numbers need `--parallel 1` and nothing else
+  using the Kiro account. The agent has open network (see the contamination row).
+
+Observed credits for one pass, claude-sonnet-5.5 unless noted, n=1 per cell (a guide, not a forecast; `+` is a lower bound):
+
+| suite (tasks) | vanilla | v1.2.0 | main |
+| --- | --- | --- | --- |
+| lite (5) | 6.78 | 23.31 | 31.01 |
+| real (7) | 14.22 | 61.32 | 45.33+ |
+| hard-A (6) | 20.06 | not run | not run |
+| haiku-5.5, partial (1 task) | 0.42 | not run | 0.66 |
 
 ## How to read results
 - Tokens are not exposed by kiro-cli; credits are the cost measure. `estTokens` is characters / 4.

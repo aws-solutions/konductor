@@ -10,7 +10,7 @@ const { execFileSync } = require('node:child_process');
 const { resolveArm } = require('./arms.js');
 const { harnessFor, opencode: oc } = require('./harness/index.js');
 const { readProfile } = require('./harness/opencode-creds.js');
-const { loadTasks, loadSuite, benchMask, BENCH_DIR } = require('./tasks.js');
+const { loadTasks, loadSuite, benchMask, SUITE_NAMES, BENCH_DIR } = require('./tasks.js');
 const real = require('./real.js');
 const reallib = require('../../real/lib.js');
 const { runAll, prepareAll, preflightTable, describePlan, requireBudget, DEFAULT_CENSORED_FLOOR, CREDITS, USD } = require('./orchestrate.js');
@@ -92,7 +92,7 @@ function prepareOnlyRun({ opts, arms, runtimes, repo, log }) {
 const repoRootOf = (opts) => path.resolve(opts['repo-root'] && opts['repo-root'] !== true ? opts['repo-root'] : process.env.BENCH_REPO_ROOT || DEFAULT_REPO);
 
 async function cmdRun(opts) {
-  if (!['lite', 'full', 'hard', 'real', 'autonomy'].includes(opts.suite)) throw new Error('--suite lite|full|hard|real|autonomy is required');
+  if (!SUITE_NAMES.includes(opts.suite)) throw new Error(`--suite ${SUITE_NAMES.join('|')} is required`);
   const benchDir = opts['bench-dir'] ? path.resolve(opts['bench-dir']) : BENCH_DIR;
   const tasksAll = loadTasks(benchDir);
   const suite = loadSuite(opts.suite, tasksAll, benchDir);

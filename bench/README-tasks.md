@@ -24,6 +24,8 @@ The same prompt goes to every arm, so it must make sense without any add-on. Pro
  "tiers": ["lite", "full" or "hard"]}
 ```
 
+A task keeps its own tier and may also carry `"pilot"` (for example `["lite", "full", "pilot"]`). `suites/pilot.json` lists the pilot tasks, and the validator requires the file and the tag to agree.
+
 ## Prompts
 
 Every prompt ends with the same sentence, which the validator enforces: "Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work." Runs are unattended, so a question ends the turn with nothing written. Without the sentence, arms that ask before acting would be scored on the questions and not on the work. When a report needs a verdict, the prompt names the exact line, for example `Verdict: NEEDS FIXES`.

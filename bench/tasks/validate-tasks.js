@@ -51,7 +51,7 @@ const HIDDEN_DIR = path.join(TASKS_DIR, 'hidden');
 const PARTIALS_DIR = path.join(TASKS_DIR, 'partials');
 
 const CLASSES = ['simple', 'sop', 'orchestration', 'review', 'design', 'hard', 'real', 'autonomy'];
-const TIERS = ['lite', 'full', 'hard', 'real', 'autonomy'];
+const TIERS = ['lite', 'full', 'hard', 'real', 'autonomy', 'pilot'];
 const REAL_RUBRIC_SIZE = 3;
 const REAL_MIN_TASKS = 6;
 const REAL_MAX_TASKS = 8;
@@ -184,10 +184,12 @@ function validateShape(file, t) {
   need(Array.isArray(t.tiers) && t.tiers.length > 0 && t.tiers.every((x) => TIERS.includes(x)), `tiers must be a non-empty subset of ${TIERS.join('|')}`);
   const hard = t.class === 'hard';
   const autonomy = t.class === 'autonomy' || t.autonomy !== undefined;
+  // "pilot" is added on top of a task's own tier; the rules below look at the tiers without it.
+  const ownTiers = Array.isArray(t.tiers) ? t.tiers.filter((x) => x !== 'pilot') : [];
   if (Array.isArray(t.tiers)) {
     if (autonomy) { /* tiers are checked with the other autonomy rules */ }
-    else if (hard) need(t.tiers.length === 1 && t.tiers[0] === 'hard', 'hard tasks must have tiers ["hard"] only');
-    else if (real) need(t.tiers.length === 1 && t.tiers[0] === 'real', 'real tasks must have tiers ["real"] only; the full tier does not include them');
+    else if (hard) need(ownTiers.length === 1 && ownTiers[0] === 'hard', 'hard tasks must have tiers ["hard"] (and optionally "pilot") only');
+    else if (real) need(ownTiers.length === 1 && ownTiers[0] === 'real', 'real tasks must have tiers ["real"] (and optionally "pilot") only; the full tier does not include them');
     else need(t.tiers.includes('full') && !t.tiers.includes('hard') && !t.tiers.includes('real'), 'every task must include the full tier (and only hard tasks the hard tier, only real tasks the real tier)');
   }
   if (hard) {
@@ -539,7 +541,7 @@ function main() {
 
   const suites = {};
   if (manifest) realReport.push(validateRealSet(tasks, manifest));
-  for (const name of ['lite', 'full', 'hard', 'real', 'autonomy']) {
+  for (const name of ['lite', 'full', 'hard', 'real', 'autonomy', 'pilot']) {
     const file = path.join(SUITES_DIR, `${name}.json`);
     const s = fs.existsSync(file) ? readJson(file, `suites/${name}.json`) : null;
     if (!s) { err(`suites/${name}.json`, 'missing or unreadable'); continue; }
@@ -597,6 +599,8 @@ function main() {
       if (t && t.class !== 'autonomy') err('suites/autonomy.json', `task "${id}" is not an autonomy task`);
     }
   }
+
+  if (suites.pilot && suites.pilot.parallel !== 1) err('suites/pilot.json', 'parallel must be 1 (wall-clock comparisons need one run at a time)');
 
   if (suites.hard) {
     if (suites.hard.parallel !== 1) err('suites/hard.json', 'parallel must be 1 (wall-clock comparisons need one run at a time)');

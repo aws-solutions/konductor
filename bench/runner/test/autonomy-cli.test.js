@@ -55,5 +55,5 @@ test('run --suite autonomy asks, answers, resumes and records the conversation; 
 test('an unknown suite lists autonomy among the valid ones', () => {
   const r = spawnSync(process.execPath, [BENCH_JS, 'run', '--suite', 'nightly'], { env: { PATH: process.env.PATH, HOME: tmp() }, encoding: 'utf8' });
   assert.notEqual(r.status, 0);
-  assert.match(r.stderr, /lite\|full\|hard\|real\|autonomy/);
+  assert.match(r.stderr, /lite\|full\|hard\|real\|autonomy\|pilot/);
 });

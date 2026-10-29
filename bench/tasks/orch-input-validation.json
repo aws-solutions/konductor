@@ -86,6 +86,7 @@
   ],
   "tiers": [
     "lite",
-    "full"
+    "full",
+    "pilot"
   ]
 }
