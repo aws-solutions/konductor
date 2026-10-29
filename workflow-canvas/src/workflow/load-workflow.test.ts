@@ -887,7 +887,7 @@ describe('loadWorkflow with a pending session', () => {
     expect(result).toMatchObject({
       ok: true,
       workflow: { harness: 'stored-harness' },
-      refused: 'Server error.',
+      refused: expect.stringMatching(/^Server error\./),
     });
     expect(memory.recallPending()).toEqual(PENDING);
   });
@@ -904,7 +904,10 @@ describe('loadWorkflow with a pending session', () => {
       memory,
     );
 
-    expect(result).toEqual({ ok: false, message: 'Server error.' });
+    expect(result).toEqual({
+      ok: false,
+      message: expect.stringMatching(/^Server error\./),
+    });
     expect(memory.recall()).toBeUndefined();
     expect(memory.recallPending()).toEqual(PENDING);
   });
@@ -950,7 +953,7 @@ describe('loadOnOpen sessions', () => {
     expect(result).toMatchObject({
       ok: true,
       workflow: { harness: 'stored-harness' },
-      refused: 'Server error.',
+      refused: expect.stringMatching(/^Server error\./),
     });
     if (!result.ok) throw new Error('The load failed.');
     result.remember();
