@@ -263,16 +263,18 @@ The rest wraps the core, so the rules can be tested without a browser:
   session (the token and the harness, never the launch code) in the session
   storage of its tab, under one key. A load with no code in the address uses it,
   so a reload resumes the open workflow although the code is spent. A code in
-  the address that fails (a spent one) falls back to the kept session, and its
-  error is shown only if that fails too. The session is kept as soon as a code
-  opens it, so a first load that fails can be retried by a reload. A 401 on the
-  kept token, on any call (the server was started again), clears it and asks
-  for a fresh launch address. A pasted code replaces it only once the workflow
-  of that code is on the page. The token lasts for the life of the tab, including copies
-  made by Duplicate tab or `window.open`, and a browser may restore it with
-  the tab. Script on the page can read it, so `index.html` carries a
-  Content-Security-Policy that lets the page run only its own files; a server
-  that sends the page should send the same policy as a header.
+  the address that fails (a spent one) falls back to the kept session with a
+  notice that says why, and its error is shown as the page's only if that fails
+  too. The session of a code in the address is kept as soon as the code opens
+  it, in place of a kept one, so a first load that fails can be retried by a
+  reload. A 401 on the kept token, on any call (the server was started again),
+  clears it and asks for a fresh launch address (an address works once). A
+  pasted code replaces it only once the workflow of that code is on the page.
+  The token lasts for the life of the tab, including copies made by Duplicate
+  tab or `window.open`, and a browser may restore it with the tab. Script on the
+  page can read it, so `index.html` carries a Content-Security-Policy that lets
+  the page run only its own files and allows no `<base>` or form target; a
+  server that sends the page should send the same policy as a header.
 - `designer/` shows the result: loading, error, empty (no file yet, or a file
   with errors, with their messages), or the canvas with its editing (next
   section).

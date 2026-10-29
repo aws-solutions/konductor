@@ -18,7 +18,7 @@ not per individual commit.
 - The Designer says when a pasted launch address is refused, and shows error names as code instead of in backticks.
 - Pasting a launch address into the open tab opens the new workflow without a reload, fitted to the canvas, and keeps the open one if the code is refused.
 - Reloading the canvas page resumes the open workflow from a session kept for the tab; a restarted server asks for a fresh launch address.
-- A spent launch address in the tab falls back to the kept session, and a first load that failed can be retried with a reload.
+- A spent launch address in the tab falls back to the kept session and says so, and a first load that failed can be retried with a reload.
 - The workflow canvas uses the Konductor docs theme, with light and dark modes, and system colours in forced-colors mode.
 - The Execution tab runs the workflow and shows live node states.
 - The Designer tab edits stages (agent, rename, add, delete) and saves with checks while typing.

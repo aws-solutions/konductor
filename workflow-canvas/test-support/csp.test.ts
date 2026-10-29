@@ -9,19 +9,20 @@ const policy = /http-equiv="Content-Security-Policy"\s+content="([^"]*)"/.exec(
   html,
 )?.[1];
 
+const inlineScriptHash = createHash('sha256')
+  .update(inlineScriptOf(html))
+  .digest('base64');
+
 describe('the Content-Security-Policy of index.html', () => {
-  it('lets the page run its own files and nothing from another origin', () => {
-    expect(policy).toMatch(/^default-src 'self';/);
-    expect(policy).not.toMatch(
-      /https?:|\*|unsafe-eval|script-src[^;]*unsafe-inline/,
-    );
-  });
-
-  it('allows the inline script by the hash of its exact text', () => {
-    const hash = createHash('sha256')
-      .update(inlineScriptOf(html))
-      .digest('base64');
-
-    expect(policy).toContain(`script-src 'self' 'sha256-${hash}'`);
+  it('is exactly this policy, so a widened source or a new directive fails', () => {
+    expect(policy?.split('; ')).toEqual([
+      "default-src 'self'",
+      `script-src 'self' 'sha256-${inlineScriptHash}'`,
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data:",
+      "font-src 'self' data:",
+      "base-uri 'none'",
+      "form-action 'none'",
+    ]);
   });
 });
