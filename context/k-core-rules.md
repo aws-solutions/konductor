@@ -34,3 +34,4 @@ In sentences you write or rewrite, do not use em or en dashes, AI vocabulary, or
 - If you cannot explain the cause chain from root cause to symptom, research first and fix second.
 - When a claim matters to a decision and you have not verified it, say whether it rests on documented knowledge (you read the code or docs), inference, or a guess.
 - Before calling a code change done, confirm the tests pass, not only that the code compiles. An orchestrator gets that evidence from the specialist rather than running the tests.
+- Present findings in severity order: CRITICAL, then IMPORTANT, then SUGGESTION.
