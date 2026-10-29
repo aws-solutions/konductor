@@ -405,6 +405,32 @@ describe('createWorkflowSource session memory', () => {
     expect(await source.current()).toMatchObject({ ok: true });
   });
 
+  it('tells that the code in the address was refused when it opens the kept session', async () => {
+    const api = {
+      createSession: vi.fn().mockImplementation(refused),
+      getWorkflow: vi.fn().mockResolvedValue(HELLO_DOCUMENT),
+    };
+    const source = createWorkflowSource(api, 'spent', memoryWith(KEPT));
+
+    await source.current();
+    await settleMicrotasks();
+
+    expect(source.notice()).toBe('The launch code is not valid.');
+  });
+
+  it('tells nothing when the code in the address opens the workflow', async () => {
+    const source = createWorkflowSource(
+      apiWith(vi.fn().mockResolvedValue(HELLO_SESSION)),
+      'first',
+      memoryWith(KEPT),
+    );
+
+    await source.current();
+    await settleMicrotasks();
+
+    expect(source.notice()).toBeUndefined();
+  });
+
   it('does not open the kept session in place of a refused pasted code', async () => {
     const api = {
       createSession: vi.fn().mockImplementation(refused),
@@ -503,6 +529,28 @@ describe('createWorkflowSource session memory', () => {
 
   it('keeps the session of a pasted code when the first load answers after it', async () => {
     const memory = memoryWith();
+    let answerFirst!: (session: typeof HELLO_SESSION) => void;
+    const createSession = vi
+      .fn()
+      .mockImplementationOnce(
+        () => new Promise((resolve) => (answerFirst = resolve)),
+      )
+      .mockResolvedValueOnce({ ...HELLO_SESSION, token: 'pasted-token' });
+    const source = createWorkflowSource(
+      apiWith(createSession),
+      'first',
+      memory,
+    );
+
+    await source.offer('second');
+    answerFirst({ ...HELLO_SESSION, token: 'first-token' });
+    await settleMicrotasks();
+
+    expect(memory.recall()?.token).toBe('pasted-token');
+  });
+
+  it('keeps the session of a pasted code when the first open answers after it over a kept session', async () => {
+    const memory = memoryWith({ token: 'old-token', harness: 'old' });
     let answerFirst!: (session: typeof HELLO_SESSION) => void;
     const createSession = vi
       .fn()
