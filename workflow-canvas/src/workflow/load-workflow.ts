@@ -91,7 +91,7 @@ function startUnsureOf(error: unknown): RunStartUnsure | undefined {
 
 // A new session is a new page, which has no draft.
 const CHANGES_ARE_LOST =
-  'The changes you made on this page are lost when you do; copy them first.';
+  'The changes you made on this page are lost when you open a fresh address; copy them first.';
 
 function lostSessionSentence(error: ApiError): string {
   return `${lostSessionMessage(error)} ${CHANGES_ARE_LOST}`;

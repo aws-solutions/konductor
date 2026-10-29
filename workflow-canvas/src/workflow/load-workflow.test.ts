@@ -158,9 +158,9 @@ describe('loadWorkflow', () => {
   });
 
   const LOST_SESSION =
-    'The server no longer knows this session. It may have been started again. Get a fresh launch address from the server.';
+    'The server no longer knows this session. It may have been started again. Get a fresh launch address from the server. An address works once.';
   const CHANGES_LOST =
-    'The changes you made on this page are lost when you do; copy them first.';
+    'The changes you made on this page are lost when you open a fresh address; copy them first.';
 
   it.each([
     ['the API', new ApiError('The session is not valid.', 401, 'unauthorized')],
