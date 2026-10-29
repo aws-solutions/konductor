@@ -89,32 +89,32 @@ function isKept(
   return memory.recall()?.token === expected?.token;
 }
 
-// A new session is kept as soon as it exists: a load that fails then (a
-// timeout, a 5xx) does not lose the code that was just spent. It replaces
-// only `replaces`, the session that was kept when the load began, so it never
-// overwrites a session that was kept meanwhile. A pasted code has no
-// `replaces` as the page still shows the kept session: its session waits as
-// the pending one until its workflow is shown.
+// A new session is kept as soon as it exists, so a failed first load does not
+// lose the spent code. Nothing is kept if another session was kept since the
+// load began. A paste over a kept session waits as the pending one.
 function keepEarly(
   memory: SessionMemory,
   session: SessionRecord,
-  replaces: SessionRecord | undefined,
+  startKept: SessionRecord | undefined,
+  pastedOverKept: boolean,
 ): void {
-  if (isKept(memory, replaces)) memory.remember(session);
-  else if (replaces === undefined) memory.holdPending(session);
+  if (!isKept(memory, startKept)) return;
+  if (pastedOverKept) memory.holdPending(session);
+  else memory.remember(session);
 }
 
 async function openWithCode(
   api: WorkflowApi,
   launchCode: string,
   memory: SessionMemory,
-  replaces: SessionRecord | undefined,
+  pasted: boolean,
 ): Promise<LoadResult> {
+  const startKept = memory.recall();
   try {
     const { token, harness, apiVersion } = await api.createSession(launchCode);
     if (apiVersion !== SUPPORTED_API_VERSION) return failure(UNSUPPORTED_API);
     const session = { token, harness };
-    keepEarly(memory, session, replaces);
+    keepEarly(memory, session, startKept, pasted && startKept !== undefined);
     return await loadWith(api, session, memory);
   } catch (error) {
     return failure(messageOf(error));
@@ -141,8 +141,9 @@ function resumable(memory: SessionMemory): SessionRecord[] {
 }
 
 // Opens the first of `sessions` that loads. The error shown is that of the
-// first attempt (`refused` when the caller already failed), and `refused`
-// tells the page why a later session was opened in its place.
+// first attempt (`refused` when the caller already failed). `refused` is the
+// error of a launch code, and tells the page why a session was opened in its
+// place; a reload has no code, so it refuses nothing.
 async function resumeAny(
   api: WorkflowApi,
   sessions: SessionRecord[],
@@ -153,9 +154,7 @@ async function resumeAny(
   for (const session of sessions) {
     const result = await resume(api, session, memory);
     if (result.ok) {
-      return firstFailure === undefined
-        ? result
-        : { ...result, refused: firstFailure };
+      return refused === undefined ? result : { ...result, refused };
     }
     firstFailure ??= result.message;
   }
@@ -174,7 +173,7 @@ export async function loadWorkflow(
 ): Promise<LoadResult> {
   return launchCode === undefined
     ? resumeAny(api, resumable(memory), memory)
-    : openWithCode(api, launchCode, memory, undefined);
+    : openWithCode(api, launchCode, memory, true);
 }
 
 /**
@@ -190,6 +189,6 @@ export async function loadOnOpen(
 ): Promise<LoadResult> {
   if (launchCode === undefined) return loadWorkflow(api, undefined, memory);
   const before = resumable(memory);
-  const result = await openWithCode(api, launchCode, memory, memory.recall());
+  const result = await openWithCode(api, launchCode, memory, false);
   return result.ok ? result : resumeAny(api, before, memory, result.message);
 }

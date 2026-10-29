@@ -251,8 +251,11 @@ The rest wraps the core, so the rules can be tested without a browser:
   (an address works once). A pasted code replaces the kept session only once
   the workflow of that code is on the page. Until then its session waits under
   a second key as the pending one, and a reload tries it before the kept
-  session, so a pasted address whose first load failed is not lost. Showing a
-  workflow keeps its session and clears the pending one.
+  session, so a pasted address whose first load failed is not lost. A session
+  that answers after a newer one was kept is neither kept nor held. A pending
+  session that fails to load stays until the server refuses it (a 401) or a
+  newer session replaces it. Showing a workflow keeps its session and clears
+  the pending one.
   The token lasts for the life of the tab, including copies made by Duplicate
   tab or `window.open`, and a browser may restore it with the tab. Script on the
   page can read it, so `index.html` carries a Content-Security-Policy that lets
