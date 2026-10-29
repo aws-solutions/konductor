@@ -648,14 +648,14 @@ describe('createWorkflowSource session memory', () => {
     const memory = memoryWith(KEPT);
     const pending = { token: 'pending-token', harness: 'kiro-cli' };
     memory.holdPending(pending);
-    const api = {
-      createSession: vi.fn(),
-      getWorkflow: vi.fn((token: string) =>
+    const api = apiWith(
+      vi.fn(),
+      vi.fn((token: string) =>
         token === pending.token
           ? Promise.reject(new ApiError('Server error.', 500))
           : Promise.resolve(HELLO_DOCUMENT),
       ),
-    };
+    );
     const source = createWorkflowSource(api, undefined, memory);
 
     await source.current();
