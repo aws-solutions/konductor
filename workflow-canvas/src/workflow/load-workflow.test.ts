@@ -802,6 +802,20 @@ describe('loadWorkflow with a pasted code over a kept session', () => {
     expect(memory.recallPending()).toBeUndefined();
   });
 
+  it('holds the newest of two failed pastes as pending and keeps the shown session', async () => {
+    const memory = memoryWithPending(STORED);
+
+    const result = await loadWorkflow(
+      apiByToken({ 'token-1': serverError() }),
+      'code-2',
+      memory,
+    );
+
+    expect(result).toMatchObject({ ok: false });
+    expect(memory.recall()).toEqual(STORED);
+    expect(memory.recallPending()).toEqual(PASTED);
+  });
+
   it('drops the pending session when its load answers 401', async () => {
     const { memory } = memoryWith(STORED);
 
@@ -870,8 +884,8 @@ describe('loadWorkflow with a pending session', () => {
     expect(result).toMatchObject({
       ok: true,
       workflow: { harness: 'stored-harness' },
-      refused: expect.stringMatching(/server no longer knows this session/),
     });
+    expect(result).not.toHaveProperty('refused');
     expect(memory.recallPending()).toBeUndefined();
   });
 
@@ -887,9 +901,60 @@ describe('loadWorkflow with a pending session', () => {
     expect(result).toMatchObject({
       ok: true,
       workflow: { harness: 'stored-harness' },
-      refused: expect.stringMatching(/^Server error\./),
     });
+    expect(result).not.toHaveProperty('refused');
     expect(memory.recallPending()).toEqual(PENDING);
+  });
+
+  it('holds the pending session after the kept one is shown in its place', async () => {
+    const memory = memoryWithPending(STORED);
+    const result = await loadWorkflow(
+      apiByToken({ 'pending-token': serverError() }),
+      undefined,
+      memory,
+    );
+    if (!result.ok) throw new Error('The load failed.');
+
+    result.remember();
+
+    expect(memory.recall()).toEqual(STORED);
+    expect(memory.recallPending()).toEqual(PENDING);
+  });
+
+  it('keeps the kept session when only the pending one is refused, though both have one harness', async () => {
+    const { memory } = memoryWith(STORED);
+    memory.holdPending({ token: 'pending-token', harness: STORED.harness });
+
+    await loadWorkflow(
+      apiByToken({ 'pending-token': unknownSession() }),
+      undefined,
+      memory,
+    );
+
+    expect(memory.recall()).toEqual(STORED);
+    expect(memory.recallPending()).toBeUndefined();
+  });
+
+  it('holds the pending session when only the kept one is refused, though both have one harness', async () => {
+    const { memory } = memoryWith(STORED);
+    const pending = { token: 'pending-token', harness: STORED.harness };
+    memory.holdPending(pending);
+
+    const result = await loadWorkflow(
+      apiByToken({
+        'pending-token': serverError(),
+        'stored-token': unknownSession(),
+      }),
+      undefined,
+      memory,
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      message: expect.stringMatching(/^Server error\./),
+    });
+    expect(memory.recall()).toBeUndefined();
+    expect(memory.recallPending()).toEqual(pending);
   });
 
   it('shows the error of the pending session when the kept one fails too, and holds the pending one', async () => {
@@ -1003,6 +1068,88 @@ describe('loadOnOpen sessions', () => {
 
     expect(memory.recall()).toEqual(newer);
     expect(memory.recallPending()).toBeUndefined();
+  });
+});
+
+function slowSession() {
+  let answer!: (harness: string) => void;
+  const api = fakeApi({
+    createSession: vi.fn().mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          answer = (harness) => resolve({ ...HELLO_SESSION, harness });
+        }),
+    ),
+  });
+  return { api, answer: (harness: string) => answer(harness) };
+}
+
+describe('a session that answers after a newer one was kept', () => {
+  const newer = { token: 'newer-token', harness: 'kiro-cli' };
+
+  it('is not held as pending when a paste over a kept session answers late', async () => {
+    const { api, answer } = slowSession();
+    const { memory } = memoryWith(STORED);
+    const loading = loadWorkflow(api, 'slow', memory);
+    memory.remember(newer);
+
+    answer('kiro-cli');
+    await loading;
+
+    expect(memory.recall()).toEqual(newer);
+    expect(memory.recallPending()).toBeUndefined();
+  });
+
+  it('does not replace a pending session that a newer paste held meanwhile', async () => {
+    const { api, answer } = slowSession();
+    const { memory } = memoryWith(STORED);
+    const loading = loadWorkflow(api, 'slow', memory);
+    memory.remember(newer);
+    memory.holdPending(PENDING);
+
+    answer('kiro-cli');
+    await loading;
+
+    expect(memory.recall()).toEqual(newer);
+    expect(memory.recallPending()).toEqual(PENDING);
+  });
+
+  it('is not held or kept when a paste with nothing kept answers late', async () => {
+    const { api, answer } = slowSession();
+    const { memory } = memoryWith();
+    const loading = loadWorkflow(api, 'slow', memory);
+    memory.remember(newer);
+
+    answer('kiro-cli');
+    await loading;
+
+    expect(memory.recall()).toEqual(newer);
+    expect(memory.recallPending()).toBeUndefined();
+  });
+
+  it('is not held as pending when an open with nothing kept answers late', async () => {
+    const { api, answer } = slowSession();
+    const { memory } = memoryWith();
+    const loading = loadOnOpen(api, 'slow', memory);
+    memory.remember(newer);
+
+    answer('kiro-cli');
+    await loading;
+
+    expect(memory.recall()).toEqual(newer);
+    expect(memory.recallPending()).toBeUndefined();
+  });
+
+  it('is still held as pending when nothing was kept meanwhile', async () => {
+    const { api, answer } = slowSession();
+    const { memory } = memoryWith(STORED);
+    const loading = loadWorkflow(api, 'slow', memory);
+
+    answer('kiro-cli');
+    await loading;
+
+    expect(memory.recall()).toEqual(STORED);
+    expect(memory.recallPending()).toEqual(PASTED);
   });
 });
 

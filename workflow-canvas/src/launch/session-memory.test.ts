@@ -133,6 +133,16 @@ describe('sessionStorageMemory pending session', () => {
     expect(memory.recallPending()).toEqual(OTHER);
   });
 
+  it('keeps the pending session when the kept one is remembered again', () => {
+    const memory = sessionStorageMemory({ sessionStorage: memoryStorage() });
+    memory.remember(RECORD);
+    memory.holdPending(OTHER);
+
+    memory.remember(RECORD);
+
+    expect(memory.recallPending()).toEqual(OTHER);
+  });
+
   it('drops the pending session when another session is remembered', () => {
     const { memory } = memoryWithBoth();
 

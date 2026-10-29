@@ -281,3 +281,82 @@ test('resumes a pasted address after a reload when its first load failed and the
   await canvas.expectWorkflowDrawn();
   expect(authorizations).toEqual([pastedAuthorization]);
 });
+
+const OTHER_CODE = 'aB4x7vJ2kLmN9pRs4TuVw5Y_-cd34';
+
+test('resumes the shown session after a reload when an older pasted address answers late', async ({
+  canvas,
+  page,
+}) => {
+  await canvas.expectWorkflowDrawn();
+  const shown = sharedSession();
+  let releaseSlow!: () => void;
+  const slowReleased = new Promise<void>((resolve) => (releaseSlow = resolve));
+  await page.route('**/api/session', async (route) => {
+    const slow = route.request().postData()?.includes(NEW_CODE) ?? false;
+    if (slow) await slowReleased;
+    return route.fulfill({
+      json: { ...shown, token: slow ? 'slow-token' : 'fast-token' },
+    });
+  });
+  const authorizations: string[] = [];
+  await page.route('**/api/workflow', async (route) => {
+    authorizations.push(route.request().headers()['authorization'] ?? '');
+    return route.fulfill({
+      response: await route.fetch({
+        headers: {
+          ...route.request().headers(),
+          authorization: `Bearer ${shown.token}`,
+        },
+      }),
+    });
+  });
+  await page.evaluate((code) => (window.location.hash = code), NEW_CODE);
+  await page.evaluate((code) => (window.location.hash = code), OTHER_CODE);
+  await expect
+    .poll(() => authorizations.includes('Bearer fast-token'))
+    .toBe(true);
+  releaseSlow();
+  await expect
+    .poll(() => authorizations.includes('Bearer slow-token'))
+    .toBe(true);
+  authorizations.length = 0;
+
+  await page.reload();
+
+  await canvas.expectWorkflowDrawn();
+  expect(authorizations).toEqual(['Bearer fast-token']);
+});
+
+test('tells nothing on a reload when the pending session fails and the kept one opens', async ({
+  canvas,
+  page,
+}) => {
+  await canvas.expectWorkflowDrawn();
+  const shown = sharedSession();
+  await page.route('**/api/session', (route) =>
+    route.fulfill({ json: { ...shown, token: 'pending-token' } }),
+  );
+  await page.route('**/api/workflow', async (route) => {
+    const authorization = route.request().headers()['authorization'] ?? '';
+    if (authorization === 'Bearer pending-token') {
+      return route.fulfill({
+        status: 500,
+        json: { error: 'Server error.' },
+      });
+    }
+    return route.continue();
+  });
+  await page.evaluate((code) => (window.location.hash = code), NEW_CODE);
+  await expect(page.getByTestId('launch-notice')).toBeVisible();
+
+  await page.reload();
+
+  await canvas.expectWorkflowDrawn();
+  await expect(page.getByTestId('launch-notice')).toHaveCount(0);
+  expect(
+    await page.evaluate(() =>
+      sessionStorage.getItem('konductor-workflow-canvas-pending-session'),
+    ),
+  ).toContain('pending-token');
+});
