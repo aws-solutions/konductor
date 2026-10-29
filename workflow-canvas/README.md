@@ -18,11 +18,11 @@ stub that serves it and the tests around both are in this folder.
   IO; `api/` is the typed client of the API; `launch/` and `workflow/` open the
   session and load the workflow; `designer/` and `canvas/` draw it;
   `execution/` runs it and shows the run; `execution/core/` does no IO and reads a run
-  once a second. A read that fails with no answer or a server error is tried
+  once a second. A read that fails with no answer, a server error, 408 or 429 is tried
   again, up to three in a row; any other failure ends the following. A start
   that finds a run already active follows that run. Every run call takes a
-  signal, and every call ends on its own after 15 seconds, so a server that
-  never answers cannot hold the tab. A failure counts only for the run it belongs to.
+  signal, and every call but the launch code trade ends on its own after 15
+  seconds, so a server that never answers cannot hold the tab. A failure counts only for the run it belongs to.
 - `api/`: the HTTP API contract (`openapi.yaml`) and its test.
 - `stub-api/`: a TypeScript stub server for the contract, for local
   development and tests.
@@ -295,6 +295,38 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
   Run is off and the goal box is read-only from the click until the run ends.
   Read-only, not greyed out, so the box keeps focus and shows the goal of that
   run. Enter in the box starts a run, like the button.
+- If the server answers 409 `already_running`, as it does when a run from
+  another tab is going, the tab follows the run named in that answer instead
+  of starting one. The line under the button says so, and the goal typed is not
+  used for that run. The API does not give the goal of a run, so while the tab
+  follows a run that was already going the Goal box is empty, says "Not known"
+  and is labelled so. When that run ends, the status line still says it was
+  already in progress.
+- Resume works after a reload, though the launch code works once: the page
+  resumes from the session it kept (see above). If the server was started
+  again, the kept token is refused and the page asks for a fresh launch
+  address; the run goes on unseen. The tab keeps the id of the latest run in
+  the storage of the browser tab (`sessionStorage`; the id is no secret) and
+  drops it once the run has ended or turns out to be gone. When the page
+  opens again with a session it reads that run, trying again like any read. If the run is still running, the
+  tab follows it as if the person had joined it, without a click on Run. A run
+  that has ended, one that the server will not give (for instance after it
+  started again) or a browser that blocks storage leaves the tab ready for a
+  new run. If the readings fail for another reason, such as no answer, the tab
+  does not know whether the run is going, and shows the alert for a run that
+  may still be going. Pressing Run while the page still looks for the run
+  stops the look and starts a run; a run that is going answers 409 and is
+  joined.
+- Pasting another launch address into the open tab lets go of the run: the
+  tab stops following it, shows no run status and forgets its id. The run goes
+  on at its server. The Goal box and Run belong to the workflow that is open.
+- A read of the run that fails is tried again after a second; the tab gives up
+  after three failures in a row. Only a missing answer, a 5xx, 408 or 429 is tried again:
+  any 4xx or a reply the page cannot read shows the alert at once. A call that
+  gets no answer in 15 seconds counts as a failure, except the one that trades
+  the launch code, which has no limit because the code works once. A start that
+  gets no answer, or is accepted in a reply the page cannot read, says that the
+  run may not have started and that Run joins it if it did.
 - Each node shows a badge with a word and a colour: **Queued** (with a dashed
   outline), **Running**, **Done** and **Failed**. The word carries the state;
   only Queued and Not run also differ in shape. The intent is Done once the run
@@ -314,8 +346,10 @@ intent, because the API needs one (1 to 2048 characters) to start a run.
   alert. The goal is one line: line breaks in the outcome of the intent become
   spaces, and Enter that ends an input method composition starts no run.
 - A workflow can be saved while a run goes on, so the run may have other stages
-  than the graph. Node states attach by stage name, so a warning above the
-  graph names the stages that are not drawn and those that are not in the run.
+  than the graph. The graph is read once, when the page loads, while the run
+  works from the saved file. Node states attach by stage name, so a warning
+  above the graph names the stages that are not drawn and those that are not in
+  the run.
 - A run goes on while the Designer tab is open, and the tab shows it again when
   you come back, with the goal box as it was: what you typed, or the goal of
   the run in flight. Closing the page stops the reading, not the run.
@@ -332,8 +366,12 @@ The code follows the ports-and-adapters split of the graph:
   fails if the core imports anything but its own modules, the graph core and the
   wire types, or reads a clock, randomness, the environment or the network.
 - The adapters are `createHttpApi` (`startRun`, `getRun`), which `loadWorkflow`
-  ties to the session token, and `timerScheduler`. The token is held only by
-  those run calls.
+  ties to the session token, `timerScheduler`, and `sessionRunMemory`, which
+  keeps the id of the latest run for `resumeRun`. The token is held only by
+  those run calls. `createHttpApi` ends a call after a timeout, except the launch code call,
+  which works once and so is never cut short, and
+  `loadWorkflow` turns the 409 `already_running`, which carries the `run_id`,
+  into the core's `RunAlreadyActive` so the core can follow that run.
 - `useExecution` keeps the state in `App`, and `Execution` draws it. The
   Designer and Execution tabs share `WorkflowGate` (loading, error and empty
   states) and `WorkflowGraphCard` (the card with the graph).
@@ -419,9 +457,11 @@ cannot be run, and in both theme modes.
 
 The stub runs one run at a time and never fails a stage. So the one test that
 starts a real run on it (`execution.spec.ts`, the first run test) waits for the
-end of the run, and the tests of a failed stage or a refused run answer the
-run calls themselves (`e2e/support/run-routes.ts`). A test that starts another
-run on the stub must also wait for its end, or the next test gets a 409.
+end of the run, and the tests of a failed stage, a refused run, a joined run
+and a dropped read answer the run calls themselves (`e2e/support/run-routes.ts`).
+A test that starts another run on the stub must also wait for its end, or the
+next test gets a 409. For the same reason, if that one test fails and Playwright
+retries it, the retry gets a 409 and follows the run still going.
 
 Shared page objects and helpers live in `e2e/support/`. New tests should
 extend them rather than repeat selectors: import `test` and `expect` from

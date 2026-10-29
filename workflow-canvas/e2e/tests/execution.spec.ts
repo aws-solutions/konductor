@@ -3,6 +3,8 @@ import { expect, test } from '../support/fixtures';
 import {
   answerRunsInTurn,
   answerRunsWith,
+  dropFirstReadThenAnswerWith,
+  joinActiveRunWith,
   refuseRunsWith,
   runReply,
 } from '../support/run-routes';
@@ -59,6 +61,33 @@ test('runs the workflow on the stub: each stage goes from queued to running to d
   );
   await expect(canvas.runButton).toBeEnabled();
   await expect(canvas.runError).toHaveCount(0);
+});
+
+test('resumes the run that is going when the page is reloaded, though the launch code works once', async ({
+  canvas,
+}) => {
+  const sessionCalls: string[] = [];
+  await canvas.runButton.click();
+  await expect(canvas.badge('node-stage-draft')).toHaveText('Running', {
+    timeout: STEP_TIMEOUT_MS,
+  });
+  canvas.page.on('request', (request) => {
+    if (request.url().endsWith('/api/session'))
+      sessionCalls.push(request.url());
+  });
+
+  await canvas.page.reload();
+  await canvas.title.waitFor();
+  await canvas.selectTab('Execution');
+
+  await expect(canvas.runStatus).toContainText(
+    'Following the run that was already in progress.',
+  );
+  await expect(canvas.runButton).toBeDisabled();
+  await expect(canvas.badge('node-end')).toHaveText('Passed', {
+    timeout: STEP_TIMEOUT_MS * 2,
+  });
+  expect(sessionCalls).toEqual([]);
 });
 
 test('announces the status in a polite live region and names the state of each node', async ({
@@ -137,6 +166,42 @@ test('shows the error of the API in one alert when the run does not start', asyn
   await expect(canvas.runAlert).toContainText('kiro-cli is not installed.');
   await canvas.expectBadges([null, null, null, null]);
   await expect(canvas.runButton).toBeEnabled();
+});
+
+test('follows the run that is already active when the server answers 409 with its id', async ({
+  canvas,
+}) => {
+  await joinActiveRunWith(
+    canvas.page,
+    runReply('running', ['running', 'pending']),
+  );
+
+  await canvas.runButton.click();
+
+  await canvas.expectBadges(['Done', 'Running', 'Queued', 'Queued']);
+  await expect(canvas.runStatus).toContainText(
+    'Following the run that was already in progress. Running draft.',
+  );
+  await expect(canvas.runError).toHaveCount(0);
+  await expect(canvas.runButton).toBeDisabled();
+});
+
+test('keeps following the run when one read of it fails', async ({
+  canvas,
+}) => {
+  await answerRunsWith(
+    canvas.page,
+    runReply('running', ['running', 'pending']),
+  );
+  await dropFirstReadThenAnswerWith(
+    canvas.page,
+    runReply('passed', ['passed', 'passed']),
+  );
+
+  await canvas.runButton.click();
+
+  await canvas.expectBadges(['Done', 'Done', 'Done', 'Passed']);
+  await expect(canvas.runError).toHaveCount(0);
 });
 
 test('says the run may still be going when it can no longer be followed', async ({
@@ -253,4 +318,86 @@ test('starts the run when Enter is pressed in the goal box, and keeps focus ther
 
   await expect(canvas.runStatus).toContainText('Running draft.');
   await expect(canvas.goal).toBeFocused();
+});
+
+test('shows the run that is still going when the page is opened again', async ({
+  canvas,
+}) => {
+  await answerRunsWith(
+    canvas.page,
+    runReply('running', ['running', 'pending']),
+  );
+  await canvas.runButton.click();
+  await expect(canvas.runStatus).toContainText('Running draft.');
+
+  await canvas.page.reload();
+  await canvas.title.waitFor();
+  await canvas.selectTab('Execution');
+
+  await canvas.expectBadges(['Done', 'Running', 'Queued', 'Queued']);
+  await expect(canvas.runStatus).toContainText(
+    'Following the run that was already in progress. Running draft.',
+  );
+  await expect(canvas.runButton).toBeDisabled();
+  await expect(canvas.goal).toHaveValue('');
+  await expect(canvas.goal).toHaveAttribute('placeholder', 'Not known');
+});
+
+test('shows Ready when the page is opened again after the run has ended', async ({
+  canvas,
+}) => {
+  await answerRunsWith(canvas.page, runReply('passed', ['passed', 'passed']));
+  await canvas.runButton.click();
+  await canvas.expectBadges(['Done', 'Done', 'Done', 'Passed']);
+
+  await canvas.page.reload();
+  await canvas.title.waitFor();
+  await canvas.selectTab('Execution');
+
+  await expect(canvas.runStatus).toContainText('Ready. Press Run to start.');
+  await canvas.expectBadges([null, null, null, null]);
+  await expect(canvas.runButton).toBeEnabled();
+});
+
+test('has no Execution tab after a reload when the server no longer knows the session', async ({
+  canvas,
+}) => {
+  await canvas.expectWorkflowDrawn();
+  await canvas.page.route('**/api/workflow', (route) =>
+    route.fulfill({
+      status: 401,
+      json: {
+        error: 'The session token is missing or wrong.',
+        code: 'unauthorized',
+      },
+    }),
+  );
+
+  await canvas.page.reload();
+  await canvas.title.waitFor();
+
+  await expect(
+    canvas.page.getByText(/server no longer knows this session/),
+  ).toBeVisible();
+  await canvas.selectTab('Execution');
+  await expect(canvas.runButton).toHaveCount(0);
+});
+
+test('drops the session when the run start is answered 401, so a reload does not reuse it', async ({
+  canvas,
+}) => {
+  await refuseRunsWith(canvas.page, 401, {
+    error: 'The session token is missing or wrong.',
+    code: 'unauthorized',
+  });
+
+  await canvas.runButton.click();
+
+  await expect(canvas.runError).toContainText(
+    'The server no longer knows this session',
+  );
+  await expect(canvas.runError).toContainText('fresh launch address');
+  expect(await canvas.page.evaluate(() => window.sessionStorage.length)).toBe(
+    0,
+  );
 });
