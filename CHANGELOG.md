@@ -28,8 +28,8 @@ not per individual commit.
 
 ### Fixed
 
-- Docs: under the mux and cmux orchestrators, Claude Code deny and ask rules still apply; plugin
-  agent and SOP names use the `konductor:` prefix; `skill-lookup-mcp --help` describes the filters.
+- Docs: under mux and cmux, Claude Code deny rules still block and ask rules deny; plugin agent
+  and SOP names use the `konductor:` prefix; `skill-lookup-mcp --help` describes the filters.
 - `--skill-name-filter` now limits each Kiro agent's skill server to that agent's declared
   skills; it used to serve every installed skill.
 - Routing skills now agree with the orchestrator prompts. `mux-dispatch` peeks at a running

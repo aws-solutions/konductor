@@ -50,8 +50,9 @@ pub(crate) struct Cli {
 
     /// Comma-separated glob pattern(s) (only `*` is supported as a
     /// wildcard) matched case-insensitively against each skill's
-    /// frontmatter `name`. Only skills the sibling `.konductor/manifest`
-    /// lists as konductor-installed can be excluded; other skills under
+    /// frontmatter `name`. Only skills listed as konductor-installed in
+    /// the `manifest` file next to the skills dir (`<target>/.konductor/manifest`
+    /// for `<target>/.konductor/skills`) can be excluded; other skills under
     /// that root always pass, and a manifest that exists but can't be
     /// read or parsed turns the filter off for that root with a WARN.
     /// Applied once at startup and re-applied,

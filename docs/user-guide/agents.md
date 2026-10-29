@@ -104,8 +104,9 @@ names `fs_write` or `shell`. Claude Code values come from `clientConfig.claudeCl
 These rows describe agents started by `konductor`. `konductor-mux-orchestrator` and
 `konductor-cmux-orchestrator` start each specialist with permission checks off
 (`--dangerously-skip-permissions` on Claude Code, `--trust-all-tools` on Kiro CLI), so under them
-every granted tool runs without asking, MCP tools included. On Claude Code, deny and ask rules in
-your `settings.json` still apply, so add deny rules for anything a dispatched agent must never do.
+every granted tool runs without asking, MCP tools included. On Claude Code, deny rules in your
+`settings.json` still block, and an ask rule denies the call, because each specialist runs with `-p`
+and can't prompt. Add deny rules for anything a dispatched agent must never do.
 
 Three observations that are not obvious and do affect what you should trust:
 
