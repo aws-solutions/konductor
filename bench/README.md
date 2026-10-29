@@ -23,6 +23,7 @@ Run flags: `--arms a,b`, `--tasks id,id`, `--replicates N`, `--parallel N`, `--b
 `--kiro-bin PATH`, `--cache DIR`, `--cargo-target DIR`, `--cargo-online`, `--bench-dir DIR`, `--real-cache DIR`, `--prepare-only`.
 `--suite lite|full|hard|real|autonomy`.
 More than 10 planned runs need `--budget-credits`; `run` prints the worst-case wall clock and the cap first.
+An unknown or mistyped flag is an error (exit 2) that lists the known flags, and nothing runs. `--help` and `-h` print the usage.
 
 ## Suites and arms
 - lite: vanilla, v1.2.0, main; 1 replicate, `--parallel 1` (wall-clock comparisons need 1). full: all
