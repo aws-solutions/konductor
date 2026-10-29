@@ -571,6 +571,41 @@ describe('createWorkflowSource session memory', () => {
     expect(memory.recall()?.token).toBe('pasted-token');
   });
 
+  it('resumes a pasted session on a reload when its first load failed and the kept session is dead', async () => {
+    const memory = memoryWith(KEPT);
+    const server = { deadToken: '', pastedLoads: false };
+    const api = {
+      createSession: vi
+        .fn()
+        .mockResolvedValue({ ...HELLO_SESSION, token: 'pasted-token' }),
+      getWorkflow: vi.fn((token: string) => {
+        if (token === server.deadToken)
+          return Promise.reject(new ApiError('Wrong.', 401));
+        return token === 'pasted-token' && !server.pastedLoads
+          ? Promise.reject(new ApiError('Server error.', 500))
+          : Promise.resolve(HELLO_DOCUMENT);
+      }),
+    };
+    const open = createWorkflowSource(api, undefined, memory);
+    await open.current();
+    server.deadToken = KEPT.token;
+    await open.offer('pasted');
+    server.pastedLoads = true;
+
+    const reloaded = createWorkflowSource(api, undefined, memory);
+
+    expect(await reloaded.current()).toMatchObject({
+      ok: true,
+      workflow: { harness: 'kiro-cli' },
+    });
+    await settleMicrotasks();
+    expect(memory.recall()).toEqual({
+      token: 'pasted-token',
+      harness: 'kiro-cli',
+    });
+    expect(memory.recallPending()).toBeUndefined();
+  });
+
   it('forgets a kept session that the server no longer knows', async () => {
     const memory = memoryWith(KEPT);
     const api = {
@@ -581,5 +616,31 @@ describe('createWorkflowSource session memory', () => {
 
     expect(await source.current()).toMatchObject({ ok: false });
     expect(memory.recall()).toBeUndefined();
+  });
+
+  it('tells nothing when the kept session answers after a pasted workflow was shown', async () => {
+    const memory = memoryWith(KEPT);
+    let answerKept!: (document: typeof HELLO_DOCUMENT) => void;
+    const api = {
+      createSession: vi
+        .fn()
+        .mockImplementationOnce(refused)
+        .mockResolvedValueOnce({ ...HELLO_SESSION, token: 'pasted-token' }),
+      getWorkflow: vi.fn((token: string) =>
+        token === KEPT.token
+          ? new Promise<typeof HELLO_DOCUMENT>(
+              (resolve) => (answerKept = resolve),
+            )
+          : Promise.resolve(HELLO_DOCUMENT),
+      ),
+    };
+    const source = createWorkflowSource(api, 'spent', memory);
+
+    await source.offer('pasted');
+    answerKept(HELLO_DOCUMENT);
+    await settleMicrotasks();
+
+    expect(source.notice()).toBeUndefined();
+    expect(memory.recall()?.token).toBe('pasted-token');
   });
 });

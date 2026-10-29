@@ -3,6 +3,9 @@
 /** The key under which the session of the tab is kept in session storage. */
 export const SESSION_KEY = 'konductor-workflow-canvas-session';
 
+/** The key of the session that a pasted launch code opened but did not show yet. */
+export const PENDING_KEY = 'konductor-workflow-canvas-pending-session';
+
 /** What the page needs to open the workflow again: the token and the harness. */
 export interface SessionRecord {
   token: string;
@@ -11,12 +14,17 @@ export interface SessionRecord {
 
 /**
  * The port through which the page keeps its session across a reload. The
- * launch code is never kept, only what the session returned.
+ * launch code is never kept, only what the session returned. The pending
+ * session is one that a pasted code opened while another was kept: a reload
+ * tries it first, and `remember` replaces the kept session with it.
  */
 export interface SessionMemory {
   recall(): SessionRecord | undefined;
   remember(record: SessionRecord): void;
   forget(): void;
+  recallPending(): SessionRecord | undefined;
+  holdPending(record: SessionRecord): void;
+  dropPending(): void;
 }
 
 /** The part of `window` that the memory of a session needs. */
@@ -51,30 +59,36 @@ function parse(text: string | null | undefined): SessionRecord | undefined {
 export function sessionStorageMemory(
   env: SessionMemoryEnvironment,
 ): SessionMemory {
+  const read = (key: string) => {
+    try {
+      return parse(env.sessionStorage?.getItem(key));
+    } catch {
+      return undefined;
+    }
+  };
+  const write = ({ token, harness }: SessionRecord, key: string) => {
+    try {
+      env.sessionStorage?.setItem(key, JSON.stringify({ token, harness }));
+    } catch {
+      // Without storage a reload needs a new launch address.
+    }
+  };
+  const remove = (key: string) => {
+    try {
+      env.sessionStorage?.removeItem(key);
+    } catch {
+      // Without storage there is nothing to forget.
+    }
+  };
   return {
-    recall() {
-      try {
-        return parse(env.sessionStorage?.getItem(SESSION_KEY));
-      } catch {
-        return undefined;
-      }
+    recall: () => read(SESSION_KEY),
+    remember(record) {
+      write(record, SESSION_KEY);
+      remove(PENDING_KEY);
     },
-    remember({ token, harness }) {
-      try {
-        env.sessionStorage?.setItem(
-          SESSION_KEY,
-          JSON.stringify({ token, harness }),
-        );
-      } catch {
-        // Without storage a reload needs a new launch address.
-      }
-    },
-    forget() {
-      try {
-        env.sessionStorage?.removeItem(SESSION_KEY);
-      } catch {
-        // Without storage there is nothing to forget.
-      }
-    },
+    forget: () => remove(SESSION_KEY),
+    recallPending: () => read(PENDING_KEY),
+    holdPending: (record) => write(record, PENDING_KEY),
+    dropPending: () => remove(PENDING_KEY),
   };
 }

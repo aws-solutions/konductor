@@ -1,9 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it } from 'vitest';
 import { memoryStorage } from '../test-support/memory-storage';
-import { SESSION_KEY, sessionStorageMemory } from './session-memory';
+import {
+  PENDING_KEY,
+  SESSION_KEY,
+  sessionStorageMemory,
+} from './session-memory';
 
 const RECORD = { token: 'token-1', harness: 'kiro-cli' };
+const OTHER = { token: 'token-2', harness: 'kiro-cli' };
 
 describe('sessionStorageMemory', () => {
   it('recalls nothing before anything is remembered', () => {
@@ -78,6 +83,70 @@ describe('sessionStorageMemory', () => {
 
     expect(() => memory.remember(RECORD)).not.toThrow();
     expect(() => memory.forget()).not.toThrow();
+    expect(() => memory.holdPending(RECORD)).not.toThrow();
+    expect(() => memory.dropPending()).not.toThrow();
     expect(memory.recall()).toBeUndefined();
+    expect(memory.recallPending()).toBeUndefined();
+  });
+});
+
+describe('sessionStorageMemory pending session', () => {
+  function memoryWithBoth() {
+    const sessionStorage = memoryStorage();
+    const memory = sessionStorageMemory({ sessionStorage });
+    memory.remember(RECORD);
+    memory.holdPending(OTHER);
+    return { memory, sessionStorage };
+  }
+
+  it('holds a session apart from the kept one, under its own key', () => {
+    const { memory, sessionStorage } = memoryWithBoth();
+
+    expect(memory.recall()).toEqual(RECORD);
+    expect(memory.recallPending()).toEqual(OTHER);
+    expect([...sessionStorage.entries.keys()].sort()).toEqual(
+      [PENDING_KEY, SESSION_KEY].sort(),
+    );
+  });
+
+  it('recalls nothing pending before a session is held', () => {
+    expect(
+      sessionStorageMemory({ sessionStorage: memoryStorage() }).recallPending(),
+    ).toBeUndefined();
+  });
+
+  it('drops the pending session and leaves the kept one', () => {
+    const { memory } = memoryWithBoth();
+
+    memory.dropPending();
+
+    expect(memory.recallPending()).toBeUndefined();
+    expect(memory.recall()).toEqual(RECORD);
+  });
+
+  it('keeps the pending session when the kept one is forgotten', () => {
+    const { memory } = memoryWithBoth();
+
+    memory.forget();
+
+    expect(memory.recall()).toBeUndefined();
+    expect(memory.recallPending()).toEqual(OTHER);
+  });
+
+  it('drops the pending session when another session is remembered', () => {
+    const { memory } = memoryWithBoth();
+
+    memory.remember({ token: 'token-3', harness: 'kiro-cli' });
+
+    expect(memory.recallPending()).toBeUndefined();
+  });
+
+  it('recalls nothing pending from a record that is not valid', () => {
+    const sessionStorage = memoryStorage();
+    sessionStorage.setItem(PENDING_KEY, '{"token":""}');
+
+    expect(sessionStorageMemory({ sessionStorage }).recallPending()).toBe(
+      undefined,
+    );
   });
 });
