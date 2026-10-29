@@ -166,14 +166,10 @@ than doing them itself.
 
 ## Orchestrator and delegation
 
-**`konductor`**, as the orchestrator, is a hub — though not an exclusive one. In Kiro CLI four
-specialists can also spawn each other directly (`k-architect` → developer and QA;
-`k-developer` → QA; `k-quality-assurance` → developer and browser; `k-tpm` → developer and
-researcher), and in Claude Code `k-architect` and `k-quality-assurance` carry `Agent(...)` tools
-of their own — see [Who can delegate to whom](agents.md#who-can-delegate-to-whom). In the common
-case, though, every piece of work routes through `konductor`, which decides who owns it, hands it
-over, and checks the result. The core rules tell specialists not to use those grants: a
-specialist does its own part, then returns a note naming the next role, or a proposed parallel
+**`konductor`**, as the orchestrator, is the hub. Specialists hold no spawn tool in either
+runtime (see [Who can delegate to whom](agents.md#who-can-delegate-to-whom)), so every piece of
+work routes through `konductor`, which decides who owns it, hands it over, and checks the result.
+A specialist does its own part, then returns a note naming the next role, or a proposed parallel
 split with the files each part touches, and `konductor` routes it.
 
 A **delegation** is not a casual instruction — it is a fixed 7-section format defined by the

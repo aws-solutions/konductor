@@ -182,10 +182,8 @@ The chain itself is runtime-agnostic. What differs is dispatch mechanics:
 
 Functionally the same three SOPs run either way.
 
-One caveat worth knowing: **specialist-to-specialist handoff is narrower in Claude Code**. There,
-only `k-architect` (→ developer, QA) and `k-quality-assurance` (→ developer, browser) carry
-`Agent(...)` tools of their own; `k-developer` and `k-tpm` have Kiro CLI targets but no `Agent(...)`
-tool at all. The multiplexer variants shell out instead, so they work either way.
+Specialists never spawn each other in either runtime. A specialist returns to the orchestrator,
+which routes the next step.
 
 ---
 

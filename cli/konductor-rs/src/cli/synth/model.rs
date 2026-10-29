@@ -63,6 +63,12 @@ pub struct ContextDef {
 /// interchangeable at this milestone.
 pub type AgentSpec = ParsedAgentSpec;
 
+/// Specialists are the `k-*` agents. They never spawn other agents, so each
+/// harness transformer strips spawn tools from their configs.
+pub(crate) fn is_specialist(agent_name: &str) -> bool {
+    agent_name.starts_with("k-")
+}
+
 /// The full picture of the source tree, held in memory: all the agents,
 /// skills, SOPs, and context files that `konductor synth` will
 /// transform into harness-specific output. Built by `parse_canonical`,
@@ -132,6 +138,14 @@ mod tests {
         assert_ne!(base, executable);
         assert!(!base.executable);
         assert!(executable.executable);
+    }
+
+    #[test]
+    fn is_specialist_matches_k_prefix_only() {
+        assert!(is_specialist("k-architect"));
+        assert!(!is_specialist("konductor"));
+        assert!(!is_specialist("konductor-mux-orchestrator"));
+        assert!(!is_specialist("konductor-cmux-orchestrator"));
     }
 
     #[test]

@@ -29,11 +29,8 @@ it generates.
 
 **`k-developer`, the SOP's only owner, cannot do that spawn**, verified against the agent specs:
 
-- In **Claude Code**, `k-developer` has no `Agent(...)` tool at all. (`k-architect` and
-  `k-quality-assurance` do hold `Agent(...)` tools there — delegation in Claude Code is not
-  orchestrator-only — but the agent that owns this SOP is not one of them.)
-- In **Kiro CLI**, delegation goes through `toolsSettings.subagent.availableAgents`, and
-  `k-developer`'s is `["k-quality-assurance"]` — no architect.
+- In **Claude Code**, no specialist has an `Agent(...)` tool; only `konductor` does.
+- In **Kiro CLI**, no specialist has the `subagent` tool; only `konductor` does.
 
 Step 6's own constraints anticipate this — *"You MUST skip this step if no adversarial CR-review
 capability is available"* — so the workflow degrades gracefully rather than erroring. In practice
