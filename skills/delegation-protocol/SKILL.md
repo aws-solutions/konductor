@@ -186,6 +186,15 @@ After code changes, run the maker-checker cycle:
 3. Address the findings Verification Protocol item 6 says to fix
 4. Re-review only what the fix changed (Verification Protocol item 6). If the fix fails, follow rule 5 under Orchestration Rules in your orchestrator prompt.
 
+Review depth for Verification Protocol item 6:
+
+- Blast radius is high for security or auth, data or schema, infra or IAM, credentials, or wide reach (public API or CLI, shared config, widely imported files, anything shipped to users).
+- Size is high above about 200 changed lines or 5 files.
+- Full: the checker uses the owner's checker skill (for code, `backend-review` or `frontend-review`).
+- One pass: a checker reviews once, without the checker skill.
+- Diff-only: a separate checker reviews only the diff, with a short brief. Use it for trivial edits: a few lines of prose or comments, with no code, config, tests or security content.
+- Examples: a README typo fix is trivial; a 40-line change to one internal helper gets one pass; any auth change or new CLI flag gets a full review.
+
 ## Failure Recovery
 
 This section covers failed spawns: the spawn errors, times out, or the subagent returns nothing. For output that fails verification, follow rule 5 under Orchestration Rules instead.
