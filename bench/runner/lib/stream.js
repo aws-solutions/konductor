@@ -34,17 +34,56 @@ function mcpOutputIsError(update) {
 }
 
 const APPROVAL_PHRASE = /\b(shall i|should i|would you like|do you want|want me to|please confirm|please let me know (which|whether|if)|before i proceed|awaiting your)\b/i;
+// A lead-in such as "A few questions before I start:" makes the list under it an ask.
+const ANNOUNCES_ASK = /\b(questions?|clarif\w+|need to know|need your input|please (confirm|tell me|let me know|specify|choose|pick))\b[^?]*:\s*$/i;
+const LIST_ITEM = /^\s*([-*+]|\d+[.)])\s+/;
+
+// Code is not prose: a `?` in a ternary or an optional chain must not read as a question.
+function stripCode(text) {
+  return String(text || '').replace(/```[\s\S]*?(?:```|$)/g, '\n\n').replace(/`[^`\n]*`/g, ' ');
+}
+
+const paragraphsOf = (text) => text.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+
+function asksIn(s) {
+  const tail = String(s).trim().replace(/[\s*_`"')\]]+$/, '');
+  return tail.endsWith('?') || APPROVAL_PHRASE.test(s);
+}
+
+// For a final paragraph that ends in a list: the text that introduces the list, and the last item.
+function listParts(paras) {
+  const last = paras.at(-1);
+  const lines = last.split('\n');
+  if (!LIST_ITEM.test(lines.at(-1)) && !/^\s+/.test(lines.at(-1))) return null;
+  let start = lines.length;
+  while (start > 0 && (LIST_ITEM.test(lines[start - 1]) || /^\s+\S/.test(lines[start - 1]))) start--;
+  const lead = start > 0 ? lines.slice(0, start).join(' ') : paras.at(-2) ?? '';
+  return { lead, item: lines.at(-1) };
+}
 
 // True when the run ended waiting on the user: wrong stop reason, a trailing question,
-// or an approval request in the last paragraph. Null when there is no final message to judge.
+// an approval request in the last paragraph, or a list under a question. Null when there is no final message to judge.
 function detectAskedUser({ finalText, stopReason, runFinishedStatus }) {
   if (runFinishedStatus == null) return null;
   if (stopReason && stopReason !== 'end_turn') return true;
-  const text = (finalText || '').trim();
-  if (!text) return false;
-  const last = text.split(/\n\s*\n/).pop().trim();
-  const tail = last.replace(/[\s*_`"')\]]+$/, '');
-  return tail.endsWith('?') || APPROVAL_PHRASE.test(last);
+  const paras = paragraphsOf(stripCode(finalText));
+  if (!paras.length) return false;
+  const list = listParts(paras);
+  if (list) return asksIn(list.item) || asksIn(list.lead) || ANNOUNCES_ASK.test(list.lead.trim());
+  return asksIn(paras.at(-1));
+}
+
+// The part of the final text that carries the ask, for matching an answer to it: from the first of the last
+// four paragraphs that asks something to the end, code removed.
+function extractQuestion({ finalText, stopReason }) {
+  const paras = paragraphsOf(stripCode(finalText));
+  if (!paras.length) return stopReason && stopReason !== 'end_turn' ? `(no final text; stop reason ${stopReason})` : '';
+  const from = Math.max(0, paras.length - 4);
+  let start = paras.length - 1;
+  for (let i = from; i < paras.length; i++) {
+    if (paras[i].includes('?') || APPROVAL_PHRASE.test(paras[i]) || ANNOUNCES_ASK.test(paras[i].split('\n')[0])) { start = i; break; }
+  }
+  return paras.slice(start).join('\n\n');
 }
 
 function aggregateStream(events) {
@@ -130,6 +169,37 @@ function aggregateStream(events) {
   return out;
 }
 
+const sumOf = (aggs, key) => aggs.reduce((n, a) => n + (a[key] || 0), 0);
+
+// One aggregate over the turns of a resumed conversation. Spend and call counts are summed (a tool call id
+// can repeat across turns, so the turns are never aggregated as one stream); what the run ended with comes from the last turn.
+function mergeAggregates(aggs) {
+  if (aggs.length === 1) return aggs[0];
+  const last = aggs.at(-1);
+  const toolNames = {};
+  for (const a of aggs) for (const [k, v] of Object.entries(a.toolNames)) toolNames[k] = (toolNames[k] || 0) + v;
+  const sessionIds = [...new Set(aggs.flatMap((a) => a.sessionIds))];
+  const durations = aggs.map((a) => a.turnDurationMs).filter((v) => typeof v === 'number');
+  const skillsMcp = { calls: aggs.reduce((n, a) => n + a.skillsMcp.calls, 0), errors: aggs.reduce((n, a) => n + a.skillsMcp.errors, 0) };
+  return {
+    ...last,
+    sessionId: sessionIds[0] ?? null,
+    sessionIds,
+    credits: sumOf(aggs, 'credits'),
+    meteringEntries: sumOf(aggs, 'meteringEntries'),
+    nonCreditUnits: [...new Set(aggs.flatMap((a) => a.nonCreditUnits))],
+    turnDurationMs: last.runFinishedStatus === null || !durations.length ? null : durations.reduce((a, b) => a + b, 0),
+    contextUsagePercentage: [...aggs].reverse().map((a) => a.contextUsagePercentage).find((v) => typeof v === 'number') ?? null,
+    toolCalls: sumOf(aggs, 'toolCalls'),
+    workToolCalls: sumOf(aggs, 'workToolCalls'),
+    subagentCalls: sumOf(aggs, 'subagentCalls'),
+    toolNames,
+    skillsMcp,
+    skillsMcpOk: skillsMcp.calls > 0 ? skillsMcp.errors < skillsMcp.calls : null,
+    engine: aggs[0].engine,
+  };
+}
+
 // Reads the per-turn metadata in a kiro-cli session .json (total_request_count, model, builtin_tool_uses).
 function summarizeSessionJson(session) {
   const turns = session?.session_state?.conversation_metadata?.user_turn_metadatas || [];
@@ -146,4 +216,9 @@ function summarizeSessionJson(session) {
   };
 }
 
-module.exports = { parseStream, aggregateStream, summarizeSessionJson, detectAskedUser, SUBAGENT_TOOL, SKILLS_SERVER, SKILL_TOOLS };
+// The model of every user turn recorded in a kiro-cli session .json, oldest first.
+function sessionModels(session) {
+  return (session?.session_state?.conversation_metadata?.user_turn_metadatas || []).map((t) => t.model ?? null);
+}
+
+module.exports = { sessionModels, parseStream, aggregateStream, mergeAggregates, summarizeSessionJson, detectAskedUser, extractQuestion, SUBAGENT_TOOL, SKILLS_SERVER, SKILL_TOOLS };

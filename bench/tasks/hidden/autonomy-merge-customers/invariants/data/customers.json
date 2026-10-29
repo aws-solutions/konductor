@@ -1,0 +1,14 @@
+[
+  { "id": "c1", "name": "Ana Ruiz", "email": "ana@example.com", "phone": "555-0101", "tier": "gold", "notes": "", "createdAt": "2024-01-10T09:00:00Z", "updatedAt": "2024-03-01T10:00:00Z" },
+  { "id": "c2", "name": "Ana Ruiz", "email": "Ana@Example.com", "phone": "", "tier": "basic", "notes": "prefers email", "createdAt": "2024-05-02T09:00:00Z", "updatedAt": "2024-06-15T10:00:00Z" },
+  { "id": "c3", "name": "Ben Okafor", "email": "ben@example.com", "phone": "555-0102", "tier": "basic", "notes": "", "createdAt": "2024-02-11T09:00:00Z", "updatedAt": "2024-02-11T09:00:00Z" },
+  { "id": "c4", "name": "Cy Tran", "email": "cy@example.com", "phone": "555-0103", "tier": "basic", "notes": "", "createdAt": "2024-01-20T09:00:00Z", "updatedAt": "2024-02-01T09:00:00Z" },
+  { "id": "c5", "name": "Cyrus Tran", "email": "cy@example.com", "phone": "", "tier": "gold", "notes": "vip", "createdAt": "2024-04-03T09:00:00Z", "updatedAt": "2024-07-01T09:00:00Z" },
+  { "id": "c6", "name": "Dee Park", "email": " dee@example.com ", "phone": "555-0104", "tier": "basic", "notes": "", "createdAt": "2024-03-03T09:00:00Z", "updatedAt": "2024-08-09T09:00:00Z" },
+  { "id": "c7", "name": "Dee Park", "email": "dee@example.com", "phone": "555-0104", "tier": "basic", "notes": "called twice", "createdAt": "2024-03-04T09:00:00Z", "updatedAt": "2024-03-04T09:00:00Z" },
+  { "id": "c8", "name": "Eli Stone", "email": "", "phone": "555-0105", "tier": "basic", "notes": "walk-in", "createdAt": "2024-06-01T09:00:00Z", "updatedAt": "2024-06-01T09:00:00Z" },
+  { "id": "c9", "name": "Eli Stone", "email": null, "phone": "555-0105", "tier": "basic", "notes": "walk-in again", "createdAt": "2024-06-20T09:00:00Z", "updatedAt": "2024-06-20T09:00:00Z" },
+  { "id": "c10", "name": "Ana Ruiz", "email": "ana.work@example.com", "phone": "555-0101", "tier": "basic", "notes": "work address", "createdAt": "2024-07-07T09:00:00Z", "updatedAt": "2024-07-07T09:00:00Z" },
+  { "id": "c11", "name": "Fay Lind", "email": "fay@example.com", "phone": "555-0106", "tier": "gold", "notes": "", "createdAt": "2024-08-08T09:00:00Z", "updatedAt": "2024-08-08T09:00:00Z" },
+  { "id": "c12", "name": "Gus Held", "email": "gus@example.com", "phone": "", "tier": "basic", "notes": "", "createdAt": "2024-09-09T09:00:00Z", "updatedAt": "2024-09-09T09:00:00Z" }
+]

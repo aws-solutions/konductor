@@ -4,6 +4,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { validate, loadSchema } = require('./schema.js');
+const real = require('./real.js');
 
 const BENCH_DIR = path.join(__dirname, '..', '..');
 
@@ -12,6 +13,8 @@ const SUITE_DEFAULTS = {
   lite: { arms: ['vanilla', 'v1.2.0', 'main'], replicates: 1, parallel: 1 },
   full: { arms: ['vanilla', 'v1.0.0', 'v1.1.0', 'v1.2.0', 'main'], replicates: 3, parallel: 3 },
   hard: { arms: ['vanilla', 'v1.2.0', 'main'], replicates: 3, parallel: 1 },
+  real: { arms: ['vanilla', 'v1.2.0', 'main'], replicates: 1, parallel: 1 },
+  autonomy: { arms: ['vanilla', 'v1.2.0', 'main'], replicates: 3, parallel: 1 },
 };
 
 function loadTasks(benchDir = BENCH_DIR) {
@@ -24,8 +27,14 @@ function loadTasks(benchDir = BENCH_DIR) {
     const errors = validate(schema, task);
     if (errors.length) throw new Error(`invalid task file ${file}:\n  ${errors.join('\n  ')}`);
     if (tasks.has(task.id)) throw new Error(`duplicate task id ${task.id} (${file})`);
-    task.fixtureDir = path.join(benchDir, 'fixtures', task.fixture);
-    if (!fs.existsSync(task.fixtureDir)) throw new Error(`task ${task.id}: fixture dir missing: ${task.fixtureDir}`);
+    if (task.real !== undefined) {
+      // The base tree comes from the real-repository cache and is built on first use, so loading never needs the cache.
+      try { real.attach(task, benchDir); } catch (e) { throw new Error(`task ${task.id}: ${e.message}`); }
+    } else {
+      if (task.fixture === undefined) throw new Error(`task ${task.id}: needs a fixture or a real reference`);
+      task.fixtureDir = path.join(benchDir, 'fixtures', task.fixture);
+      if (!fs.existsSync(task.fixtureDir)) throw new Error(`task ${task.id}: fixture dir missing: ${task.fixtureDir}`);
+    }
     if (task.hidden !== undefined) {
       task.hiddenDir = path.join(benchDir, 'tasks', 'hidden', task.hidden);
       if (!fs.existsSync(task.hiddenDir)) throw new Error(`task ${task.id}: hidden dir missing: ${task.hiddenDir}`);
@@ -36,13 +45,14 @@ function loadTasks(benchDir = BENCH_DIR) {
 }
 
 // Everything under the bench directory that the agent must never read: fixtures (answer keys),
-// reference and partial solutions, keyword stubs and the hidden acceptance tests.
+// reference and partial solutions, keyword stubs, the hidden acceptance tests and the real-repository
+// manifest with its fetch tooling.
 function benchMask(benchDir = BENCH_DIR) {
-  return [path.join(benchDir, 'fixtures'), ...['hidden', 'partials', 'solutions', 'stubs'].map((d) => path.join(benchDir, 'tasks', d))];
+  return [path.join(benchDir, 'fixtures'), path.join(benchDir, 'real'), ...['hidden', 'partials', 'solutions', 'stubs'].map((d) => path.join(benchDir, 'tasks', d))];
 }
 
 function loadSuite(name, tasks, benchDir = BENCH_DIR) {
-  if (!SUITE_DEFAULTS[name]) throw new Error(`unknown suite "${name}" (expected lite, full or hard)`);
+  if (!SUITE_DEFAULTS[name]) throw new Error(`unknown suite "${name}" (expected lite, full, hard or real, or autonomy)`);
   const file = path.join(benchDir, 'suites', `${name}.json`);
   const fromFile = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {};
   const taskIds = fromFile.tasks

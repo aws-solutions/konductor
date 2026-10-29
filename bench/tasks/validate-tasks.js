@@ -14,6 +14,14 @@
 // min_matches or cmd check), and the stub run is laid over the reference solution.
 // Tolerant checks also need tasks/negatives/<id>.json: documents a check must reject (and
 // accept), see runner/lib/negatives.js.
+// Real tasks (class "real") run on a pinned upstream repository and are checked offline against bench/real/manifest.json:
+// the entry must be validated, its vendored test files, license and notice must be present, and the list files must
+// match their pins. The deeper proof (the real fix passes, the base fails, offline, deterministic, source location)
+// is bench/real/validate-real.js and needs the upstream cache.
+// Autonomy tasks (class "autonomy") leave a decision open on purpose and answer the agent's questions from a
+// fixed list (see validate-autonomy.js): the prompt must not end with the no-questions sentence, the hidden tests
+// are split into intended/ and invariants/, the reference solution passes both, the untouched fixture fails an
+// intended test, and at least two alternative-interpretation partials each fail an intended test and pass every invariant.
 // Hard tasks (class "hard") add hidden acceptance tests (a `tests` check, files under tasks/hidden/<id>/):
 // the reference solution must pass every hidden test twice with the same counts and in under 60 s, the
 // untouched fixture must fail at least 30 percent of them, and at least two partial solutions under
@@ -29,6 +37,8 @@ const path = require('node:path');
 const { evalCheck: sharedEvalCheck, CHECK_TYPES, PATTERN_FLAGS, ANSWER_KEY } = require('../runner/lib/check-matcher.js');
 const { checkPanel, checkJudgeModel } = require('../judge/config.js');
 const { loadCases, checkCases } = require('../runner/lib/negatives.js');
+const reallib = require('../real/lib.js');
+const autonomyRules = require('./validate-autonomy.js');
 
 const BENCH = path.resolve(__dirname, '..');
 const TASKS_DIR = path.join(BENCH, 'tasks');
@@ -40,11 +50,20 @@ const NEGATIVES_DIR = path.join(TASKS_DIR, 'negatives');
 const HIDDEN_DIR = path.join(TASKS_DIR, 'hidden');
 const PARTIALS_DIR = path.join(TASKS_DIR, 'partials');
 
-const CLASSES = ['simple', 'sop', 'orchestration', 'review', 'design', 'hard'];
-const TIERS = ['lite', 'full', 'hard'];
+const CLASSES = ['simple', 'sop', 'orchestration', 'review', 'design', 'hard', 'real', 'autonomy'];
+const TIERS = ['lite', 'full', 'hard', 'real', 'autonomy'];
+const REAL_RUBRIC_SIZE = 3;
+const REAL_MIN_TASKS = 6;
+const REAL_MAX_TASKS = 8;
+const REAL_MIN_CROSS_FILE_BUGS = 3;
+const REAL_MIN_FEATURES = 2;
+const ALLOWED_REAL_LICENSES = new Set(['MIT', 'BSD-2-Clause', 'BSD-3-Clause', 'Apache-2.0', 'ISC']);
+const REAL_NOTICE = path.join(BENCH, 'real', 'NOTICE');
 const MAX_FIXTURE_FILES = 15;
 // Fixtures used only by hard tasks may be larger.
 const MAX_HARD_FIXTURE_FILES = 40;
+// Fixtures used only by autonomy tasks: 15 to 30 files.
+const MAX_AUTONOMY_FIXTURE_FILES = 30;
 const HARD_MIN_TIMEOUT = 900;
 const HARD_MAX_TIMEOUT = 1500;
 const HARD_MAX_FIXTURE_PASS = 0.7;
@@ -78,11 +97,20 @@ const FIXTURE_BASELINE = {
   'hard-contacts': { cmd: 'node --test', exit: 0 },
   'hard-migrate': { cmd: 'node --test', exit: 0 },
   'hard-billing': { cmd: 'node --test', exit: 0 },
+  // Autonomy fixtures: the visible tests pass before and after the work.
+  'auto-gateway': { cmd: 'node --test', exit: 0 },
+  'auto-reports': { cmd: 'node --test', exit: 0 },
+  'auto-crm': { cmd: 'node --test', exit: 0 },
+  'auto-league': { cmd: 'node --test', exit: 0 },
+  'auto-units': { cmd: 'node --test', exit: 0 },
+  'auto-storage': { cmd: 'node --test', exit: 0 },
 };
 
 // Prompts must not name konductor procedures.
 const PROMPT_BANNED = /\bk-[a-z-]+\b|\bSOP\b|konductor|kiro-spec-workflow/i;
 // Hard prompts also never hint at the evaluation or at tooling.
+// Real prompts also name no pull request, issue number, link or upstream hosting site.
+const REAL_PROMPT_BANNED = /https?:\/\/|github|gitlab|\bpull request|\bPR\b|\bissue\s*#?\d|#\d{2,}|\bchangelog entry of|\bupstream\b/i;
 const HARD_PROMPT_BANNED = /\b(hidden|graders?|grading|graded|reviewers?|agents?|subagents?|skills?|benchmarks?|acceptance tests?)\b/i;
 // Public-repo hygiene scan (built from parts so this file does not match itself).
 const INTERNAL_REF = new RegExp(
@@ -146,15 +174,21 @@ function validateShape(file, t) {
   need(CLASSES.includes(t.class), `class must be one of ${CLASSES.join('|')}`);
   need(t.target === null || isStr(t.target), 'target must be a string or null');
   need(isStr(t.prompt), 'prompt must be a non-empty string');
-  need(isStr(t.fixture), 'fixture must be a non-empty string');
+  const real = t.class === 'real';
+  if (real) need(t.fixture === undefined, 'real tasks have no fixture; the base tree comes from the real-repository cache');
+  else need(isStr(t.fixture), 'fixture must be a non-empty string');
   need(isInt(t.timeoutSec) && t.timeoutSec > 0, 'timeoutSec must be a positive integer');
   need(Array.isArray(t.checks) && t.checks.length > 0, 'checks must be a non-empty array');
   need(Array.isArray(t.rubric) && t.rubric.length >= 3 && t.rubric.length <= 6, 'rubric must have 3 to 6 entries');
+  if (real) need(Array.isArray(t.rubric) && t.rubric.length === REAL_RUBRIC_SIZE, `real tasks need exactly ${REAL_RUBRIC_SIZE} rubric criteria`);
   need(Array.isArray(t.tiers) && t.tiers.length > 0 && t.tiers.every((x) => TIERS.includes(x)), `tiers must be a non-empty subset of ${TIERS.join('|')}`);
   const hard = t.class === 'hard';
+  const autonomy = t.class === 'autonomy' || t.autonomy !== undefined;
   if (Array.isArray(t.tiers)) {
-    if (hard) need(t.tiers.length === 1 && t.tiers[0] === 'hard', 'hard tasks must have tiers ["hard"] only');
-    else need(t.tiers.includes('full') && !t.tiers.includes('hard'), 'every task must include the full tier (and only hard tasks the hard tier)');
+    if (autonomy) { /* tiers are checked with the other autonomy rules */ }
+    else if (hard) need(t.tiers.length === 1 && t.tiers[0] === 'hard', 'hard tasks must have tiers ["hard"] only');
+    else if (real) need(t.tiers.length === 1 && t.tiers[0] === 'real', 'real tasks must have tiers ["real"] only; the full tier does not include them');
+    else need(t.tiers.includes('full') && !t.tiers.includes('hard') && !t.tiers.includes('real'), 'every task must include the full tier (and only hard tasks the hard tier, only real tasks the real tier)');
   }
   if (hard) {
     need(isInt(t.timeoutSec) && t.timeoutSec >= HARD_MIN_TIMEOUT && t.timeoutSec <= HARD_MAX_TIMEOUT, `hard tasks need timeoutSec from ${HARD_MIN_TIMEOUT} to ${HARD_MAX_TIMEOUT}`);
@@ -162,8 +196,20 @@ function validateShape(file, t) {
     need(Array.isArray(t.checks) && t.checks.some((c) => c.type === 'tests'), 'hard tasks need at least one tests check');
     need(Array.isArray(t.checks) && t.checks.some((c) => c.type === 'fixture_unchanged'), 'hard tasks need a fixture_unchanged check on the existing tests');
     need(!HARD_PROMPT_BANNED.test(t.prompt || ''), 'hard prompt mentions grading, hidden tests, agents, skills or reviewers');
+  } else if (real) {
+    need(isInt(t.timeoutSec) && t.timeoutSec >= HARD_MIN_TIMEOUT && t.timeoutSec <= HARD_MAX_TIMEOUT, `real tasks need timeoutSec from ${HARD_MIN_TIMEOUT} to ${HARD_MAX_TIMEOUT}`);
+    need(isStr(t.real), 'real tasks need real: the id of a manifest entry');
+    need(isStr(t.hidden) && t.hidden === t.real && fs.existsSync(path.join(HIDDEN_DIR, t.hidden || '?', 'overlay')), 'real tasks need hidden equal to real, with an overlay/ directory under tasks/hidden/');
+    need(Array.isArray(t.checks) && t.checks.some((c) => c.type === 'tests' && c.manifest === true), 'real tasks need a tests check with manifest: true');
+    need(Array.isArray(t.checks) && t.checks.some((c) => c.type === 'fixture_unchanged'), 'real tasks need a fixture_unchanged check on the existing tests');
+    need(!HARD_PROMPT_BANNED.test(t.prompt || ''), 'real prompt mentions grading, hidden tests, agents, skills or reviewers');
+    need(!REAL_PROMPT_BANNED.test(t.prompt || ''), 'real prompt names a pull request, issue, link or hosting site');
+  } else if (autonomy) {
+    need(t.real === undefined, 'only real tasks may name a real reference');
+    need(isStr(t.hidden) && fs.existsSync(path.join(HIDDEN_DIR, t.hidden || '?')), 'autonomy tasks need hidden: a directory under tasks/hidden/');
+    autonomyRules.shapeProblems(t, { hiddenRoot: HIDDEN_DIR }).forEach((p) => err(where, p));
   } else {
-    need(t.hidden === undefined, 'only hard tasks may name a hidden directory');
+    need(t.hidden === undefined && t.real === undefined, 'only hard, real and autonomy tasks may name a hidden directory or a real reference');
   }
   if (Array.isArray(t.tiers) && t.tiers.includes('lite') && isInt(t.timeoutSec)) {
     need(t.timeoutSec <= LITE_MAX_TIMEOUT, `lite tasks need timeoutSec <= ${LITE_MAX_TIMEOUT}`);
@@ -171,10 +217,11 @@ function validateShape(file, t) {
   if (isStr(t.fixture)) {
     need(fs.existsSync(path.join(FIXTURES_DIR, t.fixture)), `fixture "${t.fixture}" does not exist`);
   }
+  if (!real) need(t.real === undefined, 'only real tasks may name a real reference');
   if (isStr(t.prompt)) {
     need(!PROMPT_BANNED.test(t.prompt), 'prompt names a konductor procedure or agent');
     need(!DASHES.test(t.prompt), 'prompt contains an em or en dash');
-    need(t.prompt.endsWith(NO_QUESTIONS), 'prompt must end with the no-questions sentence');
+    if (!autonomy) need(t.prompt.endsWith(NO_QUESTIONS), 'prompt must end with the no-questions sentence');
     if (FORBIDS_EDITS.test(t.prompt) && Array.isArray(t.checks)) {
       need(t.checks.some((c) => c.type === 'fixture_unchanged'), 'prompt forbids edits but no fixture_unchanged check exists');
     }
@@ -186,6 +233,8 @@ function validateShape(file, t) {
     const at = `${where} checks[${i}]`;
     if (!CHECK_TYPES.includes(c.type)) return err(at, `type must be one of ${CHECK_TYPES.join('|')}`);
     if (c.type !== 'cmd' && c.type !== 'tests' && !isStr(c.path)) err(at, 'path is required');
+    if (c.allowAdditions !== undefined && c.type !== 'fixture_unchanged') err(at, 'allowAdditions applies to fixture_unchanged only');
+    if (c.manifest !== undefined && (c.type !== 'tests' || c.manifest !== true)) err(at, 'manifest: true applies to tests checks only');
     if (c.type === 'labelled_findings' && !(isInt(c.min) && c.min >= 1)) err(at, 'min must be an integer >= 1');
     if (['contains', 'not_contains', 'min_matches'].includes(c.type)) {
       if (!isStr(c.pattern)) err(at, 'pattern is required');
@@ -198,7 +247,9 @@ function validateShape(file, t) {
       if (!isStr(c.cmd)) err(at, 'cmd is required');
       if (!isInt(c.expectExit)) err(at, 'expectExit must be an integer');
     }
-    if (c.type === 'tests') {
+    if (c.type === 'tests' && c.manifest === true) {
+      if (c.cmd !== undefined || c.min !== undefined) err(at, 'a manifest tests check takes its command and counts from the manifest; cmd and min are not allowed');
+    } else if (c.type === 'tests') {
       if (!isStr(c.cmd)) err(at, 'cmd is required');
       if (!(isInt(c.min) && c.min >= 1)) err(at, 'min (the known number of hidden tests) must be an integer >= 1');
     }
@@ -215,16 +266,17 @@ function validateShape(file, t) {
   });
 }
 
-function validateFixtures(used, hardOnly) {
+function validateFixtures(used, hardOnly, autonomyOnly = new Set()) {
   for (const name of fs.readdirSync(FIXTURES_DIR)) {
     const dir = path.join(FIXTURES_DIR, name);
     if (!fs.statSync(dir).isDirectory() || name.startsWith('_')) continue;
     const files = listFiles(dir);
     const visible = files.filter((f) => path.basename(f) !== ANSWER_KEY);
     if (!files.includes(ANSWER_KEY)) err(`fixture ${name}`, `missing ${ANSWER_KEY}`);
-    const limit = hardOnly.has(name) ? MAX_HARD_FIXTURE_FILES : MAX_FIXTURE_FILES;
+    const limit = hardOnly.has(name) ? MAX_HARD_FIXTURE_FILES : autonomyOnly.has(name) ? MAX_AUTONOMY_FIXTURE_FILES : MAX_FIXTURE_FILES;
     if (visible.length > limit) err(`fixture ${name}`, `${visible.length} files, limit ${limit}`);
     if (hardOnly.has(name) && visible.length < MAX_FIXTURE_FILES) err(`fixture ${name}`, `${visible.length} files, hard fixtures need at least ${MAX_FIXTURE_FILES}`);
+    if (autonomyOnly.has(name) && visible.length < MAX_FIXTURE_FILES) err(`fixture ${name}`, `${visible.length} files, autonomy fixtures need at least ${MAX_FIXTURE_FILES}`);
     if (files.some((f) => f.split(path.sep).includes('.git') || f.split(path.sep).includes('node_modules'))) {
       err(`fixture ${name}`, 'contains .git or node_modules');
     }
@@ -242,12 +294,14 @@ function validateFixtures(used, hardOnly) {
 }
 
 function scanHygiene() {
-  const roots = [TASKS_DIR, FIXTURES_DIR, SUITES_DIR, path.join(BENCH, 'README-tasks.md')];
+  const roots = [TASKS_DIR, FIXTURES_DIR, SUITES_DIR, path.join(BENCH, 'real'), path.join(BENCH, 'README-tasks.md')];
   const self = path.resolve(__filename);
+  // Upstream test files and licenses are copied unchanged from other projects; they are not ours to restyle.
+  const vendored = (p) => /[\\/]tasks[\\/]hidden[\\/][^\\/]+[\\/](overlay[\\/]|LICENSE$)/.test(p);
   const visit = (p) => {
     if (!fs.existsSync(p)) return;
     if (fs.statSync(p).isDirectory()) return fs.readdirSync(p).forEach((n) => visit(path.join(p, n)));
-    if (path.resolve(p) === self) return;
+    if (path.resolve(p) === self || p.endsWith('.gz') || vendored(p)) return;
     const text = fs.readFileSync(p, 'utf8');
     const rel = path.relative(BENCH, p);
     if (INTERNAL_REF.test(text)) err(rel, 'contains an internal reference');
@@ -306,6 +360,92 @@ function validateHard(t, solutionDir, hiddenDir) {
   return `${t.id}: reference ${first.passed}/${first.total} in ${first.seconds.toFixed(1)}s, fixture ${base.passed}/${base.total}, partials ${partials.map((p) => `${p.name} ${p.passed}/${p.total}`).join(', ')}`;
 }
 
+
+// Scores of the intended and invariant tests checks of an autonomy task on one tree.
+function groupScores(t, dir, hiddenDir) {
+  const out = { intended: { passed: 0, total: 0 }, invariant: { passed: 0, total: 0 }, seconds: 0 };
+  const started = Date.now();
+  for (const c of t.checks.filter((x) => x.type === 'tests')) {
+    const r = evalCheck(dir, c, fixtureDir(t.fixture), hiddenDir);
+    const g = out[c.group];
+    if (!r.tests || r.tests.unparsed) { g.unparsed = true; continue; }
+    g.passed += r.tests.passed;
+    g.total += r.tests.total;
+  }
+  out.seconds = (Date.now() - started) / 1000;
+  return out;
+}
+
+// Evidence that the hidden tests tell the intended reading from a wrong one: the reference passes every intended
+// and invariant test, the untouched fixture fails intended tests, and each partial fails at least one intended test
+// while passing every invariant. Also runs the reference twice (determinism) and times it.
+function validateAutonomyEvidence(t, solutionDir, hiddenDir) {
+  const solved = copyFixture(t.fixture, solutionDir);
+  const reference = groupScores(t, solved, hiddenDir);
+  const again = groupScores(t, solved, hiddenDir);
+  fs.rmSync(solved, { recursive: true, force: true });
+  const bare = copyFixture(t.fixture);
+  const fixture = groupScores(t, bare, hiddenDir);
+  fs.rmSync(bare, { recursive: true, force: true });
+  const dir = path.join(PARTIALS_DIR, t.id);
+  const names = fs.existsSync(dir) ? fs.readdirSync(dir).filter((n) => fs.statSync(path.join(dir, n)).isDirectory()).sort() : [];
+  const partials = names.map((name) => {
+    const work = copyFixture(t.fixture, path.join(dir, name));
+    const score = groupScores(t, work, hiddenDir);
+    fs.rmSync(work, { recursive: true, force: true });
+    return { name, intended: score.intended, invariant: score.invariant };
+  });
+  autonomyRules.evidenceProblems(t, { reference, again, fixture, partials }).forEach((p) => err(t.id, p));
+  const f = (s) => `${s.passed}/${s.total}`;
+  return `${t.id}: reference ${f(reference.intended)} intended + ${f(reference.invariant)} invariants in ${reference.seconds.toFixed(1)}s, fixture ${f(fixture.intended)} intended, partials ${partials.map((p) => `${p.name} ${f(p.intended)} intended / ${f(p.invariant)} invariants`).join(', ')}; ${(t.autonomy.clarifications || []).length} clarification(s)${t.autonomy.noQuestionNeeded ? ', no question needed' : ''}`;
+}
+
+// Source files of a fix, without tests, docs and change logs.
+const isSourcePath = (f) => /\.(py|js|mjs|cjs|ts|rs|go|java)$/.test(f) && !reallib.isTestPath(f) && !/^docs?\//.test(f);
+
+// Offline checks of a real task against the manifest and the vendored files. Returns a one-line summary.
+function validateRealTask(t, manifest) {
+  const where = t.id;
+  const entry = manifest.tasks.find((e) => e.id === t.real);
+  if (!entry) { err(where, `no manifest entry "${t.real}" in real/manifest.json (an entry that was dropped cannot be used)`); return `${t.id}: no manifest entry`; }
+  if (t.id !== `real-${entry.id}`) err(where, `id must be real-${entry.id}`);
+  if (!entry.validation) err(where, 'the manifest entry has no validation record; run node bench/real/validate-real.js --write');
+  if (!ALLOWED_REAL_LICENSES.has(entry.repo.license)) err(where, `license ${entry.repo.license} is not permissive`);
+  if (!(entry.sourceFiles.all >= 50 && entry.sourceFiles.all <= 400)) err(where, `${entry.sourceFiles.all} source files, need 50 to 400`);
+  if (!/^20(2[5-9]|[3-9]\d)-/.test(entry.pr.mergedAt)) err(where, `merged ${entry.pr.mergedAt.slice(0, 10)}, before 2025`);
+  if (!entry.failToPass.length) err(where, 'the manifest entry has no FAIL_TO_PASS tests');
+  try {
+    const p2p = reallib.loadP2p(entry, path.join(BENCH, 'real', 'p2p'));
+    if (!p2p.length) err(where, 'the manifest entry has no PASS_TO_PASS tests');
+  } catch (e) { err(where, e.message); }
+  if (!(entry.test.timeoutSec <= 120)) err(where, 'the test command may take at most 120 s');
+  if (!(entry.test.probeModules || []).length) err(where, 'test.probeModules is empty');
+  for (const x of entry.excluded || []) if (!isStr(x.reason)) err(where, `excluded test ${x.id} has no reason`);
+  const dir = path.join(HIDDEN_DIR, entry.id);
+  const overlay = path.join(dir, 'overlay');
+  const files = fs.existsSync(overlay) ? listFiles(overlay).map((f) => f.split(path.sep).join('/')).sort() : [];
+  if (files.join('\n') !== [...entry.testFiles].sort().join('\n')) err(where, `vendored test files (${files.join(', ')}) differ from the manifest (${entry.testFiles.join(', ')})`);
+  for (const f of ['LICENSE', 'NOTICE']) if (!fs.existsSync(path.join(dir, f))) err(where, `missing ${f} in tasks/hidden/${entry.id}/`);
+  for (const c of (t.checks || []).filter((x) => x.type === 'fixture_unchanged')) {
+    if (!entry.testFiles.some((f) => f === c.path || f.startsWith(`${c.path}/`))) err(where, `fixture_unchanged path "${c.path}" does not cover any test file of the task`);
+  }
+  const notice = fs.existsSync(REAL_NOTICE) ? fs.readFileSync(REAL_NOTICE, 'utf8') : '';
+  for (const need of [entry.repo.name, entry.repo.license, entry.repo.url]) if (!notice.includes(need)) err(where, `real/NOTICE does not list ${need}`);
+  return `${t.id}: ${entry.kind}, ${entry.repo.name} ${entry.repo.license}, ${entry.failToPass.length} FAIL_TO_PASS, ${entry.passToPass.count ?? entry.passToPass.length} PASS_TO_PASS`;
+}
+
+// The real set: 6 to 8 validated tasks, at least 3 bug fixes that span several source files and 2 small features.
+function validateRealSet(tasks, manifest) {
+  const at = 'real tasks';
+  const entries = tasks.filter((t) => t.class === 'real').map((t) => manifest.tasks.find((e) => e.id === t.real)).filter(Boolean);
+  if (entries.length < REAL_MIN_TASKS || entries.length > REAL_MAX_TASKS) err(at, `${entries.length} tasks, need ${REAL_MIN_TASKS} to ${REAL_MAX_TASKS}`);
+  const crossFile = entries.filter((e) => e.kind === 'bug' && e.fixFiles.filter(isSourcePath).length >= 2).length;
+  const features = entries.filter((e) => e.kind === 'feature').length;
+  if (crossFile < REAL_MIN_CROSS_FILE_BUGS) err(at, `${crossFile} bug fixes span two or more source files, need ${REAL_MIN_CROSS_FILE_BUGS}`);
+  if (features < REAL_MIN_FEATURES) err(at, `${features} features, need ${REAL_MIN_FEATURES}`);
+  return `real set: ${entries.length} tasks, ${crossFile} cross-file bug fixes, ${features} features, languages ${[...new Set(entries.map((e) => e.language))].join('+')}`;
+}
+
 function main() {
   const taskFiles = fs.readdirSync(TASKS_DIR).filter((f) => f.endsWith('.json') && !f.startsWith('_')).sort();
   const tasks = [];
@@ -319,15 +459,21 @@ function main() {
     tasks.push(t);
   }
 
-  const used = new Set(tasks.map((t) => t.fixture));
+  const manifestFile = path.join(BENCH, 'real', 'manifest.json');
+  const manifest = tasks.some((t) => t.class === 'real') ? readJson(manifestFile, 'real/manifest.json') : null;
+  const used = new Set(tasks.map((t) => t.fixture).filter(isStr));
   const hardOnly = new Set([...used].filter((f) => tasks.filter((t) => t.fixture === f).every((t) => t.class === 'hard')));
-  validateFixtures(used, hardOnly);
+  const autonomyOnly = new Set([...used].filter((f) => tasks.filter((t) => t.fixture === f).every((t) => t.class === 'autonomy')));
+  validateFixtures(used, hardOnly, autonomyOnly);
 
   let guards = 0;
   let negativeCases = 0;
   const stubReport = [];
   const hardReport = [];
+  const autonomyReport = [];
+  const realReport = [];
   for (const t of tasks) {
+    if (t.class === 'real' && manifest && Array.isArray(t.checks)) { realReport.push(validateRealTask(t, manifest)); continue; }
     if (!isStr(t.fixture) || !fs.existsSync(path.join(FIXTURES_DIR, t.fixture)) || !Array.isArray(t.checks)) continue;
     const where = t.id;
     const hiddenDir = t.hidden ? path.join(HIDDEN_DIR, t.hidden) : null;
@@ -352,6 +498,7 @@ function main() {
     });
     fs.rmSync(solved, { recursive: true, force: true });
     if (t.class === 'hard') hardReport.push(validateHard(t, overlay, hiddenDir));
+    if (t.class === 'autonomy') autonomyReport.push(validateAutonomyEvidence(t, overlay, hiddenDir));
 
     const spec = loadCases(NEGATIVES_DIR, t.id);
     if (spec) {
@@ -391,7 +538,8 @@ function main() {
   }
 
   const suites = {};
-  for (const name of ['lite', 'full', 'hard']) {
+  if (manifest) realReport.push(validateRealSet(tasks, manifest));
+  for (const name of ['lite', 'full', 'hard', 'real', 'autonomy']) {
     const file = path.join(SUITES_DIR, `${name}.json`);
     const s = fs.existsSync(file) ? readJson(file, `suites/${name}.json`) : null;
     if (!s) { err(`suites/${name}.json`, 'missing or unreadable'); continue; }
@@ -434,6 +582,22 @@ function main() {
     if (suites.lite.parallel !== 1) err(at, 'parallel must be 1 (wall-clock comparisons need one run at a time)');
   }
 
+  if (suites.real) {
+    if (suites.real.parallel !== 1) err('suites/real.json', 'parallel must be 1 (wall-clock comparisons need one run at a time)');
+    for (const id of suites.real.tasks || []) {
+      const t = tasks.find((x) => x.id === id);
+      if (t && t.class !== 'real') err('suites/real.json', `task "${id}" is not a real task`);
+    }
+  }
+
+  if (suites.autonomy) {
+    if (suites.autonomy.parallel !== 1) err('suites/autonomy.json', 'parallel must be 1 (wall-clock comparisons need one run at a time)');
+    for (const id of suites.autonomy.tasks || []) {
+      const t = tasks.find((x) => x.id === id);
+      if (t && t.class !== 'autonomy') err('suites/autonomy.json', `task "${id}" is not an autonomy task`);
+    }
+  }
+
   if (suites.hard) {
     if (suites.hard.parallel !== 1) err('suites/hard.json', 'parallel must be 1 (wall-clock comparisons need one run at a time)');
     for (const id of suites.hard.tasks || []) {
@@ -451,6 +615,8 @@ function main() {
   console.log(`keyword-only stubs (failing checks / total): ${stubReport.join(', ')}`);
   console.log(`negative and positive cases for loosened checks: ${negativeCases}`);
   hardReport.forEach((h) => console.log(`hard ${h}`));
+  autonomyReport.forEach((a) => console.log(`autonomy ${a}`));
+  realReport.forEach((r) => console.log(`real ${r}`));
   for (const [name, s] of Object.entries(suites)) {
     if (Array.isArray(s.judges)) console.log(`suite ${name}: judges ${s.judges.join(', ')}; tasks ${s.tasks.length}`);
   }

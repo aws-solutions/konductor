@@ -23,6 +23,8 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const lib = require('./lib.js');
+const probe = require('./probe.js');
+const { leakScan, LEAK_RATIO } = require('./leakscan.js');
 const { exportTree, materialize } = require('./materialize.js');
 const { runRealTests, scoreReal } = require('../runner/lib/realtests.js');
 const { buildCheckEnv } = require('../runner/lib/env.js');
@@ -35,7 +37,6 @@ const MAX_FILES = 400;
 const MAX_FIX_FILES = 6;
 
 const tmp = (p) => fs.mkdtempSync(path.join(os.tmpdir(), p));
-const ids = (e) => [...e.failToPass, ...e.passToPass];
 
 function snapshot(results, listed) {
   return listed.map((id) => `${id}=${results.get(id) ?? 'absent'}`).join('\n');
@@ -53,8 +54,11 @@ function validateEntry(entry, { cache, log = () => {} }) {
     if (!fs.existsSync(gitDir)) return { id: entry.id, valid: false, reasons: ['not fetched into the cache'], warnings, info };
 
     if (!ALLOWED_LICENSES.has(entry.repo.license)) fail(`license ${entry.repo.license} is not permissive`);
+    let passToPass = [];
+    try { passToPass = lib.loadP2p(entry); } catch (e) { fail(e.message); }
     if (!entry.failToPass.length) fail('no FAIL_TO_PASS tests');
-    if (!entry.passToPass.length) fail('no PASS_TO_PASS tests');
+    if (!passToPass.length) fail('no PASS_TO_PASS tests');
+    if (!(entry.test.probeModules || []).length) fail('test.probeModules is empty, so the location of the code under test is not proven');
     if (entry.fixFiles.length < 1 || entry.fixFiles.length > MAX_FIX_FILES) fail(`${entry.fixFiles.length} non-test files in the fix, need 1 to ${MAX_FIX_FILES}`);
     if (entry.sourceFiles.all < MIN_FILES || entry.sourceFiles.all > MAX_FILES) fail(`${entry.sourceFiles.all} source files at base, need ${MIN_FILES} to ${MAX_FILES}`);
     if (!/^20(2[5-9]|[3-9]\d)-/.test(entry.pr.mergedAt)) warnings.push(`merged ${entry.pr.mergedAt.slice(0, 10)}, before 2025`);
@@ -84,6 +88,14 @@ function validateEntry(entry, { cache, log = () => {} }) {
     // Fix patch applied to a copy of the base tree.
     const { patch, files } = lib.fixPatch(gitDir, entry);
     info.fixPatchFiles = files;
+    const homes = [os.homedir(), fs.realpathSync(os.homedir())];
+    const tilde = (p) => { const h = homes.find((x) => p.startsWith(`${x}/`)); return h ? `~${p.slice(h.length)}` : p; };
+    info.hostCopies = leakScan(entry, patch, { baseDir: base }).map((c) => ({ copy: tilde(c.copy), masked: c.masked, ratio: +c.ratio.toFixed(2) }));
+    const unmaskable = info.hostCopies.filter((c) => !c.masked && c.ratio >= LEAK_RATIO);
+    if (unmaskable.length) {
+      const best = unmaskable.reduce((a, b) => (b.ratio > a.ratio ? b : a));
+      fail(`the fix is readable in ${unmaskable.length} copy(ies) vendored inside another package, for example ${best.copy} (${Math.round(best.ratio * 100)} percent of its added lines); they cannot be masked without breaking that package`);
+    }
     const fixed = path.join(work, 'fixed');
     fs.cpSync(base, fixed, { recursive: true });
     const applied = spawnSync('git', ['apply', '--whitespace=nowarn', '-'], { cwd: fixed, input: patch, encoding: 'utf8' });
@@ -91,8 +103,21 @@ function validateEntry(entry, { cache, log = () => {} }) {
 
     const { env } = buildCheckEnv(process.env, { home, tmpdir: path.join(home, 'tmp'), konductor: false });
     fs.mkdirSync(env.TMPDIR, { recursive: true });
-    const run = (root) => runRealTests(root, entry.test, { overlayDir: overlay, env, wrapCmd: lib.netlessWrap, scratchDir: path.join(work, 'scratch') });
-    const listed = ids(entry);
+    const scratchDir = path.join(work, 'scratch');
+    fs.mkdirSync(scratchDir, { recursive: true });
+    const scratchReal = fs.realpathSync(scratchDir);
+    const probeProblems = new Set();
+    const probed = [];
+    // Every run loads the project through a start-up hook; where it came from is checked after the run.
+    const run = (root) => {
+      const p = probe.prepare(fs.mkdtempSync(path.join(work, 'probe-')), { runner: entry.test.runner, modules: entry.test.probeModules, existing: entry.test.env });
+      const r = runRealTests(root, { ...entry.test, env: { ...entry.test.env, ...p.env } }, { overlayDir: overlay, env, wrapCmd: lib.netlessWrap, scratchDir });
+      const ev = probe.evaluate(p.out, { runner: entry.test.runner, modules: entry.test.probeModules, root: scratchReal });
+      ev.problems.forEach((x) => probeProblems.add(x));
+      if (!probed.length) probed.push(...ev.seen);
+      return r;
+    };
+    const listed = [...entry.failToPass, ...passToPass];
     const runs = { fix: [], base: [] };
     for (const [label, root] of [['fix', fixed], ['base', base]]) {
       for (let i = 0; i < 2; i++) {
@@ -109,13 +134,15 @@ function validateEntry(entry, { cache, log = () => {} }) {
       });
       if (snapshot(rs[0].results, listed) !== snapshot(rs[1].results, listed)) fail(`${label} runs differ between repetitions (not deterministic)`);
     }
-    const sFix = scoreReal({ results: runs.fix[0].results, failToPass: entry.failToPass, passToPass: entry.passToPass });
+    for (const x of probeProblems) fail(`source location: ${x}`);
+    info.loadedFrom = probed;
+    const sFix = scoreReal({ results: runs.fix[0].results, failToPass: entry.failToPass, passToPass });
     if (sFix.failToPass.passed !== sFix.failToPass.total) fail(`with the real fix FAIL_TO_PASS passes ${sFix.failToPass.passed}/${sFix.failToPass.total}`);
     if (sFix.passToPass.passed !== sFix.passToPass.total) fail(`with the real fix PASS_TO_PASS passes ${sFix.passToPass.passed}/${sFix.passToPass.total}`);
-    const sBase = scoreReal({ results: runs.base[0].results, failToPass: entry.failToPass, passToPass: entry.passToPass });
+    const sBase = scoreReal({ results: runs.base[0].results, failToPass: entry.failToPass, passToPass });
     if (sBase.failToPass.passed !== 0) fail(`at base FAIL_TO_PASS passes ${sBase.failToPass.passed}/${sBase.failToPass.total}, expected 0`);
     if (sBase.passToPass.passed !== sBase.passToPass.total) fail(`at base PASS_TO_PASS passes ${sBase.passToPass.passed}/${sBase.passToPass.total}`);
-    info.counts = { failToPass: entry.failToPass.length, passToPass: entry.passToPass.length, testsRun: runs.fix[0].results.size };
+    info.counts = { failToPass: entry.failToPass.length, passToPass: passToPass.length, testsRun: runs.fix[0].results.size };
     info.network = lib.netlessAvailable() ? 'none (unshare --net, loopback only)' : 'not verified';
     if (info.network === 'not verified') warnings.push('unshare --net is unavailable here, network independence not verified');
   } finally {
@@ -139,6 +166,12 @@ function main(argv) {
     results.push(r);
     const s = r.info.seconds ? ` fix ${r.info.seconds.fix.join('/')} s, base ${r.info.seconds.base.join('/')} s` : '';
     console.log(`${r.valid ? 'VALID  ' : 'DROPPED'} ${id}${s}${r.info.counts ? ` F2P ${r.info.counts.failToPass} P2P ${r.info.counts.passToPass}` : ''}`);
+    if (r.info.hostCopies) {
+      const hc = r.info.hostCopies;
+      const top = (xs) => (xs.length ? Math.max(...xs.map((c) => c.ratio)) : 0);
+      console.log(`    host copies of the project: ${hc.filter((c) => c.masked).length} maskable (${hc.filter((c) => c.masked && c.ratio >= 0.6).length} hold the fix, to be masked), ${hc.filter((c) => !c.masked).length} vendored inside other packages (highest share of the fix: ${top(hc.filter((c) => !c.masked))})`);
+    }
+    if (r.info.loadedFrom) console.log(`    code loaded from: ${r.info.loadedFrom.slice(0, 3).join(', ')}`);
     r.reasons.forEach((x) => console.log(`    reason: ${x}`));
     r.warnings.forEach((x) => console.log(`    warning: ${x}`));
   }
@@ -148,11 +181,16 @@ function main(argv) {
     for (const r of results) {
       const entry = lib.findEntry(manifest, r.id);
       if (r.valid) {
-        entry.validation = { validatedAt: when, runsPerState: 2, seconds: r.info.seconds, network: r.info.network, counts: r.info.counts };
+        entry.validation = {
+          validatedAt: when, runsPerState: 2, seconds: r.info.seconds, network: r.info.network, counts: r.info.counts,
+          loadedFrom: r.info.loadedFrom, hostCopies: r.info.hostCopies,
+        };
       } else {
         manifest.dropped = (manifest.dropped || []).filter((d) => d.id !== r.id);
         manifest.dropped.push({ id: r.id, repo: entry.repo.name, pr: entry.pr.number, reasons: r.reasons });
         manifest.tasks = manifest.tasks.filter((t) => t.id !== r.id);
+        fs.rmSync(path.join(HIDDEN_DIR, r.id), { recursive: true, force: true });
+        fs.rmSync(path.join(lib.P2P_DIR, `${r.id}.txt.gz`), { force: true });
       }
     }
     fs.writeFileSync(lib.MANIFEST_FILE, `${JSON.stringify(manifest, null, 2)}\n`);

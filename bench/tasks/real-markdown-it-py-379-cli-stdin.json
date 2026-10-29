@@ -1,0 +1,40 @@
+{
+  "id": "real-markdown-it-py-379-cli-stdin",
+  "class": "real",
+  "target": null,
+  "prompt": "This directory holds a Python Markdown parser with a small command-line tool (markdown_it/cli/parse.py). The tool converts files given on the command line and otherwise starts an interactive prompt, so there is no way to pipe Markdown into it. Add a `--stdin` option.\n\nExpected behaviour:\n- `main([\"--stdin\"])` reads all Markdown from standard input, writes the rendered HTML to standard output exactly as converting a file would (for \"# a b c\" the output is \"<h1>a b c</h1>\\n\"), and returns 0. Standard input must be read when main runs, not when the module is imported.\n- If standard input cannot be read, print a one-line message to standard error and exit with status 1.\n- File names given on the command line keep working as before and take priority; with no file names and no `--stdin` the interactive prompt still starts.\n- The option appears in the tool's --help text, and the usage example in README.md shows it.\n\nDo not edit any existing test file; put new tests in a new file under tests/. The existing suite (`python3 -m pytest tests`) must keep passing. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "real": "markdown-it-py-379-cli-stdin",
+  "hidden": "markdown-it-py-379-cli-stdin",
+  "timeoutSec": 900,
+  "checks": [
+    {
+      "type": "tests",
+      "manifest": true
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "tests",
+      "allowAdditions": true
+    }
+  ],
+  "rubric": [
+    {
+      "id": "investigated",
+      "criterion": "The transcript shows the agent reading the command-line module (argument parser, main, file conversion) before editing and reusing the existing rendering path for standard input.",
+      "weight": 2
+    },
+    {
+      "id": "verified",
+      "criterion": "After editing, the agent ran the CLI tests or the whole suite and reports the result; new tests sit in a new file and exercise main with --stdin, the error path and the precedence of file names.",
+      "weight": 2
+    },
+    {
+      "id": "minimal-consistent",
+      "criterion": "The change is small, follows the module's style, updates the README example as asked, and the final message lists the files changed and assumptions.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "real"
+  ]
+}

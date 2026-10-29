@@ -1,0 +1,10 @@
+{
+  "name": "file-vault",
+  "version": "0.7.0",
+  "private": true,
+  "description": "Document storage on local disk with a JSON index",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "node --test"
+  }
+}

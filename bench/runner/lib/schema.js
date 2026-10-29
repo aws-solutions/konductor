@@ -3,7 +3,7 @@
 
 // Validator for the JSON Schema subset used by bench/schema/*.json:
 // type (string or list), enum, const, required, properties, additionalProperties:false,
-// items, minItems, minLength, minimum, pattern. No external dependencies.
+// items, minItems, minLength, maxLength, minimum, pattern. No external dependencies.
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -40,6 +40,9 @@ function validate(schema, value, at = '$') {
   if (typeof value === 'string') {
     if (schema.minLength !== undefined && value.length < schema.minLength) {
       errors.push(`${at}: shorter than ${schema.minLength}`);
+    }
+    if (schema.maxLength !== undefined && value.length > schema.maxLength) {
+      errors.push(`${at}: longer than ${schema.maxLength}`);
     }
     if (schema.pattern && !new RegExp(schema.pattern).test(value)) {
       errors.push(`${at}: does not match ${schema.pattern}`);

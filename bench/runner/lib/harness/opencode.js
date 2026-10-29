@@ -142,15 +142,23 @@ function envSetup({ arm, config, ctx, home, tmpdir }) {
 
 const env = (o) => envSetup(o).env;
 
-function buildCommand({ arm, task, config, ctx, cwd }) {
+// resume: {sessionId, prompt} continues the session of an earlier turn (`-s`, or `-c` for the latest one).
+function buildCommand({ arm, task, config, ctx, cwd, resume = null }) {
   const args = ['run', '--dir', cwd, '-m', `${PROVIDER}/${config.model}`, '--variant', variantOf(config.effort), '--format', 'json', '--auto', '--title', TITLE];
   if (arm.agent) args.push('--agent', arm.agent);
-  args.push(task.prompt);
+  if (resume) args.push(...(resume.sessionId ? ['-s', resume.sessionId] : ['-c']));
+  args.push(resume ? resume.prompt : task.prompt);
   return { file: ctx.opencode.bin, args, display: `opencode ${args.map((a) => JSON.stringify(a)).join(' ')}` };
 }
 
 function dbRunner(bin, runEnv) {
   return (sql) => JSON.parse(execFileSync(bin, ['db', sql, '--format', 'json'], { env: runEnv, encoding: 'utf8', input: '', timeout: 60000, maxBuffer: 64 * 1024 * 1024, stdio: ['pipe', 'pipe', 'ignore'] }));
+}
+
+// What the runner needs to know after one turn: how it ended and what the agent said last.
+function turnSummary(streamText) {
+  const a = aggregateEvents(parseStream(streamText).events);
+  return { sessionId: a.sessionId, runFinishedStatus: a.runFinishedStatus, stopReason: a.stopReason, finalText: a.finalText, askedUser: a.askedUser };
 }
 
 // Parses the event stream and the session database. Fills `acc` so a throw part-way keeps what was read.
@@ -213,27 +221,27 @@ function finalize(outDir, ctx) {
 }
 
 function prepareArm(arm, ctx) {
-  const dir = path.join(ctx.cacheDir, `${arm.id}-${arm.commitSha.slice(0, 12)}`);
+  const dir = path.join(ctx.cacheDir, `${arm.id}-${arm.cacheKey ?? arm.commitSha.slice(0, 12)}`);
   const exportDir = path.join(dir, 'src');
   const bin = path.join(dir, 'konductor');
   const claudeDir = path.join(dir, 'claude-install', '.claude');
   const readyFile = path.join(dir, '.ready');
   try {
     const ready = JSON.parse(fs.readFileSync(readyFile, 'utf8'));
-    if (ready.commitSha === arm.commitSha && fs.existsSync(path.join(claudeDir, 'agents', 'konductor.md'))) {
+    if (sandbox.readyMatches(ready, arm) && fs.existsSync(path.join(claudeDir, 'agents', 'konductor.md'))) {
       return { exportDir, bin, claudeDir, mcpSha256: null, cliSha256: ready.cliSha256, cached: true };
     }
   } catch { /* rebuild */ }
   fs.rmSync(dir, { recursive: true, force: true });
-  sandbox.exportRef(ctx.repo, arm.commitSha, exportDir);
+  sandbox.exportArm(arm, ctx, exportDir);
   sandbox.buildCli(exportDir, bin, ctx);
-  sandbox.run(bin, ['synth', '--from', exportDir], { cwd: exportDir });
+  sandbox.synthArm(bin, exportDir);
   const home = path.join(dir, 'home');
   fs.mkdirSync(home, { recursive: true });
   const e = { ...process.env, HOME: home };
   sandbox.run(bin, ['install', '--harness', 'claude', '--from', exportDir, '--target', path.join(dir, 'claude-install'), '--no-telemetry'], { env: e });
   const cliSha256 = sandbox.sha256File(bin);
-  fs.writeFileSync(readyFile, JSON.stringify({ commitSha: arm.commitSha, cliSha256 }) + '\n');
+  fs.writeFileSync(readyFile, JSON.stringify({ commitSha: arm.commitSha, contentHash: arm.contentHash ?? null, cliSha256 }) + '\n');
   return { exportDir, bin, claudeDir, mcpSha256: null, cliSha256, cached: false };
 }
 
@@ -258,6 +266,6 @@ const keepPaths = (ctx) => [ctx.opencode?.bin, ctx.rgBin].filter(Boolean);
 
 module.exports = {
   id, VERSION, PROVIDER, DEFAULT_MODEL, REGION, VARIANTS, TITLE, THROTTLE,
-  prepareArm, trialInstall, installInto, buildCommand, env, envSetup, removeCredentials, keepPaths, parseResult, collectArtifacts, finalize,
+  prepareArm, requiredPaths: ['cli/konductor-rs/Cargo.toml'], trialInstall, installInto, buildCommand, env, envSetup, removeCredentials, keepPaths, parseResult, turnSummary, collectArtifacts, finalize,
   resolveOpencode, resolveRipgrep, variantOf, zeroTokens,
 };

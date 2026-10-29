@@ -1,0 +1,40 @@
+{
+  "id": "real-click-3473-argument-help",
+  "class": "real",
+  "target": null,
+  "prompt": "This directory holds a Python command-line library. Options can carry help text, but arguments cannot: `click.argument(\"name\", help=\"...\")` is rejected, and the --help page never lists arguments. Add help support for arguments.\n\nExpected behaviour:\n- click.Argument, and therefore click.argument, accepts an optional `help` string. Indented multi-line help is stored dedented and trimmed, the same way help for options is cleaned. Without it the stored value is None; an empty string stays an empty string.\n- The help page of a command gets a new section titled \"Positional arguments\", placed before the \"Options\" section. Each row shows the argument's usage metavar (NAME, or [NAME] when the argument is optional) and its help text. Arguments no longer appear under \"Options\". A command with no argument that has help shows no such section.\n- A deprecated argument is labelled the way deprecated options are: \"(DEPRECATED)\" when deprecated is True, \"(DEPRECATED: <message>)\" when it is a message. The label follows the help text after one space. When there is no help text, or it is empty, the row holds the label alone with no leading space, and the argument is still listed.\n- Argument.to_info_dict() reports the argument's help under the key \"help\" (None when not given).\n\nBehaviour for options, usage lines, and commands without argument help must stay as it is. Update the user documentation where arguments are described. Do not edit any existing test file; put new tests in a new file under tests/. The existing suite (`python3 -m pytest tests`) must keep passing. Add a short note to the change log in the style of its other entries. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "real": "click-3473-argument-help",
+  "hidden": "click-3473-argument-help",
+  "timeoutSec": 1500,
+  "checks": [
+    {
+      "type": "tests",
+      "manifest": true
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "tests",
+      "allowAdditions": true
+    }
+  ],
+  "rubric": [
+    {
+      "id": "investigated",
+      "criterion": "The transcript shows the agent reading how options store and format their help, how the help page is assembled and how deprecated options are labelled, before editing, and reusing those mechanisms instead of duplicating them.",
+      "weight": 2
+    },
+    {
+      "id": "verified",
+      "criterion": "After editing, the agent ran the argument, help and info-dict tests or the whole suite and reports the result; new tests sit in a new file and cover the section title and order, the optional metavar, the deprecated labels (with and without help) and the info dict.",
+      "weight": 2
+    },
+    {
+      "id": "minimal-consistent",
+      "criterion": "The change follows the project's patterns, includes the documentation and change-log entries asked for, touches nothing unrelated, and the final message lists the files changed and assumptions.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "real"
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "id": "real-commander-2577-option-terminator",
+  "class": "real",
+  "target": null,
+  "prompt": "This directory holds a JavaScript command-line library (ES modules; tests run with `node --test`). Programs built with it can have git-style external subcommands, where `pm echo` starts a separate executable. When the user types the option terminator `--` after the subcommand name, the library removes it before the external program starts, so the program cannot see where the user ended the options.\n\nFor a program whose external subcommand `echo` prints its arguments as JSON (see tests/fixtures/pm and tests/fixtures/pm-echo.js):\n- `pm echo -- --foo ARG` currently starts the subcommand with [\"--foo\",\"ARG\"]. It should start it with [\"--\",\"--foo\",\"ARG\"].\n- `pm echo ARG -- --foo` currently gives [\"ARG\",\"--foo\"]. It should give [\"ARG\",\"--\",\"--foo\"].\n- A `--` typed before the subcommand name (`pm -- echo --foo ARG`) still ends option processing for the main program and is not passed on; the subcommand gets [\"--foo\",\"ARG\"].\n\nEverything else about `--` must keep working, including subcommands defined inside the program, action handler arguments, repeated terminators and a terminator at the end of the arguments. Do not edit any existing test file; put new tests in a new file under tests/. The existing suite (`node --test`) must keep passing. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "real": "commander-2577-option-terminator",
+  "hidden": "commander-2577-option-terminator",
+  "timeoutSec": 1200,
+  "checks": [
+    {
+      "type": "tests",
+      "manifest": true
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "tests",
+      "allowAdditions": true
+    }
+  ],
+  "rubric": [
+    {
+      "id": "investigated",
+      "criterion": "The transcript shows the agent running the fixture program to see the current output, then reading how the parser handles the terminator and dispatches to subcommands before editing.",
+      "weight": 2
+    },
+    {
+      "id": "verified",
+      "criterion": "After editing, the agent ran the argument-handling tests or the whole suite and reports the result; new tests sit in a new file and cover the three placements of the terminator against an external subcommand.",
+      "weight": 2
+    },
+    {
+      "id": "minimal-consistent",
+      "criterion": "The change is limited to the parsing step, keeps behaviour for in-program subcommands, follows the project's style, and the final message lists the files changed and assumptions.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "real"
+  ]
+}

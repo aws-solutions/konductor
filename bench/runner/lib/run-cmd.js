@@ -11,6 +11,8 @@ const { resolveArm } = require('./arms.js');
 const { harnessFor, opencode: oc } = require('./harness/index.js');
 const { readProfile } = require('./harness/opencode-creds.js');
 const { loadTasks, loadSuite, benchMask, BENCH_DIR } = require('./tasks.js');
+const real = require('./real.js');
+const reallib = require('../../real/lib.js');
 const { runAll, prepareAll, preflightTable, describePlan, requireBudget, DEFAULT_CENSORED_FLOOR, CREDITS, USD } = require('./orchestrate.js');
 const { buildChildEnv, describeEnv } = require('./env.js');
 const { resolveIsolation } = require('./isolate.js');
@@ -63,8 +65,34 @@ function summarize(runConfig, state, extra) {
   };
 }
 
+// Builds and trial-installs every arm exactly as `run` does before it launches an agent, prints the preflight table
+// and stops. It needs no kiro-cli login, creates no run directory and starts no agent, so it spends no credits.
+function prepareOnlyRun({ opts, arms, runtimes, repo, log }) {
+  if (runtimes.includes('opencode')) throw new Error('--prepare-only covers kiro-cli arms; opencode arms need their binary and AWS profile, so check them with a normal run');
+  const cacheDir = path.resolve(opts.cache || path.join(os.tmpdir(), 'b-cache'));
+  const cargoTarget = path.resolve(opts['cargo-target'] || process.env.CARGO_TARGET_DIR || path.join(cacheDir, 'cargo-target'));
+  fs.mkdirSync(cacheDir, { recursive: true });
+  const scratchDir = sandbox.makeScratchRoot();
+  procs.trackScratch(scratchDir);
+  for (const a of arms) for (const w of a.warnings) log(`warning: arm ${a.id}: ${w}`);
+  try {
+    const ctx = {
+      repo, cacheDir, cargoTarget, cargoOnline: Boolean(opts['cargo-online']), scratchDir, authDb: null,
+      config: { model: opts.model || DEFAULT_MODEL, effort: opts.effort || DEFAULT_EFFORT, agentEngine: DEFAULT_ENGINE }, envKeep: list(opts['env-keep']),
+    };
+    const { prepared, errors } = prepareAll({ arms, ctx, log, allowPartial: Boolean(opts['allow-partial']) });
+    console.log(preflightTable(arms, prepared, errors));
+    console.log(`prepare-only: ${prepared.size} arm(s) built and trial-installed, ${errors.size} failed; no agent was started`);
+    if (errors.size) process.exitCode = 1;
+  } finally {
+    procs.removeAllScratch();
+  }
+}
+
+const repoRootOf = (opts) => path.resolve(opts['repo-root'] && opts['repo-root'] !== true ? opts['repo-root'] : process.env.BENCH_REPO_ROOT || DEFAULT_REPO);
+
 async function cmdRun(opts) {
-  if (!['lite', 'full', 'hard'].includes(opts.suite)) throw new Error('--suite lite|full|hard is required');
+  if (!['lite', 'full', 'hard', 'real', 'autonomy'].includes(opts.suite)) throw new Error('--suite lite|full|hard|real|autonomy is required');
   const benchDir = opts['bench-dir'] ? path.resolve(opts['bench-dir']) : BENCH_DIR;
   const tasksAll = loadTasks(benchDir);
   const suite = loadSuite(opts.suite, tasksAll, benchDir);
@@ -75,12 +103,19 @@ async function cmdRun(opts) {
     return t;
   });
   if (!tasks.length) throw new Error('no tasks selected');
+  // Real tasks read their base tree from a local cache filled beforehand; stop here, not after the arms are built.
+  const prepareOnly = Boolean(opts['prepare-only']);
+  const realTasks = prepareOnly ? [] : tasks.filter((t) => t.real);
+  const realCache = realTasks.length ? reallib.resolveCache(opts['real-cache'] && opts['real-cache'] !== true ? opts['real-cache'] : undefined) : null;
+  if (realCache) process.env.BENCH_REAL_CACHE = realCache;
+  const realPins = realCache ? real.preflight(realTasks, { cache: realCache }) : null;
   const armIds = opts.arms ? list(opts.arms) : suite.arms;
   const replicates = opts.replicates ? intOpt(opts.replicates, 'replicates') : suite.replicates;
   const parallel = opts.parallel ? intOpt(opts.parallel, 'parallel') : suite.parallel;
-  const REPO = path.resolve(opts['repo-root'] && opts['repo-root'] !== true ? opts['repo-root'] : process.env.BENCH_REPO_ROOT || DEFAULT_REPO);
+  const REPO = repoRootOf(opts);
   const arms = armIds.map((id) => resolveArm(id, REPO));
   const runtimes = [...new Set(arms.map((a) => harnessFor(a).id))];
+  if (prepareOnly) return prepareOnlyRun({ opts, arms, runtimes, repo: REPO, log: (m) => console.error(`[bench ${new Date().toISOString().slice(11, 19)}] ${m}`) });
   if (runtimes.length > 1) throw new Error(`arms from different harnesses cannot share one run (${arms.map((a) => `${a.id}: ${harnessFor(a).id}`).join(', ')}); run them separately with different --out`);
   const isOc = runtimes[0] === 'opencode';
   const unit = isOc ? 'usd' : 'credits';
@@ -133,7 +168,7 @@ async function cmdRun(opts) {
     const kiro = isOc ? null : opts['kiro-bin'] ? { bin: path.resolve(opts['kiro-bin']), shim: null } : sandbox.resolveKiroCli();
     if (kiro) log(`kiro-cli: ${kiro.bin}${kiro.shim ? ` (bypassing the shim at ${kiro.shim})` : ''}`);
     const ctx = {
-      kiroBin: kiro?.bin, repo: REPO, cacheDir, cargoTarget, cargoOnline: Boolean(opts['cargo-online']), scratchDir, authDb, config, envKeep,
+      kiroBin: kiro?.bin, repo: REPO, cacheDir, realCache, cargoTarget, cargoOnline: Boolean(opts['cargo-online']), scratchDir, authDb, config, envKeep,
       envInfo: null,
     };
     if (isOc) {
@@ -159,7 +194,7 @@ async function cmdRun(opts) {
         ...(opts['tripwire-dir'] ? list(opts['tripwire-dir']) : [path.join(os.tmpdir(), 'konductor-bench')]).map((dir) => ({ dir, depth: 4, exclude: ['target-shared'] })),
       ],
       extraExcludes: tripExtra,
-      absExclude: [outDir, cacheDir, cargoTarget, `${cargoTarget}-mcp`, scratchDir],
+      absExclude: [outDir, cacheDir, cargoTarget, `${cargoTarget}-mcp`, scratchDir, ...(realCache ? [realCache] : [])],
     };
 
     if (isOc) {
@@ -197,7 +232,16 @@ async function cmdRun(opts) {
         agentEnginesAvailable: rc.availableEngines(),
       }),
       ...rc.benchGit(REPO),
-      contentHash: rc.hashTree(benchDir, ['tasks', 'fixtures', 'suites']),
+      contentHash: rc.hashTree(benchDir, ['tasks', 'fixtures', 'suites', 'real']),
+      ...(realPins ? {
+        real: {
+          cache: realCache,
+          tasks: realPins,
+          // Hidden from the agent on top of the bench directories; the checks of these tasks also run without a network.
+          hiddenForRealTasks: Object.fromEntries(realTasks.map((t) => [t.id, real.hidePaths(t, { cache: realCache })])),
+          agentNetwork: 'open (the model API needs it); fetches are flagged after the run, not blocked',
+        },
+      } : {}),
       tools: rc.toolVersions(),
       startedAt: new Date().toISOString(),
     };
@@ -224,4 +268,4 @@ async function cmdRun(opts) {
   }
 }
 
-module.exports = { cmdRun };
+module.exports = { cmdRun, repoRootOf };

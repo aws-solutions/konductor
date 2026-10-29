@@ -1,0 +1,38 @@
+[
+  {
+    "id": "d1",
+    "file": "blobs/inv-2025-01.txt",
+    "owner": "ana",
+    "createdAt": "2025-01-05T10:00:00Z"
+  },
+  {
+    "id": "d2",
+    "file": "blobs/inv-2025-02.txt",
+    "owner": "ana",
+    "createdAt": "2025-02-05T10:00:00Z"
+  },
+  {
+    "id": "d3",
+    "file": "blobs/contract-ben.txt",
+    "owner": "ben",
+    "createdAt": "2025-02-11T09:30:00Z"
+  },
+  {
+    "id": "d4",
+    "file": "blobs/photo-cy.txt",
+    "owner": "cy",
+    "createdAt": "2025-03-01T14:00:00Z"
+  },
+  {
+    "id": "d5",
+    "file": "blobs/notes-dee.txt",
+    "owner": "dee",
+    "createdAt": "2025-03-12T08:15:00Z"
+  },
+  {
+    "id": "d6",
+    "file": "blobs/report-q1.txt",
+    "owner": "ben",
+    "createdAt": "2025-04-02T16:45:00Z"
+  }
+]

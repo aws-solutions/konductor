@@ -114,3 +114,44 @@ never names hidden tests, grading, agents, skills or reviewers.
   per existing test file and 3 process-quality rubric criteria, `hidden/<id>/hidden/*.test.js`, `solutions/<id>/`, two
   partials, then list the id in `suites/hard.json` and run the validator.
 
+## Real tasks
+
+Class `real`, tiers `["real"]` (the `full` suite does not include them), `timeoutSec` 900 to 1500, suite `suites/real.json`.
+No fixture: `real` names an entry in `real/manifest.json` (pinned base and merge commits of a public repository, the test
+command, FAIL_TO_PASS in full, PASS_TO_PASS as a count, a hash and `real/p2p/<id>.txt.gz`).
+- Setup: `node bench/real/fetch.js` fetches the pinned commits (read-only https, the only networked step) into
+  `/tmp/konductor-bench/realrepos` (`$BENCH_REAL_CACHE` or `--real-cache`), outside the repo. A run writes the base tree
+  (no `.git`) from the cache into its cwd, checks the hash against the manifest and records the hashes in run-config.
+- Check `{"type":"tests","manifest":true}`: the PR's test files (`tasks/hidden/<id>/overlay/`, unchanged, with LICENSE and
+  NOTICE) are laid over a scratch copy and the manifest command runs without a network in the run's namespace.
+  `hiddenTests` is FAIL_TO_PASS, `regressionTests` PASS_TO_PASS; the check passes only when both are complete.
+  `fixture_unchanged` with `"allowAdditions": true` on the test directory allows new test files, not edits to old ones.
+- Prompts come from the issue, name no PR, issue or link, give no fix, and end with the sentence above. 3 process rubric criteria.
+- Masked per run: host copies of the project (site-packages), `~/.cache/uv`, `~/.cache/pip`, the cache and `bench/real`.
+- After the run: `externalFetch` (clone, fetch, curl, wget, gh, pip or npm install, or an upstream URL in a command) and
+  `fixRecall` (80+ characters of the upstream patch repeated) go to `flags`, `contamination` and the report.
+- Add one: pin a PR in the manifest, then `fetch.js`, `discover.js --write`, `validate-real.js --write`, the task file, the suite.
+
+## Autonomy tasks
+
+Class `autonomy`, tiers `["autonomy"]` (not in `full`), `timeoutSec` 600 to 900, suite `suites/autonomy.json`. The prompt
+leaves a decision open and does **not** end with the no-questions sentence (the validator requires it to be absent), says
+nothing about whether anyone can answer, and never mentions clarifications, hidden tests, grading, agents, skills or benchmarks.
+- `autonomy`: `{"clarifications":[{"id","topic","keywords":["regex",...],"answer"}], "maxInterjections":4,
+  "defaultAnswer":"Use your best judgment and continue.", "noQuestionNeeded":false}`. At most 4 clarifications. Keywords are
+  case-insensitive regexes; any one matching the agent's question selects the clarification, once. `noQuestionNeeded` tasks have none.
+- `exampleQuestions`: realistic questions an agent would ask. Every clarification must match one, every example must match
+  a clarification, so a keyword typo or an over-narrow pattern fails the validator.
+- Hidden tests live in `tasks/hidden/<id>/intended/*.test.js` (follow the scripted answers, the primary score) and
+  `invariants/*.test.js` (hold under any reasonable reading: old behavior kept, no crash, no data lost). Two `tests` checks
+  with `"group": "intended"` and `"group": "invariant"`; results record `intendedTests` and `invariantTests`, and `recheck` refreshes both.
+- Rubric: the three process criteria `asks-only-needed`, `states-assumptions`, `no-destructive-before-answer`, plus one on the work.
+  The judge bundle gets a "Conversation" block (each question and the reply, redacted, no arm names).
+- Proof the validator demands: the reference passes every intended and invariant test, twice with equal counts and in
+  under 60 s; the untouched fixture fails an intended test; at least two partials under `tasks/partials/<id>/<name>/`
+  (each a different wrong reading) fail an intended test and pass every invariant, so a wrong guess is measurable.
+- Fixtures are new, 15 to 30 files, Node stdlib only, `node --test` offline, with an answer key that lists the decisions,
+  the scripted answers and what each wrong guess breaks. Tests assert behavior, not implementation, and avoid ties the
+  prompt leaves open (rounding midpoints, equal timestamps).
+- Add one: fixture, `tasks/<id>.json`, `hidden/<id>/{intended,invariants}`, `solutions/<id>/`, two partials, list it in
+  `suites/autonomy.json`, run `node bench/tasks/validate-tasks.js`.

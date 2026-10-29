@@ -7,6 +7,7 @@ const { resolveArm } = require('./arms.js');
 const { harnessFor } = require('./harness/index.js');
 const { executeRun } = require('./run-one.js');
 const { skippedResult, errorResult } = require('./result.js');
+const { layoutProblem } = require('./arm-source.js');
 
 const DEFAULT_CENSORED_FLOOR = 1.0;
 
@@ -133,9 +134,24 @@ function writeResult(outDir, arm, task, rep, result) {
 function prepareAll({ arms, ctx, log, allowPartial = false }) {
   const prepared = new Map();
   const errors = new Map();
+  // Layout problems are known without building, so they stop the run before any arm spends time in cargo.
+  const unbuildable = new Map();
   for (const arm of arms) {
     if (arm.vanilla) continue;
-    log(`preparing arm ${arm.id} (${arm.commitSha.slice(0, 10)})`);
+    const problem = layoutProblem(arm, ctx.repo, harnessFor(arm).requiredPaths || []);
+    if (problem) unbuildable.set(arm.id, problem);
+  }
+  if (unbuildable.size && !allowPartial) {
+    const lines = [...unbuildable].map(([id, why]) => `arm ${id} could not be prepared: ${why}`);
+    throw new Error(`${lines.join('\n')}\n(use --allow-partial to run the remaining arms)`);
+  }
+  for (const [id, why] of unbuildable) {
+    errors.set(id, why);
+    log(`arm ${id} could not be prepared: ${why}`);
+  }
+  for (const arm of arms) {
+    if (arm.vanilla || errors.has(arm.id)) continue;
+    log(`preparing arm ${arm.id} (${armKey(arm)})`);
     try {
       const harness = harnessFor(arm);
       const p = harness.prepareArm(arm, ctx);
@@ -152,6 +168,9 @@ function prepareAll({ arms, ctx, log, allowPartial = false }) {
   return { prepared, errors };
 }
 
+// What identifies an arm's content in the preflight table: its commit, or the hash of a directory snapshot.
+const armKey = (a) => (a.commitSha ? a.commitSha.slice(0, 10) : a.contentHash ? `dir:${a.contentHash.slice(0, 10)}` : '-');
+
 function preflightTable(arms, prepared, errors) {
   const rows = [['arm', 'ref', 'commit', 'mcp sha256', 'state']];
   for (const a of arms) {
@@ -159,7 +178,7 @@ function preflightTable(arms, prepared, errors) {
     rows.push([
       a.label,
       a.ref ?? '-',
-      a.commitSha ? a.commitSha.slice(0, 10) : '-',
+      armKey(a),
       p?.mcpSha256 ? p.mcpSha256.slice(0, 12) : '-',
       a.vanilla ? 'ready' : errors.has(a.id) ? 'FAILED' : p?.cached ? 'ready (cached)' : 'ready (built)',
     ]);

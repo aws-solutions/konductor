@@ -1,0 +1,10 @@
+{
+  "name": "table-tennis-league",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Results and statistics for the office table tennis league",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "node --test"
+  }
+}

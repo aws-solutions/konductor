@@ -1,0 +1,10 @@
+{
+  "name": "crm-lite",
+  "version": "0.6.0",
+  "private": true,
+  "description": "Customer and order records kept in JSON files",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "node --test"
+  }
+}

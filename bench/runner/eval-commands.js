@@ -20,6 +20,7 @@ const { renderMarkdown } = require('../report/render.js');
 const { recheckAll } = require('./lib/recheck.js');
 const { collectRows, summarizeSkills, renderSkillsMarkdown } = require('../report/skills.js');
 const { compareRuns, formatCompare } = require('../report/compare.js');
+const { contrastRun, renderContrast } = require('../report/contrast.js');
 
 // One judge per model family: gpt, deepseek, glm. Override with --judges (qwen3-coder-next, minimax-m2.5 also work).
 const DEFAULT_JUDGES = ['gpt-5.6-luna', 'deepseek-3.2', 'glm-5'];
@@ -70,6 +71,9 @@ async function cmdJudge(opts) {
   const { judges, small } = resolveJudges({ cliJudges: opts.judges, suiteJudges, subjectModel: run.config.model ?? null, allowSmallPanel: Boolean(opts['allow-small-panel']) });
   const modes = String(opts.mode || 'rubric,pairwise').split(',');
   if (modes.some((m) => !['rubric', 'pairwise'].includes(m))) throw new Error('--mode takes rubric, pairwise or both');
+  const baseline = opts.baseline && opts.baseline !== true ? opts.baseline : defaultBaseline(run);
+  const arms = [...new Set(run.runs.map((r) => r.armId))];
+  if (modes.includes('pairwise') && !arms.includes(baseline)) throw new Error(`baseline arm "${baseline}" has no runs in ${runDir} (arms present: ${arms.join(', ')}); pass --baseline ARM or --mode rubric`);
   const timeoutMs = numOpt(opts, 'judge-timeout-sec', DEFAULTS.timeoutSec) * 1000;
   const judgeCmd = opts['judge-cmd'] || process.env.BENCH_JUDGE_CMD;
   const log = (m) => console.error(`[judge ${new Date().toISOString().slice(11, 19)}] ${m}`);
@@ -92,7 +96,7 @@ async function cmdJudge(opts) {
   let j;
   try {
     j = await runJudging({
-      runDir, benchDir, judges, modes, baseline: opts.baseline || defaultBaseline(run), caller, smallPanel: small,
+      runDir, benchDir, judges, modes, baseline, caller, smallPanel: small,
       concurrency: numOpt(opts, 'concurrency', DEFAULTS.concurrency, { int: true }),
       budgetCredits: opts['budget-credits'] === undefined ? null : numOpt(opts, 'budget-credits', null),
       limits: limitsOf(opts), redactions: loadRedactions(opts['redact-file']), log,
@@ -125,7 +129,7 @@ function cmdRecheck(opts) {
 function cmdReport(opts) {
   const runDir = path.resolve(need(opts, 'run'));
   const run = loadRun(runDir);
-  const baseline = opts.baseline || defaultBaseline(run);
+  const baseline = opts.baseline && opts.baseline !== true ? opts.baseline : defaultBaseline(run);
   if (!run.runs.some((r) => r.armId === baseline)) console.error(`warning: baseline arm "${baseline}" has no runs; pairwise columns will be empty`);
   const { report } = buildReport({ run, tasks: loadTasks(benchDirOf(opts)), baseline });
   const mdPath = path.resolve(opts.out && opts.out !== true ? opts.out : path.join(runDir, 'report.md'));
@@ -166,6 +170,25 @@ function cmdCompare(opts) {
   }
 }
 
+// One base arm against one or more head arms of a single run. Writes contrast.md and contrast.json beside the results.
+function cmdContrast(opts) {
+  const runDir = path.resolve(need(opts, 'run'));
+  const rule = opts.rule || 'both';
+  if (!['both', 'any'].includes(rule)) throw new Error('--rule takes both or any');
+  const heads = opts.head === undefined ? null : String(opts.head === true ? '' : opts.head).split(',').filter(Boolean);
+  if (heads && !heads.length) throw new Error('--head needs one or more arm names, comma separated');
+  if (opts.base !== undefined && opts.base === true) throw new Error('--base needs an arm name');
+  const c = contrastRun({
+    run: loadRun(runDir), tasks: loadTasks(benchDirOf(opts)), base: opts.base, heads,
+    minRel: numOpt(opts, 'min-rel', 0.15), rule,
+  });
+  const md = renderContrast(c);
+  fs.writeFileSync(path.join(runDir, 'contrast.md'), md);
+  fs.writeFileSync(path.join(runDir, 'contrast.json'), JSON.stringify(c, null, 2) + '\n');
+  console.log(md);
+  console.log(`wrote ${path.join(runDir, 'contrast.md')}\nwrote ${path.join(runDir, 'contrast.json')}`);
+}
+
 function cmdCalibrate(opts) {
   const sub = opts._[0];
   if (sub === 'export') {
@@ -190,4 +213,4 @@ function cmdCalibrate(opts) {
   }
 }
 
-module.exports = { cmdJudge, cmdRecheck, cmdReport, cmdCompare, cmdCalibrate, cmdSkills, resolveJudges, DEFAULT_JUDGES };
+module.exports = { cmdJudge, cmdRecheck, cmdReport, cmdCompare, cmdContrast, cmdCalibrate, cmdSkills, resolveJudges, DEFAULT_JUDGES };

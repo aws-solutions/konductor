@@ -1,0 +1,40 @@
+{
+  "id": "real-rich-3934-empty-live",
+  "class": "real",
+  "target": null,
+  "prompt": "This directory holds a Python library for styled terminal output. A Live display whose content renders nothing writes a stray blank line when it is left, even with transient=True. Reproduce it with:\n\n```python\nfrom rich.console import Console, Group\nfrom rich.live import Live\n\nconsole = Console(width=20, height=5, force_terminal=True)\nconsole.begin_capture()\nwith Live(Group(), console=console, transient=True):\n    pass\nprint(repr(console.end_capture()))\n```\n\nThe captured text contains a newline. Nothing visible was ever drawn, so leaving the Live should not emit a line break: the only output should be the cursor hide and show codes and the line clearing around them. A Live that did render something must behave exactly as it does now, including the final line break. Do not edit any existing test file; put new tests in a new file under tests/. The existing suite (`python3 -m pytest tests`) must keep passing. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "real": "rich-3934-empty-live",
+  "hidden": "rich-3934-empty-live",
+  "timeoutSec": 1200,
+  "checks": [
+    {
+      "type": "tests",
+      "manifest": true
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "tests",
+      "allowAdditions": true
+    }
+  ],
+  "rubric": [
+    {
+      "id": "investigated",
+      "criterion": "The transcript shows the agent reproducing the stray newline and reading the code that runs when a Live is left and the code that tracks what was rendered, before editing; its final message names the cause.",
+      "weight": 2
+    },
+    {
+      "id": "verified",
+      "criterion": "After editing, the agent ran the Live tests or the whole suite and reports the result; new tests sit in a new file and cover both an empty and a non-empty Live.",
+      "weight": 2
+    },
+    {
+      "id": "minimal-consistent",
+      "criterion": "The change is limited to what the empty case needs, leaves the non-empty path untouched, follows the surrounding style, and the final message lists the files changed and assumptions.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "real"
+  ]
+}

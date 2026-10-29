@@ -174,13 +174,13 @@ test('loadTasks resolves hiddenDir and loadSuite knows the hard suite', () => {
     const suite = loadSuite('hard', tasks, bench);
     assert.deepEqual(suite.taskIds, ['t1']);
     assert.equal(suite.parallel, 1);
-    assert.throws(() => loadSuite('nightly', tasks, bench), /lite, full or hard/);
+    assert.throws(() => loadSuite('nightly', tasks, bench), /lite, full, hard or real/);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
-test('benchMask hides fixtures, solutions, stubs, hidden tests and partials', () => {
+test('benchMask hides fixtures, the real-repository files, solutions, stubs, hidden tests and partials', () => {
   assert.deepEqual(benchMask('/b').map((p) => path.relative('/b', p)).sort(),
-    ['fixtures', 'tasks/hidden', 'tasks/partials', 'tasks/solutions', 'tasks/stubs']);
+    ['fixtures', 'real', 'tasks/hidden', 'tasks/partials', 'tasks/solutions', 'tasks/stubs']);
 });
 
 test('recheck re-runs tests checks against the saved workspace and stores hiddenTests', () => {

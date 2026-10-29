@@ -15,8 +15,10 @@ function readAnswerKey(fixtureDir) {
   return fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null;
 }
 
+// A real-repository task has no answer key; its base tree is identified by the pinned hash in the manifest.
 function taskRevision(task) {
-  const material = JSON.stringify({ prompt: task.prompt, rubric: task.rubric, answerKey: readAnswerKey(task.fixtureDir) });
+  const answerKey = task.real ? `real:${task.realEntry.contentSha256}` : readAnswerKey(task.fixtureDir);
+  const material = JSON.stringify({ prompt: task.prompt, rubric: task.rubric, answerKey });
   return crypto.createHash('sha256').update(material).digest('hex').slice(0, 12);
 }
 

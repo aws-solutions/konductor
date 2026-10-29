@@ -1,0 +1,40 @@
+{
+  "id": "real-commander-2637-help-group-conflict",
+  "class": "real",
+  "target": null,
+  "prompt": "This directory holds a JavaScript command-line library (ES modules; tests run with `node --test`). A program can put its options into named groups in the help output, including the built-in help option. When an application option reuses one of the help option's flags, the help option is shown with only its remaining flag, and in that case it loses its group and appears under the default \"Options:\" heading.\n\n```js\nimport { Command, Option } from './index.js';\n\nconst program = new Command()\n  .option('-h, --host <host>')\n  .addHelpOption(new Option('-h, --help', 'display help').helpGroup('Information:'));\nconsole.log(program.helpInformation());\n```\n\nThis prints `--help` under \"Options:\". It should print it under \"Information:\". The same applies when the long flag is the one that is taken: with `program.option('--help <topic>')`, `program.optionsGroup('Information:')` and `program.helpOption(true)`, the remaining `-h` should be listed under \"Information:\". Help output where no flag conflicts must stay unchanged. Do not edit any existing test file; put new tests in a new file under tests/. The existing suite (`node --test`) must keep passing. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "real": "commander-2637-help-group-conflict",
+  "hidden": "commander-2637-help-group-conflict",
+  "timeoutSec": 900,
+  "checks": [
+    {
+      "type": "tests",
+      "manifest": true
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "tests",
+      "allowAdditions": true
+    }
+  ],
+  "rubric": [
+    {
+      "id": "investigated",
+      "criterion": "The transcript shows the agent running the example, then reading how the visible options are computed for help output and where the replacement option for a conflicting flag is created before editing.",
+      "weight": 2
+    },
+    {
+      "id": "verified",
+      "criterion": "After editing, the agent ran the help tests or the whole suite and reports the result; new tests sit in a new file and cover both the short-flag and the long-flag conflict.",
+      "weight": 2
+    },
+    {
+      "id": "minimal-consistent",
+      "criterion": "The change is limited to the help-option replacement, follows the project's style, and the final message lists the files changed and assumptions.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "real"
+  ]
+}

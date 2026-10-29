@@ -7,7 +7,6 @@
     "class",
     "target",
     "prompt",
-    "fixture",
     "timeoutSec",
     "checks",
     "rubric",
@@ -26,7 +25,9 @@
         "orchestration",
         "review",
         "design",
-        "hard"
+        "hard",
+        "real",
+        "autonomy"
       ]
     },
     "target": {
@@ -89,6 +90,18 @@
             "items": {
               "type": "string"
             }
+          },
+          "manifest": {
+            "type": "boolean"
+          },
+          "allowAdditions": {
+            "type": "boolean"
+          },
+          "group": {
+            "enum": [
+              "intended",
+              "invariant"
+            ]
           }
         }
       }
@@ -124,13 +137,81 @@
         "enum": [
           "lite",
           "full",
-          "hard"
+          "hard",
+          "real",
+          "autonomy"
         ]
       }
     },
     "hidden": {
       "type": "string",
       "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.-]*$"
+    },
+    "real": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.-]*$"
+    },
+    "exampleQuestions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "autonomy": {
+      "type": "object",
+      "required": [
+        "clarifications"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "clarifications": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "topic",
+              "keywords",
+              "answer"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.-]*$"
+              },
+              "topic": {
+                "type": "string",
+                "minLength": 1
+              },
+              "keywords": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "answer": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "maxInterjections": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "defaultAnswer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "noQuestionNeeded": {
+          "type": "boolean"
+        }
+      }
     }
   }
 }

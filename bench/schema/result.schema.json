@@ -221,6 +221,35 @@
                 "type": "boolean"
               }
             }
+          },
+          "regression": {
+            "type": "object",
+            "required": [
+              "passed",
+              "total"
+            ],
+            "properties": {
+              "passed": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "total": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          "allowAdditions": {
+            "type": "boolean"
+          },
+          "manifest": {
+            "type": "boolean"
+          },
+          "group": {
+            "enum": [
+              "intended",
+              "invariant"
+            ]
           }
         }
       }
@@ -618,6 +647,167 @@
           "type": "boolean"
         }
       }
+    },
+    "regressionTests": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "passed",
+        "total"
+      ],
+      "properties": {
+        "passed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "contamination": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "externalFetch": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "fixRecallChars": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "intendedTests": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "passed",
+        "total"
+      ],
+      "properties": {
+        "passed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unparsed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "invariantTests": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "passed",
+        "total"
+      ],
+      "properties": {
+        "passed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unparsed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "turns": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "interjections": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "turn",
+          "text",
+          "matched",
+          "answered"
+        ],
+        "properties": {
+          "turn": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "matched": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "answered": {
+            "type": "boolean"
+          },
+          "reply": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "questionsAsked": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "unmatchedQuestions": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "askedFirstTurn": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "interjectionCapHit": {
+      "type": "boolean"
+    },
+    "autonomous": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "completedWithoutHelp": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "assumptionsStated": {
+      "type": [
+        "boolean",
+        "null"
+      ]
     }
   }
 }

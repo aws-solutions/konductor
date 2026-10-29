@@ -109,7 +109,8 @@ test('a scratch directory that cannot be created gives an error result instead o
 });
 
 test('post-processing that throws keeps the finished run credits and marks an infra error', async () => {
-  const s = setup({ breakSessions: true, credits: 0.75 });
+  const s = setup({ credits: 0.75 });
+  s.ctx.tripwire.roots = [{ dir: s.watch, depth: 2, exclude: 5 }];
   try {
     const r = await executeRun({ arm: ARM, task: s.task, replicate: 1, ctx: s.ctx, prepared: null, outDir: s.outDir });
     assert.equal(r.credits, 0.75);

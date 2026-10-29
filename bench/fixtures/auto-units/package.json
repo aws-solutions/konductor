@@ -1,0 +1,10 @@
+{
+  "name": "fmt-kit",
+  "version": "1.2.0",
+  "private": true,
+  "description": "Tiny helpers that turn numbers into display strings",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "node --test"
+  }
+}

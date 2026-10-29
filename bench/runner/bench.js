@@ -3,33 +3,44 @@
 /**
  * bench.js - benchmark runner for Konductor on kiro-cli or opencode (run, judge, recheck, report, compare, calibrate).
  *
- *   node bench/runner/bench.js run --suite lite|full|hard [--arms a,b] [--tasks id,id]
+ *   node bench/runner/bench.js run --suite lite|full|hard|real|autonomy [--arms a,b] [--tasks id,id]
  *        [--replicates N] [--parallel N] [--budget-credits X] [--out DIR]
- *   node bench/runner/bench.js list-arms
+ *   node bench/runner/bench.js list-arms [--arms a,b] [--repo-root DIR]
+ *   node bench/runner/bench.js contrast --run DIR [--base ARM] [--head a,b]
+ *   node bench/runner/bench.js pr-plan --ref name=ref|name=dir:path [--base v1.2.0] [--suite lite|real|hard]
  *
  * Every run executes in a scratch HOME and a fresh cwd with an allowlisted
  * environment, optionally inside a read-only mount namespace. See bench/README.md.
  */
 'use strict';
 
-const { listArms, KNOWN_ARMS } = require('./lib/arms.js');
-const { cmdRun } = require('./lib/run-cmd.js');
+const { listArms, KNOWN_ARMS, resolveArms, formatArmRows, ARM_SYNTAX } = require('./lib/arms.js');
+const { cmdRun, repoRootOf } = require('./lib/run-cmd.js');
+const { planPr } = require('./lib/pr-plan.js');
 const evalCommands = require('./eval-commands.js');
 
 const USAGE = `Usage:
-  node bench/runner/bench.js run --suite lite|full|hard [--arms a,b,c] [--tasks id,id]
+  node bench/runner/bench.js run --suite lite|full|hard|real|autonomy [--arms a,b,c] [--tasks id,id]
        [--replicates N] [--parallel N] [--budget-credits X] [--out DIR]
        [--model ID] [--effort LEVEL] [--cache DIR] [--cargo-target DIR] [--cargo-online]
        [--seed N] [--isolate unshare|none|auto] [--allow-partial] [--censored-floor X] [--hide DIR,DIR]
        [--env-keep NAME,NAME] [--tripwire-exclude PATH,PATH] [--tripwire-depth N] [--tripwire-dir DIR,DIR]
-       [--kiro-bin PATH] [--bench-dir DIR] [--repo-root DIR]
+       [--kiro-bin PATH] [--bench-dir DIR] [--repo-root DIR] [--real-cache DIR] [--prepare-only]
+       (--prepare-only builds and trial-installs every arm, prints the preflight table and exits before any agent run)
+       arms: vanilla, v1.0.0, v1.1.0, v1.2.0, main, name=<git ref>, name=dir:<path> (see list-arms for the syntax)
        opencode arms (oc-vanilla, oc-v1.2.0, oc-main; one harness per run):
        --aws-creds-file FILE [--aws-profile bench] [--budget-usd X] [--opencode-bin PATH] [--rg-bin PATH]
-  node bench/runner/bench.js judge --run DIR [--judges a,b] [--mode rubric,pairwise] [--baseline vanilla]
+  node bench/runner/bench.js judge --run DIR [--judges a,b] [--mode rubric,pairwise] [--baseline vanilla|ARM]
        [--concurrency N] [--budget-credits X] [--judge-cmd CMD] [--max-file-chars N] [--max-bundle-chars N]
        [--redact-file FILE] [--judge-timeout-sec N] [--bench-dir DIR] [--allow-small-panel] [--kiro-bin PATH]
        [--isolate unshare|none|auto] [--hide DIR,DIR] [--auth-db FILE]
-  node bench/runner/bench.js report --run DIR [--baseline vanilla] [--out report.md]
+  node bench/runner/bench.js report --run DIR [--baseline vanilla|ARM] [--out report.md]
+  node bench/runner/bench.js contrast --run DIR [--base ARM] [--head ARM,ARM] [--min-rel 0.15] [--rule both|any]
+       (each head arm against the base arm, overall and per task class; writes contrast.md and contrast.json
+       in DIR. Default base: v1.2.0 if present, else vanilla, else the first arm. Default head: all other arms)
+  node bench/runner/bench.js pr-plan --ref name=<git ref>|name=dir:<path> [--base v1.2.0] [--suite lite|real|hard]
+       [--replicates N] [--no-vanilla] [--budget-credits X] [--seed N] [--repo-root DIR]
+       (prints the run, contrast, judge and report commands for one ref against a release; runs nothing)
   node bench/runner/bench.js recheck --run DIR [--bench-dir DIR] [--dry-run]
        (re-evaluates the current task checks against each run's saved workspace; the first results are kept
        under checksOriginal in result.json; stream.jsonl and credit fields are never touched; safe to repeat)
@@ -39,7 +50,9 @@ const USAGE = `Usage:
        (skill and SOP loads recomputed from stream.jsonl; read-only, works on old and in-progress runs)
   node bench/runner/bench.js calibrate export --run DIR [--n 25] [--seed S] [--out DIR]
   node bench/runner/bench.js calibrate score --labels FILE [--key FILE] [--kappa-min 0.6]
-  node bench/runner/bench.js list-arms`;
+  node bench/runner/bench.js list-arms [--arms a,b,c] [--repo-root DIR]
+
+${ARM_SYNTAX}`;
 
 function parseArgs(argv) {
   const opts = { _: [] };
@@ -54,15 +67,37 @@ function parseArgs(argv) {
   return opts;
 }
 
-function cmdListArms() {
-  for (const a of listArms()) console.log(`${a.id.padEnd(8)} ${a.condition}${a.note ? `  (${a.note})` : ''}`);
+function cmdListArms(opts) {
+  for (const a of listArms()) console.log(`${a.id.padEnd(11)} ${a.condition}${a.note ? `  (${a.note})` : ''}`);
+  console.log(`\n${ARM_SYNTAX}`);
+  if (opts.arms && opts.arms !== true) {
+    const repo = repoRootOf(opts);
+    console.log(`\nResolved against ${repo} (local refs only, nothing is fetched or built):\n${formatArmRows(resolveArms(String(opts.arms).split(',').filter(Boolean), repo))}`);
+  }
+}
+
+function cmdPrPlan(opts) {
+  try {
+    const p = planPr({
+      ref: opts.ref, base: opts.base === undefined ? undefined : opts.base, suite: opts.suite === undefined ? undefined : opts.suite,
+      replicates: opts.replicates, noVanilla: Boolean(opts['no-vanilla']), budgetCredits: opts['budget-credits'] === undefined ? null : Number(opts['budget-credits']),
+      seed: opts.seed, benchDir: opts['bench-dir'] ? require('node:path').resolve(opts['bench-dir']) : undefined,
+      repoRoot: opts['repo-root'] && opts['repo-root'] !== true ? opts['repo-root'] : null,
+    });
+    console.log(p.text);
+  } catch (e) {
+    console.error(`pr-plan: ${e.message}`);
+    process.exitCode = 2;
+  }
 }
 
 async function main(argv) {
   const [cmd, ...rest] = argv;
   const opts = parseArgs(rest);
   if (cmd === 'run') return cmdRun(opts);
-  if (cmd === 'list-arms') return cmdListArms();
+  if (cmd === 'list-arms') return cmdListArms(opts);
+  if (cmd === 'pr-plan') return cmdPrPlan(opts);
+  if (cmd === 'contrast') return evalCommands.cmdContrast(opts);
   if (cmd === 'judge') return evalCommands.cmdJudge(opts);
   if (cmd === 'report') return evalCommands.cmdReport(opts);
   if (cmd === 'recheck') return evalCommands.cmdRecheck(opts);

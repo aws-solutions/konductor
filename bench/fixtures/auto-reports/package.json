@@ -1,0 +1,10 @@
+{
+  "name": "shop-reports",
+  "version": "0.5.0",
+  "private": true,
+  "description": "Command line reports over the shop order export and the finance ledger",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "node --test"
+  }
+}

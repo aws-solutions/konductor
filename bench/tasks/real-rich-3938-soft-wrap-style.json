@@ -1,0 +1,40 @@
+{
+  "id": "real-rich-3938-soft-wrap-style",
+  "class": "real",
+  "target": null,
+  "prompt": "This directory holds a Python library for styled terminal output. Printing styled text with soft wrapping turned on leaves the style active across the line break, so in a real terminal the background colour bleeds into the beginning of the next printed line. Reproduce it with:\n\n```python\nfrom rich.console import Console\n\nconsole = Console(color_system=\"standard\", width=80, force_terminal=True)\nwith console.capture() as capture:\n    console.print(\"soft wrap is on\", style=\"blue on white\", soft_wrap=True)\n    console.print(\"Next line\")\nprint(repr(capture.get()))\n```\n\nIn the captured text the style is reset only after the newline, so the newline itself is still inside the styled span. With soft wrapping off, the reset comes before the newline. Make the soft-wrap path do the same, so each styled line is closed before its line break. Output for unstyled text, for text that already contains several lines, and every other console option must stay as it is today. Do not edit any existing test file; put new tests in a new file under tests/. The existing suite (`python3 -m pytest tests`) must keep passing. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "real": "rich-3938-soft-wrap-style",
+  "hidden": "rich-3938-soft-wrap-style",
+  "timeoutSec": 1200,
+  "checks": [
+    {
+      "type": "tests",
+      "manifest": true
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "tests",
+      "allowAdditions": true
+    }
+  ],
+  "rubric": [
+    {
+      "id": "investigated",
+      "criterion": "The transcript shows the agent reproducing the escape-sequence output, then reading how Console.print builds its output for soft wrap before editing; the cause it states in its final message matches what it changed.",
+      "weight": 2
+    },
+    {
+      "id": "verified",
+      "criterion": "After editing, the agent ran the relevant tests or the whole suite and its final message reports the result; any new tests sit in a new file and assert the exact escape sequence around the line break.",
+      "weight": 2
+    },
+    {
+      "id": "minimal-consistent",
+      "criterion": "The change touches only the code needed for the line-break handling, matches the surrounding style, and the final message lists the files changed and any assumptions.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "real"
+  ]
+}

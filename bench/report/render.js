@@ -41,15 +41,71 @@ function pairCell(c) {
 }
 
 // The hidden-tests column sits right after "pass" and appears only when some arm in the scope has scores.
+// The real class names it FAIL_TO_PASS and adds the regression (PASS_TO_PASS) column next to it.
 const hasHidden = (report, arms, scope) => arms.some((a) => report.arms[a][scope].hidden);
+const hasRegression = (report, arms, scope) => arms.some((a) => report.arms[a][scope].regression);
+const hiddenName = (scope) => (scope === 'real' ? 'FAIL_TO_PASS passed' : 'hidden tests passed');
 function qHead(head, report, arms, scope) {
-  if (!hasHidden(report, arms, scope)) return head;
+  const extra = [...(hasHidden(report, arms, scope) ? [hiddenName(scope)] : []), ...(hasRegression(report, arms, scope) ? ['regression (PASS_TO_PASS) passed'] : [])];
+  if (!extra.length) return head;
   const i = head.indexOf('pass') + 1;
-  return [...head.slice(0, i), 'hidden tests passed', ...head.slice(i)];
+  return [...head.slice(0, i), ...extra, ...head.slice(i)];
 }
 function withHidden(row, c, arms, report, scope) {
-  if (!hasHidden(report, arms, scope)) return row;
-  return [...row.slice(0, 5), hiddenCell(c), ...row.slice(5)];
+  const extra = [...(hasHidden(report, arms, scope) ? [hiddenCell(c)] : []), ...(hasRegression(report, arms, scope) ? [regressionCell(c)] : [])];
+  if (!extra.length) return row;
+  return [...row.slice(0, 5), ...extra, ...row.slice(5)];
+}
+
+function regressionCell(c) {
+  const h = c.regression;
+  if (!h) return 'n/a';
+  return `${pct(h.meanFraction)} (${Math.round(h.allPassShare * h.runs)} of ${h.runs} runs pass all)`;
+}
+
+// Never part of the quality table: fetches and verbatim recall of the upstream fix are reported on their own.
+function contaminationSection(report, scope, arms) {
+  if (!arms.some((a) => report.arms[a][scope].contamination)) return null;
+  const rows = arms.map((a) => {
+    const c = report.arms[a][scope].contamination;
+    if (!c) return [a, '0', '-', '-', '-', 'not audited'];
+    return [a, c.audited, c.externalFetch, c.fixRecall, c.unchecked, c.flagged.map((x) => `${x.taskId} #${x.replicate} (${x.kinds.join(', ')})`).join('; ') || 'none'];
+  });
+  return [
+    `**Contamination audit, ${scope}** (read from the stream and the final tree after the run; it never changes a check)`,
+    table(['arm', 'audited runs', 'externalFetch', 'fixRecall', 'audit failed', 'flagged runs'], rows),
+  ].join('\n');
+}
+
+const share = (v, n) => (v === null || v === undefined ? 'n/a' : `${Math.round(v * n)}/${n} (${pct(v)})`);
+const groupCell = (g) => (g ? `${pct(g.meanFraction)} (${Math.round(g.allPassShare * g.runs)} of ${g.runs} pass all)` : 'n/a');
+
+// Autonomy tier: how much help each arm needed and what it did with the answers. One table per scope that has the data;
+// "overall" is left out when a class scope already shows the same runs.
+function autonomySection(report) {
+  const scopes = report.scopes.filter((sc) => Object.values(report.arms).some((a) => a[sc]?.autonomy));
+  if (!scopes.length) return null;
+  const shown = scopes.length > 1 ? scopes.filter((sc) => sc !== 'overall') : scopes;
+  const usd = report.costUnit === 'usd';
+  const out = ['## Autonomy', ''];
+  for (const scope of shown) {
+    const arms = Object.keys(report.arms).filter((a) => report.arms[a][scope]?.autonomy);
+    const rows = arms.map((a) => {
+      const x = report.arms[a][scope].autonomy;
+      const nq = x.noQuestionTasks;
+      return [
+        a, x.runs, share(x.askedRate, x.runs), f(x.meanInterjections), nq.runs ? `${nq.askedRuns}/${nq.runs} runs, ${nq.questions} question(s)` : 'n/a', x.unmatchedQuestions,
+        x.capHits, groupCell(x.intended), groupCell(x.invariants), share(x.completedWithoutHelpRate, x.runs),
+        x.interjectionsPerSuccess === null ? 'n/a' : f(x.interjectionsPerSuccess), usd ? f(x.costPerRun, 3) : f(x.costPerRun), x.wallClockPerRunMs === null ? 'n/a' : f(x.wallClockPerRunMs / 1000, 0),
+      ];
+    });
+    out.push(`### ${scope}`, table([
+      'arm', 'runs', 'asked at least once', 'mean interjections', 'questions on no-question tasks', 'unmatched questions (other tasks)', 'interjection cap hits',
+      'intended tests passed', 'invariant tests passed', 'completed without help', 'interjections per successful run', `${usd ? 'USD' : 'credits'} per run, all turns`, 'wall clock s per run, all turns',
+    ], rows), '');
+  }
+  out.push('How to read: an interjection is a scripted reply to a question the agent asked; a question that matched none of the task\'s clarifications gets a neutral reply and counts as unmatched. Questions on no-question tasks are over-asking and are not repeated in the unmatched column. Intended tests follow the answers the scripted user gives; invariant tests must hold under any reasonable reading. "Completed without help" means no interjection and every intended and invariant test passed. "Interjections per successful run" is all interjections divided by runs whose checks all passed. Cost and wall clock include every turn and every failed run. "assumptions stated" (a text heuristic on the last message) is in report.json only.', '');
+  return out.join('\n');
 }
 
 function scopeSection(report, scope) {
@@ -70,6 +126,7 @@ function scopeSection(report, scope) {
     table(qHead(['arm', 'n', 'ok/timeout/error', 'success', 'pass', 'asked user', 'rubric score, scored (raw judge verdicts)', `win/tie/loss vs ${report.baseline}`, 'credits per successful run'], report, arms, scope), quality),
     '',
     table(['arm', 'clean passes in medians', 'credits', 'modelCalls', 'toolCalls', 'subagentCalls', 'wallClock s', 'estTokens (estimate)'], eff),
+    ...[contaminationSection(report, scope, arms)].filter(Boolean).flatMap((x) => ['', x]),
   ].join('\n');
 }
 
@@ -91,6 +148,7 @@ function scopeSectionOpencode(report, scope) {
     table(qHead(['arm', 'n', 'ok/timeout/error', 'success', 'pass', 'asked user', 'rubric score, scored (raw judge verdicts)', `win/tie/loss vs ${report.baseline}`, 'USD per successful run'], report, arms, scope), quality),
     '',
     table(['arm', 'clean passes in medians', 'USD (list price)', 'tokens (input + output + cache read + cache write)', 'modelCalls', 'toolCalls', 'subagentCalls', 'wallClock s'], eff),
+    ...[contaminationSection(report, scope, arms)].filter(Boolean).flatMap((x) => ['', x]),
   ].join('\n');
 }
 
@@ -118,6 +176,8 @@ function renderMarkdown(report) {
   out.push('## Flags', '', flags.length ? flags.join('\n') : 'None.', '');
   out.push('## Results', '');
   for (const scope of report.scopes) out.push(scopeSection(report, scope), '');
+  const autonomy = autonomySection(report);
+  if (autonomy) out.push(autonomy);
   if (report.judging) {
     out.push('## Judging', '', table(['judge', 'records', 'errors', 'calls (cached)', 'parse failures', 'credits (all invocations)', 'median latency s', 'quote not found', 'downgraded (quote missing)'],
       Object.entries(report.judging.byJudge).map(([j, s]) => [j, s.records, s.errors, `${s.calls} (${s.cachedCalls})`, s.parseFailures, f(s.credits, 3), f(s.medianLatencyMs === null ? null : s.medianLatencyMs / 1000, 1), pct(s.unverifiedQuoteRate), s.evidenceDowngraded])));

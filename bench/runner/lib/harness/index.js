@@ -5,7 +5,9 @@
 //   prepareArm(arm, ctx)                      build or fetch what the arm needs; cached
 //   trialInstall(prepared, ctx)               prove the arm installs; returns the agents whose model was pinned
 //   installInto(scratchHome, opts)            fill the run's scratch HOME (config, content, credentials); returns meta
-//   buildCommand({arm, task, config, ctx, cwd}) -> {file, args, display}
+//   buildCommand({arm, task, config, ctx, cwd, resume}) -> {file, args, display}
+//                                             resume = {sessionId, prompt} continues the same session with a new message (autonomy tasks)
+//   turnSummary(streamText)                   {sessionId, runFinishedStatus, stopReason, finalText, askedUser} of one turn's stream
 //   env({arm, config, ctx, home, tmpdir})     environment for the agent process
 //   removeCredentials(scratchHome)            delete the credential copy once the agent exits
 //   parseResult(outDir, {home, tmpdir, acc, arm, ctx, config})  fills acc.agg, acc.session, acc.transcript (and acc.usage)

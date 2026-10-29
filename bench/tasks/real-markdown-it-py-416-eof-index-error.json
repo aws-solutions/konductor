@@ -1,0 +1,40 @@
+{
+  "id": "real-markdown-it-py-416-eof-index-error",
+  "class": "real",
+  "target": null,
+  "prompt": "This directory holds a Python Markdown parser. With the table rule enabled, parsing raises IndexError when the input ends right after a blockquote marker while a table inside that quote is still open:\n\n```python\nfrom markdown_it import MarkdownIt\n\nMarkdownIt().enable(\"table\").parse(\"> | a | b |\\n> |---|---|\\n>\")\nMarkdownIt(\"commonmark\", {\"html\": False}).enable(\"table\").parse(\"> | a | b |\\n> |---|---|\\n>\")\n```\n\nBoth calls raise `IndexError: string index out of range`. The same happens when a space follows the final marker, when the quote is nested (\"> > | a | b |\\n> > |---|---|\\n> >\"), and when a body row is followed by a bare marker. The same inputs with a trailing newline parse fine, and so do complete tables and quotes without tables. The error also shows up with html turned off, so fixing only the first call is not enough.\n\nParsing must not raise for any of these inputs under either setting, and the results for inputs that already parse must not change. Do not edit any existing test file; put new tests in a new file under tests/. The existing suite (`python3 -m pytest tests`) must keep passing. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "real": "markdown-it-py-416-eof-index-error",
+  "hidden": "markdown-it-py-416-eof-index-error",
+  "timeoutSec": 1200,
+  "checks": [
+    {
+      "type": "tests",
+      "manifest": true
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "tests",
+      "allowAdditions": true
+    }
+  ],
+  "rubric": [
+    {
+      "id": "investigated",
+      "criterion": "The transcript shows the agent reproducing both tracebacks, following each to the rule that raised it, and noticing that the second call hits a different place than the first, before editing.",
+      "weight": 2
+    },
+    {
+      "id": "verified",
+      "criterion": "After editing, the agent ran the reproduction for every listed input and the test suite and reports the result; new tests sit in a new file and cover both settings and the variants named in the report.",
+      "weight": 2
+    },
+    {
+      "id": "minimal-consistent",
+      "criterion": "The change is limited to the places that raised, mirrors how neighbouring rules already guard the same situation, and the final message lists the files changed and assumptions.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "real"
+  ]
+}

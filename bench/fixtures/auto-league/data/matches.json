@@ -1,0 +1,12 @@
+[
+  { "home": "Ana", "away": "Ben", "homeGoals": 2, "awayGoals": 2, "playedOn": "2025-02-03" },
+  { "home": "Cy", "away": "Dee", "homeGoals": 0, "awayGoals": 1, "playedOn": "2025-02-03" },
+  { "home": "Eli", "away": "Ana", "homeGoals": 1, "awayGoals": 3, "playedOn": "2025-02-10" },
+  { "home": "Ben", "away": "Cy", "homeGoals": 1, "awayGoals": 1, "playedOn": "2025-02-10" },
+  { "home": "Dee", "away": "Eli", "homeGoals": 2, "awayGoals": 2, "playedOn": "2025-02-17" },
+  { "home": "Ana", "away": "Cy", "homeGoals": 0, "awayGoals": 2, "playedOn": "2025-02-17" },
+  { "home": "Ben", "away": "Dee", "homeGoals": 2, "awayGoals": 0, "playedOn": "2025-02-24" },
+  { "home": "Cy", "away": "Eli", "homeGoals": 0, "awayGoals": 3, "playedOn": "2025-02-24" },
+  { "home": "Dee", "away": "Ana", "homeGoals": 2, "awayGoals": 1, "playedOn": "2025-03-03" },
+  { "home": "Eli", "away": "Ben", "homeGoals": 0, "awayGoals": 2, "playedOn": "2025-03-03" }
+]

@@ -1,0 +1,24 @@
+{
+  "tasks": [
+    "real-rich-3938-soft-wrap-style",
+    "real-rich-3934-empty-live",
+    "real-click-3728-help-name-order",
+    "real-click-3473-argument-help",
+    "real-markdown-it-py-416-eof-index-error",
+    "real-markdown-it-py-379-cli-stdin",
+    "real-commander-2577-option-terminator",
+    "real-commander-2637-help-group-conflict"
+  ],
+  "arms": [
+    "vanilla",
+    "v1.2.0",
+    "main"
+  ],
+  "replicates": 1,
+  "judges": [
+    "gpt-5.6-luna",
+    "deepseek-3.2",
+    "glm-5"
+  ],
+  "parallel": 1
+}

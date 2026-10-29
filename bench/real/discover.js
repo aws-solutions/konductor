@@ -107,7 +107,7 @@ function main(argv) {
     for (const t of found.f2pAll) console.log(`   F2P${(entry.excluded || []).some((e) => e.id === t) ? ' (excluded)' : ''}: ${t}`);
     if (args.write) {
       entry.failToPass = found.failToPass;
-      entry.passToPass = found.passToPass;
+      entry.passToPass = lib.writeP2p(entry.id, found.passToPass);
       entry.contentSha256 = found.m.contentSha256;
       entry.fileCount = found.m.fileCount;
       writeVendored(entry, found, lib.entryPaths(lib.resolveCache(args.cache), entry.id).gitDir);

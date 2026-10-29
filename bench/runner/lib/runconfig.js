@@ -62,12 +62,27 @@ function toolVersions() {
   };
 }
 
+// Where the arm's content came from and how far it sits from origin/main. File names only, never contents.
+function provenanceOf(a) {
+  return {
+    source: a.source ?? null,
+    refResolved: a.refResolved ?? null,
+    dirty: a.dirty ?? null,
+    contentHash: a.contentHash ?? null,
+    baseSha: a.baseSha ?? null,
+    mergeBase: a.mergeBase ?? null,
+    commitsAhead: a.commitsAhead ?? null,
+    filesChanged: a.filesChanged ?? null,
+  };
+}
+
 function armRecords(arms, prepared, errors) {
   return arms.map((a) => ({
     id: a.id,
     label: a.label,
     ref: a.ref,
     commitSha: a.commitSha,
+    ...provenanceOf(a),
     originMainSha: a.originMainSha ?? undefined,
     localMainSha: a.localMainSha ?? undefined,
     behindOrigin: a.behindOrigin ?? undefined,
@@ -91,4 +106,4 @@ function envPolicy(baseEnv, envKeep) {
   };
 }
 
-module.exports = { hashTree, availableEngines, benchGit, toolVersions, armRecords, envPolicy };
+module.exports = { provenanceOf, hashTree, availableEngines, benchGit, toolVersions, armRecords, envPolicy };

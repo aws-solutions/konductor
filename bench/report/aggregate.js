@@ -5,8 +5,9 @@ const { median, medianCI, mean } = require('./stats.js');
 const { summarizeSkills, rowsFromResults } = require('./skills.js');
 const { rubricScore } = require('../judge/score.js');
 const { taskRevision } = require('../judge/revision.js');
+const { MIN_RECALL } = require('../runner/lib/contamination.js');
 
-const CLASS_ORDER = ['simple', 'sop', 'orchestration', 'review', 'design', 'hard'];
+const CLASS_ORDER = ['simple', 'sop', 'orchestration', 'review', 'design', 'hard', 'real', 'autonomy'];
 const MIN_REPLICATES = 3;
 
 const EFFICIENCY = {
@@ -75,7 +76,84 @@ function hiddenSummary(executed) {
   };
 }
 
-function buildCell(entries, { judges, rubricIdx, pairRecords, isBaseline, disagreeScore, notJudged = [], basis = BASIS['kiro-cli'], rawScoreOf = (rec) => rec.scoreRaw ?? rec.score }) {
+// PASS_TO_PASS of the real class: how much of the existing test suite still passes, apart from the FAIL_TO_PASS score.
+function regressionSummary(executed) {
+  const scored = executed.map((e) => e.result.regressionTests).filter((h) => h && h.total > 0);
+  if (!scored.length) return null;
+  return {
+    runs: scored.length,
+    meanFraction: mean(scored.map((h) => h.passed / h.total)),
+    allPassShare: scored.filter((h) => h.passed === h.total).length / scored.length,
+  };
+}
+
+const hasAutonomyData = (r) => typeof r.turns === 'number' && r.turns > 0;
+const share = (xs, pred) => (xs.length ? xs.filter(pred).length / xs.length : null);
+
+// Scored group of the autonomy tier (intended or invariant tests): mean fraction and the share of runs passing all.
+function groupSummary(runs, field) {
+  const scored = runs.map((r) => r[field]).filter((h) => h && h.total > 0);
+  if (!scored.length) return null;
+  return {
+    runs: scored.length,
+    meanFraction: mean(scored.map((h) => h.passed / h.total)),
+    allPassShare: scored.filter((h) => h.passed === h.total).length / scored.length,
+  };
+}
+
+/**
+ * The autonomy tier, per arm and scope: how often the agent asked, how many scripted replies it needed, and what it got right.
+ * Questions on no-question tasks are counted apart from unmatched questions on the other tasks, so no question is in both figures.
+ * Cost and wall clock cover every turn of every executed run, failures included.
+ */
+function autonomySummary(executed, { noQuestionTasks, charged, outcome }) {
+  const entries = executed.filter((e) => hasAutonomyData(e.result));
+  if (!entries.length) return null;
+  const runs = entries.map((e) => e.result);
+  const onNoQuestion = entries.filter((e) => noQuestionTasks.has(e.taskId)).map((e) => e.result);
+  const onOthers = entries.filter((e) => !noQuestionTasks.has(e.taskId)).map((e) => e.result);
+  const sum = (xs, f) => xs.reduce((n, r) => n + (num(f(r)) ?? 0), 0);
+  const good = entries.filter((e) => outcome(e) === 'good');
+  const walls = runs.map((r) => num(r.wallClockMs)).filter((v) => v !== null);
+  return {
+    runs: runs.length,
+    askedRuns: runs.filter((r) => r.questionsAsked > 0).length,
+    askedRate: share(runs, (r) => r.questionsAsked > 0),
+    askedFirstTurnRate: share(runs, (r) => r.askedFirstTurn === true),
+    meanInterjections: avg(runs.map((r) => num(r.interjections) ?? 0)),
+    noQuestionTasks: { runs: onNoQuestion.length, askedRuns: onNoQuestion.filter((r) => r.questionsAsked > 0).length, questions: sum(onNoQuestion, (r) => r.questionsAsked) },
+    unmatchedQuestions: sum(onOthers, (r) => r.unmatchedQuestions),
+    capHits: runs.filter((r) => r.interjectionCapHit === true).length,
+    intended: groupSummary(runs, 'intendedTests'),
+    invariants: groupSummary(runs, 'invariantTests'),
+    completedWithoutHelpRate: share(runs, (r) => r.completedWithoutHelp === true),
+    assumptionsStatedRate: share(runs, (r) => r.assumptionsStated === true),
+    interjectionsPerSuccess: good.length ? sum(runs, (r) => r.interjections) / good.length : null,
+    successfulRuns: good.length,
+    costPerRun: avg(entries.map((e) => charged(e.result))),
+    wallClockPerRunMs: avg(walls),
+  };
+}
+
+// Post-run audit of the real class. Flagged runs are named, and a run whose audit failed counts as unchecked.
+function contaminationSummary(executed) {
+  const audited = executed.filter((e) => e.result.contamination);
+  if (!audited.length) return null;
+  const kindsOf = (c) => [...((c.externalFetch || []).length ? ['externalFetch'] : []), ...((c.fixRecallChars || 0) >= MIN_RECALL ? ['fixRecall'] : [])];
+  const flagged = audited
+    .map((e) => ({ taskId: e.taskId, replicate: e.replicate, kinds: kindsOf(e.result.contamination) }))
+    .filter((f) => f.kinds.length)
+    .sort((a, b) => (a.taskId < b.taskId ? -1 : a.taskId > b.taskId ? 1 : a.replicate - b.replicate));
+  return {
+    audited: audited.length,
+    externalFetch: flagged.filter((f) => f.kinds.includes('externalFetch')).length,
+    fixRecall: flagged.filter((f) => f.kinds.includes('fixRecall')).length,
+    unchecked: audited.filter((e) => (e.result.flags || []).includes('contaminationUnchecked')).length,
+    flagged,
+  };
+}
+
+function buildCell(entries, { judges, rubricIdx, pairRecords, isBaseline, disagreeScore, notJudged = [], basis = BASIS['kiro-cli'], rawScoreOf = (rec) => rec.scoreRaw ?? rec.score, noQuestionTasks = new Set() }) {
   const charged = basis.charged;
   const executed = entries.filter((e) => e.result.status !== 'budget_skipped');
   const n = executed.length;
@@ -112,6 +190,14 @@ function buildCell(entries, { judges, rubricIdx, pairRecords, isBaseline, disagr
     efficiency[name] = medianCI(vals);
     if (name === 'estTokens') efficiency[name].isEstimate = true;
   }
+
+  // Autonomy series feed `compare`; they stay empty (and so are skipped there) for runs with no autonomy data.
+  const withData = executed.filter((e) => hasAutonomyData(e.result));
+  series.interjections = withData.map((e) => num(e.result.interjections)).filter((v) => v !== null);
+  series.unmatchedQuestions = withData.map((e) => num(e.result.unmatchedQuestions)).filter((v) => v !== null);
+  series.intendedFraction = withData.map((e) => e.result.intendedTests).filter((h) => h && h.total > 0).map((h) => h.passed / h.total);
+  series.invariantFraction = withData.map((e) => e.result.invariantTests).filter((h) => h && h.total > 0).map((h) => h.passed / h.total);
+  series.completedWithoutHelp = withData.map((e) => e.result.completedWithoutHelp).filter((v) => typeof v === 'boolean').map(Number);
 
   let rubric = null;
   const flags = [];
@@ -181,6 +267,8 @@ function buildCell(entries, { judges, rubricIdx, pairRecords, isBaseline, disagr
     flagCounts,
     checkPassRate: n ? counts.good / n : null,
     hidden: hiddenSummary(executed),
+    regression: regressionSummary(executed),
+    contamination: contaminationSummary(executed),
     minReplicates, lowReplicates, notJudged: skippedJudge,
     efficiencyRuns: good.length,
     [basis.unit === 'usd' ? 'cost' : 'credits']: {
@@ -195,6 +283,8 @@ function buildCell(entries, { judges, rubricIdx, pairRecords, isBaseline, disagr
     },
     rubric, pairwise, efficiency, flags,
   };
+  const autonomy = autonomySummary(executed, { noQuestionTasks, charged, outcome: (e) => outcome.get(e) });
+  if (autonomy) cell.autonomy = autonomy;
   if (basis.unit === 'credits') cell.cost = cell.credits;
   return { cell, series };
 }
@@ -214,7 +304,13 @@ function recheckSummary(runs) {
   };
 }
 
-const defaultBaseline = (run) => (run.harness === 'opencode' ? 'oc-vanilla' : 'vanilla');
+// vanilla when the run has it; a run without vanilla (for example --no-vanilla) uses the release arm, then the first arm.
+function defaultBaseline(run) {
+  const oc = run.harness === 'opencode';
+  const present = [...new Set((run.runs || []).map((r) => r.armId))];
+  const prefer = [oc ? 'oc-vanilla' : 'vanilla', oc ? 'oc-v1.2.0' : 'v1.2.0'];
+  return prefer.find((a) => present.includes(a)) ?? (present.length ? [...present].sort()[0] : prefer[0]);
+}
 
 function buildReport({ run, tasks, baseline = defaultBaseline(run), disagreeScore = 0.2 }) {
   const j = run.judgments;
@@ -226,6 +322,7 @@ function buildReport({ run, tasks, baseline = defaultBaseline(run), disagreeScor
   const rubricIdx = new Map((j?.rubric || []).filter((r) => !isStale(r)).map((r) => [`${r.judge}|${r.armId}|${r.taskId}|${r.replicate}`, r]));
   const rawScoreOf = (rec) => rec.scoreRaw ?? rawFromCriteria(rec, tasks.get(rec.taskId));
   const classOf = (taskId) => tasks.get(taskId)?.class ?? 'unknown';
+  const noQuestionTasks = new Set([...tasks].filter(([, t]) => t.autonomy?.noQuestionNeeded === true).map(([id]) => id));
 
   const armIds = [...new Set(run.runs.map((r) => r.armId))];
   const order = (run.config.armIds || []).filter((a) => armIds.includes(a));
@@ -250,7 +347,7 @@ function buildReport({ run, tasks, baseline = defaultBaseline(run), disagreeScor
       const entries = run.runs.filter((r) => r.armId === arm && (scope === 'overall' || classOf(r.taskId) === scope));
       if (!entries.length) continue;
       const pairRecords = j ? j.pairwise.filter((r) => !isStale(r) && r.armId === arm && (scope === 'overall' || classOf(r.taskId) === scope)) : null;
-      const built = buildCell(entries, { judges, rubricIdx, pairRecords, isBaseline: arm === baseline, disagreeScore, basis, rawScoreOf, notJudged: (j?.notJudged || []).filter((x) => x.armId === arm && (scope === 'overall' || classOf(x.taskId) === scope)) });
+      const built = buildCell(entries, { judges, rubricIdx, pairRecords, isBaseline: arm === baseline, disagreeScore, basis, rawScoreOf, noQuestionTasks, notJudged: (j?.notJudged || []).filter((x) => x.armId === arm && (scope === 'overall' || classOf(x.taskId) === scope)) });
       report.arms[arm][scope] = built.cell;
       series[arm][scope] = built.series;
     }
@@ -294,4 +391,4 @@ function judgingSummary(j, isStale, stale) {
   return out;
 }
 
-module.exports = { buildReport, defaultBaseline, MIN_REPLICATES, EFFICIENCY, EFFICIENCY_OC, BASIS };
+module.exports = { buildReport, defaultBaseline, outcomeOf, OUTCOMES, CLASS_ORDER, MIN_REPLICATES, EFFICIENCY, EFFICIENCY_OC, BASIS };

@@ -23,6 +23,12 @@ const METRICS = [
   { name: 'costUsd', better: 'lower', kind: 'median' },
   { name: 'tokens', better: 'lower', kind: 'median' },
   { name: 'costUsdPerSuccessfulRun', series: 'costPerSuccess', better: 'lower', kind: 'ratio' },
+  // autonomy tier: series exist only for runs of tasks with an autonomy block, so other runs never meet these.
+  { name: 'interjections', better: 'lower', kind: 'mean' },
+  { name: 'unmatchedQuestions', better: 'lower', kind: 'mean' },
+  { name: 'intendedFraction', better: 'higher', kind: 'mean' },
+  { name: 'invariantFraction', better: 'higher', kind: 'mean' },
+  { name: 'completedWithoutHelp', better: 'higher', kind: 'mean' },
 ];
 
 function relChange(base, head) {
@@ -78,27 +84,67 @@ function classify(metric, base, head, { minRel, rule }) {
   return { direction: worse ? 'worse' : 'better', rel, lowN };
 }
 
+// What an arm resolved to, from its result.json fields (a directory arm by content hash), else the run-config record.
+function armIdentity(rec) {
+  if (!rec) return null;
+  if (rec.source === 'dir') return rec.contentHash ? `dir:${rec.contentHash}` : null;
+  return rec.commitSha || null;
+}
+
+function armRecords(run) {
+  const out = new Map((run.config.arms || []).map((a) => [a.id, a]));
+  for (const r of run.runs) if (armIdentity(r.result)) out.set(r.armId, r.result);
+  return out;
+}
+
+const shortId = (id) => (id ? (id.startsWith('dir:') ? `dir:${id.slice(4, 16)}` : id.slice(0, 12)) : '-');
+
+// Same name first; then a base-only arm pairs with a head-only arm that resolved to the same commit or snapshot.
+function matchArms(baseArms, headArms, baseIds, headIds) {
+  const pairs = baseArms.filter((a) => headArms.includes(a)).map((a) => ({ base: a, head: a, by: 'name' }));
+  const free = headArms.filter((a) => !baseArms.includes(a));
+  for (const a of baseArms.filter((x) => !headArms.includes(x))) {
+    const id = baseIds.get(a);
+    const hit = id && free.find((h) => headIds.get(h) === id);
+    if (hit) { pairs.push({ base: a, head: hit, by: 'commit' }); free.splice(free.indexOf(hit), 1); }
+  }
+  return pairs;
+}
+
 function compareRuns({ baseDir, headDir, benchDir, minRel = 0.15, rule = 'both', force = false }) {
   const base = loadRun(baseDir);
   const head = loadRun(headDir);
   const tasks = loadTasks(benchDir);
   const refusals = refusalsFor(base, head);
-  const result = { refusals, forced: force && refusals.length > 0, regressions: [], improvements: [], onlyInBase: [], onlyInHead: [], minRel, rule };
+  const result = { refusals, forced: force && refusals.length > 0, regressions: [], improvements: [], onlyInBase: [], onlyInHead: [], armChanged: [], matchedBySha: [], minRel, rule };
   if (refusals.length && !force) return { ...result, exitCode: 2 };
 
   const b = buildReport({ run: base, tasks });
   const h = buildReport({ run: head, tasks });
   const baseArms = Object.keys(b.report.arms);
   const headArms = Object.keys(h.report.arms);
-  result.onlyInBase = baseArms.filter((a) => !headArms.includes(a));
-  result.onlyInHead = headArms.filter((a) => !baseArms.includes(a));
+  const baseRecs = armRecords(base);
+  const headRecs = armRecords(head);
+  const ids = (recs, arms) => new Map(arms.map((a) => [a, armIdentity(recs.get(a))]));
+  const baseIds = ids(baseRecs, baseArms);
+  const headIds = ids(headRecs, headArms);
+  const pairs = matchArms(baseArms, headArms, baseIds, headIds);
+  result.onlyInBase = baseArms.filter((a) => !pairs.some((p) => p.base === a));
+  result.onlyInHead = headArms.filter((a) => !pairs.some((p) => p.head === a));
+  result.matchedBySha = pairs.filter((p) => p.by === 'commit').map(({ base: b0, head: h0 }) => ({ base: b0, head: h0 }));
+  for (const p of pairs.filter((x) => x.by === 'name')) {
+    const bi = baseIds.get(p.base);
+    const hi = headIds.get(p.head);
+    if (bi && hi && bi !== hi) result.armChanged.push({ arm: p.head, base: pick(baseRecs.get(p.base)), head: pick(headRecs.get(p.head)) });
+  }
 
-  for (const arm of baseArms.filter((a) => headArms.includes(a))) {
-    for (const scope of Object.keys(b.series[arm])) {
-      if (!h.series[arm][scope]) continue;
+  for (const { base: ba, head: ha } of pairs) {
+    const arm = ba === ha ? ha : `${ba}->${ha}`;
+    for (const scope of Object.keys(b.series[ba])) {
+      if (!h.series[ha][scope]) continue;
       for (const m of METRICS) {
-        const bs = b.series[arm][scope][m.series || m.name];
-        const hs = h.series[arm][scope][m.series || m.name];
+        const bs = b.series[ba][scope][m.series || m.name];
+        const hs = h.series[ha][scope][m.series || m.name];
         if (!bs?.length || !hs?.length) continue;
         const sb = statFor(m, bs);
         const sh = statFor(m, hs);
@@ -113,6 +159,14 @@ function compareRuns({ baseDir, headDir, benchDir, minRel = 0.15, rule = 'both',
   return { ...result, exitCode: result.regressions.length ? 1 : 0 };
 }
 
+// The fields shown when an arm changed between runs; no contents.
+function pick(rec) {
+  return {
+    ref: rec?.ref ?? null, source: rec?.source ?? null, commitSha: rec?.commitSha ?? null, contentHash: rec?.contentHash ?? null,
+    baseSha: rec?.baseSha ?? null, commitsAhead: rec?.commitsAhead ?? null, dirty: rec?.dirty ?? null,
+  };
+}
+
 function formatCompare(r) {
   const lines = [];
   if (r.refusals.length) {
@@ -125,6 +179,11 @@ function formatCompare(r) {
     return `  ${x.arm} / ${x.scope} / ${x.metric}: ${g(x.base)} -> ${g(x.head)} (${rel})${x.lowN ? ' [few runs, CI not used]' : ''}`;
   };
   lines.push(`Rule: ${r.rule}, minimum relative change ${(r.minRel * 100).toFixed(0)}%`);
+  for (const c of r.armChanged || []) {
+    const ahead = (x) => (x.commitsAhead === null ? '' : ` (${x.commitsAhead} ahead of origin/main)`);
+    lines.push(`Arm changed: ${c.arm} was ${shortId(armIdentity(c.base))}${ahead(c.base)} in base and is ${shortId(armIdentity(c.head))}${ahead(c.head)} in head; the differences below include the new commits`);
+  }
+  for (const m of r.matchedBySha || []) lines.push(`Arms matched by commit: ${m.base} (base) = ${m.head} (head)`);
   if (r.onlyInBase.length) lines.push(`Arms only in base (not compared): ${r.onlyInBase.join(', ')}`);
   if (r.onlyInHead.length) lines.push(`Arms only in head (not compared): ${r.onlyInHead.join(', ')}`);
   lines.push(`REGRESSIONS (${r.regressions.length}):`, ...(r.regressions.length ? r.regressions.map(row) : ['  none']));
@@ -132,4 +191,4 @@ function formatCompare(r) {
   return lines.join('\n');
 }
 
-module.exports = { compareRuns, formatCompare, relChange };
+module.exports = { compareRuns, formatCompare, relChange, statFor, classify, armIdentity, METRICS, MIN_RUNS_FOR_CI };

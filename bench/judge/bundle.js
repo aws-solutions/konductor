@@ -46,9 +46,17 @@ function finalTextOf(runDir, result = null) {
   return runtimeOf(result) === 'opencode' ? aggregateEvents(events).lastText : aggregateStream(events).finalText;
 }
 
+// Autonomy runs only: what the scripted user was asked and what it answered. Judged with the rest of the bundle, so redaction applies.
+function conversationBlock(result) {
+  if (!Array.isArray(result.questions) || typeof result.turns !== 'number') return null;
+  if (!result.questions.length) return '## Conversation\nThe agent asked no question.';
+  const lines = result.questions.map((q, i) => `Question ${i + 1} (after turn ${q.turn}): ${q.text}\n${q.answered ? `Reply: ${q.reply ?? ''}` : 'No reply was sent.'}`);
+  return `## Conversation\n${lines.join('\n\n')}`;
+}
+
 function checkLine(c) {
   // Hidden tests: counts only, never names, paths or output.
-  if (c.type === 'tests' && c.tests) return `- ${c.passed ? 'PASS' : 'FAIL'} tests: ${c.tests.passed} of ${c.tests.total} hidden tests passed${c.tests.unparsed ? ' (result could not be read)' : ''}`;
+  if (c.type === 'tests' && c.tests) return `- ${c.passed ? 'PASS' : 'FAIL'} tests: ${c.tests.passed} of ${c.tests.total} hidden tests passed${c.regression ? `; ${c.regression.passed} of ${c.regression.total} existing tests still pass` : ''}${c.tests.unparsed ? ' (result could not be read)' : ''}`;
   const what = c.path ?? c.cmd ?? '';
   const extra = c.pattern !== undefined ? ` /${c.pattern}/` : '';
   return `- ${c.passed ? 'PASS' : 'FAIL'} ${c.type} ${what}${extra}${c.detail ? ` (${String(c.detail).slice(0, 200)})` : ''}`;
@@ -75,6 +83,8 @@ function buildBundle({ runDir, result, fixtureDir, limits, redactions }) {
 
   const parts = [];
   parts.push(`## Final assistant text\n${finalTextOf(runDir, result) ?? '(none)'}`);
+  const conversation = conversationBlock(result);
+  if (conversation) parts.push(conversation);
   const fileParts = [];
   let used = 0;
   for (const f of changed) {

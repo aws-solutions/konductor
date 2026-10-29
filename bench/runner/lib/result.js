@@ -3,7 +3,9 @@
 
 const { loadSchema, validate } = require('./schema.js');
 const { resultFields } = require('./skills.js');
-const { aggregateHidden } = require('./check-matcher.js');
+const { aggregateHidden, aggregateRegression, aggregateGroup } = require('./check-matcher.js');
+const { autonomyFields } = require('./autonomy.js');
+const { provenanceOf } = require('./runconfig.js');
 
 function classifyStatus({ timedOut, exitCode, runFinishedStatus }) {
   if (timedOut) return 'timeout';
@@ -32,10 +34,11 @@ function crossCheckCredits(streamCredits, sessions) {
  * transcript: {chars, bytes, partial}, summed over the parent and subagent sessions.
  * usage: opencode only, {tokens, costUsd, modelCalls, sessions} summed over the parent and all subagent sessions.
  * skills: {extraction, info} from the harness (see skills.js), or null.
+ * conv: the autonomy conversation (see autonomy.newConversation), for tasks with an autonomy block.
  * meta: runner-side facts {agentStarted, flags, infraError, modelNormalized, rewrittenAgents, mcpSha256,
  *   isolation, homeTripwireHits, inFlightAtStart, creditsSessionTotal}.
  */
-function buildResult({ arm, task, replicate, config, exec, agg, session, usage = null, skills = null, checks, transcript, env, meta = {} }) {
+function buildResult({ arm, task, replicate, config, exec, agg, session, usage = null, skills = null, checks, transcript, env, meta = {}, conv = null }) {
   const runtime = arm.runtime ?? 'kiro-cli';
   const oc = runtime === 'opencode';
   const flags = [...(meta.flags || [])];
@@ -46,10 +49,12 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
   });
   let error = exec.error ?? null;
   const sessionModel = session?.model ?? null;
-  if (sessionModel && sessionModel !== config.model) {
+  // A resumed conversation has one model entry per turn; any turn on another model invalidates the run.
+  const wrongModel = [...new Set([...(session?.models ?? []), sessionModel].filter((m) => m && m !== config.model))];
+  if (wrongModel.length) {
     flags.push('modelMismatch');
     if (status === 'success') status = 'error';
-    error = [error, `parent session ran on ${sessionModel}, expected ${config.model}`].filter(Boolean).join(' | ');
+    error = [error, `parent session ran on ${wrongModel.join(', ')}, expected ${config.model}`].filter(Boolean).join(' | ');
   }
   if (agg?.nonCreditUnits?.length) flags.push('meteringUnit');
   if (transcript?.partial) flags.push('transcriptPartial');
@@ -67,6 +72,7 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
     armLabel: arm.label,
     ref: arm.ref,
     commitSha: arm.commitSha,
+    ...provenanceOf(arm),
     harness: runtime,
     installHarness: arm.harness,
     harnessVersion: env?.harnessVersion ?? env?.kiroCliVersion ?? null,
@@ -113,6 +119,8 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
     skillsMcpOk: agg?.skillsMcpOk ?? null,
     checks: checks || [],
     hiddenTests: aggregateHidden(checks),
+    regressionTests: aggregateRegression(checks),
+    contamination: meta.contamination ?? null,
     kiroCliVersion: env?.kiroCliVersion ?? null,
     modelListSnapshotPath: env?.modelListSnapshotPath ?? null,
     sessionModel,
@@ -129,14 +137,15 @@ function buildResult({ arm, task, replicate, config, exec, agg, session, usage =
     infraError: meta.infraError ?? null,
     error,
     ...resultFields({ extraction: skills?.extraction ?? null, info: skills?.info ?? null, task, arm }),
+    ...(autonomyFields({ task, conv, checks: checks || [], finalText: agg?.finalText ?? null, aggregateGroup }) ?? {}),
   };
 }
 
-function errorResult({ arm, task, replicate, config, env, message, meta }) {
+function errorResult({ arm, task, replicate, config, env, message, meta, conv = null }) {
   return buildResult({
     arm, task, replicate, config,
     exec: { timedOut: false, exitCode: null, wallClockMs: null, error: message },
-    agg: null, session: null, checks: [], transcript: null, env, meta,
+    agg: null, session: null, checks: [], transcript: null, env, meta, conv,
   });
 }
 

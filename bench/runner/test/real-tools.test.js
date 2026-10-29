@@ -128,12 +128,15 @@ test('only fetch.js can reach the network', () => {
   const net = /['"`]fetch['"`]|['"`]clone['"`]|['"`]pull['"`]|ls-remote|\bcurl\b|\bwget\b|https?\.request|\bfetch\(/;
   const offenders = [];
   for (const dir of dirs) {
-    for (const f of fs.readdirSync(dir).filter((n) => n.endsWith('.js') && n !== 'fetch.js')) {
+    // contamination.js holds the command patterns it looks for in a finished run; it never runs them.
+    for (const f of fs.readdirSync(dir).filter((n) => n.endsWith('.js') && n !== 'fetch.js' && n !== 'contamination.js')) {
       const text = fs.readFileSync(path.join(dir, f), 'utf8');
       if (net.test(text)) offenders.push(f);
     }
   }
   assert.deepEqual(offenders, []);
+  const contam = fs.readFileSync(path.join(lib.BENCH_DIR, 'runner', 'lib', 'contamination.js'), 'utf8');
+  assert.deepEqual([...contam.matchAll(/spawnSync\('(\w+)', \['(\w+)'/g)].map((m) => `${m[1]} ${m[2]}`), ['git diff'], 'the only process it starts is a local git diff');
   const runnerLib = fs.readdirSync(path.join(lib.BENCH_DIR, 'runner', 'lib')).filter((n) => n.endsWith('.js'));
   for (const f of runnerLib) {
     assert.doesNotMatch(fs.readFileSync(path.join(lib.BENCH_DIR, 'runner', 'lib', f), 'utf8'), /real\/fetch(\.js)?['"]/);

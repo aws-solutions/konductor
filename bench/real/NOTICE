@@ -1,0 +1,18 @@
+Third-party material used by the real-repository benchmark track
+
+Only test files are stored in this repository: for each task, the pull request's test files are copied unchanged into
+bench/tasks/hidden/<task>/overlay/, next to the upstream LICENSE and a NOTICE that names the commit. Upstream source trees are
+never stored here; the benchmark fetches them into a local cache outside the repository with bench/real/fetch.js and
+writes them into each run's working directory.
+
+Textualize/rich - MIT - https://github.com/Textualize/rich
+  tasks: rich-3938-soft-wrap-style, rich-3934-empty-live
+
+pallets/click - BSD-3-Clause - https://github.com/pallets/click
+  tasks: click-3728-help-name-order, click-3473-argument-help
+
+executablebooks/markdown-it-py - MIT - https://github.com/executablebooks/markdown-it-py
+  tasks: markdown-it-py-416-eof-index-error, markdown-it-py-379-cli-stdin
+
+tj/commander.js - MIT - https://github.com/tj/commander.js
+  tasks: commander-2577-option-terminator, commander-2637-help-group-conflict

@@ -8,16 +8,16 @@ const { evalCheck } = require('./check-matcher.js');
 
 function runCheck(root, check, opts = {}) {
   const base = { type: check.type };
-  for (const k of ['path', 'pattern', 'cmd', 'min', 'labels']) if (check[k] !== undefined) base[k] = check[k];
+  for (const k of ['path', 'pattern', 'cmd', 'min', 'labels', 'allowAdditions', 'manifest', 'group']) if (check[k] !== undefined) base[k] = check[k];
   try {
-    const { passed, detail, tests } = evalCheck(root, check, opts);
-    return { ...base, passed, detail, ...(tests ? { tests } : {}) };
+    const { passed, detail, tests, regression } = evalCheck(root, check, opts);
+    return { ...base, passed, detail, ...(tests ? { tests } : {}), ...(regression ? { regression } : {}) };
   } catch (err) {
     return { ...base, passed: false, detail: err.message };
   }
 }
 
-// opts: {pristineDir, env, wrapCmd}, see check-matcher.evalCheck.
+// opts: {pristineDir, env, wrapCmd, hiddenDir, scratchDir, real}, see check-matcher.evalCheck.
 function runChecks(root, checks, opts = {}) {
   const absRoot = path.resolve(root);
   return (checks || []).map((c) => runCheck(absRoot, c, opts));

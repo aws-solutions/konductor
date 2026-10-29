@@ -8,12 +8,14 @@
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
+const zlib = require('node:zlib');
 const { spawnSync } = require('node:child_process');
 
 const REAL_DIR = __dirname;
 const BENCH_DIR = path.resolve(REAL_DIR, '..');
 const REPO_ROOT = path.resolve(BENCH_DIR, '..');
 const MANIFEST_FILE = path.join(REAL_DIR, 'manifest.json');
+const P2P_DIR = path.join(REAL_DIR, 'p2p');
 const DEFAULT_CACHE = '/tmp/konductor-bench/realrepos';
 const ANSWER_KEY = '.bench-answer-key.md';
 const SHA_RE = /^[0-9a-f]{40}$/;
@@ -38,6 +40,29 @@ function loadManifest(file = MANIFEST_FILE) {
   const m = JSON.parse(fs.readFileSync(file, 'utf8'));
   if (!Array.isArray(m.tasks)) throw new Error(`${file}: "tasks" must be an array`);
   return m;
+}
+
+// PASS_TO_PASS is kept as a count, a hash of the sorted ids and a gzip list file next to the manifest, so
+// the manifest stays small. The hash is over the plain text, not the gzip bytes.
+const p2pText = (ids) => `${[...ids].sort().join('\n')}\n`;
+const p2pHash = (ids) => crypto.createHash('sha256').update(p2pText(ids)).digest('hex');
+
+function writeP2p(id, ids, dir = P2P_DIR) {
+  fs.mkdirSync(dir, { recursive: true });
+  const file = `${id}.txt.gz`;
+  fs.writeFileSync(path.join(dir, file), zlib.gzipSync(Buffer.from(p2pText(ids)), { level: 9 }));
+  return { count: ids.length, sha256: p2pHash(ids), file };
+}
+
+// Returns the PASS_TO_PASS ids of an entry. Throws when the list file is missing or differs from the pinned hash.
+function loadP2p(entry, dir = P2P_DIR) {
+  const p = entry.passToPass;
+  if (Array.isArray(p)) return p;
+  const file = path.join(dir, p.file);
+  if (!fs.existsSync(file)) throw new Error(`${entry.id}: PASS_TO_PASS list file is missing: ${file}`);
+  const ids = zlib.gunzipSync(fs.readFileSync(file)).toString('utf8').split('\n').filter(Boolean);
+  if (ids.length !== p.count || p2pHash(ids) !== p.sha256) throw new Error(`${entry.id}: PASS_TO_PASS list differs from the manifest pin (count ${ids.length}, expected ${p.count})`);
+  return ids;
 }
 
 function findEntry(manifest, id) {
@@ -112,6 +137,6 @@ function netlessAvailable() {
 }
 
 module.exports = {
-  REAL_DIR, BENCH_DIR, REPO_ROOT, MANIFEST_FILE, DEFAULT_CACHE, ANSWER_KEY, SHA_RE,
-  resolveCache, loadManifest, findEntry, entryPaths, git, listFiles, hashTree, isTestPath, netlessWrap, netlessAvailable, shq, fixPatch,
+  REAL_DIR, BENCH_DIR, REPO_ROOT, MANIFEST_FILE, P2P_DIR, DEFAULT_CACHE, ANSWER_KEY, SHA_RE,
+  resolveCache, loadManifest, findEntry, writeP2p, loadP2p, p2pHash, entryPaths, git, listFiles, hashTree, isTestPath, netlessWrap, netlessAvailable, shq, fixPatch,
 };

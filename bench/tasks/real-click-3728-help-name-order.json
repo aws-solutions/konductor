@@ -1,0 +1,40 @@
+{
+  "id": "real-click-3728-help-name-order",
+  "class": "real",
+  "target": null,
+  "prompt": "This directory holds a Python command-line library. The names it uses for the automatic help option come back in an order that changes from one interpreter run to the next, so the generated help output and anything derived from it is not reproducible. Command.get_help_option_names(ctx) is where the names are produced; a context created with help_option_names=[\"-h\", \"--help\"] can give [\"--help\", \"-h\"] on one run and [\"-h\", \"--help\"] on another.\n\nExpected behaviour:\n- The names keep the order in which they appear in the context's help_option_names, whatever that order is.\n- A name listed more than once appears once, at its first position.\n- A name that another parameter of the command already uses is left out. That includes either side of a flag pair such as \"--shout/--no-shout\". If every name is taken, the result is an empty list.\n- Deduplication and removal can happen together and the remaining names still keep their order.\n\nThe method must keep returning a list. Do not edit any existing test file; put new tests in a new file under tests/. The existing suite (`python3 -m pytest tests`) must keep passing. Add a short note to the change log in the style of its other entries. Do not ask me questions; if something is unclear, make a reasonable assumption, list your assumptions in your final message, and finish the work.",
+  "real": "click-3728-help-name-order",
+  "hidden": "click-3728-help-name-order",
+  "timeoutSec": 900,
+  "checks": [
+    {
+      "type": "tests",
+      "manifest": true
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "tests",
+      "allowAdditions": true
+    }
+  ],
+  "rubric": [
+    {
+      "id": "investigated",
+      "criterion": "The transcript shows the agent locating the method and noticing why its order varies (for example by reproducing it under different hash seeds) before editing, and the final message states that cause.",
+      "weight": 2
+    },
+    {
+      "id": "verified",
+      "criterion": "After editing, the agent ran the relevant tests or the whole suite and reports the result; new tests sit in a new file and cover ordering, duplicates, conflicts with flag pairs and the all-removed case.",
+      "weight": 2
+    },
+    {
+      "id": "minimal-consistent",
+      "criterion": "The change is small and local to the method, follows the project's style including a change-log entry, and the final message lists the files changed and assumptions.",
+      "weight": 1
+    }
+  ],
+  "tiers": [
+    "real"
+  ]
+}

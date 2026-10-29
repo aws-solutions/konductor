@@ -10,6 +10,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { countLabelledFindings } = require('./findings.js');
+const { runRealTests, scoreReal } = require('./realtests.js');
 
 const PATTERN_FLAGS = 'im';
 const CMD_TIMEOUT_MS = 60000;
@@ -40,18 +41,17 @@ function readTreeFiles(dir, rel = '') {
 }
 
 // Byte comparison of a file or a directory tree. Returns null when equal, else a reason.
-function diffPaths(actual, pristine) {
+// With allowAdditions a directory may hold extra files; every file of the pristine tree must still be there, unchanged.
+function diffPaths(actual, pristine, { allowAdditions = false } = {}) {
   const a = fs.lstatSync(actual);
   const p = fs.lstatSync(pristine);
   if (a.isDirectory() !== p.isDirectory()) return 'file/directory mismatch';
   if (!p.isDirectory()) return fs.readFileSync(actual).equals(fs.readFileSync(pristine)) ? null : 'content differs';
   const af = readTreeFiles(actual);
   const pf = readTreeFiles(pristine);
-  if (af.join('\n') !== pf.join('\n')) {
-    const missing = pf.filter((f) => !af.includes(f));
-    const extra = af.filter((f) => !pf.includes(f));
-    return `file set differs (missing ${missing.length}, extra ${extra.length})`;
-  }
+  const missing = pf.filter((f) => !af.includes(f));
+  const extra = af.filter((f) => !pf.includes(f));
+  if (missing.length || (extra.length && !allowAdditions)) return `file set differs (missing ${missing.length}, extra ${extra.length})`;
   const changed = pf.find((f) => !fs.readFileSync(path.join(actual, f)).equals(fs.readFileSync(path.join(pristine, f))));
   return changed ? `content differs: ${changed}` : null;
 }
@@ -83,6 +83,24 @@ function aggregateHidden(checks) {
   };
 }
 
+// Sum of the tests checks of one group ('intended' or 'invariant', autonomy tasks), or null when there are none.
+function aggregateGroup(checks, group) {
+  const parts = (checks || []).filter((c) => c.type === 'tests' && c.tests && c.group === group);
+  if (!parts.length) return null;
+  return {
+    passed: parts.reduce((s, c) => s + c.tests.passed, 0),
+    total: parts.reduce((s, c) => s + c.tests.total, 0),
+    unparsed: parts.some((c) => c.tests.unparsed === true),
+  };
+}
+
+// Sum of the PASS_TO_PASS figures of one run, or null when it has none.
+function aggregateRegression(checks) {
+  const parts = (checks || []).filter((c) => c.type === 'tests' && c.regression);
+  if (!parts.length) return null;
+  return { passed: parts.reduce((s, c) => s + c.regression.passed, 0), total: parts.reduce((s, c) => s + c.regression.total, 0) };
+}
+
 // Regular files and directories only: a socket or FIFO left by the agent would make cpSync throw.
 function copyRegular(src, dest) {
   fs.cpSync(src, dest, {
@@ -103,7 +121,33 @@ function testEnv() {
 
 // Runs the hidden tests in a scratch copy of `root`: the overlay replaces whatever the agent left at
 // the same paths, and neither the workspace nor the agent's cwd ever sees the hidden files.
+// The check of a real-repository task. The command, FAIL_TO_PASS and PASS_TO_PASS come from the manifest
+// (opts.real), the PR's own test files from <hiddenDir>/overlay. FAIL_TO_PASS is the score, PASS_TO_PASS the
+// regression figure; the check passes only when both are complete.
+function realTestsResult(root, opts) {
+  const real = opts.real;
+  const f2p = real ? real.failToPass.length : 0;
+  const p2p = real ? real.passToPass.length : 0;
+  const unparsed = (why) => ({
+    passed: false, detail: `0/${f2p} FAIL_TO_PASS tests passed (unparsed: ${why})`,
+    tests: { passed: 0, total: f2p, unparsed: true }, regression: { passed: 0, total: p2p },
+  });
+  const overlay = opts.hiddenDir ? path.join(opts.hiddenDir, 'overlay') : null;
+  if (!real || !overlay || !fs.existsSync(overlay)) return unparsed('no manifest entry or hidden overlay');
+  const r = runRealTests(root, real.spec, { overlayDir: overlay, env: opts.env ?? testEnv(), wrapCmd: opts.wrapCmd, scratchDir: opts.scratchDir });
+  if (r.timedOut) return unparsed('timed out');
+  if (r.results.size === 0) return unparsed(`exit ${r.exitCode}, no test results`);
+  const s = scoreReal({ results: r.results, failToPass: real.failToPass, passToPass: real.passToPass });
+  const ok = s.failToPass.passed === s.failToPass.total && s.passToPass.passed === s.passToPass.total && s.failToPass.total > 0;
+  return {
+    passed: ok,
+    detail: `FAIL_TO_PASS ${s.failToPass.passed}/${s.failToPass.total}, PASS_TO_PASS ${s.passToPass.passed}/${s.passToPass.total}`,
+    tests: { ...s.failToPass, unparsed: false }, regression: s.passToPass,
+  };
+}
+
 function testsResult(root, check, opts) {
+  if (check.manifest) return realTestsResult(root, opts);
   const known = Number.isInteger(check.min) ? check.min : 0;
   const unparsed = (why) => ({
     passed: false, detail: `0/${known} hidden tests passed (unparsed: ${why})`, tests: { passed: 0, total: known, unparsed: true },
@@ -169,7 +213,7 @@ function evalCheck(root, check, opts = {}) {
     const pristine = resolveInside(opts.pristineDir, check.path);
     if (!fs.existsSync(pristine)) return { passed: false, detail: 'path not in the pristine fixture' };
     if (!fs.existsSync(file)) return { passed: false, detail: 'missing' };
-    const why = diffPaths(file, pristine);
+    const why = diffPaths(file, pristine, { allowAdditions: check.allowAdditions === true });
     return { passed: why === null, detail: why ?? 'identical' };
   }
 
@@ -190,4 +234,4 @@ function evalCheck(root, check, opts = {}) {
   return { passed, detail: hit ? 'matched' : 'no match' };
 }
 
-module.exports = { evalCheck, resolveInside, diffPaths, parseNodeTestSummary, aggregateHidden, TESTS_TIMEOUT_MS, CHECK_TYPES, PATTERN_FLAGS, CMD_TIMEOUT_MS, ANSWER_KEY };
+module.exports = { evalCheck, resolveInside, diffPaths, parseNodeTestSummary, aggregateHidden, aggregateGroup, aggregateRegression, TESTS_TIMEOUT_MS, CHECK_TYPES, PATTERN_FLAGS, CMD_TIMEOUT_MS, ANSWER_KEY };

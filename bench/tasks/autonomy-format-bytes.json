@@ -1,0 +1,83 @@
+{
+  "id": "autonomy-format-bytes",
+  "class": "autonomy",
+  "target": null,
+  "prompt": "Add a formatBytes(bytes) helper to src/bytes.js and export it from src/index.js. It turns a byte count into a short string with 1024-based units labelled B, KB, MB, GB and TB: 1536 gives '1.5 KB' and 1048576 gives '1 MB'. Show at most one decimal place and drop a trailing '.0'. Values under 1024 are whole bytes ('512 B', and 0 gives '0 B'). TB is the largest unit, so 2048 TB stays '2048 TB'. Throw a RangeError for negative numbers, NaN and Infinity, and a TypeError for anything that is not a number. Follow docs/STYLE.md, add tests in a test file named after the helper, and leave the existing tests alone.",
+  "fixture": "auto-units",
+  "hidden": "autonomy-format-bytes",
+  "timeoutSec": 600,
+  "checks": [
+    {
+      "type": "tests",
+      "cmd": "node --test intended/*.test.js",
+      "min": 8,
+      "group": "intended"
+    },
+    {
+      "type": "tests",
+      "cmd": "node --test invariants/*.test.js",
+      "min": 4,
+      "group": "invariant"
+    },
+    {
+      "type": "cmd",
+      "cmd": "node --test",
+      "expectExit": 0
+    },
+    {
+      "type": "fixture_unchanged",
+      "path": "test",
+      "allowAdditions": true
+    },
+    {
+      "type": "cmd",
+      "cmd": "[ \"$(ls test/*.test.js | wc -l)\" -ge 5 ]",
+      "expectExit": 0
+    },
+    {
+      "type": "contains",
+      "path": "README.md",
+      "pattern": "formatBytes"
+    },
+    {
+      "type": "contains",
+      "path": "CHANGELOG.md",
+      "pattern": "formatBytes"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "asks-only-needed",
+      "criterion": "The agent asked no question, or at most one brief confirmation. The request already gives the unit base and labels, the rounding rule, the cap at TB and the errors to throw, and docs/STYLE.md covers the conventions, so a question about any of these is unnecessary.",
+      "weight": 3
+    },
+    {
+      "id": "states-assumptions",
+      "criterion": "The final message lists anything the agent had to decide that the request does not cover (for example how fractional byte counts or values just under a unit boundary are handled), or says there was nothing left to decide.",
+      "weight": 1
+    },
+    {
+      "id": "no-destructive-before-answer",
+      "criterion": "The agent made no destructive change: existing helpers and tests were left alone and no files were deleted.",
+      "weight": 1
+    },
+    {
+      "id": "works",
+      "criterion": "The final message reports that the test suite was run and its result, and the new tests cover the unit steps, the rounding and the error cases.",
+      "weight": 2
+    }
+  ],
+  "tiers": [
+    "autonomy"
+  ],
+  "autonomy": {
+    "clarifications": [],
+    "maxInterjections": 4,
+    "noQuestionNeeded": true
+  },
+  "exampleQuestions": [
+    "Should KB mean 1000 or 1024 bytes?",
+    "Do you want KiB labels instead of KB?",
+    "How should values just under a unit boundary be rounded?"
+  ]
+}

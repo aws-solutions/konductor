@@ -20,7 +20,8 @@ Run flags: `--arms a,b`, `--tasks id,id`, `--replicates N`, `--parallel N`, `--b
 `--model ID` (default claude-sonnet-5.5), `--effort LEVEL` (default high), `--seed N`,
 `--isolate unshare|none|auto`, `--allow-partial`, `--censored-floor X`, `--env-keep NAME,..`,
 `--hide PATH,..`, `--tripwire-exclude PATH,..`, `--tripwire-depth N`, `--tripwire-dir DIR,..`,
-`--kiro-bin PATH`, `--cache DIR`, `--cargo-target DIR`, `--cargo-online`, `--bench-dir DIR`. `--suite lite|full|hard`.
+`--kiro-bin PATH`, `--cache DIR`, `--cargo-target DIR`, `--cargo-online`, `--bench-dir DIR`, `--real-cache DIR`, `--prepare-only`.
+`--suite lite|full|hard|real|autonomy`.
 More than 10 planned runs need `--budget-credits`; `run` prints the worst-case wall clock and the cap first.
 
 ## Suites and arms
@@ -29,6 +30,13 @@ More than 10 planned runs need `--budget-credits`; `run` prints the worst-case w
   `run --suite hard` scores each run by the share of hidden tests passed; the report shows it as
   "hidden tests passed" (mean fraction, and how many runs pass all) beside "pass". See `bench/README-tasks.md`.
   Hidden tests, partial solutions, solutions and fixtures are masked in the agent's namespace.
+- real: eight pinned tasks from public Python and JavaScript projects (rich, click, markdown-it-py, commander.js), three
+  arms, 1 replicate. A run starts from the real base commit and is scored by the pull request's own tests: FAIL_TO_PASS is
+  the score ("FAIL_TO_PASS passed"), PASS_TO_PASS the regression figure. Fill the local cache once with
+  `node bench/real/fetch.js` (the only networked step); runs copy from it and the checks run offline. The agent keeps its
+  network, the fix is public and the model may remember it, so the report has a separate contamination row
+  (externalFetch, fixRecall). Host copies of the projects and the package caches are masked per run. Proofs:
+  `node bench/real/validate-real.js` and `node bench/real/prove-mask.js`. Details in `bench/README-tasks.md`.
 - `main` is the remote-tracking ref `origin/main` as last fetched (the runner never fetches), labelled
   `main-unreleased@<sha>`; run-config records origin and local SHAs and `behindOrigin`. Without it,
   local main is used with a warning.
@@ -177,6 +185,63 @@ node bench/runner/bench.js skills --run $OUT [--bench-dir DIR] [--repo-root DIR]
 then `calibrate score` prints judge-vs-human and judge-vs-judge agreement, Cohen's kappa and Spearman
 with PASS or WARN (defaults 0.6, 0.7, 0.6; `--kappa-min`, `--agreement-min`, `--spearman-min`). Under
 about 30 criterion pairs is indicative only.
+
+## Benchmark a PR or work in progress
+Any commit or working tree can be an arm: `--arms vanilla,v1.2.0,pr-95=<ref>,wip=dir:<path>`. A name is
+`[a-z0-9][a-z0-9._-]{0,40}`; `vanilla`, `main` and `vX.Y.Z` are reserved. A bare ref (`feat/x`) is refused.
+- `name=<ref>` resolves in `--repo-root` without fetching: a local branch, tag, remote-tracking ref
+  (`origin/feat/x`), `refs/pull/<n>/head`, or a commit SHA. It is built from `git archive`, so a dirty tree never leaks.
+- `name=dir:<path>` snapshots tracked and untracked files that are not ignored (a plain copy skips `.git`,
+  `node_modules`, `target`, `dist`, `build`) and labels the arm `name@<hash12>`, recorded as dirty.
+- Each arm records ref, SHA, source, dirty, content hash, merge-base with `origin/main`, commits ahead and the
+  top-level paths changed (names only) in run-config and every result.json.
+Make the code local first; the runner never fetches. Fetch a pull request or a branch yourself:
+```bash
+git fetch origin pull/95/head:pr-95          # then pr-95=pr-95
+git fetch origin feat/x                      # then pr-95=origin/feat/x
+git worktree add --detach /tmp/wip HEAD      # edit files in /tmp/wip, then wip=dir:/tmp/wip
+node bench/runner/bench.js pr-plan --ref pr-95=pr-95 --suite lite   # prints the commands and a budget, runs nothing
+node bench/runner/bench.js run --suite lite --arms vanilla,v1.2.0,pr-95=pr-95 --replicates 3 --budget-credits 300 --out $OUT
+node bench/runner/bench.js run ... --prepare-only                   # build and trial-install every arm, print the table, no agent
+node bench/runner/bench.js judge --run $OUT --baseline v1.2.0       # pairwise against v1.2.0 instead of vanilla
+node bench/runner/bench.js contrast --run $OUT --base v1.2.0        # contrast.md + contrast.json in $OUT
+```
+`contrast` compares each other arm with the base, overall and per task class: cost, wall clock, model, work-tool and
+subagent calls (medians), hidden and regression test pass fractions, checks, rubric, and the flags (askedUser,
+externalFetch, fixRecall, modelMismatch, timeouts). Each row shows n, both deltas and a verdict from the same noise
+rule as `compare`; fewer than 3 runs a side gives "n too small". Failed runs stay in the counts. `compare` across two
+runs reports a same-named arm that resolved to a different SHA as "arm changed" instead of refusing.
+- One replicate is anecdotal. Use `--replicates 3` or more before calling a difference real.
+- Orchestration costs more than a single agent; do not judge a konductor change on cost alone. Read the quality
+  (hidden tests, checks, rubric) and autonomy (askedUser) columns next to it.
+- A ref must exist locally; builds need the cargo offline cache or `--cargo-online`; a directory snapshot leaves
+  out ignored files; a ref without `cli/konductor-rs` and `mcp` fails fast with the reason.
+
+## Autonomy tier
+Does a change need less help from the user? Every other prompt ends "Do not ask me questions", so no run ever asks.
+The six `autonomy-*` tasks leave a decision open, and a scripted user (no model) answers whatever the agent asks.
+- Measured per run: `turns`, `interjections` (scripted replies), `questions` (turn, text, matched clarifications),
+  `unmatchedQuestions`, `askedFirstTurn`, `interjectionCapHit`, `autonomous` (no interjection), `intendedTests` and
+  `invariantTests` (hidden test split), `completedWithoutHelp` (autonomous and both groups all pass) and
+  `assumptionsStated` (a text heuristic on the last message). Cost, calls and wall clock add up over all turns.
+- Intended tests follow the scripted answers; invariants hold under any reasonable reading (old behavior kept, no crash,
+  no data lost). A wrong guess lowers intended, not invariants. One task needs no question (`noQuestionNeeded`), so
+  asking there is over-asking; one is risky (delete files), so asking first is right.
+- The scripted user: a turn that ends with a question, an approval request or a non end_turn stop is an ask. Each
+  clarification has regex keywords; those that match the question and were not used yet are answered (several in one
+  numbered reply); no match gets "Use your best judgment and continue." and counts as unmatched. After `maxInterjections`
+  (4) it sends "Proceed with your best judgment now and do not ask further questions." once, sets `interjectionCapHit`,
+  and the next turn ends the run. The timeout covers all turns together.
+- Resume: `kiro-cli chat --resume-id <session id>` (`--resume` if no id was read), opencode `-s <session id>`, with the same
+  cwd, scratch HOME and isolation, and the credential copy kept until the last turn. Per-turn streams are `stream-N.jsonl`.
+  Checked once with kiro-cli 2.35.2 on a trivial two-turn task (0.15 credits): the resumed turn kept the session id and
+  the earlier context, the model stayed pinned, and credits were summed over both turns. One run, so not a rate.
+  To repeat it, point `--bench-dir` at a scratch directory with one ask-then-answer task and use `--budget-credits 3`.
+- Run: `node bench/runner/bench.js run --suite autonomy --budget-credits 400 --out $OUT`, then `judge`, `report`,
+  `contrast --run $OUT --base v1.2.0`. `report.md` gets an "Autonomy" section per arm: asked rate, mean interjections,
+  questions on the no-question task and unmatched questions (shown apart), cap hits, intended and invariant tests,
+  completed-without-help rate, interjections per successful run, cost and wall clock for all turns. `contrast` and
+  `compare` gain `interjections`, `unmatchedQuestions`, `intendedFraction`, `invariantFraction`, `completedWithoutHelp`.
 
 ## How to read results
 - Tokens are not exposed by kiro-cli; credits are the cost measure. `estTokens` is characters / 4.

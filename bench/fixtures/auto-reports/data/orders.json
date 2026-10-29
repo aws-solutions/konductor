@@ -1,0 +1,12 @@
+[
+  { "id": "O-1001", "customer": "ana", "createdAt": "2025-01-03T09:10:00Z", "status": "refunded", "amountCents": 12000 },
+  { "id": "O-1002", "customer": "ben", "createdAt": "2025-01-28T16:35:00Z", "status": "paid", "amountCents": 4550 },
+  { "id": "O-1003", "customer": "ana", "createdAt": "2025-01-31T23:45:00Z", "status": "paid", "amountCents": 2500 },
+  { "id": "O-1004", "customer": "cy", "createdAt": "2025-01-31T23:58:00Z", "status": "paid", "amountCents": 8000 },
+  { "id": "O-1005", "customer": "dee", "createdAt": "2025-02-14T11:55:00Z", "status": "paid", "amountCents": 3999 },
+  { "id": "O-1006", "customer": "ben", "createdAt": "2025-03-05T09:50:00Z", "status": "pending", "amountCents": 6000 },
+  { "id": "O-1007", "customer": "cy", "createdAt": "2025-03-06T09:45:00Z", "status": "paid", "amountCents": 15000 },
+  { "id": "O-1008", "customer": "ana", "createdAt": "2025-03-30T18:10:00Z", "status": "paid", "amountCents": 700 },
+  { "id": "O-1009", "customer": "dee", "createdAt": "2025-04-02T08:55:00Z", "status": "paid", "amountCents": 5000 },
+  { "id": "O-1010", "customer": "eli", "createdAt": "2025-04-11T13:20:00Z", "status": "cancelled", "amountCents": 9900 }
+]

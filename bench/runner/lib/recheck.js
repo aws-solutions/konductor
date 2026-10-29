@@ -10,9 +10,12 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { runChecks } = require('./checks.js');
-const { aggregateHidden } = require('./check-matcher.js');
+const { aggregateHidden, aggregateRegression, aggregateGroup } = require('./check-matcher.js');
+const { completedWithoutHelp } = require('./autonomy.js');
 const { buildCheckEnv } = require('./env.js');
 const { loadTasks, BENCH_DIR } = require('./tasks.js');
+const real = require('./real.js');
+const { makeIsolation, probeUnshare } = require('./isolate.js');
 const { loadRun } = require('../../report/load.js');
 
 const checksRevision = (task) => crypto.createHash('sha256').update(JSON.stringify(task.checks)).digest('hex').slice(0, 12);
@@ -33,7 +36,16 @@ function evaluate(dir, task) {
     fs.cpSync(path.join(dir, 'workspace'), work, { recursive: true });
     const { env } = buildCheckEnv(process.env, { home: path.join(scratch, 'home'), tmpdir: path.join(scratch, 'tmp'), konductor: false });
     fs.mkdirSync(env.TMPDIR, { recursive: true });
-    return runChecks(work, task.checks, { pristineDir: task.fixtureDir, env, hiddenDir: task.hiddenDir, scratchDir: path.join(scratch, 'check-scratch') });
+    const opts = { pristineDir: task.fixtureDir, env, hiddenDir: task.hiddenDir, scratchDir: path.join(scratch, 'check-scratch') };
+    if (task.real) {
+      // Same conditions as a run: no network and the host copies of the project hidden, when the namespace works here.
+      opts.real = real.testSpec(task);
+      if (probeUnshare().ok) {
+        const iso = makeIsolation({ mode: 'unshare', scratchRoot: scratch, hide: real.hidePaths(task), offline: true });
+        opts.wrapCmd = (cmd) => iso.wrap('sh', ['-c', cmd]);
+      }
+    }
+    return runChecks(work, task.checks, opts);
   } finally {
     fs.rmSync(scratch, { recursive: true, force: true });
   }
@@ -71,6 +83,13 @@ function recheckRun({ dir, task, dryRun = false, now = () => new Date().toISOStr
     };
     const hidden = aggregateHidden(after);
     if (hidden || 'hiddenTests' in result) next.hiddenTests = hidden;
+    if ('intendedTests' in result || 'invariantTests' in result) {
+      next.intendedTests = aggregateGroup(after, 'intended');
+      next.invariantTests = aggregateGroup(after, 'invariant');
+      next.completedWithoutHelp = result.autonomous === null || result.autonomous === undefined ? result.completedWithoutHelp ?? null : completedWithoutHelp({ autonomous: result.autonomous, intendedTests: next.intendedTests, invariantTests: next.invariantTests });
+    }
+    const regression = aggregateRegression(after);
+    if (regression || 'regressionTests' in result) next.regressionTests = regression;
     writeAtomic(file, JSON.stringify(next, null, 2) + '\n');
   }
   return { status: 'rechecked', before: original, after };

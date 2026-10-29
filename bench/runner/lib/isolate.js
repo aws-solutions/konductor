@@ -9,7 +9,8 @@
 // credential paths are hidden, container-runtime sockets and other user-writable trees
 // are masked, and the capability sets are emptied before the agent starts, so it
 // cannot remount anything. --kill-child ends every process in the namespace (including
-// setsid grandchildren) when the first one exits. The network is not isolated.
+// setsid grandchildren) when the first one exits. The network is not isolated, except with
+// `offline`, which adds a network namespace (loopback only) for check commands that must run without one.
 
 const fs = require('node:fs');
 const os = require('node:os');
@@ -120,7 +121,16 @@ function maskLine(p) {
   return st.isDirectory() ? `mount -t tmpfs tmpfs ${shq(p)}` : `mount --bind /dev/null ${shq(p)}`;
 }
 
-function buildScript({ scratchRoot, homes, systemDirs, hide, masks, readOnlyTrees }) {
+// The `ip` binary lives in /usr/sbin, which is not always on a user's PATH.
+function findIp() {
+  for (const dir of [...(process.env.PATH || '').split(path.delimiter), '/usr/sbin', '/sbin', '/usr/bin']) {
+    const p = path.join(dir, 'ip');
+    try { fs.accessSync(p, fs.constants.X_OK); return p; } catch { /* next */ }
+  }
+  return null;
+}
+
+function buildScript({ scratchRoot, homes, systemDirs, hide, masks, readOnlyTrees, offline = false }) {
   const lines = ['set -e', 'ro() { mount --rbind "$1" "$1" && mount -o remount,ro,bind "$1"; }'];
   for (const d of [...homes, ...systemDirs, ...readOnlyTrees]) lines.push(`ro ${shq(d)}`);
   lines.push(`mount --bind ${shq(scratchRoot)} ${shq(scratchRoot)} && mount -o remount,rw,bind ${shq(scratchRoot)}`);
@@ -134,6 +144,8 @@ function buildScript({ scratchRoot, homes, systemDirs, hide, masks, readOnlyTree
     const line = maskLine(t);
     if (line) lines.push(line);
   }
+  // Loopback must come up while the namespace still holds its capabilities; a missing `ip` leaves it down.
+  if (offline) lines.push(`${shq(findIp() || 'ip')} link set lo up >/dev/null 2>&1 || true`);
   // Empty capability sets: the agent cannot undo any mount above. Fails closed when setpriv is missing.
   lines.push('exec setpriv --no-new-privs --bounding-set -all --inh-caps -all -- "$@"');
   return lines.join('\n');
@@ -144,9 +156,9 @@ function buildScript({ scratchRoot, homes, systemDirs, hide, masks, readOnlyTree
  * `scratchRoot` is the only path under /tmp (or anywhere) that stays writable.
  * `mask` lists extra paths to hide (bench fixtures, reference solutions, the output
  * directory); every answer key under `mask` or `keyRoots` is blanked as well. `keep` lists
- * paths that must stay visible (the agent binary).
+ * paths that must stay visible (the agent binary). `offline` also gives the command an empty network namespace.
  */
-function makeIsolation({ mode, scratchRoot, home, hide = [], mask = [], keyRoots = [], keep = [], socketDirs, sshTmp }) {
+function makeIsolation({ mode, scratchRoot, home, hide = [], mask = [], keyRoots = [], keep = [], socketDirs, sshTmp, offline = false }) {
   if (mode !== 'unshare') return { mode: 'none', wrap: (file, args) => ({ file, args }) };
   const scratch = fs.realpathSync(scratchRoot);
   const homes = realHomes(home);
@@ -168,11 +180,11 @@ function makeIsolation({ mode, scratchRoot, home, hide = [], mask = [], keyRoots
   const dirMasks = mask.map((m) => realOrNull(m)).filter((m) => m && !inside(scratch, m) && !inside(m, scratch));
   const keys = uniq([...mask, ...keyRoots].flatMap((m) => findAnswerKeys(m))).filter((k) => !dirMasks.some((d) => inside(k, d)));
   const masks = uniq([...tmpMasks, ...dirMasks, ...keys]).filter((m) => !inside(scratch, m));
-  const script = buildScript({ scratchRoot: scratch, homes, systemDirs, hide, masks, readOnlyTrees });
+  const script = buildScript({ scratchRoot: scratch, homes, systemDirs, hide, masks, readOnlyTrees, offline });
   return {
     mode,
     script,
-    wrap: (file, args) => ({ file: 'unshare', args: [...UNSHARE_FLAGS, 'sh', '-c', script, 'sh', file, ...args] }),
+    wrap: (file, args) => ({ file: 'unshare', args: [...UNSHARE_FLAGS, ...(offline ? ['--net'] : []), 'sh', '-c', script, 'sh', file, ...args] }),
   };
 }
 

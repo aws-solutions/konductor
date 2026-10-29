@@ -1,0 +1,12 @@
+[
+  { "id": "o1", "customerId": "c1", "totalCents": 5000 },
+  { "id": "o2", "customerId": "c2", "totalCents": 2500 },
+  { "id": "o3", "customerId": "c3", "totalCents": 1200 },
+  { "id": "o4", "customerId": "c4", "totalCents": 900 },
+  { "id": "o5", "customerId": "c5", "totalCents": 4000 },
+  { "id": "o6", "customerId": "c6", "totalCents": 300 },
+  { "id": "o7", "customerId": "c7", "totalCents": 800 },
+  { "id": "o8", "customerId": "c10", "totalCents": 1500 },
+  { "id": "o9", "customerId": "c11", "totalCents": 700 },
+  { "id": "o10", "customerId": "c1", "totalCents": 100 }
+]

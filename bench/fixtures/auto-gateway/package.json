@@ -1,0 +1,10 @@
+{
+  "name": "edge-gateway",
+  "version": "0.3.0",
+  "private": true,
+  "description": "Small in-process request gateway with routing and handlers",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "node --test"
+  }
+}

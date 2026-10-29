@@ -8,6 +8,7 @@ const crypto = require('node:crypto');
 const { spawnSync, execFileSync } = require('node:child_process');
 const { buildCheckEnv } = require('./env.js');
 const { ANSWER_KEY } = require('./check-matcher.js');
+const armSource = require('./arm-source.js');
 
 function run(cmd, args, opts = {}) {
   const r = spawnSync(cmd, args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, ...opts });
@@ -35,6 +36,19 @@ function exportRef(repo, sha, dir) {
   run('tar', ['-x', '-C', dir], { input: archive.stdout, encoding: null });
 }
 
+// Writes an arm's source into dir: `git archive` of its commit, or a snapshot of its working-tree directory.
+function exportArm(arm, ctx, dir) {
+  if (arm.source === 'dir') {
+    fs.mkdirSync(dir, { recursive: true });
+    armSource.copySnapshot(arm.dir, dir, arm.contentHash);
+  } else {
+    exportRef(ctx.repo, arm.commitSha, dir);
+  }
+}
+
+// What each build step reads from the export; a ref without these predates the layout the runner builds from.
+const KIRO_REQUIRED = ['cli/konductor-rs/Cargo.toml', 'mcp/Cargo.toml'];
+
 // Builds skill-lookup-mcp from the arm's own export so each arm ships the server of its own release.
 function buildMcp(exportDir, ctx) {
   const manifest = path.join(exportDir, 'mcp/Cargo.toml');
@@ -57,20 +71,37 @@ function buildMcp(exportDir, ctx) {
 
 // Builds the konductor CLI of an exported ref and copies it to `bin`.
 function buildCli(exportDir, bin, ctx) {
-  const cargoArgs = ['build', '--release', '--manifest-path', path.join(exportDir, 'cli/konductor-rs/Cargo.toml')];
+  const manifest = path.join(exportDir, 'cli/konductor-rs/Cargo.toml');
+  if (!fs.existsSync(manifest)) throw new Error('this ref has no cli/konductor-rs/Cargo.toml (it predates the layout the benchmark builds from)');
+  const cargoArgs = ['build', '--release', '--manifest-path', manifest];
   if (!ctx.cargoOnline) cargoArgs.push('--offline');
   run('cargo', cargoArgs, { env: { ...process.env, CARGO_TARGET_DIR: ctx.cargoTarget } });
   fs.copyFileSync(path.join(ctx.cargoTarget, 'release/konductor'), bin);
   fs.chmodSync(bin, 0o755);
 }
 
+function readyMatches(ready, arm) {
+  return arm.source === 'dir' ? ready.contentHash === arm.contentHash : ready.commitSha === arm.commitSha;
+}
+
+// The arm's own binary logs each call under $HOME, so synth gets a throwaway HOME instead of the invoking user's.
+function synthArm(bin, exportDir) {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'w-'));
+  try {
+    const { env } = buildCheckEnv(process.env, { home });
+    run(bin, ['synth', '--from', exportDir], { cwd: exportDir, env });
+  } finally {
+    fs.rmSync(home, { recursive: true, force: true });
+  }
+}
+
 /**
- * Exports `arm.commitSha`, builds that commit's MCP server and CLI, and synthesizes dist/.
- * Cached by commit SHA; a cache hit is reused only if the MCP binary still matches the
- * sha256 recorded when it was built.
+ * Exports the arm (commit or working-tree snapshot), builds its MCP server and CLI, and synthesizes dist/.
+ * Cached by commit SHA, or by content hash for a directory arm; a cache hit is reused only if the MCP
+ * binary still matches the sha256 recorded when it was built.
  */
 function prepareArm(arm, ctx) {
-  const dir = path.join(ctx.cacheDir, `${arm.id}-${arm.commitSha.slice(0, 12)}`);
+  const dir = path.join(ctx.cacheDir, `${arm.id}-${arm.cacheKey ?? arm.commitSha.slice(0, 12)}`);
   const exportDir = path.join(dir, 'src');
   const bin = path.join(dir, 'konductor');
   const mcpBin = path.join(exportDir, 'mcp/target/release/skill-lookup-mcp');
@@ -78,20 +109,20 @@ function prepareArm(arm, ctx) {
   if (fs.existsSync(readyFile)) {
     try {
       const ready = JSON.parse(fs.readFileSync(readyFile, 'utf8'));
-      if (ready.commitSha === arm.commitSha && fs.existsSync(mcpBin) && sha256File(mcpBin) === ready.mcpSha256) {
+      if (readyMatches(ready, arm) && fs.existsSync(mcpBin) && sha256File(mcpBin) === ready.mcpSha256) {
         return { exportDir, bin, mcpBin, mcpSha256: ready.mcpSha256, cached: true };
       }
     } catch { /* rebuild */ }
   }
 
   fs.rmSync(dir, { recursive: true, force: true });
-  exportRef(ctx.repo, arm.commitSha, exportDir);
+  exportArm(arm, ctx, exportDir);
   buildMcp(exportDir, ctx);
 
   buildCli(exportDir, bin, ctx);
-  run(bin, ['synth', '--from', exportDir], { cwd: exportDir });
+  synthArm(bin, exportDir);
   const mcpSha256 = sha256File(mcpBin);
-  fs.writeFileSync(readyFile, JSON.stringify({ commitSha: arm.commitSha, mcpSha256 }) + '\n');
+  fs.writeFileSync(readyFile, JSON.stringify({ commitSha: arm.commitSha, contentHash: arm.contentHash ?? null, mcpSha256 }) + '\n');
   return { exportDir, bin, mcpBin, mcpSha256, cached: false };
 }
 
@@ -186,6 +217,6 @@ function resolveKiroCli(pathEnv = process.env.PATH) {
 }
 
 module.exports = {
-  prepareArm, installInto, normalizeAgentModels, emptyKiroHome, copyAuthDb, removeAuthCopy, copyFixture, findAnswerKey,
-  exportRef, buildMcp, buildCli, sha256File, resolveKiroCli, makeScratchRoot, defaultAuthDb, kiroCliVersion, versionOf, run, ANSWER_KEY,
+  prepareArm, synthArm, installInto, normalizeAgentModels, emptyKiroHome, copyAuthDb, removeAuthCopy, copyFixture, findAnswerKey,
+  exportRef, exportArm, readyMatches, KIRO_REQUIRED, buildMcp, buildCli, sha256File, resolveKiroCli, makeScratchRoot, defaultAuthDb, kiroCliVersion, versionOf, run, ANSWER_KEY,
 };
