@@ -83,6 +83,7 @@ export function sessionStorageMemory(
   return {
     recall: () => read(SESSION_KEY),
     remember(record) {
+      if (read(SESSION_KEY)?.token === record.token) return;
       write(record, SESSION_KEY);
       remove(PENDING_KEY);
     },

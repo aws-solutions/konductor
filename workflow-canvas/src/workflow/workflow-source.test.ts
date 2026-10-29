@@ -645,4 +645,26 @@ describe('createWorkflowSource session memory', () => {
     expect(source.notice()).toBeUndefined();
     expect(memory.recall()?.token).toBe('pasted-token');
   });
+
+  it('tells nothing on a reload, and holds the pending session, when it fails briefly and the kept one is shown', async () => {
+    const memory = memoryWith(KEPT);
+    const pending = { token: 'pending-token', harness: 'kiro-cli' };
+    memory.holdPending(pending);
+    const api = apiWith(
+      vi.fn(),
+      vi.fn((token: string) =>
+        token === pending.token
+          ? Promise.reject(new ApiError('Server error.', 500))
+          : Promise.resolve(HELLO_DOCUMENT),
+      ),
+    );
+    const source = createWorkflowSource(api, undefined, memory);
+
+    await source.current();
+    await settleMicrotasks();
+
+    expect(source.notice()).toBeUndefined();
+    expect(memory.recall()).toEqual(KEPT);
+    expect(memory.recallPending()).toEqual(pending);
+  });
 });
