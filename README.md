@@ -78,9 +78,11 @@ That installs for Kiro CLI. For Claude Code, run the same command with `| KONDUC
 at the end. Piping a script to `bash` runs code you haven't read; to check it first, see
 [what the install script does](#what-the-install-script-does) below.
 Using the Claude Code plugin marketplace instead? Run `/plugin marketplace add aws-solutions/konductor`,
-then `/plugin install konductor@konductor`. Plugin agents and SOPs use the `konductor:` prefix.
-Plugin agents need agent-teams mode and tool permissions
+then `/plugin install konductor@konductor`
 ([details](https://github.com/aws-solutions/konductor/blob/v1.2.0/docs/user-guide/tasks/install-claude-plugin-marketplace.md)).
+Plugin agents and SOPs use the `konductor:` prefix. Either Claude Code install needs agent-teams
+mode and tool permissions
+([setup](https://github.com/aws-solutions/konductor/blob/v1.2.0/docs/user-guide/tasks/install-claude-code.md#2-enable-agent-teams-mode)).
 Using Kiro IDE? [Install via a Kiro Power](#install-via-kiro-power).
 
 **2. Start the orchestrator:**
