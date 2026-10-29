@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 /** Calls POST /api/session over HTTP and checks it against the contract. */
-import { connect } from 'node:net';
 import { networkInterfaces } from 'node:os';
 import { describe, expect, it } from 'vitest';
 import { LOOPBACK, originOf } from '../address.ts';
+import { probeUntilAnswered } from '../test-support/probe-port.ts';
 import { expectContract, expectError } from '../test-support/contract.ts';
 import { LAUNCH_CODE, openStub, useStub } from '../test-support/harness.ts';
 import { FakeClock } from '../test-support/fake-clock.ts';
@@ -167,16 +167,40 @@ describe('the stub', () => {
       expect(stub.host).toBe(LOOPBACK);
       expect(stub.origin).toBe(originOf(stub.port));
       expect((await client.get('/api/workflow')).status).toBe(401);
-      for (const address of otherAddresses()) {
-        await expect(connectTo(address, stub.port)).rejects.toMatchObject({
-          code: 'ECONNREFUSED',
-        });
-      }
+    } finally {
+      await stub.close();
+    }
+  });
+
+  it("refuses connections on this host's other addresses", async ({ skip }) => {
+    const addresses = otherAddresses();
+    if (addresses.length === 0)
+      skipWithReason(
+        skip,
+        'this host has no non-internal IPv4 address to probe',
+      );
+    const { stub } = await openStub();
+    try {
+      const answers = await Promise.all(
+        addresses.map((address) => probeUntilAnswered(address, stub.port)),
+      );
+      expect(answers).not.toContain('connected');
+      if (!answers.includes('refused'))
+        skipWithReason(
+          skip,
+          'every other address dropped the probe, so no refusal was seen',
+        );
     } finally {
       await stub.close();
     }
   });
 });
+
+/** The default reporter shows only a count of skips, so the reason is logged. */
+function skipWithReason(skip: (note?: string) => never, reason: string): never {
+  console.warn(`SKIPPED loopback probe: ${reason}`);
+  return skip(reason);
+}
 
 // The IPv4 addresses of this machine that are not loopback; there may be none.
 function otherAddresses(): string[] {
@@ -184,14 +208,4 @@ function otherAddresses(): string[] {
     .flatMap((list) => list ?? [])
     .filter((entry) => entry.family === 'IPv4' && !entry.internal)
     .map((entry) => entry.address);
-}
-
-function connectTo(host: string, port: number): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const socket = connect({ host, port }, () => {
-      socket.destroy();
-      resolve();
-    });
-    socket.once('error', reject);
-  });
 }
