@@ -19,7 +19,11 @@ export class DesignerPage {
   readonly saveStatus: Locator;
   readonly conflict: Locator;
   readonly problems: Locator;
+  /** The alert region of the Designer: conflicts, a file loaded again, failed saves. */
+  readonly alerts: Locator;
   readonly selected: Locator;
+  /** The canvas that draws the stages. */
+  readonly graph: Locator;
 
   constructor(readonly page: Page) {
     this.name = page.getByRole('textbox', { name: 'name', exact: true });
@@ -30,7 +34,9 @@ export class DesignerPage {
     this.saveStatus = page.getByTestId('save-status');
     this.conflict = page.getByTestId('conflict');
     this.problems = page.getByTestId('problems');
+    this.alerts = page.getByTestId('edit-alerts');
     this.selected = page.getByText('Selected:');
+    this.graph = page.getByRole('region', { name: 'Workflow graph' });
   }
 
   /** The node of the stage with the name. */

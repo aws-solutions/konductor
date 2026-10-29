@@ -28,9 +28,9 @@ folder.
 - `api/`: the HTTP API contract (`openapi.yaml`) and its test.
 - `stub-api/`: a TypeScript stub server for the contract, for local
   development and tests.
-- `e2e/`: Playwright tests (`tests/`), the screenshot capture (`capture/`),
-  shared page objects and helpers (`support/`) and the committed PNGs
-  (`screenshots/`).
+- `e2e/`: Playwright tests (`tests/`, and `editing/`, which saves to the
+  stub), the screenshot capture (`capture/`), shared page objects and helpers
+  (`support/`) and the committed PNGs (`screenshots/`).
 
 A single `package.json` serves all of the above.
 
@@ -582,11 +582,29 @@ libraries):
 npx playwright install chromium
 ```
 
-Then `npm run test:e2e`. The HTML report is written to `playwright-report/`;
-open it with `npx playwright show-report`. Accessibility is checked with
-axe-core on each tab, on the error state, on the Execution tab with a stage
-running, a failed stage, a passed run, the error of the API and a goal that
-cannot be run, and in both theme modes.
+Then `npm run test:e2e`. It has two Playwright projects. `functional`
+(`e2e/tests/`) does not save to the stub. `editing` (`e2e/editing/`) does, so it
+runs after `functional` has finished; one red functional test makes the editing
+tests report "did not run". The editing tests run one after the other in one
+worker (`fullyParallel: false`), and the `sample` fixture of
+`e2e/support/editing-fixtures.ts` fails a test that finds itself in another
+worker, because the stub keeps one workflow for all of them. So `--repeat-each`,
+or a second spec file in `e2e/editing/`, needs `--workers=1`. To run only the
+editing tests, add `--no-deps`, or `functional` runs first as its dependency. The stub keeps what
+is saved until it stops, so the fixture puts the sample workflow back before
+and after each test, and a test that needs the file changed by someone else
+writes it itself (`e2e/support/stub-workflow.ts`, which fails on a refused
+call). The editing tests also cover saves that go wrong: a refusal with
+findings and one with none, a lost session, an answer that is lost or cannot be
+read (the file holds the text, or does not), and a conflict whose draft can be
+copied, and a graph that grows by added stages and is fitted again. A
+test that says a save "writes nothing" counts the `PUT` requests that the
+page sent; the file is checked only where a request reaches the stub. The HTML report is written to `playwright-report/`; open it with
+`npx playwright show-report`. Accessibility is checked with axe-core on each
+tab, on the error state, on the Execution tab with a stage running, a failed
+stage, a passed run, the error of the API and a goal that cannot be run, on the
+Designer tab while editing, with problems shown and with a conflict shown, and
+in both theme modes.
 
 The stub runs one run at a time and never fails a stage. So the one test that
 starts a real run on it (`execution.spec.ts`, the first run test) waits for the
