@@ -182,9 +182,9 @@ Example: `architect-system-design.md`, `developer-task-breakdown.md`
 After code changes, run the maker-checker cycle:
 
 1. Get the git diff of all changes
-2. Spawn the appropriate reviewer agent (e.g., `k-developer` with `backend-review` or `frontend-review`)
-3. Address all CRITICAL findings
-4. Re-review. If the fix fails, follow rule 5 under Orchestration Rules in your orchestrator prompt.
+2. Spawn the appropriate reviewer agent (e.g., `k-developer`, with `backend-review` or `frontend-review` for a full review), at the depth Verification Protocol item 6 sets
+3. Address the findings Verification Protocol item 6 says to fix
+4. Re-review only what the fix changed (Verification Protocol item 6). If the fix fails, follow rule 5 under Orchestration Rules in your orchestrator prompt.
 
 ## Failure Recovery
 

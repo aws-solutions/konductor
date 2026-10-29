@@ -25,7 +25,7 @@ The NEVER DO rules live in the core rules, which every agent loads at session st
 
 1. **Read before edit**: see Engineering practices in the core rules
 2. **Follow existing patterns**: see Engineering practices and Writing habits in the core rules
-3. **Maker-checker** — Always run the maker-checker pattern: generate artifact → validate with the corresponding checker skill before presenting to the user
+3. **Maker-checker**: see your Maker-Checker Pattern or Verification Protocol if your prompt has one; otherwise validate each artifact with its checker skill before presenting it
 4. **Backward compatibility**: see Engineering practices in the core rules
 5. **Comment complex logic**: see Engineering practices in the core rules
 6. **Structured logging**: see Engineering practices in the core rules
